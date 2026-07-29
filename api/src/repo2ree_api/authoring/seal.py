@@ -9,7 +9,10 @@ not an upstream snapshot.
 
 from __future__ import annotations
 
+import logging
 import tempfile
+from collections.abc import Mapping
+from typing import Any
 from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException, Request
@@ -27,12 +30,15 @@ from repo2ree_api.contracts import (
     UploadStoredResponse,
 )
 from repo2ree_api.control.run_orchestration import run_summary
-from repo2ree_api.deps import workbench_manager
+from repo2ree_api.deps import ree_index, workbench_manager
+from repo2ree_api.ree_index import entry_from_manifest
 from repo2ree_api.workbench.archives import archive_download_filename, spool_chunks
 from repo2ree_api.workbench.commands import dispatch_or_fail, ree_command_span, require_handle
 from repo2ree_api.workbench.uploads import mint_upload_token, stage_upload_bytes
 from repo2ree_protocol import LoadReeBundleCommand, SealReeCommand
 from repo2ree_protocol.command import LoadReeBundleArgs, SealReeArgs
+
+_log = logging.getLogger(__name__)
 
 seal_router = APIRouter(tags=["rees"])
 
@@ -118,7 +124,29 @@ def seal_ree_route(ree_id: str, payload: ReeSealPayload) -> ReeDocument:
         )
         dispatch_or_fail(handle, cmd, "seal", "Workbench seal_ree failed")
         # Return the post-seal workspace so the client sees the sealed state.
-        return ReeDocument.model_validate(workbench_manager.get_workspace(handle))
+        document = workbench_manager.get_workspace(handle)
+        _record_in_ree_index(ree_id, document)
+        return ReeDocument.model_validate(document)
+
+
+def _record_in_ree_index(ree_id: str, document: Mapping[str, Any]) -> None:
+    """File the freshly sealed REE in the index, host-side.
+
+    This is the write that makes a seal outlive its workbench: ``deleteRee``
+    removes the container *and its backing storage*, so without an entry here a
+    deposited REE becomes unciteable the moment its bench is reclaimed.
+
+    A failure is logged rather than raised. By this point the seal has already
+    happened and is durable in the workbench volume, so answering 500 would
+    report a failure that did not occur. Re-sealing repairs it: unchanged
+    content reproduces the same digest and ``record_seal`` is an upsert. The
+    cost of that choice is that the miss is quiet, and an REE could be torn down
+    before anyone notices — hence the error-level log.
+    """
+    try:
+        ree_index.record_seal(entry_from_manifest(document.get("draft_manifest") or {}))
+    except Exception:  # noqa: BLE001 — the seal itself succeeded; indexing must not undo that
+        _log.exception("REE %s sealed but could not be recorded in the index; re-seal to repair", ree_id)
 
 
 @seal_router.get(

@@ -67,6 +67,11 @@ class Settings(BaseSettings):
     # upload-complete) and are swept; also the advertised token lifetime.
     UPLOAD_TTL_SECONDS: int = 3600
     WORKBENCH_REGISTRY_FILE: Path = Path(".repo2ree/workbench-registry.json")
+    # The durable record of sealed REEs and their archive bindings. Unlike the
+    # workbench registry beside it, nothing here is reconstructible from live
+    # infrastructure: an REE's workbench is torn down long before its deposit
+    # stops being citable, so losing this file loses the deposits.
+    REE_INDEX_FILE: Path = Path(".repo2ree/ree-index.json")
     # The workbench agent owns the container runtime (WORKBENCH_DOCKER_MODE is its
     # concern, not consumed here). It dials this API outbound and holds a WebSocket
     # at /agent/connect — there is no inbound agent endpoint to configure.

@@ -535,4 +535,44 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
     await expect(page).toHaveURL("/");
     await expect(page.getByRole("button", { name: /Create REE/i })).toBeVisible();
   });
+
+  await demoStep(page, "Find the sealed REE in the index", async () => {
+    // The point of this chapter is what just happened in the previous one: the
+    // workbench — container, volume, and every file in it — is gone, and the
+    // REE is still here. Sealing recorded it host-side, so the record outlives
+    // the bench it was authored in.
+    await clickDemo(
+      page,
+      page.getByRole("button", { name: /REE Index/i }),
+      "Open the REE index — the record of everything sealed on this control plane",
+    );
+    await expect(page.getByRole("heading", { name: "REE Index" })).toBeVisible();
+
+    const entry = page.getByText("ree-hello-world", { exact: true });
+    await showcasePanel(
+      page,
+      entry,
+      "The REE just sealed is listed — its workbench is released, but the record survives it",
+    );
+
+    // Identity is the seal digest, not the name: the name is a label two nodes
+    // could disagree on, while the digest is what a deposit would be bound to.
+    await expect(page.getByText(/^[0-9a-f]{12}$/)).toBeVisible();
+
+    await showcasePanel(
+      page,
+      page.getByText("Not deposited", { exact: true }),
+      "No DOI yet — nothing has been deposited to an archive, and the index says so rather than leaving it blank",
+    );
+
+    // The filter is the honest counterpart: only entries an archive has issued
+    // an identifier for are citable elsewhere, and this REE is not one yet.
+    await clickDemo(
+      page,
+      page.getByRole("button", { name: /Deposited only/i }),
+      "Filter to what an archive has actually accepted — this REE is sealed, not yet deposited, so it drops out",
+    );
+    await expect(page.getByText("Nothing deposited yet")).toBeVisible();
+    await expect(page.getByText("ree-hello-world", { exact: true })).toHaveCount(0);
+  });
 });

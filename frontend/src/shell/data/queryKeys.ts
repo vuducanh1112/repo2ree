@@ -2,6 +2,7 @@ export const queryKeys = {
   workbenchImages: () => ["workbench-images"] as const,
   scriptTemplates: () => ["script-templates"] as const,
   agents: () => ["agents"] as const,
+  reeIndex: (depositedOnly: boolean) => ["ree-index", depositedOnly] as const,
   ree: (id: string) => ["ree", id] as const,
   evaluateReport: (reeId: string) => ["evaluate-report", reeId] as const,
   scorecard: (reeId: string) => ["scorecard", reeId] as const,

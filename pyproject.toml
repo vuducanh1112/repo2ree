@@ -298,13 +298,28 @@ exhaustive_ignores = ["export_openapi"]
 containers = ["repo2ree_api"]
 layers = [
     "main",
-    "authoring : review",
+    # `ree_index_routes` is a route tier like the two beside it, and
+    # independent of them: it reads what sealing left behind rather than
+    # driving a step.
+    "authoring : review : ree_index_routes",
     "control",
     "workbench",
     "storage",
     "contracts",
     "paths : pagination",
     "deps",
+    # Below `deps` so the composition root can build the index singleton, and
+    # below `contracts` so neither knows the wire shape: the durable record is
+    # projected from the sealed manifest, not from a response model, which is
+    # what lets a peer rebuild an identical entry from a bundle alone.
+    #
+    # `ree_index` sits above `deposit` because an entry carries the
+    # archive-binding attestations deposit defines. That direction is load
+    # bearing: recording a published deposit into the index must be driven from
+    # a route above both, never by an adapter reaching back up — which would
+    # close a cycle between the two.
+    "ree_index",
+    "deposit",
     "settings",
 ]
 

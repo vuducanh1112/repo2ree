@@ -11,6 +11,7 @@ import type {
   InferenceReport,
   ReeCreatePayload,
   ReeDocument,
+  ReeIndexList,
   ReeIntentPatchPayload,
   ReeSummary,
   ReproducibilityReportWire,
@@ -31,6 +32,13 @@ interface ListReesQuery {
   cursor?: string;
   limit?: number;
   status?: string;
+}
+
+interface ListReeIndexQuery {
+  cursor?: string;
+  limit?: number;
+  /** Narrow to entries some archive has issued an identifier for. */
+  depositedOnly?: boolean;
 }
 
 interface PutReeFileContentRequest {
@@ -75,6 +83,29 @@ export class ReeApi {
   /** Workbench agents currently dialed into the control plane. */
   async listAgents(): Promise<AgentList> {
     return this.client.request<AgentList>(endpoints.agents(), { method: "GET" });
+  }
+
+  /**
+   * REEs sealed on this control plane, newest first.
+   *
+   * Not REE-scoped and not tied to a live workbench: entries outlive the
+   * benches they were authored in, which is the point of the index.
+   */
+  async listReeIndex(query: ListReeIndexQuery = {}): Promise<ReeIndexList> {
+    const search = new URLSearchParams();
+    if (query.cursor) {
+      search.set("cursor", query.cursor);
+    }
+    if (query.limit !== undefined) {
+      search.set("limit", String(query.limit));
+    }
+    if (query.depositedOnly) {
+      search.set("deposited_only", "true");
+    }
+    const qs = search.toString();
+    return this.client.request<ReeIndexList>(`${endpoints.reeIndex()}${qs ? `?${qs}` : ""}`, {
+      method: "GET",
+    });
   }
 
   async uploadStagedBytes(uploadUrl: string, data: ArrayBuffer): Promise<void> {

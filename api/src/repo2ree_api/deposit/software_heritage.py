@@ -25,8 +25,8 @@ Two caveats worth keeping in view when the lookup is wired up:
 
 from __future__ import annotations
 
-from repo2ree_api.control.deposit.adapter import DepositNotSupportedError
-from repo2ree_api.control.deposit.models import (
+from repo2ree_api.deposit.adapter import DepositNotSupportedError
+from repo2ree_api.deposit.models import (
     ArchiveBindingAttestation,
     ArchivePresenceObservation,
     DepositCapabilities,

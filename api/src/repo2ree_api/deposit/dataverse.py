@@ -15,7 +15,7 @@ the same trade-off — it means touching the archive before sealing.
 
 from __future__ import annotations
 
-from repo2ree_api.control.deposit.models import (
+from repo2ree_api.deposit.models import (
     ArchiveBindingAttestation,
     ArchivePresenceObservation,
     DepositCapabilities,

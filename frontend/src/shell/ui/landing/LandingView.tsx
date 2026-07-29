@@ -7,6 +7,7 @@ import { C, F, S_ACTION_BUTTON_BASE, S_SECTION_LABEL } from "../theme/theme";
 interface LandingViewProps {
   onLoad: (path: AppLoadRoutePath) => void;
   onViewAgents: () => void;
+  onViewReeIndex: () => void;
 }
 
 const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
@@ -14,7 +15,7 @@ const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
   ...extra,
 });
 
-export function LandingView({ onLoad, onViewAgents }: LandingViewProps) {
+export function LandingView({ onLoad, onViewAgents, onViewReeIndex }: LandingViewProps) {
   // Both entry points run the same creation flow: pick a lab location (agent),
   // then the workbench step — which is also where an existing REE bundle is
   // loaded, since the load runs on the workbench that step provisions.
@@ -164,6 +165,29 @@ export function LandingView({ onLoad, onViewAgents }: LandingViewProps) {
           >
             <span style={{ display: "flex" }}>{Ic.cpu(15)}</span>
             View Agents
+          </button>
+          <button
+            type="button"
+            onClick={onViewReeIndex}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              width: "100%",
+              borderRadius: 10,
+              padding: "9px 16px",
+              background: "transparent",
+              border: `1px solid ${C.border}`,
+              color: C.textMid,
+              fontSize: 13,
+              fontWeight: 500,
+              fontFamily: F.sans,
+              cursor: "pointer",
+            }}
+          >
+            <span style={{ display: "flex" }}>{Ic.archive(15)}</span>
+            REE Index
           </button>
         </div>
         <div

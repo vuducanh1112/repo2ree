@@ -36,6 +36,7 @@ TEST_RESULTS_DIR = Path(__file__).resolve().parents[3] / "test-artifacts" / "tra
 _state_dir = Path(tempfile.mkdtemp(prefix="repo2ree-api-utest-"))
 os.environ["UPLOAD_STAGING_DIR"] = str(_state_dir / "upload-staging")
 os.environ["WORKBENCH_REGISTRY_FILE"] = str(_state_dir / "workbench-registry.json")
+os.environ["REE_INDEX_FILE"] = str(_state_dir / "ree-index.json")
 
 # OpenTelemetry's set_tracer_provider is honored once per process, so two API
 # tiers in one pytest run share a single provider baked to whichever tier booted

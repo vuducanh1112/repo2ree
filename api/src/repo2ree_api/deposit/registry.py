@@ -7,11 +7,11 @@ typed failure at one boundary rather than a ``KeyError`` from three call sites.
 
 from __future__ import annotations
 
-from repo2ree_api.control.deposit.adapter import DepositAdapter
-from repo2ree_api.control.deposit.dataverse import DataverseAdapter
-from repo2ree_api.control.deposit.models import ArchiveProvider, DepositCapabilities
-from repo2ree_api.control.deposit.software_heritage import SoftwareHeritageAdapter
-from repo2ree_api.control.deposit.zenodo import ZenodoAdapter
+from repo2ree_api.deposit.adapter import DepositAdapter
+from repo2ree_api.deposit.dataverse import DataverseAdapter
+from repo2ree_api.deposit.models import ArchiveProvider, DepositCapabilities
+from repo2ree_api.deposit.software_heritage import SoftwareHeritageAdapter
+from repo2ree_api.deposit.zenodo import ZenodoAdapter
 
 _ADAPTERS: dict[str, DepositAdapter] = {
     "software_heritage": SoftwareHeritageAdapter(),

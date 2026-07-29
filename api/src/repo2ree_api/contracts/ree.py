@@ -13,6 +13,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from repo2ree_api.contracts.runs import RunSummary
+from repo2ree_api.ree_index import ReeIndexEntry
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.evidence.receipts.consistency import AuthorReceiptSet, ConsistencyReport
@@ -72,6 +73,20 @@ class ReeList(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     items: list[ReeSummary]
+    next_cursor: str | None = None
+
+
+class ReeIndexList(BaseModel):
+    """A page of the REE index — sealed REEs and where they were deposited.
+
+    The item type is the stored entry itself, for the same reason ``ReeDocument``
+    reuses the core models: a separate wire shape could drift from what is
+    actually on disk, and here that drift would be published to peers.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[ReeIndexEntry]
     next_cursor: str | None = None
 
 

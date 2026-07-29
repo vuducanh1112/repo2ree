@@ -4,6 +4,7 @@ export const endpoints = {
   workbenchImages: () => `${API_V1_BASE}/workbench/images`,
   scriptTemplates: () => `${API_V1_BASE}/script-templates`,
   agents: () => `${API_V1_BASE}/agents`,
+  reeIndex: () => `${API_V1_BASE}/ree-index`,
   rees: () => `${API_V1_BASE}/rees`,
   ree: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}`,
   reeIntent: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/intent`,

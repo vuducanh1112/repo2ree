@@ -68,6 +68,11 @@ export type AgentSummary = Schema<"AgentSummary">;
 
 export type AgentList = Schema<"AgentList">;
 
+/** One sealed REE as the index stores it, with its archive bindings (GET /ree-index). */
+export type ReeIndexEntryWire = Schema<"ReeIndexEntry">;
+
+export type ReeIndexList = Schema<"ReeIndexList">;
+
 /**
  * The PATCH wire applies only the keys actually sent (``exclude_unset`` on the
  * backend), so any subset of intent fields is a valid patch. The generated

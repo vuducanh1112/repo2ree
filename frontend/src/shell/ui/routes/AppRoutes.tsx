@@ -5,6 +5,7 @@ import { LabLocationView } from "../agents/LabLocationView";
 import { AppShellView } from "../app-shell/AppShellView";
 import { APP_ROUTE } from "../app-shell/state/pages";
 import { LandingView } from "../landing/LandingView";
+import { ReeIndexView } from "../ree-index/ReeIndexView";
 
 function WorkspaceRoute({ onBack }: { onBack: () => void }) {
   const [searchParams] = useSearchParams();
@@ -28,6 +29,7 @@ export function AppRoutes() {
           <LandingView
             onLoad={(path) => navigate(path)}
             onViewAgents={() => navigate(APP_ROUTE.AGENTS)}
+            onViewReeIndex={() => navigate(APP_ROUTE.REE_INDEX)}
           />
         }
       />
@@ -51,6 +53,16 @@ export function AppRoutes() {
           // Agents are global, not REE-scoped; the provider just supplies reeApi.
           <ApiClientProvider>
             <AgentsView onBack={() => navigate(APP_ROUTE.ROOT)} />
+          </ApiClientProvider>
+        }
+      />
+      <Route
+        path={APP_ROUTE.REE_INDEX}
+        element={
+          // The index spans every REE this node has sealed, so like agents it
+          // is global and the provider only supplies reeApi.
+          <ApiClientProvider>
+            <ReeIndexView onBack={() => navigate(APP_ROUTE.ROOT)} />
           </ApiClientProvider>
         }
       />

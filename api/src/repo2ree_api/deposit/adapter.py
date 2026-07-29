@@ -10,7 +10,7 @@ Deposit is deliberately not one call. ``create_draft`` is reversible and
 ``publish`` is not: a published DOI cannot be withdrawn, so the split is the
 safety mechanism, not an artifact of Zenodo's data model.
 
-Adapters live in the control plane and nowhere else. They hold user
+Adapters run in the control plane — the API service — and nowhere else. They hold user
 credentials, and the workbench executes the author's own code — a deposit token
 must never be reachable from there. The agent is likewise out of scope: it
 already holds the Docker socket, and widening it to carry user archive
@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from repo2ree_api.control.deposit.models import (
+from repo2ree_api.deposit.models import (
     ArchiveBindingAttestation,
     ArchivePresenceObservation,
     DepositCapabilities,

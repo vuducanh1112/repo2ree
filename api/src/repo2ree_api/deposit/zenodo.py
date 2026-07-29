@@ -22,7 +22,7 @@ version DOI is what names these exact bytes.
 
 from __future__ import annotations
 
-from repo2ree_api.control.deposit.models import (
+from repo2ree_api.deposit.models import (
     ArchiveBindingAttestation,
     ArchivePresenceObservation,
     DepositCapabilities,

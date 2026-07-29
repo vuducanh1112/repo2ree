@@ -664,6 +664,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ree-index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Ree Index Route
+         * @description Every REE sealed on this node, newest first.
+         *
+         *     ``deposited_only`` narrows to entries some archive has issued an identifier
+         *     for — the subset another node could cite. The rest are local seals, real
+         *     here but not yet citable anywhere else.
+         *
+         *     Note the order is the reverse of the store's: the index's canonical order is
+         *     ascending, because that is what a resumable ``since=`` cursor and a stable
+         *     snapshot digest need, while a reader wants the most recent seal first.
+         */
+        get: operations["listReeIndex"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/rees/{ree_id}/reviews": {
         parameters: {
             query?: never;
@@ -1079,6 +1107,72 @@ export interface components {
              * @default connected
              */
             status: string;
+        };
+        /**
+         * ArchiveBindingAttestation
+         * @description One claim: an archive's deposit holds the REE with this content digest.
+         *
+         *     Stored beside the sealed bundle and indexed by the control plane; never
+         *     written into the bundle, which is frozen at seal time. ``signature`` and
+         *     ``verification_material`` are optional because an unsigned binding is still
+         *     a useful record — signing makes it *checkable* by a third party rather than
+         *     merely asserted, and can be added later without rewriting anything.
+         */
+        ArchiveBindingAttestation: {
+            /** Subject Digest */
+            subject_digest: string;
+            /**
+             * Claim Type
+             * @default archive_binding
+             * @constant
+             */
+            claim_type: "archive_binding";
+            /**
+             * Signer Identity
+             * @default
+             */
+            signer_identity: string;
+            /**
+             * Signer Role
+             * @default archive_adapter
+             */
+            signer_role: string;
+            /**
+             * Signed At
+             * @default
+             */
+            signed_at: string;
+            /**
+             * Policy
+             * @default
+             */
+            policy: string;
+            /** Signature */
+            signature?: string | null;
+            /** Verification Material */
+            verification_material?: string | null;
+            /**
+             * Archive
+             * @enum {string}
+             */
+            archive: "software_heritage" | "zenodo" | "dataverse";
+            /** Identifier */
+            identifier: string;
+            /**
+             * Record Url
+             * @default
+             */
+            record_url: string;
+            /**
+             * Concept Identifier
+             * @default
+             */
+            concept_identifier: string;
+            /**
+             * Version
+             * @default
+             */
+            version: string;
         };
         /** ArgvCommandCandidate */
         ArgvCommandCandidate: {
@@ -2481,6 +2575,40 @@ export interface components {
             size: number;
             /** Content */
             content?: string | null;
+        };
+        /**
+         * ReeIndexEntry
+         * @description One sealed REE, plus whatever archives have since been claimed to hold it.
+         */
+        ReeIndexEntry: {
+            /** Subject Digest */
+            subject_digest: string;
+            /** Name */
+            name: string;
+            /** Sealed At */
+            sealed_at: string;
+            catalog_metadata?: components["schemas"]["ReeCatalogMetadata"];
+            /**
+             * Ree Version
+             * @default
+             */
+            ree_version: string;
+            /** Archive Attestations */
+            archive_attestations?: components["schemas"]["ArchiveBindingAttestation"][];
+        };
+        /**
+         * ReeIndexList
+         * @description A page of the REE index — sealed REEs and where they were deposited.
+         *
+         *     The item type is the stored entry itself, for the same reason ``ReeDocument``
+         *     reuses the core models: a separate wire shape could drift from what is
+         *     actually on disk, and here that drift would be published to peers.
+         */
+        ReeIndexList: {
+            /** Items */
+            items: components["schemas"]["ReeIndexEntry"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
         };
         /**
          * ReeIntent
@@ -7847,6 +7975,111 @@ export interface operations {
                 };
                 content: {
                     "application/zip": string;
+                };
+            };
+            /** @description Invalid request or operation precondition */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description REE, run, file, or artifact not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Version or idempotency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload exceeds the configured size limit */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench returned an invalid upstream response */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench or runtime agent unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload staging capacity exhausted */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listReeIndex: {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number | null;
+                deposited_only?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReeIndexList"];
                 };
             };
             /** @description Invalid request or operation precondition */

@@ -5166,6 +5166,163 @@
         }
       }
     },
+    "/api/v1/ree-index": {
+      "get": {
+        "tags": [
+          "ree-index"
+        ],
+        "summary": "List Ree Index Route",
+        "description": "Every REE sealed on this node, newest first.\n\n``deposited_only`` narrows to entries some archive has issued an identifier\nfor \u2014 the subset another node could cite. The rest are local seals, real\nhere but not yet citable anywhere else.\n\nNote the order is the reverse of the store's: the index's canonical order is\nascending, because that is what a resumable ``since=`` cursor and a stable\nsnapshot digest need, while a reader wants the most recent seal first.",
+        "operationId": "listReeIndex",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "deposited_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Deposited Only"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReeIndexList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or operation precondition",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "REE, run, file, or artifact not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Workbench returned an invalid upstream response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Workbench or runtime agent unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "507": {
+            "description": "Upload staging capacity exhausted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/rees/{ree_id}/reviews": {
       "get": {
         "tags": [
@@ -6678,6 +6835,99 @@
           "connected_at"
         ],
         "title": "AgentSummary"
+      },
+      "ArchiveBindingAttestation": {
+        "properties": {
+          "subject_digest": {
+            "type": "string",
+            "title": "Subject Digest"
+          },
+          "claim_type": {
+            "type": "string",
+            "const": "archive_binding",
+            "title": "Claim Type",
+            "default": "archive_binding"
+          },
+          "signer_identity": {
+            "type": "string",
+            "title": "Signer Identity",
+            "default": ""
+          },
+          "signer_role": {
+            "type": "string",
+            "title": "Signer Role",
+            "default": "archive_adapter"
+          },
+          "signed_at": {
+            "type": "string",
+            "title": "Signed At",
+            "default": ""
+          },
+          "policy": {
+            "type": "string",
+            "title": "Policy",
+            "default": ""
+          },
+          "signature": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signature"
+          },
+          "verification_material": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verification Material"
+          },
+          "archive": {
+            "type": "string",
+            "enum": [
+              "software_heritage",
+              "zenodo",
+              "dataverse"
+            ],
+            "title": "Archive"
+          },
+          "identifier": {
+            "type": "string",
+            "title": "Identifier"
+          },
+          "record_url": {
+            "type": "string",
+            "title": "Record Url",
+            "default": ""
+          },
+          "concept_identifier": {
+            "type": "string",
+            "title": "Concept Identifier",
+            "default": ""
+          },
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "subject_digest",
+          "archive",
+          "identifier"
+        ],
+        "title": "ArchiveBindingAttestation",
+        "description": "One claim: an archive's deposit holds the REE with this content digest.\n\nStored beside the sealed bundle and indexed by the control plane; never\nwritten into the bundle, which is frozen at seal time. ``signature`` and\n``verification_material`` are optional because an unsigned binding is still\na useful record \u2014 signing makes it *checkable* by a third party rather than\nmerely asserted, and can be added later without rewriting anything."
       },
       "ArgvCommandCandidate": {
         "properties": {
@@ -9780,6 +10030,75 @@
         "title": "ReeFile",
         "description": "One file under the REE root (upstream/overlay/artifacts/\u2026)."
       },
+      "ReeIndexEntry": {
+        "properties": {
+          "subject_digest": {
+            "type": "string",
+            "title": "Subject Digest"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "sealed_at": {
+            "type": "string",
+            "title": "Sealed At"
+          },
+          "catalog_metadata": {
+            "$ref": "#/components/schemas/ReeCatalogMetadata"
+          },
+          "ree_version": {
+            "type": "string",
+            "title": "Ree Version",
+            "default": ""
+          },
+          "archive_attestations": {
+            "items": {
+              "$ref": "#/components/schemas/ArchiveBindingAttestation"
+            },
+            "type": "array",
+            "title": "Archive Attestations"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "subject_digest",
+          "name",
+          "sealed_at"
+        ],
+        "title": "ReeIndexEntry",
+        "description": "One sealed REE, plus whatever archives have since been claimed to hold it."
+      },
+      "ReeIndexList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReeIndexEntry"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "ReeIndexList",
+        "description": "A page of the REE index \u2014 sealed REEs and where they were deposited.\n\nThe item type is the stored entry itself, for the same reason ``ReeDocument``\nreuses the core models: a separate wire shape could drift from what is\nactually on disk, and here that drift would be published to peers."
+      },
       "ReeIntent-Input": {
         "properties": {
           "name": {
@@ -12821,6 +13140,10 @@
     {
       "name": "fleet",
       "description": "Discover connected runtime agents and workbench images."
+    },
+    {
+      "name": "ree-index",
+      "description": "Read the REE index: what was sealed here, and where it was deposited."
     },
     {
       "name": "system",

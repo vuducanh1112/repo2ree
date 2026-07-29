@@ -23,6 +23,7 @@ from repo2ree_api.contracts import ErrorEnvelope, HealthResponse
 from repo2ree_api.control.fleet import agent_ws_router, agents_router, workbench_images_router
 from repo2ree_api.control.rees import rees_router
 from repo2ree_api.control.runs import runs_router
+from repo2ree_api.ree_index_routes import ree_index_router
 from repo2ree_api.review.records import review_records_router
 from repo2ree_api.review.stages import review_stages_router
 from repo2ree_api.settings import service_settings
@@ -100,6 +101,7 @@ _OPENAPI_TAGS = [
     {"name": "sources", "description": "Acquire, upload, and remove source snapshots."},
     {"name": "files", "description": "Read and mutate files in an REE workspace."},
     {"name": "fleet", "description": "Discover connected runtime agents and workbench images."},
+    {"name": "ree-index", "description": "Read the REE index: what was sealed here, and where it was deposited."},
     {"name": "system", "description": "Service health and metadata."},
 ]
 
@@ -143,6 +145,8 @@ ROUTERS = (
     scorecard_router,
     receipts_router,
     seal_router,
+    # What sealing leaves behind, once the workbench above is gone.
+    ree_index_router,
     # Review — the same lifecycle, reproduced independently.
     review_records_router,
     review_stages_router,

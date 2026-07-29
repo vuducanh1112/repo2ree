@@ -1,6 +1,7 @@
 """Depositing a sealed REE into an external archive, and recording what came back.
 
-Lives in the control plane for three reasons, each sufficient on its own:
+Runs in the control plane — the API service, never the workbench or the agent —
+for three reasons, each sufficient on its own:
 
 * **Credentials.** Deposit needs a user's archive token. The workbench runs the
   author's own build and experiment scripts, so a token there is exfiltrable by
@@ -18,9 +19,9 @@ and mutating it to add a DOI would change the very digest the DOI was issued
 for. See ``docs/research/sealing.md``.
 """
 
-from repo2ree_api.control.deposit.adapter import DepositAdapter, DepositNotSupportedError
-from repo2ree_api.control.deposit.dataverse import DataverseAdapter
-from repo2ree_api.control.deposit.models import (
+from repo2ree_api.deposit.adapter import DepositAdapter, DepositNotSupportedError
+from repo2ree_api.deposit.dataverse import DataverseAdapter
+from repo2ree_api.deposit.models import (
     ArchiveBindingAttestation,
     ArchivePresence,
     ArchivePresenceObservation,
@@ -30,9 +31,9 @@ from repo2ree_api.control.deposit.models import (
     DepositRequest,
     DepositState,
 )
-from repo2ree_api.control.deposit.registry import deposit_adapter, deposit_capabilities
-from repo2ree_api.control.deposit.software_heritage import SoftwareHeritageAdapter
-from repo2ree_api.control.deposit.zenodo import ZenodoAdapter
+from repo2ree_api.deposit.registry import deposit_adapter, deposit_capabilities
+from repo2ree_api.deposit.software_heritage import SoftwareHeritageAdapter
+from repo2ree_api.deposit.zenodo import ZenodoAdapter
 
 __all__ = [
     "ArchiveBindingAttestation",
