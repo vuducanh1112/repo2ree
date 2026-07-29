@@ -11,7 +11,6 @@ export const ARCHIVE_REPOSITORIES: ArchiveRepo[] = [
     url: "https://www.softwareheritage.org",
     desc: "Universal source code archive. Assigns a permanent SWHID intrinsic identifier tied to the exact content of your code.",
     idLabel: "SWHID",
-    idField: "swhid",
     idPlaceholder: "swh:1:dir:…",
     params: [
       {
@@ -42,7 +41,6 @@ export const ARCHIVE_REPOSITORIES: ArchiveRepo[] = [
     url: "https://zenodo.org",
     desc: "CERN / OpenAIRE general-purpose research repository. Issues a citable DOI and supports versioning of datasets and software.",
     idLabel: "DOI",
-    idField: "zenodoDoi",
     idPlaceholder: "10.5281/zenodo.xxxxxxx",
     params: [
       {
@@ -76,7 +74,6 @@ export const ARCHIVE_REPOSITORIES: ArchiveRepo[] = [
     url: "https://dataverse.org",
     desc: "Open-source research data repository platform. Widely used by universities and research institutions for FAIR data sharing.",
     idLabel: "Handle / DOI",
-    idField: "dataverseDoi",
     idPlaceholder: "https://doi.org/10.7910/DVN/…",
     params: [
       {

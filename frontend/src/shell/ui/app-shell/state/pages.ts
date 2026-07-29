@@ -53,8 +53,6 @@ const FIELD_TO_PAGE: Partial<Record<keyof ReeEditorViewModel, AppShellPage>> = {
   activation: PAGE.ACTIVATION,
   sbom: PAGE.SBOM,
   swhid: PAGE.ARCHIVE,
-  zenodoDoi: PAGE.ARCHIVE,
-  dataverseDoi: PAGE.ARCHIVE,
 };
 
 function isValidAppShellPage(value: string): value is AppShellPage {

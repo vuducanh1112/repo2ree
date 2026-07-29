@@ -27,14 +27,14 @@ export function buildSealCableItems(ree: ReeEditorViewModel, badges: Badges): Se
       label: "Runtime",
       live: !!ree.runtime?.trim() && ree.runtime !== "__skipped__",
     },
-    { key: "swh", label: "Software Heritage", live: !!ree.swhid },
+    // "Source identity", not "Software Heritage": the SWHID is computed locally
+    // from the acquired tree and asserts nothing about any archive holding it.
+    { key: "swh", label: "Source identity", live: !!ree.swhid },
     { key: "sbom", label: "SBOM", live: !!ree.sbom },
     { key: "evaluate", label: "Reproducibility Readiness", live: !!badges?.evaluate },
-    {
-      key: "archive",
-      label: "Archival & DOIs",
-      live: !!(ree.zenodoDoi || ree.dataverseDoi),
-    },
+    // Never live until deposits are read back from archive-binding attestations;
+    // nothing on the spec can stand in for "an archive accepted this bundle".
+    { key: "archive", label: "Archival & DOIs", live: false },
     {
       key: "activation",
       label: "Test Activation",

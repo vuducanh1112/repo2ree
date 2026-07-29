@@ -15,8 +15,6 @@ export interface ReeIntentPatch extends Record<string, unknown> {
   activation: Record<string, unknown>;
   sbom: string;
   swhid: string;
-  zenodo_doi: string;
-  dataverse_doi: string;
   experiments: Array<Record<string, unknown>>;
   hardware_description: Record<string, unknown>;
 }
@@ -104,8 +102,9 @@ function serializeHbom(hbom: Hbom): Record<string, unknown> {
 // commit). It is a backend-owned receipt: acquisition settles it server-side and
 // source reset clears it, and no UI flow ever authors it. Serializing it would
 // let a stale/blank local copy clobber the backend's on the next autosave, since
-// apply_patch merges by key. (`swhid` stays below — unlike revision it has a real
-// client writer, the Software Heritage archival step, so it must round-trip.)
+// apply_patch merges by key. (`swhid` stays below — unlike revision it still has
+// a client writer: source reset clears it locally, and that clear must reach the
+// backend so a stale identity does not outlive the source it named.)
 export function toReePatchFromSlices({ reeSpec }: ReePatchSlices): ReeIntentPatch {
   return {
     name: reeSpec.name || "",
@@ -116,8 +115,6 @@ export function toReePatchFromSlices({ reeSpec }: ReePatchSlices): ReeIntentPatc
     activation: serializeRunnable(reeSpec.activation),
     sbom: reeSpec.sbom || "",
     swhid: reeSpec.swhid || "",
-    zenodo_doi: reeSpec.zenodoDoi || "",
-    dataverse_doi: reeSpec.dataverseDoi || "",
     experiments: (reeSpec.experiments || []).map(serializeExperiment),
     hardware_description: serializeHbom(reeSpec.hardwareDescription),
   };
@@ -137,8 +134,6 @@ export function toReePatch(
       activation: ree.activation,
       sbom: ree.sbom,
       swhid: ree.swhid,
-      zenodoDoi: ree.zenodoDoi,
-      dataverseDoi: ree.dataverseDoi,
       experiments: ree.experiments || [],
       hardwareDescription: ree.hardwareDescription,
     },

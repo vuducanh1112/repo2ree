@@ -16,9 +16,6 @@ interface StepRunSuccessPlan extends StepRunCompletionPlan {
 
 interface NonStepCompletionArgs {
   key: string;
-  generatedSwhid?: string;
-  generatedZenodoDoi?: string;
-  generatedDataverseDoi?: string;
 }
 
 export function planManualArtifactUpdateSuccess(

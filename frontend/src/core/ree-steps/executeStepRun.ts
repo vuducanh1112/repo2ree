@@ -49,11 +49,6 @@ interface ExecuteStepRunArgs {
   workspaceFiles: FileTreeNode[];
   executionRunner: ReeRunRunner;
   stepCommandPlanners: StepCommandPlannerMap;
-  generatedIds: {
-    swhid: string;
-    zenodoDoi: string;
-    dataverseDoi: string;
-  };
   executeCommands: (commands: StepCommand[]) => void;
   refreshWorkspace: () => Promise<WorkspaceSnapshot>;
   onRunStarted?: (key: string, runId: string) => void;
@@ -71,7 +66,6 @@ export async function executeStepRun({
   ree,
   executionRunner,
   stepCommandPlanners,
-  generatedIds,
   executeCommands,
   refreshWorkspace,
   onRunStarted,
@@ -168,13 +162,7 @@ export async function executeStepRun({
     return { lines, ts };
   }
 
-  const nonStepPlan = planManualArtifactUpdateSuccess({
-    key,
-    generatedSwhid: generatedIds.swhid,
-    generatedZenodoDoi: generatedIds.zenodoDoi,
-    generatedDataverseDoi: generatedIds.dataverseDoi,
-    timestamp: ts,
-  });
+  const nonStepPlan = planManualArtifactUpdateSuccess({ key, timestamp: ts });
   executeCommands(nonStepPlanToCommands(nonStepPlan));
 
   return { lines, ts };

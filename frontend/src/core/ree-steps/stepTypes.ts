@@ -51,7 +51,6 @@ export interface ArchiveRepo {
   url: string;
   desc: string;
   idLabel: string;
-  idField: keyof ReeSpec;
   idPlaceholder: string;
   params: ReeStepParam[];
   requires: ReeStepRequirement[];

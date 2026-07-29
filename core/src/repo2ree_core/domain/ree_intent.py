@@ -124,9 +124,11 @@ class ReeIntent(BaseModel):
     runtime: NormalizedPath = None
     activation: Activation = Field(default_factory=Activation)
     sbom: NormalizedPath = None
+    # Intrinsic content identity of the acquired source tree, computed locally.
+    # Deposit identifiers (DOIs, PIDs) are deliberately absent: they name a
+    # *deposit* of a sealed REE, not the REE itself, and are recorded as
+    # archive-binding attestations beside the bundle rather than as intent.
     swhid: str = ""
-    zenodo_doi: str | None = None
-    dataverse_doi: str | None = None
     hardware_description: HBOM = Field(default_factory=HBOM)
     experiments: list[Experiment] = Field(default_factory=list)
 

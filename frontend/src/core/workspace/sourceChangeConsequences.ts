@@ -40,8 +40,6 @@ export function computeSourceChangeConsequences(input: SourceChangeInput): Sourc
       activation: createEmptyReeActivation(),
       sbom: "",
       swhid: "",
-      zenodoDoi: "",
-      dataverseDoi: "",
     },
     workspaceSourceState: {
       ...input.workspaceSourceState,

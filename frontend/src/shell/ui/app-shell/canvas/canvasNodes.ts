@@ -301,7 +301,7 @@ export function nodeSummary(
       ];
     case PAGE.ARCHIVE:
       return [
-        { label: "DOI", value: ree.zenodoDoi || ree.dataverseDoi || null },
+        { label: "DOI", value: null },
         { label: "SWHID", value: ree.swhid || null, title: ree.swhid },
       ];
     case PAGE.SEAL:

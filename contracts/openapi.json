@@ -9845,28 +9845,6 @@
             "title": "Swhid",
             "default": ""
           },
-          "zenodo_doi": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Zenodo Doi"
-          },
-          "dataverse_doi": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Dataverse Doi"
-          },
           "hardware_description": {
             "$ref": "#/components/schemas/HBOM"
           },
@@ -9947,28 +9925,6 @@
             "type": "string",
             "title": "Swhid",
             "default": ""
-          },
-          "zenodo_doi": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Zenodo Doi"
-          },
-          "dataverse_doi": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Dataverse Doi"
           },
           "hardware_description": {
             "$ref": "#/components/schemas/HBOM"

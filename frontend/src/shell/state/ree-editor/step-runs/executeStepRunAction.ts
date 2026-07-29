@@ -76,11 +76,6 @@ export async function executeStepRunAction({
         }),
     },
     stepCommandPlanners,
-    generatedIds: {
-      swhid: `swh:1:dir:${ports.random.hex(12)}`,
-      zenodoDoi: `10.5281/zenodo.${ports.random.int(1000000, 9999999)}`,
-      dataverseDoi: `doi:10.5072/DVN/${ports.random.int(100000, 999999)}`,
-    },
     executeCommands: runCommands,
     refreshWorkspace: async () => {
       const workspace = await refreshWorkspace();

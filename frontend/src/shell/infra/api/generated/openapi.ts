@@ -2519,10 +2519,6 @@ export interface components {
              * @default
              */
             swhid: string;
-            /** Zenodo Doi */
-            zenodo_doi?: string | null;
-            /** Dataverse Doi */
-            dataverse_doi?: string | null;
             hardware_description?: components["schemas"]["HBOM"];
             /** Experiments */
             experiments?: components["schemas"]["Experiment"][];
@@ -2564,10 +2560,6 @@ export interface components {
              * @default
              */
             swhid: string;
-            /** Zenodo Doi */
-            zenodo_doi?: string | null;
-            /** Dataverse Doi */
-            dataverse_doi?: string | null;
             hardware_description?: components["schemas"]["HBOM"];
             /** Experiments */
             experiments?: components["schemas"]["Experiment"][];

@@ -59,7 +59,10 @@ export function PageArchive({
   const missing = repo.requires.filter((requiredField) => !ree[requiredField.field]);
   const canRun = missing.length === 0 && !running;
 
-  const assignedId = ree[repo.idField] as string | undefined;
+  // Deposit identifiers are archive-binding attestations held server-side, not
+  // fields on the REE. Undefined until the deposit API reads them back; the
+  // cards below already render their placeholder in that state.
+  const assignedId: string | undefined = undefined;
 
   const buildDone = !!badges.build;
   const sbomDone = !!badges.sbom;

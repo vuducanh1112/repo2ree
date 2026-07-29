@@ -140,8 +140,6 @@ export function mapRawReeIntentToSlices({
       activation: mapRawActivation(intent.activation),
       sbom: String(intent.sbom ?? ""),
       swhid: String(intent.swhid ?? ""),
-      zenodoDoi: intent.zenodo_doi ? String(intent.zenodo_doi) : undefined,
-      dataverseDoi: intent.dataverse_doi ? String(intent.dataverse_doi) : undefined,
       experiments,
       hardwareDescription: normalizeHBOM(intent.hardware_description),
     },

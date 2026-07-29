@@ -9,42 +9,20 @@ interface ManualArtifactCompletionPlan {
 
 interface ManualArtifactCompletionArgs {
   key: string;
-  generatedSwhid?: string;
-  generatedZenodoDoi?: string;
-  generatedDataverseDoi?: string;
 }
 
+// Deposit steps (Software Heritage, Zenodo, Dataverse) patch nothing here. A
+// deposit identifier names a *deposit of* a sealed REE, not the REE itself, so
+// it is recorded as an archive-binding attestation server-side rather than
+// written onto the spec. These branches used to synthesize identifiers locally,
+// which made the UI claim an archival relationship that never existed.
 export function planManualArtifactCompletion({
   key,
-  generatedSwhid,
-  generatedZenodoDoi,
-  generatedDataverseDoi,
 }: ManualArtifactCompletionArgs): ManualArtifactCompletionPlan {
   if (key === "create") {
     return {
       lock: true,
       successMessage: "REE created — fields locked",
-    };
-  }
-
-  if (key === "swh") {
-    return {
-      reeSpecPatch: { swhid: generatedSwhid || "" },
-      successMessage: "Archived at Software Heritage — SWHID assigned",
-    };
-  }
-
-  if (key === "zenodo") {
-    return {
-      reeSpecPatch: { zenodoDoi: generatedZenodoDoi || "" },
-      successMessage: "Published on Zenodo — DOI assigned",
-    };
-  }
-
-  if (key === "dataverse") {
-    return {
-      reeSpecPatch: { dataverseDoi: generatedDataverseDoi || "" },
-      successMessage: "Dataset published on Dataverse — DOI assigned",
     };
   }
 

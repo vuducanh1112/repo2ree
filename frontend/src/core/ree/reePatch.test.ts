@@ -92,8 +92,6 @@ describe("toReePatchFromSlices", () => {
       },
       sbom: "artifacts/sbom.json",
       swhid: "swh:1:dir:test",
-      zenodo_doi: "",
-      dataverse_doi: "",
       experiments: [
         {
           name: "benchmark",

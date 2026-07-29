@@ -9,21 +9,14 @@ describe("planManualArtifactCompletion", () => {
     expect(result.successMessage).toContain("fields locked");
   });
 
-  it("returns ree spec patches for archive completion actions", () => {
-    expect(
-      planManualArtifactCompletion({ key: "swh", generatedSwhid: "swh:1:dir:abc" }).reeSpecPatch
-        ?.swhid,
-    ).toBe("swh:1:dir:abc");
-    expect(
-      planManualArtifactCompletion({ key: "zenodo", generatedZenodoDoi: "10.5281/zenodo.123" })
-        .reeSpecPatch?.zenodoDoi,
-    ).toBe("10.5281/zenodo.123");
-    expect(
-      planManualArtifactCompletion({
-        key: "dataverse",
-        generatedDataverseDoi: "doi:10.5072/DVN/123456",
-      }).reeSpecPatch?.dataverseDoi,
-    ).toBe("doi:10.5072/DVN/123456");
+  // A deposit identifier names a deposit of a sealed REE, not the REE, so it is
+  // recorded server-side as an archive-binding attestation. These steps used to
+  // synthesize one locally and patch it onto the spec, which made the UI assert
+  // an archival relationship that had never happened.
+  it("patches nothing onto the spec for archive completion actions", () => {
+    for (const key of ["swh", "zenodo", "dataverse"]) {
+      expect(planManualArtifactCompletion({ key }).reeSpecPatch).toBeUndefined();
+    }
   });
 
   it("falls back to a generic completion message", () => {

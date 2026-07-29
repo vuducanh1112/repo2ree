@@ -50,13 +50,14 @@ describe("stepRunPlanning", () => {
   });
 
   it("plans manual artifact completion patches", () => {
+    // Deposit steps settle server-side as archive-binding attestations, so they
+    // carry no spec patch — only the completion bookkeeping.
     expect(
       planManualArtifactUpdateSuccess({
         key: "swh",
-        generatedSwhid: "swh:1:dir:abc",
         timestamp: "2026-01-01T00:00:00Z",
-      }).reeSpecPatch?.swhid,
-    ).toBe("swh:1:dir:abc");
+      }).reeSpecPatch,
+    ).toBeUndefined();
 
     expect(
       planManualArtifactUpdateSuccess({

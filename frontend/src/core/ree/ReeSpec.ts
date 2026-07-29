@@ -137,9 +137,10 @@ export interface ReeSpec {
   runtime: string;
   activation: ReeActivation;
   sbom: string;
+  /** Intrinsic content identity of the acquired source tree. Not an archival
+   *  claim: deposit identifiers name a deposit of a sealed REE and live in
+   *  archive-binding attestations, not on the spec. */
   swhid: string;
-  zenodoDoi?: string;
-  dataverseDoi?: string;
   experiments?: ReeExperiment[];
   hardwareDescription: Hbom;
 }

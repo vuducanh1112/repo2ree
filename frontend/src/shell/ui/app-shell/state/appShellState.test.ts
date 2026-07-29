@@ -43,8 +43,6 @@ function toInitialSlices(ree: ReeEditorViewModel) {
       activation: ree.activation,
       sbom: ree.sbom,
       swhid: ree.swhid,
-      zenodoDoi: ree.zenodoDoi,
-      dataverseDoi: ree.dataverseDoi,
       experiments: ree.experiments,
       hardwareDescription: ree.hardwareDescription,
     },

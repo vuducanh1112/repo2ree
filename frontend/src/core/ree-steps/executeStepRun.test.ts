@@ -21,12 +21,6 @@ function buildHandlers(): StepCommandPlannerMap {
   };
 }
 
-const generatedIds = {
-  swhid: "swh:1:dir:abc",
-  zenodoDoi: "10.5281/zenodo.1234567",
-  dataverseDoi: "doi:10.5072/DVN/123456",
-};
-
 function executedCommands(executeCommands: ReturnType<typeof vi.fn>) {
   return executeCommands.mock.calls.flatMap(([commands]) => commands);
 }
@@ -52,7 +46,6 @@ describe("executeStepRun", () => {
         })),
       },
       stepCommandPlanners: buildHandlers(),
-      generatedIds,
       executeCommands,
       refreshWorkspace,
     });
@@ -104,7 +97,6 @@ describe("executeStepRun", () => {
         })),
       },
       stepCommandPlanners: buildHandlers(),
-      generatedIds,
       executeCommands,
       refreshWorkspace,
     });
@@ -122,7 +114,7 @@ describe("executeStepRun", () => {
     });
   });
 
-  it("uses generated IDs for manual artifact completion patches", async () => {
+  it("writes no spec patch for a deposit step", async () => {
     const executeCommands = vi.fn();
 
     await executeStepRun({
@@ -139,14 +131,14 @@ describe("executeStepRun", () => {
         })),
       },
       stepCommandPlanners: buildHandlers(),
-      generatedIds,
       executeCommands,
       refreshWorkspace: vi.fn(),
     });
 
-    expect(executedCommands(executeCommands)).toContainEqual({
-      type: "setReeSpec",
-      reeSpec: { swhid: "swh:1:dir:abc" },
-    });
+    // The identifier a deposit yields belongs to an archive-binding attestation
+    // held server-side, not to the REE spec — so the step touches no spec field.
+    expect(executedCommands(executeCommands)).not.toContainEqual(
+      expect.objectContaining({ type: "setReeSpec" }),
+    );
   });
 });
