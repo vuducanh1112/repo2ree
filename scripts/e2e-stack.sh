@@ -13,13 +13,17 @@
 # --record the run is captured via asciinema into a .cast terminal recording.
 #
 # Every run is measured; there is no flag to turn it off. The backend *and* every
-# agent start under coverage (you cannot measure an already-running process), the
-# suite runs with E2E_COVERAGE_TIER=<tier> so the jsCoverage fixture captures
-# browser V8 coverage into that tier, and every process gets a graceful SIGTERM at
-# the end so coverage flushes on shutdown. Two reports come out, one per measuring
-# runtime: test-artifacts/coverage/python/<tier>/ and, for a --project run,
-# test-artifacts/coverage/browser/<tier>/. A --script run drives no browser, so it
-# produces the python half only.
+# agent start under coverage (you cannot measure an already-running process), and
+# every process gets a graceful SIGTERM at the end so coverage flushes on
+# shutdown. One report comes out: test-artifacts/coverage/python/<tier>/.
+#
+# The *browser* is not measured, deliberately. These runs used to capture V8
+# coverage per test and merge it with monocart, but Vite's dev sourcemaps identify
+# sources by basename alone, so 18 same-named files collapsed into shared entries
+# and the report was wrong without saying so. UI coverage belongs to component
+# tests in the `node` tier, where Vitest transforms the files itself and knows
+# their real paths. An e2e run proves the pipeline works; it is a poor instrument
+# for "does this component have a test".
 #
 # The tier IS the playwright project — there is no separate --coverage <tier> to
 # disagree with it. That flag used to exist, and nothing checked the two against
@@ -138,14 +142,11 @@ agent_log_dir=$log_dir
 coverage_data_dir=$root/test-artifacts/coverage/python/data/$tier
 coverage_file=$coverage_data_dir/.coverage
 backend_log=$log_dir/backend-$tier.log
-browser_raw_dir=$root/test-artifacts/coverage/browser/raw/$tier
 mkdir -p "$log_dir" "$state_dir" "$coverage_data_dir"
 # Start the tier's data fresh: --parallel-mode leaves one suffixed file per
 # process, so a previous run's files would otherwise be combined in as well
-# and report a union of two runs as one. Same for the browser captures —
-# but only *this* tier's, which is the point of keying them by tier.
+# and report a union of two runs as one.
 rm -f "$coverage_file" "$coverage_file".*
-rm -rf "$browser_raw_dir"
 for i in $(seq 1 "$agents"); do rm -f "$(agent_log "$i")"; done
 
 if [ -n "${E2E_WORKBENCH_IMAGE:-}" ]; then
@@ -253,7 +254,7 @@ if [ -n "$script" ]; then
     fi
 else
     echo ">> stack ready — running playwright project=$project"
-    (cd gui && E2E_COVERAGE_TIER="$tier" npm exec -- playwright test \
+    (cd gui && npm exec -- playwright test \
         -c playwright.config.ts --project="$project") || status=$?
 fi
 
@@ -273,14 +274,5 @@ COVERAGE_FILE=$coverage_file coverage report
 # gets the identical total + per-package breakdown rather than a second,
 # drifting variant. All coverage layout lives in mk/tests.mk.
 make -s be-coverage-report TIER="$tier"
-# The browser half of the same tier, when there was a browser: a --script run
-# drives none, so it has no V8 captures and produces the python half only.
-# Keyed by tier like the python half, so a demo run cannot overwrite what an
-# e2e run measured. Union across tiers is `make gui-coverage-browser`; there is
-# no cross-runtime total.
-if [ -n "$project" ]; then
-    echo ">> GUI coverage ($tier tier)"
-    (cd gui && node scripts/gen-coverage.mjs "$tier")
-fi
 
 exit "$status"

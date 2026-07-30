@@ -8,7 +8,7 @@
 | Target | What it runs |
 |---|---|
 | `make gui-checks` | GUI TypeScript, Biome, knip, dependency-cruiser. |
-| `make gui-tests` | GUI Vitest tests — the `node` tier, measured (istanbul) into `coverage/node/unit/`. |
+| `make gui-tests` | GUI Vitest tests — the `node` tier, measured (V8) into `coverage/node/unit/`. |
 | `make be-checks` | Ruff, Ruff format, and mypy across Python workspace packages. |
 | `make scripts-checks` | ShellCheck over `scripts/*.sh`. |
 | `make be-unit-tests` | The container-free backend `unit` tier, measured into its data directory. |
@@ -31,7 +31,6 @@
 | `make push-gate` | The pre-publish gate: clean tree, all checks and tests, e2e source-run and image-backed. |
 | `make be-coverage-report TIER=<tier>` | Render a tier's HTML from data already on disk. |
 | `make be-coverage-combined` | Union of whichever backend tiers have been measured on this checkout. |
-| `make gui-coverage-browser` | The browser twin: union of every measured tier's V8 captures. |
 | `make be-coverage-context` | Per-test coverage attribution over the two pytest tiers. |
 
 ## Before Docker-Gated Tests
@@ -143,8 +142,8 @@ produce it.
 
 Suites are named `<purpose>-<interface>`: `e2e-` is a regression suite, `demo-` a
 demonstration, `-gui` is browser-driven, `-api` drives the same stack over HTTP.
-That suffix is why `demo-api` has no browser half — it drives no browser — and
-the name says so without you having to check.
+Every stack suite measures the same thing — the backend — whichever interface
+drove it; see "The browser is not measured" below.
 
 Measuring costs roughly 30% wall clock on the pytest tiers (branch coverage is
 on). That is the price of the guarantee above, and it is why the **per-package**
@@ -199,34 +198,57 @@ not the tier:
 | Subtree | Tool | Covers |
 |---|---|---|
 | `coverage/python/` | coverage.py | the six uv workspace packages |
-| `coverage/browser/` | monocart, over V8 from Playwright | the GUI as the browser ran it |
-| `coverage/node/` | istanbul via vitest | the GUI's pure-logic suite (`src/core` and friends) |
+| `coverage/node/` | V8 via vitest | the GUI |
 
 That order is what keeps `combined` meaningful. Combining tiers is a *coverage.py
-operation* — `coverage combine`, over `.coverage` databases — and monocart has
-its own merge over its own captures. No algorithm unions a Python line count
-with a browser byte count, and the two share no denominator, so each runtime
-owns a `combined/` inside its own subtree and there is deliberately **no**
-`coverage/combined/` above them. Ask for the browser union with:
+operation* — `coverage combine`, over `.coverage` databases — with no
+cross-language form: no algorithm unions a Python line count with a JavaScript
+one, and the two share no denominator. Each runtime therefore owns a `combined/` inside
+its own subtree, and there is deliberately **no** `coverage/combined/` above them.
 
-```bash
-make gui-coverage-browser
-```
-
-Only `e2e` and `demo` produce browser coverage, because only they drive a
-browser; only `unit` produces node coverage, because the vitest suite is the
-only thing that runs there. An absent tier directory means "this way of testing
+Every python tier writes into `coverage/python/`; `node` is the GUI's only tier,
+so it has nothing to union. An absent tier directory means "this way of testing
 does not exercise that runtime", not "someone forgot to run it".
 
-### The GUI reads low in `node`, by design
+### The browser is not measured
 
-`make gui-tests` reports around 23%. That is the honest figure: the
-vitest suite is 57 files of pure logic with no component rendering, so the React
-shell is almost entirely untouched and the browser tier is what covers it. The
-config sets `all: true` deliberately — without it istanbul reports only the files
-some test imported, which reads about 62% and *improves when you delete a test*.
-Same floor-vs-truth caveat the Python `unit` tier carries, and the same reason
-not to add the two numbers together.
+The Playwright suites drive a real browser but record no JavaScript coverage.
+They used to: a fixture captured V8 per test and monocart merged it into
+`coverage/browser/<tier>/`. That was removed, because the numbers were wrong.
+
+Vite's dev-server sourcemaps identify a source by **basename alone** — `Agent.ts`,
+not `src/core/agent/Agent.ts`. The GUI has 7 ambiguous basenames covering 18
+files, and a single e2e test loads all five distinct `index.ts` modules; their
+coverage was being merged into one entry with line numbers from different files
+landing on top of each other. Nothing reported a problem.
+
+UI coverage belongs in the `node` tier instead, where Vitest transforms the files
+itself and records their real paths (`SF:src/core/agent/Agent.ts`). That is also
+the better instrument for the question: coverage asks "does this code have a test
+exercising it", and a component test answers that directly, in seconds, where an
+e2e run only shows a line executed while a workbench was being provisioned.
+
+The Playwright suites keep their job — proving the pipeline works end to end, and
+recording the demos — and keep measuring the **backend**, which is unaffected.
+
+### The GUI reads low in `node`
+
+`make gui-tests` reports around 23%, and unlike the other low numbers here that
+one is **a real gap, not a measurement artifact**. The vitest suite is 57 files
+of pure logic with zero component tests (`0` `.test.tsx` files), so the React
+shell is essentially untested. Nothing else covers it either: the Playwright
+suites drive the shell but record no JavaScript coverage, for the reasons above.
+
+Closing it means writing component tests — jsdom or Vitest browser mode — which
+land in this same tier and lift this same number. That is the intended direction;
+the 23% is the honest starting point for it.
+
+Every file matching the config's `include` counts, whether a test imported it or
+not. That is what makes 23% honest rather than flattering: measure only imported
+files and the same suite reads about 62% — a number that *improves when you
+delete a test*. Under the V8 provider `include` gives that behaviour on its own
+and `all: true` measures as a no-op, but the flag stays because it names the
+property the number depends on rather than trusting a provider default.
 
 ### By module
 
@@ -510,8 +532,7 @@ Useful locations:
 |---|---|
 | `test-artifacts/coverage/python/<tier>/` | Backend coverage, one report per tier, plus `combined/`. |
 | `test-artifacts/coverage/python/context/` | Per-test attribution (`be-coverage-context`). A different *view* over the pytest tiers, not a fifth tier — it is never part of `combined`. |
-| `test-artifacts/coverage/browser/<tier>/` | Browser V8 coverage for the stack tiers, plus `combined/`; `raw/<tier>/` holds the per-test captures it merges. |
-| `test-artifacts/coverage/node/unit/` | GUI Vitest coverage (istanbul), from `make gui-tests`. |
+| `test-artifacts/coverage/node/unit/` | GUI Vitest coverage (V8), from `make gui-tests`. |
 | `test-artifacts/playwright/<suite>/` | Playwright traces, screenshots, and videos. |
 | `test-artifacts/traces/<suite>/` | OpenTelemetry spans and workbench log snapshots. Keyed by *suite*, not by coverage tier: `api-unit/`, `api-integration/`, `api-real-server/`, `supervisor-e2e/`. |
 | `test-artifacts/property-based-tests/` | Hypothesis home: `<package>/` example databases plus its own caches. |

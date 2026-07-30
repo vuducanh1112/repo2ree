@@ -12,24 +12,30 @@ export default defineConfig({
   plugins: [react()],
   test: {
     exclude: ["tests/e2e/**", "tests/demo/**", "node_modules/**", "dist/**"],
-    // Coverage for `make gui-tests`, which always measures. The suite runs in node —
-    // 57 pure-logic files, no component rendering — so its report is the
-    // `node` runtime under the shared artifact root, sibling to the browser V8
-    // reports the stack tiers produce. reportsDirectory resolves against this
-    // config's directory, not the cwd, which is what keeps it correct however
-    // vitest is invoked.
+    // Coverage for `make gui-tests`, which always measures. This is the whole of
+    // the GUI's coverage — the `node` runtime under the shared artifact root,
+    // sibling to the python reports. The Playwright suites record none.
+    // reportsDirectory resolves against this config's directory, not the cwd,
+    // which is what keeps it correct however vitest is invoked.
     coverage: {
-      provider: "istanbul",
+      provider: "v8",
       reportsDirectory: "../test-artifacts/coverage/node/unit",
       reporter: ["html", "text-summary", "lcovonly"],
-      // Extension-scoped, and `all` on purpose. Without `all`, istanbul reports
-      // only the files some test imported, which reads ~62% — a number that
-      // improves when you delete a test. With it, untested files count as zero
-      // and the tier reads ~23%: the UI shell is barely touched here, because
-      // the browser tier is what exercises it. Same floor-vs-truth caveat the
-      // python `unit` tier carries. (`src/**` unscoped also tries to
-      // instrument a stray src/.DS_Store and dies.)
+      // Every file in `include` counts, whether a test imported it or not, so
+      // the tier reads ~23%. That is a real gap, not an artifact: there are no
+      // component tests yet, and the Playwright suites record no JS coverage, so
+      // nothing measures the React shell. Component tests land here and lift it.
+      //
+      // Under the v8 provider that is what `include` alone already does — `all`
+      // measures as a no-op here (true and false give byte-identical totals).
+      // It stays because it names the property the number depends on: without
+      // that behaviour, coverage reports only imported files and reads ~62%, a
+      // figure that *improves when you delete a test*. That was istanbul's
+      // default and cost an explicit flag to avoid; keeping the flag states the
+      // requirement rather than trusting a provider default to stay put.
       all: true,
+      // Extension-scoped: `src/**` unscoped also tries to instrument a stray
+      // src/.DS_Store and dies.
       include: ["src/**/*.ts", "src/**/*.tsx"],
     },
   },

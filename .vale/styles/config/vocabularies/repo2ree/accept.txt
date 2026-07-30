@@ -78,6 +78,7 @@ knip
 Vite
 Vitest
 uvicorn
+jsdom
 Caddy
 Graphviz
 Fortran
@@ -87,6 +88,8 @@ rmi
 
 # General CS / dev jargon
 docstrings?
+sourcemaps?
+basenames?
 dataclass(es)?
 tracebacks?
 renderers?

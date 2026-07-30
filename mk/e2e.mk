@@ -8,7 +8,7 @@
 	e2e-gui-review e2e-gui-review-on-stack e2e-gui-review-stack-local e2e-gui-review-stack-published \
 	demo-gui demo-gui-on-stack demo-gui-stack-local demo-gui-stack-published \
 	demo-api demo-api-on-stack demo-api-stack-local demo-api-stack-published \
-	demo-gui-code-ocean gui-coverage-browser \
+	demo-gui-code-ocean \
 	stack-up stack-down stack-clean workbench-clean store-gc
 
 # The e2e agent always gets the executor/tools bundles: lean env images (the
@@ -49,9 +49,10 @@ E2E_AGENTS ?= 2
 # with a suite that did not produce it (see scripts/e2e-stack.sh).
 #
 # Every source-run suite here is measured; there is no unmeasured variant and no
-# --coverage flag. Two reports per browser suite, one per measuring runtime:
-# test-artifacts/coverage/python/<suite>/ and .../browser/<suite>/. The -api
-# suite drives no browser, so it produces the python half only.
+# --coverage flag. What they measure is the *backend* —
+# test-artifacts/coverage/python/<suite>/. The browser is not measured by these
+# runs (see scripts/e2e-stack.sh); UI coverage comes from component tests in the
+# `node` tier.
 #
 # The image-backed variants below (-on-stack, -stack-local, -stack-published) are
 # unmeasured and always will be: those processes run inside containers where the
@@ -95,13 +96,6 @@ demo-api: e2e-bundles
 
 demo-gui-code-ocean: e2e-bundles
 	$(E2E_STACK) --project demo-gui-code-ocean
-
-# The browser twin of `be-coverage-combined`: merge every measured tier's V8
-# captures into one report. Reads only what previous runs left under
-# coverage/browser/raw/, so it starts no stack — the same bargain as the python
-# union, which does not re-run its suites either.
-gui-coverage-browser:
-	cd gui && node scripts/gen-coverage.mjs --combined
 
 # Image-backed demo stack: the compose control plane on :local tags plus the
 # agent container compose deliberately doesn't manage. Expects `make images`
