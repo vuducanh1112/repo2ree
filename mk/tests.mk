@@ -86,18 +86,23 @@ be-tests: be-unit-tests be-integration-tests
 # Coverage — one report per tier, plus the union
 # ================================================
 #
-# Four measured tiers, matching the four ways this project is tested:
+# Four measured tiers:
 #
-#   unit         container-free suites            (mk/tests.mk, runs anywhere)
-#   integration  docker-gated suites              (mk/tests.mk)
-#   e2e          the live stack, browser-driven   (mk/e2e.mk)
-#   demo         the narrated/demonstration runs  (mk/e2e.mk)
+#   unit         container-free single-component suites  (mk/tests.mk)
+#   integration  flows spanning components, mostly docker-gated (mk/tests.mk)
+#   e2e          the live stack, browser-driven           (mk/e2e.mk)
+#   demo         the narrated/demonstration runs          (mk/e2e.mk)
+#
+# Not every way this project is tested is a tier: `e2e-review`,
+# `e2e-demo-code-ocean` and the `e2e-api` walkthrough have no tier of their own
+# — e2e-stack.sh accepts only e2e and demo for --coverage — so the reviewer-side
+# lifecycle is exercised by push-gate but measured by nothing.
 #
 # Each tier owns a directory — data under
 # test-artifacts/coverage/python/data/<tier>/, HTML under
 # test-artifacts/coverage/python/<tier>/ — so a tier's number always means "what
 # this way of testing reaches", never a blend. `be-coverage-combined` unions
-# them into the honest total. Per-tier *directories* rather than per-tier
+# them. Per-tier *directories* rather than per-tier
 # `.coverage.<tier>` files is deliberate: see the data_file comment in
 # pyproject.toml.
 #
@@ -171,18 +176,29 @@ coverage_render = set -e; \
 be-coverage-report:
 	@$(call coverage_render,$(TIER))
 
-# The container-free tier: fast and deterministic, runs on any machine, and is
-# exactly the set `commit-gate` already requires green. The docker-gated
-# transport (supervisor manager, hbom profilers, the agent's docker runtime) is
-# not exercised here, so it reads as uncovered — this number is a floor, not
-# the truth. The integration tier below is where that floor gets lifted.
+# The container-free tier: fast and deterministic, runs on any machine. It is a
+# *subset* of what `commit-gate` requires green — the gate also runs gui-tests
+# and core-integration-tests, the latter being container-free but living in the
+# integration tier (see below). So a green gate implies a green unit tier, not
+# the reverse.
+#
+# The docker-gated transport (supervisor manager, hbom profilers, the agent's
+# docker runtime) is not exercised here, so it reads as uncovered — this number
+# is a floor, not the truth. The integration tier below is where that floor gets
+# lifted.
 be-coverage-unit:
 	$(call tier_coverage,unit) pytest protocol/tests core/tests/unit api/tests/unit supervisor/tests/unit executor/tests agent/tests \
 		--cov --cov-report=term-missing
 	@$(call coverage_render,unit)
 
-# The docker-gated tier: real containers, real docker exec, real workbench
-# volumes. Builds the executor/tools bundles from the current tree first, so it
+# The multi-component tier: real containers, real docker exec, real workbench
+# volumes. Mostly docker-gated, but not by definition — core/tests/integration
+# drives the real command handlers against a temp REE tree and needs no docker,
+# so it pays for the `e2e-bundles` prerequisite below without using it. The tier
+# is "flows spanning components", and docker is what most of those flows happen
+# to need.
+#
+# Builds the executor/tools bundles from the current tree first, so it
 # cannot accidentally exercise a stale command protocol. Individual tests still
 # skip (never fake) when Docker itself is absent — which makes an unguarded run
 # of this target on a docker-less machine report a floor of its own, so treat a
@@ -221,8 +237,9 @@ be-coverage-context: e2e-bundles
 # data it consumed, and the tier reports could never be regenerated without
 # re-running the suites. Tiers that were never run are skipped rather than
 # failing the target, so this is useful after any subset — but a combined
-# number is only the honest total when every tier ran on the same tree, which
-# is what `push-gate` arranges. The tier list is deliberately not a
+# number spans all four tiers only when all four ran on the same tree, which is
+# what `push-gate` arranges, and never spans the suites with no tier of their
+# own at all (see the tier map above). The tier list is deliberately not a
 # prerequisite: combining is cheap, and re-running the e2e stack because
 # someone asked for a union report is not.
 #

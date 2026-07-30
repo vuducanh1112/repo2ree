@@ -1,6 +1,6 @@
 # repo2ree - Engineering Test Guide
 
-> Status: current test layout (2026-06). The suite intentionally separates
+> Status: current test layout (2026-07). The suite intentionally separates
 > container-free checks from Docker-gated integration and e2e flows.
 
 ## Quick Map
@@ -61,6 +61,7 @@ make core-checks
 make supervisor-checks
 make api-checks
 make executor-checks
+make agent-checks
 ```
 
 These targets run `ruff check`, `ruff format`, and `mypy` for their package.
@@ -117,15 +118,26 @@ pytest api/tests/integration
 
 ## Coverage
 
-Coverage is measured per **tier**, one report each, matching the four ways this
-project is tested:
+Coverage is measured per **tier**, one report each:
 
 | Tier | Target | What it measures | Needs |
 |---|---|---|---|
-| `unit` | `make be-coverage-unit` | Container-free suites | nothing |
-| `integration` | `make be-coverage-integration` | Docker-gated suites | docker + bundles |
+| `unit` | `make be-coverage-unit` | Container-free single-component suites | nothing |
+| `integration` | `make be-coverage-integration` | Flows spanning components; mostly docker-gated | docker + bundles |
 | `e2e` | `make coverage-e2e` | The live stack, browser-driven | docker + browsers |
 | `demo` | `make coverage-demo` | The narrated walkthrough stack | docker + browsers |
+
+Two things the table does not say, both worth knowing before reading a number:
+
+- **`integration` is not defined by docker**, even though the target requires it.
+  `core/tests/integration` spans components without containers, so it sits in
+  this tier and pays for the `e2e-bundles` prerequisite without using it. The
+  axis is scope; docker is what most flows of that scope happen to need.
+- **Not every suite belongs to a tier.** `e2e-review`, `e2e-demo-code-ocean` and
+  the `e2e-api` walkthrough have no coverage tier — `scripts/e2e-stack.sh`
+  accepts only `e2e` and `demo` for `--coverage`. `push-gate` runs `e2e-review`,
+  so the reviewer-side lifecycle is exercised but never measured, and
+  `be-coverage-combined` cannot include it.
 
 Target names carry the runtime, like the rest of the Makefile (`be-tests`,
 `gui-tests`): `be-coverage-*` measures Python, `gui-coverage-*` measures the GUI.
@@ -213,9 +225,11 @@ Union of whatever has been measured:
 make be-coverage-combined
 ```
 
-It skips tiers that were never run, so it is useful after any subset — but the
-combined number is only the honest total when every tier ran on the same tree,
-which is what `push-gate` arranges. `--keep` means combining never destroys the
+It skips tiers that were never run, so it is useful after any subset — but it is
+only a total across *all four tiers* when all four ran on the same tree, which is
+what `push-gate` arranges. Even then it is not a total across everything that
+runs: the suites with no tier of their own (`e2e-review` in particular, which
+`push-gate` does run) contribute nothing. `--keep` means combining never destroys the
 per-tier data, so any tier report can be rebuilt without re-running its suite.
 
 Per-test attribution (which test hit which line) over the two pytest tiers:
@@ -437,14 +451,16 @@ Useful locations:
 | Path | Contents |
 |---|---|
 | `test-artifacts/coverage/python/<tier>/` | Backend coverage, one report per tier, plus `combined/`. |
-| `test-artifacts/coverage/browser/<tier>/` | Browser V8 coverage for the stack tiers, plus `combined/`. |
+| `test-artifacts/coverage/python/context/` | Per-test attribution (`be-coverage-context`). A different *view* over the pytest tiers, not a fifth tier — it is never part of `combined`. |
+| `test-artifacts/coverage/browser/<tier>/` | Browser V8 coverage for the stack tiers, plus `combined/`; `raw/<tier>/` holds the per-test captures it merges. |
+| `test-artifacts/coverage/node/unit/` | GUI Vitest coverage (istanbul), from `make gui-coverage-unit`. |
 | `test-artifacts/playwright/<project>/` | Playwright traces, screenshots, and videos. |
-| `test-artifacts/traces/api-integration/` | API integration trace files and workbench log snapshots. |
+| `test-artifacts/traces/<suite>/` | OpenTelemetry spans and workbench log snapshots. Keyed by *suite*, not by coverage tier: `api-unit/`, `api-integration/`, `api-real-server/`, `supervisor-e2e/`. |
 | `test-artifacts/property-based-tests/` | Hypothesis home: `<package>/` example databases plus its own caches. |
 | `test-artifacts/logs/` | `api-server.log` for plain runs, `backend-<tier>.log` and `agent-<tier>.log` for measured ones. |
 | `test-artifacts/casts/` | The API walkthrough `.cast` recording and its markdown transcript. |
 | `test-artifacts/fixtures/` | Archives the suites pack on demand from `examples/`; repacked every run. |
-| `test-artifacts/state/agents/` | Throwaway e2e agent identities. State, not output — but still safe to delete. |
+| `test-artifacts/state/agents/` | Throwaway e2e agent identities; with `--agents N`, agent *i* > 1 uses `agents-<i>/`. State, not output — but still safe to delete. |
 | `dist/bundles/{exec,tools}` | Executor/tools bundles the agent injects — a build input, not an artifact. |
 
 When a Docker-gated test fails, inspect both the workbench entrypoint log and

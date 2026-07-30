@@ -2,6 +2,11 @@ node_modules/
 dist/
 .DS_Store
 
+# Vite's dependency pre-bundling cache. Ignored explicitly because it was not:
+# the frontend -> gui rename swept an untracked frontend/.vite/deps/ into the
+# commit, which is how a stale frontend/ outlived the directory it belonged to.
+.vite/
+
 # No test-artifacts/ here: every GUI suite writes to the repo-root
 # test-artifacts/ (ignored there), so there is one artifact root rather than two.
 # See tests/artifacts.ts and the outputDir values in playwright.config.ts.
