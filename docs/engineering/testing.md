@@ -8,13 +8,13 @@
 | Target | What it runs |
 |---|---|
 | `make gui-checks` | GUI TypeScript, Biome, knip, dependency-cruiser. |
-| `make gui-tests` | GUI Vitest tests. |
-| `make gui-coverage-unit` | GUI Vitest coverage (istanbul) into `coverage/node/unit/`. |
+| `make gui-tests` | GUI Vitest tests — the `node` tier, measured (istanbul) into `coverage/node/unit/`. |
 | `make be-checks` | Ruff, Ruff format, and mypy across Python workspace packages. |
 | `make scripts-checks` | ShellCheck over `scripts/*.sh`. |
-| `make be-unit-tests` | Container-free backend unit tests. |
-| `make be-integration-tests` | Integration tiers, including Docker-gated workbench tests when Docker and the image exist. |
-| `make be-tests` | Backend unit plus integration tests. |
+| `make be-unit-tests` | The container-free backend `unit` tier, measured into its data directory. |
+| `make be-integration-tests` | The backend `integration` tier, measured. Builds the bundles first; Docker-gated tests skip when Docker is absent. |
+| `make be-tests` | Both backend tiers. |
+| `make core-unit-tests` / `api-unit-tests` / … | One package's suite, unmeasured — the debugging loop. |
 | `make e2e-tests` | Playwright e2e project against a live API and GUI dev server. |
 | `make e2e-review` | Playwright review project: the reviewer-side reproduction specs. |
 | `make e2e-demo` | Playwright demo walkthrough project with video. |
@@ -27,8 +27,8 @@
 | `make store-gc` | Evict bundle store caches unused for `STORE_GC_DAYS` (14), keeping the live one. |
 | `make commit-gate` | Fast pre-commit gate: static checks + all container-free test tiers. Certifies the tree it passed on; the pre-commit hook checks that certificate. |
 | `make push-gate` | The pre-publish gate: clean tree, all checks and tests, e2e source-run and image-backed. |
-| `make be-coverage-unit` / `be-coverage-integration` | Backend coverage for one tier, into its own report. |
 | `make coverage-e2e` / `coverage-demo` | A stack tier — measures the backend *and* the browser in one run, hence no `be-`/`gui-` prefix. |
+| `make be-coverage-report TIER=<tier>` | Render a tier's HTML from data already on disk. |
 | `make be-coverage-combined` | Union of whichever backend tiers have been measured on this checkout. |
 | `make gui-coverage-browser` | The browser twin: union of every measured tier's V8 captures. |
 | `make be-coverage-context` | Per-test coverage attribution over the two pytest tiers. |
@@ -118,30 +118,53 @@ pytest api/tests/integration
 
 ## Coverage
 
-Coverage is measured per **tier**, one report each:
+Coverage is measured per **tier**, one report each. **Running a tier measures
+it** — there is no separate "coverage" target to remember, and therefore no way
+for the suites a tier runs and the suites it measures to drift apart:
 
 | Tier | Target | What it measures | Needs |
 |---|---|---|---|
-| `unit` | `make be-coverage-unit` | Container-free single-component suites | nothing |
-| `integration` | `make be-coverage-integration` | Flows spanning components; mostly docker-gated | docker + bundles |
+| `unit` | `make be-unit-tests` | Container-free single-component suites | nothing |
+| `integration` | `make be-integration-tests` | Flows spanning components; mostly docker-gated | docker + bundles |
 | `e2e` | `make coverage-e2e` | The live stack, browser-driven | docker + browsers |
 | `demo` | `make coverage-demo` | The narrated walkthrough stack | docker + browsers |
+| `node` | `make gui-tests` | The GUI's pure-logic Vitest suite | nothing |
+
+Measuring costs roughly 30% wall clock on the pytest tiers (branch coverage is
+on). That is the price of the guarantee above, and it is why the **per-package**
+targets — `make core-unit-tests`, `make api-integration-tests`, and friends —
+stay unmeasured. They are the debugging loop, and a partial run writing a tier's
+data directory would make that tier's number mean "core, plus whatever else
+someone happened to run today", which is exactly the blend the tier split exists
+to prevent.
+
+A tier run produces *data*, not HTML. Render it when you want to look:
+
+```bash
+make be-unit-tests                   # run + measure
+make be-coverage-report TIER=unit    # render, from data already on disk
+```
+
+Pass `COV_REPORT=term-missing` to a tier target for a terminal report during the
+run itself, when you are actively closing gaps.
 
 Two things the table does not say, both worth knowing before reading a number:
 
 - **`integration` is not defined by docker**, even though the target requires it.
   `core/tests/integration` spans components without containers, so it sits in
   this tier and pays for the `e2e-bundles` prerequisite without using it. The
-  axis is scope; docker is what most flows of that scope happen to need.
+  axis is scope; docker is what most flows of that scope happen to need. (That
+  prerequisite is why `make be-integration-tests` triggers a nix build: the tier
+  must not run against bundles from an older tree.)
 - **Not every suite belongs to a tier.** `e2e-review`, `e2e-demo-code-ocean` and
   the `e2e-api` walkthrough have no coverage tier — `scripts/e2e-stack.sh`
   accepts only `e2e` and `demo` for `--coverage`. `push-gate` runs `e2e-review`,
   so the reviewer-side lifecycle is exercised but never measured, and
   `be-coverage-combined` cannot include it.
 
-Target names carry the runtime, like the rest of the Makefile (`be-tests`,
-`gui-tests`): `be-coverage-*` measures Python, `gui-coverage-*` measures the GUI.
-The two stack targets take no prefix because a single run measures both halves.
+The report targets that remain carry the runtime, like the rest of the Makefile:
+`be-coverage-*` reports on Python, `gui-coverage-*` on the GUI. The two stack
+targets take no prefix because a single run measures both halves.
 
 Each tier writes its data to `test-artifacts/coverage/python/data/<tier>/` and
 its HTML report to `test-artifacts/coverage/python/<tier>/`, so a tier's number
@@ -176,7 +199,7 @@ does not exercise that runtime", not "someone forgot to run it".
 
 ### The GUI reads low in `node`, by design
 
-`make gui-coverage-unit` reports around 23%. That is the honest figure: the
+`make gui-tests` reports around 23%. That is the honest figure: the
 vitest suite is 57 files of pure logic with no component rendering, so the React
 shell is almost entirely untouched and the browser tier is what covers it. The
 config sets `all: true` deliberately — without it istanbul reports only the files
@@ -363,10 +386,13 @@ coverage-capable); the image-backed variants are the deployment gate before
 pushing or promoting images.
 
 `make commit-gate` is the fast pre-commit companion: static checks plus every
-test tier that needs no docker, nix builds, or browsers (GUI unit,
-backend unit, core integration). It takes well under a minute warm — that's
-the point; commits should stay cheap. The exhaustive counterpart is the push
-gate below.
+test tier that needs no docker, nix builds, or browsers (GUI unit, backend unit,
+core integration). It runs in about a minute warm — commits should stay cheap,
+and that budget is the constraint any change to the gate has to answer to. Two
+of its three suites are tier targets, so a green gate also leaves fresh `unit`
+and `node` coverage on disk; that costs roughly 13s of the minute, which is the
+price of never having an unmeasured tier run. The exhaustive counterpart is the
+push gate below.
 
 The pre-commit hook does not run the gate — it checks that you did. On a green
 run the gate records the tree it validated under `.validation-certificates/`,
@@ -453,7 +479,7 @@ Useful locations:
 | `test-artifacts/coverage/python/<tier>/` | Backend coverage, one report per tier, plus `combined/`. |
 | `test-artifacts/coverage/python/context/` | Per-test attribution (`be-coverage-context`). A different *view* over the pytest tiers, not a fifth tier — it is never part of `combined`. |
 | `test-artifacts/coverage/browser/<tier>/` | Browser V8 coverage for the stack tiers, plus `combined/`; `raw/<tier>/` holds the per-test captures it merges. |
-| `test-artifacts/coverage/node/unit/` | GUI Vitest coverage (istanbul), from `make gui-coverage-unit`. |
+| `test-artifacts/coverage/node/unit/` | GUI Vitest coverage (istanbul), from `make gui-tests`. |
 | `test-artifacts/playwright/<project>/` | Playwright traces, screenshots, and videos. |
 | `test-artifacts/traces/<suite>/` | OpenTelemetry spans and workbench log snapshots. Keyed by *suite*, not by coverage tier: `api-unit/`, `api-integration/`, `api-real-server/`, `supervisor-e2e/`. |
 | `test-artifacts/property-based-tests/` | Hypothesis home: `<package>/` example databases plus its own caches. |

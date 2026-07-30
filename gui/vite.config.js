@@ -12,7 +12,7 @@ export default defineConfig({
   plugins: [react()],
   test: {
     exclude: ["tests/e2e/**", "tests/demo/**", "node_modules/**", "dist/**"],
-    // Coverage for `make gui-coverage-unit`. The vitest suite runs in node —
+    // Coverage for `make gui-tests`, which always measures. The suite runs in node —
     // 57 pure-logic files, no component rendering — so its report is the
     // `node` runtime under the shared artifact root, sibling to the browser V8
     // reports the stack tiers produce. reportsDirectory resolves against this
