@@ -40,8 +40,8 @@
 #   E2E_AGENT_STATE_DIR        agent identity dir (default: test-artifacts/e2e-agent-state);
 #                              with --agents N, agent i > 1 uses <dir>-<i> so
 #                              each keeps a distinct persistent identity
-#   E2E_EXEC_BUNDLE            executor bundle path (default: test-artifacts/exec-bundle)
-#   E2E_TOOLS_BUNDLE           tools bundle path (default: test-artifacts/tools-bundle)
+#   E2E_EXEC_BUNDLE            executor bundle path (default: dist/bundles/exec)
+#   E2E_TOOLS_BUNDLE           tools bundle path (default: dist/bundles/tools)
 #
 # The agent always gets the executor/tools bundles: lean env images (the dind
 # default, custom benches) need the injection, and images that ship their own
@@ -90,8 +90,8 @@ cd "$root"
 
 docker_mode=${E2E_WORKBENCH_DOCKER_MODE:-dind}
 state_dir=${E2E_AGENT_STATE_DIR:-$root/test-artifacts/e2e-agent-state}
-exec_bundle=${E2E_EXEC_BUNDLE:-$root/test-artifacts/exec-bundle}
-tools_bundle=${E2E_TOOLS_BUNDLE:-$root/test-artifacts/tools-bundle}
+exec_bundle=${E2E_EXEC_BUNDLE:-$root/dist/bundles/exec}
+tools_bundle=${E2E_TOOLS_BUNDLE:-$root/dist/bundles/tools}
 
 # agent_log <i>: log path for the i-th agent (agent.log, agent-2.log, ...).
 agent_log() {

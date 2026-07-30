@@ -14,10 +14,20 @@
 # The e2e agent always gets the executor/tools bundles: lean env images (the
 # dind default, custom benches) need the injection, and images that ship their
 # own /nix (the full workbench) skip it — so this is safe for every tier.
-E2E_EXEC_BUNDLE = $(CURDIR)/test-artifacts/exec-bundle
-E2E_TOOLS_BUNDLE = $(CURDIR)/test-artifacts/tools-bundle
+#
+# Under dist/, with the repo's other built output, rather than test-artifacts/:
+# these are `nix build -o` symlinks, which means they are *GC roots* holding
+# their store closures alive, and they are an input to the suites rather than
+# something a suite produced. test-artifacts/ is the disposable half of the
+# tree — emptying it should never cost a rebuild, let alone let the next
+# `make store-gc` collect what the stack is about to inject.
+E2E_BUNDLE_DIR = $(CURDIR)/dist/bundles
+E2E_EXEC_BUNDLE = $(E2E_BUNDLE_DIR)/exec
+E2E_TOOLS_BUNDLE = $(E2E_BUNDLE_DIR)/tools
 
+# mkdir first: `nix build -o` writes the symlink but will not create its parent.
 e2e-bundles: stage-nix-sources
+	@mkdir -p $(E2E_BUNDLE_DIR)
 	nix build .#exec-bundle -o $(E2E_EXEC_BUNDLE)
 	nix build .#tools-bundle -o $(E2E_TOOLS_BUNDLE)
 

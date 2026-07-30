@@ -71,8 +71,8 @@ WORKBENCH_IMAGE = (
 )
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-_EXEC_BUNDLE = _REPO_ROOT / "test-artifacts" / "exec-bundle"
-_TOOLS_BUNDLE = _REPO_ROOT / "test-artifacts" / "tools-bundle"
+_EXEC_BUNDLE = _REPO_ROOT / "dist" / "bundles" / "exec"
+_TOOLS_BUNDLE = _REPO_ROOT / "dist" / "bundles" / "tools"
 # Must be set before the agent's DockerRuntime is constructed (fixture below).
 os.environ.setdefault("REPO2REE_EXEC_BUNDLE", str(_EXEC_BUNDLE))
 os.environ.setdefault("REPO2REE_TOOLS_BUNDLE", str(_TOOLS_BUNDLE))

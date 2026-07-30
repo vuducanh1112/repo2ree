@@ -376,7 +376,12 @@ after each test, including failures.
 
 ## Artifacts And Logs
 
-All generated test artifacts should stay under `test-artifacts/`.
+All generated test artifacts should stay under `test-artifacts/`, and that
+directory must stay safe to delete: nothing under it may be an input a suite
+needs or a nix GC root. The executor/tools bundles are the counter-example that
+motivated the rule — they live under `dist/bundles/` (see `mk/e2e.mk`) because
+`nix build -o` makes them GC roots holding their store closures alive, and
+because the suites *consume* them rather than produce them.
 
 Useful locations:
 
@@ -385,8 +390,10 @@ Useful locations:
 | `test-artifacts/api-server.log` | Backend log for plain e2e runs. |
 | `test-artifacts/coverage/e2e/backend.log` | Backend log for e2e coverage runs. |
 | `test-artifacts/coverage/` | Backend and e2e coverage reports. |
+| `test-artifacts/property-based-tests/` | Hypothesis home: `<package>/` example databases plus its own caches. |
 | `frontend/test-artifacts/playwright/` | Playwright traces, screenshots, and videos. |
 | `test-artifacts/traces/api-integration/` | API integration trace files and workbench log snapshots. |
+| `dist/bundles/{exec,tools}` | Executor/tools bundles the agent injects — a build input, not an artifact. |
 
 When a Docker-gated test fails, inspect both the workbench entrypoint log and
 the nested daemon log:

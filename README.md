@@ -107,15 +107,15 @@ uv run --package repo2ree-api uvicorn repo2ree_api.main:app --reload --host 0.0.
    keep running the old executor:
 
 ```bash
-make e2e-bundles   # builds test-artifacts/{exec-bundle,tools-bundle} via nix
+make e2e-bundles   # builds dist/bundles/{exec,tools} via nix
 ```
 
 3. Start the workbench agent, which dials the API and owns the container
    runtime (workbenches only provision while it is connected):
 
 ```bash
-REPO2REE_EXEC_BUNDLE=$PWD/test-artifacts/exec-bundle \
-REPO2REE_TOOLS_BUNDLE=$PWD/test-artifacts/tools-bundle \
+REPO2REE_EXEC_BUNDLE=$PWD/dist/bundles/exec \
+REPO2REE_TOOLS_BUNDLE=$PWD/dist/bundles/tools \
 uv run --package repo2ree-agent python -m repo2ree_agent
 ```
 
@@ -123,8 +123,8 @@ For faster local iteration, you can share the host Docker daemon with
 workbenches:
 
 ```bash
-REPO2REE_EXEC_BUNDLE=$PWD/test-artifacts/exec-bundle \
-REPO2REE_TOOLS_BUNDLE=$PWD/test-artifacts/tools-bundle \
+REPO2REE_EXEC_BUNDLE=$PWD/dist/bundles/exec \
+REPO2REE_TOOLS_BUNDLE=$PWD/dist/bundles/tools \
 WORKBENCH_DOCKER_MODE=host-socket \
 uv run --package repo2ree-agent python -m repo2ree_agent
 ```

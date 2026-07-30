@@ -50,8 +50,8 @@ esac
 # rule, which would drift. Best effort: unbuilt bundles or no uv just means
 # nothing is protected, and at worst one bundle gets copied again.
 live_store_volume() {
-    local exec_bundle=${REPO2REE_EXEC_BUNDLE:-$root/test-artifacts/exec-bundle}
-    local tools_bundle=${REPO2REE_TOOLS_BUNDLE:-$root/test-artifacts/tools-bundle}
+    local exec_bundle=${REPO2REE_EXEC_BUNDLE:-$root/dist/bundles/exec}
+    local tools_bundle=${REPO2REE_TOOLS_BUNDLE:-$root/dist/bundles/tools}
     [ -d "$exec_bundle" ] || return 0
     [ -d "$tools_bundle" ] || tools_bundle=""
     (cd "$root" && uv run --package repo2ree-agent python -c '
