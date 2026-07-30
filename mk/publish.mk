@@ -45,9 +45,9 @@ push-gate: require-clean-tree
 	$(MAKE) scripts-checks gui-checks be-checks
 	$(MAKE) e2e-bundles
 	$(MAKE) gui-tests be-tests
-	$(MAKE) e2e-tests
-	$(MAKE) e2e-review
-	$(MAKE) e2e-tests-stack-local
+	$(MAKE) e2e-gui
+	$(MAKE) e2e-gui-review
+	$(MAKE) e2e-gui-stack-local
 	@echo ">> push gate green — publish with: make push-rev"
 
 # Plumbing: tag + push the already-built :local images to every registry
@@ -82,7 +82,7 @@ push-archives: load-image-archives
 # publish flow runs tag-free from the commit being published.
 validate-rev:
 	$(require_named_rev)
-	$(MAKE) e2e-tests-stack-published IMAGE_TAG=$(REV)
+	$(MAKE) e2e-gui-stack-published IMAGE_TAG=$(REV)
 
 # Promote a validated rev to edge by retagging on the registry — no rebuild,
 # no local images involved, so the promoted digests are exactly the validated

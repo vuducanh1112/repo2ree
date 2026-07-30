@@ -15,19 +15,20 @@
 | `make be-integration-tests` | The backend `integration` tier, measured. Builds the bundles first; Docker-gated tests skip when Docker is absent. |
 | `make be-tests` | Both backend tiers. |
 | `make core-unit-tests` / `api-unit-tests` / … | One package's suite, unmeasured — the debugging loop. |
-| `make e2e-tests` | Playwright e2e project against a live API and GUI dev server. |
-| `make e2e-review` | Playwright review project: the reviewer-side reproduction specs. |
-| `make e2e-demo` | Playwright demo walkthrough project with video. |
-| `make e2e-tests-on-stack` / `e2e-review-on-stack` / `e2e-demo-on-stack` | Suite / review / demo against an already-running image-backed stack. |
-| `make e2e-tests-stack-local` / `e2e-review-stack-local` / `e2e-demo-stack-local` | One command: build local images, `stack-up`, run the project, `stack-clean`. |
-| `make e2e-tests-stack-published` / `e2e-review-stack-published` / `e2e-demo-stack-published` | The same flows against the pushed registry images (nothing built). |
+| `make e2e-gui` | Browser regression suite against a live API and GUI dev server. Measured. |
+| `make e2e-gui-review` | Browser regression suite, reviewer side: the reproduction specs. Measured. |
+| `make demo-gui` | Narrated browser walkthrough with video. Measured. |
+| `make demo-api` | The same stack driven over HTTP with no browser; records a `.cast` + transcript. Measured (Python only). |
+| `make demo-gui-code-ocean` | Long-running external-capsule demo. Measured. |
+| `make e2e-gui-on-stack` / `e2e-gui-review-on-stack` / `demo-gui-on-stack` | Suite / review / demo against an already-running image-backed stack. |
+| `make e2e-gui-stack-local` / `e2e-gui-review-stack-local` / `demo-gui-stack-local` | One command: build local images, `stack-up`, run the project, `stack-clean`. |
+| `make e2e-gui-stack-published` / `e2e-gui-review-stack-published` / `demo-gui-stack-published` | The same flows against the pushed registry images (nothing built). |
 | `make stack-up` / `stack-down` | Start/stop the image-backed stack, keeping its volumes (`scripts/image-stack.sh`). |
 | `make stack-clean` | Stop it and drop every volume it created, workbench leftovers included. |
 | `make workbench-clean` | Just the workbench leftovers; `STORE=1` also drops every bundle store volume. |
 | `make store-gc` | Evict bundle store caches unused for `STORE_GC_DAYS` (14), keeping the live one. |
 | `make commit-gate` | Fast pre-commit gate: static checks + all container-free test tiers. Certifies the tree it passed on; the pre-commit hook checks that certificate. |
 | `make push-gate` | The pre-publish gate: clean tree, all checks and tests, e2e source-run and image-backed. |
-| `make coverage-e2e` / `coverage-demo` | A stack tier — measures the backend *and* the browser in one run, hence no `be-`/`gui-` prefix. |
 | `make be-coverage-report TIER=<tier>` | Render a tier's HTML from data already on disk. |
 | `make be-coverage-combined` | Union of whichever backend tiers have been measured on this checkout. |
 | `make gui-coverage-browser` | The browser twin: union of every measured tier's V8 captures. |
@@ -118,17 +119,32 @@ pytest api/tests/integration
 
 ## Coverage
 
-Coverage is measured per **tier**, one report each. **Running a tier measures
-it** — there is no separate "coverage" target to remember, and therefore no way
-for the suites a tier runs and the suites it measures to drift apart:
+Coverage is measured per **tier**, one report each. Two rules do most of the
+work here:
+
+**Running a tier measures it.** No separate "coverage" target exists to
+remember, so the suites a tier runs and the suites it measures cannot drift
+apart.
+
+**The tier, the make target, and (for stack suites) the Playwright project are
+one name.** A report therefore cannot be labelled with a suite that did not
+produce it.
 
 | Tier | Target | What it measures | Needs |
 |---|---|---|---|
 | `unit` | `make be-unit-tests` | Container-free single-component suites | nothing |
 | `integration` | `make be-integration-tests` | Flows spanning components; mostly docker-gated | docker + bundles |
-| `e2e` | `make coverage-e2e` | The live stack, browser-driven | docker + browsers |
-| `demo` | `make coverage-demo` | The narrated walkthrough stack | docker + browsers |
+| `e2e-gui` | `make e2e-gui` | The live stack, browser-driven, author side | docker + browsers |
+| `e2e-gui-review` | `make e2e-gui-review` | The live stack, browser-driven, reviewer side | docker + browsers |
+| `demo-gui` | `make demo-gui` | The narrated walkthrough stack | docker + browsers |
+| `demo-gui-code-ocean` | `make demo-gui-code-ocean` | The external-capsule demo | docker + browsers + capsule |
+| `demo-api` | `make demo-api` | The live stack over HTTP, no browser | docker |
 | `node` | `make gui-tests` | The GUI's pure-logic Vitest suite | nothing |
+
+Suites are named `<purpose>-<interface>`: `e2e-` is a regression suite, `demo-` a
+demonstration, `-gui` is browser-driven, `-api` drives the same stack over HTTP.
+That suffix is why `demo-api` has no browser half — it drives no browser — and
+the name says so without you having to check.
 
 Measuring costs roughly 30% wall clock on the pytest tiers (branch coverage is
 on). That is the price of the guarantee above, and it is why the **per-package**
@@ -148,7 +164,7 @@ make be-coverage-report TIER=unit    # render, from data already on disk
 Pass `COV_REPORT=term-missing` to a tier target for a terminal report during the
 run itself, when you are actively closing gaps.
 
-Two things the table does not say, both worth knowing before reading a number:
+Three things the table does not say, all worth knowing before reading a number:
 
 - **`integration` is not defined by docker**, even though the target requires it.
   `core/tests/integration` spans components without containers, so it sits in
@@ -156,15 +172,20 @@ Two things the table does not say, both worth knowing before reading a number:
   axis is scope; docker is what most flows of that scope happen to need. (That
   prerequisite is why `make be-integration-tests` triggers a nix build: the tier
   must not run against bundles from an older tree.)
-- **Not every suite belongs to a tier.** `e2e-review`, `e2e-demo-code-ocean` and
-  the `e2e-api` walkthrough have no coverage tier — `scripts/e2e-stack.sh`
-  accepts only `e2e` and `demo` for `--coverage`. `push-gate` runs `e2e-review`,
-  so the reviewer-side lifecycle is exercised but never measured, and
-  `be-coverage-combined` cannot include it.
+- **The image-backed variants are unmeasured, permanently.** `-on-stack`,
+  `-stack-local` and `-stack-published` run the backend and agents *inside
+  containers*, where the host's coverage process cannot see them. That is a
+  division of labour rather than a gap: the measured source-run path produces the
+  numbers, and the image-backed path — which `push-gate` runs — proves the
+  un-instrumented topology works.
+- **`combined` is rarely everything, and says so.** `make be-coverage-combined`
+  prints the tiers it included *and* the ones it did not, because a number
+  labelled "combined" otherwise reads as complete. A full `push-gate` measures
+  `unit`, `integration`, `e2e-gui` and `e2e-gui-review`; the demo tiers are
+  absent because no gate runs a demo, deliberately.
 
-The report targets that remain carry the runtime, like the rest of the Makefile:
-`be-coverage-*` reports on Python, `gui-coverage-*` on the GUI. The two stack
-targets take no prefix because a single run measures both halves.
+The report targets carry the runtime, like the rest of the Makefile:
+`be-coverage-*` reports on Python, `gui-coverage-*` on the GUI.
 
 Each tier writes its data to `test-artifacts/coverage/python/data/<tier>/` and
 its HTML report to `test-artifacts/coverage/python/<tier>/`, so a tier's number
@@ -225,7 +246,7 @@ per-package totals:
 ```
 
 These are filters over the tier's own data, not separate runs — so they cost no
-extra test time and exist for every tier, including `e2e` and `demo`, which are
+extra test time and exist for every tier, including the stack tiers, which are
 a single stack run and could never be decomposed by suite. They answer "how
 well covered is this package", with every suite in the tier contributing.
 
@@ -248,12 +269,20 @@ Union of whatever has been measured:
 make be-coverage-combined
 ```
 
-It skips tiers that were never run, so it is useful after any subset — but it is
-only a total across *all four tiers* when all four ran on the same tree, which is
-what `push-gate` arranges. Even then it is not a total across everything that
-runs: the suites with no tier of their own (`e2e-review` in particular, which
-`push-gate` does run) contribute nothing. `--keep` means combining never destroys the
-per-tier data, so any tier report can be rebuilt without re-running its suite.
+It skips tiers that were never run, so it is useful after any subset, and it
+prints its own scope so you never have to guess what a "combined" number covers:
+
+```
+>> combined: unit integration e2e-gui e2e-gui-review
+>> NOT included (never measured on this tree): demo-gui demo-api demo-gui-code-ocean
+```
+
+That is what a full `push-gate` leaves behind. The demo tiers are absent because
+no gate runs a demo — demos are demonstrations, and putting one on the publish
+path would buy a number at the cost of a slower gate and a video nobody watches.
+Measure them yourself when you want them in the union. `--keep` means combining
+never destroys the per-tier data, so any tier report can be rebuilt without
+re-running its suite.
 
 Per-test attribution (which test hit which line) over the two pytest tiers:
 
@@ -308,7 +337,7 @@ server on `127.0.0.1:4173` and points the GUI at
 Run e2e tests through Make:
 
 ```bash
-make e2e-tests
+make e2e-gui
 ```
 
 That target starts the backend on `127.0.0.1:8000`, waits for it to respond,
@@ -322,16 +351,16 @@ that carries its own source and runtime, reviewed without reaching for an
 origin:
 
 ```bash
-make e2e-review
+make e2e-gui-review
 ```
 
-It stays out of `e2e-tests`: every spec provisions a real workbench, so the two
+It stays out of `e2e-gui`: every spec provisions a real workbench, so the two
 suites cost real time and are worth running independently. `push-gate` runs both.
 
 Run the narrated demo flow:
 
 ```bash
-make e2e-demo
+make demo-gui
 ```
 
 Every browser project can also drive the image-backed stack instead of the dev
@@ -347,8 +376,8 @@ servers. The suffix names **who provides the stack**:
 The `-stack-local` targets do the whole flow in one command: build the local images,
 `make stack-up` (compose control plane + agent container, via
 `scripts/image-stack.sh`), run the playwright project, `make stack-clean`. With a
-stack already up, `make e2e-tests-on-stack` / `make e2e-review-on-stack` /
-`make e2e-demo-on-stack` run just the playwright part. Playwright is pointed at the Caddy-served GUI (via `E2E_BASE_URL`,
+stack already up, `make e2e-gui-on-stack` / `make e2e-gui-review-on-stack` /
+`make demo-gui-on-stack` run just the playwright part. Playwright is pointed at the Caddy-served GUI (via `E2E_BASE_URL`,
 which also skips the Vite dev server), so the GUI image's `/api` reverse
 proxy and the backend/agent images are what get exercised. The stack is
 addressed as `localhost` from the host or via compose service DNS from the
@@ -386,10 +415,10 @@ next run needs.
 The `*-stack-published` variants validate the pushed images instead of local
 builds (docker pulls the refs, nothing is built). They default to the Docker
 Hub images the push targets publish; override `DOCKERHUB_NAMESPACE` /
-`IMAGE_TAG` as with those targets. `make e2e-tests-stack-published
+`IMAGE_TAG` as with those targets. `make e2e-gui-stack-published
 IMAGE_TAG=<tag>` is the full-suite gate for a pushed build.
 
-The source-run `e2e-tests` remains the iteration loop (fast, easy to debug,
+The source-run `e2e-gui` remains the iteration loop (fast, easy to debug,
 coverage-capable); the image-backed variants are the deployment gate before
 pushing or promoting images.
 
@@ -442,15 +471,10 @@ scripts/commit-gate-stamp.sh verify   # what the hook runs
 tree (pushed images must correspond to a commit), then runs the static
 checks, builds the executor/tools bundles so the docker-gated test tiers
 don't skip, runs the unit/integration suites, the source-run e2e suite, and
-finally `e2e-tests-stack-local`. When it passes, the `:local` images it built are
+finally `e2e-gui-stack-local`. When it passes, the `:local` images it built are
 exactly what the push targets will publish.
 
-Run e2e coverage:
-
-```bash
-make coverage-e2e
-```
-
+Every source-run stack suite is measured — `make e2e-gui` is the coverage run.
 This starts the backend *and* every agent under coverage — an e2e run is the
 heaviest exercise the agent package gets (docker runtime, control link,
 injection, chunked transfers), so measuring only the server reported that work
@@ -488,7 +512,7 @@ Useful locations:
 | `test-artifacts/coverage/python/context/` | Per-test attribution (`be-coverage-context`). A different *view* over the pytest tiers, not a fifth tier — it is never part of `combined`. |
 | `test-artifacts/coverage/browser/<tier>/` | Browser V8 coverage for the stack tiers, plus `combined/`; `raw/<tier>/` holds the per-test captures it merges. |
 | `test-artifacts/coverage/node/unit/` | GUI Vitest coverage (istanbul), from `make gui-tests`. |
-| `test-artifacts/playwright/<project>/` | Playwright traces, screenshots, and videos. |
+| `test-artifacts/playwright/<suite>/` | Playwright traces, screenshots, and videos. |
 | `test-artifacts/traces/<suite>/` | OpenTelemetry spans and workbench log snapshots. Keyed by *suite*, not by coverage tier: `api-unit/`, `api-integration/`, `api-real-server/`, `supervisor-e2e/`. |
 | `test-artifacts/property-based-tests/` | Hypothesis home: `<package>/` example databases plus its own caches. |
 | `test-artifacts/logs/` | `api-server.log` for plain runs, `backend-<tier>.log` and `agent-<tier>.log` for measured ones. |
@@ -522,5 +546,5 @@ For one Playwright spec:
 
 ```bash
 cd gui
-npm exec -- playwright test -c playwright.config.ts --project=e2e tests/e2e/source.spec.ts
+npm exec -- playwright test -c playwright.config.ts --project=e2e-gui tests/e2e/source.spec.ts
 ```

@@ -4,11 +4,11 @@
 # teardown, the coverage variant) lives in scripts/e2e-stack.sh.
 
 .PHONY: e2e-bundles \
-	e2e-tests e2e-tests-on-stack e2e-tests-stack-local e2e-tests-stack-published \
-	e2e-review e2e-review-on-stack e2e-review-stack-local e2e-review-stack-published \
-	e2e-demo e2e-demo-on-stack e2e-demo-stack-local e2e-demo-stack-published \
-	e2e-demo-code-ocean coverage-e2e coverage-demo gui-coverage-browser \
-	e2e-api e2e-api-on-stack e2e-api-stack-local e2e-api-stack-published \
+	e2e-gui e2e-gui-on-stack e2e-gui-stack-local e2e-gui-stack-published \
+	e2e-gui-review e2e-gui-review-on-stack e2e-gui-review-stack-local e2e-gui-review-stack-published \
+	demo-gui demo-gui-on-stack demo-gui-stack-local demo-gui-stack-published \
+	demo-api demo-api-on-stack demo-api-stack-local demo-api-stack-published \
+	demo-gui-code-ocean gui-coverage-browser \
 	stack-up stack-down stack-clean workbench-clean store-gc
 
 # The e2e agent always gets the executor/tools bundles: lean env images (the
@@ -39,57 +39,62 @@ E2E_STACK = E2E_WORKBENCH_IMAGE='$(E2E_WORKBENCH_IMAGE)' \
 
 # Workbench agents the stack connects. The multi-agent specs need >= 2 and
 # skip themselves on smaller stacks; raise it for stress runs
-# (E2E_AGENTS=10 make e2e-tests). Demos stay single-agent — they show one lab.
+# (E2E_AGENTS=10 make e2e-gui). Demos stay single-agent — they show one lab.
 E2E_AGENTS ?= 2
 
-e2e-tests: e2e-bundles
-	$(E2E_STACK) --project e2e --agents $(E2E_AGENTS)
+# Suites are named <purpose>-<interface>: `e2e-` is a regression suite, `demo-` a
+# demonstration; `-gui` is browser-driven through playwright, `-api` drives the
+# same stack over HTTP with no browser. The name is also the playwright project
+# and the coverage tier — one word for one thing, so a report cannot be labelled
+# with a suite that did not produce it (see scripts/e2e-stack.sh).
+#
+# Every source-run suite here is measured; there is no unmeasured variant and no
+# --coverage flag. Two reports per browser suite, one per measuring runtime:
+# test-artifacts/coverage/python/<suite>/ and .../browser/<suite>/. The -api
+# suite drives no browser, so it produces the python half only.
+#
+# The image-backed variants below (-on-stack, -stack-local, -stack-published) are
+# unmeasured and always will be: those processes run inside containers where the
+# host's coverage cannot see them. That is the division of labour, not a gap —
+# the measured source-run path produces the numbers, and the image path proves
+# the un-instrumented topology works.
 
-# The reviewer-side suite, on a stack of its own. Kept out of `e2e-tests` (which
+e2e-gui: e2e-bundles
+	$(E2E_STACK) --project e2e-gui --agents $(E2E_AGENTS)
+
+# The reviewer-side suite, on a stack of its own. Kept out of `e2e-gui` (which
 # covers authoring) so a reviewer-facing change is one command to validate, and
 # so neither suite pays for the other — every spec provisions a real workbench.
 # Single-agent: reviews reproduce in their own namespace, never on a second lab.
-e2e-review: e2e-bundles
-	$(E2E_STACK) --project review --agents 1
+e2e-gui-review: e2e-bundles
+	$(E2E_STACK) --project e2e-gui-review --agents 1
 
-e2e-demo: e2e-bundles
-	$(E2E_STACK) --project demo
+demo-gui: e2e-bundles
+	$(E2E_STACK) --project demo-gui
 
 # Pure-API agent walkthrough: the same live backend+agent stack, driven over
-# HTTP by a curl/jq client instead of a browser. Asserts the full authoring
-# lifecycle (create -> upload -> seal -> download -> delete), so it is a real CI
-# check as well as a demonstrable transcript — and always records the session as
-# an asciinema .cast (the pure-API counterpart of the narrated browser `demo`
-# video). Recording here is cheap and unintrusive (unlike playwright video, which
-# is why the browser e2e/demo split exists), so there is one target, not two.
+# HTTP by a curl/jq client instead of a browser. It walks the full authoring
+# lifecycle (create -> upload -> seal -> download -> delete) and records the
+# session as an asciinema .cast — the pure-API counterpart of the narrated
+# browser demo's video. A demonstration, not a gate: no gate runs it, and the
+# walkthrough's assertions exist so a broken demo fails loudly rather than
+# recording a lie.
+#
+# Recording here is cheap and unintrusive (unlike playwright video, which is why
+# the browser e2e/demo split exists), so there is one target, not two.
 # Render the cast to SVG/GIF with `agg $(API_DEMO_CAST) api-agent-walkthrough.gif`.
 # A recording is a poor standalone document, so the run also derives a chaptered
 # markdown transcript from the .cast — the same artifact in written form.
 API_DEMO_CAST ?= $(CURDIR)/test-artifacts/casts/api-agent-walkthrough.cast
 API_DEMO_TRANSCRIPT ?= $(API_DEMO_CAST:.cast=.md)
-e2e-api: e2e-bundles
+demo-api: e2e-bundles
 	@mkdir -p $(dir $(API_DEMO_CAST))
-	$(E2E_STACK) --script $(CURDIR)/api/tests/e2e/api_agent_walkthrough.py --record $(API_DEMO_CAST)
+	$(E2E_STACK) --script $(CURDIR)/api/tests/e2e/api_agent_walkthrough.py \
+		--tier demo-api --record $(API_DEMO_CAST)
 	python3 $(CURDIR)/api/tests/e2e/render_cast_transcript.py $(API_DEMO_CAST) $(API_DEMO_TRANSCRIPT)
 
-e2e-demo-code-ocean: e2e-bundles
-	$(E2E_STACK) --project code-ocean
-
-# Full-stack coverage: browser (GUI) + server and agents (backend) in one run.
-# Two reports, one per measuring runtime — test-artifacts/coverage/python/<tier>/
-# and test-artifacts/coverage/browser/<tier>/. Needs docker + the workbench image
-# + browsers, like the suites themselves.
-#
-# Two tiers, because the two stacks reach different code: `e2e` is the
-# regression suite, `demo` the narrated walkthrough. Each writes its own data
-# directory per runtime; `make be-coverage-combined` unions the python halves
-# with the pytest tiers, and `make gui-coverage-browser` unions the browser
-# halves. There is no union across the two — see the tier map in mk/tests.mk.
-coverage-e2e: e2e-bundles
-	$(E2E_STACK) --project e2e --agents $(E2E_AGENTS) --coverage e2e
-
-coverage-demo: e2e-bundles
-	$(E2E_STACK) --project demo --coverage demo
+demo-gui-code-ocean: e2e-bundles
+	$(E2E_STACK) --project demo-gui-code-ocean
 
 # The browser twin of `be-coverage-combined`: merge every measured tier's V8
 # captures into one report. Reads only what previous runs left under
@@ -144,19 +149,19 @@ define playwright_against_stack  # $(1) = playwright --project name
 		npm exec -- playwright test -c playwright.config.ts --project=$(1)
 endef
 
-e2e-tests-on-stack:
-	$(call playwright_against_stack,e2e)
+e2e-gui-on-stack:
+	$(call playwright_against_stack,e2e-gui)
 
-e2e-review-on-stack:
-	$(call playwright_against_stack,review)
+e2e-gui-review-on-stack:
+	$(call playwright_against_stack,e2e-gui-review)
 
-e2e-demo-on-stack:
-	$(call playwright_against_stack,demo)
+demo-gui-on-stack:
+	$(call playwright_against_stack,demo-gui)
 
 # The API walkthrough against the already-running image-backed stack — the
-# pure-API analog of e2e-tests-on-stack. A validation run, not a demo run, so it
-# doesn't record; the .cast/transcript demo artifacts come from `e2e-api`.
-e2e-api-on-stack:
+# pure-API analog of e2e-gui-on-stack. A validation run, not a demo run, so it
+# doesn't record; the .cast/transcript demo artifacts come from `demo-api`.
+demo-api-on-stack:
 	@scripts/image-stack.sh check
 	API_BASE_URL=$$(scripts/image-stack.sh api-url) \
 		api/tests/e2e/api_agent_walkthrough.py
@@ -186,38 +191,38 @@ PUBLISHED_STACK = STACK_IMAGE_REPO=$(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE) 
 # duplication saves. The shared parts are already factored into the two defines
 # above, which is where the repetition actually belongs.
 
-e2e-tests-stack-local:
+e2e-gui-stack-local:
 	$(MAKE) images
 	$(MAKE) stack-up
-	$(call run_then_stack_down,e2e-tests-on-stack)
+	$(call run_then_stack_down,e2e-gui-on-stack)
 
-e2e-tests-stack-published:
+e2e-gui-stack-published:
 	$(PUBLISHED_STACK) $(MAKE) stack-up
-	$(call run_then_stack_down,e2e-tests-on-stack)
+	$(call run_then_stack_down,e2e-gui-on-stack)
 
-e2e-review-stack-local:
+e2e-gui-review-stack-local:
 	$(MAKE) images
 	$(MAKE) stack-up
-	$(call run_then_stack_down,e2e-review-on-stack)
+	$(call run_then_stack_down,e2e-gui-review-on-stack)
 
-e2e-review-stack-published:
+e2e-gui-review-stack-published:
 	$(PUBLISHED_STACK) $(MAKE) stack-up
-	$(call run_then_stack_down,e2e-review-on-stack)
+	$(call run_then_stack_down,e2e-gui-review-on-stack)
 
-e2e-demo-stack-local:
+demo-gui-stack-local:
 	$(MAKE) images
 	$(MAKE) stack-up
-	$(call run_then_stack_down,e2e-demo-on-stack)
+	$(call run_then_stack_down,demo-gui-on-stack)
 
-e2e-demo-stack-published:
+demo-gui-stack-published:
 	$(PUBLISHED_STACK) $(MAKE) stack-up
-	$(call run_then_stack_down,e2e-demo-on-stack)
+	$(call run_then_stack_down,demo-gui-on-stack)
 
-e2e-api-stack-local:
+demo-api-stack-local:
 	$(MAKE) images
 	$(MAKE) stack-up
-	$(call run_then_stack_down,e2e-api-on-stack)
+	$(call run_then_stack_down,demo-api-on-stack)
 
-e2e-api-stack-published:
+demo-api-stack-published:
 	$(PUBLISHED_STACK) $(MAKE) stack-up
-	$(call run_then_stack_down,e2e-api-on-stack)
+	$(call run_then_stack_down,demo-api-on-stack)

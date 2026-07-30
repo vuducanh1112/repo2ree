@@ -14,15 +14,15 @@ inner monologue.
 It is **not** a pytest. It drives a *live* backend + workbench-agent stack over
 the network, asserts every response, and its stdout is the artifact. Run it
 through the stack orchestrator, which brings the stack up, points `API_BASE_URL`
-at it, tears it down, and (with `make e2e-api`) records the terminal session:
+at it, tears it down, and (with `make demo-api`) records the terminal session:
 
 ```sh
-make e2e-api        # bring up the stack, run this, record to a .cast, tear down
+make demo-api        # bring up the stack, run this, record to a .cast, tear down
 # or against an already-running stack:
 API_BASE_URL=http://127.0.0.1:8000 api/tests/e2e/api_agent_walkthrough.py
 ```
 
-`make e2e-api` writes `test-artifacts/casts/api-agent-walkthrough.cast` and, because a
+`make demo-api` writes `test-artifacts/casts/api-agent-walkthrough.cast` and, because a
 recording is a poor standalone document, derives
 `test-artifacts/casts/api-agent-walkthrough.md` from it — a chaptered written
 transcript (`render_cast_transcript.py`): the walkthrough's section banners

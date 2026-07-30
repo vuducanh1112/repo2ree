@@ -25,10 +25,11 @@ const COVERAGE_TIER = process.env.E2E_COVERAGE_TIER;
  *
  * When `E2E_COVERAGE_TIER` names a tier, the `jsCoverage` fixture records
  * browser-side V8 coverage for the test and writes it under that tier for later
- * merge (`make coverage-e2e` / `coverage-demo`). It is declared first so its
+ * merge. It is declared first so its
  * teardown — stopping coverage —
  * runs last, after the workbench cleanup, capturing the seal/release UI too.
- * With the flag unset it is a no-op, so a plain `make e2e-tests` pays nothing.
+ * With the flag unset it is a no-op, which is what the unmeasured `-on-stack`
+ * runs against an image-backed stack rely on.
  */
 export const test = base.extend<{
   // biome-ignore lint/suspicious/noConfusingVoidType: value-less auto fixtures; void is the Playwright idiom here

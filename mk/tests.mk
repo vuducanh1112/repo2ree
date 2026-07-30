@@ -31,6 +31,13 @@ INTEGRATION_SUITES = core/tests/integration api/tests/integration \
 COVERAGE_DATA = test-artifacts/coverage/python/data
 COVERAGE_HTML = test-artifacts/coverage/python
 
+# Every python tier, in the order `be-coverage-combined` unions them. Each name
+# is also the make target that measures it — `be-unit-tests`, `demo-api`, and so
+# on — because running a suite is what measures it. The stack tiers additionally
+# name a playwright project (mk/e2e.mk); `demo-api` drives no browser and so has
+# a python half only.
+COVERAGE_TIERS = unit integration e2e-gui e2e-gui-review demo-gui demo-api demo-gui-code-ocean
+
 # Point COVERAGE_FILE at a tier's own data directory. Exported for the whole
 # recipe line, subprocesses included.
 tier_coverage = COVERAGE_FILE=$(CURDIR)/$(COVERAGE_DATA)/$(1)/.coverage
@@ -59,7 +66,7 @@ COVERAGE_PACKAGES = protocol core supervisor api executor agent
 coverage_render = set -e; \
 	[ -f $(COVERAGE_DATA)/$(1)/.coverage ] \
 		|| { echo "no coverage data for the $(1) tier — run it first:" \
-			"be-unit-tests, be-integration-tests, coverage-e2e or coverage-demo" >&2; exit 1; }; \
+			"one of $(COVERAGE_TIERS)" >&2; exit 1; }; \
 	$(call tier_coverage,$(1)) coverage html -d $(COVERAGE_HTML)/$(1) \
 		--title "repo2ree — $(1) tier, python" >/dev/null; \
 	echo ">> $(1) tier, by module"; \
@@ -208,11 +215,14 @@ be-coverage-context: e2e-bundles
 # --keep is load-bearing: without it `coverage combine` *deletes* the per-tier
 # data it consumed, and the tier reports could never be regenerated without
 # re-running the suites. Tiers that were never run are skipped rather than
-# failing the target, so this is useful after any subset — but a combined number
-# spans all four tiers only when all four ran on the same tree, which is what
-# `push-gate` arranges, and never spans the suites with no tier of their own.
-# The tier list is deliberately not a prerequisite: combining is cheap, and
-# re-running the e2e stack because someone asked for a union report is not.
+# failing the target, so this is useful after any subset.
+#
+# It therefore prints its own scope — which tiers went in, and which did not —
+# because "combined" otherwise reads as "everything" and almost never is. A full
+# `push-gate` measures unit, integration, e2e-gui and e2e-gui-review; the demo
+# tiers are absent because no gate runs a demo, by design. The tier list is
+# deliberately not a prerequisite: combining is cheap, and re-running the e2e
+# stack because someone asked for a union report is not.
 #
 # Inputs are named file-by-file, not by directory: `coverage combine <dir>` looks
 # only for *suffixed* parallel-mode files (.coverage.<host>.<pid>) and silently
@@ -221,14 +231,15 @@ be-coverage-context: e2e-bundles
 # ran under --parallel-mode (e2e, demo: server + agents in separate processes)
 # combines the same way as a single-process pytest tier.
 be-coverage-combined:
-	@set -e; files=""; \
-	for tier in unit integration e2e demo; do \
+	@set -e; files=""; included=""; missing=""; \
+	for tier in $(COVERAGE_TIERS); do \
 		found=$$(ls $(COVERAGE_DATA)/$$tier/.coverage* 2>/dev/null || true); \
-		if [ -n "$$found" ]; then files="$$files $$found"; \
-		else echo "note: no coverage data for the $$tier tier — skipping"; fi; \
+		if [ -n "$$found" ]; then files="$$files $$found"; included="$$included $$tier"; \
+		else missing="$$missing $$tier"; fi; \
 	done; \
 	[ -n "$$files" ] || { echo "no tier has been measured; run e.g. 'make be-unit-tests' first"; exit 1; }; \
-	echo ">> combining:$$files"; \
+	echo ">> combined:$$included"; \
+	[ -z "$$missing" ] || echo ">> NOT included (never measured on this tree):$$missing"; \
 	rm -rf $(COVERAGE_DATA)/combined; mkdir -p $(COVERAGE_DATA)/combined; \
 	$(call tier_coverage,combined) coverage combine --keep $$files; \
 	$(call tier_coverage,combined) coverage report; \

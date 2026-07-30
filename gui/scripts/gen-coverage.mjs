@@ -1,6 +1,6 @@
 // Merge the per-test browser V8 coverage captured by the e2e suite (written by
 // the jsCoverage fixture when E2E_COVERAGE_TIER is set) into one istanbul/lcov +
-// HTML report. Run after the Playwright e2e run; `make coverage-e2e` does both.
+// HTML report. Run after the Playwright run; the stack script does both.
 //
 // V8 -> source mapping leans on the Vite dev server's sourcemaps, so this is
 // meaningful only against the dev server (the e2e webServer), not a minified
@@ -11,8 +11,8 @@
 //
 // Both write under test-artifacts/coverage/browser/. The tier is required
 // because it used to be absent: the raw captures and the report both lived in
-// one unkeyed directory, so `make coverage-demo` after `make coverage-e2e`
-// silently replaced the e2e report with the demo one. `--combined` is the
+// one unkeyed directory, so a `demo-gui` run after an `e2e-gui` run
+// silently replaced the e2e-gui report with the demo one. `--combined` is the
 // browser twin of `coverage combine` — a merge inside *this* tool, over its own
 // captures. There is no cross-runtime union, which is why coverage/ holds a
 // browser/ and a python/ subtree and no combined/ above them.
@@ -57,7 +57,7 @@ for (const tier of tiers) {
 
 if (inputs.length === 0) {
   console.error(`No per-test V8 captures under ${combined ? RAW_ROOT : join(RAW_ROOT, arg)}.`);
-  console.error("Run a measured stack tier first: make coverage-e2e (or coverage-demo).");
+  console.error("Run a browser stack suite first: make e2e-gui (or e2e-gui-review, demo-gui).");
   process.exit(1);
 }
 

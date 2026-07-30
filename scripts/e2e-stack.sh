@@ -5,26 +5,37 @@
 # more than the stack offers (e.g. the multi-agent spec, which needs 2) skip
 # themselves, so any project runs against any agent count.
 #
-#   e2e-stack.sh --project <playwright-project> [--agents <n>] [--coverage]
-#   e2e-stack.sh --script <path> [--agents <n>] [--record <cast>]
+#   e2e-stack.sh --project <playwright-project> [--agents <n>]
+#   e2e-stack.sh --script <path> --tier <name> [--agents <n>] [--record <cast>]
 #
 # The --script mode runs an arbitrary client against the same live stack instead
 # of a playwright project — used by the pure-API agent walkthrough. With
 # --record the run is captured via asciinema into a .cast terminal recording.
 #
-# With --coverage <tier> the backend *and* every agent are started under
-# coverage (you can't measure an already-running process), the suite runs with
-# E2E_COVERAGE_TIER=<tier> so the jsCoverage fixture captures browser V8 coverage
-# into that tier, and every process gets a graceful SIGTERM at the end so
-# coverage flushes its data on shutdown. Two reports come out, one per measuring
-# runtime: test-artifacts/coverage/python/<tier>/ and
-# test-artifacts/coverage/browser/<tier>/.
+# Every run is measured; there is no flag to turn it off. The backend *and* every
+# agent start under coverage (you cannot measure an already-running process), the
+# suite runs with E2E_COVERAGE_TIER=<tier> so the jsCoverage fixture captures
+# browser V8 coverage into that tier, and every process gets a graceful SIGTERM at
+# the end so coverage flushes on shutdown. Two reports come out, one per measuring
+# runtime: test-artifacts/coverage/python/<tier>/ and, for a --project run,
+# test-artifacts/coverage/browser/<tier>/. A --script run drives no browser, so it
+# produces the python half only.
 #
-# <tier> names which measured tier this run belongs to — `e2e` for the
-# regression stack, `demo` for the narrated ones — and selects the tier's own
-# data directory under test-artifacts/coverage/python/data/<tier>/, so it never
-# blends with the pytest tiers or with the other stack tier.
-# `make be-coverage-combined` unions them. See the tier map in mk/tests.mk.
+# The tier IS the playwright project — there is no separate --coverage <tier> to
+# disagree with it. That flag used to exist, and nothing checked the two against
+# each other: `--project demo --coverage e2e` ran the demo suite and wrote the e2e
+# tier's data, silently mislabelling the report. --script has no project, so it
+# names its tier explicitly.
+#
+# The tier selects its own data directory under
+# test-artifacts/coverage/python/data/<tier>/, so it never blends with the pytest
+# tiers or with another stack tier. `make be-coverage-combined` unions them. See
+# the tier map in mk/tests.mk.
+#
+# Debugging without instrumentation: bring up a stack yourself (`make stack-up`)
+# and use the `-on-stack` targets, or point playwright at a single spec. Those
+# paths are unmeasured because the processes are in containers, which is also
+# what keeps an un-instrumented topology on the push gate.
 #
 # The agents are measured, not just the backend: an e2e run is the heaviest
 # exercise the agent package gets (docker runtime, control link, injection,
@@ -50,7 +61,8 @@
 set -euo pipefail
 
 usage() {
-    echo "usage: $0 (--project <playwright-project> | --script <path>) [--agents <n>] [--coverage <tier>] [--record <cast>]" >&2
+    echo "usage: $0 (--project <playwright-project> | --script <path> --tier <name>)" \
+        "[--agents <n>] [--record <cast>]" >&2
     exit 2
 }
 
@@ -62,15 +74,14 @@ project=
 script=
 record=
 agents=1
-coverage=0
-coverage_tier=
+tier=
 while [ $# -gt 0 ]; do
     case "$1" in
         --project) [ $# -ge 2 ] || usage; project=$2; shift 2 ;;
         --script) [ $# -ge 2 ] || usage; script=$2; shift 2 ;;
+        --tier) [ $# -ge 2 ] || usage; tier=$2; shift 2 ;;
         --record) [ $# -ge 2 ] || usage; record=$2; shift 2 ;;
         --agents) [ $# -ge 2 ] || usage; agents=$2; shift 2 ;;
-        --coverage) [ $# -ge 2 ] || usage; coverage=1; coverage_tier=$2; shift 2 ;;
         *) usage ;;
     esac
 done
@@ -78,53 +89,63 @@ done
 if { [ -n "$project" ] && [ -n "$script" ]; } || { [ -z "$project" ] && [ -z "$script" ]; }; then usage; fi
 [ -z "$record" ] || [ -n "$script" ] || usage  # --record only applies to --script
 [ "$agents" -ge 1 ] 2>/dev/null || usage
-# The tier must be one the combine step knows about (see mk/tests.mk): a typo
-# would otherwise write a data directory `make be-coverage-combined` never
-# reads, and the run would silently produce nothing.
-case "$coverage_tier" in
-    "" | e2e | demo) ;;
-    *) echo "unknown coverage tier '$coverage_tier' — expected e2e or demo" >&2; exit 2 ;;
-esac
+# The tier is the project — one name, so the report can never be labelled with a
+# suite that did not produce it. --script has no project and must say which tier
+# its run belongs to; --tier alongside --project would be a second name for the
+# same thing, so it is rejected rather than silently preferred.
+if [ -n "$project" ]; then
+    [ -z "$tier" ] || { echo "--tier is implied by --project ($project); drop it" >&2; exit 2; }
+    tier=$project
+fi
+[ -n "$tier" ] || { echo "--script needs --tier <name> to say which tier it measures" >&2; exit 2; }
 
 root=$(cd "$(dirname "$0")/.." && pwd)
 cd "$root"
+
+# Check the project resolves *before* building anything. Playwright is the only
+# thing that knows which projects exist, and it is not consulted until the very
+# end of a run — so a name it rejects used to cost a full backend + agent
+# startup first, and then failed with the stack already up. `--list` answers in
+# well under a second. Playwright's own message is passed through because it
+# enumerates the available projects, which is exactly what you need to see.
+if [ -n "$project" ]; then
+    if ! probe=$(cd gui && npm exec -- playwright test -c playwright.config.ts \
+            --project="$project" --list 2>&1); then
+        printf '%s\n' "$probe" >&2
+        echo "refusing to start the stack: playwright rejected --project=$project" >&2
+        exit 2
+    fi
+fi
 
 docker_mode=${E2E_WORKBENCH_DOCKER_MODE:-dind}
 state_dir=${E2E_AGENT_STATE_DIR:-$root/test-artifacts/state/agents}
 exec_bundle=${E2E_EXEC_BUNDLE:-$root/dist/bundles/exec}
 tools_bundle=${E2E_TOOLS_BUNDLE:-$root/dist/bundles/tools}
 
-# agent_log <i>: log path for the i-th agent (agent.log, agent-2.log, ...).
-# Measured runs carry their tier in the name — every log now shares one logs/
-# directory, so without it a demo run would clobber an e2e run's agent log.
+# agent_log <i>: log path for the i-th agent (agent-<tier>.log, agent-<tier>-2.log,
+# ...). Every log shares one logs/ directory, so without the tier a demo run would
+# clobber an e2e run's agent log.
 agent_log() {
     local suffix=""
     [ "$1" -gt 1 ] && suffix="-$1"
-    echo "$agent_log_dir/agent$log_tier$suffix.log"
+    echo "$agent_log_dir/agent-$tier$suffix.log"
 }
 
 # Logs live under test-artifacts/logs/, not inside a coverage report directory:
 # a directory `coverage html` owns should hold only the report it generates.
 log_dir=$root/test-artifacts/logs
 agent_log_dir=$log_dir
-log_tier=${coverage_tier:+-$coverage_tier}
-mkdir -p "$log_dir" "$state_dir"
-if [ "$coverage" -eq 1 ]; then
-    coverage_data_dir=$root/test-artifacts/coverage/python/data/$coverage_tier
-    coverage_file=$coverage_data_dir/.coverage
-    backend_log=$log_dir/backend-$coverage_tier.log
-    browser_raw_dir=$root/test-artifacts/coverage/browser/raw/$coverage_tier
-    mkdir -p "$coverage_data_dir"
-    # Start the tier's data fresh: --parallel-mode leaves one suffixed file per
-    # process, so a previous run's files would otherwise be combined in as well
-    # and report a union of two runs as one. Same for the browser captures —
-    # but only *this* tier's, which is the point of keying them by tier.
-    rm -f "$coverage_file" "$coverage_file".*
-    rm -rf "$browser_raw_dir"
-else
-    backend_log=$log_dir/api-server.log
-    rm -f "$backend_log"
-fi
+coverage_data_dir=$root/test-artifacts/coverage/python/data/$tier
+coverage_file=$coverage_data_dir/.coverage
+backend_log=$log_dir/backend-$tier.log
+browser_raw_dir=$root/test-artifacts/coverage/browser/raw/$tier
+mkdir -p "$log_dir" "$state_dir" "$coverage_data_dir"
+# Start the tier's data fresh: --parallel-mode leaves one suffixed file per
+# process, so a previous run's files would otherwise be combined in as well
+# and report a union of two runs as one. Same for the browser captures —
+# but only *this* tier's, which is the point of keying them by tier.
+rm -f "$coverage_file" "$coverage_file".*
+rm -rf "$browser_raw_dir"
 for i in $(seq 1 "$agents"); do rm -f "$(agent_log "$i")"; done
 
 if [ -n "${E2E_WORKBENCH_IMAGE:-}" ]; then
@@ -176,42 +197,27 @@ agents_connected() {
     [ "${count:-0}" -ge "$want" ]
 }
 
-echo ">> starting backend on :8000 (log: $backend_log)"
-if [ "$coverage" -eq 1 ]; then
-    COVERAGE_FILE=$coverage_file coverage run --parallel-mode \
-        -m uvicorn repo2ree_api.main:app --host 127.0.0.1 --port 8000 \
-        >"$backend_log" 2>&1 &
-else
-    uvicorn repo2ree_api.main:app --host 127.0.0.1 --port 8000 \
-        >"$backend_log" 2>&1 &
-fi
+echo ">> starting backend on :8000 under coverage (log: $backend_log)"
+COVERAGE_FILE=$coverage_file coverage run --parallel-mode \
+    -m uvicorn repo2ree_api.main:app --host 127.0.0.1 --port 8000 \
+    >"$backend_log" 2>&1 &
 api_pid=$!
 wait_until "backend" curl -sf http://127.0.0.1:8000/
 
 # start_agent <state-dir> <log>: one workbench agent process, backgrounded.
-# Under coverage it runs through `coverage run --parallel-mode` sharing the
-# tier's COVERAGE_FILE with the backend, so each process writes its own suffixed
-# data file and the combine at the end picks all of them up. `sigterm = true`
-# (pyproject.toml) is what makes the flush happen when stop_stack signals them.
+# It runs through `coverage run --parallel-mode` sharing the tier's COVERAGE_FILE
+# with the backend, so each process writes its own suffixed data file and the
+# combine at the end picks all of them up. `sigterm = true` (pyproject.toml) is
+# what makes the flush happen when stop_stack signals them.
 start_agent() {
-    if [ "$coverage" -eq 1 ]; then
-        WORKBENCH_API_WS_URL=ws://127.0.0.1:8000/agent/connect \
-        WORKBENCH_DOCKER_MODE=$docker_mode \
-        WORKBENCH_AGENT_STATE_DIR=$1 \
-        REPO2REE_EXEC_BUNDLE=$exec_bundle \
-        REPO2REE_TOOLS_BUNDLE=$tools_bundle \
-        COVERAGE_FILE=$coverage_file \
-        uv run --package repo2ree-agent coverage run --parallel-mode \
-            -m repo2ree_agent >"$2" 2>&1 &
-    else
-        WORKBENCH_API_WS_URL=ws://127.0.0.1:8000/agent/connect \
-        WORKBENCH_DOCKER_MODE=$docker_mode \
-        WORKBENCH_AGENT_STATE_DIR=$1 \
-        REPO2REE_EXEC_BUNDLE=$exec_bundle \
-        REPO2REE_TOOLS_BUNDLE=$tools_bundle \
-        uv run --package repo2ree-agent python -m repo2ree_agent \
-            >"$2" 2>&1 &
-    fi
+    WORKBENCH_API_WS_URL=ws://127.0.0.1:8000/agent/connect \
+    WORKBENCH_DOCKER_MODE=$docker_mode \
+    WORKBENCH_AGENT_STATE_DIR=$1 \
+    REPO2REE_EXEC_BUNDLE=$exec_bundle \
+    REPO2REE_TOOLS_BUNDLE=$tools_bundle \
+    COVERAGE_FILE=$coverage_file \
+    uv run --package repo2ree-agent coverage run --parallel-mode \
+        -m repo2ree_agent >"$2" 2>&1 &
     agent_pids+=($!)
 }
 
@@ -247,37 +253,34 @@ if [ -n "$script" ]; then
     fi
 else
     echo ">> stack ready — running playwright project=$project"
-    if [ "$coverage" -eq 1 ]; then
-        (cd gui && E2E_COVERAGE_TIER="$coverage_tier" npm exec -- playwright test \
-            -c playwright.config.ts --project="$project") || status=$?
-    else
-        (cd gui && npm exec -- playwright test \
-            -c playwright.config.ts --project="$project") || status=$?
-    fi
+    (cd gui && E2E_COVERAGE_TIER="$tier" npm exec -- playwright test \
+        -c playwright.config.ts --project="$project") || status=$?
 fi
 
 echo ">> stopping workbench agent and backend (SIGTERM so coverage can flush)"
 stop_stack
 trap - EXIT
 
-if [ "$coverage" -eq 1 ]; then
-    echo ">> backend coverage ($coverage_tier tier: server + $agents agent(s))"
-    # Fold this tier's per-process files (one per --parallel-mode process:
-    # the server and each agent) into the tier's single .coverage. No --keep —
-    # the suffixed files have no reader once merged, and collapsing them leaves
-    # the tier looking exactly like a single-process pytest tier for the
-    # cross-tier combine.
-    COVERAGE_FILE=$coverage_file coverage combine
-    COVERAGE_FILE=$coverage_file coverage report
-    # Report through the same make rule the pytest tiers use, so a stack tier
-    # gets the identical total + per-package breakdown rather than a second,
-    # drifting variant. All coverage layout lives in mk/tests.mk.
-    make -s be-coverage-report TIER="$coverage_tier"
-    # The browser half of the same tier. Keyed by tier like the python half, so
-    # a demo run no longer overwrites what an e2e run measured. Union across
-    # tiers is `make gui-coverage-browser`; there is no cross-runtime total.
-    echo ">> GUI coverage ($coverage_tier tier)"
-    (cd gui && node scripts/gen-coverage.mjs "$coverage_tier")
+echo ">> backend coverage ($tier tier: server + $agents agent(s))"
+# Fold this tier's per-process files (one per --parallel-mode process:
+# the server and each agent) into the tier's single .coverage. No --keep —
+# the suffixed files have no reader once merged, and collapsing them leaves
+# the tier looking exactly like a single-process pytest tier for the
+# cross-tier combine.
+COVERAGE_FILE=$coverage_file coverage combine
+COVERAGE_FILE=$coverage_file coverage report
+# Report through the same make rule the pytest tiers use, so a stack tier
+# gets the identical total + per-package breakdown rather than a second,
+# drifting variant. All coverage layout lives in mk/tests.mk.
+make -s be-coverage-report TIER="$tier"
+# The browser half of the same tier, when there was a browser: a --script run
+# drives none, so it has no V8 captures and produces the python half only.
+# Keyed by tier like the python half, so a demo run cannot overwrite what an
+# e2e run measured. Union across tiers is `make gui-coverage-browser`; there is
+# no cross-runtime total.
+if [ -n "$project" ]; then
+    echo ">> GUI coverage ($tier tier)"
+    (cd gui && node scripts/gen-coverage.mjs "$tier")
 fi
 
 exit "$status"

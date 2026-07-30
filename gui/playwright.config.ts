@@ -45,12 +45,12 @@ export default defineConfig({
       // Lean regression tests: no narration, no artificial delays.
       // No video (avoids the ffmpeg dependency + per-test recording cost);
       // a trace is kept only for failures, which is cheap and debuggable.
-      name: "e2e",
+      name: "e2e-gui",
       testDir: "./tests/e2e",
       // The review specs are their own project (below), so the authoring suite
       // does not also run them.
       testIgnore: ["**/review/**"],
-      outputDir: "../test-artifacts/playwright/e2e",
+      outputDir: "../test-artifacts/playwright/e2e-gui",
       // Generous per-test budget: with DinD, each workbench builds against a
       // cold (empty) image cache, so a test that builds + runs can need ~60s+.
       timeout: 180 * 1000,
@@ -67,14 +67,14 @@ export default defineConfig({
       // this repo authored earlier (examples/rees/) and reproduces all four
       // steps against its evidence, plus one narrow spec for the case it cannot
       // reach — re-fetching a live origin, which that REE does not have. Same
-      // lean setup as the e2e project — a regression suite, not a recording —
+      // lean setup as the e2e-gui project — a regression suite, not a recording —
       // but its own
       // project so a reviewer-facing change can be validated on its own, and
       // with a larger budget: a review re-runs work the author already did, on
       // top of doing it once to have something to review.
-      name: "review",
+      name: "e2e-gui-review",
       testDir: "./tests/e2e/review",
-      outputDir: "../test-artifacts/playwright/review",
+      outputDir: "../test-artifacts/playwright/e2e-gui-review",
       timeout: 420 * 1000,
       expect: { timeout: 15 * 1000 },
       use: {
@@ -87,11 +87,11 @@ export default defineConfig({
     {
       // Showcase walkthrough: full narration + always-on video recording.
       // The video is the artifact, so no trace; separate outputDir so its
-      // videos never collide with the e2e suite.
-      name: "demo",
+      // videos never collide with the e2e-gui suite.
+      name: "demo-gui",
       testDir: "./tests/demo",
       testIgnore: ["**/code-ocean/**"],
-      outputDir: "../test-artifacts/playwright/demo",
+      outputDir: "../test-artifacts/playwright/demo-gui",
       timeout: 300 * 1000,
       expect: { timeout: 10 * 1000 },
       use: {
@@ -101,11 +101,11 @@ export default defineConfig({
       },
     },
     {
-      // Long-running, external-image demos. Kept out of `make e2e-demo` so the
+      // Long-running, external-image demos. Kept out of `make demo-gui` so the
       // ordinary narrated demo remains quick and self-contained.
-      name: "code-ocean",
+      name: "demo-gui-code-ocean",
       testDir: "./tests/demo/code-ocean",
-      outputDir: "../test-artifacts/playwright/code-ocean",
+      outputDir: "../test-artifacts/playwright/demo-gui-code-ocean",
       timeout: 900 * 1000,
       expect: { timeout: 10 * 1000 },
       use: {

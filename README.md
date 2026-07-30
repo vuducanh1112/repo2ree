@@ -151,5 +151,5 @@ For the full test map, see
 [docs/engineering/testing.md](docs/engineering/testing.md).
 
 ```bash
-make e2e-tests
+make e2e-gui
 ```
