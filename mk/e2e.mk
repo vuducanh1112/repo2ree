@@ -74,9 +74,9 @@ e2e-api: e2e-bundles
 e2e-demo-code-ocean: e2e-bundles
 	$(E2E_STACK) --project code-ocean
 
-# Full-stack coverage: browser (frontend) + server and agents (backend) in one
+# Full-stack coverage: browser (GUI) + server and agents (backend) in one
 # run. Reports land in test-artifacts/coverage/<tier>/ (backend) and
-# frontend/test-artifacts/coverage/ (browser V8). Needs docker + the workbench
+# gui/test-artifacts/coverage/ (browser V8). Needs docker + the workbench
 # image + browsers, like the suites themselves.
 #
 # Two tiers, because the two stacks reach different code: `e2e` is the
@@ -125,13 +125,13 @@ store-gc:
 	scripts/workbench-cleanup.sh --store-gc $(STORE_GC_DAYS)
 
 # Run a playwright project against the already-running image-backed stack:
-# the Caddy-served frontend (its /api reverse proxy included) instead of a
+# the Caddy-served GUI (its /api reverse proxy included) instead of a
 # vite dev server, and whatever backend + agent images are behind it.
 # Nothing is started or stopped here — `make stack-up` first (or start
 # compose + agent by hand, see README).
 define playwright_against_stack  # $(1) = playwright --project name
 	@scripts/image-stack.sh check
-	cd frontend && E2E_BASE_URL=$$(../scripts/image-stack.sh frontend-url) \
+	cd gui && E2E_BASE_URL=$$(../scripts/image-stack.sh gui-url) \
 		npm exec -- playwright test -c playwright.config.ts --project=$(1)
 endef
 

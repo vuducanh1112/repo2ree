@@ -1,7 +1,7 @@
 # Unit/integration test suites and their coverage variants. The e2e suite
 # lives in mk/e2e.mk.
 
-.PHONY: fe-tests \
+.PHONY: gui-tests \
 	be-tests be-unit-tests be-integration-tests \
 	protocol-tests core-tests core-unit-tests core-integration-tests \
 	supervisor-tests supervisor-unit-tests supervisor-integration-tests \
@@ -9,12 +9,12 @@
 	coverage-unit coverage-integration coverage-context coverage-combined coverage-report
 
 # ================================================
-# Frontend — tests
+# GUI — tests
 # ================================================
 
-fe-tests:
-	@echo "Running frontend unit tests..."
-	cd frontend && npx vitest run
+gui-tests:
+	@echo "Running GUI unit tests..."
+	cd gui && npx vitest run
 
 # ================================================
 # Backend - tests

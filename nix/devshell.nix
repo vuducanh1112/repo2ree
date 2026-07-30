@@ -1,7 +1,7 @@
 # ----------------------------------------------------------------
 # Developer shell
 #
-# Tooling for working on repo2ree locally (frontend, CLI, k8s). This
+# Tooling for working on repo2ree locally (GUI, CLI, k8s). This
 # is intentionally separate from the shipped closures (./ree-executor.nix,
 # ./tools.nix): edits here are routine and must never touch the
 # reproducibility-sensitive surfaces.

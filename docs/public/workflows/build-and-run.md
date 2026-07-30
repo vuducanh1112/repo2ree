@@ -16,7 +16,7 @@ to execute it, build a runtime, and run declared commands inside that runtime.
 
 The current prototype executes work in an isolated Docker-backed workbench. The
 API sends typed commands into that workbench and streams logs and results back
-to the frontend.
+to the GUI.
 
 ## Runtime evidence
 

@@ -27,7 +27,7 @@ if (rawFiles.length === 0) {
 }
 
 const report = new CoverageReport({
-  name: "repo2ree frontend e2e coverage",
+  name: "repo2ree GUI e2e coverage",
   outputDir,
   // v8: monocart's interactive single-page report (byte/branch/function/line,
   //   source-mapped) — the reason to use monocart over plain istanbul html.
@@ -50,4 +50,4 @@ for (const file of rawFiles) {
 
 await report.generate();
 // The console-summary reporter prints the totals table above; just point at the report.
-console.log(`\nFrontend e2e coverage (${rawFiles.length} tests) -> ${outputDir}/index.html`);
+console.log(`\nGUI e2e coverage (${rawFiles.length} tests) -> ${outputDir}/index.html`);

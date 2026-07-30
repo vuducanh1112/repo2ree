@@ -1,7 +1,7 @@
 """What a client needs to know before authoring anything: the steps and the scripts.
 
 Two deployment-static catalogs, published so a machine client can plan a
-traversal cold instead of hardcoding what the frontend once hardcoded.
+traversal cold instead of hardcoding what the GUI once hardcoded.
 
 ``listReeSteps`` is the static counterpart of ``getReeState``'s per-REE
 ``ree_steps`` overlay. Where the overlay says *what is done / ready / blocked for

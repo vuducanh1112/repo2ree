@@ -1,5 +1,5 @@
 # ----------------------------------------------------------------
-# Frontend image
+# GUI image
 #
 # Builds the Vite app at `nix build` time with buildNpmPackage (reads
 # package-lock.json, fetches deps with hash verification) and ships the
@@ -9,12 +9,12 @@
 # same revision the dev shell and workbench image use — so the deployed
 # bundle can't drift onto a different Node/npm than we develop against.
 #
-# Build with:   nix build .#frontend-image
+# Build with:   nix build .#gui-image
 # Load with:    docker load < result
 #
 # VITE_API_BASE_URL is baked in at build time (empty string => same-origin
 # "/api"), matching the previous Dockerfile ARG semantics. Override with:
-#   nix build .#frontend-image --argstr viteApiBaseUrl http://host:8000
+#   nix build .#gui-image --argstr viteApiBaseUrl http://host:8000
 # (wired through flake.nix).
 # ----------------------------------------------------------------
 {
@@ -25,8 +25,8 @@
 let
   # Filter to the inputs that actually affect the build so unrelated repo
   # edits (tests, docs) don't invalidate the image hash.
-  frontendSrc = pkgs.lib.cleanSourceWith {
-    src = ../frontend;
+  guiSrc = pkgs.lib.cleanSourceWith {
+    src = ../gui;
     filter =
       path: _type:
       let
@@ -38,22 +38,22 @@ let
       && !(pkgs.lib.hasPrefix "." base && base != ".");
   };
 
-  frontendDist = pkgs.buildNpmPackage {
-    pname = "repo2ree-web";
+  guiDist = pkgs.buildNpmPackage {
+    pname = "repo2ree-gui";
     version = "0.1.0";
 
-    src = frontendSrc;
+    src = guiSrc;
 
     # The hash of the fetched npm dependency set. It is not hand-maintained:
-    # it lives in ./frontend-npm-deps.hash and is regenerated from
-    # frontend/package-lock.json by `make frontend-npm-hash` (run after any
+    # it lives in ./gui-npm-deps.hash and is regenerated from
+    # gui/package-lock.json by `make gui-npm-hash` (run after any
     # lockfile change). That target uses prefetch-npm-deps — the same tool
     # buildNpmPackage uses internally — so the file can never disagree with
     # what the build expects.
     #
     # (importNpmLock would drop the hash entirely, but it fails to prefetch
     # some transitive dev deps for this lockfile, so we stay on the hash path.)
-    npmDepsHash = pkgs.lib.fileContents ./frontend-npm-deps.hash;
+    npmDepsHash = pkgs.lib.fileContents ./gui-npm-deps.hash;
 
     # Baked into the bundle at build time.
     VITE_API_BASE_URL = viteApiBaseUrl;
@@ -75,7 +75,7 @@ let
 
   # Caddy serves two things on one origin (port 3000):
   #
-  #   /api/*  -> reverse-proxied to the backend. Because the frontend talks
+  #   /api/*  -> reverse-proxied to the backend. Because the GUI talks
   #              to the same origin it was served from, the browser makes no
   #              cross-origin request and there's no CORS to configure. The
   #              backend serves /api/v1/... natively, so no path rewrite.
@@ -102,7 +102,7 @@ let
       }
 
       handle {
-        root * ${frontendDist}
+        root * ${guiDist}
         encode gzip zstd
 
         # Hashed assets are content-addressed, so cache them forever. Everything
@@ -124,7 +124,7 @@ let
   '';
 in
 pkgs.dockerTools.buildLayeredImage {
-  name = "repo2ree-frontend";
+  name = "repo2ree-gui";
   # "local" marks never-pushed workbench builds; published channels (edge,
   # commit shas) are minted at push time in the Makefile.
   tag = "local";

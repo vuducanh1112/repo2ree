@@ -2,9 +2,9 @@
 # topic files under mk/ and `make <target>` works the same as before the
 # split.
 #
-#   mk/checks.mk   static checks (shell, nix, frontend, python)
+#   mk/checks.mk   static checks (shell, nix, gui, python)
 #   mk/docs.mk     prose linting and generated architecture diagrams
-#   mk/contracts.mk contract generation (OpenAPI + frontend API types)
+#   mk/contracts.mk contract generation (OpenAPI + GUI API types)
 #   mk/tests.mk    unit/integration suites and coverage variants
 #   mk/e2e.mk      e2e bundles, stacks, playwright runs
 #   mk/images.mk   image builds and the archive path
@@ -22,7 +22,7 @@ IMAGE_TAG ?= edge
 
 # Every deployable image, always built/tagged/pushed as a set (the
 # agent↔control-plane protocol requires matching versions).
-IMAGES = repo2ree-frontend repo2ree-backend repo2ree-agent
+IMAGES = repo2ree-gui repo2ree-backend repo2ree-agent
 
 # Where image-archives writes loadable image tarballs. Makes the build output
 # portable when building inside the dev container and loading/pushing from

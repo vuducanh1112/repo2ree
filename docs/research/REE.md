@@ -457,7 +457,7 @@ An REE moves through archival-readiness states:
 
 The target architecture is a control plane driving an isolated execution plane.
 
-The **control plane** includes the frontend, API, service layer, and host CLI.
+The **control plane** includes the GUI, API, service layer, and host CLI.
 It owns user intent, manifests, optimistic concurrency, lifecycle decisions,
 job dispatch, logs, metadata, and archive/deposit orchestration.
 
@@ -468,7 +468,7 @@ evaluates dependency observations, and writes artifacts.
 The split is:
 
 ```text
-frontend / api / host cli
+gui / api / host cli
         |
         | typed command envelope
         v

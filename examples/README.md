@@ -1,7 +1,7 @@
 # Examples
 
 Shared example inputs. Everything here is read by more than one place — the
-frontend e2e and demo suites, the API walkthrough, and by hand when trying the
+GUI e2e and demo suites, the API walkthrough, and by hand when trying the
 app — so it lives at the repository root rather than inside one suite.
 
 ## `projects/`
@@ -20,7 +20,7 @@ app loads back (workbench step → "Load REE bundle", or `POST
 ### `ree-hello-world.zip`
 
 The REE the Python hello-world demo authors
-(`frontend/tests/demo/ree-create-python-hello-world.spec.ts`), carrying its real
+(`gui/tests/demo/ree-create-python-hello-world.spec.ts`), carrying its real
 author evidence: the frozen source snapshot, the four overlay scripts, the SBOM,
 the reproducibility report, the captured experiment result, and the six author
 receipts from that run.
@@ -41,7 +41,7 @@ upload-acquired source, and the reason a review fixture with a URL origin is
 still worth adding.
 
 It is the baseline the reviewer suite reviews
-(`frontend/tests/e2e/review/lifecycle.spec.ts`). That is what its two omissions
+(`gui/tests/e2e/review/lifecycle.spec.ts`). That is what its two omissions
 buy: with no runtime artifact the build step has to genuinely rebuild from the
 author's recipe, and unsealed means the review runs against an ordinary REE
 rather than a frozen one. Because its receipts come from a real earlier run,

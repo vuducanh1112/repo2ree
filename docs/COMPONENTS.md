@@ -77,7 +77,7 @@ control plane and the bench.
 |---|---|---|---|
 | **executor** (`repo2ree-exec`) | core + protocol | one-shot: read a `Command` on stdin, run it via core, stream `LogFrame`s on stderr, emit `ActionResult` on stdout, exit. **No listening server.** Injected by the agent, so it ships with the agent — not baked into the bench image. | **bench only** |
 | **`repo2ree`** (supervisor cli) | supervisor + protocol | **target user/agent surface.** Drive the pipeline against a bench, stream logs, pull artifacts, tear down. | host — *not implemented yet* |
-| **api** (http) | supervisor + protocol | **optional** hosted UX over the supervisor (what the frontend talks to; remote/multi-user access). | host |
+| **api** (http) | supervisor + protocol | **optional** hosted UX over the supervisor (what the GUI talks to; remote/multi-user access). | host |
 
 ## Dependency rules (the invariants that keep the seam clean)
 
@@ -116,7 +116,7 @@ the agent: the supervisor speaks the agent wire protocol, and the *agent* is
 what does the `docker exec`.
 
 ```
-frontend ──http──► api ──┐
+gui ───────http──► api ──┐
                          ├─► supervisor ══ws══► agent ──docker exec──► executor ─► core
 agent/user ─► repo2ree ──┘   (library)  (AgentClient)  (DockerRuntime) (in the bench)
               (sv-cli)
@@ -236,7 +236,7 @@ service is the layer that knows about **people**.
 protocol ─ core ─ executor                         execution plane (in workbench)
 protocol ─ supervisor                              workbench control (tenant-agnostic)
               └─ service   ← DB · identity · tenancy · policy · use-cases   [HOSTED ONLY]
-                    └─ api (thin HTTP surface)  ──  frontend
+                    └─ api (thin HTTP surface)  ──  gui
 
    repo2ree (cli) ──────────► supervisor           ← bypasses the service tier entirely
 ```
@@ -283,7 +283,7 @@ control plane, the agent, and an env image that carries *no* repo2ree content.
 
 | audience | installs / pulls |
 |---|---|
-| control-plane host | `api` (and the frontend it serves) + `supervisor` + `protocol` |
+| control-plane host | `api` (and the GUI it serves) + `supervisor` + `protocol` |
 | runtime host | the **agent image** (`repo2ree-agent`): the agent process + the executor and tools closures it injects (`protocol` + `core` + `executor`, bundled — never `supervisor` / `api`) |
 | env image (the bench) | any image that keeps a process alive with a writable `/ree`; **zero repo2ree content** — the default is upstream `docker:dind`, pinned by digest in the catalog |
 
@@ -322,12 +322,12 @@ supervisor/tests/    unit: registry; manager/dispatch w/ AgentClient faked
                      integration: against a fake agent / in-process transport
 cli/tests/e2e/       future repo2ree cli: provision → acquire → build → run → seal → teardown
 api/tests/e2e/       same flow over httpx against the FastAPI app
-frontend/tests/e2e/  existing UI e2e
+gui/tests/e2e/  existing UI e2e
 ```
 
 The e2e suites should share **one flow definition** per surface (acquire → build
-→ evaluate → experiment → seal), mirroring how `frontend/tests/e2e/helpers/flow.ts`
-already factors the UI flow. Today the API/frontend path carries that coverage;
+→ evaluate → experiment → seal), mirroring how `gui/tests/e2e/helpers/flow.ts`
+already factors the UI flow. Today the API/GUI path carries that coverage;
 when the host CLI exists, it should reuse the same flow.
 
 ## Relationship to today's code

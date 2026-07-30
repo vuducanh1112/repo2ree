@@ -81,7 +81,7 @@ then hosts the fixed `/ree` layout and the tools that act on it:
 │  │  ├── upstream/    extracted source snapshot                        │ │
 │  │  ├── overlay/     REE definition: ree-scripts/ (build, activation, │ │
 │  │  │                experiments), generated recipes                  │ │
-│  │  │                        ▲ declared via the frontend             │ │
+│  │  │                        ▲ declared via the GUI             │ │
 │  │  ├── workspace/   materialized upstream + overlay view             │ │
 │  │  ├── artifacts/   produced evidence:                              │ │
 │  │  │   ├── <runtime>.tar             ◄── the REE                    │ │
@@ -176,7 +176,7 @@ pattern (cf. kubectl→kubelet, CI orchestrator→runner):
 
 ```
 CONTROL PLANE                          EXECUTION PLANE
-(frontend + api)                       (repo2ree core, in the working-env VM)
+(gui + api)                            (repo2ree core, in the working-env VM)
 ─────────────────                      ───────────────────────────────────────
 • REE management pane:                 • repo2ree-exec/core run here
     declare runtimes & experiments     • build-runtime  → docker build
@@ -189,10 +189,10 @@ CONTROL PLANE                          EXECUTION PLANE
    declaration ─► [assemble] ─► Command JSON ──repo2ree-exec──► artifacts ─►
 ```
 
-The **frontend is a declarative REE management pane**: the user declares
+The **GUI is a declarative REE management pane**: the user declares
 runtimes and experiments; those declarations populate `/ree/overlay`; the
 *functions* that actually build the environment (docker image, SBOM, score,
-runs) execute inside the working-env VM. The frontend never executes anything
+runs) execute inside the working-env VM. The GUI never executes anything
 itself.
 
 ### State ownership: declarative manifest vs. durable tree
@@ -203,7 +203,7 @@ mistake:
 - **The declarative manifest is control-plane state.** The runtime/experiment
   declarations that populate `/ree/overlay` are small, edited continuously and
   persisted through the REE/workspace API
-  ([useReeIntentSync.ts](../frontend/src/shell/state/ree-editor/workspace-sync/useReeIntentSync.ts),
+  ([useReeIntentSync.ts](../gui/src/shell/state/ree-editor/workspace-sync/useReeIntentSync.ts),
   [authoring/intent.py](../api/src/repo2ree_api/authoring/intent.py)),
   and guarded by optimistic concurrency (`expectedVersion`). That concurrency
   check must stay **single-machine** — keep the manifest in host storage / the
@@ -224,7 +224,7 @@ also why the autosave path above must not depend on one.
 
 ### The command envelope is the contract
 
-Because the api/frontend defer execution, the typed `Command` envelope and
+Because the api/GUI defer execution, the typed `Command` envelope and
 `repo2ree-exec` are the seam between the two planes:
 
 - **Structured I/O:** `repo2ree-exec` reads typed JSON, streams structured
@@ -555,7 +555,7 @@ GC are deferrable — they're bolt-on once the envelope is right.
 
 ### Two rules this imposes
 
-1. **Assemble commands server-side, never in the frontend.** The frontend sends
+1. **Assemble commands server-side, never in the GUI.** The GUI sends
    structured *declarations/intent* (it's FCIS — intent is just data); a **pure
    core function** translates intent → concrete command; the working env runs it.
    Letting the browser hand raw command strings to a VM is an injection straight

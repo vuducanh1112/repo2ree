@@ -1,4 +1,4 @@
-# Control plane only: frontend + backend. Workbench agents run separately
+# Control plane only: GUI + backend. Workbench agents run separately
 # (anywhere with a container runtime) and dial the backend over an outbound
 # WebSocket — see docs/engineering/deployment.md for how to start one.
 services:
@@ -23,8 +23,8 @@ services:
     # a container runtime goes through a connected agent over its outbound
     # WebSocket.
 
-  frontend:
-    image: ${REPO2REE_FRONTEND_IMAGE:-docker.io/vuducanh1112/repo2ree-frontend:edge}
+  gui:
+    image: ${REPO2REE_GUI_IMAGE:-docker.io/vuducanh1112/repo2ree-gui:edge}
     depends_on:
       - backend
     ports:

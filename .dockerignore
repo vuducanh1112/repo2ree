@@ -8,8 +8,8 @@
 **/.mypy_cache
 **/.ruff_cache
 **/tests
-frontend/node_modules
-frontend/dist
-frontend/test-results
-test-results
+gui/node_modules
+gui/dist
+gui/test-artifacts
+test-artifacts
 node_modules

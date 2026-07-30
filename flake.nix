@@ -16,7 +16,7 @@
   #   - agent-image.nix     the workbench agent + embedded exec/tools bundles
   #                         (the reproducibility surface: every bench executes
   #                         through what it injects)
-  #   - frontend-image.nix  the deployed web bundle behind caddy
+  #   - gui-image.nix       the deployed web bundle behind caddy
   # All build against the single pinned nixpkgs below, so the images and
   # the dev env can never drift onto different package revisions.
   outputs =
@@ -37,7 +37,7 @@
         # string => same-origin "/api", which is what the compose setup uses
         # (caddy and the API share an origin via the compose network / proxy).
         # For a non-same-origin backend, set viteApiBaseUrl here.
-        frontendImage = import ./nix/frontend-image.nix {
+        guiImage = import ./nix/gui-image.nix {
           inherit pkgs;
           viteApiBaseUrl = "";
         };
@@ -51,7 +51,7 @@
           exec-bundle = import ./nix/exec-bundle.nix { inherit pkgs; };
           tools-bundle = import ./nix/tools-bundle.nix { inherit pkgs; };
           agent-image = import ./nix/agent-image.nix { inherit pkgs; };
-          frontend-image = frontendImage;
+          gui-image = guiImage;
           default = agent-image;
         };
       }

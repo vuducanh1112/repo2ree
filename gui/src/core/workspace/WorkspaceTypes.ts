@@ -7,7 +7,7 @@ export interface WorkspaceBinaryDownload {
 }
 
 // Display-ready source-repository facts, computed by the backend
-// (repo2ree_core.source_repo) and passed through untouched. The frontend never
+// (repo2ree_core.source_repo) and passed through untouched. The GUI never
 // re-derives these — it only renders them.
 export interface SourceRepoMetadata {
   name: string;

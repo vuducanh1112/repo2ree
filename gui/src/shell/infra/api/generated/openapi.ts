@@ -831,7 +831,7 @@ export interface paths {
         };
         /**
          * List Workbench Images
-         * @description The base images the frontend offers at provision time.
+         * @description The base images the GUI offers at provision time.
          */
         get: operations["listWorkbenchImages"];
         put?: never;

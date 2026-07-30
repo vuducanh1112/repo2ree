@@ -8,6 +8,6 @@
 api-openapi:
 	python -m repo2ree_api.export_openapi
 
-# Regenerates the frontend TypeScript view of the committed OpenAPI contract.
+# Regenerates the GUI TypeScript view of the committed OpenAPI contract.
 api-types:
-	npm --prefix frontend run api:types
+	npm --prefix gui run api:types

@@ -1,6 +1,6 @@
 // Pure classifier over the backend's per-step consistency report (recorded
 // run receipts vs. the current workspace tree, computed by
-// repo2ree_core.receipts and carried on the workspace payload). The frontend
+// repo2ree_core.receipts and carried on the workspace payload). The GUI
 // never re-derives digests — it only maps the report to seal-gate warnings
 // and step-badge staleness. Saving a script flips the derived state
 // automatically: the refetched payload carries a new current digest.

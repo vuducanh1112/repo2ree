@@ -4,7 +4,7 @@
 > or operating repo2ree itself. User-facing service guides should live outside
 > `docs/engineering/`.
 
-repo2ree is a Python workspace plus a React/Vite frontend. Workbench
+repo2ree is a Python workspace plus a React/Vite GUI. Workbench
 containers are driven by the agent, so most realistic flows need a reachable
 Docker daemon. Every tier — the browser e2e/demo runs and the docker-gated
 integration tiers — provisions the production default bench: upstream
@@ -36,7 +36,7 @@ Without Nix, install equivalent tools yourself:
 
 - Python `~=3.13`
 - `uv`
-- Node/npm compatible with the frontend lockfile
+- Node/npm compatible with the GUI lockfile
 - Docker
 - Playwright browser dependencies, if running e2e tests
 
@@ -47,7 +47,7 @@ From the repository root:
 ```bash
 cp .env.example .env
 uv sync --all-packages
-npm --prefix frontend ci
+npm --prefix gui ci
 ```
 
 Important local paths:
@@ -56,7 +56,7 @@ Important local paths:
 |---|---|
 | `.repo2ree/` | Local API/runtime state. Gitignored. |
 | `.venv/` | Python virtualenv created by `uv` or `.envrc`. Gitignored. |
-| `frontend/node_modules/` | Frontend npm dependencies. Gitignored. |
+| `gui/node_modules/` | GUI npm dependencies. Gitignored. |
 | `test-artifacts/` | Logs, traces, coverage, Playwright output. Gitignored. |
 
 ## Run The App Locally
@@ -67,16 +67,16 @@ Start the API:
 uv run --package repo2ree-api uvicorn repo2ree_api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Start the frontend in another shell:
+Start the GUI in another shell:
 
 ```bash
-VITE_API_BASE_URL=http://localhost:8000 npm --prefix frontend run dev -- --host
+VITE_API_BASE_URL=http://localhost:8000 npm --prefix gui run dev -- --host
 ```
 
 Then open the URL printed by Vite, usually `http://localhost:5173`.
 
-The frontend reads `VITE_API_BASE_URL` at build/dev-server time. In local dev,
-point it at the API. In the Docker demo image, the frontend uses same-origin
+The GUI reads `VITE_API_BASE_URL` at build/dev-server time. In local dev,
+point it at the API. In the Docker demo image, the GUI uses same-origin
 `/api` and Caddy proxies API traffic to the backend service.
 
 ## Workbench Benches
@@ -123,7 +123,7 @@ The API reads `.env` through `pydantic-settings`. Useful local variables:
 | `OTEL_EXPORTER_OTLP_HEADERS` | unset | Headers for authenticated OTLP ingest (e.g. ClickStack's `authorization=<key>`). |
 | `TRACE_FILE` | unset | Local NDJSON trace sink for API/agent spans when no collector is used. |
 | `LOG_LEVEL` | `INFO` | Python log level for API, agent, and executor processes. |
-| `VITE_API_BASE_URL` | unset | Frontend API origin for local Vite builds/dev server. |
+| `VITE_API_BASE_URL` | unset | GUI API origin for local Vite builds/dev server. |
 
 Containerized dev/demo runs may also need `DOCKER_GID`, the numeric group id of
 the host Docker socket:
@@ -145,7 +145,7 @@ The Python workspace members are:
 | `agent` | The deployable that owns the container runtime and injects the executor/tools bundles. |
 | `api` | FastAPI surface over the supervisor and service storage. |
 
-The frontend lives under `frontend/` and is a Vite/React app.
+The GUI lives under `gui/` and is a Vite/React app.
 
 ## Common Commands
 
@@ -153,11 +153,11 @@ The frontend lives under `frontend/` and is a Vite/React app.
 # Python workspace dependencies
 uv sync --all-packages
 
-# Frontend dependencies
-npm --prefix frontend ci
+# GUI dependencies
+npm --prefix gui ci
 
-# Frontend checks
-make fe-checks
+# GUI checks
+make gui-checks
 
 # Backend checks
 make be-checks

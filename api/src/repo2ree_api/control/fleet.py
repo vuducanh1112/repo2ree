@@ -10,7 +10,7 @@ schedules a send on the loop, and each inbound message is handed to
 ``/api/v1/agents`` is the read-only fleet view. An agent appears there for
 exactly as long as it holds its socket; the registry drops it on disconnect, so
 presence in the list *is* liveness. This is the control-plane surface behind
-the frontend's agent-management pane.
+the GUI's agent-management pane.
 
 ``/api/v1/workbench/images`` publishes the base images provisioning may pick
 from. Which images those are is configured on ``Settings.WORKBENCH_IMAGE_CATALOG``
@@ -146,7 +146,7 @@ class WorkbenchImageCatalog(BaseModel):
     responses=ERROR_RESPONSES,
 )
 def list_workbench_images() -> WorkbenchImageCatalog:
-    """The base images the frontend offers at provision time."""
+    """The base images the GUI offers at provision time."""
     return WorkbenchImageCatalog(
         images=list(WORKBENCH_IMAGE_CATALOG),
         default_id=default_workbench_image().id,

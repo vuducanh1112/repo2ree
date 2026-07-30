@@ -14,7 +14,7 @@ members = ["protocol", "core", "supervisor", "api", "executor", "agent"]
 dev = [
     "httpx~=0.28.1",
     # Architecture contracts (`make arch-checks`): the backend counterpart of the
-    # frontend's dependency-cruiser rules. Neither ruff nor mypy sees the import
+    # GUI's dependency-cruiser rules. Neither ruff nor mypy sees the import
     # graph, so layering is only enforced here.
     "import-linter~=2.13.0",
     # Property-based testing (the `property`-marked tests). Resolves transitively
@@ -210,8 +210,8 @@ extend-ignore = [
 # Architecture contracts (`make arch-checks`)
 # ================================================
 #
-# The backend counterpart of the frontend's dependency-cruiser rules
-# (frontend/.dependency-cruiser.js, run by fe-checks). Ruff and mypy never look
+# The backend counterpart of the GUI's dependency-cruiser rules
+# (gui/.dependency-cruiser.js, run by gui-checks). Ruff and mypy never look
 # at the import graph, so nothing else in the backend gate can see a layering
 # violation or an import cycle — every contract below was a real defect at some
 # point rather than a hypothetical.

@@ -1,7 +1,7 @@
 import { defineConfig } from "@playwright/test";
 
 // When E2E_BASE_URL is set, the tests run against an externally provided
-// frontend (e.g. the compose image stack on :3000) and no vite dev server is
+// GUI (e.g. the compose image stack on :3000) and no vite dev server is
 // started. Default: playwright starts its own dev server on :4173.
 const externalBaseURL = process.env.E2E_BASE_URL;
 

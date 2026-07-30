@@ -5,7 +5,7 @@
 # structure is the one you meant, which is a different job from asserting that
 # today's structure matches yesterday's rules.
 
-.PHONY: docs-lint docs-diagrams be-graph be-graphs be-graph-all fe-graph
+.PHONY: docs-lint docs-diagrams be-graph be-graphs be-graph-all gui-graph
 
 # ================================================
 # Prose linting
@@ -35,9 +35,9 @@ DIAGRAM_DIR ?= dist/diagrams
 # Declared empty so `make --warn-undefined-variables` stays quiet for anyone
 # who runs these without passing extra flags.
 ARGS ?=
-FE_ARGS ?=
+GUI_ARGS ?=
 
-docs-diagrams: be-graphs be-graph-all fe-graph
+docs-diagrams: be-graphs be-graph-all gui-graph
 
 # Backend, via grimp — the engine import-linter itself is built on — reading
 # the root_packages and layers contracts straight out of pyproject.toml.
@@ -84,30 +84,30 @@ be-graph-all:
 	python scripts/arch_graph.py --collapse $(ARGS) -f svg -o $(DIAGRAM_DIR)/workspace.svg
 	python scripts/arch_graph.py --all $(ARGS) -f svg -o $(DIAGRAM_DIR)/workspace-modules.svg
 
-# Frontend, via dependency-cruiser's own dot reporter — the same cruise
-# fe-checks runs, rendered instead of asserted, so rule violations show up
+# GUI, via dependency-cruiser's own dot reporter — the same cruise
+# gui-checks runs, rendered instead of asserted, so rule violations show up
 # coloured in the picture.
 #
 # The collapse pattern is the substance of the target. dependency-cruiser's
 # built-in `archi` reporter folds to one level under src/, which here yields
 # just `core` and `shell` — true, and too coarse to see anything. Folding one
 # level deeper inside shell/ produces the boundary the rules actually police:
-# core, and shell's infra / data / ui / app / state. Override FE_COLLAPSE to
-# zoom (or pass an empty value for the full module graph); FE_ARGS forwards
+# core, and shell's infra / data / ui / app / state. Override GUI_COLLAPSE to
+# zoom (or pass an empty value for the full module graph); GUI_ARGS forwards
 # flags such as --focus.
 #
 # The cruise writes DOT to a file rather than piping straight into `dot`: in a
 # pipeline the shell reports only the last command's status, so a cruise that
 # died would still leave make green and the output holding an empty SVG.
-FE_COLLAPSE ?= ^src/(core|shell/[^/]+)/
-fe-graph:
+GUI_COLLAPSE ?= ^src/(core|shell/[^/]+)/
+gui-graph:
 	@mkdir -p $(DIAGRAM_DIR)
-	cd frontend && npx depcruise src \
+	cd gui && npx depcruise src \
 		--include-only '^src' \
 		--output-type dot \
-		$(if $(FE_COLLAPSE),--collapse '$(FE_COLLAPSE)',) \
-		$(FE_ARGS) \
-		--output-to ../$(DIAGRAM_DIR)/frontend.dot
-	dot -Tsvg -o $(DIAGRAM_DIR)/frontend.svg $(DIAGRAM_DIR)/frontend.dot
-	@rm -f $(DIAGRAM_DIR)/frontend.dot
-	@echo "wrote $(DIAGRAM_DIR)/frontend.svg"
+		$(if $(GUI_COLLAPSE),--collapse '$(GUI_COLLAPSE)',) \
+		$(GUI_ARGS) \
+		--output-to ../$(DIAGRAM_DIR)/gui.dot
+	dot -Tsvg -o $(DIAGRAM_DIR)/gui.svg $(DIAGRAM_DIR)/gui.dot
+	@rm -f $(DIAGRAM_DIR)/gui.dot
+	@echo "wrote $(DIAGRAM_DIR)/gui.svg"

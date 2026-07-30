@@ -1,7 +1,7 @@
 # API end-to-end walkthrough
 
-The pure-API counterpart of `frontend/tests/e2e`: a REE authored end to end over
-HTTP, no frontend. It drives only the public, automation-ready surface — the same
+The pure-API counterpart of `gui/tests/e2e`: a REE authored end to end over
+HTTP, no GUI. It drives only the public, automation-ready surface — the same
 calls any automation client (an AI agent included) makes.
 
 It is an **honest** recording, not a staged one. Every API interaction is a real

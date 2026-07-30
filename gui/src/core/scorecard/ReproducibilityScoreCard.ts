@@ -2,7 +2,7 @@
 // level (R0..R5), computed by the backend purely from the REE's persisted
 // record (intent + session + run receipts) — see the core module
 // `reproducibility_scorecard.py` for the ladder's normative choices. The
-// frontend only renders it; nothing here derives new facts.
+// GUI only renders it; nothing here derives new facts.
 
 export type ScoreCardCategoryKey = "source" | "runtime" | "activation" | "experiments" | "results";
 

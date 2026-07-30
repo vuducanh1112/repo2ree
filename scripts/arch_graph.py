@@ -2,7 +2,7 @@
 
 ``lint-imports`` answers "is the graph legal?" and prints nothing when it is.
 This answers "what does the graph look like?" — the picture dependency-cruiser
-draws for the frontend, for the same reason: a contract tells you a rule held,
+draws for the GUI, for the same reason: a contract tells you a rule held,
 a diagram tells you whether the shape it describes is the one you meant.
 
 Both read the same source. import-linter is built on grimp, and this builds the

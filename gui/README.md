@@ -1,6 +1,6 @@
 # repo2ree Web UI
 
-Simple Vite + React frontend for the repo2ree API.
+Simple Vite + React GUI for the repo2ree API.
 
 ## Engineering docs
 
@@ -11,9 +11,9 @@ docs:
 - [Deployment notes](../docs/engineering/deployment.md)
 - [Testing guide](../docs/engineering/testing.md)
 
-## Local frontend loop
+## Local GUI loop
 
 ```bash
-npm --prefix frontend ci
-VITE_API_BASE_URL=http://localhost:8000 npm --prefix frontend run dev -- --host
+npm --prefix gui ci
+VITE_API_BASE_URL=http://localhost:8000 npm --prefix gui run dev -- --host
 ```

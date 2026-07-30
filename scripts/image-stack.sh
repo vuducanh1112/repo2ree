@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # Bring the image-backed demo stack up or down: the compose control plane
-# (frontend + backend, :local tags) plus the workbench agent, which the
+# (GUI + backend, :local tags) plus the workbench agent, which the
 # control-plane compose deliberately doesn't manage — it runs from its own
 # docker-compose.agent.yml (see docker-compose.yml).
 #
 #   image-stack.sh up            start compose + agent, wait until ready
 #   image-stack.sh down          remove the agent container and the compose stack
 #   image-stack.sh down --volumes  ... and every volume the run created
-#   image-stack.sh check         verify backend, connected agent, and frontend
-#   image-stack.sh frontend-url  print the frontend base URL for this context
+#   image-stack.sh check         verify backend, connected agent, and GUI
+#   image-stack.sh gui-url  print the GUI base URL for this context
 #   image-stack.sh api-url       print the backend base URL for this context
 #
 # Images default to the :local workbench builds (`up` expects them to exist —
@@ -19,7 +19,7 @@
 #   STACK_IMAGE_REPO=docker.io/vuducanh1112 STACK_IMAGE_TAG=edge \
 #     scripts/image-stack.sh up
 #
-# (or override an individual image with STACK_FRONTEND_IMAGE /
+# (or override an individual image with STACK_GUI_IMAGE /
 # STACK_BACKEND_IMAGE / STACK_AGENT_IMAGE.)
 #
 # STACK_AGENTS=<n> runs n agent instances (default 1) — instance i > 1 gets
@@ -33,11 +33,11 @@
 # From inside a container on the compose network (the devcontainer), those
 # ports aren't on localhost, so when the compose service name `backend`
 # resolves, the service DNS names are used instead. Override with
-# STACK_API_URL / STACK_FRONTEND_URL if neither fits.
+# STACK_API_URL / STACK_GUI_URL if neither fits.
 set -euo pipefail
 
 usage() {
-    echo "usage: $0 up|down [--volumes]|check|frontend-url|api-url" >&2
+    echo "usage: $0 up|down [--volumes]|check|gui-url|api-url" >&2
     exit 2
 }
 
@@ -53,22 +53,22 @@ stack_agents=${STACK_AGENTS:-1}
 
 image_prefix=${STACK_IMAGE_REPO:+${STACK_IMAGE_REPO}/}
 image_tag=${STACK_IMAGE_TAG:-local}
-frontend_image=${STACK_FRONTEND_IMAGE:-${image_prefix}repo2ree-frontend:$image_tag}
+gui_image=${STACK_GUI_IMAGE:-${image_prefix}repo2ree-gui:$image_tag}
 backend_image=${STACK_BACKEND_IMAGE:-${image_prefix}repo2ree-backend:$image_tag}
 agent_image=${STACK_AGENT_IMAGE:-${image_prefix}repo2ree-agent:$image_tag}
 
 resolve_urls() {
     if getent hosts backend >/dev/null 2>&1; then
         api_url=${STACK_API_URL:-http://backend:8000}
-        frontend_url=${STACK_FRONTEND_URL:-http://frontend:3000}
+        gui_url=${STACK_GUI_URL:-http://gui:3000}
     else
         api_url=${STACK_API_URL:-http://localhost:8000}
-        frontend_url=${STACK_FRONTEND_URL:-http://localhost:3000}
+        gui_url=${STACK_GUI_URL:-http://localhost:3000}
     fi
 }
 
 compose_stack() {
-    REPO2REE_FRONTEND_IMAGE=$frontend_image \
+    REPO2REE_GUI_IMAGE=$gui_image \
     REPO2REE_BACKEND_IMAGE=$backend_image \
         docker compose "$@"
 }
@@ -129,7 +129,7 @@ agents_connected() {
 
 up() {
     resolve_urls
-    for img in "$frontend_image" "$backend_image" "$agent_image"; do
+    for img in "$gui_image" "$backend_image" "$agent_image"; do
         case "$img" in
             # Registry ref: always pull. Compose alone would reuse a stale
             # local copy of a moving tag like :edge (its default pull policy
@@ -140,7 +140,7 @@ up() {
         esac
     done
 
-    echo ">> starting compose control plane ($frontend_image, $backend_image)"
+    echo ">> starting compose control plane ($gui_image, $backend_image)"
     compose_stack up -d
 
     echo ">> starting $stack_agents workbench agent(s) ($agent_image)"
@@ -168,8 +168,8 @@ up() {
     resolve_urls
     wait_until "backend" curl -sf "$api_url/"
     wait_until "$stack_agents workbench agent(s)" agents_connected "$stack_agents"
-    wait_until "frontend" curl -sf "$frontend_url/"
-    echo ">> stack up — frontend at $frontend_url"
+    wait_until "gui" curl -sf "$gui_url/"
+    echo ">> stack up — GUI at $gui_url"
 }
 
 # down [--volumes]: stop the stack. With --volumes, also drop every volume the
@@ -203,15 +203,15 @@ check() {
         || { echo "backend not reachable at $api_url — start the image stack first (make stack-up)" >&2; exit 1; }
     agents_connected 1 \
         || { echo "no workbench agent connected — start the agent container (make stack-up)" >&2; exit 1; }
-    curl -sf "$frontend_url/" >/dev/null \
-        || { echo "frontend not reachable at $frontend_url — start the image stack first (make stack-up)" >&2; exit 1; }
+    curl -sf "$gui_url/" >/dev/null \
+        || { echo "GUI not reachable at $gui_url — start the image stack first (make stack-up)" >&2; exit 1; }
 }
 
 case "${1:-}" in
     up) up ;;
     down) down "${2:-}" ;;
     check) check ;;
-    frontend-url) resolve_urls; echo "$frontend_url" ;;
+    gui-url) resolve_urls; echo "$gui_url" ;;
     api-url) resolve_urls; echo "$api_url" ;;
     *) usage ;;
 esac

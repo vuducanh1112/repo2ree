@@ -27,8 +27,8 @@ endef
 # a failed gate leaves the previous certificate in place, and a stale
 # certificate never matches new content anyway.
 commit-gate:
-	$(MAKE) scripts-checks fe-checks be-checks
-	$(MAKE) fe-tests be-unit-tests core-integration-tests
+	$(MAKE) scripts-checks gui-checks be-checks
+	$(MAKE) gui-tests be-unit-tests core-integration-tests
 	scripts/commit-gate-stamp.sh write
 	@echo ">> commit gate green — certificate written for the current tree"
 
@@ -42,9 +42,9 @@ commit-gate:
 # the authoring pass already gives. When it passes, the :local images it just
 # built are exactly what push-rev will publish.
 push-gate: require-clean-tree
-	$(MAKE) scripts-checks fe-checks be-checks
+	$(MAKE) scripts-checks gui-checks be-checks
 	$(MAKE) e2e-bundles
-	$(MAKE) fe-tests be-tests
+	$(MAKE) gui-tests be-tests
 	$(MAKE) e2e-tests
 	$(MAKE) e2e-review
 	$(MAKE) e2e-tests-stack

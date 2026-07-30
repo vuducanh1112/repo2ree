@@ -17,7 +17,7 @@
 # E2E_COVERAGE=1 so the jsCoverage fixture captures browser V8 coverage, and
 # every process gets a graceful SIGTERM at the end so coverage flushes its data
 # on shutdown. Two reports come out: backend (test-artifacts/coverage/<tier>/)
-# and frontend (frontend/test-artifacts/coverage/).
+# and GUI (gui/test-artifacts/coverage/).
 #
 # <tier> names which measured tier this run belongs to — `e2e` for the
 # regression stack, `demo` for the narrated ones — and selects the tier's own
@@ -111,7 +111,7 @@ if [ "$coverage" -eq 1 ]; then
     # process, so a previous run's files would otherwise be combined in as well
     # and report a union of two runs as one.
     rm -f "$coverage_file" "$coverage_file".*
-    rm -rf frontend/test-artifacts/coverage-raw
+    rm -rf gui/test-artifacts/coverage-raw
 else
     backend_log=$root/test-artifacts/api-server.log
     agent_log_dir=$root/test-artifacts
@@ -240,10 +240,10 @@ if [ -n "$script" ]; then
 else
     echo ">> stack ready — running playwright project=$project"
     if [ "$coverage" -eq 1 ]; then
-        (cd frontend && E2E_COVERAGE=1 npm exec -- playwright test \
+        (cd gui && E2E_COVERAGE=1 npm exec -- playwright test \
             -c playwright.config.ts --project="$project") || status=$?
     else
-        (cd frontend && npm exec -- playwright test \
+        (cd gui && npm exec -- playwright test \
             -c playwright.config.ts --project="$project") || status=$?
     fi
 fi
@@ -265,8 +265,8 @@ if [ "$coverage" -eq 1 ]; then
     # gets the identical total + per-package breakdown rather than a second,
     # drifting variant. All coverage layout lives in mk/tests.mk.
     make -s coverage-report TIER="$coverage_tier"
-    echo ">> frontend coverage"
-    (cd frontend && node scripts/gen-frontend-coverage.mjs)
+    echo ">> GUI coverage"
+    (cd gui && node scripts/gen-coverage.mjs)
 fi
 
 exit "$status"

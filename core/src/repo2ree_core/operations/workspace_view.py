@@ -85,7 +85,7 @@ def get_workspace(storage_root: Path, ree_id: str, *, include_content: bool = Tr
         author_receipts=build_author_receipt_set(layout, intent, session),
         # Operational overlay — done / ready / blocked per authoring step.
         # Completion is "a successful run is recorded" (the receipt-step keys),
-        # matching the frontend badges and the scorecard; staleness stays on the
+        # matching the GUI badges and the scorecard; staleness stays on the
         # consistency report above. Evaluate records no receipt, so its report
         # artifact is the signal the receipt keys can't carry.
         ree_steps=build_ree_step_states(

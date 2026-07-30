@@ -7,14 +7,14 @@
 
 | Target | What it runs |
 |---|---|
-| `make fe-checks` | Frontend TypeScript, Biome, knip, dependency-cruiser. |
-| `make fe-tests` | Frontend Vitest tests. |
+| `make gui-checks` | GUI TypeScript, Biome, knip, dependency-cruiser. |
+| `make gui-tests` | GUI Vitest tests. |
 | `make be-checks` | Ruff, Ruff format, and mypy across Python workspace packages. |
 | `make scripts-checks` | ShellCheck over `scripts/*.sh`. |
 | `make be-unit-tests` | Container-free backend unit tests. |
 | `make be-integration-tests` | Integration tiers, including Docker-gated workbench tests when Docker and the image exist. |
 | `make be-tests` | Backend unit plus integration tests. |
-| `make e2e-tests` | Playwright e2e project against a live API and frontend dev server. |
+| `make e2e-tests` | Playwright e2e project against a live API and GUI dev server. |
 | `make e2e-review` | Playwright review project: the reviewer-side reproduction specs. |
 | `make e2e-demo` | Playwright demo walkthrough project with video. |
 | `make e2e-tests-images` / `e2e-review-images` / `e2e-demo-images` | Suite / review / demo against an already-running image-backed stack. |
@@ -26,7 +26,7 @@
 | `make store-gc` | Evict bundle store caches unused for `STORE_GC_DAYS` (14), keeping the live one. |
 | `make commit-gate` | Fast pre-commit gate: static checks + all container-free test tiers. Certifies the tree it passed on; the pre-commit hook checks that certificate. |
 | `make push-gate` | The pre-publish gate: clean tree, all checks and tests, e2e source-run and image-backed. |
-| `make coverage-unit` / `coverage-integration` / `coverage-e2e` / `coverage-demo` | Coverage for one tier, into its own report. `coverage-e2e` / `coverage-demo` also produce browser-side frontend coverage. |
+| `make coverage-unit` / `coverage-integration` / `coverage-e2e` / `coverage-demo` | Coverage for one tier, into its own report. `coverage-e2e` / `coverage-demo` also produce browser-side GUI coverage. |
 | `make coverage-combined` | Union of whichever tiers have been measured on this checkout. |
 | `make coverage-context` | Per-test coverage attribution over the two pytest tiers. |
 
@@ -195,33 +195,33 @@ Data layout is configured in `pyproject.toml`; one directory per tier rather
 than one suffixed file per tier, because `coverage combine` treats sibling
 `.coverage.*` files as its own parallel-mode output and consumes them.
 
-## Frontend Checks And Tests
+## GUI Checks And Tests
 
 Install dependencies:
 
 ```bash
-npm --prefix frontend ci
+npm --prefix gui ci
 ```
 
-Run frontend checks:
+Run GUI checks:
 
 ```bash
-make fe-checks
+make gui-checks
 ```
 
-Run frontend unit tests:
+Run GUI unit tests:
 
 ```bash
-make fe-tests
+make gui-tests
 ```
 
-`make fe-checks` runs TypeScript for the app and e2e configs, Biome, knip, and
+`make gui-checks` runs TypeScript for the app and e2e configs, Biome, knip, and
 dependency-cruiser.
 
 ## End-To-End Tests
 
-The Playwright config is `frontend/playwright.config.ts`. It starts the Vite dev
-server on `127.0.0.1:4173` and points the frontend at
+The Playwright config is `gui/playwright.config.ts`. It starts the Vite dev
+server on `127.0.0.1:4173` and points the GUI at
 `http://localhost:8000`.
 
 Run e2e tests through Make:
@@ -231,10 +231,10 @@ make e2e-tests
 ```
 
 That target starts the backend on `127.0.0.1:8000`, waits for it to respond,
-then runs the Playwright `e2e` project from `frontend/`.
+then runs the Playwright `e2e` project from `gui/`.
 
 The reviewer side of the lifecycle is a separate project under
-`frontend/tests/e2e/review/` — a spec per review step, each reproducing that
+`gui/tests/e2e/review/` — a spec per review step, each reproducing that
 step in an isolated namespace and comparing the result with the author's
 recorded evidence, plus `bundled.spec.ts` for the second evidence basis: an REE
 that carries its own source and runtime, reviewed without reaching for an
@@ -259,8 +259,8 @@ servers — `make e2e-tests-stack` / `make e2e-review-stack` /
 `make stack-up` (compose control plane + agent container, via
 `scripts/image-stack.sh`), run the playwright project, `make stack-clean`. With a
 stack already up, `make e2e-tests-images` / `make e2e-review-images` /
-`make e2e-demo-images` run just the playwright part. Playwright is pointed at the Caddy-served frontend (via `E2E_BASE_URL`,
-which also skips the Vite dev server), so the frontend image's `/api` reverse
+`make e2e-demo-images` run just the playwright part. Playwright is pointed at the Caddy-served GUI (via `E2E_BASE_URL`,
+which also skips the Vite dev server), so the GUI image's `/api` reverse
 proxy and the backend/agent images are what get exercised. The stack is
 addressed as `localhost` from the host or via compose service DNS from the
 devcontainer; `scripts/image-stack.sh` picks automatically.
@@ -305,7 +305,7 @@ coverage-capable); the image-backed variants are the deployment gate before
 pushing or promoting images.
 
 `make commit-gate` is the fast pre-commit companion: static checks plus every
-test tier that needs no docker, nix builds, or browsers (frontend unit,
+test tier that needs no docker, nix builds, or browsers (GUI unit,
 backend unit, core integration). It takes well under a minute warm — that's
 the point; commits should stay cheap. The exhaustive counterpart is the push
 gate below.
@@ -391,7 +391,7 @@ Useful locations:
 | `test-artifacts/coverage/e2e/backend.log` | Backend log for e2e coverage runs. |
 | `test-artifacts/coverage/` | Backend and e2e coverage reports. |
 | `test-artifacts/property-based-tests/` | Hypothesis home: `<package>/` example databases plus its own caches. |
-| `frontend/test-artifacts/playwright/` | Playwright traces, screenshots, and videos. |
+| `gui/test-artifacts/playwright/` | Playwright traces, screenshots, and videos. |
 | `test-artifacts/traces/api-integration/` | API integration trace files and workbench log snapshots. |
 | `dist/bundles/{exec,tools}` | Executor/tools bundles the agent injects — a build input, not an artifact. |
 
@@ -419,6 +419,6 @@ pytest executor/tests
 For one Playwright spec:
 
 ```bash
-cd frontend
+cd gui
 npm exec -- playwright test -c playwright.config.ts --project=e2e tests/e2e/source.spec.ts
 ```

@@ -11,7 +11,7 @@ durable **trust over time**.
 
 Reproducibility = same inputs + same environment → **same outputs**.
 
-`ReeSpec` (`frontend/src/core/ree/ReeSpec.ts`) now captures a runnable
+`ReeSpec` (`gui/src/core/ree/ReeSpec.ts`) now captures a runnable
 `verify_script` and declared `output_paths`, and the backend can run experiments
 through the typed command envelope
 (`api/src/repo2ree_api/authoring/stages.py`,
@@ -36,7 +36,7 @@ publication-grade loop.
 - A green/red "this rerun matched the author baseline" verdict, distinct from
   both "this author run validated" and "this REE has strong evidence."
 
-Frontend-visible today: experiment run actions exist, and verify scripts can
+GUI-visible today: experiment run actions exist, and verify scripts can
 produce pass/fail verdicts plus named check rows. The missing surface is a
 durable receipt view:
 baseline vs. rerun, predecessor, captured artifacts, and claim-level comparison

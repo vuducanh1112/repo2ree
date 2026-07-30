@@ -116,7 +116,6 @@ libc
 interop
 monorepos
 repos?
-frontend
 backend
 upstreams
 runtimes

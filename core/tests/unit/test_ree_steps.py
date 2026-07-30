@@ -96,7 +96,7 @@ def test_recorded_build_unblocks_sbom_and_activation() -> None:
 
 def test_completion_is_run_presence_not_freshness() -> None:
     # A recorded build stays done regardless of any later staleness — completion
-    # is "a run happened", the same signal the frontend badges use. (Staleness is
+    # is "a run happened", the same signal the GUI badges use. (Staleness is
     # the consistency report's concern, not this overlay's.)
     session = ReeSession(source_available=True)
     states = build_ree_step_states(

@@ -1,7 +1,7 @@
-# Static checks: shell scripts, nix, frontend, python. Prose linting and the
+# Static checks: shell scripts, nix, GUI, python. Prose linting and the
 # generated architecture diagrams live in docs.mk.
 
-.PHONY: scripts-checks nix-checks fe-checks be-checks arch-checks api-types-check
+.PHONY: scripts-checks nix-checks gui-checks be-checks arch-checks api-types-check
 
 # ================================================
 # Scripts — shell linting
@@ -19,7 +19,7 @@ scripts-checks:
 # Nix — formatting and linting
 # ================================================
 
-# Formats in place (like fe-checks' biome --write), fails on statix or
+# Formats in place (like gui-checks' biome --write), fails on statix or
 # deadnix findings. Mark intentionally unused args with a _ prefix to
 # silence deadnix.
 nix-checks:
@@ -31,12 +31,12 @@ nix-checks:
 	deadnix --fail .
 
 # ================================================
-# Frontend — checks
+# GUI — checks
 # ================================================
 
-fe-checks: api-types-check
-	@echo "Running frontend checks..."
-	cd frontend && \
+gui-checks: api-types-check
+	@echo "Running GUI checks..."
+	cd gui && \
 		echo "Running TypeScript compiler (app)..." && \
 		npx tsc -p tsconfig.app.json && \
 		echo "Running TypeScript compiler (e2e)..." && \
@@ -49,7 +49,7 @@ fe-checks: api-types-check
 		npx depcruise src tests
 
 api-types-check: api-types
-	git diff --exit-code -- frontend/src/shell/infra/api/generated/openapi.ts
+	git diff --exit-code -- gui/src/shell/infra/api/generated/openapi.ts
 
 # ================================================
 # Backend — checks
@@ -67,7 +67,7 @@ $(addsuffix -checks,$(PY_PACKAGES)): %-checks:
 	mypy $(wildcard $*/src $*/tests)
 
 # Architecture contracts over the backend import graph — the counterpart of the
-# dependency-cruiser step in fe-checks. Ruff and mypy are per-file and never see
+# dependency-cruiser step in gui-checks. Ruff and mypy are per-file and never see
 # the graph, so layering and cycles are only caught here. Contracts live in
 # pyproject.toml under [tool.importlinter].
 arch-checks:

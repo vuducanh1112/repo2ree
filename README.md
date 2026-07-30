@@ -9,7 +9,7 @@ Research and paper-facing notes live under
 ## Quick demo
 
 To try the app locally with Docker, use the published Docker Hub images. The
-compose stack is control plane only (frontend + API); workbenches are
+compose stack is control plane only (GUI + API); workbenches are
 provisioned by an agent that runs separately and dials the API:
 
 ```bash
@@ -58,7 +58,7 @@ command.
 To build the images locally from this repository:
 
 ```bash
-make frontend-image
+make gui-image
 make backend-image
 make agent-image
 ```
@@ -67,7 +67,7 @@ Then run compose with the local image tags, and start the agent stack
 pointed at its local tag:
 
 ```bash
-REPO2REE_FRONTEND_IMAGE=repo2ree-frontend:local \
+REPO2REE_GUI_IMAGE=repo2ree-gui:local \
 REPO2REE_BACKEND_IMAGE=repo2ree-backend:local \
 docker compose up -d
 
@@ -79,7 +79,7 @@ The per-REE workbench env image isn't a compose variable: benches provision
 from the backend's image catalog (a pinned upstream `docker:dind` by
 default), with the executor injected by the agent at provision time.
 
-Compose starts the frontend on port `3000` and the API on port `8000`; the
+Compose starts the GUI on port `3000` and the API on port `8000`; the
 API container stores its persistent data under `/app/.repo2ree`. The agent
 container runs outside the stack and mounts `/var/run/docker.sock` because it
 owns workbench container lifecycle.
@@ -133,16 +133,16 @@ This reuses the host Docker image cache, but it weakens workbench isolation and
 is intended for trusted local development only. The default `dind` mode keeps a
 separate Docker daemon per workbench.
 
-4. Install frontend dependencies:
+4. Install GUI dependencies:
 
 ```bash
-npm --prefix frontend ci
+npm --prefix gui ci
 ```
 
-5. Start the frontend dev server:
+5. Start the GUI dev server:
 
 ```bash
-VITE_API_BASE_URL=http://localhost:8000 npm --prefix frontend run dev -- --host
+VITE_API_BASE_URL=http://localhost:8000 npm --prefix gui run dev -- --host
 ```
 
 ## E2E test

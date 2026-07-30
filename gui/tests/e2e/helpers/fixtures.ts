@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { test as base, expect } from "@playwright/test";
 import { cleanupWorkbench } from "./flow";
 
-// Raw per-test V8 coverage lands here; `scripts/gen-frontend-coverage.mjs`
+// Raw per-test V8 coverage lands here; `scripts/gen-coverage.mjs`
 // merges it into the report. Under test-artifacts/ (the one gitignored root for
 // all test output) alongside the generated coverage/.
 const COVERAGE_RAW_DIR = join(process.cwd(), "test-artifacts", "coverage-raw");

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Author a REE end to end over the HTTP API — a real terminal session, no frontend.
+"""Author a REE end to end over the HTTP API — a real terminal session, no GUI.
 
-This is the pure-API counterpart of ``frontend/tests/e2e``: it drives the public,
+This is the pure-API counterpart of ``gui/tests/e2e``: it drives the public,
 automation-ready API through its whole authoring lifecycle. It is deliberately an
 *honest* recording — a real terminal session, not a staged one:
 
@@ -24,7 +24,7 @@ terminal:
 
 Needs only ``curl`` (already required by the orchestrator) and the Python stdlib,
 so it runs under a bare ``python3`` shebang regardless of what execs it. It is
-the pure-API mirror of the frontend golden path (``ree-pipeline.spec.ts``): the
+the pure-API mirror of the GUI golden path (``ree-pipeline.spec.ts``): the
 same journey — one workbench, one runtime build, every pipeline stage exercised
 in order — driven only through the public surface:
 
@@ -50,7 +50,7 @@ inferred from the repository through ``generateScriptCandidates`` and its
 decision graph printed, then authored (the build script is complete; the
 fail-closed run scaffolds get their one ``set --`` command filled in). Those
 stages then drive a real cold Docker-in-Docker runtime build (pandas on
-``python:3.11-slim``) inside the workbench — the same work the frontend golden
+``python:3.11-slim``) inside the workbench — the same work the GUI golden
 path does, so the recording shows the genuine cost of authoring a reproducible
 environment, not a stub.
 """
@@ -171,7 +171,7 @@ def wait_for_run(ree_id: str, run_id: str) -> str:
 
 # ------------------------------------------------------------------
 # The project being authored, and the REE recipe scripts that turn it into a
-# reproducible environment. Kept byte-for-byte in step with the frontend golden
+# reproducible environment. Kept byte-for-byte in step with the GUI golden
 # path's ``python_hello_world`` fixture so both e2e mirrors build the same
 # runtime and assert the same "Pandas Hello World" evidence.
 # ------------------------------------------------------------------
@@ -308,7 +308,7 @@ def _inference_result(report: dict[str, Any], kind: str, experiment_name: str | 
 
 def summarize_decision(report: dict[str, Any], kind: str, experiment_name: str | None = None) -> dict[str, Any]:
     """Print the target's decision graph — the executed DAG path and outcome —
-    then return its result. This is the same trace the frontend renders; showing
+    then return its result. This is the same trace the GUI renders; showing
     it proves inference explains itself, whether or not it produced a script."""
     result = _inference_result(report, kind, experiment_name)
     check(bool(result), f"inference returned no result for {kind}")

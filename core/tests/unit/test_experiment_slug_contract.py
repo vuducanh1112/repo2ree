@@ -1,7 +1,7 @@
 """The experiment-name slug rule, pinned against the cross-language fixture.
 
-The frontend derives the same reserved script path locally (see
-``frontend/src/shell/data/scriptTemplates/paths.test.ts``), so the rule has two
+The GUI derives the same reserved script path locally (see
+``gui/src/shell/data/scriptTemplates/paths.test.ts``), so the rule has two
 implementations. Both assert against ``contracts/experiment-slugs.json``: if
 either side changes how a name becomes a slug, one of the two suites fails
 instead of the two silently disagreeing about where a script lives.

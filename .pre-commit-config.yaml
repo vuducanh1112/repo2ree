@@ -27,17 +27,17 @@ repos:
         always_run: true
         pass_filenames: false
 
-      # Keep the pinned npm-deps hash in sync with the frontend lockfile. Not part
+      # Keep the pinned npm-deps hash in sync with the GUI lockfile. Not part
       # of commit-gate: it is a nix prefetch measured in minutes, and its entire
       # input is package-lock.json, so `files` here states exactly what can change
-      # its answer rather than guessing. Regenerates nix/frontend-npm-deps.hash
+      # its answer rather than guessing. Regenerates nix/gui-npm-deps.hash
       # and, if it changed, fails the commit so you re-stage it (pre-commit fails
       # any hook that modifies a file).
       # Prevents committing a lockfile change with a stale hash that would only break
       # later at `nix build` time.
-      - id: frontend-npm-hash
-        name: frontend npm-deps hash in sync with lockfile
+      - id: gui-npm-hash
+        name: GUI npm-deps hash in sync with lockfile
         language: system
-        entry: make frontend-npm-hash
-        files: ^frontend/package-lock\.json$
+        entry: make gui-npm-hash
+        files: ^gui/package-lock\.json$
         pass_filenames: false

@@ -9,7 +9,7 @@ import type {
 } from "../../infra/api/apiTypes";
 import { mapReeDetailToReeSlices } from "./mapping";
 
-// Wire → domain: the API speaks snake_case, the frontend camelCase.
+// Wire → domain: the API speaks snake_case, the GUI camelCase.
 function mapSourceRepo(
   wire: SourceRepoMetadataWire | null | undefined,
 ): SourceRepoMetadata | undefined {

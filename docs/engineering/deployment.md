@@ -12,10 +12,10 @@ repo2ree has three deployed surfaces today:
   over an outbound WebSocket, provisions benches, and injects its embedded
   executor/tools bundles into them. Anyone can run one to contribute benches.
   It is deliberately not part of the control-plane compose stack — that stack
-  is control plane only (frontend + backend). The agent ships its own compose
+  is control plane only (GUI + backend). The agent ships its own compose
   file (`docker-compose.agent.yml`) so it can be started separately wherever
   benches should live, with an independent lifecycle.
-- `frontend`: a static Vite bundle served by Caddy. Caddy also reverse-proxies
+- `gui`: a static Vite bundle served by Caddy. Caddy also reverse-proxies
   `/api/*` to the backend so the browser uses one origin.
 
 Each REE gets a separate workbench container named `repo2ree-wb-{ree_id}` plus
@@ -47,7 +47,7 @@ WORKBENCH_API_WS_URL=ws://backend.example:8000/agent/connect \
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `REPO2REE_FRONTEND_IMAGE` | `docker.io/vuducanh1112/repo2ree-frontend:edge` | Frontend image served by Caddy. |
+| `REPO2REE_GUI_IMAGE` | `docker.io/vuducanh1112/repo2ree-gui:edge` | GUI image served by Caddy. |
 | `REPO2REE_BACKEND_IMAGE` | `docker.io/vuducanh1112/repo2ree-backend:edge` | FastAPI backend image. |
 
 The agent image is set on its own compose file via `REPO2REE_AGENT_IMAGE`
@@ -64,14 +64,14 @@ on the backend.
 
 ## Build Images Locally
 
-Build and load the frontend image:
+Build and load the GUI image:
 
 ```bash
-make frontend-image
+make gui-image
 ```
 
-This builds `.#frontend-image` with Nix, serves the static bundle with Caddy,
-and tags the result as `repo2ree-frontend:local`.
+This builds `.#gui-image` with Nix, serves the static bundle with Caddy,
+and tags the result as `repo2ree-gui:local`.
 
 Build the backend image:
 
@@ -123,7 +123,7 @@ to GHCR + Docker Hub under `vuducanh1112`; override `REGISTRIES`,
 ## Run With Local Images
 
 ```bash
-REPO2REE_FRONTEND_IMAGE=repo2ree-frontend:local \
+REPO2REE_GUI_IMAGE=repo2ree-gui:local \
 REPO2REE_BACKEND_IMAGE=repo2ree-backend:local \
 docker compose up
 ```
@@ -140,7 +140,7 @@ The compose stack publishes:
 
 | Service | Port | Notes |
 |---|---:|---|
-| `frontend` | `3000` | Caddy serves the Vite bundle and proxies `/api/*`. |
+| `gui` | `3000` | Caddy serves the Vite bundle and proxies `/api/*`. |
 | `backend` | `8000` | FastAPI API. Exposed directly for debugging; also the endpoint agents dial. |
 
 The agent container mounts `/var/run/docker.sock` and launches workbench
@@ -181,11 +181,11 @@ Backend variables:
 | `TRACE_FILE` | unset | Local NDJSON trace sink for API/agent spans when no collector is configured. |
 | `LOG_LEVEL` | `INFO` | Python log level for API, agent, and executor processes. |
 
-Frontend variables:
+GUI variables:
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `BACKEND_UPSTREAM` | `backend:8000` | Runtime Caddy upstream for `/api/*` in the Nix-built frontend image. |
+| `BACKEND_UPSTREAM` | `backend:8000` | Runtime Caddy upstream for `/api/*` in the Nix-built GUI image. |
 | `VITE_API_BASE_URL` | empty in the Nix image | Build-time API base. Empty means same-origin `/api`. |
 
 Container socket access:
@@ -243,7 +243,7 @@ For a non-compose deployment, keep the same boundaries:
 - Run an agent wherever benches should live, with `WORKBENCH_API_WS_URL`
   pointing at the backend (outbound only — no inbound port on the agent), the
   docker socket mounted, and its state dir persisted.
-- Run the frontend image with `BACKEND_UPSTREAM` set to the backend host and
+- Run the GUI image with `BACKEND_UPSTREAM` set to the backend host and
   port reachable from the Caddy container.
 - Persist backend `.repo2ree` state and do not treat workbench Docker volumes as
   disposable while REEs are active.

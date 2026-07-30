@@ -13,7 +13,7 @@ persisted record: a step keyed by the operation an automation client calls, not
 by a scored evidence rung.
 
 The step list and its ``requires`` edges are the single declared source of the
-authoring graph — the same steps the frontend renders as its process ring
+authoring graph — the same steps the GUI renders as its process ring
 (``REE_STEPS`` there), lifted out of the UI so a machine client (or a second UI)
 reads the identical structure instead of re-deriving it. ``build_ree_step_states``
 overlays per-REE state onto that static list: each step is ``done`` (a
@@ -22,7 +22,7 @@ prerequisites done, actionable now), or ``blocked`` (named prerequisites still
 missing).
 
 Status is derived, never stored, from the persisted record on each fetch.
-Completion matches the frontend badges and the scorecard — *a run happened* —
+Completion matches the GUI badges and the scorecard — *a run happened* —
 not freshness: whether a completed step has since gone stale is a separate axis,
 left to the ``consistency`` report, so a client can show "done, but stale"
 rather than have the step silently revert.
@@ -121,7 +121,7 @@ def build_ree_step_states(
     exists (evaluate records no receipt).
 
     A run-backed step is ``done`` once it has a recorded successful run — the
-    same completion the frontend badges and the scorecard use, not freshness. A
+    same completion the GUI badges and the scorecard use, not freshness. A
     later edit that makes that run *stale* does not un-complete the step here;
     staleness is a separate axis, surfaced by the ``consistency`` report, so a
     client can show "done, but stale" rather than silently reverting the step.

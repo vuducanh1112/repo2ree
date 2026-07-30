@@ -6,5 +6,5 @@
     "src/shell/infra/api/generated/openapi.ts": ["exports", "types"]
   },
 
-  "entry": ["scripts/gen-frontend-coverage.mjs"]
+  "entry": ["scripts/gen-coverage.mjs"]
 }
