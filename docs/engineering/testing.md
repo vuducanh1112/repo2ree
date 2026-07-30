@@ -18,8 +18,8 @@
 | `make e2e-tests` | Playwright e2e project against a live API and GUI dev server. |
 | `make e2e-review` | Playwright review project: the reviewer-side reproduction specs. |
 | `make e2e-demo` | Playwright demo walkthrough project with video. |
-| `make e2e-tests-images` / `e2e-review-images` / `e2e-demo-images` | Suite / review / demo against an already-running image-backed stack. |
-| `make e2e-tests-stack` / `e2e-review-stack` / `e2e-demo-stack` | One command: build local images, `stack-up`, run the project, `stack-clean`. |
+| `make e2e-tests-on-stack` / `e2e-review-on-stack` / `e2e-demo-on-stack` | Suite / review / demo against an already-running image-backed stack. |
+| `make e2e-tests-stack-local` / `e2e-review-stack-local` / `e2e-demo-stack-local` | One command: build local images, `stack-up`, run the project, `stack-clean`. |
 | `make e2e-tests-stack-published` / `e2e-review-stack-published` / `e2e-demo-stack-published` | The same flows against the pushed registry images (nothing built). |
 | `make stack-up` / `stack-down` | Start/stop the image-backed stack, keeping its volumes (`scripts/image-stack.sh`). |
 | `make stack-clean` | Stop it and drop every volume it created, workbench leftovers included. |
@@ -335,12 +335,20 @@ make e2e-demo
 ```
 
 Every browser project can also drive the image-backed stack instead of the dev
-servers — `make e2e-tests-stack` / `make e2e-review-stack` /
-`make e2e-demo-stack` do the whole flow in one command: build the local images,
+servers. The suffix names **who provides the stack**:
+
+| Suffix | Who provides the stack | Builds anything? |
+|---|---|---|
+| *(none)* | the target itself, from source — vite dev server + uvicorn | no |
+| `-on-stack` | you did, with `make stack-up` — nothing is started or stopped | no |
+| `-stack-local` | the target, from `:local` images it builds first | yes |
+| `-stack-published` | the target, from the pushed registry images | no |
+
+The `-stack-local` targets do the whole flow in one command: build the local images,
 `make stack-up` (compose control plane + agent container, via
 `scripts/image-stack.sh`), run the playwright project, `make stack-clean`. With a
-stack already up, `make e2e-tests-images` / `make e2e-review-images` /
-`make e2e-demo-images` run just the playwright part. Playwright is pointed at the Caddy-served GUI (via `E2E_BASE_URL`,
+stack already up, `make e2e-tests-on-stack` / `make e2e-review-on-stack` /
+`make e2e-demo-on-stack` run just the playwright part. Playwright is pointed at the Caddy-served GUI (via `E2E_BASE_URL`,
 which also skips the Vite dev server), so the GUI image's `/api` reverse
 proxy and the backend/agent images are what get exercised. The stack is
 addressed as `localhost` from the host or via compose service DNS from the
@@ -434,7 +442,7 @@ scripts/commit-gate-stamp.sh verify   # what the hook runs
 tree (pushed images must correspond to a commit), then runs the static
 checks, builds the executor/tools bundles so the docker-gated test tiers
 don't skip, runs the unit/integration suites, the source-run e2e suite, and
-finally `e2e-tests-stack`. When it passes, the `:local` images it built are
+finally `e2e-tests-stack-local`. When it passes, the `:local` images it built are
 exactly what the push targets will publish.
 
 Run e2e coverage:

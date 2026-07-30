@@ -47,7 +47,7 @@ push-gate: require-clean-tree
 	$(MAKE) gui-tests be-tests
 	$(MAKE) e2e-tests
 	$(MAKE) e2e-review
-	$(MAKE) e2e-tests-stack
+	$(MAKE) e2e-tests-stack-local
 	@echo ">> push gate green — publish with: make push-rev"
 
 # Plumbing: tag + push the already-built :local images to every registry

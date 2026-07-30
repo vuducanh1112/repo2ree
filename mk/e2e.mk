@@ -4,11 +4,11 @@
 # teardown, the coverage variant) lives in scripts/e2e-stack.sh.
 
 .PHONY: e2e-bundles \
-	e2e-tests e2e-tests-images e2e-tests-stack e2e-tests-stack-published \
-	e2e-review e2e-review-images e2e-review-stack e2e-review-stack-published \
-	e2e-demo e2e-demo-images e2e-demo-stack e2e-demo-stack-published \
+	e2e-tests e2e-tests-on-stack e2e-tests-stack-local e2e-tests-stack-published \
+	e2e-review e2e-review-on-stack e2e-review-stack-local e2e-review-stack-published \
+	e2e-demo e2e-demo-on-stack e2e-demo-stack-local e2e-demo-stack-published \
 	e2e-demo-code-ocean coverage-e2e coverage-demo gui-coverage-browser \
-	e2e-api e2e-api-images e2e-api-stack e2e-api-stack-published \
+	e2e-api e2e-api-on-stack e2e-api-stack-local e2e-api-stack-published \
 	stack-up stack-down stack-clean workbench-clean store-gc
 
 # The e2e agent always gets the executor/tools bundles: lean env images (the
@@ -144,19 +144,19 @@ define playwright_against_stack  # $(1) = playwright --project name
 		npm exec -- playwright test -c playwright.config.ts --project=$(1)
 endef
 
-e2e-tests-images:
+e2e-tests-on-stack:
 	$(call playwright_against_stack,e2e)
 
-e2e-review-images:
+e2e-review-on-stack:
 	$(call playwright_against_stack,review)
 
-e2e-demo-images:
+e2e-demo-on-stack:
 	$(call playwright_against_stack,demo)
 
 # The API walkthrough against the already-running image-backed stack — the
-# pure-API analog of e2e-tests-images. A validation run, not a demo run, so it
+# pure-API analog of e2e-tests-on-stack. A validation run, not a demo run, so it
 # doesn't record; the .cast/transcript demo artifacts come from `e2e-api`.
-e2e-api-images:
+e2e-api-on-stack:
 	@scripts/image-stack.sh check
 	API_BASE_URL=$$(scripts/image-stack.sh api-url) \
 		api/tests/e2e/api_agent_walkthrough.py
@@ -175,38 +175,49 @@ endef
 PUBLISHED_STACK = STACK_IMAGE_REPO=$(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE) \
 	STACK_IMAGE_TAG=$(IMAGE_TAG)
 
-e2e-tests-stack:
+# Three ways to reach an image-backed stack, named for who provides it:
+# `-on-stack` attaches to one you already brought up, `-stack-local` builds the
+# :local images itself, and `-stack-published` pulls the pushed ones. Only
+# `-stack-local` builds anything.
+#
+# The two lifecycle wrappers are the same three lines for every suite, and they
+# are written out per suite on purpose rather than generated from a suite list:
+# a target you cannot grep for costs more, every time you look for it, than the
+# duplication saves. The shared parts are already factored into the two defines
+# above, which is where the repetition actually belongs.
+
+e2e-tests-stack-local:
 	$(MAKE) images
 	$(MAKE) stack-up
-	$(call run_then_stack_down,e2e-tests-images)
+	$(call run_then_stack_down,e2e-tests-on-stack)
 
 e2e-tests-stack-published:
 	$(PUBLISHED_STACK) $(MAKE) stack-up
-	$(call run_then_stack_down,e2e-tests-images)
+	$(call run_then_stack_down,e2e-tests-on-stack)
 
-e2e-review-stack:
+e2e-review-stack-local:
 	$(MAKE) images
 	$(MAKE) stack-up
-	$(call run_then_stack_down,e2e-review-images)
+	$(call run_then_stack_down,e2e-review-on-stack)
 
 e2e-review-stack-published:
 	$(PUBLISHED_STACK) $(MAKE) stack-up
-	$(call run_then_stack_down,e2e-review-images)
+	$(call run_then_stack_down,e2e-review-on-stack)
 
-e2e-demo-stack:
+e2e-demo-stack-local:
 	$(MAKE) images
 	$(MAKE) stack-up
-	$(call run_then_stack_down,e2e-demo-images)
+	$(call run_then_stack_down,e2e-demo-on-stack)
 
 e2e-demo-stack-published:
 	$(PUBLISHED_STACK) $(MAKE) stack-up
-	$(call run_then_stack_down,e2e-demo-images)
+	$(call run_then_stack_down,e2e-demo-on-stack)
 
-e2e-api-stack:
+e2e-api-stack-local:
 	$(MAKE) images
 	$(MAKE) stack-up
-	$(call run_then_stack_down,e2e-api-images)
+	$(call run_then_stack_down,e2e-api-on-stack)
 
 e2e-api-stack-published:
 	$(PUBLISHED_STACK) $(MAKE) stack-up
-	$(call run_then_stack_down,e2e-api-images)
+	$(call run_then_stack_down,e2e-api-on-stack)
