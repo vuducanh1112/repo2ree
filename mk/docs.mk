@@ -48,7 +48,15 @@ docs-diagrams: be-graphs be-graph-all gui-graph
 # one whose shape nobody is checking. Asking the script for root_packages keeps
 # the set of diagrams equal to the set of packages the contracts govern, so
 # adding a seventh package to the workspace adds its diagram too.
-BE_PACKAGES := $(shell python scripts/arch_graph.py --list-packages)
+#
+# Recursively expanded (`=`, not `:=`) so the script runs when `be-graphs`
+# expands it and not when make parses this file. With `:=` it ran on *every*
+# make invocation — `make push-archives` on a host outside the devshell has no
+# `python`, so every target printed "make: python: No such file or directory"
+# before doing anything, and this list came out empty. Referenced once, in
+# be-graphs below; a second reference would re-run the script, so read it into a
+# shell variable rather than expanding it twice.
+BE_PACKAGES = $(shell python scripts/arch_graph.py --list-packages)
 
 # One diagram per root package: the inside of that package, with its own layers
 # contract setting the vertical axis. PKG/ARGS still single out one package
@@ -59,10 +67,18 @@ be-graph:
 	@mkdir -p $(DIAGRAM_DIR)
 	python scripts/arch_graph.py $(PKG) $(ARGS) -f svg -o $(DIAGRAM_DIR)/$(PKG).svg
 
+# Refuses to draw nothing. An empty word list is legal shell — `for pkg in ; do
+# … done` loops zero times and exits 0 — so a derivation that came back empty
+# would report success having produced no diagrams, which is the silent outcome
+# the derived list exists to prevent. Reads it into a shell variable, so the
+# script runs once rather than per reference.
 be-graphs:
 	@mkdir -p $(DIAGRAM_DIR)
-	@for pkg in $(BE_PACKAGES); do \
-		python scripts/arch_graph.py $$pkg $(ARGS) -f svg -o $(DIAGRAM_DIR)/$$pkg.svg || exit 1; \
+	@set -e; packages="$(BE_PACKAGES)"; \
+	[ -n "$$packages" ] || { echo "no root packages resolved from pyproject.toml" \
+		"[tool.importlinter] — check 'python scripts/arch_graph.py --list-packages'" >&2; exit 1; }; \
+	for pkg in $$packages; do \
+		python scripts/arch_graph.py $$pkg $(ARGS) -f svg -o $(DIAGRAM_DIR)/$$pkg.svg; \
 	done
 
 # The two views across all six packages, which answer different questions.
