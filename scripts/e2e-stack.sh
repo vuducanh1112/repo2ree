@@ -14,16 +14,17 @@
 #
 # With --coverage <tier> the backend *and* every agent are started under
 # coverage (you can't measure an already-running process), the suite runs with
-# E2E_COVERAGE=1 so the jsCoverage fixture captures browser V8 coverage, and
-# every process gets a graceful SIGTERM at the end so coverage flushes its data
-# on shutdown. Two reports come out: backend (test-artifacts/coverage/<tier>/)
-# and GUI (gui/test-artifacts/coverage/).
+# E2E_COVERAGE_TIER=<tier> so the jsCoverage fixture captures browser V8 coverage
+# into that tier, and every process gets a graceful SIGTERM at the end so
+# coverage flushes its data on shutdown. Two reports come out, one per measuring
+# runtime: test-artifacts/coverage/python/<tier>/ and
+# test-artifacts/coverage/browser/<tier>/.
 #
 # <tier> names which measured tier this run belongs to — `e2e` for the
 # regression stack, `demo` for the narrated ones — and selects the tier's own
-# data directory under test-artifacts/coverage/data/<tier>/, so it never blends
-# with the pytest tiers or with the other stack tier. `make coverage-combined`
-# unions them. See the tier map at the top of mk/tests.mk.
+# data directory under test-artifacts/coverage/python/data/<tier>/, so it never
+# blends with the pytest tiers or with the other stack tier.
+# `make be-coverage-combined` unions them. See the tier map in mk/tests.mk.
 #
 # The agents are measured, not just the backend: an e2e run is the heaviest
 # exercise the agent package gets (docker runtime, control link, injection,
@@ -37,7 +38,7 @@
 #                              docker:dind digest in api settings — which
 #                              every browser tier runs on
 #   E2E_WORKBENCH_DOCKER_MODE  dind (default) or host-socket
-#   E2E_AGENT_STATE_DIR        agent identity dir (default: test-artifacts/e2e-agent-state);
+#   E2E_AGENT_STATE_DIR        agent identity dir (default: test-artifacts/state/agents);
 #                              with --agents N, agent i > 1 uses <dir>-<i> so
 #                              each keeps a distinct persistent identity
 #   E2E_EXEC_BUNDLE            executor bundle path (default: dist/bundles/exec)
@@ -78,8 +79,8 @@ if { [ -n "$project" ] && [ -n "$script" ]; } || { [ -z "$project" ] && [ -z "$s
 [ -z "$record" ] || [ -n "$script" ] || usage  # --record only applies to --script
 [ "$agents" -ge 1 ] 2>/dev/null || usage
 # The tier must be one the combine step knows about (see mk/tests.mk): a typo
-# would otherwise write a data directory `make coverage-combined` never reads,
-# and the run would silently produce nothing.
+# would otherwise write a data directory `make be-coverage-combined` never
+# reads, and the run would silently produce nothing.
 case "$coverage_tier" in
     "" | e2e | demo) ;;
     *) echo "unknown coverage tier '$coverage_tier' — expected e2e or demo" >&2; exit 2 ;;
@@ -89,32 +90,39 @@ root=$(cd "$(dirname "$0")/.." && pwd)
 cd "$root"
 
 docker_mode=${E2E_WORKBENCH_DOCKER_MODE:-dind}
-state_dir=${E2E_AGENT_STATE_DIR:-$root/test-artifacts/e2e-agent-state}
+state_dir=${E2E_AGENT_STATE_DIR:-$root/test-artifacts/state/agents}
 exec_bundle=${E2E_EXEC_BUNDLE:-$root/dist/bundles/exec}
 tools_bundle=${E2E_TOOLS_BUNDLE:-$root/dist/bundles/tools}
 
 # agent_log <i>: log path for the i-th agent (agent.log, agent-2.log, ...).
+# Measured runs carry their tier in the name — every log now shares one logs/
+# directory, so without it a demo run would clobber an e2e run's agent log.
 agent_log() {
     local suffix=""
     [ "$1" -gt 1 ] && suffix="-$1"
-    echo "$agent_log_dir/agent$suffix.log"
+    echo "$agent_log_dir/agent$log_tier$suffix.log"
 }
 
-mkdir -p test-artifacts
+# Logs live under test-artifacts/logs/, not inside a coverage report directory:
+# a directory `coverage html` owns should hold only the report it generates.
+log_dir=$root/test-artifacts/logs
+agent_log_dir=$log_dir
+log_tier=${coverage_tier:+-$coverage_tier}
+mkdir -p "$log_dir" "$state_dir"
 if [ "$coverage" -eq 1 ]; then
-    coverage_data_dir=$root/test-artifacts/coverage/data/$coverage_tier
+    coverage_data_dir=$root/test-artifacts/coverage/python/data/$coverage_tier
     coverage_file=$coverage_data_dir/.coverage
-    backend_log=$root/test-artifacts/coverage/$coverage_tier/backend.log
-    agent_log_dir=$root/test-artifacts/coverage/$coverage_tier
-    mkdir -p "$coverage_data_dir" "test-artifacts/coverage/$coverage_tier"
+    backend_log=$log_dir/backend-$coverage_tier.log
+    browser_raw_dir=$root/test-artifacts/coverage/browser/raw/$coverage_tier
+    mkdir -p "$coverage_data_dir"
     # Start the tier's data fresh: --parallel-mode leaves one suffixed file per
     # process, so a previous run's files would otherwise be combined in as well
-    # and report a union of two runs as one.
+    # and report a union of two runs as one. Same for the browser captures —
+    # but only *this* tier's, which is the point of keying them by tier.
     rm -f "$coverage_file" "$coverage_file".*
-    rm -rf gui/test-artifacts/coverage-raw
+    rm -rf "$browser_raw_dir"
 else
-    backend_log=$root/test-artifacts/api-server.log
-    agent_log_dir=$root/test-artifacts
+    backend_log=$log_dir/api-server.log
     rm -f "$backend_log"
 fi
 for i in $(seq 1 "$agents"); do rm -f "$(agent_log "$i")"; done
@@ -240,7 +248,7 @@ if [ -n "$script" ]; then
 else
     echo ">> stack ready — running playwright project=$project"
     if [ "$coverage" -eq 1 ]; then
-        (cd gui && E2E_COVERAGE=1 npm exec -- playwright test \
+        (cd gui && E2E_COVERAGE_TIER="$coverage_tier" npm exec -- playwright test \
             -c playwright.config.ts --project="$project") || status=$?
     else
         (cd gui && npm exec -- playwright test \
@@ -264,9 +272,12 @@ if [ "$coverage" -eq 1 ]; then
     # Report through the same make rule the pytest tiers use, so a stack tier
     # gets the identical total + per-package breakdown rather than a second,
     # drifting variant. All coverage layout lives in mk/tests.mk.
-    make -s coverage-report TIER="$coverage_tier"
-    echo ">> GUI coverage"
-    (cd gui && node scripts/gen-coverage.mjs)
+    make -s be-coverage-report TIER="$coverage_tier"
+    # The browser half of the same tier. Keyed by tier like the python half, so
+    # a demo run no longer overwrites what an e2e run measured. Union across
+    # tiers is `make gui-coverage-browser`; there is no cross-runtime total.
+    echo ">> GUI coverage ($coverage_tier tier)"
+    (cd gui && node scripts/gen-coverage.mjs "$coverage_tier")
 fi
 
 exit "$status"

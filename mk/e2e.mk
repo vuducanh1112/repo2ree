@@ -7,7 +7,7 @@
 	e2e-tests e2e-tests-images e2e-tests-stack e2e-tests-stack-published \
 	e2e-review e2e-review-images e2e-review-stack e2e-review-stack-published \
 	e2e-demo e2e-demo-images e2e-demo-stack e2e-demo-stack-published \
-	e2e-demo-code-ocean coverage-e2e coverage-demo \
+	e2e-demo-code-ocean coverage-e2e coverage-demo gui-coverage-browser \
 	e2e-api e2e-api-images e2e-api-stack e2e-api-stack-published \
 	stack-up stack-down stack-clean workbench-clean store-gc
 
@@ -65,29 +65,38 @@ e2e-demo: e2e-bundles
 # Render the cast to SVG/GIF with `agg $(API_DEMO_CAST) api-agent-walkthrough.gif`.
 # A recording is a poor standalone document, so the run also derives a chaptered
 # markdown transcript from the .cast — the same artifact in written form.
-API_DEMO_CAST ?= $(CURDIR)/test-artifacts/api-agent-walkthrough.cast
+API_DEMO_CAST ?= $(CURDIR)/test-artifacts/casts/api-agent-walkthrough.cast
 API_DEMO_TRANSCRIPT ?= $(API_DEMO_CAST:.cast=.md)
 e2e-api: e2e-bundles
+	@mkdir -p $(dir $(API_DEMO_CAST))
 	$(E2E_STACK) --script $(CURDIR)/api/tests/e2e/api_agent_walkthrough.py --record $(API_DEMO_CAST)
 	python3 $(CURDIR)/api/tests/e2e/render_cast_transcript.py $(API_DEMO_CAST) $(API_DEMO_TRANSCRIPT)
 
 e2e-demo-code-ocean: e2e-bundles
 	$(E2E_STACK) --project code-ocean
 
-# Full-stack coverage: browser (GUI) + server and agents (backend) in one
-# run. Reports land in test-artifacts/coverage/<tier>/ (backend) and
-# gui/test-artifacts/coverage/ (browser V8). Needs docker + the workbench
-# image + browsers, like the suites themselves.
+# Full-stack coverage: browser (GUI) + server and agents (backend) in one run.
+# Two reports, one per measuring runtime — test-artifacts/coverage/python/<tier>/
+# and test-artifacts/coverage/browser/<tier>/. Needs docker + the workbench image
+# + browsers, like the suites themselves.
 #
 # Two tiers, because the two stacks reach different code: `e2e` is the
 # regression suite, `demo` the narrated walkthrough. Each writes its own data
-# directory; `make coverage-combined` unions them with the pytest tiers. See
-# the tier map at the top of mk/tests.mk.
+# directory per runtime; `make be-coverage-combined` unions the python halves
+# with the pytest tiers, and `make gui-coverage-browser` unions the browser
+# halves. There is no union across the two — see the tier map in mk/tests.mk.
 coverage-e2e: e2e-bundles
 	$(E2E_STACK) --project e2e --agents $(E2E_AGENTS) --coverage e2e
 
 coverage-demo: e2e-bundles
 	$(E2E_STACK) --project demo --coverage demo
+
+# The browser twin of `be-coverage-combined`: merge every measured tier's V8
+# captures into one report. Reads only what previous runs left under
+# coverage/browser/raw/, so it starts no stack — the same bargain as the python
+# union, which does not re-run its suites either.
+gui-coverage-browser:
+	cd gui && node scripts/gen-coverage.mjs --combined
 
 # Image-backed demo stack: the compose control plane on :local tags plus the
 # agent container compose deliberately doesn't manage. Expects `make images`

@@ -57,7 +57,7 @@ Important local paths:
 | `.repo2ree/` | Local API/runtime state. Gitignored. |
 | `.venv/` | Python virtualenv created by `uv` or `.envrc`. Gitignored. |
 | `gui/node_modules/` | GUI npm dependencies. Gitignored. |
-| `test-artifacts/` | Logs, traces, coverage, Playwright output. Gitignored. |
+| `test-artifacts/` | The one artifact root: coverage (by runtime, then tier), traces, Playwright output, logs. Gitignored. |
 
 ## Run The App Locally
 

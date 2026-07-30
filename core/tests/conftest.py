@@ -13,7 +13,7 @@ is imported during collection — not when the test runs, so an autouse fixture
 would set the profile long after the database for that test was already fixed.
 Import time is early enough for exactly one reason: pytest imports a
 directory's conftest before the test modules beneath it, so each package's
-tests capture their own package's profile even though ``coverage-unit`` runs
+tests capture their own package's profile even though ``be-coverage-unit`` runs
 every package in a single process and ``settings`` is process-global. A second
 package adding property tests gets its own copy of this file; it does not have
 to coordinate with this one.

@@ -2,7 +2,8 @@ node_modules/
 dist/
 .DS_Store
 
-# All test output (playwright runs, e2e coverage, raw captures) under one root.
-test-artifacts/
+# No test-artifacts/ here: every GUI suite writes to the repo-root
+# test-artifacts/ (ignored there), so there is one artifact root rather than two.
+# See tests/artifacts.ts and the outputDir values in playwright.config.ts.
 
 *.tsbuildinfo

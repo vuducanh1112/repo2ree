@@ -9,6 +9,7 @@
 |---|---|
 | `make gui-checks` | GUI TypeScript, Biome, knip, dependency-cruiser. |
 | `make gui-tests` | GUI Vitest tests. |
+| `make gui-coverage-unit` | GUI Vitest coverage (istanbul) into `coverage/node/unit/`. |
 | `make be-checks` | Ruff, Ruff format, and mypy across Python workspace packages. |
 | `make scripts-checks` | ShellCheck over `scripts/*.sh`. |
 | `make be-unit-tests` | Container-free backend unit tests. |
@@ -26,9 +27,11 @@
 | `make store-gc` | Evict bundle store caches unused for `STORE_GC_DAYS` (14), keeping the live one. |
 | `make commit-gate` | Fast pre-commit gate: static checks + all container-free test tiers. Certifies the tree it passed on; the pre-commit hook checks that certificate. |
 | `make push-gate` | The pre-publish gate: clean tree, all checks and tests, e2e source-run and image-backed. |
-| `make coverage-unit` / `coverage-integration` / `coverage-e2e` / `coverage-demo` | Coverage for one tier, into its own report. `coverage-e2e` / `coverage-demo` also produce browser-side GUI coverage. |
-| `make coverage-combined` | Union of whichever tiers have been measured on this checkout. |
-| `make coverage-context` | Per-test coverage attribution over the two pytest tiers. |
+| `make be-coverage-unit` / `be-coverage-integration` | Backend coverage for one tier, into its own report. |
+| `make coverage-e2e` / `coverage-demo` | A stack tier — measures the backend *and* the browser in one run, hence no `be-`/`gui-` prefix. |
+| `make be-coverage-combined` | Union of whichever backend tiers have been measured on this checkout. |
+| `make gui-coverage-browser` | The browser twin: union of every measured tier's V8 captures. |
+| `make be-coverage-context` | Per-test coverage attribution over the two pytest tiers. |
 
 ## Before Docker-Gated Tests
 
@@ -119,19 +122,60 @@ project is tested:
 
 | Tier | Target | What it measures | Needs |
 |---|---|---|---|
-| `unit` | `make coverage-unit` | Container-free suites | nothing |
-| `integration` | `make coverage-integration` | Docker-gated suites | docker + bundles |
+| `unit` | `make be-coverage-unit` | Container-free suites | nothing |
+| `integration` | `make be-coverage-integration` | Docker-gated suites | docker + bundles |
 | `e2e` | `make coverage-e2e` | The live stack, browser-driven | docker + browsers |
 | `demo` | `make coverage-demo` | The narrated walkthrough stack | docker + browsers |
 
-Each tier writes its data to `test-artifacts/coverage/data/<tier>/` and its HTML
-report to `test-artifacts/coverage/<tier>/`, so a tier's number always means
-"what this way of testing reaches" and never a blend of two.
+Target names carry the runtime, like the rest of the Makefile (`be-tests`,
+`gui-tests`): `be-coverage-*` measures Python, `gui-coverage-*` measures the GUI.
+The two stack targets take no prefix because a single run measures both halves.
+
+Each tier writes its data to `test-artifacts/coverage/python/data/<tier>/` and
+its HTML report to `test-artifacts/coverage/python/<tier>/`, so a tier's number
+always means "what this way of testing reaches" and never a blend of two.
+
+### Runtime above tier
+
+Under `test-artifacts/coverage/` the first level is the **measuring runtime**,
+not the tier:
+
+| Subtree | Tool | Covers |
+|---|---|---|
+| `coverage/python/` | coverage.py | the six uv workspace packages |
+| `coverage/browser/` | monocart, over V8 from Playwright | the GUI as the browser ran it |
+| `coverage/node/` | istanbul via vitest | the GUI's pure-logic suite (`src/core` and friends) |
+
+That order is what keeps `combined` meaningful. Combining tiers is a *coverage.py
+operation* — `coverage combine`, over `.coverage` databases — and monocart has
+its own merge over its own captures. No algorithm unions a Python line count
+with a browser byte count, and the two share no denominator, so each runtime
+owns a `combined/` inside its own subtree and there is deliberately **no**
+`coverage/combined/` above them. Ask for the browser union with:
+
+```bash
+make gui-coverage-browser
+```
+
+Only `e2e` and `demo` produce browser coverage, because only they drive a
+browser; only `unit` produces node coverage, because the vitest suite is the
+only thing that runs there. An absent tier directory means "this way of testing
+does not exercise that runtime", not "someone forgot to run it".
+
+### The GUI reads low in `node`, by design
+
+`make gui-coverage-unit` reports around 23%. That is the honest figure: the
+vitest suite is 57 files of pure logic with no component rendering, so the React
+shell is almost entirely untouched and the browser tier is what covers it. The
+config sets `all: true` deliberately — without it istanbul reports only the files
+some test imported, which reads about 62% and *improves when you delete a test*.
+Same floor-vs-truth caveat the Python `unit` tier carries, and the same reason
+not to add the two numbers together.
 
 ### By module
 
 Every tier is also broken down by source package, into
-`test-artifacts/coverage/<tier>/by-module/<package>/`, and each run prints the
+`test-artifacts/coverage/python/<tier>/by-module/<package>/`, and each run prints the
 per-package totals:
 
 ```
@@ -160,13 +204,13 @@ through. To re-render a tier from data already measured, without repeating its
 suite:
 
 ```bash
-make coverage-report TIER=unit
+make be-coverage-report TIER=unit
 ```
 
 Union of whatever has been measured:
 
 ```bash
-make coverage-combined
+make be-coverage-combined
 ```
 
 It skips tiers that were never run, so it is useful after any subset — but the
@@ -177,7 +221,7 @@ per-tier data, so any tier report can be rebuilt without re-running its suite.
 Per-test attribution (which test hit which line) over the two pytest tiers:
 
 ```bash
-make coverage-context
+make be-coverage-context
 ```
 
 Two things to know when reading a report:
@@ -376,7 +420,12 @@ after each test, including failures.
 
 ## Artifacts And Logs
 
-All generated test artifacts should stay under `test-artifacts/`, and that
+All generated test artifacts stay under the single repo-root `test-artifacts/`
+— the GUI suites included, which is why `gui/` has no artifact root of its own.
+Paths are derived from the file that writes them (`gui/tests/artifacts.ts`
+anchors on `__dirname`; the Playwright config resolves `outputDir` against its
+own directory), never from `process.cwd()`, so they cannot drift with the
+working directory a suite happens to be invoked from. That
 directory must stay safe to delete: nothing under it may be an input a suite
 needs or a nix GC root. The executor/tools bundles are the counter-example that
 motivated the rule — they live under `dist/bundles/` (see `mk/e2e.mk`) because
@@ -387,12 +436,15 @@ Useful locations:
 
 | Path | Contents |
 |---|---|
-| `test-artifacts/api-server.log` | Backend log for plain e2e runs. |
-| `test-artifacts/coverage/e2e/backend.log` | Backend log for e2e coverage runs. |
-| `test-artifacts/coverage/` | Backend and e2e coverage reports. |
-| `test-artifacts/property-based-tests/` | Hypothesis home: `<package>/` example databases plus its own caches. |
-| `gui/test-artifacts/playwright/` | Playwright traces, screenshots, and videos. |
+| `test-artifacts/coverage/python/<tier>/` | Backend coverage, one report per tier, plus `combined/`. |
+| `test-artifacts/coverage/browser/<tier>/` | Browser V8 coverage for the stack tiers, plus `combined/`. |
+| `test-artifacts/playwright/<project>/` | Playwright traces, screenshots, and videos. |
 | `test-artifacts/traces/api-integration/` | API integration trace files and workbench log snapshots. |
+| `test-artifacts/property-based-tests/` | Hypothesis home: `<package>/` example databases plus its own caches. |
+| `test-artifacts/logs/` | `api-server.log` for plain runs, `backend-<tier>.log` and `agent-<tier>.log` for measured ones. |
+| `test-artifacts/casts/` | The API walkthrough `.cast` recording and its markdown transcript. |
+| `test-artifacts/fixtures/` | Archives the suites pack on demand from `examples/`; repacked every run. |
+| `test-artifacts/state/agents/` | Throwaway e2e agent identities. State, not output — but still safe to delete. |
 | `dist/bundles/{exec,tools}` | Executor/tools bundles the agent injects — a build input, not an artifact. |
 
 When a Docker-gated test fails, inspect both the workbench entrypoint log and

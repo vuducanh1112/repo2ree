@@ -1,12 +1,18 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { test as base, expect } from "@playwright/test";
+import { browserCoverageRawDir } from "../../artifacts";
 import { cleanupWorkbench } from "./flow";
 
-// Raw per-test V8 coverage lands here; `scripts/gen-coverage.mjs`
-// merges it into the report. Under test-artifacts/ (the one gitignored root for
-// all test output) alongside the generated coverage/.
-const COVERAGE_RAW_DIR = join(process.cwd(), "test-artifacts", "coverage-raw");
+// Raw per-test V8 coverage lands under test-artifacts/coverage/browser/raw/<tier>/;
+// `scripts/gen-coverage.mjs` merges one tier's captures into that tier's report.
+//
+// `E2E_COVERAGE_TIER` is both the switch and the destination, deliberately: the
+// tier used to be absent from these paths entirely, so a `demo` run overwrote
+// whatever an `e2e` run had measured. Making the tier the thing that turns
+// coverage on means "measuring, but into no particular tier" is not a state that
+// can happen.
+const COVERAGE_TIER = process.env.E2E_COVERAGE_TIER;
 
 /**
  * e2e `test` with guaranteed workbench teardown, plus opt-in JS coverage.
@@ -17,9 +23,10 @@ const COVERAGE_RAW_DIR = join(process.cwd(), "test-artifacts", "coverage-raw");
  * containers are never left behind. Import `test`/`expect` from here instead of
  * `@playwright/test` in every e2e spec.
  *
- * When `E2E_COVERAGE` is set, the `jsCoverage` fixture records browser-side V8
- * coverage for the test and writes it to disk for later merge (`make
- * e2e-coverage`). It is declared first so its teardown — stopping coverage —
+ * When `E2E_COVERAGE_TIER` names a tier, the `jsCoverage` fixture records
+ * browser-side V8 coverage for the test and writes it under that tier for later
+ * merge (`make coverage-e2e` / `coverage-demo`). It is declared first so its
+ * teardown — stopping coverage —
  * runs last, after the workbench cleanup, capturing the seal/release UI too.
  * With the flag unset it is a no-op, so a plain `make e2e-tests` pays nothing.
  */
@@ -31,18 +38,16 @@ export const test = base.extend<{
 }>({
   jsCoverage: [
     async ({ page }, use) => {
-      const enabled = Boolean(process.env.E2E_COVERAGE) && Boolean(page.coverage);
+      const enabled = Boolean(COVERAGE_TIER) && Boolean(page.coverage);
       if (enabled) {
         await page.coverage.startJSCoverage({ resetOnNavigation: false });
       }
       await use();
       if (enabled) {
         const entries = await page.coverage.stopJSCoverage();
-        mkdirSync(COVERAGE_RAW_DIR, { recursive: true });
-        writeFileSync(
-          join(COVERAGE_RAW_DIR, `${test.info().testId}.json`),
-          JSON.stringify(entries),
-        );
+        const rawDir = browserCoverageRawDir(COVERAGE_TIER as string);
+        mkdirSync(rawDir, { recursive: true });
+        writeFileSync(join(rawDir, `${test.info().testId}.json`), JSON.stringify(entries));
       }
     },
     { auto: true },

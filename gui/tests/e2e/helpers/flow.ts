@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { expect, type Locator, type Page } from "@playwright/test";
+import { FIXTURES_DIR } from "../../artifacts";
 import { stepShot } from "../../screenshot";
 
 /**
@@ -45,13 +46,13 @@ export function authoredRee(): string {
 /**
  * Absolute path to the pip-based Python hello-world source archive (no
  * Dockerfile — the workbench itself is the Python runtime). Packed on demand
- * from the checked-in sources into the gitignored test-artifacts dir, so no
- * binary blob lives in the repo.
+ * from the checked-in sources into the gitignored artifact root, so no binary
+ * blob lives in the repo — and repacked on every call, which is what keeps
+ * test-artifacts/ safe to delete even though a test reads this back.
  */
 export function pythonPipHelloWorld(): string {
-  const artifactsDir = path.join(process.cwd(), "test-artifacts");
-  mkdirSync(artifactsDir, { recursive: true });
-  const archive = path.join(artifactsDir, "python-pip-hello-world.tar.gz");
+  mkdirSync(FIXTURES_DIR, { recursive: true });
+  const archive = path.join(FIXTURES_DIR, "python-pip-hello-world.tar.gz");
   execFileSync("tar", [
     "-czf",
     archive,

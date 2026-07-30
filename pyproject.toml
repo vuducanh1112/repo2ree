@@ -65,12 +65,16 @@ branch = true
 # Fallback data file for an ad-hoc `pytest --cov` with no tier chosen. The
 # measured tiers (unit, integration, e2e, demo) each override this via
 # COVERAGE_FILE to write into their own directory under
-# test-artifacts/coverage/data/<tier>/ — see mk/tests.mk. One directory per
-# tier, rather than one suffixed file per tier, because `coverage combine`
+# test-artifacts/coverage/python/data/<tier>/ — see mk/tests.mk. One directory
+# per tier, rather than one suffixed file per tier, because `coverage combine`
 # treats sibling `.coverage.*` files as its own parallel-mode output and
 # consumes them: separate directories make a tier's data impossible to eat by
 # accident, and let the combine name its inputs explicitly.
-data_file = "test-artifacts/coverage/data/adhoc/.coverage"
+#
+# The `python/` level is the runtime, above the tier: coverage.py's reports are
+# one measuring tool's subtree, sibling to the browser V8 reports, because
+# unioning tiers is a coverage.py operation with no cross-runtime form.
+data_file = "test-artifacts/coverage/python/data/adhoc/.coverage"
 # The e2e/demo tiers run the API server and agents under coverage and stop them
 # with SIGTERM; without this, coverage's atexit save never fires and the run
 # records nothing. Inert for the pytest targets, which exit normally.

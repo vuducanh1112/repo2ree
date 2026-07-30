@@ -1,33 +1,71 @@
 // Merge the per-test browser V8 coverage captured by the e2e suite (written by
-// the jsCoverage fixture when E2E_COVERAGE is set) into one istanbul/lcov +
-// HTML report. Run after the Playwright e2e run; `make e2e-coverage` does both.
+// the jsCoverage fixture when E2E_COVERAGE_TIER is set) into one istanbul/lcov +
+// HTML report. Run after the Playwright e2e run; `make coverage-e2e` does both.
 //
 // V8 -> source mapping leans on the Vite dev server's sourcemaps, so this is
 // meaningful only against the dev server (the e2e webServer), not a minified
-// build. sourceFilter keeps just the app's own src/.
+// build. entryFilter keeps just the app's own src/.
+//
+//   node scripts/gen-coverage.mjs <tier>      one tier's report
+//   node scripts/gen-coverage.mjs --combined  every tier's captures in one
+//
+// Both write under test-artifacts/coverage/browser/. The tier is required
+// because it used to be absent: the raw captures and the report both lived in
+// one unkeyed directory, so `make coverage-demo` after `make coverage-e2e`
+// silently replaced the e2e report with the demo one. `--combined` is the
+// browser twin of `coverage combine` — a merge inside *this* tool, over its own
+// captures. There is no cross-runtime union, which is why coverage/ holds a
+// browser/ and a python/ subtree and no combined/ above them.
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { CoverageReport } from "monocart-coverage-reports";
 
-const cwd = process.cwd();
-const rawDir = join(cwd, "test-artifacts", "coverage-raw");
-const outputDir = join(cwd, "test-artifacts", "coverage");
+// import.meta.dirname, not __dirname: this is a real ESM module, run by node
+// directly. The Playwright-side helpers are the mirror image — package.json
+// declares no "type", so Playwright's transform emits CommonJS and they anchor
+// on __dirname instead (see tests/artifacts.ts). Neither form works in both
+// places, which is why the two anchors cannot be one file.
+const REPO_ROOT = join(import.meta.dirname, "..", "..");
+const BROWSER_COVERAGE = join(REPO_ROOT, "test-artifacts", "coverage", "browser");
+const RAW_ROOT = join(BROWSER_COVERAGE, "raw");
 
-if (!existsSync(rawDir)) {
-  console.error(`No raw coverage at ${rawDir}.`);
-  console.error("Run the e2e suite with E2E_COVERAGE=1 first (or use `make e2e-coverage`).");
+const arg = process.argv[2];
+if (!arg) {
+  console.error("usage: gen-coverage.mjs <tier> | --combined");
+  process.exit(2);
+}
+const combined = arg === "--combined";
+
+// A tier contributes only if it actually captured something: `unit` never drives
+// a browser, and a stack tier that was never measured has no raw directory.
+const tiers = combined
+  ? (existsSync(RAW_ROOT) ? readdirSync(RAW_ROOT, { withFileTypes: true }) : [])
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .sort()
+  : [arg];
+
+const inputs = [];
+for (const tier of tiers) {
+  const dir = join(RAW_ROOT, tier);
+  if (!existsSync(dir)) continue;
+  for (const file of readdirSync(dir).filter((f) => f.endsWith(".json"))) {
+    inputs.push(join(dir, file));
+  }
+}
+
+if (inputs.length === 0) {
+  console.error(`No per-test V8 captures under ${combined ? RAW_ROOT : join(RAW_ROOT, arg)}.`);
+  console.error("Run a measured stack tier first: make coverage-e2e (or coverage-demo).");
   process.exit(1);
 }
 
-const rawFiles = readdirSync(rawDir).filter((f) => f.endsWith(".json"));
-if (rawFiles.length === 0) {
-  console.error(`No per-test coverage files in ${rawDir}.`);
-  process.exit(1);
-}
+const label = combined ? `combined (${tiers.join(", ")})` : arg;
+const outputDir = join(BROWSER_COVERAGE, combined ? "combined" : arg);
 
 const report = new CoverageReport({
-  name: "repo2ree GUI e2e coverage",
+  name: `repo2ree — ${label} tier, browser`,
   outputDir,
   // v8: monocart's interactive single-page report (byte/branch/function/line,
   //   source-mapped) — the reason to use monocart over plain istanbul html.
@@ -43,11 +81,10 @@ const report = new CoverageReport({
   entryFilter: (entry) => entry.url.includes("/src/"),
 });
 
-for (const file of rawFiles) {
-  const entries = JSON.parse(readFileSync(join(rawDir, file), "utf8"));
-  await report.add(entries);
+for (const file of inputs) {
+  await report.add(JSON.parse(readFileSync(file, "utf8")));
 }
 
 await report.generate();
 // The console-summary reporter prints the totals table above; just point at the report.
-console.log(`\nGUI e2e coverage (${rawFiles.length} tests) -> ${outputDir}/index.html`);
+console.log(`\nGUI ${label} coverage (${inputs.length} tests) -> ${outputDir}/index.html`);

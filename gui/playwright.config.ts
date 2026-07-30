@@ -14,6 +14,11 @@ const baseUse = {
   viewport: { width: 1920, height: 1080 },
 };
 
+// Every `outputDir` below is `../test-artifacts/...`: one artifact root at the
+// repo root, shared with the Python suites, rather than a second one under gui/.
+// Playwright resolves a relative outputDir against *this file's* directory, not
+// the cwd, so these stay correct however the suite is invoked — which is the
+// same reason tests/artifacts.ts anchors on __dirname instead of process.cwd().
 export default defineConfig({
   testDir: "./tests",
   // Each test provisions a real workbench container against the single shared
@@ -45,7 +50,7 @@ export default defineConfig({
       // The review specs are their own project (below), so the authoring suite
       // does not also run them.
       testIgnore: ["**/review/**"],
-      outputDir: "./test-artifacts/playwright/e2e",
+      outputDir: "../test-artifacts/playwright/e2e",
       // Generous per-test budget: with DinD, each workbench builds against a
       // cold (empty) image cache, so a test that builds + runs can need ~60s+.
       timeout: 180 * 1000,
@@ -69,7 +74,7 @@ export default defineConfig({
       // top of doing it once to have something to review.
       name: "review",
       testDir: "./tests/e2e/review",
-      outputDir: "./test-artifacts/playwright/review",
+      outputDir: "../test-artifacts/playwright/review",
       timeout: 420 * 1000,
       expect: { timeout: 15 * 1000 },
       use: {
@@ -86,7 +91,7 @@ export default defineConfig({
       name: "demo",
       testDir: "./tests/demo",
       testIgnore: ["**/code-ocean/**"],
-      outputDir: "./test-artifacts/playwright/demo",
+      outputDir: "../test-artifacts/playwright/demo",
       timeout: 300 * 1000,
       expect: { timeout: 10 * 1000 },
       use: {
@@ -100,7 +105,7 @@ export default defineConfig({
       // ordinary narrated demo remains quick and self-contained.
       name: "code-ocean",
       testDir: "./tests/demo/code-ocean",
-      outputDir: "./test-artifacts/playwright/code-ocean",
+      outputDir: "../test-artifacts/playwright/code-ocean",
       timeout: 900 * 1000,
       expect: { timeout: 10 * 1000 },
       use: {
