@@ -1,4 +1,4 @@
-import { type CableGeo, cableHl, cablePath } from "./cableGeometry";
+import { type CableGeo, cableHl, cablePath } from "@core/canvas/cableGeometry";
 
 interface CableOverlaySvgProps {
   geo: CableGeo;

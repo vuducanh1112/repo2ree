@@ -1,11 +1,10 @@
+import { type AppShellPage, PAGE } from "@core/app-shell/pages";
+import { PROCESS_STEPS, resolveNavCompleted } from "@core/app-shell/processSteps";
 import { axisStandings, axisStepLabel } from "@core/evaluate/axes";
 import { hbomHasAnyComponents } from "@core/hbom/HbomSummary";
 import type { Badges } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
-import { Ic } from "../../shared/components/Icon";
-import { PROCESS_STEPS, resolveNavCompleted } from "../sidebar/processSteps";
-import { type AppShellPage, PAGE } from "../state/pages";
 
 // A canvas node is a page floating around the pod in the hub. `kind` keeps the
 // declarations/evidence split: things you DECLARE cluster left, evidence the
@@ -15,6 +14,24 @@ import { type AppShellPage, PAGE } from "../state/pages";
 // view: `core` is the experiment itself, `inner` the execution substrate it
 // runs on, `outer` the provenance/credential membrane around the whole thing.
 export type NodeZone = "outer" | "inner" | "core";
+
+/**
+ * Which glyph a node shows, named rather than supplied. The node definitions are
+ * functional-core data, so they carry the *key* and the shell resolves it to a
+ * component — the same indirection `ReeStepIconKey` and `stepIcons.tsx` already
+ * use for the pipeline steps.
+ */
+export type CanvasIconKey =
+  | "globe"
+  | "grid"
+  | "chip"
+  | "terminal"
+  | "star"
+  | "cpu"
+  | "package"
+  | "shield"
+  | "archive"
+  | "lock";
 
 export interface CanvasNode {
   key: AppShellPage;
@@ -27,7 +44,7 @@ export interface CanvasNode {
   xExploded?: number;
   color: string;
   shadow: string;
-  icon: (size?: number) => JSX.Element;
+  iconKey: CanvasIconKey;
 }
 
 // The Workbench is absent from the ring on purpose: it IS the canvas — the lab
@@ -44,7 +61,7 @@ export const CANVAS_NODES: CanvasNode[] = [
     xExploded: 312,
     color: "#f59e0b",
     shadow: "#92400e",
-    icon: Ic.globe,
+    iconKey: "globe",
   },
   {
     key: PAGE.METADATA,
@@ -55,7 +72,7 @@ export const CANVAS_NODES: CanvasNode[] = [
     y: -16,
     color: "#22c55e",
     shadow: "#166534",
-    icon: Ic.grid,
+    iconKey: "grid",
   },
   {
     key: PAGE.HBOM,
@@ -66,7 +83,7 @@ export const CANVAS_NODES: CanvasNode[] = [
     y: 120,
     color: "#0f766e",
     shadow: "#134e4a",
-    icon: Ic.chip,
+    iconKey: "chip",
   },
   {
     key: PAGE.EXPERIMENTS,
@@ -77,7 +94,7 @@ export const CANVAS_NODES: CanvasNode[] = [
     y: 236,
     color: "#4f46e5",
     shadow: "#3730a3",
-    icon: Ic.terminal,
+    iconKey: "terminal",
   },
   {
     key: PAGE.EVALUATE,
@@ -88,7 +105,7 @@ export const CANVAS_NODES: CanvasNode[] = [
     y: -150,
     color: "#7c3aed",
     shadow: "#3b0764",
-    icon: Ic.star,
+    iconKey: "star",
   },
   // Build / SBOM / Activation are the three facets of the runtime — the inner
   // shell. They are plain inner-shell members (each cables to the inner shell),
@@ -105,7 +122,7 @@ export const CANVAS_NODES: CanvasNode[] = [
     xExploded: -340,
     color: "#0891b2",
     shadow: "#164e63",
-    icon: Ic.cpu,
+    iconKey: "cpu",
   },
   {
     key: PAGE.SBOM,
@@ -116,7 +133,7 @@ export const CANVAS_NODES: CanvasNode[] = [
     y: -58,
     color: "#16a34a",
     shadow: "#14532d",
-    icon: Ic.package,
+    iconKey: "package",
   },
   {
     key: PAGE.ACTIVATION,
@@ -127,7 +144,7 @@ export const CANVAS_NODES: CanvasNode[] = [
     y: 75,
     color: "#7c3aed",
     shadow: "#3b0764",
-    icon: Ic.shield,
+    iconKey: "shield",
   },
   {
     key: PAGE.ARCHIVE,
@@ -138,7 +155,7 @@ export const CANVAS_NODES: CanvasNode[] = [
     y: 120,
     color: "#e4572e",
     shadow: "#7c2d12",
-    icon: Ic.archive,
+    iconKey: "archive",
   },
   {
     key: PAGE.SEAL,
@@ -149,7 +166,7 @@ export const CANVAS_NODES: CanvasNode[] = [
     y: 236,
     color: "#b91c1c",
     shadow: "#7f1d1d",
-    icon: Ic.lock,
+    iconKey: "lock",
   },
 ];
 
@@ -169,7 +186,7 @@ interface ProjectionLayer {
   scale: number;
 }
 export const EXPLODE_BASE_POD = 760;
-// Must stay above ZOOM_MIN in useCanvasViewport so focusView can reach it.
+// Must stay above ZOOM_MIN in viewportMath so focusView can reach it.
 export const EXPLODE_ZOOM = 0.42;
 // World-x the camera centres on when decomposed (mid-point of the spread).
 export const EXPLODE_CENTER = 1250;

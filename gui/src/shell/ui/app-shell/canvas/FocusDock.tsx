@@ -1,7 +1,8 @@
+import type { CanvasNode } from "@core/canvas/canvasNodes";
 import type { ReactNode } from "react";
 import { C, F } from "../../theme/theme";
 import { CanvasWindow } from "./CanvasWindow";
-import type { CanvasNode } from "./canvasNodes";
+import { canvasIcon } from "./canvasIcons";
 
 interface FocusDockProps {
   node: CanvasNode | undefined;
@@ -67,7 +68,9 @@ export function FocusDock({ node, originRect, closable, onClose, children }: Foc
                 color: C.textMuted,
               }}
             >
-              <span style={{ display: "flex", color: node.color }}>{node.icon(13)}</span>
+              <span style={{ display: "flex", color: node.color }}>
+                {canvasIcon(node.iconKey)(13)}
+              </span>
               {node.label}
             </span>
           )

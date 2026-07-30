@@ -1,17 +1,16 @@
+import {
+  clampZoom,
+  dragOffset,
+  exceedsDragThreshold,
+  type NodeOffsets,
+  type Transform,
+  zoomToward,
+} from "@core/canvas/viewportMath";
 import { useEffect, useRef, useState } from "react";
 
-const ZOOM_MIN = 0.38;
-const ZOOM_MAX = 1.7;
-// Movement past this many screen px turns a node click into a drag.
-const DRAG_THRESHOLD = 4;
-
-export interface Transform {
-  x: number;
-  y: number;
-  z: number;
-}
-
-export type NodeOffsets = Record<string, { x: number; y: number }>;
+// The transform types live with the math that produces them; this module stays
+// their public home, since the canvas imports them from the hook it drives.
+export type { NodeOffsets, Transform };
 
 type PanState = { sx: number; sy: number; x0: number; y0: number } | null;
 type NodeDragState = {
@@ -70,14 +69,7 @@ export function useCanvasViewport(stageRef: React.RefObject<HTMLDivElement>): Ca
       event.preventDefault();
       const rect = stage.getBoundingClientRect();
       setAnimate(false);
-      setTf((prev) => {
-        const ox = event.clientX - rect.left - rect.width / 2 - prev.x;
-        const oy = event.clientY - rect.top - rect.height / 2 - prev.y;
-        const factor = event.deltaY < 0 ? 1.1 : 1 / 1.1;
-        const z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, prev.z * factor));
-        const ratio = z / prev.z - 1;
-        return { x: prev.x - ox * ratio, y: prev.y - oy * ratio, z };
-      });
+      setTf((prev) => zoomToward(prev, { x: event.clientX, y: event.clientY }, rect, event.deltaY));
     };
     stage.addEventListener("wheel", onWheel, { passive: false });
     return () => stage.removeEventListener("wheel", onWheel);
@@ -90,12 +82,12 @@ export function useCanvasViewport(stageRef: React.RefObject<HTMLDivElement>): Ca
       if (nd) {
         const dx = event.clientX - nd.sx;
         const dy = event.clientY - nd.sy;
-        if (!nd.moved && Math.hypot(dx, dy) > DRAG_THRESHOLD) nd.moved = true;
+        if (!nd.moved && exceedsDragThreshold(dx, dy)) nd.moved = true;
         if (nd.moved) {
           const z = tfRef.current.z;
           setNodeOffsets((prev) => ({
             ...prev,
-            [nd.key]: { x: nd.x0 + dx / z, y: nd.y0 + dy / z },
+            [nd.key]: dragOffset({ x: nd.x0, y: nd.y0 }, dx, dy, z),
           }));
         }
         return;
@@ -147,7 +139,7 @@ export function useCanvasViewport(stageRef: React.RefObject<HTMLDivElement>): Ca
 
   const zoomBy = (factor: number) => {
     setAnimate(true);
-    setTf((prev) => ({ ...prev, z: Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, prev.z * factor)) }));
+    setTf((prev) => ({ ...prev, z: clampZoom(prev.z * factor) }));
   };
 
   const focusView = (next: Partial<Transform>) => {
@@ -155,7 +147,7 @@ export function useCanvasViewport(stageRef: React.RefObject<HTMLDivElement>): Ca
     setTf((prev) => ({
       ...prev,
       ...next,
-      z: next.z != null ? Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, next.z)) : prev.z,
+      z: next.z != null ? clampZoom(next.z) : prev.z,
     }));
   };
 

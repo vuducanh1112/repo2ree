@@ -1,17 +1,5 @@
-import type { EvaluationState } from "@core/evaluate/EvaluationState";
-import type { Badges, ReeFile } from "@core/ree/ReeTypes";
-import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
-import { scoreCardStanding } from "@core/scorecard/ReproducibilityScoreCard";
-import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
-import { useReproducibilityScoreCard } from "@shell/data/scorecard/queries";
-import { useMemo, useRef, useState } from "react";
-import { C } from "../../theme/theme";
-import type { AppShellPage } from "../state/pages";
-import { PAGE } from "../state/pages";
-import { BenchConsole } from "./BenchConsole";
-import { CableOverlaySvg } from "./CableOverlay";
-import { CanvasControls } from "./CanvasControls";
-import { CoreExperiments, experimentCableTargets } from "./CoreExperiments";
+import type { AppShellPage } from "@core/app-shell/pages";
+import { PAGE } from "@core/app-shell/pages";
 import {
   CANVAS_NODES,
   EXPLODE_BASE_POD,
@@ -23,7 +11,19 @@ import {
   isNodeLocked,
   nodeProjection,
   nodeSummary,
-} from "./canvasNodes";
+} from "@core/canvas/canvasNodes";
+import type { EvaluationState } from "@core/evaluate/EvaluationState";
+import type { Badges, ReeFile } from "@core/ree/ReeTypes";
+import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
+import { scoreCardStanding } from "@core/scorecard/ReproducibilityScoreCard";
+import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
+import { useReproducibilityScoreCard } from "@shell/data/scorecard/queries";
+import { useMemo, useRef, useState } from "react";
+import { C } from "../../theme/theme";
+import { BenchConsole } from "./BenchConsole";
+import { CableOverlaySvg } from "./CableOverlay";
+import { CanvasControls } from "./CanvasControls";
+import { CoreExperiments, experimentCableTargets } from "./CoreExperiments";
 import { ExplodeScaffold, ExplodeToggle, ProjectionPod } from "./ExplodeView";
 import { satellitePositions } from "./experimentRing";
 import { FileTreeConsole } from "./FileTreeConsole";

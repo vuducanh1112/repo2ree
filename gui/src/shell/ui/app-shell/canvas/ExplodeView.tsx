@@ -1,8 +1,8 @@
+import { EXPLODE_BASE_POD, EXPLODE_LAYERS } from "@core/canvas/canvasNodes";
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import type React from "react";
 import { Ic } from "../../shared/components/Icon";
 import { C, F } from "../../theme/theme";
-import { EXPLODE_BASE_POD, EXPLODE_LAYERS } from "./canvasNodes";
 import { PodWidget } from "./PodWidget";
 import type { PodShell } from "./podWidget/PodSphere";
 

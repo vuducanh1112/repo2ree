@@ -344,13 +344,14 @@ module.exports = {
       name: "shell-ui-routes-no-feature-internals",
       severity: "error",
       comment:
-        "Route composition may assemble top-level views and route constants but should not depend on feature internals.",
+        "Route composition may assemble top-level views but should not depend on feature internals. " +
+        "The route constants it also needs are core data (@core/app-shell/pages), reachable from anywhere.",
       from: {
         path: "^src/shell/ui/routes",
         pathNot: TEST_FILE_PATTERN
       },
       to: {
-        path: "^src/shell/ui/app-shell/(?!(AppShellView(?:[.]tsx)?|state/pages[.]ts)$)"
+        path: "^src/shell/ui/app-shell/(?!AppShellView(?:[.]tsx)?$)"
       }
     }
   ],

@@ -1,8 +1,8 @@
+import { PAGE } from "@core/app-shell/pages";
+import { PROCESS_STEPS, resolveNavCompleted } from "@core/app-shell/processSteps";
 import type { Badges } from "@core/ree/ReeTypes";
 import { createEmptyReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { describe, expect, it } from "vitest";
-import { PAGE } from "../state/pages";
-import { PROCESS_STEPS, resolveNavCompleted } from "./processSteps";
 
 function stepFor(key: string) {
   const step = PROCESS_STEPS.find((s) => s.key === key);

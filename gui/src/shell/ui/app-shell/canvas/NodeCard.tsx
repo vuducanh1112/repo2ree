@@ -1,7 +1,8 @@
+import type { AppShellPage } from "@core/app-shell/pages";
+import type { CanvasNode, NodeProjection, SummaryRow } from "@core/canvas/canvasNodes";
 import type React from "react";
 import { C, F } from "../../theme/theme";
-import type { AppShellPage } from "../state/pages";
-import type { CanvasNode, NodeProjection, SummaryRow } from "./canvasNodes";
+import { canvasIcon } from "./canvasIcons";
 import { StatusDot } from "./StatusDot";
 
 interface NodeCardProps {
@@ -88,7 +89,7 @@ export function NodeCard({
             color: done ? node.color : C.textMuted,
           }}
         >
-          {node.icon(14)}
+          {canvasIcon(node.iconKey)(14)}
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 650, color: C.text, letterSpacing: -0.1 }}>

@@ -1,6 +1,6 @@
+import type { AppShellPage } from "@core/app-shell/pages";
+import { PAGE } from "@core/app-shell/pages";
 import type { ToastState } from "@core/ree-steps/stepTypes";
-import type { AppShellPage } from "./pages";
-import { PAGE } from "./pages";
 
 export interface UiChromeState {
   toast: ToastState | null;

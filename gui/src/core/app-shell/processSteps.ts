@@ -1,16 +1,14 @@
+import { type AppShellPage, PAGE } from "@core/app-shell/pages";
 import { hbomHasAnyComponents } from "@core/hbom/HbomSummary";
 import type { Badges } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { REE_STEPS } from "@core/ree-steps/stepCatalog";
 import type { ReeStepDefinition } from "@core/ree-steps/stepTypes";
-import { Ic } from "../../shared/components/Icon";
-import { type AppShellPage, PAGE } from "../state/pages";
 
 interface ProcessStep {
   n: number;
   key: AppShellPage;
   label: string;
-  IC: (size?: number) => JSX.Element;
   automation: ReeStepDefinition | null;
   desc: string;
   navCompleted?: (ree: ReeEditorViewModel, badges: Badges) => boolean;
@@ -27,7 +25,6 @@ export const PROCESS_STEPS: ProcessStep[] = [
     n: 1,
     key: PAGE.SOURCE,
     label: "Source Acquisition",
-    IC: Ic.globe,
     automation: null,
     desc: "Choose a source path, acquire the snapshot, and manage workspace source files",
   },
@@ -35,7 +32,6 @@ export const PROCESS_STEPS: ProcessStep[] = [
     n: 2,
     key: PAGE.METADATA,
     label: "Provide Metadata",
-    IC: Ic.grid,
     automation: null,
     desc: "Input project identity metadata",
   },
@@ -43,7 +39,6 @@ export const PROCESS_STEPS: ProcessStep[] = [
     n: 3,
     key: PAGE.HBOM,
     label: "Create HBOM",
-    IC: Ic.chip,
     automation: null,
     desc: "Enter hardware bill of materials",
   },
@@ -51,7 +46,6 @@ export const PROCESS_STEPS: ProcessStep[] = [
     n: 4,
     key: PAGE.EVALUATE,
     label: "Reproducibility Readiness",
-    IC: Ic.star,
     automation: AUTOMATION_BY_KEY[PAGE.EVALUATE],
     desc: "Analyze the source repository",
   },
@@ -59,7 +53,6 @@ export const PROCESS_STEPS: ProcessStep[] = [
     n: 5,
     key: PAGE.BUILD,
     label: "Build Runtime",
-    IC: Ic.cpu,
     automation: AUTOMATION_BY_KEY[PAGE.BUILD],
     desc: "Build the runtime artifact",
   },
@@ -67,7 +60,6 @@ export const PROCESS_STEPS: ProcessStep[] = [
     n: 6,
     key: PAGE.SBOM,
     label: "Generate SBOM",
-    IC: Ic.package,
     automation: AUTOMATION_BY_KEY[PAGE.SBOM],
     desc: "Inventory the software in the runtime",
   },
@@ -75,7 +67,6 @@ export const PROCESS_STEPS: ProcessStep[] = [
     n: 7,
     key: PAGE.ACTIVATION,
     label: "Test Activation",
-    IC: Ic.shield,
     automation: AUTOMATION_BY_KEY[PAGE.ACTIVATION],
     desc: "Verify the runtime starts and activates",
   },
@@ -83,7 +74,6 @@ export const PROCESS_STEPS: ProcessStep[] = [
     n: 8,
     key: PAGE.EXPERIMENTS,
     label: "Experiments",
-    IC: Ic.terminal,
     automation: null,
     desc: "Define reproducibility experiment commands",
   },
@@ -91,7 +81,6 @@ export const PROCESS_STEPS: ProcessStep[] = [
     n: 9,
     key: PAGE.ARCHIVE,
     label: "Deposit & Share",
-    IC: Ic.globe,
     automation: null,
     desc: "Archive and publish",
   },
@@ -99,7 +88,6 @@ export const PROCESS_STEPS: ProcessStep[] = [
     n: 10,
     key: PAGE.SEAL,
     label: "Seal",
-    IC: Ic.lock,
     automation: null,
     desc: "Seal the REE",
   },

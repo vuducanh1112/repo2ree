@@ -1,6 +1,6 @@
+import { APP_ROUTE, type AppLoadRoutePath, LOAD_REE_PARAM } from "@core/app-shell/pages";
 import { AXES } from "@core/evaluate/axes";
 import type React from "react";
-import { APP_ROUTE, type AppLoadRoutePath, LOAD_REE_PARAM } from "../app-shell/state/pages";
 import { Ic } from "../shared/components/Icon";
 import { C, F, S_ACTION_BUTTON_BASE, S_SECTION_LABEL } from "../theme/theme";
 

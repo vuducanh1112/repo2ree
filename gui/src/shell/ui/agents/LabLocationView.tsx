@@ -1,9 +1,9 @@
 import type { Agent } from "@core/agent/Agent";
 import { connectedDurationMs, formatDuration } from "@core/agent/Agent";
+import { APP_ROUTE, LOAD_REE_PARAM } from "@core/app-shell/pages";
 import { useAgents } from "@shell/data/agents/agents";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { APP_ROUTE, LOAD_REE_PARAM } from "../app-shell/state/pages";
 import { Ic } from "../shared/components/Icon";
 import { C, F } from "../theme/theme";
 

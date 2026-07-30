@@ -1,6 +1,6 @@
+import { PAGE } from "@core/app-shell/pages";
 import type { ReeRunLogs } from "@core/ree/ReeTypes";
 import { useApiRuntime } from "@shell/data/apiRuntime";
-import { PAGE } from "../../state/pages";
 import { PageArchive as ArchivePage } from "../archive/ArchivePage";
 import { type AppShellPageContainerProps, ContentSection, useStepRunLogEntry } from "./shared";
 

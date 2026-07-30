@@ -1,6 +1,6 @@
+import { PAGE } from "@core/app-shell/pages";
 import { useApiRuntime } from "@shell/data/apiRuntime";
 import { useStepPageController } from "../../hooks/useStepPageController";
-import { PAGE } from "../../state/pages";
 import {
   PageBuildRuntime,
   PageExperiments,

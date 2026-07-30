@@ -48,19 +48,16 @@ export default defineConfig({
       provider: "v8",
       reportsDirectory: "../test-artifacts/coverage/node/unit",
       reporter: ["html", "text-summary", "lcovonly"],
-      // Every file in `include` counts, whether a test imported it or not, so
-      // the tier reads ~29%. That is a real gap, not an artifact: the React
-      // shell is only beginning to be covered, and the Playwright suites record
-      // no JS coverage, so nothing else measures it. Component tests land in the
-      // `component` project above and lift this number.
+      // Every file in `include` counts, whether a test imported it or not. That
+      // is what makes the number honest rather than flattering: measure only the
+      // files some test happened to import and it reads far higher — and
+      // *improves when you delete a test*. That was istanbul's default and cost
+      // an explicit flag to avoid.
       //
-      // Under the v8 provider that is what `include` alone already does — `all`
-      // measures as a no-op here (true and false give byte-identical totals).
-      // It stays because it names the property the number depends on: without
-      // that behaviour, coverage reports only imported files and reads ~62%, a
-      // figure that *improves when you delete a test*. That was istanbul's
-      // default and cost an explicit flag to avoid; keeping the flag states the
-      // requirement rather than trusting a provider default to stay put.
+      // Under the v8 provider `include` gives that behaviour on its own and
+      // `all` measures as a no-op here (true and false give byte-identical
+      // totals). The flag stays because it names the property the number depends
+      // on rather than trusting a provider default to stay put.
       all: true,
       // Extension-scoped: `src/**` unscoped also tries to instrument a stray
       // src/.DS_Store and dies.

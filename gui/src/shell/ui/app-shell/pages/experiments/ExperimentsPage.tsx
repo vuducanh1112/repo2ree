@@ -1,3 +1,4 @@
+import { PAGE } from "@core/app-shell/pages";
 import {
   addExperiment as coreAddExperiment,
   removeExperiment as coreRemoveExperiment,
@@ -17,7 +18,6 @@ import {
 } from "@shell/ui/theme/lightGlassTheme";
 import { useEffect, useRef, useState } from "react";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
-import { PAGE } from "../../state/pages";
 import type { PageExperimentsProps } from "../sharedStepUi";
 import {
   ExperimentCardList,

@@ -1,3 +1,4 @@
+import type { AppShellPage } from "@core/app-shell/pages";
 import type { ArtifactStatus } from "@core/artifact/ArtifactStatus";
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import type { InclusionOpts } from "@core/ree/InclusionOpts";
@@ -17,7 +18,6 @@ import {
   setWorkspaceSourceState,
   updateReeSpec,
 } from "@shell/ui/app-shell/state/actions";
-import type { AppShellPage } from "@shell/ui/app-shell/state/pages";
 import type { ReeIntentState } from "@shell/ui/app-shell/state/reeIntent";
 import type { ReeSessionState } from "@shell/ui/app-shell/state/reeSession";
 import type { StepRunState } from "@shell/ui/app-shell/state/stepRunState";

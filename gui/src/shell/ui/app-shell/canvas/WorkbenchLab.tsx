@@ -1,3 +1,4 @@
+import { APP_ROUTE, LOAD_REE_PARAM } from "@core/app-shell/pages";
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import { appendLine } from "@core/ree/logEntry";
 import type { LogEntry, LogLine } from "@core/ree/ReeTypes";
@@ -20,7 +21,6 @@ import {
   type WorkbenchImageSelection,
   WorkbenchImageSelector,
 } from "../pages/workbench/WorkbenchPageSections";
-import { APP_ROUTE, LOAD_REE_PARAM } from "../state/pages";
 import { PodWidget } from "./PodWidget";
 
 interface WorkbenchLabProps {

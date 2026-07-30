@@ -1,9 +1,9 @@
+import { APP_ROUTE } from "@core/app-shell/pages";
 import { Navigate, Route, Routes, useNavigate, useSearchParams } from "react-router-dom";
 import { ApiClientProvider } from "../../data/apiRuntime";
 import { AgentsView } from "../agents/AgentsView";
 import { LabLocationView } from "../agents/LabLocationView";
 import { AppShellView } from "../app-shell/AppShellView";
-import { APP_ROUTE } from "../app-shell/state/pages";
 import { LandingView } from "../landing/LandingView";
 import { ReeIndexView } from "../ree-index/ReeIndexView";
 

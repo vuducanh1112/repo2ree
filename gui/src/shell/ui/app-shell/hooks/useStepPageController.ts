@@ -1,3 +1,4 @@
+import { appShellPageForField } from "@core/app-shell/pages";
 import { isFailedStepOutcome } from "@core/ree/ReeTypes";
 import { defaultParamsForReeStep, REE_STEPS } from "@core/ree-steps/stepCatalog";
 import { missingReeStepRequirements } from "@core/ree-steps/stepPolicies";
@@ -7,7 +8,6 @@ import type { ReeRun } from "@core/runs/ReeRun";
 import { useApiRuntime } from "@shell/data/apiRuntime";
 import { useReeRunLogsQuery, useReeRunQuery } from "@shell/data/runs/queries";
 import { useCallback, useMemo } from "react";
-import { appShellPageForField } from "../state/pages";
 import type { useAppShell } from "./useAppShell";
 
 type AppShellController = ReturnType<typeof useAppShell>;

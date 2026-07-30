@@ -1,7 +1,4 @@
-import { createEmptyReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
-import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
-import { describe, expect, it } from "vitest";
-import { PAGE } from "../state/pages";
+import { PAGE } from "@core/app-shell/pages";
 import {
   activeNode,
   CANVAS_NODES,
@@ -10,7 +7,10 @@ import {
   isNodeLocked,
   nodeProjection,
   nodeSummary,
-} from "./canvasNodes";
+} from "@core/canvas/canvasNodes";
+import { createEmptyReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
+import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
+import { describe, expect, it } from "vitest";
 
 function nodeFor(page: (typeof CANVAS_NODES)[number]["key"]) {
   const node = CANVAS_NODES.find((entry) => entry.key === page);

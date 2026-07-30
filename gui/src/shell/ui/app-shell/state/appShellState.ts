@@ -1,3 +1,5 @@
+import type { AppShellPage } from "@core/app-shell/pages";
+import { normalizeAppShellPage } from "@core/app-shell/pages";
 import type { ReeSpec } from "@core/ree/ReeSpec";
 import type {
   ActionStates,
@@ -8,8 +10,6 @@ import type {
 } from "@core/ree/ReeTypes";
 import type { ToastState } from "@core/ree-steps/stepTypes";
 import type { WorkspaceSourceState } from "@core/workspace/WorkspaceSourceState";
-import type { AppShellPage } from "./pages";
-import { normalizeAppShellPage } from "./pages";
 import type { ReeIntentState } from "./reeIntent";
 import type { ReeSessionState } from "./reeSession";
 import type { StepRunState } from "./stepRunState";

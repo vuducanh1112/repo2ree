@@ -1,3 +1,4 @@
+import { APP_ROUTE } from "@core/app-shell/pages";
 import { appendLine } from "@core/ree/logEntry";
 import type { LogEntry, LogLine } from "@core/ree/ReeTypes";
 import { useApiRuntime } from "@shell/data/apiRuntime";
@@ -8,7 +9,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Ic } from "../../shared/components/Icon";
 import { C, F } from "../../theme/theme";
-import { APP_ROUTE } from "../state/pages";
 import { HudConsole } from "./HudConsole";
 
 const LOG_COLOR: Record<LogLine["type"], string> = {

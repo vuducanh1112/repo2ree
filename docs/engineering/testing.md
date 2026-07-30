@@ -233,12 +233,16 @@ recording the demos — and keep measuring the **backend**, which is unaffected.
 
 ### The GUI reads low in `node`
 
-`make gui-tests` reports around 29%, and unlike the other low numbers here that
-one is **a real gap, not a measurement artifact**. The React shell is only
-beginning to be covered, and nothing else covers it either: the Playwright suites
-drive the shell but record no JavaScript coverage, for the reasons above. Closing
-it means writing more component tests, which land in this same tier and lift this
-same number.
+`make gui-tests` reads low, and unlike the other low numbers here that one is
+**a real gap, not a measurement artifact**. The React shell is only beginning to
+be covered, and nothing else covers it either: the Playwright suites drive the
+shell but record no JavaScript coverage, for the reasons above. Closing it means
+writing more component tests, which land in this same tier and lift this same
+number.
+
+The figure itself is deliberately not written down here or in `vite.config.js`.
+It moves on every run that adds a test, so a copy in prose is a copy that goes
+stale; run the tier and read the report it prints.
 
 Every file matching the config's `include` counts, whether a test imported it or
 not. That is what makes the number honest rather than flattering: measure only

@@ -1,3 +1,5 @@
+import { PAGE } from "@core/app-shell/pages";
+import { activeNode } from "@core/canvas/canvasNodes";
 import { addExperiment } from "@core/ree/experimentOps";
 import { staleStepKeys } from "@core/ree-steps/sealConsistency";
 import { useScorecardRunSync } from "@shell/data/scorecard/queries";
@@ -7,7 +9,6 @@ import { Toast } from "../shared/components/Toast";
 import { C, F, hoverBg, hoverColor } from "../theme/theme";
 import { AppShellContent } from "./AppShellContent";
 import { CanvasHub } from "./canvas/CanvasHub";
-import { activeNode } from "./canvas/canvasNodes";
 import { FocusDock } from "./canvas/FocusDock";
 import { RunHud } from "./canvas/RunHud";
 import { SealHubPanel } from "./canvas/SealHubPanel";
@@ -15,7 +16,6 @@ import { SourceHubPanel } from "./canvas/SourceHubPanel";
 import { WorkbenchLab } from "./canvas/WorkbenchLab";
 import { useAppShell } from "./hooks/useAppShell";
 import { AppShellProvider } from "./providers/AppShellProvider";
-import { PAGE } from "./state/pages";
 
 interface AppShellViewProps {
   onBack: () => void;

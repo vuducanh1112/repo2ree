@@ -1,3 +1,4 @@
+import { type AppShellPage, PAGE } from "@core/app-shell/pages";
 import type { ArtifactStatus } from "@core/artifact/ArtifactStatus";
 import type { ActionStates, Badges, ReeRunLogs } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
@@ -9,7 +10,6 @@ import { F } from "@shell/ui/theme/theme";
 import { useState } from "react";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
 import { GlassSectionHeader } from "../../components/GlassSectionHeader";
-import { type AppShellPage, PAGE } from "../../state/pages";
 import { ArchiveActionPanel } from "./sections/ArchiveActionPanel";
 import { ArchiveParamsCard } from "./sections/ArchiveParamsCard";
 import { ArchivePrereqBanners } from "./sections/ArchivePrereqBanners";
