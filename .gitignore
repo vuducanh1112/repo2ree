@@ -12,6 +12,11 @@ result-*
 # Hypothesis's local example database: replays past failing cases on the next
 # run, but machine-local and ephemeral. Durable regressions are pinned with
 # @example in the test source, so this dir is never committed.
+#
+# The suite redirects it to test-artifacts/property-based-tests/ (ignored below
+# with the rest of that root) — see the root conftest.py. This entry stays as
+# the backstop for anything that reaches hypothesis without going through
+# pytest, which still writes ./.hypothesis relative to the cwd.
 .hypothesis/
 .venv/
 **/__pycache__/

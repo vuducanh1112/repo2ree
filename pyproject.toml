@@ -517,9 +517,16 @@ strict = true
 # Tests import shared constants from their tier's conftest as a top-level
 # module (`from conftest import …`) — resolvable under pytest, which puts the
 # test dir on sys.path, but not under mypy's file-path-based module naming.
+#
+# follow_imports alongside ignore_missing_imports because the repo root now has
+# a conftest.py of its own (it pins Hypothesis's storage directory). mypy runs
+# from the root, so bare `conftest` became *resolvable* — to that file, which is
+# never the one a tier meant. Skipping the follow restores the intended `Any`
+# instead of type-checking every tier's import against the wrong module.
 [[tool.mypy.overrides]]
 module = "conftest"
 ignore_missing_imports = true
+follow_imports = "skip"
 
 # Shared test-helper modules imported as top-level modules the same way (put on
 # sys.path by pytest, but invisible to mypy's file-path-based module naming).
