@@ -138,7 +138,7 @@ produce it.
 | `demo-gui` | `make demo-gui` | The narrated walkthrough stack | docker + browsers |
 | `demo-gui-code-ocean` | `make demo-gui-code-ocean` | The external-capsule demo | docker + browsers + capsule |
 | `demo-api` | `make demo-api` | The live stack over HTTP, no browser | docker |
-| `node` | `make gui-tests` | The GUI's pure-logic Vitest suite | nothing |
+| `node` | `make gui-tests` | The GUI's Vitest suite: pure logic and components | nothing |
 
 Suites are named `<purpose>-<interface>`: `e2e-` is a regression suite, `demo-` a
 demonstration, `-gui` is browser-driven, `-api` drives the same stack over HTTP.
@@ -233,22 +233,48 @@ recording the demos — and keep measuring the **backend**, which is unaffected.
 
 ### The GUI reads low in `node`
 
-`make gui-tests` reports around 23%, and unlike the other low numbers here that
-one is **a real gap, not a measurement artifact**. The vitest suite is 57 files
-of pure logic with zero component tests (`0` `.test.tsx` files), so the React
-shell is essentially untested. Nothing else covers it either: the Playwright
-suites drive the shell but record no JavaScript coverage, for the reasons above.
-
-Closing it means writing component tests — jsdom or Vitest browser mode — which
-land in this same tier and lift this same number. That is the intended direction;
-the 23% is the honest starting point for it.
+`make gui-tests` reports around 29%, and unlike the other low numbers here that
+one is **a real gap, not a measurement artifact**. The React shell is only
+beginning to be covered, and nothing else covers it either: the Playwright suites
+drive the shell but record no JavaScript coverage, for the reasons above. Closing
+it means writing more component tests, which land in this same tier and lift this
+same number.
 
 Every file matching the config's `include` counts, whether a test imported it or
-not. That is what makes 23% honest rather than flattering: measure only imported
-files and the same suite reads about 62% — a number that *improves when you
+not. That is what makes the number honest rather than flattering: measure only
+imported files and the same suite reads far higher — and *improves when you
 delete a test*. Under the V8 provider `include` gives that behaviour on its own
 and `all: true` measures as a no-op, but the flag stays because it names the
 property the number depends on rather than trusting a provider default.
+
+### The `node` tier has two projects
+
+The tier is one Vitest run with one coverage report, split into two projects by
+file extension:
+
+| Project | Files | Environment |
+|---|---|---|
+| `logic` | `src/**/*.test.ts` | `node` |
+| `component` | `src/**/*.test.tsx` | `jsdom`, plus `tests/componentSetup.ts` |
+
+Component tests use React Testing Library and `@testing-library/user-event`, and
+select by **role and accessible name** rather than by styled text — several
+components (`RunActionButton`, `OutcomeBadge`) carry doc comments promising that
+name, and the tests are what hold them to it.
+
+The split is a cost and a correctness measure, not a preference. jsdom costs
+~1.7s of environment setup per file, so switching it on globally took the suite
+from 2.9s to 11s; it also broke `scriptTemplates/paths.test.ts`, which reads a
+contract fixture off disk through `import.meta.url` and cannot resolve it once
+that URL is `http://`. Projects split the *run*, not the measurement — `coverage`
+stays at the config root and both projects report into it — so this remains one
+tier with one number.
+
+Run one side alone while iterating:
+
+```bash
+cd gui && npx vitest --project component
+```
 
 ### By module
 

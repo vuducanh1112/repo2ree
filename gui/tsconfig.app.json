@@ -14,5 +14,5 @@
       "@shell/*": ["src/shell/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src", "tests/componentSetup.ts"]
 }
