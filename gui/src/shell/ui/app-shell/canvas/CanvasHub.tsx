@@ -12,6 +12,7 @@ import {
   nodeProjection,
   nodeSummary,
 } from "@core/canvas/canvasNodes";
+import { satellitePositions } from "@core/canvas/experimentRing";
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import type { Badges, ReeFile } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
@@ -25,7 +26,6 @@ import { CableOverlaySvg } from "./CableOverlay";
 import { CanvasControls } from "./CanvasControls";
 import { CoreExperiments, experimentCableTargets } from "./CoreExperiments";
 import { ExplodeScaffold, ExplodeToggle, ProjectionPod } from "./ExplodeView";
-import { satellitePositions } from "./experimentRing";
 import { FileTreeConsole } from "./FileTreeConsole";
 import { InnerShellButton } from "./InnerShellButton";
 import { LabBackdrop } from "./LabBackdrop";

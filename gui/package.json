@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "api:types": "openapi-typescript ../contracts/openapi.json -o src/shell/infra/api/generated/openapi.ts",
+    "check:core-purity": "node scripts/checkCorePurity.mjs",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",

@@ -1,33 +1,3 @@
-import type { FileTreeNode } from "@core/workspace/FileTree";
-
-export function countContainerAndNixFiles(files: FileTreeNode[]) {
-  let containerCount = 0;
-  let nixCount = 0;
-
-  const scan = (nodes: FileTreeNode[]) => {
-    for (const node of nodes || []) {
-      if (node.type === "folder") scan(node.children ?? []);
-      else {
-        const lo = node.name.toLowerCase();
-        if (
-          lo === "dockerfile" ||
-          lo === "containerfile" ||
-          lo.startsWith("dockerfile.") ||
-          lo.startsWith("containerfile.") ||
-          lo === "docker-compose.yml" ||
-          lo === "docker-compose.yaml"
-        ) {
-          containerCount += 1;
-        }
-        if (lo.endsWith(".nix")) nixCount += 1;
-      }
-    }
-  };
-
-  scan(files || []);
-  return { containerCount, nixCount };
-}
-
 export const EXPECTED_DEP_FILES = [
   {
     label: "requirements.txt",

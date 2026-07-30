@@ -1,4 +1,4 @@
-// Layout math for the experiment satellites in the decompose view's core column.
+// Pure layout math for the experiment satellites in the decompose view's core column.
 // Each experiment is a panel cabled to the core pod, ringed evenly around it. The
 // ring radius grows with the population so cards never crowd the pod or each
 // other, and the trailing "add" ghost gets its own slot — spawning a new

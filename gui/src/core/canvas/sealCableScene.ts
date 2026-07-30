@@ -1,7 +1,7 @@
-import { PAGE } from "@core/app-shell/pages";
-import { hbomHasAnyComponents } from "@core/hbom/HbomSummary";
-import type { Badges } from "@core/ree/ReeTypes";
-import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
+import { PAGE } from "../app-shell/pages";
+import { hbomHasAnyComponents } from "../hbom/HbomSummary";
+import type { Badges } from "../ree/ReeTypes";
+import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 
 interface SealCableItem {
   key: string;

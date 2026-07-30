@@ -42,9 +42,11 @@ gui-checks: api-types-check
 		echo "Running TypeScript compiler (e2e)..." && \
 		npx tsc -p tsconfig.e2e.json && \
 		echo "Running Biome..." && \
-		npx biome check --write src tests playwright.config.ts && \
+		npx biome check --write src tests scripts playwright.config.ts && \
 		echo "Running knip..." && \
 		npx knip && \
+		echo "Checking functional-core effects..." && \
+		npm run check:core-purity && \
 		echo "Running dependency-cruiser..." && \
 		npx depcruise src tests
 

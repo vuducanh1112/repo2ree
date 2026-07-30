@@ -1,6 +1,7 @@
 import { APP_ROUTE } from "@core/app-shell/pages";
 import { appendLine } from "@core/ree/logEntry";
 import type { LogEntry, LogLine } from "@core/ree/ReeTypes";
+import { appShellPorts } from "@shell/app/bootstrap/appShellPorts";
 import { useApiRuntime } from "@shell/data/apiRuntime";
 import { useReeClient } from "@shell/data/ree/client";
 import { useReeQuery } from "@shell/data/ree/queries";
@@ -50,7 +51,14 @@ export function BenchConsole({ provisioned, reeName }: BenchConsoleProps) {
     } catch (err) {
       // The workbench is still up, so stay on it with the reason in the console
       // rather than spinning on "Releasing…" forever.
-      setLog(appendLine(null, "err", err instanceof Error ? err.message : "Release failed"));
+      setLog(
+        appendLine(
+          null,
+          "err",
+          err instanceof Error ? err.message : "Release failed",
+          appShellPorts.clock.nowIso(),
+        ),
+      );
       setReleasing(false);
       return;
     }
@@ -59,17 +67,31 @@ export function BenchConsole({ provisioned, reeName }: BenchConsoleProps) {
 
   async function handleReprovision() {
     setReprovisioning(true);
-    setLog(appendLine(null, "info", "Reprovisioning workbench…"));
+    setLog(appendLine(null, "info", "Reprovisioning workbench…", appShellPorts.clock.nowIso()));
     setLog((l) =>
-      appendLine(l, "out", `Replacing container from ${imageRef ?? "the current image"}`),
+      appendLine(
+        l,
+        "out",
+        `Replacing container from ${imageRef ?? "the current image"}`,
+        appShellPorts.clock.nowIso(),
+      ),
     );
-    setLog((l) => appendLine(l, "out", "Preserving /ree workspace volume"));
+    setLog((l) =>
+      appendLine(l, "out", "Preserving /ree workspace volume", appShellPorts.clock.nowIso()),
+    );
     try {
       await reeApi.reprovisionWorkbench(reeId);
-      setLog((l) => appendLine(l, "ok", "Workbench reprovisioned — lab back online"));
+      setLog((l) =>
+        appendLine(
+          l,
+          "ok",
+          "Workbench reprovisioned — lab back online",
+          appShellPorts.clock.nowIso(),
+        ),
+      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Reprovision failed";
-      setLog((l) => appendLine(l, "err", msg));
+      setLog((l) => appendLine(l, "err", msg, appShellPorts.clock.nowIso()));
     } finally {
       setReprovisioning(false);
     }

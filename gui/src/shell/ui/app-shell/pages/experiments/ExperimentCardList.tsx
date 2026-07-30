@@ -1,3 +1,4 @@
+import { expId } from "@core/ree/experimentRules";
 import type { ExperimentResourceEstimates, ReeExperiment } from "@core/ree/ReeSpec";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import {
@@ -8,7 +9,6 @@ import {
 } from "@shell/ui/theme/lightGlassTheme";
 import { F } from "@shell/ui/theme/theme";
 import { useState } from "react";
-import { expId } from "./experimentsPageHelpers";
 
 function hasResourceEstimates(estimates: ExperimentResourceEstimates): boolean {
   return Object.values(estimates).some((value) => value.trim() !== "");

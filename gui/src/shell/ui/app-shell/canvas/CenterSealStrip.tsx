@@ -1,3 +1,4 @@
+import { buildSealCableItems } from "@core/canvas/sealCableScene";
 import type { InclusionOpts } from "@core/ree/InclusionOpts";
 import type { Badges, LogEntry } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
@@ -6,7 +7,6 @@ import { scoreCardStanding } from "@core/scorecard/ReproducibilityScoreCard";
 import { useReproducibilityScoreCard } from "@shell/data/scorecard/queries";
 import { CollapsibleLogCard } from "@shell/ui/app-shell/components/CollapsibleLogCard";
 import React from "react";
-import { buildSealCableItems } from "./CenterSealStrip/helpers";
 import { SealedSealCard } from "./CenterSealStrip/SealedSealCard";
 import { SealStatusCard } from "./CenterSealStrip/SealStatusCard";
 

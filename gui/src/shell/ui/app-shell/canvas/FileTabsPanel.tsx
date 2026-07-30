@@ -1,8 +1,8 @@
+import type { FlatTreeEntry } from "@core/workspace/reeFileTree";
 import { useRef } from "react";
 import { Ic } from "../../shared/components/Icon";
 import { C, F } from "../../theme/theme";
 import { FileViewer } from "../pages/files/FileViewer";
-import type { FlatTreeEntry } from "../pages/files/filesPageHelpers";
 import { CanvasWindow, CanvasWindowTitle } from "./CanvasWindow";
 
 // Grow with the canvas instead of a fixed 560×620: small viewports get a

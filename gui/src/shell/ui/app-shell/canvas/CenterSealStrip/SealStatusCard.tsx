@@ -1,9 +1,9 @@
+import type { SealCableItem } from "@core/canvas/sealCableScene";
 import type { StaleSealItem } from "@core/ree-steps/sealConsistency";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { lgBackgrounds, lgColors, lgStyles } from "@shell/ui/theme/lightGlassTheme";
 import { F, hoverBrightness, S_ACTION_BUTTON_BASE } from "@shell/ui/theme/theme";
 import type React from "react";
-import type { SealCableItem } from "./helpers";
 import { SealConfirmCopy } from "./SealConfirmCopy";
 import { SealConfirmInclusion } from "./SealConfirmInclusion";
 import { SealConfirmWarning } from "./SealConfirmWarning";

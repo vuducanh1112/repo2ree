@@ -1,7 +1,7 @@
 import type { ReeFile } from "@core/ree/ReeTypes";
 import type { FileTreeNode } from "@core/workspace/FileTree";
 import { describe, expect, it } from "vitest";
-import { buildReeFileTree, flattenTreeWithPaths, isLikelyTextFile } from "./filesPageHelpers";
+import { buildReeFileTree, flattenTreeWithPaths, isLikelyTextFile } from "./reeFileTree";
 
 function reeFile(name: string, overrides: Partial<ReeFile> = {}): ReeFile {
   return { id: `id-${name}`, name, content: "", ...overrides } as ReeFile;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { experimentIndexFromField, expId, isValidExperimentName } from "./experimentsPageHelpers";
+import { experimentIndexFromField, expId, isValidExperimentName } from "./experimentRules";
 
 describe("experimentIndexFromField", () => {
   it("extracts the index from an experiment field deep-link", () => {

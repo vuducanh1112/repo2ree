@@ -1,6 +1,6 @@
 import type { ReeFile } from "@core/ree/ReeTypes";
+import { buildReeFileTree, flattenTreeWithPaths } from "@core/workspace/reeFileTree";
 import { useMemo } from "react";
-import { buildReeFileTree, flattenTreeWithPaths } from "./filesPageHelpers";
 
 export function useReeFileTree(reeFiles: ReeFile[]) {
   const tree = useMemo(() => buildReeFileTree(reeFiles), [reeFiles]);

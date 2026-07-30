@@ -9,6 +9,7 @@
     "ignoreUnknown": true,
     "includes": [
       "src/**/*.{ts,tsx}",
+      "scripts/**/*.mjs",
       "!src/shell/infra/api/generated/**",
       "!dist",
       "!node_modules",
@@ -116,6 +117,18 @@
     }
   },
   "overrides": [
+    {
+      "includes": [
+        "scripts/**"
+      ],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
+          }
+        }
+      }
+    },
     {
       "includes": [
         "*.test.ts",

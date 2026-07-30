@@ -1,9 +1,13 @@
 import type { ReeFile } from "@core/ree/ReeTypes";
 import type { FileTreeNode } from "@core/workspace/FileTree";
+import {
+  FILE_VIEWER_MAX_CHARS,
+  FILE_VIEWER_MAX_LINES,
+  isLikelyTextFile,
+} from "@core/workspace/reeFileTree";
 import { fmtBytes } from "@shell/ui/shared/formatting";
 import { lgColors, lgSyntax, lgTree } from "@shell/ui/theme/lightGlassTheme";
 import { F } from "@shell/ui/theme/theme";
-import { FILE_VIEWER_MAX_CHARS, FILE_VIEWER_MAX_LINES, isLikelyTextFile } from "./filesPageHelpers";
 
 function isShellLike(fileName: string): boolean {
   const lower = fileName.toLowerCase();

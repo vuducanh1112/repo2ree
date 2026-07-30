@@ -1,4 +1,5 @@
 import { groupEvaluatedDependencies } from "@core/evaluate/dependencyPresentation";
+import { countEnvironmentFiles } from "@core/workspace/environmentFiles";
 import { useApiRuntime } from "@shell/data/apiRuntime";
 import { useEvaluateReportQuery } from "@shell/data/evaluate/queries";
 import { Ic } from "@shell/ui/shared/components/Icon";
@@ -9,7 +10,6 @@ import { GlassPanelFooter } from "../../components/GlassPanelFooter";
 import { OutcomeBadge } from "../../components/OutcomeBadge";
 import { stepIcon } from "../../stepIcons";
 import type { StepPageProps } from "../sharedStepUi";
-import { countContainerAndNixFiles } from "./RepoAnalysisPageHelpers";
 import {
   RepoAnalysisAxesCard,
   RepoAnalysisDependenciesCard,
@@ -35,7 +35,7 @@ export function PageRepoAnalysis({
   params,
 }: StepPageProps) {
   const files = workspaceFiles;
-  const { containerCount, nixCount } = countContainerAndNixFiles(files || []);
+  const { containerCount, nixCount } = countEnvironmentFiles(files || []);
   const { reeId } = useApiRuntime();
   // The report is a persisted artifact, so fetch it whenever we have an REE — this
   // keeps the page populated across reloads/navigation (runDone is transient).

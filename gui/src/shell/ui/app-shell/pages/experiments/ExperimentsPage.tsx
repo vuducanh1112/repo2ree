@@ -4,6 +4,7 @@ import {
   removeExperiment as coreRemoveExperiment,
   patchExperiment,
 } from "@core/ree/experimentOps";
+import { experimentIndexFromField, experimentValidation } from "@core/ree/experimentRules";
 import type { ReeExperiment, ReeSpec } from "@core/ree/ReeSpec";
 import { findFileByWorkspacePath } from "@core/workspace/fileTreeTraversal";
 import { useScriptTemplates } from "@shell/data/scriptTemplates/catalog";
@@ -28,7 +29,6 @@ import {
   ExperimentsCoverageAside,
   ExperimentsSuggestionsAside,
 } from "./ExperimentsPageSections";
-import { experimentIndexFromField, experimentValidation } from "./experimentsPageHelpers";
 import { useExperimentRun } from "./useExperimentRun";
 
 // A starter run script seeded from a quick-add suggestion's sample command.

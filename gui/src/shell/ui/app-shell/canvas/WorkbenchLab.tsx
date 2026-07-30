@@ -3,6 +3,7 @@ import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import { appendLine } from "@core/ree/logEntry";
 import type { LogEntry, LogLine } from "@core/ree/ReeTypes";
 import { runFailurePresentation } from "@core/runs/runFailurePresentation";
+import { appShellPorts } from "@shell/app/bootstrap/appShellPorts";
 import { useAgents } from "@shell/data/agents/agents";
 import { useReeRunsClient } from "@shell/data/runs/client";
 import { observeReeRun } from "@shell/data/runs/queries";
@@ -65,7 +66,7 @@ export function WorkbenchLab({ evaluation }: WorkbenchLabProps) {
     const image = resolveWorkbenchImage(imageSelection, images);
     setLoading(true);
     setError(null);
-    const startedTs = new Date().toISOString();
+    const startedTs = appShellPorts.clock.nowIso();
     // Preamble lines we own locally; the run's streamed log lines are appended
     // after these on every poll update.
     const preamble: LogLine[] = [
@@ -94,7 +95,9 @@ export function WorkbenchLab({ evaluation }: WorkbenchLabProps) {
           : `Provisioning ${result.status}`;
         throw new Error(reason);
       }
-      setLog((l) => appendLine(l, "ok", "Lab online — seating the specimen"));
+      setLog((l) =>
+        appendLine(l, "ok", "Lab online — seating the specimen", appShellPorts.clock.nowIso()),
+      );
       if (bundle) {
         await loadBundleOnto(reeId, bundle);
       }
@@ -102,7 +105,7 @@ export function WorkbenchLab({ evaluation }: WorkbenchLabProps) {
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Provisioning failed";
       setError(msg);
-      setLog((l) => appendLine(l, "err", msg));
+      setLog((l) => appendLine(l, "err", msg, appShellPorts.clock.nowIso()));
     } finally {
       setLoading(false);
     }
@@ -112,7 +115,14 @@ export function WorkbenchLab({ evaluation }: WorkbenchLabProps) {
   // is tailed into the same console, appended after the provisioning lines the
   // user has been watching.
   async function loadBundleOnto(reeId: string, file: File) {
-    setLog((l) => appendLine(l, "info", `Loading ${file.name} onto the workbench…`));
+    setLog((l) =>
+      appendLine(
+        l,
+        "info",
+        `Loading ${file.name} onto the workbench…`,
+        appShellPorts.clock.nowIso(),
+      ),
+    );
     const preamble = log?.lines ?? [];
     const run = await runsClient.loadReeBundle(reeId, file);
     const result = await observeReeRun(queryClient, runsClient, {
@@ -125,7 +135,7 @@ export function WorkbenchLab({ evaluation }: WorkbenchLabProps) {
         result.failure ? runFailurePresentation(result.failure).label : `Load ${result.status}`,
       );
     }
-    setLog((l) => appendLine(l, "ok", "REE loaded — opening it"));
+    setLog((l) => appendLine(l, "ok", "REE loaded — opening it", appShellPorts.clock.nowIso()));
   }
 
   return (

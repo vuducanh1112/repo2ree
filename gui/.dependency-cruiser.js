@@ -263,19 +263,6 @@ module.exports = {
       }
     },
     {
-      name: "shell-infra-no-core-use-cases",
-      severity: "error",
-      comment:
-        "Infrastructure adapters may depend on core domain types, but not core planning/use-case modules.",
-      from: {
-        path: "^src/shell/infra",
-        pathNot: TEST_FILE_PATTERN
-      },
-      to: {
-        path: "^src/core/ree/ReeId$"
-      }
-    },
-    {
       name: "shell-data-no-ui-or-app",
       severity: "error",
       comment:
@@ -315,29 +302,29 @@ module.exports = {
       }
     },
     {
-      name: "shell-ui-shared-no-feature-imports",
+      name: "shell-ui-shared-no-features",
       severity: "error",
       comment:
-        "Shared UI modules should remain reusable and must not depend on feature-specific screens.",
+        "Shared UI may depend on other shared modules and theme primitives, never on a feature.",
       from: {
-        path: "^src/shell/ui/shared",
+        path: "^src/shell/ui/shared(/|$)",
         pathNot: TEST_FILE_PATTERN
       },
       to: {
-        path: "^src/shell/ui/(landing|reviewer|routes|app-shell|ree-editor)(/|$)"
+        path: "^src/shell/ui/(?!shared(?:/|$)|theme(?:/|$))"
       }
     },
     {
-      name: "shell-ui-theme-no-feature-imports",
+      name: "shell-ui-theme-no-ui-dependencies",
       severity: "error",
       comment:
-        "Theme modules should be design primitives, not depend on feature implementations.",
+        "Theme primitives must not depend on shared components or feature UI.",
       from: {
-        path: "^src/shell/ui/theme",
+        path: "^src/shell/ui/theme(/|$)",
         pathNot: TEST_FILE_PATTERN
       },
       to: {
-        path: "^src/shell/ui/(landing|reviewer|routes|app-shell|ree-editor)(/|$)"
+        path: "^src/shell/ui/(?!theme(?:/|$))"
       }
     },
     {
