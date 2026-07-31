@@ -14,8 +14,8 @@ usage() {
 
 resolve_digest() {
 	local reference=$1 digest
-	digest=$(docker buildx imagetools inspect \
-		--format '{{.Manifest.Digest}}' "$reference")
+	digest=$(docker buildx imagetools inspect "$reference" \
+		| awk '/^Digest:/ { print $2 }')
 	[[ $digest =~ ^sha256:[0-9a-f]{64}$ ]] || {
 		echo "invalid manifest digest for $reference: $digest" >&2
 		exit 1
