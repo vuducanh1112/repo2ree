@@ -123,7 +123,8 @@ promote_candidate() {
 			digest=$(receipt_digest "$receipt" "$registry" "$image")
 			target="$registry/$image:edge"
 			echo ">> $target: $digest"
-			docker buildx imagetools create -t "$target" "$registry/$image@$digest"
+			docker buildx imagetools create --prefer-index=false \
+				-t "$target" "$registry/$image@$digest"
 			[[ $(resolve_digest "$target") == "$digest" ]] || {
 				echo "promotion verification failed for $target" >&2
 				exit 1
