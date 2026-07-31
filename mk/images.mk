@@ -59,7 +59,7 @@ gui-npm-hash:
 # ---- Archive path (opt-in): write loadable tarballs under IMAGE_ARCHIVE_DIR. ----
 # For building inside the dev container and loading/pushing from the host Docker
 # client: `make image-archives`, copy dist/images to the host, then
-# `make push-archives` there. Kept off the normal images/push-* path so a
+# `make push-image-archives` there. Kept off the normal images/push-* path so a
 # plain build/push writes no tarballs.
 
 gui-image-archive: | image-archive-dir
@@ -80,12 +80,11 @@ agent-image-archive: stage-nix-sources | image-archive-dir
 	@echo "Wrote $(IMAGE_ARCHIVE_DIR)/repo2ree-agent-local.tar"
 
 # Refuses a dirty tree (require-clean-tree): the archives are the publish path
-# off the devcontainer, so they must correspond to a commit. The rev is stamped
-# into the archive dir so the host side pushes under exactly this commit's
-# tag — no way to grab a stale IMAGE_TAG by accident.
+# off the devcontainer, so they must correspond to a commit. The candidate
+# revision is stamped into the archive dir so the host pushes exactly that set.
 image-archives: require-clean-tree gui-image-archive backend-image-archive agent-image-archive
-	@git describe --always > $(IMAGE_ARCHIVE_DIR)/REV
-	@echo ">> stamped $(IMAGE_ARCHIVE_DIR)/REV: $$(cat $(IMAGE_ARCHIVE_DIR)/REV)"
+	@git describe --always > $(IMAGE_ARCHIVE_DIR)/IMAGE_CANDIDATE_REV
+	@echo ">> stamped candidate: $$(cat $(IMAGE_ARCHIVE_DIR)/IMAGE_CANDIDATE_REV)"
 
 load-image-archives:
 	@set -e; for img in $(IMAGES); do \

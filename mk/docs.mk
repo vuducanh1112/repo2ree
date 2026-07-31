@@ -5,7 +5,7 @@
 # structure is the one you meant, which is a different job from asserting that
 # today's structure matches yesterday's rules.
 
-.PHONY: docs-lint docs-diagrams be-graph be-graphs be-graph-all gui-graph
+.PHONY: docs-lint docs-diagrams be-graph be-graphs be-graph-all gui-graph gui-graph-core
 
 # ================================================
 # Prose linting
@@ -37,7 +37,7 @@ DIAGRAM_DIR ?= dist/diagrams
 ARGS ?=
 GUI_ARGS ?=
 
-docs-diagrams: be-graphs be-graph-all gui-graph
+docs-diagrams: be-graphs be-graph-all gui-graph gui-graph-core
 
 # Backend, via grimp — the engine import-linter itself is built on — reading
 # the root_packages and layers contracts straight out of pyproject.toml.
@@ -51,7 +51,7 @@ docs-diagrams: be-graphs be-graph-all gui-graph
 #
 # Recursively expanded (`=`, not `:=`) so the script runs when `be-graphs`
 # expands it and not when make parses this file. With `:=` it ran on *every*
-# make invocation — `make push-archives` on a host outside the devshell has no
+# make invocation — `make push-image-archives` on a host outside the devshell has no
 # `python`, so every target printed "make: python: No such file or directory"
 # before doing anything, and this list came out empty. Referenced once, in
 # be-graphs below; a second reference would re-run the script, so read it into a
@@ -127,3 +127,20 @@ gui-graph:
 	dot -Tsvg -o $(DIAGRAM_DIR)/gui.svg $(DIAGRAM_DIR)/gui.dot
 	@rm -f $(DIAGRAM_DIR)/gui.dot
 	@echo "wrote $(DIAGRAM_DIR)/gui.svg"
+
+# Expand the functional core by one namespace while retaining the collapsed
+# shell around it. Cruising all of src is deliberate: a core-only cruise would
+# mislabel modules reached only from the shell as orphans, and it would hide
+# which shell layer consumes each core namespace.
+GUI_CORE_COLLAPSE ?= ^src/(core/[^/]+|shell/[^/]+)/
+gui-graph-core:
+	@mkdir -p $(DIAGRAM_DIR)
+	cd gui && npx depcruise src \
+		--include-only '^src' \
+		--output-type dot \
+		--collapse '$(GUI_CORE_COLLAPSE)' \
+		$(GUI_ARGS) \
+		--output-to ../$(DIAGRAM_DIR)/gui-core.dot
+	dot -Tsvg -o $(DIAGRAM_DIR)/gui-core.svg $(DIAGRAM_DIR)/gui-core.dot
+	@rm -f $(DIAGRAM_DIR)/gui-core.dot
+	@echo "wrote $(DIAGRAM_DIR)/gui-core.svg"

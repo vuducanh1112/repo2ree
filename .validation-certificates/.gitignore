@@ -1,8 +1,9 @@
-# Certificates recording what a gate last validated, written by
-# scripts/commit-gate-stamp.sh and checked by the pre-commit hook. They describe
-# one clone's state, so they are never committed — but the directory is, so a
-# fresh clone has somewhere to put them and this ignore rule is in force from
-# the first commit rather than after someone remembers to add it.
+# Certificates recording what a gate or published-image validation proved.
+# commit-gate-stamp.sh writes the tree certificate checked by pre-commit;
+# image-candidate.sh writes digest-bound image-candidate receipts consumed
+# by edge promotion. They describe one clone's validation state, so they are
+# never committed — but the directory is, so a fresh clone has somewhere to put
+# them and this rule is in force before the first certificate is written.
 #
 # The rule is load-bearing, not tidiness. A certificate is a hash of the working
 # tree; a *tracked* certificate would be part of the tree it measures, so writing

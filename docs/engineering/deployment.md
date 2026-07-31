@@ -91,34 +91,55 @@ make agent-image
 
 ## Publishing Images
 
-Publishing is push → validate → promote, so `edge` only ever points at a
-validated commit:
+Publishing treats the GUI, backend, and agent as one image candidate. The
+candidate is pushed under a Git revision, validated by manifest digest, then
+promoted as one set:
 
 ```bash
-make push-gate      # clean tree + full check/test/e2e sequence (see testing.md)
-make push-rev       # push all images under the immutable :<git-rev> tag
-make validate-rev   # full e2e suite against the pushed set
-make promote-edge   # retag <rev> -> edge on the registries (no rebuild)
+make push-gate                       # source + local-image validation
+make push-image-candidate            # push the three images as :<git-rev>
+make validate-image-candidate        # test their exact registry digests
+make promote-image-candidate-to-edge # move edge to the validated digests
 ```
 
-`push-rev` refuses a dirty tree and never moves `edge`, so it is safe at any
-time.
+`push-image-candidate` refuses a dirty tree and requires
+`IMAGE_CANDIDATE_REV` to name that tree. It never moves `edge`.
+
+`validate-image-candidate` resolves every component in both registries and
+requires the corresponding manifests to have identical digests. Both GUI e2e
+projects then run against explicit `@sha256` references rather than mutable
+revision tags. A successful run writes one ignored, tab-separated receipt at
+`.validation-certificates/image-candidates/<rev>.validated`. It records the
+candidate revision and one digest row for each registry/image pair. The file is
+moved into place only after both validation suites pass.
+
+`promote-image-candidate-to-edge` requires that receipt, re-resolves every
+candidate tag, and promotes from the recorded `@sha256` references. It verifies
+each resulting `edge` tag and stops on failure. A candidate does not expire by
+age; it becomes stale when a recorded revision tag no longer resolves to its
+validated digest.
+
+The candidate defaults to the current Git revision. Name another explicitly:
+
+```bash
+make validate-image-candidate IMAGE_CANDIDATE_REV=<rev>
+make verify-image-candidate IMAGE_CANDIDATE_REV=<rev>
+make promote-image-candidate-to-edge IMAGE_CANDIDATE_REV=<rev>
+```
 
 When builds and registry credentials live on different machines (e.g. nix
 only in the dev container, docker login only on the host), replace
-`push-rev` with the archive pair: `make image-archives` in the dev container
-(same dirty-tree guard; writes loadable tarballs plus a `REV` stamp to
-`dist/images/`), copy `dist/images/` to the host, then `make push-archives`
-there. `push-archives` loads the tarballs and pushes them under the stamped
-rev — it never takes an `IMAGE_TAG`, so like `push-rev` it cannot move
-`edge`. Continue with `validate-rev`/`promote-edge` as above, passing
-`REV=$(cat dist/images/REV)` if the host checkout is not on that commit. `promote-edge` moves the registry tag (`docker buildx imagetools
-create`), so the promoted digests are exactly the validated ones.
-`validate-rev` and `promote-edge` default `REV` to the current HEAD, so the
-whole flow runs tag-free from the commit being published. All images always move together — the
-agent↔control-plane protocol requires matching versions. Registries default
-to GHCR + Docker Hub under `vuducanh1112`; override `REGISTRIES`,
-`GHCR_NAMESPACE`, or `DOCKERHUB_NAMESPACE`.
+`push-image-candidate` with the archive pair: run `make image-archives` in the
+dev container, copy `dist/images/` to the host, then run
+`make push-image-archives`. The archive directory carries an
+`IMAGE_CANDIDATE_REV` stamp, so the host cannot accidentally push the tarballs
+under a different tag. Continue with validation and promotion using
+`IMAGE_CANDIDATE_REV=$(cat dist/images/IMAGE_CANDIDATE_REV)`.
+
+All images always move together because the agent↔control-plane protocol
+requires matching versions. Registries default to GHCR and Docker Hub under
+`vuducanh1112`; override `REGISTRIES`, `GHCR_NAMESPACE`, or
+`DOCKERHUB_NAMESPACE` for another deployment set.
 
 ## Run With Local Images
 

@@ -16,8 +16,8 @@
 # Configuration
 # ================================================
 
-# The tag push-tag publishes under. push-rev/push-archives override it with
-# the git rev; `edge` is only ever moved by promote-edge.
+# The tag push-image-set-tag publishes under. Candidate targets override it
+# with a Git revision; `edge` is only moved from a validated digest receipt.
 IMAGE_TAG ?= edge
 
 # Every deployable image, always built/tagged/pushed as a set (the
@@ -38,12 +38,11 @@ DOCKERHUB_REGISTRY ?= docker.io
 DOCKERHUB_NAMESPACE ?= vuducanh1112
 REGISTRIES ?= $(GHCR_REGISTRY)/$(GHCR_NAMESPACE) $(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE)
 
-# The rev the publish flow (push-rev → validate-rev → promote-edge) operates
-# on. REV defaults to the current HEAD's rev, so the whole flow runs tag-free
-# from the commit being published; name a pushed rev explicitly with
-# REV=<rev>.
+# The Git revision identifying the three-image candidate being pushed,
+# validated, or promoted. Name an older candidate explicitly when validation
+# and registry credentials live in a checkout at a different revision.
 GIT_REV = $(shell git describe --always --dirty)
-REV ?= $(GIT_REV)
+IMAGE_CANDIDATE_REV ?= $(GIT_REV)
 
 # Which bench the e2e backend's catalog offers. Empty (the default) means the
 # backend's own catalog default — the pinned docker:dind digest in

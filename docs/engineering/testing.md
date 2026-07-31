@@ -464,11 +464,13 @@ the cost of one full store copy per bundle on the next provision. Neither runs
 as part of an e2e teardown — a test target should not silently evict a cache the
 next run needs.
 
-The `*-stack-published` variants validate the pushed images instead of local
-builds (docker pulls the refs, nothing is built). They default to the Docker
-Hub images the push targets publish; override `DOCKERHUB_NAMESPACE` /
-`IMAGE_TAG` as with those targets. `make e2e-gui-stack-published
-IMAGE_TAG=<tag>` is the full-suite gate for a pushed build.
+The `*-stack-published` variants validate pushed images instead of local builds
+(Docker pulls the refs; nothing is built). For an ad hoc run they default to the
+Docker Hub images at `IMAGE_TAG`. The promotion workflow uses
+`make validate-image-candidate`, which resolves the candidate across every
+registry and supplies explicit per-component `@sha256` references to both
+published-stack GUI projects. That digest-bound run, rather than a mutable tag
+run, is what can produce an edge-promotion receipt.
 
 The source-run `e2e-gui` remains the iteration loop (fast, easy to debug,
 coverage-capable); the image-backed variants are the deployment gate before
