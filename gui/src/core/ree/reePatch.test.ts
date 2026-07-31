@@ -62,10 +62,11 @@ describe("toReePatchFromSlices", () => {
       evaluationState,
     });
 
-    // The resolved commit is backend-owned, so it is never serialized into the
+    // Source identity is backend-owned, so it is never serialized into the
     // patch — a stale/blank local copy must not clobber what acquisition recorded.
     expect(patch).not.toHaveProperty("revision");
     expect(patch).not.toHaveProperty("resolvedRevision");
+    expect(patch).not.toHaveProperty("swhid");
     // The patch is the backend's wire format: snake_case keys, camelCase gone.
     expect(patch).toEqual({
       name: "demo",
@@ -91,7 +92,6 @@ describe("toReePatchFromSlices", () => {
         resource_estimates: { cpu: "", memory: "", gpu: "", storage: "", network: "" },
       },
       sbom: "artifacts/sbom.json",
-      swhid: "swh:1:dir:test",
       experiments: [
         {
           name: "benchmark",

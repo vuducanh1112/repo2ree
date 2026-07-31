@@ -16,7 +16,7 @@ from typing import Any
 
 import pytest
 
-from repo2ree_core.digests import digest_file_if_exists
+from repo2ree_core.digests import digest_bytes, digest_file_if_exists
 from repo2ree_core.domain.experiment import Experiment
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
@@ -100,6 +100,7 @@ def _author_ran_it(
     layout: ReeLayout,
     *,
     verify_exit_code: int | None = 0,
+    verify_script_digest: str | None = digest_bytes(_VERIFY_ACCEPTS.encode()),
     output_digest: str | None = None,
 ) -> None:
     """Record the author's own run of the experiment — the baseline to reproduce."""
@@ -115,6 +116,7 @@ def _author_ran_it(
             experiment_name=EXPERIMENT,
             run_script_path=_RUN_SCRIPT,
             verify_script_path=_VERIFY_SCRIPT,
+            verify_script_digest=verify_script_digest,
             verify_exit_code=verify_exit_code,
             produced_output_digest=output_digest,
         ),
@@ -239,7 +241,7 @@ def test_a_rejected_result_is_a_verdict_not_a_broken_step(tmp_path: Path, monkey
     """The reviewer's machine did its job and found the most valuable thing it
     can. Recording it as a step failure would report the review as broken."""
     layout = _author_ree(tmp_path, monkeypatch)
-    _author_ran_it(layout)
+    _author_ran_it(layout, verify_script_digest=digest_bytes(_VERIFY_REJECTS.encode()))
     _inhabitable_attempt(layout, verify_script=_VERIFY_REJECTS)
 
     result = _reproduce()
@@ -313,6 +315,34 @@ def test_an_experiment_the_author_never_ran_is_inconclusive(tmp_path: Path, monk
     assert result.outputs["comparison"]["verdict"] == "inconclusive"
 
 
+def test_an_author_receipt_without_a_bound_criterion_is_inconclusive(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    layout = _author_ree(tmp_path, monkeypatch)
+    _author_ran_it(layout, verify_script_digest=None)
+    _inhabitable_attempt(layout)
+
+    result = _reproduce()
+
+    assert result.outputs["comparison"]["verdict"] == "inconclusive"
+    assert result.outputs["comparison"]["expected_verify_script_digest"] is None
+
+
+def test_a_changed_verify_script_cannot_certify_the_authors_claim(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    layout = _author_ree(tmp_path, monkeypatch)
+    _author_ran_it(layout)
+    review = _inhabitable_attempt(layout, verify_script="#!/bin/sh\nexit 0\n")
+
+    result = _reproduce()
+
+    comparison = result.outputs["comparison"]
+    assert comparison["verdict"] == "inconclusive"
+    assert comparison["expected_verify_script_digest"] != comparison["verify_script_digest"]
+    assert comparison["verify_script_digest"] == digest_file_if_exists(review.workspace / _VERIFY_SCRIPT)
+
+
 def test_the_verdict_names_the_criterion_it_rests_on(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """A "reproduced" is worth exactly as much as the script that granted it, so
     the script it ran is recorded rather than summarised away."""
@@ -324,7 +354,9 @@ def test_the_verdict_names_the_criterion_it_rests_on(tmp_path: Path, monkeypatch
 
     comparison = result.outputs["comparison"]
     assert comparison["verify_script_path"] == _VERIFY_SCRIPT
+    assert comparison["expected_verify_script_digest"] == digest_bytes(_VERIFY_ACCEPTS.encode())
     assert comparison["verify_script_digest"] == digest_file_if_exists(review.workspace / _VERIFY_SCRIPT)
+    assert result.outputs["receipt"]["verify_script_digest"] == comparison["verify_script_digest"]
 
 
 # ================================================

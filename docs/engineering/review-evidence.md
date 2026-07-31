@@ -54,19 +54,26 @@ Decided in this order, in `compare_experiment_results`:
    says only that something ran. A free verdict certifies nothing.
 2. **The author never ran this experiment** → `inconclusive`. No baseline claim to
    have reproduced.
-3. **Verify exited nonzero** → `different`. The author's own criterion, applied to
+3. **The author criterion is unbound or changed** → `inconclusive`. A verify
+   script with no author-receipt digest cannot be audited, and a different
+   script answers a different question.
+4. **The author's verify did not pass** → `inconclusive`. There is no accepted
+   baseline claim to reproduce.
+5. **Reviewer verify exited nonzero** → `different`. The author's own criterion, applied to
    the reviewer's results, rejected them. This is the step working.
-4. **Verify exited 0** → `reproduced`, upgraded to `identical` when both sides
+6. **Reviewer verify exited 0** → `reproduced`, upgraded to `identical` when both sides
    recorded an output digest and the two agree.
 
-A digest mismatch never downgrades a passing verify.
+An output digest mismatch never downgrades a passing verify. A criterion digest
+mismatch does: the reviewer did not run the test that established the baseline.
 
 The cost of this design is that a verdict is worth exactly as much as the script
 that granted it, and verify scripts range from a tolerance check against
 reference values to `test -f results.csv`. Two things keep that honest rather
 than hidden: no verify script is `inconclusive` rather than a free pass, and the
-comparison records the verify script's **digest**, so a reader can see which
-criterion they are trusting.
+comparison records both the author's expected verify-script **digest** and the
+reviewer's observed digest, and grants a reproduction verdict only when they
+agree.
 
 ## Activation carries two things a comparison would have carried
 

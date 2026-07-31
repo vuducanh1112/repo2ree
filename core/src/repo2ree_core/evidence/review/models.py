@@ -159,9 +159,11 @@ class ExperimentComparison(_ReviewModel):
     A comparison rather than an outcome, unlike activation: the author *does*
     have a recorded baseline here — their own run's verify verdict and output
     digest — so there is something to disagree with. What is compared is the
-    criterion rather than the artifact, which is why ``verify_script_digest`` is
-    carried: ``reproduced`` is worth exactly as much as the script that granted
-    it, and a reader who cannot see which script ran cannot audit the verdict.
+    criterion rather than the artifact, which is why both the author's expected
+    verify-script digest and the reviewer's observed digest are carried:
+    ``reproduced`` is worth exactly as much as the script that granted it, and a
+    reader who cannot establish that the same script ran cannot audit the
+    verdict.
 
     ``basis`` is inherited from the steps before, for the same reason activation
     inherits it: the experiment runs in the workspace the build left behind and
@@ -174,6 +176,10 @@ class ExperimentComparison(_ReviewModel):
     experiment_name: str
     # The criterion this verdict rests on.
     verify_script_path: str = ""
+    # The author receipt binds the baseline claim to one criterion; the
+    # reviewer digest names the script actually run. A reproduction verdict is
+    # available only when both exist and agree.
+    expected_verify_script_digest: str | None = None
     verify_script_digest: str | None = None
     expected_verify_exit_code: int | None = None
     observed_verify_exit_code: int | None = None

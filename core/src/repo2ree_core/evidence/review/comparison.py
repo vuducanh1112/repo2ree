@@ -115,6 +115,7 @@ def compare_experiment_results(
     experiment_name: str,
     basis: EvidenceBasis,
     verify_script_path: str,
+    expected_verify_script_digest: str | None,
     verify_script_digest: str | None,
     expected_verify_exit_code: int | None,
     observed_verify_exit_code: int | None,
@@ -129,18 +130,28 @@ def compare_experiment_results(
 
     * No verify script declared, or the author never ran this experiment —
       ``inconclusive``. An absent baseline is not agreement.
-    * Verify exited nonzero — ``different``. The author's own criterion, applied
-      to the reviewer's results, rejected them.
+    * The author criterion is unbound or differs from the script the reviewer
+      ran — ``inconclusive``. A different test cannot reproduce the old claim.
+    * The author's baseline verify did not pass — ``inconclusive``. There is no
+      accepted author claim to reproduce.
+    * Reviewer verify exited nonzero — ``different``. The author's own
+      criterion, applied to the reviewer's results, rejected them.
     * Verify exited 0 — ``reproduced``, upgraded to ``identical`` when both
       sides recorded an output digest and the two agree.
 
-    A digest mismatch never downgrades a passing verify: timestamps, seeds, and
-    hostnames land in output files on every honest re-run.
+    An output digest mismatch never downgrades a passing verify: timestamps,
+    seeds, and hostnames land in output files on every honest re-run. A
+    criterion digest mismatch does, because it means a different test ran.
     """
-    if not verify_script_path.strip():
+    if (
+        not verify_script_path.strip()
+        or expected_verify_exit_code is None
+        or expected_verify_script_digest is None
+        or verify_script_digest is None
+        or expected_verify_script_digest != verify_script_digest
+        or expected_verify_exit_code != 0
+    ):
         verdict: ExperimentVerdict = "inconclusive"
-    elif expected_verify_exit_code is None:
-        verdict = "inconclusive"
     elif observed_verify_exit_code != 0:
         verdict = "different"
     elif expected_output_digest is not None and expected_output_digest == observed_output_digest:
@@ -152,6 +163,7 @@ def compare_experiment_results(
         verdict=verdict,
         experiment_name=experiment_name,
         verify_script_path=verify_script_path,
+        expected_verify_script_digest=expected_verify_script_digest,
         verify_script_digest=verify_script_digest,
         expected_verify_exit_code=expected_verify_exit_code,
         observed_verify_exit_code=observed_verify_exit_code,

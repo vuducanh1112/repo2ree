@@ -180,6 +180,7 @@ def _compare_experiment(**overrides: object) -> ExperimentComparison:
         "experiment_name": "headline",
         "basis": "independent",
         "verify_script_path": "ree-scripts/experiments/headline.verify.sh",
+        "expected_verify_script_digest": "sha256:criterion",
         "verify_script_digest": "sha256:criterion",
         "expected_verify_exit_code": 0,
         "observed_verify_exit_code": 0,
@@ -236,12 +237,24 @@ def test_an_absent_author_baseline_is_not_agreement() -> None:
     assert comparison.verdict == "inconclusive"
 
 
-def test_an_author_whose_own_verify_failed_is_still_a_baseline() -> None:
-    """A recorded nonzero verify is a claim — an odd one, but the reviewer's
-    matching run is not thereby a reproduction of a *correct* result."""
+def test_an_unbound_author_criterion_is_not_agreement() -> None:
+    comparison = _compare_experiment(expected_verify_script_digest=None)
+
+    assert comparison.verdict == "inconclusive"
+
+
+def test_a_changed_criterion_cannot_reproduce_the_original_claim() -> None:
+    comparison = _compare_experiment(verify_script_digest="sha256:changed")
+
+    assert comparison.verdict == "inconclusive"
+
+
+def test_an_author_whose_own_verify_failed_left_no_accepted_claim() -> None:
+    """A selected nonzero receipt is malformed evidence, not a baseline that a
+    reviewer can turn into an accepted result by running the criterion again."""
     comparison = _compare_experiment(expected_verify_exit_code=1, observed_verify_exit_code=1)
 
-    assert comparison.verdict == "different"
+    assert comparison.verdict == "inconclusive"
 
 
 # ================================================

@@ -196,7 +196,11 @@ function CriterionNote({ comparison }: { comparison: ReviewExperimentComparison 
     ? "no verify script"
     : comparison.expectedVerifyExitCode == null
       ? "no author baseline"
-      : criterion;
+      : comparison.expectedVerifyScriptDigest == null
+        ? "author criterion unbound"
+        : comparison.verifyScriptDigest !== comparison.expectedVerifyScriptDigest
+          ? "criterion changed"
+          : criterion;
 
   return (
     <span

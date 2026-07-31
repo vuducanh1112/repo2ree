@@ -14,7 +14,6 @@ export interface ReeIntentPatch extends Record<string, unknown> {
   runtime: string;
   activation: Record<string, unknown>;
   sbom: string;
-  swhid: string;
   experiments: Array<Record<string, unknown>>;
   hardware_description: Record<string, unknown>;
 }
@@ -98,13 +97,11 @@ function serializeHbom(hbom: Hbom): Record<string, unknown> {
   };
 }
 
-// The autosave patch intentionally omits `resolvedRevision` (the resolved
-// commit). It is a backend-owned receipt: acquisition settles it server-side and
-// source reset clears it, and no UI flow ever authors it. Serializing it would
-// let a stale/blank local copy clobber the backend's on the next autosave, since
-// apply_patch merges by key. (`swhid` stays below — unlike revision it still has
-// a client writer: source reset clears it locally, and that clear must reach the
-// backend so a stale identity does not outlive the source it named.)
+// Autosave intentionally omits the source identity fields `resolvedRevision`
+// and `swhid`. Acquisition settles both server-side and source reset clears
+// both there; serializing a stale/blank local copy would let an unrelated editor
+// save clobber evidence the backend just computed, since apply_patch merges by
+// key. Local state still carries them for display after authoritative hydration.
 export function toReePatchFromSlices({ reeSpec }: ReePatchSlices): ReeIntentPatch {
   return {
     name: reeSpec.name || "",
@@ -114,7 +111,6 @@ export function toReePatchFromSlices({ reeSpec }: ReePatchSlices): ReeIntentPatc
     runtime: reeSpec.runtime || "",
     activation: serializeRunnable(reeSpec.activation),
     sbom: reeSpec.sbom || "",
-    swhid: reeSpec.swhid || "",
     experiments: (reeSpec.experiments || []).map(serializeExperiment),
     hardware_description: serializeHbom(reeSpec.hardwareDescription),
   };

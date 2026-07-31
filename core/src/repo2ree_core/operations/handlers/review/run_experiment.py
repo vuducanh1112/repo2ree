@@ -109,6 +109,10 @@ def handle_review_run_experiment(
 
     experiment, certified, outcome = opened.runnable, opened.certified, opened.outcome
     review_layout = opened.review_layout
+    run_script_digest = digest_file_if_exists(review_layout.workspace / experiment.run_script)
+    verify_script_digest = (
+        digest_file_if_exists(review_layout.workspace / experiment.verify_script) if experiment.verify_script else None
+    )
 
     comparison = _certify(
         opened.ree_layout,
@@ -118,14 +122,9 @@ def handle_review_run_experiment(
         observed_verify_exit_code=outcome.run_outputs.verify_exit_code,
         observed_output_digest=digest_output_paths(review_layout.workspace, experiment.output_paths),
         runtime_digest=certified.runtime_digest,
-        # The criterion as it stood in the workspace it ran in, not as the author
-        # recorded it: this digest is what lets a reader audit which script
-        # granted the verdict they are being asked to trust.
-        verify_script_digest=(
-            digest_file_if_exists(review_layout.workspace / experiment.verify_script)
-            if experiment.verify_script
-            else None
-        ),
+        # The criterion as it stood in the workspace it ran in. Certification
+        # compares this with the author receipt before granting a verdict.
+        verify_script_digest=verify_script_digest,
     )
 
     timing = opened.timer.finish()
@@ -133,8 +132,10 @@ def handle_review_run_experiment(
         **receipt_envelope(run_id, timing, outcome.status),
         experiment_name=experiment.name,
         run_script_path=experiment.run_script,
+        run_script_digest=run_script_digest,
         run_exit_code=outcome.run_outputs.exit_code,
         verify_script_path=experiment.verify_script,
+        verify_script_digest=verify_script_digest,
         verify_exit_code=outcome.run_outputs.verify_exit_code,
         runtime_path=certified.runtime_path or None,
         declared_runtime_digest=certified.runtime_digest,
@@ -184,15 +185,18 @@ def _certify(
     """
     author = load_author_receipts(ree_layout).get(experiment_step_key(experiment.name))
     expected_verify_exit_code = None
+    expected_verify_script_digest = None
     expected_output_digest = None
     if isinstance(author, RunExperimentReceipt):
         expected_verify_exit_code = _author_verify_exit_code(author)
+        expected_verify_script_digest = author.verify_script_digest
         expected_output_digest = author.produced_output_digest
 
     return compare_experiment_results(
         experiment_name=experiment.name,
         basis=basis,
         verify_script_path=experiment.verify_script,
+        expected_verify_script_digest=expected_verify_script_digest,
         verify_script_digest=verify_script_digest,
         expected_verify_exit_code=expected_verify_exit_code,
         observed_verify_exit_code=observed_verify_exit_code,
@@ -238,11 +242,34 @@ def _log_verdict(comparison: ExperimentComparison, *, log: LogSink) -> None:
             "this experiment declares no verify script, so nothing states what a correct result is — "
             "the run happened, but no verdict about its results can follow from it",
         )
-    elif comparison.verdict == "inconclusive":
+    elif comparison.expected_verify_exit_code is None:
         log(
             "system",
             "warn",
             "the author never recorded a run of this experiment themselves, so there is no baseline claim to reproduce",
+        )
+    elif comparison.expected_verify_script_digest is None:
+        log(
+            "system",
+            "warn",
+            "the author's run does not bind its claim to a verify-script digest, so the original criterion "
+            "cannot be audited",
+        )
+    elif comparison.verify_script_digest is None:
+        log("system", "warn", "the reviewer could not identify the verify script that ran")
+    elif comparison.expected_verify_script_digest != comparison.verify_script_digest:
+        log(
+            "system",
+            "warn",
+            "the verify script changed since the author's run: "
+            f"expected {comparison.expected_verify_script_digest}, ran {comparison.verify_script_digest}",
+        )
+    elif comparison.expected_verify_exit_code != 0:
+        log(
+            "system",
+            "warn",
+            "the author's own verify script did not accept their baseline result, so there is no accepted claim "
+            "to reproduce",
         )
     else:
         log(

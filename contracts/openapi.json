@@ -8780,6 +8780,17 @@
             "title": "Verify Script Path",
             "default": ""
           },
+          "expected_verify_script_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Verify Script Digest"
+          },
           "verify_script_digest": {
             "anyOf": [
               {
@@ -8866,7 +8877,7 @@
           "experiment_name"
         ],
         "title": "ExperimentComparison",
-        "description": "Whether one experiment's result reproduced, by the author's own criterion.\n\nA comparison rather than an outcome, unlike activation: the author *does*\nhave a recorded baseline here \u2014 their own run's verify verdict and output\ndigest \u2014 so there is something to disagree with. What is compared is the\ncriterion rather than the artifact, which is why ``verify_script_digest`` is\ncarried: ``reproduced`` is worth exactly as much as the script that granted\nit, and a reader who cannot see which script ran cannot audit the verdict.\n\n``basis`` is inherited from the steps before, for the same reason activation\ninherits it: the experiment runs in the workspace the build left behind and\ncannot tell whether the runtime there was rebuilt or unpacked."
+        "description": "Whether one experiment's result reproduced, by the author's own criterion.\n\nA comparison rather than an outcome, unlike activation: the author *does*\nhave a recorded baseline here \u2014 their own run's verify verdict and output\ndigest \u2014 so there is something to disagree with. What is compared is the\ncriterion rather than the artifact, which is why both the author's expected\nverify-script digest and the reviewer's observed digest are carried:\n``reproduced`` is worth exactly as much as the script that granted it, and a\nreader who cannot establish that the same script ran cannot audit the\nverdict.\n\n``basis`` is inherited from the steps before, for the same reason activation\ninherits it: the experiment runs in the workspace the build left behind and\ncannot tell whether the runtime there was rebuilt or unpacked."
       },
       "ExperimentGateObservation": {
         "properties": {

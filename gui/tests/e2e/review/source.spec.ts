@@ -30,6 +30,13 @@ test.describe("Review source", () => {
     // The resolved commit is what the review re-fetches; wait for it to settle
     // onto the intent before reviewing, or the review races the metadata step.
     await expect(page.getByText(/Resolved to commit/)).toBeVisible({ timeout: 20000 });
+    // Source identity is settled by the same backend operation. Waiting for the
+    // actual value also proves a later editor autosave did not clobber it.
+    await expect(
+      page
+        .getByRole("region", { name: "Workspace Snapshot" })
+        .getByText(/^swh:1:dir:[0-9a-f]{40}$/),
+    ).toBeVisible({ timeout: 20000 });
 
     const review = await openReviewConsole(page);
     await expect(review.getByText("ready for source review")).toBeVisible();

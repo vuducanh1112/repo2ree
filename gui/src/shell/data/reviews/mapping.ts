@@ -46,6 +46,7 @@ function mapExperimentComparison(wire: ExperimentComparisonWire): ReviewExperime
     verdict: wire.verdict,
     experimentName: wire.experiment_name,
     verifyScriptPath: wire.verify_script_path ?? "",
+    expectedVerifyScriptDigest: wire.expected_verify_script_digest ?? undefined,
     verifyScriptDigest: wire.verify_script_digest ?? undefined,
     expectedVerifyExitCode: wire.expected_verify_exit_code ?? undefined,
     observedVerifyExitCode: wire.observed_verify_exit_code ?? undefined,
