@@ -3,7 +3,9 @@
 # split.
 #
 #   mk/checks.mk   static checks (shell, nix, gui, python)
-#   mk/docs.mk     prose linting and generated architecture diagrams
+#   mk/metrics.mk  advisory code-metric reports
+#   mk/architecture.mk  generated architecture diagrams
+#   mk/docs.mk          prose linting
 #   mk/contracts.mk contract generation (OpenAPI + GUI API types)
 #   mk/tests.mk    unit/integration suites and coverage variants
 #   mk/e2e.mk      e2e bundles, stacks, playwright runs
@@ -64,6 +66,8 @@ require-clean-tree:
 		|| { echo "working tree dirty — commit first, so published images match a commit"; exit 1; }
 
 include mk/checks.mk
+include mk/metrics.mk
+include mk/architecture.mk
 include mk/docs.mk
 include mk/contracts.mk
 include mk/tests.mk

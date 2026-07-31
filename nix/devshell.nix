@@ -56,6 +56,13 @@ pkgs.mkShell {
   ];
 
   shellHook = ''
+    # Lizard is a Python application, but only its executable belongs in this
+    # full-stack shell. Putting the package in buildInputs would export its
+    # Python dependencies through PYTHONPATH, where they can shadow the uv
+    # virtualenv (notably pathspec, which mypy also imports). The Nix wrapper
+    # on the executable already carries everything Lizard itself needs.
+    export PATH="${pkgs.python313Packages.lizard}/bin:$PATH"
+
     if [ -t 1 ]; then
       echo "❄️  Nix Shell Loaded"
       echo "Node: $(node -v) | uv: $(uv --version) | kubectl: $(kubectl version --client --short 2>/dev/null || kubectl version --client)"
