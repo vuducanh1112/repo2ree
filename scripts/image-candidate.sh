@@ -71,7 +71,7 @@ receipt_registries() {
 
 verify_candidate() {
 	local revision=$1 receipt=$2 registry image digest current
-	local -a registries
+	local found_registry=false
 
 	[[ -f $receipt ]] || {
 		echo "no validation receipt for image candidate $revision: $receipt" >&2
@@ -81,10 +81,9 @@ verify_candidate() {
 		echo "validation receipt does not name image candidate $revision" >&2
 		exit 1
 	}
-	mapfile -t registries < <(receipt_registries "$receipt")
-	((${#registries[@]} > 0)) || { echo "validation receipt contains no images" >&2; exit 1; }
-
-	for registry in "${registries[@]}"; do
+	while IFS= read -r registry; do
+		[[ -n $registry ]] || continue
+		found_registry=true
 		for image in "${images[@]}"; do
 			digest=$(receipt_digest "$receipt" "$registry" "$image")
 			[[ $digest =~ ^sha256:[0-9a-f]{64}$ ]] || {
@@ -97,7 +96,8 @@ verify_candidate() {
 				exit 1
 			}
 		done
-	done
+	done < <(receipt_registries "$receipt")
+	[[ $found_registry == true ]] || { echo "validation receipt contains no images" >&2; exit 1; }
 }
 
 print_environment() {
@@ -116,10 +116,9 @@ print_environment() {
 
 promote_candidate() {
 	local revision=$1 receipt=$2 registry image digest target
-	local -a registries
 	verify_candidate "$revision" "$receipt"
-	mapfile -t registries < <(receipt_registries "$receipt")
-	for registry in "${registries[@]}"; do
+	while IFS= read -r registry; do
+		[[ -n $registry ]] || continue
 		for image in "${images[@]}"; do
 			digest=$(receipt_digest "$receipt" "$registry" "$image")
 			target="$registry/$image:edge"
@@ -130,7 +129,7 @@ promote_candidate() {
 				exit 1
 			}
 		done
-	done
+	done < <(receipt_registries "$receipt")
 }
 
 case "${1:-}" in
