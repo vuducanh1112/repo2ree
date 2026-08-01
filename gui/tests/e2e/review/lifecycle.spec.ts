@@ -23,9 +23,9 @@ const EXPERIMENT = "python-hello";
  * evidence, and an REE the same spec just produced is the one baseline that
  * cannot demonstrate that: every digest it compares against was written moments
  * earlier by the same code path, in the same container, from the same inputs.
- * The bundle carries real author receipts from a real earlier run — including
- * one written before `verify_exit_code` existed — so the comparisons here are
- * against evidence that genuinely predates them.
+ * The bundle carries real author receipts emitted by the demo authoring flow,
+ * so the comparisons are against persisted evidence from a separate run rather
+ * than fixtures assembled by this review spec.
  *
  * It is also much less work. The whole authoring phase disappears: no upload,
  * no author-side build, no scan, no author-side activation or experiment run.
@@ -33,19 +33,16 @@ const EXPERIMENT = "python-hello";
  *
  * Two bases in one attempt, neither of them a preference: the bundle's source
  * was upload-acquired so there is no origin to re-fetch (bundled), while its
- * runtime was too large to ship so there is nothing to certify but a real
- * rebuild (independent). That combination is not a special case — it is what
- * every downloaded REE of this shape offers.
+ * runtime is deliberately omitted from this compact review fixture, so there
+ * is nothing to certify but a real rebuild (independent). That combination is
+ * not a special case — it is what every downloaded REE of this shape offers.
  *
- * Reviewing a baseline that is genuinely older than the run also means the
- * verdicts are not all green, and are not supposed to be. Nothing in this REE
- * is fully pinned — its Dockerfile floats `python:3.11-slim`, and while it pins
- * `pandas==2.2.1` it does not pin that package's own dependencies — so the
- * runtime drifts a package at a time as upstream moves. That is precisely the
- * situation the tool exists to detect, and it is the story the assertions
- * below tell: the environment is no longer quite the author's (build), it
- * still comes up (activation), and the result still holds anyway
- * (experiments). An all-identical run would prove less.
+ * Nothing in this REE is fully pinned — its Dockerfile floats
+ * `python:3.11-slim`, and while it pins `pandas==2.2.1` it does not pin that
+ * package's own dependencies — so the runtime may drift a package at a time as
+ * upstream moves. That is precisely the situation the tool exists to detect:
+ * build records any difference, activation asks whether the environment still
+ * comes up, and the experiment asks whether the result still holds.
  */
 test.describe("Review lifecycle", () => {
   test("reproduces another author's source, runtime, activation and result", async ({ page }) => {
