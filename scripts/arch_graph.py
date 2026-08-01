@@ -97,7 +97,7 @@ def top_level_owner(module: str, roots: list[str]) -> str | None:
     """The diagram node a module belongs to, or None if it is outside scope.
 
     A root package's own ``__init__`` owns nothing below it, so it maps to no
-    node: drawing ``repo2ree_core`` beside ``repo2ree_core.ree`` would put a
+    node: drawing ``repo2ree_core`` beside ``repo2ree_core.persistence`` would put a
     container and one of its contents on the same footing.
     """
     for root in roots:

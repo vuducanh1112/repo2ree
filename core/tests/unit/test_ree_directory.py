@@ -2,11 +2,11 @@ from datetime import UTC, datetime
 
 import pytest
 
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.ree.layout import ReeLayout
-from repo2ree_core.ree.store import ReeStore
-from repo2ree_core.ree.workspace.model import WorkspaceMetadata
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.state import ReeLifecycleState
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.persistence.metadata import WorkspaceMetadata
 from repo2ree_core.reserved_paths import RESERVED_OVERLAY_SCRIPTS
 from repo2ree_core.reserved_templates import reserved_script_template
 
@@ -21,14 +21,14 @@ def _make_metadata(ree_id: str = "ree-1", name: str = "demo") -> WorkspaceMetada
             "created_at": ts,
             "updated_at": ts,
             "ree_intent": ReeIntent(name=name).model_dump(exclude_none=True),
-            "ree_session": ReeSession().model_dump(exclude_none=True),
+            "ree_state": ReeLifecycleState().model_dump(exclude_none=True),
         }
     )
 
 
-def _store(tmp_path) -> ReeStore:
+def _store(tmp_path) -> ReeDirectory:
     layout = ReeLayout.for_ree(tmp_path, "ree-1")
-    return ReeStore(layout)
+    return ReeDirectory(layout)
 
 
 def test_exists_false_before_ensure_dirs(tmp_path):
@@ -112,7 +112,7 @@ def test_write_metadata_uses_aliased_keys_on_disk(tmp_path):
     assert "ree_id" in raw
     assert "created_at" in raw
     assert "ree_intent" in raw
-    assert "ree_session" in raw
+    assert "ree_state" in raw
 
 
 def test_write_metadata_creates_parent_if_missing(tmp_path):
@@ -179,7 +179,7 @@ def test_metadata_json_roundtrip_preserves_extra_fields(tmp_path):
         "created_at": "2026-01-01T00:00:00Z",
         "updated_at": "2026-01-01T00:00:00Z",
         "ree_intent": {"name": "demo"},
-        "ree_session": {},
+        "ree_state": {},
         "vendorExtraField": {"nested": [1, 2, 3]},
     }
     store.write_metadata_json(payload)
@@ -207,8 +207,8 @@ def test_typed_write_metadata_uses_atomic_json_path(tmp_path):
 
 
 def test_two_stores_for_different_rees_are_independent(tmp_path):
-    a = ReeStore(ReeLayout.for_ree(tmp_path, "ree-a"))
-    b = ReeStore(ReeLayout.for_ree(tmp_path, "ree-b"))
+    a = ReeDirectory(ReeLayout.for_ree(tmp_path, "ree-a"))
+    b = ReeDirectory(ReeLayout.for_ree(tmp_path, "ree-b"))
 
     a.ensure_dirs()
     a.write_metadata(_make_metadata(ree_id="ree-a", name="A"))

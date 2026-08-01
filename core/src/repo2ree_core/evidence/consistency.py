@@ -27,8 +27,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from repo2ree_core.digests import digest_file, digest_file_if_exists, digest_output_paths
 from repo2ree_core.domain.experiment import Runnable
 from repo2ree_core.domain.primitives import ReePath, RunId, UtcInstant
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.evidence.receipts.models import (
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.receipt import (
     ActivationTestReceipt,
     BuildRuntimeReceipt,
     DriftStatus,
@@ -38,10 +38,10 @@ from repo2ree_core.evidence.receipts.models import (
     WorkspaceDrift,
     experiment_step_key,
 )
-from repo2ree_core.evidence.receipts.store import load_author_receipts, stat_table
 from repo2ree_core.path_safety import WORKSPACE_CONTROL_PREFIXES
-from repo2ree_core.ree.files import write_json_atomic
-from repo2ree_core.ree.layout import ReeLayout
+from repo2ree_core.persistence.files import write_json_atomic
+from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.persistence.receipts import load_author_receipts, stat_table
 
 _DRIFT_PATHS_CAP = 20
 
@@ -234,7 +234,7 @@ def _step_report(step: str, receipt: RunReceipt | None, stale_inputs: list[Consi
     )
 
 
-def build_consistency_report(layout: ReeLayout, intent: ReeIntent, session: Any) -> ConsistencyReport:
+def build_consistency_report(layout: ReeLayout, intent: ReeIntent, state: Any) -> ConsistencyReport:
     """Per-step freshness of recorded receipts against the tree being sealed.
 
     For every step the bundle's replay will re-execute, compare the latest
@@ -245,7 +245,7 @@ def build_consistency_report(layout: ReeLayout, intent: ReeIntent, session: Any)
     inconsistency is the point.
     """
     latest = load_author_receipts(layout)
-    snapshot_digest = getattr(session, "source_snapshot_digest", None)
+    snapshot_digest = getattr(state, "source_snapshot_digest", None)
     runtime_digest = current_runtime_digest(layout, intent.runtime)
 
     steps: list[ConsistencyStep] = []
@@ -331,10 +331,10 @@ def build_consistency_report(layout: ReeLayout, intent: ReeIntent, session: Any)
     return ConsistencyReport(steps=steps)
 
 
-def build_author_receipt_set(layout: ReeLayout, intent: ReeIntent, session: Any) -> AuthorReceiptSet:
+def build_author_receipt_set(layout: ReeLayout, intent: ReeIntent, state: Any) -> AuthorReceiptSet:
     """Join selected author receipts to the existing consistency projection."""
     selected = load_author_receipts(layout)
-    consistency = {step.step: step for step in build_consistency_report(layout, intent, session).steps}
+    consistency = {step.step: step for step in build_consistency_report(layout, intent, state).steps}
     ordered_keys = [
         "acquire_source",
         "snapshot_upstream",

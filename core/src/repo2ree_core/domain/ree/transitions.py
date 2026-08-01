@@ -7,45 +7,84 @@ import json
 from collections.abc import Mapping
 from typing import Any, Literal
 
+from pydantic import BaseModel, ConfigDict
+
 from repo2ree_core.domain.primitives import (
     Digest,
     GitRevision,
+    ReeId,
     ReePath,
     ReeRevision,
     ScriptPath,
     Swhid,
     UtcInstant,
 )
-from repo2ree_core.domain.ree import (
+from repo2ree_core.domain.ree.model import (
     AuthoredFile,
-    EvidenceTransition,
-    FileTransition,
-    IntentTransition,
-    PublicationTransition,
     Ree,
     ReeDefinition,
-    RuntimeBuildTransition,
+    ReeEvidence,
     SealedRee,
 )
-from repo2ree_core.domain.ree_session import (
-    record_evaluation as record_session_evaluation,
-)
-from repo2ree_core.domain.ree_session import (
-    record_seal as record_session_seal,
-)
-from repo2ree_core.domain.ree_session import (
+from repo2ree_core.domain.ree.state import (
+    ReeLifecycleState,
     record_source,
     select_packaging,
 )
+from repo2ree_core.domain.ree.state import (
+    record_evaluation as record_state_evaluation,
+)
+from repo2ree_core.domain.ree.state import (
+    record_seal as record_state_seal,
+)
 from repo2ree_core.path_safety import validate_relative_path
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
+
+
+class _Transition(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+
+class IntentTransition(_Transition):
+    before_revision: ReeRevision
+    after_revision: ReeRevision
+    authored: ReeDefinition
+    removed_experiments: tuple[str, ...] = ()
+
+
+class FileTransition(_Transition):
+    before_revision: ReeRevision
+    after_revision: ReeRevision
+    authored: ReeDefinition
+    changed_file: AuthoredFile
+
+
+class RuntimeBuildTransition(_Transition):
+    ree_id: ReeId
+    revision: ReeRevision
+    snapshot_digest: Digest | None
+    build_script_path: ScriptPath
+    build_script_digest: Digest
+
+
+class EvidenceTransition(_Transition):
+    before_revision: ReeRevision
+    after_revision: ReeRevision
+    authored: ReeDefinition
+    evidence: ReeEvidence
+
+
+class PublicationTransition(_Transition):
+    revision: ReeRevision
+    state: ReeLifecycleState
+    publication: SealedRee | None = None
 
 
 def revision_of(ree: Ree) -> ReeRevision:
     payload = {
         "intent": ree.authored.intent.model_dump(mode="json"),
         "files": [file.model_dump(mode="json") for file in ree.authored.files],
-        "source_snapshot_digest": ree.evidence.session_projection.source_snapshot_digest,
+        "source_snapshot_digest": ree.evidence.state.source_snapshot_digest,
     }
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
     return ReeRevision(f"sha256:{hashlib.sha256(encoded).hexdigest()}")
@@ -127,15 +166,15 @@ def record_source_acquisition(
     if swhid:
         patch["swhid"] = swhid
     authored = _patch_definition(ree.authored, patch) if patch else ree.authored
-    session = record_source(
-        ree.evidence.session_projection,
+    state = record_source(
+        ree.evidence.state,
         acquired_by=acquired_by,
         archive_name=uploaded_archive,
         snapshot_archive=snapshot_archive,
         snapshot_captured_at=captured_at,
         resolved_commit=resolved_commit,
     )
-    evidence = ree.evidence.model_copy(update={"session_projection": session})
+    evidence = ree.evidence.model_copy(update={"state": state})
     updated = ree.model_copy(update={"authored": authored, "evidence": evidence})
     return EvidenceTransition(
         before_revision=revision_of(ree),
@@ -153,14 +192,14 @@ def record_evaluation(
     machine_level: int,
     detected_dependencies: str,
 ) -> EvidenceTransition:
-    session = record_session_evaluation(
-        ree.evidence.session_projection,
+    state = record_state_evaluation(
+        ree.evidence.state,
         dependency_level=dependency_level,
         environment_level=environment_level,
         machine_level=machine_level,
         detected_dependencies=detected_dependencies,
     )
-    evidence = ree.evidence.model_copy(update={"session_projection": session})
+    evidence = ree.evidence.model_copy(update={"state": state})
     updated = ree.model_copy(update={"evidence": evidence})
     return EvidenceTransition(
         before_revision=revision_of(ree),
@@ -177,13 +216,13 @@ def prepare_publication(
     runtime_included: bool,
     results_included: bool,
 ) -> PublicationTransition:
-    session = select_packaging(
-        ree.evidence.session_projection,
+    state = select_packaging(
+        ree.evidence.state,
         source_included=source_included,
         runtime_included=runtime_included,
         results_included=results_included,
     )
-    return PublicationTransition(revision=revision_of(ree), session=session)
+    return PublicationTransition(revision=revision_of(ree), state=state)
 
 
 def record_seal(
@@ -195,8 +234,8 @@ def record_seal(
     runtime_included: bool,
     results_included: bool,
 ) -> PublicationTransition:
-    session = record_session_seal(
-        ree.evidence.session_projection,
+    state = record_state_seal(
+        ree.evidence.state,
         sealed_at=sealed_at,
         seal_hash=seal_hash,
         source_included=source_included,
@@ -210,4 +249,4 @@ def record_seal(
         runtime_included=runtime_included,
         results_included=results_included,
     )
-    return PublicationTransition(revision=revision_of(ree), session=session, publication=publication)
+    return PublicationTransition(revision=revision_of(ree), state=state, publication=publication)

@@ -9,15 +9,8 @@ from pydantic import ValidationError
 
 from repo2ree_core.digests import Digest, digest_bytes
 from repo2ree_core.domain.primitives import RunId, ScriptPath
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.evidence.receipts.consistency import (
-    ConsistencyReport,
-    ConsistencyStep,
-    build_consistency_report,
-    check_workspace_drift,
-)
-from repo2ree_core.evidence.receipts.models import (
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.receipt import (
     BuildRuntimeReceipt,
     CrossCheckSbomReceipt,
     RunExperimentReceipt,
@@ -25,14 +18,21 @@ from repo2ree_core.evidence.receipts.models import (
     latest_successful_receipts,
     receipt_run_id,
 )
-from repo2ree_core.evidence.receipts.store import (
+from repo2ree_core.domain.ree.state import ReeLifecycleState
+from repo2ree_core.evidence.consistency import (
+    ConsistencyReport,
+    ConsistencyStep,
+    build_consistency_report,
+    check_workspace_drift,
+)
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.persistence.receipts import (
     load_author_receipts,
     load_receipts,
     record_receipt,
     write_materialize_marker,
 )
-from repo2ree_core.ree.layout import ReeLayout
-from repo2ree_core.ree.store import ReeStore
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_core.time_utils import parse_utc_instant
 
@@ -44,7 +44,7 @@ def _silent_log(*_: object) -> None:
 @pytest.fixture
 def layout(tmp_path: Path) -> ReeLayout:
     layout = ReeLayout(root=tmp_path)
-    ReeStore(layout).ensure_dirs()
+    ReeDirectory(layout).ensure_dirs()
     return layout
 
 
@@ -253,8 +253,8 @@ class TestWorkspaceDrift:
 
 
 class TestConsistencyReport:
-    def _seed(self, layout: ReeLayout, intent: ReeIntent) -> tuple[ReeIntent, ReeSession]:
-        session = ReeSession(source_snapshot_digest=Digest("sha256:snap"))
+    def _seed(self, layout: ReeLayout, intent: ReeIntent) -> tuple[ReeIntent, ReeLifecycleState]:
+        session = ReeLifecycleState(source_snapshot_digest=Digest("sha256:snap"))
         script = layout.workspace / "ree-scripts" / "build_script.sh"
         script.parent.mkdir(parents=True, exist_ok=True)
         script.write_text("make all")
@@ -359,11 +359,11 @@ class TestHandlerWiring:
     """The executor-side wiring: handlers record receipts as they run."""
 
     @pytest.fixture
-    def workbench(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ReeStore:
-        from repo2ree_core.ree.workspace.model import WorkspaceMetadata
+    def workbench(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ReeDirectory:
+        from repo2ree_core.persistence.metadata import WorkspaceMetadata
 
         layout = ReeLayout(root=tmp_path)
-        store = ReeStore(layout)
+        store = ReeDirectory(layout)
         store.ensure_dirs()
         store.write_metadata(
             WorkspaceMetadata(
@@ -372,13 +372,13 @@ class TestHandlerWiring:
                 created_at="2026-01-01T00:00:00Z",
                 updated_at="2026-01-01T00:00:00Z",
                 ree_intent=ReeIntent(runtime="runtime.tar"),
-                ree_session=ReeSession(source_snapshot_digest=Digest("sha256:snap")),
+                ree_state=ReeLifecycleState(source_snapshot_digest=Digest("sha256:snap")),
             )
         )
         monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: ReeLayout(root=tmp_path)))
         return store
 
-    def test_build_run_records_receipt_with_input_slice_and_produced_digest(self, workbench: ReeStore) -> None:
+    def test_build_run_records_receipt_with_input_slice_and_produced_digest(self, workbench: ReeDirectory) -> None:
         from repo2ree_core.operations.handlers.author.build_runtime import handle_build_runtime
 
         layout = workbench.layout
@@ -398,8 +398,8 @@ class TestHandlerWiring:
         assert receipt["workspace_drift"]["status"] == "unknown"  # never materialized
         assert result.outputs["receipt"] == receipt
 
-    def _seed_experiment(self, workbench: ReeStore, *, runtime: str = "runtime.tar") -> ReeIntent:
-        from repo2ree_core.ree.workspace.model import WorkspaceMetadata
+    def _seed_experiment(self, workbench: ReeDirectory, *, runtime: str = "runtime.tar") -> ReeIntent:
+        from repo2ree_core.persistence.metadata import WorkspaceMetadata
 
         layout = workbench.layout
         intent = ReeIntent.model_validate(
@@ -421,7 +421,7 @@ class TestHandlerWiring:
                 created_at="2026-01-01T00:00:00Z",
                 updated_at="2026-01-01T00:00:00Z",
                 ree_intent=intent,
-                ree_session=ReeSession(source_snapshot_digest=Digest("sha256:snap")),
+                ree_state=ReeLifecycleState(source_snapshot_digest=Digest("sha256:snap")),
             )
         )
         script = layout.workspace / "ree-scripts" / "experiments" / "exp-a.sh"
@@ -429,7 +429,7 @@ class TestHandlerWiring:
         script.write_text("mkdir -p results && printf answer > results/out.txt\n")
         return intent
 
-    def test_experiment_run_captures_outputs_and_records_digest(self, workbench: ReeStore) -> None:
+    def test_experiment_run_captures_outputs_and_records_digest(self, workbench: ReeDirectory) -> None:
         from repo2ree_core.digests import digest_output_paths
         from repo2ree_core.operations.handlers.author.run_experiment import handle_run_experiment
         from repo2ree_protocol.command import RunExperimentArgs
@@ -450,7 +450,7 @@ class TestHandlerWiring:
         receipt = json.loads(layout.run_receipt("run-e").read_text(encoding="utf-8"))
         assert receipt["produced_output_digest"] == digest_output_paths(layout.workspace, ["results/out.txt"])
 
-    def test_native_experiment_run_warns_and_omits_runtime_binding(self, workbench: ReeStore) -> None:
+    def test_native_experiment_run_warns_and_omits_runtime_binding(self, workbench: ReeDirectory) -> None:
         from repo2ree_core.operations.handlers.author.run_experiment import handle_run_experiment
         from repo2ree_protocol.command import RunExperimentArgs
 
@@ -472,7 +472,7 @@ class TestHandlerWiring:
         assert receipt["runtime_path"] is None
         assert receipt["declared_runtime_digest"] is None
 
-    def test_rewritten_output_makes_experiment_stale(self, workbench: ReeStore) -> None:
+    def test_rewritten_output_makes_experiment_stale(self, workbench: ReeDirectory) -> None:
         from repo2ree_core.operations.handlers.author.run_experiment import handle_run_experiment
         from repo2ree_protocol.command import RunExperimentArgs
 
@@ -485,7 +485,7 @@ class TestHandlerWiring:
             is_canceled=lambda: False,
         )
 
-        session = workbench.read_session()
+        session = workbench.read_state()
         fresh = build_consistency_report(layout, intent, session)
         exp = next(s for s in fresh.steps if s.step == "experiment:exp-a")
         assert exp.status == "fresh"
@@ -497,7 +497,7 @@ class TestHandlerWiring:
         assert exp.status == "stale"
         assert "produced_output" in [entry.input for entry in exp.stale_inputs]
 
-    def test_snapshot_upstream_persists_digest_on_session(self, workbench: ReeStore) -> None:
+    def test_snapshot_upstream_persists_digest_on_session(self, workbench: ReeDirectory) -> None:
         from repo2ree_core.digests import digest_file
         from repo2ree_core.operations.handlers.author.snapshot_upstream import handle_snapshot_upstream
 
@@ -509,14 +509,14 @@ class TestHandlerWiring:
         assert result.status == "succeeded"
         expected = digest_file(layout.snapshot_archive)
         assert result.outputs["snapshot_digest"] == expected
-        assert workbench.read_session().source_snapshot_digest == expected
+        assert workbench.read_state().source_snapshot_digest == expected
         receipt = json.loads(layout.run_receipt("run-snap").read_text(encoding="utf-8"))
         assert receipt["snapshot_digest"] == expected
 
 
 class TestCurrentRuntimeDigest:
     def test_caches_by_stat_and_invalidates_on_change(self, layout: ReeLayout) -> None:
-        from repo2ree_core.evidence.receipts.consistency import current_runtime_digest
+        from repo2ree_core.evidence.consistency import current_runtime_digest
 
         runtime = layout.workspace / "runtime.tar"
         runtime.write_bytes(b"tar-v1")
@@ -532,7 +532,7 @@ class TestCurrentRuntimeDigest:
         assert current_runtime_digest(layout, "runtime.tar") == digest_bytes(b"tar-v2-longer")
 
     def test_missing_or_undeclared_runtime_is_none(self, layout: ReeLayout) -> None:
-        from repo2ree_core.evidence.receipts.consistency import current_runtime_digest
+        from repo2ree_core.evidence.consistency import current_runtime_digest
 
         assert current_runtime_digest(layout, None) is None
         assert current_runtime_digest(layout, "absent.tar") is None

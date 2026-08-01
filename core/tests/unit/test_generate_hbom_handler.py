@@ -13,12 +13,12 @@ from pathlib import Path
 import pytest
 
 from repo2ree_core.domain.hbom import HBOM, CPUDefinition, GPUDefinition
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.state import ReeLifecycleState
 from repo2ree_core.operations.handlers.author import generate_hbom as handler
-from repo2ree_core.ree.layout import ReeLayout
-from repo2ree_core.ree.store import ReeStore
-from repo2ree_core.ree.workspace.model import WorkspaceMetadata
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.persistence.metadata import WorkspaceMetadata
 
 
 def _never_canceled() -> bool:
@@ -29,8 +29,8 @@ def _silent_log(*_: object) -> None:
     return None
 
 
-def _seed_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, existing: HBOM | None = None) -> ReeStore:
-    store = ReeStore(ReeLayout(root=tmp_path))
+def _seed_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, existing: HBOM | None = None) -> ReeDirectory:
+    store = ReeDirectory(ReeLayout(root=tmp_path))
     store.ensure_dirs()
     store.write_metadata(
         WorkspaceMetadata(
@@ -39,7 +39,7 @@ def _seed_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, existing: HB
             created_at="2026-01-01T00:00:00Z",
             updated_at="2026-01-01T00:00:00Z",
             ree_intent=ReeIntent(name="demo", hardware_description=existing or HBOM()),
-            ree_session=ReeSession(source_available=True),
+            ree_state=ReeLifecycleState(source_available=True),
         )
     )
     monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: ReeLayout(root=tmp_path)))
@@ -47,7 +47,7 @@ def _seed_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, existing: HB
 
 
 def test_missing_metadata_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    store = ReeStore(ReeLayout(root=tmp_path))
+    store = ReeDirectory(ReeLayout(root=tmp_path))
     store.ensure_dirs()
     monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: ReeLayout(root=tmp_path)))
     result = handler.handle_generate_hbom(log=_silent_log, is_canceled=_never_canceled)

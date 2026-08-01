@@ -17,8 +17,8 @@ from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.operations.handlers.author._script_inference_inputs import build_runtime_inputs
 from repo2ree_core.operations.steps.author import read_intent_or_none
-from repo2ree_core.ree.layout import ReeLayout
-from repo2ree_core.ree.store import ReeStore
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import GenerateScriptCandidatesArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
@@ -39,7 +39,7 @@ def handle_generate_script_candidates(
         log("system", "error", "no acquired source to infer from")
         return ActionResult.failed("precondition", "no acquired source (upstream tree is absent)")
 
-    store = ReeStore(layout)
+    store = ReeDirectory(layout)
     intent = read_intent_or_none(store, log=log)
     ree_id, snapshot_digest = _identity(store)
     runtime_inputs = build_runtime_inputs(layout, intent)
@@ -75,12 +75,12 @@ def handle_generate_script_candidates(
     return ActionResult(status="succeeded", exit_code=0, outputs=report.model_dump())
 
 
-def _identity(store: ReeStore) -> tuple[str, str | None]:
+def _identity(store: ReeDirectory) -> tuple[str, str | None]:
     ree_id = ""
     snapshot_digest: str | None = None
     with suppress(Exception):
         if store.metadata_exists():
             metadata = store.read_metadata()
             ree_id = metadata.ree_id
-            snapshot_digest = metadata.ree_session.source_snapshot_digest
+            snapshot_digest = metadata.ree_state.source_snapshot_digest
     return ree_id, snapshot_digest

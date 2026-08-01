@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict
 from repo2ree_core.analysis.sbom.scan import SBOM_FORMAT, is_runtime_archive, scan_runtime_archive
 from repo2ree_core.digests import Digest, digest_file
 from repo2ree_core.domain.primitives import ArtifactPath, WorkspacePath
-from repo2ree_core.evidence.receipts.models import GenerateSbomReceipt
+from repo2ree_core.domain.ree.receipt import GenerateSbomReceipt
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.operations.steps.author import (
@@ -13,9 +13,9 @@ from repo2ree_core.operations.steps.author import (
     resolve_workspace_path,
     settle_step,
 )
-from repo2ree_core.ree.files import publish_atomic, staging_path
-from repo2ree_core.ree.layout import SBOM_ARTIFACT_PATH, ReeLayout
-from repo2ree_core.ree.store import ReeStore
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.files import publish_atomic, staging_path
+from repo2ree_core.persistence.layout import SBOM_ARTIFACT_PATH, ReeLayout
 from repo2ree_core.time_utils import OperationTimer
 from repo2ree_protocol.command import GenerateSbomArgs
 from repo2ree_protocol.log import LogSink
@@ -116,7 +116,7 @@ def handle_generate_sbom(
     publish_atomic(staged, output_path)
 
     try:
-        patch_ree_intent(ReeStore(layout), {"sbom": SBOM_ARTIFACT_PATH})
+        patch_ree_intent(ReeDirectory(layout), {"sbom": SBOM_ARTIFACT_PATH})
     except Exception as exc:
         log("system", "error", f"post-processing SBOM failed: {exc}")
         receipt("failed")

@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from repo2ree_core.authoring.script_generation.acquire_source import build_acquire_sh
-from repo2ree_core.ree.layout import ACQUIRE_SCRIPT_FILENAME, SNAPSHOT_FILENAME, UPSTREAM_DIRNAME
+from repo2ree_core.persistence.layout import ACQUIRE_SCRIPT_FILENAME, SNAPSHOT_FILENAME, UPSTREAM_DIRNAME
 
 
 def _sh_n(script: bytes) -> subprocess.CompletedProcess[bytes]:

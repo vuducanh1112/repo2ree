@@ -1,12 +1,11 @@
-from .hbom import (
-    HBOM,
-    CPUDefinition,
-    GPUDefinition,
-    MemoryDefinition,
-    NetworkDefinition,
-    StorageDefinition,
-)
-from .ree import (
+"""The REE aggregate and its domain vocabulary.
+
+Persistence adapters live in :mod:`repo2ree_core.persistence`; this package is
+pure and answers what an REE is, how it changes, and what its evidence means.
+"""
+
+from .intent import Contributor, ReeCatalogMetadata, ReeIntent, SourceType
+from .model import (
     AuthoredFile,
     Ree,
     ReeAssessment,
@@ -18,22 +17,11 @@ from .ree import (
     ReeScripts,
     SealedRee,
 )
-from .ree.intent import (
-    Contributor,
-    ReeCatalogMetadata,
-    ReeIntent,
-    SourceType,
-)
-from .ree.state import ReeLifecycleState, SourceAcquiredBy
+from .state import ReeLifecycleState, SourceAcquiredBy
 
 __all__ = [
-    "HBOM",
     "AuthoredFile",
-    "CPUDefinition",
     "Contributor",
-    "GPUDefinition",
-    "MemoryDefinition",
-    "NetworkDefinition",
     "Ree",
     "ReeAssessment",
     "ReeCapability",
@@ -48,5 +36,4 @@ __all__ = [
     "SealedRee",
     "SourceAcquiredBy",
     "SourceType",
-    "StorageDefinition",
 ]

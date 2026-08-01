@@ -2,19 +2,18 @@
 
 Open this module to answer "what is an REE?". Persistence is deliberately
 elsewhere: a repository hydrates this model from the sidecar, authored tree,
-receipt ledger, and sealed publication. Pure functions in ``ree_transitions``,
-``ree_assessment``, and ``ree_structure`` interpret and transform these values.
+receipt ledger, and sealed publication. Pure functions in ``transitions``,
+``assessment``, and ``queries`` interpret and transform these values.
 
 The model separates four kinds of truth:
 
 * ``authored`` — the definition and files an author may change;
-* ``evidence`` — immutable receipts plus the legacy machine-state projection;
+* ``evidence`` — immutable receipts plus current durable lifecycle facts;
 * ``publications`` — immutable sealed outputs;
 * ``assessment`` — capabilities derived from authored inputs and evidence.
 
-``ReeSession`` is retained inside ``ReeEvidence`` as an explicit compatibility
-projection while its fields migrate to receipts and publications.  It is not a
-second author-editable model and handlers must not transition it directly.
+``ReeLifecycleState`` contains durable facts produced by operations. It is not a second
+author-editable model and handlers must not transition it directly.
 """
 
 from __future__ import annotations
@@ -30,16 +29,14 @@ from repo2ree_core.domain.primitives import (
     GitRevision,
     ReeId,
     ReePath,
-    ReeRevision,
     RunId,
-    ScriptPath,
     Swhid,
     UtcInstant,
     WorkspacePath,
 )
-from repo2ree_core.domain.receipt import RunReceipt, receipt_step_key
-from repo2ree_core.domain.ree_intent import ReeIntent, SourceType
-from repo2ree_core.domain.ree_session import ReeSession
+from repo2ree_core.domain.ree.intent import ReeIntent, SourceType
+from repo2ree_core.domain.ree.receipt import RunReceipt, receipt_step_key
+from repo2ree_core.domain.ree.state import ReeLifecycleState
 
 
 class _DomainModel(BaseModel):
@@ -128,7 +125,7 @@ class ReeEvidence(_DomainModel):
 
     history: tuple[RunReceipt, ...] = ()
     selected: tuple[RunReceipt, ...] = ()
-    session_projection: ReeSession = Field(default_factory=ReeSession)
+    state: ReeLifecycleState = Field(default_factory=ReeLifecycleState)
 
     @model_validator(mode="after")
     def _valid_selected_set(self) -> ReeEvidence:
@@ -181,46 +178,6 @@ class ReeAssessment(_DomainModel):
     runtime: ReeCapability
     activation: ReeCapability
     experiments: tuple[ExperimentCapability, ...] = ()
-
-
-# ================================================
-# Transitions
-# ================================================
-
-
-class IntentTransition(_DomainModel):
-    before_revision: ReeRevision
-    after_revision: ReeRevision
-    authored: ReeDefinition
-    removed_experiments: tuple[str, ...] = ()
-
-
-class FileTransition(_DomainModel):
-    before_revision: ReeRevision
-    after_revision: ReeRevision
-    authored: ReeDefinition
-    changed_file: AuthoredFile
-
-
-class RuntimeBuildTransition(_DomainModel):
-    ree_id: ReeId
-    revision: ReeRevision
-    snapshot_digest: Digest | None
-    build_script_path: ScriptPath
-    build_script_digest: Digest
-
-
-class EvidenceTransition(_DomainModel):
-    before_revision: ReeRevision
-    after_revision: ReeRevision
-    authored: ReeDefinition
-    evidence: ReeEvidence
-
-
-class PublicationTransition(_DomainModel):
-    revision: ReeRevision
-    session: ReeSession
-    publication: SealedRee | None = None
 
 
 class Ree(_DomainModel):

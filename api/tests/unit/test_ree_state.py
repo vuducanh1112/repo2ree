@@ -22,7 +22,7 @@ def test_ree_state_omits_inline_content_and_exposes_placement(
         "status": "draft",
         "updated_at": "v1",
         "ree_intent": {"name": "demo"},
-        "ree_session": {},
+        "ree_state": {},
         "consistency": {"steps": []},
         "files": [{"path": "ree-scripts/build_script.sh", "kind": "generated", "size": 12}],
         "ree_files": [{"path": "artifacts/sbom.json", "tag": "Artifact", "size": 34}],

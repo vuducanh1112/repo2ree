@@ -32,7 +32,7 @@ from repo2ree_core.authoring.script_inference.registry import (
 )
 from repo2ree_core.authoring.script_inference.repository_facts import scan_repository
 from repo2ree_core.authoring.script_inference.runtime_inputs import RuntimeInputs
-from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.domain.ree.intent import ReeIntent
 from repo2ree_core.reserved_paths import (
     RESERVED_ACTIVATION_SCRIPT,
     RESERVED_ACTIVATION_VERIFY_SCRIPT,

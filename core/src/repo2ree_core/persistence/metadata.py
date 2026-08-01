@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.state import ReeLifecycleState
 
 WorkspaceStatus = Literal["draft", "ready", "sealed", "archived"]
 
@@ -22,7 +22,10 @@ class WorkspaceMetadata(BaseModel):
     created_at: str
     updated_at: str
     ree_intent: ReeIntent = Field(default_factory=ReeIntent)
-    ree_session: ReeSession = Field(default_factory=ReeSession)
+    ree_state: ReeLifecycleState = Field(
+        default_factory=ReeLifecycleState,
+        validation_alias=AliasChoices("ree_state", "ree_session"),
+    )
 
     @model_validator(mode="after")
     def _backfill_intent_identity(self) -> WorkspaceMetadata:
@@ -54,9 +57,9 @@ class WorkspaceMetadata(BaseModel):
             updated_at=at,
         )
 
-    def with_session(self, session: ReeSession, *, at: str) -> WorkspaceMetadata:
-        """This sidecar carrying new session state. Nothing else is derived from it."""
-        return self._revalidated(ree_session=session.model_dump(mode="json", exclude_none=True), updated_at=at)
+    def with_state(self, state: ReeLifecycleState, *, at: str) -> WorkspaceMetadata:
+        """This sidecar carrying new durable state. Nothing else is derived from it."""
+        return self._revalidated(ree_state=state.model_dump(mode="json", exclude_none=True), updated_at=at)
 
     def _revalidated(self, **changes: object) -> WorkspaceMetadata:
         return WorkspaceMetadata.model_validate(self.model_dump(mode="json", exclude_none=True) | changes)

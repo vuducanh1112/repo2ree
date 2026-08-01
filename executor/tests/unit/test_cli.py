@@ -18,8 +18,8 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner
 
-import repo2ree_core.ree.layout as layout_mod
-from repo2ree_core.ree.layout import ReeLayout
+import repo2ree_core.persistence.layout as layout_mod
+from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_executor.cli import cli
 from repo2ree_protocol.command import WriteFileArgs, WriteFileCommand

@@ -2,12 +2,12 @@
 
 This module is part of the functional core: it contains the data type and
 path arithmetic, but performs no filesystem I/O. The imperative shell —
-:class:`repo2ree_core.ree.store.ReeStore` and the read views beside it — uses
+:class:`repo2ree_core.persistence.directory.ReeDirectory` and the read views beside it — uses
 ``ReeLayout`` to know where to read and write.
 
 Layout under ``<storage_root>/<ree_id>/`` (host) or ``/ree/`` (workbench):
 
-    .workspace.json       session metadata
+    .workspace.json       state metadata
     manifest.json         sealed REE spec sidecar
     sealed.zip            immutable sealed archive (written by seal_ree)
     snapshot.tar.gz       frozen upstream archive
@@ -265,7 +265,7 @@ class ReeLayout:
         """A path relative to the REE root itself, e.g. ``artifacts/runtime.tar.gz``.
 
         The spelling a bundle's manifest uses once packaging has lifted the
-        runtime out of the workspace (see ``ReeStore.author_artifact``).
+        runtime out of the workspace (see ``ReeDirectory.author_artifact``).
         """
         return _resolve_under(self.root, rel)
 

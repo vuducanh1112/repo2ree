@@ -16,7 +16,7 @@ from repo2ree_core.authoring.script_generation.reproducer import (
     reproducer_entries,
     runtime_artifact_basename_from_remap,
 )
-from repo2ree_core.ree.layout import (
+from repo2ree_core.persistence.layout import (
     ACQUIRE_SCRIPT_FILENAME,
     ARTIFACTS_DIRNAME,
     MATERIALIZE_SCRIPT_FILENAME,

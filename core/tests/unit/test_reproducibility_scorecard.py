@@ -5,9 +5,8 @@ import json
 from repo2ree_core.digests import Digest
 from repo2ree_core.domain.experiment import Experiment
 from repo2ree_core.domain.primitives import ReePath, RunId, ScriptPath, WorkspacePath
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.evidence.receipts.models import (
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.receipt import (
     ActivationTestReceipt,
     BuildRuntimeReceipt,
     CrossCheckSbomReceipt,
@@ -15,6 +14,7 @@ from repo2ree_core.evidence.receipts.models import (
     RunExperimentReceipt,
     RunReceipt,
 )
+from repo2ree_core.domain.ree.state import ReeLifecycleState
 from repo2ree_core.evidence.scorecard import (
     LEVEL_NAMES,
     ReproducibilityScoreCard,
@@ -115,8 +115,8 @@ def _intent(*, experiments: list[Experiment] | None = None) -> ReeIntent:
     )
 
 
-def _session(**overrides: object) -> ReeSession:
-    base = ReeSession(source_available=True)
+def _session(**overrides: object) -> ReeLifecycleState:
+    base = ReeLifecycleState(source_available=True)
     return base.model_copy(update=overrides)
 
 
@@ -129,7 +129,7 @@ def _full_receipts() -> list[RunReceipt]:
     ]
 
 
-def _sealed_session() -> ReeSession:
+def _sealed_session() -> ReeLifecycleState:
     return _session(
         sealed_at="2026-01-02T00:00:00Z",
         seal_hash="sha256:" + "e" * 64,
@@ -150,7 +150,7 @@ def _rung(card: ReproducibilityScoreCard, category_key: str, rung_key: str) -> S
 
 class TestLevelLadder:
     def test_empty_record_is_draft(self) -> None:
-        card = build_scorecard(ReeIntent(), ReeSession(), [])
+        card = build_scorecard(ReeIntent(), ReeLifecycleState(), [])
         assert card.level == 0
         assert card.level_code == "R0"
         assert card.level_name == "Draft"
@@ -282,7 +282,7 @@ class TestCategories:
 
     def test_upload_counts_as_linked(self) -> None:
         intent = ReeIntent()
-        session = ReeSession(uploaded_archive=ReePath("paper.tar.gz"))
+        session = ReeLifecycleState(uploaded_archive=ReePath("paper.tar.gz"))
         card = build_scorecard(intent, session, [])
         assert _rung(card, "source", "linked").reached
 

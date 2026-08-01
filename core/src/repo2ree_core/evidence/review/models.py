@@ -23,7 +23,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from repo2ree_core.evidence.receipts.models import (
+from repo2ree_core.domain.ree.receipt import (
     AcquireSourceReceipt,
     ActivationTestReceipt,
     BuildRuntimeReceipt,

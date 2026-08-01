@@ -19,8 +19,8 @@ from typing import Protocol
 
 from repo2ree_core.digests import digest_file_if_exists
 from repo2ree_core.domain.experiment import Runnable
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.evidence.receipts.models import BuildRuntimeReceipt
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.receipt import BuildRuntimeReceipt
 from repo2ree_core.evidence.review.models import (
     ActivationVerdict,
     BuildVerdict,
@@ -38,8 +38,8 @@ from repo2ree_core.evidence.review.store import read_review_record, write_review
 from repo2ree_core.execution.experiment.resolve import RunnableResolutionError
 from repo2ree_core.execution.experiment.run import ExperimentRunOutcome, run_runnable
 from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.ree.layout import ARTIFACTS_DIRNAME, ReeLayout, ReviewLayout
-from repo2ree_core.ree.store import UNREADABLE_DOCUMENT, ReeStore
+from repo2ree_core.persistence.directory import UNREADABLE_DOCUMENT, ReeDirectory
+from repo2ree_core.persistence.layout import ARTIFACTS_DIRNAME, ReeLayout, ReviewLayout
 from repo2ree_core.time_utils import OperationTimer, OperationTiming, format_duration_ms, format_utc_instant
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
@@ -97,7 +97,7 @@ def require_ree_intent(ree_layout: ReeLayout, *, log: LogSink) -> ReeIntent | Ac
     precondition nobody can meet, so there is nothing to mark running and
     nothing to settle a halt on.
     """
-    store = ReeStore(ree_layout)
+    store = ReeDirectory(ree_layout)
     if not store.metadata_exists():
         message = "This workbench holds no REE to review"
         log("system", "error", message)

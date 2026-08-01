@@ -11,11 +11,11 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.domain.ree.intent import ReeIntent
 from repo2ree_core.operations.handlers.author import write_file as handler
-from repo2ree_core.ree.layout import ReeLayout
-from repo2ree_core.ree.store import ReeStore
-from repo2ree_core.ree.workspace.model import WorkspaceMetadata
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.persistence.metadata import WorkspaceMetadata
 from repo2ree_protocol.command import WriteFileArgs
 
 
@@ -31,8 +31,8 @@ def _etag(content: bytes) -> str:
     return f"sha256:{hashlib.sha256(content).hexdigest()}"
 
 
-def _store_at(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ReeStore:
-    store = ReeStore(ReeLayout(root=tmp_path))
+def _store_at(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ReeDirectory:
+    store = ReeDirectory(ReeLayout(root=tmp_path))
     store.ensure_dirs()
     store.write_metadata(
         WorkspaceMetadata(

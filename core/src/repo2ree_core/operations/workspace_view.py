@@ -21,19 +21,19 @@ from typing import Any
 from pydantic import ConfigDict, Field
 
 from repo2ree_core.bundle.manifest import build_draft_manifest_payload
-from repo2ree_core.evidence.receipts.consistency import (
+from repo2ree_core.evidence.consistency import (
     AuthorReceiptSet,
     ConsistencyReport,
     build_author_receipt_set,
     build_consistency_report,
 )
-from repo2ree_core.evidence.receipts.store import load_author_receipts
 from repo2ree_core.evidence.step_graph import ReeStepState, build_ree_step_states
-from repo2ree_core.ree.repository import load_ree
-from repo2ree_core.ree.store import ReeStore
-from repo2ree_core.ree.workspace.inventory import ReeFile, WorkspaceFile
-from repo2ree_core.ree.workspace.model import WorkspaceMetadata
-from repo2ree_core.ree.workspace.views import layout_for, ree_files, workspace_files
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.metadata import WorkspaceMetadata
+from repo2ree_core.persistence.receipts import load_author_receipts
+from repo2ree_core.persistence.repository import load_ree
+from repo2ree_core.persistence.workspace.inventory import ReeFile, WorkspaceFile
+from repo2ree_core.persistence.workspace.views import layout_for, ree_files, workspace_files
 from repo2ree_core.source_repo import SourceRepoMetadata, derive_source_repo_metadata
 
 
@@ -64,13 +64,13 @@ class WorkspaceDocument(WorkspaceMetadata):
 
 def get_workspace(storage_root: Path, ree_id: str, *, include_content: bool = True) -> WorkspaceDocument:
     layout = layout_for(storage_root, ree_id)
-    store = ReeStore(layout)
+    store = ReeDirectory(layout)
     if not store.metadata_exists():
         raise FileNotFoundError(f"REE {ree_id} not found")
     metadata = store.read_metadata()
     ree = load_ree(layout, store, metadata=metadata)
     intent = ree.authored.intent
-    session = ree.evidence.session_projection
+    state = ree.evidence.state
     files = workspace_files(storage_root, ree_id, include_content=include_content)
     files_in_ree = ree_files(storage_root, ree_id, include_content=include_content)
 
@@ -83,12 +83,12 @@ def get_workspace(storage_root: Path, ree_id: str, *, include_content: bool = Tr
             workspace_files=files,
             ree_files=files_in_ree,
         ),
-        source_repo=derive_source_repo_metadata(intent, session, files),
+        source_repo=derive_source_repo_metadata(intent, state, files),
         # Live per-step staleness (recorded receipts vs. the current tree):
         # saving a script flips the derived state on the next fetch — no
         # invalidation events needed.
-        consistency=build_consistency_report(layout, intent, session),
-        author_receipts=build_author_receipt_set(layout, intent, session),
+        consistency=build_consistency_report(layout, intent, state),
+        author_receipts=build_author_receipt_set(layout, intent, state),
         # Operational overlay — done / ready / blocked per authoring step.
         # Completion is "a successful run is recorded" (the receipt-step keys),
         # matching the GUI badges and the scorecard; staleness stays on the
@@ -96,7 +96,7 @@ def get_workspace(storage_root: Path, ree_id: str, *, include_content: bool = Tr
         # artifact is the signal the receipt keys can't carry.
         ree_steps=build_ree_step_states(
             intent,
-            session,
+            state,
             completed_run_steps=set(load_author_receipts(layout)),
             evaluate_report_present=layout.reproducibility_report.is_file(),
         ),

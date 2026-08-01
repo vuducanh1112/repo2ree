@@ -14,13 +14,13 @@ from pathlib import Path
 import pytest
 
 from repo2ree_core.analysis.sbom.scan import ScanOutcome
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.evidence.receipts.store import load_receipts
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.state import ReeLifecycleState
 from repo2ree_core.operations.handlers.author import generate_sbom as handler
-from repo2ree_core.ree.layout import SBOM_ARTIFACT_PATH, ReeLayout
-from repo2ree_core.ree.store import ReeStore
-from repo2ree_core.ree.workspace.model import WorkspaceMetadata
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.layout import SBOM_ARTIFACT_PATH, ReeLayout
+from repo2ree_core.persistence.metadata import WorkspaceMetadata
+from repo2ree_core.persistence.receipts import load_receipts
 from repo2ree_protocol.command import GenerateSbomArgs
 from repo2ree_protocol.result import ActionResult
 
@@ -40,7 +40,7 @@ def _silent_log(*_: object) -> None:
 
 def _seed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, with_prior_sbom: bool = False) -> ReeLayout:
     layout = ReeLayout(root=tmp_path)
-    store = ReeStore(layout)
+    store = ReeDirectory(layout)
     store.ensure_dirs()
     store.write_metadata(
         WorkspaceMetadata(
@@ -49,7 +49,7 @@ def _seed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, with_prior_sbom: b
             created_at="2026-01-01T00:00:00Z",
             updated_at="2026-01-01T00:00:00Z",
             ree_intent=ReeIntent(name="demo"),
-            ree_session=ReeSession(source_available=True),
+            ree_state=ReeLifecycleState(source_available=True),
         )
     )
     store.workspace.write_bytes(_RUNTIME, b"not really a tarball")
@@ -91,7 +91,7 @@ def test_a_successful_scan_publishes_the_document_and_declares_it(
 
     assert result.status == "succeeded"
     assert json.loads(layout.sbom.read_text(encoding="utf-8")) == _NEW_SBOM
-    assert ReeStore(layout).read_intent().sbom == SBOM_ARTIFACT_PATH
+    assert ReeDirectory(layout).read_intent().sbom == SBOM_ARTIFACT_PATH
 
 
 def test_a_canceled_scan_leaves_the_previous_sbom_in_place(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -149,4 +149,4 @@ def test_a_canceled_scan_does_not_declare_an_sbom_on_the_intent(
 
     _run()
 
-    assert ReeStore(layout).read_intent().sbom is None
+    assert ReeDirectory(layout).read_intent().sbom is None

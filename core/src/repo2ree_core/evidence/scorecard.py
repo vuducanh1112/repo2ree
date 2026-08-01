@@ -1,11 +1,11 @@
 """Reproducibility scorecard.
 
 Pure analysis layer: condenses the REE's *persisted record* — author intent,
-session state, and the run receipts — into a per-category evidence scorecard
+state state, and the run receipts — into a per-category evidence scorecard
 plus a single ordinal reproducibility level (R0..R5).
 
 Everything here must stay derivable from the sealed bundle's contents alone
-(intent + session + published receipts): no run-registry state, no UI badges,
+(intent + state + published receipts): no run-registry state, no UI badges,
 no filesystem probing. That is what makes a stamped level auditable — anyone
 holding the bundle can recompute it.
 
@@ -32,9 +32,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, computed_field
 
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession, is_sealed
-from repo2ree_core.evidence.receipts.models import (
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.receipt import (
     ActivationTestReceipt,
     BuildRuntimeReceipt,
     CrossCheckSbomReceipt,
@@ -44,6 +43,7 @@ from repo2ree_core.evidence.receipts.models import (
     experiment_step_key,
     latest_successful_receipts,
 )
+from repo2ree_core.domain.ree.state import ReeLifecycleState, is_sealed
 
 SCORECARD_SCHEMA_VERSION: Literal[1] = 1
 
@@ -218,8 +218,8 @@ class _Evidence:
         return receipt is not None and bool(receipt.produced_output_digest)
 
 
-def _source_category(intent: ReeIntent, session: ReeSession) -> ScoreCardCategory:
-    linked = bool(intent.origin_url or session.uploaded_archive)
+def _source_category(intent: ReeIntent, state: ReeLifecycleState) -> ScoreCardCategory:
+    linked = bool(intent.origin_url or state.uploaded_archive)
     return ScoreCardCategory(
         key="source",
         label="Source",
@@ -228,21 +228,21 @@ def _source_category(intent: ReeIntent, session: ReeSession) -> ScoreCardCategor
                 key="linked",
                 label="Linked",
                 reached=linked,
-                detail=intent.origin_url or (session.uploaded_archive or ""),
+                detail=intent.origin_url or (state.uploaded_archive or ""),
             ),
-            ScoreCardRung(key="acquired", label="Acquired", reached=session.source_available),
+            ScoreCardRung(key="acquired", label="Acquired", reached=state.source_available),
             ScoreCardRung(
                 key="archived",
                 label="SWH-archived",
                 reached=bool(intent.swhid),
                 detail=intent.swhid,
             ),
-            ScoreCardRung(key="included", label="Included", reached=session.source_included),
+            ScoreCardRung(key="included", label="Included", reached=state.source_included),
         ],
     )
 
 
-def _runtime_category(intent: ReeIntent, session: ReeSession, evidence: _Evidence) -> ScoreCardCategory:
+def _runtime_category(intent: ReeIntent, state: ReeLifecycleState, evidence: _Evidence) -> ScoreCardCategory:
     declared = bool(intent.runtime) and intent.runtime != _RUNTIME_SKIPPED
     return ScoreCardCategory(
         key="runtime",
@@ -277,7 +277,7 @@ def _runtime_category(intent: ReeIntent, session: ReeSession, evidence: _Evidenc
                 done=evidence.crosscheck.observed_matched if evidence.crosscheck else None,
                 total=evidence.crosscheck.declared_direct_total if evidence.crosscheck else None,
             ),
-            ScoreCardRung(key="included", label="Included", reached=session.runtime_included),
+            ScoreCardRung(key="included", label="Included", reached=state.runtime_included),
         ],
     )
 
@@ -318,7 +318,7 @@ def _experiments_category(intent: ReeIntent, evidence: _Evidence) -> ScoreCardCa
     )
 
 
-def _results_category(intent: ReeIntent, session: ReeSession, evidence: _Evidence) -> ScoreCardCategory:
+def _results_category(intent: ReeIntent, state: ReeLifecycleState, evidence: _Evidence) -> ScoreCardCategory:
     with_outputs = [experiment for experiment in intent.experiments if experiment.name and experiment.output_paths]
     captured = [experiment.name for experiment in with_outputs if evidence.outputs_captured(experiment.name)]
     return ScoreCardCategory(
@@ -332,7 +332,7 @@ def _results_category(intent: ReeIntent, session: ReeSession, evidence: _Evidenc
                 done=len(captured),
                 total=len(with_outputs),
             ),
-            ScoreCardRung(key="included", label="Included", reached=session.results_included),
+            ScoreCardRung(key="included", label="Included", reached=state.results_included),
         ],
     )
 
@@ -347,7 +347,7 @@ def _rung_reached(categories: list[ScoreCardCategory], category_key: CategoryKey
     raise AssertionError(f"unknown rung: {category_key}/{rung_key}")
 
 
-def _level(categories: list[ScoreCardCategory], session: ReeSession) -> int:
+def _level(categories: list[ScoreCardCategory], state: ReeLifecycleState) -> int:
     """The cumulative ladder over the categories' rungs (module docstring)."""
 
     def reached(category_key: CategoryKey, rung_key: str) -> bool:
@@ -365,7 +365,7 @@ def _level(categories: list[ScoreCardCategory], session: ReeSession) -> int:
         # was re-produced; digest-matching re-runs would be a higher claim.)
         reached("experiments", "validated"),
         # R5 Archived — sealed with source, runtime and results all bundled.
-        is_sealed(session)
+        is_sealed(state)
         and reached("source", "included")
         and reached("runtime", "included")
         and reached("results", "included"),
@@ -385,18 +385,18 @@ def _level(categories: list[ScoreCardCategory], session: ReeSession) -> int:
 
 def build_scorecard(
     intent: ReeIntent,
-    session: ReeSession,
+    state: ReeLifecycleState,
     receipts: list[RunReceipt],
 ) -> ReproducibilityScoreCard:
     """Build the reproducibility scorecard from the REE's persisted record."""
 
     evidence = _Evidence(intent, receipts)
     categories = [
-        _source_category(intent, session),
-        _runtime_category(intent, session, evidence),
+        _source_category(intent, state),
+        _runtime_category(intent, state, evidence),
         _activation_category(evidence),
         _experiments_category(intent, evidence),
-        _results_category(intent, session, evidence),
+        _results_category(intent, state, evidence),
     ]
 
     if tuple(category.key for category in categories) != _CATEGORY_KEYS:
@@ -409,7 +409,7 @@ def build_scorecard(
                 raise AssertionError("rung fraction must satisfy 0 <= done <= total")
 
     return ReproducibilityScoreCard(
-        level=_level(categories, session),
-        sealed=is_sealed(session),
+        level=_level(categories, state),
+        sealed=is_sealed(state),
         categories=categories,
     )

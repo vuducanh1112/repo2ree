@@ -17,7 +17,7 @@ from repo2ree_core.authoring.script_inference.models import DecisionContext
 from repo2ree_core.authoring.script_inference.policy import default_policy
 from repo2ree_core.authoring.script_inference.repository_facts import scan_repository
 from repo2ree_core.authoring.script_inference.runtime_inputs import RuntimeInputs
-from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.domain.ree.intent import ReeIntent
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 
 _DOCKER_RUNTIME = ".repo2ree/artifacts/runtime.tar"

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from repo2ree_core.domain.experiment import Runnable
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.evidence.receipts.models import RunExperimentReceipt
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.receipt import RunExperimentReceipt
 from repo2ree_core.execution.experiment.resolve import RunnableResolutionError, resolve_experiment_runnable
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.operations.steps.author import (

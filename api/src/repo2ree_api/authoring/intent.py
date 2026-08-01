@@ -19,7 +19,7 @@ from repo2ree_api.contracts import (
 )
 from repo2ree_api.deps import workbench_manager
 from repo2ree_api.workbench.commands import dispatch_or_fail, ree_command_span, require_handle
-from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.domain.ree.intent import ReeIntent
 from repo2ree_protocol import PatchReeIntentCommand
 from repo2ree_protocol.command import PatchReeIntentArgs
 

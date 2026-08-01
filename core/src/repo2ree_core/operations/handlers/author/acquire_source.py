@@ -15,15 +15,15 @@ from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.authoring.script_generation.acquire_source import build_acquire_sh
 from repo2ree_core.domain.primitives import GitRevision
-from repo2ree_core.evidence.receipts.models import AcquireSourceReceipt
+from repo2ree_core.domain.ree.receipt import AcquireSourceReceipt
 from repo2ree_core.execution.process import (
     CancelCheck,
     format_command,
     run_streaming_process,
 )
 from repo2ree_core.operations.steps.author import log_step_outcome, settle_step
-from repo2ree_core.ree.files import write_atomic
-from repo2ree_core.ree.layout import ACQUIRE_SCRIPT_FILENAME, ReeLayout
+from repo2ree_core.persistence.files import write_atomic
+from repo2ree_core.persistence.layout import ACQUIRE_SCRIPT_FILENAME, ReeLayout
 from repo2ree_core.time_utils import OperationTimer
 from repo2ree_protocol.command import AcquireSourceArgs
 from repo2ree_protocol.log import LogSink

@@ -2,7 +2,7 @@
 
 A snapshot archive is the frozen copy of the upstream source captured at
 acquisition time. This module owns the naming rules; the bytes themselves
-are written by :func:`repo2ree_core.ree.files.pack_directory_tar_gz`.
+are written by :func:`repo2ree_core.persistence.files.pack_directory_tar_gz`.
 
 Pure module: no filesystem I/O.
 """
@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from repo2ree_core.ree.files import safe_filename
+from repo2ree_core.persistence.files import safe_filename
 
 _ARCHIVE_SUFFIXES = (".tar.gz", ".tgz", ".zip", ".tar", ".git")
 

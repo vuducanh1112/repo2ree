@@ -9,7 +9,7 @@ lifecycle described in docs/REE.md, asserting the state of the durable
         -> write_file -> (re-materialize) -> seal_ree
 
 It exercises every layer the control plane sits on top of — the command
-the command envelope, the dispatcher, the handlers, and the ``ReeStore`` / ``ReeLayout``
+the command envelope, the dispatcher, the handlers, and the ``ReeDirectory`` / ``ReeLayout``
 filesystem shell — with no Docker, no HTTP, and no container transport.
 
 Nothing here is mocked. ``git`` runs for real against a local fixture
@@ -33,12 +33,12 @@ from uuid import uuid4
 
 import pytest
 
-import repo2ree_core.ree.layout as layout_mod
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession, is_sealed
+import repo2ree_core.persistence.layout as layout_mod
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.state import ReeLifecycleState, is_sealed
 from repo2ree_core.operations.dispatch import run_command
-from repo2ree_core.ree.layout import ReeLayout
-from repo2ree_core.ree.store import ReeStore
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol.command import (
     AcquireSourceArgs,
@@ -83,8 +83,8 @@ class Ree:
     ree_id: str
     log: LogCollector
 
-    def session(self) -> ReeSession:
-        return ReeStore(self.layout).read_session()
+    def session(self) -> ReeLifecycleState:
+        return ReeDirectory(self.layout).read_state()
 
 
 def _make_source_repo(
@@ -119,7 +119,7 @@ def _make_source_repo(
 
 def _init_ree(layout: ReeLayout, ree_id: str) -> None:
     """Bootstrap the REE tree + initial metadata, mirroring ``init-ree``."""
-    store = ReeStore(layout)
+    store = ReeDirectory(layout)
     store.ensure_dirs()
     ts = utc_now()
     name = f"workspace-{ree_id[:8]}"
@@ -132,7 +132,7 @@ def _init_ree(layout: ReeLayout, ree_id: str) -> None:
             "created_at": ts,
             "updated_at": ts,
             "ree_intent": ReeIntent(name=name).model_dump(exclude_none=True),
-            "ree_session": ReeSession().model_dump(exclude_none=True),
+            "ree_state": ReeLifecycleState().model_dump(exclude_none=True),
         }
     )
 
@@ -336,10 +336,10 @@ def test_source_replacement_resets_derived_state_before_download(ree: Ree, sourc
     assert not layout.manifest.exists()
     assert str(replacement_repo) in layout.acquire_script.read_text()
 
-    metadata = ReeStore(layout).read_metadata()
+    metadata = ReeDirectory(layout).read_metadata()
     assert metadata.status == "ready"
     assert metadata.ree_intent.origin_url == str(replacement_repo)
-    assert metadata.ree_session.source_acquired_by == "download"
+    assert metadata.ree_state.source_acquired_by == "download"
 
 
 def test_source_replacement_resets_derived_state_before_upload(ree: Ree, source_repo: Path, tmp_path: Path) -> None:
@@ -390,10 +390,10 @@ def test_source_replacement_resets_derived_state_before_upload(ree: Ree, source_
     assert not (layout.workspace / "stale-workspace.txt").exists()
     assert not (layout.workspace / "requirements.txt").exists()
 
-    metadata = ReeStore(layout).read_metadata()
+    metadata = ReeDirectory(layout).read_metadata()
     assert metadata.status == "ready"
     assert metadata.ree_intent.origin_url == ""
-    assert metadata.ree_session.source_acquired_by == "upload"
+    assert metadata.ree_state.source_acquired_by == "upload"
 
 
 def test_seal_is_deterministic_for_unchanged_content(ree: Ree, source_repo: Path) -> None:

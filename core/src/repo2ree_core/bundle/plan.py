@@ -29,7 +29,7 @@ from pathlib import PurePosixPath
 from typing import Any
 
 from repo2ree_core.path_safety import normalize_workspace_path
-from repo2ree_core.ree.layout import (
+from repo2ree_core.persistence.layout import (
     ARTIFACTS_DIRNAME,
     AUTHOR_RECEIPTS_DIRNAME,
     OVERLAY_DIRNAME,

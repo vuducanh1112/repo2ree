@@ -16,7 +16,7 @@ from repo2ree_core.domain.experiment import Activation, Experiment
 if TYPE_CHECKING:
     # Type-only: ree_intent imports this package, so a runtime import here
     # would be circular.
-    from repo2ree_core.domain.ree_intent import ReeIntent
+    from repo2ree_core.domain.ree.intent import ReeIntent
 
 
 class RunnableResolutionError(ValueError):

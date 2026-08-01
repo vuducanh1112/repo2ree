@@ -4,18 +4,18 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.state import ReeLifecycleState
 from repo2ree_core.operations.handlers.author import update_source_metadata as handler
-from repo2ree_core.ree.layout import ReeLayout
-from repo2ree_core.ree.store import ReeStore
-from repo2ree_core.ree.workspace.model import WorkspaceMetadata
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.persistence.metadata import WorkspaceMetadata
 from repo2ree_protocol.command import UpdateSourceMetadataArgs
 
 
-def _seed_workspace(root: Path) -> ReeStore:
+def _seed_workspace(root: Path) -> ReeDirectory:
     """A ready-to-update workspace rooted at ``root`` with an empty upstream tree."""
-    store = ReeStore(ReeLayout(root=root))
+    store = ReeDirectory(ReeLayout(root=root))
     store.ensure_dirs()
     store.write_metadata(
         WorkspaceMetadata(
@@ -24,14 +24,14 @@ def _seed_workspace(root: Path) -> ReeStore:
             created_at="2026-01-01T00:00:00Z",
             updated_at="2026-01-01T00:00:00Z",
             ree_intent=ReeIntent(),
-            ree_session=ReeSession(),
+            ree_state=ReeLifecycleState(),
         )
     )
     return store
 
 
 @pytest.fixture
-def workbench(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ReeStore:
+def workbench(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ReeDirectory:
     store = _seed_workspace(tmp_path)
     monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: ReeLayout(root=tmp_path)))
     return store
@@ -46,7 +46,7 @@ def _silent_log(*_: object) -> None:
 
 
 class TestSwhidStamping:
-    def test_download_records_swhid_of_upstream_tree(self, workbench: ReeStore) -> None:
+    def test_download_records_swhid_of_upstream_tree(self, workbench: ReeDirectory) -> None:
         (workbench.layout.upstream / "a.txt").write_bytes(b"hello\n")
 
         result = handler.handle_update_source_metadata(
@@ -62,7 +62,7 @@ class TestSwhidStamping:
         assert len(intent.swhid) == len("swh:1:dir:") + 40
         assert intent.origin_url == "https://x/y.git"
 
-    def test_upload_records_swhid(self, workbench: ReeStore) -> None:
+    def test_upload_records_swhid(self, workbench: ReeDirectory) -> None:
         (workbench.layout.upstream / "a.txt").write_bytes(b"hello\n")
 
         result = handler.handle_update_source_metadata(
@@ -74,7 +74,7 @@ class TestSwhidStamping:
         assert result.status == "succeeded"
         assert workbench.read_metadata().ree_intent.swhid.startswith("swh:1:dir:")
 
-    def test_missing_upstream_leaves_swhid_empty_and_still_succeeds(self, workbench: ReeStore) -> None:
+    def test_missing_upstream_leaves_swhid_empty_and_still_succeeds(self, workbench: ReeDirectory) -> None:
         # ensure_dirs created an empty upstream dir; remove it to force a failure.
         workbench.layout.upstream.rmdir()
 
@@ -89,7 +89,7 @@ class TestSwhidStamping:
 
 
 class TestRevisionStamping:
-    def test_git_download_records_head_commit_as_revision(self, workbench: ReeStore) -> None:
+    def test_git_download_records_head_commit_as_revision(self, workbench: ReeDirectory) -> None:
         import subprocess
 
         upstream = workbench.layout.upstream
@@ -110,9 +110,9 @@ class TestRevisionStamping:
         meta = workbench.read_metadata()
         # The resolved commit is settled onto the intent (for seal pinning) and the session.
         assert meta.ree_intent.revision == head
-        assert meta.ree_session.source_resolved_commit == head
+        assert meta.ree_state.source_resolved_commit == head
 
-    def test_non_git_download_leaves_revision_empty(self, workbench: ReeStore) -> None:
+    def test_non_git_download_leaves_revision_empty(self, workbench: ReeDirectory) -> None:
         result = handler.handle_update_source_metadata(
             UpdateSourceMetadataArgs(mode="download", origin_url="https://x/y.tgz", source_type="tarball"),
             log=_silent_log,

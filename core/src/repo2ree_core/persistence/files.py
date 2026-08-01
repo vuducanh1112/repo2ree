@@ -53,7 +53,7 @@ def publish_atomic(staged: Path, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     # Kept as `os.replace` rather than `staged.replace(path)` (PTH105): this call
     # is the atomicity seam, and test_atomic_write patches
-    # `repo2ree_core.ree.files.os.replace` to prove the guarantees this
+    # `repo2ree_core.persistence.files.os.replace` to prove the guarantees this
     # docstring claims. `Path.replace` resolves `os` inside pathlib, where that
     # patch cannot reach, so the rename would silently stop being covered.
     os.replace(staged, path)  # noqa: PTH105

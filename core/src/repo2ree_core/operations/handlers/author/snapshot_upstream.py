@@ -2,7 +2,7 @@
 
 Packs /ree/upstream into /ree/snapshot.tar.gz. No-op if upstream is absent.
 The archive is hashed while it is written; the digest is persisted on the
-session (the chain root of every step's input slice) and recorded in the
+state (the chain root of every step's input slice) and recorded in the
 run's receipt.
 """
 
@@ -12,14 +12,14 @@ import tarfile
 
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.evidence.receipts.models import SnapshotUpstreamReceipt
-from repo2ree_core.evidence.receipts.store import persist_snapshot_digest
+from repo2ree_core.domain.ree.receipt import SnapshotUpstreamReceipt
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.operations.steps.author import log_step_outcome, settle_step
-from repo2ree_core.ree.files import pack_directory_tar_gz
-from repo2ree_core.ree.layout import ReeLayout
-from repo2ree_core.ree.store import ReeStore
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.files import pack_directory_tar_gz
+from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.persistence.receipts import persist_snapshot_digest
 from repo2ree_core.time_utils import OperationTimer
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
@@ -58,7 +58,7 @@ def handle_snapshot_upstream(
         log_step_outcome(_OPERATION, "failed", timer.finish(), log=log)
         return failed_from_exception(exc, f"snapshot failed: {exc}")
 
-    persist_snapshot_digest(ReeStore(layout), snapshot_digest, log=log)
+    persist_snapshot_digest(ReeDirectory(layout), snapshot_digest, log=log)
     settle_step(
         layout,
         lambda envelope: SnapshotUpstreamReceipt(**envelope, snapshot_digest=snapshot_digest),

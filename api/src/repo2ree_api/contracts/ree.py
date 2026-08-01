@@ -14,11 +14,11 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from repo2ree_api.contracts.runs import RunSummary
 from repo2ree_api.ree_index import ReeIndexEntry
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.evidence.receipts.consistency import AuthorReceiptSet, ConsistencyReport
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.state import ReeLifecycleState
+from repo2ree_core.evidence.consistency import AuthorReceiptSet, ConsistencyReport
 from repo2ree_core.evidence.step_graph import ReeStepState
-from repo2ree_core.ree.workspace.inventory import ReeFile, WorkspaceFile
+from repo2ree_core.persistence.workspace.inventory import ReeFile, WorkspaceFile
 from repo2ree_core.source_repo.metadata import SourceRepoMetadata
 
 
@@ -43,7 +43,7 @@ class ReeDocument(BaseModel):
     # from document responses embedded in other operations.
     workbench_image: str | None = None
     ree_intent: ReeIntent = Field(default_factory=ReeIntent)
-    ree_session: ReeSession = Field(default_factory=ReeSession)
+    ree_state: ReeLifecycleState = Field(default_factory=ReeLifecycleState)
     files: list[WorkspaceFile] = Field(default_factory=list)
     ree_files: list[ReeFile] = Field(default_factory=list)
     # Read-only projection of the would-be manifest; its source of truth is
@@ -111,7 +111,7 @@ class ReeState(BaseModel):
     updated_at: str
     workbench: WorkbenchStatus
     ree_intent: ReeIntent = Field(default_factory=ReeIntent)
-    ree_session: ReeSession = Field(default_factory=ReeSession)
+    ree_state: ReeLifecycleState = Field(default_factory=ReeLifecycleState)
     consistency: ConsistencyReport = Field(default_factory=ConsistencyReport)
     author_receipts: AuthorReceiptSet = Field(default_factory=AuthorReceiptSet)
     ree_steps: list[ReeStepState] = Field(default_factory=list)

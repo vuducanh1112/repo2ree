@@ -23,13 +23,12 @@ from repo2ree_core.analysis.sbom.scan import is_runtime_archive, scan_runtime_ar
 from repo2ree_core.authoring.script_generation.materialize_workspace import build_materialize_sh
 from repo2ree_core.digests import digest_file_if_exists
 from repo2ree_core.domain.primitives import ScriptPath, WorkspacePath
-from repo2ree_core.evidence.receipts.models import (
+from repo2ree_core.domain.ree.receipt import (
     BuildRuntimeReceipt,
     GenerateSbomReceipt,
     RunReceipt,
     receipt_envelope,
 )
-from repo2ree_core.evidence.receipts.store import load_author_receipts
 from repo2ree_core.evidence.review.comparison import compare_build_runtimes
 from repo2ree_core.evidence.review.models import BuildComparison, EvidenceBasis, resolve_basis
 from repo2ree_core.evidence.review.store import write_review_build_evidence
@@ -47,9 +46,10 @@ from repo2ree_core.operations.steps.review import (
     workspace_runtime,
     workspace_runtime_candidates,
 )
-from repo2ree_core.ree.files import write_atomic
-from repo2ree_core.ree.layout import ReeLayout, ReviewLayout
-from repo2ree_core.ree.store import ReeStore
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.files import write_atomic
+from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
+from repo2ree_core.persistence.receipts import load_author_receipts
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_core.time_utils import OperationTimer
 from repo2ree_protocol.command import ReviewBasis, ReviewBuildRuntimeArgs
@@ -107,7 +107,7 @@ def handle_review_build_runtime(
     if halted is not None:
         return halted
 
-    store = ReeStore(ree_layout)
+    store = ReeDirectory(ree_layout)
     runtime_path = (intent.runtime or "").strip()
     if not runtime_path:
         return stop("failed", "The author baseline declares no runtime artifact to certify")

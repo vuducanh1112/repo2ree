@@ -160,7 +160,7 @@ def get_workspace_state_route(ree_id: str) -> ReeState:
             "image": workbench_manager.image_for(handle),
         },
         "ree_intent": workspace.get("ree_intent", {}),
-        "ree_session": workspace.get("ree_session", {}),
+        "ree_state": workspace.get("ree_state", {}),
         "consistency": workspace.get("consistency", {}),
         "author_receipts": workspace.get("author_receipts", {}),
         "ree_steps": workspace.get("ree_steps", []),

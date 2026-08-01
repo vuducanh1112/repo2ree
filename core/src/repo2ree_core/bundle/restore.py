@@ -22,10 +22,10 @@ from repo2ree_core.bundle.plan import (
     REE_RESULTS_PREFIX,
     REE_SNAPSHOT_ENTRY_PATH,
 )
-from repo2ree_core.domain.ree_session import is_sealed, remove_source
-from repo2ree_core.ree.files import list_tree_relpaths
-from repo2ree_core.ree.store import reset_source_state
-from repo2ree_core.ree.workspace.views import layout_for, store_for
+from repo2ree_core.domain.ree.state import is_sealed, remove_source
+from repo2ree_core.persistence.directory import reset_source_state
+from repo2ree_core.persistence.files import list_tree_relpaths
+from repo2ree_core.persistence.workspace.views import layout_for, store_for
 
 
 class BundleLoadOutputs(BaseModel):
@@ -75,7 +75,7 @@ def restore_ree_bundle(
     if not manifest_path.is_file():
         raise ValueError(f"not an REE bundle: missing {REE_MANIFEST_ENTRY_PATH}")
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    intent, session = split_manifest_payload(manifest)
+    intent, state = split_manifest_payload(manifest)
 
     layout = layout_for(storage_root, ree_id)
     store.ensure_dirs()
@@ -94,10 +94,10 @@ def restore_ree_bundle(
     author_receipts = _restore_tree(bundle_root / REE_AUTHOR_RECEIPTS_PREFIX, layout.author_receipts)
 
     if not source_restored:
-        session = remove_source(session)
+        state = remove_source(state)
     store.write_intent(intent)
-    store.write_session(session)
-    if is_sealed(session):
+    store.write_state(state)
+    if is_sealed(state):
         # The uploaded bytes *are* the sealed archive the seal hash covers, so
         # the loaded REE can hand back the identical download.
         shutil.copyfile(archive_path, layout.sealed_archive)
@@ -105,8 +105,8 @@ def restore_ree_bundle(
 
     return BundleLoadOutputs(
         name=intent.name,
-        sealed=is_sealed(session),
-        seal_hash=session.seal_hash,
+        sealed=is_sealed(state),
+        seal_hash=state.seal_hash,
         source_restored=source_restored,
         overlay_files=overlay_files,
         artifact_files=artifact_files,

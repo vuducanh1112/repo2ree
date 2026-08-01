@@ -4,7 +4,7 @@ import subprocess
 from pathlib import Path
 
 from repo2ree_core.authoring.script_generation.materialize_workspace import build_materialize_sh
-from repo2ree_core.ree.layout import (
+from repo2ree_core.persistence.layout import (
     MATERIALIZE_SCRIPT_FILENAME,
     OVERLAY_DIRNAME,
     UPSTREAM_DIRNAME,

@@ -2,12 +2,12 @@ from pathlib import PurePosixPath
 
 import pytest
 
-from repo2ree_core.ree.layout import ReeLayout
-from repo2ree_core.ree.store import ReeStore
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.layout import ReeLayout
 
 
-def _store(tmp_path) -> ReeStore:
-    return ReeStore(ReeLayout.for_ree(tmp_path, "ree-1"))
+def _store(tmp_path) -> ReeDirectory:
+    return ReeDirectory(ReeLayout.for_ree(tmp_path, "ree-1"))
 
 
 def test_ensure_dirs_creates_all_subtrees(tmp_path):

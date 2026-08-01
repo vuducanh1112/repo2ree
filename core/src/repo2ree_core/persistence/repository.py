@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from repo2ree_core.digests import digest_file
 from repo2ree_core.domain.primitives import ReeId, ReePath, parse_utc_instant
-from repo2ree_core.domain.ree import (
+from repo2ree_core.domain.ree.model import (
     AuthoredFile,
     Ree,
     ReeDefinition,
@@ -18,16 +18,16 @@ from repo2ree_core.domain.ree import (
     ReePublications,
     SealedRee,
 )
-from repo2ree_core.domain.ree_session import is_sealed
-from repo2ree_core.ree.layout import ReeLayout
-from repo2ree_core.ree.receipts import load_author_receipts, load_receipts
-from repo2ree_core.ree.store import ReeStore
-from repo2ree_core.ree.workspace.model import WorkspaceMetadata
+from repo2ree_core.domain.ree.state import is_sealed
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.persistence.metadata import WorkspaceMetadata
+from repo2ree_core.persistence.receipts import load_author_receipts, load_receipts
 
 
 def load_ree(
     layout: ReeLayout,
-    store: ReeStore | None = None,
+    store: ReeDirectory | None = None,
     *,
     metadata: WorkspaceMetadata | None = None,
 ) -> Ree:
@@ -37,7 +37,7 @@ def load_ree(
     materialized execution view and therefore never contributes authored state.
     """
 
-    ree_store = store or ReeStore(layout)
+    ree_store = store or ReeDirectory(layout)
     persisted = metadata or ree_store.read_metadata()
     files = tuple(
         AuthoredFile(
@@ -48,16 +48,16 @@ def load_ree(
         for relative in ree_store.overlay.iter_files()
     )
     selected_by_step = load_author_receipts(layout)
-    session = persisted.ree_session
+    state = persisted.ree_state
     sealed = (
         SealedRee(
-            seal_hash=session.seal_hash,
-            sealed_at=session.sealed_at,
-            source_included=session.source_included,
-            runtime_included=session.runtime_included,
-            results_included=session.results_included,
+            seal_hash=state.seal_hash,
+            sealed_at=state.sealed_at,
+            source_included=state.source_included,
+            runtime_included=state.runtime_included,
+            results_included=state.results_included,
         )
-        if is_sealed(session) and session.seal_hash is not None and session.sealed_at is not None
+        if is_sealed(state) and state.seal_hash is not None and state.sealed_at is not None
         else None
     )
     return Ree(
@@ -70,7 +70,7 @@ def load_ree(
         evidence=ReeEvidence(
             history=tuple(load_receipts(layout)),
             selected=tuple(selected_by_step[key] for key in sorted(selected_by_step)),
-            session_projection=session,
+            state=state,
         ),
         publications=ReePublications(sealed=sealed),
     )

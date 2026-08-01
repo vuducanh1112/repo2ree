@@ -3,7 +3,7 @@
 Each template is a dedicated ``.sh`` file shipped inside this package — the
 single source of truth for the starter content authors (human or agent) work
 from. The build and activation templates are seeded into the overlay at REE
-creation (``ReeStore.ensure_reserved_overlay_scripts``); the per-experiment run
+creation (``ReeDirectory.ensure_reserved_overlay_scripts``); the per-experiment run
 and verify templates cannot be seeded (their paths only exist once an
 experiment is named), so the API serves them for clients to prefill from.
 

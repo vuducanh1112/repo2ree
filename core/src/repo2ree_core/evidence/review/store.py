@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from contextlib import suppress
 
-from repo2ree_core.evidence.receipts.models import (
+from repo2ree_core.domain.ree.receipt import (
     AcquireSourceReceipt,
     ActivationTestReceipt,
     BuildRuntimeReceipt,
@@ -26,8 +26,8 @@ from repo2ree_core.evidence.review.models import (
     ReviewStepKey,
     SourceComparison,
 )
-from repo2ree_core.ree.files import json_document_bytes, write_atomic, write_json_atomic
-from repo2ree_core.ree.layout import ReeLayout, ReviewLayout
+from repo2ree_core.persistence.files import json_document_bytes, write_atomic, write_json_atomic
+from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
 from repo2ree_core.reserved_paths import experiment_slug
 
 
@@ -85,7 +85,7 @@ def write_review_experiment_evidence(
     a second one would overwrite the first's receipt and the attempt would end
     up holding one experiment's evidence for all of them. The author side hit
     this first and answered it by keying experiments under a slug directory
-    (:func:`repo2ree_core.evidence.receipts.store.author_receipt_path`); this mirrors that so
+    (:func:`repo2ree_core.persistence.receipts.author_receipt_path`); this mirrors that so
     both sides of the same REE are laid out the same way.
     """
     slug = experiment_slug(receipt.experiment_name)

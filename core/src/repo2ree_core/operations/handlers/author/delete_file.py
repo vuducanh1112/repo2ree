@@ -11,8 +11,8 @@ from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.operations.steps.author import check_expected_etag
 from repo2ree_core.path_safety import validate_relative_path
-from repo2ree_core.ree.layout import ReeLayout
-from repo2ree_core.ree.store import ReeStore
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import DeleteFileArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
@@ -31,7 +31,7 @@ def handle_delete_file(
         return ActionResult.failed("validation", f"invalid path: {exc}")
 
     layout = ReeLayout.in_workbench()
-    store = ReeStore(layout)
+    store = ReeDirectory(layout)
 
     if not store.workspace.is_file(args.path):
         log("system", "error", f"file not found in workspace: {args.path}")

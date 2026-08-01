@@ -14,8 +14,8 @@ from pathlib import Path
 import pytest
 
 from repo2ree_core.operations.handlers.author import delete_file as handler
-from repo2ree_core.ree.layout import ReeLayout
-from repo2ree_core.ree.store import ReeStore
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import DeleteFileArgs
 
 
@@ -27,8 +27,8 @@ def _silent_log(*_: object) -> None:
     return None
 
 
-def _store_at(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ReeStore:
-    store = ReeStore(ReeLayout(root=tmp_path))
+def _store_at(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ReeDirectory:
+    store = ReeDirectory(ReeLayout(root=tmp_path))
     store.ensure_dirs()
     monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: ReeLayout(root=tmp_path)))
     return store

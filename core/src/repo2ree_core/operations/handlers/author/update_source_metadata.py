@@ -9,12 +9,12 @@ from __future__ import annotations
 from pathlib import Path
 
 from repo2ree_core.domain.primitives import GitRevision, ReePath, Swhid, format_utc_instant
-from repo2ree_core.domain.ree_transitions import record_source_acquisition
+from repo2ree_core.domain.ree.transitions import record_source_acquisition
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.operations.steps.author import open_ree_store
-from repo2ree_core.ree.layout import SNAPSHOT_FILENAME
-from repo2ree_core.ree.repository import load_ree
+from repo2ree_core.persistence.layout import SNAPSHOT_FILENAME
+from repo2ree_core.persistence.repository import load_ree
 from repo2ree_core.source_repo import directory_swhid, resolved_git_head
 from repo2ree_core.time_utils import utc_now_instant
 from repo2ree_protocol.command import UpdateSourceMetadataArgs
@@ -87,12 +87,12 @@ def handle_update_source_metadata(
             )
 
         intent = transition.authored.intent
-        session = transition.evidence.session_projection
+        state = transition.evidence.state
 
         updated = meta.model_copy(
             update={
                 "ree_intent": intent,
-                "ree_session": session,
+                "ree_state": state,
                 "status": "ready",
                 "updated_at": ts,
                 "external_ref": intent.origin_url or None,

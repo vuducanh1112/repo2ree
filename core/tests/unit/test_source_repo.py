@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from repo2ree_core.domain.primitives import ReePath
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.ree.workspace.inventory import WorkspaceFile
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.state import ReeLifecycleState
+from repo2ree_core.persistence.workspace.inventory import WorkspaceFile
 from repo2ree_core.source_repo import (
     derive_source_repo_metadata,
     format_source_size,
@@ -50,7 +50,7 @@ class TestDeriveSourceRepoMetadata:
             source_type="git",
             swhid="swh:1:dir:abc",
         )
-        session = ReeSession(source_available=True, source_acquired_by="download")
+        session = ReeLifecycleState(source_available=True, source_acquired_by="download")
         meta = derive_source_repo_metadata(intent, session, [_file("a.py", 10)])
         assert meta.name == "widget"
         assert meta.origin == "https://github.com/acme/widget.git"
@@ -61,7 +61,7 @@ class TestDeriveSourceRepoMetadata:
 
     def test_uploaded_source_named_after_archive_with_upload_origin(self) -> None:
         intent = ReeIntent()
-        session = ReeSession(
+        session = ReeLifecycleState(
             source_available=True,
             source_acquired_by="upload",
             uploaded_archive=ReePath("python-hello-world.tar.gz"),
@@ -74,7 +74,7 @@ class TestDeriveSourceRepoMetadata:
 
     def test_serializes_snake_case(self) -> None:
         intent = ReeIntent(origin_url="https://github.com/acme/widget", source_type="git")
-        session = ReeSession(source_available=True, source_acquired_by="download")
+        session = ReeLifecycleState(source_available=True, source_acquired_by="download")
         dumped = derive_source_repo_metadata(intent, session, [_file("a.py", 5)]).model_dump()
         assert dumped["source_type"] == "git"
         assert dumped["size_bytes"] == 5
@@ -82,5 +82,5 @@ class TestDeriveSourceRepoMetadata:
         assert dumped["acquired_by"] == "download"
 
     def test_falls_back_to_ree_name(self) -> None:
-        meta = derive_source_repo_metadata(ReeIntent(name="my-ree"), ReeSession(), [])
+        meta = derive_source_repo_metadata(ReeIntent(name="my-ree"), ReeLifecycleState(), [])
         assert meta.name == "my-ree"

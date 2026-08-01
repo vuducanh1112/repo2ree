@@ -1,4 +1,4 @@
-"""Source-repository metadata derived from intent, session and file inventory."""
+"""Source-repository metadata derived from intent, state and file inventory."""
 
 from .git import resolved_git_head
 from .metadata import (

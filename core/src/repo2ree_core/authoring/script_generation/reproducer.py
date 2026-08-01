@@ -42,7 +42,7 @@ from pathlib import PurePosixPath
 from repo2ree_core.authoring.script_generation.acquire_source import build_acquire_sh
 from repo2ree_core.authoring.script_generation.materialize_workspace import build_materialize_sh
 from repo2ree_core.authoring.script_generation.shell import assert_no_placeholders, shell_single_quote, shell_text
-from repo2ree_core.ree.layout import (
+from repo2ree_core.persistence.layout import (
     ACQUIRE_SCRIPT_FILENAME,
     ARTIFACTS_DIRNAME,
     MATERIALIZE_SCRIPT_FILENAME,

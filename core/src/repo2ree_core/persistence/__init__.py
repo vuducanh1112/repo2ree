@@ -1,0 +1,14 @@
+"""Filesystem persistence for the REE aggregate.
+
+One package owns everything that reads or writes an REE directory. Submodules
+are imported directly (``from repo2ree_core.persistence.layout import ReeLayout``); this
+package re-exports nothing, so the import graph inside it stays readable:
+
+    layout, files           leaves — paths and file operations
+    metadata                 the persisted sidecar schema
+    workspace/inventory     typed directory inventory
+    directory               REE directory and metadata persistence
+    repository              hydration into the domain aggregate
+    receipts                durable receipt history and selection
+    workspace/views         read views over a stored REE
+"""

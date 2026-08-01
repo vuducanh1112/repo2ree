@@ -14,8 +14,8 @@ module that scores an REE.  The two ask different questions of different
 inputs and neither is derived from the other: this one reads the *repository*
 (manifests, lockfiles, Dockerfiles) and grades how well it declares what it
 needs, on three orthogonal ladders settled onto
-:class:`repo2ree_core.domain.ree_session.ReeSession` by the handler; the
-scorecard reads the *evidence the REE has produced* (intent, session, run
+:class:`repo2ree_core.domain.ree.state.ReeLifecycleState` by the handler; the
+scorecard reads the *evidence the REE has produced* (intent, state, run
 receipts) and grades what has actually been demonstrated, on the single R0-R5
 ladder.  A perfectly pinned repository that never built scores high here and
 low there, which is the point.

@@ -6,8 +6,7 @@ All ReeIntent fields are user-editable; no whitelist needed.
 
 from __future__ import annotations
 
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.evidence.receipts.store import prune_author_experiment_receipts
+from repo2ree_core.domain.ree.intent import ReeIntent
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.operations.steps.author import (
@@ -15,6 +14,7 @@ from repo2ree_core.operations.steps.author import (
     open_ree_store,
     patch_ree_intent,
 )
+from repo2ree_core.persistence.receipts import prune_author_experiment_receipts
 from repo2ree_protocol.command import PatchReeIntentArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult

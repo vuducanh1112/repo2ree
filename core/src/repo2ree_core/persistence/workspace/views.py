@@ -1,7 +1,7 @@
 """Read views over a stored REE: its metadata, its files, its bytes.
 
 Imperative shell — every function here performs filesystem I/O through
-:class:`ReeStore` and :class:`ReeLayout`. No function reads application
+:class:`ReeDirectory` and :class:`ReeLayout`. No function reads application
 settings; callers pass ``storage_root`` explicitly so this module can live in
 core and run inside the workbench, which is the single source of truth for REE
 state.
@@ -22,24 +22,24 @@ from collections.abc import Iterator
 from pathlib import Path, PurePosixPath
 
 from repo2ree_core.path_safety import normalize_workspace_path, validate_relative_path
-from repo2ree_core.ree.layout import ReeLayout
-from repo2ree_core.ree.store import ReeStore
-from repo2ree_core.ree.workspace.inventory import (
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.persistence.metadata import WorkspaceMetadata
+from repo2ree_core.persistence.workspace.inventory import (
     ReeFile,
     WorkspaceFile,
     classify_file_kind,
     is_reserved_workspace_filename,
     should_inline_file_content,
 )
-from repo2ree_core.ree.workspace.model import WorkspaceMetadata
 
 
 def layout_for(storage_root: Path, ree_id: str) -> ReeLayout:
     return ReeLayout.for_ree(storage_root, ree_id)
 
 
-def store_for(storage_root: Path, ree_id: str) -> ReeStore:
-    return ReeStore(layout_for(storage_root, ree_id))
+def store_for(storage_root: Path, ree_id: str) -> ReeDirectory:
+    return ReeDirectory(layout_for(storage_root, ree_id))
 
 
 def read_metadata(storage_root: Path, ree_id: str) -> WorkspaceMetadata:
@@ -72,7 +72,7 @@ def _read_text_if_possible(path: Path) -> str | None:
         return None
 
 
-def _iter_workspace_files(store: ReeStore) -> Iterator[Path]:
+def _iter_workspace_files(store: ReeDirectory) -> Iterator[Path]:
     """Yield every regular file in the materialized workspace/ subtree."""
     root = store.layout.workspace
     if not root.exists():

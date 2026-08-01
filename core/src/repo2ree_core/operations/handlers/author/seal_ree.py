@@ -3,7 +3,7 @@ from __future__ import annotations
 from repo2ree_core.bundle.seal import seal_workspace_ree
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.failures import failed_from_exception
-from repo2ree_core.ree.layout import ReeLayout
+from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.time_utils import utc_now_instant
 from repo2ree_protocol.command import SealReeArgs
 from repo2ree_protocol.log import LogSink

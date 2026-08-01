@@ -17,9 +17,9 @@ import pytest
 from repo2ree_core.digests import Digest, digest_file_if_exists
 from repo2ree_core.domain.experiment import Activation
 from repo2ree_core.domain.primitives import RunId, WorkspacePath
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.evidence.receipts.models import BuildRuntimeReceipt
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.receipt import BuildRuntimeReceipt
+from repo2ree_core.domain.ree.state import ReeLifecycleState
 from repo2ree_core.evidence.review.models import (
     BuildComparison,
     EvidenceBasis,
@@ -31,9 +31,9 @@ from repo2ree_core.evidence.review.models import (
 )
 from repo2ree_core.evidence.review.store import load_reviews, write_review_record
 from repo2ree_core.operations.handlers.review import activation_test as handler
-from repo2ree_core.ree.layout import ReeLayout, ReviewLayout
-from repo2ree_core.ree.store import ReeStore
-from repo2ree_core.ree.workspace.model import WorkspaceMetadata
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
+from repo2ree_core.persistence.metadata import WorkspaceMetadata
 from repo2ree_core.reserved_paths import RESERVED_ACTIVATION_SCRIPT
 from repo2ree_core.time_utils import parse_utc_instant
 from repo2ree_protocol.command import ReviewActivationTestArgs
@@ -53,7 +53,7 @@ def _author_ree(
     activation: Activation | None = None,
 ) -> ReeLayout:
     layout = ReeLayout(root=tmp_path / "ree")
-    store = ReeStore(layout)
+    store = ReeDirectory(layout)
     store.ensure_dirs()
     store.write_metadata(
         WorkspaceMetadata(
@@ -66,7 +66,7 @@ def _author_ree(
                 runtime=RUNTIME_PATH,
                 activation=activation or Activation(),
             ),
-            ree_session=ReeSession(),
+            ree_state=ReeLifecycleState(),
         )
     )
     monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))

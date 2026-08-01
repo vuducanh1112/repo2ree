@@ -18,18 +18,18 @@ from contextlib import suppress
 from pathlib import Path
 
 from repo2ree_core.digests import Digest, digest_tree
-from repo2ree_core.domain.receipt import (
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.receipt import (
     RunExperimentReceipt,
     RunReceipt,
     experiment_step_key,
     receipt_adapter,
     receipt_step_key,
 )
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import record_snapshot_digest
-from repo2ree_core.ree.files import json_document_bytes, write_atomic, write_json_atomic
-from repo2ree_core.ree.layout import ReeLayout
-from repo2ree_core.ree.store import ReeStore
+from repo2ree_core.domain.ree.state import record_snapshot_digest
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.files import json_document_bytes, write_atomic, write_json_atomic
+from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.reserved_paths import experiment_slug
 from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol.log import LogSink
@@ -62,12 +62,12 @@ def record_receipt(layout: ReeLayout, receipt: RunReceipt, *, log: LogSink) -> N
         log("system", "warn", f"failed to record run receipt: {exc}")
 
 
-def persist_snapshot_digest(store: ReeStore, digest: Digest | None, *, log: LogSink) -> None:
-    """Record the snapshot archive's digest in the session. Never raises."""
+def persist_snapshot_digest(store: ReeDirectory, digest: Digest | None, *, log: LogSink) -> None:
+    """Record the snapshot archive's digest in the state. Never raises."""
     try:
         if not store.metadata_exists():
             return
-        store.write_session(record_snapshot_digest(store.read_session(), digest))
+        store.write_state(record_snapshot_digest(store.read_state(), digest))
     except Exception as exc:  # noqa: BLE001 — as the docstring says: never raises
         log("system", "warn", f"failed to persist snapshot digest: {exc}")
 

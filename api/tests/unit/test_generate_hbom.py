@@ -12,7 +12,7 @@ def temp_storage(tmp_path, monkeypatch):
 
 
 def test_ree_intent_normalizes_invalid_hardware_description_payload():
-    from repo2ree_core.domain.ree_intent import ReeIntent
+    from repo2ree_core.domain.ree.intent import ReeIntent
 
     intent = ReeIntent.model_validate(
         {

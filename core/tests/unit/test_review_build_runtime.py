@@ -15,16 +15,16 @@ import pytest
 from repo2ree_core.analysis.sbom.scan import ScanOutcome
 from repo2ree_core.digests import Digest, digest_file_if_exists
 from repo2ree_core.domain.primitives import ArtifactPath, RunId, ScriptPath, WorkspacePath
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.evidence.receipts.models import BuildRuntimeReceipt, GenerateSbomReceipt
-from repo2ree_core.evidence.receipts.store import record_receipt
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.receipt import BuildRuntimeReceipt, GenerateSbomReceipt
+from repo2ree_core.domain.ree.state import ReeLifecycleState
 from repo2ree_core.evidence.review.models import new_review_record, step_state, with_step
 from repo2ree_core.evidence.review.store import load_reviews, write_review_record
 from repo2ree_core.operations.handlers.review import build_runtime as handler
-from repo2ree_core.ree.layout import SBOM_ARTIFACT_PATH, ReeLayout
-from repo2ree_core.ree.store import ReeStore
-from repo2ree_core.ree.workspace.model import WorkspaceMetadata
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.layout import SBOM_ARTIFACT_PATH, ReeLayout
+from repo2ree_core.persistence.metadata import WorkspaceMetadata
+from repo2ree_core.persistence.receipts import record_receipt
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_core.time_utils import parse_utc_instant
 from repo2ree_protocol.command import ReviewBuildRuntimeArgs
@@ -63,7 +63,7 @@ def _author_ree(
 ) -> ReeLayout:
     """An author baseline with a build script, a runtime receipt, and an SBOM."""
     layout = ReeLayout(root=tmp_path / "ree")
-    store = ReeStore(layout)
+    store = ReeDirectory(layout)
     store.ensure_dirs()
     store.write_metadata(
         WorkspaceMetadata(
@@ -76,7 +76,7 @@ def _author_ree(
                 runtime=RUNTIME_PATH,
                 sbom=SBOM_ARTIFACT_PATH if author_sbom is not None else None,
             ),
-            ree_session=ReeSession(),
+            ree_state=ReeLifecycleState(),
         )
     )
 
@@ -173,7 +173,7 @@ def _ship_runtime(
     path to match, so the intent points outside ``workspace/`` — which is
     exactly the shape a bundled-basis review has to cope with.
     """
-    store = ReeStore(layout)
+    store = ReeDirectory(layout)
     artifact = layout.ree_file(at)
     artifact.parent.mkdir(parents=True, exist_ok=True)
     artifact.write_text(contents, encoding="utf-8")

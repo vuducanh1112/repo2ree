@@ -1,4 +1,4 @@
-from repo2ree_core.ree.workspace.inventory import (
+from repo2ree_core.persistence.workspace.inventory import (
     MAX_INLINE_SBOM_BYTES,
     MAX_INLINE_TEXT_BYTES,
     classify_file_kind,

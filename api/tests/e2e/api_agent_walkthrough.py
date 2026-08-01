@@ -624,7 +624,7 @@ def run() -> None:
         f"/api/v1/rees/{ree_id}/ree:seal",
         {"include_source": True, "include_results": True},
     )
-    seal_hash = sealed["ree_session"]["seal_hash"]
+    seal_hash = sealed["ree_state"]["seal_hash"]
     check(seal_hash.startswith("sha256:"), "seal did not produce a sha256 hash")
     ok(f"sealed as {seal_hash}")
     with tempfile.TemporaryDirectory() as work:

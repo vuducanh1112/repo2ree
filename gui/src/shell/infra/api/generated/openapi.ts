@@ -531,7 +531,7 @@ export interface paths {
         /**
          * Get Ree Scorecard
          * @description The reproducibility scorecard, computed inside the workbench from the
-         *     REE's persisted record (intent + session + run receipts).
+         *     REE's persisted record (intent + state + run receipts).
          */
         get: operations["getScorecard"];
         put?: never;
@@ -2530,7 +2530,7 @@ export interface components {
             /** Workbench Image */
             workbench_image?: string | null;
             ree_intent?: components["schemas"]["ReeIntent-Output"];
-            ree_session?: components["schemas"]["ReeSession"];
+            ree_state?: components["schemas"]["ReeLifecycleState"];
             /** Files */
             files?: components["schemas"]["WorkspaceFile"][];
             /** Ree Files */
@@ -2701,36 +2701,15 @@ export interface components {
             /** Expected Version */
             expected_version?: string | null;
         };
-        /** ReeList */
-        ReeList: {
-            /** Items */
-            items: components["schemas"]["ReeSummary"][];
-            /** Next Cursor */
-            next_cursor?: string | null;
-        };
-        /** ReeSealPayload */
-        ReeSealPayload: {
-            /**
-             * Include Source
-             * @default false
-             */
-            include_source: boolean;
-            /**
-             * Include Runtime
-             * @default false
-             */
-            include_runtime: boolean;
-            /**
-             * Include Results
-             * @default false
-             */
-            include_results: boolean;
-        };
         /**
-         * ReeSession
-         * @description Legacy machine-state projection transformed only by pure functions.
+         * ReeLifecycleState
+         * @description Durable lifecycle facts produced while authoring and publishing an REE.
+         *
+         *     This replaces the ambiguous ``ReeSession`` name: the values survive
+         *     processes and workbench sessions and are part of the persisted REE record.
+         *     Mutations remain pure and are applied by the persistence boundary.
          */
-        ReeSession: {
+        ReeLifecycleState: {
             /**
              * Dependency Level
              * @default 0
@@ -2789,6 +2768,31 @@ export interface components {
              */
             results_included: boolean;
         };
+        /** ReeList */
+        ReeList: {
+            /** Items */
+            items: components["schemas"]["ReeSummary"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /** ReeSealPayload */
+        ReeSealPayload: {
+            /**
+             * Include Source
+             * @default false
+             */
+            include_source: boolean;
+            /**
+             * Include Runtime
+             * @default false
+             */
+            include_runtime: boolean;
+            /**
+             * Include Results
+             * @default false
+             */
+            include_results: boolean;
+        };
         /**
          * ReeState
          * @description Compact control-plane observation without inline workspace content.
@@ -2804,7 +2808,7 @@ export interface components {
             updated_at: string;
             workbench: components["schemas"]["WorkbenchStatus"];
             ree_intent?: components["schemas"]["ReeIntent-Output"];
-            ree_session?: components["schemas"]["ReeSession"];
+            ree_state?: components["schemas"]["ReeLifecycleState"];
             consistency?: components["schemas"]["ConsistencyReport"];
             author_receipts?: components["schemas"]["AuthorReceiptSet"];
             /** Ree Steps */

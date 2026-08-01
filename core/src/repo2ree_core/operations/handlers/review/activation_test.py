@@ -18,8 +18,8 @@ from pydantic import BaseModel, ConfigDict
 from repo2ree_core.digests import Digest
 from repo2ree_core.domain.experiment import Activation
 from repo2ree_core.domain.primitives import ScriptPath, WorkspacePath
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.evidence.receipts.models import ActivationTestReceipt, receipt_envelope
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.receipt import ActivationTestReceipt, receipt_envelope
 from repo2ree_core.evidence.review.models import ActivationOutcome, ActivationVerdict, ReviewRecord
 from repo2ree_core.evidence.review.store import write_review_activation_evidence
 from repo2ree_core.execution.experiment.resolve import resolve_activation_runnable

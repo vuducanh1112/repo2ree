@@ -21,8 +21,8 @@ from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.authoring.script_generation.acquire_source import build_acquire_sh
 from repo2ree_core.domain.primitives import GitRevision, Swhid
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.evidence.receipts.models import AcquireSourceReceipt, receipt_envelope
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.receipt import AcquireSourceReceipt, receipt_envelope
 from repo2ree_core.evidence.review.comparison import compare_source_swhids
 from repo2ree_core.evidence.review.models import (
     EvidenceBasis,
@@ -33,8 +33,8 @@ from repo2ree_core.evidence.review.models import (
 from repo2ree_core.evidence.review.store import write_review_source_evidence
 from repo2ree_core.execution.process import CancelCheck, format_command, run_streaming_process
 from repo2ree_core.operations.steps.review import begin_review_step, require_ree_intent
-from repo2ree_core.ree.files import write_atomic
-from repo2ree_core.ree.layout import ReeLayout, ReviewLayout
+from repo2ree_core.persistence.files import write_atomic
+from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
 from repo2ree_core.source_repo.swhid import directory_swhid
 from repo2ree_core.time_utils import OperationTimer, format_utc_instant
 from repo2ree_protocol.command import ReviewAcquireSourceArgs, ReviewBasis

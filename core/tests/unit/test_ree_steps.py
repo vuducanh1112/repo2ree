@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from repo2ree_core.domain.experiment import Experiment
 from repo2ree_core.domain.hbom import HBOM, CPUDefinition
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.state import ReeLifecycleState
 from repo2ree_core.evidence.step_graph import (
     REE_STEPS,
     ReeStepState,
@@ -45,7 +45,7 @@ def test_catalog_orders_are_unique_and_sequential() -> None:
 def test_empty_ree_gates_everything_on_authoring() -> None:
     states = build_ree_step_states(
         ReeIntent(),
-        ReeSession(),
+        ReeLifecycleState(),
         completed_run_steps=set(),
         evaluate_report_present=False,
     )
@@ -64,7 +64,7 @@ def test_authoring_fields_mark_their_steps_done() -> None:
         name="demo",
         hardware_description=HBOM(cpus={"Intel Core i9": CPUDefinition(vendor="Intel")}),
     )
-    session = ReeSession(source_available=True)
+    session = ReeLifecycleState(source_available=True)
     states = build_ree_step_states(
         intent,
         session,
@@ -80,7 +80,7 @@ def test_authoring_fields_mark_their_steps_done() -> None:
 
 
 def test_recorded_build_unblocks_sbom_and_activation() -> None:
-    session = ReeSession(source_available=True)
+    session = ReeLifecycleState(source_available=True)
     states = build_ree_step_states(
         ReeIntent(name="demo"),
         session,
@@ -98,7 +98,7 @@ def test_completion_is_run_presence_not_freshness() -> None:
     # A recorded build stays done regardless of any later staleness — completion
     # is "a run happened", the same signal the GUI badges use. (Staleness is
     # the consistency report's concern, not this overlay's.)
-    session = ReeSession(source_available=True)
+    session = ReeLifecycleState(source_available=True)
     states = build_ree_step_states(
         ReeIntent(name="demo"),
         session,
@@ -109,7 +109,7 @@ def test_completion_is_run_presence_not_freshness() -> None:
 
 
 def test_crosscheck_needs_its_own_run_after_sbom_and_evaluate() -> None:
-    session = ReeSession(source_available=True)
+    session = ReeLifecycleState(source_available=True)
     # SBOM run and evaluate report present, but cross-check not yet run: ready.
     ready = build_ree_step_states(
         ReeIntent(name="demo"),
@@ -133,7 +133,7 @@ def test_experiments_done_only_when_all_named_have_run() -> None:
         name="demo",
         experiments=[Experiment(name="one"), Experiment(name="two")],
     )
-    session = ReeSession(source_available=True)
+    session = ReeLifecycleState(source_available=True)
     partial = build_ree_step_states(
         intent,
         session,

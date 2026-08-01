@@ -2,7 +2,14 @@
 
 from __future__ import annotations
 
-from repo2ree_core.domain.receipt import (
+from repo2ree_core.domain.ree.model import (
+    ExperimentCapability,
+    Ree,
+    ReeAssessment,
+    ReeCapability,
+)
+from repo2ree_core.domain.ree.queries import experiments_of, runtime_of, scripts_of, selected_receipt
+from repo2ree_core.domain.ree.receipt import (
     ActivationTestReceipt,
     BuildRuntimeReceipt,
     RunExperimentReceipt,
@@ -10,13 +17,6 @@ from repo2ree_core.domain.receipt import (
     SnapshotUpstreamReceipt,
     experiment_step_key,
 )
-from repo2ree_core.domain.ree import (
-    ExperimentCapability,
-    Ree,
-    ReeAssessment,
-    ReeCapability,
-)
-from repo2ree_core.domain.ree_structure import experiments_of, runtime_of, scripts_of, selected_receipt
 
 
 def _missing_or_stale(receipt: RunReceipt | None, reasons: list[str]) -> ReeCapability:
@@ -30,15 +30,15 @@ def assess(ree: Ree) -> ReeAssessment:
 
     authored = ree.authored
     evidence = ree.evidence
-    session = evidence.session_projection
+    state = evidence.state
     snapshot = selected_receipt(evidence, "snapshot_upstream")
     snapshot_receipt = snapshot if isinstance(snapshot, SnapshotUpstreamReceipt) else None
-    current_snapshot_digest = session.source_snapshot_digest
+    current_snapshot_digest = state.source_snapshot_digest
     if current_snapshot_digest is None and snapshot_receipt is not None:
         current_snapshot_digest = snapshot_receipt.snapshot_digest
 
     source_reasons: list[str] = []
-    if not (session.source_available or current_snapshot_digest):
+    if not (state.source_available or current_snapshot_digest):
         source_reasons.append("source has not been acquired")
     source = ReeCapability(status="ready" if not source_reasons else "missing", reasons=tuple(source_reasons))
 

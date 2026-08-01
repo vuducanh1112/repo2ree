@@ -12,7 +12,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.domain.ree.intent import ReeIntent
 
 
 class StrictRequestModel(BaseModel):

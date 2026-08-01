@@ -14,7 +14,7 @@ from repo2ree_core.authoring.script_inference import (
     infer_scripts,
 )
 from repo2ree_core.authoring.script_inference.models import LogicalRootObservation
-from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.domain.ree.intent import ReeIntent
 
 
 def _tree(root: Path, files: dict[str, str]) -> Path:

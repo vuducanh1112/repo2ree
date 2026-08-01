@@ -15,8 +15,8 @@ can match exhaustively instead of probing key conventions.
 
 Receipts are domain vocabulary, not an evidence-store implementation detail.
 Schemas and the pure functions over them live here; where receipts live on disk
-is ``evidence.receipts.store`` and what their digests mean against the current
-REE is ``evidence.receipts.consistency``.
+is :mod:`repo2ree_core.persistence.receipts`, while what their digests mean
+against the current REE is :mod:`repo2ree_core.evidence.consistency`.
 """
 
 from __future__ import annotations

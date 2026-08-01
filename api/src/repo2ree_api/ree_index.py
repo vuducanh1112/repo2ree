@@ -38,7 +38,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from repo2ree_api.deposit.models import ArchiveBindingAttestation
-from repo2ree_core.domain.ree_intent import ReeCatalogMetadata
+from repo2ree_core.domain.ree.intent import ReeCatalogMetadata
 
 # ================================================
 # Data Models
@@ -50,7 +50,7 @@ class ReeIndexEntry(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    # Content identity: ``ReeSession.seal_hash``, e.g. "sha256:…". The primary
+    # Content identity: ``ReeState.seal_hash``, e.g. "sha256:…". The primary
     # key here and the join key the attestations carry.
     subject_digest: str
     name: str

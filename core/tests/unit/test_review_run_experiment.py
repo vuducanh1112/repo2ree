@@ -19,10 +19,9 @@ import pytest
 from repo2ree_core.digests import Digest, digest_bytes, digest_file_if_exists
 from repo2ree_core.domain.experiment import Experiment
 from repo2ree_core.domain.primitives import RunId, ScriptPath, WorkspacePath
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.evidence.receipts.models import BuildRuntimeReceipt, RunExperimentReceipt
-from repo2ree_core.evidence.receipts.store import record_receipt
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.receipt import BuildRuntimeReceipt, RunExperimentReceipt
+from repo2ree_core.domain.ree.state import ReeLifecycleState
 from repo2ree_core.evidence.review.models import (
     ActivationOutcome,
     ActivationVerdict,
@@ -37,9 +36,10 @@ from repo2ree_core.evidence.review.models import (
 )
 from repo2ree_core.evidence.review.store import load_reviews, write_review_record
 from repo2ree_core.operations.handlers.review import run_experiment as handler
-from repo2ree_core.ree.layout import ReeLayout, ReviewLayout
-from repo2ree_core.ree.store import ReeStore
-from repo2ree_core.ree.workspace.model import WorkspaceMetadata
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
+from repo2ree_core.persistence.metadata import WorkspaceMetadata
+from repo2ree_core.persistence.receipts import record_receipt
 from repo2ree_core.reserved_paths import experiment_slug
 from repo2ree_core.time_utils import parse_utc_instant
 from repo2ree_protocol.command import ReviewRunExperimentArgs
@@ -78,7 +78,7 @@ def _author_ree(
     experiment: Experiment | None = None,
 ) -> ReeLayout:
     layout = ReeLayout(root=tmp_path / "ree")
-    store = ReeStore(layout)
+    store = ReeDirectory(layout)
     store.ensure_dirs()
     store.write_metadata(
         WorkspaceMetadata(
@@ -91,7 +91,7 @@ def _author_ree(
                 runtime=RUNTIME_PATH,
                 experiments=[experiment or _experiment()],
             ),
-            ree_session=ReeSession(),
+            ree_state=ReeLifecycleState(),
         )
     )
     monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
@@ -438,7 +438,7 @@ def test_each_experiment_keeps_its_own_evidence(tmp_path: Path, monkeypatch: pyt
     would leave the attempt holding one experiment's evidence for both."""
     second = Experiment(name="second", run_script=_RUN_SCRIPT, verify_script=_VERIFY_SCRIPT)
     layout = _author_ree(tmp_path, monkeypatch)
-    layout_store = ReeStore(layout)
+    layout_store = ReeDirectory(layout)
     metadata = layout_store.read_metadata()
     intent = metadata.ree_intent.model_copy(update={"experiments": [_experiment(), second]})
     layout_store.write_metadata(metadata.model_copy(update={"ree_intent": intent}))
@@ -459,7 +459,7 @@ def test_each_experiment_keeps_its_own_evidence(tmp_path: Path, monkeypatch: pyt
 def test_re_running_one_experiment_leaves_its_siblings_alone(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     second = Experiment(name="second", run_script=_RUN_SCRIPT, verify_script=_VERIFY_SCRIPT)
     layout = _author_ree(tmp_path, monkeypatch)
-    store = ReeStore(layout)
+    store = ReeDirectory(layout)
     metadata = store.read_metadata()
     store.write_metadata(
         metadata.model_copy(

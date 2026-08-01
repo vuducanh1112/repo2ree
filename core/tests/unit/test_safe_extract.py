@@ -3,7 +3,7 @@ import tarfile
 import zipfile
 from pathlib import Path
 
-from repo2ree_core.ree.files import safe_extract_tar, safe_extract_zip
+from repo2ree_core.persistence.files import safe_extract_tar, safe_extract_zip
 
 
 def _write_tar(path: Path, entries: list[tuple[str, bytes]]) -> None:

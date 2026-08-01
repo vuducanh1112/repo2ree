@@ -1,7 +1,7 @@
 """Load a previously downloaded REE bundle into this (blank) workbench.
 
 Reads /ree/upload-staging/<upload_token>.bin — a downloaded REE ZIP, sealed or
-draft — and makes this REE be what the bundle records: intent, session, frozen
+draft — and makes this REE be what the bundle records: intent, state, frozen
 snapshot, overlay, artifacts, results, and the author receipts that back them.
 The untrusted upload bytes go through ``safe_extract_zip`` before anything is
 read out of them, exactly as an uploaded source does.
@@ -25,11 +25,11 @@ from pydantic import BaseModel, ConfigDict
 from repo2ree_core.authoring.script_generation.acquire_source import build_acquire_sh
 from repo2ree_core.authoring.script_generation.materialize_workspace import build_materialize_sh
 from repo2ree_core.bundle.restore import BundleLoadOutputs, restore_ree_bundle
-from repo2ree_core.evidence.receipts.store import write_materialize_marker
 from repo2ree_core.execution.process import CancelCheck, format_command, run_streaming_process
-from repo2ree_core.ree.files import safe_extract_zip, write_atomic
-from repo2ree_core.ree.layout import ReeLayout
-from repo2ree_core.ree.store import ReeStore
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.files import safe_extract_zip, write_atomic
+from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.persistence.receipts import write_materialize_marker
 from repo2ree_protocol.command import LoadReeBundleArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
@@ -100,7 +100,7 @@ def _rebuild_derived_trees(
     is_canceled: CancelCheck,
 ) -> ActionResult | None:
     """Rebuild ``upstream/`` and ``workspace/``. Returns non-None on failure."""
-    store = ReeStore(layout)
+    store = ReeDirectory(layout)
     if restored_source:
         # Snapshot-only acquisition: the script extracts the restored snapshot
         # and never reaches for the origin, so loading stays offline.
@@ -113,7 +113,7 @@ def _rebuild_derived_trees(
     failure = _run_script(layout.materialize_script, what="materialize", log=log, is_canceled=is_canceled)
     if failure is not None:
         return failure
-    write_materialize_marker(layout, snapshot_digest=store.read_session().source_snapshot_digest, log=log)
+    write_materialize_marker(layout, snapshot_digest=store.read_state().source_snapshot_digest, log=log)
     return None
 
 

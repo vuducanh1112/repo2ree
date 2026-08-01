@@ -1,7 +1,7 @@
 """Derive display-ready source-repository metadata.
 
 Pure module: no filesystem or network I/O. Callers pass already-loaded intent,
-session and the enumerated workspace file inventory.
+state and the enumerated workspace file inventory.
 """
 
 from __future__ import annotations
@@ -10,9 +10,9 @@ from collections.abc import Iterable
 
 from pydantic import BaseModel
 
-from repo2ree_core.domain.ree_intent import ReeIntent, SourceType
-from repo2ree_core.domain.ree_session import ReeSession, SourceAcquiredBy
-from repo2ree_core.ree.workspace.inventory import WorkspaceFile
+from repo2ree_core.domain.ree.intent import ReeIntent, SourceType
+from repo2ree_core.domain.ree.state import ReeLifecycleState, SourceAcquiredBy
+from repo2ree_core.persistence.workspace.inventory import WorkspaceFile
 
 _VCS_SUFFIX = ".git"
 
@@ -85,13 +85,13 @@ def format_source_size(num_bytes: int) -> str:
 
 def derive_source_repo_metadata(
     intent: ReeIntent,
-    session: ReeSession,
+    state: ReeLifecycleState,
     files: Iterable[WorkspaceFile],
 ) -> SourceRepoMetadata:
-    """Fold intent, session and the file inventory into one source record."""
-    from_upload = session.source_acquired_by == "upload"
+    """Fold intent, state and the file inventory into one source record."""
+    from_upload = state.source_acquired_by == "upload"
     repo_name = repo_name_from_origin_url(intent.origin_url)
-    uploaded = session.uploaded_archive or ""
+    uploaded = state.uploaded_archive or ""
 
     # Name after the most specific thing we have: the archive for uploads, the
     # origin repo for downloads, then fall through to whatever else is set.
@@ -107,7 +107,7 @@ def derive_source_repo_metadata(
     return SourceRepoMetadata(
         name=name,
         origin=intent.origin_url or ("Upload" if from_upload else ""),
-        acquired_by=session.source_acquired_by,
+        acquired_by=state.source_acquired_by,
         source_type=intent.source_type,
         swhid=intent.swhid,
         size_bytes=size_bytes,

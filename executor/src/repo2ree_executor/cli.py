@@ -10,17 +10,17 @@ import click
 
 from repo2ree_core.bundle.seal import build_workspace_ree_archive as _build_archive
 from repo2ree_core.doctor import run_doctor
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.evidence.receipts.store import load_author_receipts
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.state import ReeLifecycleState
 from repo2ree_core.evidence.review.store import load_reviews
 from repo2ree_core.evidence.scorecard import build_scorecard
 from repo2ree_core.operations.dispatch import run_command
 from repo2ree_core.operations.workspace_view import get_workspace as _get_workspace
-from repo2ree_core.ree.layout import ReeLayout, ReviewLayout
-from repo2ree_core.ree.store import ReeStore
-from repo2ree_core.ree.workspace.model import WorkspaceMetadata
-from repo2ree_core.ree.workspace.views import read_file_bytes as _read_file_bytes
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
+from repo2ree_core.persistence.metadata import WorkspaceMetadata
+from repo2ree_core.persistence.receipts import load_author_receipts
+from repo2ree_core.persistence.workspace.views import read_file_bytes as _read_file_bytes
 from repo2ree_core.reproduction import (
     ACQUIRE_SOURCE,
     BUILD_RUNTIME,
@@ -288,7 +288,7 @@ def init_ree_cmd(ree_id: str, name: str | None) -> None:
     Idempotent: exits 0 without modifying anything if already initialised.
     """
     layout = ReeLayout.in_workbench()
-    store = ReeStore(layout)
+    store = ReeDirectory(layout)
 
     if store.metadata_exists():
         click.echo(json.dumps({"status": "already_initialised", "ree_id": ree_id}))
@@ -307,7 +307,7 @@ def init_ree_cmd(ree_id: str, name: str | None) -> None:
             created_at=ts,
             updated_at=ts,
             ree_intent=ReeIntent(name=ree_name),
-            ree_session=ReeSession(),
+            ree_state=ReeLifecycleState(),
         )
     )
     click.echo(json.dumps({"status": "initialised", "ree_id": ree_id}))
@@ -337,7 +337,7 @@ def get_ree_cmd() -> None:
     Reads .workspace.json from /ree. Exits non-zero if not initialised.
     """
     layout = ReeLayout.in_workbench()
-    store = ReeStore(layout)
+    store = ReeDirectory(layout)
 
     if not store.metadata_exists():
         click.echo(json.dumps({"error": "not initialised"}), file=sys.stderr)
@@ -372,12 +372,12 @@ def get_workspace_cmd(summary: bool) -> None:
 def get_scorecard_cmd() -> None:
     """Emit the reproducibility scorecard as JSON.
 
-    Computed purely from the persisted record (intent + session + run
+    Computed purely from the persisted record (intent + state + run
     receipts), so the same scorecard is recomputable from a sealed bundle.
     Exits non-zero if not initialised.
     """
     layout = ReeLayout.in_workbench()
-    store = ReeStore(layout)
+    store = ReeDirectory(layout)
 
     if not store.metadata_exists():
         click.echo(json.dumps({"error": "not initialised"}), file=sys.stderr)
@@ -386,7 +386,7 @@ def get_scorecard_cmd() -> None:
     metadata = store.read_metadata()
     card = build_scorecard(
         metadata.ree_intent,
-        metadata.ree_session,
+        metadata.ree_state,
         list(load_author_receipts(layout).values()),
     )
     click.echo(card.model_dump_json())

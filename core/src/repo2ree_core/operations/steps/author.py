@@ -23,10 +23,8 @@ from pydantic import BaseModel, ConfigDict, field_serializer
 from repo2ree_core.digests import Digest, digest_bytes, digest_file_if_exists, digest_output_paths
 from repo2ree_core.domain.experiment import Runnable
 from repo2ree_core.domain.primitives import ScriptPath, WorkspacePath
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_transitions import patch_intent
-from repo2ree_core.evidence.receipts.consistency import check_workspace_drift, declared_output_paths
-from repo2ree_core.evidence.receipts.models import (
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.receipt import (
     ActivationTestReceipt,
     ReceiptEnvelopeFields,
     RunExperimentReceipt,
@@ -35,13 +33,15 @@ from repo2ree_core.evidence.receipts.models import (
     WorkspaceDrift,
     receipt_envelope,
 )
-from repo2ree_core.evidence.receipts.store import record_receipt
+from repo2ree_core.domain.ree.transitions import patch_intent
+from repo2ree_core.evidence.consistency import check_workspace_drift, declared_output_paths
 from repo2ree_core.execution.experiment.run import RunnableRunOutputs, run_runnable
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.path_safety import WORKSPACE_CONTROL_PREFIXES, resolve_within
-from repo2ree_core.ree.layout import ReeLayout
-from repo2ree_core.ree.repository import load_ree
-from repo2ree_core.ree.store import UNREADABLE_DOCUMENT, ReeStore
+from repo2ree_core.persistence.directory import UNREADABLE_DOCUMENT, ReeDirectory
+from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.persistence.receipts import record_receipt
+from repo2ree_core.persistence.repository import load_ree
 from repo2ree_core.time_utils import OperationTimer, OperationTiming, format_duration_ms
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult, ActionStatus
@@ -77,7 +77,7 @@ class StepInputs:
 METADATA_MISSING = "metadata not found — was init-ree run?"
 
 
-def open_ree_store(log: LogSink) -> tuple[ReeLayout, ReeStore] | ActionResult:
+def open_ree_store(log: LogSink) -> tuple[ReeLayout, ReeDirectory] | ActionResult:
     """Open the workbench REE store, or the failure to return when it is absent.
 
     Every handler that touches REE state starts this way, so the guard and the
@@ -87,14 +87,14 @@ def open_ree_store(log: LogSink) -> tuple[ReeLayout, ReeStore] | ActionResult:
         layout, store = opened
     """
     layout = ReeLayout.in_workbench()
-    store = ReeStore(layout)
+    store = ReeDirectory(layout)
     if not store.metadata_exists():
         log("system", "error", METADATA_MISSING)
         return ActionResult.failed("precondition", METADATA_MISSING)
     return layout, store
 
 
-def read_intent_or_none(store: ReeStore, *, log: LogSink) -> ReeIntent | None:
+def read_intent_or_none(store: ReeDirectory, *, log: LogSink) -> ReeIntent | None:
     """The intent, or None when there is no readable metadata.
 
     For the read-only paths that must still answer when a REE is half-built
@@ -113,7 +113,7 @@ def read_intent_or_none(store: ReeStore, *, log: LogSink) -> ReeIntent | None:
 
 def collect_step_inputs(
     layout: ReeLayout,
-    store: ReeStore,
+    store: ReeDirectory,
     intent: ReeIntent | None,
     script_path: str,
     verify_script_path: str = "",
@@ -123,18 +123,18 @@ def collect_step_inputs(
     """Digest the step's inputs as they are at run start.
 
     The digests mirror the *materialization inputs* a re-runner will have —
-    snapshot digest from the session, script content, the declared runtime
+    snapshot digest from the lifecycle state, script content, the declared runtime
     artifact's state — never a digest of the live workspace tree.
     """
     snapshot_digest: Digest | None = None
     if store.metadata_exists():
         try:
-            snapshot_digest = store.read_session().source_snapshot_digest
+            snapshot_digest = store.read_state().source_snapshot_digest
         except UNREADABLE_DOCUMENT as exc:
             # A receipt without a snapshot digest asserts "this REE has no
-            # captured source". When the truth is "the session could not be
+            # captured source". When the truth is "the lifecycle state could not be
             # read", this line is the only place that difference is recoverable.
-            log("system", "warn", f"could not read the session for this receipt's snapshot digest: {exc}")
+            log("system", "warn", f"could not read lifecycle state for this receipt's snapshot digest: {exc}")
     runtime_path = WorkspacePath(intent.runtime) if intent and intent.runtime else None
     return StepInputs(
         snapshot_digest=snapshot_digest,
@@ -490,7 +490,7 @@ def run_runnable_handler(
     )
 
 
-def workspace_content_etag(store: ReeStore, path: str) -> str | None:
+def workspace_content_etag(store: ReeDirectory, path: str) -> str | None:
     """Current canonical etag of a workspace file, or None if it is absent.
 
     The API computes the etag it hands back after a write with the same
@@ -502,7 +502,7 @@ def workspace_content_etag(store: ReeStore, path: str) -> str | None:
     return digest_bytes(store.workspace.read_bytes(path))
 
 
-def check_expected_etag(store: ReeStore, path: str, expected: str, *, log: LogSink) -> ActionResult | None:
+def check_expected_etag(store: ReeDirectory, path: str, expected: str, *, log: LogSink) -> ActionResult | None:
     """Verify an optimistic-concurrency etag; return the conflict result on mismatch.
 
     Runs inside the per-REE dispatch serialization, so a passed check cannot be
@@ -527,7 +527,7 @@ def check_expected_etag(store: ReeStore, path: str, expected: str, *, log: LogSi
     )
 
 
-def patch_ree_intent(store: ReeStore, patch: dict[str, Any]) -> None:
+def patch_ree_intent(store: ReeDirectory, patch: dict[str, Any]) -> None:
     if not store.metadata_exists():
         raise FileNotFoundError("metadata not found")
     transition = patch_intent(load_ree(store.layout, store), patch)

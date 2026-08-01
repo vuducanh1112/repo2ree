@@ -8,8 +8,8 @@ experiments — activation and experiments cannot drift because they share it.
 from __future__ import annotations
 
 from repo2ree_core.domain.experiment import Runnable
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.evidence.receipts.models import ActivationTestReceipt
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.receipt import ActivationTestReceipt
 from repo2ree_core.execution.experiment.resolve import RunnableResolutionError, resolve_activation_runnable
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.operations.steps.author import (

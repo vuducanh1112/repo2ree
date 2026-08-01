@@ -4273,7 +4273,7 @@
           "rees"
         ],
         "summary": "Get Ree Scorecard",
-        "description": "The reproducibility scorecard, computed inside the workbench from the\nREE's persisted record (intent + session + run receipts).",
+        "description": "The reproducibility scorecard, computed inside the workbench from the\nREE's persisted record (intent + state + run receipts).",
         "operationId": "getScorecard",
         "parameters": [
           {
@@ -9965,8 +9965,8 @@
           "ree_intent": {
             "$ref": "#/components/schemas/ReeIntent-Output"
           },
-          "ree_session": {
-            "$ref": "#/components/schemas/ReeSession"
+          "ree_state": {
+            "$ref": "#/components/schemas/ReeLifecycleState"
           },
           "files": {
             "items": {
@@ -10342,57 +10342,7 @@
         ],
         "title": "ReeIntentReplacePayload"
       },
-      "ReeList": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/ReeSummary"
-            },
-            "type": "array",
-            "title": "Items"
-          },
-          "next_cursor": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Next Cursor"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "items"
-        ],
-        "title": "ReeList"
-      },
-      "ReeSealPayload": {
-        "properties": {
-          "include_source": {
-            "type": "boolean",
-            "title": "Include Source",
-            "default": false
-          },
-          "include_runtime": {
-            "type": "boolean",
-            "title": "Include Runtime",
-            "default": false
-          },
-          "include_results": {
-            "type": "boolean",
-            "title": "Include Results",
-            "default": false
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "title": "ReeSealPayload"
-      },
-      "ReeSession": {
+      "ReeLifecycleState": {
         "properties": {
           "dependency_level": {
             "type": "integer",
@@ -10530,8 +10480,58 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "ReeSession",
-        "description": "Legacy machine-state projection transformed only by pure functions."
+        "title": "ReeLifecycleState",
+        "description": "Durable lifecycle facts produced while authoring and publishing an REE.\n\nThis replaces the ambiguous ``ReeSession`` name: the values survive\nprocesses and workbench sessions and are part of the persisted REE record.\nMutations remain pure and are applied by the persistence boundary."
+      },
+      "ReeList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReeSummary"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "ReeList"
+      },
+      "ReeSealPayload": {
+        "properties": {
+          "include_source": {
+            "type": "boolean",
+            "title": "Include Source",
+            "default": false
+          },
+          "include_runtime": {
+            "type": "boolean",
+            "title": "Include Runtime",
+            "default": false
+          },
+          "include_results": {
+            "type": "boolean",
+            "title": "Include Results",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ReeSealPayload"
       },
       "ReeState": {
         "properties": {
@@ -10557,8 +10557,8 @@
           "ree_intent": {
             "$ref": "#/components/schemas/ReeIntent-Output"
           },
-          "ree_session": {
-            "$ref": "#/components/schemas/ReeSession"
+          "ree_state": {
+            "$ref": "#/components/schemas/ReeLifecycleState"
           },
           "consistency": {
             "$ref": "#/components/schemas/ConsistencyReport"

@@ -27,7 +27,7 @@ bytes are deterministic given their inputs.
 from __future__ import annotations
 
 from repo2ree_core.authoring.script_generation.shell import assert_no_placeholders, shell_single_quote, shell_text
-from repo2ree_core.ree.layout import SNAPSHOT_FILENAME, UPSTREAM_DIRNAME
+from repo2ree_core.persistence.layout import SNAPSHOT_FILENAME, UPSTREAM_DIRNAME
 
 # The ``@@...@@`` tokens are the interpolation points. Using explicit
 # placeholders avoids escaping all of the literal braces in shell functions and

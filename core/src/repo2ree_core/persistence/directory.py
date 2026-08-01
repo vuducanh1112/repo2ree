@@ -1,12 +1,12 @@
 """Imperative shell around :class:`ReeLayout`.
 
-All filesystem I/O for a single REE goes through :class:`ReeStore`. It takes
+All filesystem I/O for a single REE goes through :class:`ReeDirectory`. It takes
 a :class:`ReeLayout` at construction and performs reads, writes, and
 directory bootstrapping at the paths the layout describes. The layout
 itself is pure; this module is intentionally not.
 
 Every write here replaces its target atomically
-(:func:`repo2ree_core.ree.files.write_atomic`), so a workbench killed mid-write
+(:func:`repo2ree_core.persistence.files.write_atomic`), so a workbench killed mid-write
 leaves the previous version rather than a prefix of the new one. That is what
 lets the readers throughout ``operations`` treat an unparseable document as a
 defect worth reporting rather than an expected state to recover from.
@@ -22,12 +22,12 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.state import ReeLifecycleState
 from repo2ree_core.path_safety import validate_relative_path
-from repo2ree_core.ree.files import write_atomic, write_json_atomic
-from repo2ree_core.ree.layout import ReeLayout
-from repo2ree_core.ree.workspace.model import WorkspaceMetadata
+from repo2ree_core.persistence.files import write_atomic, write_json_atomic
+from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.persistence.metadata import WorkspaceMetadata
 from repo2ree_core.reserved_paths import RESERVED_OVERLAY_SCRIPTS
 from repo2ree_core.reserved_templates import reserved_script_template
 from repo2ree_core.time_utils import utc_now
@@ -137,7 +137,7 @@ class SubtreeStore:
         return list(self.iter_files())
 
 
-class ReeStore:
+class ReeDirectory:
     """Filesystem-backed operations for a single REE.
 
     Construct with a :class:`ReeLayout`. Methods perform I/O at the paths
@@ -247,7 +247,7 @@ class ReeStore:
         For the two callers that must see what is *actually on disk* rather
         than what the model says it should be: the executor's ``get-metadata``
         passthrough, and tests seeding a fixture. Every mutation goes through
-        the typed path (:meth:`write_intent`, :meth:`write_session`,
+        the typed path (:meth:`write_intent`, :meth:`write_state`,
         :meth:`write_metadata`) so no write site can hand-roll the sidecar's
         derived fields.
         """
@@ -257,7 +257,7 @@ class ReeStore:
         """Write raw JSON metadata atomically. Companion to :meth:`read_metadata_json`."""
         write_json_atomic(self.layout.metadata, payload)
 
-    # --- Typed intent / session accessors -------------------------------
+    # --- Typed intent / state accessors ---------------------------------
 
     def read_intent(self) -> ReeIntent:
         return self.read_metadata().ree_intent
@@ -265,11 +265,11 @@ class ReeStore:
     def write_intent(self, intent: ReeIntent) -> None:
         self.write_metadata(self.read_metadata().with_intent(intent, at=utc_now()))
 
-    def read_session(self) -> ReeSession:
-        return self.read_metadata().ree_session
+    def read_state(self) -> ReeLifecycleState:
+        return self.read_metadata().ree_state
 
-    def write_session(self, session: ReeSession) -> None:
-        self.write_metadata(self.read_metadata().with_session(session, at=utc_now()))
+    def write_state(self, state: ReeLifecycleState) -> None:
+        self.write_metadata(self.read_metadata().with_state(state, at=utc_now()))
 
     # --- Manifest -------------------------------------------------------
 
@@ -287,7 +287,7 @@ def _read_json(path: Path) -> dict[str, Any]:
     return parsed
 
 
-def reset_source_state(*, layout: ReeLayout, store: ReeStore) -> None:
+def reset_source_state(*, layout: ReeLayout, store: ReeDirectory) -> None:
     """Clear source-derived state while preserving REE identity metadata.
 
     Upload staging and run logs are intentionally left alone: staging is the
@@ -317,7 +317,7 @@ def reset_source_state(*, layout: ReeLayout, store: ReeStore) -> None:
     updated = meta.model_copy(
         update={
             "ree_intent": cleared_intent,
-            "ree_session": ReeSession(),
+            "ree_state": ReeLifecycleState(),
             "status": "draft",
             "updated_at": utc_now(),
             "external_ref": None,

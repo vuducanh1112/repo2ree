@@ -3,13 +3,13 @@ from pydantic import ValidationError
 
 from repo2ree_core.digests import Digest, digest_bytes
 from repo2ree_core.domain.primitives import GitRevision, ReeId, ReePath, RunId, ScriptPath, WorkspacePath
-from repo2ree_core.domain.receipt import BuildRuntimeReceipt, WorkspaceDrift
-from repo2ree_core.domain.ree import AuthoredFile, Ree, ReeDefinition, ReeEvidence, ReeIdentity
-from repo2ree_core.domain.ree_assessment import assess
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession, record_evaluation, record_source, select_packaging
-from repo2ree_core.domain.ree_structure import name_of, runtime_of, scripts_of
-from repo2ree_core.domain.ree_transitions import request_runtime_build, revision_of, write_file
+from repo2ree_core.domain.ree.assessment import assess
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.model import AuthoredFile, Ree, ReeDefinition, ReeEvidence, ReeIdentity
+from repo2ree_core.domain.ree.queries import name_of, runtime_of, scripts_of
+from repo2ree_core.domain.ree.receipt import BuildRuntimeReceipt, WorkspaceDrift
+from repo2ree_core.domain.ree.state import ReeLifecycleState, record_evaluation, record_source, select_packaging
+from repo2ree_core.domain.ree.transitions import request_runtime_build, revision_of, write_file
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_core.time_utils import parse_utc_instant
 
@@ -104,14 +104,14 @@ def test_experiment_estimates_accept_runtime_and_resource_hints():
 
 
 # ================================================
-# ReeSession transitions
+# ReeLifecycleState transitions
 # ================================================
 
 
 def test_session_with_source_sets_available():
-    from repo2ree_core.domain.ree_session import ReeSession
+    from repo2ree_core.domain.ree.state import ReeLifecycleState
 
-    session = ReeSession()
+    session = ReeLifecycleState()
     updated = record_source(
         session,
         acquired_by="download",
@@ -124,9 +124,9 @@ def test_session_with_source_sets_available():
 
 
 def test_session_with_source_records_resolved_commit():
-    from repo2ree_core.domain.ree_session import ReeSession
+    from repo2ree_core.domain.ree.state import ReeLifecycleState
 
-    session = ReeSession()
+    session = ReeLifecycleState()
     updated = record_source(
         session,
         acquired_by="download",
@@ -136,9 +136,9 @@ def test_session_with_source_records_resolved_commit():
 
 
 def test_session_with_evaluation():
-    from repo2ree_core.domain.ree_session import ReeSession
+    from repo2ree_core.domain.ree.state import ReeLifecycleState
 
-    session = ReeSession()
+    session = ReeLifecycleState()
     updated = record_evaluation(
         session,
         dependency_level=3,
@@ -153,9 +153,9 @@ def test_session_with_evaluation():
 
 
 def test_session_with_packaging():
-    from repo2ree_core.domain.ree_session import ReeSession
+    from repo2ree_core.domain.ree.state import ReeLifecycleState
 
-    session = ReeSession()
+    session = ReeLifecycleState()
     updated = select_packaging(
         session,
         source_included=True,
@@ -169,10 +169,10 @@ def test_session_with_packaging():
 
 
 def test_session_has_no_apply_patch():
-    from repo2ree_core.domain.ree_session import ReeSession
+    from repo2ree_core.domain.ree.state import ReeLifecycleState
 
-    assert not hasattr(ReeSession, "apply_patch")
-    assert not hasattr(ReeSession, "with_downloadables")
+    assert not hasattr(ReeLifecycleState, "apply_patch")
+    assert not hasattr(ReeLifecycleState, "with_downloadables")
 
 
 # ================================================
@@ -241,7 +241,7 @@ def _ree(*, intent: ReeIntent | None = None, files: tuple[AuthoredFile, ...] = (
         authored=ReeDefinition(intent=intent or ReeIntent(name="demo"), files=files),
         evidence=ReeEvidence(
             selected=selected,
-            session_projection=ReeSession(source_available=True, source_snapshot_digest=Digest("sha256:snapshot")),
+            state=ReeLifecycleState(source_available=True, source_snapshot_digest=Digest("sha256:snapshot")),
         ),
     )
 
@@ -270,7 +270,7 @@ def test_ree_exposes_its_authored_anatomy_from_one_root():
     assert name_of(ree.authored) == "demo"
     assert runtime_of(ree.authored).artifact_path == "runtime.tar"
     assert scripts_of(ree.authored).build_runtime == build
-    assert ree.evidence.session_projection.source_available is True
+    assert ree.evidence.state.source_available is True
     assert ree.publications.sealed is None
 
 

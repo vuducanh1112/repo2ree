@@ -33,7 +33,7 @@ from repo2ree_core.authoring.script_inference.renderers._common import runtime_i
 from repo2ree_core.authoring.script_inference.repository_facts import resolve_logical_root
 from repo2ree_core.authoring.script_inference.resolvers import ScoreFreeViabilityResolver
 from repo2ree_core.authoring.script_inference.runtime_inputs import RuntimeInputs
-from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.domain.ree.intent import ReeIntent
 
 pytestmark = pytest.mark.property
 

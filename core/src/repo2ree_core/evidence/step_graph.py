@@ -35,9 +35,9 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from repo2ree_core.domain.hbom import HBOM
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession, is_sealed
-from repo2ree_core.evidence.receipts.models import experiment_step_key
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.receipt import experiment_step_key
+from repo2ree_core.domain.ree.state import ReeLifecycleState, is_sealed
 
 # ================================================
 # Static structure — the authoring step graph
@@ -107,7 +107,7 @@ def _hbom_has_components(hbom: HBOM) -> bool:
 
 def build_ree_step_states(
     intent: ReeIntent,
-    session: ReeSession,
+    state: ReeLifecycleState,
     *,
     completed_run_steps: set[str],
     evaluate_report_present: bool,
@@ -132,7 +132,7 @@ def build_ree_step_states(
         return step_key in completed_run_steps
 
     done: dict[str, bool] = {
-        "source": session.source_available,
+        "source": state.source_available,
         "metadata": bool(intent.name.strip()),
         "hbom": _hbom_has_components(intent.hardware_description),
         "evaluate": evaluate_report_present,
@@ -141,7 +141,7 @@ def build_ree_step_states(
         "crosscheck": ran("cross_check_sbom"),
         "activation": ran("activation_test"),
         "experiments": bool(named_experiments) and all(ran(experiment_step_key(name)) for name in named_experiments),
-        "seal": is_sealed(session),
+        "seal": is_sealed(state),
     }
 
     states: list[ReeStepState] = []

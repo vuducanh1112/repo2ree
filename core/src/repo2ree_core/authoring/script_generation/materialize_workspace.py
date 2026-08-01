@@ -25,7 +25,7 @@ bytes are deterministic given their inputs.
 from __future__ import annotations
 
 from repo2ree_core.authoring.script_generation.shell import assert_no_placeholders, shell_single_quote, shell_text
-from repo2ree_core.ree.layout import OVERLAY_DIRNAME, UPSTREAM_DIRNAME, WORKSPACE_DIRNAME
+from repo2ree_core.persistence.layout import OVERLAY_DIRNAME, UPSTREAM_DIRNAME, WORKSPACE_DIRNAME
 
 # The ``@@...@@`` tokens are the interpolation points for the layout dirnames,
 # so the shell function bodies keep their literal braces unescaped.

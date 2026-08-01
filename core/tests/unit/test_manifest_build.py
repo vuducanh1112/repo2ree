@@ -1,17 +1,17 @@
 from repo2ree_core.bundle.manifest import build_draft_manifest_payload, build_manifest_payload
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.ree.layout import SBOM_ARTIFACT_PATH
-from repo2ree_core.ree.workspace.inventory import ReeFile, WorkspaceFile
-from repo2ree_core.ree.workspace.model import WorkspaceMetadata
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.state import ReeLifecycleState
+from repo2ree_core.persistence.layout import SBOM_ARTIFACT_PATH
+from repo2ree_core.persistence.metadata import WorkspaceMetadata
+from repo2ree_core.persistence.workspace.inventory import ReeFile, WorkspaceFile
 
 
 def _intent(**overrides) -> ReeIntent:
     return ReeIntent(name="demo").apply_patch(overrides)
 
 
-def _session(**overrides) -> ReeSession:
-    return ReeSession(**overrides)
+def _session(**overrides) -> ReeLifecycleState:
+    return ReeLifecycleState(**overrides)
 
 
 def test_intent_name_used_in_manifest():
@@ -65,14 +65,14 @@ def test_pure_no_filesystem_dependency(tmp_path, monkeypatch):
 
 
 def test_packaging_reflected_in_manifest_via_session():
-    session = ReeSession(source_included=True, runtime_included=True)
+    session = ReeLifecycleState(source_included=True, runtime_included=True)
     manifest = build_manifest_payload(_intent(), session, ree_id="abc")
     assert manifest["source_included"] is True
     assert manifest["runtime_included"] is True
 
 
 def test_session_fields_reflected_in_manifest():
-    session = ReeSession(
+    session = ReeLifecycleState(
         dependency_level=3,
         environment_level=2,
         source_available=True,
@@ -93,7 +93,7 @@ def test_draft_manifest_adds_workspace_context_without_file_content():
         created_at="2026-01-01T00:00:00Z",
         updated_at="2026-01-02T00:00:00Z",
         ree_intent=_intent(runtime="runtime.tar.gz"),
-        ree_session=_session(source_available=True),
+        ree_state=_session(source_available=True),
     )
 
     manifest = build_draft_manifest_payload(

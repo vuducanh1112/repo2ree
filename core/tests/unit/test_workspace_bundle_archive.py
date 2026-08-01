@@ -7,11 +7,11 @@ import pytest
 
 from repo2ree_core.bundle.seal import build_workspace_ree_archive, seal_workspace_ree
 from repo2ree_core.domain.primitives import RunId, ScriptPath
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.state import ReeLifecycleState
 from repo2ree_core.operations.workspace_view import get_workspace
-from repo2ree_core.ree.layout import SBOM_ARTIFACT_PATH, ReeLayout
-from repo2ree_core.ree.store import ReeStore
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.layout import SBOM_ARTIFACT_PATH, ReeLayout
 from repo2ree_core.time_utils import parse_utc_instant
 
 
@@ -19,7 +19,7 @@ def _make_ree(storage_root, name):
     """Create an initialized REE on disk and return (ree_id, layout)."""
     ree_id = uuid.uuid4().hex
     layout = ReeLayout.for_ree(storage_root, ree_id)
-    store = ReeStore(layout)
+    store = ReeDirectory(layout)
     store.ensure_dirs()
     store.write_metadata_json(
         {
@@ -30,7 +30,7 @@ def _make_ree(storage_root, name):
             "created_at": "2026-01-01T00:00:00Z",
             "updated_at": "2026-01-01T00:00:00Z",
             "ree_intent": ReeIntent(name=name).model_dump(exclude_none=True),
-            "ree_session": ReeSession().model_dump(exclude_none=True),
+            "ree_state": ReeLifecycleState().model_dump(exclude_none=True),
         }
     )
     return ree_id, layout
@@ -60,8 +60,8 @@ def test_bundle_archive_honors_inclusion_flags_and_manifest_remap(tmp_path):
         "runtime": "/runtime.tar.gz",
         "sbom": SBOM_ARTIFACT_PATH,
     }
-    metadata["ree_session"] = {
-        **(metadata.get("ree_session") or {}),
+    metadata["ree_state"] = {
+        **(metadata.get("ree_state") or {}),
         "source_snapshot_archive": "snapshot.tar.gz",
     }
     _write_metadata(layout, metadata)
@@ -160,8 +160,8 @@ def test_bundle_archive_includes_snapshot_and_normalized_runtime_when_enabled(tm
         "runtime": "/runtime.tar.gz",
         "sbom": SBOM_ARTIFACT_PATH,
     }
-    metadata["ree_session"] = {
-        **(metadata.get("ree_session") or {}),
+    metadata["ree_state"] = {
+        **(metadata.get("ree_state") or {}),
         "source_snapshot_archive": " snapshot.tar.gz ",
     }
     _write_metadata(layout, metadata)
@@ -208,7 +208,7 @@ def test_seal_persists_seal_facts_and_content_hash(tmp_path):
 
     # Session persisted in metadata
     metadata = _read_metadata(layout)
-    session = metadata["ree_session"]
+    session = metadata["ree_state"]
     assert session["sealed_at"] == "2026-06-05T12:00:00Z"
     assert session["seal_hash"] == outputs.seal_hash
 
@@ -379,8 +379,8 @@ def test_seal_records_consistency_and_bundles_receipts(tmp_path):
     the bundle under ree/receipts/author/.
     """
     from repo2ree_core.digests import digest_bytes
-    from repo2ree_core.evidence.receipts.models import BuildRuntimeReceipt
-    from repo2ree_core.evidence.receipts.store import record_receipt
+    from repo2ree_core.domain.ree.receipt import BuildRuntimeReceipt
+    from repo2ree_core.persistence.receipts import record_receipt
 
     storage_root = tmp_path / "storage"
     ree_id, layout = _make_ree(storage_root, "receipts-test")
@@ -443,8 +443,8 @@ def test_get_workspace_includes_live_consistency_report(tmp_path):
     """The workspace payload carries the same per-step freshness the seal
     records, so the UI flags staleness while authoring — before any seal."""
     from repo2ree_core.digests import digest_bytes
-    from repo2ree_core.evidence.receipts.models import BuildRuntimeReceipt
-    from repo2ree_core.evidence.receipts.store import record_receipt
+    from repo2ree_core.domain.ree.receipt import BuildRuntimeReceipt
+    from repo2ree_core.persistence.receipts import record_receipt
 
     storage_root = tmp_path / "storage"
     ree_id, layout = _make_ree(storage_root, "live-consistency")

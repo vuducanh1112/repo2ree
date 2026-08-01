@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import pytest
 
-from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.domain.ree.intent import ReeIntent
 from repo2ree_core.execution.experiment.resolve import (
     ExperimentNotFoundError,
     RunnableNotReadyError,

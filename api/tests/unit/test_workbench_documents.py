@@ -22,8 +22,8 @@ from repo2ree_core.analysis.repository.reproducibility_report import (
 )
 from repo2ree_core.digests import Digest
 from repo2ree_core.domain.primitives import RunId, ScriptPath
-from repo2ree_core.evidence.receipts.consistency import AuthorReceiptEntry, AuthorReceiptSet, ConsistencyStep
-from repo2ree_core.evidence.receipts.models import BuildRuntimeReceipt
+from repo2ree_core.domain.ree.receipt import BuildRuntimeReceipt
+from repo2ree_core.evidence.consistency import AuthorReceiptEntry, AuthorReceiptSet, ConsistencyStep
 from repo2ree_core.evidence.scorecard import (
     ReproducibilityScoreCard,
     ScoreCardCategory,

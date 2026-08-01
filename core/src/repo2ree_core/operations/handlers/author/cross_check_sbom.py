@@ -12,13 +12,13 @@ from repo2ree_core.analysis.repository.reproducibility_report import (
 from repo2ree_core.analysis.sbom.crosscheck import cross_check
 from repo2ree_core.analysis.sbom.cyclonedx import parse_cyclonedx
 from repo2ree_core.digests import digest_file
-from repo2ree_core.evidence.receipts.models import CrossCheckSbomReceipt
+from repo2ree_core.domain.ree.receipt import CrossCheckSbomReceipt
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.operations.steps.author import log_step_outcome, settle_step
-from repo2ree_core.ree.files import write_json_atomic
-from repo2ree_core.ree.layout import REPRODUCIBILITY_REPORT_FILENAME, SBOM_ARTIFACT_PATH, ReeLayout
-from repo2ree_core.ree.store import UNREADABLE_DOCUMENT
+from repo2ree_core.persistence.directory import UNREADABLE_DOCUMENT
+from repo2ree_core.persistence.files import write_json_atomic
+from repo2ree_core.persistence.layout import REPRODUCIBILITY_REPORT_FILENAME, SBOM_ARTIFACT_PATH, ReeLayout
 from repo2ree_core.time_utils import OperationTimer, utc_now
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult, ActionStatus

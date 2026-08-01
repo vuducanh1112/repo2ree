@@ -13,11 +13,11 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-from repo2ree_core.evidence.receipts.store import persist_snapshot_digest
 from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.ree.files import pack_directory_tar_gz, safe_extract_tar, safe_extract_zip
-from repo2ree_core.ree.layout import ReeLayout
-from repo2ree_core.ree.store import ReeStore
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.files import pack_directory_tar_gz, safe_extract_tar, safe_extract_zip
+from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.persistence.receipts import persist_snapshot_digest
 from repo2ree_protocol.command import ExtractUploadArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
@@ -49,7 +49,7 @@ def handle_extract_upload(
         log("system", "error", f"upload ingest failed: {exc}")
         return ActionResult.failed("validation", f"upload ingest failed: {exc}")
 
-    persist_snapshot_digest(ReeStore(layout), snapshot_digest, log=log)
+    persist_snapshot_digest(ReeDirectory(layout), snapshot_digest, log=log)
     staged.unlink(missing_ok=True)
 
     log("system", "info", "extract_upload succeeded")

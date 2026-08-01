@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from repo2ree_core.domain.experiment import Experiment
 from repo2ree_core.domain.primitives import ArtifactPath, GitRevision, Swhid, WorkspacePath
-from repo2ree_core.domain.receipt import RunReceipt, receipt_step_key
-from repo2ree_core.domain.ree import (
+from repo2ree_core.domain.ree.intent import ReeCatalogMetadata
+from repo2ree_core.domain.ree.model import (
     AuthoredFile,
     ExperimentScripts,
     ReeAssessment,
@@ -16,7 +16,7 @@ from repo2ree_core.domain.ree import (
     RuntimeDefinition,
     SourceDefinition,
 )
-from repo2ree_core.domain.ree_intent import ReeCatalogMetadata
+from repo2ree_core.domain.ree.receipt import RunReceipt, receipt_step_key
 from repo2ree_core.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BUILD_SCRIPT
 
 

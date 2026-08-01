@@ -17,9 +17,8 @@ from pydantic import BaseModel, ConfigDict
 from repo2ree_core.digests import Digest, digest_file_if_exists, digest_output_paths
 from repo2ree_core.domain.experiment import Experiment
 from repo2ree_core.domain.primitives import ScriptPath, WorkspacePath
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.evidence.receipts.models import RunExperimentReceipt, experiment_step_key, receipt_envelope
-from repo2ree_core.evidence.receipts.store import load_author_receipts
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.receipt import RunExperimentReceipt, experiment_step_key, receipt_envelope
 from repo2ree_core.evidence.review.comparison import compare_experiment_results
 from repo2ree_core.evidence.review.models import (
     EvidenceBasis,
@@ -35,7 +34,8 @@ from repo2ree_core.operations.steps.review import (
     ReviewRunnableStep,
     open_review_run,
 )
-from repo2ree_core.ree.layout import ReeLayout
+from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.persistence.receipts import load_author_receipts
 from repo2ree_protocol.command import ReviewRunExperimentArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult

@@ -13,14 +13,14 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.evidence.receipts.models import CrossCheckSbomReceipt
-from repo2ree_core.evidence.receipts.store import load_receipts
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.receipt import CrossCheckSbomReceipt
+from repo2ree_core.domain.ree.state import ReeLifecycleState
 from repo2ree_core.operations.handlers.author import cross_check_sbom as handler
-from repo2ree_core.ree.layout import SBOM_ARTIFACT_PATH, ReeLayout
-from repo2ree_core.ree.store import ReeStore
-from repo2ree_core.ree.workspace.model import WorkspaceMetadata
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.layout import SBOM_ARTIFACT_PATH, ReeLayout
+from repo2ree_core.persistence.metadata import WorkspaceMetadata
+from repo2ree_core.persistence.receipts import load_receipts
 from repo2ree_protocol.result import ActionResult
 
 
@@ -68,7 +68,7 @@ def _seed(
     with_report: bool = True,
 ) -> ReeLayout:
     layout = ReeLayout(root=tmp_path)
-    store = ReeStore(layout)
+    store = ReeDirectory(layout)
     store.ensure_dirs()
     store.write_metadata(
         WorkspaceMetadata(
@@ -77,7 +77,7 @@ def _seed(
             created_at="2026-01-01T00:00:00Z",
             updated_at="2026-01-01T00:00:00Z",
             ree_intent=ReeIntent(name="demo", sbom=SBOM_ARTIFACT_PATH),
-            ree_session=ReeSession(source_available=True),
+            ree_state=ReeLifecycleState(source_available=True),
         )
     )
     layout.artifacts.mkdir(parents=True, exist_ok=True)

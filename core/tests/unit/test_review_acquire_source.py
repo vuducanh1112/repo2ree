@@ -13,12 +13,12 @@ from typing import Any
 
 import pytest
 
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.state import ReeLifecycleState
 from repo2ree_core.operations.handlers.review import acquire_source as handler
-from repo2ree_core.ree.layout import ReeLayout
-from repo2ree_core.ree.store import ReeStore
-from repo2ree_core.ree.workspace.model import WorkspaceMetadata
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.persistence.metadata import WorkspaceMetadata
 from repo2ree_protocol.command import ReviewAcquireSourceArgs
 
 SWHID = "swh:1:dir:" + "a" * 40
@@ -34,7 +34,7 @@ def _author_ree(
 ) -> ReeLayout:
     """A baseline that may carry an origin, a snapshot, or both."""
     layout = ReeLayout(root=tmp_path / "ree")
-    store = ReeStore(layout)
+    store = ReeDirectory(layout)
     store.ensure_dirs()
     store.write_metadata(
         WorkspaceMetadata(
@@ -48,7 +48,7 @@ def _author_ree(
                 source_type=source_type,  # type: ignore[arg-type]
                 swhid=SWHID,
             ),
-            ree_session=ReeSession(),
+            ree_state=ReeLifecycleState(),
         )
     )
     if with_snapshot:

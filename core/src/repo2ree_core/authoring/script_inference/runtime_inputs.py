@@ -7,7 +7,7 @@ declared runtime path (``ReeIntent.runtime``), experiment declarations, the
 the design deliberately keeps out of ``RepositoryFacts`` and threads in here as
 separate typed dependencies.
 
-The engine stays pure: it never touches the filesystem or ``ReeStore``. It sees
+The engine stays pure: it never touches the filesystem or ``ReeDirectory``. It sees
 only an ``ArtifactAccessor`` — a narrow read-only view a check can ``stat`` and
 (bounded) ``read``. The operations handler supplies a concrete accessor over
 ``ReeLayout``; tests supply an in-memory one. The default accessor reports

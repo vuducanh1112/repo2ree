@@ -5,12 +5,12 @@ from pathlib import Path
 import pytest
 
 from repo2ree_core.digests import Digest
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.state import ReeLifecycleState
 from repo2ree_core.operations.handlers.author import remove_source as handler
-from repo2ree_core.ree.layout import ReeLayout
-from repo2ree_core.ree.store import ReeStore
-from repo2ree_core.ree.workspace.model import WorkspaceMetadata
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.persistence.metadata import WorkspaceMetadata
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_core.time_utils import parse_utc_instant
 
@@ -24,7 +24,7 @@ def _silent_log(*_: object) -> None:
 
 
 def test_remove_source_recreates_reserved_build_script(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    store = ReeStore(ReeLayout(root=tmp_path))
+    store = ReeDirectory(ReeLayout(root=tmp_path))
     store.ensure_dirs()
     store.ensure_reserved_overlay_scripts()
     store.overlay.write_text(RESERVED_BUILD_SCRIPT, "echo build")
@@ -49,7 +49,7 @@ def test_remove_source_recreates_reserved_build_script(tmp_path: Path, monkeypat
                 source_type="git",
                 runtime="runtime.tar.gz",
             ),
-            ree_session=ReeSession(
+            ree_state=ReeLifecycleState(
                 source_available=True,
                 sealed_at=parse_utc_instant("2026-01-02T00:00:00Z"),
                 seal_hash=Digest("sha256:old"),
@@ -78,4 +78,4 @@ def test_remove_source_recreates_reserved_build_script(tmp_path: Path, monkeypat
     assert metadata.status == "draft"
     assert metadata.external_ref is None
     assert metadata.ree_intent == ReeIntent(name="demo")
-    assert metadata.ree_session == ReeSession()
+    assert metadata.ree_state == ReeLifecycleState()

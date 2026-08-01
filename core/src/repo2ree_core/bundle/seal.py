@@ -1,7 +1,7 @@
 """Assembling an REE into its bundle archive, and sealing that archive.
 
 Imperative shell: reads the REE tree through :class:`ReeLayout` /
-:class:`ReeStore` and writes ``sealed.zip`` and ``manifest.json``. Layout
+:class:`ReeDirectory` and writes ``sealed.zip`` and ``manifest.json``. Layout
 decisions belong to the pure planner in ``bundle.plan``; this module supplies
 the bytes and persists the result.
 
@@ -41,15 +41,15 @@ from repo2ree_core.bundle.plan import (
     should_include_snapshot,
 )
 from repo2ree_core.domain.primitives import Digest, UtcInstant
-from repo2ree_core.domain.ree_session import is_sealed, select_packaging
-from repo2ree_core.domain.ree_transitions import prepare_publication, record_seal
-from repo2ree_core.evidence.receipts.consistency import ConsistencyReport, build_consistency_report
-from repo2ree_core.evidence.receipts.store import author_receipt_path, published_receipts
-from repo2ree_core.ree.files import list_tree_relpaths, write_atomic
-from repo2ree_core.ree.layout import ReeLayout
-from repo2ree_core.ree.repository import load_ree
-from repo2ree_core.ree.store import ReeStore
-from repo2ree_core.ree.workspace.views import layout_for, store_for
+from repo2ree_core.domain.ree.state import is_sealed, select_packaging
+from repo2ree_core.domain.ree.transitions import prepare_publication, record_seal
+from repo2ree_core.evidence.consistency import ConsistencyReport, build_consistency_report
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.files import list_tree_relpaths, write_atomic
+from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.persistence.receipts import author_receipt_path, published_receipts
+from repo2ree_core.persistence.repository import load_ree
+from repo2ree_core.persistence.workspace.views import layout_for, store_for
 
 
 class SealOutputs(BaseModel):
@@ -187,7 +187,7 @@ def _entries_digest(entries: list[tuple[str, bytes]]) -> str:
 
 def _manifest_entry_bytes(
     intent: Any,
-    session: Any,
+    state: Any,
     artifact_plan: ArtifactPlan,
     *,
     ree_id: str,
@@ -198,7 +198,7 @@ def _manifest_entry_bytes(
     Returns ``(sidecar_manifest, manifest_bytes)``. The sidecar is what gets
     persisted alongside the archive; the bytes are what get embedded in it.
     """
-    sidecar_manifest = build_manifest_payload(intent, session, ree_id=ree_id, consistency=consistency)
+    sidecar_manifest = build_manifest_payload(intent, state, ree_id=ree_id, consistency=consistency)
     bundle_manifest = rewrite_manifest_for_bundle(sidecar_manifest, artifact_plan.manifest_remap)
     manifest_bytes = json.dumps(bundle_manifest, indent=2, sort_keys=True).encode("utf-8")
     return sidecar_manifest, manifest_bytes
@@ -207,28 +207,28 @@ def _manifest_entry_bytes(
 def _assemble_bundle(
     layout: ReeLayout,
     intent: Any,
-    session: Any,
+    state: Any,
     *,
     ree_id: str,
 ) -> tuple[bytes, dict[str, Any]]:
-    """Build the ZIP bytes and sidecar manifest from settled intent + session.
+    """Build the ZIP bytes and sidecar manifest from settled intent + state.
 
-    The session must already carry the desired source_included/runtime_included
+    The state must already carry the desired source_included/runtime_included
     (and sealed_at/seal_hash when building the final sealed bundle).
     Returns ``(zip_bytes, sidecar_manifest)``.
     """
-    artifact_plan = _build_artifact_plan(layout, intent, include_runtime=session.runtime_included)
+    artifact_plan = _build_artifact_plan(layout, intent, include_runtime=state.runtime_included)
     include_snapshot = should_include_snapshot(
-        source_included=session.source_included,
-        source_snapshot_archive=session.source_snapshot_archive,
+        source_included=state.source_included,
+        source_snapshot_archive=state.source_snapshot_archive,
     )
-    sidecar_manifest, manifest_bytes = _manifest_entry_bytes(intent, session, artifact_plan, ree_id=ree_id)
+    sidecar_manifest, manifest_bytes = _manifest_entry_bytes(intent, state, artifact_plan, ree_id=ree_id)
     head, tail = _bundle_entry_partition(
         layout,
         artifact_plan,
         intent,
         include_snapshot=include_snapshot,
-        results_included=session.results_included,
+        results_included=state.results_included,
     )
     entries = _entries_with_manifest(head, tail, manifest_bytes)
     return build_zip_bytes(entries), sidecar_manifest
@@ -253,7 +253,7 @@ def seal_workspace_ree(
     1. Reads every bundle entry once; hashes the entry list (with seal stamps
        stripped from the manifest) to obtain a stable content digest.
     2. Re-stamps only the manifest with the real seal_hash and builds the ZIP once.
-    3. Writes sealed.zip, manifest.json, and updates the session in metadata.
+    3. Writes sealed.zip, manifest.json, and updates the state in metadata.
 
     Returns the settled seal facts.
     """
@@ -269,41 +269,41 @@ def seal_workspace_ree(
         runtime_included=runtime_included,
         results_included=results_included,
     )
-    session = publication.session
+    state = publication.state
 
     # Per-step freshness of the recorded run receipts against the tree being
     # sealed. Sealing over stale results proceeds — the staleness is recorded
     # in the manifest (and bundled receipts) so it is diagnosable later.
-    consistency_report = build_consistency_report(layout, intent, session)
+    consistency_report = build_consistency_report(layout, intent, state)
     consistency = consistency_report.model_dump(mode="json")
 
     # The artifact plan and all file-heavy entries are identical across the
     # pre-seal digest and the final bundle — only the manifest differs — so read
     # every file exactly once here.
-    artifact_plan = _build_artifact_plan(layout, intent, include_runtime=session.runtime_included)
+    artifact_plan = _build_artifact_plan(layout, intent, include_runtime=state.runtime_included)
     include_snapshot = should_include_snapshot(
-        source_included=session.source_included,
-        source_snapshot_archive=session.source_snapshot_archive,
+        source_included=state.source_included,
+        source_snapshot_archive=state.source_snapshot_archive,
     )
     head, tail = _bundle_entry_partition(
         layout,
         artifact_plan,
         intent,
         include_snapshot=include_snapshot,
-        results_included=session.results_included,
+        results_included=state.results_included,
     )
 
     # Pre-pass digest: hash the entry list directly (no throwaway ZIP build).
     # Strip any previously persisted seal stamps so re-sealing produces the
     # same digest when content hasn't changed.
-    preseal_session = session.model_copy(update={"sealed_at": None, "seal_hash": None})
+    preseal_state = state.model_copy(update={"sealed_at": None, "seal_hash": None})
     _, preseal_manifest_bytes = _manifest_entry_bytes(
-        intent, preseal_session, artifact_plan, ree_id=ree_id, consistency=consistency
+        intent, preseal_state, artifact_plan, ree_id=ree_id, consistency=consistency
     )
     preseal_entries = _entries_with_manifest(head, tail, preseal_manifest_bytes)
     seal_hash = Digest(f"sha256:{_entries_digest(preseal_entries)}")
 
-    # Settle all four seal facts into the session.
+    # Settle all four seal facts into the state.
     publication = record_seal(
         ree,
         sealed_at=sealed_at,
@@ -312,29 +312,29 @@ def seal_workspace_ree(
         runtime_included=runtime_included,
         results_included=results_included,
     )
-    session = publication.session
+    state = publication.state
 
     # Final assembly with the real seal_hash in the manifest; ZIP built once.
     sidecar_manifest, manifest_bytes = _manifest_entry_bytes(
-        intent, session, artifact_plan, ree_id=ree_id, consistency=consistency
+        intent, state, artifact_plan, ree_id=ree_id, consistency=consistency
     )
     zip_bytes = build_zip_bytes(_entries_with_manifest(head, tail, manifest_bytes))
 
     # Three writes, serialized against other writers by the workbench lock the
     # caller holds, and each individually atomic against this process dying
     # between them. The archive goes first: it is the only one of the three that
-    # nothing recomputes, so a crash after it leaves a bundle no session claims
-    # (recoverable — seal again), while a crash before it would leave a session
+    # nothing recomputes, so a crash after it leaves a bundle no state claims
+    # (recoverable — seal again), while a crash before it would leave a state
     # claiming a seal_hash for an archive that was never written.
     write_atomic(layout.sealed_archive, zip_bytes)
     store.write_manifest(sidecar_manifest)
-    store.write_session(session)
+    store.write_state(state)
 
     return SealOutputs(
-        sealed_at=session.sealed_at,
-        seal_hash=session.seal_hash,
-        source_included=session.source_included,
-        runtime_included=session.runtime_included,
+        sealed_at=state.sealed_at,
+        seal_hash=state.seal_hash,
+        source_included=state.source_included,
+        runtime_included=state.runtime_included,
         consistency=consistency_report,
     )
 
@@ -349,16 +349,16 @@ def build_workspace_ree_archive(storage_root: Path, ree_id: str) -> bytes:
     Draft bundles exist so work in progress can be handed to another workbench
     (see ``load_ree_bundle``); only a sealed bundle is a citable artifact.
     """
-    store: ReeStore = store_for(storage_root, ree_id)
+    store: ReeDirectory = store_for(storage_root, ree_id)
     if not store.metadata_exists():
         raise FileNotFoundError(f"REE {ree_id} not found")
     layout = layout_for(storage_root, ree_id)
-    session = store.read_session()
-    if not is_sealed(session):
+    state = store.read_state()
+    if not is_sealed(state):
         zip_bytes, _ = _assemble_bundle(
             layout,
             store.read_intent(),
-            select_packaging(session, source_included=True, runtime_included=True, results_included=True),
+            select_packaging(state, source_included=True, runtime_included=True, results_included=True),
             ree_id=ree_id,
         )
         return zip_bytes
