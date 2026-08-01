@@ -20,9 +20,11 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, field_serializer
 
-from repo2ree_core.digests import digest_bytes, digest_file_if_exists, digest_output_paths
+from repo2ree_core.digests import Digest, digest_bytes, digest_file_if_exists, digest_output_paths
 from repo2ree_core.domain.experiment import Runnable
+from repo2ree_core.domain.primitives import ScriptPath, WorkspacePath
 from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.domain.ree_transitions import patch_intent
 from repo2ree_core.evidence.receipts.consistency import check_workspace_drift, declared_output_paths
 from repo2ree_core.evidence.receipts.models import (
     ActivationTestReceipt,
@@ -38,6 +40,7 @@ from repo2ree_core.execution.experiment.run import RunnableRunOutputs, run_runna
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.path_safety import WORKSPACE_CONTROL_PREFIXES, resolve_within
 from repo2ree_core.ree.layout import ReeLayout
+from repo2ree_core.ree.repository import load_ree
 from repo2ree_core.ree.store import UNREADABLE_DOCUMENT, ReeStore
 from repo2ree_core.time_utils import OperationTimer, OperationTiming, format_duration_ms
 from repo2ree_protocol.log import LogSink
@@ -63,11 +66,11 @@ class StepInputs:
     """The input slice of a workspace-dependent step, collected *before* the
     run so outputs landing in the workspace cannot leak into it."""
 
-    snapshot_digest: str | None
-    script_digest: str | None
-    verify_script_digest: str | None
-    runtime_path: str | None
-    declared_runtime_digest: str | None
+    snapshot_digest: Digest | None
+    script_digest: Digest | None
+    verify_script_digest: Digest | None
+    runtime_path: WorkspacePath | None
+    declared_runtime_digest: Digest | None
     workspace_drift: WorkspaceDrift
 
 
@@ -123,7 +126,7 @@ def collect_step_inputs(
     snapshot digest from the session, script content, the declared runtime
     artifact's state — never a digest of the live workspace tree.
     """
-    snapshot_digest: str | None = None
+    snapshot_digest: Digest | None = None
     if store.metadata_exists():
         try:
             snapshot_digest = store.read_session().source_snapshot_digest
@@ -132,7 +135,7 @@ def collect_step_inputs(
             # captured source". When the truth is "the session could not be
             # read", this line is the only place that difference is recoverable.
             log("system", "warn", f"could not read the session for this receipt's snapshot digest: {exc}")
-    runtime_path = intent.runtime if intent else None
+    runtime_path = WorkspacePath(intent.runtime) if intent and intent.runtime else None
     return StepInputs(
         snapshot_digest=snapshot_digest,
         script_digest=digest_file_if_exists(layout.workspace / script_path),
@@ -170,7 +173,7 @@ def dump_receipt_whole[ReceiptT: RunReceipt](receipt: ReceiptT | None) -> dict[s
     evidence: ``produced_runtime_digest: null`` says the build produced nothing
     at the declared path.
     """
-    return receipt.model_dump() if receipt is not None else None
+    return receipt.model_dump(mode="json") if receipt is not None else None
 
 
 class RunnableStepOutputs(RunnableRunOutputs):
@@ -300,7 +303,7 @@ def _capture_experiment_outputs(
     name: str,
     output_paths: list[str],
     log: LogSink,
-) -> str | None:
+) -> Digest | None:
     """Copy an experiment's declared outputs into its produced-results store.
 
     Always runs after a successful experiment run (independent of sealing): the
@@ -352,7 +355,7 @@ class StepRecord:
     verify_exit_code: int | None
     #: Digest of the declared outputs captured after a successful run, or None
     #: when the step captures none (see ``captures_declared_outputs``).
-    produced_output_digest: str | None
+    produced_output_digest: Digest | None
 
 
 def step_receipt_fields(record: StepRecord) -> RunnableStepFields:
@@ -371,10 +374,10 @@ def step_receipt_fields(record: StepRecord) -> RunnableStepFields:
         **receipt_envelope(record.run_id, record.timing, record.status),
         workspace_drift=record.inputs.workspace_drift,
         snapshot_digest=record.inputs.snapshot_digest,
-        run_script_path=record.runnable.run_script,
+        run_script_path=ScriptPath(record.runnable.run_script),
         run_script_digest=record.inputs.script_digest,
         run_exit_code=record.run_exit_code,
-        verify_script_path=record.runnable.verify_script,
+        verify_script_path=ScriptPath(record.runnable.verify_script) if record.runnable.verify_script else None,
         verify_script_digest=record.inputs.verify_script_digest,
         verify_exit_code=record.verify_exit_code,
         runtime_path=record.inputs.runtime_path,
@@ -457,7 +460,7 @@ def run_runnable_handler(
     # copies to the produced-results store — whether the store is packaged is an
     # all-or-nothing seal-time choice (`results_included`) handled at bundle
     # time, not per-experiment state.
-    produced_output_digest: str | None = None
+    produced_output_digest: Digest | None = None
     if step.captures_declared_outputs and status == "succeeded" and runnable.output_paths:
         produced_output_digest = _capture_experiment_outputs(layout, label, runnable.output_paths, log)
 
@@ -527,5 +530,5 @@ def check_expected_etag(store: ReeStore, path: str, expected: str, *, log: LogSi
 def patch_ree_intent(store: ReeStore, patch: dict[str, Any]) -> None:
     if not store.metadata_exists():
         raise FileNotFoundError("metadata not found")
-    intent = store.read_intent().apply_patch(patch)
-    store.write_intent(intent)
+    transition = patch_intent(load_ree(store.layout, store), patch)
+    store.write_intent(transition.authored.intent)

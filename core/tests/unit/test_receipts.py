@@ -7,7 +7,8 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from repo2ree_core.digests import digest_bytes
+from repo2ree_core.digests import Digest, digest_bytes
+from repo2ree_core.domain.primitives import RunId, ScriptPath
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.evidence.receipts.consistency import (
@@ -33,6 +34,7 @@ from repo2ree_core.evidence.receipts.store import (
 from repo2ree_core.ree.layout import ReeLayout
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
+from repo2ree_core.time_utils import parse_utc_instant
 
 
 def _silent_log(*_: object) -> None:
@@ -48,13 +50,13 @@ def layout(tmp_path: Path) -> ReeLayout:
 
 def _build_receipt(run_id: str, recorded_at: str, status: str = "succeeded") -> BuildRuntimeReceipt:
     return BuildRuntimeReceipt(
-        run_id=run_id,
-        started_at=recorded_at,
-        finished_at=recorded_at,
+        run_id=RunId(run_id),
+        started_at=parse_utc_instant(recorded_at),
+        finished_at=parse_utc_instant(recorded_at),
         duration_ms=0,
-        recorded_at=recorded_at,
+        recorded_at=parse_utc_instant(recorded_at),
         status=status,  # type: ignore[arg-type]
-        build_script_path="ree-scripts/build_script.sh",
+        build_script_path=ScriptPath("ree-scripts/build_script.sh"),
         build_script_digest=digest_bytes(b"script"),
     )
 
@@ -105,20 +107,20 @@ class TestPersistence:
 
     def test_experiments_have_independent_selected_paths(self, layout: ReeLayout) -> None:
         first = RunExperimentReceipt(
-            run_id="exp-a-run",
-            started_at="2026-01-01T00:00:00Z",
-            finished_at="2026-01-01T00:00:00Z",
+            run_id=RunId("exp-a-run"),
+            started_at=parse_utc_instant("2026-01-01T00:00:00Z"),
+            finished_at=parse_utc_instant("2026-01-01T00:00:00Z"),
             duration_ms=0,
-            recorded_at="2026-01-01T00:00:00Z",
+            recorded_at=parse_utc_instant("2026-01-01T00:00:00Z"),
             status="succeeded",
             experiment_name="Experiment A",
         )
         second = RunExperimentReceipt(
-            run_id="exp-b-run",
-            started_at="2026-01-01T00:00:00Z",
-            finished_at="2026-01-01T00:00:00Z",
+            run_id=RunId("exp-b-run"),
+            started_at=parse_utc_instant("2026-01-01T00:00:00Z"),
+            finished_at=parse_utc_instant("2026-01-01T00:00:00Z"),
             duration_ms=0,
-            recorded_at="2026-01-01T00:00:00Z",
+            recorded_at=parse_utc_instant("2026-01-01T00:00:00Z"),
             status="succeeded",
             experiment_name="Experiment B",
         )
@@ -144,11 +146,11 @@ class TestPersistence:
 
     def test_cross_check_receipt_roundtrips_with_aggregates(self, layout: ReeLayout) -> None:
         receipt = CrossCheckSbomReceipt(
-            run_id="crosscheck-1",
-            started_at="2026-01-01T00:00:00Z",
-            finished_at="2026-01-01T00:00:00Z",
+            run_id=RunId("crosscheck-1"),
+            started_at=parse_utc_instant("2026-01-01T00:00:00Z"),
+            finished_at=parse_utc_instant("2026-01-01T00:00:00Z"),
             duration_ms=0,
-            recorded_at="2026-01-01T00:00:00Z",
+            recorded_at=parse_utc_instant("2026-01-01T00:00:00Z"),
             status="succeeded",
             sbom_digest=digest_bytes(b"sbom"),
             declared_direct_total=4,
@@ -175,11 +177,11 @@ class TestLatestSelection:
     def test_experiments_are_keyed_per_name(self) -> None:
         def experiment(run_id: str, recorded_at: str, name: str) -> RunExperimentReceipt:
             return RunExperimentReceipt(
-                run_id=run_id,
-                started_at=recorded_at,
-                finished_at=recorded_at,
+                run_id=RunId(run_id),
+                started_at=parse_utc_instant(recorded_at),
+                finished_at=parse_utc_instant(recorded_at),
                 duration_ms=0,
-                recorded_at=recorded_at,
+                recorded_at=parse_utc_instant(recorded_at),
                 status="succeeded",
                 experiment_name=name,
             )
@@ -252,7 +254,7 @@ class TestWorkspaceDrift:
 
 class TestConsistencyReport:
     def _seed(self, layout: ReeLayout, intent: ReeIntent) -> tuple[ReeIntent, ReeSession]:
-        session = ReeSession(source_snapshot_digest="sha256:snap")
+        session = ReeSession(source_snapshot_digest=Digest("sha256:snap"))
         script = layout.workspace / "ree-scripts" / "build_script.sh"
         script.parent.mkdir(parents=True, exist_ok=True)
         script.write_text("make all")
@@ -262,14 +264,14 @@ class TestConsistencyReport:
         record_receipt(
             layout,
             BuildRuntimeReceipt(
-                run_id="run-b",
-                started_at="2026-01-01T00:00:00Z",
-                finished_at="2026-01-01T00:00:00Z",
+                run_id=RunId("run-b"),
+                started_at=parse_utc_instant("2026-01-01T00:00:00Z"),
+                finished_at=parse_utc_instant("2026-01-01T00:00:00Z"),
                 duration_ms=0,
-                recorded_at="2026-01-01T00:00:00Z",
+                recorded_at=parse_utc_instant("2026-01-01T00:00:00Z"),
                 status="succeeded",
-                snapshot_digest="sha256:snap",
-                build_script_path="ree-scripts/build_script.sh",
+                snapshot_digest=Digest("sha256:snap"),
+                build_script_path=ScriptPath("ree-scripts/build_script.sh"),
                 build_script_digest=digest_bytes(b"make all"),
             ),
             log=_silent_log,
@@ -328,17 +330,17 @@ class TestConsistencyReport:
         record_receipt(
             layout,
             RunExperimentReceipt(
-                run_id="run-e",
-                started_at="2026-01-01T00:00:00Z",
-                finished_at="2026-01-01T00:00:00Z",
+                run_id=RunId("run-e"),
+                started_at=parse_utc_instant("2026-01-01T00:00:00Z"),
+                finished_at=parse_utc_instant("2026-01-01T00:00:00Z"),
                 duration_ms=0,
-                recorded_at="2026-01-01T00:00:00Z",
+                recorded_at=parse_utc_instant("2026-01-01T00:00:00Z"),
                 status="succeeded",
                 experiment_name="exp-a",
-                snapshot_digest="sha256:snap",
-                run_script_path=experiment.run_script,
+                snapshot_digest=Digest("sha256:snap"),
+                run_script_path=ScriptPath(experiment.run_script),
                 run_script_digest=digest_bytes(b"run it"),
-                verify_script_path=experiment.verify_script,
+                verify_script_path=ScriptPath(experiment.verify_script),
                 verify_script_digest=digest_bytes(b"check it"),
             ),
             log=_silent_log,
@@ -370,7 +372,7 @@ class TestHandlerWiring:
                 created_at="2026-01-01T00:00:00Z",
                 updated_at="2026-01-01T00:00:00Z",
                 ree_intent=ReeIntent(runtime="runtime.tar"),
-                ree_session=ReeSession(source_snapshot_digest="sha256:snap"),
+                ree_session=ReeSession(source_snapshot_digest=Digest("sha256:snap")),
             )
         )
         monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: ReeLayout(root=tmp_path)))
@@ -419,7 +421,7 @@ class TestHandlerWiring:
                 created_at="2026-01-01T00:00:00Z",
                 updated_at="2026-01-01T00:00:00Z",
                 ree_intent=intent,
-                ree_session=ReeSession(source_snapshot_digest="sha256:snap"),
+                ree_session=ReeSession(source_snapshot_digest=Digest("sha256:snap")),
             )
         )
         script = layout.workspace / "ree-scripts" / "experiments" / "exp-a.sh"

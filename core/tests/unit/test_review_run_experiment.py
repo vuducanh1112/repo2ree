@@ -16,8 +16,9 @@ from typing import Any
 
 import pytest
 
-from repo2ree_core.digests import digest_bytes, digest_file_if_exists
+from repo2ree_core.digests import Digest, digest_bytes, digest_file_if_exists
 from repo2ree_core.domain.experiment import Experiment
+from repo2ree_core.domain.primitives import RunId, ScriptPath, WorkspacePath
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.evidence.receipts.models import BuildRuntimeReceipt, RunExperimentReceipt
@@ -40,6 +41,7 @@ from repo2ree_core.ree.layout import ReeLayout, ReviewLayout
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_core.ree.workspace.model import WorkspaceMetadata
 from repo2ree_core.reserved_paths import experiment_slug
+from repo2ree_core.time_utils import parse_utc_instant
 from repo2ree_protocol.command import ReviewRunExperimentArgs
 
 RUNTIME_PATH = "runtime.tar"
@@ -107,18 +109,18 @@ def _author_ran_it(
     record_receipt(
         layout,
         RunExperimentReceipt(
-            run_id="author-experiment",
-            started_at="2026-01-01T00:00:00Z",
-            finished_at="2026-01-01T00:00:01Z",
+            run_id=RunId("author-experiment"),
+            started_at=parse_utc_instant("2026-01-01T00:00:00Z"),
+            finished_at=parse_utc_instant("2026-01-01T00:00:01Z"),
             duration_ms=1000,
-            recorded_at="2026-01-01T00:00:01Z",
+            recorded_at=parse_utc_instant("2026-01-01T00:00:01Z"),
             status="succeeded",
             experiment_name=EXPERIMENT,
-            run_script_path=_RUN_SCRIPT,
-            verify_script_path=_VERIFY_SCRIPT,
-            verify_script_digest=verify_script_digest,
+            run_script_path=ScriptPath(_RUN_SCRIPT),
+            verify_script_path=ScriptPath(_VERIFY_SCRIPT),
+            verify_script_digest=Digest(verify_script_digest) if verify_script_digest else None,
             verify_exit_code=verify_exit_code,
-            produced_output_digest=output_digest,
+            produced_output_digest=Digest(output_digest) if output_digest else None,
         ),
         log=lambda *_: None,
     )
@@ -159,15 +161,15 @@ def _inhabitable_attempt(
             "source_comparison": SourceComparison(basis=source_basis, verdict="identical"),
             "build_comparison": BuildComparison(basis=build_basis, verdict="equivalent"),
             "build_receipt": BuildRuntimeReceipt(
-                run_id="review-build",
-                started_at="2026-07-24T10:00:01Z",
-                finished_at="2026-07-24T10:00:02Z",
+                run_id=RunId("review-build"),
+                started_at=parse_utc_instant("2026-07-24T10:00:01Z"),
+                finished_at=parse_utc_instant("2026-07-24T10:00:02Z"),
                 duration_ms=1000,
-                recorded_at="2026-07-24T10:00:02Z",
+                recorded_at=parse_utc_instant("2026-07-24T10:00:02Z"),
                 status="succeeded",
-                runtime_path=RUNTIME_PATH,
+                runtime_path=WorkspacePath(RUNTIME_PATH),
                 produced_runtime_digest=(
-                    certified_digest if certified_digest is not None else digest_file_if_exists(runtime)
+                    Digest(certified_digest) if certified_digest is not None else digest_file_if_exists(runtime)
                 ),
             ),
             "activation_outcome": ActivationOutcome(

@@ -13,6 +13,8 @@ from repo2ree_core.ree.store import ReeStore
 from repo2ree_core.ree.workspace.model import WorkspaceMetadata
 from repo2ree_protocol.command import PatchReeIntentArgs
 
+_VERSION = "2026-01-02T00:00:00Z"
+
 
 def _store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ReeStore:
     store = ReeStore(ReeLayout(root=tmp_path))
@@ -22,7 +24,7 @@ def _store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ReeStore:
             ree_id="ree-1",
             name="demo",
             created_at="2026-01-01T00:00:00Z",
-            updated_at="v1",
+            updated_at=_VERSION,
             ree_intent=ReeIntent(name="demo"),
         )
     )
@@ -47,7 +49,7 @@ def test_stale_expected_version_conflicts_without_mutating(tmp_path: Path, monke
     assert result.outputs == {
         "error_code": "version_conflict",
         "expected_version": "stale",
-        "actual_version": "v1",
+        "actual_version": _VERSION,
     }
     assert store.read_intent().name == "demo"
 
@@ -56,7 +58,7 @@ def test_matching_expected_version_mutates_intent(tmp_path: Path, monkeypatch: p
     store = _store(tmp_path, monkeypatch)
 
     result = handler.handle_patch_ree_intent(
-        PatchReeIntentArgs(patch={"name": "changed"}, expected_version="v1"),
+        PatchReeIntentArgs(patch={"name": "changed"}, expected_version=_VERSION),
         log=lambda *_: None,
         is_canceled=lambda: False,
     )

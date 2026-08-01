@@ -35,7 +35,7 @@ import pytest
 
 import repo2ree_core.ree.layout as layout_mod
 from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession
+from repo2ree_core.domain.ree_session import ReeSession, is_sealed
 from repo2ree_core.operations.dispatch import run_command
 from repo2ree_core.ree.layout import ReeLayout
 from repo2ree_core.ree.store import ReeStore
@@ -224,7 +224,7 @@ def test_ree_lifecycle_flow(ree: Ree, source_repo: Path) -> None:
     assert result.outputs["seal_hash"].startswith("sha256:")
 
     sealed_session = ree.session()
-    assert sealed_session.is_sealed
+    assert is_sealed(sealed_session)
     assert sealed_session.seal_hash == result.outputs["seal_hash"]
 
     # the flow streamed log events at every step (the supervisor's relay path)

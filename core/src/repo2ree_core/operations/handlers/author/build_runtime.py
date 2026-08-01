@@ -16,6 +16,8 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict, field_serializer
 
 from repo2ree_core.digests import digest_file_if_exists
+from repo2ree_core.domain.primitives import ScriptPath
+from repo2ree_core.domain.ree_transitions import request_runtime_build
 from repo2ree_core.evidence.receipts.models import BuildRuntimeReceipt
 from repo2ree_core.execution.process import CancelCheck, run_workspace_script
 from repo2ree_core.operations.steps.author import (
@@ -28,6 +30,7 @@ from repo2ree_core.operations.steps.author import (
     settle_step,
 )
 from repo2ree_core.ree.layout import ReeLayout
+from repo2ree_core.ree.repository import load_ree
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_core.time_utils import OperationTimer
@@ -69,7 +72,18 @@ def handle_build_runtime(
     inputs = collect_step_inputs(layout, store, intent, RESERVED_BUILD_SCRIPT, log=log)
     record_step_inputs(inputs)
 
+    try:
+        transition = request_runtime_build(
+            load_ree(layout, store),
+            snapshot_digest=inputs.snapshot_digest,
+            build_script_digest=inputs.script_digest,
+        )
+    except (OSError, ValueError) as exc:
+        log("system", "error", f"cannot build runtime: {exc}")
+        return ActionResult.failed("precondition", f"cannot build runtime: {exc}")
+
     log("system", "info", f"Starting build run {run_id}")
+    log("system", "info", f"REE revision: {transition.revision}")
     log("system", "info", f"Build script: {RESERVED_BUILD_SCRIPT}")
     outcome = run_workspace_script(
         layout.workspace.resolve(),
@@ -92,7 +106,7 @@ def handle_build_runtime(
             **envelope,
             workspace_drift=inputs.workspace_drift,
             snapshot_digest=inputs.snapshot_digest,
-            build_script_path=RESERVED_BUILD_SCRIPT,
+            build_script_path=ScriptPath(RESERVED_BUILD_SCRIPT),
             build_script_digest=inputs.script_digest,
             runtime_path=inputs.runtime_path,
             produced_runtime_digest=produced_runtime_digest,

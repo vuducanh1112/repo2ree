@@ -14,6 +14,7 @@ from pathlib import Path
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.authoring.script_generation.acquire_source import build_acquire_sh
+from repo2ree_core.domain.primitives import GitRevision
 from repo2ree_core.evidence.receipts.models import AcquireSourceReceipt
 from repo2ree_core.execution.process import (
     CancelCheck,
@@ -97,7 +98,7 @@ def handle_acquire_source(
             **envelope,
             origin_url=args.origin_url,
             source_type=args.source_type or "",
-            revision=args.revision or "",
+            revision=GitRevision(args.revision) if args.revision else None,
         ),
         operation=_OPERATION,
         run_id=run_id,

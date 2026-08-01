@@ -239,7 +239,7 @@ class ReeStore:
         return WorkspaceMetadata.model_validate(self.read_metadata_json())
 
     def write_metadata(self, metadata: WorkspaceMetadata) -> None:
-        self.write_metadata_json(metadata.model_dump(exclude_none=True))
+        self.write_metadata_json(metadata.model_dump(mode="json", exclude_none=True))
 
     def read_metadata_json(self) -> dict[str, Any]:
         """The sidecar's bytes as parsed JSON, without model validation.

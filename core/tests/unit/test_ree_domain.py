@@ -1,7 +1,17 @@
 import pytest
 from pydantic import ValidationError
 
+from repo2ree_core.digests import Digest, digest_bytes
+from repo2ree_core.domain.primitives import GitRevision, ReeId, ReePath, RunId, ScriptPath, WorkspacePath
+from repo2ree_core.domain.receipt import BuildRuntimeReceipt, WorkspaceDrift
+from repo2ree_core.domain.ree import AuthoredFile, Ree, ReeDefinition, ReeEvidence, ReeIdentity
+from repo2ree_core.domain.ree_assessment import assess
 from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.domain.ree_session import ReeSession, record_evaluation, record_source, select_packaging
+from repo2ree_core.domain.ree_structure import name_of, runtime_of, scripts_of
+from repo2ree_core.domain.ree_transitions import request_runtime_build, revision_of, write_file
+from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
+from repo2ree_core.time_utils import parse_utc_instant
 
 # ================================================
 # Helpers
@@ -102,10 +112,11 @@ def test_session_with_source_sets_available():
     from repo2ree_core.domain.ree_session import ReeSession
 
     session = ReeSession()
-    updated = session.with_source(
+    updated = record_source(
+        session,
         acquired_by="download",
-        snapshot_archive="snapshot.tar.gz",
-        snapshot_captured_at="2026-01-01T00:00:00Z",
+        snapshot_archive=ReePath("snapshot.tar.gz"),
+        snapshot_captured_at=parse_utc_instant("2026-01-01T00:00:00Z"),
     )
     assert updated.source_available is True
     assert updated.source_acquired_by == "download"
@@ -116,9 +127,10 @@ def test_session_with_source_records_resolved_commit():
     from repo2ree_core.domain.ree_session import ReeSession
 
     session = ReeSession()
-    updated = session.with_source(
+    updated = record_source(
+        session,
         acquired_by="download",
-        resolved_commit="abc123",
+        resolved_commit=GitRevision("abc123"),
     )
     assert updated.source_resolved_commit == "abc123"
 
@@ -127,7 +139,8 @@ def test_session_with_evaluation():
     from repo2ree_core.domain.ree_session import ReeSession
 
     session = ReeSession()
-    updated = session.with_evaluation(
+    updated = record_evaluation(
+        session,
         dependency_level=3,
         environment_level=2,
         machine_level=0,
@@ -143,7 +156,12 @@ def test_session_with_packaging():
     from repo2ree_core.domain.ree_session import ReeSession
 
     session = ReeSession()
-    updated = session.with_packaging(source_included=True, runtime_included=True, results_included=True)
+    updated = select_packaging(
+        session,
+        source_included=True,
+        runtime_included=True,
+        results_included=True,
+    )
     assert updated.source_included is True
     assert updated.runtime_included is True
     assert updated.results_included is True
@@ -206,3 +224,101 @@ def test_run_script_rejects_unsafe_paths(path):
                 "experiments": [{"name": "smoke", "run_script": path}],
             }
         )
+
+
+# ================================================
+# Canonical REE aggregate
+# ================================================
+
+
+def _ree(*, intent: ReeIntent | None = None, files: tuple[AuthoredFile, ...] = (), selected=()) -> Ree:
+    return Ree(
+        identity=ReeIdentity(
+            ree_id=ReeId("ree-1"),
+            created_at=parse_utc_instant("2026-01-01T00:00:00Z"),
+            updated_at=parse_utc_instant("2026-01-01T00:00:00Z"),
+        ),
+        authored=ReeDefinition(intent=intent or ReeIntent(name="demo"), files=files),
+        evidence=ReeEvidence(
+            selected=selected,
+            session_projection=ReeSession(source_available=True, source_snapshot_digest=Digest("sha256:snapshot")),
+        ),
+    )
+
+
+def _successful_build(*, script_digest: str) -> BuildRuntimeReceipt:
+    return BuildRuntimeReceipt(
+        run_id=RunId("build-1"),
+        started_at=parse_utc_instant("2026-01-01T00:00:00Z"),
+        finished_at=parse_utc_instant("2026-01-01T00:00:01Z"),
+        duration_ms=1000,
+        recorded_at=parse_utc_instant("2026-01-01T00:00:01Z"),
+        status="succeeded",
+        workspace_drift=WorkspaceDrift(status="clean"),
+        snapshot_digest=Digest("sha256:snapshot"),
+        build_script_path=ScriptPath(RESERVED_BUILD_SCRIPT),
+        build_script_digest=Digest(script_digest),
+        runtime_path=WorkspacePath("runtime.tar"),
+        produced_runtime_digest=Digest("sha256:runtime"),
+    )
+
+
+def test_ree_exposes_its_authored_anatomy_from_one_root():
+    build = AuthoredFile(path=ReePath(RESERVED_BUILD_SCRIPT), digest=digest_bytes(b"build"), size=5)
+    ree = _ree(intent=ReeIntent(name="demo", runtime="runtime.tar"), files=(build,))
+
+    assert name_of(ree.authored) == "demo"
+    assert runtime_of(ree.authored).artifact_path == "runtime.tar"
+    assert scripts_of(ree.authored).build_runtime == build
+    assert ree.evidence.session_projection.source_available is True
+    assert ree.publications.sealed is None
+
+
+def test_ree_is_data_only_and_transitions_are_external_functions():
+    assert not hasattr(Ree, "patch_intent")
+    assert not hasattr(Ree, "write_file")
+    assert not hasattr(Ree, "request_runtime_build")
+    assert not hasattr(Ree, "assessment")
+
+
+def test_unrelated_file_edit_changes_revision_but_not_runtime_freshness():
+    build = AuthoredFile(path=ReePath(RESERVED_BUILD_SCRIPT), digest=digest_bytes(b"build"), size=5)
+    receipt = _successful_build(script_digest=build.digest)
+    ree = _ree(intent=ReeIntent(name="demo", runtime="runtime.tar"), files=(build,), selected=(receipt,))
+
+    transition = write_file(ree, ReePath("notes.txt"), b"new metadata-like content")
+    updated = ree.model_copy(update={"authored": transition.authored})
+
+    assert transition.after_revision != transition.before_revision
+    assert assess(updated).runtime.status == "ready"
+
+
+def test_build_script_edit_makes_matching_runtime_evidence_stale():
+    build = AuthoredFile(path=ReePath(RESERVED_BUILD_SCRIPT), digest=digest_bytes(b"build"), size=5)
+    receipt = _successful_build(script_digest=build.digest)
+    ree = _ree(intent=ReeIntent(name="demo", runtime="runtime.tar"), files=(build,), selected=(receipt,))
+
+    transition = write_file(ree, ReePath(RESERVED_BUILD_SCRIPT), b"different build")
+    updated = ree.model_copy(update={"authored": transition.authored})
+
+    assert assess(updated).runtime.status == "stale"
+    assert assess(updated).runtime.reasons == ("runtime build script changed",)
+
+
+def test_runtime_build_transition_pins_revision_and_inputs():
+    build_digest = digest_bytes(b"build")
+    ree = _ree(
+        intent=ReeIntent(name="demo", runtime="runtime.tar"),
+        files=(AuthoredFile(path=ReePath(RESERVED_BUILD_SCRIPT), digest=build_digest, size=5),),
+    )
+
+    transition = request_runtime_build(
+        ree,
+        snapshot_digest=Digest("sha256:snapshot"),
+        build_script_digest=build_digest,
+    )
+
+    assert transition.ree_id == "ree-1"
+    assert transition.revision == revision_of(ree)
+    assert transition.snapshot_digest == "sha256:snapshot"
+    assert transition.build_script_digest == build_digest

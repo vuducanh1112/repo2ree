@@ -15,7 +15,9 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict
 
+from repo2ree_core.digests import Digest
 from repo2ree_core.domain.experiment import Activation
+from repo2ree_core.domain.primitives import ScriptPath, WorkspacePath
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.evidence.receipts.models import ActivationTestReceipt, receipt_envelope
 from repo2ree_core.evidence.review.models import ActivationOutcome, ActivationVerdict, ReviewRecord
@@ -96,12 +98,12 @@ def handle_review_activation_test(
     # fresh from its own acquisition every time.
     receipt = ActivationTestReceipt(
         **receipt_envelope(run_id, timing, outcome.status),
-        run_script_path=activation.run_script,
+        run_script_path=ScriptPath(activation.run_script),
         run_exit_code=outcome.run_outputs.exit_code,
-        verify_script_path=activation.verify_script,
+        verify_script_path=ScriptPath(activation.verify_script) if activation.verify_script else None,
         verify_exit_code=outcome.run_outputs.verify_exit_code,
-        runtime_path=certified.runtime_path,
-        declared_runtime_digest=certified.runtime_digest,
+        runtime_path=WorkspacePath(certified.runtime_path),
+        declared_runtime_digest=Digest(certified.runtime_digest) if certified.runtime_digest else None,
     )
     activation_outcome = ActivationOutcome(
         basis=certified.basis,

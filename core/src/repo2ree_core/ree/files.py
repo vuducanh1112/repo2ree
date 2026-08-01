@@ -23,7 +23,7 @@ from urllib.parse import urlparse
 from urllib.request import urlopen
 from uuid import uuid4
 
-from repo2ree_core.digests import HashingWriter
+from repo2ree_core.digests import Digest, HashingWriter
 
 # ================================================
 # Durable writes
@@ -164,7 +164,7 @@ def safe_extract_zip(archive: Path, destination: Path) -> None:
             zf.extract(member, destination)
 
 
-def pack_directory_tar_gz(source_path: Path, archive_path: Path) -> str:
+def pack_directory_tar_gz(source_path: Path, archive_path: Path) -> Digest:
     """Write a gzip tar containing every top-level entry of ``source_path``.
 
     Each top-level entry is added under its own name (so the archive does

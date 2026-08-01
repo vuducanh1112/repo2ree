@@ -11,9 +11,11 @@ from pathlib import Path
 
 import pytest
 
+from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.operations.handlers.author import write_file as handler
 from repo2ree_core.ree.layout import ReeLayout
 from repo2ree_core.ree.store import ReeStore
+from repo2ree_core.ree.workspace.model import WorkspaceMetadata
 from repo2ree_protocol.command import WriteFileArgs
 
 
@@ -32,6 +34,15 @@ def _etag(content: bytes) -> str:
 def _store_at(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ReeStore:
     store = ReeStore(ReeLayout(root=tmp_path))
     store.ensure_dirs()
+    store.write_metadata(
+        WorkspaceMetadata(
+            ree_id="ree-1",
+            name="demo",
+            created_at="2026-01-01T00:00:00Z",
+            updated_at="2026-01-01T00:00:00Z",
+            ree_intent=ReeIntent(name="demo"),
+        )
+    )
     monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: ReeLayout(root=tmp_path)))
     return store
 

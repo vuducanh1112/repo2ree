@@ -29,9 +29,11 @@ from repo2ree_core.evidence.receipts.consistency import (
 )
 from repo2ree_core.evidence.receipts.store import load_author_receipts
 from repo2ree_core.evidence.step_graph import ReeStepState, build_ree_step_states
+from repo2ree_core.ree.repository import load_ree
+from repo2ree_core.ree.store import ReeStore
 from repo2ree_core.ree.workspace.inventory import ReeFile, WorkspaceFile
 from repo2ree_core.ree.workspace.model import WorkspaceMetadata
-from repo2ree_core.ree.workspace.views import layout_for, read_metadata, ree_files, workspace_files
+from repo2ree_core.ree.workspace.views import layout_for, ree_files, workspace_files
 from repo2ree_core.source_repo import SourceRepoMetadata, derive_source_repo_metadata
 
 
@@ -61,12 +63,16 @@ class WorkspaceDocument(WorkspaceMetadata):
 
 
 def get_workspace(storage_root: Path, ree_id: str, *, include_content: bool = True) -> WorkspaceDocument:
-    metadata = read_metadata(storage_root, ree_id)
-    intent = metadata.ree_intent
-    session = metadata.ree_session
+    layout = layout_for(storage_root, ree_id)
+    store = ReeStore(layout)
+    if not store.metadata_exists():
+        raise FileNotFoundError(f"REE {ree_id} not found")
+    metadata = store.read_metadata()
+    ree = load_ree(layout, store, metadata=metadata)
+    intent = ree.authored.intent
+    session = ree.evidence.session_projection
     files = workspace_files(storage_root, ree_id, include_content=include_content)
     files_in_ree = ree_files(storage_root, ree_id, include_content=include_content)
-    layout = layout_for(storage_root, ree_id)
 
     return WorkspaceDocument(
         **metadata.model_dump(),

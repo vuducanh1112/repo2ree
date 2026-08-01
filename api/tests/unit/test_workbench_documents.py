@@ -20,6 +20,8 @@ from repo2ree_core.analysis.repository.reproducibility_report import (
     MachineLevel,
     ReproducibilityReport,
 )
+from repo2ree_core.digests import Digest
+from repo2ree_core.domain.primitives import RunId, ScriptPath
 from repo2ree_core.evidence.receipts.consistency import AuthorReceiptEntry, AuthorReceiptSet, ConsistencyStep
 from repo2ree_core.evidence.receipts.models import BuildRuntimeReceipt
 from repo2ree_core.evidence.scorecard import (
@@ -27,6 +29,7 @@ from repo2ree_core.evidence.scorecard import (
     ScoreCardCategory,
     ScoreCardRung,
 )
+from repo2ree_core.time_utils import parse_utc_instant
 from repo2ree_supervisor import WorkbenchHandle
 
 
@@ -99,16 +102,16 @@ def test_author_receipts_cross_as_a_typed_document(
             AuthorReceiptEntry(
                 key="build_runtime",
                 receipt=BuildRuntimeReceipt(
-                    run_id="build-1",
-                    started_at="2026-07-24T00:00:00Z",
-                    finished_at="2026-07-24T00:00:01Z",
+                    run_id=RunId("build-1"),
+                    started_at=parse_utc_instant("2026-07-24T00:00:00Z"),
+                    finished_at=parse_utc_instant("2026-07-24T00:00:01Z"),
                     duration_ms=1000,
-                    recorded_at="2026-07-24T00:00:01Z",
+                    recorded_at=parse_utc_instant("2026-07-24T00:00:01Z"),
                     status="succeeded",
-                    build_script_path="ree-scripts/build_script.sh",
-                    build_script_digest="sha256:abc",
+                    build_script_path=ScriptPath("ree-scripts/build_script.sh"),
+                    build_script_digest=Digest("sha256:abc"),
                 ),
-                consistency=ConsistencyStep(step="build_runtime", status="fresh", run_id="build-1"),
+                consistency=ConsistencyStep(step="build_runtime", status="fresh", run_id=RunId("build-1")),
             )
         ]
     )

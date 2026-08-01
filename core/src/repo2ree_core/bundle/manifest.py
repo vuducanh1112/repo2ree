@@ -34,7 +34,7 @@ def build_manifest_payload(
     """
     payload = {
         **intent.model_dump(),
-        **session.model_dump(exclude=_SESSION_MANIFEST_EXCLUDE),
+        **session.model_dump(mode="json", exclude=_SESSION_MANIFEST_EXCLUDE),
         "ree_version": REE_MANIFEST_VERSION,
         "name": intent.name or f"workspace-{ree_id[:8]}",
     }

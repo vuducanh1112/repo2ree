@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from repo2ree_core.domain.primitives import RunId
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.evidence.receipts.models import RunExperimentReceipt
@@ -25,6 +26,7 @@ from repo2ree_core.ree.layout import ReeLayout
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_core.ree.workspace.model import WorkspaceMetadata
 from repo2ree_core.source_repo.swhid import directory_swhid
+from repo2ree_core.time_utils import parse_utc_instant
 from repo2ree_protocol.command import ReviewAcquireSourceArgs
 
 
@@ -264,11 +266,11 @@ def test_an_author_whose_own_verify_failed_left_no_accepted_claim() -> None:
 
 def _experiment_receipt(name: str) -> RunExperimentReceipt:
     return RunExperimentReceipt(
-        run_id=f"run-{name}",
-        started_at="2026-07-24T10:00:00Z",
-        finished_at="2026-07-24T10:00:01Z",
+        run_id=RunId(f"run-{name}"),
+        started_at=parse_utc_instant("2026-07-24T10:00:00Z"),
+        finished_at=parse_utc_instant("2026-07-24T10:00:01Z"),
         duration_ms=1000,
-        recorded_at="2026-07-24T10:00:01Z",
+        recorded_at=parse_utc_instant("2026-07-24T10:00:01Z"),
         status="succeeded",
         experiment_name=name,
     )

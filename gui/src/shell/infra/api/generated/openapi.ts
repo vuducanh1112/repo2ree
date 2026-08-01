@@ -924,11 +924,8 @@ export interface components {
              * @default
              */
             source_type: string;
-            /**
-             * Revision
-             * @default
-             */
-            revision: string;
+            /** Revision */
+            revision?: string | null;
             /** Expected Swhid */
             expected_swhid?: string | null;
             /** Observed Swhid */
@@ -1057,20 +1054,14 @@ export interface components {
             workspace_drift?: components["schemas"]["WorkspaceDrift"] | null;
             /** Snapshot Digest */
             snapshot_digest?: string | null;
-            /**
-             * Run Script Path
-             * @default
-             */
-            run_script_path: string;
+            /** Run Script Path */
+            run_script_path?: string | null;
             /** Run Script Digest */
             run_script_digest?: string | null;
             /** Run Exit Code */
             run_exit_code?: number | null;
-            /**
-             * Verify Script Path
-             * @default
-             */
-            verify_script_path: string;
+            /** Verify Script Path */
+            verify_script_path?: string | null;
             /** Verify Script Digest */
             verify_script_digest?: string | null;
             /** Verify Exit Code */
@@ -1319,11 +1310,8 @@ export interface components {
             workspace_drift?: components["schemas"]["WorkspaceDrift"] | null;
             /** Snapshot Digest */
             snapshot_digest?: string | null;
-            /**
-             * Build Script Path
-             * @default
-             */
-            build_script_path: string;
+            /** Build Script Path */
+            build_script_path?: string | null;
             /** Build Script Digest */
             build_script_digest?: string | null;
             /** Runtime Path */
@@ -2186,10 +2174,7 @@ export interface components {
              * @enum {string}
              */
             operation: "generate_sbom";
-            /**
-             * Runtime Path
-             * @default
-             */
+            /** Runtime Path */
             runtime_path: string;
             /** Declared Runtime Digest */
             declared_runtime_digest?: string | null;
@@ -2743,7 +2728,7 @@ export interface components {
         };
         /**
          * ReeSession
-         * @description Action-managed session state — mutated only via named transitions, never patched.
+         * @description Legacy machine-state projection transformed only by pure functions.
          */
         ReeSession: {
             /**
@@ -3110,20 +3095,14 @@ export interface components {
             workspace_drift?: components["schemas"]["WorkspaceDrift"] | null;
             /** Snapshot Digest */
             snapshot_digest?: string | null;
-            /**
-             * Run Script Path
-             * @default
-             */
-            run_script_path: string;
+            /** Run Script Path */
+            run_script_path?: string | null;
             /** Run Script Digest */
             run_script_digest?: string | null;
             /** Run Exit Code */
             run_exit_code?: number | null;
-            /**
-             * Verify Script Path
-             * @default
-             */
-            verify_script_path: string;
+            /** Verify Script Path */
+            verify_script_path?: string | null;
             /** Verify Script Digest */
             verify_script_digest?: string | null;
             /** Verify Exit Code */

@@ -6,11 +6,13 @@ import zipfile
 import pytest
 
 from repo2ree_core.bundle.seal import build_workspace_ree_archive, seal_workspace_ree
+from repo2ree_core.domain.primitives import RunId, ScriptPath
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.operations.workspace_view import get_workspace
 from repo2ree_core.ree.layout import SBOM_ARTIFACT_PATH, ReeLayout
 from repo2ree_core.ree.store import ReeStore
+from repo2ree_core.time_utils import parse_utc_instant
 
 
 def _make_ree(storage_root, name):
@@ -70,7 +72,7 @@ def test_bundle_archive_honors_inclusion_flags_and_manifest_remap(tmp_path):
         source_included=False,
         runtime_included=False,
         results_included=False,
-        sealed_at="2026-01-01T00:00:00Z",
+        sealed_at=parse_utc_instant("2026-01-01T00:00:00Z"),
     )
     archive_bytes = build_workspace_ree_archive(storage_root, ree_id)
 
@@ -114,7 +116,7 @@ def test_bundle_seals_all_results_when_results_included(tmp_path):
         source_included=False,
         runtime_included=False,
         results_included=True,
-        sealed_at="2026-01-01T00:00:00Z",
+        sealed_at=parse_utc_instant("2026-01-01T00:00:00Z"),
     )
     with zipfile.ZipFile(io.BytesIO(build_workspace_ree_archive(storage_root, ree_id))) as zf:
         names = zf.namelist()
@@ -134,7 +136,7 @@ def test_bundle_omits_results_when_not_included(tmp_path):
         source_included=False,
         runtime_included=False,
         results_included=False,
-        sealed_at="2026-01-01T00:00:00Z",
+        sealed_at=parse_utc_instant("2026-01-01T00:00:00Z"),
     )
     with zipfile.ZipFile(io.BytesIO(build_workspace_ree_archive(storage_root, ree_id))) as zf:
         names = zf.namelist()
@@ -170,7 +172,7 @@ def test_bundle_archive_includes_snapshot_and_normalized_runtime_when_enabled(tm
         source_included=True,
         runtime_included=True,
         results_included=False,
-        sealed_at="2026-01-01T00:00:00Z",
+        sealed_at=parse_utc_instant("2026-01-01T00:00:00Z"),
     )
     archive_bytes = build_workspace_ree_archive(storage_root, ree_id)
 
@@ -196,10 +198,10 @@ def test_seal_persists_seal_facts_and_content_hash(tmp_path):
         source_included=False,
         runtime_included=False,
         results_included=False,
-        sealed_at="2026-06-05T12:00:00Z",
+        sealed_at=parse_utc_instant("2026-06-05T12:00:00Z"),
     )
 
-    assert outputs.sealed_at == "2026-06-05T12:00:00Z"
+    assert outputs.sealed_at == parse_utc_instant("2026-06-05T12:00:00Z")
     assert outputs.seal_hash is not None
     assert outputs.seal_hash.startswith("sha256:")
     assert len(outputs.seal_hash) == len("sha256:") + 64
@@ -235,7 +237,7 @@ def test_seal_hash_is_stable_with_same_content(tmp_path):
         source_included=False,
         runtime_included=False,
         results_included=False,
-        sealed_at="2026-06-05T12:00:00Z",
+        sealed_at=parse_utc_instant("2026-06-05T12:00:00Z"),
     )
     out2 = seal_workspace_ree(
         storage_root,
@@ -243,7 +245,7 @@ def test_seal_hash_is_stable_with_same_content(tmp_path):
         source_included=False,
         runtime_included=False,
         results_included=False,
-        sealed_at="2026-06-05T12:00:00Z",
+        sealed_at=parse_utc_instant("2026-06-05T12:00:00Z"),
     )
     assert out1.seal_hash == out2.seal_hash
 
@@ -260,7 +262,7 @@ def test_seal_hash_changes_with_different_content(tmp_path):
         source_included=False,
         runtime_included=False,
         results_included=False,
-        sealed_at="2026-06-05T12:00:00Z",
+        sealed_at=parse_utc_instant("2026-06-05T12:00:00Z"),
     )
 
     (layout.overlay / "code.py").write_text("x = 2", encoding="utf-8")
@@ -270,7 +272,7 @@ def test_seal_hash_changes_with_different_content(tmp_path):
         source_included=False,
         runtime_included=False,
         results_included=False,
-        sealed_at="2026-06-05T12:00:00Z",
+        sealed_at=parse_utc_instant("2026-06-05T12:00:00Z"),
     )
 
     assert out1.seal_hash != out2.seal_hash
@@ -300,7 +302,7 @@ def test_build_archive_raises_when_the_sealed_archive_is_missing(tmp_path):
         source_included=False,
         runtime_included=False,
         results_included=False,
-        sealed_at="2026-01-01T00:00:00Z",
+        sealed_at=parse_utc_instant("2026-01-01T00:00:00Z"),
     )
     layout.sealed_archive.unlink()
 
@@ -360,7 +362,7 @@ def test_build_archive_returns_stored_bytes_after_seal(tmp_path):
         source_included=False,
         runtime_included=False,
         results_included=False,
-        sealed_at="2026-06-05T00:00:00Z",
+        sealed_at=parse_utc_instant("2026-06-05T00:00:00Z"),
     )
     bytes1 = build_workspace_ree_archive(storage_root, ree_id)
     bytes2 = build_workspace_ree_archive(storage_root, ree_id)
@@ -396,7 +398,7 @@ def test_seal_records_consistency_and_bundles_receipts(tmp_path):
                 duration_ms=0,
                 recorded_at=recorded_at,
                 status=status,
-                build_script_path="ree-scripts/build_script.sh",
+                build_script_path=ScriptPath("ree-scripts/build_script.sh"),
                 build_script_digest=digest_bytes(b"make all"),
             ),
             log=lambda *_: None,
@@ -415,7 +417,7 @@ def test_seal_records_consistency_and_bundles_receipts(tmp_path):
         source_included=False,
         runtime_included=False,
         results_included=False,
-        sealed_at="2026-06-05T00:00:00Z",
+        sealed_at=parse_utc_instant("2026-06-05T00:00:00Z"),
     )
 
     build_step = next(s for s in outputs.consistency.steps if s.step == "build_runtime")
@@ -426,7 +428,7 @@ def test_seal_records_consistency_and_bundles_receipts(tmp_path):
         bundle_manifest = json.loads(zf.read("ree/ree.json"))
         receipt = json.loads(zf.read("ree/receipts/author/build_runtime.json"))
         bundled_receipts = [n for n in zf.namelist() if n.startswith("ree/receipts/") and n.endswith(".json")]
-    assert bundle_manifest["consistency"] == outputs.consistency.model_dump()
+    assert bundle_manifest["consistency"] == outputs.consistency.model_dump(mode="json")
     assert receipt["run_id"] == "run-b"
     assert bundled_receipts == ["ree/receipts/author/build_runtime.json"]
     # The full run history stays on the workbench.
@@ -452,13 +454,13 @@ def test_get_workspace_includes_live_consistency_report(tmp_path):
     record_receipt(
         layout,
         BuildRuntimeReceipt(
-            run_id="run-b",
-            started_at="2026-01-01T00:00:00Z",
-            finished_at="2026-01-01T00:00:00Z",
+            run_id=RunId("run-b"),
+            started_at=parse_utc_instant("2026-01-01T00:00:00Z"),
+            finished_at=parse_utc_instant("2026-01-01T00:00:00Z"),
             duration_ms=0,
-            recorded_at="2026-01-01T00:00:00Z",
+            recorded_at=parse_utc_instant("2026-01-01T00:00:00Z"),
             status="succeeded",
-            build_script_path="ree-scripts/build_script.sh",
+            build_script_path=ScriptPath("ree-scripts/build_script.sh"),
             build_script_digest=digest_bytes(b"make all"),
         ),
         log=lambda *_: None,

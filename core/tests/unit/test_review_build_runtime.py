@@ -13,7 +13,8 @@ from typing import Any
 import pytest
 
 from repo2ree_core.analysis.sbom.scan import ScanOutcome
-from repo2ree_core.digests import digest_file_if_exists
+from repo2ree_core.digests import Digest, digest_file_if_exists
+from repo2ree_core.domain.primitives import ArtifactPath, RunId, ScriptPath, WorkspacePath
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.evidence.receipts.models import BuildRuntimeReceipt, GenerateSbomReceipt
@@ -25,6 +26,7 @@ from repo2ree_core.ree.layout import SBOM_ARTIFACT_PATH, ReeLayout
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_core.ree.workspace.model import WorkspaceMetadata
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
+from repo2ree_core.time_utils import parse_utc_instant
 from repo2ree_protocol.command import ReviewBuildRuntimeArgs
 
 RUNTIME_PATH = "runtime.tar"
@@ -89,30 +91,30 @@ def _author_ree(
     record_receipt(
         layout,
         BuildRuntimeReceipt(
-            run_id="author-build",
-            started_at="2026-01-01T00:00:00Z",
-            finished_at="2026-01-01T00:00:01Z",
+            run_id=RunId("author-build"),
+            started_at=parse_utc_instant("2026-01-01T00:00:00Z"),
+            finished_at=parse_utc_instant("2026-01-01T00:00:01Z"),
             duration_ms=1000,
-            recorded_at="2026-01-01T00:00:01Z",
+            recorded_at=parse_utc_instant("2026-01-01T00:00:01Z"),
             status="succeeded",
-            build_script_path=RESERVED_BUILD_SCRIPT,
-            runtime_path=RUNTIME_PATH,
-            produced_runtime_digest=author_runtime_digest,
+            build_script_path=ScriptPath(RESERVED_BUILD_SCRIPT),
+            runtime_path=WorkspacePath(RUNTIME_PATH),
+            produced_runtime_digest=Digest(author_runtime_digest) if author_runtime_digest else None,
         ),
         log=lambda *_: None,
     )
     record_receipt(
         layout,
         GenerateSbomReceipt(
-            run_id="author-sbom",
-            started_at="2026-01-01T00:00:02Z",
-            finished_at="2026-01-01T00:00:03Z",
+            run_id=RunId("author-sbom"),
+            started_at=parse_utc_instant("2026-01-01T00:00:02Z"),
+            finished_at=parse_utc_instant("2026-01-01T00:00:03Z"),
             duration_ms=1000,
-            recorded_at="2026-01-01T00:00:03Z",
+            recorded_at=parse_utc_instant("2026-01-01T00:00:03Z"),
             status="succeeded",
-            runtime_path=RUNTIME_PATH,
-            sbom_path=SBOM_ARTIFACT_PATH,
-            sbom_digest="sha256:" + "a" * 64,
+            runtime_path=WorkspacePath(RUNTIME_PATH),
+            sbom_path=ArtifactPath(SBOM_ARTIFACT_PATH),
+            sbom_digest=Digest("sha256:" + "a" * 64),
         ),
         log=lambda *_: None,
     )
@@ -395,14 +397,14 @@ def test_a_bundled_runtime_is_certified_against_the_author_receipt(
     record_receipt(
         layout,
         BuildRuntimeReceipt(
-            run_id="author-build",
-            started_at="2026-01-01T00:00:00Z",
-            finished_at="2026-01-01T00:00:01Z",
+            run_id=RunId("author-build"),
+            started_at=parse_utc_instant("2026-01-01T00:00:00Z"),
+            finished_at=parse_utc_instant("2026-01-01T00:00:01Z"),
             duration_ms=1000,
-            recorded_at="2026-01-01T00:00:01Z",
+            recorded_at=parse_utc_instant("2026-01-01T00:00:01Z"),
             status="succeeded",
-            build_script_path=RESERVED_BUILD_SCRIPT,
-            runtime_path=at,
+            build_script_path=ScriptPath(RESERVED_BUILD_SCRIPT),
+            runtime_path=WorkspacePath(at),
             produced_runtime_digest=shipped,
         ),
         log=lambda *_: None,
@@ -416,7 +418,7 @@ def test_a_bundled_runtime_is_certified_against_the_author_receipt(
     assert comparison["verdict"] == "identical"
     assert comparison["observed_runtime_digest"] == shipped
     # Nothing was built, so the receipt names no build script.
-    assert result.outputs["receipt"]["build_script_path"] == ""
+    assert result.outputs["receipt"]["build_script_path"] is None
 
 
 def test_a_shipped_runtime_contradicting_the_author_sbom_is_still_different(
@@ -611,13 +613,13 @@ def _author_declared_runtime(layout: ReeLayout, digest: str | None, *, runtime_p
     record_receipt(
         layout,
         BuildRuntimeReceipt(
-            run_id="author-build",
-            started_at="2026-01-01T00:00:00Z",
-            finished_at="2026-01-01T00:00:01Z",
+            run_id=RunId("author-build"),
+            started_at=parse_utc_instant("2026-01-01T00:00:00Z"),
+            finished_at=parse_utc_instant("2026-01-01T00:00:01Z"),
             duration_ms=1000,
-            recorded_at="2026-01-01T00:00:01Z",
+            recorded_at=parse_utc_instant("2026-01-01T00:00:01Z"),
             status="succeeded",
-            build_script_path=RESERVED_BUILD_SCRIPT,
+            build_script_path=ScriptPath(RESERVED_BUILD_SCRIPT),
             runtime_path=None,
             produced_runtime_digest=None,
         ),
@@ -626,16 +628,16 @@ def _author_declared_runtime(layout: ReeLayout, digest: str | None, *, runtime_p
     record_receipt(
         layout,
         GenerateSbomReceipt(
-            run_id="author-sbom",
-            started_at="2026-01-01T00:00:02Z",
-            finished_at="2026-01-01T00:00:03Z",
+            run_id=RunId("author-sbom"),
+            started_at=parse_utc_instant("2026-01-01T00:00:02Z"),
+            finished_at=parse_utc_instant("2026-01-01T00:00:03Z"),
             duration_ms=1000,
-            recorded_at="2026-01-01T00:00:03Z",
+            recorded_at=parse_utc_instant("2026-01-01T00:00:03Z"),
             status="succeeded",
-            runtime_path=runtime_path,
-            declared_runtime_digest=digest,
-            sbom_path=SBOM_ARTIFACT_PATH,
-            sbom_digest="sha256:" + "a" * 64,
+            runtime_path=WorkspacePath(runtime_path),
+            declared_runtime_digest=Digest(digest) if digest else None,
+            sbom_path=ArtifactPath(SBOM_ARTIFACT_PATH),
+            sbom_digest=Digest("sha256:" + "a" * 64),
         ),
         log=lambda *_: None,
     )

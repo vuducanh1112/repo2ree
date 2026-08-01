@@ -22,6 +22,7 @@ from repo2ree_core.bundle.plan import (
     REE_RESULTS_PREFIX,
     REE_SNAPSHOT_ENTRY_PATH,
 )
+from repo2ree_core.domain.ree_session import is_sealed, remove_source
 from repo2ree_core.ree.files import list_tree_relpaths
 from repo2ree_core.ree.store import reset_source_state
 from repo2ree_core.ree.workspace.views import layout_for, store_for
@@ -93,10 +94,10 @@ def restore_ree_bundle(
     author_receipts = _restore_tree(bundle_root / REE_AUTHOR_RECEIPTS_PREFIX, layout.author_receipts)
 
     if not source_restored:
-        session = session.without_source()
+        session = remove_source(session)
     store.write_intent(intent)
     store.write_session(session)
-    if session.is_sealed:
+    if is_sealed(session):
         # The uploaded bytes *are* the sealed archive the seal hash covers, so
         # the loaded REE can hand back the identical download.
         shutil.copyfile(archive_path, layout.sealed_archive)
@@ -104,7 +105,7 @@ def restore_ree_bundle(
 
     return BundleLoadOutputs(
         name=intent.name,
-        sealed=session.is_sealed,
+        sealed=is_sealed(session),
         seal_hash=session.seal_hash,
         source_restored=source_restored,
         overlay_files=overlay_files,

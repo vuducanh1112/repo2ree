@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from repo2ree_core.domain.primitives import ReePath
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.ree.workspace.inventory import WorkspaceFile
@@ -63,7 +64,7 @@ class TestDeriveSourceRepoMetadata:
         session = ReeSession(
             source_available=True,
             source_acquired_by="upload",
-            uploaded_archive="python-hello-world.tar.gz",
+            uploaded_archive=ReePath("python-hello-world.tar.gz"),
         )
         meta = derive_source_repo_metadata(intent, session, [])
         assert meta.name == "python-hello-world.tar.gz"

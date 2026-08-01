@@ -22,6 +22,7 @@ from repo2ree_core.analysis.sbom.cyclonedx import ObservedPackage, parse_cyclone
 from repo2ree_core.analysis.sbom.scan import is_runtime_archive, scan_runtime_archive
 from repo2ree_core.authoring.script_generation.materialize_workspace import build_materialize_sh
 from repo2ree_core.digests import digest_file_if_exists
+from repo2ree_core.domain.primitives import ScriptPath, WorkspacePath
 from repo2ree_core.evidence.receipts.models import (
     BuildRuntimeReceipt,
     GenerateSbomReceipt,
@@ -189,9 +190,9 @@ def handle_review_build_runtime(
         **receipt_envelope(run_id, timing, "succeeded"),
         # A bundled certification ran no build script, so it names none: the
         # input slice of this receipt must describe what actually happened.
-        build_script_path=RESERVED_BUILD_SCRIPT if basis == "independent" else "",
+        build_script_path=ScriptPath(RESERVED_BUILD_SCRIPT) if basis == "independent" else None,
         build_script_digest=build_script_digest,
-        runtime_path=runtime_path,
+        runtime_path=WorkspacePath(runtime_path),
         produced_runtime_digest=observed_runtime_digest,
     )
     write_review_build_evidence(review_layout, receipt, comparison)

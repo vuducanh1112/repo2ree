@@ -8,11 +8,13 @@ import pytest
 from repo2ree_core.bundle.manifest import build_manifest_payload, split_manifest_payload
 from repo2ree_core.bundle.restore import restore_ree_bundle
 from repo2ree_core.bundle.seal import build_workspace_ree_archive, seal_workspace_ree
+from repo2ree_core.domain.primitives import GitRevision, RunId
 from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession
+from repo2ree_core.domain.ree_session import ReeSession, is_sealed
 from repo2ree_core.evidence.receipts.models import AcquireSourceReceipt
 from repo2ree_core.ree.layout import ReeLayout
 from repo2ree_core.ree.store import ReeStore
+from repo2ree_core.time_utils import parse_utc_instant
 
 
 def _make_ree(storage_root, name):
@@ -49,15 +51,15 @@ def _seed_author_ree(storage_root, name="author-ree"):
     (layout.results_dir("exp-a") / "results" / "out.txt").write_text("baseline", encoding="utf-8")
     layout.author_operation_receipt("acquire_source").write_text(
         AcquireSourceReceipt(
-            run_id="source-1",
-            started_at="2026-01-01T00:00:00Z",
-            finished_at="2026-01-01T00:00:01Z",
+            run_id=RunId("source-1"),
+            started_at=parse_utc_instant("2026-01-01T00:00:00Z"),
+            finished_at=parse_utc_instant("2026-01-01T00:00:01Z"),
             duration_ms=1000,
-            recorded_at="2026-01-01T00:00:01Z",
+            recorded_at=parse_utc_instant("2026-01-01T00:00:01Z"),
             status="succeeded",
             origin_url="https://example.org/repo.git",
             source_type="git",
-            revision="abc123",
+            revision=GitRevision("abc123"),
         ).model_dump_json(),
         encoding="utf-8",
     )
@@ -137,7 +139,7 @@ def test_loading_a_sealed_bundle_restores_intent_evidence_and_content(tmp_path):
         source_included=True,
         runtime_included=True,
         results_included=True,
-        sealed_at="2026-01-02T00:00:00Z",
+        sealed_at=parse_utc_instant("2026-01-02T00:00:00Z"),
     )
     archive_bytes = build_workspace_ree_archive(storage_root, author_id)
 
@@ -176,7 +178,7 @@ def test_loading_a_draft_bundle_leaves_the_ree_editable(tmp_path):
     session = ReeStore(layout).read_session()
 
     assert outputs.sealed is False
-    assert session.is_sealed is False
+    assert is_sealed(session) is False
     assert layout.sealed_archive.exists() is False
     assert ReeStore(layout).read_manifest() is None
     assert outputs.source_restored is True
@@ -192,7 +194,7 @@ def test_loading_a_sourceless_bundle_clears_the_source_facts(tmp_path):
         source_included=False,
         runtime_included=True,
         results_included=False,
-        sealed_at="2026-01-02T00:00:00Z",
+        sealed_at=parse_utc_instant("2026-01-02T00:00:00Z"),
     )
     archive_bytes = build_workspace_ree_archive(storage_root, author_id)
 

@@ -20,6 +20,7 @@ import shutil
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.authoring.script_generation.acquire_source import build_acquire_sh
+from repo2ree_core.domain.primitives import GitRevision, Swhid
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.evidence.receipts.models import AcquireSourceReceipt, receipt_envelope
 from repo2ree_core.evidence.review.comparison import compare_source_swhids
@@ -35,7 +36,7 @@ from repo2ree_core.operations.steps.review import begin_review_step, require_ree
 from repo2ree_core.ree.files import write_atomic
 from repo2ree_core.ree.layout import ReeLayout, ReviewLayout
 from repo2ree_core.source_repo.swhid import directory_swhid
-from repo2ree_core.time_utils import OperationTimer
+from repo2ree_core.time_utils import OperationTimer, format_utc_instant
 from repo2ree_protocol.command import ReviewAcquireSourceArgs, ReviewBasis
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
@@ -68,7 +69,7 @@ def handle_review_acquire_source(
     # record to require, so it starts from a freshly minted one.
     step = begin_review_step(
         review_layout,
-        new_review_record(args.review_id, at=timer.started_at),
+        new_review_record(args.review_id, at=format_utc_instant(timer.started_at)),
         "source",
         review_id=args.review_id,
         timer=timer,
@@ -105,9 +106,9 @@ def handle_review_acquire_source(
         # so the receipt records none rather than implying the origin was reached.
         origin_url=intent.origin_url if basis == "independent" else "",
         source_type=intent.source_type if basis == "independent" else "",
-        revision=intent.revision if basis == "independent" else "",
-        expected_swhid=comparison.expected_swhid,
-        observed_swhid=comparison.observed_swhid,
+        revision=GitRevision(intent.revision) if basis == "independent" and intent.revision else None,
+        expected_swhid=Swhid(comparison.expected_swhid) if comparison.expected_swhid else None,
+        observed_swhid=Swhid(comparison.observed_swhid) if comparison.observed_swhid else None,
     )
     write_review_source_evidence(review_layout, receipt, comparison)
     log(

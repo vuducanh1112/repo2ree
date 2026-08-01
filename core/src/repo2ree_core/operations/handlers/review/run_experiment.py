@@ -14,8 +14,9 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.digests import digest_file_if_exists, digest_output_paths
+from repo2ree_core.digests import Digest, digest_file_if_exists, digest_output_paths
 from repo2ree_core.domain.experiment import Experiment
+from repo2ree_core.domain.primitives import ScriptPath, WorkspacePath
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.evidence.receipts.models import RunExperimentReceipt, experiment_step_key, receipt_envelope
 from repo2ree_core.evidence.receipts.store import load_author_receipts
@@ -131,15 +132,15 @@ def handle_review_run_experiment(
     receipt = RunExperimentReceipt(
         **receipt_envelope(run_id, timing, outcome.status),
         experiment_name=experiment.name,
-        run_script_path=experiment.run_script,
+        run_script_path=ScriptPath(experiment.run_script),
         run_script_digest=run_script_digest,
         run_exit_code=outcome.run_outputs.exit_code,
-        verify_script_path=experiment.verify_script,
+        verify_script_path=ScriptPath(experiment.verify_script) if experiment.verify_script else None,
         verify_script_digest=verify_script_digest,
         verify_exit_code=outcome.run_outputs.verify_exit_code,
-        runtime_path=certified.runtime_path or None,
-        declared_runtime_digest=certified.runtime_digest,
-        produced_output_digest=comparison.observed_output_digest,
+        runtime_path=WorkspacePath(certified.runtime_path) if certified.runtime_path else None,
+        declared_runtime_digest=Digest(certified.runtime_digest) if certified.runtime_digest else None,
+        produced_output_digest=Digest(comparison.observed_output_digest) if comparison.observed_output_digest else None,
     )
     write_review_experiment_evidence(review_layout, receipt, comparison)
     _log_verdict(comparison, log=log)
@@ -223,7 +224,7 @@ def _author_verify_exit_code(author: RunExperimentReceipt) -> int | None:
     """
     if author.verify_exit_code is not None:
         return author.verify_exit_code
-    if author.status == "succeeded" and author.verify_script_path.strip():
+    if author.status == "succeeded" and author.verify_script_path:
         return 0
     return None
 

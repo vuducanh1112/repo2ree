@@ -40,7 +40,7 @@ from repo2ree_core.execution.experiment.run import ExperimentRunOutcome, run_run
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.ree.layout import ARTIFACTS_DIRNAME, ReeLayout, ReviewLayout
 from repo2ree_core.ree.store import UNREADABLE_DOCUMENT, ReeStore
-from repo2ree_core.time_utils import OperationTimer, OperationTiming, format_duration_ms
+from repo2ree_core.time_utils import OperationTimer, OperationTiming, format_duration_ms, format_utc_instant
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.tracing import ReviewStepAttrs
@@ -144,7 +144,7 @@ def begin_review_step(
     as a step that started rather than one that never ran. The step's identity
     goes on the span here rather than at either exit, for the same reason.
     """
-    started = with_step(record, step, status="running", at=timer.started_at)
+    started = with_step(record, step, status="running", at=format_utc_instant(timer.started_at))
     write_review_record(review_layout, started)
     ReviewStepAttrs(review_id=review_id, step=step).apply_current()
     return ReviewStep(
@@ -189,7 +189,7 @@ def _review_step_halt(
         timing = timer.finish()
         write_review_record(
             review_layout,
-            with_step(record, step, status=status, at=timing.finished_at, failure=message),
+            with_step(record, step, status=status, at=format_utc_instant(timing.finished_at), failure=message),
         )
         ReviewStepAttrs(step=step, status=status).apply_current()
         log("system", "warn" if status == "canceled" else "error", f"{noun} {status}: {message}")
@@ -227,7 +227,10 @@ def _review_step_settle(
         basis: EvidenceBasis | None = None,
         runtime_digest: str | None = None,
     ) -> None:
-        write_review_record(review_layout, with_step(record, step, status="completed", at=timing.finished_at))
+        write_review_record(
+            review_layout,
+            with_step(record, step, status="completed", at=format_utc_instant(timing.finished_at)),
+        )
         ReviewStepAttrs(
             step=step,
             status="completed",

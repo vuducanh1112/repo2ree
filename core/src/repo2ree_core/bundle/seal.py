@@ -40,10 +40,14 @@ from repo2ree_core.bundle.plan import (
     rewrite_manifest_for_bundle,
     should_include_snapshot,
 )
+from repo2ree_core.domain.primitives import Digest, UtcInstant
+from repo2ree_core.domain.ree_session import is_sealed, select_packaging
+from repo2ree_core.domain.ree_transitions import prepare_publication, record_seal
 from repo2ree_core.evidence.receipts.consistency import ConsistencyReport, build_consistency_report
 from repo2ree_core.evidence.receipts.store import author_receipt_path, published_receipts
 from repo2ree_core.ree.files import list_tree_relpaths, write_atomic
 from repo2ree_core.ree.layout import ReeLayout
+from repo2ree_core.ree.repository import load_ree
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_core.ree.workspace.views import layout_for, store_for
 
@@ -53,8 +57,8 @@ class SealOutputs(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    sealed_at: str | None
-    seal_hash: str | None
+    sealed_at: UtcInstant | None
+    seal_hash: Digest | None
     source_included: bool
     runtime_included: bool
     consistency: ConsistencyReport
@@ -242,7 +246,7 @@ def seal_workspace_ree(
     source_included: bool,
     runtime_included: bool,
     results_included: bool,
-    sealed_at: str,
+    sealed_at: UtcInstant,
 ) -> SealOutputs:
     """Build, hash, and persist the sealed REE archive.
 
@@ -257,18 +261,21 @@ def seal_workspace_ree(
     store = store_for(storage_root, ree_id)
     if not store.metadata_exists():
         raise FileNotFoundError(f"REE {ree_id} not found")
-    intent = store.read_intent()
-    session = store.read_session().with_packaging(
+    ree = load_ree(layout, store)
+    intent = ree.authored.intent
+    publication = prepare_publication(
+        ree,
         source_included=source_included,
         runtime_included=runtime_included,
         results_included=results_included,
     )
+    session = publication.session
 
     # Per-step freshness of the recorded run receipts against the tree being
     # sealed. Sealing over stale results proceeds — the staleness is recorded
     # in the manifest (and bundled receipts) so it is diagnosable later.
     consistency_report = build_consistency_report(layout, intent, session)
-    consistency = consistency_report.model_dump()
+    consistency = consistency_report.model_dump(mode="json")
 
     # The artifact plan and all file-heavy entries are identical across the
     # pre-seal digest and the final bundle — only the manifest differs — so read
@@ -294,16 +301,18 @@ def seal_workspace_ree(
         intent, preseal_session, artifact_plan, ree_id=ree_id, consistency=consistency
     )
     preseal_entries = _entries_with_manifest(head, tail, preseal_manifest_bytes)
-    seal_hash = f"sha256:{_entries_digest(preseal_entries)}"
+    seal_hash = Digest(f"sha256:{_entries_digest(preseal_entries)}")
 
     # Settle all four seal facts into the session.
-    session = session.with_seal(
+    publication = record_seal(
+        ree,
         sealed_at=sealed_at,
         seal_hash=seal_hash,
         source_included=source_included,
         runtime_included=runtime_included,
         results_included=results_included,
     )
+    session = publication.session
 
     # Final assembly with the real seal_hash in the manifest; ZIP built once.
     sidecar_manifest, manifest_bytes = _manifest_entry_bytes(
@@ -345,11 +354,11 @@ def build_workspace_ree_archive(storage_root: Path, ree_id: str) -> bytes:
         raise FileNotFoundError(f"REE {ree_id} not found")
     layout = layout_for(storage_root, ree_id)
     session = store.read_session()
-    if not session.is_sealed:
+    if not is_sealed(session):
         zip_bytes, _ = _assemble_bundle(
             layout,
             store.read_intent(),
-            session.with_packaging(source_included=True, runtime_included=True, results_included=True),
+            select_packaging(session, source_included=True, runtime_included=True, results_included=True),
             ree_id=ree_id,
         )
         return zip_bytes

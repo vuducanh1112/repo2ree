@@ -33,7 +33,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, computed_field
 
 from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession
+from repo2ree_core.domain.ree_session import ReeSession, is_sealed
 from repo2ree_core.evidence.receipts.models import (
     ActivationTestReceipt,
     BuildRuntimeReceipt,
@@ -365,7 +365,7 @@ def _level(categories: list[ScoreCardCategory], session: ReeSession) -> int:
         # was re-produced; digest-matching re-runs would be a higher claim.)
         reached("experiments", "validated"),
         # R5 Archived — sealed with source, runtime and results all bundled.
-        session.is_sealed
+        is_sealed(session)
         and reached("source", "included")
         and reached("runtime", "included")
         and reached("results", "included"),
@@ -410,6 +410,6 @@ def build_scorecard(
 
     return ReproducibilityScoreCard(
         level=_level(categories, session),
-        sealed=session.is_sealed,
+        sealed=is_sealed(session),
         categories=categories,
     )

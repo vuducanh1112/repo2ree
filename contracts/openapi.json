@@ -6456,9 +6456,15 @@
             "default": ""
           },
           "revision": {
-            "type": "string",
-            "title": "Revision",
-            "default": ""
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision"
           },
           "expected_swhid": {
             "anyOf": [
@@ -6688,9 +6694,15 @@
             "title": "Snapshot Digest"
           },
           "run_script_path": {
-            "type": "string",
-            "title": "Run Script Path",
-            "default": ""
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Script Path"
           },
           "run_script_digest": {
             "anyOf": [
@@ -6715,9 +6727,15 @@
             "title": "Run Exit Code"
           },
           "verify_script_path": {
-            "type": "string",
-            "title": "Verify Script Path",
-            "default": ""
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verify Script Path"
           },
           "verify_script_digest": {
             "anyOf": [
@@ -7255,9 +7273,15 @@
             "title": "Snapshot Digest"
           },
           "build_script_path": {
-            "type": "string",
-            "title": "Build Script Path",
-            "default": ""
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Build Script Path"
           },
           "build_script_digest": {
             "anyOf": [
@@ -9153,8 +9177,7 @@
           },
           "runtime_path": {
             "type": "string",
-            "title": "Runtime Path",
-            "default": ""
+            "title": "Runtime Path"
           },
           "declared_runtime_digest": {
             "anyOf": [
@@ -9220,7 +9243,8 @@
           "finished_at",
           "duration_ms",
           "recorded_at",
-          "status"
+          "status",
+          "runtime_path"
         ],
         "title": "GenerateSbomReceipt",
         "description": "Workspace-independent: consumes only the declared runtime artifact."
@@ -10507,7 +10531,7 @@
         "additionalProperties": false,
         "type": "object",
         "title": "ReeSession",
-        "description": "Action-managed session state \u2014 mutated only via named transitions, never patched."
+        "description": "Legacy machine-state projection transformed only by pure functions."
       },
       "ReeState": {
         "properties": {
@@ -11253,9 +11277,15 @@
             "title": "Snapshot Digest"
           },
           "run_script_path": {
-            "type": "string",
-            "title": "Run Script Path",
-            "default": ""
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Script Path"
           },
           "run_script_digest": {
             "anyOf": [
@@ -11280,9 +11310,15 @@
             "title": "Run Exit Code"
           },
           "verify_script_path": {
-            "type": "string",
-            "title": "Verify Script Path",
-            "default": ""
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verify Script Path"
           },
           "verify_script_digest": {
             "anyOf": [

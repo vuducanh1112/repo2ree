@@ -56,7 +56,7 @@ class WorkspaceMetadata(BaseModel):
 
     def with_session(self, session: ReeSession, *, at: str) -> WorkspaceMetadata:
         """This sidecar carrying new session state. Nothing else is derived from it."""
-        return self._revalidated(ree_session=session.model_dump(exclude_none=True), updated_at=at)
+        return self._revalidated(ree_session=session.model_dump(mode="json", exclude_none=True), updated_at=at)
 
     def _revalidated(self, **changes: object) -> WorkspaceMetadata:
-        return WorkspaceMetadata.model_validate(self.model_dump(exclude_none=True) | changes)
+        return WorkspaceMetadata.model_validate(self.model_dump(mode="json", exclude_none=True) | changes)

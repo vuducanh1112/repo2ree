@@ -14,8 +14,9 @@ from typing import Any
 
 import pytest
 
-from repo2ree_core.digests import digest_file_if_exists
+from repo2ree_core.digests import Digest, digest_file_if_exists
 from repo2ree_core.domain.experiment import Activation
+from repo2ree_core.domain.primitives import RunId, WorkspacePath
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.evidence.receipts.models import BuildRuntimeReceipt
@@ -34,6 +35,7 @@ from repo2ree_core.ree.layout import ReeLayout, ReviewLayout
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_core.ree.workspace.model import WorkspaceMetadata
 from repo2ree_core.reserved_paths import RESERVED_ACTIVATION_SCRIPT
+from repo2ree_core.time_utils import parse_utc_instant
 from repo2ree_protocol.command import ReviewActivationTestArgs
 
 RUNTIME_PATH = "runtime.tar"
@@ -117,15 +119,15 @@ def _certified_attempt(
             "source_comparison": SourceComparison(basis=source_basis, verdict="identical"),
             "build_comparison": BuildComparison(basis=build_basis, verdict="equivalent"),
             "build_receipt": BuildRuntimeReceipt(
-                run_id="review-build",
-                started_at="2026-07-24T10:00:01Z",
-                finished_at="2026-07-24T10:00:02Z",
+                run_id=RunId("review-build"),
+                started_at=parse_utc_instant("2026-07-24T10:00:01Z"),
+                finished_at=parse_utc_instant("2026-07-24T10:00:02Z"),
                 duration_ms=1000,
-                recorded_at="2026-07-24T10:00:02Z",
+                recorded_at=parse_utc_instant("2026-07-24T10:00:02Z"),
                 status="succeeded",
-                runtime_path=runtime_path,
+                runtime_path=WorkspacePath(runtime_path),
                 produced_runtime_digest=(
-                    certified_digest if certified_digest is not None else digest_file_if_exists(runtime)
+                    Digest(certified_digest) if certified_digest is not None else digest_file_if_exists(runtime)
                 ),
             ),
         }

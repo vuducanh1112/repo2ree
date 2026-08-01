@@ -36,7 +36,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from repo2ree_core.domain.hbom import HBOM
 from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession
+from repo2ree_core.domain.ree_session import ReeSession, is_sealed
 from repo2ree_core.evidence.receipts.models import experiment_step_key
 
 # ================================================
@@ -141,7 +141,7 @@ def build_ree_step_states(
         "crosscheck": ran("cross_check_sbom"),
         "activation": ran("activation_test"),
         "experiments": bool(named_experiments) and all(ran(experiment_step_key(name)) for name in named_experiments),
-        "seal": session.is_sealed,
+        "seal": is_sealed(session),
     }
 
     states: list[ReeStepState] = []

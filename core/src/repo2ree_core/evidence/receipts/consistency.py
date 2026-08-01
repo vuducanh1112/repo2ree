@@ -26,6 +26,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from repo2ree_core.digests import digest_file, digest_file_if_exists, digest_output_paths
 from repo2ree_core.domain.experiment import Runnable
+from repo2ree_core.domain.primitives import ReePath, RunId, UtcInstant
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.evidence.receipts.models import (
     ActivationTestReceipt,
@@ -119,7 +120,7 @@ def check_workspace_drift(layout: ReeLayout, *, excluded_paths: set[str]) -> Wor
         return WorkspaceDrift(status="clean")
     return WorkspaceDrift(
         status="modified",
-        changed_paths=drifted[:_DRIFT_PATHS_CAP],
+        changed_paths=[ReePath(path) for path in drifted[:_DRIFT_PATHS_CAP]],
         changed_path_count=len(drifted),
     )
 
@@ -171,8 +172,8 @@ class ConsistencyStep(BaseModel):
 
     step: str
     status: Literal["fresh", "stale", "missing"]
-    run_id: str | None = None
-    recorded_at: str | None = None
+    run_id: RunId | None = None
+    recorded_at: UtcInstant | None = None
     stale_inputs: list[ConsistencyStaleInput] = Field(default_factory=list)
     workspace_drift: DriftStatus | None = None
 

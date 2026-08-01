@@ -8,12 +8,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from repo2ree_core.domain.primitives import GitRevision, ReePath, Swhid, format_utc_instant
+from repo2ree_core.domain.ree_transitions import record_source_acquisition
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.operations.steps.author import open_ree_store
 from repo2ree_core.ree.layout import SNAPSHOT_FILENAME
+from repo2ree_core.ree.repository import load_ree
 from repo2ree_core.source_repo import directory_swhid, resolved_git_head
-from repo2ree_core.time_utils import utc_now
+from repo2ree_core.time_utils import utc_now_instant
 from repo2ree_protocol.command import UpdateSourceMetadataArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
@@ -46,12 +49,13 @@ def handle_update_source_metadata(
     log("system", "info", "updating source metadata")
     try:
         meta = store.read_metadata()
-        ts = utc_now()
+        ree = load_ree(layout, store, metadata=meta)
+        captured_at = utc_now_instant()
+        ts = format_utc_instant(captured_at)
 
         # Stamp the computed identifier only when we got one, so a hashing
         # failure never clobbers a swhid already on the intent.
         swhid = _compute_source_swhid(layout.upstream, log)
-        swhid_update = {"swhid": swhid} if swhid else {}
         if swhid:
             log("system", "info", f"source swhid: {swhid}")
 
@@ -60,31 +64,30 @@ def handle_update_source_metadata(
             # can pin a re-fetch; only meaningful for git sources. Read HEAD from
             # the acquired tree — empty when it carries no git history.
             revision = resolved_git_head(layout.upstream) if args.source_type == "git" else ""
-            revision_update = {"revision": revision} if revision else {}
             if revision:
                 log("system", "info", f"source revision: {revision}")
-            intent = meta.ree_intent.model_copy(
-                update={
-                    "origin_url": args.origin_url,
-                    "source_type": args.source_type,
-                    **revision_update,
-                    **swhid_update,
-                }
-            )
-            session = meta.ree_session.with_source(
+            transition = record_source_acquisition(
+                ree,
                 acquired_by="download",
-                snapshot_archive=SNAPSHOT_FILENAME,
-                snapshot_captured_at=ts,
-                resolved_commit=revision or None,
+                captured_at=captured_at,
+                snapshot_archive=ReePath(SNAPSHOT_FILENAME),
+                origin_url=args.origin_url,
+                source_type=args.source_type,
+                resolved_commit=GitRevision(revision) if revision else None,
+                swhid=Swhid(swhid) if swhid else None,
             )
         else:
-            intent = meta.ree_intent.model_copy(update=swhid_update)
-            session = meta.ree_session.with_source(
+            transition = record_source_acquisition(
+                ree,
                 acquired_by="upload",
-                archive_name=args.archive_name,
-                snapshot_archive=SNAPSHOT_FILENAME,
-                snapshot_captured_at=ts,
+                captured_at=captured_at,
+                snapshot_archive=ReePath(SNAPSHOT_FILENAME),
+                uploaded_archive=ReePath(args.archive_name),
+                swhid=Swhid(swhid) if swhid else None,
             )
+
+        intent = transition.authored.intent
+        session = transition.evidence.session_projection
 
         updated = meta.model_copy(
             update={

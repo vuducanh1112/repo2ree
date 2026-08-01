@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from repo2ree_core.digests import Digest
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.operations.handlers.author import remove_source as handler
@@ -11,6 +12,7 @@ from repo2ree_core.ree.layout import ReeLayout
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_core.ree.workspace.model import WorkspaceMetadata
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
+from repo2ree_core.time_utils import parse_utc_instant
 
 
 def _never_canceled() -> bool:
@@ -47,7 +49,11 @@ def test_remove_source_recreates_reserved_build_script(tmp_path: Path, monkeypat
                 source_type="git",
                 runtime="runtime.tar.gz",
             ),
-            ree_session=ReeSession(source_available=True, sealed_at="2026-01-02T00:00:00Z", seal_hash="sha256:old"),
+            ree_session=ReeSession(
+                source_available=True,
+                sealed_at=parse_utc_instant("2026-01-02T00:00:00Z"),
+                seal_hash=Digest("sha256:old"),
+            ),
         )
     )
 

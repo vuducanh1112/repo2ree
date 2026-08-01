@@ -3,7 +3,8 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.analysis.sbom.scan import SBOM_FORMAT, is_runtime_archive, scan_runtime_archive
-from repo2ree_core.digests import digest_file
+from repo2ree_core.digests import Digest, digest_file
+from repo2ree_core.domain.primitives import ArtifactPath, WorkspacePath
 from repo2ree_core.evidence.receipts.models import GenerateSbomReceipt
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.failures import failed_from_exception
@@ -67,7 +68,7 @@ def handle_generate_sbom(
     def receipt(
         status: ActionStatus,
         *,
-        sbom_digest: str | None = None,
+        sbom_digest: Digest | None = None,
         tool_version: str | None = None,
     ) -> GenerateSbomReceipt:
         """Settle this step, on whichever of its four exits reached here."""
@@ -75,9 +76,9 @@ def handle_generate_sbom(
             layout,
             lambda envelope: GenerateSbomReceipt(
                 **envelope,
-                runtime_path=runtime_path,
+                runtime_path=WorkspacePath(runtime_path),
                 declared_runtime_digest=declared_runtime_digest,
-                sbom_path=SBOM_ARTIFACT_PATH if sbom_digest else None,
+                sbom_path=ArtifactPath(SBOM_ARTIFACT_PATH) if sbom_digest else None,
                 sbom_digest=sbom_digest,
                 sbom_format=SBOM_FORMAT if sbom_digest else None,
                 tool_version=tool_version,
