@@ -5,13 +5,12 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.analysis.repository.profiler import AnalysisError, analyze_repo
-from repo2ree_core.domain.ree.transitions import record_evaluation
+from repo2ree_core.domain.ree.state import record_evaluation
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import write_json_atomic
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_core.persistence.repository import load_ree
 from repo2ree_protocol.command import EvaluateDependencyScoreArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
@@ -55,14 +54,15 @@ def handle_evaluate_dependency_score(
     try:
         write_json_atomic(layout.reproducibility_report, report.model_dump())
         store = ReeDirectory(layout)
-        transition = record_evaluation(
-            load_ree(layout, store),
-            dependency_level=int(report.dependency_level),
-            environment_level=int(report.environment_level),
-            machine_level=int(report.machine_level),
-            detected_dependencies=report.detected_dependencies,
+        store.write_state(
+            record_evaluation(
+                store.read_state(),
+                dependency_level=int(report.dependency_level),
+                environment_level=int(report.environment_level),
+                machine_level=int(report.machine_level),
+                detected_dependencies=report.detected_dependencies,
+            )
         )
-        store.write_state(transition.evidence.state)
     except Exception as exc:
         log("system", "error", f"failed to persist evaluation outputs: {exc}")
         return failed_from_exception(exc, f"failed to persist evaluation outputs: {exc}")

@@ -18,7 +18,7 @@ from pydantic import BaseModel, ConfigDict, field_serializer
 from repo2ree_core.digests import digest_file_if_exists
 from repo2ree_core.domain.primitives import ScriptPath
 from repo2ree_core.domain.ree.receipt import BuildRuntimeReceipt
-from repo2ree_core.domain.ree.transitions import request_runtime_build
+from repo2ree_core.domain.ree.transitions import revision_of
 from repo2ree_core.execution.process import CancelCheck, run_workspace_script
 from repo2ree_core.operations.steps.author import (
     collect_step_inputs,
@@ -29,7 +29,7 @@ from repo2ree_core.operations.steps.author import (
     result_from_run_outcome,
     settle_step,
 )
-from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.directory import UNREADABLE_DOCUMENT, ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import load_ree
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
@@ -72,18 +72,18 @@ def handle_build_runtime(
     inputs = collect_step_inputs(layout, store, intent, RESERVED_BUILD_SCRIPT, log=log)
     record_step_inputs(inputs)
 
-    try:
-        transition = request_runtime_build(
-            load_ree(layout, store),
-            snapshot_digest=inputs.snapshot_digest,
-            build_script_digest=inputs.script_digest,
-        )
-    except (OSError, ValueError) as exc:
-        log("system", "error", f"cannot build runtime: {exc}")
-        return ActionResult.failed("precondition", f"cannot build runtime: {exc}")
+    if inputs.script_digest is None:
+        log("system", "error", "cannot build runtime: the runtime build script is missing")
+        return ActionResult.failed("precondition", "cannot build runtime: the runtime build script is missing")
 
     log("system", "info", f"Starting build run {run_id}")
-    log("system", "info", f"REE revision: {transition.revision}")
+    # The head this run is bound to, so a receipt can later be read against the
+    # REE it was produced from. The build changes nothing about that head — its
+    # record is the receipt settled below — so nothing is written here.
+    try:
+        log("system", "info", f"REE revision: {revision_of(load_ree(layout, store))}")
+    except UNREADABLE_DOCUMENT as exc:
+        log("system", "warn", f"could not read the REE revision: {exc}")
     log("system", "info", f"Build script: {RESERVED_BUILD_SCRIPT}")
     outcome = run_workspace_script(
         layout.workspace.resolve(),

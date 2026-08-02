@@ -5,7 +5,7 @@ dispatcher through the sequence of typed commands that make up the REE
 lifecycle described in docs/REE.md, asserting the state of the durable
 ``/ree`` tree after each transition.
 
-    prepare_source -> write_file -> (re-materialize) -> seal_ree
+    acquire_source -> write_file -> (re-materialize) -> seal_ree
 
 It exercises every layer the control plane sits on top of — the command
 the command envelope, the dispatcher, the handlers, and the ``ReeDirectory`` / ``ReeLayout``
@@ -40,10 +40,10 @@ from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol.command import (
+    AcquireSourceArgs,
+    AcquireSourceCommand,
     EvaluateDependencyScoreCommand,
     MaterializeWorkspaceCommand,
-    PrepareSourceArgs,
-    PrepareSourceCommand,
     RemoveSourceCommand,
     SealReeCommand,
     WriteFileArgs,
@@ -135,7 +135,7 @@ def _init_ree(layout: ReeLayout, ree_id: str) -> None:
 def _acquire(ree: Ree, origin: Path, *, run_id: str = "source") -> ActionResult:
     """Drive the whole acquire lifecycle, the way the control plane does."""
     return run_command(
-        PrepareSourceCommand(args=PrepareSourceArgs(mode="download", origin_url=str(origin), source_type="git")),
+        AcquireSourceCommand(args=AcquireSourceArgs(mode="download", origin_url=str(origin), source_type="git")),
         log=ree.log,
         run_id=run_id,
     )
@@ -178,7 +178,7 @@ def test_ree_lifecycle_flow(ree: Ree, source_repo: Path) -> None:
     layout = ree.layout
     log = ree.log
 
-    # --- prepare_source: the whole acquire lifecycle in one command ----
+    # --- acquire_source: the whole lifecycle in one command ------------
     result = _acquire(ree, source_repo)
     assert result.status == "succeeded"
     assert (layout.upstream / "requirements.txt").is_file()
@@ -259,7 +259,7 @@ def test_upload_pipeline_freezes_then_thaws(ree: Ree, tmp_path: Path) -> None:
     )
 
     result = run_command(
-        PrepareSourceCommand(args=PrepareSourceArgs(mode="upload", upload_token=token, archive_name="proj.tar.gz")),
+        AcquireSourceCommand(args=AcquireSourceArgs(mode="upload", upload_token=token, archive_name="proj.tar.gz")),
         log=log,
         run_id="source-upload",
     )
@@ -400,8 +400,8 @@ def test_source_replacement_by_upload_keeps_the_staged_archive(ree: Ree, source_
     assert layout.upload_staging_file(token).is_file()
 
     result = run_command(
-        PrepareSourceCommand(
-            args=PrepareSourceArgs(mode="upload", upload_token=token, archive_name="replacement.tar.gz")
+        AcquireSourceCommand(
+            args=AcquireSourceArgs(mode="upload", upload_token=token, archive_name="replacement.tar.gz")
         ),
         log=log,
         run_id="source-upload-new",

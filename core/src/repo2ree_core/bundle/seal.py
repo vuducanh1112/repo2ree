@@ -262,13 +262,12 @@ def seal_ree(
         raise FileNotFoundError(f"REE {ree_id} not found")
     ree = load_ree(layout, store)
     intent = ree.authored.intent
-    publication = prepare_publication(
+    state = prepare_publication(
         ree,
         source_included=source_included,
         runtime_included=runtime_included,
         results_included=results_included,
-    )
-    state = publication.state
+    ).evidence.state
 
     # Per-step freshness of the recorded run receipts against the tree being
     # sealed. Sealing over stale results proceeds — the staleness is recorded
@@ -303,15 +302,14 @@ def seal_ree(
     seal_hash = Digest(f"sha256:{_entries_digest(preseal_entries)}")
 
     # Settle all four seal facts into the state.
-    publication = record_seal(
+    state = record_seal(
         ree,
         sealed_at=sealed_at,
         seal_hash=seal_hash,
         source_included=source_included,
         runtime_included=runtime_included,
         results_included=results_included,
-    )
-    state = publication.state
+    ).evidence.state
 
     # Final assembly with the real seal_hash in the manifest; ZIP built once.
     sidecar_manifest, manifest_bytes = _manifest_entry_bytes(

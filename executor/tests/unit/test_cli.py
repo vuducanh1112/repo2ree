@@ -161,6 +161,7 @@ def test_execute_failing_command_exits_1_with_failed_result(initialized_ree: Pat
         {
             "operation": "acquire_source",
             "args": {
+                "mode": "download",
                 "origin_url": str(initialized_ree / "does-not-exist"),
                 "source_type": "git",
             },

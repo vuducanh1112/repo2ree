@@ -17,32 +17,6 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
-
-class AcquireSourceArgs(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    # Origin/type are absent for an upload-acquired source: it has no origin and
-    # is populated from the snapshot the upload ingest produced.
-    origin_url: str = ""
-    source_type: Literal["git", "tarball", "zip"] | None = None
-    # The git ref to fetch: a user-supplied commit, branch, or tag during
-    # authoring; the resolved concrete commit once acquisition has settled it and
-    # a re-fetch is being pinned (e.g. in a sealed bundle). Empty means the
-    # origin's default branch HEAD; the resolved commit is recorded afterward
-    # either way. See ``ReeIntent.revision`` for the same value once persisted.
-    revision: str = ""
-    # Force a fresh pull from origin even when a snapshot is present (origin
-    # sources only; an upload has nothing to re-fetch).
-    refetch: bool = False
-
-
-class AcquireSourceCommand(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    operation: Literal["acquire_source"] = "acquire_source"
-    args: AcquireSourceArgs
-
-
 # What a review step is allowed to reproduce *from*.
 #
 # ``independent`` is the strong form: fetch the source from its recorded origin,
@@ -151,19 +125,6 @@ class ReviewRunExperimentCommand(BaseModel):
     args: ReviewRunExperimentArgs
 
 
-class SnapshotUpstreamArgs(BaseModel):
-    """No args — operates on /ree/upstream → /ree/snapshot.tar.gz."""
-
-    model_config = ConfigDict(extra="forbid")
-
-
-class SnapshotUpstreamCommand(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    operation: Literal["snapshot_upstream"] = "snapshot_upstream"
-    args: SnapshotUpstreamArgs = SnapshotUpstreamArgs()
-
-
 class MaterializeWorkspaceArgs(BaseModel):
     """No args — merges /ree/upstream + /ree/overlay into /ree/workspace."""
 
@@ -177,23 +138,7 @@ class MaterializeWorkspaceCommand(BaseModel):
     args: MaterializeWorkspaceArgs = MaterializeWorkspaceArgs()
 
 
-class ExtractUploadArgs(BaseModel):
-    """Extract /ree/upload-staging/<upload_token>.bin into /ree/upstream/."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    upload_token: str
-    archive_name: str
-
-
-class ExtractUploadCommand(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    operation: Literal["extract_upload"] = "extract_upload"
-    args: ExtractUploadArgs
-
-
-class PrepareSourceArgs(BaseModel):
+class AcquireSourceArgs(BaseModel):
     """Acquire a REE source from an origin or a staged upload.
 
     An REE holds at most one source, and acquisition is only legal into an
@@ -209,16 +154,20 @@ class PrepareSourceArgs(BaseModel):
     mode: Literal["download", "upload"]
     origin_url: str = ""
     source_type: Literal["git", "tarball", "zip"] | None = None
+    # The git ref to fetch: a user-supplied commit, branch, or tag. Empty means
+    # the origin's default branch HEAD. The concrete commit it resolves to is
+    # observed off the acquired tree and recorded either way — see
+    # ``ReeIntent.revision`` for that value once persisted.
     revision: str = ""
     upload_token: str = ""
     archive_name: str = ""
 
 
-class PrepareSourceCommand(BaseModel):
+class AcquireSourceCommand(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    operation: Literal["prepare_source"] = "prepare_source"
-    args: PrepareSourceArgs
+    operation: Literal["acquire_source"] = "acquire_source"
+    args: AcquireSourceArgs
 
 
 class LoadReeBundleArgs(BaseModel):
@@ -467,15 +416,12 @@ class SealReeCommand(BaseModel):
 
 # Tagged union discriminated on 'operation'.
 Command = Annotated[
-    AcquireSourceCommand
-    | ReviewAcquireSourceCommand
+    ReviewAcquireSourceCommand
     | ReviewBuildRuntimeCommand
     | ReviewActivationTestCommand
     | ReviewRunExperimentCommand
-    | SnapshotUpstreamCommand
     | MaterializeWorkspaceCommand
-    | ExtractUploadCommand
-    | PrepareSourceCommand
+    | AcquireSourceCommand
     | LoadReeBundleCommand
     | WriteFileCommand
     | DeleteFileCommand

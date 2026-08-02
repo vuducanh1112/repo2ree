@@ -28,33 +28,24 @@ from repo2ree_core.domain.primitives import (
     ReeId,
     ReePath,
     ReeRevision,
-    ScriptPath,
     Swhid,
     UtcInstant,
 )
 from repo2ree_core.domain.ree.intent import SourceType
 from repo2ree_core.domain.ree.model import (
-    AuthoredFile,
     Ree,
     ReeDefinition,
-    ReeEvidence,
     SealedRee,
 )
 from repo2ree_core.domain.ree.receipt import RunReceipt, receipt_step_key
 from repo2ree_core.domain.ree.state import (
-    ReeLifecycleState,
     SourceAcquireMode,
     record_source,
     select_packaging,
 )
 from repo2ree_core.domain.ree.state import (
-    record_evaluation as record_state_evaluation,
-)
-from repo2ree_core.domain.ree.state import (
     record_seal as record_state_seal,
 )
-from repo2ree_core.path_safety import validate_relative_path
-from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 
 
 class ReePreconditionError(ValueError):
@@ -70,41 +61,6 @@ class ReePreconditionError(ValueError):
 
 class _Transition(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
-
-
-class IntentTransition(_Transition):
-    before_revision: ReeRevision
-    after_revision: ReeRevision
-    authored: ReeDefinition
-    removed_experiments: tuple[str, ...] = ()
-
-
-class FileTransition(_Transition):
-    before_revision: ReeRevision
-    after_revision: ReeRevision
-    authored: ReeDefinition
-    changed_file: AuthoredFile
-
-
-class RuntimeBuildTransition(_Transition):
-    ree_id: ReeId
-    revision: ReeRevision
-    snapshot_digest: Digest | None
-    build_script_path: ScriptPath
-    build_script_digest: Digest
-
-
-class EvidenceTransition(_Transition):
-    before_revision: ReeRevision
-    after_revision: ReeRevision
-    authored: ReeDefinition
-    evidence: ReeEvidence
-
-
-class PublicationTransition(_Transition):
-    revision: ReeRevision
-    state: ReeLifecycleState
-    publication: SealedRee | None = None
 
 
 def revision_of(ree: Ree) -> ReeRevision:
@@ -128,58 +84,6 @@ def revision_of(ree: Ree) -> ReeRevision:
 
 def _patch_definition(definition: ReeDefinition, patch: Mapping[str, Any]) -> ReeDefinition:
     return definition.model_copy(update={"intent": definition.intent.apply_patch(patch)})
-
-
-def _definition_with_file(definition: ReeDefinition, file: AuthoredFile) -> ReeDefinition:
-    remaining = (item for item in definition.files if item.path != file.path)
-    return definition.model_copy(update={"files": tuple(sorted((*remaining, file), key=lambda item: item.path))})
-
-
-def patch_intent(ree: Ree, patch: Mapping[str, Any]) -> IntentTransition:
-    previous_names = {experiment.name for experiment in ree.authored.intent.experiments if experiment.name}
-    authored = _patch_definition(ree.authored, patch)
-    updated = ree.model_copy(update={"authored": authored})
-    current_names = {experiment.name for experiment in authored.intent.experiments if experiment.name}
-    return IntentTransition(
-        before_revision=revision_of(ree),
-        after_revision=revision_of(updated),
-        authored=authored,
-        removed_experiments=tuple(sorted(previous_names - current_names)),
-    )
-
-
-def write_file(ree: Ree, path: ReePath, content: bytes) -> FileTransition:
-    validate_relative_path(path)
-    file = AuthoredFile(
-        path=path,
-        digest=Digest(f"sha256:{hashlib.sha256(content).hexdigest()}"),
-        size=len(content),
-    )
-    authored = _definition_with_file(ree.authored, file)
-    updated = ree.model_copy(update={"authored": authored})
-    return FileTransition(
-        before_revision=revision_of(ree),
-        after_revision=revision_of(updated),
-        authored=authored,
-        changed_file=file,
-    )
-
-
-def request_runtime_build(
-    ree: Ree,
-    *,
-    snapshot_digest: Digest | None,
-    build_script_digest: Digest | None,
-) -> RuntimeBuildTransition:
-    if build_script_digest is None:
-        raise ValueError("runtime build requires the runtime build script")
-    return RuntimeBuildTransition(
-        ree_id=ree.identity.ree_id,
-        revision=revision_of(ree),
-        snapshot_digest=snapshot_digest,
-        build_script_path=ScriptPath(RESERVED_BUILD_SCRIPT),
-        build_script_digest=build_script_digest,
-    )
 
 
 # ================================================
@@ -355,45 +259,21 @@ def _selected_with(selected: tuple[RunReceipt, ...], recorded: tuple[RunReceipt,
     return tuple(sorted((*kept, *promoted.values()), key=receipt_step_key))
 
 
-def record_evaluation(
-    ree: Ree,
-    *,
-    dependency_level: int,
-    environment_level: int,
-    machine_level: int,
-    detected_dependencies: str,
-) -> EvidenceTransition:
-    state = record_state_evaluation(
-        ree.evidence.state,
-        dependency_level=dependency_level,
-        environment_level=environment_level,
-        machine_level=machine_level,
-        detected_dependencies=detected_dependencies,
-    )
-    evidence = ree.evidence.model_copy(update={"state": state})
-    updated = ree.model_copy(update={"evidence": evidence})
-    return EvidenceTransition(
-        before_revision=revision_of(ree),
-        after_revision=revision_of(updated),
-        authored=ree.authored,
-        evidence=evidence,
-    )
-
-
 def prepare_publication(
     ree: Ree,
     *,
     source_included: bool,
     runtime_included: bool,
     results_included: bool,
-) -> PublicationTransition:
+) -> Ree:
+    """The REE carrying the packaging choices this bundle will be built with."""
     state = select_packaging(
         ree.evidence.state,
         source_included=source_included,
         runtime_included=runtime_included,
         results_included=results_included,
     )
-    return PublicationTransition(revision=revision_of(ree), state=state)
+    return ree.model_copy(update={"evidence": ree.evidence.model_copy(update={"state": state})})
 
 
 def record_seal(
@@ -404,7 +284,13 @@ def record_seal(
     source_included: bool,
     runtime_included: bool,
     results_included: bool,
-) -> PublicationTransition:
+) -> Ree:
+    """The sealed REE: the packaging facts on the state, and the publication itself.
+
+    Both, and in one value — a seal that settled the state without recording
+    the publication would leave the REE saying it was sealed while carrying
+    nothing that says what was sealed.
+    """
     state = record_state_seal(
         ree.evidence.state,
         sealed_at=sealed_at,
@@ -420,4 +306,9 @@ def record_seal(
         runtime_included=runtime_included,
         results_included=results_included,
     )
-    return PublicationTransition(revision=revision_of(ree), state=state, publication=publication)
+    return ree.model_copy(
+        update={
+            "evidence": ree.evidence.model_copy(update={"state": state}),
+            "publications": ree.publications.model_copy(update={"sealed": publication}),
+        }
+    )

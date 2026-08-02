@@ -13,7 +13,6 @@ from repo2ree_core.operations.handlers.author.delete_file import handle_delete_f
 from repo2ree_core.operations.handlers.author.evaluate_dependency_score import (
     handle_evaluate_dependency_score,
 )
-from repo2ree_core.operations.handlers.author.extract_upload import handle_extract_upload
 from repo2ree_core.operations.handlers.author.generate_hbom import handle_generate_hbom
 from repo2ree_core.operations.handlers.author.generate_sbom import handle_generate_sbom
 from repo2ree_core.operations.handlers.author.generate_script_candidates import (
@@ -24,11 +23,9 @@ from repo2ree_core.operations.handlers.author.materialize_workspace import (
     handle_materialize_workspace,
 )
 from repo2ree_core.operations.handlers.author.patch_ree_intent import handle_patch_ree_intent
-from repo2ree_core.operations.handlers.author.prepare_source import handle_prepare_source
 from repo2ree_core.operations.handlers.author.remove_source import handle_remove_source
 from repo2ree_core.operations.handlers.author.run_experiment import handle_run_experiment
 from repo2ree_core.operations.handlers.author.seal_ree import handle_seal_ree
-from repo2ree_core.operations.handlers.author.snapshot_upstream import handle_snapshot_upstream
 from repo2ree_core.operations.handlers.author.write_file import handle_write_file
 from repo2ree_core.operations.handlers.review.acquire_source import handle_review_acquire_source
 from repo2ree_core.operations.handlers.review.activation_test import handle_review_activation_test
@@ -42,14 +39,12 @@ from repo2ree_protocol.command import (
     CrossCheckSbomCommand,
     DeleteFileCommand,
     EvaluateDependencyScoreCommand,
-    ExtractUploadCommand,
     GenerateHbomCommand,
     GenerateSbomCommand,
     GenerateScriptCandidatesCommand,
     LoadReeBundleCommand,
     MaterializeWorkspaceCommand,
     PatchReeIntentCommand,
-    PrepareSourceCommand,
     RemoveSourceCommand,
     ReviewAcquireSourceCommand,
     ReviewActivationTestCommand,
@@ -57,7 +52,6 @@ from repo2ree_protocol.command import (
     ReviewRunExperimentCommand,
     RunExperimentCommand,
     SealReeCommand,
-    SnapshotUpstreamCommand,
     WriteFileCommand,
 )
 from repo2ree_protocol.log import LogSink
@@ -126,8 +120,6 @@ def _dispatch(
     run_id: str,
     cancel: CancelCheck,
 ) -> ActionResult:
-    if isinstance(cmd, AcquireSourceCommand):
-        return handle_acquire_source(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, ReviewAcquireSourceCommand):
         return handle_review_acquire_source(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, ReviewBuildRuntimeCommand):
@@ -136,12 +128,8 @@ def _dispatch(
         return handle_review_activation_test(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, ReviewRunExperimentCommand):
         return handle_review_run_experiment(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
-    if isinstance(cmd, SnapshotUpstreamCommand):
-        return handle_snapshot_upstream(run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, MaterializeWorkspaceCommand):
         return handle_materialize_workspace(log=log, is_canceled=cancel)
-    if isinstance(cmd, ExtractUploadCommand):
-        return handle_extract_upload(cmd.args, log=log, is_canceled=cancel)
     if isinstance(cmd, LoadReeBundleCommand):
         return handle_load_ree_bundle(cmd.args, log=log, is_canceled=cancel)
     if isinstance(cmd, WriteFileCommand):
@@ -150,8 +138,8 @@ def _dispatch(
         return handle_delete_file(cmd.args, log=log, is_canceled=cancel)
     if isinstance(cmd, PatchReeIntentCommand):
         return handle_patch_ree_intent(cmd.args, log=log, is_canceled=cancel)
-    if isinstance(cmd, PrepareSourceCommand):
-        return handle_prepare_source(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
+    if isinstance(cmd, AcquireSourceCommand):
+        return handle_acquire_source(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, RemoveSourceCommand):
         return handle_remove_source(log=log, is_canceled=cancel)
     if isinstance(cmd, BuildRuntimeCommand):

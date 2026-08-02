@@ -2,7 +2,7 @@
 
 Two ways in — by reference (``source:acquire``) or by upload (the
 init/PUT/complete sequence) — and both settle into the same
-``PrepareSourceCommand`` in the workbench. The staging mechanics themselves live
+``AcquireSourceCommand`` in the workbench. The staging mechanics themselves live
 in :mod:`repo2ree_api.workbench.uploads` (receiving bytes) and
 :mod:`repo2ree_api.authoring.upload_runs` (handing them to the REE); this module
 is the HTTP binding.
@@ -27,8 +27,8 @@ from repo2ree_api.control.run_orchestration import run_summary, start_single_com
 from repo2ree_api.deps import workbench_manager
 from repo2ree_api.workbench.commands import dispatch_or_fail, ree_command_span, require_handle
 from repo2ree_api.workbench.uploads import mint_upload_token, stage_upload_bytes
-from repo2ree_protocol import PrepareSourceCommand, RemoveSourceCommand
-from repo2ree_protocol.command import PrepareSourceArgs
+from repo2ree_protocol import AcquireSourceCommand, RemoveSourceCommand
+from repo2ree_protocol.command import AcquireSourceArgs
 
 source_router = APIRouter()
 
@@ -51,8 +51,8 @@ def acquire_source_route(ree_id: str, payload: SourceAcquirePayload) -> RunSumma
     run_state = start_single_command_run(
         ree_id,
         operation="source",
-        command=PrepareSourceCommand(
-            args=PrepareSourceArgs(
+        command=AcquireSourceCommand(
+            args=AcquireSourceArgs(
                 mode="download",
                 origin_url=payload.origin_url,
                 source_type=payload.source_type,
@@ -110,8 +110,8 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload) -> 
         purpose="source",
         operation="source",
         run_id_prefix="source",
-        command=PrepareSourceCommand(
-            args=PrepareSourceArgs(
+        command=AcquireSourceCommand(
+            args=AcquireSourceArgs(
                 mode="upload",
                 upload_token=payload.upload_token,
                 archive_name=payload.archive_name,

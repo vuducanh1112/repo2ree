@@ -33,14 +33,12 @@ from repo2ree_core.domain.ree.receipt import (
     WorkspaceDrift,
     receipt_envelope,
 )
-from repo2ree_core.domain.ree.transitions import patch_intent
 from repo2ree_core.execution.experiment.run import RunnableRunOutputs, run_runnable
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.path_safety import WORKSPACE_CONTROL_PREFIXES, resolve_within
 from repo2ree_core.persistence.directory import UNREADABLE_DOCUMENT, ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.receipts import record_receipt
-from repo2ree_core.persistence.repository import load_ree
 from repo2ree_core.time_utils import OperationTimer, OperationTiming, format_duration_ms
 from repo2ree_core.workspace.drift import check_workspace_drift, declared_output_paths
 from repo2ree_protocol.log import LogSink
@@ -530,5 +528,4 @@ def check_expected_etag(store: ReeDirectory, path: str, expected: str, *, log: L
 def patch_ree_intent(store: ReeDirectory, patch: dict[str, Any]) -> None:
     if not store.sidecar_exists():
         raise FileNotFoundError("metadata not found")
-    transition = patch_intent(load_ree(store.layout, store), patch)
-    store.write_intent(transition.authored.intent)
+    store.write_intent(store.read_intent().apply_patch(patch))

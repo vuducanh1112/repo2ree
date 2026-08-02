@@ -33,9 +33,7 @@ from repo2ree_core.domain.ree.transitions import (
     SourceSlot,
     apply_source_acquired,
     plan_source_acquisition,
-    request_runtime_build,
     revision_of,
-    write_file,
 )
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_core.time_utils import parse_utc_instant
@@ -305,11 +303,24 @@ def test_ree_exposes_its_authored_anatomy_from_one_root():
     assert ree.publications.sealed is None
 
 
-def test_ree_is_data_only_and_transitions_are_external_functions():
+def test_ree_is_data_only():
+    """The aggregate carries no behaviour: every transition is a free function."""
     assert not hasattr(Ree, "patch_intent")
     assert not hasattr(Ree, "write_file")
-    assert not hasattr(Ree, "request_runtime_build")
     assert not hasattr(Ree, "assessment")
+
+
+def _with_file(ree: Ree, path: str, content: bytes) -> Ree:
+    """``ree`` with one authored file added or replaced, as a save would leave it."""
+    file = AuthoredFile(path=ReePath(path), digest=digest_bytes(content), size=len(content))
+    remaining = tuple(item for item in ree.authored.files if item.path != file.path)
+    return ree.model_copy(
+        update={
+            "authored": ree.authored.model_copy(
+                update={"files": tuple(sorted((*remaining, file), key=lambda item: item.path))}
+            )
+        }
+    )
 
 
 def test_unrelated_file_edit_changes_revision_but_not_runtime_freshness():
@@ -317,10 +328,9 @@ def test_unrelated_file_edit_changes_revision_but_not_runtime_freshness():
     receipt = _successful_build(script_digest=build.digest)
     ree = _ree(intent=ReeIntent(name="demo", runtime="runtime.tar"), files=(build,), selected=(receipt,))
 
-    transition = write_file(ree, ReePath("notes.txt"), b"new metadata-like content")
-    updated = ree.model_copy(update={"authored": transition.authored})
+    updated = _with_file(ree, "notes.txt", b"new metadata-like content")
 
-    assert transition.after_revision != transition.before_revision
+    assert revision_of(updated) != revision_of(ree)
     assert assess(updated).runtime.status == "ready"
 
 
@@ -329,30 +339,10 @@ def test_build_script_edit_makes_matching_runtime_evidence_stale():
     receipt = _successful_build(script_digest=build.digest)
     ree = _ree(intent=ReeIntent(name="demo", runtime="runtime.tar"), files=(build,), selected=(receipt,))
 
-    transition = write_file(ree, ReePath(RESERVED_BUILD_SCRIPT), b"different build")
-    updated = ree.model_copy(update={"authored": transition.authored})
+    updated = _with_file(ree, RESERVED_BUILD_SCRIPT, b"different build")
 
     assert assess(updated).runtime.status == "stale"
     assert assess(updated).runtime.reasons == ("runtime build script changed",)
-
-
-def test_runtime_build_transition_pins_revision_and_inputs():
-    build_digest = digest_bytes(b"build")
-    ree = _ree(
-        intent=ReeIntent(name="demo", runtime="runtime.tar"),
-        files=(AuthoredFile(path=ReePath(RESERVED_BUILD_SCRIPT), digest=build_digest, size=5),),
-    )
-
-    transition = request_runtime_build(
-        ree,
-        snapshot_digest=Digest("sha256:snapshot"),
-        build_script_digest=build_digest,
-    )
-
-    assert transition.ree_id == "ree-1"
-    assert transition.revision == revision_of(ree)
-    assert transition.snapshot_digest == "sha256:snapshot"
-    assert transition.build_script_digest == build_digest
 
 
 # ================================================

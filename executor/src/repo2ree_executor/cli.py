@@ -22,7 +22,6 @@ from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
 from repo2ree_core.persistence.receipts import load_author_receipts
 from repo2ree_core.persistence.sidecar import ReeSidecar
 from repo2ree_core.reproduction import (
-    ACQUIRE_SOURCE,
     BUILD_RUNTIME,
     EXPERIMENT,
     MATERIALIZE_WORKSPACE,
@@ -31,8 +30,6 @@ from repo2ree_core.reproduction import (
 from repo2ree_core.time_utils import utc_now as _utc_now
 from repo2ree_protocol import ActionResult, command_adapter
 from repo2ree_protocol.command import (
-    AcquireSourceArgs,
-    AcquireSourceCommand,
     ActivationTestArgs,
     ActivationTestCommand,
     BuildRuntimeCommand,
@@ -218,7 +215,12 @@ def cancel_run_cmd(run_id: str) -> None:
 # First-class verbs that mirror the bundle's run.sh (see
 # repo2ree_core.reproduction). Each is sugar over an `execute` envelope so the
 # human/CI surface and the machine surface (host → workbench) share one path.
-# `acquire-source` lives below with its authoring-shaped arguments.
+# Acquiring a source is deliberately *not* here: it is the one verb that
+# changes what the REE is, so in a workbench it has to go through the acquire
+# lifecycle (which decides whether it is legal and commits what it produced).
+# Run bare, it would leave source on disk the REE never recorded — exactly the
+# state that lifecycle refuses on. The bundle's `run.sh acquire-source` is a
+# different surface: self-contained shell, no REE to keep consistent.
 
 
 @cli.command(MATERIALIZE_WORKSPACE.name, help=MATERIALIZE_WORKSPACE.summary)
@@ -247,35 +249,6 @@ def experiment_cmd(name: str, run_id: str | None) -> None:
         RunExperimentCommand(args=RunExperimentArgs(experiment_name=name)),
         run_id,
     )
-
-
-@cli.command(ACQUIRE_SOURCE.name, help=ACQUIRE_SOURCE.summary)
-@click.argument("origin_url")
-@click.option(
-    "--source-type",
-    type=click.Choice(["git", "tarball", "zip"]),
-    required=True,
-)
-@click.option(
-    "--refetch",
-    is_flag=True,
-    help="Force a fresh pull from origin even when a snapshot is present.",
-)
-def acquire_source_cmd(origin_url: str, source_type: str, refetch: bool) -> None:
-    """Acquire source into the REE's canonical upstream directory.
-
-    Clones a git repo or extracts a tarball/zip into /ree/upstream. Writes
-    ActionResult JSON to stdout; exits non-zero on failure.
-    """
-    cmd = AcquireSourceCommand(
-        args=AcquireSourceArgs(
-            origin_url=origin_url,
-            source_type=source_type,  # type: ignore[arg-type]
-            refetch=refetch,
-        )
-    )
-    result = run_command(cmd, log=_make_log_sink(None))
-    _emit_result(result)
 
 
 @cli.command("init-ree")
