@@ -1,18 +1,17 @@
 """The acquire-source lifecycle: the one operation that gives an REE a source.
 
 An REE holds at most one source, and acquiring is only legal into an empty
-slot. This workflow never clears one behind the author's back — a source
-already present is theirs, and giving it up is a decision they make: either
-by ``remove_source``, or by asking for it here with ``replace``, which runs
-the same retraction as its own commit first. That refusal is the whole reason
-the preconditions in
+slot. This workflow never clears one — there is no replace. A source already
+present is the author's, and giving it up is a separate act they perform with
+``remove_source``; only then can another be acquired. That refusal is the
+whole reason the preconditions in
 :func:`~repo2ree_core.domain.ree.transitions.plan_source_acquisition` can mean
-anything: a workflow that reset first would have erased every condition it
-might have refused on.
+anything: a workflow that reset first — even one asked politely to — would
+have erased every condition it might have refused on, which is precisely how
+a sealed REE could once be silently unsealed by acquiring over it.
 
 The stages, and why they are in this order::
 
-    retract    only when ``replace`` was asked for — its own commit
     hydrate    the whole REE, once
     observe    the source slot on disk (impure)
     decide     plan_source_acquisition — refuses, or names the effect
@@ -71,7 +70,6 @@ from repo2ree_core.operations.handlers.author.extract_upload import freeze_uploa
 from repo2ree_core.operations.handlers.author.materialize_workspace import materialize_workspace
 from repo2ree_core.operations.handlers.author.snapshot_upstream import SNAPSHOT_FAILURES, freeze_upstream
 from repo2ree_core.operations.steps.author import log_step_outcome, open_ree_store
-from repo2ree_core.persistence.directory import reset_source_state
 from repo2ree_core.persistence.layout import SNAPSHOT_FILENAME, ReeLayout
 from repo2ree_core.persistence.repository import load_ree, observe_source_slot, save_ree
 from repo2ree_core.source_repo import directory_swhid, resolved_git_head
@@ -111,18 +109,6 @@ def handle_prepare_source(
     if isinstance(opened, ActionResult):
         return opened
     layout, store = opened
-
-    if args.replace:
-        # The author asked to give up the current source. A separate commit,
-        # before the acquisition it makes room for, with "this REE has no
-        # source" as the resting state in between — so an interruption here
-        # leaves a sourceless REE rather than a half-replaced one.
-        log("system", "info", "replace: retracting the current source first")
-        try:
-            reset_source_state(layout=layout, store=store)
-        except Exception as exc:
-            log("system", "error", f"could not retract the current source: {exc}")
-            return failed_from_exception(exc, f"could not retract the current source: {exc}")
 
     ree = load_ree(layout, store)
     slot = observe_source_slot(layout, upload_token=args.upload_token)

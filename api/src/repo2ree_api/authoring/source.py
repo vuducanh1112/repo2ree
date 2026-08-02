@@ -57,12 +57,6 @@ def acquire_source_route(ree_id: str, payload: SourceAcquirePayload) -> RunSumma
                 origin_url=payload.origin_url,
                 source_type=payload.source_type,
                 revision=(payload.revision or "").strip(),
-                # "Acquire a source" from the catalog means *this* source from
-                # now on. The workbench refuses to acquire into an occupied
-                # slot, so replacing one is an explicit retraction — asked for
-                # here, where the gesture is made, and carried out as its own
-                # commit before the acquisition it makes room for.
-                replace=True,
             )
         ),
         request_payload=request_payload,
@@ -121,7 +115,6 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload) -> 
                 mode="upload",
                 upload_token=payload.upload_token,
                 archive_name=payload.archive_name,
-                replace=True,
             )
         ),
         request_payload={

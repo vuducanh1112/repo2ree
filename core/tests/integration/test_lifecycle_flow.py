@@ -302,18 +302,29 @@ def test_acquire_refuses_when_a_previous_attempt_left_content_behind(ree: Ree, s
     assert _acquire(ree, source_repo, run_id="source-retry").status == "succeeded"
 
 
-def test_acquire_refuses_into_a_sealed_ree(ree: Ree, source_repo: Path) -> None:
+def test_acquire_refuses_into_a_sealed_ree_and_leaves_the_seal_intact(ree: Ree, source_repo: Path) -> None:
+    """A sealed REE's source is pinned by its seal, so acquiring over it is refused.
+
+    Regression: while acquisition could be asked to clear the slot first, this
+    check passed vacuously — the reset ran before the hydrate and had already
+    wiped ``seal_hash``, so the REE was silently unsealed and the replacement
+    acquired. There is no such request any more, and the seal has to survive.
+    """
+    layout = ree.layout
     log = ree.log
     assert _acquire(ree, source_repo).status == "succeeded"
     assert run_command(SealReeCommand(), log=log, run_id="seal").status == "succeeded"
+    sealed_before = ree.session().seal_hash
+    assert sealed_before is not None
 
-    # A sealed REE's source is pinned by the seal; re-acquiring would silently
-    # invalidate it, so it is refused rather than performed.
     result = _acquire(ree, source_repo, run_id="source-after-seal")
+
     assert result.status == "failed"
     assert result.failure is not None
     assert result.failure.category == "precondition"
     assert "sealed" in result.failure.message
+    assert ree.session().seal_hash == sealed_before
+    assert layout.sealed_archive.is_file()
 
 
 def test_source_replacement_is_a_retraction_then_an_acquisition(ree: Ree, source_repo: Path, tmp_path: Path) -> None:
@@ -365,39 +376,6 @@ def test_source_replacement_is_a_retraction_then_an_acquisition(ree: Ree, source
     assert metadata.status == "ready"
     assert metadata.ree_intent.origin_url == str(replacement_repo)
     assert metadata.ree_state.source_acquired_by == "download"
-
-
-def test_replace_retracts_then_acquires_in_one_command(ree: Ree, source_repo: Path, tmp_path: Path) -> None:
-    """``replace`` is the same two commits, asked for up front.
-
-    It is not the old silent reset: acquisition still refuses an occupied slot,
-    and the retraction only happens because the caller said so.
-    """
-    layout = ree.layout
-    replacement_repo = _make_source_repo(tmp_path, name="replacement", app_text="print('new')\n")
-
-    assert _acquire(ree, source_repo, run_id="source-first").status == "succeeded"
-    first_digest = ree.session().source_snapshot_digest
-
-    result = run_command(
-        PrepareSourceCommand(
-            args=PrepareSourceArgs(
-                mode="download",
-                origin_url=str(replacement_repo),
-                source_type="git",
-                replace=True,
-            )
-        ),
-        log=ree.log,
-        run_id="source-replace",
-    )
-
-    assert result.status == "succeeded"
-    assert (layout.upstream / "app.py").read_text() == "print('new')\n"
-    state = ree.session()
-    assert state.source_available
-    assert state.source_snapshot_digest != first_digest
-    assert state.source_snapshot_digest == result.outputs["snapshot_digest"]
 
 
 def test_source_replacement_by_upload_keeps_the_staged_archive(ree: Ree, source_repo: Path, tmp_path: Path) -> None:

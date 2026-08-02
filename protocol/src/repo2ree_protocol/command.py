@@ -197,8 +197,11 @@ class PrepareSourceArgs(BaseModel):
     """Acquire a REE source from an origin or a staged upload.
 
     An REE holds at most one source, and acquisition is only legal into an
-    empty slot — a source already there is the author's, and the workbench
-    refuses rather than clearing it.
+    empty slot. There is no replace: a source already there is the author's,
+    and giving it up is a separate act they perform with ``remove_source``.
+    Acquiring into an occupied slot is a precondition failure, never a reset —
+    a reset here would erase every condition the acquisition could refuse on,
+    which is exactly how a sealed REE used to get silently unsealed.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -209,13 +212,6 @@ class PrepareSourceArgs(BaseModel):
     revision: str = ""
     upload_token: str = ""
     archive_name: str = ""
-    # Give up whatever source the REE currently has before acquiring this one.
-    # "Replace the source" is a decision only the author can make, so it is
-    # asked for explicitly and carried out as its own commit — never as a
-    # silent reset inside acquisition, which would erase every precondition
-    # the acquisition might otherwise have refused on. Left false, an occupied
-    # slot is a precondition failure.
-    replace: bool = False
 
 
 class PrepareSourceCommand(BaseModel):
