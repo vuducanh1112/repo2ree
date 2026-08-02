@@ -11,13 +11,13 @@ from repo2ree_core.domain.ree.state import ReeLifecycleState
 from repo2ree_core.domain.ree.transitions import SourceSlot, revision_of
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.persistence.record import ReeRecord
 from repo2ree_core.persistence.repository import (
     ReeRevisionConflictError,
     load_ree,
     observe_source_slot,
     save_ree,
 )
-from repo2ree_core.persistence.sidecar import ReeSidecar
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_core.time_utils import parse_utc_instant
 
@@ -31,8 +31,8 @@ def test_repository_hydrates_authored_evidence_and_seal(tmp_path: Path) -> None:
     store = ReeDirectory(layout)
     store.ensure_dirs()
     store.overlay.write_text(RESERVED_BUILD_SCRIPT, "build runtime")
-    store.write_sidecar(
-        ReeSidecar(
+    store.write_record(
+        ReeRecord(
             ree_id="ree-1",
             name="demo",
             created_at="2026-01-01T00:00:00Z",
@@ -67,8 +67,8 @@ def _seeded(tmp_path: Path) -> tuple[ReeLayout, ReeDirectory]:
     layout = ReeLayout(root=tmp_path)
     store = ReeDirectory(layout)
     store.ensure_dirs()
-    store.write_sidecar(
-        ReeSidecar(
+    store.write_record(
+        ReeRecord(
             ree_id="ree-1",
             name="demo",
             created_at="2026-01-01T00:00:00Z",
@@ -95,12 +95,12 @@ def test_save_ree_commits_intent_and_state_together(tmp_path: Path) -> None:
     )
     save_ree(layout, store, updated, expected_revision=revision_of(ree), status="ready", log=_silent_log)
 
-    sidecar = store.read_sidecar()
-    assert sidecar.status == "ready"
-    assert sidecar.ree_intent.origin_url == "https://x/y.git"
-    assert sidecar.ree_state.source_available is True
+    record = store.read_record()
+    assert record.status == "ready"
+    assert record.ree_intent.origin_url == "https://x/y.git"
+    assert record.ree_state.source_available is True
     # name and external_ref stay projections of the intent, re-derived on the way in
-    assert sidecar.external_ref == "https://x/y.git"
+    assert record.external_ref == "https://x/y.git"
 
 
 def test_save_ree_refuses_when_the_head_moved(tmp_path: Path) -> None:
@@ -114,7 +114,7 @@ def test_save_ree_refuses_when_the_head_moved(tmp_path: Path) -> None:
 
     with pytest.raises(ReeRevisionConflictError):
         save_ree(layout, store, ree, expected_revision=stale_revision, log=_silent_log)
-    assert store.read_sidecar().ree_intent.origin_url == "https://other/z.git"
+    assert store.read_record().ree_intent.origin_url == "https://other/z.git"
 
 
 def test_revision_covers_the_whole_head(tmp_path: Path) -> None:

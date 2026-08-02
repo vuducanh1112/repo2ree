@@ -98,7 +98,7 @@ export function mapReeDetailToReeProject(
   ree: ReeDocument,
 ): ReeProject<FileTreeNode, ReturnType<typeof mapReeDetailToReeSlices>> {
   const files: FileTreeNode[] = [];
-  for (const file of ree.files || []) {
+  for (const file of ree.workspace_files || []) {
     if (!file.path) {
       continue;
     }

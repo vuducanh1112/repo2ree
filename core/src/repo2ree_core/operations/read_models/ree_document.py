@@ -37,13 +37,13 @@ from repo2ree_core.operations.read_models.files import (
     list_workspace_files,
 )
 from repo2ree_core.persistence.receipts import load_author_receipts
+from repo2ree_core.persistence.record import ReeStatus
 from repo2ree_core.persistence.repository import directory_for, layout_for, load_ree
-from repo2ree_core.persistence.sidecar import ReeStatus
 from repo2ree_core.source_repo import SourceRepoMetadata, derive_source_repo_metadata
 
 
 class ReeDocument(BaseModel):
-    """Application read model composed from a sidecar and current REE facts."""
+    """Application read model composed from a record and current REE facts."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -55,10 +55,15 @@ class ReeDocument(BaseModel):
     updated_at: str
     ree_intent: ReeIntent = Field(default_factory=ReeIntent)
     ree_state: ReeLifecycleState = Field(default_factory=ReeLifecycleState)
-    files: list[WorkspaceFile] = Field(default_factory=list)
+    # The materialized workspace (``upstream`` + ``overlay`` merged),
+    # workspace-root-relative: the tree the author edits and runs execute
+    # against. ``ree_files`` is the REE's own tree, REE-root-relative and
+    # tagged by subtree — the two are named for the trees they project, since
+    # "files" alone cannot say which.
+    workspace_files: list[WorkspaceFile] = Field(default_factory=list)
     ree_files: list[ReeFile] = Field(default_factory=list)
     # A projection of the *would-be* manifest, whose source of truth is the
-    # sealed sidecar; it stays a payload dict here rather than gaining a second,
+    # sealed record; it stays a payload dict here rather than gaining a second,
     # competing schema for the same document.
     draft_manifest: dict[str, Any] = Field(default_factory=dict)
     source_repo: SourceRepoMetadata | None = None
@@ -70,25 +75,25 @@ class ReeDocument(BaseModel):
 def get_ree_document(storage_root: Path, ree_id: str, *, include_content: bool = True) -> ReeDocument:
     layout = layout_for(storage_root, ree_id)
     directory = directory_for(storage_root, ree_id)
-    if not directory.sidecar_exists():
+    if not directory.record_exists():
         raise FileNotFoundError(f"REE {ree_id} not found")
-    sidecar = directory.read_sidecar()
-    ree = load_ree(layout, directory, sidecar=sidecar)
+    record = directory.read_record()
+    ree = load_ree(layout, directory, record=record)
     intent = ree.authored.intent
     state = ree.evidence.state
-    files = list_workspace_files(storage_root, ree_id, include_content=include_content)
-    files_in_ree = list_ree_files(storage_root, ree_id, include_content=include_content)
+    workspace_files = list_workspace_files(storage_root, ree_id, include_content=include_content)
+    ree_files = list_ree_files(storage_root, ree_id, include_content=include_content)
 
     return ReeDocument(
-        **sidecar.model_dump(),
-        files=files,
-        ree_files=files_in_ree,
+        **record.model_dump(),
+        workspace_files=workspace_files,
+        ree_files=ree_files,
         draft_manifest=build_draft_manifest_payload(
-            sidecar,
-            workspace_files=files,
-            ree_files=files_in_ree,
+            record,
+            workspace_files=workspace_files,
+            ree_files=ree_files,
         ),
-        source_repo=derive_source_repo_metadata(intent, state, files),
+        source_repo=derive_source_repo_metadata(intent, state, workspace_files),
         # Live per-step staleness (recorded receipts vs. the current tree):
         # saving a script flips the derived state on the next fetch — no
         # invalidation events needed.

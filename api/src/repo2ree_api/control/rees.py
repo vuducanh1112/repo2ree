@@ -108,7 +108,7 @@ def list_rees_route(
     limit: int | None = Query(None, ge=1),
     status: str | None = Query(None),
 ) -> ReeList:
-    items = workbench_manager.list_all_sidecars()
+    items = workbench_manager.list_all_records()
     if status:
         items = [m for m in items if m.get("status") == status]
     # Keyset pagination needs an immutable sort key: created_at (with ree_id as
@@ -164,7 +164,7 @@ def get_ree_state_route(ree_id: str) -> ReeState:
         "consistency": document.get("consistency", {}),
         "author_receipts": document.get("author_receipts", {}),
         "ree_steps": document.get("ree_steps", []),
-        "files": document.get("files", []),
+        "workspace_files": document.get("workspace_files", []),
         "ree_files": document.get("ree_files", []),
         "active_runs": active_runs,
     }

@@ -2531,8 +2531,8 @@ export interface components {
             workbench_image?: string | null;
             ree_intent?: components["schemas"]["ReeIntent-Output"];
             ree_state?: components["schemas"]["ReeLifecycleState"];
-            /** Files */
-            files?: components["schemas"]["WorkspaceFile"][];
+            /** Workspace Files */
+            workspace_files?: components["schemas"]["WorkspaceFile"][];
             /** Ree Files */
             ree_files?: components["schemas"]["ReeFile"][];
             /** Draft Manifest */
@@ -2813,8 +2813,8 @@ export interface components {
             author_receipts?: components["schemas"]["AuthorReceiptSet"];
             /** Ree Steps */
             ree_steps?: components["schemas"]["ReeStepState"][];
-            /** Files */
-            files?: components["schemas"]["WorkspaceFile"][];
+            /** Workspace Files */
+            workspace_files?: components["schemas"]["WorkspaceFile"][];
             /** Ree Files */
             ree_files?: components["schemas"]["ReeFile"][];
             source_repo?: components["schemas"]["SourceRepoMetadata"] | null;

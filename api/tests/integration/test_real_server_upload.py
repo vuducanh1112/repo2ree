@@ -234,7 +234,7 @@ def test_upload_over_real_server(server: str) -> None:
             # The extracted source landed in the workspace.
             resp = client.get(f"/api/v1/rees/{ree_id}")
             assert resp.status_code == 200
-            assert any(f.get("path") == "README.md" for f in resp.json()["files"])
+            assert any(f.get("path") == "README.md" for f in resp.json()["workspace_files"])
 
             # --- seal (with source), download an archive over one WS frame --
             resp = client.post(f"/api/v1/rees/{ree_id}/ree:seal", json={"include_source": True})

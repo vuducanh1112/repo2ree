@@ -440,7 +440,7 @@ def run() -> None:
     note("getReeState returns durable state + file metadata, never inline contents")
     state = call("GET", f"/api/v1/rees/{ree_id}/state")
     check(
-        f"{PROJECT_DIR}/Dockerfile" in {f["path"] for f in state.get("files", [])},
+        f"{PROJECT_DIR}/Dockerfile" in {f["path"] for f in state.get("workspace_files", [])},
         "extracted Dockerfile not visible in state",
     )
     ok("workspace tree reflects the uploaded project")
@@ -489,7 +489,7 @@ def run() -> None:
     check(rc == 0 and out.decode() == build_script, f"build script did not round-trip: {_curl_detail(rc, err)}")
     run_stage(ree_id, "POST", f"/api/v1/rees/{ree_id}/build-runtime", {}, what="build")
     built = call("GET", f"/api/v1/rees/{ree_id}/state")
-    check(runtime_artifact in {f["path"] for f in built.get("files", [])}, "runtime tarball not produced")
+    check(runtime_artifact in {f["path"] for f in built.get("workspace_files", [])}, "runtime tarball not produced")
     ok(f"runtime image built and saved to {runtime_artifact}")
 
     chapter("8. Declare the runtime artifact and hardware BOM")
@@ -533,7 +533,7 @@ def run() -> None:
         f"{SBOM_ARTIFACT_PATH} missing from the REE's own files",
     )
     check(
-        "sbom.json" not in {file["path"] for file in scanned.get("files", [])},
+        "sbom.json" not in {file["path"] for file in scanned.get("workspace_files", [])},
         "the SBOM leaked into the materialized workspace",
     )
     ok(f"SBOM written to {SBOM_ARTIFACT_PATH} — REE evidence, outside the workspace")

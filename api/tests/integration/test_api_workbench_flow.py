@@ -134,7 +134,7 @@ def test_api_ree_lifecycle(client: TestClient, ree: dict[str, Any]) -> None:
     resp = client.get(f"/api/v1/rees/{ree_id}")
     assert resp.status_code == 200
     workspace = resp.json()
-    assert any(f.get("path") == "README.md" for f in workspace["files"])
+    assert any(f.get("path") == "README.md" for f in workspace["workspace_files"])
 
     # --- write a file over HTTP, read the raw bytes back ----------------
     resp = client.put(

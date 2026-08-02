@@ -86,7 +86,7 @@ def open_ree_store(log: LogSink) -> tuple[ReeLayout, ReeDirectory] | ActionResul
     """
     layout = ReeLayout.in_workbench()
     store = ReeDirectory(layout)
-    if not store.sidecar_exists():
+    if not store.record_exists():
         log("system", "error", METADATA_MISSING)
         return ActionResult.failed("precondition", METADATA_MISSING)
     return layout, store
@@ -96,11 +96,11 @@ def read_intent_or_none(store: ReeDirectory, *, log: LogSink) -> ReeIntent | Non
     """The intent, or None when there is no readable metadata.
 
     For the read-only paths that must still answer when a REE is half-built
-    (inference, step inputs) rather than fail the command. An unreadable sidecar
+    (inference, step inputs) rather than fail the command. An unreadable record
     is logged, because what follows records "nothing declared" either way and
     only the log distinguishes the two.
     """
-    if not store.sidecar_exists():
+    if not store.record_exists():
         return None
     try:
         return store.read_intent()
@@ -125,7 +125,7 @@ def collect_step_inputs(
     artifact's state — never a digest of the live workspace tree.
     """
     snapshot_digest: Digest | None = None
-    if store.sidecar_exists():
+    if store.record_exists():
         try:
             snapshot_digest = store.read_state().source_snapshot_digest
         except UNREADABLE_DOCUMENT as exc:
@@ -188,7 +188,7 @@ class VersionConflictOutputs(BaseModel):
 
     One shape for both subjects an author can hold a stale version of: a
     workspace file (identified by ``path``, versioned by its content etag) and
-    the intent itself (versioned by the sidecar's ``updated_at``). The check is
+    the intent itself (versioned by the record's ``updated_at``). The check is
     the same check, and a client handling one conflict handles both.
     """
 
@@ -526,6 +526,6 @@ def check_expected_etag(store: ReeDirectory, path: str, expected: str, *, log: L
 
 
 def patch_ree_intent(store: ReeDirectory, patch: dict[str, Any]) -> None:
-    if not store.sidecar_exists():
+    if not store.record_exists():
         raise FileNotFoundError("metadata not found")
     store.write_intent(store.read_intent().apply_patch(patch))

@@ -79,7 +79,7 @@ test("upload Code Ocean capsule 4825344", async ({ page }) => {
     await clickDemo(
       page,
       page.getByRole("button", { name: "Expand files" }),
-      "Confirm Code Ocean files were extracted at workspace root",
+      "Confirm Code Ocean files were extracted at the upstream root",
     );
     await page.getByPlaceholder("Filter files…").fill("code");
     await expect(page.getByRole("button", { name: /run/i }).first()).toBeVisible();

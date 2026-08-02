@@ -1,4 +1,10 @@
-"""Client-facing file inventories for the workspace subtree and whole REE."""
+"""Client-facing file inventories: the materialized workspace, and the REE tree.
+
+Two inventories because the client has two surfaces for them — the workspace is
+the tree an author edits and runs execute against, while the REE tree is browsed
+read-only. They are named for the trees they project (``workspace_files``,
+``ree_files``) rather than one of them being "the" files, since neither is.
+"""
 
 from __future__ import annotations
 
@@ -44,7 +50,6 @@ _REE_SUBTREE_TAGS: dict[str, str] = {
     "upstream": "Upstream",
     "overlay": "Overlay",
     "artifacts": "Artifact",
-    "workspace": "Workspace",
 }
 
 
@@ -126,13 +131,24 @@ def list_ree_files(
     *,
     include_content: bool = True,
 ) -> list[ReeFile]:
-    """Enumerate client-visible files across the complete REE directory."""
+    """Enumerate client-visible files under the REE root, excluding the workspace.
+
+    ``workspace/`` is left out because :func:`list_workspace_files` already
+    projects it, workspace-root-relative and with its own ``kind`` — including it
+    here too would put every file of the materialized tree (the whole upstream
+    checkout) in one response twice, contents and all.
+    """
     layout = ReeLayout.for_ree(storage_root, ree_id)
     if not layout.root.exists():
         raise FileNotFoundError(f"REE {ree_id} not found")
     entries: list[ReeFile] = []
     for path in sorted(layout.root.rglob("*")):
-        if not path.is_file() or path == layout.sidecar or path.is_relative_to(layout.upload_staging):
+        if (
+            not path.is_file()
+            or path == layout.record
+            or path.is_relative_to(layout.upload_staging)
+            or path.is_relative_to(layout.workspace)
+        ):
             continue
         relative = path.relative_to(layout.root).as_posix()
         size = path.stat().st_size

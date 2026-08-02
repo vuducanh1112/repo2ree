@@ -46,7 +46,7 @@ from repo2ree_core.persistence.layout import (
 
 # Bundle layout is derived from the on-disk layout so the two stay in sync.
 # The published manifest entry name (``ree.json``) is bundle-only — the on-disk
-# sidecar is ``manifest.json`` — so it lives here rather than in layout.py.
+# manifest is ``manifest.json`` — so it lives here rather than in layout.py.
 REE_ROOT_PREFIX = "ree/"
 _BUNDLE_MANIFEST_FILENAME = "ree.json"
 REE_MANIFEST_ENTRY_PATH = f"{REE_ROOT_PREFIX}{_BUNDLE_MANIFEST_FILENAME}"

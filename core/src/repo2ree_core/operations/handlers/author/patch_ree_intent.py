@@ -43,7 +43,7 @@ def handle_patch_ree_intent(
     layout, store = opened
 
     if args.expected_version:
-        actual_version = store.read_sidecar().updated_at
+        actual_version = store.read_record().updated_at
         if args.expected_version != actual_version:
             log(
                 "system",
@@ -54,7 +54,7 @@ def handle_patch_ree_intent(
                 "conflict",
                 "REE intent changed since it was read",
                 retryable=True,
-                # The intent is versioned by the sidecar's updated_at rather
+                # The intent is versioned by the record's updated_at rather
                 # than by a file etag, so the conflict names no path — but it
                 # is the same conflict, reported in the same shape.
                 outputs=VersionConflictOutputs(

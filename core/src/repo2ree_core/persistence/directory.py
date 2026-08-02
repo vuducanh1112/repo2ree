@@ -27,7 +27,7 @@ from repo2ree_core.domain.ree.state import ReeLifecycleState
 from repo2ree_core.path_safety import validate_relative_path
 from repo2ree_core.persistence.files import write_atomic, write_json_atomic
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_core.persistence.sidecar import ReeSidecar
+from repo2ree_core.persistence.record import ReeRecord
 from repo2ree_core.reserved_paths import RESERVED_OVERLAY_SCRIPTS
 from repo2ree_core.reserved_templates import reserved_script_template
 from repo2ree_core.time_utils import utc_now
@@ -35,7 +35,7 @@ from repo2ree_core.time_utils import utc_now
 # What a half-built or damaged persisted document raises on the way through
 # json and pydantic: an unreadable file, malformed bytes, or content that no
 # longer fits the model. Named for the failure rather than for any one document,
-# because every document this module reads — the sidecar, the manifest, the
+# because every document this module reads — the record, the manifest, the
 # reproducibility report — fails exactly these four ways and no others. Anything
 # outside this set is a defect in the reader, not a fact about the REE, and must
 # not be mistaken for one.
@@ -230,46 +230,46 @@ class ReeDirectory:
         if self.layout.root.exists():
             shutil.rmtree(self.layout.root)
 
-    # --- REE sidecar ----------------------------------------------------
+    # --- REE record ----------------------------------------------------
 
-    def sidecar_exists(self) -> bool:
-        return self.layout.sidecar.is_file()
+    def record_exists(self) -> bool:
+        return self.layout.record.is_file()
 
-    def read_sidecar(self) -> ReeSidecar:
-        return ReeSidecar.model_validate(self.read_sidecar_json())
+    def read_record(self) -> ReeRecord:
+        return ReeRecord.model_validate(self.read_record_json())
 
-    def write_sidecar(self, sidecar: ReeSidecar) -> None:
-        self.write_sidecar_json(sidecar.model_dump(mode="json", exclude_none=True))
+    def write_record(self, record: ReeRecord) -> None:
+        self.write_record_json(record.model_dump(mode="json", exclude_none=True))
 
-    def read_sidecar_json(self) -> dict[str, Any]:
-        """The sidecar's bytes as parsed JSON, without model validation.
+    def read_record_json(self) -> dict[str, Any]:
+        """The record's bytes as parsed JSON, without model validation.
 
         For the two callers that must see what is *actually on disk* rather
-        than what the model says it should be: the executor's ``get-ree-sidecar``
+        than what the model says it should be: the executor's ``get-ree-record``
         passthrough, and tests seeding a fixture. Every mutation goes through
         the typed path (:meth:`write_intent`, :meth:`write_state`,
-        :meth:`write_sidecar`) so no write site can hand-roll the sidecar's
+        :meth:`write_record`) so no write site can hand-roll the record's
         derived fields.
         """
-        return _read_json(self.layout.sidecar)
+        return _read_json(self.layout.record)
 
-    def write_sidecar_json(self, payload: dict[str, Any]) -> None:
-        """Write raw sidecar JSON atomically. Companion to :meth:`read_sidecar_json`."""
-        write_json_atomic(self.layout.sidecar, payload)
+    def write_record_json(self, payload: dict[str, Any]) -> None:
+        """Write raw record JSON atomically. Companion to :meth:`read_record_json`."""
+        write_json_atomic(self.layout.record, payload)
 
     # --- Typed intent / state accessors ---------------------------------
 
     def read_intent(self) -> ReeIntent:
-        return self.read_sidecar().ree_intent
+        return self.read_record().ree_intent
 
     def write_intent(self, intent: ReeIntent) -> None:
-        self.write_sidecar(self.read_sidecar().with_intent(intent, at=utc_now()))
+        self.write_record(self.read_record().with_intent(intent, at=utc_now()))
 
     def read_state(self) -> ReeLifecycleState:
-        return self.read_sidecar().ree_state
+        return self.read_record().ree_state
 
     def write_state(self, state: ReeLifecycleState) -> None:
-        self.write_sidecar(self.read_sidecar().with_state(state, at=utc_now()))
+        self.write_record(self.read_record().with_state(state, at=utc_now()))
 
     # --- Manifest -------------------------------------------------------
 
@@ -309,12 +309,12 @@ def reset_source_state(*, layout: ReeLayout, store: ReeDirectory) -> None:
     ):
         path.unlink(missing_ok=True)
 
-    sidecar = store.read_sidecar()
+    record = store.read_record()
     cleared_intent = ReeIntent(
-        name=sidecar.ree_intent.name,
-        catalog_metadata=sidecar.ree_intent.catalog_metadata,
+        name=record.ree_intent.name,
+        catalog_metadata=record.ree_intent.catalog_metadata,
     )
-    updated = sidecar.model_copy(
+    updated = record.model_copy(
         update={
             "ree_intent": cleared_intent,
             "ree_state": ReeLifecycleState(),
@@ -323,4 +323,4 @@ def reset_source_state(*, layout: ReeLayout, store: ReeDirectory) -> None:
             "external_ref": None,
         }
     )
-    store.write_sidecar(updated)
+    store.write_record(updated)

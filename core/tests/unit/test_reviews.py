@@ -24,7 +24,7 @@ from repo2ree_core.evidence.review.store import load_reviews
 from repo2ree_core.operations.handlers.review import acquire_source as handler
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_core.persistence.sidecar import ReeSidecar
+from repo2ree_core.persistence.record import ReeRecord
 from repo2ree_core.source_repo.swhid import directory_swhid
 from repo2ree_core.time_utils import parse_utc_instant
 from repo2ree_protocol.command import ReviewAcquireSourceArgs
@@ -56,8 +56,8 @@ def _author_workspace(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, expect
     layout = ReeLayout(root=ree_root)
     store = ReeDirectory(layout)
     store.ensure_dirs()
-    store.write_sidecar(
-        ReeSidecar(
+    store.write_record(
+        ReeRecord(
             ree_id="ree-review",
             name="review",
             created_at="2026-01-01T00:00:00Z",

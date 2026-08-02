@@ -138,7 +138,7 @@ def test_placement_pins_ree_to_chosen_agent(tmp_path) -> None:
 
     # Every later op is routed back to the owning agent, not an arbitrary one.
     agent.routed_agent_ids.clear()
-    manager.get_ree_sidecar(handle)
+    manager.get_ree_record(handle)
     cmd = WriteFileCommand(args=WriteFileArgs(path="p", content="c"))
     manager.dispatch_action(handle, cmd, "run1", lambda *e: None)
     manager.teardown(handle)

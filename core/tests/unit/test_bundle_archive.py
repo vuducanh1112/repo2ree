@@ -21,7 +21,7 @@ def _make_ree(storage_root, name):
     layout = ReeLayout.for_ree(storage_root, ree_id)
     store = ReeDirectory(layout)
     store.ensure_dirs()
-    store.write_sidecar_json(
+    store.write_record_json(
         {
             "ree_id": ree_id,
             "external_ref": None,
@@ -36,12 +36,12 @@ def _make_ree(storage_root, name):
     return ree_id, layout
 
 
-def _write_sidecar(layout, sidecar):
-    layout.sidecar.write_text(json.dumps(sidecar), encoding="utf-8")
+def _write_record(layout, record):
+    layout.record.write_text(json.dumps(record), encoding="utf-8")
 
 
-def _read_sidecar(layout):
-    return json.loads(layout.sidecar.read_text(encoding="utf-8"))
+def _read_record(layout):
+    return json.loads(layout.record.read_text(encoding="utf-8"))
 
 
 def test_bundle_archive_honors_inclusion_flags_and_manifest_remap(tmp_path):
@@ -54,7 +54,7 @@ def test_bundle_archive_honors_inclusion_flags_and_manifest_remap(tmp_path):
     layout.sbom.write_text('{"bom":1}', encoding="utf-8")
     (ree_root / "snapshot.tar.gz").write_bytes(b"snapshot-bytes")
 
-    metadata = _read_sidecar(layout)
+    metadata = _read_record(layout)
     metadata["ree_intent"] = {
         **(metadata.get("ree_intent") or {}),
         "runtime": "/runtime.tar.gz",
@@ -64,7 +64,7 @@ def test_bundle_archive_honors_inclusion_flags_and_manifest_remap(tmp_path):
         **(metadata.get("ree_state") or {}),
         "source_snapshot_archive": "snapshot.tar.gz",
     }
-    _write_sidecar(layout, metadata)
+    _write_record(layout, metadata)
 
     seal_ree(
         storage_root,
@@ -94,7 +94,7 @@ def _seed_results_experiments(layout):
     for name in ("exp-a", "exp-b"):
         (layout.results_dir(name) / "results").mkdir(parents=True)
         (layout.results_dir(name) / "results" / "out.txt").write_text(name, encoding="utf-8")
-    metadata = _read_sidecar(layout)
+    metadata = _read_record(layout)
     metadata["ree_intent"] = {
         **(metadata.get("ree_intent") or {}),
         "experiments": [
@@ -102,7 +102,7 @@ def _seed_results_experiments(layout):
             {"name": "exp-b", "output_paths": ["results/out.txt"]},
         ],
     }
-    _write_sidecar(layout, metadata)
+    _write_record(layout, metadata)
 
 
 def test_bundle_seals_all_results_when_results_included(tmp_path):
@@ -154,7 +154,7 @@ def test_bundle_archive_includes_snapshot_and_normalized_runtime_when_enabled(tm
     layout.sbom.write_text('{"bom":1}', encoding="utf-8")
     (ree_root / "snapshot.tar.gz").write_bytes(b"snapshot-bytes")
 
-    metadata = _read_sidecar(layout)
+    metadata = _read_record(layout)
     metadata["ree_intent"] = {
         **(metadata.get("ree_intent") or {}),
         "runtime": "/runtime.tar.gz",
@@ -164,7 +164,7 @@ def test_bundle_archive_includes_snapshot_and_normalized_runtime_when_enabled(tm
         **(metadata.get("ree_state") or {}),
         "source_snapshot_archive": " snapshot.tar.gz ",
     }
-    _write_sidecar(layout, metadata)
+    _write_record(layout, metadata)
 
     seal_ree(
         storage_root,
@@ -207,7 +207,7 @@ def test_seal_persists_seal_facts_and_content_hash(tmp_path):
     assert len(outputs.seal_hash) == len("sha256:") + 64
 
     # Session persisted in metadata
-    metadata = _read_sidecar(layout)
+    metadata = _read_record(layout)
     session = metadata["ree_state"]
     assert session["sealed_at"] == "2026-06-05T12:00:00Z"
     assert session["seal_hash"] == outputs.seal_hash
@@ -322,10 +322,35 @@ def test_get_ree_document_tags_overlay_files_as_generated(tmp_path):
     (layout.workspace / "main.py").write_text("print('hi')", encoding="utf-8")
     (layout.workspace / "build_runtime.sh").write_text("docker build .", encoding="utf-8")
 
-    files = {f.path: f.kind for f in get_ree_document(storage_root, ree_id).files}
+    files = {f.path: f.kind for f in get_ree_document(storage_root, ree_id).workspace_files}
 
     assert files["build_runtime.sh"] == "generated"
     assert files["main.py"] == "source"
+
+
+def test_ree_files_leave_the_workspace_to_the_workspace_inventory(tmp_path):
+    """The two inventories partition the tree; neither repeats the other.
+
+    ``workspace/`` is the whole upstream checkout merged with the overlay, so
+    listing it in both would put every one of those files — contents included —
+    in one response twice.
+    """
+    storage_root = tmp_path / "storage"
+    ree_id, layout = _make_ree(storage_root, "partitioned")
+
+    (layout.upstream / "main.py").write_text("print('hi')", encoding="utf-8")
+    (layout.overlay / "build.sh").write_text("echo build", encoding="utf-8")
+    (layout.workspace / "main.py").write_text("print('hi')", encoding="utf-8")
+    (layout.workspace / "build.sh").write_text("echo build", encoding="utf-8")
+
+    document = get_ree_document(storage_root, ree_id)
+
+    assert not any(entry.path.startswith("workspace/") for entry in document.ree_files)
+    # The sources the workspace was materialized from are still there, untagged
+    # as workspace: the partition drops nothing, it only stops repeating.
+    ree_paths = {entry.path for entry in document.ree_files}
+    assert {"upstream/main.py", "overlay/build.sh"} <= ree_paths
+    assert {entry.path for entry in document.workspace_files} == {"main.py", "build.sh"}
 
 
 def test_get_ree_document_includes_draft_manifest_projection(tmp_path):

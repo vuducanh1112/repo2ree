@@ -118,7 +118,7 @@ def _init_ree(layout: ReeLayout, ree_id: str) -> None:
     store.ensure_dirs()
     ts = utc_now()
     name = f"ree-{ree_id[:8]}"
-    store.write_sidecar_json(
+    store.write_record_json(
         {
             "ree_id": ree_id,
             "external_ref": None,
@@ -271,7 +271,7 @@ def test_upload_pipeline_freezes_then_thaws(ree: Ree, tmp_path: Path) -> None:
     # the staging file is consumed by the freeze
     assert not layout.upload_staging_file(token).exists()
 
-    metadata = ReeDirectory(layout).read_sidecar()
+    metadata = ReeDirectory(layout).read_record()
     assert metadata.status == "ready"
     assert metadata.ree_state.source_acquired_by == "upload"
     assert metadata.ree_state.uploaded_archive == "proj.tar.gz"
@@ -372,7 +372,7 @@ def test_source_replacement_is_a_retraction_then_an_acquisition(ree: Ree, source
     assert not layout.manifest.exists()
     assert str(replacement_repo) in layout.acquire_script.read_text()
 
-    metadata = ReeDirectory(layout).read_sidecar()
+    metadata = ReeDirectory(layout).read_record()
     assert metadata.status == "ready"
     assert metadata.ree_intent.origin_url == str(replacement_repo)
     assert metadata.ree_state.source_acquired_by == "download"
@@ -413,7 +413,7 @@ def test_source_replacement_by_upload_keeps_the_staged_archive(ree: Ree, source_
     assert not (layout.workspace / "stale-workspace.txt").exists()
     assert not (layout.workspace / "requirements.txt").exists()
 
-    metadata = ReeDirectory(layout).read_sidecar()
+    metadata = ReeDirectory(layout).read_record()
     assert metadata.status == "ready"
     assert metadata.ree_intent.origin_url == ""
     assert metadata.ree_state.source_acquired_by == "upload"

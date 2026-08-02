@@ -48,7 +48,7 @@ def test_replace_intent_route_patches_every_intent_field(
         "created_at": "t1",
         "updated_at": "t2",
     }
-    monkeypatch.setattr(workbench_manager, "get_ree_sidecar", lambda handle: {"updated_at": "t2"})
+    monkeypatch.setattr(workbench_manager, "get_ree_record", lambda handle: {"updated_at": "t2"})
     monkeypatch.setattr(workbench_manager, "get_ree_document", lambda handle: workspace)
     monkeypatch.setattr(workbench_manager, "dispatch_action", _dispatch)
 

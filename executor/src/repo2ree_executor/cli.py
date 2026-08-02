@@ -20,7 +20,7 @@ from repo2ree_core.operations.read_models.ree_document import get_ree_document a
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
 from repo2ree_core.persistence.receipts import load_author_receipts
-from repo2ree_core.persistence.sidecar import ReeSidecar
+from repo2ree_core.persistence.record import ReeRecord
 from repo2ree_core.reproduction import (
     BUILD_RUNTIME,
     EXPERIMENT,
@@ -263,7 +263,7 @@ def init_ree_cmd(ree_id: str, name: str | None) -> None:
     layout = ReeLayout.in_workbench()
     store = ReeDirectory(layout)
 
-    if store.sidecar_exists():
+    if store.record_exists():
         click.echo(json.dumps({"status": "already_initialised", "ree_id": ree_id}))
         return
 
@@ -272,8 +272,8 @@ def init_ree_cmd(ree_id: str, name: str | None) -> None:
 
     ts = _utc_now()
     ree_name = name or f"ree-{ree_id[:8]}"
-    store.write_sidecar(
-        ReeSidecar(
+    store.write_record(
+        ReeRecord(
             ree_id=ree_id,
             name=ree_name,
             status="draft",
@@ -303,21 +303,21 @@ def doctor_cmd() -> None:
     click.echo(json.dumps(run_doctor()))
 
 
-@cli.command("get-ree-sidecar")
-def get_ree_sidecar_cmd() -> None:
-    """Emit the persisted REE sidecar as JSON.
+@cli.command("get-ree-record")
+def get_ree_record_cmd() -> None:
+    """Emit the persisted REE record as JSON.
 
     Reads .ree.json from /ree. Exits non-zero if not initialised.
     """
     layout = ReeLayout.in_workbench()
     store = ReeDirectory(layout)
 
-    if not store.sidecar_exists():
+    if not store.record_exists():
         click.echo(json.dumps({"error": "not initialised"}), file=sys.stderr)
         sys.exit(1)
 
-    sidecar = store.read_sidecar_json()
-    click.echo(json.dumps(sidecar))
+    record = store.read_record_json()
+    click.echo(json.dumps(record))
 
 
 @cli.command("get-ree-document")
@@ -352,14 +352,14 @@ def get_scorecard_cmd() -> None:
     layout = ReeLayout.in_workbench()
     store = ReeDirectory(layout)
 
-    if not store.sidecar_exists():
+    if not store.record_exists():
         click.echo(json.dumps({"error": "not initialised"}), file=sys.stderr)
         sys.exit(1)
 
-    sidecar = store.read_sidecar()
+    record = store.read_record()
     card = build_scorecard(
-        sidecar.ree_intent,
-        sidecar.ree_state,
+        record.ree_intent,
+        record.ree_state,
         list(load_author_receipts(layout).values()),
     )
     click.echo(card.model_dump_json())

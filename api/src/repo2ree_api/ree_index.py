@@ -84,7 +84,7 @@ def entry_from_manifest(payload: Mapping[str, Any]) -> ReeIndexEntry:
 
     The manifest is the only admissible source. It would be easier to read these
     fields off the workbench document the seal route already holds, but that
-    document's ``name`` is the REE name from its sidecar, while the manifest
+    document's ``name`` is the REE name from its record, while the manifest
     substitutes ``ree-<ree_id prefix>`` when the intent carries none — so a
     peer rebuilding this entry from a downloaded bundle would disagree with us
     about the same digest. ``ree_version`` has the same requirement for a

@@ -235,7 +235,7 @@ def test_workbench_lifecycle_e2e(workbench: tuple[WorkbenchManager, WorkbenchHan
         events.append((stream, level, message))
 
     # --- init produced metadata on the real /ree volume ----------------
-    metadata = manager.get_ree_sidecar(handle)
+    metadata = manager.get_ree_record(handle)
     assert metadata["ree_id"] == handle.ree_id
     assert metadata["status"] == "draft"
 
@@ -254,7 +254,7 @@ def test_workbench_lifecycle_e2e(workbench: tuple[WorkbenchManager, WorkbenchHan
     # read it back through the real read-ree-file query — full round-trip
     assert manager.read_ree_file_bytes(handle, f"workspace/{build_script}") == b"echo building runtime\n"
     workspace = manager.get_ree_document(handle)
-    assert any(f.get("path") == build_script for f in workspace["files"])
+    assert any(f.get("path") == build_script for f in workspace["workspace_files"])
 
     # --- build_runtime: real script execution inside the workbench -----
     result = manager.dispatch_action(

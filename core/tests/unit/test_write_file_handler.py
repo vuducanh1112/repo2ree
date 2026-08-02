@@ -15,7 +15,7 @@ from repo2ree_core.domain.ree.intent import ReeIntent
 from repo2ree_core.operations.handlers.author import write_file as handler
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_core.persistence.sidecar import ReeSidecar
+from repo2ree_core.persistence.record import ReeRecord
 from repo2ree_protocol.command import WriteFileArgs
 
 
@@ -34,8 +34,8 @@ def _etag(content: bytes) -> str:
 def _store_at(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ReeDirectory:
     store = ReeDirectory(ReeLayout(root=tmp_path))
     store.ensure_dirs()
-    store.write_sidecar(
-        ReeSidecar(
+    store.write_record(
+        ReeRecord(
             ree_id="ree-1",
             name="demo",
             created_at="2026-01-01T00:00:00Z",

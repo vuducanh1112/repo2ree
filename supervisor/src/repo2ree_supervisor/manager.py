@@ -390,7 +390,7 @@ class WorkbenchManager:
     def dispatch_query(self, handle: WorkbenchHandle, *argv: str, locked: bool = False, timeout: int = 30) -> bytes:
         """Run a read-only CLI subcommand and return its stdout bytes.
 
-        ``argv`` is a ``repo2ree-exec`` subcommand (e.g. ``get-ree-sidecar``); the agent's
+        ``argv`` is a ``repo2ree-exec`` subcommand (e.g. ``get-ree-record``); the agent's
         runtime prepends the bench's executor entry point. Set ``locked`` for
         queries that must observe a consistent snapshot — they take the per-REE
         lock so no mutating action runs concurrently. Plain reads leave it off
@@ -430,8 +430,8 @@ class WorkbenchManager:
         parsed: dict[str, Any] = json.loads(self.dispatch_query(handle, *argv))
         return parsed
 
-    def get_ree_sidecar(self, handle: WorkbenchHandle) -> dict[str, Any]:
-        return self._query_json(handle, "get-ree-sidecar")
+    def get_ree_record(self, handle: WorkbenchHandle) -> dict[str, Any]:
+        return self._query_json(handle, "get-ree-record")
 
     def get_ree_document(self, handle: WorkbenchHandle) -> dict[str, Any]:
         return self._query_json(handle, "get-ree-document")
@@ -462,15 +462,15 @@ class WorkbenchManager:
         # the per-REE lock stays held until the caller finishes consuming.
         return self.dispatch_query_stream(handle, "build-archive", locked=True, timeout=180)
 
-    def list_all_sidecars(self) -> list[dict[str, Any]]:
-        """Return sidecars for every registered workbench, skipping unreachable ones."""
+    def list_all_records(self) -> list[dict[str, Any]]:
+        """Return records for every registered workbench, skipping unreachable ones."""
         results = []
         for entry in self._registry.list_all():
             handle = WorkbenchHandle.from_entry(entry)
             if not self._agent.is_running(handle.agent_id, handle.location):
                 continue
             with suppress(Exception):
-                results.append(self.get_ree_sidecar(handle))
+                results.append(self.get_ree_record(handle))
         results.sort(key=lambda m: m.get("updated_at", ""), reverse=True)
         return results
 

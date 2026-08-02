@@ -1,7 +1,7 @@
 """The canonical domain representation of a Reusable Execution Environment.
 
 Open this module to answer "what is an REE?". Persistence is deliberately
-elsewhere: a repository hydrates this model from the sidecar, authored tree,
+elsewhere: a repository hydrates this model from the record, authored tree,
 receipt ledger, and seal. Pure functions in ``transitions``,
 ``assessment``, and ``queries`` interpret and transform these values.
 

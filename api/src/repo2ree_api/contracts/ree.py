@@ -44,7 +44,7 @@ class ReeDocument(BaseModel):
     workbench_image: str | None = None
     ree_intent: ReeIntent = Field(default_factory=ReeIntent)
     ree_state: ReeLifecycleState = Field(default_factory=ReeLifecycleState)
-    files: list[WorkspaceFile] = Field(default_factory=list)
+    workspace_files: list[WorkspaceFile] = Field(default_factory=list)
     ree_files: list[ReeFile] = Field(default_factory=list)
     # Read-only projection of the would-be manifest; its source of truth is
     # the sealed manifest, so it stays a passthrough here.
@@ -56,7 +56,7 @@ class ReeDocument(BaseModel):
 
 
 class ReeSummary(BaseModel):
-    # A projection: routes feed this the full workbench sidecar and validation
+    # A projection: routes feed this the full workbench record and validation
     # drops everything beyond the summary fields, so the wire matches the
     # contract exactly.
     model_config = ConfigDict(extra="ignore")
@@ -115,7 +115,7 @@ class ReeState(BaseModel):
     consistency: ConsistencyReport = Field(default_factory=ConsistencyReport)
     author_receipts: AuthorReceiptSet = Field(default_factory=AuthorReceiptSet)
     ree_steps: list[ReeStepState] = Field(default_factory=list)
-    files: list[WorkspaceFile] = Field(default_factory=list)
+    workspace_files: list[WorkspaceFile] = Field(default_factory=list)
     # REE-owned files (artifacts/, overlay/, …) alongside the materialized
     # workspace tree: produced evidence like the SBOM lives only here, so a
     # state observation without them cannot see it at all.

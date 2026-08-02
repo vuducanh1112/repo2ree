@@ -192,15 +192,15 @@ def _manifest_entry_bytes(
     ree_id: str,
     consistency: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], bytes]:
-    """Build the sidecar manifest and its bundle-remapped, serialized bytes.
+    """Build the REE-root manifest and its bundle-remapped, serialized bytes.
 
-    Returns ``(sidecar_manifest, manifest_bytes)``. The sidecar is what gets
-    persisted alongside the archive; the bytes are what get embedded in it.
+    Returns ``(ree_manifest, manifest_bytes)``. The first is what gets persisted
+    alongside the archive; the bytes are what get embedded in it.
     """
-    sidecar_manifest = build_manifest_payload(intent, state, ree_id=ree_id, consistency=consistency)
-    bundle_manifest = rewrite_manifest_for_bundle(sidecar_manifest, artifact_plan.manifest_remap)
+    ree_manifest = build_manifest_payload(intent, state, ree_id=ree_id, consistency=consistency)
+    bundle_manifest = rewrite_manifest_for_bundle(ree_manifest, artifact_plan.manifest_remap)
     manifest_bytes = json.dumps(bundle_manifest, indent=2, sort_keys=True).encode("utf-8")
-    return sidecar_manifest, manifest_bytes
+    return ree_manifest, manifest_bytes
 
 
 def _assemble_bundle(
@@ -210,18 +210,18 @@ def _assemble_bundle(
     *,
     ree_id: str,
 ) -> tuple[bytes, dict[str, Any]]:
-    """Build the ZIP bytes and sidecar manifest from settled intent + state.
+    """Build the ZIP bytes and REE-root manifest from settled intent + state.
 
     The state must already carry the desired source_included/runtime_included
     (and sealed_at/seal_hash when building the final sealed bundle).
-    Returns ``(zip_bytes, sidecar_manifest)``.
+    Returns ``(zip_bytes, ree_manifest)``.
     """
     artifact_plan = _build_artifact_plan(layout, intent, include_runtime=state.runtime_included)
     include_snapshot = should_include_snapshot(
         source_included=state.source_included,
         source_snapshot_archive=state.source_snapshot_archive,
     )
-    sidecar_manifest, manifest_bytes = _manifest_entry_bytes(intent, state, artifact_plan, ree_id=ree_id)
+    ree_manifest, manifest_bytes = _manifest_entry_bytes(intent, state, artifact_plan, ree_id=ree_id)
     head, tail = _bundle_entry_partition(
         layout,
         artifact_plan,
@@ -230,7 +230,7 @@ def _assemble_bundle(
         results_included=state.results_included,
     )
     entries = _entries_with_manifest(head, tail, manifest_bytes)
-    return build_zip_bytes(entries), sidecar_manifest
+    return build_zip_bytes(entries), ree_manifest
 
 
 # ================================================
@@ -252,13 +252,13 @@ def seal_ree(
     1. Reads every bundle entry once; hashes the entry list (with seal stamps
        stripped from the manifest) to obtain a stable content digest.
     2. Re-stamps only the manifest with the real seal_hash and builds the ZIP once.
-    3. Writes sealed.zip, manifest.json, and updates the state in the sidecar.
+    3. Writes sealed.zip, manifest.json, and updates the state in the record.
 
     Returns the settled seal facts.
     """
     layout = layout_for(storage_root, ree_id)
     store = directory_for(storage_root, ree_id)
-    if not store.sidecar_exists():
+    if not store.record_exists():
         raise FileNotFoundError(f"REE {ree_id} not found")
     ree = load_ree(layout, store)
     intent = ree.authored.intent
@@ -312,7 +312,7 @@ def seal_ree(
     ).evidence.state
 
     # Final assembly with the real seal_hash in the manifest; ZIP built once.
-    sidecar_manifest, manifest_bytes = _manifest_entry_bytes(
+    ree_manifest, manifest_bytes = _manifest_entry_bytes(
         intent, state, artifact_plan, ree_id=ree_id, consistency=consistency
     )
     zip_bytes = build_zip_bytes(_entries_with_manifest(head, tail, manifest_bytes))
@@ -324,7 +324,7 @@ def seal_ree(
     # (recoverable — seal again), while a crash before it would leave a state
     # claiming a seal_hash for an archive that was never written.
     write_atomic(layout.sealed_archive, zip_bytes)
-    store.write_manifest(sidecar_manifest)
+    store.write_manifest(ree_manifest)
     store.write_state(state)
 
     return SealOutputs(
@@ -347,7 +347,7 @@ def build_ree_archive(storage_root: Path, ree_id: str) -> bytes:
     (see ``load_ree_bundle``); only a sealed bundle is a citable artifact.
     """
     store: ReeDirectory = directory_for(storage_root, ree_id)
-    if not store.sidecar_exists():
+    if not store.record_exists():
         raise FileNotFoundError(f"REE {ree_id} not found")
     layout = layout_for(storage_root, ree_id)
     state = store.read_state()

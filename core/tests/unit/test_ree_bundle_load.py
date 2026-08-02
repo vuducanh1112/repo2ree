@@ -23,7 +23,7 @@ def _make_ree(storage_root, name):
     layout = ReeLayout.for_ree(storage_root, ree_id)
     store = ReeDirectory(layout)
     store.ensure_dirs()
-    store.write_sidecar_json(
+    store.write_record_json(
         {
             "ree_id": ree_id,
             "external_ref": None,
@@ -64,7 +64,7 @@ def _seed_author_ree(storage_root, name="author-ree"):
         encoding="utf-8",
     )
 
-    metadata = json.loads(layout.sidecar.read_text(encoding="utf-8"))
+    metadata = json.loads(layout.record.read_text(encoding="utf-8"))
     metadata["ree_intent"] = {
         **metadata["ree_intent"],
         "origin_url": "https://example.org/repo.git",
@@ -81,7 +81,7 @@ def _seed_author_ree(storage_root, name="author-ree"):
         "source_snapshot_archive": "snapshot.tar.gz",
         "source_snapshot_digest": "sha256:1234",
     }
-    layout.sidecar.write_text(json.dumps(metadata), encoding="utf-8")
+    layout.record.write_text(json.dumps(metadata), encoding="utf-8")
     return ree_id, layout
 
 
@@ -162,7 +162,7 @@ def test_loading_a_sealed_bundle_restores_intent_evidence_and_content(tmp_path):
     assert (layout.results_dir("exp-a") / "results" / "out.txt").read_text(encoding="utf-8") == "baseline"
     assert layout.author_operation_receipt("acquire_source").is_file()
     # The uploaded bytes are the sealed archive, so the load can hand back the
-    # identical download; the manifest sidecar comes with it.
+    # identical download; the manifest record comes with it.
     assert layout.sealed_archive.read_bytes() == archive_bytes
     assert store.read_manifest() is not None
     # The derived trees stay empty: the caller rebuilds them from the snapshot.

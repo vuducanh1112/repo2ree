@@ -6,14 +6,14 @@ from repo2ree_core.domain.ree.intent import ReeIntent
 from repo2ree_core.domain.ree.state import ReeLifecycleState
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_core.persistence.sidecar import ReeSidecar
+from repo2ree_core.persistence.record import ReeRecord
 from repo2ree_core.reserved_paths import RESERVED_OVERLAY_SCRIPTS
 from repo2ree_core.reserved_templates import reserved_script_template
 
 
-def _make_metadata(ree_id: str = "ree-1", name: str = "demo") -> ReeSidecar:
+def _make_metadata(ree_id: str = "ree-1", name: str = "demo") -> ReeRecord:
     ts = datetime.now(UTC).isoformat().replace("+00:00", "Z")
-    return ReeSidecar.model_validate(
+    return ReeRecord.model_validate(
         {
             "ree_id": ree_id,
             "name": name,
@@ -84,11 +84,11 @@ def test_metadata_roundtrip(tmp_path):
     store.ensure_dirs()
     original = _make_metadata()
 
-    assert store.sidecar_exists() is False
-    store.write_sidecar(original)
-    assert store.sidecar_exists() is True
+    assert store.record_exists() is False
+    store.write_record(original)
+    assert store.record_exists() is True
 
-    read_back = store.read_sidecar()
+    read_back = store.read_record()
     assert read_back.ree_id == original.ree_id
     assert read_back.name == original.name
     assert read_back.status == original.status
@@ -98,7 +98,7 @@ def test_read_metadata_raises_when_absent(tmp_path):
     store = _store(tmp_path)
     store.ensure_dirs()
     with pytest.raises(FileNotFoundError):
-        store.read_sidecar()
+        store.read_record()
 
 
 def test_write_metadata_uses_aliased_keys_on_disk(tmp_path):
@@ -106,9 +106,9 @@ def test_write_metadata_uses_aliased_keys_on_disk(tmp_path):
 
     store = _store(tmp_path)
     store.ensure_dirs()
-    store.write_sidecar(_make_metadata())
+    store.write_record(_make_metadata())
 
-    raw = json.loads(store.layout.sidecar.read_text(encoding="utf-8"))
+    raw = json.loads(store.layout.record.read_text(encoding="utf-8"))
     assert "ree_id" in raw
     assert "created_at" in raw
     assert "ree_intent" in raw
@@ -117,8 +117,8 @@ def test_write_metadata_uses_aliased_keys_on_disk(tmp_path):
 
 def test_write_metadata_creates_parent_if_missing(tmp_path):
     store = _store(tmp_path)
-    store.write_sidecar(_make_metadata())
-    assert store.layout.sidecar.is_file()
+    store.write_record(_make_metadata())
+    assert store.layout.record.is_file()
 
 
 def test_manifest_roundtrip(tmp_path):
@@ -145,7 +145,7 @@ def test_manifest_written_with_stable_key_order(tmp_path):
 def test_atomic_write_leaves_no_tmp_files_after_success(tmp_path):
     store = _store(tmp_path)
     store.ensure_dirs()
-    store.write_sidecar(_make_metadata())
+    store.write_record(_make_metadata())
 
     leftovers = [p for p in store.layout.root.iterdir() if p.name.endswith(".tmp")]
     assert leftovers == []
@@ -154,12 +154,12 @@ def test_atomic_write_leaves_no_tmp_files_after_success(tmp_path):
 def test_remove_deletes_entire_tree(tmp_path):
     store = _store(tmp_path)
     store.ensure_dirs()
-    store.write_sidecar(_make_metadata())
+    store.write_record(_make_metadata())
     assert store.exists()
 
     store.remove()
     assert store.exists() is False
-    assert not store.layout.sidecar.exists()
+    assert not store.layout.record.exists()
 
 
 def test_remove_is_noop_when_absent(tmp_path):
@@ -182,27 +182,27 @@ def test_metadata_json_roundtrip_preserves_extra_fields(tmp_path):
         "ree_state": {},
         "vendorExtraField": {"nested": [1, 2, 3]},
     }
-    store.write_sidecar_json(payload)
-    assert store.read_sidecar_json() == payload
+    store.write_record_json(payload)
+    assert store.read_record_json() == payload
 
 
 def test_write_metadata_json_is_atomic(tmp_path):
     store = _store(tmp_path)
     store.ensure_dirs()
-    store.write_sidecar_json({"a": 1})
-    store.write_sidecar_json({"a": 2})
+    store.write_record_json({"a": 1})
+    store.write_record_json({"a": 2})
 
     leftovers = [p for p in store.layout.root.iterdir() if p.name.endswith(".tmp")]
     assert leftovers == []
-    assert store.read_sidecar_json() == {"a": 2}
+    assert store.read_record_json() == {"a": 2}
 
 
 def test_typed_write_metadata_uses_atomic_json_path(tmp_path):
     store = _store(tmp_path)
     store.ensure_dirs()
-    store.write_sidecar(_make_metadata())
+    store.write_record(_make_metadata())
 
-    raw = store.read_sidecar_json()
+    raw = store.read_record_json()
     assert raw["ree_id"] == "ree-1"
 
 
@@ -211,11 +211,11 @@ def test_two_stores_for_different_rees_are_independent(tmp_path):
     b = ReeDirectory(ReeLayout.for_ree(tmp_path, "ree-b"))
 
     a.ensure_dirs()
-    a.write_sidecar(_make_metadata(ree_id="ree-a", name="A"))
+    a.write_record(_make_metadata(ree_id="ree-a", name="A"))
 
     assert a.exists() is True
     assert b.exists() is False
-    assert a.read_sidecar().name == "A"
+    assert a.read_record().name == "A"
 
 
 def test_author_artifact_resolves_a_workspace_relative_path(tmp_path):

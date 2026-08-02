@@ -9968,12 +9968,12 @@
           "ree_state": {
             "$ref": "#/components/schemas/ReeLifecycleState"
           },
-          "files": {
+          "workspace_files": {
             "items": {
               "$ref": "#/components/schemas/WorkspaceFile"
             },
             "type": "array",
-            "title": "Files"
+            "title": "Workspace Files"
           },
           "ree_files": {
             "items": {
@@ -10573,12 +10573,12 @@
             "type": "array",
             "title": "Ree Steps"
           },
-          "files": {
+          "workspace_files": {
             "items": {
               "$ref": "#/components/schemas/WorkspaceFile"
             },
             "type": "array",
-            "title": "Files"
+            "title": "Workspace Files"
           },
           "ree_files": {
             "items": {

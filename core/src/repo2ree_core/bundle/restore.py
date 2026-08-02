@@ -68,7 +68,7 @@ def restore_ree_bundle(
     can be acquired (or reviewed) from it.
     """
     store = directory_for(storage_root, ree_id)
-    if not store.sidecar_exists():
+    if not store.record_exists():
         raise FileNotFoundError(f"REE {ree_id} not found")
 
     manifest_path = bundle_root / REE_MANIFEST_ENTRY_PATH

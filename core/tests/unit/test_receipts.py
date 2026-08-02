@@ -360,13 +360,13 @@ class TestHandlerWiring:
 
     @pytest.fixture
     def workbench(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ReeDirectory:
-        from repo2ree_core.persistence.sidecar import ReeSidecar
+        from repo2ree_core.persistence.record import ReeRecord
 
         layout = ReeLayout(root=tmp_path)
         store = ReeDirectory(layout)
         store.ensure_dirs()
-        store.write_sidecar(
-            ReeSidecar(
+        store.write_record(
+            ReeRecord(
                 ree_id="ree123",
                 name="demo",
                 created_at="2026-01-01T00:00:00Z",
@@ -399,7 +399,7 @@ class TestHandlerWiring:
         assert result.outputs["receipt"] == receipt
 
     def _seed_experiment(self, workbench: ReeDirectory, *, runtime: str = "runtime.tar") -> ReeIntent:
-        from repo2ree_core.persistence.sidecar import ReeSidecar
+        from repo2ree_core.persistence.record import ReeRecord
 
         layout = workbench.layout
         intent = ReeIntent.model_validate(
@@ -414,8 +414,8 @@ class TestHandlerWiring:
                 ],
             }
         )
-        workbench.write_sidecar(
-            ReeSidecar(
+        workbench.write_record(
+            ReeRecord(
                 ree_id="ree123",
                 name="demo",
                 created_at="2026-01-01T00:00:00Z",

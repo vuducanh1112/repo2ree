@@ -78,7 +78,7 @@ test.describe("REE pipeline", () => {
       await expect(snapshot.getByText("python-hello-world.tar.gz", { exact: true })).toBeVisible();
     });
 
-    await test.step("browse uploaded files in the workspace tree", async () => {
+    await test.step("browse uploaded files in the REE tree", async () => {
       await page.keyboard.press("Escape");
       await page.getByRole("button", { name: "Expand files" }).click();
       await expect(page.getByRole("button", { name: "Collapse files" })).toBeVisible();
@@ -93,7 +93,11 @@ test.describe("REE pipeline", () => {
             .filter((name): name is string => Boolean(name)),
         ),
       ];
-      await page.getByPlaceholder("Filter files…").fill("workspace");
+      // This console browses the REE tree, which deliberately excludes
+      // `workspace/` — that materialized view has its own inventory and its own
+      // surface (the editor). An uploaded archive lands in `upstream/`, the
+      // acquired source, so that is where these entries are.
+      await page.getByPlaceholder("Filter files…").fill("upstream");
       for (const nodeName of archiveNodeNames) {
         const escaped = nodeName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         await expect(page.getByRole("button", { name: new RegExp(escaped) })).toBeVisible();

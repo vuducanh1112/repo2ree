@@ -366,7 +366,7 @@ forbidden_modules = [
 # stored *inside* an REE, so it knows the aggregate but the aggregate must not
 # know it; the capability packages implement source/build concerns; `workspace`
 # owns the materialized mutable execution tree; `persistence` owns the durable
-# REE tree and sidecar; `domain` is the vocabulary all of them are written in.
+# REE tree and record; `domain` is the vocabulary all of them are written in.
 #
 # Marked `exhaustive`, so a new top-level package in core has to declare where
 # it sits rather than joining ungoverned. The capabilities and the leaf

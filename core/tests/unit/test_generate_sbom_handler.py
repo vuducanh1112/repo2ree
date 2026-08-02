@@ -20,7 +20,7 @@ from repo2ree_core.operations.handlers.author import generate_sbom as handler
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import SBOM_ARTIFACT_PATH, ReeLayout
 from repo2ree_core.persistence.receipts import load_receipts
-from repo2ree_core.persistence.sidecar import ReeSidecar
+from repo2ree_core.persistence.record import ReeRecord
 from repo2ree_protocol.command import GenerateSbomArgs
 from repo2ree_protocol.result import ActionResult
 
@@ -42,8 +42,8 @@ def _seed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, with_prior_sbom: b
     layout = ReeLayout(root=tmp_path)
     store = ReeDirectory(layout)
     store.ensure_dirs()
-    store.write_sidecar(
-        ReeSidecar(
+    store.write_record(
+        ReeRecord(
             ree_id="ree123",
             name="demo",
             created_at="2026-01-01T00:00:00Z",

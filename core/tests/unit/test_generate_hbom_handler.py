@@ -18,7 +18,7 @@ from repo2ree_core.domain.ree.state import ReeLifecycleState
 from repo2ree_core.operations.handlers.author import generate_hbom as handler
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_core.persistence.sidecar import ReeSidecar
+from repo2ree_core.persistence.record import ReeRecord
 
 
 def _never_canceled() -> bool:
@@ -32,8 +32,8 @@ def _silent_log(*_: object) -> None:
 def _seed_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, existing: HBOM | None = None) -> ReeDirectory:
     store = ReeDirectory(ReeLayout(root=tmp_path))
     store.ensure_dirs()
-    store.write_sidecar(
-        ReeSidecar(
+    store.write_record(
+        ReeRecord(
             ree_id="ree123",
             name="demo",
             created_at="2026-01-01T00:00:00Z",

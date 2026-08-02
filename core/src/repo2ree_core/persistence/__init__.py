@@ -5,9 +5,9 @@ are imported directly (``from repo2ree_core.persistence.layout import ReeLayout`
 package re-exports nothing, so the import graph inside it stays readable:
 
     layout, files           leaves — paths and file operations
-    sidecar                  the persisted REE control-record schema
+    record                  the persisted REE control-record schema
     source_snapshot          immutable source snapshot naming
-    directory               REE directory and sidecar persistence
+    directory               REE directory and record persistence
     repository              hydration into the domain aggregate
     receipts                durable receipt history and selection
 """

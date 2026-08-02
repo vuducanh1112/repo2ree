@@ -98,7 +98,7 @@ def require_ree_intent(ree_layout: ReeLayout, *, log: LogSink) -> ReeIntent | Ac
     nothing to settle a halt on.
     """
     store = ReeDirectory(ree_layout)
-    if not store.sidecar_exists():
+    if not store.record_exists():
         message = "This workbench holds no REE to review"
         log("system", "error", message)
         return ActionResult.failed("precondition", message)

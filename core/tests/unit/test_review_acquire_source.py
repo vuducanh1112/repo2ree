@@ -18,7 +18,7 @@ from repo2ree_core.domain.ree.state import ReeLifecycleState
 from repo2ree_core.operations.handlers.review import acquire_source as handler
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_core.persistence.sidecar import ReeSidecar
+from repo2ree_core.persistence.record import ReeRecord
 from repo2ree_protocol.command import ReviewAcquireSourceArgs
 
 SWHID = "swh:1:dir:" + "a" * 40
@@ -36,8 +36,8 @@ def _author_ree(
     layout = ReeLayout(root=tmp_path / "ree")
     store = ReeDirectory(layout)
     store.ensure_dirs()
-    store.write_sidecar(
-        ReeSidecar(
+    store.write_record(
+        ReeRecord(
             ree_id="ree-review",
             name="review",
             created_at="2026-01-01T00:00:00Z",

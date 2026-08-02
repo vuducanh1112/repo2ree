@@ -127,11 +127,14 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
     await clickDemo(
       page,
       page.getByRole("button", { name: "Expand files" }),
-      "Browse workspace files in the docked file console",
+      "Browse the REE's own files in the docked file console",
     );
 
     await expect(page.getByRole("button", { name: "Collapse files" })).toBeVisible();
-    await page.getByPlaceholder("Filter files…").fill("workspace");
+    // This console browses the REE tree, which excludes `workspace/` — the
+    // materialized view has its own inventory and its own surface. An uploaded
+    // archive lands in `upstream/`, the acquired source.
+    await page.getByPlaceholder("Filter files…").fill("upstream");
     for (const nodeName of archiveNodeNames) {
       const escapedNodeName = nodeName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       await expect(page.getByRole("button", { name: new RegExp(escapedNodeName) })).toBeVisible();
@@ -139,7 +142,7 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
     await clickDemo(
       page,
       page.getByRole("button", { name: /main\.py/i }).first(),
-      "Inspect the uploaded files. Here: workspace/python_hello_world/main.py",
+      "Inspect the uploaded files. Here: upstream/python_hello_world/main.py",
     );
     await page.waitForTimeout(1000);
     await showcaseScroll(page, 700);

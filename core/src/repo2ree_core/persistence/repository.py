@@ -9,7 +9,7 @@ the domain model the REE's head rather than a read-only projection of it: a
 caller hydrates a whole ``Ree``, transforms it with the pure functions in
 ``domain.ree.transitions``, and hands the whole thing back. Nothing else may
 write the head. That is why the per-part writers on :class:`ReeDirectory`
-(``write_intent``, ``write_state``) each re-read the sidecar and merge — they
+(``write_intent``, ``write_state``) each re-read the record and merge — they
 predate this and silently reconcile, which is precisely what the
 compare-and-write below refuses to do.
 """
@@ -33,7 +33,7 @@ from repo2ree_core.domain.ree.transitions import SourceSlot, revision_of
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.receipts import load_author_receipts, load_receipts, record_receipt
-from repo2ree_core.persistence.sidecar import ReeSidecar, ReeStatus
+from repo2ree_core.persistence.record import ReeRecord, ReeStatus
 from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol.log import LogSink
 
@@ -59,7 +59,7 @@ def load_ree(
     layout: ReeLayout,
     store: ReeDirectory | None = None,
     *,
-    sidecar: ReeSidecar | None = None,
+    record: ReeRecord | None = None,
 ) -> Ree:
     """Read one complete REE domain snapshot.
 
@@ -68,7 +68,7 @@ def load_ree(
     """
 
     ree_store = store or ReeDirectory(layout)
-    persisted = sidecar or ree_store.read_sidecar()
+    persisted = record or ree_store.read_record()
     files = tuple(
         AuthoredFile(
             path=ReePath(relative.as_posix()),
@@ -136,7 +136,7 @@ def save_ree(
 ) -> None:
     """Commit one whole REE head, refusing if it moved since it was hydrated.
 
-    Evidence goes to ``runs/`` first and the sidecar last, and that order is the
+    Evidence goes to ``runs/`` first and the record last, and that order is the
     crash contract: receipt files are append-only and keyed by run id, so a
     process that dies between the two leaves history nothing else will read as
     current. The reverse order would leave a state claiming evidence that is not
@@ -157,8 +157,8 @@ def save_ree(
     for receipt in ree.evidence.history:
         if receipt.run_id not in already_recorded:
             record_receipt(layout, receipt, log=log)
-    store.write_sidecar(
-        store.read_sidecar().with_head(
+    store.write_record(
+        store.read_record().with_head(
             ree.authored.intent,
             ree.evidence.state,
             at=utc_now(),

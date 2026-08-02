@@ -3,7 +3,7 @@ from repo2ree_core.domain.ree.intent import ReeIntent
 from repo2ree_core.domain.ree.state import ReeLifecycleState
 from repo2ree_core.operations.read_models.files import ReeFile, WorkspaceFile
 from repo2ree_core.persistence.layout import SBOM_ARTIFACT_PATH
-from repo2ree_core.persistence.sidecar import ReeSidecar
+from repo2ree_core.persistence.record import ReeRecord
 
 
 def _intent(**overrides) -> ReeIntent:
@@ -86,7 +86,7 @@ def test_session_fields_reflected_in_manifest():
 
 
 def test_draft_manifest_adds_workspace_context_without_file_content():
-    metadata = ReeSidecar(
+    metadata = ReeRecord(
         ree_id="abc123",
         name="demo",
         status="ready",

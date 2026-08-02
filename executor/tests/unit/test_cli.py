@@ -64,7 +64,7 @@ def test_init_ree_bootstraps_tree_and_metadata(ree_root: Path) -> None:
 
     layout = ReeLayout.in_workbench()
     assert layout.workspace.is_dir()
-    metadata = json.loads(layout.sidecar.read_text())
+    metadata = json.loads(layout.record.read_text())
     assert metadata["ree_id"] == "abc123"
     assert metadata["name"] == "demo"
     assert metadata["status"] == "draft"
@@ -77,22 +77,22 @@ def test_init_ree_bootstraps_tree_and_metadata(ree_root: Path) -> None:
 
 def test_init_ree_is_idempotent(initialized_ree: Path) -> None:
     layout = ReeLayout.in_workbench()
-    before = layout.sidecar.read_text()
+    before = layout.record.read_text()
 
     result = runner.invoke(cli, ["init-ree", "--ree-id", "abc123"])
     assert result.exit_code == 0
     assert json.loads(result.output)["status"] == "already_initialised"
-    assert layout.sidecar.read_text() == before
+    assert layout.record.read_text() == before
 
 
 def test_get_ree_before_init_exits_nonzero(ree_root: Path) -> None:
-    result = runner.invoke(cli, ["get-ree-sidecar"])
+    result = runner.invoke(cli, ["get-ree-record"])
     assert result.exit_code == 1
     assert json.loads(result.stderr) == {"error": "not initialised"}
 
 
 def test_get_ree_emits_metadata(initialized_ree: Path) -> None:
-    result = runner.invoke(cli, ["get-ree-sidecar"])
+    result = runner.invoke(cli, ["get-ree-record"])
     assert result.exit_code == 0
     assert json.loads(result.output)["ree_id"] == "abc123"
 
@@ -248,7 +248,7 @@ def test_get_ree_document_reflects_workspace_files(initialized_ree: Path) -> Non
     assert result.exit_code == 0
     workspace = json.loads(result.output)
     assert workspace["ree_id"] == "abc123"
-    assert any(f.get("path") == "app.py" for f in workspace["files"])
+    assert any(f.get("path") == "app.py" for f in workspace["workspace_files"])
 
 
 def test_get_ree_document_summary_omits_inline_file_content(initialized_ree: Path) -> None:
@@ -259,9 +259,9 @@ def test_get_ree_document_summary_omits_inline_file_content(initialized_ree: Pat
 
     assert result.exit_code == 0
     workspace = json.loads(result.output)
-    assert workspace["files"]
+    assert workspace["workspace_files"]
     # Typed entries always carry the key; summary mode never inlines the text.
-    assert all(file["content"] is None for file in workspace["files"])
+    assert all(file["content"] is None for file in workspace["workspace_files"])
     assert all(file["content"] is None for file in workspace["ree_files"])
 
 

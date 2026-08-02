@@ -4,7 +4,7 @@ The manifest is the JSON payload written to ``manifest.json`` and embedded
 into the downloadable bundle as ``ree/ree.json``. It is computed from a
 :class:`~repo2ree_core.domain.ree.intent.ReeIntent` and a
 :class:`~repo2ree_core.domain.ree.state.ReeLifecycleState` together with the
-REE sidecar and current file inventories. This module performs no I/O.
+REE record and current file inventories. This module performs no I/O.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from typing import Any, Protocol
 
 from repo2ree_core.domain.ree.intent import REE_MANIFEST_VERSION, ReeIntent
 from repo2ree_core.domain.ree.state import ReeLifecycleState
-from repo2ree_core.persistence.sidecar import ReeSidecar
+from repo2ree_core.persistence.record import ReeRecord
 
 
 class FileInventoryEntry(Protocol):
@@ -78,26 +78,26 @@ def _pick(payload: Mapping[str, Any], model: type[ReeIntent | ReeLifecycleState]
 
 
 def build_draft_manifest_payload(
-    sidecar: ReeSidecar,
+    record: ReeRecord,
     *,
     workspace_files: Sequence[FileInventoryEntry],
     ree_files: Sequence[FileInventoryEntry],
 ) -> dict[str, Any]:
     """Build the live, read-only manifest projection for an editable REE.
 
-    Unlike the sealed manifest sidecar, this payload is not a source of truth
+    Unlike the sealed manifest, this payload is not a source of truth
     and is not written to disk. It gives clients a stable overview assembled
-    from the current sidecar and file inventory.
+    from the current record and file inventory.
     """
-    manifest = build_manifest_payload(sidecar.ree_intent, sidecar.ree_state, ree_id=sidecar.ree_id)
+    manifest = build_manifest_payload(record.ree_intent, record.ree_state, ree_id=record.ree_id)
 
     return {
         **manifest,
         "manifest_state": "draft",
-        "ree_id": sidecar.ree_id,
-        "status": sidecar.status,
-        "created_at": sidecar.created_at,
-        "updated_at": sidecar.updated_at,
+        "ree_id": record.ree_id,
+        "status": record.status,
+        "created_at": record.created_at,
+        "updated_at": record.updated_at,
         "file_inventory": {
             "workspace": [_file_inventory_entry(file) for file in workspace_files],
             "overlay": [_file_inventory_entry(file) for file in _files_under(ree_files, "overlay")],
