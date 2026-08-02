@@ -10,6 +10,11 @@ from repo2ree_core.domain.primitives import Digest, GitRevision, ReePath, UtcIns
 # Types
 # ================================================
 
+# How a source can be brought in. ``SourceAcquiredBy`` is the same set plus the
+# empty string, which is what a state with no source carries — so a plan (which
+# only exists because a mode was chosen) is typed by the narrower one and can
+# never be built for a source nobody asked for.
+SourceAcquireMode = Literal["download", "upload"]
 SourceAcquiredBy = Literal["", "download", "upload"]
 
 
@@ -57,19 +62,31 @@ def record_source(
     state: ReeLifecycleState,
     *,
     acquired_by: SourceAcquiredBy,
+    snapshot_archive: ReePath,
+    snapshot_captured_at: UtcInstant,
+    snapshot_digest: Digest,
     archive_name: ReePath | None = None,
-    snapshot_archive: ReePath | None = None,
-    snapshot_captured_at: UtcInstant | None = None,
     resolved_commit: GitRevision | None = None,
 ) -> ReeLifecycleState:
+    """Settle every source fact at once, from one completed acquisition.
+
+    The snapshot triple (archive, capture instant, digest) is required rather
+    than optional because acquisition is the only thing that produces it, and a
+    state carrying two of the three describes an REE that cannot exist: the
+    digest is the chain root every later step's input slice hangs off, so a
+    source recorded without one is a source no receipt can be checked against.
+    Fields absent here are the ones acquisition does not settle — the levels,
+    the packaging choices — and they are left exactly as they were.
+    """
     return state.model_copy(
         update={
             "source_available": True,
             "source_acquired_by": acquired_by,
             "source_resolved_commit": resolved_commit or None,
-            "uploaded_archive": archive_name or state.uploaded_archive,
-            "source_snapshot_archive": snapshot_archive or state.source_snapshot_archive or None,
-            "source_snapshot_captured_at": snapshot_captured_at or state.source_snapshot_captured_at,
+            "uploaded_archive": archive_name or None,
+            "source_snapshot_archive": snapshot_archive,
+            "source_snapshot_captured_at": snapshot_captured_at,
+            "source_snapshot_digest": snapshot_digest,
         }
     )
 
@@ -88,10 +105,6 @@ def remove_source(state: ReeLifecycleState) -> ReeLifecycleState:
             "source_included": False,
         }
     )
-
-
-def record_snapshot_digest(state: ReeLifecycleState, digest: Digest | None) -> ReeLifecycleState:
-    return state.model_copy(update={"source_snapshot_digest": digest or None})
 
 
 def record_evaluation(

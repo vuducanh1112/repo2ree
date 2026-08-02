@@ -14,7 +14,6 @@ from __future__ import annotations
 from contextlib import suppress
 from pathlib import Path
 
-from repo2ree_core.digests import Digest
 from repo2ree_core.domain.ree.intent import ReeIntent
 from repo2ree_core.domain.ree.receipt import (
     RunExperimentReceipt,
@@ -23,8 +22,6 @@ from repo2ree_core.domain.ree.receipt import (
     receipt_adapter,
     receipt_step_key,
 )
-from repo2ree_core.domain.ree.state import record_snapshot_digest
-from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import json_document_bytes, write_atomic
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.reserved_paths import experiment_slug
@@ -56,16 +53,6 @@ def record_receipt(layout: ReeLayout, receipt: RunReceipt, *, log: LogSink) -> N
             write_atomic(author_receipt_path(layout, receipt), content)
     except Exception as exc:  # noqa: BLE001 — recording evidence must never fail the run the evidence is about
         log("system", "warn", f"failed to record run receipt: {exc}")
-
-
-def persist_snapshot_digest(store: ReeDirectory, digest: Digest | None, *, log: LogSink) -> None:
-    """Record the snapshot archive's digest in the state. Never raises."""
-    try:
-        if not store.sidecar_exists():
-            return
-        store.write_state(record_snapshot_digest(store.read_state(), digest))
-    except Exception as exc:  # noqa: BLE001 — as the docstring says: never raises
-        log("system", "warn", f"failed to persist snapshot digest: {exc}")
 
 
 def load_receipts(layout: ReeLayout) -> list[RunReceipt]:

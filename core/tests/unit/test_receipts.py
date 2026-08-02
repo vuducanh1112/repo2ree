@@ -497,21 +497,27 @@ class TestHandlerWiring:
         assert exp.status == "stale"
         assert "produced_output" in [entry.input for entry in exp.stale_inputs]
 
-    def test_snapshot_upstream_persists_digest_on_session(self, workbench: ReeDirectory) -> None:
+    def test_snapshot_upstream_reports_its_digest_and_records_nothing(self, workbench: ReeDirectory) -> None:
+        """The freeze is an effect: it returns the digest and touches no REE state.
+
+        Persisting from here is what used to let a receipt claim a digest the
+        state never received. The acquire lifecycle holds the hydrated REE the
+        digest belongs to, so it is the only thing that records it.
+        """
         from repo2ree_core.digests import digest_file
         from repo2ree_core.operations.handlers.author.snapshot_upstream import handle_snapshot_upstream
 
         layout = workbench.layout
         (layout.upstream / "a.txt").write_text("alpha")
+        before = workbench.read_state().source_snapshot_digest
 
         result = handle_snapshot_upstream(run_id="run-snap", log=_silent_log, is_canceled=lambda: False)
 
         assert result.status == "succeeded"
         expected = digest_file(layout.snapshot_archive)
         assert result.outputs["snapshot_digest"] == expected
-        assert workbench.read_state().source_snapshot_digest == expected
-        receipt = json.loads(layout.run_receipt("run-snap").read_text(encoding="utf-8"))
-        assert receipt["snapshot_digest"] == expected
+        assert workbench.read_state().source_snapshot_digest == before
+        assert not layout.run_receipt("run-snap").exists()
 
 
 class TestCurrentRuntimeDigest:

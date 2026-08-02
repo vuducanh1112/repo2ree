@@ -11,6 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from repo2ree_core.authoring.script_generation.materialize_workspace import build_materialize_sh
+from repo2ree_core.digests import Digest
 from repo2ree_core.execution.process import (
     CancelCheck,
     format_command,
@@ -37,12 +38,20 @@ def _write_materialize_script(*, log: LogSink, layout: ReeLayout) -> Path:
     return layout.materialize_script
 
 
-def handle_materialize_workspace(
+def materialize_workspace(
+    layout: ReeLayout,
     *,
+    snapshot_digest: Digest | None,
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    layout = ReeLayout.in_workbench()
+    """Rebuild ``workspace/`` and record what it was materialized from.
+
+    ``snapshot_digest`` is passed in rather than read back off the state: a
+    caller that just froze the snapshot already holds the digest, and reading
+    it through disk would make this depend on whether that value had been
+    committed yet.
+    """
     log("system", "info", f"materializing {layout.workspace}")
 
     # The script owns the fixed REE layout paths and the clear-and-merge; the
@@ -62,9 +71,17 @@ def handle_materialize_workspace(
             exit_code=result.returncode or 1,
         )
 
-    store = ReeDirectory(layout)
-    snapshot_digest = store.read_state().source_snapshot_digest if store.sidecar_exists() else None
     record_materialization(layout, snapshot_digest=snapshot_digest, log=log)
-
     log("system", "info", "materialize_workspace succeeded")
     return ActionResult(status="succeeded", exit_code=0)
+
+
+def handle_materialize_workspace(
+    *,
+    log: LogSink,
+    is_canceled: CancelCheck,
+) -> ActionResult:
+    layout = ReeLayout.in_workbench()
+    store = ReeDirectory(layout)
+    committed_digest = store.read_state().source_snapshot_digest if store.sidecar_exists() else None
+    return materialize_workspace(layout, snapshot_digest=committed_digest, log=log, is_canceled=is_canceled)

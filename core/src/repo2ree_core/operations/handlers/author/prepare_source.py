@@ -1,36 +1,88 @@
-"""Atomic source preparation workflow.
+"""The acquire-source lifecycle: the one operation that gives an REE a source.
 
-The control plane supplies intent; the execution plane owns the ordered state
-transition. Keeping all steps in one command prevents concurrent source runs
-from interleaving between reset, acquire, snapshot, materialize, and metadata.
+An REE holds at most one source, and acquiring is only legal into an empty
+slot. This workflow never clears one behind the author's back — a source
+already present is theirs, and giving it up is a decision they make: either
+by ``remove_source``, or by asking for it here with ``replace``, which runs
+the same retraction as its own commit first. That refusal is the whole reason
+the preconditions in
+:func:`~repo2ree_core.domain.ree.transitions.plan_source_acquisition` can mean
+anything: a workflow that reset first would have erased every condition it
+might have refused on.
+
+The stages, and why they are in this order::
+
+    retract    only when ``replace`` was asked for — its own commit
+    hydrate    the whole REE, once
+    observe    the source slot on disk (impure)
+    decide     plan_source_acquisition — refuses, or names the effect
+    perform    fetch/freeze/thaw (impure, uncommitted)
+    observe    swhid, resolved commit, snapshot digest (impure)
+    settle     the receipts for what ran
+    apply      the REE this acquisition leaves behind (pure)
+    persist    one save, the commit point
+    ---------- the workspace view is rebuilt after the commit
+
+Observation happens twice because acquisition needs it twice: the slot has to
+be empty *before* deciding, and everything the acquisition settles — the
+identity of the tree it produced — can only be read *after* the effect. What
+matters is not that observation happens once, but that it happens nowhere else.
+
+Every partial state this can leave behind is refused by the next acquisition
+with one instruction: remove the source first. That is also what makes an
+interrupted run detectable at all — an acquisition killed mid-effect leaves the
+state saying "no source" while the disk says otherwise, and the slot check
+above is what notices.
+
+The two modes converge on the snapshot archive, which is the canonical source;
+``upstream/`` is materialized from it::
+
+    download   fetch origin → upstream/,  then freeze upstream/ → snapshot
+    upload     freeze staged → snapshot,  then thaw snapshot → upstream/
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.operations.handlers.author.acquire_source import handle_acquire_source
-from repo2ree_core.operations.handlers.author.extract_upload import handle_extract_upload
-from repo2ree_core.operations.handlers.author.materialize_workspace import handle_materialize_workspace
-from repo2ree_core.operations.handlers.author.snapshot_upstream import handle_snapshot_upstream
-from repo2ree_core.operations.handlers.author.source_reset import handle_reset_for_source_change
-from repo2ree_core.operations.handlers.author.update_source_metadata import handle_update_source_metadata
-from repo2ree_protocol.command import (
-    AcquireSourceArgs,
-    ExtractUploadArgs,
-    PrepareSourceArgs,
-    UpdateSourceMetadataArgs,
+from repo2ree_core.digests import Digest
+from repo2ree_core.domain.primitives import GitRevision, ReePath, Swhid
+from repo2ree_core.domain.ree.receipt import (
+    AcquireSourceReceipt,
+    RunReceipt,
+    SnapshotUpstreamReceipt,
+    receipt_envelope,
 )
+from repo2ree_core.domain.ree.transitions import (
+    AcquiredSource,
+    ReePreconditionError,
+    SourceAcquired,
+    SourcePlan,
+    SourceRequest,
+    apply_source_acquired,
+    plan_source_acquisition,
+)
+from repo2ree_core.execution.process import CancelCheck
+from repo2ree_core.failures import failed_from_exception
+from repo2ree_core.operations.handlers.author.acquire_source import run_acquire_script
+from repo2ree_core.operations.handlers.author.extract_upload import freeze_upload
+from repo2ree_core.operations.handlers.author.materialize_workspace import materialize_workspace
+from repo2ree_core.operations.handlers.author.snapshot_upstream import SNAPSHOT_FAILURES, freeze_upstream
+from repo2ree_core.operations.steps.author import log_step_outcome, open_ree_store
+from repo2ree_core.persistence.directory import reset_source_state
+from repo2ree_core.persistence.layout import SNAPSHOT_FILENAME, ReeLayout
+from repo2ree_core.persistence.repository import load_ree, observe_source_slot, save_ree
+from repo2ree_core.source_repo import directory_swhid, resolved_git_head
+from repo2ree_core.time_utils import OperationTimer, OperationTiming, utc_now_instant
+from repo2ree_protocol.command import AcquireSourceArgs, PrepareSourceArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
 
 
 class PrepareSourceOutputs(BaseModel):
-    """What the workflow prepared, in the vocabulary of the mode it ran in.
+    """What the workflow acquired, in the vocabulary of the mode it ran in.
 
     The fields of the other mode stay unset and are dropped on the way out, so
     a client reads back exactly the inputs that were acted on.
@@ -44,6 +96,8 @@ class PrepareSourceOutputs(BaseModel):
     revision: str | None = None
     upload_token: str | None = None
     archive_name: str | None = None
+    snapshot_digest: str | None = None
+    swhid: str | None = None
 
 
 def handle_prepare_source(
@@ -53,92 +107,223 @@ def handle_prepare_source(
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    def step(operation: str, run: Callable[[], ActionResult]) -> ActionResult | None:
-        """Run one sub-step, or the result to stop the whole workflow with.
+    opened = open_ree_store(log)
+    if isinstance(opened, ActionResult):
+        return opened
+    layout, store = opened
 
-        Returns ``None`` to carry on. The cancel check is here because these
-        sub-handlers are called directly rather than dispatched, so the
-        dispatcher's pre-start guard never runs for them — and between two
-        steps is exactly where a cancel can be honoured without leaving the
-        source half-prepared, since each step is itself atomic.
-        """
-        if is_canceled():
-            log("system", "warn", f"prepare_source canceled before {operation}")
-            return ActionResult(status="canceled")
-        result = run()
-        if result.status == "succeeded":
-            return None
-        log("system", "error", f"prepare_source step {operation} {result.status}")
-        return result
+    if args.replace:
+        # The author asked to give up the current source. A separate commit,
+        # before the acquisition it makes room for, with "this REE has no
+        # source" as the resting state in between — so an interruption here
+        # leaves a sourceless REE rather than a half-replaced one.
+        log("system", "info", "replace: retracting the current source first")
+        try:
+            reset_source_state(layout=layout, store=store)
+        except Exception as exc:
+            log("system", "error", f"could not retract the current source: {exc}")
+            return failed_from_exception(exc, f"could not retract the current source: {exc}")
 
-    if halted := step(
-        "reset_for_source_change",
-        lambda: handle_reset_for_source_change(log=log, is_canceled=is_canceled),
-    ):
-        return halted
+    ree = load_ree(layout, store)
+    slot = observe_source_slot(layout, upload_token=args.upload_token)
+    try:
+        plan = plan_source_acquisition(
+            ree,
+            slot,
+            _request_from(args),
+            snapshot_archive=ReePath(SNAPSHOT_FILENAME),
+        )
+    except ReePreconditionError as exc:
+        log("system", "error", f"cannot acquire a source: {exc}")
+        return ActionResult.failed("precondition", f"cannot acquire a source: {exc}")
+    except ValueError as exc:
+        log("system", "error", f"invalid source request: {exc}")
+        return ActionResult.failed("validation", f"invalid source request: {exc}")
 
-    if args.mode == "download":
-        if halted := step(
-            "acquire_source",
-            lambda: handle_acquire_source(
-                AcquireSourceArgs(
-                    origin_url=args.origin_url,
-                    source_type=args.source_type,
-                    revision=args.revision,
-                ),
-                run_id=run_id,
+    performed = _perform(layout, plan, run_id=run_id, log=log, is_canceled=is_canceled)
+    if isinstance(performed, ActionResult):
+        # Nothing is committed on the way out, so whatever the effects left on
+        # disk is unrecorded — and the next acquisition refuses on exactly that.
+        return performed
+    snapshot_digest, receipts = performed
+
+    observed = _observe_acquired_source(layout, snapshot_digest=snapshot_digest, log=log)
+    updated = apply_source_acquired(
+        ree,
+        SourceAcquired(plan=plan, observed=observed, receipts=receipts),
+    )
+    try:
+        save_ree(layout, store, updated, expected_revision=plan.before_revision, status="ready", log=log)
+    except Exception as exc:
+        log("system", "error", f"failed to record the acquired source: {exc}")
+        return failed_from_exception(exc, f"failed to record the acquired source: {exc}")
+
+    # Past the commit point. The workspace is a materialized view, outside the
+    # transactional scope by design, so a failure here leaves a fully acquired
+    # source the author can re-materialize — it does not undo the acquisition.
+    materialized = materialize_workspace(
+        layout,
+        snapshot_digest=snapshot_digest,
+        log=log,
+        is_canceled=is_canceled,
+    )
+    outputs = _outputs(plan, observed).model_dump(exclude_none=True)
+    if materialized.status != "succeeded":
+        log("system", "error", "source acquired, but the workspace could not be materialized")
+        return materialized.model_copy(update={"outputs": outputs})
+    return ActionResult(status="succeeded", exit_code=0, outputs=outputs)
+
+
+def _request_from(args: PrepareSourceArgs) -> SourceRequest:
+    return SourceRequest(
+        mode=args.mode,
+        origin_url=args.origin_url,
+        source_type=args.source_type or "",
+        requested_revision=args.revision,
+        upload_token=args.upload_token,
+        archive_name=ReePath(args.archive_name) if args.archive_name else None,
+    )
+
+
+def _perform(
+    layout: ReeLayout,
+    plan: SourcePlan,
+    *,
+    run_id: str,
+    log: LogSink,
+    is_canceled: CancelCheck,
+) -> tuple[Digest, tuple[RunReceipt, ...]] | ActionResult:
+    """Run this plan's effects, or the failure to stop the workflow with.
+
+    Returns the snapshot digest and the receipts for the steps that ran. Each
+    step is timed on its own and receipted under its own run id: two receipts
+    sharing the workflow's run id would land on the same path in ``runs/`` and
+    the second would replace the first.
+    """
+    # Each freeze is timed around itself, never around the acquire beside it: a
+    # receipt's duration describes the step it is a receipt for, and one clock
+    # spanning both would overstate whichever ran second.
+    frozen: tuple[Digest, OperationTiming] | None = None
+    if plan.mode == "upload":
+        # An upload has no origin, so its snapshot *is* the source: freeze the
+        # staged bytes first, then let the acquire script thaw them.
+        snapshot_timer = OperationTimer.start()
+        try:
+            digest = freeze_upload(
+                layout,
+                upload_token=plan.upload_token,
+                archive_name=str(plan.archive_name),
                 log=log,
-                is_canceled=is_canceled,
-            ),
-        ):
-            return halted
-        if halted := step(
-            "snapshot_upstream",
-            lambda: handle_snapshot_upstream(run_id=run_id, log=log, is_canceled=is_canceled),
-        ):
-            return halted
-        metadata = UpdateSourceMetadataArgs(origin_url=args.origin_url, source_type=args.source_type or "")
-        outputs = PrepareSourceOutputs(
-            mode=args.mode,
-            origin_url=args.origin_url,
-            source_type=args.source_type or "",
-            revision=args.revision,
-        )
-    else:
-        if halted := step(
-            "extract_upload",
-            lambda: handle_extract_upload(
-                ExtractUploadArgs(upload_token=args.upload_token, archive_name=args.archive_name),
-                log=log,
-                is_canceled=is_canceled,
-            ),
-        ):
-            return halted
-        if halted := step(
-            "acquire_source",
-            lambda: handle_acquire_source(AcquireSourceArgs(), run_id=run_id, log=log, is_canceled=is_canceled),
-        ):
-            return halted
-        metadata = UpdateSourceMetadataArgs(
-            mode="upload",
-            archive_name=args.archive_name,
-            upload_token=args.upload_token,
-        )
-        outputs = PrepareSourceOutputs(
-            mode=args.mode,
-            upload_token=args.upload_token,
-            archive_name=args.archive_name,
-        )
+            )
+        except Exception as exc:
+            log("system", "error", f"upload ingest failed: {exc}")
+            return ActionResult.failed("validation", f"upload ingest failed: {exc}")
+        frozen = (digest, snapshot_timer.finish())
 
-    if halted := step(
-        "materialize_workspace",
-        lambda: handle_materialize_workspace(log=log, is_canceled=is_canceled),
-    ):
-        return halted
-    if halted := step(
-        "update_source_metadata",
-        lambda: handle_update_source_metadata(metadata, log=log, is_canceled=is_canceled),
-    ):
-        return halted
+    acquire_timer = OperationTimer.start()
+    acquired = run_acquire_script(layout, _acquire_args(plan), log=log, is_canceled=is_canceled)
+    acquire_timing = acquire_timer.finish()
+    if acquired.canceled or is_canceled():
+        log_step_outcome("acquire_source", "canceled", acquire_timing, log=log)
+        return ActionResult(status="canceled")
+    if acquired.returncode != 0:
+        log_step_outcome("acquire_source", "failed", acquire_timing, log=log)
+        return ActionResult.failed(
+            "execution",
+            f"acquire script exited {acquired.returncode}",
+            exit_code=acquired.returncode or 1,
+        )
+    log_step_outcome("acquire_source", "succeeded", acquire_timing, log=log)
 
-    return ActionResult(status="succeeded", outputs=outputs.model_dump(exclude_none=True))
+    if frozen is None:
+        snapshot_timer = OperationTimer.start()
+        try:
+            frozen = (freeze_upstream(layout, log=log), snapshot_timer.finish())
+        except SNAPSHOT_FAILURES as exc:
+            log("system", "error", f"snapshot failed: {exc}")
+            return failed_from_exception(exc, f"snapshot failed: {exc}")
+    snapshot_digest, snapshot_timing = frozen
+    log_step_outcome("snapshot_upstream", "succeeded", snapshot_timing, log=log)
+
+    return snapshot_digest, (
+        AcquireSourceReceipt(
+            **receipt_envelope(f"{run_id}-acquire", acquire_timing, "succeeded"),
+            origin_url=plan.origin_url,
+            source_type=plan.source_type,
+            revision=GitRevision(plan.requested_revision) if plan.requested_revision else None,
+        ),
+        SnapshotUpstreamReceipt(
+            **receipt_envelope(f"{run_id}-snapshot", snapshot_timing, "succeeded"),
+            snapshot_digest=snapshot_digest,
+        ),
+    )
+
+
+def _acquire_args(plan: SourcePlan) -> AcquireSourceArgs:
+    """The acquire script's inputs for this plan.
+
+    An upload carries no origin and no ref: its snapshot is already on disk, and
+    the script's snapshot-vs-fetch decision resolves to extracting it.
+    """
+    if plan.mode == "upload":
+        return AcquireSourceArgs()
+    return AcquireSourceArgs(
+        origin_url=plan.origin_url,
+        source_type=plan.source_type or None,  # type: ignore[arg-type]
+        revision=plan.requested_revision,
+    )
+
+
+def _observe_acquired_source(layout: ReeLayout, *, snapshot_digest: Digest, log: LogSink) -> AcquiredSource:
+    """Read the identity of the tree the acquisition produced.
+
+    Both identifiers are best-effort: a missing tree or a hashing failure must
+    not lose a source that was genuinely acquired, so an unreadable identity is
+    recorded as absent rather than raised. They are the only impure reads this
+    workflow makes after its effects, which is what keeps the apply above a
+    pure function of values somebody else observed.
+    """
+    swhid = ""
+    try:
+        swhid = directory_swhid(layout.upstream)
+    except Exception as exc:  # an unhashable tree is not a failed acquisition
+        log("system", "warn", f"swhid computation skipped: {exc}")
+    if swhid:
+        log("system", "info", f"source swhid: {swhid}")
+
+    # Read HEAD from the acquired tree rather than trusting the requested ref:
+    # this is the concrete commit a seal pins so a re-fetch lands here again,
+    # and it is empty for a tree that carries no git history.
+    revision = ""
+    try:
+        revision = resolved_git_head(layout.upstream)
+    except Exception as exc:  # same reasoning as the swhid above
+        log("system", "warn", f"revision resolution skipped: {exc}")
+    if revision:
+        log("system", "info", f"source revision: {revision}")
+
+    return AcquiredSource(
+        captured_at=utc_now_instant(),
+        snapshot_digest=snapshot_digest,
+        resolved_commit=GitRevision(revision) if revision else None,
+        swhid=Swhid(swhid) if swhid else None,
+    )
+
+
+def _outputs(plan: SourcePlan, observed: AcquiredSource) -> PrepareSourceOutputs:
+    if plan.mode == "download":
+        return PrepareSourceOutputs(
+            mode="download",
+            origin_url=plan.origin_url,
+            source_type=plan.source_type,
+            revision=str(observed.resolved_commit) if observed.resolved_commit else plan.requested_revision,
+            snapshot_digest=str(observed.snapshot_digest),
+            swhid=str(observed.swhid) if observed.swhid else None,
+        )
+    return PrepareSourceOutputs(
+        mode="upload",
+        upload_token=plan.upload_token,
+        archive_name=str(plan.archive_name) if plan.archive_name else None,
+        snapshot_digest=str(observed.snapshot_digest),
+        swhid=str(observed.swhid) if observed.swhid else None,
+    )

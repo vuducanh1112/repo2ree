@@ -177,25 +177,6 @@ class MaterializeWorkspaceCommand(BaseModel):
     args: MaterializeWorkspaceArgs = MaterializeWorkspaceArgs()
 
 
-class UpdateSourceMetadataArgs(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    mode: Literal["download", "upload"] = "download"
-    # download fields
-    origin_url: str = ""
-    source_type: str = ""
-    # upload fields
-    archive_name: str = ""
-    upload_token: str = ""
-
-
-class UpdateSourceMetadataCommand(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    operation: Literal["update_source_metadata"] = "update_source_metadata"
-    args: UpdateSourceMetadataArgs
-
-
 class ExtractUploadArgs(BaseModel):
     """Extract /ree/upload-staging/<upload_token>.bin into /ree/upstream/."""
 
@@ -213,7 +194,12 @@ class ExtractUploadCommand(BaseModel):
 
 
 class PrepareSourceArgs(BaseModel):
-    """Atomically prepare a REE source from an origin or staged upload."""
+    """Acquire a REE source from an origin or a staged upload.
+
+    An REE holds at most one source, and acquisition is only legal into an
+    empty slot — a source already there is the author's, and the workbench
+    refuses rather than clearing it.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -223,6 +209,13 @@ class PrepareSourceArgs(BaseModel):
     revision: str = ""
     upload_token: str = ""
     archive_name: str = ""
+    # Give up whatever source the REE currently has before acquiring this one.
+    # "Replace the source" is a decision only the author can make, so it is
+    # asked for explicitly and carried out as its own commit — never as a
+    # silent reset inside acquisition, which would erase every precondition
+    # the acquisition might otherwise have refused on. Left false, an occupied
+    # slot is a precondition failure.
+    replace: bool = False
 
 
 class PrepareSourceCommand(BaseModel):
@@ -320,19 +313,6 @@ class RemoveSourceCommand(BaseModel):
 
     operation: Literal["remove_source"] = "remove_source"
     args: RemoveSourceArgs = RemoveSourceArgs()
-
-
-class ResetForSourceChangeArgs(BaseModel):
-    """Clear source-derived state before acquiring a replacement source."""
-
-    model_config = ConfigDict(extra="forbid")
-
-
-class ResetForSourceChangeCommand(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    operation: Literal["reset_for_source_change"] = "reset_for_source_change"
-    args: ResetForSourceChangeArgs = ResetForSourceChangeArgs()
 
 
 class BuildRuntimeArgs(BaseModel):
@@ -498,7 +478,6 @@ Command = Annotated[
     | ReviewRunExperimentCommand
     | SnapshotUpstreamCommand
     | MaterializeWorkspaceCommand
-    | UpdateSourceMetadataCommand
     | ExtractUploadCommand
     | PrepareSourceCommand
     | LoadReeBundleCommand
@@ -506,7 +485,6 @@ Command = Annotated[
     | DeleteFileCommand
     | PatchReeIntentCommand
     | RemoveSourceCommand
-    | ResetForSourceChangeCommand
     | BuildRuntimeCommand
     | GenerateSbomCommand
     | CrossCheckSbomCommand

@@ -14,7 +14,6 @@ from repo2ree_core.domain.ree.receipt import (
     BuildRuntimeReceipt,
     RunExperimentReceipt,
     RunReceipt,
-    SnapshotUpstreamReceipt,
     experiment_step_key,
 )
 
@@ -31,14 +30,15 @@ def assess(ree: Ree) -> ReeAssessment:
     authored = ree.authored
     evidence = ree.evidence
     state = evidence.state
-    snapshot = selected_receipt(evidence, "snapshot_upstream")
-    snapshot_receipt = snapshot if isinstance(snapshot, SnapshotUpstreamReceipt) else None
+    # The state is the only place the current snapshot digest is read from: it
+    # and the snapshot receipt are settled by one save, so a receipt that
+    # disagrees with the state describes an older acquisition rather than a
+    # missing write. (This used to fall back to the receipt, because the digest
+    # and the receipt were two writes that could land apart.)
     current_snapshot_digest = state.source_snapshot_digest
-    if current_snapshot_digest is None and snapshot_receipt is not None:
-        current_snapshot_digest = snapshot_receipt.snapshot_digest
 
     source_reasons: list[str] = []
-    if not (state.source_available or current_snapshot_digest):
+    if not state.source_available:
         source_reasons.append("source has not been acquired")
     source = ReeCapability(status="ready" if not source_reasons else "missing", reasons=tuple(source_reasons))
 

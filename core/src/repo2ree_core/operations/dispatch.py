@@ -29,10 +29,6 @@ from repo2ree_core.operations.handlers.author.remove_source import handle_remove
 from repo2ree_core.operations.handlers.author.run_experiment import handle_run_experiment
 from repo2ree_core.operations.handlers.author.seal_ree import handle_seal_ree
 from repo2ree_core.operations.handlers.author.snapshot_upstream import handle_snapshot_upstream
-from repo2ree_core.operations.handlers.author.source_reset import handle_reset_for_source_change
-from repo2ree_core.operations.handlers.author.update_source_metadata import (
-    handle_update_source_metadata,
-)
 from repo2ree_core.operations.handlers.author.write_file import handle_write_file
 from repo2ree_core.operations.handlers.review.acquire_source import handle_review_acquire_source
 from repo2ree_core.operations.handlers.review.activation_test import handle_review_activation_test
@@ -55,7 +51,6 @@ from repo2ree_protocol.command import (
     PatchReeIntentCommand,
     PrepareSourceCommand,
     RemoveSourceCommand,
-    ResetForSourceChangeCommand,
     ReviewAcquireSourceCommand,
     ReviewActivationTestCommand,
     ReviewBuildRuntimeCommand,
@@ -63,7 +58,6 @@ from repo2ree_protocol.command import (
     RunExperimentCommand,
     SealReeCommand,
     SnapshotUpstreamCommand,
-    UpdateSourceMetadataCommand,
     WriteFileCommand,
 )
 from repo2ree_protocol.log import LogSink
@@ -146,8 +140,6 @@ def _dispatch(
         return handle_snapshot_upstream(run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, MaterializeWorkspaceCommand):
         return handle_materialize_workspace(log=log, is_canceled=cancel)
-    if isinstance(cmd, UpdateSourceMetadataCommand):
-        return handle_update_source_metadata(cmd.args, log=log, is_canceled=cancel)
     if isinstance(cmd, ExtractUploadCommand):
         return handle_extract_upload(cmd.args, log=log, is_canceled=cancel)
     if isinstance(cmd, LoadReeBundleCommand):
@@ -162,8 +154,6 @@ def _dispatch(
         return handle_prepare_source(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, RemoveSourceCommand):
         return handle_remove_source(log=log, is_canceled=cancel)
-    if isinstance(cmd, ResetForSourceChangeCommand):
-        return handle_reset_for_source_change(log=log, is_canceled=cancel)
     if isinstance(cmd, BuildRuntimeCommand):
         return handle_build_runtime(run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, EvaluateDependencyScoreCommand):

@@ -2,9 +2,14 @@
 
 Populates the upstream directory with the canonical source by running the
 generated ``acquire_source.sh`` (the single, shared acquire muscle): it extracts
-the frozen snapshot when present, otherwise fetches the recorded origin. The
-resolved-commit receipt is settled downstream by ``update_source_metadata``,
-which reads HEAD off the acquired tree and persists it onto the intent.
+the frozen snapshot when present, otherwise fetches the recorded origin.
+
+Effect only. This step neither records a receipt nor touches REE state: it is
+one muscle of the acquire lifecycle in
+:mod:`repo2ree_core.operations.handlers.author.prepare_source`, which hydrates
+the REE, decides the acquisition is legal, and commits everything the effects
+produced in a single save. Dispatched on its own — as the reproducer's
+``run.sh`` does — it is exactly what it looks like: a fetch into ``upstream/``.
 """
 
 from __future__ import annotations
@@ -14,22 +19,17 @@ from pathlib import Path
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.authoring.script_generation.acquire_source import build_acquire_sh
-from repo2ree_core.domain.primitives import GitRevision
-from repo2ree_core.domain.ree.receipt import AcquireSourceReceipt
 from repo2ree_core.execution.process import (
     CancelCheck,
+    StreamingProcessResult,
     format_command,
     run_streaming_process,
 )
-from repo2ree_core.operations.steps.author import log_step_outcome, settle_step
 from repo2ree_core.persistence.files import write_atomic
 from repo2ree_core.persistence.layout import ACQUIRE_SCRIPT_FILENAME, ReeLayout
-from repo2ree_core.time_utils import OperationTimer
 from repo2ree_protocol.command import AcquireSourceArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
-
-_OPERATION = "acquire_source"
 
 
 class AcquireSourceOutputs(BaseModel):
@@ -55,6 +55,31 @@ def _write_acquire_script(args: AcquireSourceArgs, *, log: LogSink, layout: ReeL
     return layout.acquire_script
 
 
+def run_acquire_script(
+    layout: ReeLayout,
+    args: AcquireSourceArgs,
+    *,
+    log: LogSink,
+    is_canceled: CancelCheck,
+) -> StreamingProcessResult:
+    """Write the acquire script for this source and run it into ``upstream/``.
+
+    The script owns the fixed REE layout paths and the snapshot-vs-fetch
+    decision, so this only bakes in the source's identity and drives it.
+    """
+    log(
+        "system",
+        "info",
+        f"acquire_source: {args.source_type or 'snapshot'} {args.origin_url} → {layout.upstream}",
+    )
+    script = _write_acquire_script(args, log=log, layout=layout)
+    cmd = ["sh", str(script)]
+    if args.refetch:
+        cmd.append("--refetch")
+    log("system", "info", format_command(cmd))
+    return run_streaming_process(cmd, log=log, is_canceled=is_canceled)
+
+
 def handle_acquire_source(
     args: AcquireSourceArgs,
     *,
@@ -62,50 +87,17 @@ def handle_acquire_source(
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    timer = OperationTimer.start()
     layout = ReeLayout.in_workbench()
-    log(
-        "system",
-        "info",
-        f"acquire_source: {args.source_type or 'snapshot'} {args.origin_url} → {layout.upstream}",
-    )
+    result = run_acquire_script(layout, args, log=log, is_canceled=is_canceled)
 
-    # The script owns the fixed REE layout paths and the snapshot-vs-fetch
-    # decision; the handler only records identity afterwards (the judgement).
-    script = _write_acquire_script(args, log=log, layout=layout)
-    cmd = ["sh", str(script)]
-    if args.refetch:
-        cmd.append("--refetch")
-    log("system", "info", format_command(cmd))
-    result = run_streaming_process(cmd, log=log, is_canceled=is_canceled)
-
-    # Neither exit records a receipt: acquisition is the chain root, and a
-    # receipt for a source that was never acquired would be a link to nothing.
     if result.canceled or is_canceled():
-        log_step_outcome(_OPERATION, "canceled", timer.finish(), log=log)
         return ActionResult(status="canceled")
     if result.returncode != 0:
-        log_step_outcome(_OPERATION, "failed", timer.finish(), log=log)
         return ActionResult.failed(
             "execution",
             f"acquire script exited {result.returncode}",
             exit_code=result.returncode or 1,
         )
-
-    settle_step(
-        layout,
-        lambda envelope: AcquireSourceReceipt(
-            **envelope,
-            origin_url=args.origin_url,
-            source_type=args.source_type or "",
-            revision=GitRevision(args.revision) if args.revision else None,
-        ),
-        operation=_OPERATION,
-        run_id=run_id,
-        timer=timer,
-        status="succeeded",
-        log=log,
-    )
     return ActionResult(
         status="succeeded",
         exit_code=0,

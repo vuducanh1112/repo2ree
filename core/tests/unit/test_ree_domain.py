@@ -2,14 +2,41 @@ import pytest
 from pydantic import ValidationError
 
 from repo2ree_core.digests import Digest, digest_bytes
-from repo2ree_core.domain.primitives import GitRevision, ReeId, ReePath, RunId, ScriptPath, WorkspacePath
+from repo2ree_core.domain.primitives import (
+    GitRevision,
+    ReeId,
+    ReePath,
+    RunId,
+    ScriptPath,
+    Swhid,
+    WorkspacePath,
+)
 from repo2ree_core.domain.ree.assessment import assess
 from repo2ree_core.domain.ree.intent import ReeIntent
-from repo2ree_core.domain.ree.model import AuthoredFile, Ree, ReeDefinition, ReeEvidence, ReeIdentity
+from repo2ree_core.domain.ree.model import (
+    AuthoredFile,
+    Ree,
+    ReeDefinition,
+    ReeEvidence,
+    ReeIdentity,
+    ReePublications,
+    SealedRee,
+)
 from repo2ree_core.domain.ree.queries import name_of, runtime_of, scripts_of
-from repo2ree_core.domain.ree.receipt import BuildRuntimeReceipt, WorkspaceDrift
+from repo2ree_core.domain.ree.receipt import AcquireSourceReceipt, BuildRuntimeReceipt, WorkspaceDrift
 from repo2ree_core.domain.ree.state import ReeLifecycleState, record_evaluation, record_source, select_packaging
-from repo2ree_core.domain.ree.transitions import request_runtime_build, revision_of, write_file
+from repo2ree_core.domain.ree.transitions import (
+    AcquiredSource,
+    ReePreconditionError,
+    SourceAcquired,
+    SourceRequest,
+    SourceSlot,
+    apply_source_acquired,
+    plan_source_acquisition,
+    request_runtime_build,
+    revision_of,
+    write_file,
+)
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_core.time_utils import parse_utc_instant
 
@@ -108,7 +135,7 @@ def test_experiment_estimates_accept_runtime_and_resource_hints():
 # ================================================
 
 
-def test_session_with_source_sets_available():
+def test_record_source_settles_the_whole_snapshot_triple():
     from repo2ree_core.domain.ree.state import ReeLifecycleState
 
     session = ReeLifecycleState()
@@ -117,22 +144,26 @@ def test_session_with_source_sets_available():
         acquired_by="download",
         snapshot_archive=ReePath("snapshot.tar.gz"),
         snapshot_captured_at=parse_utc_instant("2026-01-01T00:00:00Z"),
+        snapshot_digest=Digest("sha256:" + "0" * 64),
+        resolved_commit=GitRevision("abc123"),
     )
     assert updated.source_available is True
     assert updated.source_acquired_by == "download"
     assert updated.source_snapshot_archive == "snapshot.tar.gz"
+    assert updated.source_snapshot_digest == "sha256:" + "0" * 64
+    assert updated.source_resolved_commit == "abc123"
 
 
-def test_session_with_source_records_resolved_commit():
+def test_record_source_requires_the_snapshot_it_was_acquired_into():
+    """The digest is the chain root, so a source cannot be recorded without one."""
     from repo2ree_core.domain.ree.state import ReeLifecycleState
 
-    session = ReeLifecycleState()
-    updated = record_source(
-        session,
-        acquired_by="download",
-        resolved_commit=GitRevision("abc123"),
-    )
-    assert updated.source_resolved_commit == "abc123"
+    with pytest.raises(TypeError):
+        record_source(  # type: ignore[call-arg]
+            ReeLifecycleState(),
+            acquired_by="download",
+            resolved_commit=GitRevision("abc123"),
+        )
 
 
 def test_session_with_evaluation():
@@ -322,3 +353,184 @@ def test_runtime_build_transition_pins_revision_and_inputs():
     assert transition.revision == revision_of(ree)
     assert transition.snapshot_digest == "sha256:snapshot"
     assert transition.build_script_digest == build_digest
+
+
+# ================================================
+# Source acquisition: plan and apply
+# ================================================
+
+_TOKEN = "tok"  # noqa: S105 — an upload-staging id, not a secret
+_EMPTY_SLOT = SourceSlot(upstream_populated=False, snapshot_archive_present=False, staged_upload_present=False)
+_SNAPSHOT = ReePath("snapshot.tar.gz")
+
+
+def _sourceless_ree(*, sealed: SealedRee | None = None) -> Ree:
+    return Ree(
+        identity=ReeIdentity(
+            ree_id=ReeId("ree-1"),
+            created_at=parse_utc_instant("2026-01-01T00:00:00Z"),
+            updated_at=parse_utc_instant("2026-01-01T00:00:00Z"),
+        ),
+        authored=ReeDefinition(intent=ReeIntent(name="demo")),
+        evidence=ReeEvidence(state=ReeLifecycleState()),
+        publications=ReePublications(sealed=sealed),
+    )
+
+
+def _download_request() -> SourceRequest:
+    return SourceRequest(mode="download", origin_url="https://x/y.git", source_type="git", requested_revision="v1.2.0")
+
+
+def _plan(ree: Ree, slot: SourceSlot = _EMPTY_SLOT, request: SourceRequest | None = None):
+    return plan_source_acquisition(ree, slot, request or _download_request(), snapshot_archive=_SNAPSHOT)
+
+
+def test_plan_source_acquisition_names_the_effect_for_an_empty_slot():
+    plan = _plan(_sourceless_ree())
+
+    assert plan.mode == "download"
+    assert plan.origin_url == "https://x/y.git"
+    assert plan.requested_revision == "v1.2.0"
+    assert plan.snapshot_archive == "snapshot.tar.gz"
+    assert plan.before_revision == revision_of(_sourceless_ree())
+
+
+def test_plan_source_acquisition_refuses_an_occupied_slot():
+    ree = _sourceless_ree()
+    occupied = ree.model_copy(
+        update={
+            "evidence": ree.evidence.model_copy(
+                update={"state": ReeLifecycleState(source_available=True)},
+            )
+        }
+    )
+
+    with pytest.raises(ReePreconditionError, match="already has a source"):
+        _plan(occupied)
+
+
+def test_plan_source_acquisition_refuses_a_sealed_ree():
+    sealed = SealedRee(seal_hash=Digest("sha256:seal"), sealed_at=parse_utc_instant("2026-01-02T00:00:00Z"))
+
+    with pytest.raises(ReePreconditionError, match="sealed"):
+        _plan(_sourceless_ree(sealed=sealed))
+
+
+def test_plan_source_acquisition_refuses_content_the_state_never_recorded():
+    """The slot check is what makes an interrupted acquisition detectable."""
+    interrupted = SourceSlot(upstream_populated=True, snapshot_archive_present=False, staged_upload_present=False)
+
+    with pytest.raises(ReePreconditionError, match="remove the source"):
+        _plan(_sourceless_ree(), interrupted)
+
+
+def test_plan_source_acquisition_rejects_a_download_without_an_origin():
+    with pytest.raises(ValueError, match="origin url"):
+        _plan(_sourceless_ree(), request=SourceRequest(mode="download", source_type="git"))
+
+
+def test_plan_source_acquisition_requires_the_staged_upload_it_names():
+    request = SourceRequest(mode="upload", upload_token=_TOKEN, archive_name=ReePath("src.tar.gz"))
+
+    with pytest.raises(ReePreconditionError, match="staged upload"):
+        _plan(_sourceless_ree(), _EMPTY_SLOT, request)
+
+
+def test_plan_source_acquisition_drops_the_other_mode_s_fields():
+    """An upload has no origin; a download has no token. The plan says so."""
+    staged = SourceSlot(upstream_populated=False, snapshot_archive_present=False, staged_upload_present=True)
+    request = SourceRequest(
+        mode="upload",
+        upload_token=_TOKEN,
+        archive_name=ReePath("src.tar.gz"),
+        origin_url="https://ignored/",
+    )
+
+    plan = _plan(_sourceless_ree(), staged, request)
+
+    assert plan.origin_url == ""
+    assert plan.source_type == ""
+    assert plan.archive_name == "src.tar.gz"
+
+
+def _acquire_receipt(run_id: str) -> AcquireSourceReceipt:
+    return AcquireSourceReceipt(
+        run_id=RunId(run_id),
+        started_at=parse_utc_instant("2026-01-01T00:00:00Z"),
+        finished_at=parse_utc_instant("2026-01-01T00:00:01Z"),
+        duration_ms=1000,
+        recorded_at=parse_utc_instant("2026-01-01T00:00:01Z"),
+        status="succeeded",
+        origin_url="https://x/y.git",
+        source_type="git",
+    )
+
+
+def _acquired(**overrides) -> AcquiredSource:
+    return AcquiredSource(
+        captured_at=parse_utc_instant("2026-01-01T00:00:02Z"),
+        snapshot_digest=Digest("sha256:snap"),
+        **overrides,
+    )
+
+
+def test_apply_source_acquired_returns_a_whole_ree():
+    ree = _sourceless_ree()
+    plan = _plan(ree)
+    receipt = _acquire_receipt("run-1")
+
+    updated = apply_source_acquired(
+        ree,
+        SourceAcquired(
+            plan=plan,
+            observed=_acquired(resolved_commit=GitRevision("abc123"), swhid=Swhid("swh:1:dir:deadbeef")),
+            receipts=(receipt,),
+        ),
+    )
+
+    # intent: the resolved commit and the content identity are settled onto it
+    assert updated.authored.intent.origin_url == "https://x/y.git"
+    assert updated.authored.intent.revision == "abc123"
+    assert updated.authored.intent.swhid == "swh:1:dir:deadbeef"
+    # state: every source fact, including the digest, in the same value
+    assert updated.evidence.state.source_available is True
+    assert updated.evidence.state.source_acquired_by == "download"
+    assert updated.evidence.state.source_snapshot_digest == "sha256:snap"
+    assert updated.evidence.state.source_resolved_commit == "abc123"
+    # evidence: recorded as history and promoted to selected
+    assert receipt in updated.evidence.history
+    assert receipt in updated.evidence.selected
+    # and the head moved, so the save it was planned from can tell
+    assert revision_of(updated) != plan.before_revision
+
+
+def test_apply_source_acquired_leaves_the_intent_alone_for_an_upload():
+    """An upload has no origin to record, and no ref to pin."""
+    ree = _sourceless_ree()
+    staged = SourceSlot(upstream_populated=False, snapshot_archive_present=False, staged_upload_present=True)
+    plan = _plan(
+        ree,
+        staged,
+        SourceRequest(mode="upload", upload_token=_TOKEN, archive_name=ReePath("src.tar.gz")),
+    )
+
+    updated = apply_source_acquired(ree, SourceAcquired(plan=plan, observed=_acquired()))
+
+    assert updated.authored.intent.origin_url == ""
+    assert updated.authored.intent.revision == ""
+    assert updated.evidence.state.source_acquired_by == "upload"
+    assert updated.evidence.state.uploaded_archive == "src.tar.gz"
+
+
+def test_apply_source_acquired_does_not_promote_a_failed_receipt():
+    ree = _sourceless_ree()
+    plan = _plan(ree)
+    failed = _acquire_receipt("run-1").model_copy(update={"status": "failed"})
+
+    updated = apply_source_acquired(
+        ree,
+        SourceAcquired(plan=plan, observed=_acquired(), receipts=(failed,)),
+    )
+
+    assert failed in updated.evidence.history
+    assert updated.evidence.selected == ()

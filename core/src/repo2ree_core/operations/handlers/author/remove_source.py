@@ -1,4 +1,17 @@
-"""Handler for the remove_source operation."""
+"""Handler for the remove_source operation.
+
+The retraction half of the source lifecycle, and now its only one: acquiring
+refuses into an occupied slot rather than clearing it, so this is the single
+way an REE gives its source up. It is also the recovery for an acquisition
+killed mid-effect, which leaves content on disk that the state never recorded.
+
+Note that ``reset_source_state`` is broader than its caller's name: it also
+clears ``overlay/`` (authored files) and the selected author receipts, and
+resets the intent to its identity fields. That breadth predates this split and
+is deliberately unchanged here — whether changing a source should discard
+authored build scripts is a product decision, not a consequence of where the
+reset is called from.
+"""
 
 from __future__ import annotations
 

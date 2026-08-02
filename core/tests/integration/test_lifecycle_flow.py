@@ -5,8 +5,7 @@ dispatcher through the sequence of typed commands that make up the REE
 lifecycle described in docs/REE.md, asserting the state of the durable
 ``/ree`` tree after each transition.
 
-    acquire_source -> snapshot_upstream -> materialize_workspace
-        -> write_file -> (re-materialize) -> seal_ree
+    prepare_source -> write_file -> (re-materialize) -> seal_ree
 
 It exercises every layer the control plane sits on top of — the command
 the command envelope, the dispatcher, the handlers, and the ``ReeDirectory`` / ``ReeLayout``
@@ -41,20 +40,16 @@ from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol.command import (
-    AcquireSourceArgs,
-    AcquireSourceCommand,
     EvaluateDependencyScoreCommand,
-    ExtractUploadArgs,
-    ExtractUploadCommand,
     MaterializeWorkspaceCommand,
-    ResetForSourceChangeCommand,
+    PrepareSourceArgs,
+    PrepareSourceCommand,
+    RemoveSourceCommand,
     SealReeCommand,
-    SnapshotUpstreamCommand,
-    UpdateSourceMetadataArgs,
-    UpdateSourceMetadataCommand,
     WriteFileArgs,
     WriteFileCommand,
 )
+from repo2ree_protocol.result import ActionResult
 
 # ================================================
 # Test infrastructure
@@ -137,6 +132,15 @@ def _init_ree(layout: ReeLayout, ree_id: str) -> None:
     )
 
 
+def _acquire(ree: Ree, origin: Path, *, run_id: str = "source") -> ActionResult:
+    """Drive the whole acquire lifecycle, the way the control plane does."""
+    return run_command(
+        PrepareSourceCommand(args=PrepareSourceArgs(mode="download", origin_url=str(origin), source_type="git")),
+        log=ree.log,
+        run_id=run_id,
+    )
+
+
 # ================================================
 # Fixtures
 # ================================================
@@ -174,12 +178,8 @@ def test_ree_lifecycle_flow(ree: Ree, source_repo: Path) -> None:
     layout = ree.layout
     log = ree.log
 
-    # --- acquire_source: clone upstream into upstream/ ------------------
-    result = run_command(
-        AcquireSourceCommand(args=AcquireSourceArgs(origin_url=str(source_repo), source_type="git")),
-        log=log,
-        run_id="acquire",
-    )
+    # --- prepare_source: the whole acquire lifecycle in one command ----
+    result = _acquire(ree, source_repo)
     assert result.status == "succeeded"
     assert (layout.upstream / "requirements.txt").is_file()
     assert (layout.upstream / "app.py").is_file()
@@ -188,17 +188,24 @@ def test_ree_lifecycle_flow(ree: Ree, source_repo: Path) -> None:
     assert layout.acquire_script.is_file()
     assert "git clone" in layout.acquire_script.read_text()
     assert str(source_repo) in layout.acquire_script.read_text()
-
-    # --- snapshot_upstream: freeze upstream into snapshot.tar.gz --------
-    result = run_command(SnapshotUpstreamCommand(), log=log, run_id="snapshot")
-    assert result.status == "succeeded"
+    # the snapshot was frozen and the workspace materialized by the same command
     assert layout.snapshot_archive.is_file()
-
-    # --- materialize_workspace: upstream -> workspace ------------------
-    result = run_command(MaterializeWorkspaceCommand(), log=log, run_id="materialize")
-    assert result.status == "succeeded"
     assert (layout.workspace / "requirements.txt").is_file()
     assert (layout.workspace / "app.py").is_file()
+
+    # one commit settled every source fact together: the digest on the state is
+    # the one the snapshot receipt recorded, never one without the other
+    state = ree.session()
+    assert state.source_available
+    assert state.source_acquired_by == "download"
+    assert state.source_snapshot_digest == result.outputs["snapshot_digest"]
+    assert state.source_snapshot_archive == layout.snapshot_archive.name
+
+    # --- acquiring again is refused; the slot is occupied --------------
+    refused = _acquire(ree, source_repo, run_id="source-again")
+    assert refused.status == "failed"
+    assert refused.failure is not None
+    assert refused.failure.category == "precondition"
 
     # --- write_file: the overlay's contribution beside the source ------
     result = run_command(
@@ -231,16 +238,15 @@ def test_ree_lifecycle_flow(ree: Ree, source_repo: Path) -> None:
     assert log.events
 
 
-def test_upload_pipeline_extract_then_acquire(ree: Ree, tmp_path: Path) -> None:
-    """Upload path: extract_upload builds the snapshot, then acquire extracts it.
+def test_upload_pipeline_freezes_then_thaws(ree: Ree, tmp_path: Path) -> None:
+    """Upload path: the staged bytes are frozen into the snapshot, then thawed.
 
-    Mirrors the API's _upload_pipeline (extract_upload -> acquire -> materialize),
-    proving an origin-less source is populated through the same unified acquire.
+    The two modes converge on the snapshot archive — for an upload it *is* the
+    canonical source — and one command settles the whole thing.
     """
     layout = ree.layout
     log = ree.log
 
-    # Stage an uploaded tarball at /ree/upload-staging/<token>.bin
     src = tmp_path / "proj"
     src.mkdir()
     (src / "main.py").write_text("print('uploaded')\n")
@@ -252,33 +258,70 @@ def test_upload_pipeline_extract_then_acquire(ree: Ree, tmp_path: Path) -> None:
         check=True,
     )
 
-    # extract_upload turns the staged bytes into the snapshot (not upstream)
     result = run_command(
-        ExtractUploadCommand(args=ExtractUploadArgs(upload_token=token, archive_name="proj.tar.gz")),
+        PrepareSourceCommand(args=PrepareSourceArgs(mode="upload", upload_token=token, archive_name="proj.tar.gz")),
         log=log,
-        run_id="extract-upload",
+        run_id="source-upload",
     )
     assert result.status == "succeeded"
     assert layout.snapshot_archive.is_file()
-    assert not layout.upstream.exists() or not any(layout.upstream.iterdir())
-
-    # acquire (no origin/type) extracts the snapshot into upstream
-    result = run_command(
-        AcquireSourceCommand(args=AcquireSourceArgs()),
-        log=log,
-        run_id="acquire-upload",
-    )
-    assert result.status == "succeeded"
     assert (layout.upstream / "main.py").read_text() == "print('uploaded')\n"
     assert (layout.upstream / "data.txt").is_file()
-
-    # and it flows on into the workspace
-    result = run_command(MaterializeWorkspaceCommand(), log=log, run_id="materialize-upload")
-    assert result.status == "succeeded"
     assert (layout.workspace / "main.py").is_file()
+    # the staging file is consumed by the freeze
+    assert not layout.upload_staging_file(token).exists()
+
+    metadata = ReeDirectory(layout).read_sidecar()
+    assert metadata.status == "ready"
+    assert metadata.ree_state.source_acquired_by == "upload"
+    assert metadata.ree_state.uploaded_archive == "proj.tar.gz"
+    assert metadata.ree_state.source_snapshot_digest == result.outputs["snapshot_digest"]
 
 
-def test_source_replacement_resets_derived_state_before_download(ree: Ree, source_repo: Path, tmp_path: Path) -> None:
+def test_acquire_refuses_when_a_previous_attempt_left_content_behind(ree: Ree, source_repo: Path) -> None:
+    """An acquisition killed mid-effect is detected by the slot, not by a ledger.
+
+    State says "no source", the disk says otherwise — and that disagreement is
+    the only trace such a run leaves. The precondition check is what notices it.
+    """
+    layout = ree.layout
+
+    # What a crash between the effect and the commit leaves behind.
+    layout.upstream.mkdir(parents=True, exist_ok=True)
+    (layout.upstream / "half-fetched.py").write_text("partial\n")
+    assert not ree.session().source_available
+
+    result = _acquire(ree, source_repo)
+    assert result.status == "failed"
+    assert result.failure is not None
+    assert result.failure.category == "precondition"
+    assert "remove the source" in result.failure.message
+
+    # The stated recovery works, and is the same one as for a settled source.
+    assert run_command(RemoveSourceCommand(), log=ree.log, run_id="remove").status == "succeeded"
+    assert _acquire(ree, source_repo, run_id="source-retry").status == "succeeded"
+
+
+def test_acquire_refuses_into_a_sealed_ree(ree: Ree, source_repo: Path) -> None:
+    log = ree.log
+    assert _acquire(ree, source_repo).status == "succeeded"
+    assert run_command(SealReeCommand(), log=log, run_id="seal").status == "succeeded"
+
+    # A sealed REE's source is pinned by the seal; re-acquiring would silently
+    # invalidate it, so it is refused rather than performed.
+    result = _acquire(ree, source_repo, run_id="source-after-seal")
+    assert result.status == "failed"
+    assert result.failure is not None
+    assert result.failure.category == "precondition"
+    assert "sealed" in result.failure.message
+
+
+def test_source_replacement_is_a_retraction_then_an_acquisition(ree: Ree, source_repo: Path, tmp_path: Path) -> None:
+    """Replacing a source is two commits, with "no source" resting in between.
+
+    This is what the control plane composes for "change the source": acquire no
+    longer clears the slot itself, so the retraction is an explicit gesture.
+    """
     layout = ree.layout
     log = ree.log
     replacement_repo = _make_source_repo(
@@ -289,13 +332,7 @@ def test_source_replacement_resets_derived_state_before_download(ree: Ree, sourc
     )
 
     # Seed a complete old source/runtime/seal state.
-    run_command(
-        AcquireSourceCommand(args=AcquireSourceArgs(origin_url=str(source_repo), source_type="git")),
-        log=log,
-        run_id="acquire-old",
-    )
-    run_command(SnapshotUpstreamCommand(), log=log, run_id="snapshot-old")
-    run_command(MaterializeWorkspaceCommand(), log=log, run_id="materialize-old")
+    assert _acquire(ree, source_repo, run_id="source-old").status == "succeeded"
     run_command(
         WriteFileCommand(args=WriteFileArgs(path="old-overlay.sh", content="echo stale\n")),
         log=log,
@@ -306,27 +343,15 @@ def test_source_replacement_resets_derived_state_before_download(ree: Ree, sourc
     assert layout.snapshot_archive.is_file()
     assert layout.sealed_archive.is_file()
 
-    # Simulate the API download pipeline for a replacement source.
-    result = run_command(ResetForSourceChangeCommand(), log=log, run_id="reset-source")
-    assert result.status == "succeeded"
-    result = run_command(
-        AcquireSourceCommand(args=AcquireSourceArgs(origin_url=str(replacement_repo), source_type="git")),
-        log=log,
-        run_id="acquire-new",
-    )
-    assert result.status == "succeeded"
-    run_command(SnapshotUpstreamCommand(), log=log, run_id="snapshot-new")
-    run_command(MaterializeWorkspaceCommand(), log=log, run_id="materialize-new")
-    run_command(
-        UpdateSourceMetadataCommand(
-            args=UpdateSourceMetadataArgs(
-                origin_url=str(replacement_repo),
-                source_type="git",
-            )
-        ),
-        log=log,
-        run_id="metadata-new",
-    )
+    # Retract first — acquiring straight into the occupied slot is refused.
+    assert _acquire(ree, replacement_repo, run_id="source-blocked").status == "failed"
+    assert run_command(RemoveSourceCommand(), log=log, run_id="remove-source").status == "succeeded"
+    retracted = ree.session()
+    assert not retracted.source_available
+    assert retracted.source_snapshot_digest is None
+    assert not layout.snapshot_archive.exists()
+
+    assert _acquire(ree, replacement_repo, run_id="source-new").status == "succeeded"
 
     assert (layout.upstream / "app.py").read_text() == "print('replacement')\n"
     assert (layout.workspace / "replacement-only.txt").read_text() == "new\n"
@@ -342,17 +367,44 @@ def test_source_replacement_resets_derived_state_before_download(ree: Ree, sourc
     assert metadata.ree_state.source_acquired_by == "download"
 
 
-def test_source_replacement_resets_derived_state_before_upload(ree: Ree, source_repo: Path, tmp_path: Path) -> None:
+def test_replace_retracts_then_acquires_in_one_command(ree: Ree, source_repo: Path, tmp_path: Path) -> None:
+    """``replace`` is the same two commits, asked for up front.
+
+    It is not the old silent reset: acquisition still refuses an occupied slot,
+    and the retraction only happens because the caller said so.
+    """
+    layout = ree.layout
+    replacement_repo = _make_source_repo(tmp_path, name="replacement", app_text="print('new')\n")
+
+    assert _acquire(ree, source_repo, run_id="source-first").status == "succeeded"
+    first_digest = ree.session().source_snapshot_digest
+
+    result = run_command(
+        PrepareSourceCommand(
+            args=PrepareSourceArgs(
+                mode="download",
+                origin_url=str(replacement_repo),
+                source_type="git",
+                replace=True,
+            )
+        ),
+        log=ree.log,
+        run_id="source-replace",
+    )
+
+    assert result.status == "succeeded"
+    assert (layout.upstream / "app.py").read_text() == "print('new')\n"
+    state = ree.session()
+    assert state.source_available
+    assert state.source_snapshot_digest != first_digest
+    assert state.source_snapshot_digest == result.outputs["snapshot_digest"]
+
+
+def test_source_replacement_by_upload_keeps_the_staged_archive(ree: Ree, source_repo: Path, tmp_path: Path) -> None:
     layout = ree.layout
     log = ree.log
 
-    run_command(
-        AcquireSourceCommand(args=AcquireSourceArgs(origin_url=str(source_repo), source_type="git")),
-        log=log,
-        run_id="acquire-old-upload",
-    )
-    run_command(SnapshotUpstreamCommand(), log=log, run_id="snapshot-old-upload")
-    run_command(MaterializeWorkspaceCommand(), log=log, run_id="materialize-old-upload")
+    assert _acquire(ree, source_repo, run_id="source-old-upload").status == "succeeded"
     (layout.workspace / "stale-workspace.txt").write_text("stale\n")
 
     src = tmp_path / "uploaded-replacement"
@@ -365,25 +417,18 @@ def test_source_replacement_resets_derived_state_before_upload(ree: Ree, source_
         check=True,
     )
 
-    # Simulate the API upload pipeline for a replacement source. Reset must not
-    # remove upload staging, because extract_upload consumes it next.
-    result = run_command(ResetForSourceChangeCommand(), log=log, run_id="reset-upload")
-    assert result.status == "succeeded"
+    # Retraction must not remove upload staging: the acquisition consumes it next.
+    assert run_command(RemoveSourceCommand(), log=log, run_id="remove-upload").status == "succeeded"
     assert layout.upload_staging_file(token).is_file()
+
     result = run_command(
-        ExtractUploadCommand(args=ExtractUploadArgs(upload_token=token, archive_name="replacement.tar.gz")),
+        PrepareSourceCommand(
+            args=PrepareSourceArgs(mode="upload", upload_token=token, archive_name="replacement.tar.gz")
+        ),
         log=log,
-        run_id="extract-upload-replacement",
+        run_id="source-upload-new",
     )
     assert result.status == "succeeded"
-    result = run_command(AcquireSourceCommand(args=AcquireSourceArgs()), log=log, run_id="acquire-upload-new")
-    assert result.status == "succeeded"
-    run_command(MaterializeWorkspaceCommand(), log=log, run_id="materialize-upload-new")
-    run_command(
-        UpdateSourceMetadataCommand(args=UpdateSourceMetadataArgs(mode="upload", archive_name="replacement.tar.gz")),
-        log=log,
-        run_id="metadata-upload-new",
-    )
 
     assert (layout.upstream / "main.py").read_text() == "print('uploaded replacement')\n"
     assert (layout.workspace / "main.py").is_file()
@@ -404,12 +449,7 @@ def test_seal_is_deterministic_for_unchanged_content(ree: Ree, source_repo: Path
     """
     log = ree.log
 
-    run_command(
-        AcquireSourceCommand(args=AcquireSourceArgs(origin_url=str(source_repo), source_type="git")),
-        log=log,
-        run_id="acquire",
-    )
-    run_command(MaterializeWorkspaceCommand(), log=log, run_id="materialize")
+    _acquire(ree, source_repo)
 
     first = run_command(SealReeCommand(), log=log, run_id="seal-1")
     second = run_command(SealReeCommand(), log=log, run_id="seal-2")
@@ -433,12 +473,7 @@ def test_evaluate_dependency_score_real(ree: Ree, source_repo: Path) -> None:
     layout = ree.layout
     log = ree.log
 
-    run_command(
-        AcquireSourceCommand(args=AcquireSourceArgs(origin_url=str(source_repo), source_type="git")),
-        log=log,
-        run_id="acquire",
-    )
-    run_command(MaterializeWorkspaceCommand(), log=log, run_id="materialize")
+    _acquire(ree, source_repo)
 
     result = run_command(EvaluateDependencyScoreCommand(), log=log, run_id="evaluate")
 

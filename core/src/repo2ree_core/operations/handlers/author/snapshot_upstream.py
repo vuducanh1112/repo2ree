@@ -1,9 +1,13 @@
 """Handler for the snapshot_upstream operation.
 
-Packs /ree/upstream into /ree/snapshot.tar.gz. No-op if upstream is absent.
-The archive is hashed while it is written; the digest is persisted on the
-state (the chain root of every step's input slice) and recorded in the
-run's receipt.
+Packs /ree/upstream into /ree/snapshot.tar.gz, hashing the archive as it is
+written.
+
+Effect only: the digest is *returned*, never persisted here. Freezing the
+upstream tree is one effect of the acquire lifecycle, and only that lifecycle
+is in a position to record what the freeze produced — it holds the hydrated
+REE the digest belongs to. Persisting it from inside this step is what used to
+let a receipt claim a digest the state never received.
 """
 
 from __future__ import annotations
@@ -12,19 +16,18 @@ import tarfile
 
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.domain.ree.receipt import SnapshotUpstreamReceipt
+from repo2ree_core.digests import Digest
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.failures import failed_from_exception
-from repo2ree_core.operations.steps.author import log_step_outcome, settle_step
-from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import pack_directory_tar_gz
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_core.persistence.receipts import persist_snapshot_digest
-from repo2ree_core.time_utils import OperationTimer
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
 
-_OPERATION = "snapshot_upstream"
+# Packing walks and reads an arbitrary source tree: an unreadable file, a broken
+# link, a device node tarfile refuses. All of it is a fact about that tree rather
+# than a defect here, which is what makes it the caller's news.
+SNAPSHOT_FAILURES = (OSError, tarfile.TarError)
 
 
 class SnapshotUpstreamOutputs(BaseModel):
@@ -32,6 +35,16 @@ class SnapshotUpstreamOutputs(BaseModel):
 
     snapshot_archive: str
     snapshot_digest: str | None
+
+
+def freeze_upstream(layout: ReeLayout, *, log: LogSink) -> Digest:
+    """Pack ``upstream/`` into the snapshot archive and return its digest.
+
+    Raises on any packing failure; the caller decides what that means for the
+    acquisition it is part of.
+    """
+    log("system", "info", f"snapshotting {layout.upstream} → {layout.snapshot_archive}")
+    return pack_directory_tar_gz(layout.upstream, layout.snapshot_archive)
 
 
 def handle_snapshot_upstream(
@@ -46,28 +59,12 @@ def handle_snapshot_upstream(
         log("system", "warn", "upstream/ does not exist — skipping snapshot")
         return ActionResult(status="succeeded", exit_code=0)
 
-    timer = OperationTimer.start()
-    log("system", "info", f"snapshotting {layout.upstream} → {layout.snapshot_archive}")
-    # Packing walks and reads an arbitrary source tree: an unreadable file, a
-    # broken link, a device node tarfile refuses. All of it is a fact about that
-    # tree rather than a defect here, which is what makes it the caller's news.
     try:
-        snapshot_digest = pack_directory_tar_gz(layout.upstream, layout.snapshot_archive)
-    except (OSError, tarfile.TarError) as exc:
+        snapshot_digest = freeze_upstream(layout, log=log)
+    except SNAPSHOT_FAILURES as exc:
         log("system", "error", f"snapshot failed: {exc}")
-        log_step_outcome(_OPERATION, "failed", timer.finish(), log=log)
         return failed_from_exception(exc, f"snapshot failed: {exc}")
 
-    persist_snapshot_digest(ReeDirectory(layout), snapshot_digest, log=log)
-    settle_step(
-        layout,
-        lambda envelope: SnapshotUpstreamReceipt(**envelope, snapshot_digest=snapshot_digest),
-        operation=_OPERATION,
-        run_id=run_id,
-        timer=timer,
-        status="succeeded",
-        log=log,
-    )
     return ActionResult(
         status="succeeded",
         exit_code=0,

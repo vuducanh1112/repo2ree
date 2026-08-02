@@ -58,5 +58,30 @@ class ReeSidecar(BaseModel):
         """This sidecar carrying new durable state. Nothing else is derived from it."""
         return self._revalidated(ree_state=state.model_dump(mode="json", exclude_none=True), updated_at=at)
 
+    def with_head(
+        self,
+        intent: ReeIntent,
+        state: ReeLifecycleState,
+        *,
+        at: str,
+        status: ReeStatus | None = None,
+    ) -> ReeSidecar:
+        """This sidecar carrying a whole new REE head, in one revalidation.
+
+        The two-in-one counterpart of :meth:`with_intent` and :meth:`with_state`,
+        for the saves that settle both. Applying them in sequence would write
+        the sidecar twice for one change and leave a window in which the intent
+        had moved and the state had not — which is exactly the split the
+        repository's single commit exists to close.
+        """
+        return self._revalidated(
+            ree_intent=intent.model_dump(exclude_none=True),
+            ree_state=state.model_dump(mode="json", exclude_none=True),
+            name=intent.name or self.name,
+            external_ref=intent.origin_url or None,
+            status=status or self.status,
+            updated_at=at,
+        )
+
     def _revalidated(self, **changes: object) -> ReeSidecar:
         return ReeSidecar.model_validate(self.model_dump(mode="json", exclude_none=True) | changes)
