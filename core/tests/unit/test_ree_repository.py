@@ -26,7 +26,7 @@ def _silent_log(stream: str, level: str, message: str) -> None:
     return None
 
 
-def test_repository_hydrates_authored_evidence_and_publication(tmp_path: Path) -> None:
+def test_repository_hydrates_authored_evidence_and_seal(tmp_path: Path) -> None:
     layout = ReeLayout(root=tmp_path)
     store = ReeDirectory(layout)
     store.ensure_dirs()
@@ -54,8 +54,8 @@ def test_repository_hydrates_authored_evidence_and_publication(tmp_path: Path) -
     assert name_of(ree.authored) == "demo"
     assert scripts_of(ree.authored).build_runtime is not None
     assert ree.evidence.state.source_snapshot_digest == "sha256:snapshot"
-    assert ree.publications.sealed is not None
-    assert ree.publications.sealed.seal_hash == "sha256:seal"
+    assert ree.seal is not None
+    assert ree.seal.seal_hash == "sha256:seal"
 
 
 # ================================================

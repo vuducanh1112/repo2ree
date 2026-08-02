@@ -35,7 +35,7 @@ from repo2ree_core.domain.ree.intent import SourceType
 from repo2ree_core.domain.ree.model import (
     Ree,
     ReeDefinition,
-    SealedRee,
+    Seal,
 )
 from repo2ree_core.domain.ree.receipt import RunReceipt, receipt_step_key
 from repo2ree_core.domain.ree.state import (
@@ -171,7 +171,7 @@ def plan_source_acquisition(
     were this to reset first, every condition it might refuse on would already
     have been erased.
     """
-    if ree.publications.sealed is not None:
+    if ree.seal is not None:
         raise ReePreconditionError("a sealed REE cannot acquire a source")
     if ree.evidence.state.source_available:
         raise ReePreconditionError("this REE already has a source; remove it before acquiring another")
@@ -259,7 +259,7 @@ def _selected_with(selected: tuple[RunReceipt, ...], recorded: tuple[RunReceipt,
     return tuple(sorted((*kept, *promoted.values()), key=receipt_step_key))
 
 
-def prepare_publication(
+def prepare_seal(
     ree: Ree,
     *,
     source_included: bool,
@@ -285,11 +285,11 @@ def record_seal(
     runtime_included: bool,
     results_included: bool,
 ) -> Ree:
-    """The sealed REE: the packaging facts on the state, and the publication itself.
+    """The sealed REE: the packaging facts on the state, and the seal itself.
 
     Both, and in one value — a seal that settled the state without recording
-    the publication would leave the REE saying it was sealed while carrying
-    nothing that says what was sealed.
+    the seal would leave the REE saying it was sealed while carrying nothing
+    that says what was sealed.
     """
     state = record_state_seal(
         ree.evidence.state,
@@ -299,7 +299,7 @@ def record_seal(
         runtime_included=runtime_included,
         results_included=results_included,
     )
-    publication = SealedRee(
+    seal = Seal(
         seal_hash=seal_hash,
         sealed_at=sealed_at,
         source_included=source_included,
@@ -309,6 +309,6 @@ def record_seal(
     return ree.model_copy(
         update={
             "evidence": ree.evidence.model_copy(update={"state": state}),
-            "publications": ree.publications.model_copy(update={"sealed": publication}),
+            "seal": seal,
         }
     )

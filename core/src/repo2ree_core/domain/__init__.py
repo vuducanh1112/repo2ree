@@ -14,9 +14,8 @@ from .ree import (
     ReeDefinition,
     ReeEvidence,
     ReeIdentity,
-    ReePublications,
     ReeScripts,
-    SealedRee,
+    Seal,
 )
 from .ree.intent import (
     Contributor,
@@ -43,9 +42,8 @@ __all__ = [
     "ReeIdentity",
     "ReeIntent",
     "ReeLifecycleState",
-    "ReePublications",
     "ReeScripts",
-    "SealedRee",
+    "Seal",
     "SourceAcquiredBy",
     "SourceType",
     "StorageDefinition",

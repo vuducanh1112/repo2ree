@@ -19,8 +19,7 @@ from repo2ree_core.domain.ree.model import (
     ReeDefinition,
     ReeEvidence,
     ReeIdentity,
-    ReePublications,
-    SealedRee,
+    Seal,
 )
 from repo2ree_core.domain.ree.queries import name_of, runtime_of, scripts_of
 from repo2ree_core.domain.ree.receipt import AcquireSourceReceipt, BuildRuntimeReceipt, WorkspaceDrift
@@ -300,7 +299,7 @@ def test_ree_exposes_its_authored_anatomy_from_one_root():
     assert runtime_of(ree.authored).artifact_path == "runtime.tar"
     assert scripts_of(ree.authored).build_runtime == build
     assert ree.evidence.state.source_available is True
-    assert ree.publications.sealed is None
+    assert ree.seal is None
 
 
 def test_ree_is_data_only():
@@ -354,7 +353,7 @@ _EMPTY_SLOT = SourceSlot(upstream_populated=False, snapshot_archive_present=Fals
 _SNAPSHOT = ReePath("snapshot.tar.gz")
 
 
-def _sourceless_ree(*, sealed: SealedRee | None = None) -> Ree:
+def _sourceless_ree(*, seal: Seal | None = None) -> Ree:
     return Ree(
         identity=ReeIdentity(
             ree_id=ReeId("ree-1"),
@@ -363,7 +362,7 @@ def _sourceless_ree(*, sealed: SealedRee | None = None) -> Ree:
         ),
         authored=ReeDefinition(intent=ReeIntent(name="demo")),
         evidence=ReeEvidence(state=ReeLifecycleState()),
-        publications=ReePublications(sealed=sealed),
+        seal=seal,
     )
 
 
@@ -400,10 +399,10 @@ def test_plan_source_acquisition_refuses_an_occupied_slot():
 
 
 def test_plan_source_acquisition_refuses_a_sealed_ree():
-    sealed = SealedRee(seal_hash=Digest("sha256:seal"), sealed_at=parse_utc_instant("2026-01-02T00:00:00Z"))
+    seal = Seal(seal_hash=Digest("sha256:seal"), sealed_at=parse_utc_instant("2026-01-02T00:00:00Z"))
 
     with pytest.raises(ReePreconditionError, match="sealed"):
-        _plan(_sourceless_ree(sealed=sealed))
+        _plan(_sourceless_ree(seal=seal))
 
 
 def test_plan_source_acquisition_refuses_content_the_state_never_recorded():

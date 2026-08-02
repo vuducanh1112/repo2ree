@@ -13,9 +13,8 @@ from .model import (
     ReeDefinition,
     ReeEvidence,
     ReeIdentity,
-    ReePublications,
     ReeScripts,
-    SealedRee,
+    Seal,
 )
 from .state import ReeLifecycleState, SourceAcquiredBy
 
@@ -31,9 +30,8 @@ __all__ = [
     "ReeIdentity",
     "ReeIntent",
     "ReeLifecycleState",
-    "ReePublications",
     "ReeScripts",
-    "SealedRee",
+    "Seal",
     "SourceAcquiredBy",
     "SourceType",
 ]

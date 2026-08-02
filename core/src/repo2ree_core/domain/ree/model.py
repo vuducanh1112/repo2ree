@@ -2,14 +2,14 @@
 
 Open this module to answer "what is an REE?". Persistence is deliberately
 elsewhere: a repository hydrates this model from the sidecar, authored tree,
-receipt ledger, and sealed publication. Pure functions in ``transitions``,
+receipt ledger, and seal. Pure functions in ``transitions``,
 ``assessment``, and ``queries`` interpret and transform these values.
 
 The model separates four kinds of truth:
 
 * ``authored`` — the definition and files an author may change;
 * ``evidence`` — immutable receipts plus current durable lifecycle facts;
-* ``publications`` — immutable sealed outputs;
+* ``seal`` — the immutable facts of one seal, absent until the REE is sealed;
 * ``assessment`` — capabilities derived from authored inputs and evidence.
 
 ``ReeLifecycleState`` contains durable facts produced by operations. It is not a second
@@ -111,7 +111,7 @@ class ReeDefinition(_DomainModel):
 
 
 # ================================================
-# Evidence and publications
+# Evidence and seal
 # ================================================
 
 
@@ -140,18 +140,12 @@ class ReeEvidence(_DomainModel):
         return self
 
 
-class SealedRee(_DomainModel):
+class Seal(_DomainModel):
     seal_hash: Digest
     sealed_at: UtcInstant
     source_included: bool = False
     runtime_included: bool = False
     results_included: bool = False
-
-
-class ReePublications(_DomainModel):
-    """Published immutable outputs supported by the current persistence model."""
-
-    sealed: SealedRee | None = None
 
 
 # ================================================
@@ -186,4 +180,4 @@ class Ree(_DomainModel):
     identity: ReeIdentity
     authored: ReeDefinition
     evidence: ReeEvidence = Field(default_factory=ReeEvidence)
-    publications: ReePublications = Field(default_factory=ReePublications)
+    seal: Seal | None = None

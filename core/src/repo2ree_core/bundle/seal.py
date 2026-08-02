@@ -42,7 +42,7 @@ from repo2ree_core.bundle.plan import (
 )
 from repo2ree_core.domain.primitives import Digest, UtcInstant
 from repo2ree_core.domain.ree.state import is_sealed, select_packaging
-from repo2ree_core.domain.ree.transitions import prepare_publication, record_seal
+from repo2ree_core.domain.ree.transitions import prepare_seal, record_seal
 from repo2ree_core.evidence.consistency import ConsistencyReport, build_consistency_report
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import list_tree_relpaths, write_atomic
@@ -262,7 +262,7 @@ def seal_ree(
         raise FileNotFoundError(f"REE {ree_id} not found")
     ree = load_ree(layout, store)
     intent = ree.authored.intent
-    state = prepare_publication(
+    state = prepare_seal(
         ree,
         source_included=source_included,
         runtime_included=runtime_included,

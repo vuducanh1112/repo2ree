@@ -26,8 +26,7 @@ from repo2ree_core.domain.ree.model import (
     ReeDefinition,
     ReeEvidence,
     ReeIdentity,
-    ReePublications,
-    SealedRee,
+    Seal,
 )
 from repo2ree_core.domain.ree.state import is_sealed
 from repo2ree_core.domain.ree.transitions import SourceSlot, revision_of
@@ -80,8 +79,8 @@ def load_ree(
     )
     selected_by_step = load_author_receipts(layout)
     state = persisted.ree_state
-    sealed = (
-        SealedRee(
+    seal = (
+        Seal(
             seal_hash=state.seal_hash,
             sealed_at=state.sealed_at,
             source_included=state.source_included,
@@ -103,7 +102,7 @@ def load_ree(
             selected=tuple(selected_by_step[key] for key in sorted(selected_by_step)),
             state=state,
         ),
-        publications=ReePublications(sealed=sealed),
+        seal=seal,
     )
 
 
