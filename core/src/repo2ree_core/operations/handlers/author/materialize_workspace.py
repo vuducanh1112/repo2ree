@@ -19,7 +19,7 @@ from repo2ree_core.execution.process import (
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import write_atomic
 from repo2ree_core.persistence.layout import MATERIALIZE_SCRIPT_FILENAME, ReeLayout
-from repo2ree_core.persistence.receipts import write_materialize_marker
+from repo2ree_core.workspace.materialization import record_materialization
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
 
@@ -63,8 +63,8 @@ def handle_materialize_workspace(
         )
 
     store = ReeDirectory(layout)
-    snapshot_digest = store.read_state().source_snapshot_digest if store.metadata_exists() else None
-    write_materialize_marker(layout, snapshot_digest=snapshot_digest, log=log)
+    snapshot_digest = store.read_state().source_snapshot_digest if store.sidecar_exists() else None
+    record_materialization(layout, snapshot_digest=snapshot_digest, log=log)
 
     log("system", "info", "materialize_workspace succeeded")
     return ActionResult(status="succeeded", exit_code=0)

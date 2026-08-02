@@ -144,4 +144,4 @@ def remove_source_route(ree_id: str) -> ReeDocument:
     handle = require_handle(ree_id)
     with ree_command_span("remove-source", ree_id):
         dispatch_or_fail(handle, RemoveSourceCommand(), "remove-source", "Workbench remove_source failed")
-        return ReeDocument.model_validate(workbench_manager.get_workspace(handle))
+        return ReeDocument.model_validate(workbench_manager.get_ree_document(handle))

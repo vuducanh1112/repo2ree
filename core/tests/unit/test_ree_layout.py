@@ -19,7 +19,7 @@ def test_for_ree_accepts_path_storage_root():
 
 def test_top_level_paths_are_derived_from_root():
     layout = ReeLayout.for_ree("/r", "ree1")
-    assert layout.metadata == Path("/r/ree1/.workspace.json")
+    assert layout.sidecar == Path("/r/ree1/.ree.json")
     assert layout.manifest == Path("/r/ree1/manifest.json")
     assert layout.snapshot_archive == Path("/r/ree1/snapshot.tar.gz")
     assert layout.upload_staging == Path("/r/ree1/upload-staging")

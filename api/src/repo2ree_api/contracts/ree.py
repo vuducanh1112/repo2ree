@@ -18,7 +18,7 @@ from repo2ree_core.domain.ree.intent import ReeIntent
 from repo2ree_core.domain.ree.state import ReeLifecycleState
 from repo2ree_core.evidence.consistency import AuthorReceiptSet, ConsistencyReport
 from repo2ree_core.evidence.step_graph import ReeStepState
-from repo2ree_core.persistence.workspace.inventory import ReeFile, WorkspaceFile
+from repo2ree_core.operations.read_models.files import ReeFile, WorkspaceFile
 from repo2ree_core.source_repo.metadata import SourceRepoMetadata
 
 

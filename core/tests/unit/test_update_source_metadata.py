@@ -9,7 +9,7 @@ from repo2ree_core.domain.ree.state import ReeLifecycleState
 from repo2ree_core.operations.handlers.author import update_source_metadata as handler
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_core.persistence.metadata import WorkspaceMetadata
+from repo2ree_core.persistence.sidecar import ReeSidecar
 from repo2ree_protocol.command import UpdateSourceMetadataArgs
 
 
@@ -17,8 +17,8 @@ def _seed_workspace(root: Path) -> ReeDirectory:
     """A ready-to-update workspace rooted at ``root`` with an empty upstream tree."""
     store = ReeDirectory(ReeLayout(root=root))
     store.ensure_dirs()
-    store.write_metadata(
-        WorkspaceMetadata(
+    store.write_sidecar(
+        ReeSidecar(
             ree_id="ree123",
             name="demo",
             created_at="2026-01-01T00:00:00Z",
@@ -56,7 +56,7 @@ class TestSwhidStamping:
         )
 
         assert result.status == "succeeded"
-        intent = workbench.read_metadata().ree_intent
+        intent = workbench.read_sidecar().ree_intent
         # swh:1:dir of a tree holding a single "hello\n" file — git's tree hash.
         assert intent.swhid.startswith("swh:1:dir:")
         assert len(intent.swhid) == len("swh:1:dir:") + 40
@@ -72,7 +72,7 @@ class TestSwhidStamping:
         )
 
         assert result.status == "succeeded"
-        assert workbench.read_metadata().ree_intent.swhid.startswith("swh:1:dir:")
+        assert workbench.read_sidecar().ree_intent.swhid.startswith("swh:1:dir:")
 
     def test_missing_upstream_leaves_swhid_empty_and_still_succeeds(self, workbench: ReeDirectory) -> None:
         # ensure_dirs created an empty upstream dir; remove it to force a failure.
@@ -85,7 +85,7 @@ class TestSwhidStamping:
         )
 
         assert result.status == "succeeded"
-        assert workbench.read_metadata().ree_intent.swhid == ""
+        assert workbench.read_sidecar().ree_intent.swhid == ""
 
 
 class TestRevisionStamping:
@@ -107,7 +107,7 @@ class TestRevisionStamping:
         )
 
         assert result.status == "succeeded"
-        meta = workbench.read_metadata()
+        meta = workbench.read_sidecar()
         # The resolved commit is settled onto the intent (for seal pinning) and the session.
         assert meta.ree_intent.revision == head
         assert meta.ree_state.source_resolved_commit == head
@@ -120,4 +120,4 @@ class TestRevisionStamping:
         )
 
         assert result.status == "succeeded"
-        assert workbench.read_metadata().ree_intent.revision == ""
+        assert workbench.read_sidecar().ree_intent.revision == ""

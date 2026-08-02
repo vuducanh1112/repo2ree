@@ -4,18 +4,29 @@ The manifest is the JSON payload written to ``manifest.json`` and embedded
 into the downloadable bundle as ``ree/ree.json``. It is computed from a
 :class:`~repo2ree_core.domain.ree.intent.ReeIntent` and a
 :class:`~repo2ree_core.domain.ree.state.ReeLifecycleState` together with the
-surrounding workspace metadata. This module performs no I/O.
+REE sidecar and current file inventories. This module performs no I/O.
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Any, Protocol
 
 from repo2ree_core.domain.ree.intent import REE_MANIFEST_VERSION, ReeIntent
 from repo2ree_core.domain.ree.state import ReeLifecycleState
-from repo2ree_core.persistence.metadata import WorkspaceMetadata
-from repo2ree_core.persistence.workspace.inventory import ReeFile, WorkspaceFile
+from repo2ree_core.persistence.sidecar import ReeSidecar
+
+
+class FileInventoryEntry(Protocol):
+    @property
+    def path(self) -> str: ...
+
+    @property
+    def kind(self) -> str: ...
+
+    @property
+    def size(self) -> int: ...
+
 
 _STATE_MANIFEST_EXCLUDE = {"detected_dependencies", "uploaded_archive", "source_resolved_commit"}
 
@@ -36,7 +47,7 @@ def build_manifest_payload(
         **intent.model_dump(),
         **state.model_dump(mode="json", exclude=_STATE_MANIFEST_EXCLUDE),
         "ree_version": REE_MANIFEST_VERSION,
-        "name": intent.name or f"workspace-{ree_id[:8]}",
+        "name": intent.name or f"ree-{ree_id[:8]}",
     }
     if consistency is not None:
         payload["consistency"] = consistency
@@ -67,26 +78,26 @@ def _pick(payload: Mapping[str, Any], model: type[ReeIntent | ReeLifecycleState]
 
 
 def build_draft_manifest_payload(
-    metadata: WorkspaceMetadata,
+    sidecar: ReeSidecar,
     *,
-    workspace_files: Sequence[WorkspaceFile],
-    ree_files: Sequence[ReeFile],
+    workspace_files: Sequence[FileInventoryEntry],
+    ree_files: Sequence[FileInventoryEntry],
 ) -> dict[str, Any]:
     """Build the live, read-only manifest projection for an editable REE.
 
     Unlike the sealed manifest sidecar, this payload is not a source of truth
     and is not written to disk. It gives clients a stable overview assembled
-    from the current metadata and file inventory.
+    from the current sidecar and file inventory.
     """
-    manifest = build_manifest_payload(metadata.ree_intent, metadata.ree_state, ree_id=metadata.ree_id)
+    manifest = build_manifest_payload(sidecar.ree_intent, sidecar.ree_state, ree_id=sidecar.ree_id)
 
     return {
         **manifest,
         "manifest_state": "draft",
-        "ree_id": metadata.ree_id,
-        "status": metadata.status,
-        "created_at": metadata.created_at,
-        "updated_at": metadata.updated_at,
+        "ree_id": sidecar.ree_id,
+        "status": sidecar.status,
+        "created_at": sidecar.created_at,
+        "updated_at": sidecar.updated_at,
         "file_inventory": {
             "workspace": [_file_inventory_entry(file) for file in workspace_files],
             "overlay": [_file_inventory_entry(file) for file in _files_under(ree_files, "overlay")],
@@ -95,15 +106,16 @@ def build_draft_manifest_payload(
     }
 
 
-def _files_under(files: Sequence[ReeFile], top_level_dir: str) -> list[ReeFile]:
+def _files_under(files: Sequence[FileInventoryEntry], top_level_dir: str) -> list[FileInventoryEntry]:
     prefix = f"{top_level_dir}/"
     return [file for file in files if file.path.startswith(prefix)]
 
 
-def _file_inventory_entry(file: WorkspaceFile | ReeFile) -> dict[str, Any]:
+def _file_inventory_entry(file: FileInventoryEntry) -> dict[str, Any]:
     """One inventory row: what the file is and where, never its content."""
     entry: dict[str, Any] = {"path": file.path, "kind": file.kind}
-    if isinstance(file, ReeFile):
-        entry["tag"] = file.tag
+    tag = getattr(file, "tag", None)
+    if tag is not None:
+        entry["tag"] = tag
     entry["size"] = file.size
     return entry

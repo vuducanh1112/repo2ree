@@ -1,6 +1,6 @@
 """Handler for the update_source_metadata operation.
 
-Updates /ree/.workspace.json after a successful source acquisition:
+Updates /ree/.ree.json after a successful source acquisition:
 sets status=ready and records acquisition facts in reeIntent and reeSession.
 """
 
@@ -48,8 +48,8 @@ def handle_update_source_metadata(
 
     log("system", "info", "updating source metadata")
     try:
-        meta = store.read_metadata()
-        ree = load_ree(layout, store, metadata=meta)
+        meta = store.read_sidecar()
+        ree = load_ree(layout, store, sidecar=meta)
         captured_at = utc_now_instant()
         ts = format_utc_instant(captured_at)
 
@@ -98,7 +98,7 @@ def handle_update_source_metadata(
                 "external_ref": intent.origin_url or None,
             }
         )
-        store.write_metadata(updated)
+        store.write_sidecar(updated)
     except Exception as exc:
         log("system", "error", f"metadata update failed: {exc}")
         return failed_from_exception(exc, f"metadata update failed: {exc}")

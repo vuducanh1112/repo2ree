@@ -16,8 +16,8 @@ def test_get_report_endpoint_404_when_no_workbench():
     # rather than falling back to any host-side artifact.
     from fastapi import HTTPException
 
-    from repo2ree_api.authoring.stages import get_workspace_evaluate_report
+    from repo2ree_api.authoring.stages import get_ree_evaluate_report
 
     with pytest.raises(HTTPException) as excinfo:
-        get_workspace_evaluate_report("nonexistent-ree")
+        get_ree_evaluate_report("nonexistent-ree")
     assert excinfo.value.status_code == 404

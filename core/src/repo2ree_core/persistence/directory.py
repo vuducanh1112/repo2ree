@@ -27,7 +27,7 @@ from repo2ree_core.domain.ree.state import ReeLifecycleState
 from repo2ree_core.path_safety import validate_relative_path
 from repo2ree_core.persistence.files import write_atomic, write_json_atomic
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_core.persistence.metadata import WorkspaceMetadata
+from repo2ree_core.persistence.sidecar import ReeSidecar
 from repo2ree_core.reserved_paths import RESERVED_OVERLAY_SCRIPTS
 from repo2ree_core.reserved_templates import reserved_script_template
 from repo2ree_core.time_utils import utc_now
@@ -230,46 +230,46 @@ class ReeDirectory:
         if self.layout.root.exists():
             shutil.rmtree(self.layout.root)
 
-    # --- Metadata -------------------------------------------------------
+    # --- REE sidecar ----------------------------------------------------
 
-    def metadata_exists(self) -> bool:
-        return self.layout.metadata.is_file()
+    def sidecar_exists(self) -> bool:
+        return self.layout.sidecar.is_file()
 
-    def read_metadata(self) -> WorkspaceMetadata:
-        return WorkspaceMetadata.model_validate(self.read_metadata_json())
+    def read_sidecar(self) -> ReeSidecar:
+        return ReeSidecar.model_validate(self.read_sidecar_json())
 
-    def write_metadata(self, metadata: WorkspaceMetadata) -> None:
-        self.write_metadata_json(metadata.model_dump(mode="json", exclude_none=True))
+    def write_sidecar(self, sidecar: ReeSidecar) -> None:
+        self.write_sidecar_json(sidecar.model_dump(mode="json", exclude_none=True))
 
-    def read_metadata_json(self) -> dict[str, Any]:
+    def read_sidecar_json(self) -> dict[str, Any]:
         """The sidecar's bytes as parsed JSON, without model validation.
 
         For the two callers that must see what is *actually on disk* rather
-        than what the model says it should be: the executor's ``get-metadata``
+        than what the model says it should be: the executor's ``get-ree-sidecar``
         passthrough, and tests seeding a fixture. Every mutation goes through
         the typed path (:meth:`write_intent`, :meth:`write_state`,
-        :meth:`write_metadata`) so no write site can hand-roll the sidecar's
+        :meth:`write_sidecar`) so no write site can hand-roll the sidecar's
         derived fields.
         """
-        return _read_json(self.layout.metadata)
+        return _read_json(self.layout.sidecar)
 
-    def write_metadata_json(self, payload: dict[str, Any]) -> None:
-        """Write raw JSON metadata atomically. Companion to :meth:`read_metadata_json`."""
-        write_json_atomic(self.layout.metadata, payload)
+    def write_sidecar_json(self, payload: dict[str, Any]) -> None:
+        """Write raw sidecar JSON atomically. Companion to :meth:`read_sidecar_json`."""
+        write_json_atomic(self.layout.sidecar, payload)
 
     # --- Typed intent / state accessors ---------------------------------
 
     def read_intent(self) -> ReeIntent:
-        return self.read_metadata().ree_intent
+        return self.read_sidecar().ree_intent
 
     def write_intent(self, intent: ReeIntent) -> None:
-        self.write_metadata(self.read_metadata().with_intent(intent, at=utc_now()))
+        self.write_sidecar(self.read_sidecar().with_intent(intent, at=utc_now()))
 
     def read_state(self) -> ReeLifecycleState:
-        return self.read_metadata().ree_state
+        return self.read_sidecar().ree_state
 
     def write_state(self, state: ReeLifecycleState) -> None:
-        self.write_metadata(self.read_metadata().with_state(state, at=utc_now()))
+        self.write_sidecar(self.read_sidecar().with_state(state, at=utc_now()))
 
     # --- Manifest -------------------------------------------------------
 
@@ -288,7 +288,7 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 
 def reset_source_state(*, layout: ReeLayout, store: ReeDirectory) -> None:
-    """Clear source-derived state while preserving REE identity metadata.
+    """Clear source-derived state while preserving REE identity fields.
 
     Upload staging and run logs are intentionally left alone: staging is the
     handoff into the source pipeline, and logs are operational history.
@@ -309,12 +309,12 @@ def reset_source_state(*, layout: ReeLayout, store: ReeDirectory) -> None:
     ):
         path.unlink(missing_ok=True)
 
-    meta = store.read_metadata()
+    sidecar = store.read_sidecar()
     cleared_intent = ReeIntent(
-        name=meta.ree_intent.name,
-        catalog_metadata=meta.ree_intent.catalog_metadata,
+        name=sidecar.ree_intent.name,
+        catalog_metadata=sidecar.ree_intent.catalog_metadata,
     )
-    updated = meta.model_copy(
+    updated = sidecar.model_copy(
         update={
             "ree_intent": cleared_intent,
             "ree_state": ReeLifecycleState(),
@@ -323,4 +323,4 @@ def reset_source_state(*, layout: ReeLayout, store: ReeDirectory) -> None:
             "external_ref": None,
         }
     )
-    store.write_metadata(updated)
+    store.write_sidecar(updated)

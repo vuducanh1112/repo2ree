@@ -3,7 +3,7 @@
 Uploaded bytes must land on host disk before they can be ``docker cp``'d into a
 workbench container, where ``extract_upload`` consumes them. This is the only
 host persistence in the REE flow; it is keyed solely by upload token and holds
-no per-REE workspace state.
+no per-REE durable state.
 
 Guardrails: tokens are validated before they touch a path (a request-supplied
 token must never escape the staging dir), and only *minted* tokens can land

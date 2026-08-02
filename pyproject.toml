@@ -364,12 +364,9 @@ forbidden_modules = [
 # know: `operations` composes commands out of everything below it; `bundle`
 # packages an REE together with the evidence produced about it; `evidence` is
 # stored *inside* an REE, so it knows the aggregate but the aggregate must not
-# know it; `persistence` owns the on-disk state; `domain` is the vocabulary all
-# of them are written in.
-#
-# The direction that matters most here is `persistence` below `evidence`.
-# Workspace persistence stays inside that one boundary; splitting it into a
-# second state-owning package would recreate the cycles this structure removed.
+# know it; the capability packages implement source/build concerns; `workspace`
+# owns the materialized mutable execution tree; `persistence` owns the durable
+# REE tree and sidecar; `domain` is the vocabulary all of them are written in.
 #
 # Marked `exhaustive`, so a new top-level package in core has to declare where
 # it sits rather than joining ungoverned. The capabilities and the leaf
@@ -386,6 +383,7 @@ layers = [
     "bundle",
     "evidence",
     "analysis : authoring : execution : source_repo : doctor",
+    "workspace",
     "persistence",
     "domain",
     "digests : failures : path_safety : reproduction : reserved_paths : reserved_templates : time_utils",
@@ -460,6 +458,7 @@ forbidden_modules = [
     "repo2ree_core.operations",
     "repo2ree_core.persistence",
     "repo2ree_core.source_repo",
+    "repo2ree_core.workspace",
 ]
 
 # The leaf primitives every layer is allowed to use precisely because they use
@@ -490,6 +489,7 @@ forbidden_modules = [
     "repo2ree_core.operations",
     "repo2ree_core.persistence",
     "repo2ree_core.source_repo",
+    "repo2ree_core.workspace",
 ]
 
 # Core runs inside the workbench and knows nothing of what drives it. The

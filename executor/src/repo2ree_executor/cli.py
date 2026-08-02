@@ -8,19 +8,19 @@ from typing import Any, TextIO
 
 import click
 
-from repo2ree_core.bundle.seal import build_workspace_ree_archive as _build_archive
+from repo2ree_core.bundle.seal import build_ree_archive as _build_archive
 from repo2ree_core.doctor import run_doctor
 from repo2ree_core.domain.ree.intent import ReeIntent
 from repo2ree_core.domain.ree.state import ReeLifecycleState
 from repo2ree_core.evidence.review.store import load_reviews
 from repo2ree_core.evidence.scorecard import build_scorecard
 from repo2ree_core.operations.dispatch import run_command
-from repo2ree_core.operations.workspace_view import get_workspace as _get_workspace
+from repo2ree_core.operations.read_models.files import read_ree_file_bytes as _read_ree_file_bytes
+from repo2ree_core.operations.read_models.ree_document import get_ree_document as _get_ree_document
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
-from repo2ree_core.persistence.metadata import WorkspaceMetadata
 from repo2ree_core.persistence.receipts import load_author_receipts
-from repo2ree_core.persistence.workspace.views import read_file_bytes as _read_file_bytes
+from repo2ree_core.persistence.sidecar import ReeSidecar
 from repo2ree_core.reproduction import (
     ACQUIRE_SOURCE,
     BUILD_RUNTIME,
@@ -284,13 +284,13 @@ def acquire_source_cmd(origin_url: str, source_type: str, refetch: bool) -> None
 def init_ree_cmd(ree_id: str, name: str | None) -> None:
     """Initialise the REE directory structure at /ree.
 
-    Creates the directory skeleton and writes an initial .workspace.json.
+    Creates the directory skeleton and writes an initial .ree.json.
     Idempotent: exits 0 without modifying anything if already initialised.
     """
     layout = ReeLayout.in_workbench()
     store = ReeDirectory(layout)
 
-    if store.metadata_exists():
+    if store.sidecar_exists():
         click.echo(json.dumps({"status": "already_initialised", "ree_id": ree_id}))
         return
 
@@ -298,9 +298,9 @@ def init_ree_cmd(ree_id: str, name: str | None) -> None:
     store.ensure_reserved_overlay_scripts()
 
     ts = _utc_now()
-    ree_name = name or f"workspace-{ree_id[:8]}"
-    store.write_metadata(
-        WorkspaceMetadata(
+    ree_name = name or f"ree-{ree_id[:8]}"
+    store.write_sidecar(
+        ReeSidecar(
             ree_id=ree_id,
             name=ree_name,
             status="draft",
@@ -330,29 +330,29 @@ def doctor_cmd() -> None:
     click.echo(json.dumps(run_doctor()))
 
 
-@cli.command("get-ree")
-def get_ree_cmd() -> None:
-    """Emit the current REE metadata as JSON.
+@cli.command("get-ree-sidecar")
+def get_ree_sidecar_cmd() -> None:
+    """Emit the persisted REE sidecar as JSON.
 
-    Reads .workspace.json from /ree. Exits non-zero if not initialised.
+    Reads .ree.json from /ree. Exits non-zero if not initialised.
     """
     layout = ReeLayout.in_workbench()
     store = ReeDirectory(layout)
 
-    if not store.metadata_exists():
+    if not store.sidecar_exists():
         click.echo(json.dumps({"error": "not initialised"}), file=sys.stderr)
         sys.exit(1)
 
-    metadata = store.read_metadata_json()
-    click.echo(json.dumps(metadata))
+    sidecar = store.read_sidecar_json()
+    click.echo(json.dumps(sidecar))
 
 
-@cli.command("get-workspace")
-@click.option("--summary", is_flag=True, help="Omit inline file content from the workspace document.")
-def get_workspace_cmd(summary: bool) -> None:
-    """Emit full workspace state (metadata + file listings) as JSON.
+@cli.command("get-ree-document")
+@click.option("--summary", is_flag=True, help="Omit inline file content from the REE document.")
+def get_ree_document_cmd(summary: bool) -> None:
+    """Emit the composed REE document as JSON.
 
-    Equivalent to the host-side get_workspace() but executed inside the
+    Equivalent to the core get_ree_document() read model but executed inside the
     workbench container so the output reflects the workbench volume.
     """
     layout = ReeLayout.in_workbench()
@@ -361,7 +361,7 @@ def get_workspace_cmd(summary: bool) -> None:
     storage_root = layout.root.parent
     ree_id = layout.root.name
     try:
-        result = _get_workspace(storage_root, ree_id, include_content=not summary)
+        result = _get_ree_document(storage_root, ree_id, include_content=not summary)
     except FileNotFoundError as exc:
         click.echo(json.dumps({"error": str(exc)}), file=sys.stderr)
         sys.exit(1)
@@ -379,14 +379,14 @@ def get_scorecard_cmd() -> None:
     layout = ReeLayout.in_workbench()
     store = ReeDirectory(layout)
 
-    if not store.metadata_exists():
+    if not store.sidecar_exists():
         click.echo(json.dumps({"error": "not initialised"}), file=sys.stderr)
         sys.exit(1)
 
-    metadata = store.read_metadata()
+    sidecar = store.read_sidecar()
     card = build_scorecard(
-        metadata.ree_intent,
-        metadata.ree_state,
+        sidecar.ree_intent,
+        sidecar.ree_state,
         list(load_author_receipts(layout).values()),
     )
     click.echo(card.model_dump_json())
@@ -412,15 +412,15 @@ def build_archive_cmd() -> None:
     sys.stdout.buffer.write(data)
 
 
-@cli.command("read-file")
-@click.option("--path", "file_path", required=True, help="Relative path within workspace")
-def read_file_cmd(file_path: str) -> None:
-    """Write raw bytes of a workspace file to stdout."""
+@cli.command("read-ree-file")
+@click.option("--path", "file_path", required=True, help="Path relative to the REE root")
+def read_ree_file_cmd(file_path: str) -> None:
+    """Write raw bytes of any regular file inside the REE."""
     layout = ReeLayout.in_workbench()
     storage_root = layout.root.parent
     ree_id = layout.root.name
     try:
-        data = _read_file_bytes(storage_root, ree_id, file_path)
+        data = _read_ree_file_bytes(storage_root, ree_id, file_path)
     except FileNotFoundError:
         click.echo(json.dumps({"error": f"not found: {file_path}"}), file=sys.stderr)
         sys.exit(1)
@@ -428,18 +428,6 @@ def read_file_cmd(file_path: str) -> None:
         click.echo(json.dumps({"error": str(exc)}), file=sys.stderr)
         sys.exit(1)
     sys.stdout.buffer.write(data)
-
-
-@cli.command("read-artifact")
-@click.option("--path", "artifact_path", required=True, help="Relative path within artifacts/")
-def read_artifact_cmd(artifact_path: str) -> None:
-    """Write raw bytes of an artifact file to stdout."""
-    layout = ReeLayout.in_workbench()
-    fp = layout.artifacts / artifact_path
-    if not fp.exists() or not fp.is_file():
-        click.echo(json.dumps({"error": f"not found: {artifact_path}"}), file=sys.stderr)
-        sys.exit(1)
-    sys.stdout.buffer.write(fp.read_bytes())
 
 
 # ================================================

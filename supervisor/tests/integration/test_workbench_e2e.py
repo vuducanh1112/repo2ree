@@ -15,7 +15,7 @@ bundles, so the whole module is skipped (never faked) when either is absent.
 Build the bundles with ``make e2e-bundles``.
 
 Flow exercised over the real agent:
-    provision -> get-ree -> write_file -> read-file round-trip
+    provision -> get-ree -> write_file -> read-ree-file round-trip
         -> build_runtime (real script run inside the workbench)
         -> seal_ree -> build-archive -> teardown
 """
@@ -235,7 +235,7 @@ def test_workbench_lifecycle_e2e(workbench: tuple[WorkbenchManager, WorkbenchHan
         events.append((stream, level, message))
 
     # --- init produced metadata on the real /ree volume ----------------
-    metadata = manager.get_ree_metadata(handle)
+    metadata = manager.get_ree_sidecar(handle)
     assert metadata["ree_id"] == handle.ree_id
     assert metadata["status"] == "draft"
 
@@ -251,9 +251,9 @@ def test_workbench_lifecycle_e2e(workbench: tuple[WorkbenchManager, WorkbenchHan
     )
     assert result.status == "succeeded"
 
-    # read it back through the real read-file query — full round-trip
-    assert manager.read_file_bytes(handle, build_script) == b"echo building runtime\n"
-    workspace = manager.get_workspace(handle)
+    # read it back through the real read-ree-file query — full round-trip
+    assert manager.read_ree_file_bytes(handle, f"workspace/{build_script}") == b"echo building runtime\n"
+    workspace = manager.get_ree_document(handle)
     assert any(f.get("path") == build_script for f in workspace["files"])
 
     # --- build_runtime: real script execution inside the workbench -----

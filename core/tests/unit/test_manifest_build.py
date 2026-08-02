@@ -1,9 +1,9 @@
 from repo2ree_core.bundle.manifest import build_draft_manifest_payload, build_manifest_payload
 from repo2ree_core.domain.ree.intent import ReeIntent
 from repo2ree_core.domain.ree.state import ReeLifecycleState
+from repo2ree_core.operations.read_models.files import ReeFile, WorkspaceFile
 from repo2ree_core.persistence.layout import SBOM_ARTIFACT_PATH
-from repo2ree_core.persistence.metadata import WorkspaceMetadata
-from repo2ree_core.persistence.workspace.inventory import ReeFile, WorkspaceFile
+from repo2ree_core.persistence.sidecar import ReeSidecar
 
 
 def _intent(**overrides) -> ReeIntent:
@@ -21,7 +21,7 @@ def test_intent_name_used_in_manifest():
 
 def test_falls_back_to_ree_id_prefix_when_no_names():
     manifest = build_manifest_payload(ReeIntent(name=""), _session(), ree_id="abcdef0123456789")
-    assert manifest["name"] == "workspace-abcdef01"
+    assert manifest["name"] == "ree-abcdef01"
 
 
 def test_origin_url_comes_from_intent():
@@ -86,7 +86,7 @@ def test_session_fields_reflected_in_manifest():
 
 
 def test_draft_manifest_adds_workspace_context_without_file_content():
-    metadata = WorkspaceMetadata(
+    metadata = ReeSidecar(
         ree_id="abc123",
         name="demo",
         status="ready",

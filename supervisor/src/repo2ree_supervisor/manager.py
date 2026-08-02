@@ -390,7 +390,7 @@ class WorkbenchManager:
     def dispatch_query(self, handle: WorkbenchHandle, *argv: str, locked: bool = False, timeout: int = 30) -> bytes:
         """Run a read-only CLI subcommand and return its stdout bytes.
 
-        ``argv`` is a ``repo2ree-exec`` subcommand (e.g. ``get-ree``); the agent's
+        ``argv`` is a ``repo2ree-exec`` subcommand (e.g. ``get-ree-sidecar``); the agent's
         runtime prepends the bench's executor entry point. Set ``locked`` for
         queries that must observe a consistent snapshot — they take the per-REE
         lock so no mutating action runs concurrently. Plain reads leave it off
@@ -430,15 +430,15 @@ class WorkbenchManager:
         parsed: dict[str, Any] = json.loads(self.dispatch_query(handle, *argv))
         return parsed
 
-    def get_ree_metadata(self, handle: WorkbenchHandle) -> dict[str, Any]:
-        return self._query_json(handle, "get-ree")
+    def get_ree_sidecar(self, handle: WorkbenchHandle) -> dict[str, Any]:
+        return self._query_json(handle, "get-ree-sidecar")
 
-    def get_workspace(self, handle: WorkbenchHandle) -> dict[str, Any]:
-        return self._query_json(handle, "get-workspace")
+    def get_ree_document(self, handle: WorkbenchHandle) -> dict[str, Any]:
+        return self._query_json(handle, "get-ree-document")
 
-    def get_workspace_state(self, handle: WorkbenchHandle) -> dict[str, Any]:
-        """Return workspace state without embedding text file contents."""
-        return self._query_json(handle, "get-workspace", "--summary")
+    def get_ree_state(self, handle: WorkbenchHandle) -> dict[str, Any]:
+        """Return composed REE state without embedding text file contents."""
+        return self._query_json(handle, "get-ree-document", "--summary")
 
     def get_scorecard(self, handle: WorkbenchHandle) -> dict[str, Any]:
         return self._query_json(handle, "get-scorecard")
@@ -450,12 +450,9 @@ class WorkbenchManager:
         """The image this REE's workbench runs, falling back to the manager default."""
         return handle.image or self._image
 
-    def read_file_bytes(self, handle: WorkbenchHandle, path: str) -> bytes:
-        return self.dispatch_query(handle, "read-file", "--path", path)
-
-    def read_artifact_bytes(self, handle: WorkbenchHandle, path: str) -> bytes:
-        # Artifacts (run outputs) can be large; give the read room to stream.
-        return self.dispatch_query(handle, "read-artifact", "--path", path, timeout=120)
+    def read_ree_file_bytes(self, handle: WorkbenchHandle, path: str) -> bytes:
+        # REE files can include large runtime and result artifacts.
+        return self.dispatch_query(handle, "read-ree-file", "--path", path, timeout=120)
 
     def build_archive(self, handle: WorkbenchHandle) -> bytes:
         return b"".join(self.build_archive_stream(handle))
@@ -465,15 +462,15 @@ class WorkbenchManager:
         # the per-REE lock stays held until the caller finishes consuming.
         return self.dispatch_query_stream(handle, "build-archive", locked=True, timeout=180)
 
-    def list_all_metadata(self) -> list[dict[str, Any]]:
-        """Return metadata for every registered workbench, skipping unreachable ones."""
+    def list_all_sidecars(self) -> list[dict[str, Any]]:
+        """Return sidecars for every registered workbench, skipping unreachable ones."""
         results = []
         for entry in self._registry.list_all():
             handle = WorkbenchHandle.from_entry(entry)
             if not self._agent.is_running(handle.agent_id, handle.location):
                 continue
             with suppress(Exception):
-                results.append(self.get_ree_metadata(handle))
+                results.append(self.get_ree_sidecar(handle))
         results.sort(key=lambda m: m.get("updated_at", ""), reverse=True)
         return results
 

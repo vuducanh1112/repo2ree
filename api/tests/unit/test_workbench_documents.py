@@ -80,7 +80,7 @@ def test_evaluate_report_crosses_as_the_core_models_camelcase_dump(
         threats=[],
     )
     artifact = json.dumps(report.model_dump(by_alias=True)).encode()
-    monkeypatch.setattr(workbench_manager, "read_artifact_bytes", lambda handle, name: artifact)
+    monkeypatch.setattr(workbench_manager, "read_ree_file_bytes", lambda handle, name: artifact)
 
     resp = client.get(f"/api/v1/rees/{online_ree.ree_id}/evaluate/report")
 
@@ -117,7 +117,7 @@ def test_author_receipts_cross_as_a_typed_document(
     )
     monkeypatch.setattr(
         workbench_manager,
-        "get_workspace_state",
+        "get_ree_state",
         lambda handle: {"author_receipts": selected.model_dump()},
     )
 

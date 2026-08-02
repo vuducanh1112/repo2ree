@@ -27,7 +27,7 @@ def test_ree_state_omits_inline_content_and_exposes_placement(
         "files": [{"path": "ree-scripts/build_script.sh", "kind": "generated", "size": 12}],
         "ree_files": [{"path": "artifacts/sbom.json", "tag": "Artifact", "size": 34}],
     }
-    monkeypatch.setattr(workbench_manager, "get_workspace_state", lambda handle: workspace)
+    monkeypatch.setattr(workbench_manager, "get_ree_state", lambda handle: workspace)
 
     resp = client.get(f"/api/v1/rees/{online_ree.ree_id}/state")
 

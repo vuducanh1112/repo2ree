@@ -48,12 +48,11 @@ from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import list_tree_relpaths, write_atomic
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.receipts import author_receipt_path, published_receipts
-from repo2ree_core.persistence.repository import load_ree
-from repo2ree_core.persistence.workspace.views import layout_for, store_for
+from repo2ree_core.persistence.repository import directory_for, layout_for, load_ree
 
 
 class SealOutputs(BaseModel):
-    """The settled seal facts reported by :func:`seal_workspace_ree`."""
+    """The settled seal facts reported by :func:`seal_ree`."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -239,7 +238,7 @@ def _assemble_bundle(
 # ================================================
 
 
-def seal_workspace_ree(
+def seal_ree(
     storage_root: Path,
     ree_id: str,
     *,
@@ -253,13 +252,13 @@ def seal_workspace_ree(
     1. Reads every bundle entry once; hashes the entry list (with seal stamps
        stripped from the manifest) to obtain a stable content digest.
     2. Re-stamps only the manifest with the real seal_hash and builds the ZIP once.
-    3. Writes sealed.zip, manifest.json, and updates the state in metadata.
+    3. Writes sealed.zip, manifest.json, and updates the state in the sidecar.
 
     Returns the settled seal facts.
     """
     layout = layout_for(storage_root, ree_id)
-    store = store_for(storage_root, ree_id)
-    if not store.metadata_exists():
+    store = directory_for(storage_root, ree_id)
+    if not store.sidecar_exists():
         raise FileNotFoundError(f"REE {ree_id} not found")
     ree = load_ree(layout, store)
     intent = ree.authored.intent
@@ -339,7 +338,7 @@ def seal_workspace_ree(
     )
 
 
-def build_workspace_ree_archive(storage_root: Path, ree_id: str) -> bytes:
+def build_ree_archive(storage_root: Path, ree_id: str) -> bytes:
     """Return the REE's downloadable bundle bytes.
 
     A sealed REE hands back the immutable ``sealed.zip`` it was sealed into —
@@ -349,8 +348,8 @@ def build_workspace_ree_archive(storage_root: Path, ree_id: str) -> bytes:
     Draft bundles exist so work in progress can be handed to another workbench
     (see ``load_ree_bundle``); only a sealed bundle is a citable artifact.
     """
-    store: ReeDirectory = store_for(storage_root, ree_id)
-    if not store.metadata_exists():
+    store: ReeDirectory = directory_for(storage_root, ree_id)
+    if not store.sidecar_exists():
         raise FileNotFoundError(f"REE {ree_id} not found")
     layout = layout_for(storage_root, ree_id)
     state = store.read_state()

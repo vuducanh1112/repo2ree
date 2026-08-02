@@ -79,8 +79,8 @@ def _identity(store: ReeDirectory) -> tuple[str, str | None]:
     ree_id = ""
     snapshot_digest: str | None = None
     with suppress(Exception):
-        if store.metadata_exists():
-            metadata = store.read_metadata()
+        if store.sidecar_exists():
+            metadata = store.read_sidecar()
             ree_id = metadata.ree_id
             snapshot_digest = metadata.ree_state.source_snapshot_digest
     return ree_id, snapshot_digest

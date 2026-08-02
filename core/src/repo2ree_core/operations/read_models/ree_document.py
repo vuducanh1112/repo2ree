@@ -6,7 +6,7 @@ joins three things that must not know about each other — the REE tree
 and the draft manifest (``bundle.manifest``). Pushing it down into ``ree``
 would make the persisted aggregate depend on the evidence stored inside it.
 
-Consumed by the executor CLI's ``get-workspace``, which is what the API's REE
+Consumed by the executor CLI's ``get-ree-document``, which is what the API's REE
 document is built from. Because it crosses that boundary as JSON, the document
 is a model rather than a dict: every part of it is already typed by whichever
 layer produced it, and assembling them into an untyped bag would lose that
@@ -18,9 +18,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from pydantic import ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from repo2ree_core.bundle.manifest import build_draft_manifest_payload
+from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.state import ReeLifecycleState
 from repo2ree_core.evidence.consistency import (
     AuthorReceiptSet,
     ConsistencyReport,
@@ -28,28 +30,31 @@ from repo2ree_core.evidence.consistency import (
     build_consistency_report,
 )
 from repo2ree_core.evidence.step_graph import ReeStepState, build_ree_step_states
-from repo2ree_core.persistence.directory import ReeDirectory
-from repo2ree_core.persistence.metadata import WorkspaceMetadata
+from repo2ree_core.operations.read_models.files import (
+    ReeFile,
+    WorkspaceFile,
+    list_ree_files,
+    list_workspace_files,
+)
 from repo2ree_core.persistence.receipts import load_author_receipts
-from repo2ree_core.persistence.repository import load_ree
-from repo2ree_core.persistence.workspace.inventory import ReeFile, WorkspaceFile
-from repo2ree_core.persistence.workspace.views import layout_for, ree_files, workspace_files
+from repo2ree_core.persistence.repository import directory_for, layout_for, load_ree
+from repo2ree_core.persistence.sidecar import ReeStatus
 from repo2ree_core.source_repo import SourceRepoMetadata, derive_source_repo_metadata
 
 
-class WorkspaceDocument(WorkspaceMetadata):
-    """The sidecar plus everything read alongside it in one fetch.
-
-    Extends :class:`WorkspaceMetadata` because the document *is* the sidecar,
-    observed together with what is currently true around it: the file
-    inventories, the evidence derived from the receipts, and the manifest this
-    REE would publish if it sealed now. Nothing here is stored — a second fetch
-    recomputes all of it, which is what makes staleness visible without any
-    invalidation event.
-    """
+class ReeDocument(BaseModel):
+    """Application read model composed from a sidecar and current REE facts."""
 
     model_config = ConfigDict(extra="forbid")
 
+    ree_id: str
+    external_ref: str | None = None
+    name: str
+    status: ReeStatus = "draft"
+    created_at: str
+    updated_at: str
+    ree_intent: ReeIntent = Field(default_factory=ReeIntent)
+    ree_state: ReeLifecycleState = Field(default_factory=ReeLifecycleState)
     files: list[WorkspaceFile] = Field(default_factory=list)
     ree_files: list[ReeFile] = Field(default_factory=list)
     # A projection of the *would-be* manifest, whose source of truth is the
@@ -62,24 +67,24 @@ class WorkspaceDocument(WorkspaceMetadata):
     ree_steps: list[ReeStepState] = Field(default_factory=list)
 
 
-def get_workspace(storage_root: Path, ree_id: str, *, include_content: bool = True) -> WorkspaceDocument:
+def get_ree_document(storage_root: Path, ree_id: str, *, include_content: bool = True) -> ReeDocument:
     layout = layout_for(storage_root, ree_id)
-    store = ReeDirectory(layout)
-    if not store.metadata_exists():
+    directory = directory_for(storage_root, ree_id)
+    if not directory.sidecar_exists():
         raise FileNotFoundError(f"REE {ree_id} not found")
-    metadata = store.read_metadata()
-    ree = load_ree(layout, store, metadata=metadata)
+    sidecar = directory.read_sidecar()
+    ree = load_ree(layout, directory, sidecar=sidecar)
     intent = ree.authored.intent
     state = ree.evidence.state
-    files = workspace_files(storage_root, ree_id, include_content=include_content)
-    files_in_ree = ree_files(storage_root, ree_id, include_content=include_content)
+    files = list_workspace_files(storage_root, ree_id, include_content=include_content)
+    files_in_ree = list_ree_files(storage_root, ree_id, include_content=include_content)
 
-    return WorkspaceDocument(
-        **metadata.model_dump(),
+    return ReeDocument(
+        **sidecar.model_dump(),
         files=files,
         ree_files=files_in_ree,
         draft_manifest=build_draft_manifest_payload(
-            metadata,
+            sidecar,
             workspace_files=files,
             ree_files=files_in_ree,
         ),

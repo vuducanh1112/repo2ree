@@ -38,8 +38,8 @@ from repo2ree_core.evidence.review.store import load_reviews, write_review_recor
 from repo2ree_core.operations.handlers.review import run_experiment as handler
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
-from repo2ree_core.persistence.metadata import WorkspaceMetadata
 from repo2ree_core.persistence.receipts import record_receipt
+from repo2ree_core.persistence.sidecar import ReeSidecar
 from repo2ree_core.reserved_paths import experiment_slug
 from repo2ree_core.time_utils import parse_utc_instant
 from repo2ree_protocol.command import ReviewRunExperimentArgs
@@ -80,8 +80,8 @@ def _author_ree(
     layout = ReeLayout(root=tmp_path / "ree")
     store = ReeDirectory(layout)
     store.ensure_dirs()
-    store.write_metadata(
-        WorkspaceMetadata(
+    store.write_sidecar(
+        ReeSidecar(
             ree_id="ree-review",
             name="review",
             created_at="2026-01-01T00:00:00Z",
@@ -439,9 +439,9 @@ def test_each_experiment_keeps_its_own_evidence(tmp_path: Path, monkeypatch: pyt
     second = Experiment(name="second", run_script=_RUN_SCRIPT, verify_script=_VERIFY_SCRIPT)
     layout = _author_ree(tmp_path, monkeypatch)
     layout_store = ReeDirectory(layout)
-    metadata = layout_store.read_metadata()
+    metadata = layout_store.read_sidecar()
     intent = metadata.ree_intent.model_copy(update={"experiments": [_experiment(), second]})
-    layout_store.write_metadata(metadata.model_copy(update={"ree_intent": intent}))
+    layout_store.write_sidecar(metadata.model_copy(update={"ree_intent": intent}))
     _author_ran_it(layout)
     review = _inhabitable_attempt(layout)
 
@@ -460,8 +460,8 @@ def test_re_running_one_experiment_leaves_its_siblings_alone(tmp_path: Path, mon
     second = Experiment(name="second", run_script=_RUN_SCRIPT, verify_script=_VERIFY_SCRIPT)
     layout = _author_ree(tmp_path, monkeypatch)
     store = ReeDirectory(layout)
-    metadata = store.read_metadata()
-    store.write_metadata(
+    metadata = store.read_sidecar()
+    store.write_sidecar(
         metadata.model_copy(
             update={"ree_intent": metadata.ree_intent.model_copy(update={"experiments": [_experiment(), second]})}
         )

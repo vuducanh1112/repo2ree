@@ -23,7 +23,6 @@ from repo2ree_core.evidence.consistency import (
     ConsistencyReport,
     ConsistencyStep,
     build_consistency_report,
-    check_workspace_drift,
 )
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
@@ -31,10 +30,11 @@ from repo2ree_core.persistence.receipts import (
     load_author_receipts,
     load_receipts,
     record_receipt,
-    write_materialize_marker,
 )
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_core.time_utils import parse_utc_instant
+from repo2ree_core.workspace.drift import check_workspace_drift
+from repo2ree_core.workspace.materialization import record_materialization
 
 
 def _silent_log(*_: object) -> None:
@@ -205,7 +205,7 @@ class TestWorkspaceDrift:
             (layout.upstream / rel).write_text(content)
             (layout.workspace / rel).parent.mkdir(parents=True, exist_ok=True)
             (layout.workspace / rel).write_text(content)
-        write_materialize_marker(layout, snapshot_digest="sha256:snap", log=_silent_log)
+        record_materialization(layout, snapshot_digest="sha256:snap", log=_silent_log)
 
     def test_no_marker_means_unknown(self, layout: ReeLayout) -> None:
         assert check_workspace_drift(layout, excluded_paths=set()).status == "unknown"
@@ -360,13 +360,13 @@ class TestHandlerWiring:
 
     @pytest.fixture
     def workbench(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ReeDirectory:
-        from repo2ree_core.persistence.metadata import WorkspaceMetadata
+        from repo2ree_core.persistence.sidecar import ReeSidecar
 
         layout = ReeLayout(root=tmp_path)
         store = ReeDirectory(layout)
         store.ensure_dirs()
-        store.write_metadata(
-            WorkspaceMetadata(
+        store.write_sidecar(
+            ReeSidecar(
                 ree_id="ree123",
                 name="demo",
                 created_at="2026-01-01T00:00:00Z",
@@ -399,7 +399,7 @@ class TestHandlerWiring:
         assert result.outputs["receipt"] == receipt
 
     def _seed_experiment(self, workbench: ReeDirectory, *, runtime: str = "runtime.tar") -> ReeIntent:
-        from repo2ree_core.persistence.metadata import WorkspaceMetadata
+        from repo2ree_core.persistence.sidecar import ReeSidecar
 
         layout = workbench.layout
         intent = ReeIntent.model_validate(
@@ -414,8 +414,8 @@ class TestHandlerWiring:
                 ],
             }
         )
-        workbench.write_metadata(
-            WorkspaceMetadata(
+        workbench.write_sidecar(
+            ReeSidecar(
                 ree_id="ree123",
                 name="demo",
                 created_at="2026-01-01T00:00:00Z",
@@ -516,7 +516,7 @@ class TestHandlerWiring:
 
 class TestCurrentRuntimeDigest:
     def test_caches_by_stat_and_invalidates_on_change(self, layout: ReeLayout) -> None:
-        from repo2ree_core.evidence.consistency import current_runtime_digest
+        from repo2ree_core.workspace.drift import current_runtime_digest
 
         runtime = layout.workspace / "runtime.tar"
         runtime.write_bytes(b"tar-v1")
@@ -532,7 +532,7 @@ class TestCurrentRuntimeDigest:
         assert current_runtime_digest(layout, "runtime.tar") == digest_bytes(b"tar-v2-longer")
 
     def test_missing_or_undeclared_runtime_is_none(self, layout: ReeLayout) -> None:
-        from repo2ree_core.evidence.consistency import current_runtime_digest
+        from repo2ree_core.workspace.drift import current_runtime_digest
 
         assert current_runtime_digest(layout, None) is None
         assert current_runtime_digest(layout, "absent.tar") is None

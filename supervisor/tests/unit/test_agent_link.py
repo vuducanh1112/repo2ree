@@ -102,7 +102,7 @@ def test_exec_query_returns_decoded_bytes() -> None:
     registry.register("a1", socket.connection)
     client = WsAgentClient(registry)
 
-    join = _run_in_thread(lambda: client.exec_query("a1", _WB, ["get-ree"]))
+    join = _run_in_thread(lambda: client.exec_query("a1", _WB, ["get-ree-sidecar"]))
     req = socket.wait_for_request()
     assert req.request.op == "exec_query"
     socket.respond(BytesChunkFrame(data_b64=base64.b64encode(b'{"ok": true}').decode()))
@@ -117,7 +117,7 @@ def test_exec_query_raises_on_unavailable() -> None:
     registry.register("a1", socket.connection)
     client = WsAgentClient(registry)
 
-    join = _run_in_thread(lambda: client.exec_query("a1", _WB, ["get-ree"]))
+    join = _run_in_thread(lambda: client.exec_query("a1", _WB, ["get-ree-sidecar"]))
     socket.wait_for_request()
     socket.respond(UnavailableFrame(detail="gone"))
 
@@ -333,7 +333,7 @@ def test_resolve_agent_raises_when_no_agent_connected() -> None:
 def test_pick_raises_when_no_agent_for_exec_query() -> None:
     client = WsAgentClient(AgentConnectionRegistry())
     with pytest.raises(WorkbenchUnavailableError, match="no workbench agent connected"):
-        client.exec_query("", _WB, ["get-ree"])
+        client.exec_query("", _WB, ["get-ree-sidecar"])
 
 
 def test_pick_raises_when_named_agent_absent() -> None:
@@ -343,7 +343,7 @@ def test_pick_raises_when_named_agent_absent() -> None:
     client = WsAgentClient(registry)
     # A different agent is connected, but the REE is pinned to one that isn't.
     with pytest.raises(WorkbenchUnavailableError, match="agent 'a2' not connected"):
-        client.exec_query("a2", _WB, ["get-ree"])
+        client.exec_query("a2", _WB, ["get-ree-sidecar"])
 
 
 def test_request_times_out_when_agent_goes_silent() -> None:

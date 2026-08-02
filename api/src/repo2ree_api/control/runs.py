@@ -47,7 +47,7 @@ runs_router = APIRouter(tags=["runs"])
     response_model=RunList,
     responses=ERROR_RESPONSES,
 )
-def list_workspace_runs(
+def list_ree_runs(
     ree_id: str,
     cursor: str | None = Query(None),
     limit: Annotated[int | None, Query(ge=1, le=500)] = None,
@@ -72,7 +72,7 @@ def list_workspace_runs(
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def get_workspace_run(ree_id: str, run_id: str) -> RunSummary:
+def get_ree_run(ree_id: str, run_id: str) -> RunSummary:
     run_state = get_run_state(ree_id, run_id)
     return RunSummary.model_validate(run_summary(run_state))
 
@@ -83,7 +83,7 @@ def get_workspace_run(ree_id: str, run_id: str) -> RunSummary:
     response_model=RunLogPage,
     responses=ERROR_RESPONSES,
 )
-def get_workspace_run_logs(
+def get_ree_run_logs(
     ree_id: str,
     run_id: str,
     cursor: Annotated[int | None, Query(ge=0)] = None,
@@ -110,7 +110,7 @@ def get_workspace_run_logs(
     response_model=RunObservation,
     responses=ERROR_RESPONSES,
 )
-def observe_workspace_run(
+def observe_ree_run(
     ree_id: str,
     run_id: str,
     cursor: Annotated[int | None, Query(ge=0)] = None,
@@ -135,7 +135,7 @@ def observe_workspace_run(
     response_model=CancelRunResponse,
     responses=ERROR_RESPONSES,
 )
-def cancel_workspace_run(ree_id: str, run_id: str) -> CancelRunResponse:
+def cancel_ree_run(ree_id: str, run_id: str) -> CancelRunResponse:
     run_state = get_run_state(ree_id, run_id)
     current_status = run_state.get("status")
     if current_status in TERMINAL_STATUSES:

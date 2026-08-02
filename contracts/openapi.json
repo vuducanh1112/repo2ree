@@ -11,7 +11,7 @@
         "tags": [
           "rees"
         ],
-        "summary": "Create Workspace Route",
+        "summary": "Create Ree Route",
         "operationId": "createRee",
         "requestBody": {
           "required": true,
@@ -130,7 +130,7 @@
         "tags": [
           "rees"
         ],
-        "summary": "List Workspaces Route",
+        "summary": "List Rees Route",
         "operationId": "listRees",
         "parameters": [
           {
@@ -292,7 +292,7 @@
         "tags": [
           "rees"
         ],
-        "summary": "Get Workspace Route",
+        "summary": "Get Ree Route",
         "operationId": "getRee",
         "parameters": [
           {
@@ -412,7 +412,7 @@
         "tags": [
           "rees"
         ],
-        "summary": "Delete Workspace Route",
+        "summary": "Delete Ree Route",
         "operationId": "deleteRee",
         "parameters": [
           {
@@ -534,7 +534,7 @@
         "tags": [
           "rees"
         ],
-        "summary": "Get Workspace State Route",
+        "summary": "Get Ree State Route",
         "description": "Compact automation view: durable state and file metadata, never contents.",
         "operationId": "getReeState",
         "parameters": [
@@ -780,7 +780,7 @@
         "tags": [
           "runs"
         ],
-        "summary": "List Workspace Runs",
+        "summary": "List Ree Runs",
         "operationId": "listRuns",
         "parameters": [
           {
@@ -936,7 +936,7 @@
         "tags": [
           "runs"
         ],
-        "summary": "Get Workspace Run",
+        "summary": "Get Ree Run",
         "operationId": "getRun",
         "parameters": [
           {
@@ -1067,7 +1067,7 @@
         "tags": [
           "runs"
         ],
-        "summary": "Get Workspace Run Logs",
+        "summary": "Get Ree Run Logs",
         "operationId": "listRunLogs",
         "parameters": [
           {
@@ -1227,7 +1227,7 @@
         "tags": [
           "runs"
         ],
-        "summary": "Observe Workspace Run",
+        "summary": "Observe Ree Run",
         "operationId": "observeRun",
         "parameters": [
           {
@@ -1399,7 +1399,7 @@
         "tags": [
           "runs"
         ],
-        "summary": "Cancel Workspace Run",
+        "summary": "Cancel Ree Run",
         "operationId": "cancelRun",
         "parameters": [
           {
@@ -2672,7 +2672,7 @@
           "rees",
           "files"
         ],
-        "summary": "Get Workspace File Raw Route",
+        "summary": "Get Ree File Raw Route",
         "operationId": "readReeFile",
         "parameters": [
           {
@@ -2696,7 +2696,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Raw workspace file bytes",
+            "description": "Raw REE file bytes",
             "content": {
               "application/octet-stream": {
                 "schema": {
@@ -3216,7 +3216,7 @@
         "tags": [
           "runs"
         ],
-        "summary": "Create Workspace Generate Hbom Run",
+        "summary": "Create Generate Hbom Run",
         "operationId": "startHbomGeneration",
         "parameters": [
           {
@@ -3348,7 +3348,7 @@
         "tags": [
           "runs"
         ],
-        "summary": "Create Workspace Evaluate Run",
+        "summary": "Create Evaluate Run",
         "operationId": "startEvaluate",
         "parameters": [
           {
@@ -3480,7 +3480,7 @@
         "tags": [
           "runs"
         ],
-        "summary": "Get Workspace Evaluate Report",
+        "summary": "Get Ree Evaluate Report",
         "description": "The persisted evaluate-run report artifact.",
         "operationId": "getEvaluateReport",
         "parameters": [
@@ -3603,7 +3603,7 @@
         "tags": [
           "runs"
         ],
-        "summary": "Create Workspace Build Runtime Run",
+        "summary": "Create Build Runtime Run",
         "operationId": "startBuild",
         "parameters": [
           {
@@ -3735,7 +3735,7 @@
         "tags": [
           "runs"
         ],
-        "summary": "Create Workspace Generate Sbom Run",
+        "summary": "Create Generate Sbom Run",
         "operationId": "startSbomGeneration",
         "parameters": [
           {
@@ -3867,7 +3867,7 @@
         "tags": [
           "runs"
         ],
-        "summary": "Create Workspace Cross Check Sbom Run",
+        "summary": "Create Cross Check Sbom Run",
         "operationId": "startSbomCrossCheck",
         "parameters": [
           {
@@ -3999,7 +3999,7 @@
         "tags": [
           "runs"
         ],
-        "summary": "Create Workspace Activation Test Run",
+        "summary": "Create Activation Test Run",
         "operationId": "startActivationTest",
         "parameters": [
           {
@@ -5047,7 +5047,7 @@
         "tags": [
           "rees"
         ],
-        "summary": "Download Workspace Ree Archive Route",
+        "summary": "Download Ree Archive Route",
         "description": "Download this REE as a bundle, loadable into another REE via ``ree:load``.\n\nA sealed REE hands back its immutable sealed archive; an unsealed one is\nassembled into a draft bundle on demand. Only the sealed bundle carries a\nseal hash \u2014 a draft is a handoff, not a citable artifact.",
         "operationId": "downloadReeArchive",
         "parameters": [
@@ -13129,7 +13129,7 @@
           "size"
         ],
         "title": "WorkspaceFile",
-        "description": "One workspace-subtree file as the enumeration presents it.\n\n``content`` is the inlined text when the file is small enough (see\n:func:`should_inline_file_content`) and the caller asked for content;\n``None`` otherwise."
+        "description": "One file projected from the materialized workspace subtree."
       },
       "WorkspaceFileContentPayload": {
         "properties": {

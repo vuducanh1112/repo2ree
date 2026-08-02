@@ -11,10 +11,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Workspaces Route */
+        /** List Rees Route */
         get: operations["listRees"];
         put?: never;
-        /** Create Workspace Route */
+        /** Create Ree Route */
         post: operations["createRee"];
         delete?: never;
         options?: never;
@@ -29,11 +29,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Workspace Route */
+        /** Get Ree Route */
         get: operations["getRee"];
         put?: never;
         post?: never;
-        /** Delete Workspace Route */
+        /** Delete Ree Route */
         delete: operations["deleteRee"];
         options?: never;
         head?: never;
@@ -48,7 +48,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Workspace State Route
+         * Get Ree State Route
          * @description Compact automation view: durable state and file metadata, never contents.
          */
         get: operations["getReeState"];
@@ -87,7 +87,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Workspace Runs */
+        /** List Ree Runs */
         get: operations["listRuns"];
         put?: never;
         post?: never;
@@ -104,7 +104,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Workspace Run */
+        /** Get Ree Run */
         get: operations["getRun"];
         put?: never;
         post?: never;
@@ -121,7 +121,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Workspace Run Logs */
+        /** Get Ree Run Logs */
         get: operations["listRunLogs"];
         put?: never;
         post?: never;
@@ -138,7 +138,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Observe Workspace Run */
+        /** Observe Ree Run */
         get: operations["observeRun"];
         put?: never;
         post?: never;
@@ -157,7 +157,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Cancel Workspace Run */
+        /** Cancel Ree Run */
         post: operations["cancelRun"];
         delete?: never;
         options?: never;
@@ -330,7 +330,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Workspace File Raw Route */
+        /** Get Ree File Raw Route */
         get: operations["readReeFile"];
         put?: never;
         post?: never;
@@ -391,7 +391,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create Workspace Generate Hbom Run */
+        /** Create Generate Hbom Run */
         post: operations["startHbomGeneration"];
         delete?: never;
         options?: never;
@@ -408,7 +408,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create Workspace Evaluate Run */
+        /** Create Evaluate Run */
         post: operations["startEvaluate"];
         delete?: never;
         options?: never;
@@ -424,7 +424,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Workspace Evaluate Report
+         * Get Ree Evaluate Report
          * @description The persisted evaluate-run report artifact.
          */
         get: operations["getEvaluateReport"];
@@ -445,7 +445,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create Workspace Build Runtime Run */
+        /** Create Build Runtime Run */
         post: operations["startBuild"];
         delete?: never;
         options?: never;
@@ -462,7 +462,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create Workspace Generate Sbom Run */
+        /** Create Generate Sbom Run */
         post: operations["startSbomGeneration"];
         delete?: never;
         options?: never;
@@ -479,7 +479,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create Workspace Cross Check Sbom Run */
+        /** Create Cross Check Sbom Run */
         post: operations["startSbomCrossCheck"];
         delete?: never;
         options?: never;
@@ -496,7 +496,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create Workspace Activation Test Run */
+        /** Create Activation Test Run */
         post: operations["startActivationTest"];
         delete?: never;
         options?: never;
@@ -648,7 +648,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Download Workspace Ree Archive Route
+         * Download Ree Archive Route
          * @description Download this REE as a bundle, loadable into another REE via ``ree:load``.
          *
          *     A sealed REE hands back its immutable sealed archive; an unsealed one is
@@ -3903,11 +3903,7 @@ export interface components {
         };
         /**
          * WorkspaceFile
-         * @description One workspace-subtree file as the enumeration presents it.
-         *
-         *     ``content`` is the inlined text when the file is small enough (see
-         *     :func:`should_inline_file_content`) and the caller asked for content;
-         *     ``None`` otherwise.
+         * @description One file projected from the materialized workspace subtree.
          */
         WorkspaceFile: {
             /** Path */
@@ -6048,7 +6044,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Raw workspace file bytes */
+            /** @description Raw REE file bytes */
             200: {
                 headers: {
                     [name: string]: unknown;

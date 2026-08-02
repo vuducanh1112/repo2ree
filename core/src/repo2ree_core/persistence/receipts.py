@@ -1,13 +1,10 @@
-"""Persisted receipt records and the materialization marker beside them.
+"""Persisted receipt records for the immutable run history and selected evidence.
 
 One receipt file per run, ``runs/<run_id>.receipt.json``, sibling of the NDJSON
 run log — immutable history. Every *successful* run additionally replaces its
 step's selected receipt under ``receipts/author``, which is the authoritative
 set: history in ``runs/`` is never promoted implicitly, since doing so would
 resurrect invalidated evidence after a source reset.
-
-Also home to the materialization marker — the record of what the workspace was
-materialized from, which ``consistency`` walks to decide whether it still is.
 
 Imperative shell: every function here touches the filesystem.
 """
@@ -17,7 +14,7 @@ from __future__ import annotations
 from contextlib import suppress
 from pathlib import Path
 
-from repo2ree_core.digests import Digest, digest_tree
+from repo2ree_core.digests import Digest
 from repo2ree_core.domain.ree.intent import ReeIntent
 from repo2ree_core.domain.ree.receipt import (
     RunExperimentReceipt,
@@ -28,10 +25,9 @@ from repo2ree_core.domain.ree.receipt import (
 )
 from repo2ree_core.domain.ree.state import record_snapshot_digest
 from repo2ree_core.persistence.directory import ReeDirectory
-from repo2ree_core.persistence.files import json_document_bytes, write_atomic, write_json_atomic
+from repo2ree_core.persistence.files import json_document_bytes, write_atomic
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.reserved_paths import experiment_slug
-from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol.log import LogSink
 
 
@@ -65,7 +61,7 @@ def record_receipt(layout: ReeLayout, receipt: RunReceipt, *, log: LogSink) -> N
 def persist_snapshot_digest(store: ReeDirectory, digest: Digest | None, *, log: LogSink) -> None:
     """Record the snapshot archive's digest in the state. Never raises."""
     try:
-        if not store.metadata_exists():
+        if not store.sidecar_exists():
             return
         store.write_state(record_snapshot_digest(store.read_state(), digest))
     except Exception as exc:  # noqa: BLE001 — as the docstring says: never raises
@@ -141,45 +137,3 @@ def published_receipts(layout: ReeLayout, intent: ReeIntent) -> list[RunReceipt]
         *(experiment_step_key(experiment.name) for experiment in intent.experiments if experiment.name),
     ]
     return [latest[key] for key in step_keys if key in latest]
-
-
-# ================================================
-# Materialization marker
-# ================================================
-
-
-def stat_table(workspace: Path) -> dict[str, list[int]]:
-    """``{relpath: [size, mtime_ns]}`` for every regular file in the workspace."""
-    table: dict[str, list[int]] = {}
-    if not workspace.is_dir():
-        return table
-    for path in sorted(workspace.rglob("*")):
-        if not path.is_file():
-            continue
-        stat = path.stat()
-        table[path.relative_to(workspace).as_posix()] = [stat.st_size, stat.st_mtime_ns]
-    return table
-
-
-def write_materialize_marker(
-    layout: ReeLayout,
-    *,
-    snapshot_digest: str | None,
-    log: LogSink,
-) -> None:
-    """Record what the workspace was materialized from, and its file stats.
-
-    The stat table is the cheap "unchanged since materialization" oracle the
-    drift check walks against. Never raises: a marker failure degrades drift
-    verdicts to ``unknown``, it must not fail the materialization.
-    """
-    try:
-        marker = {
-            "materialized_at": utc_now(),
-            "snapshot_digest": snapshot_digest,
-            "overlay_digest": digest_tree(layout.overlay),
-            "files": stat_table(layout.workspace),
-        }
-        write_json_atomic(layout.materialize_marker, marker)
-    except Exception as exc:  # noqa: BLE001 — a missing marker degrades a later drift check to unknown; it cannot fail this run
-        log("system", "warn", f"failed to write materialization marker: {exc}")

@@ -281,7 +281,7 @@ export class ReeApi {
     });
   }
 
-  async getFileBytes(reeId: ReeId, path: string): Promise<ArrayBuffer> {
+  async getReeFileBytes(reeId: ReeId, path: string): Promise<ArrayBuffer> {
     const searchParams = new URLSearchParams({ path });
     return this.client.requestArrayBuffer(
       endpoints.reeFileRaw(reeId),

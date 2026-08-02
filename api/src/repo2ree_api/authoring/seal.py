@@ -123,8 +123,8 @@ def seal_ree_route(ree_id: str, payload: ReeSealPayload) -> ReeDocument:
             )
         )
         dispatch_or_fail(handle, cmd, "seal", "Workbench seal_ree failed")
-        # Return the post-seal workspace so the client sees the sealed state.
-        document = workbench_manager.get_workspace(handle)
+        # Return the post-seal REE document so the client sees the sealed state.
+        document = workbench_manager.get_ree_document(handle)
         _record_in_ree_index(ree_id, document)
         return ReeDocument.model_validate(document)
 
@@ -161,7 +161,7 @@ def _record_in_ree_index(ree_id: str, document: Mapping[str, Any]) -> None:
         },
     },
 )
-def download_workspace_ree_archive_route(ree_id: str) -> StreamingResponse:
+def download_ree_archive_route(ree_id: str) -> StreamingResponse:
     """Download this REE as a bundle, loadable into another REE via ``ree:load``.
 
     A sealed REE hands back its immutable sealed archive; an unsealed one is

@@ -143,7 +143,7 @@ def test_api_ree_lifecycle(client: TestClient, ree: dict[str, Any]) -> None:
     )
     assert resp.status_code == 200, resp.text
 
-    resp = client.get(f"/api/v1/rees/{ree_id}/files/raw", params={"path": "build.sh"})
+    resp = client.get(f"/api/v1/rees/{ree_id}/files/raw", params={"path": "workspace/build.sh"})
     assert resp.status_code == 200
     assert resp.content == b"echo build\n"
 

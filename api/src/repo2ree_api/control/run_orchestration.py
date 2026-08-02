@@ -25,7 +25,7 @@ from repo2ree_protocol.result import ActionResult
 # ================================================
 
 
-def _require_workspace(ree_id: str) -> None:
+def _require_ree(ree_id: str) -> None:
     """Starting new work needs a live workbench (404 unknown / 503 unreachable).
 
     Reading run history deliberately does not — see ``RunRegistry``. The same
@@ -35,7 +35,7 @@ def _require_workspace(ree_id: str) -> None:
     require_handle(ree_id)
 
 
-_registry = RunRegistry(_require_workspace)
+_registry = RunRegistry(_require_ree)
 
 append_run_log = _registry.append_log
 update_run_outputs = _registry.update_outputs

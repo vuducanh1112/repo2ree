@@ -27,15 +27,15 @@ files_router = APIRouter(tags=["rees", "files"])
     responses={
         **ERROR_RESPONSES,
         200: {
-            "description": "Raw workspace file bytes",
+            "description": "Raw REE file bytes",
             "content": {"application/octet-stream": {"schema": {"type": "string", "format": "binary"}}},
         },
     },
 )
-def get_workspace_file_raw_route(ree_id: str, path: str = Query(...)) -> Response:
+def get_ree_file_raw_route(ree_id: str, path: str = Query(...)) -> Response:
     handle = require_handle(ree_id)
     try:
-        content = workbench_manager.read_file_bytes(handle, path)
+        content = workbench_manager.read_ree_file_bytes(handle, path)
     except RuntimeError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return Response(content=content, media_type="application/octet-stream")

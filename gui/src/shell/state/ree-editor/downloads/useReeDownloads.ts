@@ -18,7 +18,7 @@ export function useReeDownloads({ getReeName, showToast, reeId }: UseReeDownload
 
   const downloadWorkspaceFile = async (path: string, suggestedName?: string): Promise<void> => {
     try {
-      const fileBytes = await reeClient.getFileBytes(reeId, path);
+      const fileBytes = await reeClient.getReeFileBytes(reeId, `workspace/${path}`);
       const plan = planWorkspaceFileDownload(path, suggestedName);
       appShellPorts.browserDownloads.downloadBlob(fileBytes, {
         fileName: plan.downloadName,

@@ -1,6 +1,6 @@
 """Handler for the patch_ree_intent operation.
 
-Applies a partial patch to reeIntent in /ree/.workspace.json.
+Applies a partial patch to reeIntent in /ree/.ree.json.
 All ReeIntent fields are user-editable; no whitelist needed.
 """
 
@@ -43,7 +43,7 @@ def handle_patch_ree_intent(
     layout, store = opened
 
     if args.expected_version:
-        actual_version = store.read_metadata().updated_at
+        actual_version = store.read_sidecar().updated_at
         if args.expected_version != actual_version:
             log(
                 "system",

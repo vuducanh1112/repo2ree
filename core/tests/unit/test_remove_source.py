@@ -10,7 +10,7 @@ from repo2ree_core.domain.ree.state import ReeLifecycleState
 from repo2ree_core.operations.handlers.author import remove_source as handler
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_core.persistence.metadata import WorkspaceMetadata
+from repo2ree_core.persistence.sidecar import ReeSidecar
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_core.time_utils import parse_utc_instant
 
@@ -37,8 +37,8 @@ def test_remove_source_recreates_reserved_build_script(tmp_path: Path, monkeypat
     store.layout.sealed_archive.write_bytes(b"old sealed archive")
     store.layout.author_operation_receipt("build_runtime").write_text("{}")
     store.layout.run_receipt("old-build").write_text("{}")
-    store.write_metadata(
-        WorkspaceMetadata(
+    store.write_sidecar(
+        ReeSidecar(
             ree_id="ree123",
             name="demo",
             created_at="2026-01-01T00:00:00Z",
@@ -73,7 +73,7 @@ def test_remove_source_recreates_reserved_build_script(tmp_path: Path, monkeypat
     assert list(store.layout.author_receipts.rglob("*.json")) == []
     assert store.layout.run_receipt("old-build").exists()
 
-    metadata = store.read_metadata()
+    metadata = store.read_sidecar()
     assert metadata.name == "demo"
     assert metadata.status == "draft"
     assert metadata.external_ref is None

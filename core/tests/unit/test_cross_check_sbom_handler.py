@@ -19,8 +19,8 @@ from repo2ree_core.domain.ree.state import ReeLifecycleState
 from repo2ree_core.operations.handlers.author import cross_check_sbom as handler
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import SBOM_ARTIFACT_PATH, ReeLayout
-from repo2ree_core.persistence.metadata import WorkspaceMetadata
 from repo2ree_core.persistence.receipts import load_receipts
+from repo2ree_core.persistence.sidecar import ReeSidecar
 from repo2ree_protocol.result import ActionResult
 
 
@@ -70,8 +70,8 @@ def _seed(
     layout = ReeLayout(root=tmp_path)
     store = ReeDirectory(layout)
     store.ensure_dirs()
-    store.write_metadata(
-        WorkspaceMetadata(
+    store.write_sidecar(
+        ReeSidecar(
             ree_id="ree123",
             name="demo",
             created_at="2026-01-01T00:00:00Z",

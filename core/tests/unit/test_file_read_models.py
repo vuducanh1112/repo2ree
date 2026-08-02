@@ -1,33 +1,13 @@
-from repo2ree_core.persistence.workspace.inventory import (
+import pytest
+
+from repo2ree_core.operations.read_models.files import (
     MAX_INLINE_SBOM_BYTES,
     MAX_INLINE_TEXT_BYTES,
-    classify_file_kind,
-    is_metadata_file_name,
-    is_reserved_workspace_filename,
-    is_upload_staging_name,
+    classify_workspace_file_kind,
+    read_ree_file_bytes,
     should_inline_file_content,
 )
-
-
-def test_is_metadata_file_name():
-    assert is_metadata_file_name(".workspace.json") is True
-    assert is_metadata_file_name(".workspace") is False
-    assert is_metadata_file_name("workspace.json") is False
-
-
-def test_is_upload_staging_name():
-    assert is_upload_staging_name(".upload.tok.bin") is True
-    assert is_upload_staging_name(".upload.") is True
-    assert is_upload_staging_name("upload.bin") is False
-    assert is_upload_staging_name(".uploads") is False
-
-
-def test_is_reserved_workspace_filename_covers_both_categories():
-    assert is_reserved_workspace_filename(".workspace.json") is True
-    assert is_reserved_workspace_filename(".workspace.lock") is True
-    assert is_reserved_workspace_filename(".upload.tok.bin") is True
-    assert is_reserved_workspace_filename("Dockerfile") is False
-    assert is_reserved_workspace_filename("README.md") is False
+from repo2ree_core.persistence.layout import ReeLayout
 
 
 def test_should_inline_file_content_default_threshold():
@@ -54,9 +34,25 @@ def test_should_inline_file_content_case_insensitive_sbom_match():
     assert should_inline_file_content("path/SBOM.JSON", MAX_INLINE_SBOM_BYTES + 1) is False
 
 
-def test_classify_file_kind_returns_source_for_any_path():
+def test_classify_workspace_file_kind_returns_source_for_any_path():
     # Current implementation is uniform; tests pin the contract until
     # finer classification lands.
-    assert classify_file_kind("Dockerfile") == "source"
-    assert classify_file_kind("src/main.py") == "source"
-    assert classify_file_kind("") == "source"
+    assert classify_workspace_file_kind("Dockerfile") == "source"
+    assert classify_workspace_file_kind("src/main.py") == "source"
+    assert classify_workspace_file_kind("") == "source"
+
+
+def test_read_ree_file_bytes_uses_ree_relative_paths(tmp_path):
+    layout = ReeLayout.for_ree(tmp_path, "ree-1")
+    layout.artifacts.mkdir(parents=True)
+    layout.sbom.write_bytes(b"sbom")
+
+    assert read_ree_file_bytes(tmp_path, "ree-1", "artifacts/sbom.json") == b"sbom"
+
+
+def test_read_ree_file_bytes_rejects_escape(tmp_path):
+    layout = ReeLayout.for_ree(tmp_path, "ree-1")
+    layout.root.mkdir(parents=True)
+
+    with pytest.raises(ValueError, match="Invalid REE file path"):
+        read_ree_file_bytes(tmp_path, "ree-1", "../outside")

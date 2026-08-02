@@ -485,7 +485,7 @@ def run() -> None:
     note(f"the inferred build tags its image and saves the runtime tarball to {runtime_artifact}")
     put_file(ree_id, build_script_path, build_script)
     note("read the reserved script back (readReeFile returns octet-stream, not JSON)")
-    rc, out, err = _run_curl([f"{BASE_URL}/api/v1/rees/{ree_id}/files/raw?path={build_script_path}"])
+    rc, out, err = _run_curl([f"{BASE_URL}/api/v1/rees/{ree_id}/files/raw?path=workspace/{build_script_path}"])
     check(rc == 0 and out.decode() == build_script, f"build script did not round-trip: {_curl_detail(rc, err)}")
     run_stage(ree_id, "POST", f"/api/v1/rees/{ree_id}/build-runtime", {}, what="build")
     built = call("GET", f"/api/v1/rees/{ree_id}/state")

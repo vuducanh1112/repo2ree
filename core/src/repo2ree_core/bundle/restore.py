@@ -25,7 +25,7 @@ from repo2ree_core.bundle.plan import (
 from repo2ree_core.domain.ree.state import is_sealed, remove_source
 from repo2ree_core.persistence.directory import reset_source_state
 from repo2ree_core.persistence.files import list_tree_relpaths
-from repo2ree_core.persistence.workspace.views import layout_for, store_for
+from repo2ree_core.persistence.repository import directory_for, layout_for
 
 
 class BundleLoadOutputs(BaseModel):
@@ -51,8 +51,8 @@ def restore_ree_bundle(
 ) -> BundleLoadOutputs:
     """Replace this REE's contents with an extracted bundle's (shell).
 
-    The inverse of :func:`~repo2ree_core.bundle.seal.seal_workspace_ree` /
-    :func:`~repo2ree_core.bundle.seal.build_workspace_ree_archive`:
+    The inverse of :func:`~repo2ree_core.bundle.seal.seal_ree` /
+    :func:`~repo2ree_core.bundle.seal.build_ree_archive`:
     ``bundle_root`` is the already-extracted (and path-checked) bundle tree, so
     every path read here is trusted; ``archive_path`` is the ZIP it came from.
     Everything the bundle publishes is restored to the on-disk home it was
@@ -67,8 +67,8 @@ def restore_ree_bundle(
     the source facts cleared — the origin is still on the intent, so the source
     can be acquired (or reviewed) from it.
     """
-    store = store_for(storage_root, ree_id)
-    if not store.metadata_exists():
+    store = directory_for(storage_root, ree_id)
+    if not store.sidecar_exists():
         raise FileNotFoundError(f"REE {ree_id} not found")
 
     manifest_path = bundle_root / REE_MANIFEST_ENTRY_PATH

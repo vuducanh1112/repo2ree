@@ -42,7 +42,7 @@ def patch_ree_intent_route(ree_id: str, payload: ReeIntentPatchPayload) -> ReeDo
             )
         )
         dispatch_or_fail(handle, cmd, "patch-intent", "Workbench patch_ree_intent failed")
-        return ReeDocument.model_validate(workbench_manager.get_workspace(handle))
+        return ReeDocument.model_validate(workbench_manager.get_ree_document(handle))
 
 
 @intent_router.put(

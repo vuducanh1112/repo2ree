@@ -49,7 +49,7 @@ rees_router = APIRouter(tags=["rees"])
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def create_workspace_route(payload: ReeCreatePayload) -> RunSummary:
+def create_ree_route(payload: ReeCreatePayload) -> RunSummary:
     ree_id = uuid.uuid4().hex
     name = payload.name or ree_id[:8]
     # Blank/omitted image falls back to the server default in the manager.
@@ -85,9 +85,9 @@ def create_workspace_route(payload: ReeCreatePayload) -> RunSummary:
 
         if is_cancel_requested(rid, run_id):
             _log_run("system", "warn", "Provisioning canceled after workbench startup")
-            return ActionResult(status="canceled", outputs={"workspace": workbench_manager.get_workspace(handle)})
+            return ActionResult(status="canceled", outputs={"ree": workbench_manager.get_ree_document(handle)})
 
-        return ActionResult(status="succeeded", outputs={"workspace": workbench_manager.get_workspace(handle)})
+        return ActionResult(status="succeeded", outputs={"ree": workbench_manager.get_ree_document(handle)})
 
     run_state = start_provisioning_run(
         ree_id=ree_id,
@@ -103,12 +103,12 @@ def create_workspace_route(payload: ReeCreatePayload) -> RunSummary:
     response_model=ReeList,
     responses=ERROR_RESPONSES,
 )
-def list_workspaces_route(
+def list_rees_route(
     cursor: str | None = Query(None),
     limit: int | None = Query(None, ge=1),
     status: str | None = Query(None),
 ) -> ReeList:
-    items = workbench_manager.list_all_metadata()
+    items = workbench_manager.list_all_sidecars()
     if status:
         items = [m for m in items if m.get("status") == status]
     # Keyset pagination needs an immutable sort key: created_at (with ree_id as
@@ -129,13 +129,13 @@ def _ree_page_key(metadata: dict[str, Any]) -> tuple[str, str]:
     response_model=ReeDocument,
     responses=ERROR_RESPONSES,
 )
-def get_workspace_route(ree_id: str) -> ReeDocument:
+def get_ree_route(ree_id: str) -> ReeDocument:
     handle = require_handle(ree_id)
-    workspace = workbench_manager.get_workspace(handle)
-    # get-workspace runs inside the container and can't know the image, so the
+    document = workbench_manager.get_ree_document(handle)
+    # get-ree-document runs inside the container and can't know the image, so the
     # manager (which owns the registry) supplies it.
-    workspace["workbench_image"] = workbench_manager.image_for(handle)
-    return ReeDocument.model_validate(workspace)
+    document["workbench_image"] = workbench_manager.image_for(handle)
+    return ReeDocument.model_validate(document)
 
 
 @rees_router.get(
@@ -144,32 +144,32 @@ def get_workspace_route(ree_id: str) -> ReeDocument:
     response_model=ReeState,
     responses=ERROR_RESPONSES,
 )
-def get_workspace_state_route(ree_id: str) -> ReeState:
+def get_ree_state_route(ree_id: str) -> ReeState:
     """Compact automation view: durable state and file metadata, never contents."""
     handle = require_handle(ree_id)
-    workspace = workbench_manager.get_workspace_state(handle)
+    document = workbench_manager.get_ree_state(handle)
     active_runs = [run for run in list_runs(ree_id) if run.get("status") in ACTIVE_STATUSES]
     state = {
-        "ree_id": workspace["ree_id"],
-        "name": workspace["name"],
-        "status": workspace["status"],
-        "updated_at": workspace["updated_at"],
+        "ree_id": document["ree_id"],
+        "name": document["name"],
+        "status": document["status"],
+        "updated_at": document["updated_at"],
         "workbench": {
             "status": "available",
             "agent_id": handle.agent_id,
             "image": workbench_manager.image_for(handle),
         },
-        "ree_intent": workspace.get("ree_intent", {}),
-        "ree_state": workspace.get("ree_state", {}),
-        "consistency": workspace.get("consistency", {}),
-        "author_receipts": workspace.get("author_receipts", {}),
-        "ree_steps": workspace.get("ree_steps", []),
-        "files": workspace.get("files", []),
-        "ree_files": workspace.get("ree_files", []),
+        "ree_intent": document.get("ree_intent", {}),
+        "ree_state": document.get("ree_state", {}),
+        "consistency": document.get("consistency", {}),
+        "author_receipts": document.get("author_receipts", {}),
+        "ree_steps": document.get("ree_steps", []),
+        "files": document.get("files", []),
+        "ree_files": document.get("ree_files", []),
         "active_runs": active_runs,
     }
-    if "source_repo" in workspace:
-        state["source_repo"] = workspace["source_repo"]
+    if "source_repo" in document:
+        state["source_repo"] = document["source_repo"]
     return ReeState.model_validate(state)
 
 
@@ -179,7 +179,7 @@ def get_workspace_state_route(ree_id: str) -> ReeState:
     response_model=DeleteReeResponse,
     responses=ERROR_RESPONSES,
 )
-def delete_workspace_route(ree_id: str) -> DeleteReeResponse:
+def delete_ree_route(ree_id: str) -> DeleteReeResponse:
     handle = require_handle(ree_id)
     with ree_command_span("delete", ree_id):
         try:

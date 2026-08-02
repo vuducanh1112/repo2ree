@@ -23,8 +23,8 @@ from repo2ree_core.evidence.review.store import load_reviews, write_review_recor
 from repo2ree_core.operations.handlers.review import build_runtime as handler
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import SBOM_ARTIFACT_PATH, ReeLayout
-from repo2ree_core.persistence.metadata import WorkspaceMetadata
 from repo2ree_core.persistence.receipts import record_receipt
+from repo2ree_core.persistence.sidecar import ReeSidecar
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_core.time_utils import parse_utc_instant
 from repo2ree_protocol.command import ReviewBuildRuntimeArgs
@@ -65,8 +65,8 @@ def _author_ree(
     layout = ReeLayout(root=tmp_path / "ree")
     store = ReeDirectory(layout)
     store.ensure_dirs()
-    store.write_metadata(
-        WorkspaceMetadata(
+    store.write_sidecar(
+        ReeSidecar(
             ree_id="ree-review",
             name="review",
             created_at="2026-01-01T00:00:00Z",
@@ -177,8 +177,8 @@ def _ship_runtime(
     artifact = layout.ree_file(at)
     artifact.parent.mkdir(parents=True, exist_ok=True)
     artifact.write_text(contents, encoding="utf-8")
-    metadata = store.read_metadata()
-    store.write_metadata(
+    metadata = store.read_sidecar()
+    store.write_sidecar(
         metadata.model_copy(update={"ree_intent": metadata.ree_intent.model_copy(update={"runtime": at})})
     )
     return at

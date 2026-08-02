@@ -150,7 +150,7 @@ def test_transport_failure_mid_request_yields_503_envelope(
 ):
     """A container dying mid-query surfaces as the workbench_unavailable envelope.
 
-    The seam failing *is* the scenario: ``get_workspace`` raises the same
+    The seam failing *is* the scenario: ``get_ree_document`` raises the same
     ``WorkbenchUnavailableError`` the real transport raises when docker exec
     reports the container gone.
     """
@@ -158,7 +158,7 @@ def test_transport_failure_mid_request_yields_503_envelope(
     def _gone(handle: Any) -> dict[str, Any]:
         raise WorkbenchUnavailableError("docker exec exited 137 — container gone or stopping")
 
-    monkeypatch.setattr(workbench_manager, "get_workspace", _gone)
+    monkeypatch.setattr(workbench_manager, "get_ree_document", _gone)
     resp = client.get(f"/api/v1/rees/{online_ree.ree_id}")
     assert resp.status_code == 503
     assert resp.json()["error"]["code"] == "workbench_unavailable"

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from repo2ree_core.bundle.seal import seal_workspace_ree
+from repo2ree_core.bundle.seal import seal_ree
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.persistence.layout import ReeLayout
@@ -21,7 +21,7 @@ def handle_seal_ree(
     ree_id = layout.root.name
 
     try:
-        outputs = seal_workspace_ree(
+        outputs = seal_ree(
             storage_root,
             ree_id,
             source_included=args.source_included,

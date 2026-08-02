@@ -292,7 +292,7 @@ class DeleteFileCommand(BaseModel):
 
 
 class PatchReeIntentArgs(BaseModel):
-    """Apply a partial patch to reeIntent in /ree/.workspace.json."""
+    """Apply a partial patch to reeIntent in /ree/.ree.json."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -310,7 +310,7 @@ class PatchReeIntentCommand(BaseModel):
 
 
 class RemoveSourceArgs(BaseModel):
-    """Clear source content and reset source metadata in /ree/.workspace.json."""
+    """Clear source content and reset source metadata in /ree/.ree.json."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -399,7 +399,7 @@ class RunExperimentCommand(BaseModel):
 
 
 class GenerateHbomArgs(BaseModel):
-    """No args — profiles the workbench container's hardware and writes to .workspace.json."""
+    """No args — profiles the workbench container's hardware and writes to .ree.json."""
 
     model_config = ConfigDict(extra="forbid")
 

@@ -1,7 +1,7 @@
 """Handler for the generate_hbom operation.
 
 Profiles the workbench container's hardware and merges the result into
-/ree/.workspace.json under reeIntent.hardware_description.
+/ree/.ree.json under reeIntent.hardware_description.
 """
 
 from __future__ import annotations

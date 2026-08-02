@@ -120,7 +120,7 @@ def test_resolve_relative_path_blocks_workspace_control_files(tmp_path: Path):
     with pytest.raises(HTTPException):
         resolve_relative_path(
             tmp_path,
-            ".workspace.json",
+            ".workspace.lock",
             invalid_detail="invalid path",
             blocked_prefixes=WORKSPACE_CONTROL_PREFIXES,
         )

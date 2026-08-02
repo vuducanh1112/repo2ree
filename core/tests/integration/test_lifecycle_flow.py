@@ -122,8 +122,8 @@ def _init_ree(layout: ReeLayout, ree_id: str) -> None:
     store = ReeDirectory(layout)
     store.ensure_dirs()
     ts = utc_now()
-    name = f"workspace-{ree_id[:8]}"
-    store.write_metadata_json(
+    name = f"ree-{ree_id[:8]}"
+    store.write_sidecar_json(
         {
             "ree_id": ree_id,
             "external_ref": None,
@@ -336,7 +336,7 @@ def test_source_replacement_resets_derived_state_before_download(ree: Ree, sourc
     assert not layout.manifest.exists()
     assert str(replacement_repo) in layout.acquire_script.read_text()
 
-    metadata = ReeDirectory(layout).read_metadata()
+    metadata = ReeDirectory(layout).read_sidecar()
     assert metadata.status == "ready"
     assert metadata.ree_intent.origin_url == str(replacement_repo)
     assert metadata.ree_state.source_acquired_by == "download"
@@ -390,7 +390,7 @@ def test_source_replacement_resets_derived_state_before_upload(ree: Ree, source_
     assert not (layout.workspace / "stale-workspace.txt").exists()
     assert not (layout.workspace / "requirements.txt").exists()
 
-    metadata = ReeDirectory(layout).read_metadata()
+    metadata = ReeDirectory(layout).read_sidecar()
     assert metadata.status == "ready"
     assert metadata.ree_intent.origin_url == ""
     assert metadata.ree_state.source_acquired_by == "upload"

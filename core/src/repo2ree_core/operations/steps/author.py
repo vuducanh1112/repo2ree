@@ -34,7 +34,6 @@ from repo2ree_core.domain.ree.receipt import (
     receipt_envelope,
 )
 from repo2ree_core.domain.ree.transitions import patch_intent
-from repo2ree_core.evidence.consistency import check_workspace_drift, declared_output_paths
 from repo2ree_core.execution.experiment.run import RunnableRunOutputs, run_runnable
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.path_safety import WORKSPACE_CONTROL_PREFIXES, resolve_within
@@ -43,6 +42,7 @@ from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.receipts import record_receipt
 from repo2ree_core.persistence.repository import load_ree
 from repo2ree_core.time_utils import OperationTimer, OperationTiming, format_duration_ms
+from repo2ree_core.workspace.drift import check_workspace_drift, declared_output_paths
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult, ActionStatus
 from repo2ree_protocol.tracing import ReceiptInputAttrs
@@ -88,7 +88,7 @@ def open_ree_store(log: LogSink) -> tuple[ReeLayout, ReeDirectory] | ActionResul
     """
     layout = ReeLayout.in_workbench()
     store = ReeDirectory(layout)
-    if not store.metadata_exists():
+    if not store.sidecar_exists():
         log("system", "error", METADATA_MISSING)
         return ActionResult.failed("precondition", METADATA_MISSING)
     return layout, store
@@ -102,7 +102,7 @@ def read_intent_or_none(store: ReeDirectory, *, log: LogSink) -> ReeIntent | Non
     is logged, because what follows records "nothing declared" either way and
     only the log distinguishes the two.
     """
-    if not store.metadata_exists():
+    if not store.sidecar_exists():
         return None
     try:
         return store.read_intent()
@@ -127,7 +127,7 @@ def collect_step_inputs(
     artifact's state — never a digest of the live workspace tree.
     """
     snapshot_digest: Digest | None = None
-    if store.metadata_exists():
+    if store.sidecar_exists():
         try:
             snapshot_digest = store.read_state().source_snapshot_digest
         except UNREADABLE_DOCUMENT as exc:
@@ -528,7 +528,7 @@ def check_expected_etag(store: ReeDirectory, path: str, expected: str, *, log: L
 
 
 def patch_ree_intent(store: ReeDirectory, patch: dict[str, Any]) -> None:
-    if not store.metadata_exists():
+    if not store.sidecar_exists():
         raise FileNotFoundError("metadata not found")
     transition = patch_intent(load_ree(store.layout, store), patch)
     store.write_intent(transition.authored.intent)

@@ -33,7 +33,7 @@ from repo2ree_core.evidence.review.store import load_reviews, write_review_recor
 from repo2ree_core.operations.handlers.review import activation_test as handler
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
-from repo2ree_core.persistence.metadata import WorkspaceMetadata
+from repo2ree_core.persistence.sidecar import ReeSidecar
 from repo2ree_core.reserved_paths import RESERVED_ACTIVATION_SCRIPT
 from repo2ree_core.time_utils import parse_utc_instant
 from repo2ree_protocol.command import ReviewActivationTestArgs
@@ -55,8 +55,8 @@ def _author_ree(
     layout = ReeLayout(root=tmp_path / "ree")
     store = ReeDirectory(layout)
     store.ensure_dirs()
-    store.write_metadata(
-        WorkspaceMetadata(
+    store.write_sidecar(
+        ReeSidecar(
             ree_id="ree-review",
             name="review",
             created_at="2026-01-01T00:00:00Z",
@@ -372,7 +372,7 @@ def test_a_damaged_baseline_fails_the_step_instead_of_raising(tmp_path: Path, mo
     """
     layout = _author_ree(tmp_path, monkeypatch)
     _certified_attempt(layout)
-    layout.metadata.write_text("{ not json", encoding="utf-8")
+    layout.sidecar.write_text("{ not json", encoding="utf-8")
 
     result = _activate()
 
@@ -385,7 +385,7 @@ def test_a_damaged_baseline_fails_the_step_instead_of_raising(tmp_path: Path, mo
 def test_an_absent_baseline_fails_the_step_instead_of_raising(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     layout = _author_ree(tmp_path, monkeypatch)
     _certified_attempt(layout)
-    layout.metadata.unlink()
+    layout.sidecar.unlink()
 
     result = _activate()
 

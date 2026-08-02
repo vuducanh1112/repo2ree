@@ -1,6 +1,6 @@
 import pytest
 
-from repo2ree_core.persistence.workspace.snapshot import (
+from repo2ree_core.persistence.source_snapshot import (
     snapshot_archive_name,
     strip_archive_suffix,
 )

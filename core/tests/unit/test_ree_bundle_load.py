@@ -7,7 +7,7 @@ import pytest
 
 from repo2ree_core.bundle.manifest import build_manifest_payload, split_manifest_payload
 from repo2ree_core.bundle.restore import restore_ree_bundle
-from repo2ree_core.bundle.seal import build_workspace_ree_archive, seal_workspace_ree
+from repo2ree_core.bundle.seal import build_ree_archive, seal_ree
 from repo2ree_core.domain.primitives import GitRevision, RunId
 from repo2ree_core.domain.ree.intent import ReeIntent
 from repo2ree_core.domain.ree.receipt import AcquireSourceReceipt
@@ -23,7 +23,7 @@ def _make_ree(storage_root, name):
     layout = ReeLayout.for_ree(storage_root, ree_id)
     store = ReeDirectory(layout)
     store.ensure_dirs()
-    store.write_metadata_json(
+    store.write_sidecar_json(
         {
             "ree_id": ree_id,
             "external_ref": None,
@@ -64,7 +64,7 @@ def _seed_author_ree(storage_root, name="author-ree"):
         encoding="utf-8",
     )
 
-    metadata = json.loads(layout.metadata.read_text(encoding="utf-8"))
+    metadata = json.loads(layout.sidecar.read_text(encoding="utf-8"))
     metadata["ree_intent"] = {
         **metadata["ree_intent"],
         "origin_url": "https://example.org/repo.git",
@@ -81,7 +81,7 @@ def _seed_author_ree(storage_root, name="author-ree"):
         "source_snapshot_archive": "snapshot.tar.gz",
         "source_snapshot_digest": "sha256:1234",
     }
-    layout.metadata.write_text(json.dumps(metadata), encoding="utf-8")
+    layout.sidecar.write_text(json.dumps(metadata), encoding="utf-8")
     return ree_id, layout
 
 
@@ -133,7 +133,7 @@ def test_split_manifest_payload_rejects_an_unknown_manifest_version():
 def test_loading_a_sealed_bundle_restores_intent_evidence_and_content(tmp_path):
     storage_root = tmp_path / "storage"
     author_id, _ = _seed_author_ree(storage_root)
-    seal_workspace_ree(
+    seal_ree(
         storage_root,
         author_id,
         source_included=True,
@@ -141,7 +141,7 @@ def test_loading_a_sealed_bundle_restores_intent_evidence_and_content(tmp_path):
         results_included=True,
         sealed_at=parse_utc_instant("2026-01-02T00:00:00Z"),
     )
-    archive_bytes = build_workspace_ree_archive(storage_root, author_id)
+    archive_bytes = build_ree_archive(storage_root, author_id)
 
     outputs, layout = _load_into_blank_ree(storage_root, archive_bytes, tmp_path)
     store = ReeDirectory(layout)
@@ -172,7 +172,7 @@ def test_loading_a_sealed_bundle_restores_intent_evidence_and_content(tmp_path):
 def test_loading_a_draft_bundle_leaves_the_ree_editable(tmp_path):
     storage_root = tmp_path / "storage"
     author_id, _ = _seed_author_ree(storage_root, name="draft-ree")
-    archive_bytes = build_workspace_ree_archive(storage_root, author_id)
+    archive_bytes = build_ree_archive(storage_root, author_id)
 
     outputs, layout = _load_into_blank_ree(storage_root, archive_bytes, tmp_path)
     session = ReeDirectory(layout).read_state()
@@ -188,7 +188,7 @@ def test_loading_a_draft_bundle_leaves_the_ree_editable(tmp_path):
 def test_loading_a_sourceless_bundle_clears_the_source_facts(tmp_path):
     storage_root = tmp_path / "storage"
     author_id, _ = _seed_author_ree(storage_root, name="sourceless-ree")
-    seal_workspace_ree(
+    seal_ree(
         storage_root,
         author_id,
         source_included=False,
@@ -196,7 +196,7 @@ def test_loading_a_sourceless_bundle_clears_the_source_facts(tmp_path):
         results_included=False,
         sealed_at=parse_utc_instant("2026-01-02T00:00:00Z"),
     )
-    archive_bytes = build_workspace_ree_archive(storage_root, author_id)
+    archive_bytes = build_ree_archive(storage_root, author_id)
 
     outputs, layout = _load_into_blank_ree(storage_root, archive_bytes, tmp_path)
     store = ReeDirectory(layout)
@@ -213,7 +213,7 @@ def test_loading_a_sourceless_bundle_clears_the_source_facts(tmp_path):
 def test_loading_replaces_whatever_the_target_ree_held(tmp_path):
     storage_root = tmp_path / "storage"
     author_id, _ = _seed_author_ree(storage_root)
-    archive_bytes = build_workspace_ree_archive(storage_root, author_id)
+    archive_bytes = build_ree_archive(storage_root, author_id)
 
     target_id, target_layout = _make_ree(storage_root, "occupied")
     target_store = ReeDirectory(target_layout)

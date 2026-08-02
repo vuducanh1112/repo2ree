@@ -7,7 +7,7 @@ path arithmetic, but performs no filesystem I/O. The imperative shell —
 
 Layout under ``<storage_root>/<ree_id>/`` (host) or ``/ree/`` (workbench):
 
-    .workspace.json       state metadata
+    .ree.json             persisted REE sidecar
     manifest.json         sealed REE spec sidecar
     sealed.zip            immutable sealed archive (written by seal_ree)
     snapshot.tar.gz       frozen upstream archive
@@ -41,7 +41,7 @@ from repo2ree_core.path_safety import validate_path_segment, validate_relative_p
 # ================================================
 
 
-_METADATA_FILENAME = ".workspace.json"
+_SIDECAR_FILENAME = ".ree.json"
 _MATERIALIZE_MARKER_FILENAME = ".workspace.materialized.json"
 _DIGEST_CACHE_FILENAME = ".workspace.digest-cache.json"
 _MANIFEST_FILENAME = "manifest.json"
@@ -118,8 +118,8 @@ class ReeLayout:
         return cls(root=WORKBENCH_ROOT)
 
     @property
-    def metadata(self) -> Path:
-        return self.root / _METADATA_FILENAME
+    def sidecar(self) -> Path:
+        return self.root / _SIDECAR_FILENAME
 
     @property
     def manifest(self) -> Path:

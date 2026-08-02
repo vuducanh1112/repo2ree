@@ -47,7 +47,7 @@ def list_author_receipts(ree_id: str) -> AuthorReceiptSet:
     """Latest successful author receipt per operation, with live freshness."""
     handle = require_handle(ree_id)
     try:
-        workspace = workbench_manager.get_workspace_state(handle)
-        return AuthorReceiptSet.model_validate(workspace.get("author_receipts", {}))
+        document = workbench_manager.get_ree_state(handle)
+        return AuthorReceiptSet.model_validate(document.get("author_receipts", {}))
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Workbench receipt query failed: {exc}") from exc

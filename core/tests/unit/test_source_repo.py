@@ -3,7 +3,7 @@ from __future__ import annotations
 from repo2ree_core.domain.primitives import ReePath
 from repo2ree_core.domain.ree.intent import ReeIntent
 from repo2ree_core.domain.ree.state import ReeLifecycleState
-from repo2ree_core.persistence.workspace.inventory import WorkspaceFile
+from repo2ree_core.operations.read_models.files import WorkspaceFile
 from repo2ree_core.source_repo import (
     derive_source_repo_metadata,
     format_source_size,

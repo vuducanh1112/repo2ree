@@ -7,6 +7,8 @@ interpretation or application handlers.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from repo2ree_core.digests import digest_file
 from repo2ree_core.domain.primitives import ReeId, ReePath, parse_utc_instant
 from repo2ree_core.domain.ree.model import (
@@ -21,15 +23,23 @@ from repo2ree_core.domain.ree.model import (
 from repo2ree_core.domain.ree.state import is_sealed
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_core.persistence.metadata import WorkspaceMetadata
 from repo2ree_core.persistence.receipts import load_author_receipts, load_receipts
+from repo2ree_core.persistence.sidecar import ReeSidecar
+
+
+def layout_for(storage_root: Path, ree_id: str) -> ReeLayout:
+    return ReeLayout.for_ree(storage_root, ree_id)
+
+
+def directory_for(storage_root: Path, ree_id: str) -> ReeDirectory:
+    return ReeDirectory(layout_for(storage_root, ree_id))
 
 
 def load_ree(
     layout: ReeLayout,
     store: ReeDirectory | None = None,
     *,
-    metadata: WorkspaceMetadata | None = None,
+    sidecar: ReeSidecar | None = None,
 ) -> Ree:
     """Read one complete REE domain snapshot.
 
@@ -38,7 +48,7 @@ def load_ree(
     """
 
     ree_store = store or ReeDirectory(layout)
-    persisted = metadata or ree_store.read_metadata()
+    persisted = sidecar or ree_store.read_sidecar()
     files = tuple(
         AuthoredFile(
             path=ReePath(relative.as_posix()),

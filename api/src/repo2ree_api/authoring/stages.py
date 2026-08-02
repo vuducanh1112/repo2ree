@@ -62,7 +62,7 @@ class CreateGenerateHbomRunPayload(CreateRunPayload):
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def create_workspace_generate_hbom_run(ree_id: str, payload: CreateGenerateHbomRunPayload) -> RunSummary:
+def create_generate_hbom_run(ree_id: str, payload: CreateGenerateHbomRunPayload) -> RunSummary:
     return RunSummary.model_validate(
         run_summary(
             start_single_command_run(
@@ -93,7 +93,7 @@ class CreateEvaluateRunPayload(CreateRunPayload):
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def create_workspace_evaluate_run(ree_id: str, payload: CreateEvaluateRunPayload) -> RunSummary:
+def create_evaluate_run(ree_id: str, payload: CreateEvaluateRunPayload) -> RunSummary:
     return RunSummary.model_validate(
         run_summary(
             start_single_command_run(
@@ -118,14 +118,14 @@ _REPORT_FILENAME = "reproducibility-report.json"
     response_model=ReproducibilityReport,
     responses=ERROR_RESPONSES,
 )
-def get_workspace_evaluate_report(ree_id: str) -> dict[str, Any]:
+def get_ree_evaluate_report(ree_id: str) -> dict[str, Any]:
     """The persisted evaluate-run report artifact."""
     # An unknown or unreachable REE is resolved first, so "no report yet" is
     # never how a caller learns their REE is gone (404) or its workbench is
     # down (503).
     handle = require_handle(ree_id)
     try:
-        data = workbench_manager.read_artifact_bytes(handle, _REPORT_FILENAME)
+        data = workbench_manager.read_ree_file_bytes(handle, f"artifacts/{_REPORT_FILENAME}")
         report: dict[str, Any] = json.loads(data)
         return report
     except Exception as exc:
@@ -150,7 +150,7 @@ class CreateBuildRuntimeRunPayload(CreateRunPayload):
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def create_workspace_build_runtime_run(ree_id: str, payload: CreateBuildRuntimeRunPayload) -> RunSummary:
+def create_build_runtime_run(ree_id: str, payload: CreateBuildRuntimeRunPayload) -> RunSummary:
     return RunSummary.model_validate(
         run_summary(
             start_single_command_run(
@@ -182,7 +182,7 @@ class CreateGenerateSbomRunPayload(CreateRunPayload):
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def create_workspace_generate_sbom_run(ree_id: str, payload: CreateGenerateSbomRunPayload) -> RunSummary:
+def create_generate_sbom_run(ree_id: str, payload: CreateGenerateSbomRunPayload) -> RunSummary:
     runtime_path = _resolve_sbom_runtime_path(payload.produced_runtime_path)
     return RunSummary.model_validate(
         run_summary(
@@ -236,7 +236,7 @@ class CreateCrossCheckSbomRunPayload(CreateRunPayload):
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def create_workspace_cross_check_sbom_run(ree_id: str, payload: CreateCrossCheckSbomRunPayload) -> RunSummary:
+def create_cross_check_sbom_run(ree_id: str, payload: CreateCrossCheckSbomRunPayload) -> RunSummary:
     return RunSummary.model_validate(
         run_summary(
             start_single_command_run(
@@ -267,7 +267,7 @@ class CreateActivationTestRunPayload(CreateRunPayload):
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def create_workspace_activation_test_run(ree_id: str, payload: CreateActivationTestRunPayload) -> RunSummary:
+def create_activation_test_run(ree_id: str, payload: CreateActivationTestRunPayload) -> RunSummary:
     return RunSummary.model_validate(
         run_summary(
             start_single_command_run(

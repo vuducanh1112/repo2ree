@@ -17,16 +17,12 @@ inconsistency is the point. Reads the tree, writes nothing but its digest cache.
 
 from __future__ import annotations
 
-import json
-from contextlib import suppress
-from pathlib import Path, PurePosixPath
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from repo2ree_core.digests import digest_file, digest_file_if_exists, digest_output_paths
-from repo2ree_core.domain.experiment import Runnable
-from repo2ree_core.domain.primitives import ReePath, RunId, UtcInstant
+from repo2ree_core.digests import digest_file_if_exists, digest_output_paths
+from repo2ree_core.domain.primitives import RunId, UtcInstant
 from repo2ree_core.domain.ree.intent import ReeIntent
 from repo2ree_core.domain.ree.receipt import (
     ActivationTestReceipt,
@@ -35,120 +31,11 @@ from repo2ree_core.domain.ree.receipt import (
     GenerateSbomReceipt,
     RunExperimentReceipt,
     RunReceipt,
-    WorkspaceDrift,
     experiment_step_key,
 )
-from repo2ree_core.path_safety import WORKSPACE_CONTROL_PREFIXES
-from repo2ree_core.persistence.files import write_json_atomic
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_core.persistence.receipts import load_author_receipts, stat_table
-
-_DRIFT_PATHS_CAP = 20
-
-
-def _is_control_name(rel: str) -> bool:
-    return PurePosixPath(rel).name.startswith(WORKSPACE_CONTROL_PREFIXES)
-
-
-def declared_output_paths(intent: ReeIntent) -> set[str]:
-    """Workspace paths that runs legitimately (re)write.
-
-    These are excluded from drift: outputs landing inside the workspace must
-    not make every step's output part of the next step's input. The SBOM needs
-    no exemption — it is written to ``artifacts/``, outside the workspace.
-    """
-    paths: set[str] = set()
-    if intent.runtime:
-        paths.add(intent.runtime)
-    runnables: list[Runnable] = [intent.activation, *intent.experiments]
-    for runnable in runnables:
-        paths.update(runnable.output_paths)
-    return paths
-
-
-def check_workspace_drift(layout: ReeLayout, *, excluded_paths: set[str]) -> WorkspaceDrift:
-    """Does the workspace still equal ``materialize(snapshot + overlay)``?
-
-    Authored edits are mirrored into both overlay and workspace, so a changed
-    workspace file is *not* drift when its content matches what a fresh
-    materialization would produce (current overlay, else upstream). The
-    marker's stat table only short-circuits content comparison for files
-    untouched since materialization; stat-changed candidates are compared by
-    content against their expected origin.
-    """
-    if not layout.materialize_marker.is_file():
-        return WorkspaceDrift(status="unknown")
-    try:
-        marker = json.loads(layout.materialize_marker.read_text(encoding="utf-8"))
-        recorded: dict[str, list[int]] = dict(marker.get("files") or {})
-    except Exception:  # noqa: BLE001 — an unreadable marker means drift is unknown, which is a verdict, not a failure
-        return WorkspaceDrift(status="unknown")
-
-    current = stat_table(layout.workspace)
-    drifted: list[str] = []
-
-    def is_tracked(rel: str) -> bool:
-        return rel not in excluded_paths and not _is_control_name(rel)
-
-    def expected_file(rel: str) -> Path | None:
-        for base in (layout.overlay, layout.upstream):
-            candidate = base / rel
-            if candidate.is_file():
-                return candidate
-        return None
-
-    for rel in sorted(set(recorded) | set(current)):
-        if not is_tracked(rel):
-            continue
-        if recorded.get(rel) == current.get(rel):
-            continue  # untouched since materialization
-        expected = expected_file(rel)
-        actual = layout.workspace / rel
-        if not actual.is_file():
-            # Gone from the workspace: drift only if a re-materialization
-            # would restore it (it still has an origin in overlay/upstream).
-            if expected is not None:
-                drifted.append(rel)
-            continue
-        if expected is None:
-            drifted.append(rel)  # residue: no origin would recreate it
-            continue
-        if digest_file(actual) != digest_file(expected):
-            drifted.append(rel)
-
-    if not drifted:
-        return WorkspaceDrift(status="clean")
-    return WorkspaceDrift(
-        status="modified",
-        changed_paths=[ReePath(path) for path in drifted[:_DRIFT_PATHS_CAP]],
-        changed_path_count=len(drifted),
-    )
-
-
-def current_runtime_digest(layout: ReeLayout, runtime_path: str | None) -> str | None:
-    """Digest of the declared runtime artifact, cached by its stat facts.
-
-    The runtime tar is multi-gigabyte and the consistency report rides in the
-    workspace payload fetched on every page load, so re-hashing per request is
-    not an option. The cache is invalidated by the same (path, size, mtime)
-    facts the drift check trusts; cache I/O failures fall back to hashing.
-    """
-    if not runtime_path:
-        return None
-    path = layout.workspace / runtime_path
-    if not path.is_file():
-        return None
-    stat = path.stat()
-    key = {"path": runtime_path, "size": stat.st_size, "mtime_ns": stat.st_mtime_ns}
-    with suppress(Exception):
-        cached = json.loads(layout.digest_cache.read_text(encoding="utf-8"))
-        if {name: cached.get(name) for name in key} == key and cached.get("digest"):
-            return str(cached["digest"])
-    digest = digest_file(path)
-    with suppress(Exception):
-        write_json_atomic(layout.digest_cache, {**key, "digest": digest})
-    return digest
-
+from repo2ree_core.persistence.receipts import load_author_receipts
+from repo2ree_core.workspace.drift import current_runtime_digest
 
 # ================================================
 # Seal-time consistency report

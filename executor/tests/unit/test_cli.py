@@ -64,7 +64,7 @@ def test_init_ree_bootstraps_tree_and_metadata(ree_root: Path) -> None:
 
     layout = ReeLayout.in_workbench()
     assert layout.workspace.is_dir()
-    metadata = json.loads(layout.metadata.read_text())
+    metadata = json.loads(layout.sidecar.read_text())
     assert metadata["ree_id"] == "abc123"
     assert metadata["name"] == "demo"
     assert metadata["status"] == "draft"
@@ -77,22 +77,22 @@ def test_init_ree_bootstraps_tree_and_metadata(ree_root: Path) -> None:
 
 def test_init_ree_is_idempotent(initialized_ree: Path) -> None:
     layout = ReeLayout.in_workbench()
-    before = layout.metadata.read_text()
+    before = layout.sidecar.read_text()
 
     result = runner.invoke(cli, ["init-ree", "--ree-id", "abc123"])
     assert result.exit_code == 0
     assert json.loads(result.output)["status"] == "already_initialised"
-    assert layout.metadata.read_text() == before
+    assert layout.sidecar.read_text() == before
 
 
 def test_get_ree_before_init_exits_nonzero(ree_root: Path) -> None:
-    result = runner.invoke(cli, ["get-ree"])
+    result = runner.invoke(cli, ["get-ree-sidecar"])
     assert result.exit_code == 1
     assert json.loads(result.stderr) == {"error": "not initialised"}
 
 
 def test_get_ree_emits_metadata(initialized_ree: Path) -> None:
-    result = runner.invoke(cli, ["get-ree"])
+    result = runner.invoke(cli, ["get-ree-sidecar"])
     assert result.exit_code == 0
     assert json.loads(result.output)["ree_id"] == "abc123"
 
@@ -208,37 +208,53 @@ def test_execute_clears_cancel_marker_after_run(initialized_ree: Path) -> None:
 # ================================================
 
 
-def test_read_file_round_trips_bytes(initialized_ree: Path) -> None:
+def test_read_ree_file_round_trips_workspace_bytes(initialized_ree: Path) -> None:
     cmd = WriteFileCommand(args=WriteFileArgs(path="data.txt", content="payload\n"))
     assert runner.invoke(cli, ["execute", "--action", "-"], input=cmd.model_dump_json()).exit_code == 0
 
-    result = runner.invoke(cli, ["read-file", "--path", "data.txt"])
+    result = runner.invoke(cli, ["read-ree-file", "--path", "workspace/data.txt"])
     assert result.exit_code == 0
     assert result.stdout_bytes == b"payload\n"
 
 
-def test_read_file_missing_exits_nonzero(initialized_ree: Path) -> None:
-    result = runner.invoke(cli, ["read-file", "--path", "missing.txt"])
+def test_read_ree_file_reads_outside_workspace(initialized_ree: Path) -> None:
+    ReeLayout.in_workbench().manifest.write_bytes(b"manifest")
+
+    result = runner.invoke(cli, ["read-ree-file", "--path", "manifest.json"])
+
+    assert result.exit_code == 0
+    assert result.stdout_bytes == b"manifest"
+
+
+def test_read_ree_file_missing_exits_nonzero(initialized_ree: Path) -> None:
+    result = runner.invoke(cli, ["read-ree-file", "--path", "missing.txt"])
     assert result.exit_code == 1
     assert "not found" in json.loads(result.stderr)["error"]
 
 
-def test_get_workspace_reflects_workspace_files(initialized_ree: Path) -> None:
+def test_read_ree_file_rejects_escape(initialized_ree: Path) -> None:
+    result = runner.invoke(cli, ["read-ree-file", "--path", "../outside"])
+
+    assert result.exit_code == 1
+    assert json.loads(result.stderr)["error"] == "Invalid REE file path"
+
+
+def test_get_ree_document_reflects_workspace_files(initialized_ree: Path) -> None:
     cmd = WriteFileCommand(args=WriteFileArgs(path="app.py", content="print('hi')\n"))
     assert runner.invoke(cli, ["execute", "--action", "-"], input=cmd.model_dump_json()).exit_code == 0
 
-    result = runner.invoke(cli, ["get-workspace"])
+    result = runner.invoke(cli, ["get-ree-document"])
     assert result.exit_code == 0
     workspace = json.loads(result.output)
     assert workspace["ree_id"] == "abc123"
     assert any(f.get("path") == "app.py" for f in workspace["files"])
 
 
-def test_get_workspace_summary_omits_inline_file_content(initialized_ree: Path) -> None:
+def test_get_ree_document_summary_omits_inline_file_content(initialized_ree: Path) -> None:
     cmd = WriteFileCommand(args=WriteFileArgs(path="app.py", content="print('hi')\n"))
     assert runner.invoke(cli, ["execute", "--action", "-"], input=cmd.model_dump_json()).exit_code == 0
 
-    result = runner.invoke(cli, ["get-workspace", "--summary"])
+    result = runner.invoke(cli, ["get-ree-document", "--summary"])
 
     assert result.exit_code == 0
     workspace = json.loads(result.output)

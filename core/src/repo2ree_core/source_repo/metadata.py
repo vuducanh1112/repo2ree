@@ -7,14 +7,21 @@ state and the enumerated workspace file inventory.
 from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import Protocol
 
 from pydantic import BaseModel
 
 from repo2ree_core.domain.ree.intent import ReeIntent, SourceType
 from repo2ree_core.domain.ree.state import ReeLifecycleState, SourceAcquiredBy
-from repo2ree_core.persistence.workspace.inventory import WorkspaceFile
 
 _VCS_SUFFIX = ".git"
+
+
+class SizedFile(Protocol):
+    """Structural input needed for source-size derivation."""
+
+    @property
+    def size(self) -> int: ...
 
 
 # ================================================
@@ -58,7 +65,7 @@ def repo_name_from_origin_url(origin_url: str) -> str:
     return name
 
 
-def total_source_size(files: Iterable[WorkspaceFile]) -> int | None:
+def total_source_size(files: Iterable[SizedFile]) -> int | None:
     """Sum the sizes of the enumerated files, or ``None`` for an empty inventory."""
     sizes = [file.size for file in files]
     return sum(sizes) if sizes else None
@@ -86,7 +93,7 @@ def format_source_size(num_bytes: int) -> str:
 def derive_source_repo_metadata(
     intent: ReeIntent,
     state: ReeLifecycleState,
-    files: Iterable[WorkspaceFile],
+    files: Iterable[SizedFile],
 ) -> SourceRepoMetadata:
     """Fold intent, state and the file inventory into one source record."""
     from_upload = state.source_acquired_by == "upload"
