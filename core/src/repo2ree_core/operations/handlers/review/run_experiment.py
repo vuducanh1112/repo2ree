@@ -15,27 +15,28 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.digests import Digest, digest_file_if_exists, digest_output_paths
-from repo2ree_core.domain.experiment import Experiment
-from repo2ree_core.domain.primitives import ScriptPath, WorkspacePath
-from repo2ree_core.domain.ree.intent import ReeIntent
-from repo2ree_core.domain.ree.receipt import RunExperimentReceipt, experiment_step_key, receipt_envelope
+from repo2ree_core.domain.primitives import ReePath, WorkspacePath
+from repo2ree_core.domain.ree.model import ReeDefinition
+from repo2ree_core.domain.ree.receipt import RunExperimentReceipt
 from repo2ree_core.evidence.review.comparison import compare_experiment_results
 from repo2ree_core.evidence.review.models import (
     EvidenceBasis,
     ExperimentComparison,
+    ReviewExperimentReceipt,
     ReviewRecord,
+    review_receipt_envelope,
     with_experiment,
 )
 from repo2ree_core.evidence.review.store import write_review_experiment_evidence
-from repo2ree_core.execution.experiment.resolve import resolve_experiment_runnable
+from repo2ree_core.execution.experiment.spec import RunnableSpec
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.operations.steps.review import (
     CertifiedRuntime,
     ReviewRunnableStep,
     open_review_run,
 )
+from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_core.persistence.receipts import load_author_receipts
 from repo2ree_protocol.command import ReviewRunExperimentArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
@@ -46,7 +47,7 @@ class ReviewRunExperimentOutputs(BaseModel):
 
     review_id: str
     experiment_name: str
-    receipt: RunExperimentReceipt
+    receipt: ReviewExperimentReceipt
     comparison: ExperimentComparison
 
 
@@ -64,7 +65,7 @@ def _admit(record: ReviewRecord, _certified: CertifiedRuntime) -> str | None:
     return None
 
 
-def _step(experiment_name: str) -> ReviewRunnableStep[Experiment]:
+def _step(experiment_name: str) -> ReviewRunnableStep:
     """The descriptor for reproducing one named experiment.
 
     Built per call rather than shared as a constant, because unlike activation
@@ -72,9 +73,18 @@ def _step(experiment_name: str) -> ReviewRunnableStep[Experiment]:
     resolves against.
     """
 
-    def select(intent: ReeIntent) -> tuple[Experiment, str]:
-        experiment = resolve_experiment_runnable(intent, experiment_name)
-        return experiment, experiment.name
+    def select(definition: ReeDefinition) -> tuple[RunnableSpec, str]:
+        experiment = next((item for item in definition.experiments if item.name == experiment_name), None)
+        if experiment is None:
+            raise ValueError(f"no experiment named {experiment_name!r} is declared")
+        return (
+            RunnableSpec(
+                run_script=str(experiment.run_script_path),
+                verify_script=str(experiment.verify_script_path or ""),
+                output_paths=tuple(str(path) for path in experiment.output_paths),
+            ),
+            experiment.name,
+        )
 
     return ReviewRunnableStep(
         step="experiments",
@@ -117,11 +127,12 @@ def handle_review_run_experiment(
 
     comparison = _certify(
         opened.ree_layout,
-        experiment=experiment,
+        experiment_name=opened.label,
+        runnable=experiment,
         basis=certified.basis,
         run_exit_code=outcome.run_outputs.exit_code,
         observed_verify_exit_code=outcome.run_outputs.verify_exit_code,
-        observed_output_digest=digest_output_paths(review_layout.workspace, experiment.output_paths),
+        observed_output_digest=digest_output_paths(review_layout.workspace, list(experiment.output_paths)),
         runtime_digest=certified.runtime_digest,
         # The criterion as it stood in the workspace it ran in. Certification
         # compares this with the author receipt before granting a verdict.
@@ -129,17 +140,23 @@ def handle_review_run_experiment(
     )
 
     timing = opened.timer.finish()
-    receipt = RunExperimentReceipt(
-        **receipt_envelope(run_id, timing, outcome.status),
-        experiment_name=experiment.name,
-        run_script_path=ScriptPath(experiment.run_script),
+    if run_script_digest is None:
+        return opened.step.stop("failed", "the experiment run script disappeared after it ran")
+    receipt = ReviewExperimentReceipt(
+        **review_receipt_envelope(
+            run_id,
+            timing,
+            "succeeded" if outcome.status == "succeeded" else "failed",
+        ),
+        experiment_name=opened.label,
+        run_script_path=ReePath(experiment.run_script),
         run_script_digest=run_script_digest,
         run_exit_code=outcome.run_outputs.exit_code,
-        verify_script_path=ScriptPath(experiment.verify_script) if experiment.verify_script else None,
+        verify_script_path=ReePath(experiment.verify_script) if experiment.verify_script else None,
         verify_script_digest=verify_script_digest,
         verify_exit_code=outcome.run_outputs.verify_exit_code,
         runtime_path=WorkspacePath(certified.runtime_path) if certified.runtime_path else None,
-        declared_runtime_digest=Digest(certified.runtime_digest) if certified.runtime_digest else None,
+        runtime_digest=Digest(certified.runtime_digest) if certified.runtime_digest else None,
         produced_output_digest=Digest(comparison.observed_output_digest) if comparison.observed_output_digest else None,
     )
     write_review_experiment_evidence(review_layout, receipt, comparison)
@@ -158,7 +175,7 @@ def handle_review_run_experiment(
 
     outputs = ReviewRunExperimentOutputs(
         review_id=args.review_id,
-        experiment_name=experiment.name,
+        experiment_name=opened.label,
         receipt=receipt,
         comparison=comparison,
     )
@@ -168,7 +185,8 @@ def handle_review_run_experiment(
 def _certify(
     ree_layout: ReeLayout,
     *,
-    experiment: Experiment,
+    experiment_name: str,
+    runnable: RunnableSpec,
     basis: EvidenceBasis,
     run_exit_code: int | None,
     observed_verify_exit_code: int | None,
@@ -184,7 +202,7 @@ def _certify(
     ``expected_verify_exit_code`` unset, which the comparison reports as
     inconclusive rather than as agreement.
     """
-    author = load_author_receipts(ree_layout).get(experiment_step_key(experiment.name))
+    author = ReeDirectory(ree_layout).read_ree().subject.receipts.experiments.get(experiment_name)
     expected_verify_exit_code = None
     expected_verify_script_digest = None
     expected_output_digest = None
@@ -194,9 +212,9 @@ def _certify(
         expected_output_digest = author.produced_output_digest
 
     return compare_experiment_results(
-        experiment_name=experiment.name,
+        experiment_name=experiment_name,
         basis=basis,
-        verify_script_path=experiment.verify_script,
+        verify_script_path=runnable.verify_script,
         expected_verify_script_digest=expected_verify_script_digest,
         verify_script_digest=verify_script_digest,
         expected_verify_exit_code=expected_verify_exit_code,
@@ -209,24 +227,8 @@ def _certify(
 
 
 def _author_verify_exit_code(author: RunExperimentReceipt) -> int | None:
-    """What the author's own verify script exited, including on older receipts.
-
-    ``verify_exit_code`` post-dates the receipt schema, so REEs authored before
-    it record the verdict only in ``status``. That is not a gap: the runnable
-    runner sets ``succeeded`` exactly when the run *and* the verify script both
-    passed (see :func:`repo2ree_core.execution.experiment.run.run_runnable`), and the
-    author receipt store only ever selects successful runs — so a selected
-    receipt naming a verify script is the author asserting it exited 0.
-
-    Reading only the literal field would make every REE authored before it
-    inconclusive on its most important step, which would report a missing
-    schema field as a missing scientific claim.
-    """
-    if author.verify_exit_code is not None:
-        return author.verify_exit_code
-    if author.status == "succeeded" and author.verify_script_path:
-        return 0
-    return None
+    """The successful author receipt's recorded verification exit code."""
+    return author.verify_exit_code
 
 
 def _log_verdict(comparison: ExperimentComparison, *, log: LogSink) -> None:

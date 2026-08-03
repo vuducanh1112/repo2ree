@@ -26,8 +26,8 @@ does, because a wrong guess that runs is worse than no answer.
 
 No. It is a disclosure. It should show evidence and risks: what is pinned, what
 is missing, what can drift, and what a reviewer should know before trying to
-run the artifact. The R0-R5 REE evidence scorecard is a separate cumulative
-summary derived from lifecycle evidence, not the Repro Label's source assessment.
+run the artifact. The REE assessment separately tracks freshness and payload
+state across lifecycle evidence.
 
 ## Does a passing verify script mean the result was reproduced?
 

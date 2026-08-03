@@ -1,8 +1,6 @@
 import { PAGE } from "@core/app-shell/pages";
 import { activeNode } from "@core/canvas/canvasNodes";
 import { addExperiment } from "@core/ree/experimentOps";
-import { staleStepKeys } from "@core/ree-steps/sealConsistency";
-import { useScorecardRunSync } from "@shell/data/scorecard/queries";
 import { useState } from "react";
 import { Ic } from "../shared/components/Icon";
 import { Toast } from "../shared/components/Toast";
@@ -35,7 +33,6 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
     reeIntent,
     ree,
     workspaceRemote,
-    consistency,
     stepRuns,
     uiChrome,
     evaluation,
@@ -46,11 +43,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
   } = useAppShell();
   const { badges } = stepRuns;
   const { toast } = uiChrome;
-  // Refresh the scorecard whenever a run lands, from the shell's single
-  // always-mounted vantage point (see the hook's contract).
-  useScorecardRunSync();
   const page = uiChrome.page;
-  const staleNodeKeys = staleStepKeys(consistency);
   // The constellation (pod hub) is the home view. Seal and source acquisition
   // live inside the hub as compact floating panels; every other page docks
   // beside the pod.
@@ -155,7 +148,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
             ree={ree}
             evaluation={evaluation}
             badges={badges}
-            staleNodeKeys={staleNodeKeys}
+            staleNodeKeys={new Set<string>()}
             provisioned={provisioned}
             dimmed={dockOpen}
             onNavigate={openPage}
@@ -219,7 +212,6 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
           <SealHubPanel
             ree={ree}
             badges={badges}
-            consistency={consistency}
             locked={uiChrome.locked}
             sealRunning={sealRunning}
             sealLog={sealLog}

@@ -1,121 +1,28 @@
-"""Pure construction of the published REE manifest.
-
-The manifest is the JSON payload written to ``manifest.json`` and embedded
-into the downloadable bundle as ``ree/ree.json``. It is computed from a
-:class:`~repo2ree_core.domain.ree.intent.ReeIntent` and a
-:class:`~repo2ree_core.domain.ree.state.ReeLifecycleState` together with the
-REE record and current file inventories. This module performs no I/O.
-"""
+"""Serialization of the portable REE manifest used locally and in bundles."""
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
-from typing import Any, Protocol
+import json
+from collections.abc import Mapping
+from typing import Any
 
-from repo2ree_core.domain.ree.intent import REE_MANIFEST_VERSION, ReeIntent
-from repo2ree_core.domain.ree.state import ReeLifecycleState
-from repo2ree_core.persistence.record import ReeRecord
-
-
-class FileInventoryEntry(Protocol):
-    @property
-    def path(self) -> str: ...
-
-    @property
-    def kind(self) -> str: ...
-
-    @property
-    def size(self) -> int: ...
+from repo2ree_core.domain.ree.model import Ree
+from repo2ree_core.domain.ree.transitions import validate_seal
 
 
-_STATE_MANIFEST_EXCLUDE = {"detected_dependencies", "uploaded_archive", "source_resolved_commit"}
+def build_manifest_payload(ree: Ree) -> dict[str, Any]:
+    """Serialize exactly the aggregate persisted in ``.ree.json``."""
+    validate_seal(ree)
+    return ree.model_dump(mode="json", exclude_none=True)
 
 
-def build_manifest_payload(
-    intent: ReeIntent,
-    state: ReeLifecycleState,
-    *,
-    ree_id: str,
-    consistency: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    """Build the published manifest from ``intent`` and ``state``.
-
-    ``consistency`` is the seal-time per-step freshness report (recorded
-    receipts vs. the tree being sealed); present only on sealed manifests.
-    """
-    payload = {
-        **intent.model_dump(),
-        **state.model_dump(mode="json", exclude=_STATE_MANIFEST_EXCLUDE),
-        "ree_version": REE_MANIFEST_VERSION,
-        "name": intent.name or f"ree-{ree_id[:8]}",
-    }
-    if consistency is not None:
-        payload["consistency"] = consistency
-    return payload
+def split_manifest_payload(payload: Mapping[str, Any]) -> Ree:
+    """Parse the one supported REE serialization generation."""
+    ree = Ree.model_validate(dict(payload))
+    validate_seal(ree)
+    return ree
 
 
-def split_manifest_payload(payload: Mapping[str, Any]) -> tuple[ReeIntent, ReeLifecycleState]:
-    """Recover the intent and state a published manifest was built from.
-
-    The inverse of :func:`build_manifest_payload`, used when an REE is loaded
-    back from a downloaded bundle. Manifest-only keys (``ree_version``, the
-    seal-time ``consistency`` report, and the draft projection's extras) are
-    dropped, and the state fields the manifest never carries
-    (``_STATE_MANIFEST_EXCLUDE``) fall back to their defaults — they are
-    authoring detail, not part of the published record.
-    """
-    version = payload.get("ree_version")
-    if version != REE_MANIFEST_VERSION:
-        raise ValueError(f"unsupported manifest version: {version!r} (expected {REE_MANIFEST_VERSION})")
-    intent = ReeIntent.model_validate(_pick(payload, ReeIntent))
-    state = ReeLifecycleState.model_validate(_pick(payload, ReeLifecycleState))
-    return intent, state
-
-
-def _pick(payload: Mapping[str, Any], model: type[ReeIntent | ReeLifecycleState]) -> dict[str, Any]:
-    """The subset of ``payload`` that ``model`` declares, keyed by field name."""
-    return {key: value for key, value in payload.items() if key in model.model_fields}
-
-
-def build_draft_manifest_payload(
-    record: ReeRecord,
-    *,
-    workspace_files: Sequence[FileInventoryEntry],
-    ree_files: Sequence[FileInventoryEntry],
-) -> dict[str, Any]:
-    """Build the live, read-only manifest projection for an editable REE.
-
-    Unlike the sealed manifest, this payload is not a source of truth
-    and is not written to disk. It gives clients a stable overview assembled
-    from the current record and file inventory.
-    """
-    manifest = build_manifest_payload(record.ree_intent, record.ree_state, ree_id=record.ree_id)
-
-    return {
-        **manifest,
-        "manifest_state": "draft",
-        "ree_id": record.ree_id,
-        "status": record.status,
-        "created_at": record.created_at,
-        "updated_at": record.updated_at,
-        "file_inventory": {
-            "workspace": [_file_inventory_entry(file) for file in workspace_files],
-            "overlay": [_file_inventory_entry(file) for file in _files_under(ree_files, "overlay")],
-            "artifacts": [_file_inventory_entry(file) for file in _files_under(ree_files, "artifacts")],
-        },
-    }
-
-
-def _files_under(files: Sequence[FileInventoryEntry], top_level_dir: str) -> list[FileInventoryEntry]:
-    prefix = f"{top_level_dir}/"
-    return [file for file in files if file.path.startswith(prefix)]
-
-
-def _file_inventory_entry(file: FileInventoryEntry) -> dict[str, Any]:
-    """One inventory row: what the file is and where, never its content."""
-    entry: dict[str, Any] = {"path": file.path, "kind": file.kind}
-    tag = getattr(file, "tag", None)
-    if tag is not None:
-        entry["tag"] = tag
-    entry["size"] = file.size
-    return entry
+def manifest_bytes(ree: Ree) -> bytes:
+    """Canonical bytes embedded at ``ree/ree.json``."""
+    return json.dumps(build_manifest_payload(ree), sort_keys=True, separators=(",", ":")).encode("utf-8")

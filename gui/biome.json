@@ -153,8 +153,7 @@
         "src/core/workspace/**",
         "src/core/evaluate/**",
         "src/core/hbom/**",
-        "src/core/receipts/**",
-        "src/core/scorecard/**"
+        "src/core/receipts/**"
       ],
       "linter": {
         "rules": {

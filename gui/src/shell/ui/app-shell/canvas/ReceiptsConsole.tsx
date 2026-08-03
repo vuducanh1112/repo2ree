@@ -26,14 +26,11 @@ export function ReceiptsConsole({ provisioned }: ReceiptsConsoleProps) {
   const query = useAuthorReceiptsQuery({ enabled: provisioned });
   const receipts = useMemo(() => parseAuthorReceipts(query.data), [query.data]);
 
-  const staleCount = receipts.filter((receipt) => receipt.freshness !== "fresh").length;
   const subtitle = !provisioned
     ? "awaiting workbench"
     : receipts.length === 0
       ? "no evidence recorded"
-      : `${receipts.length} receipt${receipts.length === 1 ? "" : "s"}${
-          staleCount > 0 ? ` · ${staleCount} stale` : ""
-        }`;
+      : `${receipts.length} receipt${receipts.length === 1 ? "" : "s"}`;
 
   return (
     <HudConsole

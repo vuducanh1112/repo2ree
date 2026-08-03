@@ -31,10 +31,11 @@ from repo2ree_api.contracts import (
 )
 from repo2ree_api.control.run_orchestration import run_summary
 from repo2ree_api.deps import ree_index, workbench_manager
-from repo2ree_api.ree_index import entry_from_manifest
+from repo2ree_api.ree_index import entry_from_ree
 from repo2ree_api.workbench.archives import archive_download_filename, spool_chunks
 from repo2ree_api.workbench.commands import dispatch_or_fail, ree_command_span, require_handle
 from repo2ree_api.workbench.uploads import mint_upload_token, stage_upload_bytes
+from repo2ree_core.domain.ree.model import Ree
 from repo2ree_protocol import LoadReeBundleCommand, SealReeCommand
 from repo2ree_protocol.command import LoadReeBundleArgs, SealReeArgs
 
@@ -144,7 +145,7 @@ def _record_in_ree_index(ree_id: str, document: Mapping[str, Any]) -> None:
     before anyone notices — hence the error-level log.
     """
     try:
-        ree_index.record_seal(entry_from_manifest(document.get("draft_manifest") or {}))
+        ree_index.record_seal(entry_from_ree(Ree.model_validate(document["ree"])))
     except Exception:  # noqa: BLE001 — the seal itself succeeded; indexing must not undo that
         _log.exception("REE %s sealed but could not be recorded in the index; re-seal to repair", ree_id)
 

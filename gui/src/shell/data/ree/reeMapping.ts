@@ -1,45 +1,26 @@
 import type { ReeFile } from "@core/ree/ReeTypes";
-import type { ConsistencyReport } from "@core/ree-steps/sealConsistency";
 import type { FileTreeNode } from "@core/workspace/FileTree";
 import type { ReeProject, SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
-import type {
-  ConsistencyReportWire,
-  ReeDocument,
-  SourceRepoMetadataWire,
-} from "../../infra/api/apiTypes";
+import type { ReeDocument } from "../../infra/api/apiTypes";
 import { mapReeDetailToReeSlices } from "./mapping";
 
 // Wire → domain: the API speaks snake_case, the GUI camelCase.
-function mapSourceRepo(
-  wire: SourceRepoMetadataWire | null | undefined,
-): SourceRepoMetadata | undefined {
-  if (!wire) {
+function mapSourceRepo(ree: ReeDocument): SourceRepoMetadata | undefined {
+  const definition = ree.ree.subject?.definition;
+  const source = definition?.source;
+  if (!source) {
     return undefined;
   }
+  const receipt = ree.ree.subject?.receipts?.source;
+  const origin = source.origin_url ?? "";
   return {
-    name: wire.name,
-    origin: wire.origin,
-    acquiredBy: wire.acquired_by,
-    sourceType: wire.source_type,
-    swhid: wire.swhid,
-    sizeBytes: wire.size_bytes ?? null,
-    sizeLabel: wire.size_label ?? null,
-  };
-}
-
-function mapConsistency(wire: ConsistencyReportWire | undefined): ConsistencyReport | undefined {
-  if (!wire) {
-    return undefined;
-  }
-  return {
-    steps: (wire.steps || []).map((step) => ({
-      step: step.step,
-      status: step.status,
-      runId: step.run_id ?? undefined,
-      recordedAt: step.recorded_at ?? undefined,
-      staleInputs: step.stale_inputs,
-      workspaceDrift: step.workspace_drift ?? undefined,
-    })),
+    name: definition?.name || origin,
+    origin,
+    acquiredBy: receipt ? "authoring" : "",
+    sourceType: source.source_type,
+    swhid: receipt?.observed_swhid ?? "",
+    sizeBytes: null,
+    sizeLabel: null,
   };
 }
 
@@ -120,9 +101,7 @@ export function mapReeDetailToReeProject(
     files,
     reeFiles,
     ree: reeState,
-    draftManifest: ree.draft_manifest,
-    sourceRepo: mapSourceRepo(ree.source_repo),
-    consistency: mapConsistency(ree.consistency),
+    sourceRepo: mapSourceRepo(ree),
     workbenchImage: ree.workbench_image ?? undefined,
   };
 }

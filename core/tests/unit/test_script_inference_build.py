@@ -14,7 +14,8 @@ from repo2ree_core.authoring.script_inference import (
     infer_scripts,
 )
 from repo2ree_core.authoring.script_inference.models import LogicalRootObservation
-from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.primitives import WorkspacePath
+from repo2ree_core.domain.ree.model import ReeDefinition, RuntimeDefinition
 
 
 def _tree(root: Path, files: dict[str, str]) -> Path:
@@ -26,8 +27,14 @@ def _tree(root: Path, files: dict[str, str]) -> Path:
 
 
 def _build(root: Path, **intent_kwargs: object) -> TargetInferenceResult:
-    intent = ReeIntent.model_validate(intent_kwargs) if intent_kwargs else None
-    report = infer_scripts(root, [ScriptTargetSelector(kind="build")], intent=intent)
+    runtime = intent_kwargs.pop("runtime", None)
+    name = str(intent_kwargs.pop("name", ""))
+    assert not intent_kwargs
+    definition = ReeDefinition(
+        name=name,
+        runtime=RuntimeDefinition(runtime_path=WorkspacePath(str(runtime))) if runtime else None,
+    )
+    report = infer_scripts(root, [ScriptTargetSelector(kind="build")], definition=definition)
     return report.results[0]
 
 
@@ -95,7 +102,7 @@ def test_no_dockerfile_is_not_inferred_with_full_trace(tmp_path: Path) -> None:
 
 
 def test_runtime_artifact_uses_repo2ree_dir_ignoring_declared_runtime(tmp_path: Path) -> None:
-    # ReeIntent.runtime usually names an already-built artifact the author
+    # ReeDefinition.runtime usually names an already-built artifact the author
     # supplied, so a freshly generated build ignores it and writes to the
     # dedicated .repo2ree/ control directory.
     _tree(tmp_path, {"Dockerfile": "FROM x\n"})

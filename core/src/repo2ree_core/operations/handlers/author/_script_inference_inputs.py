@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import BinaryIO
 
 from repo2ree_core.authoring.script_inference.runtime_inputs import ArtifactFile, RuntimeInputs
-from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.model import ReeDefinition
 from repo2ree_core.persistence.layout import ReeLayout
 
 _DIGEST_CHUNK = 1024 * 1024
@@ -87,10 +87,10 @@ class LayoutArtifactAccessor:
         return digest
 
 
-def build_runtime_inputs(layout: ReeLayout, intent: ReeIntent | None) -> RuntimeInputs:
+def build_runtime_inputs(layout: ReeLayout, definition: ReeDefinition | None) -> RuntimeInputs:
     """Assemble the authored-state inputs for one inference request."""
     return RuntimeInputs(
-        declared_runtime_path=(intent.runtime if intent else None),
-        experiments=list(intent.experiments) if intent else [],
+        declared_runtime_path=(str(definition.runtime.runtime_path) if definition and definition.runtime else None),
+        experiments=list(definition.experiments) if definition else [],
         accessor=LayoutArtifactAccessor(layout),
     )

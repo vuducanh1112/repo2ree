@@ -35,7 +35,6 @@ from repo2ree_protocol import tracing
 from repo2ree_protocol.tracing import (
     CommandSpanAttrs,
     ExecSpanAttrs,
-    ReceiptInputAttrs,
     ScriptSpanAttrs,
     WorkbenchSpanAttrs,
     _anyvalue,
@@ -179,7 +178,6 @@ def test_typed_carriers_own_the_key_vocabulary() -> None:
     ExecSpanAttrs(argv="sh build.sh", cwd="/ree/workspace").apply(protocol_span)
     ScriptSpanAttrs(path="build.sh").apply(protocol_span)
     WorkbenchSpanAttrs(container="wb-1", image="repo2ree:dev", agent_id="agent-1").apply(protocol_span)
-    ReceiptInputAttrs(snapshot_digest="sha256:abc", drift_status="clean").apply(protocol_span)
     record_exit_code(protocol_span, 0)
 
     assert span.attributes == {
@@ -189,8 +187,6 @@ def test_typed_carriers_own_the_key_vocabulary() -> None:
         "repo2ree.workbench.container": "wb-1",
         "repo2ree.workbench.image": "repo2ree:dev",
         "repo2ree.agent_id": "agent-1",
-        "repo2ree.receipt_input.snapshot_digest": "sha256:abc",
-        "repo2ree.receipt_input.drift.status": "clean",
         "repo2ree.exit_code": 0,
     }
 

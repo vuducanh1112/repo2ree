@@ -354,7 +354,7 @@ The package split is now largely real:
   module must declare its tier), and independence contracts holding the author and
   review sides apart in both `core.operations.handlers` and `api`.
 - **Still rough:** `api` imports `core` domain and evidence *types* directly
-  (`ReeIntent`, `ReviewRecord`, `ReproducibilityScoreCard`, the step graph) rather
+  (`Ree`, `ReviewRecord`, aggregate assessments, the step graph) rather
   than through `protocol`, and owns hosted UX concerns directly.
 - **Missing:** the user-facing host `repo2ree` supervisor CLI does not exist yet.
 

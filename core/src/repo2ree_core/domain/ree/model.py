@@ -1,183 +1,299 @@
-"""The canonical domain representation of a Reusable Execution Environment.
-
-Open this module to answer "what is an REE?". Persistence is deliberately
-elsewhere: a repository hydrates this model from the record, authored tree,
-receipt ledger, and seal. Pure functions in ``transitions``,
-``assessment``, and ``queries`` interpret and transform these values.
-
-The model separates four kinds of truth:
-
-* ``authored`` — the definition and files an author may change;
-* ``evidence`` — immutable receipts plus current durable lifecycle facts;
-* ``seal`` — the immutable facts of one seal, absent until the REE is sealed;
-* ``assessment`` — capabilities derived from authored inputs and evidence.
-
-``ReeLifecycleState`` contains durable facts produced by operations. It is not a second
-author-editable model and handlers must not transition it directly.
-"""
+"""The portable REE aggregate and its derived assessment vocabulary."""
 
 from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from repo2ree_core.domain.experiment import Activation
-from repo2ree_core.domain.primitives import (
-    ArtifactPath,
-    Digest,
-    GitRevision,
-    ReeId,
-    ReePath,
-    RunId,
-    Swhid,
-    UtcInstant,
-    WorkspacePath,
+from repo2ree_core.digests import digest_json
+from repo2ree_core.domain.hbom import HBOM
+from repo2ree_core.domain.primitives import Digest, ReePath, RunId, SourceType, UtcInstant, WorkspacePath
+from repo2ree_core.domain.ree.receipt import (
+    AcquireSourceReceipt,
+    BuildRuntimeReceipt,
+    CrossCheckSbomReceipt,
+    EvaluateReproducibilityReceipt,
+    GenerateSbomReceipt,
+    ObserveHardwareReceipt,
+    RunExperimentReceipt,
+    TestActivationReceipt,
 )
-from repo2ree_core.domain.ree.intent import ReeIntent, SourceType
-from repo2ree_core.domain.ree.receipt import RunReceipt, receipt_step_key
-from repo2ree_core.domain.ree.state import ReeLifecycleState
+from repo2ree_core.reserved_paths import (
+    RESERVED_ACTIVATION_SCRIPT,
+    RESERVED_ACTIVATION_VERIFY_SCRIPT,
+    RESERVED_BUILD_SCRIPT,
+    experiment_run_script_path,
+    experiment_slug,
+    experiment_verify_script_path,
+)
+
+CURRENT_SCHEMA_VERSION: Literal[1] = 1
 
 
 class _DomainModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
-# ================================================
-# Identity and authored definition
-# ================================================
+class Contributor(_DomainModel):
+    identifier: str = ""
+    name: str = ""
+    affiliation_name: str = ""
+    affiliation_identifier: str = ""
 
 
-class ReeIdentity(_DomainModel):
-    ree_id: ReeId
-    created_at: UtcInstant
-    updated_at: UtcInstant
+class ReeCatalogMetadata(_DomainModel):
+    description: str = ""
+    version: str = ""
+    website: str = ""
+    keywords: tuple[str, ...] = ()
+    contributors: tuple[Contributor, ...] = ()
+    corresponding_author_identifier: str | None = None
 
 
-class AuthoredFile(_DomainModel):
-    """Content identity of one file in the authoritative overlay tree."""
+class SourceDefinition(_DomainModel):
+    origin_url: str | None = None
+    source_type: SourceType
+    requested_ref: str | None = None
 
+    @model_validator(mode="after")
+    def _complete_source(self) -> SourceDefinition:
+        if not self.source_type:
+            raise ValueError("a present source definition requires a source type")
+        return self
+
+
+class BuildRuntimeDefinition(_DomainModel):
+    build_runtime_script_path: ReePath = ReePath(RESERVED_BUILD_SCRIPT)
+    build_runtime_script_digest: Digest
+    build_runtime_script_size: int = Field(ge=0)
+
+    @field_validator("build_runtime_script_path")
+    @classmethod
+    def _fixed_path(cls, value: ReePath) -> ReePath:
+        if value != RESERVED_BUILD_SCRIPT:
+            raise ValueError(f"build runtime script path must be {RESERVED_BUILD_SCRIPT!r}")
+        return value
+
+
+class RuntimeDefinition(_DomainModel):
+    runtime_path: WorkspacePath
+    expected_runtime_digest: Digest | None = None
+
+
+class TestActivationDefinition(_DomainModel):
+    run_script_path: ReePath = ReePath(RESERVED_ACTIVATION_SCRIPT)
+    run_script_digest: Digest
+    run_script_size: int = Field(ge=0)
+    verify_script_path: ReePath | None = None
+    verify_script_digest: Digest | None = None
+    verify_script_size: int | None = Field(default=None, ge=0)
+
+    @model_validator(mode="after")
+    def _complete_scripts(self) -> TestActivationDefinition:
+        if self.run_script_path != RESERVED_ACTIVATION_SCRIPT:
+            raise ValueError(f"activation script path must be {RESERVED_ACTIVATION_SCRIPT!r}")
+        verification = (self.verify_script_path, self.verify_script_digest, self.verify_script_size)
+        if any(item is not None for item in verification) and not all(item is not None for item in verification):
+            raise ValueError("activation verification path, digest, and size must be present together")
+        if self.verify_script_path is not None and self.verify_script_path != RESERVED_ACTIVATION_VERIFY_SCRIPT:
+            raise ValueError(f"activation verification path must be {RESERVED_ACTIVATION_VERIFY_SCRIPT!r}")
+        return self
+
+
+class ExperimentDefinition(_DomainModel):
+    name: str = Field(min_length=1)
+    run_script_path: ReePath
+    run_script_digest: Digest
+    run_script_size: int = Field(ge=0)
+    verify_script_path: ReePath | None = None
+    verify_script_digest: Digest | None = None
+    verify_script_size: int | None = Field(default=None, ge=0)
+    output_paths: tuple[WorkspacePath, ...] = ()
+
+    @model_validator(mode="after")
+    def _conventional_paths(self) -> ExperimentDefinition:
+        if self.run_script_path != experiment_run_script_path(self.name):
+            raise ValueError("experiment run script path must be derived from its name")
+        verification = (self.verify_script_path, self.verify_script_digest, self.verify_script_size)
+        if any(item is not None for item in verification) and not all(item is not None for item in verification):
+            raise ValueError("experiment verification path, digest, and size must be present together")
+        if self.verify_script_path is not None and self.verify_script_path != experiment_verify_script_path(self.name):
+            raise ValueError("experiment verification script path must be derived from its name")
+        if len(self.output_paths) != len(set(self.output_paths)):
+            raise ValueError("experiment output paths must be unique")
+        return self
+
+
+class HardwareDefinition(HBOM):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+
+class ReeDefinition(_DomainModel):
+    name: str = ""
+    catalog: ReeCatalogMetadata = Field(default_factory=ReeCatalogMetadata)
+    source: SourceDefinition | None = None
+    build_runtime: BuildRuntimeDefinition | None = None
+    runtime: RuntimeDefinition | None = None
+    test_activation: TestActivationDefinition | None = None
+    hardware: HardwareDefinition | None = None
+    experiments: tuple[ExperimentDefinition, ...] = ()
+
+    @model_validator(mode="after")
+    def _unique_experiments(self) -> ReeDefinition:
+        names = [experiment.name for experiment in self.experiments]
+        slugs = [experiment_slug(name) for name in names]
+        if len(names) != len(set(names)):
+            raise ValueError("experiment names must be unique")
+        if len(slugs) != len(set(slugs)):
+            raise ValueError("experiment slugs must be unique")
+        return self
+
+
+class ReeReceipts(_DomainModel):
+    source: AcquireSourceReceipt | None = None
+    evaluation: EvaluateReproducibilityReceipt | None = None
+    hardware_observation: ObserveHardwareReceipt | None = None
+    build: BuildRuntimeReceipt | None = None
+    sbom: GenerateSbomReceipt | None = None
+    sbom_cross_check: CrossCheckSbomReceipt | None = None
+    test_activation: TestActivationReceipt | None = None
+    experiments: dict[str, RunExperimentReceipt] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _experiment_keys_match(self) -> ReeReceipts:
+        for name, receipt in self.experiments.items():
+            if name != receipt.experiment_name:
+                raise ValueError("experiment receipt key must equal receipt experiment_name")
+        return self
+
+
+class BundleEntry(_DomainModel):
     path: ReePath
     digest: Digest
     size: int = Field(ge=0)
 
 
-class SourceDefinition(_DomainModel):
-    origin_url: str = ""
-    source_type: SourceType = ""
-    revision: GitRevision | None = None
-    swhid: Swhid | None = None
+class BundleContents(_DomainModel):
+    """Inventory bound into a sealed bundle; persisted drafts keep this empty."""
 
-
-class RuntimeDefinition(_DomainModel):
-    artifact_path: WorkspacePath | None = None
-    activation: Activation = Field(default_factory=Activation)
-    sbom_path: ArtifactPath | None = None
-
-
-class ExperimentScripts(_DomainModel):
-    experiment_name: str
-    run: AuthoredFile | None = None
-    verify: AuthoredFile | None = None
-
-
-class ReeScripts(_DomainModel):
-    """The authored files that have domain meaning as executable recipe."""
-
-    build_runtime: AuthoredFile | None = None
-    activation_run: AuthoredFile | None = None
-    activation_verify: AuthoredFile | None = None
-    experiments: tuple[ExperimentScripts, ...] = ()
-    other: tuple[AuthoredFile, ...] = ()
-
-
-class ReeDefinition(_DomainModel):
-    """Everything in the current author-controlled REE head.
-
-    ``intent`` remains the persisted compatibility schema while it is split
-    into smaller authored value types. Pure projections expose its domain
-    components without duplicating their persisted truth.
-    """
-
-    intent: ReeIntent = Field(default_factory=ReeIntent)
-    files: tuple[AuthoredFile, ...] = ()
+    entries: tuple[BundleEntry, ...] = ()
 
     @model_validator(mode="after")
-    def _unique_file_paths(self) -> ReeDefinition:
-        paths = [file.path for file in self.files]
+    def _canonical_entries(self) -> BundleContents:
+        paths = [str(entry.path) for entry in self.entries]
+        if paths != sorted(paths):
+            raise ValueError("bundle entries must be sorted by path")
         if len(paths) != len(set(paths)):
-            raise ValueError("authored file paths must be unique")
+            raise ValueError("bundle entry paths must be unique")
         return self
 
 
-# ================================================
-# Evidence and seal
-# ================================================
+class ReeSubject(_DomainModel):
+    schema_version: Literal[1] = CURRENT_SCHEMA_VERSION
+    definition: ReeDefinition = Field(default_factory=ReeDefinition)
+    receipts: ReeReceipts = Field(default_factory=ReeReceipts)
+    contents: BundleContents = Field(default_factory=BundleContents)
 
 
-class ReeEvidence(_DomainModel):
-    """The REE's immutable execution record and selected current evidence.
+class Signature(_DomainModel):
+    algorithm: str = Field(min_length=1)
+    verification_material: str = Field(min_length=1)
+    value: str = Field(min_length=1)
 
-    ``history`` is append-only. ``selected`` is the deliberate author evidence
-    set used for capability assessment; a successful historical run is never
-    promoted merely because it exists.
-    """
 
-    history: tuple[RunReceipt, ...] = ()
-    selected: tuple[RunReceipt, ...] = ()
-    state: ReeLifecycleState = Field(default_factory=ReeLifecycleState)
+class ReeSeal(_DomainModel):
+    sealed_at: UtcInstant
+    ree_digest: Digest
+    signature: Signature | None = None
+
+
+def canonical_subject_digest(subject: ReeSubject) -> Digest:
+    return digest_json(
+        {
+            "domain": "org.repo2ree.ree-subject",
+            "version": subject.schema_version,
+            "subject": subject.model_dump(mode="json"),
+        }
+    )
+
+
+class Ree(_DomainModel):
+    subject: ReeSubject = Field(default_factory=ReeSubject)
+    seal: ReeSeal | None = None
 
     @model_validator(mode="after")
-    def _valid_selected_set(self) -> ReeEvidence:
-        keys: set[str] = set()
-        for receipt in self.selected:
-            if receipt.status != "succeeded":
-                raise ValueError("selected evidence must be successful")
-            key = receipt_step_key(receipt)
-            if key in keys:
-                raise ValueError(f"selected evidence contains duplicate step {key!r}")
-            keys.add(key)
+    def _valid_seal(self) -> Ree:
+        if self.seal is not None and self.seal.ree_digest != canonical_subject_digest(self.subject):
+            raise ValueError("REE seal digest does not match its subject")
         return self
 
 
-class Seal(_DomainModel):
-    seal_hash: Digest
-    sealed_at: UtcInstant
-    source_included: bool = False
-    runtime_included: bool = False
-    results_included: bool = False
+ReeStatus = Literal["draft", "sealed"]
 
 
-# ================================================
-# Derived assessment
-# ================================================
+def ree_status(ree: Ree) -> ReeStatus:
+    return "sealed" if ree.seal is not None else "draft"
 
 
-CapabilityStatus = Literal["ready", "missing", "stale", "not_applicable"]
+EvidenceStatus = Literal["missing", "current", "stale", "not_applicable"]
+PayloadStatus = Literal["present", "omitted", "missing", "not_applicable"]
 
 
-class ReeCapability(_DomainModel):
-    status: CapabilityStatus
+class StepAssessment(_DomainModel):
+    evidence: EvidenceStatus
+    payload: PayloadStatus
     receipt_run_id: RunId | None = None
     reasons: tuple[str, ...] = ()
 
 
-class ExperimentCapability(_DomainModel):
-    experiment_name: str
-    capability: ReeCapability
+class ExperimentAssessment(_DomainModel):
+    name: str
+    run: StepAssessment
+
+
+class ReproducibilityLevels(_DomainModel):
+    dependency: int = Field(default=0, ge=0)
+    environment: int = Field(default=0, ge=0)
+    machine: int = Field(default=0, ge=0)
 
 
 class ReeAssessment(_DomainModel):
-    source: ReeCapability
-    runtime: ReeCapability
-    activation: ReeCapability
-    experiments: tuple[ExperimentCapability, ...] = ()
+    source: StepAssessment
+    evaluation: StepAssessment
+    hardware: StepAssessment
+    runtime: StepAssessment
+    sbom: StepAssessment
+    test_activation: StepAssessment
+    experiments: tuple[ExperimentAssessment, ...] = ()
+    reproducibility: ReproducibilityLevels = Field(default_factory=ReproducibilityLevels)
 
 
-class Ree(_DomainModel):
-    """One hydrated REE value interpreted by the pure domain functions."""
-
-    identity: ReeIdentity
-    authored: ReeDefinition
-    evidence: ReeEvidence = Field(default_factory=ReeEvidence)
-    seal: Seal | None = None
+__all__ = [
+    "CURRENT_SCHEMA_VERSION",
+    "BuildRuntimeDefinition",
+    "BundleContents",
+    "BundleEntry",
+    "Contributor",
+    "EvidenceStatus",
+    "ExperimentAssessment",
+    "ExperimentDefinition",
+    "HardwareDefinition",
+    "PayloadStatus",
+    "Ree",
+    "ReeAssessment",
+    "ReeCatalogMetadata",
+    "ReeDefinition",
+    "ReeReceipts",
+    "ReeSeal",
+    "ReeStatus",
+    "ReeSubject",
+    "ReproducibilityLevels",
+    "RuntimeDefinition",
+    "Signature",
+    "SourceDefinition",
+    "StepAssessment",
+    "TestActivationDefinition",
+    "canonical_subject_digest",
+    "ree_status",
+]

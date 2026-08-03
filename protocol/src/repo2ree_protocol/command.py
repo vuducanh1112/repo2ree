@@ -156,8 +156,7 @@ class AcquireSourceArgs(BaseModel):
     source_type: Literal["git", "tarball", "zip"] | None = None
     # The git ref to fetch: a user-supplied commit, branch, or tag. Empty means
     # the origin's default branch HEAD. The concrete commit it resolves to is
-    # observed off the acquired tree and recorded either way — see
-    # ``ReeIntent.revision`` for that value once persisted.
+    # observed off the acquired tree and recorded on the source receipt.
     revision: str = ""
     upload_token: str = ""
     archive_name: str = ""
@@ -229,8 +228,8 @@ class DeleteFileCommand(BaseModel):
     args: DeleteFileArgs
 
 
-class PatchReeIntentArgs(BaseModel):
-    """Apply a partial patch to reeIntent in /ree/.ree.json."""
+class PatchReeDefinitionArgs(BaseModel):
+    """Apply a top-level patch to the portable REE definition."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -240,11 +239,11 @@ class PatchReeIntentArgs(BaseModel):
     expected_version: str = ""
 
 
-class PatchReeIntentCommand(BaseModel):
+class PatchReeDefinitionCommand(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    operation: Literal["patch_ree_intent"] = "patch_ree_intent"
-    args: PatchReeIntentArgs
+    operation: Literal["patch_ree_definition"] = "patch_ree_definition"
+    args: PatchReeDefinitionArgs
 
 
 class RemoveSourceArgs(BaseModel):
@@ -425,7 +424,7 @@ Command = Annotated[
     | LoadReeBundleCommand
     | WriteFileCommand
     | DeleteFileCommand
-    | PatchReeIntentCommand
+    | PatchReeDefinitionCommand
     | RemoveSourceCommand
     | BuildRuntimeCommand
     | GenerateSbomCommand

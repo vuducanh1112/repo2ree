@@ -17,8 +17,8 @@ adapters.
 - Generate SBOM and HBOM evidence.
 - Test that a built runtime activates.
 - Run experiment commands and validate results with author-provided verify scripts.
-- Derive an R0-R5 REE evidence scorecard from persisted intent, session state,
-  and run receipts; this is evidence maturity, not a reproduction verdict.
+- Derive a per-step REE assessment from its definition, inline receipts, and
+  bundle contents; this is evidence state, not a reproduction verdict.
 - Seal the current REE state and download a sealed ZIP bundle.
 - Track archive-oriented metadata such as SWHID, Zenodo DOI, and Dataverse DOI.
 

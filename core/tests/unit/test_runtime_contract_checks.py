@@ -17,7 +17,7 @@ from repo2ree_core.authoring.script_inference.models import DecisionContext
 from repo2ree_core.authoring.script_inference.policy import default_policy
 from repo2ree_core.authoring.script_inference.repository_facts import scan_repository
 from repo2ree_core.authoring.script_inference.runtime_inputs import RuntimeInputs
-from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.model import ReeDefinition
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 
 _DOCKER_RUNTIME = ".repo2ree/artifacts/runtime.tar"
@@ -57,7 +57,7 @@ def test_unchanged_generated_docker_build_resolves_before_the_artifact_exists(tm
     result = infer_scripts(
         tmp_path,
         [ScriptTargetSelector(kind="activation_run")],
-        intent=ReeIntent(name="Demo", runtime=_DOCKER_RUNTIME),
+        definition=ReeDefinition(name="Demo"),
         runtime_inputs=inputs,
     ).results[0]
     assert result.status == "needs_input"
@@ -75,7 +75,7 @@ def test_unchanged_generated_venv_build_resolves_before_the_artifact_exists(tmp_
     result = infer_scripts(
         tmp_path,
         [ScriptTargetSelector(kind="activation_run")],
-        intent=ReeIntent(name="Demo", runtime=_VENV_RUNTIME),
+        definition=ReeDefinition(name="Demo"),
         runtime_inputs=inputs,
     ).results[0]
     assert result.candidates[0].inference_rule == "venv-runtime-activation-v1"
@@ -91,7 +91,7 @@ def test_edited_build_script_does_not_resolve(tmp_path: Path) -> None:
     result = infer_scripts(
         tmp_path,
         [ScriptTargetSelector(kind="activation_run")],
-        intent=ReeIntent(name="Demo", runtime=_DOCKER_RUNTIME),
+        definition=ReeDefinition(name="Demo"),
         runtime_inputs=inputs,
     ).results[0]
     assert result.status == "not_inferred"
@@ -109,7 +109,7 @@ def test_docker_entrypoint_and_cmd_combine_into_one_argv_example(tmp_path: Path)
     result = infer_scripts(
         tmp_path,
         [ScriptTargetSelector(kind="activation_run")],
-        intent=ReeIntent(name="Demo", runtime=_DOCKER_RUNTIME),
+        definition=ReeDefinition(name="Demo"),
         runtime_inputs=inputs,
     ).results[0]
     body = result.candidates[0].body or ""

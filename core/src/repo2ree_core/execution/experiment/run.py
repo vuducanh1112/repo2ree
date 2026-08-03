@@ -23,12 +23,13 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.domain.experiment import Runnable, validate_runnable_script_path
+from repo2ree_core.execution.experiment.spec import RunnableSpec
 from repo2ree_core.execution.process import (
     CancelCheck,
     StepOutcome,
     run_workspace_script,
 )
+from repo2ree_core.path_safety import validate_relative_path
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionStatus
 from repo2ree_protocol.tracing import (
@@ -80,7 +81,7 @@ def _run_script(
     is_canceled: CancelCheck,
 ) -> StepOutcome:
     """Validate a runnable's script path, then run it via the shared runner."""
-    script_rel = validate_runnable_script_path(script_rel)
+    validate_relative_path(script_rel)
     return run_workspace_script(workspace, script_rel, log=log, is_canceled=is_canceled)
 
 
@@ -92,7 +93,7 @@ def _run_script(
 def run_runnable(
     *,
     workspace: Path,
-    runnable: Runnable,
+    runnable: RunnableSpec,
     label: str,
     run_id: str,
     log: LogSink,
@@ -100,7 +101,7 @@ def run_runnable(
 ) -> ExperimentRunOutcome:
     """Run *runnable*'s run script, then its verify script when declared.
 
-    Shared by experiments and activation — both are :class:`Runnable`.
+    Shared by experiments and activation through their executable projection.
     """
     workspace = workspace.resolve()
 

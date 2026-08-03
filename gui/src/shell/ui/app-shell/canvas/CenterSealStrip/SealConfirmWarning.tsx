@@ -1,11 +1,8 @@
-import type { StaleSealItem } from "@core/ree-steps/sealConsistency";
 import { lgBackgrounds } from "@shell/ui/theme/lightGlassTheme";
 import { F } from "@shell/ui/theme/theme";
 
 interface SealConfirmWarningProps {
   missing: { key: string; label: string }[];
-  /** Steps whose recorded run no longer matches the tree being sealed. */
-  stale?: StaleSealItem[];
 }
 
 function WarningGroup({
@@ -69,7 +66,7 @@ function WarningGroup({
   );
 }
 
-export function SealConfirmWarning({ missing, stale = [] }: SealConfirmWarningProps) {
+export function SealConfirmWarning({ missing }: SealConfirmWarningProps) {
   return (
     <div
       style={{
@@ -103,15 +100,6 @@ export function SealConfirmWarning({ missing, stale = [] }: SealConfirmWarningPr
               items={missing.map((item) => ({
                 key: item.key,
                 text: `${item.label} — not completed`,
-              }))}
-            />
-          )}
-          {stale.length > 0 && (
-            <WarningGroup
-              headline={`${stale.length} result${stale.length !== 1 ? "s" : ""} stale — inputs changed since the recorded run`}
-              items={stale.map((item) => ({
-                key: item.key,
-                text: `${item.label} — ${item.detail}`,
               }))}
             />
           )}

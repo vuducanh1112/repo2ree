@@ -1,37 +1,44 @@
-"""The REE aggregate and its domain vocabulary.
+"""The portable REE aggregate and its domain vocabulary."""
 
-Persistence adapters live in :mod:`repo2ree_core.persistence`; this package is
-pure and answers what an REE is, how it changes, and what its evidence means.
-"""
+from repo2ree_core.domain.primitives import SourceType
 
-from .intent import Contributor, ReeCatalogMetadata, ReeIntent, SourceType
 from .model import (
-    AuthoredFile,
+    BuildRuntimeDefinition,
+    BundleContents,
+    BundleEntry,
+    Contributor,
+    ExperimentDefinition,
+    HardwareDefinition,
     Ree,
     ReeAssessment,
-    ReeCapability,
+    ReeCatalogMetadata,
     ReeDefinition,
-    ReeEvidence,
-    ReeIdentity,
-    ReeScripts,
-    Seal,
+    ReeReceipts,
+    ReeSeal,
+    ReeSubject,
+    RuntimeDefinition,
+    SourceDefinition,
+    StepAssessment,
+    TestActivationDefinition,
 )
-from .state import ReeLifecycleState, SourceAcquiredBy
 
 __all__ = [
-    "AuthoredFile",
+    "BuildRuntimeDefinition",
+    "BundleContents",
+    "BundleEntry",
     "Contributor",
+    "ExperimentDefinition",
+    "HardwareDefinition",
     "Ree",
     "ReeAssessment",
-    "ReeCapability",
     "ReeCatalogMetadata",
     "ReeDefinition",
-    "ReeEvidence",
-    "ReeIdentity",
-    "ReeIntent",
-    "ReeLifecycleState",
-    "ReeScripts",
-    "Seal",
-    "SourceAcquiredBy",
+    "ReeReceipts",
+    "ReeSeal",
+    "ReeSubject",
+    "RuntimeDefinition",
+    "SourceDefinition",
     "SourceType",
+    "StepAssessment",
+    "TestActivationDefinition",
 ]

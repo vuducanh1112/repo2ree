@@ -16,7 +16,7 @@ def _etag(content: bytes) -> str:
     return f"sha256:{hashlib.sha256(content).hexdigest()}"
 
 
-def test_intent_version_conflict_reports_expected_and_actual_versions(
+def test_definition_version_conflict_reports_expected_and_actual_versions(
     client: TestClient,
     online_ree: WorkbenchHandle,
     monkeypatch: pytest.MonkeyPatch,
@@ -27,7 +27,7 @@ def test_intent_version_conflict_reports_expected_and_actual_versions(
         dispatched.append(command)
         return ActionResult.failed(
             "conflict",
-            "REE intent changed since it was read",
+            "REE definition changed since it was read",
             retryable=True,
             outputs={"expected_version": "v1", "actual_version": "v2"},
         )
@@ -35,8 +35,8 @@ def test_intent_version_conflict_reports_expected_and_actual_versions(
     monkeypatch.setattr(workbench_manager, "dispatch_action", _dispatch)
 
     resp = client.patch(
-        f"/api/v1/rees/{online_ree.ree_id}/intent",
-        json={"ree_intent_patch": {"name": "changed"}, "expected_version": "v1"},
+        f"/api/v1/rees/{online_ree.ree_id}/definition",
+        json={"definition_patch": {"name": "changed"}, "expected_version": "v1"},
     )
 
     assert resp.status_code == 409

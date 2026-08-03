@@ -33,7 +33,10 @@ from repo2ree_core.authoring.script_inference.renderers._common import runtime_i
 from repo2ree_core.authoring.script_inference.repository_facts import resolve_logical_root
 from repo2ree_core.authoring.script_inference.resolvers import ScoreFreeViabilityResolver
 from repo2ree_core.authoring.script_inference.runtime_inputs import RuntimeInputs
-from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.digests import digest_bytes
+from repo2ree_core.domain.primitives import ReePath, WorkspacePath
+from repo2ree_core.domain.ree.model import ExperimentDefinition, ReeDefinition
+from repo2ree_core.reserved_paths import experiment_run_script_path
 
 pytestmark = pytest.mark.property
 
@@ -177,10 +180,10 @@ def test_build_inference_is_deterministic_and_automatic_is_safe(has_docker: bool
     try:
         _make_build_tree(dir_a, has_docker=has_docker, has_req=has_req, wrapped=wrapped)
         _make_build_tree(dir_b, has_docker=has_docker, has_req=has_req, wrapped=wrapped)
-        intent = ReeIntent(name="Demo REE")
+        definition = ReeDefinition(name="Demo REE")
         selectors = [ScriptTargetSelector(kind="build")]
-        result_a = infer_scripts(dir_a, selectors, intent=intent).results[0]
-        result_b = infer_scripts(dir_b, selectors, intent=intent).results[0]
+        result_a = infer_scripts(dir_a, selectors, definition=definition).results[0]
+        result_b = infer_scripts(dir_b, selectors, definition=definition).results[0]
 
         # Determinism: identical inputs render byte-identical candidate bodies.
         assert [c.body for c in result_a.candidates] == [c.body for c in result_b.candidates]
@@ -221,12 +224,17 @@ _NASTY = [
 
 
 def _docker_activation_body(root: Path, runtime_path: str, image_tag: str) -> str:
-    intent = ReeIntent(name="Demo", runtime=runtime_path)
+    definition = ReeDefinition(name="Demo")
     inputs = RuntimeInputs(
         declared_runtime_path=runtime_path,
         accessor=MemoryAccessor({runtime_path: docker_archive([image_tag], cmd=["python", "main.py"])}),
     )
-    report = infer_scripts(root, [ScriptTargetSelector(kind="activation_run")], intent=intent, runtime_inputs=inputs)
+    report = infer_scripts(
+        root,
+        [ScriptTargetSelector(kind="activation_run")],
+        definition=definition,
+        runtime_inputs=inputs,
+    )
     body = report.results[0].candidates[0].body
     assert body is not None
     return body
@@ -263,12 +271,12 @@ def test_every_run_scaffold_is_fail_closed(kind: Literal["activation_run", "expe
         runtime = ".repo2ree/artifacts/runtime.tar" if docker else ".repo2ree/artifacts/runtime-venv.tar.gz"
         archive = docker_archive(["ree-runtime:demo"]) if docker else _venv_bytes()
         experiments = [_exp()] if kind == "experiment_run" else []
-        intent = ReeIntent(name="Demo", runtime=runtime, experiments=experiments)
+        definition = ReeDefinition(name="Demo", experiments=tuple(experiments))
         inputs = RuntimeInputs(
             declared_runtime_path=runtime, experiments=experiments, accessor=MemoryAccessor({runtime: archive})
         )
         selector = ScriptTargetSelector(kind=kind, experiment_name="run" if experiments else None)
-        result = infer_scripts(root, [selector], intent=intent, runtime_inputs=inputs).results[0]
+        result = infer_scripts(root, [selector], definition=definition, runtime_inputs=inputs).results[0]
         body = result.candidates[0].body
         assert body is not None
         # Fail-closed: an empty `set --`, a guard, and exit 64 when unconfigured.
@@ -306,6 +314,10 @@ def test_recovered_venv_restore_dir_is_absolute_and_reconciled(top_dir: str, tar
 
 
 def _exp():
-    from repo2ree_core.domain.experiment import Experiment
-
-    return Experiment(name="run", output_paths=["results/run.log"])
+    return ExperimentDefinition(
+        name="run",
+        run_script_path=ReePath(experiment_run_script_path("run")),
+        run_script_digest=digest_bytes(b"script"),
+        run_script_size=6,
+        output_paths=(WorkspacePath("results/run.log"),),
+    )

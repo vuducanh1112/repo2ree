@@ -8,7 +8,6 @@ path arithmetic, but performs no filesystem I/O. The imperative shell —
 Layout under ``<storage_root>/<ree_id>/`` (host) or ``/ree/`` (workbench):
 
     .ree.json             persisted REE record
-    manifest.json         sealed REE spec manifest
     sealed.zip            immutable sealed archive (written by seal_ree)
     snapshot.tar.gz       frozen upstream archive
     upload-staging/       staging area for in-flight source uploads
@@ -18,7 +17,6 @@ Layout under ``<storage_root>/<ree_id>/`` (host) or ``/ree/`` (workbench):
                           and a runtime restored from a loaded bundle)
     workspace/            materialized view (upstream + overlay) used at build time
     runs/                 per-action logs and immutable receipt history
-    receipts/author/      latest successful author receipt per operation
     reviews/<review-id>/  isolated reviewer tree: its own upstream/, overlay/,
                           workspace/, receipts, and comparisons
 
@@ -43,14 +41,12 @@ from repo2ree_core.path_safety import validate_path_segment, validate_relative_p
 
 _RECORD_FILENAME = ".ree.json"
 _MATERIALIZE_MARKER_FILENAME = ".workspace.materialized.json"
-_DIGEST_CACHE_FILENAME = ".workspace.digest-cache.json"
-_MANIFEST_FILENAME = "manifest.json"
 _SEALED_ARCHIVE_FILENAME = "sealed.zip"
 _UPLOAD_STAGING_DIRNAME = "upload-staging"
 
 # Public names: shared with the bundle layout (run.sh calls the same scripts).
 # REE-owned infra that runs *before* / to build the workspace, so they sit at the
-# root alongside manifest/snapshot rather than in the overlay.
+# root alongside the snapshot rather than in the overlay.
 ACQUIRE_SCRIPT_FILENAME = "acquire_source.sh"
 MATERIALIZE_SCRIPT_FILENAME = "materialize_workspace.sh"
 
@@ -61,8 +57,8 @@ SNAPSHOT_FILENAME = "snapshot.tar.gz"
 OVERLAY_DIRNAME = "overlay"
 ARTIFACTS_DIRNAME = "artifacts"
 # The SBOM is REE-owned evidence, not an authored file: only ``generate_sbom``
-# writes it, and it names one fixed place. Published on the intent (and so in
-# the manifest) as this REE-root-relative path, which is also where the bundle
+# writes it, and it names one fixed place. Published in the aggregate as this
+# REE-root-relative path, which is also where the bundle
 # carries it — so an REE loaded from a bundle declares exactly what it declared
 # before packaging.
 SBOM_FILENAME = "sbom.json"
@@ -82,7 +78,6 @@ RESULTS_DIRNAME = "results"
 WORKSPACE_DIRNAME = "workspace"
 RUNS_DIRNAME = "runs"
 RECEIPTS_DIRNAME = "receipts"
-AUTHOR_RECEIPTS_DIRNAME = "author"
 REVIEWS_DIRNAME = "reviews"
 
 # Reserved, REE-owned overlay scripts are defined in the leaf
@@ -122,10 +117,6 @@ class ReeLayout:
         return self.root / _RECORD_FILENAME
 
     @property
-    def manifest(self) -> Path:
-        return self.root / _MANIFEST_FILENAME
-
-    @property
     def sealed_archive(self) -> Path:
         return self.root / _SEALED_ARCHIVE_FILENAME
 
@@ -142,13 +133,8 @@ class ReeLayout:
         return self.root / SNAPSHOT_FILENAME
 
     @property
-    def digest_cache(self) -> Path:
-        """Stat-keyed cache of the runtime artifact's digest (see ``receipts``)."""
-        return self.root / _DIGEST_CACHE_FILENAME
-
-    @property
     def materialize_marker(self) -> Path:
-        """What the workspace was last materialized from (see ``receipts``).
+        """What the workspace was last materialized from for drift checks.
 
         The ``.workspace`` prefix keeps it under the reserved-control-name
         umbrella, so file enumeration and path access already skip it.
@@ -214,49 +200,22 @@ class ReeLayout:
         return self.root / RUNS_DIRNAME
 
     @property
-    def receipts(self) -> Path:
-        return self.root / RECEIPTS_DIRNAME
-
-    @property
     def reviews(self) -> Path:
         return self.root / REVIEWS_DIRNAME
 
     def review(self, review_id: str) -> ReviewLayout:
         return ReviewLayout(root=_resolve_under(self.reviews, validate_path_segment(review_id, kind="review_id")))
 
-    @property
-    def author_receipts(self) -> Path:
-        """Selected author evidence: latest successful receipt per step."""
-        return self.receipts / AUTHOR_RECEIPTS_DIRNAME
-
-    def author_operation_receipt(self, operation: str) -> Path:
-        """Selected receipt for a singleton operation."""
-        return _resolve_under(self.author_receipts, f"{operation}.json")
-
-    def author_experiment_receipt(self, experiment_slug: str) -> Path:
-        """Selected receipt for one experiment, keyed by its canonical slug."""
-        return _resolve_under(self.author_receipts, PurePosixPath("experiments") / f"{experiment_slug}.json")
-
     def run_log(self, run_id: str) -> Path:
         """Path to the NDJSON log file for a single action run."""
         return self.runs / f"{validate_run_id(run_id)}.ndjson"
-
-    def run_receipt(self, run_id: str) -> Path:
-        """Path to the receipt (input/output digests) for a single action run."""
-        return self.runs / f"{validate_run_id(run_id)}.receipt.json"
 
     def run_cancel_marker(self, run_id: str) -> Path:
         """Path whose existence means the action run should stop cooperatively."""
         return self.runs / f"{validate_run_id(run_id)}.cancel"
 
-    def upstream_file(self, rel: str | PurePosixPath) -> Path:
-        return _resolve_under(self.upstream, rel)
-
     def overlay_file(self, rel: str | PurePosixPath) -> Path:
         return _resolve_under(self.overlay, rel)
-
-    def artifact_file(self, rel: str | PurePosixPath) -> Path:
-        return _resolve_under(self.artifacts, rel)
 
     def workspace_file(self, rel: str | PurePosixPath) -> Path:
         return _resolve_under(self.workspace, rel)
@@ -360,8 +319,7 @@ class ReviewLayout:
         """Selected receipt for one reproduced experiment, keyed by its slug.
 
         The experiments step is the one step with more than one subject, so its
-        evidence needs a directory where the others need a file. Mirrors the
-        author side's ``receipts/author/experiments/`` for the same reason.
+        evidence needs a directory where the others need a file.
         """
         return _resolve_under(self.receipts, PurePosixPath("experiments") / f"{experiment_slug}.json")
 

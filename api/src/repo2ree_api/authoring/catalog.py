@@ -72,8 +72,8 @@ class ReeStepCatalog(BaseModel):
 # most-direct first.
 _STEP_ACTIONS: dict[str, list[str]] = {
     "source": ["startSourceAcquisition", "initializeSourceUpload", "completeSourceUpload"],
-    "metadata": ["patchReeIntent"],
-    "hbom": ["startHbomGeneration", "patchReeIntent"],
+    "metadata": ["patchReeDefinition"],
+    "hbom": ["startHbomGeneration", "patchReeDefinition"],
     "evaluate": ["startEvaluate"],
     "build": ["startBuild"],
     "sbom": ["startSbomGeneration"],

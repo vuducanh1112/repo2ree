@@ -91,30 +91,3 @@ def validate_path_segment(value: str, *, kind: str) -> str:
     if not value or "/" in value or "\\" in value or value.startswith("."):
         raise ValueError(f"invalid {kind}: {value!r}")
     return value
-
-
-def normalize_workspace_path(path: str | None) -> str:
-    """Defensive cleanup for user-supplied workspace-relative paths.
-
-    Strips surrounding whitespace and leading slashes. Permissive: returns
-    ``""`` for falsy input and does not raise. Use :func:`validate_relative_path`
-    when stricter checks are required.
-
-    Whitespace and slashes interleave (``" /"``, ``"/ /x"``), and removing one
-    exposes the other, so a single pass cannot settle it: ``" /"`` still ends up
-    absolute whichever order the two strips run in. Both are therefore stripped
-    to a fixpoint, which is what makes the result idempotent *and* never
-    absolute. Whitespace is whatever ``str.strip`` considers it, so unicode
-    spaces are handled too.
-    """
-    result = path or ""
-    while True:
-        stripped = result.strip().lstrip("/")
-        if stripped == result:
-            break
-        result = stripped
-
-    # ── postcondition ──
-    assert not result.startswith("/"), f"normalized path must not be absolute: {result!r}"  # noqa: S101
-    # ───────────────────
-    return result

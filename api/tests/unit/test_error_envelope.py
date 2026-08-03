@@ -172,7 +172,6 @@ _REE_READ_ROUTES = [
     "/api/v1/rees/{ree_id}/reviews",
     "/api/v1/rees/{ree_id}/evaluate/report",
     "/api/v1/rees/{ree_id}/receipts/author",
-    "/api/v1/rees/{ree_id}/scorecard",
     "/api/v1/rees/{ree_id}/runs",
 ]
 
@@ -183,7 +182,7 @@ def test_unreachable_workbench_is_503_on_every_read_route(
 ):
     """Every route resolving an REE agrees on 503 for registered-but-down.
 
-    Reviews, receipts and scorecard reported 404 for a workbench that exists and
+    Reviews and receipts reported 404 for a workbench that exists and
     is merely unreachable; evaluate blamed a report that had never been run.
     """
     monkeypatch.setattr(workbench_manager, "is_registered", lambda rid: rid == "down-ree")

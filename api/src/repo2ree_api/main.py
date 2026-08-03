@@ -12,10 +12,10 @@ from opentelemetry import trace
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 from repo2ree_api.authoring.catalog import ree_steps_router, script_templates_router
-from repo2ree_api.authoring.evidence import receipts_router, scorecard_router
+from repo2ree_api.authoring.definition import definition_router
+from repo2ree_api.authoring.evidence import receipts_router
 from repo2ree_api.authoring.files import files_router
 from repo2ree_api.authoring.inference import inference_router
-from repo2ree_api.authoring.intent import intent_router
 from repo2ree_api.authoring.seal import seal_router
 from repo2ree_api.authoring.source import source_router
 from repo2ree_api.authoring.stages import stages_router
@@ -82,9 +82,9 @@ end in this order:
 3. `getReeState` — compact durable state plus file metadata, never inline
    contents; read file bytes via `readReeFile`.
 4. Author the workspace: `writeReeFile` / `deleteReeFile`, and record catalog
-   metadata via `patchReeIntent`.
+   metadata via `patchReeDefinition`.
 5. Optionally build and assess: `startBuild`, `startActivationTest`,
-   `startEvaluate` / `getEvaluateReport`, `getScorecard`.
+   `startEvaluate` / `getEvaluateReport`.
 6. `sealRee` — freeze the REE (returns its `seal_hash`), then download the
    sealed archive via `downloadReeArchive`.
 7. `deleteRee` — tear the workbench down.
@@ -138,11 +138,10 @@ ROUTERS = (
     ree_steps_router,
     script_templates_router,
     source_router,
-    intent_router,
+    definition_router,
     files_router,
     inference_router,
     stages_router,
-    scorecard_router,
     receipts_router,
     seal_router,
     # What sealing leaves behind, once the workbench above is gone.

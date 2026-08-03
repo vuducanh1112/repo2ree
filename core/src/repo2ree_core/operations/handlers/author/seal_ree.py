@@ -33,5 +33,5 @@ def handle_seal_ree(
         log("system", "error", f"seal_ree failed: {exc}")
         return failed_from_exception(exc, f"seal_ree failed: {exc}")
 
-    log("system", "info", f"REE sealed: {outputs.seal_hash}")
+    log("system", "info", f"REE sealed: {outputs.ree_digest}")
     return ActionResult(status="succeeded", exit_code=0, outputs=outputs.model_dump(mode="json"))

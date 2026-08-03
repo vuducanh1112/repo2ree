@@ -151,7 +151,7 @@ def test_api_ree_lifecycle(client: TestClient, ree: dict[str, Any]) -> None:
     resp = client.post(f"/api/v1/rees/{ree_id}/ree:seal", json={})
     assert resp.status_code == 200, resp.text
     sealed = resp.json()
-    assert sealed["ree_state"]["seal_hash"].startswith("sha256:")
+    assert sealed["ree"]["seal"]["ree_digest"].startswith("sha256:")
 
     resp = client.get(f"/api/v1/rees/{ree_id}/ree-archive")
     assert resp.status_code == 200

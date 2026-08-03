@@ -1,5 +1,4 @@
 import type { ReeFile } from "../ree/ReeTypes";
-import type { ConsistencyReport } from "../ree-steps/sealConsistency";
 
 export interface WorkspaceBinaryDownload {
   bytes: ArrayBuffer;
@@ -19,17 +18,12 @@ export interface SourceRepoMetadata {
   sizeLabel: string | null;
 }
 
-export type DraftManifest = Record<string, unknown>;
-
 export interface ReeProject<TFile = unknown, TRee = unknown> {
   id: string;
   files: TFile[];
   reeFiles?: ReeFile[];
   ree?: TRee;
-  draftManifest?: DraftManifest;
   sourceRepo?: SourceRepoMetadata;
-  /** Per-step freshness of recorded run receipts vs. the current tree. */
-  consistency?: ConsistencyReport;
   /** The image this REE's workbench was provisioned from. */
   workbenchImage?: string;
 }

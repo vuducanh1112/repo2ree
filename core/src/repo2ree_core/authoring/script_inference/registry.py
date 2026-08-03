@@ -68,7 +68,7 @@ DECISION_DAGS: dict[str, DecisionDag] = {
 }
 
 # Which DAG serves each target kind. Verify targets are deferred (they need an
-# explicit author verification claim that has no field on ReeIntent yet), so
+# explicit author verification claim that has no field on ReeDefinition yet), so
 # they stay unregistered and return a well-formed not_inferred result.
 DAG_FOR_TARGET_KIND: dict[str, str] = {
     "build": BUILD_INFERENCE_DAG.key,

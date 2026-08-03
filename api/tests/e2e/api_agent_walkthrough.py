@@ -34,13 +34,13 @@ in order — driven only through the public surface:
       -> source:upload-init / uploadSourceBytes / source:upload-complete
       -> observeRun (extract)
       -> getReeState -> writeReeFile / readReeFile
-      -> patchReeIntent (metadata)
+      -> patchReeDefinition (metadata)
       -> startEvaluate -> observeRun -> getEvaluateReport
       -> generateScriptCandidates (build) -> writeReeFile (build script) -> startBuild -> observeRun
-      -> patchReeIntent (declare runtime artifact + hardware BOM)
+      -> patchReeDefinition (declare runtime artifact + hardware BOM)
       -> startSbomGeneration -> observeRun -> startSbomCrossCheck -> observeRun
       -> generateScriptCandidates (activation) -> writeReeFile (activation script) -> startActivationTest -> observeRun
-      -> patchReeIntent (declare experiment) -> generateScriptCandidates (experiment)
+      -> patchReeDefinition (declare experiment) -> generateScriptCandidates (experiment)
          -> writeReeFile (run + verify) -> startExperiment -> observeRun
       -> getReeState (ree_steps overlay) -> getScorecard
       -> sealRee -> downloadReeArchive -> deleteRee
@@ -445,21 +445,22 @@ def run() -> None:
     )
     ok("workspace tree reflects the uploaded project")
 
-    chapter("5. Record authoring intent")
+    chapter("5. Record the portable definition")
     patched = call(
         "PATCH",
-        f"/api/v1/rees/{ree_id}/intent",
+        f"/api/v1/rees/{ree_id}/definition",
         {
-            "ree_intent_patch": {
+            "definition_patch": {
                 "name": "agent-authored-ree",
-                "catalog_metadata": {
+                "catalog": {
                     "version": "1.0.0",
                     "description": "A REE assembled entirely through the HTTP API.",
                 },
             }
         },
     )
-    check(patched["ree_intent"]["catalog_metadata"]["version"] == "1.0.0", "intent version not recorded")
+    definition = patched["ree"]["subject"]["definition"]
+    check(definition["catalog"]["version"] == "1.0.0", "definition version not recorded")
     ok("metadata recorded")
 
     chapter("6. Evaluate reproducibility readiness")
@@ -496,17 +497,18 @@ def run() -> None:
     note("bind the produced tarball as the runtime, and record the machine it was built on")
     declared = call(
         "PATCH",
-        f"/api/v1/rees/{ree_id}/intent",
+        f"/api/v1/rees/{ree_id}/definition",
         {
-            "ree_intent_patch": {
-                "runtime": runtime_artifact,
-                "hardware_description": {"cpus": {"Intel Core i9-14900K": {"vendor": "Intel", "cores_per_cpu": 24}}},
+            "definition_patch": {
+                "runtime": {"runtime_path": runtime_artifact},
+                "hardware": {"cpus": {"Intel Core i9-14900K": {"vendor": "Intel", "cores_per_cpu": 24}}},
             }
         },
     )
-    check(declared["ree_intent"]["runtime"] == runtime_artifact, "runtime artifact not declared")
+    definition = declared["ree"]["subject"]["definition"]
+    check(definition["runtime"]["runtime_path"] == runtime_artifact, "runtime artifact not declared")
     check(
-        "Intel Core i9-14900K" in declared["ree_intent"]["hardware_description"]["cpus"],
+        "Intel Core i9-14900K" in definition["hardware"]["cpus"],
         "hardware BOM entry not recorded",
     )
     ok("runtime artifact and hardware BOM declared")
@@ -521,12 +523,12 @@ def run() -> None:
         what="SBOM generation",
     )
     # The scan writes REE evidence, not a workspace file: it lands in artifacts/
-    # and the intent is patched to that path, so the SBOM shows up in ree_files
+    # and its receipt binds that path, so the SBOM shows up in ree_files
     # rather than in the materialized tree the next step's drift check watches.
     scanned = call("GET", f"/api/v1/rees/{ree_id}/state")
     check(
-        scanned["ree_intent"]["sbom"] == SBOM_ARTIFACT_PATH,
-        f"SBOM should be declared at {SBOM_ARTIFACT_PATH}, was {scanned['ree_intent']['sbom']!r}",
+        scanned["ree"]["subject"]["receipts"]["sbom"]["sbom_path"] == SBOM_ARTIFACT_PATH,
+        f"SBOM receipt should bind {SBOM_ARTIFACT_PATH}",
     )
     check(
         SBOM_ARTIFACT_PATH in {file["path"] for file in scanned.get("ree_files", [])},
@@ -555,22 +557,25 @@ def run() -> None:
 
     chapter("11. Infer the experiment scaffold, then run it")
     note("declare a named experiment; naming it settles its run-script path, and its declared output is sealed")
+    # A definition binds authored bytes, so seed the conventional script paths
+    # before declaring the experiment. Inference replaces the run scaffold below.
+    put_file(ree_id, experiment_run_script_path, "#!/bin/sh\nexit 0\n")
+    put_file(ree_id, experiment_verify_script_path, EXPERIMENT_VERIFY_SCRIPT)
     experiment_declared = call(
         "PATCH",
-        f"/api/v1/rees/{ree_id}/intent",
+        f"/api/v1/rees/{ree_id}/definition",
         {
-            "ree_intent_patch": {
+            "definition_patch": {
                 "experiments": [
                     {
                         "name": EXPERIMENT_NAME,
-                        "verify_script": experiment_verify_script_path,
                         "output_paths": [EXPERIMENT_LOG],
                     }
                 ]
             }
         },
     )
-    settled_run_script = experiment_declared["ree_intent"]["experiments"][0]["run_script"]
+    settled_run_script = experiment_declared["ree"]["subject"]["definition"]["experiments"][0]["run_script_path"]
     check(
         settled_run_script == experiment_run_script_path,
         "experiment run-script path did not settle to the discovered pattern",
@@ -589,7 +594,6 @@ def run() -> None:
     experiment_run_script = author_command(experiment_scaffold, EXPERIMENT_COMMAND)
     note("author the run script (its command; capture is inferred) and the verify script (owns the claim)")
     put_file(ree_id, experiment_run_script_path, experiment_run_script)
-    put_file(ree_id, experiment_verify_script_path, EXPERIMENT_VERIFY_SCRIPT)
     run_stage(
         ree_id,
         "POST",
@@ -600,22 +604,19 @@ def run() -> None:
     ok(f"experiment {EXPERIMENT_NAME!r} passed — declared validation held")
 
     chapter("12. Review the authoring steps")
-    note("getReeState carries a ree_steps overlay: done / ready / blocked per step")
+    note("getReeState carries the aggregate assessment for each authoring step")
     state = call("GET", f"/api/v1/rees/{ree_id}/state")
-    status_by_step = {step["key"]: step["status"] for step in state["ree_steps"]}
-    print("    " + "  ".join(f"{key}={status}" for key, status in status_by_step.items()))
-    # Every run-backed step now reads done; only the seal remains — ready, since
-    # sealing is the next (and last) action.
-    for step_key in ("source", "build", "sbom", "crosscheck", "activation", "experiments"):
-        check(status_by_step[step_key] == "done", f"step {step_key} should be done, was {status_by_step[step_key]}")
-    check(status_by_step["seal"] == "ready", "seal should be the remaining ready step")
-    ok("every authoring step is done — only the seal remains")
+    assessment = state["assessment"]
+    for step_key in ("source", "runtime", "sbom", "test_activation"):
+        check(assessment[step_key]["evidence"] == "current", f"step {step_key} is not current")
+    check(assessment["experiments"][0]["run"]["evidence"] == "current", "experiment is not current")
+    ok("every authored receipt is current")
 
-    chapter("13. Read the reproducibility scorecard")
-    note("the scorecard aggregates intent + receipts into an ordinal reproducibility level")
-    scorecard = call("GET", f"/api/v1/rees/{ree_id}/scorecard")
-    check("level" in scorecard, "scorecard missing its level")
-    ok(f"reproducibility level {scorecard['level_code']} — {scorecard['level_name']}")
+    chapter("13. Read the reproducibility assessment")
+    note("the state document exposes aggregate evidence and reproducibility axes")
+    assessment = call("GET", f"/api/v1/rees/{ree_id}/state")["assessment"]
+    check("reproducibility" in assessment, "assessment missing reproducibility levels")
+    ok(f"reproducibility axes {assessment['reproducibility']}")
 
     chapter("14. Seal and download")
     note("seal binds the whole record; package the source and the experiment baselines")
@@ -624,7 +625,7 @@ def run() -> None:
         f"/api/v1/rees/{ree_id}/ree:seal",
         {"include_source": True, "include_results": True},
     )
-    seal_hash = sealed["ree_state"]["seal_hash"]
+    seal_hash = sealed["ree"]["seal"]["ree_digest"]
     check(seal_hash.startswith("sha256:"), "seal did not produce a sha256 hash")
     ok(f"sealed as {seal_hash}")
     with tempfile.TemporaryDirectory() as work:

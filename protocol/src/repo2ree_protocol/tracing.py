@@ -464,37 +464,6 @@ class WorkbenchSpanAttrs(_SpanFactCarrier):
 
 
 @dataclass(frozen=True, slots=True)
-class ReceiptInputAttrs(_SpanFactCarrier):
-    """The receipt's input slice, recorded on the span before the run.
-
-    The receipt itself carries the same facts, but only if the run completes —
-    a script that hangs until the workbench is torn down would otherwise leave
-    a span with no record of what it ran against.
-    """
-
-    _namespace: ClassVar[str] = "receipt_input"
-
-    snapshot_digest: str | None = None
-    script_digest: str | None = None
-    verify_script_digest: str | None = None
-    runtime_path: str | None = None
-    declared_runtime_digest: str | None = None
-    drift_status: str | None = None
-    drift_changed_path_count: int | None = None
-
-    def _facts(self) -> Mapping[str, object]:
-        return {
-            "snapshot_digest": self.snapshot_digest,
-            "script_digest": self.script_digest,
-            "verify_script_digest": self.verify_script_digest,
-            "runtime_path": self.runtime_path,
-            "declared_runtime_digest": self.declared_runtime_digest,
-            "drift.status": self.drift_status,
-            "drift.changed_path_count": self.drift_changed_path_count,
-        }
-
-
-@dataclass(frozen=True, slots=True)
 class ReviewStepAttrs(_SpanFactCarrier):
     """One review step's identity, and what it settled.
 

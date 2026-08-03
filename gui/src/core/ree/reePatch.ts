@@ -1,21 +1,17 @@
 import type { ArtifactStatus } from "../artifact/ArtifactStatus";
 import type { EvaluationState } from "../evaluate/EvaluationState";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
-import type { Hbom, ReeCatalogMetadata, ReeExperiment, ReeRunnable, ReeSpec } from "./ReeSpec";
+import type { Hbom, ReeCatalogMetadata, ReeExperiment, ReeSpec } from "./ReeSpec";
 
-// The patch travels in the backend's wire format: the intent payload is a
-// serialized Pydantic model, so its keys are snake_case. Domain types are
-// camelCase; the serializers below own the conversion.
+// The editor still uses its UI-oriented ReeSpec, while this serializer owns
+// the conversion to the portable definition's wire shape.
 export interface ReeIntentPatch extends Record<string, unknown> {
   name: string;
-  catalog_metadata: Record<string, unknown>;
-  origin_url: string;
-  source_type: string;
-  runtime: string;
-  activation: Record<string, unknown>;
-  sbom: string;
+  catalog: Record<string, unknown>;
+  source: Record<string, unknown> | null;
+  runtime: Record<string, unknown> | null;
   experiments: Array<Record<string, unknown>>;
-  hardware_description: Record<string, unknown>;
+  hardware: Record<string, unknown>;
 }
 
 interface ReePatchSlices {
@@ -41,21 +37,10 @@ function serializeCatalogMetadata(metadata: ReeCatalogMetadata): Record<string, 
   };
 }
 
-function serializeRunnable(runnable: ReeRunnable): Record<string, unknown> {
-  return {
-    description: runnable.description,
-    run_script: runnable.runScript,
-    verify_script: runnable.verifyScript,
-    output_paths: runnable.outputPaths,
-    runtime_estimate: runnable.runtimeEstimate,
-    resource_estimates: runnable.resourceEstimates,
-  };
-}
-
 function serializeExperiment(experiment: ReeExperiment): Record<string, unknown> {
   return {
     name: experiment.name,
-    ...serializeRunnable(experiment),
+    output_paths: experiment.outputPaths,
   };
 }
 
@@ -105,14 +90,17 @@ function serializeHbom(hbom: Hbom): Record<string, unknown> {
 export function toReePatchFromSlices({ reeSpec }: ReePatchSlices): ReeIntentPatch {
   return {
     name: reeSpec.name || "",
-    catalog_metadata: serializeCatalogMetadata(reeSpec.catalogMetadata),
-    origin_url: reeSpec.originUrl || "",
-    source_type: reeSpec.sourceType || "",
-    runtime: reeSpec.runtime || "",
-    activation: serializeRunnable(reeSpec.activation),
-    sbom: reeSpec.sbom || "",
+    catalog: serializeCatalogMetadata(reeSpec.catalogMetadata),
+    source: reeSpec.sourceType
+      ? {
+          origin_url: reeSpec.originUrl || null,
+          source_type: reeSpec.sourceType,
+          requested_ref: null,
+        }
+      : null,
+    runtime: reeSpec.runtime ? { runtime_path: reeSpec.runtime } : null,
     experiments: (reeSpec.experiments || []).map(serializeExperiment),
-    hardware_description: serializeHbom(reeSpec.hardwareDescription),
+    hardware: serializeHbom(reeSpec.hardwareDescription),
   };
 }
 

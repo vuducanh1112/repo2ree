@@ -9,7 +9,7 @@ import {
   type ReeEditorViewModel,
 } from "@core/ree-editor/reeEditorViewModel";
 import type { FileTreeNode } from "@core/workspace/FileTree";
-import type { DraftManifest, SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
+import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
 import { useApiRuntime } from "@shell/data/apiRuntime";
 import { useReeQuery } from "@shell/data/ree/queries";
 import { showToast as enqueueToast } from "@shell/ui/app-shell/state/actions";
@@ -50,9 +50,7 @@ export function useReeEditor({
   const reeQuery = useReeQuery({ enabled: provisioned });
   const workspaceFiles = reeQuery.data?.files ?? [];
   const reeArtifactFiles = reeQuery.data?.reeFiles ?? [];
-  const draftManifest = reeQuery.data?.draftManifest;
   const sourceRepo = reeQuery.data?.sourceRepo;
-  const consistency = reeQuery.data?.consistency;
 
   const reeEditorState: ReeEditorState = useMemo(
     () => createReeEditorStateFromModel({ reeIntent, reeSession, uiChrome, stepRuns }),
@@ -125,12 +123,11 @@ export function useReeEditor({
       createWorkspaceRemoteState({
         workspaceFiles,
         reeArtifactFiles,
-        draftManifest,
         reeSession,
         uiChrome,
         sourceRepo,
       }),
-    [workspaceFiles, reeArtifactFiles, draftManifest, reeSession, uiChrome, sourceRepo],
+    [workspaceFiles, reeArtifactFiles, reeSession, uiChrome, sourceRepo],
   );
   const commands = useMemo(
     () =>
@@ -178,7 +175,6 @@ export function useReeEditor({
     reeSession,
     ree,
     workspaceRemote,
-    consistency,
     stepRuns,
     evaluation: {
       dependencyLevel: ree.dependencyLevel ?? 0,
@@ -195,7 +191,6 @@ export function useReeEditor({
 function createWorkspaceRemoteState(args: {
   workspaceFiles: FileTreeNode[];
   reeArtifactFiles: ReeFile[];
-  draftManifest: DraftManifest | undefined;
   reeSession: ReeSessionState;
   uiChrome: UiChromeState;
   sourceRepo: SourceRepoMetadata | undefined;
@@ -203,7 +198,6 @@ function createWorkspaceRemoteState(args: {
   return {
     workspaceFiles: args.workspaceFiles,
     reeArtifactFiles: args.reeArtifactFiles,
-    draftManifest: args.draftManifest,
     workspaceSourceState: args.reeSession.workspaceSourceState,
     artifactStatus: args.reeSession.artifactStatus,
     sourceSnapshotArchiveName: args.uiChrome.sourceSnapshotArchiveName,

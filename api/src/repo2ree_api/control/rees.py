@@ -111,16 +111,13 @@ def list_rees_route(
     items = workbench_manager.list_all_records()
     if status:
         items = [m for m in items if m.get("status") == status]
-    # Keyset pagination needs an immutable sort key: created_at (with ree_id as
-    # the unique tiebreak), not the manager's updated_at ordering, which shifts
-    # whenever an REE is touched mid-pagination.
     items.sort(key=_ree_page_key, reverse=True)
     page, next_cursor, _has_more = keyset_paginate(items, cursor=cursor, limit=limit, key=_ree_page_key)
     return ReeList.model_validate({"items": page, "next_cursor": next_cursor})
 
 
 def _ree_page_key(metadata: dict[str, Any]) -> tuple[str, str]:
-    return str(metadata.get("created_at", "")), str(metadata.get("ree_id", ""))
+    return str(metadata.get("name", "")), str(metadata.get("ree_id", ""))
 
 
 @rees_router.get(
@@ -151,25 +148,18 @@ def get_ree_state_route(ree_id: str) -> ReeState:
     active_runs = [run for run in list_runs(ree_id) if run.get("status") in ACTIVE_STATUSES]
     state = {
         "ree_id": document["ree_id"],
-        "name": document["name"],
+        "ree": document["ree"],
         "status": document["status"],
-        "updated_at": document["updated_at"],
+        "assessment": document["assessment"],
         "workbench": {
             "status": "available",
             "agent_id": handle.agent_id,
             "image": workbench_manager.image_for(handle),
         },
-        "ree_intent": document.get("ree_intent", {}),
-        "ree_state": document.get("ree_state", {}),
-        "consistency": document.get("consistency", {}),
-        "author_receipts": document.get("author_receipts", {}),
-        "ree_steps": document.get("ree_steps", []),
         "workspace_files": document.get("workspace_files", []),
         "ree_files": document.get("ree_files", []),
         "active_runs": active_runs,
     }
-    if "source_repo" in document:
-        state["source_repo"] = document["source_repo"]
     return ReeState.model_validate(state)
 
 

@@ -88,7 +88,7 @@ Activation has no comparison, so:
 - **Identity is checked, not assumed.** The probe is bound to the runtime digest
   the build step recorded, so an attempt whose build has since been re-run cannot
   leave a pass attached to a runtime that no longer exists. This mirrors the
-  author-side scorecard.
+  author-side aggregate assessment.
 
 A runtime that does not come up **completes** the step with a `failed` verdict
 rather than failing the step — the reviewer's machine did exactly its job. Only
@@ -138,17 +138,10 @@ as a finding about the build.
 
 ## Where the author's runtime digest comes from
 
-The build receipt is the natural home for it but often does not have it: the
-runtime artifact is **declared after the build**, because the picker chooses
-among the files the build just produced. A build that ran before that choice
-legitimately does not know which of its outputs became the runtime, and its
-receipt is evidence of what happened — not to be rewritten once the author
-decides.
-
-The SBOM receipt's `declared_runtime_digest` therefore serves as a fallback, but
-only when it scanned the artifact the REE *still* declares. Without this fallback
-the digest tier is dead for every REE authored in the natural order, and no build
-review could ever reach `identical`.
+The build receipt binds the declared runtime path to the digest it produced.
+Review compares against that digest only while the REE still declares the same
+path; a missing build receipt or a changed path leaves the digest tier without
+an author baseline.
 
 ## See also
 

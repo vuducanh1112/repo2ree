@@ -82,7 +82,7 @@ them with a different identity than the one it started.
 
 ## Guards run before the step is marked running
 
-`require_ree_intent` and `require_review_record` both halt *before*
+`require_ree_baseline` and `require_review_record` both halt *before*
 `begin_review_step`. A baseline or attempt nobody can read is a precondition
 nobody can meet, so there is nothing to mark running and nothing to settle a halt
 on.
@@ -104,29 +104,15 @@ would otherwise leave an earlier step's verdict standing over a runtime that no
 longer exists — and a verdict about bytes nobody can point to is worse than no
 verdict, because it still reads as one.
 
-## Receipts are dumped whole
-
-Outputs envelopes are serialized with `exclude_none=True` — an output that does
-not apply should not appear. That recursion must not reach inside a receipt,
-where a `None` field is itself the evidence: `produced_runtime_digest: null` says
-the build produced nothing at the declared path, and dropping it turns a recorded
-fact into an absent one. `dump_receipt_whole` is attached as a `field_serializer`
-to stop the recursion at the receipt boundary.
-
-Typing the field as `dict[str, Any]` and pre-dumping happens to serialize the
-same way, which is why it survived so long — it looked like a formatting detail
-rather than the receipt schema going unchecked at the boundary a client reads it
-from.
-
 ## The caller protocol
 
 Every `require_*` / `open_*` helper returns either the value or the
 `ActionResult` to return unchanged:
 
 ```python
-intent = require_ree_intent(ree_layout, log=log)
-if isinstance(intent, ActionResult):
-    return intent
+ree = require_ree_baseline(ree_layout, log=log)
+if isinstance(ree, ActionResult):
+    return ree
 ```
 
 Helpers that only guard return `ActionResult | None` instead:
@@ -142,5 +128,5 @@ decides how a halt is reported.
 
 ## See also
 
-- [CONCEPTS.md](../CONCEPTS.md) — Run Receipt, REE evidence scorecard, lifecycle states.
+- [CONCEPTS.md](../CONCEPTS.md) — Run Receipt, REE assessment, lifecycle states.
 - [COMPONENTS.md](../COMPONENTS.md) — where `core` sits relative to the executor and the agent.

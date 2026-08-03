@@ -11,7 +11,7 @@ synonyms:
 | Term | Meaning |
 |---|---|
 | **Evaluate** | A source-repository assessment. It reports declarations, risks, and independent dependency/environment/machine axes before a build proves anything. |
-| **REE evidence scorecard** | A receipt-derived summary of the whole REE. Its cumulative R0-R5 level describes recorded evidence maturity, not whether an independent reproduction happened. |
+| **REE assessment** | A derived per-step view of evidence freshness and payload presence. It is not an independent reproduction verdict. |
 | **Validation** | One run satisfied its declared check: the run script exited successfully and, when present, the author-provided verify script passed. |
 | **Reproduction** | A later run is compared with prior author evidence or a predecessor receipt. A validated author run creates the baseline; it is not itself a reproduction. |
 
@@ -58,14 +58,14 @@ and archive metadata.
 
 A source-level disclosure produced by Evaluate. It explains what is declared,
 pinned, drifting, or missing on independent axes. It is a nutrition label, not
-the REE's cumulative R0-R5 evidence level.
+the aggregate REE assessment.
 
-## REE evidence scorecard
+## REE assessment
 
-A receipt-derived view of the assembled REE across source, runtime, activation,
-experiments, and results. Its R0-R5 level is cumulative: each level requires the
-evidence below it. The scorecard records how much evidence exists; it is not an
-independent reproduction verdict.
+A derived view of the assembled REE across source, evaluation, hardware,
+runtime, SBOM, activation, and experiments. It reports evidence as current,
+stale, missing, or not applicable and separately reports whether payload bytes
+are present, omitted, or missing.
 
 ## Run Receipt
 

@@ -20,7 +20,6 @@ def test_for_ree_accepts_path_storage_root():
 def test_top_level_paths_are_derived_from_root():
     layout = ReeLayout.for_ree("/r", "ree1")
     assert layout.record == Path("/r/ree1/.ree.json")
-    assert layout.manifest == Path("/r/ree1/manifest.json")
     assert layout.snapshot_archive == Path("/r/ree1/snapshot.tar.gz")
     assert layout.upload_staging == Path("/r/ree1/upload-staging")
     assert layout.upstream == Path("/r/ree1/upstream")
@@ -31,9 +30,7 @@ def test_top_level_paths_are_derived_from_root():
 
 def test_relative_resolvers_join_under_their_subtree():
     layout = ReeLayout.for_ree("/r", "ree1")
-    assert layout.upstream_file("src/main.py") == Path("/r/ree1/upstream/src/main.py")
     assert layout.overlay_file("Dockerfile") == Path("/r/ree1/overlay/Dockerfile")
-    assert layout.artifact_file("runtime.tar.gz") == Path("/r/ree1/artifacts/runtime.tar.gz")
     assert layout.workspace_file("build.sh") == Path("/r/ree1/workspace/build.sh")
 
 
@@ -85,7 +82,7 @@ def test_resolvers_reject_absolute_paths():
 def test_resolvers_reject_parent_traversal():
     layout = ReeLayout.for_ree("/r", "ree1")
     with pytest.raises(ValueError):
-        layout.upstream_file("../../escape")
+        layout.workspace_file("../../escape")
 
 
 @pytest.mark.parametrize("bad", ["", "with/slash", "with\\backslash", ".hidden"])

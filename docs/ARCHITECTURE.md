@@ -89,7 +89,6 @@ then hosts the fixed `/ree` layout and the tools that act on it:
 │  │  │   └── reproducibility-report.json                              │ │
 │  │  ├── results/<name>/   captured experiment outputs (baseline)     │ │
 │  │  ├── runs/<id>/        NDJSON logs & run results                  │ │
-│  │  ├── receipts/author/  latest successful receipt per step         │ │
 │  │  └── reviews/<id>/     one reviewer attempt (its own tree)        │ │
 │  │                                                                   │ │
 │  │  assembly functions (repo2ree-exec/core) read workspace+overlay,  │ │
@@ -121,12 +120,12 @@ workspace↔REE seam:
 | `/ree/artifacts/` | Produced evidence: runtime image, SBOM (`sbom.json`), reproducibility report. | the **outputs** |
 | `/ree/results/<name>/` | Per-experiment produced-results store: the author baseline a reviewer diffs against. | the **outputs** |
 | `/ree/runs/` | NDJSON logs and run results for command executions. | the **lineage** |
-| `/ree/receipts/author/` | Selected author evidence: the latest successful receipt per step. | the **lineage** |
 | `/ree/reviews/<review_id>/` | One reviewer attempt, a parallel tree with its own `upstream/`, `overlay/`, `workspace/`. Never writes to author evidence. | the **review** |
 
 `upstream/` and `overlay/` are the sources of truth; `workspace/` is the working
 view. The source stays pristine while REE-defining material lives beside it.
-Receipts and review attempts are covered in
+Author receipts live inline in `.ree.json`; review receipts live under their
+attempt namespace. Receipts and review attempts are covered in
 [engineering/step-lifecycle.md](engineering/step-lifecycle.md) and
 [engineering/review-evidence.md](engineering/review-evidence.md).
 
@@ -195,26 +194,21 @@ runtimes and experiments; those declarations populate `/ree/overlay`; the
 runs) execute inside the working-env VM. The GUI never executes anything
 itself.
 
-### State ownership: declarative manifest vs. durable tree
+### State ownership: portable aggregate and durable tree
 
 The two planes own *different kinds of state*, and conflating them is the easy
 mistake:
 
-- **The declarative manifest is control-plane state.** The runtime/experiment
-  declarations that populate `/ree/overlay` are small, edited continuously and
-  persisted through the REE/workspace API
-  ([useReeIntentSync.ts](../gui/src/shell/state/ree-editor/workspace-sync/useReeIntentSync.ts),
-  [authoring/intent.py](../api/src/repo2ree_api/authoring/intent.py)),
-  and guarded by optimistic concurrency (`expectedVersion`). That concurrency
-  check must stay **single-machine** — keep the manifest in host storage / the
-  control-plane DB. Editing a field must never round-trip into a VM.
+- **The definition is part of the portable aggregate.** Runtime, source, hardware,
+  and experiment definitions are persisted in `.ree.json` through the definition
+  API ([definition.py](../api/src/repo2ree_api/authoring/definition.py)). Script
+  identities are hydrated from the authoritative overlay bytes, and aggregate
+  replacement is guarded by the subject revision.
 - **The durable tree and artifacts are execution-plane state.** The workspace
   snapshot, overlay files, materialized workspace, and `artifacts/` live with the working env
   (persisted as the `/ree` tree).
-- **Projection, not shared mutable state.** The manifest is *projected* into
-  `/ree/overlay` at job dispatch — the lab receives a consistent snapshot when
-  an operation runs, rather than the browser and the VM mutating the same bytes
-  live.
+- **One aggregate, one mutation boundary.** Author operations load the current
+  REE, update files or definition, and compare-and-swap the aggregate revision.
 
 **Consequence — provision the lab lazily.** Because declaring and editing need no
 executor, the working env is created on the first execution-needing operation

@@ -9,7 +9,7 @@ from scriptinfer_helpers import MemoryAccessor, docker_archive, not_an_archive, 
 
 from repo2ree_core.authoring.script_inference import ScriptTargetSelector, TargetInferenceResult, infer_scripts
 from repo2ree_core.authoring.script_inference.runtime_inputs import RuntimeInputs
-from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.model import ReeDefinition
 
 _DOCKER_RUNTIME = ".repo2ree/artifacts/runtime.tar"
 _VENV_RUNTIME = ".repo2ree/artifacts/runtime-venv.tar.gz"
@@ -26,9 +26,14 @@ def _tree(root: Path, files: dict[str, str]) -> Path:
 def _activation(
     root: Path, *, runtime: str | None, files: dict[str, bytes], name: str = "Demo"
 ) -> TargetInferenceResult:
-    intent = ReeIntent(name=name, runtime=runtime)
+    definition = ReeDefinition(name=name)
     inputs = RuntimeInputs(declared_runtime_path=runtime, accessor=MemoryAccessor(files))
-    report = infer_scripts(root, [ScriptTargetSelector(kind="activation_run")], intent=intent, runtime_inputs=inputs)
+    report = infer_scripts(
+        root,
+        [ScriptTargetSelector(kind="activation_run")],
+        definition=definition,
+        runtime_inputs=inputs,
+    )
     return report.results[0]
 
 

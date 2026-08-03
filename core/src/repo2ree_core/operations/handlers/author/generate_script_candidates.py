@@ -10,13 +10,10 @@ writes no files — turning a candidate into a script stays on the existing
 
 from __future__ import annotations
 
-from contextlib import suppress
-
 from repo2ree_core.authoring.script_inference import ScriptTargetSelector, infer_scripts
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.operations.handlers.author._script_inference_inputs import build_runtime_inputs
-from repo2ree_core.operations.steps.author import read_intent_or_none
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import GenerateScriptCandidatesArgs
@@ -40,9 +37,9 @@ def handle_generate_script_candidates(
         return ActionResult.failed("precondition", "no acquired source (upstream tree is absent)")
 
     store = ReeDirectory(layout)
-    intent = read_intent_or_none(store, log=log)
+    definition = store.read_ree().subject.definition if store.record_exists() else None
     ree_id, snapshot_digest = _identity(store)
-    runtime_inputs = build_runtime_inputs(layout, intent)
+    runtime_inputs = build_runtime_inputs(layout, definition)
 
     selectors = [
         ScriptTargetSelector(kind=target.kind, experiment_name=target.experiment_name) for target in args.targets
@@ -52,7 +49,7 @@ def handle_generate_script_candidates(
         report = infer_scripts(
             upstream,
             selectors,
-            intent=intent,
+            definition=definition,
             runtime_inputs=runtime_inputs,
             ree_id=ree_id,
             source_snapshot_digest=snapshot_digest,
@@ -76,11 +73,7 @@ def handle_generate_script_candidates(
 
 
 def _identity(store: ReeDirectory) -> tuple[str, str | None]:
-    ree_id = ""
-    snapshot_digest: str | None = None
-    with suppress(Exception):
-        if store.record_exists():
-            metadata = store.read_record()
-            ree_id = metadata.ree_id
-            snapshot_digest = metadata.ree_state.source_snapshot_digest
-    return ree_id, snapshot_digest
+    if not store.record_exists():
+        return "", None
+    source = store.read_ree().subject.receipts.source
+    return "", str(source.snapshot_digest) if source else None

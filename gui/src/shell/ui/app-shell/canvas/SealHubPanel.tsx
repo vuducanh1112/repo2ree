@@ -1,7 +1,6 @@
 import type { InclusionOpts } from "@core/ree/InclusionOpts";
 import type { Badges, LogEntry } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
-import type { ConsistencyReport } from "@core/ree-steps/sealConsistency";
 import { useRef } from "react";
 import { CanvasWindowTitle } from "./CanvasWindow";
 import { CenterSealStrip } from "./CenterSealStrip";
@@ -10,7 +9,6 @@ import { HubPanel } from "./HubPanel";
 interface SealHubPanelProps {
   ree: ReeEditorViewModel;
   badges: Badges;
-  consistency?: ConsistencyReport;
   locked: boolean;
   sealRunning: boolean;
   sealLog: LogEntry | null;
@@ -23,7 +21,6 @@ interface SealHubPanelProps {
 export function SealHubPanel({
   ree,
   badges,
-  consistency,
   locked,
   sealRunning,
   sealLog,
@@ -46,7 +43,6 @@ export function SealHubPanel({
         ree={ree}
         locked={locked}
         badges={badges}
-        consistency={consistency}
         onSeal={onSeal}
         sealRunning={sealRunning}
         sealLog={sealLog}

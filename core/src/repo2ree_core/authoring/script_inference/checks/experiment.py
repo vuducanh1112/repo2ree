@@ -3,7 +3,7 @@
 Experiment inference only proceeds for an experiment the author has actually
 declared on the REE. The requested name (carried on the decision context because
 it lives on the target, not the scan) must match exactly one
-``ReeIntent.experiments`` entry; its reserved run/verify paths and declared
+``ReeDefinition.experiments`` entry; its reserved run/verify paths and declared
 output paths become an ``ExperimentBinding`` the downstream renderer consumes.
 An undeclared experiment blocks straight to ``not_inferred``.
 """
@@ -43,8 +43,8 @@ class RequestedExperimentCheck:
             )
         binding = ExperimentBinding(
             name=experiment.name,
-            run_script_path=experiment.run_script,
-            verify_script_path=experiment.verify_script or None,
+            run_script_path=str(experiment.run_script_path),
+            verify_script_path=str(experiment.verify_script_path) if experiment.verify_script_path else None,
             output_paths=list(experiment.output_paths),
         )
         return CheckResult(

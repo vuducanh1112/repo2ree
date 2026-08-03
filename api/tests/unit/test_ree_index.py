@@ -12,26 +12,25 @@ from pathlib import Path
 import pytest
 
 from repo2ree_api.deposit.models import ArchiveBindingAttestation
-from repo2ree_api.ree_index import ReeIndex, ReeIndexEntry, entry_from_manifest
+from repo2ree_api.ree_index import ReeIndex, ReeIndexEntry, entry_from_ree
+from repo2ree_core.domain.ree.model import Ree, ReeCatalogMetadata, ReeDefinition, ReeSeal, ReeSubject
 
 # ================================================
 # Helpers
 # ================================================
 
 
-def manifest(seal_hash: str, *, name: str = "demo", sealed_at: str = "2026-07-29T00:00:00Z") -> dict[str, object]:
-    """A sealed manifest payload, trimmed to what the index projects from it."""
-    return {
-        "seal_hash": seal_hash,
-        "name": name,
-        "sealed_at": sealed_at,
-        "ree_version": "1",
-        "catalog_metadata": {"description": "a demo", "keywords": ["repro"]},
-        # Manifests carry far more than the index keeps; the projection must
-        # ignore the rest rather than choke on it.
-        "origin_url": "https://example.invalid/demo",
-        "experiments": [],
-    }
+def sealed_ree(seal_hash: str, *, name: str = "demo", sealed_at: str = "2026-07-29T00:00:00Z") -> Ree:
+    subject = ReeSubject(
+        definition=ReeDefinition(
+            name=name,
+            catalog=ReeCatalogMetadata(description="a demo", keywords=("repro",)),
+        )
+    )
+    seal = ReeSeal.model_validate({"sealed_at": sealed_at, "ree_digest": seal_hash})
+    # These store tests use readable digest labels to exercise ordering. The
+    # aggregate digest invariant itself is covered in core domain tests.
+    return Ree.model_construct(subject=subject, seal=seal)
 
 
 def binding(
@@ -55,8 +54,8 @@ def index(tmp_path: Path) -> ReeIndex:
 # ================================================
 
 
-def test_entry_is_projected_from_the_manifest() -> None:
-    entry = entry_from_manifest(manifest("sha256:aaa"))
+def test_entry_is_projected_from_the_ree() -> None:
+    entry = entry_from_ree(sealed_ree("sha256:aaa"))
 
     assert entry.subject_digest == "sha256:aaa"
     assert entry.name == "demo"
@@ -68,13 +67,10 @@ def test_entry_is_projected_from_the_manifest() -> None:
     assert entry.is_deposited is False
 
 
-def test_unsealed_manifest_cannot_be_indexed() -> None:
+def test_unsealed_ree_cannot_be_indexed() -> None:
     """No digest means no identity to file the entry under."""
-    payload = manifest("sha256:aaa")
-    payload["seal_hash"] = None
-
-    with pytest.raises(ValueError, match="seal_hash"):
-        entry_from_manifest(payload)
+    with pytest.raises(ValueError, match="sealed REE"):
+        entry_from_ree(Ree())
 
 
 # ================================================
@@ -83,7 +79,7 @@ def test_unsealed_manifest_cannot_be_indexed() -> None:
 
 
 def test_entries_round_trip_through_the_file(index: ReeIndex, tmp_path: Path) -> None:
-    index.record_seal(entry_from_manifest(manifest("sha256:aaa")))
+    index.record_seal(entry_from_ree(sealed_ree("sha256:aaa")))
 
     # A second instance over the same path, i.e. what a restarted service sees.
     reopened = ReeIndex(tmp_path / "ree-index.json")
@@ -104,10 +100,10 @@ def test_resealing_preserves_recorded_attestations(index: ReeIndex) -> None:
     lands on the existing entry. The attestations are claims about that digest,
     which has not changed.
     """
-    index.record_seal(entry_from_manifest(manifest("sha256:aaa")))
+    index.record_seal(entry_from_ree(sealed_ree("sha256:aaa")))
     index.append_attestation(binding("sha256:aaa"))
 
-    stored = index.record_seal(entry_from_manifest(manifest("sha256:aaa", name="renamed")))
+    stored = index.record_seal(entry_from_ree(sealed_ree("sha256:aaa", name="renamed")))
 
     assert stored.name == "renamed"
     assert [att.identifier for att in stored.archive_attestations] == ["doi:10.5281/zenodo.1"]
@@ -115,7 +111,7 @@ def test_resealing_preserves_recorded_attestations(index: ReeIndex) -> None:
 
 def test_appending_the_same_binding_twice_is_idempotent(index: ReeIndex) -> None:
     """Replaying a publish must not double the list."""
-    index.record_seal(entry_from_manifest(manifest("sha256:aaa")))
+    index.record_seal(entry_from_ree(sealed_ree("sha256:aaa")))
     index.append_attestation(binding("sha256:aaa"))
     stored = index.append_attestation(binding("sha256:aaa"))
 
@@ -124,7 +120,7 @@ def test_appending_the_same_binding_twice_is_idempotent(index: ReeIndex) -> None
 
 def test_the_same_ree_can_be_deposited_to_several_archives(index: ReeIndex) -> None:
     """The reason a deposit is a list and not a ``doi`` field."""
-    index.record_seal(entry_from_manifest(manifest("sha256:aaa")))
+    index.record_seal(entry_from_ree(sealed_ree("sha256:aaa")))
     index.append_attestation(binding("sha256:aaa"))
     stored = index.append_attestation(binding("sha256:aaa", archive="dataverse", identifier="hdl:1902.1/1"))
 
@@ -150,17 +146,17 @@ def test_entries_are_ordered_by_seal_time_then_digest(index: ReeIndex) -> None:
     digest — and the order must not depend on insertion, which differs between
     two nodes holding the same entries.
     """
-    index.record_seal(entry_from_manifest(manifest("sha256:ccc", sealed_at="2026-07-29T02:00:00Z")))
-    index.record_seal(entry_from_manifest(manifest("sha256:bbb", sealed_at="2026-07-29T01:00:00Z")))
-    index.record_seal(entry_from_manifest(manifest("sha256:aaa", sealed_at="2026-07-29T01:00:00Z")))
+    index.record_seal(entry_from_ree(sealed_ree("sha256:ccc", sealed_at="2026-07-29T02:00:00Z")))
+    index.record_seal(entry_from_ree(sealed_ree("sha256:bbb", sealed_at="2026-07-29T01:00:00Z")))
+    index.record_seal(entry_from_ree(sealed_ree("sha256:aaa", sealed_at="2026-07-29T01:00:00Z")))
 
     assert [entry.subject_digest for entry in index.list_all()] == ["sha256:aaa", "sha256:bbb", "sha256:ccc"]
 
 
 def test_deposited_only_hides_seals_no_archive_has_accepted(index: ReeIndex) -> None:
     """What a published snapshot may contain: entries someone else can cite."""
-    index.record_seal(entry_from_manifest(manifest("sha256:aaa")))
-    index.record_seal(entry_from_manifest(manifest("sha256:bbb")))
+    index.record_seal(entry_from_ree(sealed_ree("sha256:aaa")))
+    index.record_seal(entry_from_ree(sealed_ree("sha256:bbb")))
     index.append_attestation(binding("sha256:bbb"))
 
     assert [entry.subject_digest for entry in index.list_all()] == ["sha256:aaa", "sha256:bbb"]

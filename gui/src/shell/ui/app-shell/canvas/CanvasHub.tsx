@@ -16,9 +16,7 @@ import { satellitePositions } from "@core/canvas/experimentRing";
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import type { Badges, ReeFile } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
-import { scoreCardStanding } from "@core/scorecard/ReproducibilityScoreCard";
 import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
-import { useReproducibilityScoreCard } from "@shell/data/scorecard/queries";
 import { useMemo, useRef, useState } from "react";
 import { C } from "../../theme/theme";
 import { BenchConsole } from "./BenchConsole";
@@ -31,7 +29,6 @@ import { InnerShellButton } from "./InnerShellButton";
 import { LabBackdrop } from "./LabBackdrop";
 import { NodeCard } from "./NodeCard";
 import { ReceiptsConsole } from "./ReceiptsConsole";
-import { ReproducibilityScoreCardConsole } from "./ReproducibilityScoreCardConsole";
 import { ReviewConsole } from "./ReviewConsole";
 import { useCableGeometry } from "./useCableGeometry";
 import { type Transform, useCanvasViewport } from "./useCanvasViewport";
@@ -173,10 +170,7 @@ export function CanvasHub({
     animate,
   });
 
-  // Cables tint by the REE's own evidence standing (the scorecard), not the
-  // source repo's static Evaluate axes.
-  const scorecard = useReproducibilityScoreCard({ enabled: provisioned });
-  const levelMeta = scoreCardStanding(scorecard.data ?? null);
+  const levelMeta = { color: C.accent, bg: C.surfaceAlt, label: "REE evidence" };
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: pannable canvas surface; nodes inside are buttons
@@ -324,8 +318,6 @@ export function CanvasHub({
           />
         )}
       </div>
-
-      <ReproducibilityScoreCardConsole provisioned={provisioned} />
 
       <FileTreeConsole
         reeFiles={reeFiles}

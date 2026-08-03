@@ -8,7 +8,7 @@ inside an REE.
 
 from __future__ import annotations
 
-from typing import Any, Self
+from typing import Any, Literal, Self
 
 from pydantic import GetCoreSchemaHandler
 from pydantic_core import core_schema
@@ -16,6 +16,8 @@ from pydantic_core import core_schema
 from repo2ree_core.digests import Digest
 from repo2ree_core.path_safety import validate_path_segment, validate_relative_path
 from repo2ree_core.time_utils import UtcInstant, format_utc_instant, parse_utc_instant
+
+SourceType = Literal["", "git", "hg", "svn", "cvs", "bzr", "tarball", "zip"]
 
 
 class _StringValue(str):
@@ -100,6 +102,7 @@ __all__ = [
     "ReeRevision",
     "RunId",
     "ScriptPath",
+    "SourceType",
     "Swhid",
     "UtcInstant",
     "WorkspacePath",

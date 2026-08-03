@@ -16,7 +16,7 @@ import { RunActionButton } from "../../../components/RunActionButton";
 /**
  * Cross-check the runtime SBOM against the scanned dependency inventory.
  * A lightweight run (no step-catalog node): results land in the evaluate
- * report and the scorecard, both refreshed by the run-terminal sync. The
+ * report and aggregate assessment. The
  * per-dependency presence badges render in the readiness page's inventory
  * table; this card owns the trigger and the aggregates.
  */

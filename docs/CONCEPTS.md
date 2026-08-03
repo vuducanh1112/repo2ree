@@ -26,7 +26,7 @@ The product uses four related terms for four different evidentiary claims:
 | Term | Evidence and claim |
 |---|---|
 | **Evaluate** | Observes the source repository before build. It produces declaration findings and independent dependency, environment, and machine axes. |
-| **REE evidence scorecard** | Derives cumulative R0-R5 evidence maturity from persisted intent, session facts, and run receipts across the whole REE. It is not a reproduction verdict. |
+| **REE assessment** | Reports whether each definition, receipt, and bundled payload is present, current, stale, omitted, or not applicable. It is not a reproduction verdict. |
 | **Validation** | One run and its optional verify script passed the author-declared check. An author validation creates evidence and a comparison baseline. |
 | **Reproduction** | A later execution is compared with prior author evidence. A durable reproduction claim therefore needs baseline or predecessor identity, not only a passing verify script. |
 
@@ -78,13 +78,12 @@ nutrition label, not a grade. The Label reads whatever environment
 substrate the repo brought (Dockerfile, flake.nix, conda env, plain
 pip) and exposes it in lifecycle-layer vocabulary. **Primitive 1.**
 
-### REE evidence scorecard
+### REE assessment
 
-The assembled REE's receipt-derived evidence summary: source, runtime,
-activation, experiments, and results, plus a cumulative R0-R5 level. Unlike the
-Repro Label, it is not a source observation. Unlike Verify, it does not compare
-a later run with prior evidence. It records the strongest lifecycle claim the
-persisted evidence supports.
+The assembled REE's derived view of source, evaluation, hardware, runtime,
+SBOM, activation, and experiment evidence. For each step it distinguishes the
+receipt's freshness from the payload's presence in the bundle. Unlike Verify,
+it does not compare a later run with prior evidence.
 
 ### Run Receipt
 

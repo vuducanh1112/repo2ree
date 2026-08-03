@@ -8,6 +8,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from repo2ree_api.deps import workbench_manager
+from repo2ree_core.domain.ree.assessment import assess
+from repo2ree_core.domain.ree.model import Ree, ReeDefinition, ReeSubject
 from repo2ree_supervisor import WorkbenchHandle
 
 
@@ -16,14 +18,12 @@ def test_ree_state_omits_inline_content_and_exposes_placement(
     online_ree: WorkbenchHandle,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    ree = Ree(subject=ReeSubject(definition=ReeDefinition(name="demo")))
     workspace: dict[str, Any] = {
         "ree_id": online_ree.ree_id,
-        "name": "demo",
+        "ree": ree.model_dump(mode="json"),
         "status": "draft",
-        "updated_at": "v1",
-        "ree_intent": {"name": "demo"},
-        "ree_state": {},
-        "consistency": {"steps": []},
+        "assessment": assess(ree).model_dump(mode="json"),
         "workspace_files": [{"path": "ree-scripts/build_script.sh", "kind": "generated", "size": 12}],
         "ree_files": [{"path": "artifacts/sbom.json", "tag": "Artifact", "size": 34}],
     }

@@ -17,13 +17,7 @@ export interface ApiListResponse<TItem> {
 
 export type ReeSummary = Schema<"ReeSummary">;
 
-/** Display-ready source-repository facts as they cross the wire (snake_case). */
-export type SourceRepoMetadataWire = Schema<"SourceRepoMetadata">;
-
-/** Per-step freshness of recorded run receipts vs. the current tree. */
-export type ConsistencyReportWire = Schema<"ConsistencyReport">;
-
-export type AuthorReceiptSetWire = Schema<"AuthorReceiptSet">;
+export type ReeReceiptsWire = Schema<"ReeReceipts">;
 
 export type ReviewRecordWire = Schema<"ReviewRecord">;
 
@@ -49,8 +43,6 @@ export type CreateBuildReviewPayload = Schema<"CreateBuildReviewPayload">;
 
 export type ReeDocument = Schema<"ReeDocument">;
 
-export type ReproducibilityScoreCardWire = Schema<"ReproducibilityScoreCard">;
-
 export type ReproducibilityReportWire = Schema<"ReproducibilityReport">;
 
 export type ReeCreatePayload = Schema<"ReeCreatePayload">;
@@ -73,14 +65,7 @@ export type ReeIndexEntryWire = Schema<"ReeIndexEntry">;
 
 export type ReeIndexList = Schema<"ReeIndexList">;
 
-/**
- * The PATCH wire applies only the keys actually sent (``exclude_unset`` on the
- * backend), so any subset of intent fields is a valid patch. The generated
- * Input type marks defaulted fields as required; relax that here.
- */
-export type ReeIntentPatchPayload = Omit<Schema<"ReeIntentPatchPayload">, "ree_intent_patch"> & {
-  ree_intent_patch?: Partial<Schema<"ReeIntent-Input">>;
-};
+export type ReeDefinitionPatchPayload = Schema<"ReeDefinitionPatchPayload">;
 
 export type SourceAcquirePayload = Schema<"SourceAcquirePayload">;
 

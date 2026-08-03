@@ -18,10 +18,6 @@ export function useUpdateReeIntentMutation(reeId?: string) {
       await queryClient.invalidateQueries({
         queryKey: queryKeys.ree(resolvedReeId),
       });
-      // Intent fields (swhid, runtime, experiments…) feed the scorecard.
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.scorecard(resolvedReeId),
-      });
     },
   });
 }

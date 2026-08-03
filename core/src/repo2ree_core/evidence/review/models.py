@@ -19,16 +19,21 @@ Schemas plus the pure record algebra over them. How a verdict is *reached* is
 from __future__ import annotations
 
 from collections.abc import Collection
-from typing import Literal
+from typing import Literal, TypedDict
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from repo2ree_core.domain.ree.receipt import (
-    AcquireSourceReceipt,
-    ActivationTestReceipt,
-    BuildRuntimeReceipt,
-    RunExperimentReceipt,
+from repo2ree_core.domain.primitives import (
+    Digest,
+    ReePath,
+    RunId,
+    SourceType,
+    Swhid,
+    UtcInstant,
+    WorkspacePath,
 )
+from repo2ree_core.domain.ree.receipt import receipt_run_id
+from repo2ree_core.time_utils import OperationTiming
 from repo2ree_protocol.command import ReviewBasis
 
 ReviewStatus = Literal["running", "completed", "failed", "canceled"]
@@ -67,6 +72,91 @@ _STATUS_PRECEDENCE: tuple[ReviewStatus, ...] = ("running", "failed", "canceled",
 
 class _ReviewModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
+
+
+# ================================================
+# Review execution receipts
+# ================================================
+
+
+ReviewExecutionStatus = Literal["succeeded", "failed"]
+
+
+class ReviewReceiptEnvelope(_ReviewModel):
+    schema_version: Literal[1] = 1
+    run_id: RunId
+    started_at: UtcInstant
+    finished_at: UtcInstant
+    duration_ms: int = Field(ge=0)
+    recorded_at: UtcInstant
+    status: ReviewExecutionStatus
+
+
+class ReviewAcquireSourceReceipt(ReviewReceiptEnvelope):
+    operation: Literal["acquire_source"] = "acquire_source"
+    origin_url: str | None = None
+    source_type: SourceType
+    requested_ref: str | None = None
+    expected_swhid: Swhid | None = None
+    observed_swhid: Swhid | None = None
+
+
+class ReviewBuildRuntimeReceipt(ReviewReceiptEnvelope):
+    operation: Literal["build_runtime"] = "build_runtime"
+    build_runtime_script_path: ReePath | None = None
+    build_runtime_script_digest: Digest | None = None
+    runtime_path: WorkspacePath
+    produced_runtime_digest: Digest
+
+
+class ReviewActivationReceipt(ReviewReceiptEnvelope):
+    operation: Literal["test_activation"] = "test_activation"
+    run_script_path: ReePath
+    run_script_digest: Digest
+    verify_script_path: ReePath | None = None
+    verify_script_digest: Digest | None = None
+    run_exit_code: int | None = None
+    verify_exit_code: int | None = None
+    runtime_path: WorkspacePath
+    runtime_digest: Digest
+
+
+class ReviewExperimentReceipt(ReviewReceiptEnvelope):
+    operation: Literal["run_experiment"] = "run_experiment"
+    experiment_name: str = Field(min_length=1)
+    run_script_path: ReePath
+    run_script_digest: Digest
+    verify_script_path: ReePath | None = None
+    verify_script_digest: Digest | None = None
+    run_exit_code: int | None = None
+    verify_exit_code: int | None = None
+    runtime_path: WorkspacePath | None = None
+    runtime_digest: Digest | None = None
+    produced_output_digest: Digest | None = None
+
+
+class ReviewReceiptEnvelopeFields(TypedDict):
+    run_id: RunId
+    started_at: UtcInstant
+    finished_at: UtcInstant
+    duration_ms: int
+    recorded_at: UtcInstant
+    status: ReviewExecutionStatus
+
+
+def review_receipt_envelope(
+    run_id: str,
+    timing: OperationTiming,
+    status: ReviewExecutionStatus,
+) -> ReviewReceiptEnvelopeFields:
+    return ReviewReceiptEnvelopeFields(
+        run_id=receipt_run_id(run_id),
+        started_at=timing.started_at,
+        finished_at=timing.finished_at,
+        duration_ms=timing.duration_ms,
+        recorded_at=timing.finished_at,
+        status=status,
+    )
 
 
 # ================================================
@@ -137,8 +227,8 @@ class ActivationOutcome(_ReviewModel):
     ``runtime_digest`` is what the pass is *about*: the artifact actually
     probed, which the step requires to equal the one the build step certified.
     Without it a re-run build would silently leave a pass attached to a runtime
-    that no longer exists — the same binding the author-side scorecard makes
-    when it only counts activation against the runtime that was built.
+    that no longer exists — the same binding the aggregate assessment applies
+    when it evaluates activation against the runtime that was built.
 
     The exit codes separate the two failures that read alike but are not: a
     runtime that would not come up, and one that came up and was rejected by
@@ -220,18 +310,18 @@ class ReviewRecord(_ReviewModel):
     updated_at: str
     status: ReviewStatus
     steps: list[ReviewStepState] = Field(default_factory=list)
-    source_receipt: AcquireSourceReceipt | None = None
+    source_receipt: ReviewAcquireSourceReceipt | None = None
     source_comparison: SourceComparison | None = None
-    build_receipt: BuildRuntimeReceipt | None = None
+    build_receipt: ReviewBuildRuntimeReceipt | None = None
     build_comparison: BuildComparison | None = None
-    activation_receipt: ActivationTestReceipt | None = None
+    activation_receipt: ReviewActivationReceipt | None = None
     activation_outcome: ActivationOutcome | None = None
     # Plural where the other three steps are singular: an REE declares a list of
     # experiments and a reviewer reproduces them one at a time, so this step's
     # evidence is a set keyed by experiment name rather than one document. The
     # single ``ReviewStepState`` for ``experiments`` still records where the
     # lifecycle stands; which experiments settled, and how, is read from here.
-    experiment_receipts: list[RunExperimentReceipt] = Field(default_factory=list)
+    experiment_receipts: list[ReviewExperimentReceipt] = Field(default_factory=list)
     experiment_comparisons: list[ExperimentComparison] = Field(default_factory=list)
     failure: str | None = None
 
@@ -286,7 +376,7 @@ def with_step(
 
 def with_experiment(
     record: ReviewRecord,
-    receipt: RunExperimentReceipt,
+    receipt: ReviewExperimentReceipt,
     comparison: ExperimentComparison,
 ) -> ReviewRecord:
     """The record with one experiment's evidence written, replacing any prior run.

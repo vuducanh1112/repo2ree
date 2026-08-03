@@ -444,7 +444,7 @@ forbidden_modules = [
 # The domain vocabulary describes what an REE *is*, which has to stay true
 # independently of where it is stored, how it is executed, or what was observed
 # about it. A domain model that imported persistence would make the meaning of
-# `ReeIntent` a function of the directory it happens to live in.
+# `Ree` a function of the directory it happens to live in.
 [[tool.importlinter.contracts]]
 name = "The domain vocabulary imports no capability"
 type = "forbidden"

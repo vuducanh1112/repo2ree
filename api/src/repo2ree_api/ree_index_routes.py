@@ -4,7 +4,7 @@ Split from the index itself for two reasons that both run the same direction.
 ``deps`` builds the index singleton, so the store has to sit below the
 composition root, while a router has to sit above it — one module cannot be
 both. And keeping the store below ``contracts`` is what makes it *unable* to see
-the wire shape, so ``entry_from_manifest`` projecting from the sealed manifest
+the wire shape, so ``entry_from_ree`` projecting from the sealed aggregate
 is enforced by import-linter rather than by a comment. That matters more than
 the file count: reading an entry off a response model would publish a shape that
 disagrees with what a peer rebuilds from a bundle.

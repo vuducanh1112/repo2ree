@@ -10,11 +10,12 @@ check the run's stdout reads it from a workspace file the run script wrote.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-from repo2ree_core.domain.experiment import Experiment
 from repo2ree_core.execution.experiment.run import run_runnable
+from repo2ree_core.execution.experiment.spec import RunnableSpec
 
 # ================================================
 # Helpers
@@ -40,21 +41,18 @@ def _experiment(
     verify_body: str | None = None,
     script_rel: str = "ree-scripts/experiments/test-exp.sh",
     verify_rel: str = "ree-scripts/experiments/test-exp.verify.sh",
-) -> Experiment:
+) -> RunnableSpec:
     _write_script(workspace, script_rel, body)
     verify_script = ""
     if verify_body is not None:
         verify_script = _write_script(workspace, verify_rel, verify_body)
-    return Experiment(
-        name="test-exp",
-        description="",
+    return RunnableSpec(
         run_script=script_rel,
         verify_script=verify_script,
-        runtime_estimate="",
     )
 
 
-def _run(workspace: Path, runnable: Experiment, *, run_id: str = "r1"):
+def _run(workspace: Path, runnable: RunnableSpec, *, run_id: str = "r1"):
     msgs, log = _log()
     outcome = run_runnable(
         workspace=workspace,
@@ -82,7 +80,7 @@ def test_script_runs_and_succeeds(tmp_path):
 
 
 def test_missing_script_fails(tmp_path):
-    exp = Experiment(name="x", run_script="ree-scripts/experiments/nope.sh")
+    exp = RunnableSpec(run_script="ree-scripts/experiments/nope.sh")
     outcome, _ = _run(tmp_path, exp)
     assert outcome.status == "failed"
 
@@ -174,7 +172,7 @@ def test_no_injected_environment_for_verify_script(tmp_path):
 
 def test_missing_verify_script_fails(tmp_path):
     exp = _experiment(body="echo hello", workspace=tmp_path)
-    exp = exp.model_copy(update={"verify_script": "ree-scripts/experiments/nope.verify.sh"})
+    exp = replace(exp, verify_script="ree-scripts/experiments/nope.verify.sh")
     outcome, _ = _run(tmp_path, exp)
     assert outcome.status == "failed"
     assert outcome.run_outputs.verdict == "fail"

@@ -1,152 +1,272 @@
-"""Unit coverage for the generate_sbom handler's staging and cancellation.
-
-The scanner writes its own output file, so the handler scans into a staging
-sibling and promotes it only once syft has finished cleanly — ``artifacts/sbom.json``
-is the path the intent points at, and a partial document there would leave the
-REE declaring an SBOM that no longer parses.
-"""
-
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
 
 from repo2ree_core.analysis.sbom.scan import ScanOutcome
-from repo2ree_core.domain.ree.intent import ReeIntent
-from repo2ree_core.domain.ree.state import ReeLifecycleState
-from repo2ree_core.operations.handlers.author import generate_sbom as handler
+from repo2ree_core.digests import digest_bytes
+from repo2ree_core.domain.primitives import Digest, ReePath, RunId, WorkspacePath, parse_utc_instant
+from repo2ree_core.domain.ree.model import (
+    BuildRuntimeDefinition,
+    Ree,
+    ReeDefinition,
+    ReeSubject,
+    RuntimeDefinition,
+)
+from repo2ree_core.domain.ree.receipt import (
+    AcquireSourceReceipt,
+    BuildRuntimeReceipt,
+    ReceiptEnvelopeFields,
+    WorkspaceDrift,
+)
+from repo2ree_core.domain.ree.transitions import commit_receipt, record_seal
+from repo2ree_core.operations.handlers.author import generate_sbom
 from repo2ree_core.persistence.directory import ReeDirectory
-from repo2ree_core.persistence.layout import SBOM_ARTIFACT_PATH, ReeLayout
-from repo2ree_core.persistence.receipts import load_receipts
-from repo2ree_core.persistence.record import ReeRecord
+from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.persistence.repository import ReeRevisionConflictError
+from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_protocol.command import GenerateSbomArgs
 from repo2ree_protocol.result import ActionResult
 
-_RUNTIME = "runtime-image.tar"
-_PRIOR_SBOM = {"bomFormat": "CycloneDX", "specVersion": "1.6", "components": [{"name": "prior"}]}
-_NEW_SBOM = {
-    "bomFormat": "CycloneDX",
-    "specVersion": "1.6",
-    "components": [{"name": "requests", "purl": "pkg:pypi/requests@2.31.0"}],
-    "metadata": {"tools": {"components": [{"name": "syft", "version": "1.2.3"}]}},
-}
+_NOW = parse_utc_instant("2026-08-03T00:00:00Z")
+_SNAPSHOT = digest_bytes(b"snapshot")
+_SCRIPT = b"#!/bin/sh\nprintf runtime > runtime.tar\n"
+_RUNTIME = b"runtime archive"
+_SBOM = b'{"bomFormat":"CycloneDX"}'
 
 
-def _silent_log(*_: object) -> None:
-    return None
+def _envelope(run_id: str) -> ReceiptEnvelopeFields:
+    return ReceiptEnvelopeFields(
+        run_id=RunId(run_id),
+        started_at=_NOW,
+        finished_at=_NOW,
+        duration_ms=0,
+        recorded_at=_NOW,
+    )
 
 
-def _seed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, with_prior_sbom: bool = False) -> ReeLayout:
-    layout = ReeLayout(root=tmp_path)
+def _ree(
+    *,
+    with_build: bool = True,
+    runtime_path: str = "runtime.tar",
+    expected_runtime_digest: Digest | None = None,
+) -> Ree:
+    definition = ReeDefinition(
+        build_runtime=BuildRuntimeDefinition(
+            build_runtime_script_digest=digest_bytes(_SCRIPT),
+            build_runtime_script_size=len(_SCRIPT),
+        ),
+        runtime=RuntimeDefinition(
+            runtime_path=WorkspacePath(runtime_path),
+            expected_runtime_digest=expected_runtime_digest,
+        ),
+    )
+    ree = Ree(subject=ReeSubject(definition=definition))
+    ree = commit_receipt(
+        ree,
+        AcquireSourceReceipt(
+            **_envelope("source-1"),
+            origin_url="https://example.test/repo.git",
+            source_type="git",
+            resolved_revision="abc123",
+            snapshot_digest=_SNAPSHOT,
+        ),
+    )
+    if not with_build:
+        return ree
+    return commit_receipt(
+        ree,
+        BuildRuntimeReceipt(
+            **_envelope("build-1"),
+            snapshot_digest=_SNAPSHOT,
+            build_runtime_script_path=ReePath(RESERVED_BUILD_SCRIPT),
+            build_runtime_script_digest=digest_bytes(_SCRIPT),
+            workspace_drift=WorkspaceDrift(status="unknown"),
+            runtime_path=WorkspacePath(runtime_path),
+            produced_runtime_digest=digest_bytes(_RUNTIME),
+        ),
+    )
+
+
+def _workbench(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    ree: Ree | None = None,
+) -> tuple[ReeLayout, ReeDirectory]:
+    layout = ReeLayout(tmp_path / "ree")
     store = ReeDirectory(layout)
     store.ensure_dirs()
-    store.write_record(
-        ReeRecord(
-            ree_id="ree123",
-            name="demo",
-            created_at="2026-01-01T00:00:00Z",
-            updated_at="2026-01-01T00:00:00Z",
-            ree_intent=ReeIntent(name="demo"),
-            ree_state=ReeLifecycleState(source_available=True),
-        )
-    )
-    store.workspace.write_bytes(_RUNTIME, b"not really a tarball")
-    if with_prior_sbom:
-        layout.artifacts.mkdir(parents=True, exist_ok=True)
-        layout.sbom.write_text(json.dumps(_PRIOR_SBOM), encoding="utf-8")
-    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: ReeLayout(root=tmp_path)))
-    return layout
+    store.workspace.write_bytes("runtime.tar", _RUNTIME)
+    store.write_ree(ree or _ree())
+    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
+    return layout, store
 
 
-def _stub_scan(monkeypatch: pytest.MonkeyPatch, outcome: ScanOutcome, *, writes: bool = True) -> None:
-    """Stand in for syft, which writes its output file itself — partial or not."""
-
-    def scan(_runtime: Path, output_path: Path, **_kwargs: object) -> ScanOutcome:
-        if writes:
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_path.write_text(json.dumps(_NEW_SBOM), encoding="utf-8")
-        return outcome
-
-    monkeypatch.setattr(handler, "scan_runtime_archive", scan)
+def _successful_scan(_runtime: Path, output: Path, **_kwargs: object) -> ScanOutcome:
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_bytes(_SBOM)
+    return ScanOutcome(returncode=0, tool_version="1.2.3")
 
 
 def _run() -> ActionResult:
-    return handler.handle_generate_sbom(
-        GenerateSbomArgs(produced_runtime_path=_RUNTIME),
-        run_id="run-1",
-        log=_silent_log,
+    return generate_sbom.handle_generate_sbom(
+        GenerateSbomArgs(produced_runtime_path="runtime.tar"),
+        run_id="sbom-1",
+        log=lambda *args: None,
         is_canceled=lambda: False,
     )
 
 
-def test_a_successful_scan_publishes_the_document_and_declares_it(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+def test_success_commits_inline_receipt_and_publishes_document(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    layout = _seed(tmp_path, monkeypatch)
-    _stub_scan(monkeypatch, ScanOutcome(returncode=0, tool_version="1.2.3"))
+    layout, store = _workbench(tmp_path, monkeypatch)
+    monkeypatch.setattr(generate_sbom, "scan_runtime_archive", _successful_scan)
 
     result = _run()
 
+    receipt = store.read_ree().subject.receipts.sbom
     assert result.status == "succeeded"
-    assert json.loads(layout.sbom.read_text(encoding="utf-8")) == _NEW_SBOM
-    assert ReeDirectory(layout).read_intent().sbom == SBOM_ARTIFACT_PATH
+    assert layout.sbom.read_bytes() == _SBOM
+    assert receipt is not None
+    assert receipt.run_id == "sbom-1"
+    assert receipt.runtime_path == "runtime.tar"
+    assert receipt.runtime_digest == digest_bytes(_RUNTIME)
+    assert receipt.sbom_path == "artifacts/sbom.json"
+    assert receipt.sbom_digest == digest_bytes(_SBOM)
+    assert receipt.sbom_format == "cyclonedx-json"
+    assert receipt.tool_version == "1.2.3"
 
 
-def test_a_canceled_scan_leaves_the_previous_sbom_in_place(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """A cancel mid-scan must not publish the partial document syft left."""
-    layout = _seed(tmp_path, monkeypatch, with_prior_sbom=True)
-    _stub_scan(monkeypatch, ScanOutcome(returncode=-15, canceled=True))
+@pytest.mark.parametrize(
+    ("outcome", "write_output", "message"),
+    [
+        (ScanOutcome(returncode=7), True, "syft failed"),
+        (ScanOutcome(returncode=0, tool_version="1.2.3"), False, "without producing"),
+        (ScanOutcome(returncode=0), True, "did not report its tool version"),
+    ],
+)
+def test_invalid_scan_result_preserves_existing_document_and_commits_no_receipt(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    outcome: ScanOutcome,
+    write_output: bool,
+    message: str,
+) -> None:
+    layout, store = _workbench(tmp_path, monkeypatch)
+    layout.sbom.parent.mkdir(parents=True, exist_ok=True)
+    layout.sbom.write_bytes(b"old sbom")
 
-    result = _run()
+    def scan(_runtime: Path, output: Path, **_kwargs: object) -> ScanOutcome:
+        if write_output:
+            output.write_bytes(b"partial")
+        return outcome
 
-    assert result.status == "canceled"
-    assert json.loads(layout.sbom.read_text(encoding="utf-8")) == _PRIOR_SBOM
-
-
-def test_a_failed_scan_leaves_the_previous_sbom_in_place(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    layout = _seed(tmp_path, monkeypatch, with_prior_sbom=True)
-    _stub_scan(monkeypatch, ScanOutcome(returncode=2))
+    monkeypatch.setattr(generate_sbom, "scan_runtime_archive", scan)
 
     result = _run()
 
     assert result.status == "failed"
-    assert result.exit_code == 2
-    assert json.loads(layout.sbom.read_text(encoding="utf-8")) == _PRIOR_SBOM
+    assert result.failure is not None
+    assert message in result.failure.message
+    assert layout.sbom.read_bytes() == b"old sbom"
+    assert store.read_ree().subject.receipts.sbom is None
+    assert not list(layout.artifacts.glob(".sbom.json.*.tmp"))
 
 
-def test_a_scan_that_did_not_finish_leaves_no_staging_file_behind(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+def test_canceled_scan_preserves_existing_document_and_commits_no_receipt(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    layout = _seed(tmp_path, monkeypatch, with_prior_sbom=True)
-    _stub_scan(monkeypatch, ScanOutcome(returncode=2))
+    layout, store = _workbench(tmp_path, monkeypatch)
+    layout.sbom.parent.mkdir(parents=True, exist_ok=True)
+    layout.sbom.write_bytes(b"old sbom")
 
-    _run()
+    def scan(_runtime: Path, output: Path, **_kwargs: object) -> ScanOutcome:
+        output.write_bytes(b"partial")
+        return ScanOutcome(returncode=-15, canceled=True)
 
-    assert sorted(p.name for p in layout.artifacts.iterdir()) == ["sbom.json"]
+    monkeypatch.setattr(generate_sbom, "scan_runtime_archive", scan)
+
+    result = _run()
+
+    assert result.status == "canceled"
+    assert layout.sbom.read_bytes() == b"old sbom"
+    assert store.read_ree().subject.receipts.sbom is None
+    assert not list(layout.artifacts.glob(".sbom.json.*.tmp"))
 
 
-def test_a_canceled_scan_records_a_canceled_receipt_declaring_no_sbom(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize(
+    ("ree", "requested_path", "runtime_bytes", "message", "category"),
+    [
+        (_ree(with_build=False), "runtime.tar", _RUNTIME, "runtime has not been built", "precondition"),
+        (_ree(), "other.tar", _RUNTIME, "does not match the REE definition", "validation"),
+        (_ree(runtime_path="runtime.img"), "runtime.img", _RUNTIME, "tarballs only", "validation"),
+        (_ree(), "runtime.tar", b"changed", "does not match the selected build", "precondition"),
+        (
+            _ree(expected_runtime_digest=digest_bytes(b"expected")),
+            "runtime.tar",
+            _RUNTIME,
+            "does not match the expected digest",
+            "precondition",
+        ),
+        (record_seal(_ree(), sealed_at=_NOW), "runtime.tar", _RUNTIME, "sealed REE", "precondition"),
+    ],
+)
+def test_preconditions_reject_invalid_runtime_evidence_before_scanning(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    ree: Ree,
+    requested_path: str,
+    runtime_bytes: bytes,
+    message: str,
+    category: str,
 ) -> None:
-    """The receipt is the record of what happened, including that it stopped."""
-    layout = _seed(tmp_path, monkeypatch)
-    _stub_scan(monkeypatch, ScanOutcome(returncode=-15, canceled=True))
+    layout, store = _workbench(tmp_path, monkeypatch, ree)
+    (layout.workspace / "runtime.tar").write_bytes(runtime_bytes)
+    scanned = False
 
-    _run()
+    def scan(*args: object, **kwargs: object) -> ScanOutcome:
+        nonlocal scanned
+        scanned = True
+        return ScanOutcome(returncode=0, tool_version="1.2.3")
 
-    receipts = load_receipts(layout)
-    assert [r.status for r in receipts] == ["canceled"]
-    assert receipts[0].sbom_path is None  # type: ignore[union-attr]
+    monkeypatch.setattr(generate_sbom, "scan_runtime_archive", scan)
+
+    result = generate_sbom.handle_generate_sbom(
+        GenerateSbomArgs(produced_runtime_path=requested_path),
+        run_id="sbom-rejected",
+        log=lambda *args: None,
+        is_canceled=lambda: False,
+    )
+
+    assert result.status == "failed"
+    assert result.failure is not None
+    assert result.failure.category == category
+    assert message in result.failure.message
+    assert scanned is False
+    assert store.read_ree().subject.receipts.sbom is None
 
 
-def test_a_canceled_scan_does_not_declare_an_sbom_on_the_intent(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+def test_revision_conflict_does_not_select_the_new_receipt(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    layout = _seed(tmp_path, monkeypatch)
-    _stub_scan(monkeypatch, ScanOutcome(returncode=-15, canceled=True))
+    layout, store = _workbench(tmp_path, monkeypatch)
+    monkeypatch.setattr(generate_sbom, "scan_runtime_archive", _successful_scan)
 
-    _run()
+    def conflict(*args: object, **kwargs: object) -> None:
+        raise ReeRevisionConflictError("REE changed while the scan ran")
 
-    assert ReeDirectory(layout).read_intent().sbom is None
+    monkeypatch.setattr(generate_sbom, "save_ree", conflict)
+
+    result = _run()
+
+    assert result.status == "failed"
+    assert result.failure is not None
+    assert result.failure.category == "conflict"
+    assert result.failure.retryable is True
+    assert store.read_ree().subject.receipts.sbom is None
+    assert layout.sbom.read_bytes() == _SBOM

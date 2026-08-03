@@ -83,5 +83,6 @@ def handle_materialize_workspace(
 ) -> ActionResult:
     layout = ReeLayout.in_workbench()
     store = ReeDirectory(layout)
-    committed_digest = store.read_state().source_snapshot_digest if store.record_exists() else None
+    source_receipt = store.read_ree().subject.receipts.source if store.record_exists() else None
+    committed_digest = source_receipt.snapshot_digest if source_receipt else None
     return materialize_workspace(layout, snapshot_digest=committed_digest, log=log, is_canceled=is_canceled)

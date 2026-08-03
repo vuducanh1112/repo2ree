@@ -1,7 +1,7 @@
 """The shared runtime-contract subgraph checks.
 
 Activation and experiment inference both begin from the resolved logical project
-root and the current ``ReeIntent.runtime`` and resolve it into a typed runtime
+root and the current ``ReeDefinition.runtime`` and resolve it into a typed runtime
 contract before any command strategy runs. They never scan for arbitrary tar
 files: the declared path is the only runtime, and it is either inspected as a
 built artifact or matched against an unchanged generated build.

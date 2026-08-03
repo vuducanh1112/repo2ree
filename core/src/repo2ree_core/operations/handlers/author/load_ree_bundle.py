@@ -74,8 +74,7 @@ def handle_load_ree_bundle(
         "system",
         "info",
         f"restored {'sealed' if loaded.sealed else 'draft'} REE '{loaded.name}': "
-        f"{loaded.overlay_files} overlay, {loaded.artifact_files} artifact, "
-        f"{loaded.author_receipts} receipt files"
+        f"{loaded.overlay_files} overlay and {loaded.artifact_files} artifact files"
         + ("" if loaded.source_restored else " (bundle carried no source snapshot)"),
     )
 
@@ -113,7 +112,12 @@ def _rebuild_derived_trees(
     failure = _run_script(layout.materialize_script, what="materialize", log=log, is_canceled=is_canceled)
     if failure is not None:
         return failure
-    record_materialization(layout, snapshot_digest=store.read_state().source_snapshot_digest, log=log)
+    source_receipt = store.read_ree().subject.receipts.source
+    record_materialization(
+        layout,
+        snapshot_digest=source_receipt.snapshot_digest if source_receipt else None,
+        log=log,
+    )
     return None
 
 

@@ -15,7 +15,6 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from repo2ree_core.path_safety import (
-    normalize_workspace_path,
     resolve_within,
     validate_relative_path,
 )
@@ -78,11 +77,3 @@ class TestValidateRelativePath:
     @given(st.builds(PurePosixPath, _SAFE_REL))
     def test_accepts_purposixpath_of_safe_segments(self, rel: PurePosixPath) -> None:
         validate_relative_path(rel)  # does not raise
-
-
-class TestNormalizeWorkspacePath:
-    @given(st.one_of(st.none(), st.text(max_size=20)))
-    def test_idempotent_and_never_absolute(self, value: str | None) -> None:
-        once = normalize_workspace_path(value)
-        assert normalize_workspace_path(once) == once
-        assert not once.startswith("/")

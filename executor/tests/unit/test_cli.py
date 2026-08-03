@@ -65,12 +65,10 @@ def test_init_ree_bootstraps_tree_and_metadata(ree_root: Path) -> None:
     layout = ReeLayout.in_workbench()
     assert layout.workspace.is_dir()
     metadata = json.loads(layout.record.read_text())
-    assert metadata["ree_id"] == "abc123"
-    assert metadata["name"] == "demo"
-    assert metadata["status"] == "draft"
-    # The build script is no longer carried on the intent; it is seeded as a
-    # reserved, REE-owned overlay script (mirrored into the workspace).
-    assert "build_runtime_script" not in metadata["ree_intent"]
+    assert metadata["subject"]["definition"]["name"] == "demo"
+    assert "seal" not in metadata
+    build = metadata["subject"]["definition"]["build_runtime"]
+    assert build["build_runtime_script_path"] == RESERVED_BUILD_SCRIPT
     assert layout.overlay_file(RESERVED_BUILD_SCRIPT).is_file()
     assert layout.workspace_file(RESERVED_BUILD_SCRIPT).is_file()
 
@@ -94,27 +92,7 @@ def test_get_ree_before_init_exits_nonzero(ree_root: Path) -> None:
 def test_get_ree_emits_metadata(initialized_ree: Path) -> None:
     result = runner.invoke(cli, ["get-ree-record"])
     assert result.exit_code == 0
-    assert json.loads(result.output)["ree_id"] == "abc123"
-
-
-def test_get_scorecard_before_init_exits_nonzero(ree_root: Path) -> None:
-    result = runner.invoke(cli, ["get-scorecard"])
-    assert result.exit_code == 1
-    assert json.loads(result.stderr) == {"error": "not initialised"}
-
-
-def test_get_scorecard_emits_camel_case_card(initialized_ree: Path) -> None:
-    result = runner.invoke(cli, ["get-scorecard"])
-    assert result.exit_code == 0
-    card = json.loads(result.output)
-    assert card["level_code"] == "R0"
-    assert [category["key"] for category in card["categories"]] == [
-        "source",
-        "runtime",
-        "activation",
-        "experiments",
-        "results",
-    ]
+    assert json.loads(result.output)["subject"]["definition"]["name"] == "demo"
 
 
 # ================================================
@@ -219,12 +197,12 @@ def test_read_ree_file_round_trips_workspace_bytes(initialized_ree: Path) -> Non
 
 
 def test_read_ree_file_reads_outside_workspace(initialized_ree: Path) -> None:
-    ReeLayout.in_workbench().manifest.write_bytes(b"manifest")
+    ReeLayout.in_workbench().snapshot_archive.write_bytes(b"snapshot")
 
-    result = runner.invoke(cli, ["read-ree-file", "--path", "manifest.json"])
+    result = runner.invoke(cli, ["read-ree-file", "--path", "snapshot.tar.gz"])
 
     assert result.exit_code == 0
-    assert result.stdout_bytes == b"manifest"
+    assert result.stdout_bytes == b"snapshot"
 
 
 def test_read_ree_file_missing_exits_nonzero(initialized_ree: Path) -> None:
@@ -247,7 +225,7 @@ def test_get_ree_document_reflects_workspace_files(initialized_ree: Path) -> Non
     result = runner.invoke(cli, ["get-ree-document"])
     assert result.exit_code == 0
     workspace = json.loads(result.output)
-    assert workspace["ree_id"] == "abc123"
+    assert workspace["ree_id"] == "ree"
     assert any(f.get("path") == "app.py" for f in workspace["workspace_files"])
 
 
@@ -271,4 +249,4 @@ def test_build_archive_before_seal_writes_a_draft_bundle(initialized_ree: Path) 
     assert result.exit_code == 0
     with zipfile.ZipFile(io.BytesIO(result.stdout_bytes)) as archive:
         manifest = json.loads(archive.read("ree/ree.json"))
-    assert manifest["seal_hash"] is None
+    assert "seal" not in manifest

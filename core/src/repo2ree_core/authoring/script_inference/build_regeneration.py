@@ -4,7 +4,7 @@ The second Phase-1 runtime-evidence source: before the artifact exists, a build
 script that is still byte-identical to what inference would generate *now* lets
 downstream inference reuse the constants the generator emitted (the image ref a
 Docker build tags, or the venv tarball a pip build packs). Merely declaring
-``ReeIntent.runtime`` cannot — a path does not identify what is inside the
+``ReeDefinition.runtime`` cannot — a path does not identify what is inside the
 artifact.
 
 This runs the published build DAG through the same generic engine (the DAG stays

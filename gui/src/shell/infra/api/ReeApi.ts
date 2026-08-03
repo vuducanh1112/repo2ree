@@ -3,19 +3,18 @@ import type { ApiClient } from "./ApiClient";
 import type {
   AgentList,
   ApiListResponse,
-  AuthorReceiptSetWire,
   CreateBuildReviewPayload,
   CreateSourceReviewPayload,
   DeleteReeResponse,
   FileMutationResponse,
   InferenceReport,
   ReeCreatePayload,
+  ReeDefinitionPatchPayload,
   ReeDocument,
   ReeIndexList,
-  ReeIntentPatchPayload,
+  ReeReceiptsWire,
   ReeSummary,
   ReproducibilityReportWire,
-  ReproducibilityScoreCardWire,
   ReprovisionResponse,
   ReviewSetWire,
   RunSummary,
@@ -155,14 +154,8 @@ export class ReeApi {
     });
   }
 
-  async getScorecard(reeId: ReeId): Promise<ReproducibilityScoreCardWire> {
-    return this.client.request<ReproducibilityScoreCardWire>(endpoints.reeScorecard(reeId), {
-      method: "GET",
-    });
-  }
-
-  async listAuthorReceipts(reeId: ReeId): Promise<AuthorReceiptSetWire> {
-    return this.client.request<AuthorReceiptSetWire>(endpoints.reeAuthorReceipts(reeId), {
+  async listAuthorReceipts(reeId: ReeId): Promise<ReeReceiptsWire> {
+    return this.client.request<ReeReceiptsWire>(endpoints.reeAuthorReceipts(reeId), {
       method: "GET",
     });
   }
@@ -221,8 +214,8 @@ export class ReeApi {
     });
   }
 
-  async patchReeIntent(reeId: ReeId, payload: ReeIntentPatchPayload): Promise<ReeDocument> {
-    return this.client.request<ReeDocument>(endpoints.reeIntent(reeId), {
+  async patchReeDefinition(reeId: ReeId, payload: ReeDefinitionPatchPayload): Promise<ReeDocument> {
+    return this.client.request<ReeDocument>(endpoints.reeDefinition(reeId), {
       method: "PATCH",
       body: JSON.stringify(payload),
     });

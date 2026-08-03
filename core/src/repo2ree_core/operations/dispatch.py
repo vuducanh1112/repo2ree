@@ -22,7 +22,7 @@ from repo2ree_core.operations.handlers.author.load_ree_bundle import handle_load
 from repo2ree_core.operations.handlers.author.materialize_workspace import (
     handle_materialize_workspace,
 )
-from repo2ree_core.operations.handlers.author.patch_ree_intent import handle_patch_ree_intent
+from repo2ree_core.operations.handlers.author.patch_ree_definition import handle_patch_ree_definition
 from repo2ree_core.operations.handlers.author.remove_source import handle_remove_source
 from repo2ree_core.operations.handlers.author.run_experiment import handle_run_experiment
 from repo2ree_core.operations.handlers.author.seal_ree import handle_seal_ree
@@ -44,7 +44,7 @@ from repo2ree_protocol.command import (
     GenerateScriptCandidatesCommand,
     LoadReeBundleCommand,
     MaterializeWorkspaceCommand,
-    PatchReeIntentCommand,
+    PatchReeDefinitionCommand,
     RemoveSourceCommand,
     ReviewAcquireSourceCommand,
     ReviewActivationTestCommand,
@@ -136,8 +136,8 @@ def _dispatch(
         return handle_write_file(cmd.args, log=log, is_canceled=cancel)
     if isinstance(cmd, DeleteFileCommand):
         return handle_delete_file(cmd.args, log=log, is_canceled=cancel)
-    if isinstance(cmd, PatchReeIntentCommand):
-        return handle_patch_ree_intent(cmd.args, log=log, is_canceled=cancel)
+    if isinstance(cmd, PatchReeDefinitionCommand):
+        return handle_patch_ree_definition(cmd.args, log=log, is_canceled=cancel)
     if isinstance(cmd, AcquireSourceCommand):
         return handle_acquire_source(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, RemoveSourceCommand):
@@ -145,11 +145,11 @@ def _dispatch(
     if isinstance(cmd, BuildRuntimeCommand):
         return handle_build_runtime(run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, EvaluateDependencyScoreCommand):
-        return handle_evaluate_dependency_score(cmd.args, log=log, is_canceled=cancel)
+        return handle_evaluate_dependency_score(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, RunExperimentCommand):
         return handle_run_experiment(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, GenerateHbomCommand):
-        return handle_generate_hbom(log=log, is_canceled=cancel)
+        return handle_generate_hbom(run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, GenerateSbomCommand):
         return handle_generate_sbom(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, CrossCheckSbomCommand):

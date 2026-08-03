@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pytest
 
+from repo2ree_core.domain.ree.model import Ree, ReeDefinition, ReeSubject
 from repo2ree_core.operations.handlers.author import delete_file as handler
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
@@ -30,6 +31,7 @@ def _silent_log(*_: object) -> None:
 def _store_at(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ReeDirectory:
     store = ReeDirectory(ReeLayout(root=tmp_path))
     store.ensure_dirs()
+    store.write_ree(Ree(subject=ReeSubject(definition=ReeDefinition(name="demo"))))
     monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: ReeLayout(root=tmp_path)))
     return store
 

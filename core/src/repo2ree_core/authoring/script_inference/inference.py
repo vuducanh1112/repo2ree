@@ -32,7 +32,7 @@ from repo2ree_core.authoring.script_inference.registry import (
 )
 from repo2ree_core.authoring.script_inference.repository_facts import scan_repository
 from repo2ree_core.authoring.script_inference.runtime_inputs import RuntimeInputs
-from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.model import ReeDefinition
 from repo2ree_core.reserved_paths import (
     RESERVED_ACTIVATION_SCRIPT,
     RESERVED_ACTIVATION_VERIFY_SCRIPT,
@@ -69,7 +69,7 @@ def infer_scripts(
     upstream_path: Path,
     selectors: list[ScriptTargetSelector],
     *,
-    intent: ReeIntent | None = None,
+    definition: ReeDefinition | None = None,
     policy: InferencePolicy | None = None,
     runtime_inputs: RuntimeInputs | None = None,
     ree_id: str = "",
@@ -80,7 +80,7 @@ def infer_scripts(
     base_context = DecisionContext(
         facts=facts,
         policy=active_policy,
-        ree_name=intent.name if intent else "",
+        ree_name=definition.name if definition else "",
         runtime=runtime_inputs or RuntimeInputs(),
     )
 
@@ -124,7 +124,7 @@ def infer_scripts(
 
 def _unsupported_result(target: ScriptTarget) -> TargetInferenceResult:
     """A requested target with no DAG registered yet — the verify targets in
-    Phase 1 (they await an author verification claim ``ReeIntent`` cannot yet
+    Phase 1 (they await an author verification claim ``ReeDefinition`` cannot yet
     carry). Still returns a well-formed, empty trace rather than an error."""
     return TargetInferenceResult(
         target=target,

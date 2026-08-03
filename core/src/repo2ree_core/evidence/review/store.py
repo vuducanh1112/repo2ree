@@ -11,16 +11,14 @@ from __future__ import annotations
 
 from contextlib import suppress
 
-from repo2ree_core.domain.ree.receipt import (
-    AcquireSourceReceipt,
-    ActivationTestReceipt,
-    BuildRuntimeReceipt,
-    RunExperimentReceipt,
-)
 from repo2ree_core.evidence.review.models import (
     ActivationOutcome,
     BuildComparison,
     ExperimentComparison,
+    ReviewAcquireSourceReceipt,
+    ReviewActivationReceipt,
+    ReviewBuildRuntimeReceipt,
+    ReviewExperimentReceipt,
     ReviewRecord,
     ReviewSet,
     ReviewStepKey,
@@ -44,7 +42,7 @@ def read_review_record(layout: ReviewLayout) -> ReviewRecord | None:
 
 def write_review_source_evidence(
     layout: ReviewLayout,
-    receipt: AcquireSourceReceipt,
+    receipt: ReviewAcquireSourceReceipt,
     comparison: SourceComparison,
 ) -> None:
     _write_review_evidence(layout, receipt, "source", comparison.model_dump(mode="json"))
@@ -52,7 +50,7 @@ def write_review_source_evidence(
 
 def write_review_build_evidence(
     layout: ReviewLayout,
-    receipt: BuildRuntimeReceipt,
+    receipt: ReviewBuildRuntimeReceipt,
     comparison: BuildComparison,
 ) -> None:
     _write_review_evidence(layout, receipt, "build", comparison.model_dump(mode="json"))
@@ -60,7 +58,7 @@ def write_review_build_evidence(
 
 def write_review_activation_evidence(
     layout: ReviewLayout,
-    receipt: ActivationTestReceipt,
+    receipt: ReviewActivationReceipt,
     outcome: ActivationOutcome,
 ) -> None:
     """Persist the activation probe beside the other steps' evidence.
@@ -75,18 +73,14 @@ def write_review_activation_evidence(
 
 def write_review_experiment_evidence(
     layout: ReviewLayout,
-    receipt: RunExperimentReceipt,
+    receipt: ReviewExperimentReceipt,
     comparison: ExperimentComparison,
 ) -> None:
     """Persist one experiment's evidence under its own slug.
 
-    Unlike the other three steps, the per-operation slot cannot be
-    ``receipts/run_experiment.json``: every experiment shares that operation, so
-    a second one would overwrite the first's receipt and the attempt would end
-    up holding one experiment's evidence for all of them. The author side hit
-    this first and answered it by keying experiments under a slug directory
-    (:func:`repo2ree_core.persistence.receipts.author_receipt_path`); this mirrors that so
-    both sides of the same REE are laid out the same way.
+    Unlike the other three review steps, the per-operation slot cannot be
+    ``receipts/run_experiment.json``: every experiment shares that operation,
+    so review evidence is keyed under a slug directory.
     """
     slug = experiment_slug(receipt.experiment_name)
     payload = json_document_bytes(receipt.model_dump(mode="json"))
@@ -97,7 +91,7 @@ def write_review_experiment_evidence(
 
 def _write_review_evidence(
     layout: ReviewLayout,
-    receipt: AcquireSourceReceipt | BuildRuntimeReceipt | ActivationTestReceipt,
+    receipt: ReviewAcquireSourceReceipt | ReviewBuildRuntimeReceipt | ReviewActivationReceipt,
     step: ReviewStepKey,
     comparison: dict[str, object],
 ) -> None:

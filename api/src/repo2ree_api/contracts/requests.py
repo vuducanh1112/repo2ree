@@ -12,7 +12,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from repo2ree_core.domain.ree.intent import ReeIntent
+from repo2ree_core.domain.ree.model import ReeDefinition
 
 
 class StrictRequestModel(BaseModel):
@@ -52,21 +52,15 @@ class ReeCreatePayload(StrictRequestModel):
     agent_id: str | None = None
 
 
-class ReeIntentPatchPayload(StrictRequestModel):
-    """Merge the provided intent fields into the stored intent (top-level keys).
+class ReeDefinitionPatchPayload(StrictRequestModel):
+    """Merge top-level fields into the current portable REE definition."""
 
-    Every ``ReeIntent`` field has a default, so the model doubles as the patch
-    shape: only the keys the client actually sent are applied (``exclude_unset``
-    at the dispatch site), and unknown keys are rejected up front instead of
-    failing inside the workbench.
-    """
-
-    ree_intent_patch: ReeIntent = Field(default_factory=ReeIntent)
+    definition_patch: dict[str, object] = Field(default_factory=dict)
     expected_version: str | None = None
 
 
-class ReeIntentReplacePayload(StrictRequestModel):
-    ree_intent: ReeIntent
+class ReeDefinitionReplacePayload(StrictRequestModel):
+    definition: ReeDefinition
     expected_version: str | None = None
 
 

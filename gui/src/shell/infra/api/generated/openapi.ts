@@ -296,7 +296,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/rees/{ree_id}/intent": {
+    "/api/v1/rees/{ree_id}/definition": {
         parameters: {
             query?: never;
             header?: never;
@@ -304,23 +304,14 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /**
-         * Replace Ree Intent Route
-         * @description Atomically replace the complete typed authoring intent.
-         *
-         *     Delegating to the patch route is a true replace only because the patch is
-         *     re-validated from a full model_dump() — every ReeIntent field (defaults
-         *     included) counts as explicitly set, so the patch dispatch's exclude_unset
-         *     keeps them all and apply_patch overwrites each top-level key. Guarded by
-         *     test_replace_intent_resets_fields_omitted_from_the_new_intent.
-         */
-        put: operations["replaceReeIntent"];
+        /** Replace Ree Definition Route */
+        put: operations["replaceReeDefinition"];
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        /** Patch Ree Intent Route */
-        patch: operations["patchReeIntent"];
+        /** Patch Ree Definition Route */
+        patch: operations["patchReeDefinition"];
         trace?: never;
     };
     "/api/v1/rees/{ree_id}/files/raw": {
@@ -521,27 +512,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/rees/{ree_id}/scorecard": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Ree Scorecard
-         * @description The reproducibility scorecard, computed inside the workbench from the
-         *     REE's persisted record (intent + state + run receipts).
-         */
-        get: operations["getScorecard"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/rees/{ree_id}/receipts/author": {
         parameters: {
             query?: never;
@@ -551,7 +521,7 @@ export interface paths {
         };
         /**
          * List Author Receipts
-         * @description Latest successful author receipt per operation, with live freshness.
+         * @description Successful receipts carried by the portable aggregate.
          */
         get: operations["listAuthorReceipts"];
         put?: never;
@@ -883,10 +853,7 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /**
-         * AcquireSourceReceipt
-         * @description Chain root: no inputs, records what was acquired.
-         */
+        /** AcquireSourceReceipt */
         AcquireSourceReceipt: {
             /**
              * Schema Version
@@ -905,66 +872,26 @@ export interface components {
             /** Recorded At */
             recorded_at: string;
             /**
-             * Status
-             * @enum {string}
-             */
-            status: "succeeded" | "failed" | "canceled";
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
+             * Operation
+             * @default acquire_source
+             * @constant
              */
             operation: "acquire_source";
-            /**
-             * Origin Url
-             * @default
-             */
-            origin_url: string;
+            /** Origin Url */
+            origin_url?: string | null;
             /**
              * Source Type
-             * @default
+             * @enum {string}
              */
-            source_type: string;
-            /** Revision */
-            revision?: string | null;
-            /** Expected Swhid */
-            expected_swhid?: string | null;
+            source_type: "" | "git" | "hg" | "svn" | "cvs" | "bzr" | "tarball" | "zip";
+            /** Requested Ref */
+            requested_ref?: string | null;
+            /** Resolved Revision */
+            resolved_revision?: string | null;
             /** Observed Swhid */
             observed_swhid?: string | null;
-        };
-        /**
-         * Activation
-         * @description The REE's required activation — a singleton sibling of experiments.
-         *
-         *     Activation proves the built runtime is inhabitable by running its own
-         *     script. There is exactly one per REE, so it is unnamed. Its run script
-         *     is always the reserved activation path unless declared otherwise — an
-         *     empty declaration (e.g. from a client zeroing the activation on source
-         *     reset) normalizes back to the reserved path rather than sticking.
-         */
-        Activation: {
-            /**
-             * Description
-             * @default
-             */
-            description: string;
-            /**
-             * Run Script
-             * @default ree-scripts/activation.sh
-             */
-            run_script: string;
-            /**
-             * Verify Script
-             * @default
-             */
-            verify_script: string;
-            /** Output Paths */
-            output_paths?: string[];
-            /**
-             * Runtime Estimate
-             * @default
-             */
-            runtime_estimate: string;
-            resource_estimates?: components["schemas"]["ResourceEstimates"];
+            /** Snapshot Digest */
+            snapshot_digest: string;
         };
         /**
          * ActivationOutcome
@@ -979,8 +906,8 @@ export interface components {
          *     ``runtime_digest`` is what the pass is *about*: the artifact actually
          *     probed, which the step requires to equal the one the build step certified.
          *     Without it a re-run build would silently leave a pass attached to a runtime
-         *     that no longer exists — the same binding the author-side scorecard makes
-         *     when it only counts activation against the runtime that was built.
+         *     that no longer exists — the same binding the aggregate assessment applies
+         *     when it evaluates activation against the runtime that was built.
          *
          *     The exit codes separate the two failures that read alike but are not: a
          *     runtime that would not come up, and one that came up and was rejected by
@@ -1027,54 +954,6 @@ export interface components {
             verify_script_path: string;
             /** Templates */
             templates: components["schemas"]["ScriptTemplateEntry"][];
-        };
-        /** ActivationTestReceipt */
-        ActivationTestReceipt: {
-            /**
-             * Schema Version
-             * @default 1
-             * @constant
-             */
-            schema_version: 1;
-            /** Run Id */
-            run_id: string;
-            /** Started At */
-            started_at: string;
-            /** Finished At */
-            finished_at: string;
-            /** Duration Ms */
-            duration_ms: number;
-            /** Recorded At */
-            recorded_at: string;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "succeeded" | "failed" | "canceled";
-            workspace_drift?: components["schemas"]["WorkspaceDrift"] | null;
-            /** Snapshot Digest */
-            snapshot_digest?: string | null;
-            /** Run Script Path */
-            run_script_path?: string | null;
-            /** Run Script Digest */
-            run_script_digest?: string | null;
-            /** Run Exit Code */
-            run_exit_code?: number | null;
-            /** Verify Script Path */
-            verify_script_path?: string | null;
-            /** Verify Script Digest */
-            verify_script_digest?: string | null;
-            /** Verify Exit Code */
-            verify_exit_code?: number | null;
-            /** Runtime Path */
-            runtime_path?: string | null;
-            /** Declared Runtime Digest */
-            declared_runtime_digest?: string | null;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            operation: "activation_test";
         };
         /** AgentList */
         AgentList: {
@@ -1180,25 +1059,6 @@ export interface components {
             source: string;
         };
         /**
-         * AuthorReceiptEntry
-         * @description One selected author receipt joined to its live freshness verdict.
-         */
-        AuthorReceiptEntry: {
-            /** Key */
-            key: string;
-            /** Receipt */
-            receipt: components["schemas"]["AcquireSourceReceipt"] | components["schemas"]["SnapshotUpstreamReceipt"] | components["schemas"]["BuildRuntimeReceipt"] | components["schemas"]["GenerateSbomReceipt"] | components["schemas"]["CrossCheckSbomReceipt"] | components["schemas"]["ActivationTestReceipt"] | components["schemas"]["RunExperimentReceipt"];
-            consistency: components["schemas"]["ConsistencyStep"];
-        };
-        /**
-         * AuthorReceiptSet
-         * @description Latest successful, fully typed author evidence for the REE.
-         */
-        AuthorReceiptSet: {
-            /** Receipts */
-            receipts?: components["schemas"]["AuthorReceiptEntry"][];
-        };
-        /**
          * BuildComparison
          * @description How a reviewer's rebuilt runtime compares to the author's.
          *
@@ -1279,6 +1139,18 @@ export interface components {
             /** Advisory */
             advisory?: components["schemas"]["PackageDeltaRecord"][];
         };
+        /** BuildRuntimeDefinition */
+        BuildRuntimeDefinition: {
+            /**
+             * Build Runtime Script Path
+             * @default ree-scripts/build_script.sh
+             */
+            build_runtime_script_path: string;
+            /** Build Runtime Script Digest */
+            build_runtime_script_digest: string;
+            /** Build Runtime Script Size */
+            build_runtime_script_size: number;
+        };
         /** BuildRuntimeReceipt */
         BuildRuntimeReceipt: {
             /**
@@ -1298,26 +1170,22 @@ export interface components {
             /** Recorded At */
             recorded_at: string;
             /**
-             * Status
-             * @enum {string}
-             */
-            status: "succeeded" | "failed" | "canceled";
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
+             * Operation
+             * @default build_runtime
+             * @constant
              */
             operation: "build_runtime";
-            workspace_drift?: components["schemas"]["WorkspaceDrift"] | null;
             /** Snapshot Digest */
-            snapshot_digest?: string | null;
-            /** Build Script Path */
-            build_script_path?: string | null;
-            /** Build Script Digest */
-            build_script_digest?: string | null;
+            snapshot_digest: string;
+            /** Build Runtime Script Path */
+            build_runtime_script_path: string;
+            /** Build Runtime Script Digest */
+            build_runtime_script_digest: string;
+            workspace_drift: components["schemas"]["WorkspaceDrift"];
             /** Runtime Path */
-            runtime_path?: string | null;
+            runtime_path: string;
             /** Produced Runtime Digest */
-            produced_runtime_digest?: string | null;
+            produced_runtime_digest: string;
         };
         /**
          * BuildScriptTemplates
@@ -1331,6 +1199,26 @@ export interface components {
             path: string;
             /** Templates */
             templates: components["schemas"]["ScriptTemplateEntry"][];
+        };
+        /**
+         * BundleContents
+         * @description Inventory bound into a sealed bundle; persisted drafts keep this empty.
+         */
+        BundleContents: {
+            /**
+             * Entries
+             * @default []
+             */
+            entries: components["schemas"]["BundleEntry"][];
+        };
+        /** BundleEntry */
+        BundleEntry: {
+            /** Path */
+            path: string;
+            /** Digest */
+            digest: string;
+            /** Size */
+            size: number;
         };
         /** CPUDefinition */
         CPUDefinition: {
@@ -1434,47 +1322,6 @@ export interface components {
             count: number;
             /** Sources */
             sources?: string[];
-        };
-        /**
-         * ConsistencyReport
-         * @description Per-step freshness of recorded run receipts vs. the current tree.
-         */
-        ConsistencyReport: {
-            /** Steps */
-            steps?: components["schemas"]["ConsistencyStep"][];
-        };
-        /**
-         * ConsistencyStaleInput
-         * @description One input whose recorded digest disagrees with the current tree.
-         */
-        ConsistencyStaleInput: {
-            /** Input */
-            input: string;
-            /** Recorded */
-            recorded: string | null;
-            /** Current */
-            current: string | null;
-        };
-        /**
-         * ConsistencyStep
-         * @description Freshness of one step's latest successful receipt vs. the current tree.
-         */
-        ConsistencyStep: {
-            /** Step */
-            step: string;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "fresh" | "stale" | "missing";
-            /** Run Id */
-            run_id?: string | null;
-            /** Recorded At */
-            recorded_at?: string | null;
-            /** Stale Inputs */
-            stale_inputs?: components["schemas"]["ConsistencyStaleInput"][];
-            /** Workspace Drift */
-            workspace_drift?: ("clean" | "modified" | "unknown") | null;
         };
         /** Contributor */
         Contributor: {
@@ -1605,15 +1452,7 @@ export interface components {
              */
             basis: "auto" | "independent" | "bundled";
         };
-        /**
-         * CrossCheckSbomReceipt
-         * @description Aggregates of the SBOM ↔ declared-inventory cross-check.
-         *
-         *     Carries only counts plus the digest of the SBOM it consumed: the digest
-         *     chain (this → ``GenerateSbomReceipt.sbom_digest`` → build receipt) ties
-         *     the verdict to the built runtime; per-dependency detail stays in the
-         *     report artifact.
-         */
+        /** CrossCheckSbomReceipt */
         CrossCheckSbomReceipt: {
             /**
              * Schema Version
@@ -1632,41 +1471,22 @@ export interface components {
             /** Recorded At */
             recorded_at: string;
             /**
-             * Status
-             * @enum {string}
-             */
-            status: "succeeded" | "failed" | "canceled";
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
+             * Operation
+             * @default cross_check_sbom
+             * @constant
              */
             operation: "cross_check_sbom";
             /** Sbom Digest */
-            sbom_digest?: string | null;
-            /**
-             * Declared Direct Total
-             * @default 0
-             */
+            sbom_digest: string;
+            /** Declared Direct Total */
             declared_direct_total: number;
-            /**
-             * Observed Matched
-             * @default 0
-             */
+            /** Observed Matched */
             observed_matched: number;
-            /**
-             * Version Mismatches
-             * @default 0
-             */
+            /** Version Mismatches */
             version_mismatches: number;
-            /**
-             * Undeclared Same Ecosystem
-             * @default 0
-             */
+            /** Undeclared Same Ecosystem */
             undeclared_same_ecosystem: number;
-            /**
-             * Observed Total
-             * @default 0
-             */
+            /** Observed Total */
             observed_total: number;
         };
         /** DecisionDag */
@@ -1846,6 +1666,53 @@ export interface components {
         ErrorEnvelope: {
             error: components["schemas"]["ErrorDetail"];
         };
+        /** EvaluateReproducibilityReceipt */
+        EvaluateReproducibilityReceipt: {
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+            /** Run Id */
+            run_id: string;
+            /** Started At */
+            started_at: string;
+            /** Finished At */
+            finished_at: string;
+            /** Duration Ms */
+            duration_ms: number;
+            /** Recorded At */
+            recorded_at: string;
+            /**
+             * Operation
+             * @default evaluate_reproducibility
+             * @constant
+             */
+            operation: "evaluate_reproducibility";
+            /** Snapshot Digest */
+            snapshot_digest: string;
+            /** Overlay Digest */
+            overlay_digest: string;
+            /** Strict */
+            strict: boolean;
+            /** Dependency Level */
+            dependency_level: number;
+            /** Environment Level */
+            environment_level: number;
+            /** Machine Level */
+            machine_level: number;
+            /** Dependency Count */
+            dependency_count: number;
+            /** Manifest Count */
+            manifest_count: number;
+            /** Report Path */
+            report_path?: string | null;
+            /** Report Digest */
+            report_digest: string;
+            /** Analyzer Version */
+            analyzer_version: string;
+        };
         /**
          * EvaluatedDependency
          * @description A ``Dependency`` row plus the report's classification of it.
@@ -1896,45 +1763,11 @@ export interface components {
             /** Runtime Presence */
             runtime_presence?: ("observed" | "version-mismatch" | "not-observed") | null;
         };
-        /**
-         * Experiment
-         * @description A named experiment attached to a REE draft. Zero or more per REE.
-         *
-         *     A successful run always captures the experiment's declared ``output_paths``
-         *     into the produced-results store (``results/<name>/``) for local provenance.
-         *     Whether those baselines are packaged into the sealed bundle is a seal-time
-         *     choice (``results_included``), not per-experiment authoring state — so there
-         *     is no flag here.
-         */
-        Experiment: {
-            /**
-             * Description
-             * @default
-             */
-            description: string;
-            /**
-             * Run Script
-             * @default
-             */
-            run_script: string;
-            /**
-             * Verify Script
-             * @default
-             */
-            verify_script: string;
-            /** Output Paths */
-            output_paths?: string[];
-            /**
-             * Runtime Estimate
-             * @default
-             */
-            runtime_estimate: string;
-            resource_estimates?: components["schemas"]["ResourceEstimates"];
-            /**
-             * Name
-             * @default
-             */
+        /** ExperimentAssessment */
+        ExperimentAssessment: {
+            /** Name */
             name: string;
+            run: components["schemas"]["StepAssessment"];
         };
         /** ExperimentBinding */
         ExperimentBinding: {
@@ -2009,6 +1842,28 @@ export interface components {
             observed_output_digest?: string | null;
             /** Runtime Digest */
             runtime_digest?: string | null;
+        };
+        /** ExperimentDefinition */
+        ExperimentDefinition: {
+            /** Name */
+            name: string;
+            /** Run Script Path */
+            run_script_path: string;
+            /** Run Script Digest */
+            run_script_digest: string;
+            /** Run Script Size */
+            run_script_size: number;
+            /** Verify Script Path */
+            verify_script_path?: string | null;
+            /** Verify Script Digest */
+            verify_script_digest?: string | null;
+            /** Verify Script Size */
+            verify_script_size?: number | null;
+            /**
+             * Output Paths
+             * @default []
+             */
+            output_paths: string[];
         };
         /**
          * ExperimentGateObservation
@@ -2143,10 +1998,7 @@ export interface components {
                 [key: string]: unknown;
             };
         };
-        /**
-         * GenerateSbomReceipt
-         * @description Workspace-independent: consumes only the declared runtime artifact.
-         */
+        /** GenerateSbomReceipt */
         GenerateSbomReceipt: {
             /**
              * Schema Version
@@ -2165,27 +2017,23 @@ export interface components {
             /** Recorded At */
             recorded_at: string;
             /**
-             * Status
-             * @enum {string}
-             */
-            status: "succeeded" | "failed" | "canceled";
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
+             * Operation
+             * @default generate_sbom
+             * @constant
              */
             operation: "generate_sbom";
             /** Runtime Path */
             runtime_path: string;
-            /** Declared Runtime Digest */
-            declared_runtime_digest?: string | null;
+            /** Runtime Digest */
+            runtime_digest: string;
             /** Sbom Path */
             sbom_path?: string | null;
             /** Sbom Digest */
-            sbom_digest?: string | null;
+            sbom_digest: string;
             /** Sbom Format */
-            sbom_format?: string | null;
+            sbom_format: string;
             /** Tool Version */
-            tool_version?: string | null;
+            tool_version: string;
         };
         /** GenerateScriptCandidatesPayload */
         GenerateScriptCandidatesPayload: {
@@ -2194,6 +2042,36 @@ export interface components {
         };
         /** HBOM */
         HBOM: {
+            /** Cpus */
+            cpus?: {
+                [key: string]: components["schemas"]["CPUDefinition"];
+            };
+            /** Gpus */
+            gpus?: {
+                [key: string]: components["schemas"]["GPUDefinition"];
+            };
+            /** Memory */
+            memory?: {
+                [key: string]: components["schemas"]["MemoryDefinition"];
+            };
+            /** Storage */
+            storage?: {
+                [key: string]: components["schemas"]["StorageDefinition"];
+            };
+            /** Network */
+            network?: {
+                [key: string]: components["schemas"]["NetworkDefinition"];
+            };
+            /**
+             * Extra Info
+             * @description Additional machine-level metadata that does not fit the structured HBOM schema.
+             */
+            extra_info?: {
+                [key: string]: unknown;
+            };
+        };
+        /** HardwareDefinition */
+        HardwareDefinition: {
             /** Cpus */
             cpus?: {
                 [key: string]: components["schemas"]["CPUDefinition"];
@@ -2413,6 +2291,34 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** ObserveHardwareReceipt */
+        ObserveHardwareReceipt: {
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+            /** Run Id */
+            run_id: string;
+            /** Started At */
+            started_at: string;
+            /** Finished At */
+            finished_at: string;
+            /** Duration Ms */
+            duration_ms: number;
+            /** Recorded At */
+            recorded_at: string;
+            /**
+             * Operation
+             * @default observe_hardware
+             * @constant
+             */
+            operation: "observe_hardware";
+            observation: components["schemas"]["HBOM"];
+            /** Observer Version */
+            observer_version: string;
+        };
         /**
          * PackageDeltaRecord
          * @description One package the author's and the reviewer's runtimes disagree about.
@@ -2454,6 +2360,26 @@ export interface components {
              */
             source: "root" | "wrapper";
         };
+        /** Ree */
+        Ree: {
+            subject?: components["schemas"]["ReeSubject"];
+            seal?: components["schemas"]["ReeSeal"] | null;
+        };
+        /** ReeAssessment */
+        ReeAssessment: {
+            source: components["schemas"]["StepAssessment"];
+            evaluation: components["schemas"]["StepAssessment"];
+            hardware: components["schemas"]["StepAssessment"];
+            runtime: components["schemas"]["StepAssessment"];
+            sbom: components["schemas"]["StepAssessment"];
+            test_activation: components["schemas"]["StepAssessment"];
+            /**
+             * Experiments
+             * @default []
+             */
+            experiments: components["schemas"]["ExperimentAssessment"][];
+            reproducibility?: components["schemas"]["ReproducibilityLevels"];
+        };
         /**
          * ReeBundleLoadPayload
          * @description Load a staged REE bundle into this (freshly provisioned) REE.
@@ -2483,10 +2409,16 @@ export interface components {
              * @default
              */
             website: string;
-            /** Keywords */
-            keywords?: string[];
-            /** Contributors */
-            contributors?: components["schemas"]["Contributor"][];
+            /**
+             * Keywords
+             * @default []
+             */
+            keywords: string[];
+            /**
+             * Contributors
+             * @default []
+             */
+            contributors: components["schemas"]["Contributor"][];
             /** Corresponding Author Identifier */
             corresponding_author_identifier?: string | null;
         };
@@ -2505,45 +2437,82 @@ export interface components {
             /** Agent Id */
             agent_id?: string | null;
         };
+        /** ReeDefinition */
+        "ReeDefinition-Input": {
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            catalog?: components["schemas"]["ReeCatalogMetadata"];
+            source?: components["schemas"]["SourceDefinition"] | null;
+            build_runtime?: components["schemas"]["BuildRuntimeDefinition"] | null;
+            runtime?: components["schemas"]["RuntimeDefinition"] | null;
+            test_activation?: components["schemas"]["TestActivationDefinition"] | null;
+            hardware?: components["schemas"]["HardwareDefinition"] | null;
+            /**
+             * Experiments
+             * @default []
+             */
+            experiments: components["schemas"]["ExperimentDefinition"][];
+        };
+        /** ReeDefinition */
+        "ReeDefinition-Output": {
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            catalog?: components["schemas"]["ReeCatalogMetadata"];
+            source?: components["schemas"]["SourceDefinition"] | null;
+            build_runtime?: components["schemas"]["BuildRuntimeDefinition"] | null;
+            runtime?: components["schemas"]["RuntimeDefinition"] | null;
+            test_activation?: components["schemas"]["TestActivationDefinition"] | null;
+            hardware?: components["schemas"]["HardwareDefinition"] | null;
+            /**
+             * Experiments
+             * @default []
+             */
+            experiments: components["schemas"]["ExperimentDefinition"][];
+        };
+        /**
+         * ReeDefinitionPatchPayload
+         * @description Merge top-level fields into the current portable REE definition.
+         */
+        ReeDefinitionPatchPayload: {
+            /** Definition Patch */
+            definition_patch?: {
+                [key: string]: unknown;
+            };
+            /** Expected Version */
+            expected_version?: string | null;
+        };
+        /** ReeDefinitionReplacePayload */
+        ReeDefinitionReplacePayload: {
+            definition: components["schemas"]["ReeDefinition-Input"];
+            /** Expected Version */
+            expected_version?: string | null;
+        };
         /**
          * ReeDocument
-         * @description The workbench-owned REE document, typed in full.
-         *
-         *     The typed fields reuse the core models the workbench produces the document
-         *     from, so the contract cannot drift from the producers. The contract is
-         *     total: an unknown key coming out of the workbench is an error, not a
-         *     passthrough.
+         * @description The portable aggregate with live workbench file projections.
          */
         ReeDocument: {
             /** Ree Id */
             ree_id: string;
-            /** Name */
-            name: string;
-            /** Status */
-            status: string;
-            /** Created At */
-            created_at: string;
-            /** Updated At */
-            updated_at: string;
-            /** External Ref */
-            external_ref?: string | null;
+            ree: components["schemas"]["Ree"];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "sealed";
+            assessment: components["schemas"]["ReeAssessment"];
             /** Workbench Image */
             workbench_image?: string | null;
-            ree_intent?: components["schemas"]["ReeIntent-Output"];
-            ree_state?: components["schemas"]["ReeLifecycleState"];
             /** Workspace Files */
             workspace_files?: components["schemas"]["WorkspaceFile"][];
             /** Ree Files */
             ree_files?: components["schemas"]["ReeFile"][];
-            /** Draft Manifest */
-            draft_manifest?: {
-                [key: string]: unknown;
-            };
-            source_repo?: components["schemas"]["SourceRepoMetadata"] | null;
-            consistency?: components["schemas"]["ConsistencyReport"];
-            author_receipts?: components["schemas"]["AuthorReceiptSet"];
-            /** Ree Steps */
-            ree_steps?: components["schemas"]["ReeStepState"][];
         };
         /**
          * ReeFile
@@ -2585,188 +2554,12 @@ export interface components {
             /** Archive Attestations */
             archive_attestations?: components["schemas"]["ArchiveBindingAttestation"][];
         };
-        /**
-         * ReeIndexList
-         * @description A page of the REE index — sealed REEs and where they were deposited.
-         *
-         *     The item type is the stored entry itself, for the same reason ``ReeDocument``
-         *     reuses the core models: a separate wire shape could drift from what is
-         *     actually on disk, and here that drift would be published to peers.
-         */
+        /** ReeIndexList */
         ReeIndexList: {
             /** Items */
             items: components["schemas"]["ReeIndexEntry"][];
             /** Next Cursor */
             next_cursor?: string | null;
-        };
-        /**
-         * ReeIntent
-         * @description Author-declared reproducibility intent — the only patchable model.
-         */
-        "ReeIntent-Input": {
-            /**
-             * Name
-             * @default
-             */
-            name: string;
-            catalog_metadata?: components["schemas"]["ReeCatalogMetadata"];
-            /**
-             * Origin Url
-             * @default
-             */
-            origin_url: string;
-            /**
-             * Source Type
-             * @default
-             * @enum {string}
-             */
-            source_type: "" | "git" | "hg" | "svn" | "cvs" | "bzr" | "tarball" | "zip";
-            /**
-             * Revision
-             * @default
-             */
-            revision: string;
-            /** Runtime */
-            runtime?: string | null;
-            activation?: components["schemas"]["Activation"];
-            /** Sbom */
-            sbom?: string | null;
-            /**
-             * Swhid
-             * @default
-             */
-            swhid: string;
-            hardware_description?: components["schemas"]["HBOM"];
-            /** Experiments */
-            experiments?: components["schemas"]["Experiment"][];
-        };
-        /**
-         * ReeIntent
-         * @description Author-declared reproducibility intent — the only patchable model.
-         */
-        "ReeIntent-Output": {
-            /**
-             * Name
-             * @default
-             */
-            name: string;
-            catalog_metadata?: components["schemas"]["ReeCatalogMetadata"];
-            /**
-             * Origin Url
-             * @default
-             */
-            origin_url: string;
-            /**
-             * Source Type
-             * @default
-             * @enum {string}
-             */
-            source_type: "" | "git" | "hg" | "svn" | "cvs" | "bzr" | "tarball" | "zip";
-            /**
-             * Revision
-             * @default
-             */
-            revision: string;
-            /** Runtime */
-            runtime?: string | null;
-            activation?: components["schemas"]["Activation"];
-            /** Sbom */
-            sbom?: string | null;
-            /**
-             * Swhid
-             * @default
-             */
-            swhid: string;
-            hardware_description?: components["schemas"]["HBOM"];
-            /** Experiments */
-            experiments?: components["schemas"]["Experiment"][];
-        };
-        /**
-         * ReeIntentPatchPayload
-         * @description Merge the provided intent fields into the stored intent (top-level keys).
-         *
-         *     Every ``ReeIntent`` field has a default, so the model doubles as the patch
-         *     shape: only the keys the client actually sent are applied (``exclude_unset``
-         *     at the dispatch site), and unknown keys are rejected up front instead of
-         *     failing inside the workbench.
-         */
-        ReeIntentPatchPayload: {
-            ree_intent_patch?: components["schemas"]["ReeIntent-Input"];
-            /** Expected Version */
-            expected_version?: string | null;
-        };
-        /** ReeIntentReplacePayload */
-        ReeIntentReplacePayload: {
-            ree_intent: components["schemas"]["ReeIntent-Input"];
-            /** Expected Version */
-            expected_version?: string | null;
-        };
-        /**
-         * ReeLifecycleState
-         * @description Durable lifecycle facts produced while authoring and publishing an REE.
-         *
-         *     This replaces the ambiguous ``ReeSession`` name: the values survive
-         *     processes and workbench sessions and are part of the persisted REE record.
-         *     Mutations remain pure and are applied by the persistence boundary.
-         */
-        ReeLifecycleState: {
-            /**
-             * Dependency Level
-             * @default 0
-             */
-            dependency_level: number;
-            /**
-             * Environment Level
-             * @default 0
-             */
-            environment_level: number;
-            /**
-             * Machine Level
-             * @default 0
-             */
-            machine_level: number;
-            /** Detected Dependencies */
-            detected_dependencies?: string | null;
-            /** Sealed At */
-            sealed_at?: string | null;
-            /** Seal Hash */
-            seal_hash?: string | null;
-            /**
-             * Source Available
-             * @default false
-             */
-            source_available: boolean;
-            /**
-             * Source Acquired By
-             * @default
-             * @enum {string}
-             */
-            source_acquired_by: "" | "download" | "upload";
-            /** Source Resolved Commit */
-            source_resolved_commit?: string | null;
-            /** Uploaded Archive */
-            uploaded_archive?: string | null;
-            /** Source Snapshot Archive */
-            source_snapshot_archive?: string | null;
-            /** Source Snapshot Captured At */
-            source_snapshot_captured_at?: string | null;
-            /** Source Snapshot Digest */
-            source_snapshot_digest?: string | null;
-            /**
-             * Source Included
-             * @default false
-             */
-            source_included: boolean;
-            /**
-             * Runtime Included
-             * @default false
-             */
-            runtime_included: boolean;
-            /**
-             * Results Included
-             * @default false
-             */
-            results_included: boolean;
         };
         /** ReeList */
         ReeList: {
@@ -2774,6 +2567,28 @@ export interface components {
             items: components["schemas"]["ReeSummary"][];
             /** Next Cursor */
             next_cursor?: string | null;
+        };
+        /** ReeReceipts */
+        ReeReceipts: {
+            source?: components["schemas"]["AcquireSourceReceipt"] | null;
+            evaluation?: components["schemas"]["EvaluateReproducibilityReceipt"] | null;
+            hardware_observation?: components["schemas"]["ObserveHardwareReceipt"] | null;
+            build?: components["schemas"]["BuildRuntimeReceipt"] | null;
+            sbom?: components["schemas"]["GenerateSbomReceipt"] | null;
+            sbom_cross_check?: components["schemas"]["CrossCheckSbomReceipt"] | null;
+            test_activation?: components["schemas"]["TestActivationReceipt"] | null;
+            /** Experiments */
+            experiments?: {
+                [key: string]: components["schemas"]["RunExperimentReceipt"];
+            };
+        };
+        /** ReeSeal */
+        ReeSeal: {
+            /** Sealed At */
+            sealed_at: string;
+            /** Ree Digest */
+            ree_digest: string;
+            signature?: components["schemas"]["Signature"] | null;
         };
         /** ReeSealPayload */
         ReeSealPayload: {
@@ -2795,29 +2610,23 @@ export interface components {
         };
         /**
          * ReeState
-         * @description Compact control-plane observation without inline workspace content.
+         * @description Compact control-plane observation without inline file contents.
          */
         ReeState: {
             /** Ree Id */
             ree_id: string;
-            /** Name */
-            name: string;
-            /** Status */
-            status: string;
-            /** Updated At */
-            updated_at: string;
+            ree: components["schemas"]["Ree"];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "sealed";
+            assessment: components["schemas"]["ReeAssessment"];
             workbench: components["schemas"]["WorkbenchStatus"];
-            ree_intent?: components["schemas"]["ReeIntent-Output"];
-            ree_state?: components["schemas"]["ReeLifecycleState"];
-            consistency?: components["schemas"]["ConsistencyReport"];
-            author_receipts?: components["schemas"]["AuthorReceiptSet"];
-            /** Ree Steps */
-            ree_steps?: components["schemas"]["ReeStepState"][];
             /** Workspace Files */
             workspace_files?: components["schemas"]["WorkspaceFile"][];
             /** Ree Files */
             ree_files?: components["schemas"]["ReeFile"][];
-            source_repo?: components["schemas"]["SourceRepoMetadata"] | null;
             /** Active Runs */
             active_runs?: components["schemas"]["RunSummary"][];
         };
@@ -2842,20 +2651,17 @@ export interface components {
             /** Actions */
             actions?: string[];
         };
-        /**
-         * ReeStepState
-         * @description The live state of one authoring step for a specific REE.
-         */
-        ReeStepState: {
-            /** Key */
-            key: string;
+        /** ReeSubject */
+        ReeSubject: {
             /**
-             * Status
-             * @enum {string}
+             * Schema Version
+             * @default 1
+             * @constant
              */
-            status: "done" | "ready" | "blocked";
-            /** Blocked By */
-            blocked_by?: string[];
+            schema_version: 1;
+            definition?: components["schemas"]["ReeDefinition-Output"];
+            receipts?: components["schemas"]["ReeReceipts"];
+            contents?: components["schemas"]["BundleContents"];
         };
         /** ReeSummary */
         ReeSummary: {
@@ -2863,14 +2669,31 @@ export interface components {
             ree_id: string;
             /** Name */
             name: string;
-            /** Status */
-            status: string;
-            /** Created At */
-            created_at: string;
-            /** Updated At */
-            updated_at: string;
-            /** External Ref */
-            external_ref?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "sealed";
+            /** Workbench Image */
+            workbench_image?: string | null;
+        };
+        /** ReproducibilityLevels */
+        ReproducibilityLevels: {
+            /**
+             * Dependency
+             * @default 0
+             */
+            dependency: number;
+            /**
+             * Environment
+             * @default 0
+             */
+            environment: number;
+            /**
+             * Machine
+             * @default 0
+             */
+            machine: number;
         };
         /** ReproducibilityReport */
         ReproducibilityReport: {
@@ -2891,31 +2714,6 @@ export interface components {
             readonly machine_level_label: string;
             /** Detected Dependencies */
             readonly detected_dependencies: string;
-        };
-        /**
-         * ReproducibilityScoreCard
-         * @description The scorecard: five evidence categories + the ordinal level.
-         *
-         *     ``level`` is the bottleneck aggregate (see module docstring); the code and
-         *     name are derived from it so they can never drift.
-         */
-        ReproducibilityScoreCard: {
-            /**
-             * Schema Version
-             * @default 1
-             * @constant
-             */
-            schema_version: 1;
-            /** Level */
-            level: number;
-            /** Sealed */
-            sealed: boolean;
-            /** Categories */
-            categories: components["schemas"]["ScoreCardCategory"][];
-            /** Level Code */
-            readonly level_code: string;
-            /** Level Name */
-            readonly level_name: string;
         };
         /** ReprovisionResponse */
         ReprovisionResponse: {
@@ -2964,34 +2762,6 @@ export interface components {
                 [key: string]: string;
             };
         };
-        /** ResourceEstimates */
-        ResourceEstimates: {
-            /**
-             * Cpu
-             * @default
-             */
-            cpu: string;
-            /**
-             * Memory
-             * @default
-             */
-            memory: string;
-            /**
-             * Gpu
-             * @default
-             */
-            gpu: string;
-            /**
-             * Storage
-             * @default
-             */
-            storage: string;
-            /**
-             * Network
-             * @default
-             */
-            network: string;
-        };
         /** ResultNode */
         ResultNode: {
             /** Id */
@@ -3011,6 +2781,183 @@ export interface components {
              * @enum {string}
              */
             application: "automatic_allowed" | "confirmation_required" | "unavailable";
+        };
+        /** ReviewAcquireSourceReceipt */
+        ReviewAcquireSourceReceipt: {
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+            /** Run Id */
+            run_id: string;
+            /** Started At */
+            started_at: string;
+            /** Finished At */
+            finished_at: string;
+            /** Duration Ms */
+            duration_ms: number;
+            /** Recorded At */
+            recorded_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "succeeded" | "failed";
+            /**
+             * Operation
+             * @default acquire_source
+             * @constant
+             */
+            operation: "acquire_source";
+            /** Origin Url */
+            origin_url?: string | null;
+            /**
+             * Source Type
+             * @enum {string}
+             */
+            source_type: "" | "git" | "hg" | "svn" | "cvs" | "bzr" | "tarball" | "zip";
+            /** Requested Ref */
+            requested_ref?: string | null;
+            /** Expected Swhid */
+            expected_swhid?: string | null;
+            /** Observed Swhid */
+            observed_swhid?: string | null;
+        };
+        /** ReviewActivationReceipt */
+        ReviewActivationReceipt: {
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+            /** Run Id */
+            run_id: string;
+            /** Started At */
+            started_at: string;
+            /** Finished At */
+            finished_at: string;
+            /** Duration Ms */
+            duration_ms: number;
+            /** Recorded At */
+            recorded_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "succeeded" | "failed";
+            /**
+             * Operation
+             * @default test_activation
+             * @constant
+             */
+            operation: "test_activation";
+            /** Run Script Path */
+            run_script_path: string;
+            /** Run Script Digest */
+            run_script_digest: string;
+            /** Verify Script Path */
+            verify_script_path?: string | null;
+            /** Verify Script Digest */
+            verify_script_digest?: string | null;
+            /** Run Exit Code */
+            run_exit_code?: number | null;
+            /** Verify Exit Code */
+            verify_exit_code?: number | null;
+            /** Runtime Path */
+            runtime_path: string;
+            /** Runtime Digest */
+            runtime_digest: string;
+        };
+        /** ReviewBuildRuntimeReceipt */
+        ReviewBuildRuntimeReceipt: {
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+            /** Run Id */
+            run_id: string;
+            /** Started At */
+            started_at: string;
+            /** Finished At */
+            finished_at: string;
+            /** Duration Ms */
+            duration_ms: number;
+            /** Recorded At */
+            recorded_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "succeeded" | "failed";
+            /**
+             * Operation
+             * @default build_runtime
+             * @constant
+             */
+            operation: "build_runtime";
+            /** Build Runtime Script Path */
+            build_runtime_script_path?: string | null;
+            /** Build Runtime Script Digest */
+            build_runtime_script_digest?: string | null;
+            /** Runtime Path */
+            runtime_path: string;
+            /** Produced Runtime Digest */
+            produced_runtime_digest: string;
+        };
+        /** ReviewExperimentReceipt */
+        ReviewExperimentReceipt: {
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+            /** Run Id */
+            run_id: string;
+            /** Started At */
+            started_at: string;
+            /** Finished At */
+            finished_at: string;
+            /** Duration Ms */
+            duration_ms: number;
+            /** Recorded At */
+            recorded_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "succeeded" | "failed";
+            /**
+             * Operation
+             * @default run_experiment
+             * @constant
+             */
+            operation: "run_experiment";
+            /** Experiment Name */
+            experiment_name: string;
+            /** Run Script Path */
+            run_script_path: string;
+            /** Run Script Digest */
+            run_script_digest: string;
+            /** Verify Script Path */
+            verify_script_path?: string | null;
+            /** Verify Script Digest */
+            verify_script_digest?: string | null;
+            /** Run Exit Code */
+            run_exit_code?: number | null;
+            /** Verify Exit Code */
+            verify_exit_code?: number | null;
+            /** Runtime Path */
+            runtime_path?: string | null;
+            /** Runtime Digest */
+            runtime_digest?: string | null;
+            /** Produced Output Digest */
+            produced_output_digest?: string | null;
         };
         /**
          * ReviewRecord
@@ -3033,14 +2980,14 @@ export interface components {
             status: "running" | "completed" | "failed" | "canceled";
             /** Steps */
             steps?: components["schemas"]["ReviewStepState"][];
-            source_receipt?: components["schemas"]["AcquireSourceReceipt"] | null;
+            source_receipt?: components["schemas"]["ReviewAcquireSourceReceipt"] | null;
             source_comparison?: components["schemas"]["SourceComparison"] | null;
-            build_receipt?: components["schemas"]["BuildRuntimeReceipt"] | null;
+            build_receipt?: components["schemas"]["ReviewBuildRuntimeReceipt"] | null;
             build_comparison?: components["schemas"]["BuildComparison"] | null;
-            activation_receipt?: components["schemas"]["ActivationTestReceipt"] | null;
+            activation_receipt?: components["schemas"]["ReviewActivationReceipt"] | null;
             activation_outcome?: components["schemas"]["ActivationOutcome"] | null;
             /** Experiment Receipts */
-            experiment_receipts?: components["schemas"]["RunExperimentReceipt"][];
+            experiment_receipts?: components["schemas"]["ReviewExperimentReceipt"][];
             /** Experiment Comparisons */
             experiment_comparisons?: components["schemas"]["ExperimentComparison"][];
             /** Failure */
@@ -3092,39 +3039,29 @@ export interface components {
             /** Recorded At */
             recorded_at: string;
             /**
-             * Status
-             * @enum {string}
-             */
-            status: "succeeded" | "failed" | "canceled";
-            workspace_drift?: components["schemas"]["WorkspaceDrift"] | null;
-            /** Snapshot Digest */
-            snapshot_digest?: string | null;
-            /** Run Script Path */
-            run_script_path?: string | null;
-            /** Run Script Digest */
-            run_script_digest?: string | null;
-            /** Run Exit Code */
-            run_exit_code?: number | null;
-            /** Verify Script Path */
-            verify_script_path?: string | null;
-            /** Verify Script Digest */
-            verify_script_digest?: string | null;
-            /** Verify Exit Code */
-            verify_exit_code?: number | null;
-            /** Runtime Path */
-            runtime_path?: string | null;
-            /** Declared Runtime Digest */
-            declared_runtime_digest?: string | null;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
+             * Operation
+             * @default run_experiment
+             * @constant
              */
             operation: "run_experiment";
-            /**
-             * Experiment Name
-             * @default
-             */
+            /** Experiment Name */
             experiment_name: string;
+            /** Snapshot Digest */
+            snapshot_digest: string;
+            /** Runtime Digest */
+            runtime_digest?: string | null;
+            /** Run Script Digest */
+            run_script_digest: string;
+            /** Verify Script Digest */
+            verify_script_digest?: string | null;
+            /**
+             * Run Exit Code
+             * @default 0
+             * @constant
+             */
+            run_exit_code: 0;
+            /** Verify Exit Code */
+            verify_exit_code?: 0 | null;
             /** Produced Output Digest */
             produced_output_digest?: string | null;
         };
@@ -3260,6 +3197,13 @@ export interface components {
             /** Digest */
             digest?: string | null;
         };
+        /** RuntimeDefinition */
+        RuntimeDefinition: {
+            /** Runtime Path */
+            runtime_path: string;
+            /** Expected Runtime Digest */
+            expected_runtime_digest?: string | null;
+        };
         /** RuntimePlanBinding */
         RuntimePlanBinding: {
             /**
@@ -3312,44 +3256,6 @@ export interface components {
             observed_total: number;
             /** Undeclared */
             undeclared?: components["schemas"]["UndeclaredPackage"][];
-        };
-        /** ScoreCardCategory */
-        ScoreCardCategory: {
-            /**
-             * Key
-             * @enum {string}
-             */
-            key: "source" | "runtime" | "activation" | "experiments" | "results";
-            /** Label */
-            label: string;
-            /** Rungs */
-            rungs: components["schemas"]["ScoreCardRung"][];
-        };
-        /**
-         * ScoreCardRung
-         * @description One checkable fact inside a category.
-         *
-         *     Rungs are ordered strongest-last but are *independent* checkmarks, not a
-         *     forced prefix: e.g. results can be bundled at seal time while the source
-         *     was never SWH-archived.  ``done``/``total`` carry the fraction for rungs
-         *     aggregated over the experiment list (``None`` elsewhere).
-         */
-        ScoreCardRung: {
-            /** Key */
-            key: string;
-            /** Label */
-            label: string;
-            /** Reached */
-            reached: boolean;
-            /**
-             * Detail
-             * @default
-             */
-            detail: string;
-            /** Done */
-            done?: number | null;
-            /** Total */
-            total?: number | null;
         };
         /** ScriptCandidate */
         ScriptCandidate: {
@@ -3496,36 +3402,14 @@ export interface components {
             /** Source */
             source: string;
         };
-        /** SnapshotUpstreamReceipt */
-        SnapshotUpstreamReceipt: {
-            /**
-             * Schema Version
-             * @default 1
-             * @constant
-             */
-            schema_version: 1;
-            /** Run Id */
-            run_id: string;
-            /** Started At */
-            started_at: string;
-            /** Finished At */
-            finished_at: string;
-            /** Duration Ms */
-            duration_ms: number;
-            /** Recorded At */
-            recorded_at: string;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "succeeded" | "failed" | "canceled";
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            operation: "snapshot_upstream";
-            /** Snapshot Digest */
-            snapshot_digest?: string | null;
+        /** Signature */
+        Signature: {
+            /** Algorithm */
+            algorithm: string;
+            /** Verification Material */
+            verification_material: string;
+            /** Value */
+            value: string;
         };
         /** SourceAcquirePayload */
         SourceAcquirePayload: {
@@ -3565,45 +3449,17 @@ export interface components {
              */
             verdict: "identical" | "different" | "inconclusive";
         };
-        /**
-         * SourceRepoMetadata
-         * @description One coherent view of the source loaded into a workspace.
-         *
-         *     snake_case field names are the wire shape — the model doubles as the
-         *     API contract for the document's ``source_repo`` block.
-         */
-        SourceRepoMetadata: {
-            /**
-             * Name
-             * @default
-             */
-            name: string;
-            /**
-             * Origin
-             * @default
-             */
-            origin: string;
-            /**
-             * Acquired By
-             * @default
-             * @enum {string}
-             */
-            acquired_by: "" | "download" | "upload";
+        /** SourceDefinition */
+        SourceDefinition: {
+            /** Origin Url */
+            origin_url?: string | null;
             /**
              * Source Type
-             * @default
              * @enum {string}
              */
             source_type: "" | "git" | "hg" | "svn" | "cvs" | "bzr" | "tarball" | "zip";
-            /**
-             * Swhid
-             * @default
-             */
-            swhid: string;
-            /** Size Bytes */
-            size_bytes?: number | null;
-            /** Size Label */
-            size_label?: string | null;
+            /** Requested Ref */
+            requested_ref?: string | null;
         };
         /** SourceUploadCompletePayload */
         SourceUploadCompletePayload: {
@@ -3613,6 +3469,26 @@ export interface components {
             archive_name: string;
             /** Idempotency Key */
             idempotency_key?: string | null;
+        };
+        /** StepAssessment */
+        StepAssessment: {
+            /**
+             * Evidence
+             * @enum {string}
+             */
+            evidence: "missing" | "current" | "stale" | "not_applicable";
+            /**
+             * Payload
+             * @enum {string}
+             */
+            payload: "present" | "omitted" | "missing" | "not_applicable";
+            /** Receipt Run Id */
+            receipt_run_id?: string | null;
+            /**
+             * Reasons
+             * @default []
+             */
+            reasons: string[];
         };
         /** StorageDefinition */
         StorageDefinition: {
@@ -3725,6 +3601,67 @@ export interface components {
             /** Warnings */
             warnings?: components["schemas"]["InferenceWarning"][];
             decision: components["schemas"]["DecisionTrace"];
+        };
+        /** TestActivationDefinition */
+        TestActivationDefinition: {
+            /**
+             * Run Script Path
+             * @default ree-scripts/activation.sh
+             */
+            run_script_path: string;
+            /** Run Script Digest */
+            run_script_digest: string;
+            /** Run Script Size */
+            run_script_size: number;
+            /** Verify Script Path */
+            verify_script_path?: string | null;
+            /** Verify Script Digest */
+            verify_script_digest?: string | null;
+            /** Verify Script Size */
+            verify_script_size?: number | null;
+        };
+        /** TestActivationReceipt */
+        TestActivationReceipt: {
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+            /** Run Id */
+            run_id: string;
+            /** Started At */
+            started_at: string;
+            /** Finished At */
+            finished_at: string;
+            /** Duration Ms */
+            duration_ms: number;
+            /** Recorded At */
+            recorded_at: string;
+            /**
+             * Operation
+             * @default test_activation
+             * @constant
+             */
+            operation: "test_activation";
+            /** Snapshot Digest */
+            snapshot_digest: string;
+            /** Runtime Path */
+            runtime_path?: string | null;
+            /** Runtime Digest */
+            runtime_digest?: string | null;
+            /** Run Script Digest */
+            run_script_digest: string;
+            /** Verify Script Digest */
+            verify_script_digest?: string | null;
+            /**
+             * Run Exit Code
+             * @default 0
+             * @constant
+             */
+            run_exit_code: 0;
+            /** Verify Exit Code */
+            verify_exit_code?: 0 | null;
         };
         /** Threat */
         Threat: {
@@ -3867,10 +3804,7 @@ export interface components {
             /** Default Id */
             default_id: string;
         };
-        /**
-         * WorkbenchStatus
-         * @description Whether (and where) a live workbench backs the REE.
-         */
+        /** WorkbenchStatus */
         WorkbenchStatus: {
             /** Status */
             status: string;
@@ -3879,22 +3813,18 @@ export interface components {
             /** Image */
             image?: string | null;
         };
-        /**
-         * WorkspaceDrift
-         * @description Whether the workspace still equals ``materialize(snapshot + overlay)``.
-         *
-         *     ``unknown`` means there was no materialization marker to check against
-         *     (the workspace was never materialized through the tracked path).
-         *     ``changed_paths`` is capped; ``changed_path_count`` carries the true count.
-         */
+        /** WorkspaceDrift */
         WorkspaceDrift: {
             /**
              * Status
              * @enum {string}
              */
             status: "clean" | "modified" | "unknown";
-            /** Changed Paths */
-            changed_paths?: string[];
+            /**
+             * Changed Paths
+             * @default []
+             */
+            changed_paths: string[];
             /**
              * Changed Path Count
              * @default 0
@@ -5817,7 +5747,7 @@ export interface operations {
             };
         };
     };
-    replaceReeIntent: {
+    replaceReeDefinition: {
         parameters: {
             query?: never;
             header?: never;
@@ -5828,7 +5758,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ReeIntentReplacePayload"];
+                "application/json": components["schemas"]["ReeDefinitionReplacePayload"];
             };
         };
         responses: {
@@ -5924,7 +5854,7 @@ export interface operations {
             };
         };
     };
-    patchReeIntent: {
+    patchReeDefinition: {
         parameters: {
             query?: never;
             header?: never;
@@ -5935,7 +5865,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ReeIntentPatchPayload"];
+                "application/json": components["schemas"]["ReeDefinitionPatchPayload"];
             };
         };
         responses: {
@@ -7309,109 +7239,6 @@ export interface operations {
             };
         };
     };
-    getScorecard: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                ree_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ReproducibilityScoreCard"];
-                };
-            };
-            /** @description Invalid request or operation precondition */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description REE, run, file, or artifact not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Version or idempotency conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Upload exceeds the configured size limit */
-            413: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Request validation failed */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Workbench returned an invalid upstream response */
-            502: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Workbench or runtime agent unavailable */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Upload staging capacity exhausted */
-            507: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
     listAuthorReceipts: {
         parameters: {
             query?: never;
@@ -7429,7 +7256,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AuthorReceiptSet"];
+                    "application/json": components["schemas"]["ReeReceipts"];
                 };
             };
             /** @description Invalid request or operation precondition */

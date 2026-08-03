@@ -22,15 +22,12 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from repo2ree_core.domain.ree.intent import ReeIntent
-from repo2ree_core.domain.ree.state import ReeLifecycleState
+from repo2ree_core.domain.ree.model import Ree
 from repo2ree_core.path_safety import validate_relative_path
 from repo2ree_core.persistence.files import write_atomic, write_json_atomic
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_core.persistence.record import ReeRecord
 from repo2ree_core.reserved_paths import RESERVED_OVERLAY_SCRIPTS
 from repo2ree_core.reserved_templates import reserved_script_template
-from repo2ree_core.time_utils import utc_now
 
 # What a half-built or damaged persisted document raises on the way through
 # json and pydantic: an unreadable file, malformed bytes, or content that no
@@ -95,15 +92,6 @@ class SubtreeStore:
     ) -> None:
         write_atomic(self.absolute(rel), content.encode(encoding))
 
-    def delete(self, rel: str | PurePosixPath) -> None:
-        target = self.absolute(rel)
-        if not target.exists():
-            raise FileNotFoundError(str(rel))
-        if target.is_dir():
-            shutil.rmtree(target)
-        else:
-            target.unlink()
-
     def delete_if_exists(self, rel: str | PurePosixPath) -> bool:
         target = self.absolute(rel)
         if not target.exists():
@@ -132,9 +120,6 @@ class SubtreeStore:
             if path.is_file():
                 rel = path.relative_to(self.root)
                 yield PurePosixPath(*rel.parts)
-
-    def list_files(self) -> list[PurePosixPath]:
-        return list(self.iter_files())
 
 
 class ReeDirectory:
@@ -171,9 +156,6 @@ class ReeDirectory:
 
     # --- Whole-REE operations -------------------------------------------
 
-    def exists(self) -> bool:
-        return self.layout.root.is_dir()
-
     def author_artifact(self, declared: str | None) -> Path | None:
         """Resolve an author-declared artifact path to the file it names.
 
@@ -209,7 +191,6 @@ class ReeDirectory:
             subtree.ensure_root()
         self.layout.upload_staging.mkdir(parents=True, exist_ok=True)
         self.layout.runs.mkdir(parents=True, exist_ok=True)
-        self.layout.author_receipts.mkdir(parents=True, exist_ok=True)
 
     def ensure_reserved_overlay_scripts(self) -> None:
         """Seed the REE-owned scripts with their packaged starter templates.
@@ -230,97 +211,33 @@ class ReeDirectory:
         if self.layout.root.exists():
             shutil.rmtree(self.layout.root)
 
-    # --- REE record ----------------------------------------------------
+    # --- Portable REE aggregate ----------------------------------------
 
     def record_exists(self) -> bool:
         return self.layout.record.is_file()
 
-    def read_record(self) -> ReeRecord:
-        return ReeRecord.model_validate(self.read_record_json())
+    def read_ree(self) -> Ree:
+        return Ree.model_validate(self.read_ree_json())
 
-    def write_record(self, record: ReeRecord) -> None:
-        self.write_record_json(record.model_dump(mode="json", exclude_none=True))
+    def write_ree(self, ree: Ree) -> None:
+        if ree.seal is None and ree.subject.contents.entries:
+            raise ValueError("a persisted draft REE cannot carry a sealed bundle inventory")
+        self.write_ree_json(ree.model_dump(mode="json", exclude_none=True))
 
-    def read_record_json(self) -> dict[str, Any]:
-        """The record's bytes as parsed JSON, without model validation.
+    def read_ree_json(self) -> dict[str, Any]:
+        """The portable REE bytes parsed as JSON, without model validation.
 
-        For the two callers that must see what is *actually on disk* rather
-        than what the model says it should be: the executor's ``get-ree-record``
-        passthrough, and tests seeding a fixture. Every mutation goes through
-        the typed path (:meth:`write_intent`, :meth:`write_state`,
-        :meth:`write_record`) so no write site can hand-roll the record's
-        derived fields.
+        Used by the executor's ``get-ree-record`` passthrough, which must return
+        what is actually on disk rather than a model-normalized projection.
+        Aggregate mutations use :meth:`write_ree`.
         """
         return _read_json(self.layout.record)
 
-    def write_record_json(self, payload: dict[str, Any]) -> None:
-        """Write raw record JSON atomically. Companion to :meth:`read_record_json`."""
+    def write_ree_json(self, payload: dict[str, Any]) -> None:
+        """Write raw REE JSON atomically. Companion to :meth:`read_ree_json`."""
         write_json_atomic(self.layout.record, payload)
-
-    # --- Typed intent / state accessors ---------------------------------
-
-    def read_intent(self) -> ReeIntent:
-        return self.read_record().ree_intent
-
-    def write_intent(self, intent: ReeIntent) -> None:
-        self.write_record(self.read_record().with_intent(intent, at=utc_now()))
-
-    def read_state(self) -> ReeLifecycleState:
-        return self.read_record().ree_state
-
-    def write_state(self, state: ReeLifecycleState) -> None:
-        self.write_record(self.read_record().with_state(state, at=utc_now()))
-
-    # --- Manifest -------------------------------------------------------
-
-    def read_manifest(self) -> dict[str, Any] | None:
-        if not self.layout.manifest.is_file():
-            return None
-        return _read_json(self.layout.manifest)
-
-    def write_manifest(self, payload: dict[str, Any]) -> None:
-        write_json_atomic(self.layout.manifest, payload)
 
 
 def _read_json(path: Path) -> dict[str, Any]:
     parsed: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
     return parsed
-
-
-def reset_source_state(*, layout: ReeLayout, store: ReeDirectory) -> None:
-    """Clear source-derived state while preserving REE identity fields.
-
-    Upload staging and run logs are intentionally left alone: staging is the
-    handoff into the source pipeline, and logs are operational history.
-    """
-    for subtree in (store.upstream, store.overlay, store.artifacts, store.workspace):
-        subtree.clear()
-        subtree.ensure_root()
-    store.ensure_reserved_overlay_scripts()
-    shutil.rmtree(layout.author_receipts, ignore_errors=True)
-    layout.author_receipts.mkdir(parents=True, exist_ok=True)
-
-    for path in (
-        layout.snapshot_archive,
-        layout.acquire_script,
-        layout.materialize_script,
-        layout.manifest,
-        layout.sealed_archive,
-    ):
-        path.unlink(missing_ok=True)
-
-    record = store.read_record()
-    cleared_intent = ReeIntent(
-        name=record.ree_intent.name,
-        catalog_metadata=record.ree_intent.catalog_metadata,
-    )
-    updated = record.model_copy(
-        update={
-            "ree_intent": cleared_intent,
-            "ree_state": ReeLifecycleState(),
-            "status": "draft",
-            "updated_at": utc_now(),
-            "external_ref": None,
-        }
-    )
-    store.write_record(updated)

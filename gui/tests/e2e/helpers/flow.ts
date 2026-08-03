@@ -152,18 +152,18 @@ export async function generateScript(page: Page): Promise<{ message: string; gra
   return { message, graph };
 }
 
-function waitForIntentPatch(page: Page) {
+function waitForDefinitionPatch(page: Page) {
   return page.waitForResponse(
-    (res) => res.url().includes("/intent") && res.request().method() === "PATCH",
+    (res) => res.url().includes("/definition") && res.request().method() === "PATCH",
   );
 }
 
 /**
  * Await the workspace-file write a script save always performs.
  *
- * Prefer this over {@link waitForIntentPatch} for a save whose intent PATCH is
- * *conditional* — the experiment page only re-declares a script path when it
- * differs from the one already on the intent, so once the backend has settled
+ * Prefer this over {@link waitForDefinitionPatch} for a save whose definition PATCH
+ * is *conditional* — the experiment page only re-declares a script path when it
+ * differs from the one already on the definition, so once the backend has settled
  * that path (naming an experiment does exactly that) a save writes the file and
  * patches nothing. The PUT is the signal that always fires.
  */
@@ -449,7 +449,7 @@ async function selectRuntimeArtifact(page: Page, producedRuntimePath: string) {
   // Declaring the runtime is a debounced intent PATCH. Anything that asks the
   // backend about the runtime next (script inference, most obviously) must not
   // race it, so settle the declaration here rather than in each caller.
-  const runtimeDeclared = waitForIntentPatch(page);
+  const runtimeDeclared = waitForDefinitionPatch(page);
   await producedRuntime.click();
   await runtimeDeclared;
 }
@@ -566,14 +566,14 @@ export async function runExperiment(
   await stepShot(page, "run-experiment", "before");
   await openPort(page, "Experiments");
   await expect(main(page).getByRole("heading", { name: "Experiments", exact: true })).toBeVisible();
-  const experimentAdded = waitForIntentPatch(page);
+  const experimentAdded = waitForDefinitionPatch(page);
   await main(page)
     .getByRole("button", { name: /Add experiment/i })
     .first()
     .click();
   await experimentAdded;
 
-  const nameSaved = waitForIntentPatch(page);
+  const nameSaved = waitForDefinitionPatch(page);
   await main(page).getByPlaceholder("smoke-test").fill(experiment.name);
   await nameSaved;
 
@@ -603,7 +603,7 @@ export async function runExperiment(
   // Saving the verify script also declares its fallback reserved path on the
   // experiment intent. Arm the wait before the save so the run can't race ahead
   // of the debounced intent PATCH that makes the backend see the verify script.
-  const verifyScriptDeclared = waitForIntentPatch(page);
+  const verifyScriptDeclared = waitForDefinitionPatch(page);
   await saveVerifyScript(
     page,
     main(page).getByRole("textbox", { name: "Experiment verify script", exact: true }),
@@ -614,7 +614,7 @@ export async function runExperiment(
   // Declare the produced result file so a successful run captures it. Including
   // it in the bundle is a seal-time choice made on the Seal page (defaults on
   // once an output is declared), so there is nothing to opt into here.
-  const outputDeclared = waitForIntentPatch(page);
+  const outputDeclared = waitForDefinitionPatch(page);
   await main(page).getByRole("textbox", { name: "Output files" }).fill(EXPERIMENT_OUTPUT_FILE);
   await outputDeclared;
 

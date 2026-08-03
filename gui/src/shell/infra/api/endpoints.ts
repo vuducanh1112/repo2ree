@@ -7,7 +7,7 @@ export const endpoints = {
   reeIndex: () => `${API_V1_BASE}/ree-index`,
   rees: () => `${API_V1_BASE}/rees`,
   ree: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}`,
-  reeIntent: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/intent`,
+  reeDefinition: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/definition`,
   reeSourceAcquire: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/source:acquire`,
   reeSourceUploadInit: (reeId: string) =>
@@ -42,7 +42,6 @@ export const endpoints = {
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/experiments/${encodeURIComponent(experimentName)}:run`,
   reeEvaluateReport: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/evaluate/report`,
-  reeScorecard: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/scorecard`,
   reeAuthorReceipts: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/receipts/author`,
   reeReviews: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/reviews`,

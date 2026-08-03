@@ -15,14 +15,18 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.digests import Digest
-from repo2ree_core.domain.experiment import Activation
-from repo2ree_core.domain.primitives import ScriptPath, WorkspacePath
-from repo2ree_core.domain.ree.intent import ReeIntent
-from repo2ree_core.domain.ree.receipt import ActivationTestReceipt, receipt_envelope
-from repo2ree_core.evidence.review.models import ActivationOutcome, ActivationVerdict, ReviewRecord
+from repo2ree_core.digests import Digest, digest_file_if_exists
+from repo2ree_core.domain.primitives import ReePath, WorkspacePath
+from repo2ree_core.domain.ree.model import ReeDefinition
+from repo2ree_core.evidence.review.models import (
+    ActivationOutcome,
+    ActivationVerdict,
+    ReviewActivationReceipt,
+    ReviewRecord,
+    review_receipt_envelope,
+)
 from repo2ree_core.evidence.review.store import write_review_activation_evidence
-from repo2ree_core.execution.experiment.resolve import resolve_activation_runnable
+from repo2ree_core.execution.experiment.spec import RunnableSpec
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.operations.steps.review import (
     CertifiedRuntime,
@@ -38,12 +42,21 @@ class ReviewActivationTestOutputs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     review_id: str
-    receipt: ActivationTestReceipt
+    receipt: ReviewActivationReceipt
     outcome: ActivationOutcome
 
 
-def _select(intent: ReeIntent) -> tuple[Activation, str]:
-    return resolve_activation_runnable(intent), "activation"
+def _select(definition: ReeDefinition) -> tuple[RunnableSpec, str]:
+    activation = definition.test_activation
+    if activation is None:
+        raise ValueError("no activation test is declared")
+    return (
+        RunnableSpec(
+            run_script=str(activation.run_script_path),
+            verify_script=str(activation.verify_script_path or ""),
+        ),
+        "activation",
+    )
 
 
 def _admit(_record: ReviewRecord, certified: CertifiedRuntime) -> str | None:
@@ -57,7 +70,7 @@ def _admit(_record: ReviewRecord, certified: CertifiedRuntime) -> str | None:
     return None
 
 
-_STEP: ReviewRunnableStep[Activation] = ReviewRunnableStep(
+_STEP = ReviewRunnableStep(
     step="activation",
     noun="review activation",
     subject="activation",
@@ -96,14 +109,30 @@ def handle_review_activation_test(
     # review records neither: both describe an author's workspace drifting from
     # what it was materialized from, and a review namespace is materialized
     # fresh from its own acquisition every time.
-    receipt = ActivationTestReceipt(
-        **receipt_envelope(run_id, timing, outcome.status),
-        run_script_path=ScriptPath(activation.run_script),
+    run_script_digest = digest_file_if_exists(opened.review_layout.workspace / activation.run_script)
+    if run_script_digest is None:
+        return opened.step.stop("failed", "the activation script disappeared after it ran")
+    if certified.runtime_digest is None:
+        return opened.step.stop("failed", "the certified runtime disappeared after activation")
+    verify_script_digest = (
+        digest_file_if_exists(opened.review_layout.workspace / activation.verify_script)
+        if activation.verify_script
+        else None
+    )
+    receipt = ReviewActivationReceipt(
+        **review_receipt_envelope(
+            run_id,
+            timing,
+            "succeeded" if outcome.status == "succeeded" else "failed",
+        ),
+        run_script_path=ReePath(activation.run_script),
+        run_script_digest=run_script_digest,
         run_exit_code=outcome.run_outputs.exit_code,
-        verify_script_path=ScriptPath(activation.verify_script) if activation.verify_script else None,
+        verify_script_path=ReePath(activation.verify_script) if activation.verify_script else None,
+        verify_script_digest=verify_script_digest,
         verify_exit_code=outcome.run_outputs.verify_exit_code,
         runtime_path=WorkspacePath(certified.runtime_path),
-        declared_runtime_digest=Digest(certified.runtime_digest) if certified.runtime_digest else None,
+        runtime_digest=Digest(certified.runtime_digest),
     )
     activation_outcome = ActivationOutcome(
         basis=certified.basis,

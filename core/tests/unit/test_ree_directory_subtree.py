@@ -55,21 +55,6 @@ def test_three_subtrees_are_isolated(tmp_path):
     assert store.artifacts.read_text("file.txt") == "artifact"
 
 
-def test_delete_removes_file(tmp_path):
-    store = _store(tmp_path)
-    store.ensure_dirs()
-    store.overlay.write_text("scratch", "x")
-    store.overlay.delete("scratch")
-    assert not store.overlay.exists("scratch")
-
-
-def test_delete_raises_when_missing(tmp_path):
-    store = _store(tmp_path)
-    store.ensure_dirs()
-    with pytest.raises(FileNotFoundError):
-        store.overlay.delete("never-existed")
-
-
 def test_delete_if_exists_returns_bool(tmp_path):
     store = _store(tmp_path)
     store.ensure_dirs()
@@ -78,12 +63,12 @@ def test_delete_if_exists_returns_bool(tmp_path):
     assert store.overlay.delete_if_exists("scratch") is False
 
 
-def test_delete_removes_directory_recursively(tmp_path):
+def test_delete_if_exists_removes_directory_recursively(tmp_path):
     store = _store(tmp_path)
     store.ensure_dirs()
     store.overlay.write_text("dir/a.txt", "a")
     store.overlay.write_text("dir/b.txt", "b")
-    store.overlay.delete("dir")
+    assert store.overlay.delete_if_exists("dir") is True
     assert not store.overlay.exists("dir")
 
 
@@ -94,7 +79,7 @@ def test_clear_empties_subtree_but_keeps_root(tmp_path):
     store.overlay.write_text("nested/b", "2")
     store.overlay.clear()
     assert store.layout.overlay.is_dir()
-    assert store.overlay.list_files() == []
+    assert list(store.overlay.iter_files()) == []
 
 
 def test_iter_files_returns_posix_relative_paths(tmp_path):
@@ -104,7 +89,7 @@ def test_iter_files_returns_posix_relative_paths(tmp_path):
     store.overlay.write_text("nix/flake.nix", "")
     store.overlay.write_text("a/b/c.txt", "")
 
-    files = store.overlay.list_files()
+    files = list(store.overlay.iter_files())
     assert files == [
         PurePosixPath("Dockerfile"),
         PurePosixPath("a/b/c.txt"),
@@ -115,7 +100,7 @@ def test_iter_files_returns_posix_relative_paths(tmp_path):
 def test_iter_files_on_missing_root_is_empty(tmp_path):
     store = _store(tmp_path)
     # do not ensure_dirs — overlay root does not exist
-    assert store.overlay.list_files() == []
+    assert list(store.overlay.iter_files()) == []
 
 
 def test_absolute_rejects_unsafe_paths(tmp_path):

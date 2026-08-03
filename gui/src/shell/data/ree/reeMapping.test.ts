@@ -5,10 +5,35 @@ import { mapReeDetailToReeProject } from "./reeMapping";
 function baseRee(overrides: Partial<ReeDocument> = {}): ReeDocument {
   return {
     ree_id: "ree-1",
-    name: "workspace-demo",
+    ree: {
+      subject: {
+        schema_version: 1,
+        definition: {
+          name: "workspace-demo",
+          catalog: {
+            description: "",
+            version: "",
+            website: "",
+            keywords: [],
+            contributors: [],
+          },
+          experiments: [],
+        },
+        receipts: { experiments: {} },
+        contents: { entries: [] },
+      },
+    },
     status: "draft",
-    created_at: "2026-01-01T00:00:00Z",
-    updated_at: "2026-01-01T00:00:00Z",
+    assessment: {
+      source: { evidence: "missing", payload: "missing", reasons: [] },
+      evaluation: { evidence: "missing", payload: "missing", reasons: [] },
+      hardware: { evidence: "missing", payload: "missing", reasons: [] },
+      runtime: { evidence: "missing", payload: "missing", reasons: [] },
+      sbom: { evidence: "missing", payload: "missing", reasons: [] },
+      test_activation: { evidence: "missing", payload: "missing", reasons: [] },
+      experiments: [],
+      reproducibility: { dependency: 0, environment: 0, machine: 0 },
+    },
     workspace_files: [],
     ree_files: [],
     ...overrides,
@@ -16,34 +41,13 @@ function baseRee(overrides: Partial<ReeDocument> = {}): ReeDocument {
 }
 
 describe("shell/data/ree/reeMapping", () => {
-  it("keeps the draft manifest separate from REE files", () => {
-    const project = mapReeDetailToReeProject(
-      baseRee({
-        draft_manifest: {
-          manifest_state: "draft",
-          name: "workspace-demo",
-          file_inventory: { workspace: [], overlay: [], artifacts: [] },
-        },
-        ree_files: [{ path: "overlay/build.sh", kind: "ree", tag: "Overlay", size: 9 }],
-      }),
-    );
-
-    expect(project.draftManifest).toEqual({
-      manifest_state: "draft",
-      name: "workspace-demo",
-      file_inventory: { workspace: [], overlay: [], artifacts: [] },
-    });
-    expect(project.reeFiles?.map((file) => file.name)).toEqual(["overlay/build.sh"]);
-  });
-
-  it("leaves draft manifest empty when the API does not provide one", () => {
+  it("maps REE files without the removed draft-manifest projection", () => {
     const project = mapReeDetailToReeProject(
       baseRee({
         ree_files: [{ path: "overlay/build.sh", kind: "ree", tag: "Overlay", size: 9 }],
       }),
     );
 
-    expect(project.draftManifest).toBeUndefined();
     expect(project.reeFiles?.map((file) => file.name)).toEqual(["overlay/build.sh"]);
   });
 });

@@ -1,72 +1,38 @@
-"""Public REE response models.
-
-The workbench owns the rich REE document; the typed fields here reuse the core
-models the workbench produces it from, so the contract cannot drift from the
-producers. The contract is total: an unknown key coming out of the workbench is
-an error, not a passthrough.
-"""
+"""Public REE response models over the portable aggregate."""
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from repo2ree_api.contracts.runs import RunSummary
 from repo2ree_api.ree_index import ReeIndexEntry
-from repo2ree_core.domain.ree.intent import ReeIntent
-from repo2ree_core.domain.ree.state import ReeLifecycleState
-from repo2ree_core.evidence.consistency import AuthorReceiptSet, ConsistencyReport
-from repo2ree_core.evidence.step_graph import ReeStepState
+from repo2ree_core.domain.ree.model import Ree, ReeAssessment, ReeStatus
 from repo2ree_core.operations.read_models.files import ReeFile, WorkspaceFile
-from repo2ree_core.source_repo.metadata import SourceRepoMetadata
 
 
 class ReeDocument(BaseModel):
-    """The workbench-owned REE document, typed in full.
-
-    The typed fields reuse the core models the workbench produces the document
-    from, so the contract cannot drift from the producers. The contract is
-    total: an unknown key coming out of the workbench is an error, not a
-    passthrough.
-    """
+    """The portable aggregate with live workbench file projections."""
 
     model_config = ConfigDict(extra="forbid")
 
     ree_id: str
-    name: str
-    status: str
-    created_at: str
-    updated_at: str
-    external_ref: str | None = None
-    # Set by the manager (which owns the registry) on direct fetches; absent
-    # from document responses embedded in other operations.
+    ree: Ree
+    status: ReeStatus
+    assessment: ReeAssessment
     workbench_image: str | None = None
-    ree_intent: ReeIntent = Field(default_factory=ReeIntent)
-    ree_state: ReeLifecycleState = Field(default_factory=ReeLifecycleState)
     workspace_files: list[WorkspaceFile] = Field(default_factory=list)
     ree_files: list[ReeFile] = Field(default_factory=list)
-    # Read-only projection of the would-be manifest; its source of truth is
-    # the sealed manifest, so it stays a passthrough here.
-    draft_manifest: dict[str, Any] = Field(default_factory=dict)
-    source_repo: SourceRepoMetadata | None = None
-    consistency: ConsistencyReport = Field(default_factory=ConsistencyReport)
-    author_receipts: AuthorReceiptSet = Field(default_factory=AuthorReceiptSet)
-    ree_steps: list[ReeStepState] = Field(default_factory=list)
 
 
 class ReeSummary(BaseModel):
-    # A projection: routes feed this the full workbench record and validation
-    # drops everything beyond the summary fields, so the wire matches the
-    # contract exactly.
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
 
     ree_id: str
     name: str
-    status: str
-    created_at: str
-    updated_at: str
-    external_ref: str | None = None
+    status: ReeStatus
+    workbench_image: str | None = None
 
 
 class ReeList(BaseModel):
@@ -77,13 +43,6 @@ class ReeList(BaseModel):
 
 
 class ReeIndexList(BaseModel):
-    """A page of the REE index — sealed REEs and where they were deposited.
-
-    The item type is the stored entry itself, for the same reason ``ReeDocument``
-    reuses the core models: a separate wire shape could drift from what is
-    actually on disk, and here that drift would be published to peers.
-    """
-
     model_config = ConfigDict(extra="forbid")
 
     items: list[ReeIndexEntry]
@@ -91,8 +50,6 @@ class ReeIndexList(BaseModel):
 
 
 class WorkbenchStatus(BaseModel):
-    """Whether (and where) a live workbench backs the REE."""
-
     model_config = ConfigDict(extra="forbid")
 
     status: str
@@ -101,26 +58,17 @@ class WorkbenchStatus(BaseModel):
 
 
 class ReeState(BaseModel):
-    """Compact control-plane observation without inline workspace content."""
+    """Compact control-plane observation without inline file contents."""
 
     model_config = ConfigDict(extra="forbid")
 
     ree_id: str
-    name: str
-    status: str
-    updated_at: str
+    ree: Ree
+    status: ReeStatus
+    assessment: ReeAssessment
     workbench: WorkbenchStatus
-    ree_intent: ReeIntent = Field(default_factory=ReeIntent)
-    ree_state: ReeLifecycleState = Field(default_factory=ReeLifecycleState)
-    consistency: ConsistencyReport = Field(default_factory=ConsistencyReport)
-    author_receipts: AuthorReceiptSet = Field(default_factory=AuthorReceiptSet)
-    ree_steps: list[ReeStepState] = Field(default_factory=list)
     workspace_files: list[WorkspaceFile] = Field(default_factory=list)
-    # REE-owned files (artifacts/, overlay/, …) alongside the materialized
-    # workspace tree: produced evidence like the SBOM lives only here, so a
-    # state observation without them cannot see it at all.
     ree_files: list[ReeFile] = Field(default_factory=list)
-    source_repo: SourceRepoMetadata | None = None
     active_runs: list[RunSummary] = Field(default_factory=list)
 
 

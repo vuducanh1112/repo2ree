@@ -1,5 +1,4 @@
 import type { SealCableItem } from "@core/canvas/sealCableScene";
-import type { StaleSealItem } from "@core/ree-steps/sealConsistency";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { lgBackgrounds, lgColors, lgStyles } from "@shell/ui/theme/lightGlassTheme";
 import { F, hoverBrightness, S_ACTION_BUTTON_BASE } from "@shell/ui/theme/theme";
@@ -20,7 +19,6 @@ interface SealStatusCardProps {
   allLive: boolean;
   totalCables: number;
   missing: { key: string; label: string }[];
-  stale?: StaleSealItem[];
   sealRunning?: boolean;
   sourceAvailable: boolean;
   runtimeAvailable: boolean;
@@ -41,7 +39,6 @@ export function SealStatusCard({
   allLive,
   totalCables,
   missing,
-  stale = [],
   sealRunning = false,
   sourceAvailable,
   runtimeAvailable,
@@ -124,7 +121,7 @@ export function SealStatusCard({
         )}
       </div>
 
-      {(!allLive || stale.length > 0) && <SealConfirmWarning missing={missing} stale={stale} />}
+      {!allLive && <SealConfirmWarning missing={missing} />}
 
       <SealConfirmCopy
         allLive={allLive}

@@ -1,8 +1,4 @@
-"""Handler for the generate_hbom operation.
-
-Profiles the workbench container's hardware and merges the result into
-/ree/.ree.json under reeIntent.hardware_description.
-"""
+"""Observe workbench hardware and commit successful evidence to the REE."""
 
 from __future__ import annotations
 
@@ -11,10 +7,14 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.analysis.hbom.generate_hbom import generate_hbom
-from repo2ree_core.domain.hbom import HBOM
+from repo2ree_core.domain.ree.receipt import ObserveHardwareReceipt, receipt_envelope
+from repo2ree_core.domain.ree.transitions import ReePreconditionError, commit_receipt, revision_of
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.failures import failed_from_exception
-from repo2ree_core.operations.steps.author import open_ree_store, patch_ree_intent
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.persistence.repository import ReeRevisionConflictError, load_ree, save_ree
+from repo2ree_core.time_utils import OperationTimer
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
 
@@ -22,58 +22,65 @@ from repo2ree_protocol.result import ActionResult
 class GenerateHbomOutputs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    hardware_description: dict[str, Any]
+    observation: dict[str, Any]
     component_counts: dict[str, int]
+    receipt: ObserveHardwareReceipt
 
 
 def handle_generate_hbom(
     *,
+    run_id: str,
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    opened = open_ree_store(log)
-    if isinstance(opened, ActionResult):
-        return opened
-    _layout, store = opened
+    layout = ReeLayout.in_workbench()
+    store = ReeDirectory(layout)
+    if not store.record_exists():
+        return ActionResult.failed("precondition", "metadata not found — was init-ree run?")
+    try:
+        ree = load_ree(layout, store)
+        if ree.seal is not None:
+            raise ReePreconditionError("a sealed REE cannot observe hardware")
+    except ReePreconditionError as exc:
+        return ActionResult.failed("precondition", str(exc))
+    except Exception as exc:
+        return failed_from_exception(exc, f"failed to load REE: {exc}")
 
+    before_revision = revision_of(ree)
+    timer = OperationTimer.start()
     log("system", "info", "profiling hardware")
     try:
-        profiled = generate_hbom()
+        observation = generate_hbom()
     except Exception as exc:
         log("system", "error", f"hardware profiling failed: {exc}")
         return failed_from_exception(exc, f"hardware profiling failed: {exc}")
-
     if is_canceled():
         log("system", "warn", "generate_hbom canceled after profiling")
         return ActionResult(status="canceled")
 
-    try:
-        existing_hbom = store.read_intent().hardware_description
-        merged = HBOM(
-            cpus={**profiled.cpus, **existing_hbom.cpus},
-            gpus={**profiled.gpus, **existing_hbom.gpus},
-            memory={**profiled.memory, **existing_hbom.memory},
-            storage={**profiled.storage, **existing_hbom.storage},
-            network={**profiled.network, **existing_hbom.network},
-            extra_info={**profiled.extra_info, **existing_hbom.extra_info},
-        )
-        patch_ree_intent(store, {"hardware_description": merged.model_dump(exclude_none=True)})
-    except Exception as exc:
-        log("system", "error", f"failed to persist hbom: {exc}")
-        return failed_from_exception(exc, f"failed to persist hbom: {exc}")
-
-    log("system", "info", "generate_hbom succeeded")
-    return ActionResult(
-        status="succeeded",
-        exit_code=0,
-        outputs=GenerateHbomOutputs(
-            hardware_description=merged.model_dump(exclude_none=True),
-            component_counts={
-                "cpus": len(merged.cpus),
-                "gpus": len(merged.gpus),
-                "memory": len(merged.memory),
-                "storage": len(merged.storage),
-                "network": len(merged.network),
-            },
-        ).model_dump(),
+    timing = timer.finish()
+    receipt = ObserveHardwareReceipt(
+        **receipt_envelope(run_id, timing),
+        observation=observation,
+        observer_version="1",
     )
+    try:
+        save_ree(layout, store, commit_receipt(ree, receipt), expected_revision=before_revision)
+    except ReeRevisionConflictError as exc:
+        return ActionResult.failed("conflict", str(exc), retryable=True)
+    except Exception as exc:
+        return failed_from_exception(exc, f"failed to commit hardware observation: {exc}")
+
+    outputs = GenerateHbomOutputs(
+        observation=observation.model_dump(exclude_none=True),
+        component_counts={
+            "cpus": len(observation.cpus),
+            "gpus": len(observation.gpus),
+            "memory": len(observation.memory),
+            "storage": len(observation.storage),
+            "network": len(observation.network),
+        },
+        receipt=receipt,
+    )
+    log("system", "info", "generate_hbom succeeded")
+    return ActionResult(status="succeeded", exit_code=0, outputs=outputs.model_dump(mode="json"))

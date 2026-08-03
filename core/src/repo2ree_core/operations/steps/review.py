@@ -18,15 +18,14 @@ from pathlib import Path, PurePosixPath
 from typing import Protocol
 
 from repo2ree_core.digests import digest_file_if_exists
-from repo2ree_core.domain.experiment import Runnable
-from repo2ree_core.domain.ree.intent import ReeIntent
-from repo2ree_core.domain.ree.receipt import BuildRuntimeReceipt
+from repo2ree_core.domain.ree.model import Ree, ReeDefinition
 from repo2ree_core.evidence.review.models import (
     ActivationVerdict,
     BuildVerdict,
     ComparisonVerdict,
     EvidenceBasis,
     ExperimentVerdict,
+    ReviewBuildRuntimeReceipt,
     ReviewRecord,
     ReviewStatus,
     ReviewStepKey,
@@ -35,8 +34,8 @@ from repo2ree_core.evidence.review.models import (
     with_step,
 )
 from repo2ree_core.evidence.review.store import read_review_record, write_review_record
-from repo2ree_core.execution.experiment.resolve import RunnableResolutionError
 from repo2ree_core.execution.experiment.run import ExperimentRunOutcome, run_runnable
+from repo2ree_core.execution.experiment.spec import RunnableSpec
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.persistence.directory import UNREADABLE_DOCUMENT, ReeDirectory
 from repo2ree_core.persistence.layout import ARTIFACTS_DIRNAME, ReeLayout, ReviewLayout
@@ -90,7 +89,7 @@ class ReviewStep:
     settle: ReviewSettle
 
 
-def require_ree_intent(ree_layout: ReeLayout, *, log: LogSink) -> ReeIntent | ActionResult:
+def require_ree_baseline(ree_layout: ReeLayout, *, log: LogSink) -> Ree | ActionResult:
     """The author baseline this attempt reviews, or the failure to return.
 
     Read *before* the step is marked running: a baseline nobody can read is a
@@ -103,7 +102,7 @@ def require_ree_intent(ree_layout: ReeLayout, *, log: LogSink) -> ReeIntent | Ac
         log("system", "error", message)
         return ActionResult.failed("precondition", message)
     try:
-        return store.read_intent()
+        return store.read_ree()
     except UNREADABLE_DOCUMENT as exc:
         # A precondition rather than an `internal` fault: the document is the
         # REE's, not this code's, so the reviewer's next action is to fix the
@@ -209,10 +208,8 @@ def _review_step_settle(
 ) -> ReviewSettle:
     """Build the "this step ran to completion" exit for one review step.
 
-    The reviewer-side counterpart of
-    :func:`~repo2ree_core.operations.steps.author.settle_step`. Settles
-    ``completed`` whatever the verdict — the verdict is the handler's business,
-    not this one's.
+    Settles ``completed`` whatever the verdict — the verdict is the handler's
+    business, not this one's.
 
     The handler passes the record already carrying this step's evidence together
     with the ``timing`` that evidence was stamped with, so the record can never
@@ -277,7 +274,7 @@ class CertifiedRuntime:
     """
 
     basis: EvidenceBasis
-    build_receipt: BuildRuntimeReceipt
+    build_receipt: ReviewBuildRuntimeReceipt
     runtime_path: str
     runtime_digest: str | None
 
@@ -370,13 +367,12 @@ ReviewAdmission = Callable[[ReviewRecord, CertifiedRuntime], str | None]
 
 
 @dataclass(frozen=True)
-class ReviewRunnableStep[RunnableT: Runnable]:
+class ReviewRunnableStep:
     """What distinguishes the two review steps that run one of the author's runnables.
 
-    The reviewer-side counterpart of
-    :class:`~repo2ree_core.operations.steps.author.RunnableStep`. Covers how a
-    step *gets to* its run and stops there; what each handler does with the
-    outcome stays in the handler. See ``docs/engineering/step-lifecycle.md``.
+    Covers how a step *gets to* its run and stops there; what each handler does
+    with the outcome stays in the handler. See
+    ``docs/engineering/step-lifecycle.md``.
 
     ``admit`` is the one genuinely per-step precondition — activation needs a
     runtime artifact to probe, an experiment needs an activation that passed. It
@@ -395,8 +391,8 @@ class ReviewRunnableStep[RunnableT: Runnable]:
     runtime_retry_purpose: str
     admit: ReviewAdmission
     #: Resolve the runnable this step runs, and the label it runs under. Raises
-    #: :class:`RunnableResolutionError` when the baseline cannot produce it.
-    select: Callable[[ReeIntent], tuple[RunnableT, str]]
+    #: ``ValueError`` when the baseline cannot produce it.
+    select: Callable[[ReeDefinition], tuple[RunnableSpec, str]]
     #: Completes "<unresolvable>: <why>" when ``select`` refuses.
     unresolvable: str
     #: Completes "the author baseline declares <script_noun> that is not there".
@@ -404,7 +400,7 @@ class ReviewRunnableStep[RunnableT: Runnable]:
 
 
 @dataclass(frozen=True)
-class ReviewRun[RunnableT: Runnable]:
+class ReviewRun:
     """One of the author's runnables, resolved and run inside a review attempt.
 
     Everything a handler needs to judge what just happened and settle it: the
@@ -417,19 +413,19 @@ class ReviewRun[RunnableT: Runnable]:
     step: ReviewStep
     timer: OperationTimer
     certified: CertifiedRuntime
-    runnable: RunnableT
+    runnable: RunnableSpec
     label: str
     outcome: ExperimentRunOutcome
 
 
-def open_review_run[RunnableT: Runnable](
-    step: ReviewRunnableStep[RunnableT],
+def open_review_run(
+    step: ReviewRunnableStep,
     *,
     review_id: str,
     run_id: str,
     log: LogSink,
     is_canceled: CancelCheck,
-) -> ReviewRun[RunnableT] | ActionResult:
+) -> ReviewRun | ActionResult:
     """Take a review step from its command up to the end of its run.
 
     Returns the run for the handler to judge, or the ``ActionResult`` to return
@@ -440,9 +436,9 @@ def open_review_run[RunnableT: Runnable](
     review_layout = ree_layout.review(review_id)
     timer = OperationTimer.start()
 
-    intent = require_ree_intent(ree_layout, log=log)
-    if isinstance(intent, ActionResult):
-        return intent
+    ree = require_ree_baseline(ree_layout, log=log)
+    if isinstance(ree, ActionResult):
+        return ree
 
     record = require_review_record(review_layout, review_id, log)
     if isinstance(record, ActionResult):
@@ -480,8 +476,8 @@ def open_review_run[RunnableT: Runnable](
         return started.stop("failed", refusal)
 
     try:
-        runnable, label = step.select(intent)
-    except RunnableResolutionError as exc:
+        runnable, label = step.select(ree.subject.definition)
+    except ValueError as exc:
         return started.stop("failed", f"{step.unresolvable}: {exc}")
 
     # Absent apparatus is a fact about the baseline, not a verdict about it:

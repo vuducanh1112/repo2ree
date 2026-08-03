@@ -434,14 +434,15 @@ class WorkbenchManager:
         return self._query_json(handle, "get-ree-record")
 
     def get_ree_document(self, handle: WorkbenchHandle) -> dict[str, Any]:
-        return self._query_json(handle, "get-ree-document")
+        document = self._query_json(handle, "get-ree-document")
+        document["ree_id"] = handle.ree_id
+        return document
 
     def get_ree_state(self, handle: WorkbenchHandle) -> dict[str, Any]:
         """Return composed REE state without embedding text file contents."""
-        return self._query_json(handle, "get-ree-document", "--summary")
-
-    def get_scorecard(self, handle: WorkbenchHandle) -> dict[str, Any]:
-        return self._query_json(handle, "get-scorecard")
+        document = self._query_json(handle, "get-ree-document", "--summary")
+        document["ree_id"] = handle.ree_id
+        return document
 
     def get_reviews(self, handle: WorkbenchHandle) -> dict[str, Any]:
         return self._query_json(handle, "get-reviews")
@@ -463,15 +464,24 @@ class WorkbenchManager:
         return self.dispatch_query_stream(handle, "build-archive", locked=True, timeout=180)
 
     def list_all_records(self) -> list[dict[str, Any]]:
-        """Return records for every registered workbench, skipping unreachable ones."""
+        """Return portable-aggregate summaries for reachable workbenches."""
         results = []
         for entry in self._registry.list_all():
             handle = WorkbenchHandle.from_entry(entry)
             if not self._agent.is_running(handle.agent_id, handle.location):
                 continue
             with suppress(Exception):
-                results.append(self.get_ree_record(handle))
-        results.sort(key=lambda m: m.get("updated_at", ""), reverse=True)
+                ree = self.get_ree_record(handle)
+                definition = ree.get("subject", {}).get("definition", {})
+                results.append(
+                    {
+                        "ree_id": handle.ree_id,
+                        "name": definition.get("name", ""),
+                        "status": "sealed" if ree.get("seal") else "draft",
+                        "workbench_image": self.image_for(handle),
+                    }
+                )
+        results.sort(key=lambda item: (item.get("name", ""), item.get("ree_id", "")), reverse=True)
         return results
 
     def copy_to_workbench(self, handle: WorkbenchHandle, host_path: str, container_path: str) -> None:

@@ -68,8 +68,6 @@ def classify_workspace_file_kind(relative_path: str) -> WorkspaceFileKind:
 
 
 def _tag(relative: str) -> str:
-    if relative == "manifest.json":
-        return "Manifest"
     if relative.endswith((".zip", ".tar.gz")):
         return "Archive"
     top, _, _ = relative.partition("/")

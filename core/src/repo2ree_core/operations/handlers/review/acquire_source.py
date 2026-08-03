@@ -20,19 +20,20 @@ import shutil
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.authoring.script_generation.acquire_source import build_acquire_sh
-from repo2ree_core.domain.primitives import GitRevision, Swhid
-from repo2ree_core.domain.ree.intent import ReeIntent
-from repo2ree_core.domain.ree.receipt import AcquireSourceReceipt, receipt_envelope
+from repo2ree_core.domain.primitives import Swhid
+from repo2ree_core.domain.ree.model import Ree, SourceDefinition
 from repo2ree_core.evidence.review.comparison import compare_source_swhids
 from repo2ree_core.evidence.review.models import (
     EvidenceBasis,
+    ReviewAcquireSourceReceipt,
     SourceComparison,
     new_review_record,
     resolve_basis,
+    review_receipt_envelope,
 )
 from repo2ree_core.evidence.review.store import write_review_source_evidence
 from repo2ree_core.execution.process import CancelCheck, format_command, run_streaming_process
-from repo2ree_core.operations.steps.review import begin_review_step, require_ree_intent
+from repo2ree_core.operations.steps.review import begin_review_step, require_ree_baseline
 from repo2ree_core.persistence.files import write_atomic
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
 from repo2ree_core.source_repo.swhid import directory_swhid
@@ -46,7 +47,7 @@ class ReviewAcquireSourceOutputs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     review_id: str
-    receipt: AcquireSourceReceipt
+    receipt: ReviewAcquireSourceReceipt
     comparison: SourceComparison
 
 
@@ -61,9 +62,9 @@ def handle_review_acquire_source(
     review_layout = ree_layout.review(args.review_id)
     timer = OperationTimer.start()
 
-    intent = require_ree_intent(ree_layout, log=log)
-    if isinstance(intent, ActionResult):
-        return intent
+    ree = require_ree_baseline(ree_layout, log=log)
+    if isinstance(ree, ActionResult):
+        return ree
 
     # The one step that opens an attempt rather than joining one: there is no
     # record to require, so it starts from a freshly minted one.
@@ -81,12 +82,12 @@ def handle_review_acquire_source(
     if is_canceled():
         return stop("canceled", "canceled before source acquisition")
 
-    basis = resolve_basis(args.basis, available=_available_bases(intent, ree_layout))
+    basis = resolve_basis(args.basis, available=_available_bases(ree, ree_layout))
     if basis is None:
         return stop("failed", _basis_refusal(args.basis))
 
     review_layout.root.mkdir(parents=True, exist_ok=True)
-    _stage_acquisition(ree_layout, review_layout, intent, basis=basis, log=log)
+    _stage_acquisition(ree_layout, review_layout, ree, basis=basis, log=log)
     command = ["sh", str(review_layout.acquire_script)]
     source_of = "the recorded origin" if basis == "independent" else "the REE's own snapshot"
     log("system", "info", f"review {args.review_id}: acquiring source from {source_of} into {review_layout.upstream}")
@@ -98,15 +99,18 @@ def handle_review_acquire_source(
         return stop("failed", f"acquire script exited {result.returncode}")
 
     observed_swhid = directory_swhid(review_layout.upstream)
-    comparison = compare_source_swhids(intent.swhid, observed_swhid, basis=basis)
+    source = ree.subject.definition.source
+    author_source = ree.subject.receipts.source
+    expected_swhid = str(author_source.observed_swhid) if author_source and author_source.observed_swhid else ""
+    comparison = compare_source_swhids(expected_swhid, observed_swhid, basis=basis)
     timing = timer.finish()
-    receipt = AcquireSourceReceipt(
-        **receipt_envelope(run_id, timing, "succeeded"),
+    receipt = ReviewAcquireSourceReceipt(
+        **review_receipt_envelope(run_id, timing, "succeeded"),
         # Origin facts describe a fetch. A bundled acquisition performed none,
         # so the receipt records none rather than implying the origin was reached.
-        origin_url=intent.origin_url if basis == "independent" else "",
-        source_type=intent.source_type if basis == "independent" else "",
-        revision=GitRevision(intent.revision) if basis == "independent" and intent.revision else None,
+        origin_url=source.origin_url if basis == "independent" and source else None,
+        source_type=source.source_type if basis == "independent" and source else "",
+        requested_ref=source.requested_ref if basis == "independent" and source else None,
         expected_swhid=Swhid(comparison.expected_swhid) if comparison.expected_swhid else None,
         observed_swhid=Swhid(comparison.observed_swhid) if comparison.observed_swhid else None,
     )
@@ -138,19 +142,19 @@ def handle_review_acquire_source(
     return ActionResult(status="succeeded", exit_code=0, outputs=outputs.model_dump(mode="json"))
 
 
-def _has_acquirable_origin(intent: ReeIntent) -> bool:
+def _has_acquirable_origin(source: SourceDefinition | None) -> bool:
     """Whether the baseline names an origin a reviewer could fetch for themselves.
 
     The version-control types the generated script cannot drive (hg, svn, ...)
     are as good as originless here, so they fall back like an upload does.
     """
-    return bool(intent.origin_url) and intent.source_type in {"git", "tarball", "zip"}
+    return source is not None and bool(source.origin_url) and source.source_type in {"git", "tarball", "zip"}
 
 
-def _available_bases(intent: ReeIntent, ree_layout: ReeLayout) -> set[EvidenceBasis]:
+def _available_bases(ree: Ree, ree_layout: ReeLayout) -> set[EvidenceBasis]:
     """Which bases this baseline can actually offer a source acquisition."""
     available: set[EvidenceBasis] = set()
-    if _has_acquirable_origin(intent):
+    if _has_acquirable_origin(ree.subject.definition.source):
         available.add("independent")
     if ree_layout.snapshot_archive.is_file():
         available.add("bundled")
@@ -169,7 +173,7 @@ def _basis_refusal(requested: ReviewBasis) -> str:
 def _stage_acquisition(
     ree_layout: ReeLayout,
     review_layout: ReviewLayout,
-    intent: ReeIntent,
+    ree: Ree,
     *,
     basis: EvidenceBasis,
     log: LogSink,
@@ -194,15 +198,22 @@ def _stage_acquisition(
     if basis == "bundled":
         shutil.copyfile(ree_layout.snapshot_archive, review_layout.snapshot_archive)
         log("system", "info", f"staged the author snapshot into {review_layout.snapshot_archive}")
-        write_atomic(review_layout.acquire_script, build_acquire_sh(swhid=intent.swhid))
+        author_source = ree.subject.receipts.source
+        expected_swhid = str(author_source.observed_swhid) if author_source and author_source.observed_swhid else ""
+        write_atomic(review_layout.acquire_script, build_acquire_sh(swhid=expected_swhid))
         return
+    source = ree.subject.definition.source
+    if source is None:
+        raise ValueError("independent source acquisition requires a source definition")
+    author_source = ree.subject.receipts.source
+    expected_swhid = str(author_source.observed_swhid) if author_source and author_source.observed_swhid else ""
     review_layout.snapshot_archive.unlink(missing_ok=True)
     write_atomic(
         review_layout.acquire_script,
         build_acquire_sh(
-            origin_url=intent.origin_url,
-            source_type=intent.source_type,
-            revision=intent.revision,
-            swhid=intent.swhid,
+            origin_url=source.origin_url or "",
+            source_type=source.source_type,
+            revision=source.requested_ref or "",
+            swhid=expected_swhid,
         ),
     )

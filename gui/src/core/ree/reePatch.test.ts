@@ -62,15 +62,15 @@ describe("toReePatchFromSlices", () => {
       evaluationState,
     });
 
-    // Source identity is backend-owned, so it is never serialized into the
-    // patch — a stale/blank local copy must not clobber what acquisition recorded.
+    // Observed source identity is receipt-owned, so it is never serialized into
+    // the definition patch.
     expect(patch).not.toHaveProperty("revision");
     expect(patch).not.toHaveProperty("resolvedRevision");
     expect(patch).not.toHaveProperty("swhid");
     // The patch is the backend's wire format: snake_case keys, camelCase gone.
     expect(patch).toEqual({
       name: "demo",
-      catalog_metadata: {
+      catalog: {
         description: "Demo REE",
         version: "",
         website: "",
@@ -78,38 +78,19 @@ describe("toReePatchFromSlices", () => {
         contributors: [],
         corresponding_author_identifier: null,
       },
-      origin_url: "https://example.org/repo.git",
-      source_type: "git",
-      runtime: "runtime.tar.gz",
-      activation: {
-        description: "",
-        // Empty is safe on the wire: the backend normalizes it back to the
-        // reserved activation path.
-        run_script: "",
-        verify_script: "",
-        output_paths: [],
-        runtime_estimate: "",
-        resource_estimates: { cpu: "", memory: "", gpu: "", storage: "", network: "" },
+      source: {
+        origin_url: "https://example.org/repo.git",
+        source_type: "git",
+        requested_ref: null,
       },
-      sbom: "artifacts/sbom.json",
+      runtime: { runtime_path: "runtime.tar.gz" },
       experiments: [
         {
           name: "benchmark",
-          description: "Measure throughput",
-          run_script: "ree-scripts/experiments/benchmark.sh",
-          verify_script: "ree-scripts/experiments/benchmark.verify.sh",
           output_paths: ["results/benchmark.json"],
-          runtime_estimate: "15-20 min",
-          resource_estimates: {
-            cpu: "8 vCPU",
-            memory: "16 GB",
-            gpu: "1x A10",
-            storage: "5 GB scratch",
-            network: "offline",
-          },
         },
       ],
-      hardware_description: {
+      hardware: {
         cpus: {},
         gpus: {},
         memory: {},
@@ -130,7 +111,8 @@ describe("toReePatchFromSlices", () => {
       }),
     ).toMatchObject({
       name: "",
-      origin_url: "",
+      source: null,
+      runtime: null,
     });
   });
 });

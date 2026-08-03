@@ -1,9 +1,4 @@
-"""Restoring an extracted bundle back into an REE — the inverse of sealing.
-
-Imperative shell. Everything the bundle publishes is written to the on-disk
-home it was packaged from; the derived subtrees are deliberately left empty for
-the caller to rebuild.
-"""
+"""Restore and verify an extracted REE bundle."""
 
 from __future__ import annotations
 
@@ -14,32 +9,33 @@ from pathlib import Path
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.bundle.manifest import split_manifest_payload
-from repo2ree_core.bundle.plan import (
-    REE_ARTIFACTS_PREFIX,
-    REE_AUTHOR_RECEIPTS_PREFIX,
-    REE_MANIFEST_ENTRY_PATH,
-    REE_OVERLAY_PREFIX,
-    REE_RESULTS_PREFIX,
-    REE_SNAPSHOT_ENTRY_PATH,
-)
-from repo2ree_core.domain.ree.state import is_sealed, remove_source
-from repo2ree_core.persistence.directory import reset_source_state
+from repo2ree_core.bundle.plan import REE_MANIFEST_ENTRY_PATH
+from repo2ree_core.digests import digest_file
+from repo2ree_core.domain.primitives import ReePath
+from repo2ree_core.domain.ree.model import BundleContents, BundleEntry
 from repo2ree_core.persistence.files import list_tree_relpaths
 from repo2ree_core.persistence.repository import directory_for, layout_for
 
 
 class BundleLoadOutputs(BaseModel):
-    """What loading a bundle put into the REE."""
-
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", frozen=True)
 
     name: str
     sealed: bool
-    seal_hash: str | None
+    ree_digest: str | None
     source_restored: bool
     overlay_files: int
     artifact_files: int
-    author_receipts: int
+
+
+def _actual_inventory(bundle_root: Path) -> BundleContents:
+    entries: list[BundleEntry] = []
+    for path in list_tree_relpaths(bundle_root):
+        if path == REE_MANIFEST_ENTRY_PATH:
+            continue
+        absolute = bundle_root / path
+        entries.append(BundleEntry(path=ReePath(path), digest=digest_file(absolute), size=absolute.stat().st_size))
+    return BundleContents(entries=tuple(entries))
 
 
 def restore_ree_bundle(
@@ -49,74 +45,46 @@ def restore_ree_bundle(
     bundle_root: Path,
     archive_path: Path,
 ) -> BundleLoadOutputs:
-    """Replace this REE's contents with an extracted bundle's (shell).
-
-    The inverse of :func:`~repo2ree_core.bundle.seal.seal_ree` /
-    :func:`~repo2ree_core.bundle.seal.build_ree_archive`:
-    ``bundle_root`` is the already-extracted (and path-checked) bundle tree, so
-    every path read here is trusted; ``archive_path`` is the ZIP it came from.
-    Everything the bundle publishes is restored to the on-disk home it was
-    packaged from — snapshot, overlay, artifacts,
-    results, and the selected author receipts — while ``upstream/`` and
-    ``workspace/`` stay empty: they are derived, and the caller rebuilds them
-    from the restored snapshot.
-
-    Artifacts land under ``artifacts/`` (where the seal reads them), not in the
-    workspace: a loaded REE carries the author's built outputs as *evidence*,
-    and a reviewer's own build writes its own. A bundle with no snapshot leaves
-    the source facts cleared — the origin is still on the intent, so the source
-    can be acquired (or reviewed) from it.
-    """
     store = directory_for(storage_root, ree_id)
     if not store.record_exists():
         raise FileNotFoundError(f"REE {ree_id} not found")
-
     manifest_path = bundle_root / REE_MANIFEST_ENTRY_PATH
     if not manifest_path.is_file():
         raise ValueError(f"not an REE bundle: missing {REE_MANIFEST_ENTRY_PATH}")
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    intent, state = split_manifest_payload(manifest)
+    ree = split_manifest_payload(json.loads(manifest_path.read_text(encoding="utf-8")))
+    actual = _actual_inventory(bundle_root)
+    if actual != ree.subject.contents:
+        raise ValueError("bundle contents do not match the REE subject inventory")
 
     layout = layout_for(storage_root, ree_id)
-    store.ensure_dirs()
-    # A load is a whole-REE replacement, so it starts from the same cleared
-    # state a source change does, plus the derived caches and produced results
-    # that only a full replacement invalidates.
-    reset_source_state(layout=layout, store=store)
-    shutil.rmtree(layout.results, ignore_errors=True)
-    for stale in (layout.digest_cache, layout.materialize_marker):
-        stale.unlink(missing_ok=True)
-
-    source_restored = _restore_file(bundle_root / REE_SNAPSHOT_ENTRY_PATH, layout.snapshot_archive)
-    overlay_files = _restore_tree(bundle_root / REE_OVERLAY_PREFIX, layout.overlay)
-    artifact_files = _restore_tree(bundle_root / REE_ARTIFACTS_PREFIX, layout.artifacts)
-    _restore_tree(bundle_root / REE_RESULTS_PREFIX, layout.results)
-    author_receipts = _restore_tree(bundle_root / REE_AUTHOR_RECEIPTS_PREFIX, layout.author_receipts)
-
-    if not source_restored:
-        state = remove_source(state)
-    store.write_intent(intent)
-    store.write_state(state)
-    if is_sealed(state):
-        # The uploaded bytes *are* the sealed archive the seal hash covers, so
-        # the loaded REE can hand back the identical download.
+    for target in (layout.upstream, layout.overlay, layout.artifacts, layout.workspace, layout.results):
+        shutil.rmtree(target, ignore_errors=True)
+        target.mkdir(parents=True, exist_ok=True)
+    source_restored = _restore_file(bundle_root / "ree/snapshot.tar.gz", layout.snapshot_archive)
+    overlay_files = _restore_tree(bundle_root / "ree/overlay", layout.overlay)
+    artifact_files = _restore_tree(bundle_root / "ree/artifacts", layout.artifacts)
+    _restore_tree(bundle_root / "ree/results", layout.results)
+    persisted = ree
+    if ree.seal is None:
+        persisted = ree.model_copy(update={"subject": ree.subject.model_copy(update={"contents": BundleContents()})})
+    store.write_ree(persisted)
+    if ree.seal is not None:
         shutil.copyfile(archive_path, layout.sealed_archive)
-        store.write_manifest(manifest)
-
+    else:
+        layout.sealed_archive.unlink(missing_ok=True)
     return BundleLoadOutputs(
-        name=intent.name,
-        sealed=is_sealed(state),
-        seal_hash=state.seal_hash,
+        name=ree.subject.definition.name,
+        sealed=ree.seal is not None,
+        ree_digest=str(ree.seal.ree_digest) if ree.seal else None,
         source_restored=source_restored,
         overlay_files=overlay_files,
         artifact_files=artifact_files,
-        author_receipts=author_receipts,
     )
 
 
 def _restore_file(source: Path, target: Path) -> bool:
-    """Copy a single bundle entry into place. False when the bundle omits it."""
     if not source.is_file():
+        target.unlink(missing_ok=True)
         return False
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(source, target)
@@ -124,9 +92,7 @@ def _restore_file(source: Path, target: Path) -> bool:
 
 
 def _restore_tree(source: Path, target: Path) -> int:
-    """Copy a bundle subtree into place, returning how many files it held."""
     if not source.is_dir():
         return 0
-    target.mkdir(parents=True, exist_ok=True)
     shutil.copytree(source, target, dirs_exist_ok=True)
     return len(list_tree_relpaths(source))

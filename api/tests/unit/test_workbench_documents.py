@@ -1,9 +1,4 @@
-"""Workbench-derived document routes: scorecard and evaluate report.
-
-Both responses reuse the core producer models as their contract, so the wire
-is the models' camelCase dump — these tests pin that the routes validate and
-re-serialize a workbench payload without reshaping it into snake_case.
-"""
+"""Workbench-derived assessment and evaluate-report routes."""
 
 from __future__ import annotations
 
@@ -20,51 +15,8 @@ from repo2ree_core.analysis.repository.reproducibility_report import (
     MachineLevel,
     ReproducibilityReport,
 )
-from repo2ree_core.digests import Digest
-from repo2ree_core.domain.primitives import RunId, ScriptPath
-from repo2ree_core.domain.ree.receipt import BuildRuntimeReceipt
-from repo2ree_core.evidence.consistency import AuthorReceiptEntry, AuthorReceiptSet, ConsistencyStep
-from repo2ree_core.evidence.scorecard import (
-    ReproducibilityScoreCard,
-    ScoreCardCategory,
-    ScoreCardRung,
-)
-from repo2ree_core.time_utils import parse_utc_instant
+from repo2ree_core.domain.ree.model import Ree
 from repo2ree_supervisor import WorkbenchHandle
-
-
-def _scorecard() -> ReproducibilityScoreCard:
-    rung = ScoreCardRung(key="acquired", label="Source acquired", reached=True)
-    return ReproducibilityScoreCard(
-        level=1,
-        sealed=False,
-        categories=[ScoreCardCategory(key="source", label="Source", rungs=[rung])],
-    )
-
-
-def test_scorecard_crosses_as_the_core_models_camelcase_dump(
-    client: TestClient,
-    online_ree: WorkbenchHandle,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    payload = _scorecard().model_dump(by_alias=True)
-    monkeypatch.setattr(workbench_manager, "get_scorecard", lambda handle: payload)
-
-    resp = client.get(f"/api/v1/rees/{online_ree.ree_id}/scorecard")
-
-    assert resp.status_code == 200
-    scorecard = resp.json()
-    assert scorecard["schema_version"] == 1
-    assert scorecard["level_code"] == "R1"
-    assert scorecard["level_name"] == "Available"
-    assert scorecard["categories"][0]["rungs"][0] == {
-        "key": "acquired",
-        "label": "Source acquired",
-        "reached": True,
-        "detail": "",
-        "done": None,
-        "total": None,
-    }
 
 
 def test_evaluate_report_crosses_as_the_core_models_camelcase_dump(
@@ -97,33 +49,24 @@ def test_author_receipts_cross_as_a_typed_document(
     online_ree: WorkbenchHandle,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    selected = AuthorReceiptSet(
-        receipts=[
-            AuthorReceiptEntry(
-                key="build_runtime",
-                receipt=BuildRuntimeReceipt(
-                    run_id=RunId("build-1"),
-                    started_at=parse_utc_instant("2026-07-24T00:00:00Z"),
-                    finished_at=parse_utc_instant("2026-07-24T00:00:01Z"),
-                    duration_ms=1000,
-                    recorded_at=parse_utc_instant("2026-07-24T00:00:01Z"),
-                    status="succeeded",
-                    build_script_path=ScriptPath("ree-scripts/build_script.sh"),
-                    build_script_digest=Digest("sha256:abc"),
-                ),
-                consistency=ConsistencyStep(step="build_runtime", status="fresh", run_id=RunId("build-1")),
-            )
-        ]
-    )
+    ree = Ree()
     monkeypatch.setattr(
         workbench_manager,
         "get_ree_state",
-        lambda handle: {"author_receipts": selected.model_dump()},
+        lambda handle: {"ree": ree.model_dump(mode="json")},
     )
 
     response = client.get(f"/api/v1/rees/{online_ree.ree_id}/receipts/author")
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["receipts"][0]["receipt"]["operation"] == "build_runtime"
-    assert payload["receipts"][0]["consistency"]["status"] == "fresh"
+    assert payload == {
+        "source": None,
+        "evaluation": None,
+        "hardware_observation": None,
+        "build": None,
+        "sbom": None,
+        "sbom_cross_check": None,
+        "test_activation": None,
+        "experiments": {},
+    }

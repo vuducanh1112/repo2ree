@@ -3,21 +3,8 @@ import { useState } from "react";
 import { Ic } from "../../shared/components/Icon";
 import { C, F } from "../../theme/theme";
 
-const FRESHNESS_COLOR: Record<string, string> = {
-  fresh: C.done,
-  stale: "#d97706",
-  missing: C.textMuted,
-};
-
-const STATUS_COLOR: Record<string, string> = {
-  succeeded: C.done,
-  failed: C.error,
-  canceled: C.textMuted,
-};
-
 // One materialised receipt: the operation it attests, when it ran and how
-// long it took, whether the record still matches the current tree, and — on
-// expand — its typed payload plus the raw JSON as recorded.
+// long it took, and — on expand — its typed payload plus the raw JSON.
 export function ReceiptCard({ receipt }: { receipt: ReceiptView }) {
   const [open, setOpen] = useState(false);
   const [rawOpen, setRawOpen] = useState(false);
@@ -68,15 +55,6 @@ export function ReceiptCard({ receipt }: { receipt: ReceiptView }) {
         {receipt.duration && (
           <span style={{ color: C.textMuted, flexShrink: 0 }}>{receipt.duration}</span>
         )}
-        <span
-          style={{
-            color: FRESHNESS_COLOR[receipt.freshness] ?? C.textMuted,
-            fontWeight: 800,
-            flexShrink: 0,
-          }}
-        >
-          {receipt.freshness.toUpperCase()}
-        </span>
       </button>
 
       {open && (
@@ -90,46 +68,9 @@ export function ReceiptCard({ receipt }: { receipt: ReceiptView }) {
         >
           <Row label="run" value={receipt.runId} />
           <Row label="recorded" value={receipt.recordedAt} />
-          <Row
-            label="status"
-            value={receipt.status}
-            color={STATUS_COLOR[receipt.status] ?? C.textMid}
-          />
           {receipt.fields.map((field) => (
             <Row key={field.key} label={field.label} value={field.value} title={field.title} />
           ))}
-
-          {receipt.staleInputs.length > 0 && (
-            <div
-              style={{
-                marginTop: 2,
-                padding: "5px 6px",
-                borderRadius: 6,
-                background: "#fffbeb",
-                border: "1px solid #fde68a",
-                display: "grid",
-                gap: 3,
-              }}
-            >
-              {receipt.staleInputs.map((input) => (
-                <div
-                  key={input.input}
-                  style={{
-                    display: "flex",
-                    gap: 6,
-                    color: "#b45309",
-                    fontFamily: F.mono,
-                    fontSize: 9.5,
-                  }}
-                >
-                  <span style={{ fontWeight: 700 }}>{input.input}</span>
-                  <span style={{ flex: 1, textAlign: "right", overflow: "hidden" }}>
-                    {input.recorded || "—"} → {input.current || "—"}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
 
           <button
             type="button"

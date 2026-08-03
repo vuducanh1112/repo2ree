@@ -14,8 +14,9 @@ from fastapi.testclient import TestClient
 
 from repo2ree_api.deposit.models import ArchiveBindingAttestation
 from repo2ree_api.deps import ree_index
-from repo2ree_api.ree_index import entry_from_manifest
+from repo2ree_api.ree_index import entry_from_ree
 from repo2ree_api.settings import service_settings
+from repo2ree_core.domain.ree.model import Ree, ReeCatalogMetadata, ReeDefinition, ReeSeal, ReeSubject
 
 
 @pytest.fixture(autouse=True)
@@ -32,17 +33,10 @@ def empty_index() -> Iterator[None]:
 
 
 def seal(digest: str, *, name: str = "demo", sealed_at: str = "2026-07-29T00:00:00Z") -> None:
-    ree_index.record_seal(
-        entry_from_manifest(
-            {
-                "seal_hash": digest,
-                "name": name,
-                "sealed_at": sealed_at,
-                "ree_version": "1",
-                "catalog_metadata": {"description": "a demo"},
-            }
-        )
-    )
+    subject = ReeSubject(definition=ReeDefinition(name=name, catalog=ReeCatalogMetadata(description="a demo")))
+    seal_model = ReeSeal.model_validate({"sealed_at": sealed_at, "ree_digest": digest})
+    ree = Ree.model_construct(subject=subject, seal=seal_model)
+    ree_index.record_seal(entry_from_ree(ree))
 
 
 def deposit(digest: str, *, archive: str = "zenodo", identifier: str = "doi:10.5281/zenodo.1") -> None:

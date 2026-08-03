@@ -9,25 +9,27 @@ from typing import Any, TextIO
 import click
 
 from repo2ree_core.bundle.seal import build_ree_archive as _build_archive
+from repo2ree_core.digests import digest_file
 from repo2ree_core.doctor import run_doctor
-from repo2ree_core.domain.ree.intent import ReeIntent
-from repo2ree_core.domain.ree.state import ReeLifecycleState
+from repo2ree_core.domain.ree.model import (
+    BuildRuntimeDefinition,
+    Ree,
+    ReeDefinition,
+    ReeSubject,
+    TestActivationDefinition,
+)
 from repo2ree_core.evidence.review.store import load_reviews
-from repo2ree_core.evidence.scorecard import build_scorecard
 from repo2ree_core.operations.dispatch import run_command
 from repo2ree_core.operations.read_models.files import read_ree_file_bytes as _read_ree_file_bytes
 from repo2ree_core.operations.read_models.ree_document import get_ree_document as _get_ree_document
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
-from repo2ree_core.persistence.receipts import load_author_receipts
-from repo2ree_core.persistence.record import ReeRecord
 from repo2ree_core.reproduction import (
     BUILD_RUNTIME,
     EXPERIMENT,
     MATERIALIZE_WORKSPACE,
     TEST_ACTIVATION,
 )
-from repo2ree_core.time_utils import utc_now as _utc_now
 from repo2ree_protocol import ActionResult, command_adapter
 from repo2ree_protocol.command import (
     ActivationTestArgs,
@@ -270,17 +272,24 @@ def init_ree_cmd(ree_id: str, name: str | None) -> None:
     store.ensure_dirs()
     store.ensure_reserved_overlay_scripts()
 
-    ts = _utc_now()
     ree_name = name or f"ree-{ree_id[:8]}"
-    store.write_record(
-        ReeRecord(
-            ree_id=ree_id,
-            name=ree_name,
-            status="draft",
-            created_at=ts,
-            updated_at=ts,
-            ree_intent=ReeIntent(name=ree_name),
-            ree_state=ReeLifecycleState(),
+    build_path = store.overlay.absolute("ree-scripts/build_script.sh")
+    activation_path = store.overlay.absolute("ree-scripts/activation.sh")
+    store.write_ree(
+        Ree(
+            subject=ReeSubject(
+                definition=ReeDefinition(
+                    name=ree_name,
+                    build_runtime=BuildRuntimeDefinition(
+                        build_runtime_script_digest=digest_file(build_path),
+                        build_runtime_script_size=build_path.stat().st_size,
+                    ),
+                    test_activation=TestActivationDefinition(
+                        run_script_digest=digest_file(activation_path),
+                        run_script_size=activation_path.stat().st_size,
+                    ),
+                ),
+            )
         )
     )
     click.echo(json.dumps({"status": "initialised", "ree_id": ree_id}))
@@ -316,8 +325,7 @@ def get_ree_record_cmd() -> None:
         click.echo(json.dumps({"error": "not initialised"}), file=sys.stderr)
         sys.exit(1)
 
-    record = store.read_record_json()
-    click.echo(json.dumps(record))
+    click.echo(json.dumps(store.read_ree_json()))
 
 
 @cli.command("get-ree-document")
@@ -339,30 +347,6 @@ def get_ree_document_cmd(summary: bool) -> None:
         click.echo(json.dumps({"error": str(exc)}), file=sys.stderr)
         sys.exit(1)
     click.echo(result.model_dump_json())
-
-
-@cli.command("get-scorecard")
-def get_scorecard_cmd() -> None:
-    """Emit the reproducibility scorecard as JSON.
-
-    Computed purely from the persisted record (intent + state + run
-    receipts), so the same scorecard is recomputable from a sealed bundle.
-    Exits non-zero if not initialised.
-    """
-    layout = ReeLayout.in_workbench()
-    store = ReeDirectory(layout)
-
-    if not store.record_exists():
-        click.echo(json.dumps({"error": "not initialised"}), file=sys.stderr)
-        sys.exit(1)
-
-    record = store.read_record()
-    card = build_scorecard(
-        record.ree_intent,
-        record.ree_state,
-        list(load_author_receipts(layout).values()),
-    )
-    click.echo(card.model_dump_json())
 
 
 @cli.command("get-reviews")

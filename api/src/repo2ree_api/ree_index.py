@@ -13,12 +13,10 @@ The key is ``subject_digest`` — the content digest computed at seal — and ne
 ``ree_id``, which is a node-local ``uuid4`` handle. Two nodes holding the same
 REE must agree on one entry, so the identity has to come from the content.
 
-Every field except ``archive_attestations`` is copied verbatim from the sealed
-manifest, which means an entry is reconstructible from a downloaded bundle
-alone. That is what lets a peer harvest this index without trusting it: fetch
-the bundle, rebuild the entry, compare. The attestation list is the only part
-learned *after* sealing, and it is checkable independently by resolving the
-identifier it names.
+Every field except ``archive_attestations`` is projected from the sealed
+portable aggregate. A peer can therefore fetch a bundle, parse its REE, rebuild
+the entry, and compare it. The attestation list is the only part learned after
+sealing.
 
 Nothing node-local belongs on an entry — not the ``ree_id``, not whether this
 node still holds the bundle bytes. The entry is publishable as-is, with no
@@ -31,14 +29,12 @@ from __future__ import annotations
 import json
 import os
 import tempfile
-from collections.abc import Mapping
 from pathlib import Path
-from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from repo2ree_api.deposit.models import ArchiveBindingAttestation
-from repo2ree_core.domain.ree.intent import ReeCatalogMetadata
+from repo2ree_core.domain.ree.model import Ree, ReeCatalogMetadata
 
 # ================================================
 # Data Models
@@ -50,7 +46,7 @@ class ReeIndexEntry(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    # Content identity: ``ReeState.seal_hash``, e.g. "sha256:…". The primary
+    # Content identity: ``Ree.seal.ree_digest``, e.g. "sha256:…". The primary
     # key here and the join key the attestations carry.
     subject_digest: str
     name: str
@@ -79,31 +75,17 @@ class ReeIndexEntry(BaseModel):
         return bool(self.archive_attestations)
 
 
-def entry_from_manifest(payload: Mapping[str, Any]) -> ReeIndexEntry:
-    """Project a sealed REE's manifest onto its index entry.
-
-    The manifest is the only admissible source. It would be easier to read these
-    fields off the workbench document the seal route already holds, but that
-    document's ``name`` is the REE name from its record, while the manifest
-    substitutes ``ree-<ree_id prefix>`` when the intent carries none — so a
-    peer rebuilding this entry from a downloaded bundle would disagree with us
-    about the same digest. ``ree_version`` has the same requirement for a
-    different reason: it must be the generation the *workbench* sealed with,
-    which can lag this service's ``REE_MANIFEST_VERSION`` whenever the executor
-    bundle is older than the API.
-
-    Raises ``ValueError`` for an unsealed manifest: without a digest there is no
-    identity to file the entry under.
-    """
-    seal_hash = str(payload.get("seal_hash") or "")
-    if not seal_hash:
-        raise ValueError("manifest carries no seal_hash; only a sealed REE can be indexed")
+def entry_from_ree(ree: Ree) -> ReeIndexEntry:
+    """Project a sealed portable aggregate onto its durable index entry."""
+    if ree.seal is None:
+        raise ValueError("only a sealed REE can be indexed")
+    definition = ree.subject.definition
     return ReeIndexEntry(
-        subject_digest=seal_hash,
-        name=str(payload.get("name") or ""),
-        sealed_at=str(payload.get("sealed_at") or ""),
-        catalog_metadata=ReeCatalogMetadata.model_validate(payload.get("catalog_metadata") or {}),
-        ree_version=str(payload.get("ree_version") or ""),
+        subject_digest=ree.seal.ree_digest,
+        name=definition.name,
+        sealed_at=ree.seal.sealed_at.isoformat().replace("+00:00", "Z"),
+        catalog_metadata=definition.catalog,
+        ree_version=str(ree.subject.schema_version),
     )
 
 

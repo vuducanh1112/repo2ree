@@ -6,7 +6,7 @@ the bytes stay deterministic — no timestamps, no per-call entropy.
 
 The runtime artifact always lands in a dedicated ``.repo2ree/`` control
 directory beneath the logical project root. Inference does not defer to
-``ReeIntent.runtime``: that field usually names an *already-built* artifact the
+``ReeDefinition.runtime``: that field usually names an *already-built* artifact the
 author supplied, which is not where a freshly generated build should write.
 """
 

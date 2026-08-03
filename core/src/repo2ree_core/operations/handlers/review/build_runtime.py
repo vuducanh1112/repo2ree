@@ -22,15 +22,20 @@ from repo2ree_core.analysis.sbom.cyclonedx import ObservedPackage, parse_cyclone
 from repo2ree_core.analysis.sbom.scan import is_runtime_archive, scan_runtime_archive
 from repo2ree_core.authoring.script_generation.materialize_workspace import build_materialize_sh
 from repo2ree_core.digests import digest_file_if_exists
-from repo2ree_core.domain.primitives import ScriptPath, WorkspacePath
+from repo2ree_core.domain.primitives import ReePath, WorkspacePath
+from repo2ree_core.domain.ree.model import Ree
 from repo2ree_core.domain.ree.receipt import (
     BuildRuntimeReceipt,
     GenerateSbomReceipt,
-    RunReceipt,
-    receipt_envelope,
 )
 from repo2ree_core.evidence.review.comparison import compare_build_runtimes
-from repo2ree_core.evidence.review.models import BuildComparison, EvidenceBasis, resolve_basis
+from repo2ree_core.evidence.review.models import (
+    BuildComparison,
+    EvidenceBasis,
+    ReviewBuildRuntimeReceipt,
+    resolve_basis,
+    review_receipt_envelope,
+)
 from repo2ree_core.evidence.review.store import write_review_build_evidence
 from repo2ree_core.execution.process import (
     CancelCheck,
@@ -41,7 +46,7 @@ from repo2ree_core.execution.process import (
 from repo2ree_core.operations.steps.review import (
     begin_review_step,
     require_completed_step,
-    require_ree_intent,
+    require_ree_baseline,
     require_review_record,
     workspace_runtime,
     workspace_runtime_candidates,
@@ -49,7 +54,6 @@ from repo2ree_core.operations.steps.review import (
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import write_atomic
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
-from repo2ree_core.persistence.receipts import load_author_receipts
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_core.time_utils import OperationTimer
 from repo2ree_protocol.command import ReviewBasis, ReviewBuildRuntimeArgs
@@ -61,7 +65,7 @@ class ReviewBuildRuntimeOutputs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     review_id: str
-    receipt: BuildRuntimeReceipt
+    receipt: ReviewBuildRuntimeReceipt
     comparison: BuildComparison
 
 
@@ -76,9 +80,9 @@ def handle_review_build_runtime(
     review_layout = ree_layout.review(args.review_id)
     timer = OperationTimer.start()
 
-    intent = require_ree_intent(ree_layout, log=log)
-    if isinstance(intent, ActionResult):
-        return intent
+    ree = require_ree_baseline(ree_layout, log=log)
+    if isinstance(ree, ActionResult):
+        return ree
 
     record = require_review_record(review_layout, args.review_id, log)
     if isinstance(record, ActionResult):
@@ -108,9 +112,10 @@ def handle_review_build_runtime(
         return halted
 
     store = ReeDirectory(ree_layout)
-    runtime_path = (intent.runtime or "").strip()
-    if not runtime_path:
+    runtime_definition = ree.subject.definition.runtime
+    if runtime_definition is None:
         return stop("failed", "The author baseline declares no runtime artifact to certify")
+    runtime_path = str(runtime_definition.runtime_path)
 
     bundled_runtime = store.author_artifact(runtime_path)
     basis = resolve_basis(
@@ -168,6 +173,7 @@ def handle_review_build_runtime(
         return stop("failed", f"the build produced no runtime artifact at {runtime_path}")
 
     comparison = _certify(
+        ree,
         ree_layout,
         review_layout,
         runtime_abs=runtime_abs,
@@ -186,12 +192,12 @@ def handle_review_build_runtime(
     # No snapshot digest and no drift verdict: both describe an author's
     # workspace drifting away from what it was materialized from, and a review
     # namespace is materialized fresh from its own acquisition every time.
-    receipt = BuildRuntimeReceipt(
-        **receipt_envelope(run_id, timing, "succeeded"),
+    receipt = ReviewBuildRuntimeReceipt(
+        **review_receipt_envelope(run_id, timing, "succeeded"),
         # A bundled certification ran no build script, so it names none: the
         # input slice of this receipt must describe what actually happened.
-        build_script_path=ScriptPath(RESERVED_BUILD_SCRIPT) if basis == "independent" else None,
-        build_script_digest=build_script_digest,
+        build_runtime_script_path=ReePath(RESERVED_BUILD_SCRIPT) if basis == "independent" else None,
+        build_runtime_script_digest=build_script_digest,
         runtime_path=WorkspacePath(runtime_path),
         produced_runtime_digest=observed_runtime_digest,
     )
@@ -234,6 +240,7 @@ def _stage_author_overlay(ree_layout: ReeLayout, review_layout: ReviewLayout) ->
 
 
 def _certify(
+    ree: Ree,
     ree_layout: ReeLayout,
     review_layout: ReviewLayout,
     *,
@@ -253,11 +260,10 @@ def _certify(
     Returns ``None`` when the scan was *canceled*, which is deliberately not one
     of those cases: the caller halts the step instead of settling a verdict.
     """
-    author = load_author_receipts(ree_layout)
-    author_build = author.get("build_runtime")
-    author_sbom_receipt = author.get("generate_sbom")
+    author_build = ree.subject.receipts.build
+    author_sbom_receipt = ree.subject.receipts.sbom
 
-    expected_runtime_digest = _author_runtime_digest(author_build, author_sbom_receipt, runtime_path, log=log)
+    expected_runtime_digest = _author_runtime_digest(author_build, runtime_path)
     expected_sbom_digest = (
         author_sbom_receipt.sbom_digest if isinstance(author_sbom_receipt, GenerateSbomReceipt) else None
     )
@@ -267,14 +273,23 @@ def _certify(
     if not is_runtime_archive(runtime_path):
         log("system", "warn", f"cannot scan {runtime_path}: SBOM comparison supports runtime tarballs only")
     else:
-        scan = scan_runtime_archive(runtime_abs, review_layout.sbom, log=log, is_canceled=is_canceled)
-        if scan.canceled:
-            return None
-        if scan.returncode != 0:
-            log("system", "warn", f"syft failed (exit {scan.returncode}); the closure comparison is inconclusive")
+        review_layout.sbom.unlink(missing_ok=True)
+        try:
+            scan = scan_runtime_archive(runtime_abs, review_layout.sbom, log=log, is_canceled=is_canceled)
+        except OSError as exc:
+            log("system", "warn", f"could not start syft ({exc}); the closure comparison is inconclusive")
         else:
-            tool_version = scan.tool_version
-            observed_packages = parse_cyclonedx(review_layout.sbom.read_text(encoding="utf-8"))
+            if scan.canceled:
+                return None
+            if scan.returncode != 0:
+                log(
+                    "system",
+                    "warn",
+                    f"syft failed (exit {scan.returncode}); the closure comparison is inconclusive",
+                )
+            else:
+                tool_version = scan.tool_version
+                observed_packages = parse_cyclonedx(review_layout.sbom.read_text(encoding="utf-8"))
 
     expected_packages = _author_packages(ree_layout, log=log)
 
@@ -291,34 +306,18 @@ def _certify(
 
 
 def _author_runtime_digest(
-    author_build: RunReceipt | None,
-    author_sbom_receipt: RunReceipt | None,
+    author_build: BuildRuntimeReceipt | None,
     runtime_path: str,
-    *,
-    log: LogSink,
 ) -> str | None:
     """The digest the author recorded for the runtime this REE declares.
 
-    Prefers the build receipt, which often does not carry one because the
-    runtime artifact is declared *after* the build. Falls back to the SBOM
-    receipt's ``declared_runtime_digest``, accepted only when it scanned the
-    artifact the REE still declares — otherwise an author who re-pointed
-    ``runtime`` would have the wrong file's digest compared. See
-    ``docs/engineering/review-evidence.md``.
+    Current build receipts always bind the declared runtime path to the digest
+    they produced. A missing receipt or a changed path leaves no author build
+    baseline to compare against.
     """
-    if isinstance(author_build, BuildRuntimeReceipt) and author_build.produced_runtime_digest:
+    if author_build is not None and author_build.runtime_path == runtime_path:
         return author_build.produced_runtime_digest
-    if not isinstance(author_sbom_receipt, GenerateSbomReceipt):
-        return None
-    if author_sbom_receipt.runtime_path != runtime_path or not author_sbom_receipt.declared_runtime_digest:
-        return None
-    log(
-        "system",
-        "info",
-        "the author's build receipt records no runtime digest (the artifact was declared after the build); "
-        "comparing against the digest their SBOM scan recorded for the same file",
-    )
-    return author_sbom_receipt.declared_runtime_digest
+    return None
 
 
 def _author_packages(ree_layout: ReeLayout, *, log: LogSink) -> list[ObservedPackage]:

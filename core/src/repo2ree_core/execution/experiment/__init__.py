@@ -1,1 +1,5 @@
-"""Resolving a declared runnable and executing it."""
+"""Projecting portable runnable definitions and executing them."""
+
+from repo2ree_core.execution.experiment.spec import RunnableSpec
+
+__all__ = ["RunnableSpec"]
