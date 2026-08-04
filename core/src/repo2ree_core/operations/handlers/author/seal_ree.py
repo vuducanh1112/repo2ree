@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from repo2ree_core.bundle.seal import seal_ree
+from repo2ree_core.domain.ree.transitions import ReePreconditionError
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.persistence.layout import ReeLayout
@@ -29,6 +30,11 @@ def handle_seal_ree(
             results_included=args.results_included,
             sealed_at=utc_now_instant(),
         )
+    except ReePreconditionError as exc:
+        # The REE is not in a state that may be sealed — the author's own tree
+        # said so, and no retry changes that until they act on it.
+        log("system", "error", f"seal_ree refused: {exc}")
+        return ActionResult.failed("precondition", str(exc))
     except Exception as exc:
         log("system", "error", f"seal_ree failed: {exc}")
         return failed_from_exception(exc, f"seal_ree failed: {exc}")

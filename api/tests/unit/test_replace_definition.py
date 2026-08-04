@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from repo2ree_api.deps import workbench_manager
-from repo2ree_core.domain.ree.assessment import assess
+from repo2ree_core.domain.ree.audit import audit
 from repo2ree_core.domain.ree.model import Ree, ReeDefinition
 from repo2ree_protocol import ActionResult
 from repo2ree_supervisor import WorkbenchHandle
@@ -30,7 +30,7 @@ def test_replace_definition_route_dispatches_every_definition_field(
         "ree_id": online_ree.ree_id,
         "ree": ree.model_dump(mode="json"),
         "status": "draft",
-        "assessment": assess(ree).model_dump(mode="json"),
+        "audit": audit(ree).model_dump(mode="json"),
         "workspace_files": [],
         "ree_files": [],
     }

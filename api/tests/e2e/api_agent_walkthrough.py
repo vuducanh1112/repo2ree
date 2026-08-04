@@ -604,19 +604,20 @@ def run() -> None:
     ok(f"experiment {EXPERIMENT_NAME!r} passed — declared validation held")
 
     chapter("12. Review the authoring steps")
-    note("getReeState carries the aggregate assessment for each authoring step")
+    note("getReeState carries the aggregate audit for each authoring step")
     state = call("GET", f"/api/v1/rees/{ree_id}/state")
-    assessment = state["assessment"]
-    for step_key in ("source", "runtime", "sbom", "test_activation"):
-        check(assessment[step_key]["evidence"] == "current", f"step {step_key} is not current")
-    check(assessment["experiments"][0]["run"]["evidence"] == "current", "experiment is not current")
-    ok("every authored receipt is current")
+    ree_audit = state["audit"]
+    for step_key in ("source", "evaluation", "runtime", "sbom", "sbom_cross_check", "test_activation"):
+        check(ree_audit[step_key]["evidence"] == "current", f"step {step_key} is not current")
+    check(ree_audit["experiments"][0]["run"]["evidence"] == "current", "experiment is not current")
+    ok("every authored receipt is current — nothing has moved under one")
 
-    chapter("13. Read the reproducibility assessment")
-    note("the state document exposes aggregate evidence and reproducibility axes")
-    assessment = call("GET", f"/api/v1/rees/{ree_id}/state")["assessment"]
-    check("reproducibility" in assessment, "assessment missing reproducibility levels")
-    ok(f"reproducibility axes {assessment['reproducibility']}")
+    chapter("13. Read the reproducibility axes")
+    note("the axes are evaluate's own finding, carried by the receipt that recorded it")
+    evaluation = state["ree"]["subject"]["receipts"]["evaluation"]
+    check(bool(evaluation), "the REE carries no evaluation receipt")
+    axes = {axis: evaluation[f"{axis}_level"] for axis in ("dependency", "environment", "machine")}
+    ok(f"reproducibility axes {axes}")
 
     chapter("14. Seal and download")
     note("seal binds the whole record; package the source and the experiment baselines")

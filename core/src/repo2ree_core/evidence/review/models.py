@@ -227,7 +227,7 @@ class ActivationOutcome(_ReviewModel):
     ``runtime_digest`` is what the pass is *about*: the artifact actually
     probed, which the step requires to equal the one the build step certified.
     Without it a re-run build would silently leave a pass attached to a runtime
-    that no longer exists — the same binding the aggregate assessment applies
+    that no longer exists — the same binding the aggregate audit applies
     when it evaluates activation against the runtime that was built.
 
     The exit codes separate the two failures that read alike but are not: a

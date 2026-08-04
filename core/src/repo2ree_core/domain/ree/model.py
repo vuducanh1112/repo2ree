@@ -1,4 +1,10 @@
-"""The portable REE aggregate and its derived assessment vocabulary."""
+"""The portable REE aggregate.
+
+Only what an REE *is*: its declaration, the receipts that back it, the bundle
+inventory, and the seal over all three. What that adds up to right now — which
+evidence still holds and which the tree has moved out from under — is derived,
+never stored, and lives in :mod:`repo2ree_core.domain.ree.audit`.
+"""
 
 from __future__ import annotations
 
@@ -8,7 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from repo2ree_core.digests import digest_json
 from repo2ree_core.domain.hbom import HBOM
-from repo2ree_core.domain.primitives import Digest, ReePath, RunId, SourceType, UtcInstant, WorkspacePath
+from repo2ree_core.domain.primitives import Digest, ReePath, SourceType, UtcInstant, WorkspacePath
 from repo2ree_core.domain.ree.receipt import (
     AcquireSourceReceipt,
     BuildRuntimeReceipt,
@@ -236,63 +242,24 @@ def ree_status(ree: Ree) -> ReeStatus:
     return "sealed" if ree.seal is not None else "draft"
 
 
-EvidenceStatus = Literal["missing", "current", "stale", "not_applicable"]
-PayloadStatus = Literal["present", "omitted", "missing", "not_applicable"]
-
-
-class StepAssessment(_DomainModel):
-    evidence: EvidenceStatus
-    payload: PayloadStatus
-    receipt_run_id: RunId | None = None
-    reasons: tuple[str, ...] = ()
-
-
-class ExperimentAssessment(_DomainModel):
-    name: str
-    run: StepAssessment
-
-
-class ReproducibilityLevels(_DomainModel):
-    dependency: int = Field(default=0, ge=0)
-    environment: int = Field(default=0, ge=0)
-    machine: int = Field(default=0, ge=0)
-
-
-class ReeAssessment(_DomainModel):
-    source: StepAssessment
-    evaluation: StepAssessment
-    hardware: StepAssessment
-    runtime: StepAssessment
-    sbom: StepAssessment
-    test_activation: StepAssessment
-    experiments: tuple[ExperimentAssessment, ...] = ()
-    reproducibility: ReproducibilityLevels = Field(default_factory=ReproducibilityLevels)
-
-
 __all__ = [
     "CURRENT_SCHEMA_VERSION",
     "BuildRuntimeDefinition",
     "BundleContents",
     "BundleEntry",
     "Contributor",
-    "EvidenceStatus",
-    "ExperimentAssessment",
     "ExperimentDefinition",
     "HardwareDefinition",
-    "PayloadStatus",
     "Ree",
-    "ReeAssessment",
     "ReeCatalogMetadata",
     "ReeDefinition",
     "ReeReceipts",
     "ReeSeal",
     "ReeStatus",
     "ReeSubject",
-    "ReproducibilityLevels",
     "RuntimeDefinition",
     "Signature",
     "SourceDefinition",
-    "StepAssessment",
     "TestActivationDefinition",
     "canonical_subject_digest",
     "ree_status",

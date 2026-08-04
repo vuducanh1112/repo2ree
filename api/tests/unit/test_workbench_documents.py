@@ -1,4 +1,4 @@
-"""Workbench-derived assessment and evaluate-report routes."""
+"""Workbench-derived audit and evaluate-report routes."""
 
 from __future__ import annotations
 

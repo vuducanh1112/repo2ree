@@ -2,6 +2,7 @@
 
 from repo2ree_core.domain.primitives import SourceType
 
+from .audit import ExperimentAudit, ReeAudit, StepAudit, audit
 from .model import (
     BuildRuntimeDefinition,
     BundleContents,
@@ -10,7 +11,6 @@ from .model import (
     ExperimentDefinition,
     HardwareDefinition,
     Ree,
-    ReeAssessment,
     ReeCatalogMetadata,
     ReeDefinition,
     ReeReceipts,
@@ -18,7 +18,6 @@ from .model import (
     ReeSubject,
     RuntimeDefinition,
     SourceDefinition,
-    StepAssessment,
     TestActivationDefinition,
 )
 
@@ -27,10 +26,11 @@ __all__ = [
     "BundleContents",
     "BundleEntry",
     "Contributor",
+    "ExperimentAudit",
     "ExperimentDefinition",
     "HardwareDefinition",
     "Ree",
-    "ReeAssessment",
+    "ReeAudit",
     "ReeCatalogMetadata",
     "ReeDefinition",
     "ReeReceipts",
@@ -39,6 +39,7 @@ __all__ = [
     "RuntimeDefinition",
     "SourceDefinition",
     "SourceType",
-    "StepAssessment",
+    "StepAudit",
     "TestActivationDefinition",
+    "audit",
 ]

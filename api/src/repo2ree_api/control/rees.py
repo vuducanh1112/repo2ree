@@ -150,7 +150,7 @@ def get_ree_state_route(ree_id: str) -> ReeState:
         "ree_id": document["ree_id"],
         "ree": document["ree"],
         "status": document["status"],
-        "assessment": document["assessment"],
+        "audit": document["audit"],
         "workbench": {
             "status": "available",
             "agent_id": handle.agent_id,

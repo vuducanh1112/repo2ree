@@ -11,8 +11,9 @@ from repo2ree_core.bundle.manifest import manifest_bytes
 from repo2ree_core.bundle.plan import REE_MANIFEST_ENTRY_PATH, build_zip_bytes
 from repo2ree_core.digests import digest_bytes
 from repo2ree_core.domain.primitives import Digest, ReePath, UtcInstant
+from repo2ree_core.domain.ree.audit import audit
 from repo2ree_core.domain.ree.model import BundleContents, BundleEntry, Ree
-from repo2ree_core.domain.ree.transitions import record_seal, replace_contents, revision_of
+from repo2ree_core.domain.ree.transitions import ReePreconditionError, record_seal, replace_contents, revision_of
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import list_tree_relpaths, write_atomic
 from repo2ree_core.persistence.repository import directory_for, save_ree
@@ -84,6 +85,29 @@ def _inventory(entries: list[tuple[str, bytes]]) -> BundleContents:
     )
 
 
+def _refuse_stale_evidence(ree: Ree) -> None:
+    """Refuse to seal an REE whose receipts no longer describe what it holds.
+
+    Sealing is the step that turns an aggregate into something citable, and a
+    stale receipt is the one defect a reader cannot detect for themselves: the
+    digests all agree, the evidence is all present, and it describes a build
+    script or a source that the bundle no longer contains. Publishing that is
+    worse than publishing nothing, so it is a refusal rather than a warning.
+
+    *Missing* evidence is deliberately not refused. An REE with no SBOM and no
+    activation test is incomplete, which its own audit says plainly and which a
+    reader can weigh; an author may have nothing more to add. Incomplete and
+    self-contradictory are different failures and only the second is a lie.
+    """
+    stale = audit(ree).stale_steps()
+    if not stale:
+        return
+    detail = "; ".join(f"{name}: {', '.join(step.reasons)}" for name, step in stale)
+    raise ReePreconditionError(
+        f"cannot seal an REE with stale evidence — re-run the affected steps or drop what they describe ({detail})"
+    )
+
+
 def seal_ree(
     storage_root: Path,
     ree_id: str,
@@ -97,6 +121,7 @@ def seal_ree(
     if not store.record_exists():
         raise FileNotFoundError(f"REE {ree_id} not found")
     ree = store.read_ree()
+    _refuse_stale_evidence(ree)
     before_revision = revision_of(ree)
     entries = _collect_entries(
         store,

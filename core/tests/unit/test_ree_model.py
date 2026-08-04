@@ -7,7 +7,7 @@ from pydantic import ValidationError
 
 from repo2ree_core.digests import digest_bytes
 from repo2ree_core.domain.primitives import ReePath, RunId, WorkspacePath, parse_utc_instant
-from repo2ree_core.domain.ree.assessment import assess
+from repo2ree_core.domain.ree.audit import audit
 from repo2ree_core.domain.ree.model import (
     BuildRuntimeDefinition,
     BundleContents,
@@ -80,7 +80,7 @@ def test_experiment_slug_collisions_are_rejected() -> None:
         ReeDefinition(experiments=(experiment("one two"), experiment("one  two")))
 
 
-def test_committed_receipt_is_assessed_and_contributes_to_subject_identity() -> None:
+def test_committed_receipt_is_audited_and_contributes_to_subject_identity() -> None:
     ree = Ree(
         subject=ReeSubject(
             definition=ReeDefinition(runtime=RuntimeDefinition(runtime_path=WorkspacePath("runtime.tar")))
@@ -105,7 +105,7 @@ def test_committed_receipt_is_assessed_and_contributes_to_subject_identity() -> 
 
     assert updated.subject.receipts.build == receipt
     assert subject_digest(updated.subject) != before
-    assert assess(updated).runtime.evidence == "not_applicable"  # build definition is intentionally absent
+    assert audit(updated).runtime.evidence == "not_applicable"  # build definition is intentionally absent
 
 
 def test_seal_binds_and_freezes_the_subject() -> None:
@@ -158,7 +158,7 @@ def test_clear_source_preserves_recipe_definition_but_clears_source_chain() -> N
     assert cleared.subject.contents.entries == ()
 
 
-def test_bundle_payload_is_not_assessed_until_the_ree_is_sealed() -> None:
+def test_bundle_payload_is_not_audited_until_the_ree_is_sealed() -> None:
     source = SourceDefinition(origin_url="https://example.test/repo.git", source_type="git")
     receipt = AcquireSourceReceipt(
         run_id=RunId("source-1"),
@@ -175,8 +175,8 @@ def test_bundle_payload_is_not_assessed_until_the_ree_is_sealed() -> None:
         receipt,
     )
 
-    assert assess(draft).source.evidence == "current"
-    assert assess(draft).source.payload == "not_applicable"
+    assert audit(draft).source.evidence == "current"
+    assert audit(draft).source.payload == "not_applicable"
 
     inventoried = draft.model_copy(
         update={
@@ -191,4 +191,4 @@ def test_bundle_payload_is_not_assessed_until_the_ree_is_sealed() -> None:
     )
     sealed = record_seal(inventoried, sealed_at=_NOW)
 
-    assert assess(sealed).source.payload == "present"
+    assert audit(sealed).source.payload == "present"

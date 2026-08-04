@@ -8,7 +8,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from repo2ree_api.contracts.runs import RunSummary
 from repo2ree_api.ree_index import ReeIndexEntry
-from repo2ree_core.domain.ree.model import Ree, ReeAssessment, ReeStatus
+from repo2ree_core.domain.ree.audit import ReeAudit
+from repo2ree_core.domain.ree.model import Ree, ReeStatus
 from repo2ree_core.operations.read_models.files import ReeFile, WorkspaceFile
 
 
@@ -20,7 +21,7 @@ class ReeDocument(BaseModel):
     ree_id: str
     ree: Ree
     status: ReeStatus
-    assessment: ReeAssessment
+    audit: ReeAudit
     workbench_image: str | None = None
     workspace_files: list[WorkspaceFile] = Field(default_factory=list)
     ree_files: list[ReeFile] = Field(default_factory=list)
@@ -65,7 +66,7 @@ class ReeState(BaseModel):
     ree_id: str
     ree: Ree
     status: ReeStatus
-    assessment: ReeAssessment
+    audit: ReeAudit
     workbench: WorkbenchStatus
     workspace_files: list[WorkspaceFile] = Field(default_factory=list)
     ree_files: list[ReeFile] = Field(default_factory=list)

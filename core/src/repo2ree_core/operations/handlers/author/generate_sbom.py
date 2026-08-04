@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict
 from repo2ree_core.analysis.sbom.scan import SBOM_FORMAT, is_runtime_archive, scan_runtime_archive
 from repo2ree_core.digests import digest_file
 from repo2ree_core.domain.primitives import ArtifactPath
-from repo2ree_core.domain.ree.assessment import assess
+from repo2ree_core.domain.ree.audit import audit
 from repo2ree_core.domain.ree.model import Ree, RuntimeDefinition
 from repo2ree_core.domain.ree.receipt import GenerateSbomReceipt, receipt_envelope
 from repo2ree_core.domain.ree.transitions import ReePreconditionError, commit_receipt, revision_of
@@ -156,9 +156,9 @@ def _check_preconditions(
     build = ree.subject.receipts.build
     if build is None:
         raise ReePreconditionError("runtime has not been built")
-    runtime_assessment = assess(ree).runtime
-    if runtime_assessment.evidence != "current":
-        detail = "; ".join(runtime_assessment.reasons) or "build evidence is not current"
+    runtime_audit = audit(ree).runtime
+    if runtime_audit.evidence != "current":
+        detail = "; ".join(runtime_audit.reasons) or "build evidence is not current"
         raise ReePreconditionError(detail)
     runtime_abs = layout.workspace / str(runtime.runtime_path)
     if not runtime_abs.is_file():

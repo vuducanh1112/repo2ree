@@ -9,7 +9,7 @@ The step list and its ``requires`` edges are the single declared source of the
 authoring graph — the same steps the GUI renders as its process ring
 (``REE_STEPS`` there), lifted out of the UI so every client reads the identical
 structure instead of re-deriving it. Per-REE readiness and freshness live in
-``ReeAssessment``; this module deliberately owns no second lifecycle model.
+``ReeAudit``; this module deliberately owns no second lifecycle model.
 """
 
 from __future__ import annotations

@@ -13,7 +13,7 @@ This report reads repository manifests, lockfiles, and environment declarations
 and grades how well the repository declares what it needs. The author handler
 binds its bounded conclusions and payload digest into an
 ``EvaluateReproducibilityReceipt``; overall REE evidence status is derived
-separately by ``domain.ree.assessment``.
+separately by ``domain.ree.audit``.
 
 Functions carry design-by-contract assertions (pre-/post-conditions) for the
 invariants that the type system cannot express.

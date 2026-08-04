@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.digests import Digest, digest_file, digest_output_paths
 from repo2ree_core.domain.primitives import WorkspacePath
-from repo2ree_core.domain.ree.assessment import assess
+from repo2ree_core.domain.ree.audit import audit
 from repo2ree_core.domain.ree.model import ExperimentDefinition, Ree, TestActivationDefinition
 from repo2ree_core.domain.ree.receipt import (
     RunExperimentReceipt,
@@ -185,9 +185,9 @@ def _check_preconditions(
     build = ree.subject.receipts.build
     if build is None:
         raise ReePreconditionError("runtime has not been built")
-    runtime_assessment = assess(ree).runtime
-    if runtime_assessment.evidence != "current":
-        detail = "; ".join(runtime_assessment.reasons) or "build evidence is not current"
+    runtime_audit = audit(ree).runtime
+    if runtime_audit.evidence != "current":
+        detail = "; ".join(runtime_audit.reasons) or "build evidence is not current"
         raise ReePreconditionError(detail)
     runtime_file = layout.workspace / str(runtime.runtime_path)
     if not runtime_file.is_file():

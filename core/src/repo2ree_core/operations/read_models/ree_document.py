@@ -6,8 +6,8 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from repo2ree_core.domain.ree.assessment import assess
-from repo2ree_core.domain.ree.model import Ree, ReeAssessment, ReeStatus, ree_status
+from repo2ree_core.domain.ree.audit import ReeAudit, audit
+from repo2ree_core.domain.ree.model import Ree, ReeStatus, ree_status
 from repo2ree_core.operations.read_models.files import (
     ReeFile,
     WorkspaceFile,
@@ -23,7 +23,7 @@ class ReeDocument(BaseModel):
     ree_id: str
     ree: Ree
     status: ReeStatus
-    assessment: ReeAssessment
+    audit: ReeAudit
     workspace_files: list[WorkspaceFile] = Field(default_factory=list)
     ree_files: list[ReeFile] = Field(default_factory=list)
 
@@ -38,7 +38,7 @@ def get_ree_document(storage_root: Path, ree_id: str, *, include_content: bool =
         ree_id=ree_id,
         ree=ree,
         status=ree_status(ree),
-        assessment=assess(ree),
+        audit=audit(ree),
         workspace_files=list_workspace_files(storage_root, ree_id, include_content=include_content),
         ree_files=list_ree_files(storage_root, ree_id, include_content=include_content),
     )

@@ -6453,7 +6453,7 @@
           "verdict"
         ],
         "title": "ActivationOutcome",
-        "description": "Whether the runtime this attempt certified is inhabitable.\n\nDeliberately not a ``*Comparison``: nothing here is diffed against the\nauthor (see the module docstring). What the pass is *worth* is carried by\n``basis``, which activation inherits rather than chooses \u2014 it runs in the\nworkspace the build left behind and cannot tell whether the runtime there\nwas rebuilt or unpacked from the bundle.\n\n``runtime_digest`` is what the pass is *about*: the artifact actually\nprobed, which the step requires to equal the one the build step certified.\nWithout it a re-run build would silently leave a pass attached to a runtime\nthat no longer exists \u2014 the same binding the aggregate assessment applies\nwhen it evaluates activation against the runtime that was built.\n\nThe exit codes separate the two failures that read alike but are not: a\nruntime that would not come up, and one that came up and was rejected by\nthe author's own verify script."
+        "description": "Whether the runtime this attempt certified is inhabitable.\n\nDeliberately not a ``*Comparison``: nothing here is diffed against the\nauthor (see the module docstring). What the pass is *worth* is carried by\n``basis``, which activation inherits rather than chooses \u2014 it runs in the\nworkspace the build left behind and cannot tell whether the runtime there\nwas rebuilt or unpacked from the bundle.\n\n``runtime_digest`` is what the pass is *about*: the artifact actually\nprobed, which the step requires to equal the one the build step certified.\nWithout it a re-run build would silently leave a pass attached to a runtime\nthat no longer exists \u2014 the same binding the aggregate audit applies\nwhen it evaluates activation against the runtime that was built.\n\nThe exit codes separate the two failures that read alike but are not: a\nruntime that would not come up, and one that came up and was rejected by\nthe author's own verify script."
       },
       "ActivationScriptTemplates": {
         "properties": {
@@ -7479,6 +7479,10 @@
             "type": "string",
             "title": "Sbom Digest"
           },
+          "report_digest": {
+            "type": "string",
+            "title": "Report Digest"
+          },
           "declared_direct_total": {
             "type": "integer",
             "minimum": 0.0,
@@ -7514,6 +7518,7 @@
           "duration_ms",
           "recorded_at",
           "sbom_digest",
+          "report_digest",
           "declared_direct_total",
           "observed_matched",
           "version_mismatches",
@@ -8290,14 +8295,14 @@
         "title": "EvaluatedDependency",
         "description": "A ``Dependency`` row plus the report's classification of it.\n\nThe status is computed here \u2014 the single classifier that also feeds the\nsummary buckets \u2014 so presentation layers never re-derive it. The same\nholds for ``runtime_presence``, filled by the SBOM cross-check step."
       },
-      "ExperimentAssessment": {
+      "ExperimentAudit": {
         "properties": {
           "name": {
             "type": "string",
             "title": "Name"
           },
           "run": {
-            "$ref": "#/components/schemas/StepAssessment"
+            "$ref": "#/components/schemas/StepAudit"
           }
         },
         "additionalProperties": false,
@@ -8306,7 +8311,7 @@
           "name",
           "run"
         ],
-        "title": "ExperimentAssessment"
+        "title": "ExperimentAudit"
       },
       "ExperimentBinding": {
         "properties": {
@@ -9561,36 +9566,36 @@
         "type": "object",
         "title": "Ree"
       },
-      "ReeAssessment": {
+      "ReeAudit": {
         "properties": {
           "source": {
-            "$ref": "#/components/schemas/StepAssessment"
+            "$ref": "#/components/schemas/StepAudit"
           },
           "evaluation": {
-            "$ref": "#/components/schemas/StepAssessment"
+            "$ref": "#/components/schemas/StepAudit"
           },
           "hardware": {
-            "$ref": "#/components/schemas/StepAssessment"
+            "$ref": "#/components/schemas/StepAudit"
           },
           "runtime": {
-            "$ref": "#/components/schemas/StepAssessment"
+            "$ref": "#/components/schemas/StepAudit"
           },
           "sbom": {
-            "$ref": "#/components/schemas/StepAssessment"
+            "$ref": "#/components/schemas/StepAudit"
+          },
+          "sbom_cross_check": {
+            "$ref": "#/components/schemas/StepAudit"
           },
           "test_activation": {
-            "$ref": "#/components/schemas/StepAssessment"
+            "$ref": "#/components/schemas/StepAudit"
           },
           "experiments": {
             "items": {
-              "$ref": "#/components/schemas/ExperimentAssessment"
+              "$ref": "#/components/schemas/ExperimentAudit"
             },
             "type": "array",
             "title": "Experiments",
             "default": []
-          },
-          "reproducibility": {
-            "$ref": "#/components/schemas/ReproducibilityLevels"
           }
         },
         "additionalProperties": false,
@@ -9601,9 +9606,10 @@
           "hardware",
           "runtime",
           "sbom",
+          "sbom_cross_check",
           "test_activation"
         ],
-        "title": "ReeAssessment"
+        "title": "ReeAudit"
       },
       "ReeBundleLoadPayload": {
         "properties": {
@@ -9937,8 +9943,8 @@
             ],
             "title": "Status"
           },
-          "assessment": {
-            "$ref": "#/components/schemas/ReeAssessment"
+          "audit": {
+            "$ref": "#/components/schemas/ReeAudit"
           },
           "workbench_image": {
             "anyOf": [
@@ -9972,7 +9978,7 @@
           "ree_id",
           "ree",
           "status",
-          "assessment"
+          "audit"
         ],
         "title": "ReeDocument",
         "description": "The portable aggregate with live workbench file projections."
@@ -10267,8 +10273,8 @@
             ],
             "title": "Status"
           },
-          "assessment": {
-            "$ref": "#/components/schemas/ReeAssessment"
+          "audit": {
+            "$ref": "#/components/schemas/ReeAudit"
           },
           "workbench": {
             "$ref": "#/components/schemas/WorkbenchStatus"
@@ -10301,7 +10307,7 @@
           "ree_id",
           "ree",
           "status",
-          "assessment",
+          "audit",
           "workbench"
         ],
         "title": "ReeState",
@@ -10420,31 +10426,6 @@
           "status"
         ],
         "title": "ReeSummary"
-      },
-      "ReproducibilityLevels": {
-        "properties": {
-          "dependency": {
-            "type": "integer",
-            "minimum": 0.0,
-            "title": "Dependency",
-            "default": 0
-          },
-          "environment": {
-            "type": "integer",
-            "minimum": 0.0,
-            "title": "Environment",
-            "default": 0
-          },
-          "machine": {
-            "type": "integer",
-            "minimum": 0.0,
-            "title": "Machine",
-            "default": 0
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "title": "ReproducibilityLevels"
       },
       "ReproducibilityReport": {
         "properties": {
@@ -12433,7 +12414,7 @@
         ],
         "title": "SourceUploadCompletePayload"
       },
-      "StepAssessment": {
+      "StepAudit": {
         "properties": {
           "evidence": {
             "type": "string",
@@ -12450,7 +12431,6 @@
             "enum": [
               "present",
               "omitted",
-              "missing",
               "not_applicable"
             ],
             "title": "Payload"
@@ -12481,7 +12461,7 @@
           "evidence",
           "payload"
         ],
-        "title": "StepAssessment"
+        "title": "StepAudit"
       },
       "StorageDefinition": {
         "properties": {

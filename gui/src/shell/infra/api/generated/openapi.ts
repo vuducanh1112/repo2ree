@@ -906,7 +906,7 @@ export interface components {
          *     ``runtime_digest`` is what the pass is *about*: the artifact actually
          *     probed, which the step requires to equal the one the build step certified.
          *     Without it a re-run build would silently leave a pass attached to a runtime
-         *     that no longer exists — the same binding the aggregate assessment applies
+         *     that no longer exists — the same binding the aggregate audit applies
          *     when it evaluates activation against the runtime that was built.
          *
          *     The exit codes separate the two failures that read alike but are not: a
@@ -1478,6 +1478,8 @@ export interface components {
             operation: "cross_check_sbom";
             /** Sbom Digest */
             sbom_digest: string;
+            /** Report Digest */
+            report_digest: string;
             /** Declared Direct Total */
             declared_direct_total: number;
             /** Observed Matched */
@@ -1763,11 +1765,11 @@ export interface components {
             /** Runtime Presence */
             runtime_presence?: ("observed" | "version-mismatch" | "not-observed") | null;
         };
-        /** ExperimentAssessment */
-        ExperimentAssessment: {
+        /** ExperimentAudit */
+        ExperimentAudit: {
             /** Name */
             name: string;
-            run: components["schemas"]["StepAssessment"];
+            run: components["schemas"]["StepAudit"];
         };
         /** ExperimentBinding */
         ExperimentBinding: {
@@ -2365,20 +2367,20 @@ export interface components {
             subject?: components["schemas"]["ReeSubject"];
             seal?: components["schemas"]["ReeSeal"] | null;
         };
-        /** ReeAssessment */
-        ReeAssessment: {
-            source: components["schemas"]["StepAssessment"];
-            evaluation: components["schemas"]["StepAssessment"];
-            hardware: components["schemas"]["StepAssessment"];
-            runtime: components["schemas"]["StepAssessment"];
-            sbom: components["schemas"]["StepAssessment"];
-            test_activation: components["schemas"]["StepAssessment"];
+        /** ReeAudit */
+        ReeAudit: {
+            source: components["schemas"]["StepAudit"];
+            evaluation: components["schemas"]["StepAudit"];
+            hardware: components["schemas"]["StepAudit"];
+            runtime: components["schemas"]["StepAudit"];
+            sbom: components["schemas"]["StepAudit"];
+            sbom_cross_check: components["schemas"]["StepAudit"];
+            test_activation: components["schemas"]["StepAudit"];
             /**
              * Experiments
              * @default []
              */
-            experiments: components["schemas"]["ExperimentAssessment"][];
-            reproducibility?: components["schemas"]["ReproducibilityLevels"];
+            experiments: components["schemas"]["ExperimentAudit"][];
         };
         /**
          * ReeBundleLoadPayload
@@ -2506,7 +2508,7 @@ export interface components {
              * @enum {string}
              */
             status: "draft" | "sealed";
-            assessment: components["schemas"]["ReeAssessment"];
+            audit: components["schemas"]["ReeAudit"];
             /** Workbench Image */
             workbench_image?: string | null;
             /** Workspace Files */
@@ -2621,7 +2623,7 @@ export interface components {
              * @enum {string}
              */
             status: "draft" | "sealed";
-            assessment: components["schemas"]["ReeAssessment"];
+            audit: components["schemas"]["ReeAudit"];
             workbench: components["schemas"]["WorkbenchStatus"];
             /** Workspace Files */
             workspace_files?: components["schemas"]["WorkspaceFile"][];
@@ -2676,24 +2678,6 @@ export interface components {
             status: "draft" | "sealed";
             /** Workbench Image */
             workbench_image?: string | null;
-        };
-        /** ReproducibilityLevels */
-        ReproducibilityLevels: {
-            /**
-             * Dependency
-             * @default 0
-             */
-            dependency: number;
-            /**
-             * Environment
-             * @default 0
-             */
-            environment: number;
-            /**
-             * Machine
-             * @default 0
-             */
-            machine: number;
         };
         /** ReproducibilityReport */
         ReproducibilityReport: {
@@ -3470,8 +3454,8 @@ export interface components {
             /** Idempotency Key */
             idempotency_key?: string | null;
         };
-        /** StepAssessment */
-        StepAssessment: {
+        /** StepAudit */
+        StepAudit: {
             /**
              * Evidence
              * @enum {string}
@@ -3481,7 +3465,7 @@ export interface components {
              * Payload
              * @enum {string}
              */
-            payload: "present" | "omitted" | "missing" | "not_applicable";
+            payload: "present" | "omitted" | "not_applicable";
             /** Receipt Run Id */
             receipt_run_id?: string | null;
             /**

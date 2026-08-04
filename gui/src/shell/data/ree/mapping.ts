@@ -8,7 +8,9 @@ export function mapReeDetailToReeSlices(ree: ReeDocument) {
   const source = definition?.source;
   const sourceReceipt = receipts?.source;
   const activation = definition?.test_activation;
-  const levels = ree.assessment.reproducibility;
+  // The axes are evaluate's own finding, so they are read from the receipt that
+  // recorded them rather than from the audit, which reports evidence and nothing else.
+  const evaluation = receipts?.evaluation;
 
   return mapRawReeIntentToSlices({
     reeIntent: {
@@ -35,14 +37,14 @@ export function mapReeDetailToReeSlices(ree: ReeDocument) {
       hardware_description: definition?.hardware,
     },
     reeSession: {
-      source_available: ree.assessment.source.payload === "present",
-      source_included: ree.status === "sealed" && ree.assessment.source.payload === "present",
-      runtime_included: ree.status === "sealed" && ree.assessment.runtime.payload === "present",
+      source_available: ree.audit.source.payload === "present",
+      source_included: ree.status === "sealed" && ree.audit.source.payload === "present",
+      runtime_included: ree.status === "sealed" && ree.audit.runtime.payload === "present",
       sealed_at: ree.ree.seal?.sealed_at,
       seal_hash: ree.ree.seal?.ree_digest,
-      dependency_level: levels?.dependency ?? 0,
-      environment_level: levels?.environment ?? 0,
-      machine_level: levels?.machine ?? 0,
+      dependency_level: evaluation?.dependency_level ?? 0,
+      environment_level: evaluation?.environment_level ?? 0,
+      machine_level: evaluation?.machine_level ?? 0,
     },
     fallbackName: definition?.name ?? "",
     fallbackOriginUrl: source?.origin_url ?? "",

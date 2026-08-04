@@ -11,7 +11,7 @@ from repo2ree_core.analysis.repository.reproducibility_report import Reproducibi
 from repo2ree_core.analysis.sbom.crosscheck import cross_check
 from repo2ree_core.analysis.sbom.cyclonedx import parse_cyclonedx
 from repo2ree_core.digests import digest_file
-from repo2ree_core.domain.ree.assessment import assess
+from repo2ree_core.domain.ree.audit import audit
 from repo2ree_core.domain.ree.model import Ree
 from repo2ree_core.domain.ree.receipt import CrossCheckSbomReceipt, receipt_envelope
 from repo2ree_core.domain.ree.transitions import ReePreconditionError, commit_receipt, revision_of
@@ -74,6 +74,7 @@ def handle_cross_check_sbom(
     receipt = CrossCheckSbomReceipt(
         **receipt_envelope(run_id, timing),
         sbom_digest=digest_file(layout.sbom),
+        report_digest=digest_file(layout.reproducibility_report),
         declared_direct_total=summary.declared_direct_total,
         observed_matched=summary.observed_matched,
         version_mismatches=summary.version_mismatches,
@@ -100,12 +101,12 @@ def handle_cross_check_sbom(
 def _check_preconditions(ree: Ree, layout: ReeLayout) -> None:
     if ree.seal is not None:
         raise ReePreconditionError("a sealed REE cannot cross-check its SBOM")
-    assessment = assess(ree)
-    if assessment.evaluation.evidence != "current":
-        detail = "; ".join(assessment.evaluation.reasons) or "reproducibility evidence is not current"
+    ree_audit = audit(ree)
+    if ree_audit.evaluation.evidence != "current":
+        detail = "; ".join(ree_audit.evaluation.reasons) or "reproducibility evidence is not current"
         raise ReePreconditionError(detail)
-    if assessment.sbom.evidence != "current":
-        detail = "; ".join(assessment.sbom.reasons) or "SBOM evidence is not current"
+    if ree_audit.sbom.evidence != "current":
+        detail = "; ".join(ree_audit.sbom.reasons) or "SBOM evidence is not current"
         raise ReePreconditionError(detail)
     evaluation = ree.subject.receipts.evaluation
     sbom = ree.subject.receipts.sbom

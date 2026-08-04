@@ -112,6 +112,11 @@ class GenerateSbomReceipt(ReceiptEnvelope):
 class CrossCheckSbomReceipt(ReceiptEnvelope):
     operation: Literal["cross_check_sbom"] = "cross_check_sbom"
     sbom_digest: Digest
+    # The reconciliation is a statement about a *pair* of documents, so it has
+    # to name both. Without the report digest a re-run evaluation would leave
+    # these counts describing a comparison that was never made, with nothing in
+    # the receipt able to say so.
+    report_digest: Digest
     declared_direct_total: int = Field(ge=0)
     observed_matched: int = Field(ge=0)
     version_mismatches: int = Field(ge=0)

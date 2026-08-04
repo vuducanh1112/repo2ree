@@ -81,7 +81,7 @@ export function axisStandings(evaluation: EvaluationState): AxisStanding[] {
 
 /** The least-complete axis of the *source repo* analysis — used only by the
  * pod's axis visualization. REE-level chrome (cables, seal card) tints from
- * aggregate assessment instead. */
+ * aggregate audit instead. */
 export function bottleneckAxis(evaluation: EvaluationState): AxisStanding {
   return axisStandings(evaluation).reduce((weakest, standing) =>
     axisFraction(standing.axis, standing.level) < axisFraction(weakest.axis, weakest.level)

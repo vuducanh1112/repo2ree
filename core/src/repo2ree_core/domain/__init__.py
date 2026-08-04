@@ -7,7 +7,7 @@ from .ree import (
     ExperimentDefinition,
     HardwareDefinition,
     Ree,
-    ReeAssessment,
+    ReeAudit,
     ReeCatalogMetadata,
     ReeDefinition,
     ReeReceipts,
@@ -16,7 +16,7 @@ from .ree import (
     RuntimeDefinition,
     SourceDefinition,
     SourceType,
-    StepAssessment,
+    StepAudit,
     TestActivationDefinition,
 )
 
@@ -33,7 +33,7 @@ __all__ = [
     "MemoryDefinition",
     "NetworkDefinition",
     "Ree",
-    "ReeAssessment",
+    "ReeAudit",
     "ReeCatalogMetadata",
     "ReeDefinition",
     "ReeReceipts",
@@ -42,7 +42,7 @@ __all__ = [
     "RuntimeDefinition",
     "SourceDefinition",
     "SourceType",
-    "StepAssessment",
+    "StepAudit",
     "StorageDefinition",
     "TestActivationDefinition",
 ]
