@@ -1,7 +1,7 @@
 # repo2ree — Script Inference
 
 > Status: current, Phase 1 = build inference (2026-07). Code lives in
-> [`core/authoring/script_inference/`](../../core/src/repo2ree_core/authoring/script_inference/).
+> [`core/author_recipes/inference/`](../../core/src/repo2ree_core/author_recipes/inference/).
 > This page is the design overview; each module's docstring covers its own
 > mechanics.
 

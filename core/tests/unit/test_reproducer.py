@@ -5,12 +5,6 @@ import tarfile
 from pathlib import Path
 from typing import Any
 
-from repo2ree_core.authoring.script_generation.acquire_source import build_acquire_sh
-from repo2ree_core.authoring.script_generation.materialize_workspace import build_materialize_sh
-from repo2ree_core.authoring.script_generation.reproducer import (
-    build_reproducer_sh,
-    reproducer_entries,
-)
 from repo2ree_core.persistence.layout import (
     ACQUIRE_SCRIPT_FILENAME,
     ARTIFACTS_DIRNAME,
@@ -23,7 +17,13 @@ from repo2ree_core.persistence.layout import (
     SNAPSHOT_FILENAME,
     WORKSPACE_DIRNAME,
 )
-from repo2ree_core.reproduction import REPRODUCTION_COMMANDS
+from repo2ree_core.reproduction.acquire_source import build_acquire_sh
+from repo2ree_core.reproduction.commands import REPRODUCTION_COMMANDS
+from repo2ree_core.reproduction.materialize_workspace import build_materialize_sh
+from repo2ree_core.reproduction.reproducer import (
+    build_reproducer_sh,
+    reproducer_entries,
+)
 from repo2ree_core.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BUILD_SCRIPT
 
 

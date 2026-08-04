@@ -19,7 +19,6 @@ import shutil
 
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.authoring.script_generation.acquire_source import build_acquire_sh
 from repo2ree_core.domain.primitives import Swhid
 from repo2ree_core.domain.ree.model import Ree, SourceDefinition
 from repo2ree_core.evidence.review.comparison import compare_source_swhids
@@ -36,6 +35,7 @@ from repo2ree_core.execution.process import CancelCheck, format_command, run_str
 from repo2ree_core.operations.steps.review import begin_review_step, require_ree_baseline
 from repo2ree_core.persistence.files import write_atomic
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
+from repo2ree_core.reproduction.acquire_source import build_acquire_sh
 from repo2ree_core.source_repo.swhid import directory_swhid
 from repo2ree_core.time_utils import OperationTimer, format_utc_instant
 from repo2ree_protocol.command import ReviewAcquireSourceArgs, ReviewBasis

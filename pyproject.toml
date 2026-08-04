@@ -382,11 +382,12 @@ layers = [
     "operations",
     "bundle",
     "evidence",
-    "analysis : authoring : execution : source_repo : doctor",
+    "analysis : doctor : execution : reproduction : source_repo",
     "workspace",
     "persistence",
+    "author_recipes",
     "domain",
-    "digests : failures : path_safety : reproduction : reserved_paths : reserved_templates : time_utils",
+    "digests : failures : path_safety : reserved_paths : time_utils",
 ]
 
 # The capabilities the spine calls into. They are deliberately *not* placed in
@@ -402,10 +403,11 @@ name = "Capabilities never import what composes them"
 type = "forbidden"
 source_modules = [
     "repo2ree_core.analysis",
-    "repo2ree_core.authoring",
-    "repo2ree_core.execution",
-    "repo2ree_core.source_repo",
+    "repo2ree_core.author_recipes",
     "repo2ree_core.doctor",
+    "repo2ree_core.execution",
+    "repo2ree_core.reproduction",
+    "repo2ree_core.source_repo",
 ]
 forbidden_modules = [
     "repo2ree_core.operations",
@@ -451,7 +453,8 @@ type = "forbidden"
 source_modules = ["repo2ree_core.domain"]
 forbidden_modules = [
     "repo2ree_core.analysis",
-    "repo2ree_core.authoring",
+    "repo2ree_core.author_recipes",
+    "repo2ree_core.reproduction",
     "repo2ree_core.bundle",
     "repo2ree_core.evidence",
     "repo2ree_core.execution",
@@ -474,20 +477,23 @@ source_modules = [
     "repo2ree_core.digests",
     "repo2ree_core.failures",
     "repo2ree_core.path_safety",
-    "repo2ree_core.reproduction",
+    # The verb vocabulary the executor CLI and the generated run.sh both expose.
+    # It depends on nothing so that both can spell the same verbs without either
+    # dragging the other's world in.
+    "repo2ree_core.reproduction.commands",
     "repo2ree_core.reserved_paths",
-    "repo2ree_core.reserved_templates",
     "repo2ree_core.time_utils",
 ]
 forbidden_modules = [
     "repo2ree_core.analysis",
-    "repo2ree_core.authoring",
+    "repo2ree_core.author_recipes",
     "repo2ree_core.bundle",
     "repo2ree_core.domain",
     "repo2ree_core.evidence",
     "repo2ree_core.execution",
     "repo2ree_core.operations",
     "repo2ree_core.persistence",
+    "repo2ree_core.reproduction",
     "repo2ree_core.source_repo",
     "repo2ree_core.workspace",
 ]

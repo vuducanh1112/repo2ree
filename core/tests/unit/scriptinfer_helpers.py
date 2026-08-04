@@ -12,7 +12,7 @@ import io
 import json
 import tarfile
 
-from repo2ree_core.authoring.script_inference.runtime_inputs import ArtifactFile
+from repo2ree_core.author_recipes.inference.runtime_inputs import ArtifactFile
 
 
 def docker_archive(repo_tags: list[str], *, entrypoint: object = None, cmd: object = None) -> bytes:

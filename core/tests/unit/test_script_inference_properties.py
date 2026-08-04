@@ -23,16 +23,16 @@ from hypothesis import given
 from hypothesis import strategies as st
 from scriptinfer_helpers import MemoryAccessor, docker_archive, venv_archive
 
-from repo2ree_core.authoring.script_inference import ScriptTargetSelector, infer_scripts
-from repo2ree_core.authoring.script_inference.artifact_inspection import (
+from repo2ree_core.author_recipes.inference import ScriptTargetSelector, infer_scripts
+from repo2ree_core.author_recipes.inference.artifact_inspection import (
     VenvArchiveInspection,
     inspect_runtime_artifact,
 )
-from repo2ree_core.authoring.script_inference.models import StrategyOutcome
-from repo2ree_core.authoring.script_inference.renderers._common import runtime_image_ref
-from repo2ree_core.authoring.script_inference.repository_facts import resolve_logical_root
-from repo2ree_core.authoring.script_inference.resolvers import ScoreFreeViabilityResolver
-from repo2ree_core.authoring.script_inference.runtime_inputs import RuntimeInputs
+from repo2ree_core.author_recipes.inference.models import StrategyOutcome
+from repo2ree_core.author_recipes.inference.renderers._common import runtime_image_ref
+from repo2ree_core.author_recipes.inference.repository_facts import resolve_logical_root
+from repo2ree_core.author_recipes.inference.resolvers import ScoreFreeViabilityResolver
+from repo2ree_core.author_recipes.inference.runtime_inputs import RuntimeInputs
 from repo2ree_core.digests import digest_bytes
 from repo2ree_core.domain.primitives import ReePath, WorkspacePath
 from repo2ree_core.domain.ree.model import ExperimentDefinition, ReeDefinition

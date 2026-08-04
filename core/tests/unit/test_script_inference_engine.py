@@ -9,17 +9,17 @@ from __future__ import annotations
 
 import pytest
 
-from repo2ree_core.authoring.script_inference.decision_graphs.activation_run import ACTIVATION_RUN_DAG
-from repo2ree_core.authoring.script_inference.decision_graphs.build import BUILD_INFERENCE_DAG
-from repo2ree_core.authoring.script_inference.decision_graphs.experiment_run import EXPERIMENT_RUN_DAG
-from repo2ree_core.authoring.script_inference.engine import DagValidationError, validate_dag
-from repo2ree_core.authoring.script_inference.models import (
+from repo2ree_core.author_recipes.inference.decision_graphs.activation_run import ACTIVATION_RUN_DAG
+from repo2ree_core.author_recipes.inference.decision_graphs.build import BUILD_INFERENCE_DAG
+from repo2ree_core.author_recipes.inference.decision_graphs.experiment_run import EXPERIMENT_RUN_DAG
+from repo2ree_core.author_recipes.inference.engine import DagValidationError, validate_dag
+from repo2ree_core.author_recipes.inference.models import (
     CheckNode,
     DecisionDag,
     ResultNode,
     StrategyLeafNode,
 )
-from repo2ree_core.authoring.script_inference.registry import CHECKS, RENDERERS, RESOLVERS
+from repo2ree_core.author_recipes.inference.registry import CHECKS, RENDERERS, RESOLVERS
 
 
 def _validate(dag: DecisionDag) -> None:

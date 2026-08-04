@@ -12,8 +12,8 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.authoring.script_inference import ScriptTargetSelector, infer_scripts
-from repo2ree_core.authoring.script_inference.inference import resolve_target
+from repo2ree_core.author_recipes.inference import ScriptTargetSelector, infer_scripts
+from repo2ree_core.author_recipes.inference.inference import resolve_target
 from repo2ree_core.reserved_paths import (
     RESERVED_ACTIVATION_SCRIPT,
     RESERVED_ACTIVATION_VERIFY_SCRIPT,

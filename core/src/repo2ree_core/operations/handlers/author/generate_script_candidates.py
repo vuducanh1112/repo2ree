@@ -10,7 +10,7 @@ writes no files — turning a candidate into a script stays on the existing
 
 from __future__ import annotations
 
-from repo2ree_core.authoring.script_inference import ScriptTargetSelector, infer_scripts
+from repo2ree_core.author_recipes.inference import ScriptTargetSelector, infer_scripts
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.operations.handlers.author._script_inference_inputs import build_runtime_inputs

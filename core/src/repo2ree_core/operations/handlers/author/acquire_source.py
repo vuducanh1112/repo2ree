@@ -9,7 +9,6 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.authoring.script_generation.acquire_source import build_acquire_sh
 from repo2ree_core.digests import Digest
 from repo2ree_core.domain.primitives import Swhid
 from repo2ree_core.domain.ree.model import Ree, SourceDefinition
@@ -29,6 +28,7 @@ from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import write_atomic
 from repo2ree_core.persistence.layout import ACQUIRE_SCRIPT_FILENAME, ReeLayout
 from repo2ree_core.persistence.repository import load_ree, observe_source_slot, save_ree
+from repo2ree_core.reproduction.acquire_source import build_acquire_sh
 from repo2ree_core.source_repo import directory_swhid, resolved_git_head
 from repo2ree_core.time_utils import OperationTimer, format_duration_ms
 from repo2ree_protocol.command import AcquireSourceArgs

@@ -11,12 +11,12 @@ from pathlib import Path
 
 from scriptinfer_helpers import MemoryAccessor, docker_archive
 
-from repo2ree_core.authoring.script_inference import ScriptTargetSelector, infer_scripts
-from repo2ree_core.authoring.script_inference.build_regeneration import expected_build_for_runtime
-from repo2ree_core.authoring.script_inference.models import DecisionContext
-from repo2ree_core.authoring.script_inference.policy import default_policy
-from repo2ree_core.authoring.script_inference.repository_facts import scan_repository
-from repo2ree_core.authoring.script_inference.runtime_inputs import RuntimeInputs
+from repo2ree_core.author_recipes.inference import ScriptTargetSelector, infer_scripts
+from repo2ree_core.author_recipes.inference.build_regeneration import expected_build_for_runtime
+from repo2ree_core.author_recipes.inference.models import DecisionContext
+from repo2ree_core.author_recipes.inference.policy import default_policy
+from repo2ree_core.author_recipes.inference.repository_facts import scan_repository
+from repo2ree_core.author_recipes.inference.runtime_inputs import RuntimeInputs
 from repo2ree_core.domain.ree.model import ReeDefinition
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 

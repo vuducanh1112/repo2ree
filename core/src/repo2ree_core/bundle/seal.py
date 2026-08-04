@@ -6,7 +6,6 @@ from pathlib import Path, PurePosixPath
 
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.authoring.script_generation.reproducer import reproducer_entries
 from repo2ree_core.bundle.plan import build_zip_bytes
 from repo2ree_core.digests import digest_bytes
 from repo2ree_core.domain.primitives import Digest, ReePath, UtcInstant
@@ -24,6 +23,7 @@ from repo2ree_core.persistence.layout import (
 )
 from repo2ree_core.persistence.ree_manifest import ree_manifest_bytes
 from repo2ree_core.persistence.repository import directory_for, save_ree
+from repo2ree_core.reproduction.reproducer import reproducer_entries
 
 
 class SealOutputs(BaseModel):

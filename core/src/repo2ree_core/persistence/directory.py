@@ -22,13 +22,13 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from repo2ree_core.author_recipes.templates import reserved_script_template
 from repo2ree_core.domain.ree.model import Ree
 from repo2ree_core.path_safety import validate_relative_path
 from repo2ree_core.persistence.files import write_atomic, write_json_atomic
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.ree_manifest import parse_ree_manifest, ree_manifest_bytes
 from repo2ree_core.reserved_paths import RESERVED_OVERLAY_SCRIPTS
-from repo2ree_core.reserved_templates import reserved_script_template
 
 # What a half-built or damaged persisted document raises on the way through
 # json and pydantic: an unreadable file, malformed bytes, or content that no

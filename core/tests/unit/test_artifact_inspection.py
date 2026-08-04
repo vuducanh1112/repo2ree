@@ -12,7 +12,7 @@ import io
 
 from scriptinfer_helpers import docker_archive, not_an_archive, oci_archive, venv_archive
 
-from repo2ree_core.authoring.script_inference.artifact_inspection import (
+from repo2ree_core.author_recipes.inference.artifact_inspection import (
     DockerArchiveInspection,
     UnrecognizedArtifact,
     VenvArchiveInspection,

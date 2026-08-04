@@ -22,13 +22,13 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.authoring.script_generation.acquire_source import build_acquire_sh
-from repo2ree_core.authoring.script_generation.materialize_workspace import build_materialize_sh
 from repo2ree_core.bundle.restore import BundleLoadOutputs, restore_ree_bundle
 from repo2ree_core.execution.process import CancelCheck, format_command, run_streaming_process
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import safe_extract_zip, write_atomic
 from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.reproduction.acquire_source import build_acquire_sh
+from repo2ree_core.reproduction.materialize_workspace import build_materialize_sh
 from repo2ree_core.workspace.materialization import record_materialization
 from repo2ree_protocol.command import LoadReeBundleArgs
 from repo2ree_protocol.log import LogSink

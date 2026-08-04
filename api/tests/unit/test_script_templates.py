@@ -6,17 +6,17 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
+from repo2ree_core.author_recipes.templates import (
+    activation_templates,
+    build_templates,
+    experiment_run_templates,
+    verify_templates,
+)
 from repo2ree_core.reserved_paths import (
     RESERVED_ACTIVATION_SCRIPT,
     RESERVED_ACTIVATION_VERIFY_SCRIPT,
     RESERVED_BUILD_SCRIPT,
     RESERVED_EXPERIMENT_SCRIPT_DIR,
-)
-from repo2ree_core.reserved_templates import (
-    activation_templates,
-    build_templates,
-    experiment_run_templates,
-    verify_templates,
 )
 
 

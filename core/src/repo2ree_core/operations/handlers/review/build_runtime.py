@@ -20,7 +20,6 @@ from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.analysis.sbom.cyclonedx import ObservedPackage, parse_cyclonedx
 from repo2ree_core.analysis.sbom.scan import is_runtime_archive, scan_runtime_archive
-from repo2ree_core.authoring.script_generation.materialize_workspace import build_materialize_sh
 from repo2ree_core.digests import digest_file_if_exists
 from repo2ree_core.domain.primitives import ReePath, WorkspacePath
 from repo2ree_core.domain.ree.model import Ree
@@ -54,6 +53,7 @@ from repo2ree_core.operations.steps.review import (
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import write_atomic
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
+from repo2ree_core.reproduction.materialize_workspace import build_materialize_sh
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_core.time_utils import OperationTimer
 from repo2ree_protocol.command import ReviewBasis, ReviewBuildRuntimeArgs

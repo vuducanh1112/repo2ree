@@ -8,12 +8,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from repo2ree_core.authoring.script_inference import (
+from repo2ree_core.author_recipes.inference import (
     ScriptTargetSelector,
     TargetInferenceResult,
     infer_scripts,
 )
-from repo2ree_core.authoring.script_inference.models import LogicalRootObservation
+from repo2ree_core.author_recipes.inference.models import LogicalRootObservation
 from repo2ree_core.domain.primitives import WorkspacePath
 from repo2ree_core.domain.ree.model import ReeDefinition, RuntimeDefinition
 

@@ -24,7 +24,7 @@ from repo2ree_core.operations.read_models.files import read_ree_file_bytes as _r
 from repo2ree_core.operations.read_models.ree_document import get_ree_document as _get_ree_document
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
-from repo2ree_core.reproduction import (
+from repo2ree_core.reproduction.commands import (
     BUILD_RUNTIME,
     EXPERIMENT,
     MATERIALIZE_WORKSPACE,

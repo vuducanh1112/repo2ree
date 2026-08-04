@@ -6,8 +6,8 @@ from pathlib import Path
 
 from scriptinfer_helpers import MemoryAccessor, docker_archive, venv_archive
 
-from repo2ree_core.authoring.script_inference import ScriptTargetSelector, TargetInferenceResult, infer_scripts
-from repo2ree_core.authoring.script_inference.runtime_inputs import RuntimeInputs
+from repo2ree_core.author_recipes.inference import ScriptTargetSelector, TargetInferenceResult, infer_scripts
+from repo2ree_core.author_recipes.inference.runtime_inputs import RuntimeInputs
 from repo2ree_core.digests import digest_bytes
 from repo2ree_core.domain.primitives import ReePath, WorkspacePath
 from repo2ree_core.domain.ree.model import ExperimentDefinition, ReeDefinition

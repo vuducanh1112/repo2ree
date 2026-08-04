@@ -13,7 +13,7 @@ whenever a step gains or loses a route.
 
 ``listScriptTemplates`` serves the packaged starter templates for the REE-owned
 scripts, so every client prefills from the same source
-(``repo2ree_core.reserved_templates``) instead of keeping copies. The build and
+(``repo2ree_core.author_recipes.templates``) instead of keeping copies. The build and
 activation templates are also seeded into a fresh REE's overlay; the
 per-experiment templates cannot be (their paths only exist once an experiment is
 named), so this catalog is how clients obtain them.
@@ -25,19 +25,19 @@ from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict, Field
 
 from repo2ree_api.contracts import ERROR_RESPONSES
+from repo2ree_core.author_recipes.templates import (
+    ScriptTemplate,
+    activation_templates,
+    build_templates,
+    experiment_run_templates,
+    verify_templates,
+)
 from repo2ree_core.evidence.step_graph import ree_step_catalog
 from repo2ree_core.reserved_paths import (
     RESERVED_ACTIVATION_SCRIPT,
     RESERVED_ACTIVATION_VERIFY_SCRIPT,
     RESERVED_BUILD_SCRIPT,
     RESERVED_EXPERIMENT_SCRIPT_DIR,
-)
-from repo2ree_core.reserved_templates import (
-    ScriptTemplate,
-    activation_templates,
-    build_templates,
-    experiment_run_templates,
-    verify_templates,
 )
 
 # ================================================

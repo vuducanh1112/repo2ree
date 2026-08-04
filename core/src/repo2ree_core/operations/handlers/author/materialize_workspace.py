@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from repo2ree_core.authoring.script_generation.materialize_workspace import build_materialize_sh
 from repo2ree_core.digests import Digest
 from repo2ree_core.execution.process import (
     CancelCheck,
@@ -20,6 +19,7 @@ from repo2ree_core.execution.process import (
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import write_atomic
 from repo2ree_core.persistence.layout import MATERIALIZE_SCRIPT_FILENAME, ReeLayout
+from repo2ree_core.reproduction.materialize_workspace import build_materialize_sh
 from repo2ree_core.workspace.materialization import record_materialization
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
