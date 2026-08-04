@@ -8,17 +8,16 @@ from typing import Any
 from repo2ree_core.authoring.script_generation.acquire_source import build_acquire_sh
 from repo2ree_core.authoring.script_generation.materialize_workspace import build_materialize_sh
 from repo2ree_core.authoring.script_generation.reproducer import (
-    REPRODUCER_ACQUIRE_ENTRY_PATH,
-    REPRODUCER_MATERIALIZE_ENTRY_PATH,
-    REPRODUCER_README_ENTRY_PATH,
-    REPRODUCER_SCRIPT_ENTRY_PATH,
     build_reproducer_sh,
     reproducer_entries,
-    runtime_artifact_basename_from_remap,
 )
 from repo2ree_core.persistence.layout import (
     ACQUIRE_SCRIPT_FILENAME,
     ARTIFACTS_DIRNAME,
+    BUNDLE_ACQUIRE_ENTRY_PATH,
+    BUNDLE_MATERIALIZE_ENTRY_PATH,
+    BUNDLE_REPRODUCER_README_ENTRY_PATH,
+    BUNDLE_REPRODUCER_SCRIPT_ENTRY_PATH,
     MATERIALIZE_SCRIPT_FILENAME,
     OVERLAY_DIRNAME,
     SNAPSHOT_FILENAME,
@@ -31,22 +30,22 @@ from repo2ree_core.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BU
 def test_reproducer_entries_are_run_sh_scripts_and_readme():
     entries = dict(reproducer_entries())
     assert set(entries) == {
-        REPRODUCER_SCRIPT_ENTRY_PATH,
-        REPRODUCER_ACQUIRE_ENTRY_PATH,
-        REPRODUCER_MATERIALIZE_ENTRY_PATH,
-        REPRODUCER_README_ENTRY_PATH,
+        BUNDLE_REPRODUCER_SCRIPT_ENTRY_PATH,
+        BUNDLE_ACQUIRE_ENTRY_PATH,
+        BUNDLE_MATERIALIZE_ENTRY_PATH,
+        BUNDLE_REPRODUCER_README_ENTRY_PATH,
     }
-    assert REPRODUCER_SCRIPT_ENTRY_PATH == "run.sh"
-    assert f"ree/{ACQUIRE_SCRIPT_FILENAME}" == REPRODUCER_ACQUIRE_ENTRY_PATH
-    assert f"ree/{MATERIALIZE_SCRIPT_FILENAME}" == REPRODUCER_MATERIALIZE_ENTRY_PATH
+    assert BUNDLE_REPRODUCER_SCRIPT_ENTRY_PATH == "run.sh"
+    assert f"ree/{ACQUIRE_SCRIPT_FILENAME}" == BUNDLE_ACQUIRE_ENTRY_PATH
+    assert f"ree/{MATERIALIZE_SCRIPT_FILENAME}" == BUNDLE_MATERIALIZE_ENTRY_PATH
     assert entries["run.sh"].startswith(b"#!/bin/sh")
     # run.sh delegates acquisition and the clear-and-merge to the bundled scripts.
     assert ACQUIRE_SCRIPT_FILENAME.encode() in entries["run.sh"]
     assert MATERIALIZE_SCRIPT_FILENAME.encode() in entries["run.sh"]
-    assert entries[REPRODUCER_ACQUIRE_ENTRY_PATH].startswith(b"#!/bin/sh")
-    assert entries[REPRODUCER_MATERIALIZE_ENTRY_PATH].startswith(b"#!/bin/sh")
+    assert entries[BUNDLE_ACQUIRE_ENTRY_PATH].startswith(b"#!/bin/sh")
+    assert entries[BUNDLE_MATERIALIZE_ENTRY_PATH].startswith(b"#!/bin/sh")
     assert b"@@" not in entries["run.sh"]
-    assert b"@@" not in entries[REPRODUCER_README_ENTRY_PATH]
+    assert b"@@" not in entries[BUNDLE_REPRODUCER_README_ENTRY_PATH]
     # Defaults fall back to the reserved script paths.
     assert RESERVED_BUILD_SCRIPT.encode() in entries["run.sh"]
     assert RESERVED_ACTIVATION_SCRIPT.encode() in entries["run.sh"]
@@ -61,15 +60,6 @@ def test_reproducer_sh_is_deterministic_for_equal_inputs():
         "runtime_artifact_basename": "runtime.tar.gz",
     }
     assert build_reproducer_sh(**kwargs) == build_reproducer_sh(**kwargs)
-
-
-def test_runtime_artifact_basename_from_remap():
-    remap = {"build/runtime.tar.gz": "artifacts/runtime.tar.gz"}
-    assert runtime_artifact_basename_from_remap("build/runtime.tar.gz", remap) == "runtime.tar.gz"
-    # Not in remap (runtime not sealed in) or missing path -> None (rebuild path).
-    assert runtime_artifact_basename_from_remap("build/runtime.tar.gz", {}) is None
-    assert runtime_artifact_basename_from_remap(None, remap) is None
-    assert runtime_artifact_basename_from_remap("build/runtime.tar.gz", "not-a-dict") is None
 
 
 def test_generated_run_sh_passes_shellcheck_or_sh_n():

@@ -72,15 +72,6 @@ def format_command(command: list[str]) -> str:
     return "$ " + format_argv(command)
 
 
-def stream_output(log: LogSink, result: subprocess.CompletedProcess[str]) -> None:
-    for line in (result.stdout or "").splitlines():
-        if line.strip():
-            log("stdout", "info", line)
-    for line in (result.stderr or "").splitlines():
-        if line.strip():
-            log("stderr", "warn", line)
-
-
 @dataclass(frozen=True)
 class StreamingProcessResult:
     returncode: int | None

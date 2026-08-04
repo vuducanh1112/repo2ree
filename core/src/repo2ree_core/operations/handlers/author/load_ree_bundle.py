@@ -1,7 +1,7 @@
 """Load a previously downloaded REE bundle into this (blank) workbench.
 
 Reads /ree/upload-staging/<upload_token>.bin — a downloaded REE ZIP, sealed or
-draft — and makes this REE be what the bundle records: intent, state, frozen
+draft — and makes this REE be what the bundle records: the manifest, the frozen
 snapshot, overlay, artifacts, results, and the author receipts that back them.
 The untrusted upload bytes go through ``safe_extract_zip`` before anything is
 read out of them, exactly as an uploaded source does.

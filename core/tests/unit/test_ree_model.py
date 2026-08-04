@@ -52,19 +52,26 @@ def test_bundle_inventory_requires_sorted_unique_paths() -> None:
         )
 
 
-def test_persisted_draft_cannot_carry_a_future_bundle_inventory(tmp_path: Path) -> None:
+def test_the_ree_document_round_trips_through_disk_under_one_name(tmp_path: Path) -> None:
+    """One document, one spelling — the same file a bundle carries."""
     store = ReeDirectory(ReeLayout(tmp_path / "ree"))
     store.ensure_dirs()
     draft = Ree(
         subject=ReeSubject(
+            definition=ReeDefinition(name="demo"),
+            # A restored draft keeps the inventory it arrived with; nothing
+            # reads it as a claim until a seal binds it.
             contents=BundleContents(
                 entries=(BundleEntry(path=ReePath("ree/overlay/build.sh"), digest=_DIGEST, size=1),)
-            )
+            ),
         )
     )
 
-    with pytest.raises(ValueError, match="persisted draft"):
-        store.write_ree(draft)
+    store.write_ree(draft)
+
+    assert store.layout.manifest.name == "ree.json"
+    assert store.read_ree() == draft
+    assert audit(draft).source.payload == "not_applicable"
 
 
 def test_experiment_slug_collisions_are_rejected() -> None:

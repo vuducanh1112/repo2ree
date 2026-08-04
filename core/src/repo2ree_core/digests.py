@@ -1,6 +1,6 @@
 """Canonical content digests for run receipts and seal-time checks.
 
-Every digest in the receipt/consistency vocabulary is a ``sha256:<hex>``
+Every digest in the receipt and audit vocabulary is a ``sha256:<hex>``
 string — one format from day one, so recorded and current values are always
 directly comparable. Digests are recorded as *receipts* (provenance), never
 used as cache keys.
@@ -25,7 +25,7 @@ DIGEST_PREFIX = "sha256:"
 
 
 # A canonical digest is ``sha256:`` followed by 64 lowercase hex chars. The
-# whole receipt/consistency vocabulary relies on this one shape being comparable
+# whole receipt and audit vocabulary relies on this one shape being comparable
 # across recorded and current values, so every producer asserts it on the way out.
 _DIGEST_LEN = len(DIGEST_PREFIX) + 64
 
@@ -100,7 +100,7 @@ def digest_json(payload: Any) -> Digest:
     """Digest of a JSON-serializable value under a canonical serialization.
 
     Canonical form: sorted keys, no whitespace. Used for spec-shaped inputs
-    that live inside the intent rather than as files (e.g. an experiment's
+    that live inside the manifest rather than as files (e.g. an experiment's
     expected-output spec).
     """
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))

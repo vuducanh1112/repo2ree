@@ -273,6 +273,7 @@ def _certify(
     if not is_runtime_archive(runtime_path):
         log("system", "warn", f"cannot scan {runtime_path}: SBOM comparison supports runtime tarballs only")
     else:
+        review_layout.artifacts.mkdir(parents=True, exist_ok=True)
         review_layout.sbom.unlink(missing_ok=True)
         try:
             scan = scan_runtime_archive(runtime_abs, review_layout.sbom, log=log, is_canceled=is_canceled)

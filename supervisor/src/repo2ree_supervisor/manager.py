@@ -390,7 +390,7 @@ class WorkbenchManager:
     def dispatch_query(self, handle: WorkbenchHandle, *argv: str, locked: bool = False, timeout: int = 30) -> bytes:
         """Run a read-only CLI subcommand and return its stdout bytes.
 
-        ``argv`` is a ``repo2ree-exec`` subcommand (e.g. ``get-ree-record``); the agent's
+        ``argv`` is a ``repo2ree-exec`` subcommand (e.g. ``get-ree-manifest``); the agent's
         runtime prepends the bench's executor entry point. Set ``locked`` for
         queries that must observe a consistent snapshot — they take the per-REE
         lock so no mutating action runs concurrently. Plain reads leave it off
@@ -430,8 +430,8 @@ class WorkbenchManager:
         parsed: dict[str, Any] = json.loads(self.dispatch_query(handle, *argv))
         return parsed
 
-    def get_ree_record(self, handle: WorkbenchHandle) -> dict[str, Any]:
-        return self._query_json(handle, "get-ree-record")
+    def get_ree_manifest(self, handle: WorkbenchHandle) -> dict[str, Any]:
+        return self._query_json(handle, "get-ree-manifest")
 
     def get_ree_document(self, handle: WorkbenchHandle) -> dict[str, Any]:
         document = self._query_json(handle, "get-ree-document")
@@ -471,7 +471,7 @@ class WorkbenchManager:
             if not self._agent.is_running(handle.agent_id, handle.location):
                 continue
             with suppress(Exception):
-                ree = self.get_ree_record(handle)
+                ree = self.get_ree_manifest(handle)
                 definition = ree.get("subject", {}).get("definition", {})
                 results.append(
                     {

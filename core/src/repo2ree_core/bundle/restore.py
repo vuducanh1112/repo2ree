@@ -8,12 +8,18 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.bundle.manifest import split_manifest_payload
-from repo2ree_core.bundle.plan import REE_MANIFEST_ENTRY_PATH
 from repo2ree_core.digests import digest_file
 from repo2ree_core.domain.primitives import ReePath
 from repo2ree_core.domain.ree.model import BundleContents, BundleEntry
 from repo2ree_core.persistence.files import list_tree_relpaths
+from repo2ree_core.persistence.layout import (
+    BUNDLE_ARTIFACTS_PREFIX,
+    BUNDLE_OVERLAY_PREFIX,
+    BUNDLE_REE_MANIFEST_ENTRY_PATH,
+    BUNDLE_RESULTS_PREFIX,
+    BUNDLE_SNAPSHOT_ENTRY_PATH,
+)
+from repo2ree_core.persistence.ree_manifest import parse_ree_manifest
 from repo2ree_core.persistence.repository import directory_for, layout_for
 
 
@@ -31,7 +37,7 @@ class BundleLoadOutputs(BaseModel):
 def _actual_inventory(bundle_root: Path) -> BundleContents:
     entries: list[BundleEntry] = []
     for path in list_tree_relpaths(bundle_root):
-        if path == REE_MANIFEST_ENTRY_PATH:
+        if path == BUNDLE_REE_MANIFEST_ENTRY_PATH:
             continue
         absolute = bundle_root / path
         entries.append(BundleEntry(path=ReePath(path), digest=digest_file(absolute), size=absolute.stat().st_size))
@@ -46,12 +52,12 @@ def restore_ree_bundle(
     archive_path: Path,
 ) -> BundleLoadOutputs:
     store = directory_for(storage_root, ree_id)
-    if not store.record_exists():
+    if not store.manifest_exists():
         raise FileNotFoundError(f"REE {ree_id} not found")
-    manifest_path = bundle_root / REE_MANIFEST_ENTRY_PATH
-    if not manifest_path.is_file():
-        raise ValueError(f"not an REE bundle: missing {REE_MANIFEST_ENTRY_PATH}")
-    ree = split_manifest_payload(json.loads(manifest_path.read_text(encoding="utf-8")))
+    document_path = bundle_root / BUNDLE_REE_MANIFEST_ENTRY_PATH
+    if not document_path.is_file():
+        raise ValueError(f"not an REE bundle: missing {BUNDLE_REE_MANIFEST_ENTRY_PATH}")
+    ree = parse_ree_manifest(json.loads(document_path.read_text(encoding="utf-8")))
     actual = _actual_inventory(bundle_root)
     if actual != ree.subject.contents:
         raise ValueError("bundle contents do not match the REE subject inventory")
@@ -60,14 +66,11 @@ def restore_ree_bundle(
     for target in (layout.upstream, layout.overlay, layout.artifacts, layout.workspace, layout.results):
         shutil.rmtree(target, ignore_errors=True)
         target.mkdir(parents=True, exist_ok=True)
-    source_restored = _restore_file(bundle_root / "ree/snapshot.tar.gz", layout.snapshot_archive)
-    overlay_files = _restore_tree(bundle_root / "ree/overlay", layout.overlay)
-    artifact_files = _restore_tree(bundle_root / "ree/artifacts", layout.artifacts)
-    _restore_tree(bundle_root / "ree/results", layout.results)
-    persisted = ree
-    if ree.seal is None:
-        persisted = ree.model_copy(update={"subject": ree.subject.model_copy(update={"contents": BundleContents()})})
-    store.write_ree(persisted)
+    source_restored = _restore_file(bundle_root / BUNDLE_SNAPSHOT_ENTRY_PATH, layout.snapshot_archive)
+    overlay_files = _restore_tree(bundle_root / BUNDLE_OVERLAY_PREFIX, layout.overlay)
+    artifact_files = _restore_tree(bundle_root / BUNDLE_ARTIFACTS_PREFIX, layout.artifacts)
+    _restore_tree(bundle_root / BUNDLE_RESULTS_PREFIX, layout.results)
+    store.write_ree(ree)
     if ree.seal is not None:
         shutil.copyfile(archive_path, layout.sealed_archive)
     else:

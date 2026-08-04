@@ -5,7 +5,7 @@ top-level files that make the download self-reproducing without repo2ree:
 
     run.sh                one-click reproducer (see ``ree_scripts.reproducer``)
     REPRODUCING.md        human instructions for the reproducer
-    ree/ree.json          manifest
+    ree/ree.json          the REE document, the same file the workbench keeps
     ree/snapshot.tar.gz   frozen source archive (when available)
     ree/overlay/...       user recipe files (empty dir entry if none)
     ree/artifacts/...     build outputs (runtime, sbom, ...)
@@ -13,10 +13,14 @@ top-level files that make the download self-reproducing without repo2ree:
     ree/workspace/        empty placeholder — materialized by run.sh on extract
 
 ``upstream/`` is intentionally omitted: its contents are already in
-``snapshot.tar.gz``. This module is the functional core for the bundle —
-it contains layout constants, the ZIP writer, and pure mapping helpers.
-All filesystem I/O lives in the shell (``repo2ree_core.bundle.seal`` and
-``repo2ree_core.bundle.restore``).
+``snapshot.tar.gz``. The paths above are spelled once, in
+``persistence.layout``'s bundle section, where they sit beside the on-disk
+dirnames they are derived from — the sketch here is a reader's aid, not a
+second source of truth.
+
+This module is the functional core for the bundle: the ZIP writer and pure
+mapping helpers. All filesystem I/O lives in the shell
+(``repo2ree_core.bundle.seal`` and ``repo2ree_core.bundle.restore``).
 """
 
 from __future__ import annotations
@@ -30,11 +34,6 @@ from collections.abc import Iterable
 # ================================================
 
 
-# Bundle layout is derived from the on-disk layout so the two stay in sync.
-# The published aggregate entry (``ree.json``) is bundle-only, so its name
-# lives here rather than in the workbench layout.
-_BUNDLE_MANIFEST_FILENAME = "ree.json"
-REE_MANIFEST_ENTRY_PATH = f"ree/{_BUNDLE_MANIFEST_FILENAME}"
 _EPOCH_DATE_TIME = (1980, 1, 1, 0, 0, 0)
 
 

@@ -97,7 +97,7 @@ def require_ree_baseline(ree_layout: ReeLayout, *, log: LogSink) -> Ree | Action
     nothing to settle a halt on.
     """
     store = ReeDirectory(ree_layout)
-    if not store.record_exists():
+    if not store.manifest_exists():
         message = "This workbench holds no REE to review"
         log("system", "error", message)
         return ActionResult.failed("precondition", message)
@@ -312,7 +312,8 @@ def require_certified_runtime(
         )
 
     runtime_path = (record.build_receipt.runtime_path or "").strip()
-    runtime_digest = digest_file_if_exists(workspace_runtime(review_layout, runtime_path)) if runtime_path else None
+    runtime = workspace_runtime(review_layout, runtime_path) if runtime_path else None
+    runtime_digest = digest_file_if_exists(runtime) if runtime else None
     if runtime_path and runtime_digest is None:
         return stop("failed", f"the certified runtime is no longer in this attempt's workspace at {runtime_path}")
     if runtime_path and runtime_digest != record.build_receipt.produced_runtime_digest:
@@ -329,30 +330,34 @@ def require_certified_runtime(
     )
 
 
-def workspace_runtime_candidates(review_layout: ReviewLayout, runtime_path: str) -> tuple[Path, ...]:
-    """Where a runtime can sit in the reviewer's workspace, declared path first.
+def workspace_runtime_candidates(layout: ReeLayout, runtime_path: str) -> tuple[Path, ...]:
+    """Where a runtime can sit in a materialized workspace, declared path first.
 
     Normally there is one answer. The exception is a baseline loaded from a
     bundle: packaging lifted the runtime into ``artifacts/`` and rewrote the
     declared path to ``artifacts/<basename>``, discarding the workspace path the
     build script writes to. The remap keeps the basename, so undoing it is a
     lookup rather than a guess.
+
+    Takes any REE root rather than a review layout: nothing here is the
+    reviewer's, and an author's workspace loaded from a bundle carries the same
+    remap.
     """
-    declared = review_layout.workspace / runtime_path
+    declared = layout.workspace / runtime_path
     parts = PurePosixPath(runtime_path).parts
     if len(parts) == 2 and parts[0] == ARTIFACTS_DIRNAME:
-        return (declared, review_layout.workspace / parts[1])
+        return (declared, layout.workspace / parts[1])
     return (declared,)
 
 
-def workspace_runtime(review_layout: ReviewLayout, runtime_path: str) -> Path:
-    """The runtime in the reviewer's workspace, wherever it legitimately landed.
+def workspace_runtime(layout: ReeLayout, runtime_path: str) -> Path:
+    """The runtime in a materialized workspace, wherever it legitimately landed.
 
     Falls back to the declared path when none of the candidates exist, so a miss
     is reported against the path the author declared rather than against a
     fallback the author never named.
     """
-    candidates = workspace_runtime_candidates(review_layout, runtime_path)
+    candidates = workspace_runtime_candidates(layout, runtime_path)
     return next((candidate for candidate in candidates if candidate.is_file()), candidates[0])
 
 

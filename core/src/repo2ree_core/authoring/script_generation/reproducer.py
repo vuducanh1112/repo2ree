@@ -37,7 +37,6 @@ content-addressable for seal hashing.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from pathlib import PurePosixPath
 
 from repo2ree_core.authoring.script_generation.acquire_source import build_acquire_sh
 from repo2ree_core.authoring.script_generation.materialize_workspace import build_materialize_sh
@@ -45,6 +44,10 @@ from repo2ree_core.authoring.script_generation.shell import assert_no_placeholde
 from repo2ree_core.persistence.layout import (
     ACQUIRE_SCRIPT_FILENAME,
     ARTIFACTS_DIRNAME,
+    BUNDLE_ACQUIRE_ENTRY_PATH,
+    BUNDLE_MATERIALIZE_ENTRY_PATH,
+    BUNDLE_REPRODUCER_README_ENTRY_PATH,
+    BUNDLE_REPRODUCER_SCRIPT_ENTRY_PATH,
     MATERIALIZE_SCRIPT_FILENAME,
     OVERLAY_DIRNAME,
     SNAPSHOT_FILENAME,
@@ -65,14 +68,6 @@ from repo2ree_core.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BU
 # Constants
 # ================================================
 
-
-# Top-level bundle entries (siblings of ``ree/``).
-REPRODUCER_SCRIPT_ENTRY_PATH = "run.sh"
-REPRODUCER_README_ENTRY_PATH = "REPRODUCING.md"
-# The shared acquire and materialize muscles live under ``ree/`` and are called
-# by run.sh — the very same scripts the workbench runs at authoring time.
-REPRODUCER_ACQUIRE_ENTRY_PATH = f"ree/{ACQUIRE_SCRIPT_FILENAME}"
-REPRODUCER_MATERIALIZE_ENTRY_PATH = f"ree/{MATERIALIZE_SCRIPT_FILENAME}"
 
 # The reproducer registry is tab-delimited. Experiment names are constrained by
 # EXPERIMENT_NAME_PATTERN (letters, digits, space, '.', '_', '-') so they can
@@ -207,32 +202,13 @@ def reproducer_entries(
     acquire_sh = build_acquire_sh(origin_url=origin_url, source_type=source_type, revision=revision, swhid=swhid)
     materialize_sh = build_materialize_sh()
     reproducing_md = _replace_layout_tokens(_REPRODUCING_MD)
-    reproducing_md = assert_no_placeholders(reproducing_md, artifact=REPRODUCER_README_ENTRY_PATH)
+    reproducing_md = assert_no_placeholders(reproducing_md, artifact=BUNDLE_REPRODUCER_README_ENTRY_PATH)
     return [
-        (REPRODUCER_SCRIPT_ENTRY_PATH, run_sh),
-        (REPRODUCER_ACQUIRE_ENTRY_PATH, acquire_sh),
-        (REPRODUCER_MATERIALIZE_ENTRY_PATH, materialize_sh),
-        (REPRODUCER_README_ENTRY_PATH, reproducing_md.encode("utf-8")),
+        (BUNDLE_REPRODUCER_SCRIPT_ENTRY_PATH, run_sh),
+        (BUNDLE_ACQUIRE_ENTRY_PATH, acquire_sh),
+        (BUNDLE_MATERIALIZE_ENTRY_PATH, materialize_sh),
+        (BUNDLE_REPRODUCER_README_ENTRY_PATH, reproducing_md.encode("utf-8")),
     ]
-
-
-def runtime_artifact_basename_from_remap(
-    runtime_workspace_path: str | None,
-    manifest_remap: object,
-) -> str | None:
-    """Pull the bundled runtime's ``ree/artifacts/`` basename, if any.
-
-    ``manifest_remap`` maps original workspace paths to ``artifacts/<basename>``
-    for files lifted into the bundle's ``artifacts/`` directory. A runtime entry
-    is present only when the runtime was sealed in (``runtime_included``); absent
-    means the reproducer must rebuild.
-    """
-    if not runtime_workspace_path or not isinstance(manifest_remap, dict):
-        return None
-    remapped = manifest_remap.get(runtime_workspace_path)
-    if not isinstance(remapped, str) or not remapped:
-        return None
-    return PurePosixPath(remapped).name or None
 
 
 # ================================================

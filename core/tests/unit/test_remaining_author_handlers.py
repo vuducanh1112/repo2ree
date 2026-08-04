@@ -146,7 +146,7 @@ def test_definition_patch_hydrates_experiment_script_identity(
     assert experiment.run_script_size == len(script)
     assert experiment.output_paths == (WorkspacePath("result.txt"),)
     assert result.outputs["revision"] != str(revision_of(_ree()))
-    assert layout.record.is_file()
+    assert layout.manifest.is_file()
 
 
 def test_recipe_file_write_rehydrates_definition_and_delete_removes_component(

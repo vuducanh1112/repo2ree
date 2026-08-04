@@ -259,13 +259,13 @@ def experiment_cmd(name: str, run_id: str | None) -> None:
 def init_ree_cmd(ree_id: str, name: str | None) -> None:
     """Initialise the REE directory structure at /ree.
 
-    Creates the directory skeleton and writes an initial .ree.json.
+    Creates the directory skeleton and writes an initial ree.json.
     Idempotent: exits 0 without modifying anything if already initialised.
     """
     layout = ReeLayout.in_workbench()
     store = ReeDirectory(layout)
 
-    if store.record_exists():
+    if store.manifest_exists():
         click.echo(json.dumps({"status": "already_initialised", "ree_id": ree_id}))
         return
 
@@ -312,20 +312,20 @@ def doctor_cmd() -> None:
     click.echo(json.dumps(run_doctor()))
 
 
-@cli.command("get-ree-record")
-def get_ree_record_cmd() -> None:
+@cli.command("get-ree-manifest")
+def get_ree_manifest_cmd() -> None:
     """Emit the persisted REE record as JSON.
 
-    Reads .ree.json from /ree. Exits non-zero if not initialised.
+    Reads ree.json from /ree. Exits non-zero if not initialised.
     """
     layout = ReeLayout.in_workbench()
     store = ReeDirectory(layout)
 
-    if not store.record_exists():
+    if not store.manifest_exists():
         click.echo(json.dumps({"error": "not initialised"}), file=sys.stderr)
         sys.exit(1)
 
-    click.echo(json.dumps(store.read_ree_json()))
+    click.echo(json.dumps(store.read_manifest_json()))
 
 
 @cli.command("get-ree-document")

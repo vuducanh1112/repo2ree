@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 from typing import Any, cast
 
@@ -15,7 +14,6 @@ from repo2ree_api.paths import (
     require_non_empty_path,
     resolve_relative_path,
 )
-from repo2ree_core.execution.process import stream_output
 
 # ================================================
 # keyset_paginate
@@ -132,21 +130,3 @@ def test_resolve_relative_path_blocks_workspace_control_files(tmp_path: Path):
             invalid_detail="invalid path",
             blocked_prefixes=WORKSPACE_CONTROL_PREFIXES,
         )
-
-
-# ================================================
-# stream_output
-# ================================================
-
-
-def test_stream_output_maps_streams_and_skips_blanks():
-    result = subprocess.CompletedProcess(
-        args=["tool"], returncode=0, stdout="line one\n\n  \nline two\n", stderr="warn line\n"
-    )
-    captured: list[tuple[str, str, str]] = []
-    stream_output(lambda s, lvl, msg: captured.append((s, lvl, msg)), result)
-    assert captured == [
-        ("stdout", "info", "line one"),
-        ("stdout", "info", "line two"),
-        ("stderr", "warn", "warn line"),
-    ]

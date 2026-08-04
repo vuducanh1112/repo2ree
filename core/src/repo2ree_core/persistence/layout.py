@@ -7,7 +7,7 @@ path arithmetic, but performs no filesystem I/O. The imperative shell —
 
 Layout under ``<storage_root>/<ree_id>/`` (host) or ``/ree/`` (workbench):
 
-    .ree.json             persisted REE record
+    ree.json              the REE document (a bundle carries the same file)
     sealed.zip            immutable sealed archive (written by seal_ree)
     snapshot.tar.gz       frozen upstream archive
     upload-staging/       staging area for in-flight source uploads
@@ -39,7 +39,11 @@ from repo2ree_core.path_safety import validate_path_segment, validate_relative_p
 # ================================================
 
 
-_RECORD_FILENAME = ".ree.json"
+# The REE manifest, and the only spelling of it. The same file at the same name
+# is what a bundle carries at ``ree/ree.json``: unpacking a bundle produces a
+# directory that *is* an REE root, so the manifest it arrives with is already
+# the manifest the workbench keeps — nothing is copied from one name to another.
+REE_MANIFEST_FILENAME = "ree.json"
 _MATERIALIZE_MARKER_FILENAME = ".workspace.materialized.json"
 _SEALED_ARCHIVE_FILENAME = "sealed.zip"
 _UPLOAD_STAGING_DIRNAME = "upload-staging"
@@ -79,6 +83,10 @@ WORKSPACE_DIRNAME = "workspace"
 RUNS_DIRNAME = "runs"
 RECEIPTS_DIRNAME = "receipts"
 REVIEWS_DIRNAME = "reviews"
+# A review attempt's own two documents, beside the receipts and comparisons it
+# files: the attempt record, and the directory its verdicts land in.
+REVIEW_RECORD_FILENAME = "review.json"
+COMPARISONS_DIRNAME = "comparisons"
 
 # Reserved, REE-owned overlay scripts are defined in the leaf
 # ``repo2ree_core.reserved_paths`` module so domain, experiment, and storage
@@ -86,6 +94,37 @@ REVIEWS_DIRNAME = "reviews"
 
 # Fixed mount point inside every REE workbench container.
 WORKBENCH_ROOT = Path("/ree")
+
+
+# ================================================
+# Bundle Layout
+# ================================================
+
+# What a published bundle looks like from the outside. It mirrors the tree
+# above under a single ``ree/`` prefix, and every entry path here is *derived*
+# from the dirnames rather than spelled again — which is what makes the mirror
+# a fact instead of a claim. The prefix is the REE root's own name by intent:
+# unpacking a bundle produces a directory that then *is* an REE root, so the
+# same acquire and materialize scripts run there unchanged.
+#
+# These strings are a format promise. They appear in every bundle ever
+# published, and a reader holding one from a year ago resolves them literally —
+# so changing a dirname above changes what is published. ``test_bundle_layout``
+# pins each spelling to keep that a decision rather than a side effect.
+BUNDLE_ROOT_PREFIX = "ree/"
+BUNDLE_REE_MANIFEST_ENTRY_PATH = f"{BUNDLE_ROOT_PREFIX}{REE_MANIFEST_FILENAME}"
+BUNDLE_SNAPSHOT_ENTRY_PATH = f"{BUNDLE_ROOT_PREFIX}{SNAPSHOT_FILENAME}"
+BUNDLE_OVERLAY_PREFIX = f"{BUNDLE_ROOT_PREFIX}{OVERLAY_DIRNAME}/"
+BUNDLE_ARTIFACTS_PREFIX = f"{BUNDLE_ROOT_PREFIX}{ARTIFACTS_DIRNAME}/"
+BUNDLE_RESULTS_PREFIX = f"{BUNDLE_ROOT_PREFIX}{RESULTS_DIRNAME}/"
+# The reproducer's own entries: a bundle is meant to be run by a human who
+# unpacked it, so its entry point and instructions sit at the top level rather
+# than under ``ree/``. The scripts they call are the workbench's own, which is
+# why those two carry the prefix and these do not.
+BUNDLE_REPRODUCER_SCRIPT_ENTRY_PATH = "run.sh"
+BUNDLE_REPRODUCER_README_ENTRY_PATH = "REPRODUCING.md"
+BUNDLE_ACQUIRE_ENTRY_PATH = f"{BUNDLE_ROOT_PREFIX}{ACQUIRE_SCRIPT_FILENAME}"
+BUNDLE_MATERIALIZE_ENTRY_PATH = f"{BUNDLE_ROOT_PREFIX}{MATERIALIZE_SCRIPT_FILENAME}"
 
 
 # ================================================
@@ -99,26 +138,16 @@ class ReeLayout:
 
     Construct with :meth:`for_ree`; every other attribute is a pure
     derivation from :attr:`root`. No method touches the filesystem.
+
+    The tree this describes is the one the shared shell scripts run in:
+    ``acquire_source.sh`` fills ``upstream/`` from an origin or a snapshot, and
+    ``materialize_workspace.sh`` derives ``workspace/`` from ``upstream/`` plus
+    ``overlay/``. Both resolve their paths from their own location, which is
+    what lets a review attempt — a :class:`ReviewLayout`, and an REE root in its
+    own right — run them unchanged and mean the same thing by them.
     """
 
     root: Path
-
-    @classmethod
-    def for_ree(cls, storage_root: Path | str, ree_id: str) -> ReeLayout:
-        return cls(root=Path(storage_root) / ree_id)
-
-    @classmethod
-    def in_workbench(cls) -> ReeLayout:
-        """Layout rooted at the fixed workbench mount point (/ree)."""
-        return cls(root=WORKBENCH_ROOT)
-
-    @property
-    def record(self) -> Path:
-        return self.root / _RECORD_FILENAME
-
-    @property
-    def sealed_archive(self) -> Path:
-        return self.root / _SEALED_ARCHIVE_FILENAME
 
     @property
     def acquire_script(self) -> Path:
@@ -133,25 +162,50 @@ class ReeLayout:
         return self.root / SNAPSHOT_FILENAME
 
     @property
-    def materialize_marker(self) -> Path:
-        """What the workspace was last materialized from for drift checks.
-
-        The ``.workspace`` prefix keeps it under the reserved-control-name
-        umbrella, so file enumeration and path access already skip it.
-        """
-        return self.root / _MATERIALIZE_MARKER_FILENAME
-
-    @property
-    def upload_staging(self) -> Path:
-        return self.root / _UPLOAD_STAGING_DIRNAME
-
-    @property
     def upstream(self) -> Path:
         return self.root / UPSTREAM_DIRNAME
 
     @property
     def overlay(self) -> Path:
         return self.root / OVERLAY_DIRNAME
+
+    @property
+    def workspace(self) -> Path:
+        return self.root / WORKSPACE_DIRNAME
+
+    @classmethod
+    def for_ree(cls, storage_root: Path | str, ree_id: str) -> ReeLayout:
+        return cls(root=Path(storage_root) / ree_id)
+
+    @classmethod
+    def in_workbench(cls) -> ReeLayout:
+        """Layout rooted at the fixed workbench mount point (/ree)."""
+        return cls(root=WORKBENCH_ROOT)
+
+    @property
+    def manifest(self) -> Path:
+        """This REE's manifest: what it declares, and what a bundle of it holds."""
+        return self.root / REE_MANIFEST_FILENAME
+
+    @property
+    def sealed_archive(self) -> Path:
+        return self.root / _SEALED_ARCHIVE_FILENAME
+
+    @property
+    def materialize_marker(self) -> Path:
+        """What the workspace was last materialized from for drift checks.
+
+        The ``.workspace`` prefix reads as machine bookkeeping beside the
+        authored files; it is not what keeps it out of reach. Nothing filters
+        dot-prefixed names — writes are confined to the ``overlay/`` and
+        ``workspace/`` subtrees, so no root-level file is reachable through the
+        file APIs whatever it is called.
+        """
+        return self.root / _MATERIALIZE_MARKER_FILENAME
+
+    @property
+    def upload_staging(self) -> Path:
+        return self.root / _UPLOAD_STAGING_DIRNAME
 
     @property
     def artifacts(self) -> Path:
@@ -192,10 +246,6 @@ class ReeLayout:
         return _resolve_under(self.results, name)
 
     @property
-    def workspace(self) -> Path:
-        return self.root / WORKSPACE_DIRNAME
-
-    @property
     def runs(self) -> Path:
         return self.root / RUNS_DIRNAME
 
@@ -234,66 +284,41 @@ class ReeLayout:
 
 
 @dataclass(frozen=True)
-class ReviewLayout:
+class ReviewLayout(ReeLayout):
     """Writable evidence namespace for one independent review attempt.
 
-    Deliberately a *parallel* REE tree, not a view onto the author's: it carries
-    its own ``upstream/``, ``overlay/``, and ``workspace/`` under the same
-    dirnames, so the shared acquire and materialize scripts — which derive their
-    paths from their own location — run here unchanged and mean the same thing.
-    The author's tree is only ever read.
-    """
+    An attempt root is an REE root: it carries its own ``upstream/``,
+    ``overlay/``, ``workspace/`` and ``artifacts/`` under the same dirnames, so
+    the shared acquire and materialize scripts — which derive their paths from
+    their own location — run here unchanged and mean the same thing, and the
+    reviewer's own scan lands beside the author's in ``artifacts/``. It is
+    deliberately a *parallel* tree rather than a view onto the author's: the
+    author's is only ever read. What this adds is the attempt's own evidence —
+    its record, its receipts, and the comparisons they settle.
 
-    root: Path
+    Three inherited paths mean something particular on this side, because their
+    contents arrive by copy or by the reviewer's own hand rather than by
+    authoring:
+
+    ``snapshot_archive``
+        The author's frozen snapshot, copied in for a bundled-basis
+        acquisition. Present only on attempts that reproduced from the bundle
+        rather than from the origin: ``acquire_source.sh`` extracts whatever
+        snapshot sits beside it, which is how the same script serves both bases.
+
+    ``overlay``
+        The author's recipe files, copied in so the merge never mutates them.
+
+    ``sbom``
+        The reviewer's own scan of the runtime *they* built, not a copy of the
+        author's. In ``artifacts/`` for the reason the author's is: the
+        workspace is disposable and pruned after a build, while this document is
+        the evidence the build verdict rests on.
+    """
 
     @property
     def metadata(self) -> Path:
-        return self.root / "review.json"
-
-    @property
-    def acquire_script(self) -> Path:
-        return self.root / ACQUIRE_SCRIPT_FILENAME
-
-    @property
-    def materialize_script(self) -> Path:
-        return self.root / MATERIALIZE_SCRIPT_FILENAME
-
-    @property
-    def snapshot_archive(self) -> Path:
-        """The author's frozen snapshot, copied in for a bundled-basis acquisition.
-
-        Present only on attempts that reproduced from the bundle rather than
-        from the origin: ``acquire_source.sh`` extracts whatever snapshot sits
-        beside it, which is how the same script serves both bases.
-        """
-        return self.root / SNAPSHOT_FILENAME
-
-    @property
-    def upstream(self) -> Path:
-        return self.root / UPSTREAM_DIRNAME
-
-    @property
-    def overlay(self) -> Path:
-        """The author's recipe files, copied in so the merge never mutates them."""
-        return self.root / OVERLAY_DIRNAME
-
-    @property
-    def workspace(self) -> Path:
-        return self.root / WORKSPACE_DIRNAME
-
-    @property
-    def sbom(self) -> Path:
-        """The reviewer's own scan of the runtime they built.
-
-        Sits at the attempt root rather than inside ``workspace/``: the workspace
-        is disposable (and pruned after a build), while this document is the
-        evidence the build verdict rests on.
-        """
-        return self.root / "sbom.json"
-
-    @property
-    def runs(self) -> Path:
-        return self.root / RUNS_DIRNAME
+        return self.root / REVIEW_RECORD_FILENAME
 
     @property
     def receipts(self) -> Path:
@@ -301,10 +326,7 @@ class ReviewLayout:
 
     @property
     def comparisons(self) -> Path:
-        return self.root / "comparisons"
-
-    def run_log(self, run_id: str) -> Path:
-        return self.runs / f"{validate_run_id(run_id)}.ndjson"
+        return self.root / COMPARISONS_DIRNAME
 
     def run_receipt(self, run_id: str) -> Path:
         return self.runs / f"{validate_run_id(run_id)}.receipt.json"

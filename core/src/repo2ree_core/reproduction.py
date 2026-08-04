@@ -7,7 +7,7 @@ the single source of truth for the run vocabulary so ``repo2ree --help`` and
 drift.
 
 The executor CLI is a superset: it also exposes *authoring* commands (seal,
-write-file, patch-intent, …) that are not reproduction commands and live
+write-file, patch-ree-definition, …) that are not reproduction commands and live
 outside this registry. The bundle ``run.sh`` exposes exactly these verbs plus a
 couple of orchestration helpers (``all``, ``list``).
 

@@ -7,8 +7,7 @@ from pathlib import Path, PurePosixPath
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.authoring.script_generation.reproducer import reproducer_entries
-from repo2ree_core.bundle.manifest import manifest_bytes
-from repo2ree_core.bundle.plan import REE_MANIFEST_ENTRY_PATH, build_zip_bytes
+from repo2ree_core.bundle.plan import build_zip_bytes
 from repo2ree_core.digests import digest_bytes
 from repo2ree_core.domain.primitives import Digest, ReePath, UtcInstant
 from repo2ree_core.domain.ree.audit import audit
@@ -16,6 +15,14 @@ from repo2ree_core.domain.ree.model import BundleContents, BundleEntry, Ree
 from repo2ree_core.domain.ree.transitions import ReePreconditionError, record_seal, replace_contents, revision_of
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import list_tree_relpaths, write_atomic
+from repo2ree_core.persistence.layout import (
+    BUNDLE_ARTIFACTS_PREFIX,
+    BUNDLE_OVERLAY_PREFIX,
+    BUNDLE_REE_MANIFEST_ENTRY_PATH,
+    BUNDLE_RESULTS_PREFIX,
+    BUNDLE_SNAPSHOT_ENTRY_PATH,
+)
+from repo2ree_core.persistence.ree_manifest import ree_manifest_bytes
 from repo2ree_core.persistence.repository import directory_for, save_ree
 
 
@@ -61,18 +68,18 @@ def _collect_entries(
 ) -> list[tuple[str, bytes]]:
     layout = store.layout
     entries = _reproducer(ree)
-    entries.extend(_tree_entries(layout.overlay, "ree/overlay/"))
-    entries.extend(_tree_entries(layout.artifacts, "ree/artifacts/"))
+    entries.extend(_tree_entries(layout.overlay, BUNDLE_OVERLAY_PREFIX))
+    entries.extend(_tree_entries(layout.artifacts, BUNDLE_ARTIFACTS_PREFIX))
     if source_included and layout.snapshot_archive.is_file():
-        entries.append(("ree/snapshot.tar.gz", layout.snapshot_archive.read_bytes()))
+        entries.append((BUNDLE_SNAPSHOT_ENTRY_PATH, layout.snapshot_archive.read_bytes()))
     runtime = ree.subject.definition.runtime
     if runtime_included and runtime is not None:
         runtime_file = layout.workspace / str(runtime.runtime_path)
-        target = f"ree/artifacts/{PurePosixPath(str(runtime.runtime_path)).name}"
+        target = f"{BUNDLE_ARTIFACTS_PREFIX}{PurePosixPath(str(runtime.runtime_path)).name}"
         if runtime_file.is_file() and all(path != target for path, _ in entries):
             entries.append((target, runtime_file.read_bytes()))
     if results_included:
-        entries.extend(_tree_entries(layout.results, "ree/results/"))
+        entries.extend(_tree_entries(layout.results, BUNDLE_RESULTS_PREFIX))
     return sorted(entries, key=lambda item: item[0])
 
 
@@ -118,7 +125,7 @@ def seal_ree(
     sealed_at: UtcInstant,
 ) -> SealOutputs:
     store = directory_for(storage_root, ree_id)
-    if not store.record_exists():
+    if not store.manifest_exists():
         raise FileNotFoundError(f"REE {ree_id} not found")
     ree = store.read_ree()
     _refuse_stale_evidence(ree)
@@ -131,7 +138,7 @@ def seal_ree(
         results_included=results_included,
     )
     sealed = record_seal(replace_contents(ree, _inventory(entries)), sealed_at=sealed_at)
-    archive_entries = [*entries, (REE_MANIFEST_ENTRY_PATH, manifest_bytes(sealed))]
+    archive_entries = [*entries, (BUNDLE_REE_MANIFEST_ENTRY_PATH, ree_manifest_bytes(sealed))]
     archive_entries.sort(key=lambda item: item[0])
     write_atomic(store.layout.sealed_archive, build_zip_bytes(archive_entries))
     save_ree(store.layout, store, sealed, expected_revision=before_revision)
@@ -143,7 +150,7 @@ def seal_ree(
 
 def build_ree_archive(storage_root: Path, ree_id: str) -> bytes:
     store = directory_for(storage_root, ree_id)
-    if not store.record_exists():
+    if not store.manifest_exists():
         raise FileNotFoundError(f"REE {ree_id} not found")
     ree = store.read_ree()
     if ree.seal is not None:
@@ -158,6 +165,6 @@ def build_ree_archive(storage_root: Path, ree_id: str) -> bytes:
         results_included=True,
     )
     draft = replace_contents(ree, _inventory(entries))
-    entries.append((REE_MANIFEST_ENTRY_PATH, manifest_bytes(draft)))
+    entries.append((BUNDLE_REE_MANIFEST_ENTRY_PATH, ree_manifest_bytes(draft)))
     entries.sort(key=lambda item: item[0])
     return build_zip_bytes(entries)

@@ -141,12 +141,11 @@ def list_ree_files(
         raise FileNotFoundError(f"REE {ree_id} not found")
     entries: list[ReeFile] = []
     for path in sorted(layout.root.rglob("*")):
-        if (
-            not path.is_file()
-            or path == layout.record
-            or path.is_relative_to(layout.upload_staging)
-            or path.is_relative_to(layout.workspace)
-        ):
+        # The REE document itself is listed: it is the REE's own published
+        # description, the same file a bundle carries, and a client auditing an
+        # REE has every reason to read it. Writes never reach it — they are
+        # confined to the overlay and workspace subtrees.
+        if not path.is_file() or path.is_relative_to(layout.upload_staging) or path.is_relative_to(layout.workspace):
             continue
         relative = path.relative_to(layout.root).as_posix()
         size = path.stat().st_size

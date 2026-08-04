@@ -5,6 +5,6 @@ Sits above both ``ree`` (the persisted aggregate it packages) and ``evidence``
 those packages rather than living inside ``ree``: a bundle is an artifact
 *derived from* an REE, not part of one.
 
-    plan, manifest    pure — layout decisions and payload construction
+    plan              pure — the ZIP writer and its layout decisions
     seal, restore     shell — assembling the archive and its inverse
 """

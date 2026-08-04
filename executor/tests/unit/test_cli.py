@@ -64,7 +64,7 @@ def test_init_ree_bootstraps_tree_and_metadata(ree_root: Path) -> None:
 
     layout = ReeLayout.in_workbench()
     assert layout.workspace.is_dir()
-    metadata = json.loads(layout.record.read_text())
+    metadata = json.loads(layout.manifest.read_text())
     assert metadata["subject"]["definition"]["name"] == "demo"
     assert "seal" not in metadata
     build = metadata["subject"]["definition"]["build_runtime"]
@@ -75,22 +75,22 @@ def test_init_ree_bootstraps_tree_and_metadata(ree_root: Path) -> None:
 
 def test_init_ree_is_idempotent(initialized_ree: Path) -> None:
     layout = ReeLayout.in_workbench()
-    before = layout.record.read_text()
+    before = layout.manifest.read_text()
 
     result = runner.invoke(cli, ["init-ree", "--ree-id", "abc123"])
     assert result.exit_code == 0
     assert json.loads(result.output)["status"] == "already_initialised"
-    assert layout.record.read_text() == before
+    assert layout.manifest.read_text() == before
 
 
 def test_get_ree_before_init_exits_nonzero(ree_root: Path) -> None:
-    result = runner.invoke(cli, ["get-ree-record"])
+    result = runner.invoke(cli, ["get-ree-manifest"])
     assert result.exit_code == 1
     assert json.loads(result.stderr) == {"error": "not initialised"}
 
 
 def test_get_ree_emits_metadata(initialized_ree: Path) -> None:
-    result = runner.invoke(cli, ["get-ree-record"])
+    result = runner.invoke(cli, ["get-ree-manifest"])
     assert result.exit_code == 0
     assert json.loads(result.output)["subject"]["definition"]["name"] == "demo"
 

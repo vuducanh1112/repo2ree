@@ -26,14 +26,15 @@ from repo2ree_core.domain.ree.model import Ree
 from repo2ree_core.path_safety import validate_relative_path
 from repo2ree_core.persistence.files import write_atomic, write_json_atomic
 from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.persistence.ree_manifest import parse_ree_manifest, ree_manifest_bytes
 from repo2ree_core.reserved_paths import RESERVED_OVERLAY_SCRIPTS
 from repo2ree_core.reserved_templates import reserved_script_template
 
 # What a half-built or damaged persisted document raises on the way through
 # json and pydantic: an unreadable file, malformed bytes, or content that no
 # longer fits the model. Named for the failure rather than for any one document,
-# because every document this module reads — the record, the manifest, the
-# reproducibility report — fails exactly these four ways and no others. Anything
+# because every document this module reads — the manifest, the reproducibility
+# report — fails exactly these four ways and no others. Anything
 # outside this set is a defect in the reader, not a fact about the REE, and must
 # not be mistaken for one.
 #
@@ -213,29 +214,28 @@ class ReeDirectory:
 
     # --- Portable REE aggregate ----------------------------------------
 
-    def record_exists(self) -> bool:
-        return self.layout.record.is_file()
+    def manifest_exists(self) -> bool:
+        return self.layout.manifest.is_file()
 
     def read_ree(self) -> Ree:
-        return Ree.model_validate(self.read_ree_json())
+        return parse_ree_manifest(self.read_manifest_json())
 
     def write_ree(self, ree: Ree) -> None:
-        if ree.seal is None and ree.subject.contents.entries:
-            raise ValueError("a persisted draft REE cannot carry a sealed bundle inventory")
-        self.write_ree_json(ree.model_dump(mode="json", exclude_none=True))
+        write_atomic(self.layout.manifest, ree_manifest_bytes(ree))
 
-    def read_ree_json(self) -> dict[str, Any]:
+    def read_manifest_json(self) -> dict[str, Any]:
         """The portable REE bytes parsed as JSON, without model validation.
 
-        Used by the executor's ``get-ree-record`` passthrough, which must return
+        Used by the executor's ``get-ree-manifest`` passthrough, which must return
         what is actually on disk rather than a model-normalized projection.
-        Aggregate mutations use :meth:`write_ree`.
+        Aggregate mutations use :meth:`write_ree`, which is the only writer of
+        the document's one encoding.
         """
-        return _read_json(self.layout.record)
+        return _read_json(self.layout.manifest)
 
-    def write_ree_json(self, payload: dict[str, Any]) -> None:
-        """Write raw REE JSON atomically. Companion to :meth:`read_ree_json`."""
-        write_json_atomic(self.layout.record, payload)
+    def write_manifest_json(self, payload: dict[str, Any]) -> None:
+        """Write raw REE JSON atomically. Companion to :meth:`read_manifest_json`."""
+        write_json_atomic(self.layout.manifest, payload)
 
 
 def _read_json(path: Path) -> dict[str, Any]:

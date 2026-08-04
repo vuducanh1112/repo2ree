@@ -1,6 +1,6 @@
 """The seal step, and the bundle that carries a sealed REE somewhere else.
 
-Sealing freezes the record; the archive is how it travels, and ``ree:load`` is
+Sealing freezes the manifest; the archive is how it travels, and ``ree:load`` is
 the other end of that journey — the upload sequence that makes a fresh REE *be*
 a bundle someone else downloaded. Load is grouped with seal rather than with
 source acquisition because it restores a whole REE (intent, source, evidence),

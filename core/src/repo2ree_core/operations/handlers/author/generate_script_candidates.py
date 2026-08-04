@@ -37,7 +37,7 @@ def handle_generate_script_candidates(
         return ActionResult.failed("precondition", "no acquired source (upstream tree is absent)")
 
     store = ReeDirectory(layout)
-    definition = store.read_ree().subject.definition if store.record_exists() else None
+    definition = store.read_ree().subject.definition if store.manifest_exists() else None
     ree_id, snapshot_digest = _identity(store)
     runtime_inputs = build_runtime_inputs(layout, definition)
 
@@ -73,7 +73,7 @@ def handle_generate_script_candidates(
 
 
 def _identity(store: ReeDirectory) -> tuple[str, str | None]:
-    if not store.record_exists():
+    if not store.manifest_exists():
         return "", None
     source = store.read_ree().subject.receipts.source
     return "", str(source.snapshot_digest) if source else None

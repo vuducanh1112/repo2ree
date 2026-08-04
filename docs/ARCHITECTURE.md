@@ -124,7 +124,7 @@ workspace↔REE seam:
 
 `upstream/` and `overlay/` are the sources of truth; `workspace/` is the working
 view. The source stays pristine while REE-defining material lives beside it.
-Author receipts live inline in `.ree.json`; review receipts live under their
+Author receipts live inline in `ree.json`; review receipts live under their
 attempt namespace. Receipts and review attempts are covered in
 [engineering/step-lifecycle.md](engineering/step-lifecycle.md) and
 [engineering/review-evidence.md](engineering/review-evidence.md).
@@ -200,7 +200,7 @@ The two planes own *different kinds of state*, and conflating them is the easy
 mistake:
 
 - **The definition is part of the portable aggregate.** Runtime, source, hardware,
-  and experiment definitions are persisted in `.ree.json` through the definition
+  and experiment definitions are persisted in `ree.json` through the definition
   API ([definition.py](../api/src/repo2ree_api/authoring/definition.py)). Script
   identities are hydrated from the authoritative overlay bytes, and aggregate
   replacement is guarded by the subject revision.
@@ -212,7 +212,7 @@ mistake:
 
 **Consequence — provision the lab lazily.** Because declaring and editing need no
 executor, the working env is created on the first execution-needing operation
-(acquire / build / run), *not* when the REE record is created. A freshly-created
+(acquire / build / run), *not* when the REE manifest is created. A freshly-created
 REE the user is still naming and declaring has no workbench and costs nothing — which is
 also why the autosave path above must not depend on one.
 

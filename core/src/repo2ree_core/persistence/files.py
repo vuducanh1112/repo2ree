@@ -14,13 +14,10 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import tarfile
 import zipfile
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
-from urllib.request import urlopen
 from uuid import uuid4
 
 from repo2ree_core.digests import Digest, HashingWriter
@@ -105,30 +102,6 @@ def write_json_atomic(path: Path, payload: Any) -> None:
     write_atomic(path, json_document_bytes(payload))
 
 
-def download_or_copy(origin_url: str, destination: Path) -> Path:
-    """Place the bytes referenced by ``origin_url`` at ``destination``.
-
-    Supports ``http`` and ``https`` URLs (streamed download) and local
-    filesystem paths (copied with metadata preserved). Raises
-    :class:`FileNotFoundError` if the source is neither reachable nor a
-    local path that exists.
-    """
-    parsed = urlparse(origin_url)
-    if parsed.scheme in {"http", "https"}:
-        # urlopen is stdlib — requests is not available in the workbench image.
-        # Scheme is validated on the line above, so only http/https reach here.
-        with urlopen(origin_url) as response, destination.open("wb") as target:  # noqa: S310
-            shutil.copyfileobj(response, target)
-        return destination
-
-    local_path = Path(origin_url)
-    if local_path.exists():
-        shutil.copy2(local_path, destination)
-        return destination
-
-    raise FileNotFoundError(f"Source not found: {origin_url}")
-
-
 def safe_extract_tar(archive: Path, destination: Path) -> None:
     """Extract ``archive`` into ``destination``, skipping unsafe members.
 
@@ -182,22 +155,6 @@ def pack_directory_tar_gz(source_path: Path, archive_path: Path) -> Digest:
             for item in sorted(source_path.iterdir(), key=lambda path: path.name):
                 tar.add(item, arcname=item.name)
     return writer.digest
-
-
-def safe_filename(name: str | None, default: str) -> str:
-    """Reduce ``name`` to a safe single-component filename."""
-    candidate = (name or default).strip().replace("\\", "/").split("/")[-1]
-    result = candidate or default
-
-    # ── postcondition ──
-    # Single-component: no path separators survive, so the result can never be
-    # used to traverse out of the directory it names a file in.
-    # PT018 is suppressed below: this is one postcondition with one message, the
-    # idiom the other leaf primitives use. Splitting it would report three
-    # unrelated failures where the code asserts a single property.
-    assert result and "/" not in result and "\\" not in result, f"unsafe filename: {result!r}"  # noqa: S101, PT018
-    # ───────────────────
-    return result
 
 
 def list_tree_relpaths(root: Path) -> list[str]:

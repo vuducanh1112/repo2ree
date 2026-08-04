@@ -31,7 +31,7 @@ class ReeDocument(BaseModel):
 def get_ree_document(storage_root: Path, ree_id: str, *, include_content: bool = True) -> ReeDocument:
     layout = layout_for(storage_root, ree_id)
     directory = directory_for(storage_root, ree_id)
-    if not directory.record_exists():
+    if not directory.manifest_exists():
         raise FileNotFoundError(f"REE {ree_id} not found")
     ree = load_ree(layout, directory)
     return ReeDocument(

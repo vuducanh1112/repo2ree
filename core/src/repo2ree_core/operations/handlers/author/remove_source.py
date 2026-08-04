@@ -22,7 +22,7 @@ def handle_remove_source(
 ) -> ActionResult:
     layout = ReeLayout.in_workbench()
     store = ReeDirectory(layout)
-    if not store.record_exists():
+    if not store.manifest_exists():
         return ActionResult.failed("precondition", "metadata not found — was init-ree run?")
 
     try:

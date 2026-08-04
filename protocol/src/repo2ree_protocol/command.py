@@ -247,7 +247,7 @@ class PatchReeDefinitionCommand(BaseModel):
 
 
 class RemoveSourceArgs(BaseModel):
-    """Clear source content and reset source metadata in /ree/.ree.json."""
+    """Clear source content and reset source metadata in /ree/ree.json."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -323,7 +323,7 @@ class RunExperimentCommand(BaseModel):
 
 
 class GenerateHbomArgs(BaseModel):
-    """No args — profiles the workbench container's hardware and writes to .ree.json."""
+    """No args — profiles the workbench container's hardware and writes to ree.json."""
 
     model_config = ConfigDict(extra="forbid")
 

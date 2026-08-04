@@ -235,7 +235,7 @@ def test_workbench_lifecycle_e2e(workbench: tuple[WorkbenchManager, WorkbenchHan
         events.append((stream, level, message))
 
     # --- init produced metadata on the real /ree volume ----------------
-    metadata = manager.get_ree_record(handle)
+    metadata = manager.get_ree_manifest(handle)
     assert metadata["ree_id"] == handle.ree_id
     assert metadata["status"] == "draft"
 

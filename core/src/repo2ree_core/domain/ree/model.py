@@ -181,7 +181,15 @@ class BundleEntry(_DomainModel):
 
 
 class BundleContents(_DomainModel):
-    """Inventory bound into a sealed bundle; persisted drafts keep this empty."""
+    """What a bundle holds, as the REE document records it.
+
+    A seal binds this: once sealed, the inventory and the bytes are fixed
+    together. Before that it is only ever what some earlier bundling saw — a
+    draft restored from a bundle keeps the inventory it arrived with, and any
+    edit since makes it a description of a bundle that no longer exists. Nothing
+    reads it as a claim about a draft: the audit reports payload status only
+    once the bundle has settled.
+    """
 
     entries: tuple[BundleEntry, ...] = ()
 
