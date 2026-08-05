@@ -178,7 +178,7 @@ def _run_command_envelope(cmd: Any, run_id: str | None) -> None:
         result = run_command(
             cmd,
             log=log,
-            run_id=run_id or "manual",
+            run_id=run_id,
             is_canceled=is_canceled,
         )
         result_line = result.model_dump_json()

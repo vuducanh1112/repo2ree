@@ -8,7 +8,6 @@ is evidence that the named operation completed successfully.
 from __future__ import annotations
 
 from typing import Annotated, Literal, TypedDict
-from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, model_validator
 
@@ -185,15 +184,9 @@ class ReceiptEnvelopeFields(TypedDict):
 def receipt_envelope(run_id: str, timing: OperationTiming) -> ReceiptEnvelopeFields:
     """Construct the successful receipt envelope for a completed operation."""
     return ReceiptEnvelopeFields(
-        run_id=receipt_run_id(run_id),
+        run_id=RunId(run_id),
         started_at=timing.started_at,
         finished_at=timing.finished_at,
         duration_ms=timing.duration_ms,
         recorded_at=timing.finished_at,
     )
-
-
-def receipt_run_id(run_id: str) -> RunId:
-    if run_id and run_id != "manual":
-        return RunId(run_id)
-    return RunId(f"manual-{uuid4().hex[:12]}")

@@ -32,7 +32,6 @@ from repo2ree_core.domain.primitives import (
     UtcInstant,
     WorkspacePath,
 )
-from repo2ree_core.domain.ree.receipt import receipt_run_id
 from repo2ree_core.time_utils import OperationTiming
 from repo2ree_protocol.command import ReviewBasis
 
@@ -150,7 +149,7 @@ def review_receipt_envelope(
     status: ReviewExecutionStatus,
 ) -> ReviewReceiptEnvelopeFields:
     return ReviewReceiptEnvelopeFields(
-        run_id=receipt_run_id(run_id),
+        run_id=RunId(run_id),
         started_at=timing.started_at,
         finished_at=timing.finished_at,
         duration_ms=timing.duration_ms,

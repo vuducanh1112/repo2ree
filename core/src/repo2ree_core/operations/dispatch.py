@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Never, NoReturn
+from uuid import uuid4
 
 from pydantic import BaseModel
 
@@ -71,13 +72,22 @@ def run_command(
     cmd: Command,
     *,
     log: LogSink,
-    run_id: str = "manual",
+    run_id: str | None = None,
     is_canceled: CancelCheck | None = None,
 ) -> ActionResult:
-    """Dispatch a typed Command to its handler and return an ActionResult."""
+    """Dispatch a typed Command to its handler and return an ActionResult.
+
+    ``run_id`` is the caller's name for this unit of work; the control plane
+    mints one per background run. A hand-run command (``repo2ree-exec`` with no
+    ``--run-id``) has none, so one is minted *here* rather than downstream in
+    the receipt: the span and the evidence then name the same run, which is what
+    makes a trace joinable to what it produced. Minting it later meant a manual
+    run's span said ``manual`` while its receipt said ``manual-<uuid>``.
+    """
+    resolved_run_id = run_id or f"manual-{uuid4().hex[:12]}"
     cancel: CancelCheck = is_canceled if is_canceled is not None else lambda: False
     with tracer.start_as_current_span(f"command.{cmd.operation}") as span:
-        CommandSpanAttrs(operation=str(cmd.operation), run_id=run_id).apply(span)
+        CommandSpanAttrs(operation=str(cmd.operation), run_id=resolved_run_id).apply(span)
         # The command span is the wide event for this unit of work: args go on
         # before dispatch so a failed or killed command still carries its
         # inputs; outputs (receipts, verdicts, digests) go on after. Accessed
@@ -85,7 +95,7 @@ def run_command(
         args = getattr(cmd, "args", None)
         if isinstance(args, BaseModel):
             record_span_facts(span, args.model_dump(), namespace="arg")
-        result = _run_unless_canceled(cmd, log=log, run_id=run_id, cancel=cancel)
+        result = _run_unless_canceled(cmd, log=log, run_id=resolved_run_id, cancel=cancel)
         record_exit_code(span, result.exit_code)
         record_span_facts(span, result.outputs, namespace="output")
         record_command_status(span, result.status)

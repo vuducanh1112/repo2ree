@@ -16,6 +16,7 @@ from typing import Any, cast
 import pytest
 from pydantic import BaseModel
 
+from repo2ree_core.domain.primitives import RunId
 from repo2ree_core.operations import dispatch as rc
 from repo2ree_protocol.command import (
     AcquireSourceCommand,
@@ -119,3 +120,52 @@ def test_unknown_command_raises() -> None:
     bogus = SimpleNamespace(operation="not_a_real_operation")
     with pytest.raises(ValueError, match="Unhandled command operation"):
         rc.run_command(bogus, log=_null_log())  # type: ignore[arg-type]
+
+
+# ================================================
+# Run identity
+# ================================================
+
+
+def _run_id_seen_by_handler(monkeypatch: pytest.MonkeyPatch, run_id: str | None) -> str:
+    """Dispatch one command and return the run id the handler was handed."""
+    seen: list[str] = []
+
+    def _recorder(*_a: Any, run_id: str = "", **_k: Any) -> ActionResult:
+        seen.append(run_id)
+        return ActionResult(status="succeeded")
+
+    for name in _ALL_HANDLERS:
+        monkeypatch.setattr(rc, name, _recorder)
+
+    cmd = BuildRuntimeCommand.model_construct(operation="build_runtime", args=object())
+    rc.run_command(cast(Command, cmd), log=_null_log(), run_id=run_id)
+    return seen[0]
+
+
+def test_a_supplied_run_id_reaches_the_handler_verbatim(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Including one that happens to be spelled ``manual``.
+
+    Dispatch used to pass ``"manual"`` as the sentinel for "no run id", which
+    the receipt layer detected by string equality and replaced. ``manual`` is a
+    legal run id (``validate_path_segment`` accepts it), so a real run named
+    that lost its identity in its own receipt, with nothing able to detect it.
+    """
+    assert _run_id_seen_by_handler(monkeypatch, "build-7") == "build-7"
+    assert _run_id_seen_by_handler(monkeypatch, "manual") == "manual"
+
+
+def test_an_absent_run_id_is_minted_once_before_the_handler(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A hand-run command has no id, so dispatch mints one for the whole unit.
+
+    Minted here rather than in the receipt so the span and the evidence name the
+    same run: they disagreed while the sentinel travelled down and was resolved
+    at the far end. Two dispatches must not collide.
+    """
+    first = _run_id_seen_by_handler(monkeypatch, None)
+    second = _run_id_seen_by_handler(monkeypatch, None)
+
+    assert first.startswith("manual-")
+    assert first != second
+    # Usable as the receipt's RunId, which is stricter than a bare string.
+    assert RunId(first) == first
