@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 
 from repo2ree_core.domain.primitives import Digest
 from repo2ree_core.domain.ree.model import Ree
@@ -21,14 +20,6 @@ class SourceSlot:
     upstream_populated: bool
     snapshot_archive_present: bool
     staged_upload_present: bool
-
-
-def layout_for(storage_root: Path, ree_id: str) -> ReeLayout:
-    return ReeLayout.for_ree(storage_root, ree_id)
-
-
-def directory_for(storage_root: Path, ree_id: str) -> ReeDirectory:
-    return ReeDirectory(layout_for(storage_root, ree_id))
 
 
 def load_ree(layout: ReeLayout, store: ReeDirectory | None = None) -> Ree:

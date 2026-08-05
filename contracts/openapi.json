@@ -9156,11 +9156,6 @@
             "title": "Schema Version",
             "default": 1
           },
-          "ree_id": {
-            "type": "string",
-            "title": "Ree Id",
-            "default": ""
-          },
           "source_snapshot_digest": {
             "anyOf": [
               {

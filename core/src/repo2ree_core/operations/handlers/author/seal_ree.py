@@ -18,13 +18,10 @@ def handle_seal_ree(
     is_canceled: CancelCheck,
 ) -> ActionResult:
     layout = ReeLayout.in_workbench()
-    storage_root = layout.root.parent
-    ree_id = layout.root.name
 
     try:
         outputs = seal_ree(
-            storage_root,
-            ree_id,
+            layout,
             source_included=args.source_included,
             runtime_included=args.runtime_included,
             results_included=args.results_included,

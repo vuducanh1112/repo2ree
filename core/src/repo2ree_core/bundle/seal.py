@@ -20,9 +20,10 @@ from repo2ree_core.persistence.layout import (
     BUNDLE_REE_MANIFEST_ENTRY_PATH,
     BUNDLE_RESULTS_PREFIX,
     BUNDLE_SNAPSHOT_ENTRY_PATH,
+    ReeLayout,
 )
 from repo2ree_core.persistence.ree_manifest import ree_manifest_bytes
-from repo2ree_core.persistence.repository import directory_for, save_ree
+from repo2ree_core.persistence.repository import save_ree
 from repo2ree_core.reproduction.reproducer import reproducer_entries
 
 
@@ -116,17 +117,16 @@ def _refuse_stale_evidence(ree: Ree) -> None:
 
 
 def seal_ree(
-    storage_root: Path,
-    ree_id: str,
+    layout: ReeLayout,
     *,
     source_included: bool,
     runtime_included: bool,
     results_included: bool,
     sealed_at: UtcInstant,
 ) -> SealOutputs:
-    store = directory_for(storage_root, ree_id)
+    store = ReeDirectory(layout)
     if not store.manifest_exists():
-        raise FileNotFoundError(f"REE {ree_id} not found")
+        raise FileNotFoundError(f"REE not found at {layout.root}")
     ree = store.read_ree()
     _refuse_stale_evidence(ree)
     before_revision = revision_of(ree)
@@ -148,10 +148,10 @@ def seal_ree(
     return SealOutputs(sealed_at=seal.sealed_at, ree_digest=seal.ree_digest)
 
 
-def build_ree_archive(storage_root: Path, ree_id: str) -> bytes:
-    store = directory_for(storage_root, ree_id)
+def build_ree_archive(layout: ReeLayout) -> bytes:
+    store = ReeDirectory(layout)
     if not store.manifest_exists():
-        raise FileNotFoundError(f"REE {ree_id} not found")
+        raise FileNotFoundError(f"REE not found at {layout.root}")
     ree = store.read_ree()
     if ree.seal is not None:
         if not store.layout.sealed_archive.is_file():

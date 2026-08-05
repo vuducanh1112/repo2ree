@@ -72,7 +72,6 @@ def infer_scripts(
     definition: ReeDefinition | None = None,
     policy: InferencePolicy | None = None,
     runtime_inputs: RuntimeInputs | None = None,
-    ree_id: str = "",
     source_snapshot_digest: str | None = None,
 ) -> InferenceReport:
     facts = scan_repository(upstream_path)
@@ -114,7 +113,6 @@ def infer_scripts(
 
     return InferenceReport(
         schema_version=1,
-        ree_id=ree_id,
         source_snapshot_digest=source_snapshot_digest,
         engine=InferenceEngineInfo(version=ENGINE_VERSION),
         results=results,

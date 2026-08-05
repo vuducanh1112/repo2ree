@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict
 from repo2ree_core.digests import digest_file
 from repo2ree_core.domain.primitives import ReePath
 from repo2ree_core.domain.ree.model import BundleContents, BundleEntry
+from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import list_tree_relpaths
 from repo2ree_core.persistence.layout import (
     BUNDLE_ARTIFACTS_PREFIX,
@@ -18,9 +19,9 @@ from repo2ree_core.persistence.layout import (
     BUNDLE_REE_MANIFEST_ENTRY_PATH,
     BUNDLE_RESULTS_PREFIX,
     BUNDLE_SNAPSHOT_ENTRY_PATH,
+    ReeLayout,
 )
 from repo2ree_core.persistence.ree_manifest import parse_ree_manifest
-from repo2ree_core.persistence.repository import directory_for, layout_for
 
 
 class BundleLoadOutputs(BaseModel):
@@ -45,15 +46,14 @@ def _actual_inventory(bundle_root: Path) -> BundleContents:
 
 
 def restore_ree_bundle(
-    storage_root: Path,
-    ree_id: str,
+    layout: ReeLayout,
     *,
     bundle_root: Path,
     archive_path: Path,
 ) -> BundleLoadOutputs:
-    store = directory_for(storage_root, ree_id)
+    store = ReeDirectory(layout)
     if not store.manifest_exists():
-        raise FileNotFoundError(f"REE {ree_id} not found")
+        raise FileNotFoundError(f"REE not found at {layout.root}")
     document_path = bundle_root / BUNDLE_REE_MANIFEST_ENTRY_PATH
     if not document_path.is_file():
         raise ValueError(f"not an REE bundle: missing {BUNDLE_REE_MANIFEST_ENTRY_PATH}")
@@ -62,7 +62,6 @@ def restore_ree_bundle(
     if actual != ree.subject.contents:
         raise ValueError("bundle contents do not match the REE subject inventory")
 
-    layout = layout_for(storage_root, ree_id)
     for target in (layout.upstream, layout.overlay, layout.artifacts, layout.workspace, layout.results):
         shutil.rmtree(target, ignore_errors=True)
         target.mkdir(parents=True, exist_ok=True)

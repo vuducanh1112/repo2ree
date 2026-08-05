@@ -81,9 +81,8 @@ def _read_text_if_possible(path: Path) -> str | None:
         return None
 
 
-def read_ree_file_bytes(storage_root: Path, ree_id: str, path: str) -> bytes:
+def read_ree_file_bytes(layout: ReeLayout, path: str) -> bytes:
     """Read one regular file addressed relative to the REE root."""
-    layout = ReeLayout.for_ree(storage_root, ree_id)
     target = resolve_within(layout.root, path)
     if target is None:
         raise ValueError("Invalid REE file path")
@@ -93,15 +92,13 @@ def read_ree_file_bytes(storage_root: Path, ree_id: str, path: str) -> bytes:
 
 
 def list_workspace_files(
-    storage_root: Path,
-    ree_id: str,
+    layout: ReeLayout,
     *,
     include_content: bool = True,
 ) -> list[WorkspaceFile]:
     """Project the materialized workspace as a client-facing inventory."""
-    layout = ReeLayout.for_ree(storage_root, ree_id)
     if not layout.workspace.exists():
-        raise FileNotFoundError(f"REE {ree_id} not found")
+        raise FileNotFoundError(f"REE not found at {layout.root}")
     directory = ReeDirectory(layout)
     overlay_paths = {relative.as_posix() for relative in directory.overlay.iter_files()}
     entries: list[WorkspaceFile] = []
@@ -124,8 +121,7 @@ def list_workspace_files(
 
 
 def list_ree_files(
-    storage_root: Path,
-    ree_id: str,
+    layout: ReeLayout,
     *,
     include_content: bool = True,
 ) -> list[ReeFile]:
@@ -136,9 +132,8 @@ def list_ree_files(
     here too would put every file of the materialized tree (the whole upstream
     checkout) in one response twice, contents and all.
     """
-    layout = ReeLayout.for_ree(storage_root, ree_id)
     if not layout.root.exists():
-        raise FileNotFoundError(f"REE {ree_id} not found")
+        raise FileNotFoundError(f"REE not found at {layout.root}")
     entries: list[ReeFile] = []
     for path in sorted(layout.root.rglob("*")):
         # The REE document itself is listed: it is the REE's own published

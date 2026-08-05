@@ -30,6 +30,7 @@ from repo2ree_core.reproduction.commands import (
     MATERIALIZE_WORKSPACE,
     TEST_ACTIVATION,
 )
+from repo2ree_core.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BUILD_SCRIPT
 from repo2ree_protocol import ActionResult, command_adapter
 from repo2ree_protocol.command import (
     ActivationTestArgs,
@@ -254,32 +255,35 @@ def experiment_cmd(name: str, run_id: str | None) -> None:
 
 
 @cli.command("init-ree")
-@click.option("--ree-id", required=True, help="The REE identifier.")
-@click.option("--name", default=None, help="Human-readable name for the REE.")
-def init_ree_cmd(ree_id: str, name: str | None) -> None:
+@click.option("--name", required=True, help="Human-readable name for the REE.")
+def init_ree_cmd(name: str) -> None:
     """Initialise the REE directory structure at /ree.
 
     Creates the directory skeleton and writes an initial ree.json.
     Idempotent: exits 0 without modifying anything if already initialised.
+
+    Takes no identifier: an REE is addressed by the tree it lives in, which is
+    always ``/ree`` here. The handle its control plane files it under is that
+    control plane's own (see ``WorkbenchManager._with_handle``) and nothing in
+    the workbench could confirm or contradict it.
     """
     layout = ReeLayout.in_workbench()
     store = ReeDirectory(layout)
 
     if store.manifest_exists():
-        click.echo(json.dumps({"status": "already_initialised", "ree_id": ree_id}))
+        click.echo(json.dumps({"status": "already_initialised"}))
         return
 
     store.ensure_dirs()
     store.ensure_reserved_overlay_scripts()
 
-    ree_name = name or f"ree-{ree_id[:8]}"
-    build_path = store.overlay.absolute("ree-scripts/build_script.sh")
-    activation_path = store.overlay.absolute("ree-scripts/activation.sh")
+    build_path = store.overlay.absolute(RESERVED_BUILD_SCRIPT)
+    activation_path = store.overlay.absolute(RESERVED_ACTIVATION_SCRIPT)
     store.write_ree(
         Ree(
             subject=ReeSubject(
                 definition=ReeDefinition(
-                    name=ree_name,
+                    name=name,
                     build_runtime=BuildRuntimeDefinition(
                         build_runtime_script_digest=digest_file(build_path),
                         build_runtime_script_size=build_path.stat().st_size,
@@ -292,7 +296,7 @@ def init_ree_cmd(ree_id: str, name: str | None) -> None:
             )
         )
     )
-    click.echo(json.dumps({"status": "initialised", "ree_id": ree_id}))
+    click.echo(json.dumps({"status": "initialised"}))
 
 
 # ================================================
@@ -336,13 +340,10 @@ def get_ree_document_cmd(summary: bool) -> None:
     Equivalent to the core get_ree_document() read model but executed inside the
     workbench container so the output reflects the workbench volume.
     """
-    layout = ReeLayout.in_workbench()
-    # The core read views use (storage_root, ree_id) addressing; the workbench
-    # volume is mounted at /ree, which maps to storage_root=/ and ree_id=ree.
-    storage_root = layout.root.parent
-    ree_id = layout.root.name
+    # The document carries no handle: the control plane stamps the real one on
+    # the way back (see WorkbenchManager._with_handle).
     try:
-        result = _get_ree_document(storage_root, ree_id, include_content=not summary)
+        result = _get_ree_document(ReeLayout.in_workbench(), include_content=not summary)
     except FileNotFoundError as exc:
         click.echo(json.dumps({"error": str(exc)}), file=sys.stderr)
         sys.exit(1)
@@ -358,11 +359,8 @@ def get_reviews_cmd() -> None:
 @cli.command("build-archive")
 def build_archive_cmd() -> None:
     """Write the sealed REE zip archive bytes to stdout."""
-    layout = ReeLayout.in_workbench()
-    storage_root = layout.root.parent
-    ree_id = layout.root.name
     try:
-        data = _build_archive(storage_root, ree_id)
+        data = _build_archive(ReeLayout.in_workbench())
     except (FileNotFoundError, RuntimeError) as exc:
         click.echo(json.dumps({"error": str(exc)}), file=sys.stderr)
         sys.exit(1)
@@ -373,11 +371,8 @@ def build_archive_cmd() -> None:
 @click.option("--path", "file_path", required=True, help="Path relative to the REE root")
 def read_ree_file_cmd(file_path: str) -> None:
     """Write raw bytes of any regular file inside the REE."""
-    layout = ReeLayout.in_workbench()
-    storage_root = layout.root.parent
-    ree_id = layout.root.name
     try:
-        data = _read_ree_file_bytes(storage_root, ree_id, file_path)
+        data = _read_ree_file_bytes(ReeLayout.in_workbench(), file_path)
     except FileNotFoundError:
         click.echo(json.dumps({"error": f"not found: {file_path}"}), file=sys.stderr)
         sys.exit(1)

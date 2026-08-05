@@ -37,8 +37,12 @@ def handle_generate_script_candidates(
         return ActionResult.failed("precondition", "no acquired source (upstream tree is absent)")
 
     store = ReeDirectory(layout)
-    definition = store.read_ree().subject.definition if store.manifest_exists() else None
-    ree_id, snapshot_digest = _identity(store)
+    ree = store.read_ree() if store.manifest_exists() else None
+    definition = ree.subject.definition if ree else None
+    # The receipt-chain root that already identifies the acquired source. Read
+    # from the aggregate loaded above rather than re-reading the manifest.
+    source_receipt = ree.subject.receipts.source if ree else None
+    snapshot_digest = str(source_receipt.snapshot_digest) if source_receipt else None
     runtime_inputs = build_runtime_inputs(layout, definition)
 
     selectors = [
@@ -51,7 +55,6 @@ def handle_generate_script_candidates(
             selectors,
             definition=definition,
             runtime_inputs=runtime_inputs,
-            ree_id=ree_id,
             source_snapshot_digest=snapshot_digest,
         )
     except ValueError as exc:
@@ -70,10 +73,3 @@ def handle_generate_script_candidates(
     inferred = sum(1 for result in report.results if result.status != "not_inferred")
     log("system", "info", f"inference produced results for {len(report.results)} target(s); {inferred} with candidates")
     return ActionResult(status="succeeded", exit_code=0, outputs=report.model_dump())
-
-
-def _identity(store: ReeDirectory) -> tuple[str, str | None]:
-    if not store.manifest_exists():
-        return "", None
-    source = store.read_ree().subject.receipts.source
-    return "", str(source.snapshot_digest) if source else None

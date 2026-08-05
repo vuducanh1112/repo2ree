@@ -47,7 +47,7 @@ def test_read_ree_file_bytes_uses_ree_relative_paths(tmp_path):
     layout.artifacts.mkdir(parents=True)
     layout.sbom.write_bytes(b"sbom")
 
-    assert read_ree_file_bytes(tmp_path, "ree-1", "artifacts/sbom.json") == b"sbom"
+    assert read_ree_file_bytes(layout, "artifacts/sbom.json") == b"sbom"
 
 
 def test_read_ree_file_bytes_rejects_escape(tmp_path):
@@ -55,4 +55,4 @@ def test_read_ree_file_bytes_rejects_escape(tmp_path):
     layout.root.mkdir(parents=True)
 
     with pytest.raises(ValueError, match="Invalid REE file path"):
-        read_ree_file_bytes(tmp_path, "ree-1", "../outside")
+        read_ree_file_bytes(layout, "../outside")

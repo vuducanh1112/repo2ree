@@ -184,7 +184,7 @@ class WorkbenchManager:
                 self._agent.exec_simple(
                     resolved_agent_id,
                     location,
-                    ["init-ree", "--ree-id", ree_id, "--name", name],
+                    ["init-ree", "--name", name],
                 )
 
                 entry = WorkbenchEntry(
@@ -434,13 +434,21 @@ class WorkbenchManager:
         return self._query_json(handle, "get-ree-manifest")
 
     def get_ree_document(self, handle: WorkbenchHandle) -> dict[str, Any]:
-        document = self._query_json(handle, "get-ree-document")
-        document["ree_id"] = handle.ree_id
-        return document
+        return self._with_handle(handle, self._query_json(handle, "get-ree-document"))
 
     def get_ree_state(self, handle: WorkbenchHandle) -> dict[str, Any]:
         """Return composed REE state without embedding text file contents."""
-        document = self._query_json(handle, "get-ree-document", "--summary")
+        return self._with_handle(handle, self._query_json(handle, "get-ree-document", "--summary"))
+
+    @staticmethod
+    def _with_handle(handle: WorkbenchHandle, document: dict[str, Any]) -> dict[str, Any]:
+        """Add the control-plane handle the workbench has no way to know.
+
+        ``ree_id`` names a registry entry and the container and volume built
+        from it — all of it host-side. A workbench sees only its own volume,
+        mounted at the same ``/ree`` in every REE, so the document it returns
+        carries no identity of its own and this is where one is supplied.
+        """
         document["ree_id"] = handle.ree_id
         return document
 

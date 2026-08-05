@@ -235,9 +235,16 @@ def test_workbench_lifecycle_e2e(workbench: tuple[WorkbenchManager, WorkbenchHan
         events.append((stream, level, message))
 
     # --- init produced metadata on the real /ree volume ----------------
-    metadata = manager.get_ree_manifest(handle)
-    assert metadata["ree_id"] == handle.ree_id
-    assert metadata["status"] == "draft"
+    # The manifest is the portable aggregate and nothing else: no handle (that
+    # is the control plane's) and no status (that is derived from the seal).
+    manifest = manager.get_ree_manifest(handle)
+    assert sorted(manifest) == ["subject"]
+    assert manifest["subject"]["definition"]["name"]
+    # Both of those reach the API through the composed document, where the
+    # manager stamps the handle it alone knows and core derives the status.
+    document = manager.get_ree_document(handle)
+    assert document["ree_id"] == handle.ree_id
+    assert document["status"] == "draft"
 
     # --- write_file: dispatched over real `docker exec` ----------------
     # The build always runs the reserved, REE-owned build script, so author the

@@ -101,14 +101,12 @@ def test_unregistered_targets_contribute_no_dag(tmp_path: Path) -> None:
     assert report.dags == []
 
 
-def test_report_carries_ree_id_and_snapshot_digest(tmp_path: Path) -> None:
+def test_report_carries_snapshot_digest(tmp_path: Path) -> None:
     (tmp_path / "main.py").write_text("x")
     report = infer_scripts(
         tmp_path,
         [ScriptTargetSelector(kind="build")],
-        ree_id="ree-123",
         source_snapshot_digest="sha256:abc",
     )
-    assert report.ree_id == "ree-123"
     assert report.source_snapshot_digest == "sha256:abc"
     assert report.engine.name == "repo2ree-script-inference"

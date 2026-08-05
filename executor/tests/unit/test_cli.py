@@ -43,7 +43,7 @@ def ree_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 @pytest.fixture
 def initialized_ree(ree_root: Path) -> Path:
-    result = runner.invoke(cli, ["init-ree", "--ree-id", "abc123", "--name", "demo"])
+    result = runner.invoke(cli, ["init-ree", "--name", "demo"])
     assert result.exit_code == 0, result.output
     return ree_root
 
@@ -58,9 +58,9 @@ def _stderr_events(result) -> list[dict]:  # type: ignore[type-arg]
 
 
 def test_init_ree_bootstraps_tree_and_metadata(ree_root: Path) -> None:
-    result = runner.invoke(cli, ["init-ree", "--ree-id", "abc123", "--name", "demo"])
+    result = runner.invoke(cli, ["init-ree", "--name", "demo"])
     assert result.exit_code == 0
-    assert json.loads(result.output) == {"status": "initialised", "ree_id": "abc123"}
+    assert json.loads(result.output) == {"status": "initialised"}
 
     layout = ReeLayout.in_workbench()
     assert layout.workspace.is_dir()
@@ -77,7 +77,7 @@ def test_init_ree_is_idempotent(initialized_ree: Path) -> None:
     layout = ReeLayout.in_workbench()
     before = layout.manifest.read_text()
 
-    result = runner.invoke(cli, ["init-ree", "--ree-id", "abc123"])
+    result = runner.invoke(cli, ["init-ree", "--name", "demo"])
     assert result.exit_code == 0
     assert json.loads(result.output)["status"] == "already_initialised"
     assert layout.manifest.read_text() == before
@@ -225,7 +225,9 @@ def test_get_ree_document_reflects_workspace_files(initialized_ree: Path) -> Non
     result = runner.invoke(cli, ["get-ree-document"])
     assert result.exit_code == 0
     workspace = json.loads(result.output)
-    assert workspace["ree_id"] == "ree"
+    # No control-plane handle: the workbench knows only its own volume, so the
+    # document carries what the tree holds and nothing about where it is.
+    assert "ree_id" not in workspace
     assert any(f.get("path") == "app.py" for f in workspace["workspace_files"])
 
 

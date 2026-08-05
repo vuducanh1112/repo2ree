@@ -728,7 +728,6 @@ class InferenceReport(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     schema_version: int = 1
-    ree_id: str = ""
     # Passive provenance stamp: the receipt-chain root that already identifies
     # the acquired source. Nothing branches on it; inference computes no source
     # digest of its own.

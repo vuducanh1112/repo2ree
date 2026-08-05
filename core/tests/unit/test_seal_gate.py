@@ -92,8 +92,7 @@ def test_a_consistent_ree_seals_and_carries_its_inventory(tmp_path: Path) -> Non
     store = _store(tmp_path, _ree())
 
     outputs = seal_ree(
-        tmp_path,
-        _REE_ID,
+        store.layout,
         source_included=False,
         runtime_included=False,
         results_included=False,
@@ -126,8 +125,7 @@ def test_sealing_is_refused_while_a_receipt_is_stale(tmp_path: Path) -> None:
 
     with pytest.raises(ReePreconditionError, match="runtime: runtime build script changed"):
         seal_ree(
-            tmp_path,
-            _REE_ID,
+            store.layout,
             source_included=False,
             runtime_included=False,
             results_included=False,
@@ -141,11 +139,10 @@ def test_sealing_is_refused_while_a_receipt_is_stale(tmp_path: Path) -> None:
 def test_missing_evidence_still_seals(tmp_path: Path) -> None:
     """Incomplete is not self-contradictory: an REE may be sealed with gaps."""
     bare = Ree(subject=ReeSubject(definition=ReeDefinition(name="demo")))
-    _store(tmp_path, bare)
+    store = _store(tmp_path, bare)
 
     outputs = seal_ree(
-        tmp_path,
-        _REE_ID,
+        store.layout,
         source_included=False,
         runtime_included=False,
         results_included=False,

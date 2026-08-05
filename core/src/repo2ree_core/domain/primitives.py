@@ -46,12 +46,6 @@ class _StringValue(str):
         )
 
 
-class ReeId(_StringValue):
-    @classmethod
-    def validate(cls, value: str) -> str:
-        return validate_path_segment(value, kind="ree_id")
-
-
 class RunId(_StringValue):
     @classmethod
     def validate(cls, value: str) -> str:
@@ -97,7 +91,6 @@ __all__ = [
     "ArtifactPath",
     "Digest",
     "GitRevision",
-    "ReeId",
     "ReePath",
     "ReeRevision",
     "RunId",

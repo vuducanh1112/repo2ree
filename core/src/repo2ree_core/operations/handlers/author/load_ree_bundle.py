@@ -60,8 +60,7 @@ def handle_load_ree_bundle(
             bundle_root = Path(tmp)
             safe_extract_zip(staged, bundle_root)
             loaded = restore_ree_bundle(
-                layout.root.parent,
-                layout.root.name,
+                layout,
                 bundle_root=bundle_root,
                 archive_path=staged,
             )

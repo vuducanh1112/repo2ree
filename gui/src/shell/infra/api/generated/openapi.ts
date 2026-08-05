@@ -2168,11 +2168,6 @@ export interface components {
              * @default 1
              */
             schema_version: number;
-            /**
-             * Ree Id
-             * @default
-             */
-            ree_id: string;
             /** Source Snapshot Digest */
             source_snapshot_digest?: string | null;
             engine: components["schemas"]["InferenceEngineInfo"];

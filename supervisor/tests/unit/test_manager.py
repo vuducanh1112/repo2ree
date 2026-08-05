@@ -117,7 +117,7 @@ def test_provision_registers_handle_and_runs_init_ree(tmp_path) -> None:
     assert handle.container_name == "repo2ree-wb-ree1"
     assert handle.image == "default:img"
     # init-ree was issued against the freshly provisioned container.
-    assert agent.exec_simple_calls == [("repo2ree-wb-ree1", ["init-ree", "--ree-id", "ree1", "--name", "My REE"])]
+    assert agent.exec_simple_calls == [("repo2ree-wb-ree1", ["init-ree", "--name", "My REE"])]
     # Provision log frames were forwarded to the sink.
     assert any("pulling default:img" in message for _, _, message in logs)
     # The handle is persisted.
