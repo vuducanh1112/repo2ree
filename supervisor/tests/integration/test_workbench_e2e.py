@@ -15,9 +15,15 @@ bundles, so the whole module is skipped (never faked) when either is absent.
 Build the bundles with ``make e2e-bundles``.
 
 Flow exercised over the real agent:
-    provision -> get-ree -> write_file -> read-ree-file round-trip
+    provision -> get-ree -> acquire_source (staged upload, no network)
+        -> write_file -> read-ree-file round-trip -> patch_ree_definition
         -> build_runtime (real script run inside the workbench)
         -> seal_ree -> build-archive -> teardown
+
+The order is the domain's, not a convenience: each step here is a precondition
+of the next, and the handlers enforce that. A build with no acquired source is
+refused because its receipt would have no snapshot to bind to, and a seal is
+refused if any receipt has gone stale under it.
 """
 
 from __future__ import annotations
@@ -42,7 +48,11 @@ from websockets.asyncio.server import ServerConnection, serve
 
 from repo2ree_agent.control_link import run_agent
 from repo2ree_protocol.command import (
+    AcquireSourceArgs,
+    AcquireSourceCommand,
     BuildRuntimeCommand,
+    PatchReeDefinitionArgs,
+    PatchReeDefinitionCommand,
     SealReeCommand,
     WriteFileArgs,
     WriteFileCommand,
@@ -78,6 +88,13 @@ os.environ.setdefault("REPO2REE_EXEC_BUNDLE", str(_EXEC_BUNDLE))
 os.environ.setdefault("REPO2REE_TOOLS_BUNDLE", str(_TOOLS_BUNDLE))
 
 TEST_RESULTS_DIR = Path(__file__).resolve().parents[3] / "test-artifacts" / "traces" / "supervisor-e2e"
+
+# The staging slot the upload acquisition reads from; the API mints these per
+# request, but the name only has to agree with the file we place in the bench.
+_UPLOAD_TOKEN = "e2e-upload"  # noqa: S105 — a staging filename, not a credential
+# Where the build script leaves its runtime, declared on the definition so the
+# build receipt can bind that path to the digest found there.
+_RUNTIME_ARTIFACT = "runtime.bin"
 
 
 # ================================================
@@ -226,7 +243,7 @@ def _dump_workbench_logs(container_name: str, test_name: str) -> None:
 # ================================================
 
 
-def test_workbench_lifecycle_e2e(workbench: tuple[WorkbenchManager, WorkbenchHandle]) -> None:
+def test_workbench_lifecycle_e2e(workbench: tuple[WorkbenchManager, WorkbenchHandle], tmp_path: Path) -> None:
     manager, handle = workbench
 
     events: list[tuple[str, str, str]] = []
@@ -246,22 +263,62 @@ def test_workbench_lifecycle_e2e(workbench: tuple[WorkbenchManager, WorkbenchHan
     assert document["ree_id"] == handle.ree_id
     assert document["status"] == "draft"
 
-    # --- write_file: dispatched over real `docker exec` ----------------
-    # The build always runs the reserved, REE-owned build script, so author the
-    # recipe there.
-    build_script = "ree-scripts/build_script.sh"
+    # --- acquire_source: the REE gets something to build from ----------
+    # Building requires acquired source: a runtime built from nothing attests to
+    # nothing, so the receipt chain is rooted at a snapshot digest and the
+    # handler refuses without one. The upload basis is the one that needs no
+    # network — stage an archive where the handler looks for it and acquire from
+    # there, which is exactly what the API's upload-init/upload/complete
+    # sequence does, over the same real `docker cp` transport.
+    source_zip = tmp_path / "source.zip"
+    with zipfile.ZipFile(source_zip, "w") as source_archive:
+        source_archive.writestr("main.py", "print('hello from upstream')\n")
+    manager.copy_to_workbench(handle, str(source_zip), f"/ree/upload-staging/{_UPLOAD_TOKEN}.bin")
     result = manager.dispatch_action(
         handle,
-        WriteFileCommand(args=WriteFileArgs(path=build_script, content="echo building runtime\n")),
+        AcquireSourceCommand(
+            args=AcquireSourceArgs(mode="upload", upload_token=_UPLOAD_TOKEN, archive_name="source.zip")
+        ),
+        "source",
+        log,
+    )
+    assert result.status == "succeeded", result.failure
+    # Acquisition materializes the workspace from upstream + overlay, so the
+    # uploaded tree is what a build will actually see.
+    assert manager.read_ree_file_bytes(handle, "workspace/main.py") == b"print('hello from upstream')\n"
+
+    # --- write_file: dispatched over real `docker exec` ----------------
+    # The build always runs the reserved, REE-owned build script, so author the
+    # recipe there. It has to *produce* the declared runtime: the handler digests
+    # the artifact for the receipt and fails the run if the script exits clean
+    # without leaving one behind.
+    build_script = "ree-scripts/build_script.sh"
+    build_body = f"echo building runtime\nprintf 'runtime-bytes\\n' > {_RUNTIME_ARTIFACT}\n"
+    result = manager.dispatch_action(
+        handle,
+        WriteFileCommand(args=WriteFileArgs(path=build_script, content=build_body)),
         "write",
         log,
     )
     assert result.status == "succeeded"
 
     # read it back through the real read-ree-file query — full round-trip
-    assert manager.read_ree_file_bytes(handle, f"workspace/{build_script}") == b"echo building runtime\n"
+    assert manager.read_ree_file_bytes(handle, f"workspace/{build_script}") == build_body.encode()
     workspace = manager.get_ree_document(handle)
     assert any(f.get("path") == build_script for f in workspace["workspace_files"])
+
+    # --- declare where the build leaves its runtime --------------------
+    # Nothing infers this: the author says which artifact is the runtime, and
+    # the build receipt binds that path to the digest it found there.
+    result = manager.dispatch_action(
+        handle,
+        PatchReeDefinitionCommand(
+            args=PatchReeDefinitionArgs(patch={"runtime": {"runtime_path": _RUNTIME_ARTIFACT}}, expected_version="")
+        ),
+        "patch-definition",
+        log,
+    )
+    assert result.status == "succeeded", result.failure
 
     # --- build_runtime: real script execution inside the workbench -----
     result = manager.dispatch_action(
@@ -270,12 +327,15 @@ def test_workbench_lifecycle_e2e(workbench: tuple[WorkbenchManager, WorkbenchHan
         "build",
         log,
     )
-    assert result.status == "succeeded"
+    assert result.status == "succeeded", result.failure
 
     # --- seal_ree: produce the immutable bundle on the volume ----------
+    # Sealing audits the REE first and refuses stale evidence, so reaching a
+    # digest here also proves the receipts the steps above filed still describe
+    # what the volume holds.
     result = manager.dispatch_action(handle, SealReeCommand(), "seal", log)
-    assert result.status == "succeeded"
-    assert result.outputs["seal_hash"].startswith("sha256:")
+    assert result.status == "succeeded", result.failure
+    assert result.outputs["ree_digest"].startswith("sha256:")
 
     # --- build-archive: real sealed zip streamed back over the wire ----
     archive = manager.build_archive(handle)
