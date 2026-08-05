@@ -150,3 +150,26 @@ def test_missing_evidence_still_seals(tmp_path: Path) -> None:
     )
 
     assert outputs.sealed_at == _NOW
+
+
+def test_sealing_is_refused_while_a_receipt_outlives_its_declaration(tmp_path: Path) -> None:
+    """Dropping the declaration must not launder the receipt that attested it.
+
+    Deleting ``build.sh`` clears ``build_runtime`` but leaves the build receipt
+    on the aggregate. Sealing there would publish a runtime attestation for a
+    recipe the bundle does not carry — evidence no reader could check.
+    """
+    orphaned = replace_definition(_ree(), _ree().subject.definition.model_copy(update={"build_runtime": None}))
+    store = _store(tmp_path, orphaned)
+
+    with pytest.raises(ReePreconditionError, match="runtime: runtime build definition was removed"):
+        seal_ree(
+            store.layout,
+            source_included=False,
+            runtime_included=False,
+            results_included=False,
+            sealed_at=_NOW,
+        )
+
+    assert load_ree(store.layout, store).seal is None
+    assert not store.layout.sealed_archive.exists()

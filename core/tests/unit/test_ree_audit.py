@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import pytest
+
 from repo2ree_core.digests import digest_bytes
 from repo2ree_core.domain.primitives import Digest, ReePath, RunId, WorkspacePath, parse_utc_instant
-from repo2ree_core.domain.ree.audit import _STEP_FIELDS, ReeAudit, audit
+from repo2ree_core.domain.ree.audit import _STEP_FIELDS, ReeAudit, _evidence_standing, audit
 from repo2ree_core.domain.ree.model import (
     BuildRuntimeDefinition,
     ExperimentDefinition,
@@ -276,3 +278,73 @@ def test_stale_steps_walks_every_step_the_audit_reports() -> None:
     reported = set(ReeAudit.model_fields) - {"reproducibility"}
 
     assert reported == {"experiments", *_STEP_FIELDS}
+
+
+# ================================================
+# Receipts that outlive their declaration
+# ================================================
+
+
+def test_removing_the_build_declaration_leaves_its_receipt_stale_rather_than_hidden() -> None:
+    """Deleting ``build.sh`` drops the declaration but keeps the receipt.
+
+    The receipt then attests a build of a recipe the REE no longer carries.
+    Reporting that as ``not_applicable`` would hide it from the seal gate,
+    which is the one reader that must not miss it.
+    """
+    orphaned = replace_definition(
+        _built_ree(),
+        _built_ree().subject.definition.model_copy(update={"build_runtime": None}),
+    )
+
+    result = audit(orphaned)
+
+    assert result.runtime.evidence == "stale"
+    assert result.runtime.receipt_run_id == RunId("build-1")
+    assert result.runtime.reasons == ("runtime build definition was removed",)
+    assert [name for name, _ in result.stale_steps()] == ["runtime"]
+
+
+def test_removing_the_source_declaration_leaves_its_receipt_stale() -> None:
+    """The steps whose comparisons all pass vacuously get the generic reason."""
+    orphaned = replace_definition(
+        _built_ree(),
+        _built_ree().subject.definition.model_copy(update={"source": None}),
+    )
+
+    result = audit(orphaned)
+
+    assert result.source.evidence == "stale"
+    assert result.source.reasons == ("the REE no longer declares what this evidence is about",)
+    assert "source" in {name for name, _ in result.stale_steps()}
+
+
+def test_a_step_with_neither_declaration_nor_receipt_stays_not_applicable() -> None:
+    bare = Ree(subject=ReeSubject(definition=ReeDefinition()))
+
+    result = audit(bare)
+
+    assert result.runtime.evidence == "not_applicable"
+    assert result.runtime.reasons == ()
+    assert result.stale_steps() == ()
+
+
+@pytest.mark.parametrize(
+    ("applicable", "has_receipt", "complaints", "expected"),
+    [
+        (False, False, False, "not_applicable"),
+        (True, False, False, "missing"),
+        (True, True, False, "current"),
+        (True, True, True, "stale"),
+        (False, True, False, "stale"),
+        (False, True, True, "stale"),
+    ],
+)
+def test_evidence_standing_is_the_table_it_documents(
+    applicable: bool,
+    has_receipt: bool,
+    complaints: bool,
+    expected: str,
+) -> None:
+    """Pin the classification itself, apart from which comparisons feed it."""
+    assert _evidence_standing(applicable=applicable, has_receipt=has_receipt, complaints=complaints) == expected

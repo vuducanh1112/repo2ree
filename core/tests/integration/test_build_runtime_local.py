@@ -13,6 +13,7 @@ from repo2ree_core.domain.ree.model import (
     Ree,
     ReeDefinition,
     ReeSubject,
+    SourceDefinition,
 )
 from repo2ree_core.domain.ree.receipt import AcquireSourceReceipt
 from repo2ree_core.domain.ree.transitions import commit_receipt
@@ -37,6 +38,10 @@ def test_build_script_runs_and_commits_the_produced_runtime(
     ree = Ree(
         subject=ReeSubject(
             definition=ReeDefinition(
+                # Declared alongside the receipt committed below: acquisition
+                # writes both, and a receipt without its declaration is the
+                # orphan case the audit reports as stale.
+                source=SourceDefinition(origin_url="https://example.test/repo.git", source_type="git"),
                 build_runtime=BuildRuntimeDefinition(
                     build_runtime_script_digest=digest_bytes(script),
                     build_runtime_script_size=len(script),

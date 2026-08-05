@@ -107,7 +107,10 @@ def test_committed_receipt_is_audited_and_contributes_to_subject_identity() -> N
 
     assert updated.subject.receipts.build == receipt
     assert subject_digest(updated.subject) != before
-    assert audit(updated).runtime.evidence == "not_applicable"  # build definition is intentionally absent
+    # The build definition is intentionally absent, so this receipt attests a
+    # recipe the REE does not declare. Present and unbacked is stale, not
+    # not_applicable — the latter would keep it out of the seal gate's reach.
+    assert audit(updated).runtime.evidence == "stale"
 
 
 def test_seal_binds_and_freezes_the_subject() -> None:

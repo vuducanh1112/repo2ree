@@ -11,6 +11,7 @@ from repo2ree_core.domain.ree.model import (
     Ree,
     ReeDefinition,
     ReeSubject,
+    SourceDefinition,
 )
 from repo2ree_core.domain.ree.receipt import AcquireSourceReceipt
 from repo2ree_core.domain.ree.transitions import commit_receipt, record_seal
@@ -24,6 +25,7 @@ from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 _NOW = parse_utc_instant("2026-08-03T00:00:00Z")
 _SNAPSHOT_DIGEST = digest_bytes(b"snapshot")
 _SCRIPT = b"#!/bin/sh\nprintf runtime > runtime.tar\n"
+_ORIGIN_URL = "https://example.test/repo.git"
 
 
 def _source_receipt() -> AcquireSourceReceipt:
@@ -33,15 +35,19 @@ def _source_receipt() -> AcquireSourceReceipt:
         finished_at=_NOW,
         duration_ms=0,
         recorded_at=_NOW,
-        origin_url="https://example.test/repo.git",
+        origin_url=_ORIGIN_URL,
         source_type="git",
         resolved_revision="abc123",
         snapshot_digest=_SNAPSHOT_DIGEST,
     )
 
 
-def _ree(*, with_source: bool = True, with_runtime: bool = True) -> Ree:
+def _ree(*, with_source: bool = True, with_runtime: bool = True, origin_url: str = _ORIGIN_URL) -> Ree:
+    # Declaration and receipt move together, as ``acquire_source`` commits them:
+    # a source receipt with no declaration behind it is an orphan the audit
+    # reports as stale, not the ordinary acquired state this fixture stands for.
     definition = ReeDefinition(
+        source=SourceDefinition(origin_url=origin_url, source_type="git") if with_source else None,
         build_runtime=BuildRuntimeDefinition(
             build_runtime_script_digest=digest_bytes(_SCRIPT),
             build_runtime_script_size=len(_SCRIPT),
@@ -232,4 +238,30 @@ def test_revision_conflict_does_not_select_the_new_receipt(
     assert result.failure is not None
     assert result.failure.category == "conflict"
     assert result.failure.retryable is True
+    assert store.read_ree().subject.receipts.build is None
+
+
+def test_build_is_rejected_when_the_source_receipt_has_gone_stale(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A re-pointed source that was never re-acquired must not reach the build.
+
+    The workspace still holds the previous tree, so building would spend the
+    whole run producing a runtime the seal gate refuses anyway — for staleness
+    already visible before the first byte of work.
+    """
+    repointed = _ree(origin_url="https://example.test/other.git")
+    _layout, store = _workbench(tmp_path, monkeypatch, repointed)
+    monkeypatch.setattr(build_runtime, "run_workspace_script", _successful_build(_layout))
+
+    result = build_runtime.handle_build_runtime(
+        run_id="build-stale-source",
+        log=lambda *args: None,
+        is_canceled=lambda: False,
+    )
+
+    assert result.status == "failed"
+    assert result.failure is not None
+    assert "source origin changed" in result.failure.message
     assert store.read_ree().subject.receipts.build is None

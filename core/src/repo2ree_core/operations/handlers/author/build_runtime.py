@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.digests import digest_file_if_exists
 from repo2ree_core.domain.primitives import WorkspacePath
+from repo2ree_core.domain.ree.audit import audit
 from repo2ree_core.domain.ree.model import BuildRuntimeDefinition, Ree
 from repo2ree_core.domain.ree.receipt import BuildRuntimeReceipt, receipt_envelope
 from repo2ree_core.domain.ree.transitions import ReePreconditionError, commit_receipt, revision_of
@@ -135,8 +136,18 @@ def _check_preconditions(
 ) -> tuple[BuildRuntimeDefinition, WorkspacePath]:
     if ree.seal is not None:
         raise ReePreconditionError("a sealed REE cannot build a runtime")
-    if ree.subject.receipts.source is None:
-        raise ReePreconditionError("source has not been acquired")
+    # Currency, not mere presence. A source that has been re-pointed but not
+    # re-acquired leaves the workspace holding the previous tree, so a build on
+    # it would spend minutes producing a runtime the seal gate then refuses for
+    # the staleness that was already visible here. Same check the SBOM and
+    # runnable steps make against the build receipt.
+    source_audit = audit(ree).source
+    if source_audit.evidence != "current":
+        # The audit names what moved when a receipt has gone stale. It has
+        # nothing to say when no source is declared at all — a fresh REE seeded
+        # with a build script before it has a source — so that case keeps the
+        # message that tells the author what to do next.
+        raise ReePreconditionError("; ".join(source_audit.reasons) or "source has not been acquired")
     build = ree.subject.definition.build_runtime
     if build is None:
         raise ReePreconditionError("no runtime build definition is present")

@@ -4,9 +4,9 @@ The question this module answers is not "how good is this REE" but "is what it
 records still true of what it holds". An author edits a build script, re-points
 a source, renames an experiment; the receipts from before those edits stay on
 the aggregate, because deleting evidence is not the domain's call to make. What
-*is* the domain's call is saying so — a receipt whose inputs have moved is
-``stale``, and every operation that would build on it refuses, by name and with
-reasons.
+*is* the domain's call is saying so — a receipt whose inputs have moved, or
+whose declaration has been removed out from under it, is ``stale``, and every
+operation that would build on it refuses, by name and with reasons.
 
 Nothing here is stored. An audit is a function of one :class:`Ree` and holds
 only for the aggregate it was derived from, which is why callers derive it at
@@ -28,12 +28,11 @@ from repo2ree_core.domain.ree.model import Ree, ReeDefinition, ReeReceipts
 # Vocabulary
 # ================================================
 
-# Whether a step's receipt still speaks for the REE as it now stands.
-# ``missing``: the step has no receipt. ``current``: its receipt matches what
-# the REE declares and what the steps upstream of it recorded. ``stale``: it
-# has a receipt, and something it was derived from has changed since — the
-# reasons say what. ``not_applicable``: the REE declares nothing for this step,
-# so there is nothing for a receipt to be about.
+# Whether a step's receipt still speaks for the REE as it now stands. The
+# words are not temporal: a receipt recorded a year ago is ``current`` while
+# nothing it rests on has moved, and one recorded a minute ago is ``stale`` the
+# moment an author edits the script it ran. :func:`_evidence_standing` is the
+# single definition; see its table before adding a caller.
 EvidenceStatus = Literal["missing", "current", "stale", "not_applicable"]
 # Whether the bytes a receipt attests to travel inside the sealed bundle.
 # Only meaningful once sealed: a draft's inventory is empty by construction, so
@@ -143,6 +142,50 @@ class _Subject:
 # ================================================
 
 
+# The complaint a receipt earns by outliving what it was about. No per-step
+# comparison produces this one: there is nothing left to compare it against,
+# which is exactly the point. Phrased for the subject rather than the step,
+# because the declaration that went away is often another step's — dropping the
+# runtime recipe orphans the SBOM scanned off it, and the SBOM step never had a
+# declaration of its own to lose.
+_ORPHANED_RECEIPT_REASON = "the REE no longer declares what this evidence is about"
+
+
+def _evidence_standing(*, applicable: bool, has_receipt: bool, complaints: bool) -> EvidenceStatus:
+    """Whether a step's receipt still speaks for the REE, as one table.
+
+    ``applicable`` is whether the REE declares anything for this step's evidence
+    to be *about*, which is not always the step's own declaration. Source,
+    hardware, runtime and activation each answer for themselves. Evaluation,
+    SBOM and cross-check declare nothing of their own and answer for what they
+    describe: a source to evaluate, a runtime to scan, both to reconcile. So a
+    step can stop being applicable without its own definition changing at all.
+
+    ``complaints`` is whether any comparison the step made — against that
+    declaration, or against the receipts upstream of it — came back disagreeing.
+
+    ==========  =======  ==========  ================================================
+    applicable  receipt  complaints  standing
+    ==========  =======  ==========  ================================================
+    no          no       --          ``not_applicable``  nothing to be about
+    yes         no       --          ``missing``         the step has not run
+    yes         yes      no          ``current``         it still speaks for the REE
+    yes         yes      yes         ``stale``           something it rests on moved
+    no          yes      --          ``stale``           its subject is gone
+    ==========  =======  ==========  ================================================
+
+    The last row is the one worth stating separately, because it is the one
+    that used to be silent. A receipt with nothing left to be about has nothing
+    left to be compared against, so every per-step comparison passes and it
+    would read ``current`` on the strength of tests nobody could run. It is
+    inapplicable *and* it is present, and of those two facts only the second can
+    be published — so the presence wins and the step reports ``stale``.
+    """
+    if not has_receipt:
+        return "missing" if applicable else "not_applicable"
+    return "stale" if complaints or not applicable else "current"
+
+
 def _step(
     receipt_run_id: RunId | None,
     reasons: Iterable[str] = (),
@@ -150,16 +193,22 @@ def _step(
     applicable: bool = True,
     payload: PayloadStatus = "not_applicable",
 ) -> StepAudit:
-    reason_tuple = tuple(reasons)
-    if not applicable:
+    # Nothing declared and nothing recorded: there is no evidence question
+    # here, and the caller's "has not run yet" reason would answer one nobody
+    # asked. The only case where reasons and payload are dropped rather than
+    # carried.
+    if not applicable and receipt_run_id is None:
         return StepAudit(evidence="not_applicable", payload="not_applicable")
-    if receipt_run_id is None:
-        return StepAudit(evidence="missing", payload=payload, reasons=reason_tuple)
+    complaints = tuple(reasons) or (() if applicable else (_ORPHANED_RECEIPT_REASON,))
     return StepAudit(
-        evidence="stale" if reason_tuple else "current",
+        evidence=_evidence_standing(
+            applicable=applicable,
+            has_receipt=receipt_run_id is not None,
+            complaints=bool(complaints),
+        ),
         payload=payload,
         receipt_run_id=receipt_run_id,
-        reasons=reason_tuple,
+        reasons=complaints,
     )
 
 
