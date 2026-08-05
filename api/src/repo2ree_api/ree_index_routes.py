@@ -21,13 +21,12 @@ neither of those two may reach up to the other.
 
 from __future__ import annotations
 
-from typing import Any
-
 from fastapi import APIRouter, Query
 
 from repo2ree_api.contracts import ERROR_RESPONSES, ReeIndexList
 from repo2ree_api.deps import ree_index
 from repo2ree_api.pagination import keyset_paginate
+from repo2ree_api.ree_index import ReeIndexEntry
 
 ree_index_router = APIRouter(tags=["ree-index"])
 
@@ -53,18 +52,22 @@ def list_ree_index_route(
     ascending, because that is what a resumable ``since=`` cursor and a stable
     snapshot digest need, while a reader wants the most recent seal first.
     """
-    items: list[dict[str, Any]] = [
-        entry.model_dump() for entry in reversed(ree_index.list_all(deposited_only=deposited_only))
-    ]
+    items = list(reversed(ree_index.list_all(deposited_only=deposited_only)))
     page, next_cursor, _has_more = keyset_paginate(items, cursor=cursor, limit=limit, key=_index_page_key)
-    return ReeIndexList.model_validate({"items": page, "next_cursor": next_cursor})
+    return ReeIndexList(items=page, next_cursor=next_cursor)
 
 
-def _index_page_key(entry: dict[str, Any]) -> tuple[str, str]:
+def _index_page_key(entry: ReeIndexEntry) -> tuple[str, str]:
     """The keyset cursor's key, matching the store's total order.
 
     Immutable per entry: both components are settled at seal and never change,
     so pages cannot shift under a caller mid-pagination the way they would under
     any key derived from mutable state.
+
+    Read off the entry, not off a dump of it. The store already hands back typed
+    entries; dumping them to paginate and validating them back meant the cursor
+    was derived by ``entry.get(..., "")``, which answers ``""`` for a field that
+    has moved instead of raising. On a *cursor* key that does not misname
+    something — it collapses the total order, so pages silently repeat or skip.
     """
-    return str(entry.get("sealed_at", "")), str(entry.get("subject_digest", ""))
+    return entry.sealed_at, entry.subject_digest

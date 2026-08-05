@@ -471,26 +471,27 @@ class WorkbenchManager:
         # the per-REE lock stays held until the caller finishes consuming.
         return self.dispatch_query_stream(handle, "build-archive", locked=True, timeout=180)
 
-    def list_all_records(self) -> list[dict[str, Any]]:
-        """Return portable-aggregate summaries for reachable workbenches."""
-        results = []
+    def list_all_manifests(self) -> list[tuple[WorkbenchHandle, dict[str, Any]]]:
+        """Every reachable workbench, paired with its REE document as it arrived.
+
+        The document stays unparsed on purpose. This package relays REE state
+        and never reads it (the "Agent and supervisor speak only protocol"
+        contract), so projecting a summary here meant hand-navigating the domain
+        shape by string key — ``ree["subject"]["definition"]["name"]`` — in the
+        one package forbidden from knowing that shape. The control plane, which
+        ships with core, parses it instead.
+
+        Unreachable or unreadable workbenches are skipped rather than raised:
+        this backs a listing, and one sick bench must not empty it.
+        """
+        manifests: list[tuple[WorkbenchHandle, dict[str, Any]]] = []
         for entry in self._registry.list_all():
             handle = WorkbenchHandle.from_entry(entry)
             if not self._agent.is_running(handle.agent_id, handle.location):
                 continue
             with suppress(Exception):
-                ree = self.get_ree_manifest(handle)
-                definition = ree.get("subject", {}).get("definition", {})
-                results.append(
-                    {
-                        "ree_id": handle.ree_id,
-                        "name": definition.get("name", ""),
-                        "status": "sealed" if ree.get("seal") else "draft",
-                        "workbench_image": self.image_for(handle),
-                    }
-                )
-        results.sort(key=lambda item: (item.get("name", ""), item.get("ree_id", "")), reverse=True)
-        return results
+                manifests.append((handle, self.get_ree_manifest(handle)))
+        return manifests
 
     def copy_to_workbench(self, handle: WorkbenchHandle, host_path: str, container_path: str) -> None:
         """Copy a control-plane-local file into the workbench container.

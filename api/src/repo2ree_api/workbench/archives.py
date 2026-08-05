@@ -7,13 +7,22 @@ from collections.abc import Iterator
 from typing import IO
 
 from repo2ree_api.deps import workbench_manager
+from repo2ree_core.domain.ree.model import Ree
 from repo2ree_supervisor import WorkbenchHandle
 
 
 def archive_download_filename(handle: WorkbenchHandle) -> str:
-    metadata = workbench_manager.get_ree_manifest(handle)
-    raw_name = str(metadata.get("name") or "").strip()
-    safe_stem = re.sub(r"[^A-Za-z0-9._-]+", "_", raw_name).strip("._-")
+    """Name the downloaded bundle after the REE it holds.
+
+    Parsed rather than indexed. This read was ``metadata.get("name")`` against
+    the raw document, which has no top-level ``name`` — the REE's name lives at
+    ``subject.definition.name``. ``.get`` answered ``None`` instead of raising,
+    so every bundle downloaded as ``ree.zip`` and the fallback below hid it.
+    Three refactors renamed the *source* of this dict without anyone noticing
+    the *path* into it had stopped meaning anything.
+    """
+    ree = Ree.model_validate(workbench_manager.get_ree_manifest(handle))
+    safe_stem = re.sub(r"[^A-Za-z0-9._-]+", "_", ree.subject.definition.name.strip()).strip("._-")
     return f"{safe_stem or 'ree'}.zip"
 
 

@@ -1,20 +1,25 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from typing import Any
+from typing import TypeVar
 
 from fastapi import HTTPException
 
 _KEYSET_SEP = "~"
 
+# The paginated item. Generic because keyset pagination is about the *key*, not
+# the payload: a route that projects a typed summary before paginating should
+# not have to widen it back to a dict to get a page out.
+ItemT = TypeVar("ItemT")
+
 
 def keyset_paginate(
-    items: Sequence[dict[str, Any]],
+    items: Sequence[ItemT],
     *,
     cursor: str | None,
     limit: int | None,
-    key: Callable[[dict[str, Any]], tuple[str, str]],
-) -> tuple[list[dict[str, Any]], str | None, bool]:
+    key: Callable[[ItemT], tuple[str, str]],
+) -> tuple[list[ItemT], str | None, bool]:
     """Paginate a sequence sorted descending by ``key`` with a keyset cursor.
 
     ``key`` returns a (sort value, unique tiebreak) string pair; the cursor
