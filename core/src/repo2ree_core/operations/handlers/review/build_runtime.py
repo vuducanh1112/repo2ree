@@ -112,8 +112,8 @@ def handle_review_build_runtime(
         return halted
 
     store = ReeDirectory(ree_layout)
-    runtime_definition = ree.subject.definition.runtime
-    if runtime_definition is None:
+    runtime_definition = ree.subject.definition.build_runtime
+    if runtime_definition is None or runtime_definition.runtime_path is None:
         return stop("failed", "The author baseline declares no runtime artifact to certify")
     runtime_path = str(runtime_definition.runtime_path)
 

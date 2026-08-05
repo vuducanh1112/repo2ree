@@ -6,9 +6,9 @@ from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.analysis.sbom.scan import SBOM_FORMAT, is_runtime_archive, scan_runtime_archive
 from repo2ree_core.digests import digest_file
-from repo2ree_core.domain.primitives import ArtifactPath
+from repo2ree_core.domain.primitives import ArtifactPath, WorkspacePath
 from repo2ree_core.domain.ree.audit import audit
-from repo2ree_core.domain.ree.model import Ree, RuntimeDefinition
+from repo2ree_core.domain.ree.model import Ree
 from repo2ree_core.domain.ree.receipt import GenerateSbomReceipt, receipt_envelope
 from repo2ree_core.domain.ree.transitions import ReePreconditionError, commit_receipt, revision_of
 from repo2ree_core.execution.process import CancelCheck
@@ -46,7 +46,7 @@ def handle_generate_sbom(
 
     try:
         ree = load_ree(layout, store)
-        runtime = _check_preconditions(ree, args, layout)
+        runtime_path = _check_preconditions(ree, args, layout)
     except ReePreconditionError as exc:
         log("system", "error", f"cannot generate SBOM: {exc}")
         return ActionResult.failed("precondition", f"cannot generate SBOM: {exc}")
@@ -57,8 +57,7 @@ def handle_generate_sbom(
         return failed_from_exception(exc, f"failed to load SBOM inputs: {exc}")
 
     before_revision = revision_of(ree)
-    runtime_path = str(runtime.runtime_path)
-    runtime_abs = layout.workspace / runtime_path
+    runtime_abs = layout.workspace / str(runtime_path)
     runtime_digest = digest_file(runtime_abs)
     timer = OperationTimer.start()
     output_path = layout.sbom
@@ -99,7 +98,7 @@ def handle_generate_sbom(
     timing = timer.finish()
     receipt = GenerateSbomReceipt(
         **receipt_envelope(run_id, timing),
-        runtime_path=runtime.runtime_path,
+        runtime_path=runtime_path,
         runtime_digest=runtime_digest,
         sbom_path=ArtifactPath(SBOM_ARTIFACT_PATH),
         sbom_digest=sbom_digest,
@@ -142,11 +141,12 @@ def _check_preconditions(
     ree: Ree,
     args: GenerateSbomArgs,
     layout: ReeLayout,
-) -> RuntimeDefinition:
+) -> WorkspacePath:
     if ree.seal is not None:
         raise ReePreconditionError("a sealed REE cannot generate an SBOM")
-    runtime = ree.subject.definition.runtime
-    if runtime is None:
+    runtime = ree.subject.definition.build_runtime
+    runtime_path = runtime.runtime_path if runtime else None
+    if runtime is None or runtime_path is None:
         raise ReePreconditionError("no runtime artifact path is declared")
     requested_path = args.produced_runtime_path.strip()
     if requested_path != str(runtime.runtime_path):
@@ -165,4 +165,4 @@ def _check_preconditions(
         raise ReePreconditionError(f"runtime artifact is missing: {runtime.runtime_path}")
     if digest_file(runtime_abs) != build.produced_runtime_digest:
         raise ReePreconditionError("runtime artifact does not match the selected build receipt")
-    return runtime
+    return runtime_path

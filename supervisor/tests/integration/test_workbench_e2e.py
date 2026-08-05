@@ -309,11 +309,16 @@ def test_workbench_lifecycle_e2e(workbench: tuple[WorkbenchManager, WorkbenchHan
 
     # --- declare where the build leaves its runtime --------------------
     # Nothing infers this: the author says which artifact is the runtime, and
-    # the build receipt binds that path to the digest it found there.
+    # the build receipt binds that path to the digest it found there. It rides
+    # on the build recipe rather than beside it — a script and what it produces
+    # are one declaration, so the patch carries only the destination and the
+    # handler rehydrates the script's identity from the authored file.
     result = manager.dispatch_action(
         handle,
         PatchReeDefinitionCommand(
-            args=PatchReeDefinitionArgs(patch={"runtime": {"runtime_path": _RUNTIME_ARTIFACT}}, expected_version="")
+            args=PatchReeDefinitionArgs(
+                patch={"build_runtime": {"runtime_path": _RUNTIME_ARTIFACT}}, expected_version=""
+            )
         ),
         "patch-definition",
         log,

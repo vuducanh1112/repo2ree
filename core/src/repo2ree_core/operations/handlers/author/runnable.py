@@ -179,8 +179,8 @@ def _check_preconditions(
             label="verification script",
         )
 
-    runtime = ree.subject.definition.runtime
-    if runtime is None:
+    runtime = ree.subject.definition.build_runtime
+    if runtime is None or runtime.runtime_path is None:
         return None, None
     build = ree.subject.receipts.build
     if build is None:

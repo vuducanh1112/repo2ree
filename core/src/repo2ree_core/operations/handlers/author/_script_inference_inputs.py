@@ -87,10 +87,21 @@ class LayoutArtifactAccessor:
         return digest
 
 
+def _declared_runtime_path(definition: ReeDefinition | None) -> str | None:
+    """Where the author says the build leaves its runtime, if they have said yet.
+
+    Absent on a fresh REE: the build script is seeded before there is a source,
+    so inference runs against a recipe whose destination is still unchosen and
+    warns about exactly that (``runtime_declaration_missing``).
+    """
+    build = definition.build_runtime if definition else None
+    return str(build.runtime_path) if build and build.runtime_path else None
+
+
 def build_runtime_inputs(layout: ReeLayout, definition: ReeDefinition | None) -> RuntimeInputs:
     """Assemble the authored-state inputs for one inference request."""
     return RuntimeInputs(
-        declared_runtime_path=(str(definition.runtime.runtime_path) if definition and definition.runtime else None),
+        declared_runtime_path=_declared_runtime_path(definition),
         experiments=list(definition.experiments) if definition else [],
         accessor=LayoutArtifactAccessor(layout),
     )

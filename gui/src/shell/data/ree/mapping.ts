@@ -19,7 +19,7 @@ export function mapReeDetailToReeSlices(ree: ReeDocument) {
       origin_url: source?.origin_url,
       source_type: source?.source_type,
       revision: sourceReceipt?.resolved_revision ?? source?.requested_ref,
-      runtime: definition?.runtime?.runtime_path,
+      runtime: definition?.build_runtime?.runtime_path,
       activation: activation
         ? {
             run_script: activation.run_script_path,

@@ -6,13 +6,12 @@ import pytest
 
 from repo2ree_core.analysis.sbom.scan import ScanOutcome
 from repo2ree_core.digests import digest_bytes
-from repo2ree_core.domain.primitives import Digest, ReePath, RunId, WorkspacePath, parse_utc_instant
+from repo2ree_core.domain.primitives import ReePath, RunId, WorkspacePath, parse_utc_instant
 from repo2ree_core.domain.ree.model import (
     BuildRuntimeDefinition,
     Ree,
     ReeDefinition,
     ReeSubject,
-    RuntimeDefinition,
 )
 from repo2ree_core.domain.ree.receipt import (
     AcquireSourceReceipt,
@@ -50,16 +49,14 @@ def _ree(
     *,
     with_build: bool = True,
     runtime_path: str = "runtime.tar",
-    expected_runtime_digest: Digest | None = None,
 ) -> Ree:
     definition = ReeDefinition(
         build_runtime=BuildRuntimeDefinition(
             build_runtime_script_digest=digest_bytes(_SCRIPT),
             build_runtime_script_size=len(_SCRIPT),
-        ),
-        runtime=RuntimeDefinition(
-            runtime_path=WorkspacePath(runtime_path),
-            expected_runtime_digest=expected_runtime_digest,
+            runtime_path=WorkspacePath(
+                runtime_path,
+            ),
         ),
     )
     ree = Ree(subject=ReeSubject(definition=definition))
@@ -205,13 +202,6 @@ def test_canceled_scan_preserves_existing_document_and_commits_no_receipt(
         (_ree(), "other.tar", _RUNTIME, "does not match the REE definition", "validation"),
         (_ree(runtime_path="runtime.img"), "runtime.img", _RUNTIME, "tarballs only", "validation"),
         (_ree(), "runtime.tar", b"changed", "does not match the selected build", "precondition"),
-        (
-            _ree(expected_runtime_digest=digest_bytes(b"expected")),
-            "runtime.tar",
-            _RUNTIME,
-            "does not match the expected digest",
-            "precondition",
-        ),
         (record_seal(_ree(), sealed_at=_NOW), "runtime.tar", _RUNTIME, "sealed REE", "precondition"),
     ],
 )

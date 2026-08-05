@@ -11,7 +11,6 @@ from repo2ree_core.domain.ree.model import (
     Ree,
     ReeDefinition,
     ReeSubject,
-    RuntimeDefinition,
 )
 from repo2ree_core.domain.ree.receipt import AcquireSourceReceipt
 from repo2ree_core.domain.ree.transitions import commit_receipt, record_seal
@@ -46,8 +45,8 @@ def _ree(*, with_source: bool = True, with_runtime: bool = True) -> Ree:
         build_runtime=BuildRuntimeDefinition(
             build_runtime_script_digest=digest_bytes(_SCRIPT),
             build_runtime_script_size=len(_SCRIPT),
+            runtime_path=WorkspacePath("runtime.tar") if with_runtime else None,
         ),
-        runtime=RuntimeDefinition(runtime_path=WorkspacePath("runtime.tar")) if with_runtime else None,
     )
     ree = Ree(subject=ReeSubject(definition=definition))
     return commit_receipt(ree, _source_receipt()) if with_source else ree

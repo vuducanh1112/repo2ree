@@ -6831,6 +6831,17 @@
             "type": "integer",
             "minimum": 0.0,
             "title": "Build Runtime Script Size"
+          },
+          "runtime_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runtime Path"
           }
         },
         "additionalProperties": false,
@@ -6839,7 +6850,8 @@
           "build_runtime_script_digest",
           "build_runtime_script_size"
         ],
-        "title": "BuildRuntimeDefinition"
+        "title": "BuildRuntimeDefinition",
+        "description": "The build recipe: the script that runs, and what running it must leave.\n\n``runtime_path`` is where the build is expected to write its runtime, and it\nis optional only because a fresh REE is seeded with this script before it\nhas a source \u2014 there is nothing yet to say where the artifact will land.\nDeclaring it is an authoring act, and the build step refuses to run until it\nhappens; a build with nowhere to look produces no evidence anyone can check."
       },
       "BuildRuntimeReceipt": {
         "properties": {
@@ -9757,16 +9769,6 @@
               }
             ]
           },
-          "runtime": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/RuntimeDefinition"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "test_activation": {
             "anyOf": [
               {
@@ -9824,16 +9826,6 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/BuildRuntimeDefinition"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "runtime": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/RuntimeDefinition"
               },
               {
                 "type": "null"
@@ -11770,31 +11762,6 @@
           "path"
         ],
         "title": "RuntimeDeclarationBinding"
-      },
-      "RuntimeDefinition": {
-        "properties": {
-          "runtime_path": {
-            "type": "string",
-            "title": "Runtime Path"
-          },
-          "expected_runtime_digest": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Expected Runtime Digest"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "runtime_path"
-        ],
-        "title": "RuntimeDefinition"
       },
       "RuntimePlanBinding": {
         "properties": {

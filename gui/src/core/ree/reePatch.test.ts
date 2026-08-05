@@ -83,7 +83,7 @@ describe("toReePatchFromSlices", () => {
         source_type: "git",
         requested_ref: null,
       },
-      runtime: { runtime_path: "runtime.tar.gz" },
+      build_runtime: { runtime_path: "runtime.tar.gz" },
       experiments: [
         {
           name: "benchmark",
@@ -112,7 +112,7 @@ describe("toReePatchFromSlices", () => {
     ).toMatchObject({
       name: "",
       source: null,
-      runtime: null,
+      build_runtime: null,
     });
   });
 });

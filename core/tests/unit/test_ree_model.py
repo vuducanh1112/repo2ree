@@ -16,7 +16,6 @@ from repo2ree_core.domain.ree.model import (
     Ree,
     ReeDefinition,
     ReeSubject,
-    RuntimeDefinition,
     SourceDefinition,
 )
 from repo2ree_core.domain.ree.receipt import AcquireSourceReceipt, BuildRuntimeReceipt, WorkspaceDrift
@@ -88,11 +87,7 @@ def test_experiment_slug_collisions_are_rejected() -> None:
 
 
 def test_committed_receipt_is_audited_and_contributes_to_subject_identity() -> None:
-    ree = Ree(
-        subject=ReeSubject(
-            definition=ReeDefinition(runtime=RuntimeDefinition(runtime_path=WorkspacePath("runtime.tar")))
-        )
-    )
+    ree = Ree(subject=ReeSubject(definition=ReeDefinition()))
     before = subject_digest(ree.subject)
     receipt = BuildRuntimeReceipt(
         run_id=RunId("run-1"),

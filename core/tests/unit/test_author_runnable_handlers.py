@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.digests import Digest, digest_bytes, digest_output_paths
+from repo2ree_core.digests import digest_bytes, digest_output_paths
 from repo2ree_core.domain.primitives import ReePath, RunId, WorkspacePath, parse_utc_instant
 from repo2ree_core.domain.ree.model import (
     BuildRuntimeDefinition,
@@ -12,7 +12,6 @@ from repo2ree_core.domain.ree.model import (
     Ree,
     ReeDefinition,
     ReeSubject,
-    RuntimeDefinition,
 )
 from repo2ree_core.domain.ree.model import (
     TestActivationDefinition as ActivationDefinition,
@@ -103,21 +102,13 @@ def _ree(
     build: bool = True,
     activation: bool = True,
     experiments: bool = True,
-    expected_runtime_digest: Digest | None = None,
 ) -> Ree:
     definition = ReeDefinition(
         build_runtime=(
             BuildRuntimeDefinition(
                 build_runtime_script_digest=digest_bytes(_BUILD_SCRIPT),
                 build_runtime_script_size=len(_BUILD_SCRIPT),
-            )
-            if runtime
-            else None
-        ),
-        runtime=(
-            RuntimeDefinition(
                 runtime_path=WorkspacePath("runtime.tar"),
-                expected_runtime_digest=expected_runtime_digest,
             )
             if runtime
             else None
@@ -269,10 +260,6 @@ def test_unsuccessful_attempt_commits_no_receipt(
         (_ree(build=False), "runtime has not been built"),
         (_ree(activation=False), "no activation test is defined"),
         (record_seal(_ree(), sealed_at=_NOW), "sealed REE"),
-        (
-            _ree(expected_runtime_digest=digest_bytes(b"other")),
-            "does not match the expected digest",
-        ),
     ],
 )
 def test_activation_preconditions_reject_invalid_evidence_before_execution(

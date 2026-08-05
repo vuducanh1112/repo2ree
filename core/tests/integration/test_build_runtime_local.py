@@ -13,7 +13,6 @@ from repo2ree_core.domain.ree.model import (
     Ree,
     ReeDefinition,
     ReeSubject,
-    RuntimeDefinition,
 )
 from repo2ree_core.domain.ree.receipt import AcquireSourceReceipt
 from repo2ree_core.domain.ree.transitions import commit_receipt
@@ -41,8 +40,8 @@ def test_build_script_runs_and_commits_the_produced_runtime(
                 build_runtime=BuildRuntimeDefinition(
                     build_runtime_script_digest=digest_bytes(script),
                     build_runtime_script_size=len(script),
+                    runtime_path=WorkspacePath("runtime.tar"),
                 ),
-                runtime=RuntimeDefinition(runtime_path=WorkspacePath("runtime.tar")),
             )
         )
     )

@@ -37,7 +37,7 @@ class SealOutputs(BaseModel):
 def _reproducer(ree: Ree) -> list[tuple[str, bytes]]:
     definition = ree.subject.definition
     source = definition.source
-    runtime = definition.runtime
+    runtime = definition.build_runtime
     activation = definition.test_activation
     return reproducer_entries(
         activation_script=str(activation.run_script_path) if activation else "",
@@ -46,8 +46,10 @@ def _reproducer(ree: Ree) -> list[tuple[str, bytes]]:
             (experiment.name, str(experiment.run_script_path), str(experiment.verify_script_path or ""))
             for experiment in definition.experiments
         ],
-        runtime_workspace_path=str(runtime.runtime_path) if runtime else "",
-        runtime_artifact_basename=PurePosixPath(str(runtime.runtime_path)).name if runtime else "",
+        runtime_workspace_path=str(runtime.runtime_path) if runtime and runtime.runtime_path else "",
+        runtime_artifact_basename=(
+            PurePosixPath(str(runtime.runtime_path)).name if runtime and runtime.runtime_path else ""
+        ),
         origin_url=source.origin_url or "" if source else "",
         source_type=source.source_type if source else "",
         revision=source.requested_ref or "" if source else "",
@@ -73,8 +75,8 @@ def _collect_entries(
     entries.extend(_tree_entries(layout.artifacts, BUNDLE_ARTIFACTS_PREFIX))
     if source_included and layout.snapshot_archive.is_file():
         entries.append((BUNDLE_SNAPSHOT_ENTRY_PATH, layout.snapshot_archive.read_bytes()))
-    runtime = ree.subject.definition.runtime
-    if runtime_included and runtime is not None:
+    runtime = ree.subject.definition.build_runtime
+    if runtime_included and runtime is not None and runtime.runtime_path is not None:
         runtime_file = layout.workspace / str(runtime.runtime_path)
         target = f"{BUNDLE_ARTIFACTS_PREFIX}{PurePosixPath(str(runtime.runtime_path)).name}"
         if runtime_file.is_file() and all(path != target for path, _ in entries):

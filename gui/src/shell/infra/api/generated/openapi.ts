@@ -1139,7 +1139,16 @@ export interface components {
             /** Advisory */
             advisory?: components["schemas"]["PackageDeltaRecord"][];
         };
-        /** BuildRuntimeDefinition */
+        /**
+         * BuildRuntimeDefinition
+         * @description The build recipe: the script that runs, and what running it must leave.
+         *
+         *     ``runtime_path`` is where the build is expected to write its runtime, and it
+         *     is optional only because a fresh REE is seeded with this script before it
+         *     has a source — there is nothing yet to say where the artifact will land.
+         *     Declaring it is an authoring act, and the build step refuses to run until it
+         *     happens; a build with nowhere to look produces no evidence anyone can check.
+         */
         BuildRuntimeDefinition: {
             /**
              * Build Runtime Script Path
@@ -1150,6 +1159,8 @@ export interface components {
             build_runtime_script_digest: string;
             /** Build Runtime Script Size */
             build_runtime_script_size: number;
+            /** Runtime Path */
+            runtime_path?: string | null;
         };
         /** BuildRuntimeReceipt */
         BuildRuntimeReceipt: {
@@ -2451,7 +2462,6 @@ export interface components {
             catalog?: components["schemas"]["ReeCatalogMetadata"];
             source?: components["schemas"]["SourceDefinition"] | null;
             build_runtime?: components["schemas"]["BuildRuntimeDefinition"] | null;
-            runtime?: components["schemas"]["RuntimeDefinition"] | null;
             test_activation?: components["schemas"]["TestActivationDefinition"] | null;
             hardware?: components["schemas"]["HardwareDefinition"] | null;
             /**
@@ -2470,7 +2480,6 @@ export interface components {
             catalog?: components["schemas"]["ReeCatalogMetadata"];
             source?: components["schemas"]["SourceDefinition"] | null;
             build_runtime?: components["schemas"]["BuildRuntimeDefinition"] | null;
-            runtime?: components["schemas"]["RuntimeDefinition"] | null;
             test_activation?: components["schemas"]["TestActivationDefinition"] | null;
             hardware?: components["schemas"]["HardwareDefinition"] | null;
             /**
@@ -3182,13 +3191,6 @@ export interface components {
             path: string;
             /** Digest */
             digest?: string | null;
-        };
-        /** RuntimeDefinition */
-        RuntimeDefinition: {
-            /** Runtime Path */
-            runtime_path: string;
-            /** Expected Runtime Digest */
-            expected_runtime_digest?: string | null;
         };
         /** RuntimePlanBinding */
         RuntimePlanBinding: {

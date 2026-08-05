@@ -15,7 +15,6 @@ from repo2ree_core.domain.ree.model import (
     Ree,
     ReeDefinition,
     ReeSubject,
-    RuntimeDefinition,
     SourceDefinition,
 )
 from repo2ree_core.domain.ree.receipt import AcquireSourceReceipt, BuildRuntimeReceipt, WorkspaceDrift
@@ -44,8 +43,8 @@ def _ree(*, build_script_digest: Digest = _SCRIPT_DIGEST) -> Ree:
                 build_runtime=BuildRuntimeDefinition(
                     build_runtime_script_digest=build_script_digest,
                     build_runtime_script_size=len(_SCRIPT),
+                    runtime_path=WorkspacePath("runtime.tar"),
                 ),
-                runtime=RuntimeDefinition(runtime_path=WorkspacePath("runtime.tar")),
             )
         )
     )
@@ -117,6 +116,7 @@ def test_sealing_is_refused_while_a_receipt_is_stale(tmp_path: Path) -> None:
                 "build_runtime": BuildRuntimeDefinition(
                     build_runtime_script_digest=_OTHER_DIGEST,
                     build_runtime_script_size=1,
+                    runtime_path=WorkspacePath("runtime.tar"),
                 )
             }
         ),

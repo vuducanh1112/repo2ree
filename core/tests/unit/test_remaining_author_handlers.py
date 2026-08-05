@@ -13,7 +13,6 @@ from repo2ree_core.domain.ree.model import (
     Ree,
     ReeDefinition,
     ReeSubject,
-    RuntimeDefinition,
     SourceDefinition,
 )
 from repo2ree_core.domain.ree.model import (
@@ -128,7 +127,7 @@ def test_definition_patch_hydrates_experiment_script_identity(
     result = handle_patch_ree_definition(
         PatchReeDefinitionArgs(
             patch={
-                "runtime": {"runtime_path": "runtime.tar"},
+                "build_runtime": {"runtime_path": "runtime.tar"},
                 "experiments": [{"name": "analysis", "output_paths": ["result.txt"]}],
             },
             expected_version=str(revision_of(store.read_ree())),
@@ -139,7 +138,8 @@ def test_definition_patch_hydrates_experiment_script_identity(
 
     definition = store.read_ree().subject.definition
     assert result.status == "succeeded"
-    assert definition.runtime == RuntimeDefinition(runtime_path=WorkspacePath("runtime.tar"))
+    assert definition.build_runtime is not None
+    assert definition.build_runtime.runtime_path == WorkspacePath("runtime.tar")
     experiment = definition.experiments[0]
     assert experiment.run_script_path == script_path
     assert experiment.run_script_digest == digest_bytes(script)
@@ -241,8 +241,8 @@ def _cross_check_ree(
         build_runtime=BuildRuntimeDefinition(
             build_runtime_script_digest=digest_bytes(_BUILD),
             build_runtime_script_size=len(_BUILD),
+            runtime_path=WorkspacePath("runtime.tar"),
         ),
-        runtime=RuntimeDefinition(runtime_path=WorkspacePath("runtime.tar")),
     )
     ree = Ree(subject=ReeSubject(definition=definition))
     ree = commit_receipt(

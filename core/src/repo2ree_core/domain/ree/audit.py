@@ -204,30 +204,38 @@ def _audit_hardware_step(subject: _Subject) -> StepAudit:
 
 
 def _audit_runtime_step(subject: _Subject) -> StepAudit:
-    definition, receipt = subject.definition, subject.receipts.build
+    build, receipt = subject.definition.build_runtime, subject.receipts.build
     reasons: list[str] = []
     if receipt:
         if subject.receipts.source and receipt.snapshot_digest != subject.receipts.source.snapshot_digest:
             reasons.append("source snapshot changed")
-        if definition.build_runtime is None:
+        if build is None:
             reasons.append("runtime build definition was removed")
-        elif receipt.build_runtime_script_digest != definition.build_runtime.build_runtime_script_digest:
-            reasons.append("runtime build script changed")
-        if definition.runtime is None:
-            reasons.append("runtime definition was removed")
-        elif receipt.runtime_path != definition.runtime.runtime_path:
-            reasons.append("runtime path changed")
-        elif (
-            definition.runtime.expected_runtime_digest is not None
-            and receipt.produced_runtime_digest != definition.runtime.expected_runtime_digest
-        ):
-            reasons.append("produced runtime does not match the expected digest")
+        else:
+            if receipt.build_runtime_script_digest != build.build_runtime_script_digest:
+                reasons.append("runtime build script changed")
+            if receipt.runtime_path != build.runtime_path:
+                reasons.append("runtime path changed")
     return _step(
         receipt.run_id if receipt else None,
         reasons or (() if receipt else ("runtime has not been built",)),
-        applicable=definition.runtime is not None and definition.build_runtime is not None,
+        applicable=_runtime_is_declared(subject),
         payload=subject.payload(receipt.produced_runtime_digest if receipt else None),
     )
+
+
+def _runtime_is_declared(subject: _Subject) -> bool:
+    """Whether this REE says a runtime should exist and how to produce one.
+
+    One question, asked in one place, because more than one step turns on it —
+    the build itself and the SBOM scanned off what it produced. It used to be
+    spelled ``runtime is not None and build_runtime is not None`` at each site,
+    a conjunction no other step needed, because the two halves of one recipe
+    were two optional fields. They are one now, so the remaining check is what
+    it always meant: a recipe that has been told where to leave its artifact.
+    """
+    build = subject.definition.build_runtime
+    return build is not None and build.runtime_path is not None
 
 
 def _audit_sbom_step(subject: _Subject) -> StepAudit:
@@ -241,7 +249,7 @@ def _audit_sbom_step(subject: _Subject) -> StepAudit:
         # An SBOM describes a built runtime, so it is applicable on exactly the
         # terms the runtime step is: a declared runtime with no recipe to build
         # it is nothing for a scanner to read.
-        applicable=subject.definition.runtime is not None and subject.definition.build_runtime is not None,
+        applicable=_runtime_is_declared(subject),
         payload=subject.payload(receipt.sbom_digest if receipt else None),
     )
 
@@ -267,7 +275,7 @@ def _audit_sbom_cross_check_step(subject: _Subject) -> StepAudit:
         reasons or (() if receipt else ("SBOM has not been cross-checked",)),
         # It needs both sides: a declared-dependency report (which needs a
         # source) and a runtime SBOM to reconcile against.
-        applicable=subject.definition.source is not None and subject.definition.runtime is not None,
+        applicable=subject.definition.source is not None and _runtime_is_declared(subject),
     )
 
 

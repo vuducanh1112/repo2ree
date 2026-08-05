@@ -16,7 +16,6 @@ from .model import (
     ReeReceipts,
     ReeSeal,
     ReeSubject,
-    RuntimeDefinition,
     SourceDefinition,
     TestActivationDefinition,
 )
@@ -36,7 +35,6 @@ __all__ = [
     "ReeReceipts",
     "ReeSeal",
     "ReeSubject",
-    "RuntimeDefinition",
     "SourceDefinition",
     "SourceType",
     "StepAudit",

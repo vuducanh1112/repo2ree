@@ -5,7 +5,8 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.digests import digest_file_if_exists
-from repo2ree_core.domain.ree.model import BuildRuntimeDefinition, Ree, RuntimeDefinition
+from repo2ree_core.domain.primitives import WorkspacePath
+from repo2ree_core.domain.ree.model import BuildRuntimeDefinition, Ree
 from repo2ree_core.domain.ree.receipt import BuildRuntimeReceipt, receipt_envelope
 from repo2ree_core.domain.ree.transitions import ReePreconditionError, commit_receipt, revision_of
 from repo2ree_core.execution.process import CancelCheck, run_workspace_script
@@ -40,7 +41,7 @@ def handle_build_runtime(
 
     try:
         ree = load_ree(layout, store)
-        build, runtime = _check_preconditions(ree, layout)
+        build, runtime_path = _check_preconditions(ree, layout)
     except ReePreconditionError as exc:
         log("system", "error", f"cannot build runtime: {exc}")
         return ActionResult.failed("precondition", f"cannot build runtime: {exc}")
@@ -48,7 +49,7 @@ def handle_build_runtime(
         return failed_from_exception(exc, f"failed to load build inputs: {exc}")
 
     before_revision = revision_of(ree)
-    excluded_paths = {str(runtime.runtime_path)}
+    excluded_paths = {str(runtime_path)}
     for experiment in ree.subject.definition.experiments:
         excluded_paths.update(str(path) for path in experiment.output_paths)
     workspace_drift = check_workspace_drift(layout, excluded_paths=excluded_paths)
@@ -78,9 +79,9 @@ def handle_build_runtime(
             },
         )
 
-    produced_runtime_digest = digest_file_if_exists(layout.workspace / str(runtime.runtime_path))
+    produced_runtime_digest = digest_file_if_exists(layout.workspace / str(runtime_path))
     if produced_runtime_digest is None:
-        message = f"build script succeeded but did not produce {runtime.runtime_path}"
+        message = f"build script succeeded but did not produce {runtime_path}"
         log("system", "error", message)
         return ActionResult.failed("execution", message)
 
@@ -94,7 +95,7 @@ def handle_build_runtime(
         build_runtime_script_path=build.build_runtime_script_path,
         build_runtime_script_digest=build.build_runtime_script_digest,
         workspace_drift=workspace_drift,
-        runtime_path=runtime.runtime_path,
+        runtime_path=runtime_path,
         produced_runtime_digest=produced_runtime_digest,
     )
     try:
@@ -131,7 +132,7 @@ def handle_build_runtime(
 def _check_preconditions(
     ree: Ree,
     layout: ReeLayout,
-) -> tuple[BuildRuntimeDefinition, RuntimeDefinition]:
+) -> tuple[BuildRuntimeDefinition, WorkspacePath]:
     if ree.seal is not None:
         raise ReePreconditionError("a sealed REE cannot build a runtime")
     if ree.subject.receipts.source is None:
@@ -139,8 +140,8 @@ def _check_preconditions(
     build = ree.subject.definition.build_runtime
     if build is None:
         raise ReePreconditionError("no runtime build definition is present")
-    runtime = ree.subject.definition.runtime
-    if runtime is None:
+    runtime_path = build.runtime_path
+    if runtime_path is None:
         raise ReePreconditionError("no runtime artifact path is declared")
     script = layout.workspace / str(build.build_runtime_script_path)
     if not script.is_file():
@@ -148,4 +149,4 @@ def _check_preconditions(
     actual_digest = digest_file_if_exists(script)
     if actual_digest != build.build_runtime_script_digest or script.stat().st_size != build.build_runtime_script_size:
         raise ReePreconditionError("the runtime build script does not match its definition")
-    return build, runtime
+    return build, runtime_path

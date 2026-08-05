@@ -14,8 +14,9 @@ from repo2ree_core.author_recipes.inference import (
     infer_scripts,
 )
 from repo2ree_core.author_recipes.inference.models import LogicalRootObservation
+from repo2ree_core.digests import digest_bytes
 from repo2ree_core.domain.primitives import WorkspacePath
-from repo2ree_core.domain.ree.model import ReeDefinition, RuntimeDefinition
+from repo2ree_core.domain.ree.model import BuildRuntimeDefinition, ReeDefinition
 
 
 def _tree(root: Path, files: dict[str, str]) -> Path:
@@ -32,7 +33,15 @@ def _build(root: Path, **intent_kwargs: object) -> TargetInferenceResult:
     assert not intent_kwargs
     definition = ReeDefinition(
         name=name,
-        runtime=RuntimeDefinition(runtime_path=WorkspacePath(str(runtime))) if runtime else None,
+        build_runtime=(
+            BuildRuntimeDefinition(
+                build_runtime_script_digest=digest_bytes(b"build"),
+                build_runtime_script_size=5,
+                runtime_path=WorkspacePath(str(runtime)),
+            )
+            if runtime
+            else None
+        ),
     )
     report = infer_scripts(root, [ScriptTargetSelector(kind="build")], definition=definition)
     return report.results[0]

@@ -11,7 +11,6 @@ from repo2ree_core.domain.ree.model import (
     Ree,
     ReeDefinition,
     ReeSubject,
-    RuntimeDefinition,
     SourceDefinition,
 )
 from repo2ree_core.domain.ree.receipt import (
@@ -97,8 +96,8 @@ def _built_ree(*, build_script_digest: Digest = _DIGEST) -> Ree:
                 build_runtime=BuildRuntimeDefinition(
                     build_runtime_script_digest=build_script_digest,
                     build_runtime_script_size=1,
+                    runtime_path=_RUNTIME_PATH,
                 ),
-                runtime=RuntimeDefinition(runtime_path=_RUNTIME_PATH),
             )
         )
     )
@@ -122,6 +121,7 @@ def test_editing_the_build_script_leaves_the_build_receipt_stale_and_says_why() 
                 "build_runtime": BuildRuntimeDefinition(
                     build_runtime_script_digest=_OTHER_DIGEST,
                     build_runtime_script_size=2,
+                    runtime_path=WorkspacePath("runtime.tar"),
                 )
             }
         ),
@@ -165,6 +165,7 @@ def test_stale_steps_names_every_stale_step_including_experiments() -> None:
                 "build_runtime": BuildRuntimeDefinition(
                     build_runtime_script_digest=_OTHER_DIGEST,
                     build_runtime_script_size=2,
+                    runtime_path=WorkspacePath("runtime.tar"),
                 ),
                 "experiments": (_experiment(run_script_digest=_OTHER_DIGEST),),
             }

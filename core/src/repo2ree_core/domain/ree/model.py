@@ -70,9 +70,19 @@ class SourceDefinition(_DomainModel):
 
 
 class BuildRuntimeDefinition(_DomainModel):
+    """The build recipe: the script that runs, and what running it must leave.
+
+    ``runtime_path`` is where the build is expected to write its runtime, and it
+    is optional only because a fresh REE is seeded with this script before it
+    has a source — there is nothing yet to say where the artifact will land.
+    Declaring it is an authoring act, and the build step refuses to run until it
+    happens; a build with nowhere to look produces no evidence anyone can check.
+    """
+
     build_runtime_script_path: ReePath = ReePath(RESERVED_BUILD_SCRIPT)
     build_runtime_script_digest: Digest
     build_runtime_script_size: int = Field(ge=0)
+    runtime_path: WorkspacePath | None = None
 
     @field_validator("build_runtime_script_path")
     @classmethod
@@ -80,11 +90,6 @@ class BuildRuntimeDefinition(_DomainModel):
         if value != RESERVED_BUILD_SCRIPT:
             raise ValueError(f"build runtime script path must be {RESERVED_BUILD_SCRIPT!r}")
         return value
-
-
-class RuntimeDefinition(_DomainModel):
-    runtime_path: WorkspacePath
-    expected_runtime_digest: Digest | None = None
 
 
 class TestActivationDefinition(_DomainModel):
@@ -140,7 +145,6 @@ class ReeDefinition(_DomainModel):
     catalog: ReeCatalogMetadata = Field(default_factory=ReeCatalogMetadata)
     source: SourceDefinition | None = None
     build_runtime: BuildRuntimeDefinition | None = None
-    runtime: RuntimeDefinition | None = None
     test_activation: TestActivationDefinition | None = None
     hardware: HardwareDefinition | None = None
     experiments: tuple[ExperimentDefinition, ...] = ()
@@ -265,7 +269,6 @@ __all__ = [
     "ReeSeal",
     "ReeStatus",
     "ReeSubject",
-    "RuntimeDefinition",
     "Signature",
     "SourceDefinition",
     "TestActivationDefinition",

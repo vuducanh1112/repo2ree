@@ -9,7 +9,7 @@ export interface ReeIntentPatch extends Record<string, unknown> {
   name: string;
   catalog: Record<string, unknown>;
   source: Record<string, unknown> | null;
-  runtime: Record<string, unknown> | null;
+  build_runtime: Record<string, unknown> | null;
   experiments: Array<Record<string, unknown>>;
   hardware: Record<string, unknown>;
 }
@@ -98,7 +98,11 @@ export function toReePatchFromSlices({ reeSpec }: ReePatchSlices): ReeIntentPatc
           requested_ref: null,
         }
       : null,
-    runtime: reeSpec.runtime ? { runtime_path: reeSpec.runtime } : null,
+    // The runtime destination rides on the build recipe, not beside it: the
+    // script and what it produces are one declaration (as with an experiment's
+    // output_paths). Sending only this key is safe — the backend rehydrates the
+    // script's identity from the authored file and carries these through.
+    build_runtime: reeSpec.runtime ? { runtime_path: reeSpec.runtime } : null,
     experiments: (reeSpec.experiments || []).map(serializeExperiment),
     hardware: serializeHbom(reeSpec.hardwareDescription),
   };

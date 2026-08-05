@@ -13,7 +13,6 @@ from repo2ree_core.domain.ree.model import (
     Ree,
     ReeDefinition,
     ReeSubject,
-    RuntimeDefinition,
 )
 from repo2ree_core.domain.ree.receipt import AcquireSourceReceipt, BuildRuntimeReceipt, WorkspaceDrift
 from repo2ree_core.domain.ree.transitions import commit_receipt
@@ -41,8 +40,8 @@ def test_scanner_process_publishes_sbom_and_commits_receipt(
         build_runtime=BuildRuntimeDefinition(
             build_runtime_script_digest=digest_bytes(script),
             build_runtime_script_size=len(script),
+            runtime_path=WorkspacePath("runtime.tar"),
         ),
-        runtime=RuntimeDefinition(runtime_path=WorkspacePath("runtime.tar")),
     )
     ree = Ree(subject=ReeSubject(definition=definition))
     ree = commit_receipt(

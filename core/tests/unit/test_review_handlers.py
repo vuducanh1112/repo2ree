@@ -9,12 +9,12 @@ import pytest
 from repo2ree_core.digests import digest_bytes
 from repo2ree_core.domain.primitives import ReePath, RunId, Swhid, WorkspacePath
 from repo2ree_core.domain.ree.model import (
+    BuildRuntimeDefinition,
     ExperimentDefinition,
     Ree,
     ReeDefinition,
     ReeReceipts,
     ReeSubject,
-    RuntimeDefinition,
     SourceDefinition,
 )
 from repo2ree_core.domain.ree.model import TestActivationDefinition as ActivationDefinition
@@ -51,6 +51,22 @@ _REVIEW_ID = "review-one"
 _RUNTIME_PATH = "runtime.tar"
 _RUNTIME = b"runtime bytes\n"
 _ACTIVATION = b"#!/bin/sh\ntest -f runtime.tar\n"
+
+
+def _build_recipe(runtime_path: WorkspacePath) -> BuildRuntimeDefinition:
+    """The author baseline's build recipe, named by where it left its runtime.
+
+    A reviewer reproduces from what the author declared, and the runtime path is
+    the only part of that these tests turn on — the script digest and size are
+    the recipe's identity, not its subject, so they are fixed placeholders.
+    """
+    return BuildRuntimeDefinition(
+        build_runtime_script_digest=digest_bytes(b"build"),
+        build_runtime_script_size=5,
+        runtime_path=runtime_path,
+    )
+
+
 _ACTIVATION_VERIFY = b"#!/bin/sh\nexit 0\n"
 _EXPERIMENT_NAME = "demo"
 _EXPERIMENT = b"#!/bin/sh\nmkdir -p outputs && printf result > outputs/result.txt\n"
@@ -84,7 +100,7 @@ def _author_ree() -> Ree:
     return Ree(
         subject=ReeSubject(
             definition=ReeDefinition(
-                runtime=RuntimeDefinition(runtime_path=WorkspacePath(_RUNTIME_PATH)),
+                build_runtime=_build_recipe(WorkspacePath(_RUNTIME_PATH)),
                 test_activation=ActivationDefinition(
                     run_script_digest=digest_bytes(_ACTIVATION),
                     run_script_size=len(_ACTIVATION),
@@ -225,7 +241,7 @@ def test_bundled_runtime_review_records_only_the_input_it_used(
     store.write_ree(
         Ree(
             subject=ReeSubject(
-                definition=ReeDefinition(runtime=RuntimeDefinition(runtime_path=WorkspacePath("artifacts/runtime.tar")))
+                definition=ReeDefinition(build_runtime=_build_recipe(WorkspacePath("artifacts/runtime.tar")))
             )
         )
     )

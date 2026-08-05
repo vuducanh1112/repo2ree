@@ -36,13 +36,15 @@ in order — driven only through the public surface:
       -> getReeState -> writeReeFile / readReeFile
       -> patchReeDefinition (metadata)
       -> startEvaluate -> observeRun -> getEvaluateReport
-      -> generateScriptCandidates (build) -> writeReeFile (build script) -> startBuild -> observeRun
-      -> patchReeDefinition (declare runtime artifact + hardware BOM)
+      -> generateScriptCandidates (build) -> writeReeFile (build script)
+         -> patchReeDefinition (declare the runtime the build recipe produces)
+         -> startBuild -> observeRun
+      -> patchReeDefinition (hardware BOM)
       -> startSbomGeneration -> observeRun -> startSbomCrossCheck -> observeRun
       -> generateScriptCandidates (activation) -> writeReeFile (activation script) -> startActivationTest -> observeRun
       -> patchReeDefinition (declare experiment) -> generateScriptCandidates (experiment)
          -> writeReeFile (run + verify) -> startExperiment -> observeRun
-      -> getReeState (ree_steps overlay) -> getScorecard
+      -> getReeState (the aggregate audit) -> the evaluation receipt's axes
       -> sealRee -> downloadReeArchive -> deleteRee
 
 The build, activation, and experiment recipe scripts are not hardcoded: each is
@@ -186,7 +188,7 @@ PROJECT_DIR = "python_hello_world"
 # REE-owned recipe scripts live under a reserved overlay: a fresh REE seeds the
 # build and activation slots, and naming an experiment settles its own reserved
 # run-script path. Authoring a stage means writing its script to the reserved
-# path, then declaring the intent. The paths themselves are *not* hardcoded here
+# path, then declaring it on the definition. The paths are *not* hardcoded here
 # — the session discovers them at runtime from listScriptTemplates (see chapter
 # 2), the way an agent driving cold from the OpenAPI would. The experiment name
 # is kept deliberately slug-safe (no whitespace) so it substitutes directly into
@@ -265,7 +267,7 @@ def make_source_archive() -> bytes:
 def put_file(ree_id: str, path: str, content: str) -> None:
     """Author a workspace file (writeReeFile). Used for the REE recipe scripts —
     the build, activation, and experiment scripts live in the workspace and are
-    referenced by path from the typed intent."""
+    referenced by path from the typed definition."""
     call("PUT", f"/api/v1/rees/{ree_id}/files/content", {"path": path, "content": content})
 
 
@@ -470,7 +472,7 @@ def run() -> None:
     check(isinstance(report, dict) and report, "evaluate produced no report")
     ok("reproducibility report generated")
 
-    chapter("7. Infer and run the build script")
+    chapter("7. Infer the build script, declare what it produces, and run it")
     note("generateScriptCandidates reads the immutable source and proposes the reserved build script — writing nothing")
     build_report = generate_scripts(ree_id, [{"kind": "build"}])
     summarize_decision(build_report, "build")
@@ -488,30 +490,44 @@ def run() -> None:
     note("read the reserved script back (readReeFile returns octet-stream, not JSON)")
     rc, out, err = _run_curl([f"{BASE_URL}/api/v1/rees/{ree_id}/files/raw?path=workspace/{build_script_path}"])
     check(rc == 0 and out.decode() == build_script, f"build script did not round-trip: {_curl_detail(rc, err)}")
+    # Declared *before* the build, not after it: the build receipt binds this
+    # path to the digest it finds there, so a build with nowhere to look attests
+    # to nothing and the handler refuses it. The path is not invented here — it
+    # is the convention the inferred script already carries, read back out above.
+    note("declare where the build will leave its runtime — the build refuses without it")
+    declared = call(
+        "PATCH",
+        f"/api/v1/rees/{ree_id}/definition",
+        {"definition_patch": {"build_runtime": {"runtime_path": runtime_artifact}}},
+    )
+    runtime = declared["ree"]["subject"]["definition"]["build_runtime"]
+    check(runtime["runtime_path"] == runtime_artifact, "runtime artifact not declared")
     run_stage(ree_id, "POST", f"/api/v1/rees/{ree_id}/build-runtime", {}, what="build")
     built = call("GET", f"/api/v1/rees/{ree_id}/state")
     check(runtime_artifact in {f["path"] for f in built.get("workspace_files", [])}, "runtime tarball not produced")
     ok(f"runtime image built and saved to {runtime_artifact}")
 
-    chapter("8. Declare the runtime artifact and hardware BOM")
-    note("bind the produced tarball as the runtime, and record the machine it was built on")
+    chapter("8. Record the hardware BOM")
+    note("the machine the runtime was built on — an observation about the build that just happened")
     declared = call(
         "PATCH",
         f"/api/v1/rees/{ree_id}/definition",
         {
             "definition_patch": {
-                "runtime": {"runtime_path": runtime_artifact},
                 "hardware": {"cpus": {"Intel Core i9-14900K": {"vendor": "Intel", "cores_per_cpu": 24}}},
             }
         },
     )
     definition = declared["ree"]["subject"]["definition"]
-    check(definition["runtime"]["runtime_path"] == runtime_artifact, "runtime artifact not declared")
     check(
         "Intel Core i9-14900K" in definition["hardware"]["cpus"],
         "hardware BOM entry not recorded",
     )
-    ok("runtime artifact and hardware BOM declared")
+    check(
+        definition["build_runtime"]["runtime_path"] == runtime_artifact,
+        "the declared runtime did not survive the patch",
+    )
+    ok("hardware BOM recorded")
 
     chapter("9. Generate and cross-check the SBOM")
     note("scan the runtime tarball for its software bill of materials")
