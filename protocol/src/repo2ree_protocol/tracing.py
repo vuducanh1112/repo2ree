@@ -44,6 +44,8 @@ from opentelemetry.sdk.trace.export import (
 )
 from opentelemetry.trace import Link, Span, StatusCode, Tracer
 
+from repo2ree_protocol.result import Failure
+
 # ``requests`` and the OTLP/HTTP exporter live behind the host-side functions
 # (setup_tracing, forward_relayed_spans) so the executor — which only streams
 # spans for relay — doesn't drag them into the minimal workbench image.
@@ -309,6 +311,25 @@ def record_command_status(span: Span, status: str) -> None:
     span.set_attribute(_ATTR_STATUS, status)
     if status != "succeeded":
         span.set_status(StatusCode.ERROR, status)
+
+
+def record_failure(span: Span, failure: Failure | None) -> None:
+    """Record *why* a unit of work failed, alongside the fact that it did.
+
+    ``record_command_status`` says only ``failed``. For the failures that
+    produce no outputs — a refused precondition being the ordinary case — that
+    left the span with no reason on it at all, and the typed ``Failure`` the
+    handler had already minted was dropped at the span boundary. Every layer
+    that reports a terminal ActionResult calls this next to the status, so
+    ``repo2ree.failure.category`` and ``.origin`` are groupable without parsing
+    a message.
+
+    None is accepted and ignored: succeeded and canceled results carry no
+    failure, so call sites need no guard of their own.
+    """
+    if failure is None:
+        return
+    record_span_facts(span, failure.model_dump(exclude_none=True), namespace="failure")
 
 
 def record_ree_id(span: Span, ree_id: str) -> None:

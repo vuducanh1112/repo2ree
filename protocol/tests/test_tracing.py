@@ -35,6 +35,7 @@ from opentelemetry.trace import (
 )
 
 from repo2ree_protocol import tracing
+from repo2ree_protocol.result import Failure
 from repo2ree_protocol.tracing import (
     CommandSpanAttrs,
     ExecSpanAttrs,
@@ -59,6 +60,7 @@ from repo2ree_protocol.tracing import (
     record_current_span_facts,
     record_exec_outcome,
     record_exit_code,
+    record_failure,
     record_ree_id,
     record_span_facts,
     remote_context,
@@ -124,6 +126,36 @@ def test_record_command_status_leaves_successful_span_status_unset() -> None:
 
     assert span.attributes["repo2ree.status"] == "succeeded"
     assert span.status is None
+
+
+def test_record_failure_puts_the_reason_on_the_span() -> None:
+    span = _FakeSpan()
+
+    record_failure(
+        cast(Span, span),
+        Failure(
+            category="precondition",
+            message="this REE already has a source; remove it before acquiring another",
+            origin="core",
+            details={"step": "source"},
+        ),
+    )
+
+    assert span.attributes == {
+        "repo2ree.failure.category": "precondition",
+        "repo2ree.failure.message": "this REE already has a source; remove it before acquiring another",
+        "repo2ree.failure.retryable": False,
+        "repo2ree.failure.origin": "core",
+        "repo2ree.failure.details.step": "source",
+    }
+
+
+def test_record_failure_ignores_results_that_did_not_fail() -> None:
+    span = _FakeSpan()
+
+    record_failure(cast(Span, span), None)
+
+    assert span.attributes == {}
 
 
 def test_command_metric_attrs_uses_protocol_attribute_namespace() -> None:

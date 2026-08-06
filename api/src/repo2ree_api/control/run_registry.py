@@ -19,6 +19,7 @@ from repo2ree_protocol.tracing import (
     get_meter,
     get_tracer,
     record_command_status,
+    record_failure,
     record_span_facts,
 )
 
@@ -421,8 +422,7 @@ class RunRegistry:
                     # self-sufficient wide event by recording the outputs — and the
                     # failure, when there is one — here too.
                     record_span_facts(span, result.outputs, namespace="output")
-                    if result.failure is not None:
-                        record_span_facts(span, result.failure.model_dump(exclude_none=True), namespace="failure")
+                    record_failure(span, result.failure)
                     record_command_status(span, result.status)
                     settled = self.finalize(ree_id, run_id, result.status, result.outputs, result.failure)
                     # Attributed with the *settled* status, so the counter agrees

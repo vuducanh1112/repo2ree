@@ -5,6 +5,7 @@
 #   mk/checks.mk   static checks (shell, nix, gui, python)
 #   mk/metrics.mk  advisory code-metric reports
 #   mk/architecture.mk  generated architecture diagrams
+#   mk/domain.mk        generated domain-model diagrams
 #   mk/docs.mk          prose linting
 #   mk/contracts.mk contract generation (OpenAPI + GUI API types)
 #   mk/tests.mk    unit/integration suites and coverage variants
@@ -68,6 +69,7 @@ require-clean-tree:
 include mk/checks.mk
 include mk/metrics.mk
 include mk/architecture.mk
+include mk/domain.mk
 include mk/journals.mk
 include mk/docs.mk
 include mk/contracts.mk

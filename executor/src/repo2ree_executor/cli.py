@@ -49,6 +49,7 @@ from repo2ree_protocol.tracing import (
     get_tracer,
     record_command_status,
     record_exit_code,
+    record_failure,
     setup_relay_tracing,
 )
 
@@ -230,6 +231,7 @@ def _run_command_envelope(cmd: Any, run_id: str | None) -> None:
                 is_canceled=is_canceled,
             )
             record_exit_code(span, result.exit_code)
+            record_failure(span, result.failure)
             record_command_status(span, result.status)
         # stdout stays the wire protocol, byte for byte: one bare ActionResult
         # line is what the dispatcher parses. The run log gets the same value

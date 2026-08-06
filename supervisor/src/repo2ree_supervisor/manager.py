@@ -46,6 +46,7 @@ from repo2ree_protocol.tracing import (
     get_tracer,
     record_command_status,
     record_exit_code,
+    record_failure,
     record_ree_id,
     record_span_facts,
 )
@@ -329,6 +330,7 @@ class WorkbenchManager:
             # span is the copy guaranteed to reach the collector.
             record_exit_code(span, result.exit_code)
             record_span_facts(span, result.outputs, namespace="output")
+            record_failure(span, result.failure)
             record_command_status(span, result.status)
             return result
 

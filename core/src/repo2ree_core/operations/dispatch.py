@@ -62,6 +62,7 @@ from repo2ree_protocol.tracing import (
     get_tracer,
     record_command_status,
     record_exit_code,
+    record_failure,
     record_span_facts,
 )
 
@@ -90,14 +91,18 @@ def run_command(
         CommandSpanAttrs(operation=str(cmd.operation), run_id=resolved_run_id).apply(span)
         # The command span is the wide event for this unit of work: args go on
         # before dispatch so a failed or killed command still carries its
-        # inputs; outputs (receipts, verdicts, digests) go on after. Accessed
-        # defensively — observability must not be able to fail a command.
+        # inputs; outputs (receipts, verdicts, digests) and the failure, when
+        # there is one, go on after. A refused precondition produces no outputs
+        # at all, so without the failure the span would report that the command
+        # failed and nothing about why. Accessed defensively — observability
+        # must not be able to fail a command.
         args = getattr(cmd, "args", None)
         if isinstance(args, BaseModel):
             record_span_facts(span, args.model_dump(), namespace="arg")
         result = _run_unless_canceled(cmd, log=log, run_id=resolved_run_id, cancel=cancel)
         record_exit_code(span, result.exit_code)
         record_span_facts(span, result.outputs, namespace="output")
+        record_failure(span, result.failure)
         record_command_status(span, result.status)
         return result
 
