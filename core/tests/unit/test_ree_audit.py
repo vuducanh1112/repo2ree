@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from repo2ree_core.digests import digest_bytes
+from repo2ree_core.domain.hbom import HBOM
 from repo2ree_core.domain.primitives import Digest, ReePath, RunId, WorkspacePath, parse_utc_instant
 from repo2ree_core.domain.ree.audit import _STEP_FIELDS, ReeAudit, _evidence_standing, audit
 from repo2ree_core.domain.ree.model import (
@@ -21,6 +22,7 @@ from repo2ree_core.domain.ree.receipt import (
     CrossCheckSbomReceipt,
     EvaluateReproducibilityReceipt,
     GenerateSbomReceipt,
+    ObserveHardwareReceipt,
     RunExperimentReceipt,
     WorkspaceDrift,
 )
@@ -348,3 +350,35 @@ def test_evidence_standing_is_the_table_it_documents(
 ) -> None:
     """Pin the classification itself, apart from which comparisons feed it."""
     assert _evidence_standing(applicable=applicable, has_receipt=has_receipt, complaints=complaints) == expected
+
+
+def test_an_observed_hardware_receipt_stands_without_a_declaration() -> None:
+    """The observation is the content, not evidence for something declared.
+
+    ``generate_hbom`` files this receipt and never declares
+    ``definition.hardware`` — an author may observe the machine without stating
+    a requirement. Reading that as an orphan would refuse the seal on a
+    perfectly consistent REE.
+    """
+    observed = commit_receipt(
+        _built_ree(),
+        ObserveHardwareReceipt(
+            run_id=RunId("hbom-1"),
+            started_at=_NOW,
+            finished_at=_NOW,
+            duration_ms=0,
+            recorded_at=_NOW,
+            observation=HBOM(),
+            observer_version="1",
+        ),
+    )
+
+    result = audit(observed)
+
+    assert observed.subject.definition.hardware is None
+    assert result.hardware.evidence == "current"
+    assert result.stale_steps() == ()
+
+
+def test_hardware_is_not_applicable_when_neither_declared_nor_observed() -> None:
+    assert audit(_built_ree()).hardware.evidence == "not_applicable"

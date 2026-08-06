@@ -19,15 +19,16 @@ import os
 import queue
 import sys
 import threading
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, TextIO
+from typing import TYPE_CHECKING, Any, ClassVar, TextIO
 
 from opentelemetry import context, metrics, trace
 
 if TYPE_CHECKING:
     from opentelemetry.proto.common.v1.common_pb2 import AnyValue as _PbAnyValue
+    from opentelemetry.proto.resource.v1.resource_pb2 import Resource as _PbResource
     from opentelemetry.proto.trace.v1.trace_pb2 import Span as _PbSpan
     from opentelemetry.sdk._logs import LoggerProvider
     from opentelemetry.sdk.metrics import MeterProvider
@@ -428,7 +429,7 @@ class _SpanFactCarrier:
 
 @dataclass(frozen=True, slots=True)
 class ExecSpanAttrs(_SpanFactCarrier):
-    """Identity of one subprocess execution (the ``workbench.exec`` span)."""
+    """Identity of one subprocess execution (the ``process.exec`` span)."""
 
     argv: str
     cwd: str | None = None
@@ -439,7 +440,7 @@ class ExecSpanAttrs(_SpanFactCarrier):
 
 @dataclass(frozen=True, slots=True)
 class ScriptSpanAttrs(_SpanFactCarrier):
-    """Identity of a workspace-script run (``workbench.run_script``, runnable spans)."""
+    """Identity of a workspace-script run (``script.run``, runnable spans)."""
 
     path: str
 
@@ -509,7 +510,7 @@ def record_exec_outcome(
     stdout: str,
     stderr: str,
 ) -> None:
-    """Record a subprocess's terminal facts on its ``workbench.exec`` span.
+    """Record a subprocess's terminal facts on its ``process.exec`` span.
 
     Output sizes are always recorded; the actual tails only on failure or
     cancellation — success output belongs to the log stream, but a failed
@@ -726,52 +727,158 @@ def build_span_sink(endpoint: str | None, *, console_fallback: bool = False) -> 
             forward_relayed_spans(payloads, _ep)
 
         return _BackgroundSpanForwarder(_forward).submit
-    if console_fallback:
-        return _BackgroundSpanForwarder(_console_span_sink).submit
-    return None
+    if not console_fallback:
+        return None
+    if trace_file := os.environ.get(_TRACE_FILE_ENV):
+        return _BackgroundSpanForwarder(_relayed_file_sink(Path(trace_file))).submit
+    return _BackgroundSpanForwarder(_relayed_console_sink).submit
 
 
-def _console_span_sink(payloads: list[str]) -> None:
-    """Decode relayed OTLP payloads for local dev: to TRACE_FILE or stdout.
+# ------------------------------------------------
+# Local relay sinks (no collector)
+# ------------------------------------------------
+# One sink per destination, mirroring the host side: ``_FileSpanExporter`` and
+# ``ConsoleSpanExporter`` are separate there, so the relay's file and console
+# writers are separate here. They differ in more than where they write — a file
+# is read back by tools and keeps every field, while stdout is skimmed by a
+# human watching a dev server and keeps the few worth seeing scroll past.
+# Sharing one function meant one of those two callers had to accept the other's
+# format, and the file lost.
+
+
+def _decode_relayed_spans(payloads: list[str]) -> list[tuple[_PbResource, _PbSpan]]:
+    """Decode base64 OTLP payloads into ``(resource, span)`` pairs.
 
     The relay carries executor spans as base64 OTLP protobuf so the supervisor
     can forward bytes to a collector without understanding them. With no
-    collector we instead decode here and write, so workbench spans land in the
-    same place (the ``TRACE_FILE`` path, or stdout) the host's local span
-    exporter writes to. Host-side only — relies on ``opentelemetry-proto``,
-    which the minimal workbench image deliberately lacks. Never raises: span
-    egress must not break command flow.
+    collector we decode here instead. Host-side only — relies on
+    ``opentelemetry-proto``, which the minimal workbench image deliberately
+    lacks. Never raises: span egress must not break command flow.
+
+    Spans are paired with their resource because ``service.name`` lives there,
+    one level up from the span, and a span that cannot say which service emitted
+    it is not much use to a reader.
     """
     from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
 
-    lines: list[str] = []
+    decoded: list[tuple[_PbResource, _PbSpan]] = []
     for payload in payloads:
         try:
             request = ExportTraceServiceRequest()
             request.ParseFromString(base64.b64decode(payload))
         except Exception as exc:  # noqa: BLE001 — a malformed payload must not break dispatch
-            logger.warning("failed to decode relayed spans for console: %s", exc)
+            logger.warning("failed to decode relayed spans: %s", exc)
             continue
         for resource_spans in request.resource_spans:
             for scope_spans in resource_spans.scope_spans:
-                lines.extend(json.dumps(_format_relayed_span(span)) for span in scope_spans.spans)
-
-    if trace_file := os.environ.get(_TRACE_FILE_ENV):
-        _append_trace_lines(Path(trace_file), lines)
-    else:
-        for line in lines:
-            print(line, file=sys.stdout, flush=True)  # noqa: T201 — the console span exporter's whole job is writing spans to stdout
+                decoded.extend((resource_spans.resource, span) for span in scope_spans.spans)
+    return decoded
 
 
-def _format_relayed_span(span: _PbSpan) -> dict[str, object]:
-    """Render a decoded protobuf span as a compact dict for console output."""
+def _relayed_file_sink(path: Path) -> SpanSink:
+    """Append relayed spans to *path* in the host exporter's own JSON shape.
+
+    The counterpart of :class:`_FileSpanExporter`, and deliberately writing the
+    same shape: host and workbench spans land in one file, and a reader that can
+    parse one line can parse them all. Anything less makes the file two formats
+    wearing one extension.
+
+    Takes its path at construction, as ``_FileSpanExporter`` does, so the
+    destination is fixed when the sink is built rather than re-read per batch.
+    """
+
+    def _write(payloads: list[str]) -> None:
+        lines = [json.dumps(_relayed_span_json(span, resource)) for resource, span in _decode_relayed_spans(payloads)]
+        if lines:
+            _append_trace_lines(path, lines)
+
+    return _write
+
+
+def _relayed_console_sink(payloads: list[str]) -> None:
+    """Print relayed spans to stdout, one skimmable line each.
+
+    The counterpart of ``ConsoleSpanExporter``. Compact on purpose: this output
+    scrolls past a human watching a dev server, where a full span per line is
+    noise. Nothing reads it back, which is what makes dropping fields safe here
+    and unsafe in the file sink.
+    """
+    for _resource, span in _decode_relayed_spans(payloads):
+        summary = {
+            "name": span.name,
+            "trace_id": span.trace_id.hex(),
+            "span_id": span.span_id.hex(),
+            "parent_id": span.parent_span_id.hex() or None,
+            "attributes": {kv.key: _anyvalue(kv.value) for kv in span.attributes},
+        }
+        print(json.dumps(summary), file=sys.stdout, flush=True)  # noqa: T201 — the console span sink's whole job is writing spans to stdout
+
+
+# ------------------------------------------------
+# Protobuf -> SDK JSON
+# ------------------------------------------------
+# ``ReadableSpan.to_json`` is the shape the host writes, so it is the shape a
+# relayed span has to be rendered into. These map the protobuf spellings of the
+# same facts onto it; the SDK's own ``ns_to_iso_str`` is reused rather than
+# reimplemented so timestamps match to the digit.
+
+_SPAN_KIND_NAMES = {
+    0: "SpanKind.INTERNAL",  # UNSPECIFIED — the SDK has no such kind and defaults to INTERNAL
+    1: "SpanKind.INTERNAL",
+    2: "SpanKind.SERVER",
+    3: "SpanKind.CLIENT",
+    4: "SpanKind.PRODUCER",
+    5: "SpanKind.CONSUMER",
+}
+
+_STATUS_CODE_NAMES = {0: "UNSET", 1: "OK", 2: "ERROR"}
+
+
+def _relayed_span_json(span: _PbSpan, resource: _PbResource) -> dict[str, object]:
+    """Render a decoded protobuf span exactly as ``ReadableSpan.to_json`` would."""
+    from opentelemetry.sdk.util import ns_to_iso_str
+
+    status: dict[str, object] = {"status_code": _STATUS_CODE_NAMES.get(span.status.code, "UNSET")}
+    if span.status.message:
+        status["description"] = span.status.message
     return {
         "name": span.name,
-        "trace_id": span.trace_id.hex(),
-        "span_id": span.span_id.hex(),
-        "parent_id": span.parent_span_id.hex() or None,
-        "attributes": {kv.key: _anyvalue(kv.value) for kv in span.attributes},
+        "context": {
+            "trace_id": f"0x{span.trace_id.hex()}",
+            "span_id": f"0x{span.span_id.hex()}",
+            "trace_state": "[]",
+        },
+        "kind": _SPAN_KIND_NAMES.get(span.kind, "SpanKind.INTERNAL"),
+        "parent_id": f"0x{span.parent_span_id.hex()}" if span.parent_span_id else None,
+        "start_time": ns_to_iso_str(span.start_time_unix_nano),
+        "end_time": ns_to_iso_str(span.end_time_unix_nano),
+        "status": status,
+        "attributes": _attributes(span.attributes),
+        "events": [
+            {
+                "name": event.name,
+                "timestamp": ns_to_iso_str(event.time_unix_nano),
+                "attributes": _attributes(event.attributes),
+            }
+            for event in span.events
+        ],
+        "links": [
+            {
+                "context": {
+                    "trace_id": f"0x{link.trace_id.hex()}",
+                    "span_id": f"0x{link.span_id.hex()}",
+                    "trace_state": "[]",
+                },
+                "attributes": _attributes(link.attributes),
+            }
+            for link in span.links
+        ],
+        "resource": {"attributes": _attributes(resource.attributes), "schema_url": ""},
     }
+
+
+def _attributes(keyvalues: Iterable[Any]) -> dict[str, object]:
+    return {kv.key: _anyvalue(kv.value) for kv in keyvalues}
 
 
 def _anyvalue(value: _PbAnyValue) -> object:

@@ -42,7 +42,6 @@ from repo2ree_protocol.tracing import (
     SpanSink,
     WorkbenchSpanAttrs,
     command_metric_attrs,
-    current_traceparent,
     get_meter,
     get_tracer,
     record_command_status,
@@ -299,6 +298,16 @@ class WorkbenchManager:
                 image=self.image_for(handle),
                 agent_id=handle.agent_id,
             ).apply(span)
+            # The whole command as dispatched — envelope and args — recorded
+            # before it runs, for the reason core's own dispatch records its
+            # inputs first: a command that is killed or times out still carries
+            # what it was asked to do. Without this the span reports only what
+            # came back, which is half a wide event.
+            #
+            # Namespaced ``cmd`` rather than ``arg`` because it is the whole
+            # envelope, not the argument object a handler receives; core's
+            # ``repo2ree.arg.*`` remains the inner view of the same call.
+            record_span_facts(span, cmd.model_dump(), namespace="cmd")
             # Time spent blocked here is per-REE lock contention (another run in
             # progress); record it on acquisition so wait is a first-class metric
             # rather than something inferred from the dispatch/execute span gap.
@@ -340,14 +349,13 @@ class WorkbenchManager:
     ) -> ActionResult:
         cmd_json = cmd.model_dump_json()
 
-        # Carry the active trace context into the executor so its spans hang
-        # under this dispatch span. When the API injected a span_sink, ask the
-        # executor to relay its spans back over stderr (it has no path to the
-        # collector itself); we forward them after the command completes.
+        # No TRACEPARENT here on purpose. The agent injects it at the hop that
+        # actually spawns the executor, so a context set from this span would be
+        # overwritten one layer down — two propagation points with the later
+        # silently winning. What this span does own is asking for the relay:
+        # when the API injected a span_sink the executor should stream its spans
+        # back over stderr, having no path to the collector itself.
         env: dict[str, str] = {}
-        traceparent = current_traceparent()
-        if traceparent:
-            env["TRACEPARENT"] = traceparent
         if self._span_sink is not None:
             env["TRACE_RELAY"] = "1"
 

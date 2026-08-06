@@ -6,6 +6,7 @@ import json
 import logging
 import threading
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import cast
@@ -15,11 +16,13 @@ from opentelemetry import context
 from opentelemetry import metrics as metrics_api
 from opentelemetry import trace as trace_api
 from opentelemetry.proto.common.v1.common_pb2 import AnyValue
+from opentelemetry.proto.resource.v1.resource_pb2 import Resource as PbResource
 from opentelemetry.proto.trace.v1.trace_pb2 import Span as PbSpan
 from opentelemetry.sdk._logs.export import InMemoryLogRecordExporter
 from opentelemetry.sdk.metrics.export import InMemoryMetricReader
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor, SpanExporter, SpanExportResult
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.trace import (
     NonRecordingSpan,
@@ -40,8 +43,8 @@ from repo2ree_protocol.tracing import (
     _anyvalue,
     _BackgroundSpanForwarder,
     _build_resource,
-    _console_span_sink,
-    _format_relayed_span,
+    _relayed_console_sink,
+    _relayed_span_json,
     _RelaySpanExporter,
     _SpanFactCarrier,
     attach_remote_context,
@@ -298,36 +301,51 @@ def test_attach_remote_context_round_trips_traceparent() -> None:
     detach_context(None)
 
 
-def test_format_relayed_span_renders_scalar_attributes() -> None:
+def test_relayed_span_json_renders_scalar_attributes() -> None:
     span = PbSpan(
         name="executor.run",
         trace_id=bytes.fromhex("0f" * 16),
         span_id=bytes.fromhex("1e" * 8),
         parent_span_id=bytes.fromhex("2d" * 8),
+        kind=PbSpan.SPAN_KIND_CLIENT,
+        start_time_unix_nano=1_700_000_000_000_000_000,
+        end_time_unix_nano=1_700_000_000_500_000_000,
     )
     span.attributes.add(key="repo2ree.operation", value=AnyValue(string_value="run_experiment"))
     span.attributes.add(key="retry_count", value=AnyValue(int_value=2))
     span.attributes.add(key="cached", value=AnyValue(bool_value=True))
     span.attributes.add(key="duration", value=AnyValue(double_value=1.25))
+    resource = PbResource()
+    resource.attributes.add(key="service.name", value=AnyValue(string_value="repo2ree-exec"))
 
-    assert _format_relayed_span(span) == {
-        "name": "executor.run",
-        "trace_id": "0f" * 16,
-        "span_id": "1e" * 8,
-        "parent_id": "2d" * 8,
-        "attributes": {
-            "repo2ree.operation": "run_experiment",
-            "retry_count": 2,
-            "cached": True,
-            "duration": 1.25,
-        },
+    rendered = _relayed_span_json(span, resource)
+
+    # Ids carry the SDK's ``0x`` prefix so both writers spell them one way.
+    assert rendered["context"] == {"trace_id": "0x" + "0f" * 16, "span_id": "0x" + "1e" * 8, "trace_state": "[]"}
+    assert rendered["parent_id"] == "0x" + "2d" * 8
+    assert rendered["kind"] == "SpanKind.CLIENT"
+    assert rendered["start_time"] == "2023-11-14T22:13:20.000000Z"
+    assert rendered["end_time"] == "2023-11-14T22:13:20.500000Z"
+    assert rendered["attributes"] == {
+        "repo2ree.operation": "run_experiment",
+        "retry_count": 2,
+        "cached": True,
+        "duration": 1.25,
     }
+    assert rendered["resource"] == {"attributes": {"service.name": "repo2ree-exec"}, "schema_url": ""}
 
 
-def test_format_relayed_span_uses_none_for_missing_parent() -> None:
+def test_relayed_span_json_uses_none_for_missing_parent() -> None:
     span = PbSpan(name="root", trace_id=bytes.fromhex("01" * 16), span_id=bytes.fromhex("02" * 8))
 
-    assert _format_relayed_span(span)["parent_id"] is None
+    assert _relayed_span_json(span, PbResource())["parent_id"] is None
+
+
+def test_relayed_span_json_reports_an_unset_status_without_a_description() -> None:
+    """The SDK omits ``description`` when there is no message; so must this."""
+    span = PbSpan(name="root", trace_id=bytes.fromhex("01" * 16), span_id=bytes.fromhex("02" * 8))
+
+    assert _relayed_span_json(span, PbResource())["status"] == {"status_code": "UNSET"}
 
 
 def test_anyvalue_falls_back_for_non_scalar_values() -> None:
@@ -455,12 +473,12 @@ def test_setup_tracing_console_fallback_appends_spans_to_the_trace_file(
 
     provider = setup_tracing("repo2ree-api", console_fallback=True)
     assert provider is not None
-    with provider.get_tracer(__name__).start_as_current_span("workbench.exec"):
+    with provider.get_tracer(__name__).start_as_current_span("process.exec"):
         pass
     provider.shutdown()
 
     lines = trace_file.read_text(encoding="utf-8").splitlines()
-    assert [json.loads(line)["name"] for line in lines] == ["workbench.exec"]
+    assert [json.loads(line)["name"] for line in lines] == ["process.exec"]
 
 
 @pytest.mark.usefixtures("_no_global_providers")
@@ -471,11 +489,11 @@ def test_setup_tracing_console_fallback_without_a_trace_file_writes_stdout(
 
     provider = setup_tracing("repo2ree-api", console_fallback=True)
     assert provider is not None
-    with provider.get_tracer(__name__).start_as_current_span("workbench.exec"):
+    with provider.get_tracer(__name__).start_as_current_span("process.exec"):
         pass
     provider.shutdown()
 
-    assert "workbench.exec" in capsys.readouterr().out
+    assert "process.exec" in capsys.readouterr().out
 
 
 def test_setup_metrics_is_a_noop_without_an_endpoint() -> None:
@@ -709,26 +727,69 @@ def test_build_span_sink_console_fallback_decodes_spans_locally(
     assert [json.loads(line)["name"] for line in lines] == ["command.generate_sbom"]
 
 
-def test_console_span_sink_writes_decoded_spans_to_stdout(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    monkeypatch.delenv("TRACE_FILE", raising=False)
-
-    _console_span_sink([_relayed_payload("command.activation_test")])
+def test_relayed_console_sink_writes_decoded_spans_to_stdout(capsys: pytest.CaptureFixture[str]) -> None:
+    _relayed_console_sink([_relayed_payload("command.activation_test")])
 
     rendered = json.loads(capsys.readouterr().out.strip())
     assert rendered["name"] == "command.activation_test"
     assert rendered["parent_id"] is None
 
 
-def test_console_span_sink_skips_a_malformed_payload(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    monkeypatch.delenv("TRACE_FILE", raising=False)
-
+def test_relayed_console_sink_skips_a_malformed_payload(capsys: pytest.CaptureFixture[str]) -> None:
     # A payload that survives base64 but is not OTLP protobuf: dropped with a
     # warning, and the good payload beside it still lands.
-    _console_span_sink([base64.b64encode(b"not-a-protobuf").decode("ascii"), _relayed_payload("command.build_runtime")])
+    _relayed_console_sink(
+        [base64.b64encode(b"not-a-protobuf").decode("ascii"), _relayed_payload("command.build_runtime")]
+    )
 
     names = [json.loads(line)["name"] for line in capsys.readouterr().out.splitlines()]
     assert names == ["command.build_runtime"]
+
+
+def test_a_relayed_span_lands_in_the_trace_file_in_the_host_exporter_s_own_shape(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The trace file must hold one schema, not two.
+
+    Host spans arrive via ``ReadableSpan.to_json``; relayed workbench spans are
+    rebuilt from protobuf. A reader that can parse one line has to be able to
+    parse them all, so this pins the relayed rendering against the SDK's own
+    output for the same span — including the fields a compact console summary
+    used to drop: timing, status, kind, events, links, and the resource that
+    says which service emitted it.
+    """
+    captured: list[ReadableSpan] = []
+
+    class _Capture(SpanExporter):
+        def export(self, spans: Sequence[ReadableSpan]) -> SpanExportResult:
+            captured.extend(spans)
+            return SpanExportResult.SUCCESS
+
+        def shutdown(self) -> None: ...
+
+    relay = io.StringIO()
+    provider = TracerProvider(resource=Resource.create({"service.name": "repo2ree-exec"}))
+    provider.add_span_processor(SimpleSpanProcessor(_Capture()))
+    provider.add_span_processor(SimpleSpanProcessor(_RelaySpanExporter(relay)))
+    with provider.get_tracer(__name__).start_as_current_span("command.acquire_source") as span:
+        span.set_attribute("repo2ree.operation", "acquire_source")
+        span.set_status(StatusCode.ERROR, "acquire failed")
+    provider.shutdown()
+
+    trace_file = tmp_path / "traces.ndjson"
+    monkeypatch.setenv("TRACE_FILE", str(trace_file))
+    sink = build_span_sink(None, console_fallback=True)
+    assert sink is not None
+    sink([json.loads(line)["payload"] for line in relay.getvalue().splitlines()])
+
+    deadline = time.monotonic() + 5.0
+    while time.monotonic() < deadline and not trace_file.exists():
+        time.sleep(0.01)
+    relayed = json.loads(trace_file.read_text(encoding="utf-8").strip())
+
+    assert relayed == json.loads(captured[0].to_json(indent=None))
+    # Spelled out, because these are the ones a summary loses and a reader needs.
+    assert relayed["status"] == {"status_code": "ERROR", "description": "acquire failed"}
+    assert relayed["resource"]["attributes"]["service.name"] == "repo2ree-exec"
+    assert relayed["start_time"]
+    assert relayed["end_time"]

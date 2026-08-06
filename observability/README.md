@@ -41,7 +41,7 @@ make demo-gui-stack-local
 
 - **Traces**: every API request, background run (`run.*`), dispatch, and —
   relayed from inside the workbench container — the executor's `command.*` /
-  `workbench.exec` spans, wide-event attributes included (args, receipts,
+  `process.exec` spans, wide-event attributes included (args, receipts,
   exit codes, output tails on failure).
 - **Logs**: host process logs (API, agent) plus the full workbench run
   stream (`repo2ree.run` logger), each line trace-correlated and tagged with

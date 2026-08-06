@@ -68,6 +68,7 @@ require-clean-tree:
 include mk/checks.mk
 include mk/metrics.mk
 include mk/architecture.mk
+include mk/journals.mk
 include mk/docs.mk
 include mk/contracts.mk
 include mk/tests.mk

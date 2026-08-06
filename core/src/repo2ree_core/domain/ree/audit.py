@@ -244,11 +244,25 @@ def _audit_evaluation_step(subject: _Subject) -> StepAudit:
 
 
 def _audit_hardware_step(subject: _Subject) -> StepAudit:
+    """The one step whose receipt needs no declaration to mean something.
+
+    Every other receipt attests that a *declared* thing was done, so it is
+    orphaned once that declaration goes. A hardware observation is not evidence
+    for a declaration at all — it is a record of the machine the work ran on,
+    complete in itself. ``definition.hardware`` is a separate, optional
+    statement about what the REE *requires*, and an author may observe without
+    requiring, or require without having observed yet.
+
+    So the step is applicable when either exists. Tying it to the declaration
+    alone made an observed-but-undeclared REE report ``not_applicable`` while
+    holding a receipt — harmless while that verdict hid the receipt, and a
+    refused seal once it stopped.
+    """
     receipt = subject.receipts.hardware_observation
     return _step(
         receipt.run_id if receipt else None,
         () if receipt else ("hardware has not been observed",),
-        applicable=subject.definition.hardware is not None,
+        applicable=subject.definition.hardware is not None or receipt is not None,
     )
 
 

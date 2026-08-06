@@ -91,11 +91,18 @@ def run_streaming_process(
 ) -> StreamingProcessResult:
     """Run *cmd*, streaming child output while preserving captured streams.
 
-    Each invocation is one ``workbench.exec`` span carrying the argv, exit
+    Each invocation is one ``process.exec`` span carrying the argv, exit
     code, output sizes, and — on failure — the output tails, so what happened
     inside the workbench survives the container itself.
+
+    Named for what runs it, not for where it runs. The ``workbench.*``
+    namespace belongs to the supervisor, which provisions and dispatches to
+    workbenches from outside; this span is core, executing inside one it does
+    not manage. Sharing the prefix made component attribution ambiguous for
+    anyone reading a trace, since a span name is the only clue most readers
+    have about who emitted it.
     """
-    with tracer.start_as_current_span("workbench.exec") as span:
+    with tracer.start_as_current_span("process.exec") as span:
         ExecSpanAttrs(argv=format_argv(cmd), cwd=str(cwd) if cwd is not None else None).apply(span)
         result = _stream_process(cmd, log=log, stdin_text=stdin_text, env=env, cwd=cwd, is_canceled=is_canceled)
         record_exec_outcome(
@@ -246,7 +253,7 @@ def run_workspace_script(
     explicitly. Scripts that resolve outside the workspace are rejected.
     """
     workspace = workspace.resolve()
-    with tracer.start_as_current_span("workbench.run_script") as span:
+    with tracer.start_as_current_span("script.run") as span:
         ScriptSpanAttrs(path=script_rel).apply(span)
         script_abs = resolve_within(workspace, script_rel)
         if script_abs is None:

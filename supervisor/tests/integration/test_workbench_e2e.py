@@ -57,6 +57,7 @@ from repo2ree_protocol.command import (
     WriteFileArgs,
     WriteFileCommand,
 )
+from repo2ree_protocol.tracing import build_span_sink
 from repo2ree_supervisor import (
     AgentConnection,
     AgentConnectionRegistry,
@@ -190,7 +191,16 @@ def workbench(
     still be inspected after the container is gone.
     """
     registry = WorkbenchRegistry(tmp_path / "registry.json")
-    manager = WorkbenchManager(registry=registry, workbench_image=WORKBENCH_IMAGE, agent=WsAgentClient(agent_registry))
+    # With a span sink the manager asks the executor to relay its spans back
+    # over stderr; without one it never sets TRACE_RELAY and the workbench's own
+    # tracer stays a no-op — so the half of the flow that runs inside the
+    # container would be missing from the record entirely.
+    manager = WorkbenchManager(
+        registry=registry,
+        workbench_image=WORKBENCH_IMAGE,
+        agent=WsAgentClient(agent_registry),
+        span_sink=build_span_sink(None, console_fallback=True),
+    )
     ree_id = uuid4().hex[:12]
     handle = manager.provision(ree_id, name="e2e-test")
     try:

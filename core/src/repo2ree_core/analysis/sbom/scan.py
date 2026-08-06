@@ -14,7 +14,7 @@ The scan runs through the shared process runner rather than a blocking
 non-script operation in the system, and going through the runner is what makes
 it behave like one: progress reaches the run log while it happens, a cancel
 signals the whole process group instead of being noticed once the tool has
-already finished, and the invocation lands on a ``workbench.exec`` span like
+already finished, and the invocation lands on a ``process.exec`` span like
 every other subprocess the workbench runs.
 """
 

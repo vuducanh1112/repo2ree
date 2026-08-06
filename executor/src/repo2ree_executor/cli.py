@@ -43,25 +43,52 @@ from repo2ree_protocol.command import (
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.log import configure_logging as _configure_logging
 from repo2ree_protocol.tracing import (
+    CommandSpanAttrs,
     attach_remote_context,
     detach_context,
+    get_tracer,
+    record_command_status,
+    record_exit_code,
     setup_relay_tracing,
 )
+
+tracer = get_tracer(__name__)
 
 # ================================================
 # Logging
 # ================================================
 
 
-def _make_log_sink(run_log: TextIO | None) -> LogSink:
-    """Return a LogSink that emits NDJSON to stderr (and optionally a run log file)."""
+def _write_run_log_frame(run_log: TextIO | None, run_id: str | None, frame: dict[str, Any]) -> None:
+    """Append one self-describing NDJSON frame to the run log.
+
+    Every frame names its own ``type`` and the run it belongs to, so a reader
+    can filter lines without tracking position and without reading the file
+    name — ``jq 'select(.type == "command")'`` over any concatenation of run
+    logs is the whole parse. ``run_id`` is what joins a frame to the span that
+    covered the same work and to the receipt it produced; the ``Command`` itself
+    does not carry one, so it has to be stamped here.
+    """
+    if run_log is None:
+        return
+    run_log.write(json.dumps({"run_id": run_id, **frame}) + "\n")
+    run_log.flush()
+
+
+def _make_log_sink(run_log: TextIO | None, run_id: str | None = None) -> LogSink:
+    """Return a LogSink that emits NDJSON to stderr (and optionally a run log file).
+
+    The two destinations carry the same event in deliberately different shapes.
+    stderr is the wire protocol the supervisor parses, so it stays exactly as it
+    has been. The file copy is stamped with ``run_id`` like every other frame,
+    because a run log is read on its own — often concatenated with others — and
+    a line that cannot say which run it belongs to is not much of a record.
+    """
 
     def _log(stream: str, level: str, message: str) -> None:
-        event = json.dumps({"type": "log", "stream": stream, "level": level, "message": message})
-        click.echo(event, file=sys.stderr)
-        if run_log is not None:
-            run_log.write(event + "\n")
-            run_log.flush()
+        event = {"type": "log", "stream": stream, "level": level, "message": message}
+        click.echo(json.dumps(event), file=sys.stderr)
+        _write_run_log_frame(run_log, run_id, event)
 
     return _log
 
@@ -170,23 +197,49 @@ def _run_command_envelope(cmd: Any, run_id: str | None) -> None:
         cancel_marker = layout.run_cancel_marker(run_id)
     is_canceled = (lambda marker=cancel_marker: marker.exists()) if cancel_marker is not None else None
 
-    # Attach the dispatcher's trace context (forwarded via TRACEPARENT) so the
-    # command span hangs under the host-side dispatch span.
+    # The command as it arrived, whole and untruncated. Its counterpart on the
+    # way out is the result frame below, and the two together are the complete
+    # contract of one operation — the same pair the command span carries as
+    # `repo2ree.arg.*` / `repo2ree.output.*`, but there summarized to fit a
+    # span (strings elided, payloads reduced to a size) and here kept entire.
+    # Joined to that span, and to the receipt the operation files, by run_id.
+    _write_run_log_frame(
+        run_log,
+        run_id,
+        {"type": "command", "operation": str(cmd.operation), "command": cmd.model_dump(mode="json")},
+    )
+
+    # Attach the dispatcher's trace context (forwarded via TRACEPARENT) so this
+    # process's spans hang under the host-side dispatch span.
     ctx_token = attach_remote_context(os.environ.get("TRACEPARENT"))
     try:
-        log = _make_log_sink(run_log)
-        result = run_command(
-            cmd,
-            log=log,
-            run_id=run_id,
-            is_canceled=is_canceled,
+        log = _make_log_sink(run_log, run_id)
+        # The executor process itself, as one span. Without it a trace steps
+        # straight from the supervisor's `docker exec` into core's command span
+        # and the process boundary is nowhere in the picture — which also means
+        # the interpreter start-up before this line is charged to the dispatch
+        # that was waiting on it, with nothing to attribute it to. Opened here
+        # rather than at the CLI entry point because this is the first moment a
+        # command exists to name.
+        with tracer.start_as_current_span(f"executor.{cmd.operation}") as span:
+            CommandSpanAttrs(operation=str(cmd.operation), run_id=run_id).apply(span)
+            result = run_command(
+                cmd,
+                log=log,
+                run_id=run_id,
+                is_canceled=is_canceled,
+            )
+            record_exit_code(span, result.exit_code)
+            record_command_status(span, result.status)
+        # stdout stays the wire protocol, byte for byte: one bare ActionResult
+        # line is what the dispatcher parses. The run log gets the same value
+        # wrapped in a named frame, which only the file needs.
+        click.echo(result.model_dump_json())
+        _write_run_log_frame(
+            run_log,
+            run_id,
+            {"type": "result", "operation": str(cmd.operation), "result": result.model_dump(mode="json")},
         )
-        result_line = result.model_dump_json()
-        click.echo(result_line)
-        if run_log is not None:
-            run_log.write(json.dumps({"type": "result"}) + "\n")
-            run_log.write(result_line + "\n")
-            run_log.flush()
     finally:
         detach_context(ctx_token)
         if run_log is not None:

@@ -121,7 +121,34 @@ def test_execute_writes_result_to_stdout_and_logs_to_stderr(initialized_ree: Pat
 
     # --run-id also appends the events + result to the durable run log
     run_log_lines = [json.loads(line) for line in layout.run_log("run-1").read_text().splitlines()]
-    assert {"type": "result"} in run_log_lines
+    # Every frame names its own type, so the file needs no positional parse.
+    assert {frame["type"] for frame in run_log_lines} == {"command", "log", "result"}
+
+
+def test_run_log_records_the_whole_command_and_result_untruncated(initialized_ree: Path) -> None:
+    """The run log is the full-fidelity half of the span's summarized facts.
+
+    The command span records ``content`` as a size and elides long strings, so
+    the file is the only place the bytes an operation actually received survive.
+    """
+    content = "echo build\n" + "x" * 4000
+    cmd = WriteFileCommand(args=WriteFileArgs(path="build.sh", content=content))
+    result = runner.invoke(cli, ["execute", "--action", "-", "--run-id", "run-2"], input=cmd.model_dump_json())
+    assert result.exit_code == 0, result.output
+
+    frames = [json.loads(line) for line in ReeLayout.in_workbench().run_log("run-2").read_text().splitlines()]
+    [command_frame] = [frame for frame in frames if frame["type"] == "command"]
+    [result_frame] = [frame for frame in frames if frame["type"] == "result"]
+
+    assert {frame["run_id"] for frame in frames} == {"run-2"}
+    assert command_frame["operation"] == "write_file"
+    assert command_frame["command"]["args"]["content"] == content
+    assert result_frame["operation"] == "write_file"
+    assert result_frame["result"]["status"] == "succeeded"
+    # The command is recorded before anything it caused, so the file reads in
+    # the order the operation happened.
+    assert frames.index(command_frame) == 0
+    assert frames.index(result_frame) == len(frames) - 1
 
 
 def test_execute_invalid_action_json_exits_2_with_ndjson_error(ree_root: Path) -> None:

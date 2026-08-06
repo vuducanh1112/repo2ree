@@ -49,7 +49,13 @@ from repo2ree_protocol.agent import (
     UnavailableFrame,
     WorkbenchLocation,
 )
-from repo2ree_protocol.tracing import command_metric_attrs, get_meter, get_tracer, record_command_status
+from repo2ree_protocol.tracing import (
+    command_metric_attrs,
+    current_traceparent,
+    get_meter,
+    get_tracer,
+    record_command_status,
+)
 
 __all__ = ["DockerRuntime", "WorkbenchGoneError"]
 
@@ -452,8 +458,18 @@ class DockerRuntime:
                 _record_docker_operation("exec_action", started_at, status)
                 recorded = True
 
+        # The command is spawned from here, inside the agent's own request span,
+        # so that span is its parent. Any traceparent the caller sent named a
+        # span one hop further up — which would make the executor a *sibling* of
+        # the request that ran it rather than its child, hiding the fact that
+        # the agent is what invoked it and leaving the request's own time
+        # unattributed. Injecting here keeps one propagation point, at the hop
+        # that actually crosses into the container.
+        forwarded = dict(env)
+        if traceparent := current_traceparent():
+            forwarded["TRACEPARENT"] = traceparent
         env_args: list[str] = []
-        for key, value in env.items():
+        for key, value in forwarded.items():
             env_args += ["-e", f"{key}={value}"]
 
         try:
