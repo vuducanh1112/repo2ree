@@ -34,7 +34,7 @@ import pytest
 
 # The tier's workbench image lives in conftest so the skip gate and the
 # provisioning request stay in lockstep.
-from conftest import WORKBENCH_IMAGE, bundles_present
+from api_integration_bench import WORKBENCH_IMAGE, bundles_present
 
 # ================================================
 # Constants

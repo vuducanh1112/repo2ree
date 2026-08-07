@@ -539,8 +539,12 @@ follow_imports = "skip"
 
 # Shared test-helper modules imported as top-level modules the same way (put on
 # sys.path by pytest, but invisible to mypy's file-path-based module naming).
+# A tier reaches for one of these whenever its shared names must survive being
+# imported beside another tier: two suites' conftest.py files share the module
+# name `conftest`, so whichever pytest loads last is the one a bare import
+# finds — see api/tests/integration/api_integration_bench.py.
 [[tool.mypy.overrides]]
-module = "scriptinfer_helpers"
+module = ["scriptinfer_helpers", "api_integration_bench"]
 ignore_missing_imports = true
 
 # Tests keep the half of strict that finds defects — wrong argument types,
@@ -551,7 +555,7 @@ ignore_missing_imports = true
 # same, since a test importing a symbol through the module under test is reading
 # that module's surface rather than building on it.
 [[tool.mypy.overrides]]
-module = ["*.tests.*", "conftest", "scriptinfer_helpers"]
+module = ["*.tests.*", "conftest", "scriptinfer_helpers", "api_integration_bench"]
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
 disallow_untyped_calls = false

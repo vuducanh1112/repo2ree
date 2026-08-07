@@ -31,7 +31,7 @@ from io import BytesIO
 from typing import Any
 
 import pytest
-from conftest import ReeFilmstrip, bundles_present
+from api_integration_bench import ReeFilmstrip, bundles_present
 from fastapi.testclient import TestClient
 
 RUN_TIMEOUT_SECONDS = 240

@@ -26,7 +26,7 @@ import pytest
 
 # The tier's skip gate lives in conftest alongside the `ree` fixture so the
 # two stay in lockstep.
-from conftest import bundles_present
+from api_integration_bench import bundles_present
 from fastapi.testclient import TestClient
 
 # ================================================
