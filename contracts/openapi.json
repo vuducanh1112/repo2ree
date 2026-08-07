@@ -7391,18 +7391,12 @@
               }
             ],
             "title": "Idempotency Key"
-          },
-          "produced_runtime_path": {
-            "type": "string",
-            "title": "Produced Runtime Path"
           }
         },
         "additionalProperties": false,
         "type": "object",
-        "required": [
-          "produced_runtime_path"
-        ],
-        "title": "CreateGenerateSbomRunPayload"
+        "title": "CreateGenerateSbomRunPayload",
+        "description": "Scan the declared runtime artifact. Takes no parameters of its own.\n\nWhich artifact gets scanned is the build recipe's ``runtime_path``, which\nthe author declared before the build ran and the build receipt binds. The\nhandler reads it there; a client cannot name a different one."
       },
       "CreateRunPayload": {
         "properties": {

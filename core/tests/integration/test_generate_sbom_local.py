@@ -20,7 +20,6 @@ from repo2ree_core.operations.handlers.author.generate_sbom import handle_genera
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
-from repo2ree_protocol.command import GenerateSbomArgs
 
 _NOW = parse_utc_instant("2026-08-03T00:00:00Z")
 
@@ -86,7 +85,6 @@ def test_scanner_process_publishes_sbom_and_commits_receipt(
     monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
 
     result = handle_generate_sbom(
-        GenerateSbomArgs(produced_runtime_path="runtime.tar"),
         run_id="sbom-local",
         log=lambda *args: None,
         is_canceled=lambda: False,

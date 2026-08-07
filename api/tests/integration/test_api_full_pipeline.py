@@ -217,7 +217,7 @@ def test_full_authoring_pipeline(client: TestClient, ree: dict[str, Any], filmst
     # The scan reads the runtime archive, not the source; the cross-check then
     # compares that against the dependencies the evaluate stage read off the
     # source, so it needs both of the stages above to have run.
-    _stage(client, ree_id, "generate-sbom", {"produced_runtime_path": RUNTIME_ARTIFACT}, what="sbom")
+    _stage(client, ree_id, "generate-sbom", {}, what="sbom")
     filmstrip.frame(ree_id, "sbom")
     _stage(client, ree_id, "cross-check-sbom", {}, what="sbom cross-check")
 

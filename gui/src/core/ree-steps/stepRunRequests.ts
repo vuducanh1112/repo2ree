@@ -29,7 +29,6 @@ interface ReeStepRunRequestByKey {
   sbom: {
     scriptKey: "sbom";
     params: {
-      produced_runtime_path: string;
       idempotencyKey?: string;
     };
   };
@@ -75,14 +74,14 @@ function buildHbomStepRunRequest(
 }
 
 export function buildSbomStepRunRequest(
-  params: ReeStepRunParamsByKey["sbom"],
-  ree: StepRee,
+  _params: ReeStepRunParamsByKey["sbom"],
+  _ree: StepRee,
 ): ReeStepRunRequestByKey["sbom"] {
+  // The scan targets the runtime the build recipe declares; there is nothing
+  // to send that the REE does not already hold.
   return {
     scriptKey: "sbom",
-    params: {
-      produced_runtime_path: String(params.producedRuntimePath ?? ree.runtime ?? ""),
-    },
+    params: {},
   };
 }
 

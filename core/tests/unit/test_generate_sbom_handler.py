@@ -25,7 +25,6 @@ from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
-from repo2ree_protocol.command import GenerateSbomArgs
 from repo2ree_protocol.result import ActionResult
 
 _NOW = parse_utc_instant("2026-08-03T00:00:00Z")
@@ -108,7 +107,6 @@ def _successful_scan(_runtime: Path, output: Path, **_kwargs: object) -> ScanOut
 
 def _run() -> ActionResult:
     return generate_sbom.handle_generate_sbom(
-        GenerateSbomArgs(produced_runtime_path="runtime.tar"),
         run_id="sbom-1",
         log=lambda *args: None,
         is_canceled=lambda: False,
@@ -196,20 +194,18 @@ def test_canceled_scan_preserves_existing_document_and_commits_no_receipt(
 
 
 @pytest.mark.parametrize(
-    ("ree", "requested_path", "runtime_bytes", "message", "category"),
+    ("ree", "runtime_bytes", "message", "category"),
     [
-        (_ree(with_build=False), "runtime.tar", _RUNTIME, "runtime has not been built", "precondition"),
-        (_ree(), "other.tar", _RUNTIME, "does not match the REE definition", "validation"),
-        (_ree(runtime_path="runtime.img"), "runtime.img", _RUNTIME, "tarballs only", "validation"),
-        (_ree(), "runtime.tar", b"changed", "does not match the selected build", "precondition"),
-        (record_seal(_ree(), sealed_at=_NOW), "runtime.tar", _RUNTIME, "sealed REE", "precondition"),
+        (_ree(with_build=False), _RUNTIME, "runtime has not been built", "precondition"),
+        (_ree(runtime_path="runtime.img"), _RUNTIME, "tarballs only", "validation"),
+        (_ree(), b"changed", "does not match the selected build", "precondition"),
+        (record_seal(_ree(), sealed_at=_NOW), _RUNTIME, "sealed REE", "precondition"),
     ],
 )
 def test_preconditions_reject_invalid_runtime_evidence_before_scanning(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     ree: Ree,
-    requested_path: str,
     runtime_bytes: bytes,
     message: str,
     category: str,
@@ -226,7 +222,6 @@ def test_preconditions_reject_invalid_runtime_evidence_before_scanning(
     monkeypatch.setattr(generate_sbom, "scan_runtime_archive", scan)
 
     result = generate_sbom.handle_generate_sbom(
-        GenerateSbomArgs(produced_runtime_path=requested_path),
         run_id="sbom-rejected",
         log=lambda *args: None,
         is_canceled=lambda: False,

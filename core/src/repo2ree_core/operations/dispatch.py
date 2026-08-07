@@ -166,7 +166,7 @@ def _dispatch(
     if isinstance(cmd, GenerateHbomCommand):
         return handle_generate_hbom(run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, GenerateSbomCommand):
-        return handle_generate_sbom(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
+        return handle_generate_sbom(run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, CrossCheckSbomCommand):
         return handle_cross_check_sbom(run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, ActivationTestCommand):

@@ -73,12 +73,7 @@ export function PageGenerateSbom({
             label={running ? "Generating…" : runDone ? "Regenerate" : "Generate"}
             running={running}
             disabled={disabled}
-            onRun={() =>
-              onRun(step.key, {
-                ...(params as ReeStepRunParams<"sbom">),
-                producedRuntimePath: runtimePath,
-              })
-            }
+            onRun={() => onRun(step.key, params as ReeStepRunParams<"sbom">)}
             onCancel={() => onCancel?.(step.key)}
           />
         }

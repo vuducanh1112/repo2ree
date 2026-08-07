@@ -273,16 +273,16 @@ class BuildRuntimeCommand(BaseModel):
 
 
 class GenerateSbomArgs(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    """No args — the scan targets the runtime the build recipe declares."""
 
-    produced_runtime_path: str
+    model_config = ConfigDict(extra="forbid")
 
 
 class GenerateSbomCommand(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     operation: Literal["generate_sbom"] = "generate_sbom"
-    args: GenerateSbomArgs
+    args: GenerateSbomArgs = GenerateSbomArgs()
 
 
 class CrossCheckSbomArgs(BaseModel):

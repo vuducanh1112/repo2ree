@@ -18,7 +18,6 @@ are in the sibling modules named for them.
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -26,7 +25,6 @@ from fastapi import APIRouter, HTTPException
 from repo2ree_api.contracts import ERROR_RESPONSES, CreateRunPayload, RunSummary
 from repo2ree_api.control.run_orchestration import run_summary, start_single_command_run
 from repo2ree_api.deps import workbench_manager
-from repo2ree_api.paths import WORKSPACE_CONTROL_PREFIXES, resolve_relative_path
 from repo2ree_api.workbench.commands import require_handle
 from repo2ree_core.analysis.repository.reproducibility_report import ReproducibilityReport
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
@@ -38,7 +36,6 @@ from repo2ree_protocol.command import (
     CrossCheckSbomCommand,
     EvaluateDependencyScoreArgs,
     EvaluateDependencyScoreCommand,
-    GenerateSbomArgs,
     GenerateSbomCommand,
     RunExperimentArgs,
     RunExperimentCommand,
@@ -173,7 +170,12 @@ def create_build_runtime_run(ree_id: str, payload: CreateBuildRuntimeRunPayload)
 
 
 class CreateGenerateSbomRunPayload(CreateRunPayload):
-    produced_runtime_path: str
+    """Scan the declared runtime artifact. Takes no parameters of its own.
+
+    Which artifact gets scanned is the build recipe's ``runtime_path``, which
+    the author declared before the build ran and the build receipt binds. The
+    handler reads it there; a client cannot name a different one.
+    """
 
 
 @stages_router.post(
@@ -183,42 +185,19 @@ class CreateGenerateSbomRunPayload(CreateRunPayload):
     responses=ERROR_RESPONSES,
 )
 def create_generate_sbom_run(ree_id: str, payload: CreateGenerateSbomRunPayload) -> RunSummary:
-    runtime_path = _resolve_sbom_runtime_path(payload.produced_runtime_path)
     return RunSummary.model_validate(
         run_summary(
             start_single_command_run(
                 ree_id,
                 operation="sbom",
-                command=GenerateSbomCommand(args=GenerateSbomArgs(produced_runtime_path=runtime_path)),
+                command=GenerateSbomCommand(),
                 run_id_prefix="sbom",
-                request_payload={"produced_runtime_path": runtime_path},
+                request_payload={},
                 canceled_message="SBOM run canceled",
-                fallback_outputs={"runtime_relative_path": runtime_path},
                 idempotency_key=payload.idempotency_key,
             )
         )
     )
-
-
-def _resolve_sbom_runtime_path(produced_runtime_path: str) -> str:
-    runtime_path = produced_runtime_path.strip()
-    if not runtime_path:
-        raise HTTPException(status_code=400, detail="produced_runtime_path is required for sbom runs")
-    # Validate the path string is safe (no traversal, no control prefixes). The
-    # tarball lives in the workbench, so validate against a neutral virtual root
-    # rather than any host directory; the handler re-resolves inside /ree.
-    resolve_relative_path(
-        Path("/__ree_workspace__"),
-        runtime_path,
-        invalid_detail="Invalid workspace path",
-        blocked_prefixes=WORKSPACE_CONTROL_PREFIXES,
-    )
-    if not runtime_path.lower().endswith((".tar", ".tar.gz", ".tgz")):
-        raise HTTPException(
-            status_code=400,
-            detail="SBOM generation currently supports runtime tarballs only (.tar, .tar.gz, or .tgz)",
-        )
-    return runtime_path
 
 
 # ================================================

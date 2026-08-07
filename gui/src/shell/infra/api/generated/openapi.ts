@@ -1433,12 +1433,17 @@ export interface components {
             /** Idempotency Key */
             idempotency_key?: string | null;
         };
-        /** CreateGenerateSbomRunPayload */
+        /**
+         * CreateGenerateSbomRunPayload
+         * @description Scan the declared runtime artifact. Takes no parameters of its own.
+         *
+         *     Which artifact gets scanned is the build recipe's ``runtime_path``, which
+         *     the author declared before the build ran and the build receipt binds. The
+         *     handler reads it there; a client cannot name a different one.
+         */
         CreateGenerateSbomRunPayload: {
             /** Idempotency Key */
             idempotency_key?: string | null;
-            /** Produced Runtime Path */
-            produced_runtime_path: string;
         };
         /**
          * CreateRunPayload

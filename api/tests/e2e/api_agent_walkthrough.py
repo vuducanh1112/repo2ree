@@ -530,12 +530,12 @@ def run() -> None:
     ok("hardware BOM recorded")
 
     chapter("9. Generate and cross-check the SBOM")
-    note("scan the runtime tarball for its software bill of materials")
+    note("scan the runtime tarball the build recipe declares — the step names no artifact of its own")
     run_stage(
         ree_id,
         "POST",
         f"/api/v1/rees/{ree_id}/generate-sbom",
-        {"produced_runtime_path": runtime_artifact},
+        {},
         what="SBOM generation",
     )
     # The scan writes REE evidence, not a workspace file: it lands in artifacts/

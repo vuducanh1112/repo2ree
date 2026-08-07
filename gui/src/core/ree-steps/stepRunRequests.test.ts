@@ -33,14 +33,12 @@ describe("stepRunRequests", () => {
     });
   });
 
-  it("maps sbom and activation inputs into backend request fields", () => {
+  it("builds parameterless sbom and activation requests (the REE names the runtime)", () => {
     const ree = buildRee();
 
     expect(buildSbomStepRunRequest({}, ree)).toEqual({
       scriptKey: "sbom",
-      params: {
-        produced_runtime_path: "runtime.tar.gz",
-      },
+      params: {},
     });
     expect(buildActivationStepRunRequest({}, ree)).toEqual({
       scriptKey: "activation",

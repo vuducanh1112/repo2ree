@@ -18,7 +18,6 @@ from repo2ree_core.persistence.files import publish_atomic, staging_path
 from repo2ree_core.persistence.layout import SBOM_ARTIFACT_PATH, ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError, load_ree, save_ree
 from repo2ree_core.time_utils import OperationTimer, format_duration_ms
-from repo2ree_protocol.command import GenerateSbomArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
 
@@ -33,7 +32,6 @@ class GenerateSbomOutputs(BaseModel):
 
 
 def handle_generate_sbom(
-    args: GenerateSbomArgs,
     *,
     run_id: str,
     log: LogSink,
@@ -46,7 +44,7 @@ def handle_generate_sbom(
 
     try:
         ree = load_ree(layout, store)
-        runtime_path = _check_preconditions(ree, args, layout)
+        runtime_path = _check_preconditions(ree, layout)
     except ReePreconditionError as exc:
         log("system", "error", f"cannot generate SBOM: {exc}")
         return ActionResult.failed("precondition", f"cannot generate SBOM: {exc}")
@@ -139,18 +137,22 @@ def handle_generate_sbom(
 
 def _check_preconditions(
     ree: Ree,
-    args: GenerateSbomArgs,
     layout: ReeLayout,
 ) -> WorkspacePath:
+    """Resolve the runtime to scan from the build recipe that produced it.
+
+    The path is not a parameter of the scan. The author declared it before the
+    build ran and the build receipt binds it, so a caller could only ever pass
+    back the value the REE already holds — an echo that can agree, never
+    inform. Reading it here keeps one declaration to check the evidence
+    against.
+    """
     if ree.seal is not None:
         raise ReePreconditionError("a sealed REE cannot generate an SBOM")
     runtime = ree.subject.definition.build_runtime
     runtime_path = runtime.runtime_path if runtime else None
     if runtime is None or runtime_path is None:
         raise ReePreconditionError("no runtime artifact path is declared")
-    requested_path = args.produced_runtime_path.strip()
-    if requested_path != str(runtime.runtime_path):
-        raise ValueError("requested runtime path does not match the REE definition")
     if not is_runtime_archive(str(runtime.runtime_path)):
         raise ValueError("SBOM generation currently supports runtime tarballs only")
     build = ree.subject.receipts.build
