@@ -8,7 +8,13 @@
 # Output is gitignored: these are local analysis artifacts, not files to review
 # in a diff. `dist/images` already means loadable container archives, so graphs
 # keep their distinct `dist/diagrams` namespace.
+#
+# One subdirectory per kind of question, because the root had grown to hold two
+# unrelated families: import graphs answer "what depends on what in the code",
+# and the domain views next door answer "what is an REE". A reader opening
+# `dist/diagrams` should see that split before they see thirteen files.
 DIAGRAM_DIR ?= dist/diagrams
+ARCH_DIR ?= $(DIAGRAM_DIR)/architecture
 
 # Declared empty so `make --warn-undefined-variables` stays quiet for anyone
 # who runs these without passing extra flags.
@@ -42,8 +48,8 @@ BE_PACKAGES = $(shell python scripts/arch_graph.py --list-packages)
 # on it and want one file to reload.
 PKG ?= repo2ree_core
 be-graph:
-	@mkdir -p $(DIAGRAM_DIR)
-	python scripts/arch_graph.py $(PKG) $(ARGS) -f svg -o $(DIAGRAM_DIR)/$(PKG).svg
+	@mkdir -p $(ARCH_DIR)
+	python scripts/arch_graph.py $(PKG) $(ARGS) -f svg -o $(ARCH_DIR)/$(PKG).svg
 
 # Refuses to draw nothing. An empty word list is legal shell — `for pkg in ; do
 # … done` loops zero times and exits 0 — so a derivation that came back empty
@@ -51,12 +57,12 @@ be-graph:
 # the derived list exists to prevent. Reads it into a shell variable, so the
 # script runs once rather than per reference.
 be-graphs:
-	@mkdir -p $(DIAGRAM_DIR)
+	@mkdir -p $(ARCH_DIR)
 	@set -e; packages="$(BE_PACKAGES)"; \
 	[ -n "$$packages" ] || { echo "no root packages resolved from pyproject.toml" \
 		"[tool.importlinter] — check 'python scripts/arch_graph.py --list-packages'" >&2; exit 1; }; \
 	for pkg in $$packages; do \
-		python scripts/arch_graph.py $$pkg $(ARGS) -f svg -o $(DIAGRAM_DIR)/$$pkg.svg; \
+		python scripts/arch_graph.py $$pkg $(ARGS) -f svg -o $(ARCH_DIR)/$$pkg.svg; \
 	done
 
 # The two views across all six packages, which answer different questions.
@@ -74,9 +80,9 @@ be-graphs:
 # necessarily cut. Honest and unavoidably wide; it is for tracing one specific
 # edge back to the modules underneath it, not for reading the shape.
 be-graph-all:
-	@mkdir -p $(DIAGRAM_DIR)
-	python scripts/arch_graph.py --collapse $(ARGS) -f svg -o $(DIAGRAM_DIR)/workspace.svg
-	python scripts/arch_graph.py --all $(ARGS) -f svg -o $(DIAGRAM_DIR)/workspace-modules.svg
+	@mkdir -p $(ARCH_DIR)
+	python scripts/arch_graph.py --collapse $(ARGS) -f svg -o $(ARCH_DIR)/workspace.svg
+	python scripts/arch_graph.py --all $(ARGS) -f svg -o $(ARCH_DIR)/workspace-modules.svg
 
 # GUI, via dependency-cruiser's own dot reporter — the same cruise
 # gui-checks runs, rendered instead of asserted, so rule violations show up
@@ -95,16 +101,16 @@ be-graph-all:
 # died would still leave make green and the output holding an empty SVG.
 GUI_COLLAPSE ?= ^src/(core|shell/[^/]+)/
 gui-graph:
-	@mkdir -p $(DIAGRAM_DIR)
+	@mkdir -p $(ARCH_DIR)
 	cd gui && npx depcruise src \
 		--include-only '^src' \
 		--output-type dot \
 		$(if $(GUI_COLLAPSE),--collapse '$(GUI_COLLAPSE)',) \
 		$(GUI_ARGS) \
-		--output-to ../$(DIAGRAM_DIR)/gui.dot
-	dot -Tsvg -o $(DIAGRAM_DIR)/gui.svg $(DIAGRAM_DIR)/gui.dot
-	@rm -f $(DIAGRAM_DIR)/gui.dot
-	@echo "wrote $(DIAGRAM_DIR)/gui.svg"
+		--output-to ../$(ARCH_DIR)/gui.dot
+	dot -Tsvg -o $(ARCH_DIR)/gui.svg $(ARCH_DIR)/gui.dot
+	@rm -f $(ARCH_DIR)/gui.dot
+	@echo "wrote $(ARCH_DIR)/gui.svg"
 
 # Expand the functional core by one namespace while retaining the collapsed
 # shell around it. Cruising all of src is deliberate: a core-only cruise would
@@ -112,13 +118,13 @@ gui-graph:
 # which shell layer consumes each core namespace.
 GUI_CORE_COLLAPSE ?= ^src/(core/[^/]+|shell/[^/]+)/
 gui-graph-core:
-	@mkdir -p $(DIAGRAM_DIR)
+	@mkdir -p $(ARCH_DIR)
 	cd gui && npx depcruise src \
 		--include-only '^src' \
 		--output-type dot \
 		--collapse '$(GUI_CORE_COLLAPSE)' \
 		$(GUI_ARGS) \
-		--output-to ../$(DIAGRAM_DIR)/gui-core.dot
-	dot -Tsvg -o $(DIAGRAM_DIR)/gui-core.svg $(DIAGRAM_DIR)/gui-core.dot
-	@rm -f $(DIAGRAM_DIR)/gui-core.dot
-	@echo "wrote $(DIAGRAM_DIR)/gui-core.svg"
+		--output-to ../$(ARCH_DIR)/gui-core.dot
+	dot -Tsvg -o $(ARCH_DIR)/gui-core.svg $(ARCH_DIR)/gui-core.dot
+	@rm -f $(ARCH_DIR)/gui-core.dot
+	@echo "wrote $(ARCH_DIR)/gui-core.svg"

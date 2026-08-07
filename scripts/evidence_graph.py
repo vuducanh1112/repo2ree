@@ -13,7 +13,7 @@ its own, as the count of what its re-run invalidates.
 Nothing here is hand-maintained. Adding a comparison to a step adds an edge.
 
     python scripts/evidence_graph.py                              # SVG on stdout
-    python scripts/evidence_graph.py -o dist/diagrams/evidence.svg
+    python scripts/evidence_graph.py -o dist/diagrams/domain/evidence.svg
     python scripts/evidence_graph.py -f dot                       # to pipe into dot yourself
     python scripts/evidence_graph.py -f blast                     # the closure, as text
 """

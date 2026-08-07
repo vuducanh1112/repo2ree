@@ -66,6 +66,23 @@ require-clean-tree:
 	@[ -z "$$(git status --porcelain)" ] \
 		|| { echo "working tree dirty — commit first, so published images match a commit"; exit 1; }
 
+# ================================================
+# Cross-topic targets
+# ================================================
+
+# Every generated picture, in one command. Defined here rather than in any one
+# topic file because it spans three: architecture.mk answers what the code
+# imports, domain.mk what an REE is, journals.mk what a run did, and none owns
+# the others. Each writes to its own subdirectory of dist/diagrams, so the split
+# is visible in the output and not only in the Makefile.
+#
+# Two of the three read a capture the docker-backed api-integration tier leaves
+# behind, so a machine that has never run it gets that suite's name and a
+# nonzero exit rather than a partial set drawn from nothing.
+.PHONY: diagrams
+diagrams: architecture-diagrams domain-diagrams journals
+	@echo ">> diagrams written under $(DIAGRAM_DIR)/"
+
 include mk/checks.mk
 include mk/metrics.mk
 include mk/architecture.mk
