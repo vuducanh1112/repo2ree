@@ -33,12 +33,3 @@ export function findFileByWorkspacePath(nodes: FileTreeNode[], path: string): Fi
 export function workspaceFileExists(nodes: FileTreeNode[], path: string): boolean {
   return !!findFileByWorkspacePath(nodes, path);
 }
-
-export function listTreeFiles(nodes: FileTreeNode[]): Array<{ path: string; content: string }> {
-  const files: Array<{ path: string; content: string }> = [];
-  walkFileTree(nodes, (node, path) => {
-    if (node.type === "file") files.push({ path, content: node.content ?? "" });
-    return null;
-  });
-  return files;
-}

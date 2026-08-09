@@ -37,7 +37,11 @@ export function mapReeDetailToReeSlices(ree: ReeDocument) {
       hardware_description: definition?.hardware,
     },
     reeSession: {
-      source_available: ree.audit.source.payload === "present",
+      // Payload speaks for a sealed bundle's inventory and nothing else — a
+      // draft's reads not_applicable by construction. Whether the workspace
+      // holds a source is what the acquisition receipt's standing says, so ask
+      // evidence: `current` means the REE still declares the source it acquired.
+      source_available: ree.audit.source.evidence === "current",
       source_included: ree.status === "sealed" && ree.audit.source.payload === "present",
       runtime_included: ree.status === "sealed" && ree.audit.runtime.payload === "present",
       sealed_at: ree.ree.seal?.sealed_at,

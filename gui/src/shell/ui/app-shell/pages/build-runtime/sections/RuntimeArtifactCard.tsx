@@ -2,13 +2,12 @@ import {
   runtimeArtifactStatus,
   runtimeArtifactStatusLabel,
 } from "@core/ree-steps/buildRuntimeUiState";
-import type { FileTreeNode } from "@core/workspace/FileTree";
-import { FilePicker } from "@shell/ui/app-shell/components/script-and-file/FilePicker";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import {
   lgColors,
   lgContentCard,
   lgInfoBanner,
+  lgInput,
   lgStatusBadge,
   lgStyles,
 } from "@shell/ui/theme/lightGlassTheme";
@@ -18,15 +17,19 @@ interface RuntimeArtifactCardProps {
   runtimePath: string;
   runtimeSize: string | null;
   runtimePathExists: boolean;
-  files: FileTreeNode[];
   onRuntimeChange: (path: string) => void;
 }
 
+/**
+ * Declare where the build script writes its runtime. This is authored before
+ * the build runs — the build refuses to start without it and fails if nothing
+ * lands at the declared path — so it is a free-text declaration, not a picker
+ * over files that already exist.
+ */
 export function RuntimeArtifactCard({
   runtimePath,
   runtimeSize,
   runtimePathExists,
-  files,
   onRuntimeChange,
 }: RuntimeArtifactCardProps) {
   const hasRuntime = !!runtimePath;
@@ -34,7 +37,7 @@ export function RuntimeArtifactCard({
     hasRuntime,
     runtimePathExists,
   });
-  const ok = status === "ready";
+  const produced = status === "produced";
 
   return (
     <div style={lgContentCard()}>
@@ -53,38 +56,44 @@ export function RuntimeArtifactCard({
           <div>
             <div style={lgStyles.label}>Runtime Artifact</div>
             <div style={lgStyles.helper}>
-              Pick the workspace file that downstream SBOM and activation use.
+              Where the build script writes the runtime, relative to the workspace. Downstream SBOM
+              and activation read the same path.
             </div>
           </div>
         </div>
-        <span style={lgStatusBadge(ok)}>{runtimeArtifactStatusLabel(status)}</span>
+        <span style={lgStatusBadge(produced)}>{runtimeArtifactStatusLabel(status)}</span>
       </div>
 
-      <FilePicker
-        value={runtimePath}
-        onChange={onRuntimeChange}
-        files={files}
-        placeholder="runtime.tar.gz"
-        ariaLabel="Runtime artifact"
-      />
+      <section aria-label="Runtime artifact">
+        <input
+          type="text"
+          aria-label="Runtime output path"
+          value={runtimePath}
+          placeholder="runtime.tar.gz"
+          onChange={(event) => onRuntimeChange(event.target.value)}
+          style={{ ...lgInput(false), fontFamily: F.mono }}
+        />
+      </section>
 
       {hasRuntime && (
-        <div style={{ ...lgInfoBanner(ok ? "success" : "danger"), marginTop: 12 }}>
+        <div style={{ ...lgInfoBanner(produced ? "success" : "muted"), marginTop: 12 }}>
           <span
             style={{
               display: "inline-flex",
               alignItems: "center",
               gap: 6,
               fontSize: 12,
-              color: ok ? lgColors.success : lgColors.danger,
+              color: produced ? lgColors.success : lgColors.textMid,
               fontFamily: F.sans,
               fontWeight: 700,
               flex: 1,
               minWidth: 0,
             }}
           >
-            {ok ? Ic.check(13) : Ic.info(13)}
-            <code style={{ overflowWrap: "anywhere" }}>{runtimePath}</code>
+            {produced ? Ic.check(13) : Ic.info(13)}
+            <code style={{ overflowWrap: "anywhere" }}>
+              {produced ? runtimePath : `${runtimePath} — not built yet`}
+            </code>
           </span>
           {runtimeSize && (
             <span

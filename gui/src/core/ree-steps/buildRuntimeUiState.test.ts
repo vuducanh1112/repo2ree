@@ -4,6 +4,7 @@ import {
   buildReadiness,
   buildRunStatusLabel,
   buildSummaryStatusLabel,
+  canRunBuild,
   deriveRuntimeFileSize,
   runtimeArtifactStatus,
   runtimeArtifactStatusLabel,
@@ -35,41 +36,65 @@ describe("buildRunStatusLabel", () => {
 
 describe("runtimeArtifactStatus", () => {
   const base = { hasRuntime: true, runtimePathExists: true };
-  it("unset when no runtime", () => {
-    expect(runtimeArtifactStatus({ ...base, hasRuntime: false })).toBe("unset");
+  it("undeclared when no runtime path is authored", () => {
+    expect(runtimeArtifactStatus({ ...base, hasRuntime: false })).toBe("undeclared");
   });
-  it("missing when path not in workspace", () => {
-    expect(runtimeArtifactStatus({ ...base, runtimePathExists: false })).toBe("missing");
+  it("declared — not missing — when the build has not produced it yet", () => {
+    expect(runtimeArtifactStatus({ ...base, runtimePathExists: false })).toBe("declared");
   });
-  it("ready when present in workspace", () => {
-    expect(runtimeArtifactStatus(base)).toBe("ready");
+  it("produced when present in workspace", () => {
+    expect(runtimeArtifactStatus(base)).toBe("produced");
   });
   it("has UI labels", () => {
-    expect(runtimeArtifactStatusLabel("unset")).toBe("Not set");
-    expect(runtimeArtifactStatusLabel("missing")).toBe("Missing");
-    expect(runtimeArtifactStatusLabel("ready")).toBe("Ready");
-    expect(runtimeSummaryStatusLabel("ready")).toBe("In workspace");
+    expect(runtimeArtifactStatusLabel("undeclared")).toBe("Not declared");
+    expect(runtimeArtifactStatusLabel("declared")).toBe("Awaiting build");
+    expect(runtimeArtifactStatusLabel("produced")).toBe("Built");
+    expect(runtimeSummaryStatusLabel("produced")).toBe("In workspace");
+    expect(runtimeSummaryStatusLabel("declared")).toBe("Declared, not built");
+  });
+});
+
+describe("canRunBuild", () => {
+  const ready = { running: false, hasMissing: false, hasScript: true, hasRuntimePath: true };
+  it("runs when the script and the declared runtime path are both there", () => {
+    expect(canRunBuild(ready)).toBe(true);
+  });
+  it("refuses without a declared runtime path", () => {
+    expect(canRunBuild({ ...ready, hasRuntimePath: false })).toBe(false);
+  });
+  it("refuses while running, missing inputs, or without a script", () => {
+    expect(canRunBuild({ ...ready, running: true })).toBe(false);
+    expect(canRunBuild({ ...ready, hasMissing: true })).toBe(false);
+    expect(canRunBuild({ ...ready, hasScript: false })).toBe(false);
   });
 });
 
 describe("buildFooterHint / summary", () => {
+  const declared = { hasRuntimePath: true };
   it("does not expose an add-script state", () => {
-    expect(buildFooterHint({ runDone: false, runFailed: false, hasScript: false })).toContain(
-      "Script ready",
-    );
+    expect(
+      buildFooterHint({ ...declared, runDone: false, runFailed: false, hasScript: false }),
+    ).toContain("Script ready");
   });
   it("invites run when script ready", () => {
-    expect(buildFooterHint({ runDone: false, runFailed: false, hasScript: true })).toContain(
-      "Script ready",
-    );
+    expect(
+      buildFooterHint({ ...declared, runDone: false, runFailed: false, hasScript: true }),
+    ).toContain("Script ready");
+  });
+  it("asks for the runtime path before the run", () => {
+    expect(
+      buildFooterHint({ runDone: false, runFailed: false, hasScript: true, hasRuntimePath: false }),
+    ).toContain("Declare where the build writes the runtime");
   });
   it("invites sbom after build", () => {
-    expect(buildFooterHint({ runDone: true, runFailed: false, hasScript: true })).toContain("SBOM");
+    expect(
+      buildFooterHint({ ...declared, runDone: true, runFailed: false, hasScript: true }),
+    ).toContain("SBOM");
   });
   it("points at the log after a failed build", () => {
-    expect(buildFooterHint({ runDone: true, runFailed: true, hasScript: true })).toContain(
-      "Build failed",
-    );
+    expect(
+      buildFooterHint({ runDone: true, runFailed: true, hasScript: true, hasRuntimePath: false }),
+    ).toContain("Build failed");
   });
   it("summary label tracks state", () => {
     expect(buildSummaryStatusLabel({ runDone: true, hasScript: true })).toBe("Built");

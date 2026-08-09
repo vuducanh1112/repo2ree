@@ -116,8 +116,10 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
     await expect(
       page.getByText("python-hello-world.tar.gz", { exact: true }).first(),
     ).toBeVisible();
+    // Acquisition names the source type from the uploaded archive itself — a
+    // .tar.gz is a tarball — and the snapshot reads it back off the definition.
     const snapshot = page.getByRole("region", { name: "Workspace Snapshot" });
-    await expect(snapshot.getByText("Upload", { exact: true })).toBeVisible();
+    await expect(snapshot.getByText("tarball", { exact: true })).toBeVisible();
   });
 
   await demoStep(page, "Browse extracted files", async () => {
@@ -273,6 +275,17 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
     );
     await clickDemo(page, main.getByRole("button", { name: "Save build script" }));
 
+    // The runtime the build produces is declared before it runs — the build
+    // refuses to start without it and fails if nothing lands at that path. The
+    // declaration names the substrate the whole REE runs on, shared by
+    // activation and every experiment.
+    await fillDemo(
+      page,
+      page.getByRole("region", { name: "Runtime artifact" }).getByRole("textbox"),
+      PYTHON_RUNTIME_PATH,
+      "Declare where the build writes the runtime — the build is checked against this path",
+    );
+
     // The build page has no shared execution lifecycle — each
     // experiment and the activation own their own run script (authored later).
     await clickDemo(page, main.getByRole("button", { name: /Run build/ }), "Run runtime build");
@@ -291,23 +304,6 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
       page,
       main.getByRole("status", { name: "Built" }),
       "The build succeeded and earned its badge",
-    );
-
-    // The produced artifact is selected right here on the Build Runtime page —
-    // its runtime-artifact card (section 1) names the substrate the whole REE
-    // runs on, shared by activation and every experiment.
-    await clickDemo(
-      page,
-      page.getByRole("region", { name: "Runtime artifact" }).getByTitle("Browse repository files"),
-      "Open runtime file picker",
-    );
-    await expect(page.getByRole("button", { name: "python_hello_world/runtime.tar" })).toBeVisible({
-      timeout: 30000,
-    });
-    await clickDemo(
-      page,
-      page.getByRole("button", { name: PYTHON_RUNTIME_PATH }),
-      "Select the produced runtime artifact — shared by activation and every experiment",
     );
   });
 

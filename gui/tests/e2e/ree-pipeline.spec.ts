@@ -69,13 +69,15 @@ test.describe("REE pipeline", () => {
         page.getByText("python-hello-world.tar.gz", { exact: true }).first(),
       ).toBeVisible();
 
-      // Workspace Snapshot surfaces the backend-computed source metadata. An
-      // uploaded tarball reports "Upload" as its origin and a known byte size.
+      // Workspace Snapshot reads the REE's own source declaration and receipt:
+      // acquisition names the type from the archive (a .tar.gz is a tarball),
+      // an upload has no origin to report, and the receipt carries the SWHID
+      // computed over what actually landed in the workspace.
       const snapshot = page.getByRole("region", { name: "Workspace Snapshot" });
       await expect(snapshot.getByText("Origin", { exact: true })).toBeVisible();
-      await expect(snapshot.getByText("Upload", { exact: true })).toBeVisible();
+      await expect(snapshot.getByText("tarball", { exact: true })).toBeVisible();
       await expect(snapshot.getByText("Size", { exact: true })).toBeVisible();
-      await expect(snapshot.getByText("python-hello-world.tar.gz", { exact: true })).toBeVisible();
+      await expect(snapshot.getByText(/^swh:1:dir:/)).toBeVisible();
     });
 
     await test.step("browse uploaded files in the REE tree", async () => {

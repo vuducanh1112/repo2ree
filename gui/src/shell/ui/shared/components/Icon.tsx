@@ -6,7 +6,7 @@ interface SvgProps {
   title?: string;
 }
 
-export const Svg = ({ d, size = 15, fill = "none", sw = 1.6, title = "icon" }: SvgProps) => (
+const Svg = ({ d, size = 15, fill = "none", sw = 1.6, title = "icon" }: SvgProps) => (
   <svg
     width={size}
     height={size}

@@ -111,8 +111,32 @@ describe("toReePatchFromSlices", () => {
       }),
     ).toMatchObject({
       name: "",
-      source: null,
-      build_runtime: null,
+      build_runtime: { runtime_path: null },
     });
+  });
+
+  // The patch merges by key, so what it omits it preserves. An upload declares
+  // its source server-side; sending `source: null` from an editor that never
+  // held that declaration would erase it and strand the acquisition receipt.
+  it("omits an unauthored source rather than nulling the one the backend declared", () => {
+    const patch = toReePatchFromSlices({
+      reeSpec: createEmptyReeSpec(),
+      workspaceSourceState: {},
+      artifactStatus: {},
+      evaluationState: {},
+    });
+    expect(patch).not.toHaveProperty("source");
+  });
+
+  // Clearing the declared runtime path must clear the declaration — but never
+  // at the cost of the build recipe, which carries the REE's own build script.
+  it("clears an undeclared runtime path without dropping the build recipe", () => {
+    const patch = toReePatchFromSlices({
+      reeSpec: { ...createEmptyReeSpec(), runtime: "" },
+      workspaceSourceState: {},
+      artifactStatus: {},
+      evaluationState: {},
+    });
+    expect(patch.build_runtime).toEqual({ runtime_path: null });
   });
 });

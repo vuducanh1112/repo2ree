@@ -8,8 +8,8 @@ import type { Hbom, ReeCatalogMetadata, ReeExperiment, ReeSpec } from "./ReeSpec
 export interface ReeIntentPatch extends Record<string, unknown> {
   name: string;
   catalog: Record<string, unknown>;
-  source: Record<string, unknown> | null;
-  build_runtime: Record<string, unknown> | null;
+  source?: Record<string, unknown>;
+  build_runtime: Record<string, unknown>;
   experiments: Array<Record<string, unknown>>;
   hardware: Record<string, unknown>;
 }
@@ -91,18 +91,30 @@ export function toReePatchFromSlices({ reeSpec }: ReePatchSlices): ReeIntentPatc
   return {
     name: reeSpec.name || "",
     catalog: serializeCatalogMetadata(reeSpec.catalogMetadata),
-    source: reeSpec.sourceType
+    // Omitted, never nulled, when nothing is authored locally. The patch merges
+    // by key, and an upload declares its source server-side (acquisition names
+    // the type from the archive), so a `source: null` here would erase a
+    // declaration the editor never held — leaving the acquisition receipt
+    // describing a source the REE no longer declares. Removing a source is its
+    // own explicit operation, not something autosave decides.
+    ...(reeSpec.sourceType
       ? {
-          origin_url: reeSpec.originUrl || null,
-          source_type: reeSpec.sourceType,
-          requested_ref: null,
+          source: {
+            origin_url: reeSpec.originUrl || null,
+            source_type: reeSpec.sourceType,
+            requested_ref: null,
+          },
         }
-      : null,
+      : {}),
     // The runtime destination rides on the build recipe, not beside it: the
     // script and what it produces are one declaration (as with an experiment's
     // output_paths). Sending only this key is safe — the backend rehydrates the
-    // script's identity from the authored file and carries these through.
-    build_runtime: reeSpec.runtime ? { runtime_path: reeSpec.runtime } : null,
+    // script's identity from the reserved overlay file, which every REE is
+    // seeded with, and carries the declared path through. An undeclared path is
+    // sent as null so clearing the field clears the declaration; the recipe
+    // itself is never nulled, since dropping it would discard the build script
+    // the REE already owns.
+    build_runtime: { runtime_path: reeSpec.runtime || null },
     experiments: (reeSpec.experiments || []).map(serializeExperiment),
     hardware: serializeHbom(reeSpec.hardwareDescription),
   };

@@ -152,10 +152,23 @@ export async function generateScript(page: Page): Promise<{ message: string; gra
   return { message, graph };
 }
 
-function waitForDefinitionPatch(page: Page) {
-  return page.waitForResponse(
+/**
+ * Await the definition PATCH a declaration settles through — and fail here if
+ * the backend rejected it. A rejected patch leaves the declaration unmade, so a
+ * helper that merely waited for *a* response would hand the spec a REE missing
+ * what it just declared, and the failure would surface pages later as something
+ * else entirely (inference reporting an experiment it cannot resolve).
+ */
+async function waitForDefinitionPatch(page: Page, { expectOk = true } = {}) {
+  const response = await page.waitForResponse(
     (res) => res.url().includes("/definition") && res.request().method() === "PATCH",
   );
+  if (expectOk && !response.ok()) {
+    throw new Error(
+      `definition PATCH rejected with ${response.status()}: ${await response.text()}`,
+    );
+  }
+  return response;
 }
 
 /**
@@ -361,9 +374,10 @@ export async function runEvaluate(page: Page) {
 }
 
 /**
- * Build the runtime artifact and select the produced file. Both building and
- * picking the produced artifact live on the single Build Runtime page — see
- * {@link selectRuntimeArtifact}.
+ * Build the runtime artifact. Declaring where the build writes it and running
+ * the build both live on the single Build Runtime page — see
+ * {@link declareRuntimeArtifact}, which must happen first: the build refuses to
+ * run until the produced path is declared.
  */
 export function dockerBuildScript(projectDir: string, producedRuntimePath: string): string {
   return `#!/usr/bin/env sh
@@ -388,6 +402,8 @@ export async function buildRuntime(page: Page, buildScript: string, producedRunt
   await page.getByLabel("Build script").fill(buildScript);
   await main(page).getByRole("button", { name: "Save build script" }).click();
 
+  await declareRuntimeArtifact(page, producedRuntimePath);
+
   await main(page)
     .getByRole("button", { name: /Run build/ })
     .click();
@@ -402,8 +418,6 @@ export async function buildRuntime(page: Page, buildScript: string, producedRunt
   // this step with its log on screen instead of surfacing 20s later as an
   // artifact-picker timeout.
   await expect(main(page).getByRole("status", { name: "Built" })).toBeVisible();
-
-  await selectRuntimeArtifact(page, producedRuntimePath);
   await stepShot(page, "build-runtime", "after");
 }
 
@@ -434,23 +448,21 @@ grep -Fq "$EXPECTED" ${JSON.stringify(EXPERIMENT_OUTPUT_FILE)}
 }
 
 /**
- * Pick the produced runtime artifact. The runtime artifact card lives on the
- * Build Runtime page itself (section "1. Build or acquire the runtime"), so this
- * just picks the produced file via the repository file picker right where the
- * build ran — no pod decomposition needed.
+ * Declare where the build will write its runtime. The runtime artifact card
+ * lives on the Build Runtime page itself (section "1. Declare the runtime the
+ * build produces"), and the declaration is authored before the build runs — the
+ * path names a file that does not exist yet.
  */
-async function selectRuntimeArtifact(page: Page, producedRuntimePath: string) {
+async function declareRuntimeArtifact(page: Page, producedRuntimePath: string) {
+  // Declaring the runtime is a debounced intent PATCH. The build reads the
+  // declaration server-side, and anything else that asks the backend about the
+  // runtime next (script inference, most obviously) must not race it, so settle
+  // the declaration here rather than in each caller.
+  const runtimeDeclared = waitForDefinitionPatch(page);
   await page
     .getByRole("region", { name: "Runtime artifact" })
-    .getByTitle("Browse repository files")
-    .click();
-  const producedRuntime = page.getByRole("button", { name: producedRuntimePath });
-  await expect(producedRuntime).toBeVisible({ timeout: 20000 });
-  // Declaring the runtime is a debounced intent PATCH. Anything that asks the
-  // backend about the runtime next (script inference, most obviously) must not
-  // race it, so settle the declaration here rather than in each caller.
-  const runtimeDeclared = waitForDefinitionPatch(page);
-  await producedRuntime.click();
+    .getByRole("textbox")
+    .fill(producedRuntimePath);
   await runtimeDeclared;
 }
 
@@ -566,7 +578,10 @@ export async function runExperiment(
   await stepShot(page, "run-experiment", "before");
   await openPort(page, "Experiments");
   await expect(main(page).getByRole("heading", { name: "Experiments", exact: true })).toBeVisible();
-  const experimentAdded = waitForDefinitionPatch(page);
+  // Adding the row autosaves an experiment that has no name yet, which the
+  // backend cannot declare — settle that round-trip without demanding it
+  // succeed, so the naming patch below is the one held to the standard.
+  const experimentAdded = waitForDefinitionPatch(page, { expectOk: false });
   await main(page)
     .getByRole("button", { name: /Add experiment/i })
     .first()
@@ -600,10 +615,12 @@ export async function runExperiment(
   );
   await runScriptWritten;
 
-  // Saving the verify script also declares its fallback reserved path on the
-  // experiment intent. Arm the wait before the save so the run can't race ahead
-  // of the debounced intent PATCH that makes the backend see the verify script.
-  const verifyScriptDeclared = waitForDefinitionPatch(page);
+  // Same as the run script: a definition patch carries an experiment's name and
+  // output paths, and nothing else — the backend reads its scripts' identities
+  // off the authored files, and sees the verify script by its presence at the
+  // reserved path. So this save writes a file and patches nothing; the PUT is
+  // the only signal that fires.
+  const verifyScriptDeclared = waitForFileWrite(page);
   await saveVerifyScript(
     page,
     main(page).getByRole("textbox", { name: "Experiment verify script", exact: true }),

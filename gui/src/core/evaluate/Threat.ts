@@ -185,7 +185,13 @@ function parseUndeclaredPackage(value: unknown): UndeclaredPackage | null {
   };
 }
 
-function parseSbomCrossCheck(value: unknown): SbomCrossCheckSummary | null {
+/**
+ * Defensively parse a raw cross-check summary. The evaluate report is written
+ * once by the evaluate run and never rewritten — rewriting it would break the
+ * report digest that run's receipt attests to — so a later cross-check reports
+ * itself through its own run outputs, which is where this reads it from. Pure.
+ */
+export function parseSbomCrossCheck(value: unknown): SbomCrossCheckSummary | null {
   const raw = asRecord(value);
   if (!raw) return null;
   return {

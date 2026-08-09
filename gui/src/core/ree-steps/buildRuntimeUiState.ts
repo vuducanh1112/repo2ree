@@ -18,46 +18,64 @@ export function buildRunStatusLabel(input: {
   return "Ready";
 }
 
-type RuntimeArtifactStatus = "unset" | "missing" | "ready";
+// The runtime path is a declaration made before the build, not a pick made
+// after it: the author says where the build script will write the artifact, and
+// the build refuses to run without it and fails if nothing lands there. So an
+// undeclared path is the author's missing input, while a declared path with no
+// file yet is simply a build that has not run.
+type RuntimeArtifactStatus = "undeclared" | "declared" | "produced";
 
 export function runtimeArtifactStatus(input: {
   hasRuntime: boolean;
   runtimePathExists: boolean;
 }): RuntimeArtifactStatus {
-  if (!input.hasRuntime) return "unset";
-  if (!input.runtimePathExists) return "missing";
-  return "ready";
+  if (!input.hasRuntime) return "undeclared";
+  if (!input.runtimePathExists) return "declared";
+  return "produced";
 }
 
 export function runtimeArtifactStatusLabel(status: RuntimeArtifactStatus): string {
   switch (status) {
-    case "unset":
-      return "Not set";
-    case "missing":
-      return "Missing";
-    case "ready":
-      return "Ready";
+    case "undeclared":
+      return "Not declared";
+    case "declared":
+      return "Awaiting build";
+    case "produced":
+      return "Built";
   }
 }
 
 export function runtimeSummaryStatusLabel(status: RuntimeArtifactStatus): string {
   switch (status) {
-    case "unset":
+    case "undeclared":
       return "—";
-    case "missing":
-      return "Missing in workspace";
-    case "ready":
+    case "declared":
+      return "Declared, not built";
+    case "produced":
       return "In workspace";
   }
+}
+
+export function canRunBuild(input: {
+  running: boolean;
+  hasMissing: boolean;
+  hasScript: boolean;
+  hasRuntimePath: boolean;
+}): boolean {
+  return !input.running && !input.hasMissing && input.hasScript && input.hasRuntimePath;
 }
 
 export function buildFooterHint(input: {
   runDone: boolean;
   runFailed: boolean;
   hasScript: boolean;
+  hasRuntimePath: boolean;
 }): string {
   if (input.runFailed) return "Build failed — check the log, then re-run.";
   if (input.runDone) return "Build complete — continue to SBOM.";
+  if (!input.hasRuntimePath) {
+    return "Declare where the build writes the runtime, then run build.";
+  }
   return "Script ready. Run build when prerequisites are met.";
 }
 

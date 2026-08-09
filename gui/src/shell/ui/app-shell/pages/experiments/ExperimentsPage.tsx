@@ -5,6 +5,7 @@ import {
   patchExperiment,
 } from "@core/ree/experimentOps";
 import { experimentIndexFromField, experimentValidation } from "@core/ree/experimentRules";
+import { planExperimentRunScriptSeed } from "@core/ree/experimentScriptSeeding";
 import type { ReeExperiment, ReeSpec } from "@core/ree/ReeSpec";
 import { findFileByWorkspacePath } from "@core/workspace/fileTreeTraversal";
 import { useScriptTemplates } from "@shell/data/scriptTemplates/catalog";
@@ -128,6 +129,64 @@ export function PageExperiments({
           .filter((_, i) => i !== selectedIndex)
           .map((e) => e.name.trim())
           .filter(Boolean);
+
+  // Naming an experiment declares it, and a declaration names authored bytes:
+  // the backend reads the run script's digest and size off the overlay and
+  // rejects the whole definition patch when the file is not there. The quick-add
+  // path above already writes the script as it declares; this settles the same
+  // for an experiment named by hand — seed the backend's own starter template,
+  // or carry the authored script over when a rename moved its destination.
+  const runScriptSeed = (() => {
+    if (locked || !templates || selectedIndex === null) return null;
+    const experiment = experiments[selectedIndex];
+    if (!experiment) return null;
+    const { trimmedName, isDuplicateName, isInvalidName } = experimentValidation(
+      experiment,
+      otherNames,
+    );
+    // A name the backend would refuse is not worth seeding for, and two
+    // experiments sharing one would seed over each other's script.
+    if (trimmedName === "" || isDuplicateName || isInvalidName) return null;
+    const files = workspaceFiles || [];
+    const targetPath = experimentRunScriptPath(templates, experiment.name);
+    return {
+      index: selectedIndex,
+      declarePath: experiment.runScript === targetPath ? "" : targetPath,
+      write: planExperimentRunScriptSeed({
+        name: experiment.name,
+        declaredPath: experiment.runScript,
+        targetPath,
+        targetExists: !!findFileByWorkspacePath(files, targetPath),
+        declaredContent: experiment.runScript
+          ? (findFileByWorkspacePath(files, experiment.runScript)?.content ?? null)
+          : null,
+        templateBody: templates.experiment.templates.find((entry) => entry.is_default)?.body ?? "",
+      }),
+    };
+  })();
+
+  // Debounced so typing a name writes one file, not one per keystroke. The
+  // declaration is debounced too (autosave), and a patch that loses the race is
+  // retried on the next edit — the write below is itself one, since it
+  // refreshes the workspace.
+  const seedIndex = runScriptSeed?.index;
+  const seedDeclarePath = runScriptSeed?.declarePath;
+  const seedFromPath = runScriptSeed?.write?.fromPath;
+  const seedToPath = runScriptSeed?.write?.toPath;
+  const seedContent = runScriptSeed?.write?.content;
+  // Both callbacks are recreated every render, so the effect reads them through
+  // a ref; keying it on the planned write alone (all primitives) is what keeps
+  // it from rescheduling forever.
+  const seedActions = useRef({ persist: onPersistWorkspaceFile, declare: updateExperiment });
+  seedActions.current = { persist: onPersistWorkspaceFile, declare: updateExperiment };
+  useEffect(() => {
+    if (seedIndex === undefined || (!seedToPath && !seedDeclarePath)) return;
+    const timer = setTimeout(() => {
+      if (seedToPath) void seedActions.current.persist(seedFromPath, seedToPath, seedContent ?? "");
+      if (seedDeclarePath) seedActions.current.declare(seedIndex, { runScript: seedDeclarePath });
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [seedIndex, seedDeclarePath, seedFromPath, seedToPath, seedContent]);
 
   // Run lives here (not in the detail body) so its controls can sit in the
   // page header's top-right, while the detail body still shows the result.

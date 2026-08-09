@@ -1,3 +1,4 @@
+import { latestCrossCheckSummary } from "@core/evaluate/crossCheckRun";
 import type { SbomCrossCheckSummary } from "@core/evaluate/Threat";
 import { isTerminalReeRunStatus } from "@core/runs/ReeRunStatus";
 import { useApiRuntime } from "@shell/data/apiRuntime";
@@ -25,13 +26,17 @@ export function CrossCheckCard({ sbomReady, color }: { sbomReady: boolean; color
   const reportQuery = useEvaluateReportQuery({ reeId, enabled: !!reeId });
   const runsQuery = useReeRunsQuery();
   const startRun = useStartReeRunMutation();
+  const runs = runsQuery.data ?? [];
   const checking =
     startRun.isPending ||
-    (runsQuery.data ?? []).some(
-      (run) => run.operation === "crosscheck" && !isTerminalReeRunStatus(run.status),
-    );
+    runs.some((run) => run.operation === "crosscheck" && !isTerminalReeRunStatus(run.status));
   const hasReport = !!reportQuery.data;
-  const summary = reportQuery.data?.sbomCrossCheck ?? null;
+  // The cross-check does not land in the evaluate report: that artifact is the
+  // evaluate run's own evidence, digest-pinned by its receipt, so a later run
+  // may not rewrite it. The result rides on the cross-check run instead —
+  // aggregates and the undeclared packages both — and the run list is already
+  // in hand here, so read the newest succeeded one.
+  const summary = latestCrossCheckSummary(runs);
   const disabled = checking || !sbomReady || !hasReport;
 
   return (

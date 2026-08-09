@@ -13,13 +13,15 @@ const CAPSULE_NAME =
 const CAPSULE_DESCRIPTION =
   "Code Ocean capsule for closed-loop motor modulation using neural-signal feedback from beagle gait-recovery experiments.";
 
+const RUNTIME_PATH = "runtime.tar.gz";
+
 const CODEOCEAN_IMAGE = "registry.codeocean.com/published/221e8df3-ad30-441f-9643-8aac03f03dae:v1";
 
 const BUILD_RUNTIME_SCRIPT = `#!/usr/bin/env bash
 set -euo pipefail
 
 IMAGE="${CODEOCEAN_IMAGE}"
-OUT="runtime.tar.gz"
+OUT="${RUNTIME_PATH}"
 
 docker pull --platform linux/amd64 "$IMAGE"
 docker save "$IMAGE" -o "$OUT"
@@ -34,7 +36,7 @@ function codeOceanRunScript(command: string): string {
 set -eu
 
 IMAGE=${JSON.stringify(CODEOCEAN_IMAGE)}
-RUNTIME_FILE="runtime.tar.gz"
+RUNTIME_FILE=${JSON.stringify(RUNTIME_PATH)}
 
 docker image inspect "$IMAGE" >/dev/null 2>&1 || docker load -i "$RUNTIME_FILE"
 
@@ -208,6 +210,14 @@ test("author Code Ocean capsule 7784598 inputs", async ({ page }) => {
       "Author the image pull and export in REE’s canonical build script",
     );
     await clickDemo(page, main.getByRole("button", { name: "Save build script" }));
+    // Declared before the build runs: the build refuses to start without the
+    // path it is expected to produce, and fails if nothing lands there.
+    await fillDemo(
+      page,
+      page.getByRole("region", { name: "Runtime artifact" }).getByRole("textbox"),
+      RUNTIME_PATH,
+      "Declare where the build writes the exported image",
+    );
   });
 
   await demoStep(page, "Run runtime build", async () => {

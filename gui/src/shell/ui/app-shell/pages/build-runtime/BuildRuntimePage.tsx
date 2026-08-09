@@ -1,6 +1,7 @@
 import {
   buildFooterHint,
   buildRunStatusLabel,
+  canRunBuild,
   deriveRuntimeFileSize,
   resolvedRuntimePath,
 } from "@core/ree-steps/buildRuntimeUiState";
@@ -134,6 +135,10 @@ export function PageBuildRuntime({
   const hasScript = scriptContent.trim().length > 0;
   const hasMissing = missing.length > 0;
   const statusLabel = buildRunStatusLabel({ running, runDone, runFailed, hasScript });
+  // The build now needs the path it is expected to produce: the backend refuses
+  // to start without a declared runtime_path, so the button says so here rather
+  // than letting the run fail its precondition.
+  const canRun = canRunBuild({ running, hasMissing, hasScript, hasRuntimePath: !!runtimePath });
 
   return (
     <div style={lgPageRoot}>
@@ -141,7 +146,7 @@ export function PageBuildRuntime({
         icon={Ic.cpu(24)}
         iconTint={pageIconTint(BUILD_PAGE_COLOR)}
         title="Build Runtime"
-        subtitle="Build or acquire an environment, connect the workspace, then give experiments a reusable run target."
+        subtitle="Declare where the build writes its runtime, author the build recipe, then run it to give experiments a reusable run target."
         badges={
           <>
             {scriptPath && (
@@ -157,7 +162,7 @@ export function PageBuildRuntime({
             <BuildRunControls
               running={running}
               runDone={runDone}
-              disabled={running || hasMissing || !hasScript}
+              disabled={!canRun}
               onRun={() => onRun(step.key, params)}
               onCancel={onCancel ? () => onCancel(step.key) : undefined}
             />
@@ -172,15 +177,14 @@ export function PageBuildRuntime({
           <GlassSectionHeader
             icon={Ic.archive(19)}
             color={BUILD_PAGE_COLOR}
-            title="1. Build or acquire the runtime"
-            subtitle="Choose the artifact that will execute this REE. Build from the workspace now, or select an artifact obtained elsewhere."
+            title="1. Declare the runtime the build produces"
+            subtitle="Name the path the build script writes its runtime to. The build refuses to run until it is declared, and fails if nothing lands there."
           />
           <div style={{ marginTop: 10 }}>
             <RuntimeArtifactCard
               runtimePath={runtimePath}
               runtimeSize={runtimeSize}
               runtimePathExists={runtimePathExists}
-              files={files}
               onRuntimeChange={handleRuntimeChange}
             />
           </div>
@@ -219,7 +223,7 @@ export function PageBuildRuntime({
         </GlassSubPanel>
 
         <GlassPanelFooter bar>
-          {buildFooterHint({ runDone, runFailed, hasScript })}
+          {buildFooterHint({ runDone, runFailed, hasScript, hasRuntimePath: !!runtimePath })}
         </GlassPanelFooter>
       </div>
     </div>
