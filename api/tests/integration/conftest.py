@@ -54,6 +54,7 @@ _state_dir = Path(tempfile.mkdtemp(prefix="repo2ree-api-itest-"))
 os.environ["UPLOAD_STAGING_DIR"] = str(_state_dir / "upload-staging")
 os.environ["WORKBENCH_REGISTRY_FILE"] = str(_state_dir / "workbench-registry.json")
 os.environ["REE_INDEX_FILE"] = str(_state_dir / "ree-index.json")
+os.environ["RUN_REGISTRY_DIR"] = str(_state_dir / "runs")
 # OpenTelemetry's set_tracer_provider is honored once per process, so two API
 # tiers in one pytest run share a single provider baked to whichever tier booted
 # first — the other's spans silently flow to the wrong file. make runs the tiers

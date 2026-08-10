@@ -22,6 +22,7 @@ from repo2ree_api.authoring.stages import stages_router
 from repo2ree_api.contracts import ErrorEnvelope, HealthResponse
 from repo2ree_api.control.fleet import agent_ws_router, agents_router, workbench_images_router
 from repo2ree_api.control.rees import rees_router
+from repo2ree_api.control.run_orchestration import shutdown_runs, startup_runs
 from repo2ree_api.control.runs import runs_router
 from repo2ree_api.ree_index_routes import ree_index_router
 from repo2ree_api.review.records import review_records_router
@@ -48,13 +49,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     tracer_provider = setup_tracing("repo2ree-api", endpoint=service_settings.OTLP_ENDPOINT, console_fallback=True)
     meter_provider = setup_metrics("repo2ree-api", endpoint=service_settings.OTLP_ENDPOINT)
     create_upload_staging_if_not_exists()
-    yield
-    if tracer_provider is not None:
-        tracer_provider.shutdown()
-    if meter_provider is not None:
-        meter_provider.shutdown()
-    if logger_provider is not None:
-        logger_provider.shutdown()
+    startup_runs()
+    try:
+        yield
+    finally:
+        shutdown_runs()
+        if tracer_provider is not None:
+            tracer_provider.shutdown()
+        if meter_provider is not None:
+            meter_provider.shutdown()
+        if logger_provider is not None:
+            logger_provider.shutdown()
 
 
 _log = logging.getLogger(__name__)

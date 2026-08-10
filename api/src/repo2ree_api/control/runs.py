@@ -15,11 +15,11 @@ from repo2ree_api.contracts import (
 )
 from repo2ree_api.control.run_orchestration import (
     append_run_log,
-    get_run_state,
+    get_run_summary,
+    list_run_logs,
     list_runs,
     mark_cancel_requested,
     observe_run,
-    run_summary,
 )
 from repo2ree_api.control.run_registry import TERMINAL_STATUSES
 from repo2ree_api.deps import workbench_manager
@@ -73,8 +73,7 @@ def list_ree_runs(
     responses=ERROR_RESPONSES,
 )
 def get_ree_run(ree_id: str, run_id: str) -> RunSummary:
-    run_state = get_run_state(ree_id, run_id)
-    return RunSummary.model_validate(run_summary(run_state))
+    return RunSummary.model_validate(get_run_summary(ree_id, run_id))
 
 
 @runs_router.get(
@@ -89,9 +88,9 @@ def get_ree_run_logs(
     cursor: Annotated[int | None, Query(ge=0)] = None,
     limit: Annotated[int, Query(ge=1, le=500)] = 200,
 ) -> RunLogPage:
-    run_state = get_run_state(ree_id, run_id)
     after_seq = cursor or 0
-    remaining = [entry for entry in run_state.get("logs", []) if int(entry["seq"]) > after_seq]
+    run_state = get_run_summary(ree_id, run_id)
+    remaining = list_run_logs(ree_id, run_id, after_seq=after_seq, limit=limit + 1)
     page = remaining[:limit]
     next_cursor = str(page[-1]["seq"]) if page else (str(after_seq) if cursor is not None else None)
     return RunLogPage.model_validate(
@@ -136,7 +135,7 @@ def observe_ree_run(
     responses=ERROR_RESPONSES,
 )
 def cancel_ree_run(ree_id: str, run_id: str) -> CancelRunResponse:
-    run_state = get_run_state(ree_id, run_id)
+    run_state = get_run_summary(ree_id, run_id)
     current_status = run_state.get("status")
     if current_status in TERMINAL_STATUSES:
         return CancelRunResponse.model_validate({"status": current_status})
@@ -172,5 +171,5 @@ def cancel_ree_run(ree_id: str, run_id: str) -> CancelRunResponse:
             "Cancellation signal deferred: workbench is not currently reachable",
         )
 
-    refreshed = get_run_state(ree_id, run_id)
+    refreshed = get_run_summary(ree_id, run_id)
     return CancelRunResponse.model_validate({"status": refreshed["status"]})

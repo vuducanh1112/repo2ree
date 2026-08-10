@@ -72,6 +72,11 @@ class Settings(BaseSettings):
     # infrastructure: an REE's workbench is torn down long before its deposit
     # stops being citable, so losing this file loses the deposits.
     REE_INDEX_FILE: Path = Path(".repo2ree/ree-index.json")
+    # Durable background-run state. The JSON backend coordinates threads in one
+    # API process; deployments using it must run a single API worker.
+    RUN_REGISTRY_DIR: Path = Path(".repo2ree/runs")
+    # Bounds both concurrent workbench commands and the API's worker threads.
+    RUN_MAX_WORKERS: int = 4
     # The workbench agent owns the container runtime (WORKBENCH_DOCKER_MODE is its
     # concern, not consumed here). It dials this API outbound and holds a WebSocket
     # at /agent/connect — there is no inbound agent endpoint to configure.
@@ -85,6 +90,13 @@ class Settings(BaseSettings):
         # `is not None` checks (structured logging) don't trip on it.
         if isinstance(value, str) and not value.strip():
             return None
+        return value
+
+    @field_validator("RUN_MAX_WORKERS")
+    @classmethod
+    def _positive_run_workers(cls, value: int) -> int:
+        if value < 1:
+            raise ValueError("RUN_MAX_WORKERS must be at least 1")
         return value
 
     # Base images the workbench offers at provision time. Ordered: the first entry

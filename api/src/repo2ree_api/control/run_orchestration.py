@@ -16,6 +16,8 @@ from fastapi import HTTPException
 from repo2ree_api.contracts import RunOperation
 from repo2ree_api.control.run_registry import RunRegistry
 from repo2ree_api.deps import workbench_manager
+from repo2ree_api.settings import service_settings
+from repo2ree_api.storage.json_run_store import JsonRunStore
 from repo2ree_api.workbench.commands import require_handle
 from repo2ree_protocol.command import Command
 from repo2ree_protocol.result import ActionResult
@@ -35,7 +37,11 @@ def _require_ree(ree_id: str) -> None:
     require_handle(ree_id)
 
 
-_registry = RunRegistry(_require_ree)
+_registry = RunRegistry(
+    _require_ree,
+    JsonRunStore(service_settings.RUN_REGISTRY_DIR),
+    max_workers=service_settings.RUN_MAX_WORKERS,
+)
 
 append_run_log = _registry.append_log
 update_run_outputs = _registry.update_outputs
@@ -43,9 +49,13 @@ is_cancel_requested = _registry.is_cancel_requested
 mark_cancel_requested = _registry.mark_cancel_requested
 run_summary = _registry.run_summary
 get_run_state = _registry.get_run_state
+get_run_summary = _registry.get_run_summary
 list_runs = _registry.list_runs
 observe_run = _registry.observe
+list_run_logs = _registry.list_run_logs
 start_background_run = _registry.start_background
+startup_runs = _registry.startup
+shutdown_runs = _registry.shutdown
 
 
 def start_provisioning_run(

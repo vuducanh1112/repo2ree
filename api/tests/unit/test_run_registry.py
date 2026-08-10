@@ -8,8 +8,10 @@ exceptions, cancellation racing completion, and log sequencing.
 
 from __future__ import annotations
 
+import tempfile
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from threading import Event
 from typing import Any, cast
 
@@ -18,6 +20,7 @@ from fastapi import HTTPException
 
 from repo2ree_api.control import run_registry as run_registry_module
 from repo2ree_api.control.run_registry import RunRegistry
+from repo2ree_api.storage.json_run_store import JsonRunStore
 from repo2ree_protocol.result import ActionResult
 
 # ================================================
@@ -84,12 +87,13 @@ def instruments(monkeypatch: pytest.MonkeyPatch) -> _Instruments:
     return fakes
 
 
-def _registry() -> RunRegistry:
+def _registry(*, root: Path | None = None, max_workers: int = 4) -> RunRegistry:
     def require_ree(ree_id: str) -> None:
         if ree_id != KNOWN_REE:
             raise HTTPException(status_code=404, detail="Workspace not found")
 
-    return RunRegistry(require_ree)
+    store_root = root or Path(tempfile.mkdtemp(prefix="repo2ree-run-registry-test-"))
+    return RunRegistry(require_ree, JsonRunStore(store_root), max_workers=max_workers)
 
 
 def _wait_for(registry: RunRegistry, run_id: str, statuses: frozenset[str], timeout: float = 5.0) -> dict[str, Any]:
@@ -313,7 +317,7 @@ def test_structured_http_detail_survives_as_a_typed_failure():
             },
         )
 
-    run_state = registry.start_background(KNOWN_REE, "files", {}, "files", _runner)
+    run_state = registry.start_background(KNOWN_REE, "build", {}, "build", _runner)
     final = _wait_for(registry, run_state["run_id"], TERMINAL)
 
     failure = final["failure"]
@@ -510,6 +514,112 @@ def test_get_run_state_for_unknown_run_is_404():
     assert excinfo.value.status_code == 404
 
 
+def test_get_run_state_returns_an_independent_snapshot():
+    registry = _registry()
+    run = registry.start_background(
+        KNOWN_REE,
+        "build",
+        {},
+        "build",
+        lambda e, r: ActionResult(status="succeeded", outputs={"artifact": "runtime.tar"}),
+    )
+    final = _wait_for(registry, run["run_id"], TERMINAL)
+
+    final["outputs"]["artifact"] = "changed"
+    final["logs"].append({"seq": 999})
+
+    fresh = registry.get_run_state(KNOWN_REE, run["run_id"])
+    assert fresh["outputs"] == {"artifact": "runtime.tar"}
+    assert fresh["logs"] == []
+
+
+def test_idempotency_replay_survives_registry_restart(tmp_path: Path):
+    first_registry = _registry(root=tmp_path)
+    first = first_registry.start_background(
+        KNOWN_REE,
+        "build",
+        {"script": "build.sh"},
+        "build",
+        lambda e, r: ActionResult(status="succeeded"),
+        idempotency_key="request-1",
+    )
+    _wait_for(first_registry, first["run_id"], TERMINAL)
+    first_registry.shutdown()
+
+    calls: list[str] = []
+
+    def _unexpected_runner(ree_id: str, run_id: str) -> ActionResult:
+        calls.append(run_id)
+        return ActionResult(status="succeeded")
+
+    second_registry = _registry(root=tmp_path)
+    replay = second_registry.start_background(
+        KNOWN_REE,
+        "build",
+        {"script": "build.sh"},
+        "build",
+        _unexpected_runner,
+        idempotency_key="request-1",
+    )
+
+    assert replay["run_id"] == first["run_id"]
+    assert replay["status"] == "succeeded"
+    assert calls == []
+    second_registry.shutdown()
+
+
+def test_bounded_executor_leaves_excess_work_queued():
+    registry = _registry(max_workers=1)
+    release = Event()
+
+    def _runner(ree_id: str, run_id: str) -> ActionResult:
+        release.wait(timeout=5.0)
+        return ActionResult(status="succeeded")
+
+    first = registry.start_background(KNOWN_REE, "build", {}, "build", _runner)
+    _wait_for(registry, first["run_id"], frozenset({"running"}))
+    second = registry.start_background(KNOWN_REE, "build", {}, "build", _runner)
+
+    assert registry.get_run_state(KNOWN_REE, second["run_id"])["status"] == "queued"
+    release.set()
+    _wait_for(registry, first["run_id"], TERMINAL)
+    _wait_for(registry, second["run_id"], TERMINAL)
+
+
+def test_completed_future_is_removed_from_process_control_state():
+    registry = _registry()
+    run = registry.start_background(
+        KNOWN_REE,
+        "build",
+        {},
+        "build",
+        lambda e, r: ActionResult(status="succeeded"),
+    )
+    _wait_for(registry, run["run_id"], TERMINAL)
+    deadline = time.monotonic() + 1
+    while run["run_id"] in registry._run_control and time.monotonic() < deadline:
+        time.sleep(0.01)
+    assert run["run_id"] not in registry._run_control
+
+
+def test_submit_after_executor_shutdown_settles_run_instead_of_stranding_it():
+    registry = _registry()
+    registry.shutdown()
+
+    run = registry.start_background(
+        KNOWN_REE,
+        "build",
+        {},
+        "build",
+        lambda e, r: ActionResult(status="succeeded"),
+    )
+
+    assert run["status"] == "failed"
+    assert run["finished_at"] is not None
+    assert run["failure"]["retryable"] is True
+    assert "could not be scheduled" in run["failure"]["message"]
+
+
 # ================================================
 # Metrics
 # ================================================
@@ -588,6 +698,30 @@ def test_a_crashed_runner_still_balances_the_active_gauge(instruments: _Instrume
     _wait_for(registry, run["run_id"], TERMINAL)
 
     assert instruments.active.total == 0
+
+
+def test_post_finalization_metric_failure_does_not_rewrite_success(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    class _BrokenCounter:
+        def add(self, amount: float, attributes: dict[str, str] | None = None) -> None:
+            raise RuntimeError("metric exporter failed")
+
+    monkeypatch.setattr(run_registry_module, "_run_counter", _BrokenCounter())
+    registry = _registry()
+    run = registry.start_background(
+        KNOWN_REE,
+        "build",
+        {},
+        "build",
+        lambda e, r: ActionResult(status="succeeded"),
+    )
+    _wait_for(registry, run["run_id"], TERMINAL)
+    deadline = time.monotonic() + 1
+    while run["run_id"] in registry._run_control and time.monotonic() < deadline:
+        time.sleep(0.01)
+
+    assert registry.get_run_state(KNOWN_REE, run["run_id"])["status"] == "succeeded"
 
 
 def test_idempotent_replay_is_metered_and_the_run_counted_once(instruments: _Instruments):
