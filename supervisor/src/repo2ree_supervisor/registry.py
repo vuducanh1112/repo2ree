@@ -1,9 +1,10 @@
 """Persistent mapping of ree_id → workbench container + volume names.
 
 Stored as a JSON file on the host. Writes are atomic (write-to-temp +
-os.replace), so a torn write cannot corrupt the file — but read-modify-write
-cycles are not serialized across processes (last writer wins), which is fine
-for the single-process deployments this backs.
+os.replace), so a torn write cannot corrupt the file. Read-modify-write
+transactions are serialized across threads in this process. The JSON backend
+does not coordinate multiple processes; deployments must use one API worker
+until the store moves to transactional storage.
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ import os
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+from threading import RLock
 
 
 @dataclass(frozen=True)
@@ -33,27 +35,30 @@ class WorkbenchEntry:
 class WorkbenchRegistry:
     def __init__(self, registry_file: Path):
         self._path = registry_file
+        self._lock = RLock()
 
     def register(self, entry: WorkbenchEntry) -> None:
-        data = self._read()
-        data[entry.ree_id] = {
-            "container_name": entry.container_name,
-            "volume_name": entry.volume_name,
-            "image": entry.image,
-            "agent_id": entry.agent_id,
-            "exec_path": entry.exec_path,
-        }
-        self._write(data)
+        with self._lock:
+            data = self._read_unlocked()
+            data[entry.ree_id] = {
+                "container_name": entry.container_name,
+                "volume_name": entry.volume_name,
+                "image": entry.image,
+                "agent_id": entry.agent_id,
+                "exec_path": entry.exec_path,
+            }
+            self._write_unlocked(data)
 
     def lookup(self, ree_id: str) -> WorkbenchEntry | None:
-        data = self._read()
-        record = data.get(ree_id)
+        with self._lock:
+            record = self._read_unlocked().get(ree_id)
         if record is None:
             return None
         return self._entry_from_record(ree_id, record)
 
     def list_all(self) -> list[WorkbenchEntry]:
-        data = self._read()
+        with self._lock:
+            data = self._read_unlocked()
         return [self._entry_from_record(ree_id, record) for ree_id, record in data.items()]
 
     @staticmethod
@@ -68,17 +73,18 @@ class WorkbenchRegistry:
         )
 
     def unregister(self, ree_id: str) -> None:
-        data = self._read()
-        data.pop(ree_id, None)
-        self._write(data)
+        with self._lock:
+            data = self._read_unlocked()
+            data.pop(ree_id, None)
+            self._write_unlocked(data)
 
-    def _read(self) -> dict[str, dict[str, str]]:
+    def _read_unlocked(self) -> dict[str, dict[str, str]]:
         if not self._path.exists():
             return {}
         parsed: dict[str, dict[str, str]] = json.loads(self._path.read_text(encoding="utf-8"))
         return parsed
 
-    def _write(self, data: dict[str, dict[str, str]]) -> None:
+    def _write_unlocked(self, data: dict[str, dict[str, str]]) -> None:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         text = json.dumps(data, indent=2, sort_keys=True)
         fd, tmp = tempfile.mkstemp(

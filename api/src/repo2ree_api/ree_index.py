@@ -30,6 +30,7 @@ import json
 import os
 import tempfile
 from pathlib import Path
+from threading import RLock
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -110,9 +111,10 @@ class ReeIndex:
     """JSON-file store of :class:`ReeIndexEntry`, keyed by ``subject_digest``.
 
     Same durability shape as ``WorkbenchRegistry``: write-to-temp plus
-    ``os.replace``, so a torn write cannot corrupt the file, and read-modify-write
-    is not serialized across processes (last writer wins) — fine for the
-    single-process deployments this backs.
+    ``os.replace``, so a torn write cannot corrupt the file. Read-modify-write
+    transactions are serialized across threads in this process. The JSON
+    backend does not coordinate multiple processes; deployments must use one
+    API worker until the store moves to transactional storage.
 
     Two properties differ from that registry and will eventually outgrow a JSON
     file: this grows without bound, and it is read-mostly under an ordered cursor
@@ -122,6 +124,7 @@ class ReeIndex:
 
     def __init__(self, index_file: Path):
         self._path = index_file
+        self._lock = RLock()
 
     def record_seal(self, entry: ReeIndexEntry) -> ReeIndexEntry:
         """Upsert the manifest half of an entry, preserving its attestations.
@@ -132,15 +135,16 @@ class ReeIndex:
         has not changed, and a DOI cannot be withdrawn just because the author
         re-sealed. Returns the stored entry.
         """
-        data = self._read()
-        existing = data.get(entry.subject_digest)
-        if existing is not None:
-            entry = entry.model_copy(
-                update={"archive_attestations": ReeIndexEntry.model_validate(existing).archive_attestations}
-            )
-        data[entry.subject_digest] = entry.model_dump()
-        self._write(data)
-        return entry
+        with self._lock:
+            data = self._read_unlocked()
+            existing = data.get(entry.subject_digest)
+            if existing is not None:
+                entry = entry.model_copy(
+                    update={"archive_attestations": ReeIndexEntry.model_validate(existing).archive_attestations}
+                )
+            data[entry.subject_digest] = entry.model_dump()
+            self._write_unlocked(data)
+            return entry
 
     def append_attestation(self, attestation: ArchiveBindingAttestation) -> ReeIndexEntry:
         """Record one archive binding against the REE it names.
@@ -151,20 +155,22 @@ class ReeIndex:
         never sealed, which is a bug, not a client error. Harvesting a peer's
         attestations is a different path and must fetch the entry first.
         """
-        data = self._read()
-        record = data.get(attestation.subject_digest)
-        if record is None:
-            raise KeyError(f"no index entry for {attestation.subject_digest}")
-        entry = ReeIndexEntry.model_validate(record)
-        seen = {(existing.archive, existing.identifier) for existing in entry.archive_attestations}
-        if (attestation.archive, attestation.identifier) not in seen:
-            entry = entry.model_copy(update={"archive_attestations": [*entry.archive_attestations, attestation]})
-            data[entry.subject_digest] = entry.model_dump()
-            self._write(data)
-        return entry
+        with self._lock:
+            data = self._read_unlocked()
+            record = data.get(attestation.subject_digest)
+            if record is None:
+                raise KeyError(f"no index entry for {attestation.subject_digest}")
+            entry = ReeIndexEntry.model_validate(record)
+            seen = {(existing.archive, existing.identifier) for existing in entry.archive_attestations}
+            if (attestation.archive, attestation.identifier) not in seen:
+                entry = entry.model_copy(update={"archive_attestations": [*entry.archive_attestations, attestation]})
+                data[entry.subject_digest] = entry.model_dump()
+                self._write_unlocked(data)
+            return entry
 
     def get(self, subject_digest: str) -> ReeIndexEntry | None:
-        record = self._read().get(subject_digest)
+        with self._lock:
+            record = self._read_unlocked().get(subject_digest)
         return None if record is None else ReeIndexEntry.model_validate(record)
 
     def list_all(self, *, deposited_only: bool = False) -> list[ReeIndexEntry]:
@@ -174,19 +180,21 @@ class ReeIndex:
         no attestations is a local seal that no archive has accepted, so it is
         real to this node but not yet citable by anyone else.
         """
-        entries = [ReeIndexEntry.model_validate(record) for record in self._read().values()]
+        with self._lock:
+            records = list(self._read_unlocked().values())
+        entries = [ReeIndexEntry.model_validate(record) for record in records]
         if deposited_only:
             entries = [entry for entry in entries if entry.is_deposited]
         entries.sort(key=_entry_sort_key)
         return entries
 
-    def _read(self) -> dict[str, dict[str, object]]:
+    def _read_unlocked(self) -> dict[str, dict[str, object]]:
         if not self._path.exists():
             return {}
         parsed: dict[str, dict[str, object]] = json.loads(self._path.read_text(encoding="utf-8"))
         return parsed
 
-    def _write(self, data: dict[str, dict[str, object]]) -> None:
+    def _write_unlocked(self, data: dict[str, dict[str, object]]) -> None:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         text = json.dumps(data, indent=2, sort_keys=True)
         fd, tmp = tempfile.mkstemp(prefix=self._path.name + ".", suffix=".tmp", dir=self._path.parent)

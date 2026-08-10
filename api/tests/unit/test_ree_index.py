@@ -7,6 +7,8 @@ about whichever state a previous test left behind.
 
 from __future__ import annotations
 
+import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
@@ -172,3 +174,56 @@ def test_an_entry_carries_nothing_node_local() -> None:
     assert "ree_id" not in ReeIndexEntry.model_fields
     with pytest.raises(ValueError, match="ree_id"):
         ReeIndexEntry.model_validate({"subject_digest": "sha256:aaa", "name": "", "sealed_at": "", "ree_id": "abc"})
+
+
+# ================================================
+# Concurrent writes
+# ================================================
+
+
+def _slow_reads(monkeypatch: pytest.MonkeyPatch, index: ReeIndex) -> None:
+    """Widen the read-before-write race without reaching inside the lock."""
+    real_read = index._read_unlocked
+
+    def slow_read() -> dict[str, dict[str, object]]:
+        data = real_read()
+        time.sleep(0.05)
+        return data
+
+    monkeypatch.setattr(index, "_read_unlocked", slow_read)
+
+
+def test_concurrent_seals_do_not_lose_entries(index: ReeIndex, monkeypatch: pytest.MonkeyPatch) -> None:
+    _slow_reads(monkeypatch, index)
+    entries = [
+        entry_from_ree(sealed_ree("sha256:aaa")),
+        entry_from_ree(sealed_ree("sha256:bbb")),
+    ]
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [pool.submit(index.record_seal, entry) for entry in entries]
+        for future in futures:
+            future.result(timeout=2)
+
+    assert {entry.subject_digest for entry in index.list_all()} == {"sha256:aaa", "sha256:bbb"}
+
+
+def test_concurrent_attestations_are_both_preserved(index: ReeIndex, monkeypatch: pytest.MonkeyPatch) -> None:
+    index.record_seal(entry_from_ree(sealed_ree("sha256:aaa")))
+    _slow_reads(monkeypatch, index)
+    attestations = [
+        binding("sha256:aaa", archive="zenodo", identifier="doi:one"),
+        binding("sha256:aaa", archive="dataverse", identifier="hdl:two"),
+    ]
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [pool.submit(index.append_attestation, attestation) for attestation in attestations]
+        for future in futures:
+            future.result(timeout=2)
+
+    stored = index.get("sha256:aaa")
+    assert stored is not None
+    assert {(item.archive, item.identifier) for item in stored.archive_attestations} == {
+        ("zenodo", "doi:one"),
+        ("dataverse", "hdl:two"),
+    }
