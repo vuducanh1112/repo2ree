@@ -1,16 +1,16 @@
-# repo2ree — Component & Package Architecture
+# repo2ree — Component and Package Architecture Reference
 
 > **Status: partially implemented + target rules (2026-06).** The
-> code-organization companion to [ARCHITECTURE.md](ARCHITECTURE.md). It maps
+> code-organization companion to [architecture.md](architecture.md). It maps
 > the runtime model onto source packages, deployment locations, and dependency
-> rules. For concepts see [CONCEPTS.md](CONCEPTS.md); for product framing see
-> [research/POSITIONING.md](research/POSITIONING.md).
+> rules. For concepts see [concepts.md](concepts.md); for product framing see
+> [research/POSITIONING.md](../research/POSITIONING.md).
 
 ## Mental model
 
 repo2ree is a **control plane driving an isolated execution plane over a typed
 command protocol**; see
-[Control plane / execution plane split](ARCHITECTURE.md#control-plane--execution-plane-split).
+[Control plane / execution plane split](architecture.md#control-plane--execution-plane-split).
 Three invariants shape every package boundary below:
 
 1. **An REE is built through a workbench (a "bench").** The main path provisions
@@ -25,7 +25,7 @@ Three invariants shape every package boundary below:
    executor and its base tools (content-addressed nix closures) into whatever
    env image the bench boots from, so any image that keeps a process alive and
    has a writable `/ree` can be a bench — the default is upstream `docker:dind`.
-   See [the env image](ARCHITECTURE.md#the-workbench-env-image).
+   See [the env image](architecture.md#the-workbench-env-image).
 
 These are separate deployable units joined by one protocol: the host-side
 control plane, the runtime-owning agent, and the in-bench executor.
@@ -188,7 +188,7 @@ outbound-only — not the control plane holding SSH keys or a kubeconfig. In
 hosted mode repo2ree should not receive SSH passwords, private keys, cloud admin
 credentials, or kubeconfigs; cloud and university resources are reached through
 a registered runner/agent inside the user's boundary. See
-[Remote execution clients](ARCHITECTURE.md#remote-execution-clients-user-owned-runners).
+[Remote execution clients](architecture.md#remote-execution-clients-user-owned-runners).
 
 ## What runs continuously — deployment modes
 
@@ -293,10 +293,10 @@ image and every bench it provisions runs the matching executor.
 
 Two things pin what produced an REE, and both are content addresses: the env
 image (`Command.workbench_image: digest` — see
-[the wire form](ARCHITECTURE.md#the-wire-form-a-typed-action-envelope)) *and* the
+[the wire form](architecture.md#the-wire-form-a-typed-action-envelope)) *and* the
 injected executor/tools closures (content-hashed nix store paths). Pinning both
 pins the environment that produced the REE. See
-[the env image](ARCHITECTURE.md#the-workbench-env-image).
+[the env image](architecture.md#the-workbench-env-image).
 
 ## Target test layout
 
@@ -349,7 +349,7 @@ The package split is now largely real:
   single hardcoded local-Docker path. Additional runtimes (cloud/HPC) are the
   intended next impls.
 - **Done:** the dependency rules above are machine-enforced. `[tool.importlinter]`
-  in [pyproject.toml](../pyproject.toml) carries workspace-level layers, per-package
+  in [pyproject.toml](../../pyproject.toml) carries workspace-level layers, per-package
   layer contracts for `api` and `core` (both marked exhaustive, so a new top-level
   module must declare its tier), and independence contracts holding the author and
   review sides apart in both `core.operations.handlers` and `api`.
@@ -376,14 +376,14 @@ a different existing seam, each separately optional:
 | **discovery / identity** | DHT + keys instead of the central `service`/DB | an alternative to the service tier | heaviest; usually unnecessary |
 
 The hosted-client version of this is the registered runner described in
-[Remote execution clients](ARCHITECTURE.md#remote-execution-clients-user-owned-runners):
+[Remote execution clients](architecture.md#remote-execution-clients-user-owned-runners):
 it leases typed Actions, runs them through a local provider, and returns
 digest-bound `ActionResult`s. A peer execution surface would reuse that same
 shape with a different discovery and trust layer.
 
 ### The distributed action cache (the core idea)
 
-The envelope is [REAPI-shaped](ARCHITECTURE.md#the-wire-form-a-typed-action-envelope),
+The envelope is [REAPI-shaped](architecture.md#the-wire-form-a-typed-action-envelope),
 and REAPI is *already* a protocol for distributed execution **and caching**. The
 P2P-native object is therefore not "the REE" — it's the **action cache entry**:
 

@@ -3,7 +3,7 @@
 Inference produces candidate shell bytes from repository evidence and presents
 them; it never writes. The published, versioned decision DAG is the sole
 control-flow authority (see ``engine`` and ``registry``). Design overview:
-``docs/engineering/script-inference.md``.
+``docs/engineering/explanation/script-inference.md``.
 """
 
 from __future__ import annotations

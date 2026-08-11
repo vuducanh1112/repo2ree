@@ -1,18 +1,18 @@
-# repo2ree — Execution & Isolation Architecture
+# repo2ree — Execution and Isolation Architecture Reference
 
 > **Status: implementation + target design (2026-06).** The **how** of repo2ree —
 > the implemented workbench/typed-envelope path and the target isolation/CAS
 > model that should harden it. For
 > *why* the integration is shaped this way see
-> [research/POSITIONING.md](research/POSITIONING.md); for *what* each named concept means
-> normatively see [CONCEPTS.md](CONCEPTS.md); for *how the code is organized*
+> [research/POSITIONING.md](../research/POSITIONING.md); for *what* each named concept means
+> normatively see [concepts.md](concepts.md); for *how the code is organized*
 > into packages (the libraries/surfaces split, dependency rules) see
-> [COMPONENTS.md](COMPONENTS.md).
+> [components.md](components.md).
 
 This doc covers how REEs are built and run: isolation, directory layout,
 orchestration/execution split, action envelopes, CAS, and bundle composition.
 For product evolution, see
-[REE_SERVICE_ROADMAP.md](research/REE_SERVICE_ROADMAP.md).
+[REE_SERVICE_ROADMAP.md](../research/REE_SERVICE_ROADMAP.md).
 
 ## Current state
 
@@ -28,10 +28,10 @@ The main REE path now has the intended package seam:
 Current isolation is **Docker-in-Docker inside a privileged workbench**. The
 backend never touches a container runtime: workbenches are launched by the
 *agent* (its own deployable, holding the docker socket —
-[docker-compose.yml](../docker-compose.yml)) over the outbound WebSocket. The
+[docker-compose.yml](../../docker-compose.yml)) over the outbound WebSocket. The
 workbench does not receive the host socket. It runs its own daemon and stores
 `/var/lib/docker` in a per-REE volume
-([runtime.py](../agent/src/repo2ree_agent/runtimes/docker/runtime.py)).
+([runtime.py](../../agent/src/repo2ree_agent/runtimes/docker/runtime.py)).
 
 The risk has moved: untrusted repo code no longer holds the host Docker socket
 on the main path, but the workbench is still privileged and not VM-backed.
@@ -126,8 +126,8 @@ workspace↔REE seam:
 view. The source stays pristine while REE-defining material lives beside it.
 Author receipts live inline in `ree.json`; review receipts live under their
 attempt namespace. Receipts and review attempts are covered in
-[engineering/step-lifecycle.md](engineering/step-lifecycle.md) and
-[engineering/review-evidence.md](engineering/review-evidence.md).
+[step lifecycle](../engineering/explanation/step-lifecycle.md) and
+[review evidence](../engineering/explanation/review-evidence.md).
 
 This **tree** — not the running container/VM — is the durable REE state. The
 workbench is rehydratable: tear it down and recreate it by re-mounting the
@@ -201,7 +201,7 @@ mistake:
 
 - **The definition is part of the portable aggregate.** Runtime, source, hardware,
   and experiment definitions are persisted in `ree.json` through the definition
-  API ([definition.py](../api/src/repo2ree_api/authoring/definition.py)). Script
+  API ([definition.py](../../api/src/repo2ree_api/authoring/definition.py)). Script
   identities are hydrated from the authoritative overlay bytes, and aggregate
   replacement is guarded by the subject revision.
 - **The durable tree and artifacts are execution-plane state.** The workspace
@@ -700,14 +700,14 @@ explicit SWH save/deposit request.
   the same layout.
 - **Remote the existing job model; don't reinvent it.** *(Done.)* The
   submit→stream→cancel async-job shape lives in
-  [`RunRegistry`](../api/src/repo2ree_api/control/run_registry.py), fronted by
+  [`RunRegistry`](../../api/src/repo2ree_api/control/run_registry.py), fronted by
   `start_background_run` / `run_summary` / `is_cancel_requested`, plus the
   `start_provisioning_run` / `start_single_command_run` shapes
-  ([control/run_orchestration.py](../api/src/repo2ree_api/control/run_orchestration.py)).
+  ([control/run_orchestration.py](../../api/src/repo2ree_api/control/run_orchestration.py)).
   Operations dispatch to `repo2ree-exec` through
   `WorkbenchManager.dispatch_action` with logs streamed back, and cancellation
   crosses the boundary as a remote signal to the agent
-  ([manager.py:287](../supervisor/src/repo2ree_supervisor/manager.py#L287))
+  ([manager.py:287](../../supervisor/src/repo2ree_supervisor/manager.py#L287))
   rather than a local flag check.
 - **Keep Docker image construction inside the workbench.** The main build path
   now reaches `core` through `repo2ree-exec` inside the workbench. Any remaining

@@ -7,7 +7,7 @@ this asks whether the result holds.
 The verdict is what the author's own verify script says, re-run against the
 reviewer's results; matching output digests are a stronger tier where they
 happen, never a requirement. Requires activation to have *passed*, not merely
-completed. See ``docs/engineering/review-evidence.md``.
+completed. See ``docs/engineering/explanation/review-evidence.md``.
 """
 
 from __future__ import annotations

@@ -1,6 +1,6 @@
 # Control plane only: GUI + backend. Workbench agents run separately
 # (anywhere with a container runtime) and dial the backend over an outbound
-# WebSocket — see docs/engineering/deployment.md for how to start one.
+# WebSocket — see docs/engineering/how-to/deployment.md for how to start one.
 services:
   backend:
     image: ${REPO2REE_BACKEND_IMAGE:-docker.io/vuducanh1112/repo2ree-backend:edge}

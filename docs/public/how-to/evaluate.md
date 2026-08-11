@@ -1,4 +1,4 @@
-# Evaluate a Repository
+# How to Evaluate a Repository
 
 Evaluate is the first public-facing question repo2ree answers:
 
@@ -44,4 +44,4 @@ declared validation, that a later run reproduces prior evidence, or that an
 archive can preserve every dependency. Those questions need the build, run,
 verify, and archive workflows.
 
-For the deeper design, see [Repro Label](../concepts.md#repro-label).
+For the deeper design, see [Repro Label](../reference/concepts.md#repro-label).

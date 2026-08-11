@@ -1,9 +1,9 @@
-# repo2ree — Review Evidence Model
+# Understanding the Review Evidence Model
 
 > Status: current (2026-07). What a reviewer-side attempt actually certifies, and
 > why each step certifies it that way. The code lives in
-> [`core/evidence/review/`](../../core/src/repo2ree_core/evidence/review/) and
-> [`core/operations/handlers/review/`](../../core/src/repo2ree_core/operations/handlers/review/).
+> [`core/evidence/review/`](../../../core/src/repo2ree_core/evidence/review/) and
+> [`core/operations/handlers/review/`](../../../core/src/repo2ree_core/operations/handlers/review/).
 > For the *shape* of a review step handler, see [step-lifecycle.md](step-lifecycle.md).
 
 ## The attempt is a parallel REE tree
@@ -146,5 +146,5 @@ an author baseline.
 ## See also
 
 - [step-lifecycle.md](step-lifecycle.md) — the handler shape these steps share.
-- [../public/workflows/verify.md](../public/workflows/verify.md) — the reviewer workflow this implements.
-- [../CONCEPTS.md](../CONCEPTS.md) — Run Receipt, Repro Label, fidelity tiers.
+- [Public verification guide](../../public/how-to/verify.md) — the reviewer workflow this implements.
+- [Concept reference](../../reference/concepts.md) — Run Receipt, Repro Label, fidelity tiers.

@@ -1,10 +1,10 @@
-# repo2ree — Concepts
+# repo2ree — Concept Reference
 
 > **Status: concept reference (2026-06).** The **what** of repo2ree —
 > normative definitions of the nouns, verbs, tiers, and states used
 > across the project. For *why* these concepts exist see
-> [research/POSITIONING.md](research/POSITIONING.md); for *how* they are implemented see
-> [ARCHITECTURE.md](ARCHITECTURE.md).
+> [research/POSITIONING.md](../research/POSITIONING.md); for *how* they are implemented see
+> [architecture.md](architecture.md).
 
 ## The integration this defines
 
@@ -131,7 +131,7 @@ ree_digest = sha256(canonical_seal_manifest)
 
 The digest names the REE. It does not by itself mean the REE is trusted,
 reproducible, signed, or deposited. Signatures are separate attestations over
-the digest. See [research/sealing.md](research/sealing.md).
+the digest. See [research/sealing.md](../research/sealing.md).
 
 ## Workflows
 
@@ -228,10 +228,10 @@ explicit SWH save/deposit request.
 
 ## See also
 
-- [POSITIONING.md](research/POSITIONING.md) — why each of these concepts exists in
+- [POSITIONING.md](../research/POSITIONING.md) — why each of these concepts exists in
   the project's strategic framing.
-- [ARCHITECTURE.md](ARCHITECTURE.md) — implementation machinery and target
+- [architecture.md](architecture.md) — implementation machinery and target
   hardening (action envelopes, CAS, ActionCache, bundle composition).
-- [sealing.md](research/sealing.md) — Seal Manifest, signatures, and long-term validation.
-- [REE_SERVICE_ROADMAP.md](research/REE_SERVICE_ROADMAP.md) — product-level
+- [sealing.md](../research/sealing.md) — Seal Manifest, signatures, and long-term validation.
+- [REE_SERVICE_ROADMAP.md](../research/REE_SERVICE_ROADMAP.md) — product-level
   build-out plan.

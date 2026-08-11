@@ -1,7 +1,7 @@
-# Concepts
+# Public Concept Reference
 
 These are the public names repo2ree uses. For the fuller design reference, see
-[CONCEPTS.md](../CONCEPTS.md).
+[full concept reference](../../reference/concepts.md).
 
 ## Vocabulary boundary
 

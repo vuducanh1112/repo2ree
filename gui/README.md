@@ -7,9 +7,9 @@ Simple Vite + React GUI for the repo2ree API.
 Current setup, deployment, and test commands live in the repo-level engineering
 docs:
 
-- [Development setup](../docs/engineering/development.md)
-- [Deployment notes](../docs/engineering/deployment.md)
-- [Testing guide](../docs/engineering/testing.md)
+- [Development setup](../docs/engineering/how-to/development.md)
+- [Deployment notes](../docs/engineering/how-to/deployment.md)
+- [Testing guide](../docs/engineering/how-to/testing.md)
 
 ## Local GUI loop
 

@@ -1,8 +1,8 @@
-# repo2ree — Step Lifecycle (author and review)
+# Understanding the repo2ree Step Lifecycle
 
 > Status: current (2026-07). Design rationale for
-> [`core/operations/steps/`](../../core/src/repo2ree_core/operations/steps/) and the
-> handlers under [`core/operations/handlers/`](../../core/src/repo2ree_core/operations/handlers/).
+> [`core/operations/steps/`](../../../core/src/repo2ree_core/operations/steps/) and the
+> handlers under [`core/operations/handlers/`](../../../core/src/repo2ree_core/operations/handlers/).
 > The modules themselves document *what* each helper does; this page records *why*
 > the shape is what it is.
 
@@ -128,5 +128,5 @@ decides how a halt is reported.
 
 ## See also
 
-- [CONCEPTS.md](../CONCEPTS.md) — Run Receipt, REE assessment, lifecycle states.
-- [COMPONENTS.md](../COMPONENTS.md) — where `core` sits relative to the executor and the agent.
+- [Concept reference](../../reference/concepts.md) — Run Receipt, REE assessment, lifecycle states.
+- [Component reference](../../reference/components.md) — where `core` sits relative to the executor and the agent.

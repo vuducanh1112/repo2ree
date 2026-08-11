@@ -1,4 +1,4 @@
-# Archive and Share
+# How to Archive and Share an REE
 
 Archive is the workflow that turns a working REE into something another person,
 venue, or repository can keep.

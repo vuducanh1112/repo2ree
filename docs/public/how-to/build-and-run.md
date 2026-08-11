@@ -1,4 +1,4 @@
-# Build and Run an REE
+# How to Build and Run an REE
 
 Build and run is the author-side loop: take source, add the instructions needed
 to execute it, build a runtime, and run declared commands inside that runtime.

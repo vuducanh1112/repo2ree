@@ -1,4 +1,4 @@
-# Verify a Result
+# How to Verify a Result
 
 Verify is the reviewer and reader loop. The goal is to re-run a published
 result and get a comparable record instead of informal notes.
@@ -52,4 +52,4 @@ reviewer's fresh run writes its own outputs to the declared paths in the
 workspace, and can diff them against the author's baseline sitting outside the
 workspace. Verify itself always reads the fresh workspace, never the baseline.
 
-For the deeper design, see [Run Receipt](../concepts.md#run-receipt).
+For the deeper design, see [Run Receipt](../reference/concepts.md#run-receipt).

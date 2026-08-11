@@ -1,4 +1,4 @@
-# repo2ree - Engineering Test Guide
+# How to Test repo2ree
 
 > Status: current test layout (2026-07). The suite intentionally separates
 > container-free checks from Docker-gated integration and e2e flows.

@@ -1,4 +1,4 @@
-# What is repo2ree?
+# Understanding repo2ree
 
 repo2ree is an integration layer for reproducible computer-science research.
 It takes a repository and helps turn it into a Reproducible Execution

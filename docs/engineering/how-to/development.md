@@ -1,4 +1,4 @@
-# repo2ree - Engineering Development Setup
+# How to Set Up repo2ree for Development
 
 > Status: current contributor setup (2026-06). This is for people developing
 > or operating repo2ree itself. User-facing service guides should live outside

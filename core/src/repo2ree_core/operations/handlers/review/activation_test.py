@@ -8,7 +8,7 @@ Two consequences a comparison would otherwise have carried: the ``basis`` is
 inherited from the attempt rather than chosen, and the probe is bound to the
 runtime digest the build recorded. A runtime that does not come up *completes*
 the step with a ``failed`` verdict; only conditions that stop it probing at all
-fail the step. See ``docs/engineering/review-evidence.md``.
+fail the step. See ``docs/engineering/explanation/review-evidence.md``.
 """
 
 from __future__ import annotations

@@ -15,11 +15,11 @@
 
 ## Canonical project references
 
-- [Concept reference](../CONCEPTS.md)
-- [Architecture](../ARCHITECTURE.md)
-- [Component architecture](../COMPONENTS.md)
+- [Concept reference](../reference/concepts.md)
+- [Architecture](../reference/architecture.md)
+- [Component architecture](../reference/components.md)
 
 ## Other docs sections
 
 - [Public docs](../public/README.md)
-- [Engineering docs](../engineering/development.md)
+- [Engineering docs](../engineering/README.md)

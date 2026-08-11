@@ -1,4 +1,4 @@
-# Current status
+# Current Capability Status
 
 repo2ree is an active prototype. The current app can create and manage an REE
 workspace backed by an isolated workbench, while the long-term docs describe a
@@ -45,4 +45,4 @@ dispatches typed commands into that workbench. The long-term architecture keeps
 that control-plane/execution-plane split but can move the workbench from local
 Docker to stronger VM-backed or institution-owned runner deployments.
 
-For local setup, see the [engineering deployment guide](../engineering/deployment.md).
+For local setup, see the [engineering deployment guide](../../engineering/how-to/deployment.md).

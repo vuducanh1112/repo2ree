@@ -1,4 +1,4 @@
-# repo2ree - Engineering Deployment Notes
+# How to Deploy repo2ree
 
 > Status: current demo/dev deployment shape (2026-06). This is not yet a
 > hardened production runbook. The current stack is useful for local demos and

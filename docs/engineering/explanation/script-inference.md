@@ -1,7 +1,7 @@
-# repo2ree — Script Inference
+# Understanding Script Inference
 
 > Status: current, Phase 1 = build inference (2026-07). Code lives in
-> [`core/author_recipes/inference/`](../../core/src/repo2ree_core/author_recipes/inference/).
+> [`core/author_recipes/inference/`](../../../core/src/repo2ree_core/author_recipes/inference/).
 > This page is the design overview; each module's docstring covers its own
 > mechanics.
 
@@ -127,4 +127,4 @@ splitting, and no assumption that the runtime image has a shell.
 ## See also
 
 - [step-lifecycle.md](step-lifecycle.md) — how a generated script is later run and receipted.
-- [../CONCEPTS.md](../CONCEPTS.md) — Overlay, REE, Repro Label.
+- [Concept reference](../../reference/concepts.md) — Overlay, REE, Repro Label.

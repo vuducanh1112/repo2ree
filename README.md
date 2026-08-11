@@ -2,7 +2,8 @@
 
 Public product docs live in [docs/public/README.md](docs/public/README.md).
 Contributor setup, deployment, test docs, and backend design rationale live under
-[docs/engineering/](docs/engineering/README.md).
+[docs/engineering/](docs/engineering/README.md). The complete documentation map
+starts at [docs/README.md](docs/README.md).
 Research and paper-facing notes live under
 [docs/research/](docs/research/).
 
@@ -85,13 +86,13 @@ container runs outside the stack and mounts `/var/run/docker.sock` because it
 owns workbench container lifecycle.
 
 For more detail, see
-[docs/engineering/deployment.md](docs/engineering/deployment.md).
+[docs/engineering/how-to/deployment.md](docs/engineering/how-to/deployment.md).
 
 
 ## Local development
 
 Full contributor setup lives in
-[docs/engineering/development.md](docs/engineering/development.md).
+[docs/engineering/how-to/development.md](docs/engineering/how-to/development.md).
 
 1. Start the backend from the repository root:
 
@@ -148,7 +149,7 @@ VITE_API_BASE_URL=http://localhost:8000 npm --prefix gui run dev -- --host
 ## E2E test
 
 For the full test map, see
-[docs/engineering/testing.md](docs/engineering/testing.md).
+[docs/engineering/how-to/testing.md](docs/engineering/how-to/testing.md).
 
 ```bash
 make e2e-gui

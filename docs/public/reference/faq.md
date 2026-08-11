@@ -1,4 +1,4 @@
-# FAQ
+# Frequently Asked Questions
 
 ## Is repo2ree a hosted IDE?
 
@@ -55,5 +55,5 @@ stronger or institution-owned environments.
 
 ## Where are contributor docs?
 
-Contributor and operator docs are under [docs/engineering](../engineering/development.md).
+Contributor and operator docs start in the [engineering documentation](../../engineering/README.md).
 The public docs are meant for website readers, not local development setup.
