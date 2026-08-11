@@ -31,7 +31,7 @@ backend never touches a container runtime: workbenches are launched by the
 [docker-compose.yml](../docker-compose.yml)) over the outbound WebSocket. The
 workbench does not receive the host socket. It runs its own daemon and stores
 `/var/lib/docker` in a per-REE volume
-([docker_runtime.py](../agent/src/repo2ree_agent/docker_runtime.py)).
+([runtime.py](../agent/src/repo2ree_agent/runtimes/docker/runtime.py)).
 
 The risk has moved: untrusted repo code no longer holds the host Docker socket
 on the main path, but the workbench is still privileged and not VM-backed.
@@ -62,7 +62,7 @@ inside the workbench, but the workbench gets its own kernel boundary.
 
 A working environment is provisioned on the **first execution-needing operation**
 (not at REE creation; see
-[State ownership](#state-ownership-declarative-manifest-vs-durable-tree)). It
+[State ownership](#state-ownership-portable-aggregate-and-durable-tree)). It
 then hosts the fixed `/ree` layout and the tools that act on it:
 
 ```
@@ -453,7 +453,7 @@ Two consequences:
   version, different bytes" and is portable across machines. The control-plane
   manifest still carries `expectedVersion` for single-machine optimistic
   concurrency on the autosave path
-  ([State ownership](#state-ownership-declarative-manifest-vs-durable-tree));
+  ([State ownership](#state-ownership-portable-aggregate-and-durable-tree));
   that's a different concern and stays.
 - **Per-operation input slices.** `build_runtime` doesn't take experiment specs
   as inputs; `run_experiment` doesn't take dependency-score config. Each
@@ -527,7 +527,7 @@ their constraints later.
   (`SOURCE_DATE_EPOCH`, sorted tarballs).
 - **Workspace mutability.** Snapshot to CAS at action dispatch, not on every
   keystroke — already implied by "projection at job dispatch"
-  ([above](#state-ownership-declarative-manifest-vs-durable-tree)).
+  ([above](#state-ownership-portable-aggregate-and-durable-tree)).
 - **Large blobs.** `runtime-image.tar` is multi-GB. Pragmatic split: **OCI
   registry for runtime images** (already content-addressed, dockerd speaks it
   natively), own CAS for everything else (sbom, score, run bundles, logs).
@@ -694,7 +694,7 @@ explicit SWH save/deposit request.
   protocol change. See
   [Content-addressed state](#content-addressed-state-cas-and-the-action-cache).
 - **Establish the `/ree` layout on first provisioning** (not REE creation — see
-  [State ownership](#state-ownership-declarative-manifest-vs-durable-tree)).
+  [State ownership](#state-ownership-portable-aggregate-and-durable-tree)).
   The persistent workbench path already lays down `upstream/`, `overlay/`,
   `workspace/`, `artifacts/`, and `runs/`. Keep review/legacy paths converging on
   the same layout.
@@ -739,6 +739,6 @@ explicit SWH save/deposit request.
   Recommend rehydratable, with the tree as source of truth. *First* provisioning
   is likewise lazy — deferred to the first execution-needing operation — so an REE
   that is only being declared/edited costs no workbench (see
-  [State ownership](#state-ownership-declarative-manifest-vs-durable-tree)).
+  [State ownership](#state-ownership-portable-aggregate-and-durable-tree)).
 - **KVM availability in the deployment target** decides Kata vs. the Sysbox
   fallback.

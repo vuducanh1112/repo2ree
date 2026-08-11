@@ -44,3 +44,4 @@ fastapi.log
 .env.example
 .vale/styles/proselint/
 .vale/styles/write-good/
+/.lycheecache

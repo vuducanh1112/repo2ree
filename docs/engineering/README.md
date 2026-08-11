@@ -23,6 +23,13 @@ place instead of being restated in every docstring that touches it.
 | [review-evidence.md](review-evidence.md) | What a review attempt certifies: verdict ladders per step, evidence bases (`independent` vs `bundled`), and why activation has no comparison. |
 | [script-inference.md](script-inference.md) | How author-facing scripts are proposed: the decision DAG as sole control-flow authority, score-free resolution, and the upstream-only scan rule. |
 
+## Engineering decisions
+
+Consequential choices and their tradeoffs live in the
+[engineering decision log](decisions/README.md). The records preserve why a
+choice was made; the architecture documents below remain the living description
+of the system.
+
 ## Where the rest lives
 
 - [../ARCHITECTURE.md](../ARCHITECTURE.md) — execution and isolation: the `/ree`

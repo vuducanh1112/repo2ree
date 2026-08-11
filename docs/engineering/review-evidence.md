@@ -57,8 +57,8 @@ Decided in this order, in `compare_experiment_results`:
 3. **The author criterion is unbound or changed** → `inconclusive`. A verify
    script with no author-receipt digest cannot be audited, and a different
    script answers a different question.
-4. **The author's verify did not pass** → `inconclusive`. There is no accepted
-   baseline claim to reproduce.
+4. **The author's verify did not pass** → `inconclusive`. No accepted baseline
+   claim exists to reproduce.
 5. **Reviewer verify exited nonzero** → `different`. The author's own criterion, applied to
    the reviewer's results, rejected them. This is the step working.
 6. **Reviewer verify exited 0** → `reproduced`, upgraded to `identical` when both sides

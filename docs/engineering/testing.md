@@ -27,7 +27,8 @@
 | `make stack-clean` | Stop it and drop every volume it created, workbench leftovers included. |
 | `make workbench-clean` | Just the workbench leftovers; `STORE=1` also drops every bundle store volume. |
 | `make store-gc` | Evict bundle store caches unused for `STORE_GC_DAYS` (14), keeping the live one. |
-| `make commit-gate` | Fast pre-commit gate: static checks + all container-free test tiers. Certifies the tree it passed on; the pre-commit hook checks that certificate. |
+| `make commit-gate` | Fast pre-commit gate: documentation, static checks, and all container-free test tiers. Certifies the tree it passed on; the pre-commit hook checks that certificate. |
+| `make docs-links-external` | Manually check external documentation URLs with retries and a local response cache; intentionally excluded from deterministic gates. |
 | `make push-gate` | The pre-publish gate: clean tree, all checks and tests, e2e source-run and image-backed. |
 | `make be-coverage-report TIER=<tier>` | Render a tier's HTML from data already on disk. |
 | `make be-coverage-combined` | Union of whichever backend tiers have been measured on this checkout. |
@@ -476,14 +477,14 @@ The source-run `e2e-gui` remains the iteration loop (fast, easy to debug,
 coverage-capable); the image-backed variants are the deployment gate before
 pushing or promoting images.
 
-`make commit-gate` is the fast pre-commit companion: static checks plus every
-test tier that needs no docker, nix builds, or browsers (GUI unit, backend unit,
-core integration). It runs in about a minute warm — commits should stay cheap,
-and that budget is the constraint any change to the gate has to answer to. Two
-of its three suites are tier targets, so a green gate also leaves fresh `unit`
-and `node` coverage on disk; that costs roughly 13s of the minute, which is the
-price of never having an unmeasured tier run. The exhaustive counterpart is the
-push gate below.
+`make commit-gate` is the fast pre-commit companion: offline documentation and
+static checks plus every test tier that needs no docker, nix builds, or browsers
+(GUI unit, backend unit, core integration). It runs in about a minute warm —
+commits should stay cheap, and that budget is the constraint any change to the
+gate has to answer to. Two of its three suites are tier targets, so a green gate
+also leaves fresh `unit` and `node` coverage on disk; that costs roughly 13s of
+the minute, which is the price of never having an unmeasured tier run. The
+exhaustive counterpart is the push gate below.
 
 The pre-commit hook does not run the gate — it checks that you did. On a green
 run the gate records the tree it validated under `.validation-certificates/`,
