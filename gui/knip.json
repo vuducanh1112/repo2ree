@@ -3,6 +3,9 @@
   "ignoreDependencies": [
     "@biomejs/biome"
   ],
+  "ignore": [
+    "src/viteEnv.d.ts"
+  ],
   "ignoreIssues": {
     "src/shell/infra/api/generated/openapi.ts": [
       "exports",

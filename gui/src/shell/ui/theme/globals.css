@@ -1,0 +1,83 @@
+/* Document-level defaults. Deliberately narrow: box sizing and the minimal
+ * reset, document/body defaults, focus defaults, scrollbar policy, and the
+ * reduced-motion policy. Component appearance — including hover and active
+ * effects — belongs to the component's own module, not here.
+ *
+ * The interaction rules the old runtime-injected stylesheet applied to every
+ * button in the app still exist, but in `legacyGlobals.css`, where the style
+ * guard counts them as migration debt.
+ */
+
+/* biome-ignore-all lint/complexity/noImportantStyles: the reduced-motion policy
+ * at the foot of this file is the one accepted use of !important — it has to
+ * outrank every animation in the app. checkStyleArchitecture.mjs is what keeps
+ * it the only one. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--chrome-bg);
+}
+
+input,
+select,
+button,
+textarea {
+  font-family: inherit;
+  outline: none;
+}
+
+/* Focus defaults: a visible ring for keyboard focus, nothing for pointer
+ * focus. Controls may restyle the ring; they must not remove it. */
+:where(button, [role="button"], a, input, select, textarea):focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+:where(button, [role="button"], a, input, select, textarea):focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Scrollbar policy: the app's panes are dense, and the platform scrollbar
+ * eats layout the canvas needs. */
+::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: var(--radius-round);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* Motion policy. This block is the one accepted use of `!important`: it has to
+ * outrank every animation and transition in the app, including ones declared
+ * later in the cascade. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

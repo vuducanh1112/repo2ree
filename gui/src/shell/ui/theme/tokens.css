@@ -1,0 +1,105 @@
+/* Primitive design tokens: palette, spacing, typography, radii, shadows, and
+ * motion. Nothing here names a domain concept — `tones.css` maps these onto
+ * semantic roles, and component modules consume the roles.
+ *
+ * This is the only stylesheet allowed to hold raw color literals; the guard in
+ * `gui/scripts/checkStyleArchitecture.mjs` enforces that. The palette below is
+ * the migration's source of truth for the two historical palettes: the
+ * canvas/app-chrome tokens (`theme/tokens.ts`, `C`) and the glass "pages"
+ * palette (`theme/lightGlassTheme.ts`, `lgColors`). Their hex values are
+ * deliberately distinct and stay distinct here; what changes is that a
+ * component now picks a semantic role rather than a palette object.
+ */
+
+:root {
+  /* --- Typography -------------------------------------------------------
+   * The families resolve against locally installed fonts and otherwise fall
+   * through to the system stack. Production performs no runtime font
+   * download; there is no @import url(...) here by design.
+   */
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", "Menlo", monospace;
+
+  --text-2xs: 9px;
+  --text-xs: 10px;
+  --text-sm: 11px;
+  --text-md: 12px;
+  --text-lg: 14px;
+  --text-xl: 18px;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* --- Space ----------------------------------------------------------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* --- Radius ---------------------------------------------------------- */
+  --radius-control: 8px;
+  --radius-panel: 12px;
+  --radius-round: 999px;
+
+  /* --- Motion ---------------------------------------------------------- */
+  --duration-fast: 120ms;
+  --duration-normal: 180ms;
+  --ease-standard: ease;
+
+  /* --- Palette: neutrals (canvas / app chrome) ------------------------- */
+  --palette-white: #ffffff;
+  --palette-grey-050: #f4f6f9;
+  --palette-grey-075: #f0f3f7;
+  --palette-grey-150: #dde3ec;
+  --palette-grey-300: #c4cdd9;
+  --palette-grey-500: #8896a5;
+  --palette-grey-650: #4a5568;
+  --palette-grey-950: #0d1117;
+
+  /* --- Palette: slate (navigation chrome, glass ink) ------------------- */
+  --palette-slate-200: #e2e8f0;
+  --palette-slate-400: #94a3b8;
+  --palette-slate-500: #64748b;
+  --palette-slate-600: #475569;
+  --palette-slate-900: #111827;
+  --palette-slate-950: #0f172a;
+
+  /* --- Palette: blue / sky / indigo / violet --------------------------- */
+  --palette-blue-050: #eef4ff;
+  --palette-blue-200: #bfdbfe;
+  --palette-blue-600: #2563eb;
+  --palette-blue-700: #1d4ed8;
+  --palette-sky-500: #0ea5e9;
+  --palette-sky-700: #0369a1;
+  --palette-sky-900: #0c4a6e;
+  --palette-cyan-600: #0891b2;
+  --palette-indigo-600: #4f46e5;
+  --palette-indigo-800: #3730a3;
+  --palette-violet-600: #7c3aed;
+
+  /* --- Palette: status hues -------------------------------------------- */
+  --palette-emerald-500: #10b981;
+  --palette-emerald-700: #047857;
+  --palette-amber-500: #f59e0b;
+  --palette-yellow-700: #a16207;
+  --palette-red-600: #dc2626;
+  --palette-rose-400: #fb7185;
+  --palette-rose-700: #be123c;
+
+  /* --- Palette: translucent overlays -----------------------------------
+   * Alpha belongs to the palette, not to an interpolated `${token}88`
+   * suffix — appending alpha text to a CSS variable silently produces an
+   * invalid value.
+   */
+  --palette-blue-600-faint: rgb(37 99 235 / 9%);
+  --palette-emerald-500-glow: rgb(16 185 129 / 53%);
+  --palette-amber-500-glow: rgb(245 158 11 / 53%);
+
+  /* --- Shadow ---------------------------------------------------------- */
+  --shadow-dot-glow: 0 0 7px;
+}

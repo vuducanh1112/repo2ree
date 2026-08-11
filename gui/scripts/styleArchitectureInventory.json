@@ -1,0 +1,588 @@
+{
+  "note": "Migration ratchet for the GUI styling rework — pre-existing violations, per file. It may only shrink: `make gui-checks` fails on a new violation and on a stale entry left behind by a conversion. Regenerate with `npm run check:style-architecture -- --update`. Phase 8 deletes this file and the rules become absolute.",
+  "total": 1803,
+  "files": {
+    "src/core/canvas/cableGeometry.ts": {
+      "core-visual-field": 2
+    },
+    "src/core/canvas/cableScene.ts": {
+      "core-visual-field": 6
+    },
+    "src/core/canvas/canvasNodes.ts": {
+      "core-visual-field": 22,
+      "raw-color": 20
+    },
+    "src/core/evaluate/axes.ts": {
+      "core-visual-field": 4,
+      "raw-color": 9
+    },
+    "src/core/evaluate/dependencyPresentation.ts": {
+      "core-visual-field": 25,
+      "raw-color": 36
+    },
+    "src/core/ree-steps/archiveRepositories.ts": {
+      "core-visual-field": 6,
+      "raw-color": 9
+    },
+    "src/core/ree-steps/stepCatalog.ts": {
+      "core-visual-field": 10,
+      "raw-color": 15
+    },
+    "src/core/ree-steps/stepTypes.ts": {
+      "core-visual-field": 4
+    },
+    "src/core/runs/runFailurePresentation.ts": {
+      "raw-color": 3
+    },
+    "src/shell/ui/agents/AgentsView.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 1,
+      "style-not-css-vars": 5,
+      "style-object-literal": 26
+    },
+    "src/shell/ui/agents/LabLocationView.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 1,
+      "style-object-literal": 22
+    },
+    "src/shell/ui/app-shell/AppShellContent.tsx": {
+      "legacy-theme-import": 1,
+      "style-not-css-vars": 6
+    },
+    "src/shell/ui/app-shell/AppShellView.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 6,
+      "style-object-literal": 13
+    },
+    "src/shell/ui/app-shell/canvas/BenchConsole.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 13,
+      "style-not-css-vars": 1,
+      "style-object-literal": 12
+    },
+    "src/shell/ui/app-shell/canvas/CableOverlay.tsx": {
+      "raw-color": 6,
+      "style-object-literal": 1
+    },
+    "src/shell/ui/app-shell/canvas/CanvasControls.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 1,
+      "style-not-css-vars": 1,
+      "style-object-literal": 3
+    },
+    "src/shell/ui/app-shell/canvas/CanvasHub.tsx": {
+      "alpha-interpolation": 4,
+      "legacy-theme-import": 1,
+      "raw-color": 3,
+      "style-object-literal": 3
+    },
+    "src/shell/ui/app-shell/canvas/CanvasWindow.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 1,
+      "style-object-literal": 8
+    },
+    "src/shell/ui/app-shell/canvas/CenterSealStrip.tsx": {
+      "raw-color": 2,
+      "style-object-literal": 1
+    },
+    "src/shell/ui/app-shell/canvas/CenterSealStrip/SealConfirmCopy.tsx": {
+      "legacy-theme-import": 2,
+      "style-object-literal": 2
+    },
+    "src/shell/ui/app-shell/canvas/CenterSealStrip/SealConfirmInclusion.tsx": {
+      "legacy-theme-import": 2,
+      "raw-color": 2,
+      "style-object-literal": 8
+    },
+    "src/shell/ui/app-shell/canvas/CenterSealStrip/SealConfirmWarning.tsx": {
+      "legacy-theme-import": 2,
+      "raw-color": 4,
+      "style-object-literal": 9
+    },
+    "src/shell/ui/app-shell/canvas/CenterSealStrip/SealStatusCard.tsx": {
+      "alpha-interpolation": 3,
+      "legacy-theme-import": 2,
+      "raw-color": 3,
+      "style-object-literal": 10
+    },
+    "src/shell/ui/app-shell/canvas/CenterSealStrip/SealedSealCard.tsx": {
+      "alpha-interpolation": 6,
+      "legacy-theme-import": 2,
+      "raw-color": 3,
+      "style-not-css-vars": 4,
+      "style-object-literal": 10
+    },
+    "src/shell/ui/app-shell/canvas/CoreExperiments.tsx": {
+      "alpha-interpolation": 4,
+      "legacy-theme-import": 1,
+      "raw-color": 8,
+      "style-object-literal": 9
+    },
+    "src/shell/ui/app-shell/canvas/ExplodeView.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 3,
+      "style-object-literal": 8
+    },
+    "src/shell/ui/app-shell/canvas/FileTabsPanel.tsx": {
+      "legacy-theme-import": 1,
+      "style-object-literal": 6
+    },
+    "src/shell/ui/app-shell/canvas/FileTreeConsole.tsx": {
+      "legacy-theme-import": 2,
+      "style-object-literal": 2
+    },
+    "src/shell/ui/app-shell/canvas/FocusDock.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 2,
+      "style-object-literal": 4
+    },
+    "src/shell/ui/app-shell/canvas/HubPanel.tsx": {
+      "raw-color": 2
+    },
+    "src/shell/ui/app-shell/canvas/HudConsole.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 3,
+      "style-object-literal": 10
+    },
+    "src/shell/ui/app-shell/canvas/InnerShellButton.tsx": {
+      "alpha-interpolation": 1,
+      "legacy-theme-import": 1,
+      "raw-color": 3,
+      "style-object-literal": 2
+    },
+    "src/shell/ui/app-shell/canvas/LabBackdrop.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 8,
+      "style-object-literal": 7
+    },
+    "src/shell/ui/app-shell/canvas/NodeCard.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 5,
+      "style-object-literal": 8
+    },
+    "src/shell/ui/app-shell/canvas/PodWidget.tsx": {
+      "alpha-interpolation": 2,
+      "raw-color": 1,
+      "style-object-literal": 1
+    },
+    "src/shell/ui/app-shell/canvas/ReceiptCard.tsx": {
+      "legacy-theme-import": 1,
+      "style-object-literal": 11
+    },
+    "src/shell/ui/app-shell/canvas/ReceiptsConsole.tsx": {
+      "legacy-theme-import": 2,
+      "style-object-literal": 3
+    },
+    "src/shell/ui/app-shell/canvas/ReviewConsole.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 1,
+      "style-object-literal": 7
+    },
+    "src/shell/ui/app-shell/canvas/RunHud.tsx": {
+      "alpha-interpolation": 1,
+      "legacy-theme-import": 1,
+      "raw-color": 8,
+      "style-object-literal": 22
+    },
+    "src/shell/ui/app-shell/canvas/SourceHubPanel.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 4,
+      "style-not-css-vars": 1,
+      "style-object-literal": 3
+    },
+    "src/shell/ui/app-shell/canvas/WorkbenchLab.tsx": {
+      "legacy-theme-import": 2,
+      "raw-color": 4,
+      "style-not-css-vars": 8,
+      "style-object-literal": 30
+    },
+    "src/shell/ui/app-shell/canvas/podWidget/PodDepGraph.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 2
+    },
+    "src/shell/ui/app-shell/canvas/podWidget/PodShellCore.tsx": {
+      "raw-color": 3
+    },
+    "src/shell/ui/app-shell/canvas/podWidget/PodShellInner.tsx": {
+      "raw-color": 10
+    },
+    "src/shell/ui/app-shell/canvas/podWidget/PodSphere.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 3
+    },
+    "src/shell/ui/app-shell/canvas/podWidget/podWidgetData.ts": {
+      "raw-color": 7
+    },
+    "src/shell/ui/app-shell/canvas/review/ExperimentReviewPanel.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 2,
+      "style-object-literal": 9
+    },
+    "src/shell/ui/app-shell/canvas/review/ReviewDag.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 2,
+      "style-object-literal": 2
+    },
+    "src/shell/ui/app-shell/canvas/review/ReviewStepButton.tsx": {
+      "alpha-interpolation": 2,
+      "legacy-theme-import": 1,
+      "raw-color": 3,
+      "style-object-literal": 6
+    },
+    "src/shell/ui/app-shell/components/CollapsibleLogCard.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 2,
+      "style-not-css-vars": 1,
+      "style-object-literal": 6
+    },
+    "src/shell/ui/app-shell/components/GenerateScriptControl.tsx": {
+      "legacy-theme-import": 2,
+      "raw-color": 2,
+      "style-object-literal": 6
+    },
+    "src/shell/ui/app-shell/components/GlassCancelButton.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 1,
+      "style-object-literal": 1
+    },
+    "src/shell/ui/app-shell/components/GlassPageHeader.tsx": {
+      "legacy-theme-import": 1,
+      "style-not-css-vars": 4,
+      "style-object-literal": 3
+    },
+    "src/shell/ui/app-shell/components/GlassPanelFooter.tsx": {
+      "legacy-theme-import": 2,
+      "style-not-css-vars": 1,
+      "style-object-literal": 1
+    },
+    "src/shell/ui/app-shell/components/GlassSectionHeader.tsx": {
+      "alpha-interpolation": 1,
+      "legacy-theme-import": 1,
+      "style-not-css-vars": 3,
+      "style-object-literal": 1
+    },
+    "src/shell/ui/app-shell/components/GlassSubPanel.tsx": {
+      "legacy-theme-import": 1,
+      "style-object-literal": 1
+    },
+    "src/shell/ui/app-shell/components/LastRunStamp.tsx": {
+      "legacy-theme-import": 2,
+      "style-object-literal": 1
+    },
+    "src/shell/ui/app-shell/components/MissingInputsBanner.tsx": {
+      "legacy-theme-import": 2,
+      "raw-color": 2,
+      "style-object-literal": 7
+    },
+    "src/shell/ui/app-shell/components/OutcomeBadge.tsx": {
+      "legacy-theme-import": 1,
+      "style-not-css-vars": 1
+    },
+    "src/shell/ui/app-shell/components/RunActionButton.tsx": {
+      "legacy-theme-import": 1,
+      "style-not-css-vars": 1,
+      "style-object-literal": 2
+    },
+    "src/shell/ui/app-shell/components/RunScriptCard.tsx": {
+      "legacy-theme-import": 2,
+      "style-not-css-vars": 5,
+      "style-object-literal": 11
+    },
+    "src/shell/ui/app-shell/components/SummaryLine.tsx": {
+      "legacy-theme-import": 2,
+      "style-object-literal": 3
+    },
+    "src/shell/ui/app-shell/components/logPanel.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 8,
+      "style-not-css-vars": 3,
+      "style-object-literal": 10
+    },
+    "src/shell/ui/app-shell/components/sourceRuntime/SourceUploadCommitted.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 4,
+      "style-object-literal": 4
+    },
+    "src/shell/ui/app-shell/components/sourceRuntime/SourceUploadDropzone.tsx": {
+      "legacy-theme-import": 1,
+      "style-object-literal": 5
+    },
+    "src/shell/ui/app-shell/components/sourceRuntime/SourceUploadField.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 1,
+      "style-object-literal": 4
+    },
+    "src/shell/ui/app-shell/components/sourceRuntime/SourceUploadPending.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 9,
+      "style-object-literal": 7
+    },
+    "src/shell/ui/app-shell/components/sourceRuntime/SourceUrlField.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 4,
+      "style-object-literal": 8
+    },
+    "src/shell/ui/app-shell/components/sourceRuntime/shared.tsx": {
+      "legacy-theme-import": 1
+    },
+    "src/shell/ui/app-shell/components/statusUiStyles.ts": {
+      "legacy-theme-import": 1,
+      "raw-color": 2
+    },
+    "src/shell/ui/app-shell/components/stepRunPanels/DependencyGroupCard.tsx": {
+      "alpha-interpolation": 6,
+      "legacy-theme-import": 1,
+      "raw-color": 4,
+      "style-object-literal": 18
+    },
+    "src/shell/ui/app-shell/components/stepRunPanels/DependencyPanel.tsx": {
+      "style-object-literal": 2
+    },
+    "src/shell/ui/app-shell/components/stepRunPanels/DependencySummaryFilters.tsx": {
+      "legacy-theme-import": 1,
+      "style-object-literal": 2
+    },
+    "src/shell/ui/app-shell/components/stepRunPanels/shared.ts": {
+      "legacy-theme-import": 1
+    },
+    "src/shell/ui/app-shell/pages/archive/ArchivePage.tsx": {
+      "alpha-interpolation": 2,
+      "legacy-theme-import": 2,
+      "style-not-css-vars": 10,
+      "style-object-literal": 2
+    },
+    "src/shell/ui/app-shell/pages/archive/sections/ArchiveActionPanel.tsx": {
+      "alpha-interpolation": 4,
+      "legacy-theme-import": 2,
+      "raw-color": 2,
+      "style-not-css-vars": 2,
+      "style-object-literal": 5
+    },
+    "src/shell/ui/app-shell/pages/archive/sections/ArchiveParamsCard.tsx": {
+      "legacy-theme-import": 2,
+      "raw-color": 7,
+      "style-not-css-vars": 3,
+      "style-object-literal": 9
+    },
+    "src/shell/ui/app-shell/pages/archive/sections/ArchivePrereqBanners.tsx": {
+      "legacy-theme-import": 2,
+      "raw-color": 8,
+      "style-object-literal": 10
+    },
+    "src/shell/ui/app-shell/pages/archive/sections/ArchiveReadinessAside.tsx": {
+      "legacy-theme-import": 2,
+      "style-not-css-vars": 5,
+      "style-object-literal": 10
+    },
+    "src/shell/ui/app-shell/pages/archive/sections/ArchiveRepoSummaryCard.tsx": {
+      "alpha-interpolation": 4,
+      "legacy-theme-import": 2,
+      "raw-color": 3,
+      "style-object-literal": 10
+    },
+    "src/shell/ui/app-shell/pages/archive/sections/ArchiveRepoTabs.tsx": {
+      "alpha-interpolation": 2,
+      "legacy-theme-import": 1,
+      "style-object-literal": 3
+    },
+    "src/shell/ui/app-shell/pages/build-runtime/BuildRuntimePage.tsx": {
+      "legacy-theme-import": 2,
+      "style-not-css-vars": 2,
+      "style-object-literal": 5
+    },
+    "src/shell/ui/app-shell/pages/build-runtime/sections/RuntimeArtifactCard.tsx": {
+      "legacy-theme-import": 2,
+      "raw-color": 2,
+      "style-not-css-vars": 4,
+      "style-object-literal": 8
+    },
+    "src/shell/ui/app-shell/pages/experiments/ExperimentCardList.tsx": {
+      "legacy-theme-import": 2,
+      "raw-color": 15,
+      "style-object-literal": 19
+    },
+    "src/shell/ui/app-shell/pages/experiments/ExperimentsAsides.tsx": {
+      "legacy-theme-import": 2,
+      "raw-color": 4,
+      "style-not-css-vars": 2,
+      "style-object-literal": 25
+    },
+    "src/shell/ui/app-shell/pages/experiments/ExperimentsPage.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 2,
+      "style-not-css-vars": 12,
+      "style-object-literal": 5
+    },
+    "src/shell/ui/app-shell/pages/experiments/ExperimentsPageSections.tsx": {
+      "alpha-interpolation": 1,
+      "legacy-theme-import": 2,
+      "raw-color": 11,
+      "style-not-css-vars": 12,
+      "style-object-literal": 34
+    },
+    "src/shell/ui/app-shell/pages/files/FileFilterInput.tsx": {
+      "legacy-theme-import": 2,
+      "style-object-literal": 4
+    },
+    "src/shell/ui/app-shell/pages/files/FileViewer.tsx": {
+      "legacy-theme-import": 2,
+      "style-object-literal": 6
+    },
+    "src/shell/ui/app-shell/pages/generate-sbom/GenerateSbomPage.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 1,
+      "style-not-css-vars": 2,
+      "style-object-literal": 1
+    },
+    "src/shell/ui/app-shell/pages/generate-sbom/sections/CrossCheckCard.tsx": {
+      "legacy-theme-import": 2,
+      "raw-color": 3,
+      "style-not-css-vars": 5,
+      "style-object-literal": 11
+    },
+    "src/shell/ui/app-shell/pages/generate-sbom/sections/RuntimeScanTargetCard.tsx": {
+      "legacy-theme-import": 2,
+      "style-not-css-vars": 3,
+      "style-object-literal": 9
+    },
+    "src/shell/ui/app-shell/pages/generate-sbom/sections/SbomOutputCard.tsx": {
+      "alpha-interpolation": 2,
+      "legacy-theme-import": 2,
+      "style-not-css-vars": 4,
+      "style-object-literal": 7
+    },
+    "src/shell/ui/app-shell/pages/hardware-bom/HardwareBomPage.tsx": {
+      "legacy-theme-import": 2,
+      "raw-color": 9,
+      "style-not-css-vars": 8,
+      "style-object-literal": 6
+    },
+    "src/shell/ui/app-shell/pages/hardware-bom/HardwareBomPageSections.tsx": {
+      "legacy-theme-import": 2,
+      "raw-color": 14,
+      "style-not-css-vars": 3,
+      "style-object-literal": 17
+    },
+    "src/shell/ui/app-shell/pages/hardware-bom/hardwareBomColumns.fields.tsx": {
+      "style-not-css-vars": 2
+    },
+    "src/shell/ui/app-shell/pages/hardware-bom/hardwareBomPageHelpers.ts": {
+      "legacy-theme-import": 2,
+      "raw-color": 4
+    },
+    "src/shell/ui/app-shell/pages/metadata/MetadataPage.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 1,
+      "style-not-css-vars": 41,
+      "style-object-literal": 22
+    },
+    "src/shell/ui/app-shell/pages/pageContainers/shared.tsx": {
+      "style-not-css-vars": 1
+    },
+    "src/shell/ui/app-shell/pages/repo-analysis/RepoAnalysisCardHeader.tsx": {
+      "legacy-theme-import": 1,
+      "style-not-css-vars": 2,
+      "style-object-literal": 1
+    },
+    "src/shell/ui/app-shell/pages/repo-analysis/RepoAnalysisPage.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 1,
+      "style-not-css-vars": 7,
+      "style-object-literal": 2
+    },
+    "src/shell/ui/app-shell/pages/repo-analysis/RepoAnalysisPageHelpers.ts": {
+      "raw-color": 6
+    },
+    "src/shell/ui/app-shell/pages/repo-analysis/RepoAnalysisPageSections.tsx": {
+      "alpha-interpolation": 6,
+      "legacy-theme-import": 2,
+      "raw-color": 7,
+      "style-not-css-vars": 6,
+      "style-object-literal": 23
+    },
+    "src/shell/ui/app-shell/pages/repo-analysis/RepoAnalysisThreatsCard.tsx": {
+      "legacy-theme-import": 2,
+      "raw-color": 19,
+      "style-not-css-vars": 1,
+      "style-object-literal": 18
+    },
+    "src/shell/ui/app-shell/pages/source/SourceAcquisitionPageSections.tsx": {
+      "legacy-theme-import": 2,
+      "raw-color": 13,
+      "style-not-css-vars": 6,
+      "style-object-literal": 11
+    },
+    "src/shell/ui/app-shell/pages/source/SourceAcquisitionPageStep3Section.tsx": {
+      "legacy-theme-import": 2,
+      "raw-color": 1,
+      "style-not-css-vars": 1,
+      "style-object-literal": 6
+    },
+    "src/shell/ui/app-shell/pages/test-activation/ActivationTestPage.tsx": {
+      "legacy-theme-import": 2,
+      "raw-color": 1,
+      "style-not-css-vars": 2,
+      "style-object-literal": 5
+    },
+    "src/shell/ui/app-shell/pages/test-activation/sections/ActivationTargetCard.tsx": {
+      "legacy-theme-import": 2,
+      "style-not-css-vars": 4,
+      "style-object-literal": 9
+    },
+    "src/shell/ui/app-shell/pages/workbench/WorkbenchPageSections.tsx": {
+      "alpha-interpolation": 1,
+      "legacy-theme-import": 2,
+      "raw-color": 7,
+      "style-object-literal": 10
+    },
+    "src/shell/ui/landing/LandingView.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 3,
+      "style-object-literal": 20
+    },
+    "src/shell/ui/ree-index/ReeIndexView.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 1,
+      "style-not-css-vars": 4,
+      "style-object-literal": 31
+    },
+    "src/shell/ui/shared/components/FileTree.tsx": {
+      "legacy-theme-import": 2,
+      "style-object-literal": 5
+    },
+    "src/shell/ui/shared/components/Icon.tsx": {
+      "raw-color": 1
+    },
+    "src/shell/ui/shared/components/Toast.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 10,
+      "style-object-literal": 3
+    },
+    "src/shell/ui/shared/components/Toggle.tsx": {
+      "legacy-theme-import": 1,
+      "raw-color": 2,
+      "style-object-literal": 2
+    },
+    "src/shell/ui/theme/legacyGlobals.css": {
+      "css-global-interaction": 2,
+      "css-important": 2
+    },
+    "src/shell/ui/theme/lightGlassTheme.ts": {
+      "alpha-interpolation": 6,
+      "legacy-theme-import": 2,
+      "raw-color": 117,
+      "theme-style-object": 1
+    },
+    "src/shell/ui/theme/stylesCore.ts": {
+      "legacy-theme-import": 1,
+      "theme-style-object": 6
+    },
+    "src/shell/ui/theme/stylesLayout.ts": {
+      "raw-color": 4,
+      "theme-style-object": 6
+    },
+    "src/shell/ui/theme/tokens.ts": {
+      "raw-color": 17
+    }
+  }
+}

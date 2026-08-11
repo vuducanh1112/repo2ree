@@ -1,0 +1,16 @@
+/* The GUI's single stylesheet entry point. `AppBootstrap` imports this; nothing
+ * injects a <style> element at runtime.
+ *
+ * The layer order is declared once, here, so later phases can add stylesheets
+ * without re-arguing the cascade. `reset` is declared ahead of `tokens` for the
+ * day a real reset stylesheet lands — until then the minimal reset sits at the
+ * head of globals.css. CSS Modules stay unlayered on purpose: unlayered rules
+ * outrank every layer, so a component module always beats the base defaults.
+ */
+
+@layer reset, tokens, base, components;
+
+@import "./tokens.css" layer(tokens);
+@import "./tones.css" layer(tokens);
+@import "./globals.css" layer(base);
+@import "./legacyGlobals.css" layer(base);

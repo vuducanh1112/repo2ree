@@ -47,6 +47,8 @@ gui-checks: api-types-check
 		npx knip && \
 		echo "Checking functional-core effects..." && \
 		npm run check:core-purity && \
+		echo "Checking style architecture..." && \
+		npm run check:style-architecture && \
 		echo "Running dependency-cruiser..." && \
 		npx depcruise src tests
 

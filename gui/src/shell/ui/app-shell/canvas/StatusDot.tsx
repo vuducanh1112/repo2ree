@@ -1,6 +1,4 @@
-import { C } from "../../theme/theme";
-
-const STALE_AMBER = "#f59e0b";
+import styles from "./StatusDot.module.css";
 
 /** 7px indicator dot used on canvas HUD consoles and node cards.
  *
@@ -8,17 +6,6 @@ const STALE_AMBER = "#f59e0b";
  * no longer match the workspace (see sealConsistency).
  */
 export function StatusDot({ on, stale = false }: { on: boolean; stale?: boolean }) {
-  const color = stale ? STALE_AMBER : C.done;
-  return (
-    <span
-      style={{
-        width: 7,
-        height: 7,
-        borderRadius: "50%",
-        flexShrink: 0,
-        background: on ? color : C.borderMid,
-        boxShadow: on ? `0 0 7px ${color}88` : "none",
-      }}
-    />
-  );
+  const state = !on ? "idle" : stale ? "stale" : "ready";
+  return <span className={styles.dot} data-state={state} />;
 }

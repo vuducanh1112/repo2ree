@@ -1,0 +1,21 @@
+/* The dot renders one derived state, not three style objects. `data-state` is
+ * the semantic classification the component computes; the colors are semantic
+ * roles from tones.css. */
+
+.dot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-round);
+  background: var(--status-idle);
+}
+
+.dot[data-state="ready"] {
+  background: var(--status-ok);
+  box-shadow: var(--shadow-dot-glow) var(--status-ok-glow);
+}
+
+.dot[data-state="stale"] {
+  background: var(--status-stale);
+  box-shadow: var(--shadow-dot-glow) var(--status-stale-glow);
+}

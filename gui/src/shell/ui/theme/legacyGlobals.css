@@ -1,0 +1,154 @@
+/* Migration holdover — not part of the target architecture.
+ *
+ * Everything here comes from the runtime-injected `GLOBAL_CSS` string and is
+ * still global only because its owners have not been converted yet:
+ *
+ *  - the keyframes are referenced by name from inline `animation` styles and
+ *    move into the owning component's module (see the animation ownership
+ *    table in the rework plan) as each component is converted;
+ *  - the blanket button and input interaction rules are replaced by the
+ *    `Button` and `FormControl` primitives in Phase 3.
+ *
+ * The style guard counts the interaction rules below as recorded debt: they
+ * are exactly the "broad global interaction selector" and "`!important`
+ * outside reduced motion" violations the inventory must shrink to zero. Delete
+ * this file when the last one goes.
+ *
+ * `pulseGlow`, `busFlow`, `cableFlow`, and `.nav-item` are not here: nothing
+ * referenced them, so they were dropped rather than carried.
+ */
+
+/* biome-ignore-all lint/complexity/noImportantStyles: carried verbatim from the
+ * injected GLOBAL_CSS. Both uses are recorded debt in the style-architecture
+ * inventory and leave with the FormControl primitive in Phase 3. */
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes dockIn {
+  from {
+    opacity: 0;
+    transform: translateX(26px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes growIn {
+  from {
+    opacity: 0;
+    transform: scale(0.05);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes labDriftA {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0.65;
+  }
+
+  50% {
+    transform: translate(26px, -18px);
+    opacity: 1;
+  }
+}
+
+@keyframes labDriftB {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0.5;
+  }
+
+  50% {
+    transform: translate(-22px, 16px);
+    opacity: 0.85;
+  }
+}
+
+@keyframes labScan {
+  0% {
+    transform: translateY(-30%);
+    opacity: 0;
+  }
+
+  40% {
+    opacity: 0.7;
+  }
+
+  100% {
+    transform: translateY(140%);
+    opacity: 0;
+  }
+}
+
+@keyframes cradlePulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  50% {
+    opacity: 0.8;
+    transform: translate(-50%, -50%) scale(1.04);
+  }
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--focus-ring) !important;
+  box-shadow: var(--focus-ring-shadow) !important;
+}
+
+:where(button, [role="button"]):not(:disabled) {
+  transition:
+    transform var(--duration-fast) var(--ease-standard),
+    filter var(--duration-fast) var(--ease-standard);
+}
+
+:where(button, [role="button"]):not(:disabled):hover {
+  transform: translateY(-1px);
+  filter: brightness(0.95);
+}
+
+:where(button, [role="button"]):not(:disabled):active {
+  transform: translateY(1px);
+}

@@ -1,0 +1,49 @@
+/* Semantic tone mappings: domain and state identities expressed as roles.
+ *
+ * Components consume the roles below, never `--palette-*` directly. Root
+ * aliases describe the default app chrome. When the glass "pages" surfaces are
+ * migrated (Phase 4), they add a surface boundary here — a selector that
+ * overrides only the roles that genuinely differ under glass — instead of a
+ * second palette object. Nothing declares that boundary yet, so it is not
+ * written here yet either.
+ */
+
+:root {
+  /* Document chrome */
+  --chrome-bg: var(--palette-grey-050);
+  --chrome-surface: var(--palette-white);
+  --chrome-surface-alt: var(--palette-grey-075);
+  --chrome-border: var(--palette-grey-150);
+  --chrome-border-strong: var(--palette-grey-300);
+  --chrome-text: var(--palette-grey-950);
+  --chrome-text-mid: var(--palette-grey-650);
+  --chrome-text-muted: var(--palette-grey-500);
+  --chrome-accent: var(--palette-blue-600);
+  --chrome-accent-bg: var(--palette-blue-050);
+  --chrome-accent-border: var(--palette-blue-200);
+
+  /* Navigation chrome */
+  --nav-bg: var(--palette-slate-950);
+  --nav-surface: var(--palette-slate-900);
+  --nav-text: var(--palette-slate-400);
+  --nav-text-active: var(--palette-slate-200);
+
+  /* Run and step state */
+  --status-ok: var(--palette-emerald-500);
+  --status-ok-glow: var(--palette-emerald-500-glow);
+  --status-stale: var(--palette-amber-500);
+  --status-stale-glow: var(--palette-amber-500-glow);
+  --status-fault: var(--palette-red-600);
+  --status-idle: var(--palette-grey-300);
+
+  /* Focus */
+  --focus-ring: var(--palette-blue-600);
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+  --focus-ring-shadow: 0 0 0 3px var(--palette-blue-600-faint);
+
+  /* Scrollbar */
+  --scrollbar-size: 4px;
+  --scrollbar-thumb: var(--palette-grey-300);
+  --scrollbar-thumb-hover: var(--palette-grey-500);
+}
