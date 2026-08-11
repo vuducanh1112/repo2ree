@@ -165,7 +165,7 @@ export function PageTestActivation({
             <span style={lgStatusBadge(activationReady)}>
               {activationReady ? "Activation ready" : "Activation pending"}
             </span>
-            {badge && <OutcomeBadge badge={badge} />}
+            {badge && <OutcomeBadge outcome={badge} />}
           </>
         }
         right={

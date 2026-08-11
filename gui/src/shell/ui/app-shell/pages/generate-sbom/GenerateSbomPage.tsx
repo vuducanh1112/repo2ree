@@ -65,7 +65,7 @@ export function PageGenerateSbom({
             <span style={lgStatusBadge(sbomReady)}>
               {sbomReady ? "SBOM ready" : "SBOM pending"}
             </span>
-            {badge && <OutcomeBadge badge={badge} />}
+            {badge && <OutcomeBadge outcome={badge} />}
           </>
         }
         right={

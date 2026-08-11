@@ -23,47 +23,30 @@ export interface DependencyGroup {
 
 type StatusTally = Record<DependencyStatus, number> & { total: number };
 
-interface EcoMeta {
-  label: string;
-  color: string;
-  bg: string;
-}
+// How each of these reads is keyed off the identity itself in the shell
+// (theme/tones.css); what core owns is the wording.
 
-interface StatusMeta {
-  label: string;
-  color: string;
-  bg: string;
-  border: string;
-}
-
-export const ECO_META: Record<DependencyEcosystem, EcoMeta> = {
-  pypi: { label: "PyPI", color: "#3b82f6", bg: "#eff6ff" },
-  conda: { label: "conda", color: "#22c55e", bg: "#f0fdf4" },
-  npm: { label: "npm", color: "#dc2626", bg: "#fef2f2" },
-  apt: { label: "apt", color: "#f59e0b", bg: "#fffbeb" },
-  oci: { label: "OCI", color: "#0891b2", bg: "#ecfeff" },
-  other: { label: "other", color: "#64748b", bg: "#f8fafc" },
+export const ECO_LABEL: Record<DependencyEcosystem, string> = {
+  pypi: "PyPI",
+  conda: "conda",
+  npm: "npm",
+  apt: "apt",
+  oci: "OCI",
+  other: "other",
 };
 
-export const STATUS_META: Record<DependencyStatus, StatusMeta> = {
-  locked: { label: "locked", color: "#2563eb", bg: "#dbeafe", border: "#93c5fd" },
-  pinned: { label: "pinned", color: "#16a34a", bg: "#dcfce7", border: "#86efac" },
-  ranged: { label: "range", color: "#d97706", bg: "#fef3c7", border: "#fcd34d" },
-  unpinned: { label: "unpinned", color: "#dc2626", bg: "#fef2f2", border: "#fca5a5" },
-  undeclared: { label: "undeclared", color: "#9333ea", bg: "#faf5ff", border: "#d8b4fe" },
+export const STATUS_LABEL: Record<DependencyStatus, string> = {
+  locked: "locked",
+  pinned: "pinned",
+  ranged: "range",
+  unpinned: "unpinned",
+  undeclared: "undeclared",
 };
 
-// Presence is evidence, not a defect scale: "not-observed" stays muted because
-// dev/build-only dependencies legitimately never reach the runtime.
-export const PRESENCE_META: Record<RuntimePresence, StatusMeta> = {
-  observed: { label: "in runtime", color: "#16a34a", bg: "#dcfce7", border: "#86efac" },
-  "version-mismatch": {
-    label: "version mismatch",
-    color: "#d97706",
-    bg: "#fef3c7",
-    border: "#fcd34d",
-  },
-  "not-observed": { label: "not in runtime", color: "#64748b", bg: "#f8fafc", border: "#e2e8f0" },
+export const PRESENCE_LABEL: Record<RuntimePresence, string> = {
+  observed: "in runtime",
+  "version-mismatch": "version mismatch",
+  "not-observed": "not in runtime",
 };
 
 /**

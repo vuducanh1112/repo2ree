@@ -1,6 +1,7 @@
 import type { ReviewStepKey, ReviewStepStatus } from "@core/reviews/reviewDag";
 import type { ReactNode } from "react";
 import { Ic } from "../../../shared/components/Icon";
+import { translucent } from "../../../theme/appearance";
 import { C, F } from "../../../theme/theme";
 
 const STATUS_META: Record<ReviewStepStatus, { label: string; color: string }> = {
@@ -62,12 +63,12 @@ export function ReviewStepButton({
         alignItems: "start",
         borderRadius: 9,
         border: `1px solid ${active ? color : C.border}`,
-        background: active ? `${color}0d` : C.surface,
+        background: active ? translucent(color, 5) : C.surface,
         color: C.text,
         cursor: disabled ? "not-allowed" : "pointer",
         opacity: disabled ? 0.58 : 1,
         textAlign: "left",
-        boxShadow: active ? `0 0 0 2px ${color}16` : "none",
+        boxShadow: active ? `0 0 0 2px ${translucent(color, 8.6)}` : "none",
       }}
     >
       <span style={{ color, display: "flex", paddingTop: 1 }}>{active ? Ic.loader(16) : icon}</span>

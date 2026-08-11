@@ -5,6 +5,7 @@
 // share only the font primitives (F) imported below. Keep the colors distinct.
 import type { FileTypeCategory } from "@core/workspace/PathUtils";
 import type React from "react";
+import { translucent } from "./appearance";
 import { S_ACTION_BUTTON_BASE } from "./stylesCore";
 import { F } from "./tokens";
 
@@ -494,13 +495,16 @@ export function lgStatusBadge(ready: boolean): React.CSSProperties {
   };
 }
 
-export function lgOutcomeBadge(color: string, bg: string): React.CSSProperties {
+export function lgOutcomeBadge(line: string, wash: string): React.CSSProperties {
   return {
     fontSize: 11,
     fontWeight: 700,
-    color,
-    background: bg,
-    border: `1px solid ${color}40`,
+    color: line,
+    background: wash,
+    // 25% is the old `${color}40` suffix (0x40 = 64/255). Composed rather than
+    // appended: `line` is a var() reference now, and text glued onto one is an
+    // invalid value that fails silently.
+    border: `1px solid ${translucent(line, 25)}`,
     borderRadius: 99,
     padding: "3px 9px",
     display: "inline-flex",

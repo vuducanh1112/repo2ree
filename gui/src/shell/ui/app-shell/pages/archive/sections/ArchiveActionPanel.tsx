@@ -7,6 +7,7 @@ import type {
 import { CollapsibleLogCard } from "@shell/ui/app-shell/components/CollapsibleLogCard";
 import { RunActionButton } from "@shell/ui/app-shell/components/RunActionButton";
 import { Ic } from "@shell/ui/shared/components/Icon";
+import { archiveTone, translucent } from "@shell/ui/theme/appearance";
 import { lgColors, lgStyles } from "@shell/ui/theme/lightGlassTheme";
 import { F } from "@shell/ui/theme/theme";
 import { MissingInputsBanner } from "../../../components/MissingInputsBanner";
@@ -32,6 +33,7 @@ export function ArchiveActionPanel({
   onRun,
   getParam,
 }: ArchiveActionPanelProps) {
+  const tone = archiveTone(repo.key);
   const log = logs[repo.key];
   const hasMissing = missing.length > 0;
   const disabled = !canRun;
@@ -55,20 +57,20 @@ export function ArchiveActionPanel({
     fontFamily: F.sans,
     cursor: disabled ? "not-allowed" : "pointer",
     transition: "all 0.18s",
-    border: disabled ? "1px solid rgba(148, 163, 184, 0.34)" : `1px solid ${repo.color}66`,
+    border: disabled ? "1px solid rgba(148, 163, 184, 0.34)" : `1px solid ${translucent(tone, 40)}`,
     background: disabled
       ? "rgba(241, 245, 249, 0.72)"
       : earned
-        ? `${repo.color}14`
-        : `linear-gradient(135deg, ${repo.color}, ${repo.color}cc)`,
-    color: disabled ? lgColors.textMuted : earned ? repo.color : lgColors.white,
-    boxShadow: disabled || earned ? "none" : `0 14px 30px ${repo.color}33`,
+        ? translucent(tone, 8)
+        : `linear-gradient(135deg, ${tone}, ${translucent(tone, 80)})`,
+    color: disabled ? lgColors.textMuted : earned ? tone : lgColors.white,
+    boxShadow: disabled || earned ? "none" : `0 14px 30px ${translucent(tone, 20)}`,
   };
 
   return (
     <section style={{ ...lgStyles.panel, padding: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-        <span style={{ color: repo.color, display: "flex" }}>{Ic.upload(22)}</span>
+        <span style={{ color: tone, display: "flex" }}>{Ic.upload(22)}</span>
         <h2 style={{ margin: 0, fontSize: 15, color: lgColors.text }}>Deposit</h2>
       </div>
 

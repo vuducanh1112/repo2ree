@@ -1,5 +1,6 @@
 import type { CanvasNode } from "@core/canvas/canvasNodes";
 import type { ReactNode } from "react";
+import { stageTone } from "../../theme/appearance";
 import { C, F } from "../../theme/theme";
 import { CanvasWindow } from "./CanvasWindow";
 import { canvasIcon } from "./canvasIcons";
@@ -68,7 +69,7 @@ export function FocusDock({ node, originRect, closable, onClose, children }: Foc
                 color: C.textMuted,
               }}
             >
-              <span style={{ display: "flex", color: node.color }}>
+              <span style={{ display: "flex", color: stageTone(node.key) }}>
                 {canvasIcon(node.iconKey)(13)}
               </span>
               {node.label}

@@ -1,6 +1,7 @@
 import { REE_STEPS } from "@core/ree-steps/stepCatalog";
 import { REVIEW_STEPS, type ReviewStepKey, type ReviewStepStatus } from "@core/reviews/reviewDag";
 import { Ic } from "../../../shared/components/Icon";
+import { stageTone } from "../../../theme/appearance";
 import { C } from "../../../theme/theme";
 import { stepIcon } from "../../stepIcons";
 import { ReviewStepButton } from "./ReviewStepButton";
@@ -12,7 +13,7 @@ function presentation(key: ReviewStepKey) {
   if (shared) {
     return {
       label: shared.label.replace(" Runtime", ""),
-      color: shared.color,
+      color: stageTone(shared.key),
       icon: stepIcon(shared.iconKey)(16),
     };
   }

@@ -100,7 +100,7 @@ export function useStepPageController({
     runFailed,
     // The catalog badge is an earned marker — a failed run completes the step
     // (Re-run appears) but earns nothing.
-    badge: badgeEntry && !runFailed ? step.badge : null,
+    badge: badgeEntry && !runFailed ? { step: step.key, label: step.outcomeLabel } : null,
     ts: timestamps[step.key],
     missing,
     params,

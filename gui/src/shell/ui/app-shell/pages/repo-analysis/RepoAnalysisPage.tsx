@@ -71,7 +71,7 @@ export function PageRepoAnalysis({
         badges={
           <>
             <span style={lgStatusBadge(statusReady)}>{statusLabel}</span>
-            {hasReport && badge && <OutcomeBadge badge={badge} />}
+            {hasReport && badge && <OutcomeBadge outcome={badge} />}
           </>
         }
         right={

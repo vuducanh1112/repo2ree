@@ -1,6 +1,7 @@
 import type { AppShellPage } from "@core/app-shell/pages";
 import type { CanvasNode, NodeProjection, SummaryRow } from "@core/canvas/canvasNodes";
 import type React from "react";
+import { stageTone } from "../../theme/appearance";
 import { C, F } from "../../theme/theme";
 import { canvasIcon } from "./canvasIcons";
 import { StatusDot } from "./StatusDot";
@@ -86,7 +87,7 @@ export function NodeCard({
             justifyContent: "center",
             background: done ? "#e7f9f1" : C.surfaceAlt,
             border: `1px solid ${done ? "#bbf0d8" : C.border}`,
-            color: done ? node.color : C.textMuted,
+            color: done ? stageTone(node.key) : C.textMuted,
           }}
         >
           {canvasIcon(node.iconKey)(14)}

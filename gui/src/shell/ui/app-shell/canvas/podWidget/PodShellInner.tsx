@@ -1,5 +1,6 @@
 import { axisFraction, axisStandings } from "@core/evaluate/axes";
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
+import { axisTone } from "../../../theme/appearance";
 import { PodShellCore } from "./PodShellCore";
 
 interface PodShellInnerProps {
@@ -106,7 +107,7 @@ export function PodShellInner({
               cy={CY}
               r={r}
               fill="none"
-              stroke={axis.color}
+              stroke={axisTone(axis.key)}
               strokeWidth="2.5"
               opacity="0.72"
             />
@@ -120,7 +121,7 @@ export function PodShellInner({
             key={axis.key}
             d={`M ${CX} ${CY - r} A ${r} ${r} 0 ${frac > 0.5 ? 1 : 0} 1 ${x2} ${y2}`}
             fill="none"
-            stroke={axis.color}
+            stroke={axisTone(axis.key)}
             strokeWidth="2.5"
             opacity="0.72"
             strokeLinecap="round"

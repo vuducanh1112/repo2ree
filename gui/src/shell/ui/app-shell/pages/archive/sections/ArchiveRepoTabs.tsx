@@ -1,6 +1,7 @@
 import type { Badges } from "@core/ree/ReeTypes";
 import type { ArchiveRepo } from "@core/ree-steps/stepTypes";
 import { Ic } from "@shell/ui/shared/components/Icon";
+import { archiveTone, translucent } from "@shell/ui/theme/appearance";
 import { lgSegmentedTab } from "@shell/ui/theme/lightGlassTheme";
 
 interface ArchiveRepoTabsProps {
@@ -33,15 +34,17 @@ export function ArchiveRepoTabs({
               justifyContent: "center",
               ...(isActive
                 ? {
-                    border: `1px solid ${archiveRepo.color}99`,
-                    color: archiveRepo.color,
-                    boxShadow: `0 12px 26px ${archiveRepo.color}26`,
+                    border: `1px solid ${translucent(archiveTone(archiveRepo.key), 60)}`,
+                    color: archiveTone(archiveRepo.key),
+                    boxShadow: `0 12px 26px ${translucent(archiveTone(archiveRepo.key), 15)}`,
                   }
                 : {}),
             }}
           >
             {isDone && (
-              <span style={{ color: archiveRepo.color, display: "flex" }}>{Ic.check(13)}</span>
+              <span style={{ color: archiveTone(archiveRepo.key), display: "flex" }}>
+                {Ic.check(13)}
+              </span>
             )}
             {archiveRepo.label}
           </button>

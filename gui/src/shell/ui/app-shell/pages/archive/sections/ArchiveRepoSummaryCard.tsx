@@ -1,5 +1,6 @@
 import type { ArchiveRepo } from "@core/ree-steps/stepTypes";
 import { Ic } from "@shell/ui/shared/components/Icon";
+import { archiveTone, translucent } from "@shell/ui/theme/appearance";
 import { lgColors, lgContentCard } from "@shell/ui/theme/lightGlassTheme";
 import { F } from "@shell/ui/theme/theme";
 
@@ -9,8 +10,9 @@ interface ArchiveRepoSummaryCardProps {
 }
 
 export function ArchiveRepoSummaryCard({ repo, assignedId }: ArchiveRepoSummaryCardProps) {
+  const tone = archiveTone(repo.key);
   return (
-    <div style={{ ...lgContentCard(0), borderColor: `${repo.color}40` }}>
+    <div style={{ ...lgContentCard(0), borderColor: translucent(tone, 25) }}>
       <div
         style={{
           display: "flex",
@@ -25,11 +27,11 @@ export function ArchiveRepoSummaryCard({ repo, assignedId }: ArchiveRepoSummaryC
             width: 3,
             height: 16,
             borderRadius: 99,
-            background: repo.color,
+            background: tone,
             flexShrink: 0,
           }}
         />
-        <span style={{ fontSize: 14, fontWeight: 800, color: repo.color, fontFamily: F.sans }}>
+        <span style={{ fontSize: 14, fontWeight: 800, color: tone, fontFamily: F.sans }}>
           {repo.label}
         </span>
         <a
@@ -40,7 +42,7 @@ export function ArchiveRepoSummaryCard({ repo, assignedId }: ArchiveRepoSummaryC
             marginLeft: "auto",
             fontSize: 11,
             fontFamily: F.mono,
-            color: repo.color,
+            color: tone,
             opacity: 0.85,
             textDecoration: "none",
             display: "inline-flex",
@@ -63,8 +65,8 @@ export function ArchiveRepoSummaryCard({ repo, assignedId }: ArchiveRepoSummaryC
           gap: 8,
           padding: "9px 12px",
           borderRadius: 8,
-          background: assignedId ? `${repo.color}12` : "rgba(255, 255, 255, 0.55)",
-          border: `1px solid ${assignedId ? `${repo.color}55` : "rgba(148, 163, 184, 0.3)"}`,
+          background: assignedId ? translucent(tone, 7) : "rgba(255, 255, 255, 0.55)",
+          border: `1px solid ${assignedId ? translucent(tone, 33) : "rgba(148, 163, 184, 0.3)"}`,
         }}
       >
         <span
@@ -74,7 +76,7 @@ export function ArchiveRepoSummaryCard({ repo, assignedId }: ArchiveRepoSummaryC
             fontFamily: F.mono,
             letterSpacing: 0.4,
             textTransform: "uppercase",
-            color: assignedId ? repo.color : lgColors.textMuted,
+            color: assignedId ? tone : lgColors.textMuted,
             flexShrink: 0,
           }}
         >
@@ -84,7 +86,7 @@ export function ArchiveRepoSummaryCard({ repo, assignedId }: ArchiveRepoSummaryC
           style={{
             fontSize: 13,
             fontFamily: F.mono,
-            color: assignedId ? repo.color : lgColors.textMuted,
+            color: assignedId ? tone : lgColors.textMuted,
             flex: 1,
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -102,9 +104,9 @@ export function ArchiveRepoSummaryCard({ repo, assignedId }: ArchiveRepoSummaryC
               fontSize: 11,
               fontWeight: 700,
               fontFamily: F.sans,
-              color: repo.color,
+              color: tone,
               background: "rgba(255, 255, 255, 0.7)",
-              border: `1px solid ${repo.color}55`,
+              border: `1px solid ${translucent(tone, 33)}`,
               borderRadius: 99,
               padding: "2px 8px",
               flexShrink: 0,

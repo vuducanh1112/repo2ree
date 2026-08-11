@@ -2,6 +2,7 @@ import { APP_ROUTE, type AppLoadRoutePath, LOAD_REE_PARAM } from "@core/app-shel
 import { AXES } from "@core/evaluate/axes";
 import type React from "react";
 import { Ic } from "../shared/components/Icon";
+import { axisTone } from "../theme/appearance";
 import { C, F, S_ACTION_BUTTON_BASE, S_SECTION_LABEL } from "../theme/theme";
 
 interface LandingViewProps {
@@ -211,7 +212,9 @@ export function LandingView({ onLoad, onViewAgents, onViewReeIndex }: LandingVie
                 fontFamily: F.sans,
               }}
             >
-              <div style={{ width: 7, height: 7, borderRadius: "50%", background: axis.color }} />
+              <div
+                style={{ width: 7, height: 7, borderRadius: "50%", background: axisTone(axis.key) }}
+              />
               {axis.label} ({axis.steps.join(" → ")})
             </div>
           ))}

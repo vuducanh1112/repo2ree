@@ -1,7 +1,7 @@
 import type { LogEntry, LogLine } from "@core/ree/ReeTypes";
 import type { ReeRunFailure, ReeRunSummary } from "@core/runs/ReeRun";
 import { isTerminalReeRunStatus } from "@core/runs/ReeRunStatus";
-import { FAILURE_TONE_COLOR, runFailurePresentation } from "@core/runs/runFailurePresentation";
+import { runFailurePresentation } from "@core/runs/runFailurePresentation";
 import {
   activeRunCount,
   formatRunDuration,
@@ -17,6 +17,7 @@ import { useReeRunLogsQuery, useReeRunQuery, useReeRunsQuery } from "@shell/data
 import { useEffect, useRef, useState } from "react";
 import { Ic } from "../../shared/components/Icon";
 import { useCornerResize } from "../../shared/hooks/useCornerResize";
+import { failureTone } from "../../theme/appearance";
 import { C, F } from "../../theme/theme";
 import { LogPanel } from "../components/logPanel";
 import { HudConsole } from "./HudConsole";
@@ -421,7 +422,7 @@ function RunRow({
 // contract so a client need not open the log stream to learn why a run failed.
 function RunFailureNote({ failure }: { failure: ReeRunFailure }) {
   const view = runFailurePresentation(failure);
-  const color = FAILURE_TONE_COLOR[view.tone];
+  const color = failureTone(view.tone);
   return (
     <div
       style={{

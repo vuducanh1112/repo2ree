@@ -1,5 +1,6 @@
 // The three orthogonal reproducibility axes. Single source of truth for their
-// labels, step names and colors — shared by the Evaluate page and the pod widget.
+// labels and step names — shared by the Evaluate page and the pod widget. How an
+// axis looks is keyed off `key` in the shell (see theme/tones.css).
 
 import type { EvaluationState } from "./EvaluationState";
 
@@ -10,9 +11,6 @@ interface AxisMeta {
   label: string;
   short: string;
   steps: readonly string[];
-  color: string;
-  bg: string;
-  ink: string;
 }
 
 export const DEPENDENCY_AXIS: AxisMeta = {
@@ -20,9 +18,6 @@ export const DEPENDENCY_AXIS: AxisMeta = {
   label: "Dependencies",
   short: "DEP",
   steps: ["None", "Declared", "Pinned", "Locked"],
-  color: "#3b82f6",
-  bg: "#eff6ff",
-  ink: "#1d4ed8",
 };
 
 export const ENVIRONMENT_AXIS: AxisMeta = {
@@ -30,9 +25,6 @@ export const ENVIRONMENT_AXIS: AxisMeta = {
   label: "Environment",
   short: "ENV",
   steps: ["None", "Container", "Declarative"],
-  color: "#06b6d4",
-  bg: "#ecfeff",
-  ink: "#0e7490",
 };
 
 export const MACHINE_AXIS: AxisMeta = {
@@ -40,9 +32,6 @@ export const MACHINE_AXIS: AxisMeta = {
   label: "Machine",
   short: "VM",
   steps: ["None", "Virtual machine"],
-  color: "#6366f1",
-  bg: "#eef2ff",
-  ink: "#3730a3",
 };
 
 export const AXES: readonly AxisMeta[] = [DEPENDENCY_AXIS, ENVIRONMENT_AXIS, MACHINE_AXIS];

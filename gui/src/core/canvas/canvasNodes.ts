@@ -9,7 +9,8 @@ import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
 // A canvas node is a page floating around the pod in the hub. `kind` keeps the
 // declarations/evidence split: things you DECLARE cluster left, evidence the
 // system RETURNS clusters right. `x`/`y` are canvas coordinates with the pod at
-// the origin (0,0). `color`/`shadow` drive its cable to the pod.
+// the origin (0,0). How a node and its cable read is keyed off `key` in the
+// shell (see theme/tones.css), so the node carries no colour of its own.
 // `zone` groups nodes into concentric shells around the pod for the master
 // view: `core` is the experiment itself, `inner` the execution substrate it
 // runs on, `outer` the provenance/credential membrane around the whole thing.
@@ -42,8 +43,6 @@ export interface CanvasNode {
   y: number;
   /** Override x position used only in the decomposed (exploded) view. */
   xExploded?: number;
-  color: string;
-  shadow: string;
   iconKey: CanvasIconKey;
 }
 
@@ -59,8 +58,6 @@ export const CANVAS_NODES: CanvasNode[] = [
     x: -312,
     y: -150,
     xExploded: 312,
-    color: "#f59e0b",
-    shadow: "#92400e",
     iconKey: "globe",
   },
   {
@@ -70,8 +67,6 @@ export const CANVAS_NODES: CanvasNode[] = [
     zone: "outer",
     x: -378,
     y: -16,
-    color: "#22c55e",
-    shadow: "#166534",
     iconKey: "grid",
   },
   {
@@ -81,8 +76,6 @@ export const CANVAS_NODES: CanvasNode[] = [
     zone: "inner",
     x: -330,
     y: 120,
-    color: "#0f766e",
-    shadow: "#134e4a",
     iconKey: "chip",
   },
   {
@@ -92,8 +85,6 @@ export const CANVAS_NODES: CanvasNode[] = [
     zone: "core",
     x: -190,
     y: 236,
-    color: "#4f46e5",
-    shadow: "#3730a3",
     iconKey: "terminal",
   },
   {
@@ -103,8 +94,6 @@ export const CANVAS_NODES: CanvasNode[] = [
     zone: "inner",
     x: 312,
     y: -150,
-    color: "#7c3aed",
-    shadow: "#3b0764",
     iconKey: "star",
   },
   // Build / SBOM / Activation are the three facets of the runtime — the inner
@@ -120,8 +109,6 @@ export const CANVAS_NODES: CanvasNode[] = [
     x: 340,
     y: 0,
     xExploded: -340,
-    color: "#0891b2",
-    shadow: "#164e63",
     iconKey: "cpu",
   },
   {
@@ -131,8 +118,6 @@ export const CANVAS_NODES: CanvasNode[] = [
     zone: "inner",
     x: 520,
     y: -58,
-    color: "#16a34a",
-    shadow: "#14532d",
     iconKey: "package",
   },
   {
@@ -142,8 +127,6 @@ export const CANVAS_NODES: CanvasNode[] = [
     zone: "inner",
     x: 520,
     y: 75,
-    color: "#7c3aed",
-    shadow: "#3b0764",
     iconKey: "shield",
   },
   {
@@ -153,8 +136,6 @@ export const CANVAS_NODES: CanvasNode[] = [
     zone: "outer",
     x: 330,
     y: 120,
-    color: "#e4572e",
-    shadow: "#7c2d12",
     iconKey: "archive",
   },
   {
@@ -164,8 +145,6 @@ export const CANVAS_NODES: CanvasNode[] = [
     zone: "outer",
     x: 190,
     y: 236,
-    color: "#b91c1c",
-    shadow: "#7f1d1d",
     iconKey: "lock",
   },
 ];

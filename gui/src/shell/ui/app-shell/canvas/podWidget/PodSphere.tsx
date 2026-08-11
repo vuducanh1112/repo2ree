@@ -1,5 +1,6 @@
 import { axisFraction, axisStandings, bottleneckAxis } from "@core/evaluate/axes";
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
+import { axisTone } from "@shell/ui/theme/appearance";
 import { F } from "@shell/ui/theme/theme";
 import { PodBolt } from "./PodBolt";
 import { PodBoltRing } from "./PodBoltRing";
@@ -215,7 +216,13 @@ export function PodSphere({
               stroke={POD_M.deep}
               strokeWidth="0.8"
             />
-            <circle cx={px} cy={py} r="3" fill={lit ? axis.color : POD_M.shadow} opacity="0.9" />
+            <circle
+              cx={px}
+              cy={py}
+              r="3"
+              fill={lit ? axisTone(axis.key) : POD_M.shadow}
+              opacity="0.9"
+            />
           </g>
         );
       })}
@@ -237,7 +244,7 @@ export function PodSphere({
         textAnchor="middle"
         fontSize="7"
         fontFamily={F.mono}
-        fill={tint.ink}
+        fill={axisTone(tint.key, "ink")}
         letterSpacing="1.5"
       >
         {tint.short}
@@ -249,7 +256,7 @@ export function PodSphere({
         cy={CY}
         r={SR}
         fill="none"
-        stroke={tint.color}
+        stroke={axisTone(tint.key)}
         strokeWidth="1.5"
         opacity="0.4"
       />

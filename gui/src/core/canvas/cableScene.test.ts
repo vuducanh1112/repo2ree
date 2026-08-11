@@ -69,10 +69,10 @@ describe("buildCables, assembled", () => {
     expect(cable.y1).toBeCloseTo(300);
   });
 
-  it("takes each cable's colour from its node, not from its state", () => {
+  it("names each cable's stage, leaving how it reads to the shell", () => {
     const geo = buildCables(scene());
     for (const node of CANVAS_NODES) {
-      expect(geo.cables.find((cable) => cable.id === node.key)?.color).toBe(node.color);
+      expect(geo.cables.find((cable) => cable.id === node.key)?.stageKey).toBe(node.key);
     }
   });
 
@@ -168,8 +168,7 @@ describe("buildExperimentCables", () => {
   const target = (key: string, connected = false): CoreCableTarget => ({
     key,
     connected,
-    color: "#4f46e5",
-    shadow: "#3730a3",
+    stageKey: PAGE.EXPERIMENTS,
   });
 
   function experimentScene(overrides: Partial<ExperimentCableScene> = {}): ExperimentCableScene {

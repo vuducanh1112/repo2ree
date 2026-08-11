@@ -1,3 +1,5 @@
+import type { AppShellPage } from "@core/app-shell/pages";
+
 // Cable primitives: the arithmetic that turns measured positions into the
 // endpoints and paths a cable overlay draws. Nothing here reads the DOM, and
 // nothing here knows what a canvas node is — the hooks measure, `cableScene`
@@ -99,8 +101,8 @@ export interface Cable {
   y1: number;
   x2: number;
   y2: number;
-  color: string;
-  shadow: string;
+  /** The stage this cable belongs to; the overlay tints from it. */
+  stageKey: AppShellPage;
   connected: boolean;
 }
 

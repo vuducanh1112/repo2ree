@@ -1,5 +1,6 @@
 import { DEPENDENCY_AXIS } from "@core/evaluate/axes";
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
+import { axisTone } from "../../../theme/appearance";
 import { PodDepGraph } from "./PodDepGraph";
 
 interface PodShellCoreProps {
@@ -13,7 +14,7 @@ interface PodShellCoreProps {
 
 export function PodShellCore({ CX, CY, SR, evaluation, idSuffix = "" }: PodShellCoreProps) {
   const depLevel = Math.max(evaluation.dependencyLevel ?? 0, 2);
-  const color = DEPENDENCY_AXIS.color;
+  const color = axisTone(DEPENDENCY_AXIS.key);
   // PodDepGraph largest node extent ≈ 50px from center at level 7
   const graphScale = SR / 50;
 

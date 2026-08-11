@@ -7,19 +7,7 @@ import type { ReeRunFailure, ReeRunFailureCategory } from "./ReeRun";
  * fault — so surfaces can style and word them differently instead of painting
  * every non-success the same red.
  */
-type ReeRunFailureTone = "transient" | "rejected" | "fault";
-
-/**
- * Tone → accent color, so a failure reads with the same weight wherever it
- * surfaces (run HUD, experiment result) instead of each surface picking its own.
- * Palette-independent literals: amber for a transient outage worth retrying,
- * ochre for an actionable rejection, red for a genuine fault.
- */
-export const FAILURE_TONE_COLOR: Record<ReeRunFailureTone, string> = {
-  transient: "#d97706",
-  rejected: "#ca8a04",
-  fault: "#dc2626",
-};
+export type ReeRunFailureTone = "transient" | "rejected" | "fault";
 
 interface ReeRunFailurePresentation {
   /** Short, human-readable label for the failure class. */

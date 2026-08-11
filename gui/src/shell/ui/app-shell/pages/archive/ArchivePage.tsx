@@ -5,6 +5,7 @@ import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { ARCHIVE_REPOSITORIES } from "@core/ree-steps/archiveRepositories";
 import type { GenericReeStepParams } from "@core/ree-steps/stepTypes";
 import { Ic } from "@shell/ui/shared/components/Icon";
+import { archiveTone, translucent } from "@shell/ui/theme/appearance";
 import { lgColors, lgNextButton, lgStatusBadge, lgStyles } from "@shell/ui/theme/lightGlassTheme";
 import { F } from "@shell/ui/theme/theme";
 import { useState } from "react";
@@ -77,9 +78,9 @@ export function PageArchive({
         <GlassPageHeader
           icon={Ic.globe(24)}
           iconTint={{
-            color: repo.color,
-            border: `${repo.color}55`,
-            shadow: `${repo.color}30`,
+            color: archiveTone(repo.key),
+            border: translucent(archiveTone(repo.key), 33),
+            shadow: translucent(archiveTone(repo.key), 19),
           }}
           title="Deposit & Share"
           subtitle="Deposit your REE to a long-term archive and receive a citable permanent identifier."
@@ -116,7 +117,7 @@ export function PageArchive({
             <div style={lgStyles.sectionBody}>
               <GlassSectionHeader
                 icon={Ic.archive(19)}
-                color={repo.color}
+                color={archiveTone(repo.key)}
                 title={repo.label}
                 subtitle="Review the destination and provide the parameters this archive requires."
               />

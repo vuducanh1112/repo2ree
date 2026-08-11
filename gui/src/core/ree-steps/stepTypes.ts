@@ -1,12 +1,6 @@
 import type { ReeSpec } from "../ree/ReeSpec";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 
-export interface ReeStepBadge {
-  label: string;
-  color: string;
-  bg: string;
-}
-
 export interface ReeStepRequirement {
   field: keyof ReeSpec | keyof WorkspaceSourceState;
   label: string;
@@ -30,8 +24,8 @@ export interface ReeStepDefinition {
   key: string;
   label: string;
   iconKey: ReeStepIconKey;
-  color: string;
-  badge: ReeStepBadge;
+  /** What the step's earned-outcome chip says once its run has succeeded. */
+  outcomeLabel: string;
   desc: string;
   params: ReeStepParam[];
 }
@@ -41,13 +35,12 @@ export interface ToastState {
   type: "info" | "success" | "error";
 }
 
+export type ArchiveRepoKey = "swh" | "zenodo" | "dataverse";
+
 export interface ArchiveRepo {
-  key: string;
+  key: ArchiveRepoKey;
   label: string;
   shortLabel: string;
-  color: string;
-  bg: string;
-  border: string;
   url: string;
   desc: string;
   idLabel: string;

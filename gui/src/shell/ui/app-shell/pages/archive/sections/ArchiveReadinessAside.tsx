@@ -1,6 +1,7 @@
 import type { ArchiveRepo } from "@core/ree-steps/stepTypes";
 import { SummaryLine } from "@shell/ui/app-shell/components/SummaryLine";
 import { Ic } from "@shell/ui/shared/components/Icon";
+import { archiveTone } from "@shell/ui/theme/appearance";
 import { lgColors, lgStatusBadge, lgStyles } from "@shell/ui/theme/lightGlassTheme";
 import { F } from "@shell/ui/theme/theme";
 
@@ -65,7 +66,7 @@ export function ArchiveReadinessAside({
           label={repo.idLabel}
           value={
             assignedId ? (
-              <span style={{ fontFamily: F.mono, color: repo.color }}>{assignedId}</span>
+              <span style={{ fontFamily: F.mono, color: archiveTone(repo.key) }}>{assignedId}</span>
             ) : (
               <span style={{ color: lgColors.textMuted }}>Not assigned yet</span>
             )

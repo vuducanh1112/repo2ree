@@ -153,7 +153,7 @@ export function PageBuildRuntime({
               <span style={{ ...lgPillChip(true), fontFamily: F.mono }}>{scriptPath}</span>
             )}
             <span style={lgStatusBadge(runDone && !runFailed)}>{statusLabel}</span>
-            {badge && <OutcomeBadge badge={badge} />}
+            {badge && <OutcomeBadge outcome={badge} />}
           </>
         }
         right={

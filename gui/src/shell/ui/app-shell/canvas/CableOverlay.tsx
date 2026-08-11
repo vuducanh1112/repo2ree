@@ -1,4 +1,5 @@
 import { type CableGeo, cableHl, cablePath } from "@core/canvas/cableGeometry";
+import { stageTone } from "../../theme/appearance";
 
 interface CableOverlaySvgProps {
   geo: CableGeo;
@@ -104,8 +105,8 @@ export function CableOverlaySvg({ geo, levelMeta }: CableOverlaySvgProps) {
     >
       <title>Panel connections</title>
       {cables.map((c) => {
-        const color = c.connected ? c.color : "#94a3b8";
-        const shadow = c.connected ? c.shadow : "#334155";
+        const color = c.connected ? stageTone(c.stageKey) : "#94a3b8";
+        const shadow = c.connected ? stageTone(c.stageKey, "ink") : "#334155";
         const inner = c.connected ? levelMeta.bg : "#e2e8f0";
         return (
           <g key={c.id} opacity={c.connected ? 1 : 0.38}>

@@ -69,25 +69,72 @@
   --palette-slate-900: #111827;
   --palette-slate-950: #0f172a;
 
-  /* --- Palette: blue / sky / indigo / violet --------------------------- */
-  --palette-blue-050: #eef4ff;
+  /* --- Palette: blue / sky / indigo / violet ---------------------------
+   * `-alt` marks a shade the product picked itself, next to one that matches
+   * the conventional ramp. The two are genuinely different values, so they get
+   * different names rather than one rounding into the other.
+   */
+  --palette-blue-050: #eff6ff;
+  --palette-blue-050-alt: #eef4ff;
+  --palette-blue-100: #dbeafe;
   --palette-blue-200: #bfdbfe;
+  --palette-blue-300: #93c5fd;
+  --palette-blue-500: #3b82f6;
   --palette-blue-600: #2563eb;
   --palette-blue-700: #1d4ed8;
+  --palette-azure-050: #f0f7ff;
+  --palette-azure-600: #1d6fa4;
   --palette-sky-500: #0ea5e9;
   --palette-sky-700: #0369a1;
   --palette-sky-900: #0c4a6e;
+  --palette-cyan-050: #ecfeff;
+  --palette-cyan-500: #06b6d4;
   --palette-cyan-600: #0891b2;
+  --palette-cyan-700: #0e7490;
+  --palette-cyan-900: #164e63;
+  --palette-teal-700: #0f766e;
+  --palette-teal-900: #134e4a;
+  --palette-indigo-050: #eef2ff;
+  --palette-indigo-500: #6366f1;
   --palette-indigo-600: #4f46e5;
   --palette-indigo-800: #3730a3;
+  --palette-iris-600: #5e4fa2;
+  --palette-violet-050: #f5f3ff;
+  --palette-violet-200: #ddd6fe;
   --palette-violet-600: #7c3aed;
+  --palette-violet-950: #3b0764;
+  --palette-purple-050: #faf5ff;
+  --palette-purple-300: #d8b4fe;
+  --palette-purple-600: #9333ea;
 
   /* --- Palette: status hues -------------------------------------------- */
+  --palette-slate-050: #f8fafc;
+  --palette-green-050: #f0fdf4;
+  --palette-green-100: #dcfce7;
+  --palette-green-300: #86efac;
+  --palette-green-500: #22c55e;
+  --palette-green-600: #16a34a;
+  --palette-green-800: #166534;
+  --palette-green-900: #14532d;
   --palette-emerald-500: #10b981;
   --palette-emerald-700: #047857;
+  --palette-amber-050: #fffbeb;
+  --palette-amber-100: #fef3c7;
+  --palette-amber-300: #fcd34d;
   --palette-amber-500: #f59e0b;
+  --palette-amber-600: #d97706;
+  --palette-amber-800: #92400e;
+  --palette-yellow-600: #ca8a04;
   --palette-yellow-700: #a16207;
+  --palette-vermilion-050: #fff7f5;
+  --palette-vermilion-200: #fbd0c4;
+  --palette-vermilion-500: #e4572e;
+  --palette-orange-900: #7c2d12;
+  --palette-red-050: #fef2f2;
+  --palette-red-300: #fca5a5;
   --palette-red-600: #dc2626;
+  --palette-red-700: #b91c1c;
+  --palette-red-900: #7f1d1d;
   --palette-rose-400: #fb7185;
   --palette-rose-700: #be123c;
 

@@ -12,7 +12,6 @@ import type {
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import type { ReeStepKey, ReeStepRunParams } from "@core/ree-steps/stepRunParams";
 import type {
-  ReeStepBadge,
   ReeStepDefinition,
   ReeStepParamValue,
   ReeStepRequirement,
@@ -21,6 +20,7 @@ import type { FileTreeNode } from "@core/workspace/FileTree";
 import type { WorkspaceSourceState } from "@core/workspace/WorkspaceSourceState";
 import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
 import type React from "react";
+import type { StepOutcome } from "../components/OutcomeBadge";
 
 export interface SourceAcquisitionPageProps {
   ree: ReeEditorViewModel;
@@ -107,7 +107,7 @@ export interface StepPageProps {
   runDone: boolean;
   /** The last run finished without succeeding (failed or canceled). */
   runFailed: boolean;
-  badge: ReeStepBadge | null;
+  badge: StepOutcome | null;
   ts: string | undefined;
   onRun: <K extends ReeStepKey>(key: K, params: ReeStepRunParams<K>) => void;
   onCancel?: (key: ReeStepKey) => void;

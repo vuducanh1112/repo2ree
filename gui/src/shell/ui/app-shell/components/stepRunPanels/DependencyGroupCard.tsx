@@ -1,11 +1,17 @@
 import {
   type DependencyGroup,
-  ECO_META,
-  PRESENCE_META,
-  STATUS_META,
+  ECO_LABEL,
+  PRESENCE_LABEL,
+  STATUS_LABEL,
   tallyByStatus,
 } from "@core/evaluate/dependencyPresentation";
 import { Ic } from "@shell/ui/shared/components/Icon";
+import {
+  dependencyStatusTone,
+  ecosystemTone,
+  presenceTone,
+  translucent,
+} from "@shell/ui/theme/appearance";
 import { C, F, hoverBg, S_SECTION_LABEL } from "@shell/ui/theme/theme";
 
 interface DependencyGroupCardProps {
@@ -19,7 +25,7 @@ export function DependencyGroupCard({ group, filter, isOpen, onToggle }: Depende
   const visiblePkgs =
     filter === "all" ? group.packages : group.packages.filter((p) => p.status === filter);
   if (visiblePkgs.length === 0 && filter !== "all") return null;
-  const ecoMeta = ECO_META[group.ecosystem];
+  const ecoLine = ecosystemTone(group.ecosystem);
   const tally = tallyByStatus(group.packages);
   // ✓ = resolved (locked + pinned); ✗ = unpinned — the same buckets the
   // filter bar shows, so the two readouts always reconcile by addition.
@@ -29,7 +35,7 @@ export function DependencyGroupCard({ group, filter, isOpen, onToggle }: Depende
   return (
     <div
       style={{
-        border: `1.5px solid ${ecoMeta.color}35`,
+        border: `1.5px solid ${translucent(ecoLine, 20.8)}`,
         borderRadius: 10,
         overflow: "hidden",
         background: "rgba(255,255,255,0.7)",
@@ -44,26 +50,26 @@ export function DependencyGroupCard({ group, filter, isOpen, onToggle }: Depende
           alignItems: "center",
           gap: 8,
           padding: "9px 12px",
-          background: `${ecoMeta.color}12`,
+          background: translucent(ecoLine, 7),
           borderTopWidth: 0,
           borderLeftWidth: 0,
           borderRightWidth: 0,
           borderBottomWidth: isOpen ? 1 : 0,
           borderBottomStyle: "solid",
-          borderBottomColor: isOpen ? `${ecoMeta.color}25` : "transparent",
+          borderBottomColor: isOpen ? translucent(ecoLine, 14.5) : "transparent",
           cursor: "pointer",
           textAlign: "left",
           transition: "background 0.12s",
         }}
-        {...hoverBg(`${ecoMeta.color}1e`, `${ecoMeta.color}12`)}
+        {...hoverBg(translucent(ecoLine, 11.8), translucent(ecoLine, 7))}
       >
-        <span style={{ display: "flex", color: ecoMeta.color }}>{Ic.file(13)}</span>
+        <span style={{ display: "flex", color: ecoLine }}>{Ic.file(13)}</span>
         <span
           style={{
             fontSize: 12,
             fontWeight: 700,
             fontFamily: F.mono,
-            color: ecoMeta.color,
+            color: ecoLine,
             flex: 1,
             minWidth: 0,
             overflow: "hidden",
@@ -78,16 +84,16 @@ export function DependencyGroupCard({ group, filter, isOpen, onToggle }: Depende
             fontSize: 10,
             fontWeight: 700,
             letterSpacing: 0.5,
-            color: ecoMeta.color,
-            background: ecoMeta.bg,
-            border: `1px solid ${ecoMeta.color}40`,
+            color: ecoLine,
+            background: ecosystemTone(group.ecosystem, "wash"),
+            border: `1px solid ${translucent(ecoLine, 25)}`,
             borderRadius: 99,
             padding: "1px 6px",
             fontFamily: F.sans,
             flexShrink: 0,
           }}
         >
-          {ecoMeta.label}
+          {ECO_LABEL[group.ecosystem]}
         </span>
         <span
           style={{
@@ -136,7 +142,7 @@ export function DependencyGroupCard({ group, filter, isOpen, onToggle }: Depende
             ))}
           </div>
           {(filter === "all" ? group.packages : visiblePkgs).map((pkg, i) => {
-            const pm = STATUS_META[pkg.status];
+            const statusLabel = STATUS_LABEL[pkg.status];
             return (
               <div
                 key={`${pkg.name}:${pkg.version ?? ""}:${pkg.status}`}
@@ -198,16 +204,16 @@ export function DependencyGroupCard({ group, filter, isOpen, onToggle }: Depende
                     style={{
                       fontSize: 10,
                       fontWeight: 700,
-                      color: pm.color,
-                      background: pm.bg,
-                      border: `1px solid ${pm.border}`,
+                      color: dependencyStatusTone(pkg.status),
+                      background: dependencyStatusTone(pkg.status, "wash"),
+                      border: `1px solid ${dependencyStatusTone(pkg.status, "edge")}`,
                       borderRadius: 99,
                       padding: "1px 6px",
                       fontFamily: F.sans,
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {pm.label}
+                    {statusLabel}
                   </span>
                   {pkg.runtimePresence && (
                     <span
@@ -219,16 +225,16 @@ export function DependencyGroupCard({ group, filter, isOpen, onToggle }: Depende
                       style={{
                         fontSize: 10,
                         fontWeight: 700,
-                        color: PRESENCE_META[pkg.runtimePresence].color,
-                        background: PRESENCE_META[pkg.runtimePresence].bg,
-                        border: `1px solid ${PRESENCE_META[pkg.runtimePresence].border}`,
+                        color: presenceTone(pkg.runtimePresence),
+                        background: presenceTone(pkg.runtimePresence, "wash"),
+                        border: `1px solid ${presenceTone(pkg.runtimePresence, "edge")}`,
                         borderRadius: 99,
                         padding: "1px 6px",
                         fontFamily: F.sans,
                         whiteSpace: "nowrap",
                       }}
                     >
-                      {PRESENCE_META[pkg.runtimePresence].label}
+                      {PRESENCE_LABEL[pkg.runtimePresence]}
                     </span>
                   )}
                 </span>

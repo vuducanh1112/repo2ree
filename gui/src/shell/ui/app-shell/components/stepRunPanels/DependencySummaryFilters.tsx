@@ -1,8 +1,10 @@
 import {
   type DependencyGroup,
-  STATUS_META,
+  STATUS_LABEL,
   tallyByStatus,
 } from "@core/evaluate/dependencyPresentation";
+import type { DependencyStatus } from "@core/evaluate/Threat";
+import { dependencyStatusTone } from "@shell/ui/theme/appearance";
 import { C, hoverBg, hoverBorderColor, hoverIf } from "@shell/ui/theme/theme";
 import { actionBtn } from "./shared";
 
@@ -10,6 +12,18 @@ interface DependencySummaryFiltersProps {
   depGroups: DependencyGroup[];
   filter: string;
   onFilter: (next: string) => void;
+}
+
+/** One pinning-status chip: the tone comes from the status, the wording from
+ * core's label map, and the count from the tally. */
+function statusFilter(status: DependencyStatus, count: number) {
+  return {
+    key: status,
+    label: `${count} ${STATUS_LABEL[status]}`,
+    color: dependencyStatusTone(status),
+    bg: dependencyStatusTone(status, "wash"),
+    border: dependencyStatusTone(status, "edge"),
+  };
 }
 
 export function DependencySummaryFilters({
@@ -29,10 +43,9 @@ export function DependencySummaryFilters({
           bg: C.surfaceAlt,
           border: C.border,
         },
-        { key: "locked", ...STATUS_META.locked, label: `${tally.locked} locked` },
-        { key: "pinned", ...STATUS_META.pinned, label: `${tally.pinned} pinned` },
-        { key: "ranged", ...STATUS_META.ranged, label: `${tally.ranged} range` },
-        { key: "unpinned", ...STATUS_META.unpinned, label: `${tally.unpinned} unpinned` },
+        ...(["locked", "pinned", "ranged", "unpinned"] as const).map((status) =>
+          statusFilter(status, tally[status]),
+        ),
       ].map((summaryFilter) => (
         <button
           type="button"

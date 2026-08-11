@@ -1,4 +1,4 @@
-import { PAGE } from "@core/app-shell/pages";
+import { type AppShellPage, PAGE } from "@core/app-shell/pages";
 import {
   type Cable,
   type CableGeo,
@@ -70,13 +70,12 @@ function link(
   a: Anchor | null,
   b: Anchor | null,
   connected: boolean,
-  color: string,
-  shadow: string,
+  stageKey: AppShellPage,
 ): void {
   if (!a || !b) return;
   const p1 = resolveAnchor(a, anchorCenter(b));
   const p2 = resolveAnchor(b, anchorCenter(a));
-  cables.push({ id, x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, connected, color, shadow });
+  cables.push({ id, x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, connected, stageKey });
 }
 
 /**
@@ -108,26 +107,10 @@ function pushChainCables(cables: Cable[], scene: CableScene): void {
   const buildDone = scene.doneKeys.has(PAGE.BUILD);
   const activationDone = scene.doneKeys.has(PAGE.ACTIVATION);
 
-  link(cables, "chain-outer-source", main, source, sourceDone, sourceNode.color, sourceNode.shadow);
-  link(cables, "chain-source-inner", source, inner, buildDone, buildNode.color, buildNode.shadow);
-  link(
-    cables,
-    "chain-inner-activation",
-    inner,
-    activation,
-    activationDone,
-    activationNode.color,
-    activationNode.shadow,
-  );
-  link(
-    cables,
-    "chain-activation-core",
-    activation,
-    core,
-    activationDone,
-    activationNode.color,
-    activationNode.shadow,
-  );
+  link(cables, "chain-outer-source", main, source, sourceDone, sourceNode.key);
+  link(cables, "chain-source-inner", source, inner, buildDone, buildNode.key);
+  link(cables, "chain-inner-activation", inner, activation, activationDone, activationNode.key);
+  link(cables, "chain-activation-core", activation, core, activationDone, activationNode.key);
 }
 
 /** One membership cable per node: panel edge facing its pod, pod end facing that knob. */
@@ -149,8 +132,7 @@ function pushMembershipCables(cables: Cable[], scene: CableScene): void {
       y1: panel.y,
       x2: hit.x,
       y2: hit.y,
-      color: node.color,
-      shadow: node.shadow,
+      stageKey: node.key,
       connected: scene.doneKeys.has(node.key),
     });
   }
@@ -168,8 +150,8 @@ export function buildCables(scene: CableScene): CableGeo {
 export interface CoreCableTarget {
   key: string;
   connected: boolean;
-  color: string;
-  shadow: string;
+  /** The stage the satellite belongs to; the overlay tints its cable from it. */
+  stageKey: AppShellPage;
 }
 
 /**
@@ -197,8 +179,7 @@ export function buildExperimentCables(scene: ExperimentCableScene): CableGeo {
       y1: panel.y,
       x2: hit.x,
       y2: hit.y,
-      color: target.color,
-      shadow: target.shadow,
+      stageKey: target.stageKey,
       connected: target.connected,
     });
   }

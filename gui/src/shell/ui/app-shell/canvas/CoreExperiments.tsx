@@ -1,13 +1,15 @@
+import { PAGE } from "@core/app-shell/pages";
 import type { ReeExperiment } from "@core/ree/ReeSpec";
 import { useState } from "react";
 import { Ic } from "../../shared/components/Icon";
+import { stageTone, translucent } from "../../theme/appearance";
 import { C, F } from "../../theme/theme";
 import type { CoreCableTarget } from "./useExperimentCables";
 
 // The experiments live in the `core` zone of the master canvas, so the core
 // column keeps that node's indigo — the satellite cables read as the same family.
-const EXP_COLOR = "#4f46e5";
-const EXP_SHADOW = "#3730a3";
+const EXP_COLOR = stageTone(PAGE.EXPERIMENTS);
+const EXP_SHADOW = stageTone(PAGE.EXPERIMENTS, "ink");
 const ADD_KEY = "__add-experiment__";
 
 function satelliteKey(index: number): string {
@@ -30,11 +32,10 @@ export function experimentCableTargets(
   const targets: CoreCableTarget[] = experiments.map((exp, i) => ({
     key: satelliteKey(i),
     connected: isExperimentWired(exp),
-    color: EXP_COLOR,
-    shadow: EXP_SHADOW,
+    stageKey: PAGE.EXPERIMENTS,
   }));
   if (withAddSlot) {
-    targets.push({ key: ADD_KEY, connected: false, color: EXP_COLOR, shadow: EXP_SHADOW });
+    targets.push({ key: ADD_KEY, connected: false, stageKey: PAGE.EXPERIMENTS });
   }
   return targets;
 }
@@ -200,7 +201,7 @@ function CoreOverviewButton({
           fontFamily: F.sans,
           fontWeight: 700,
           fontSize: label,
-          boxShadow: `0 ${label * 0.3}px ${label}px ${EXP_SHADOW}55`,
+          boxShadow: `0 ${label * 0.3}px ${label}px ${translucent(EXP_SHADOW, 33)}`,
           opacity: hovered ? 1 : 0,
           transition: "opacity 0.15s",
           pointerEvents: "none",
@@ -275,7 +276,7 @@ function ExperimentSatellite({
             fontWeight: 800,
             letterSpacing: "0.08em",
             color: EXP_COLOR,
-            border: `1px solid ${EXP_COLOR}44`,
+            border: `1px solid ${translucent(EXP_COLOR, 27)}`,
             background: "#eef2ff",
             borderRadius: 6,
             padding: "2px 7px",
@@ -363,7 +364,7 @@ function AddSatellite({
         justifyContent: "center",
         gap: 8,
         background: "rgba(238,242,255,0.6)",
-        border: `1.5px dashed ${EXP_COLOR}77`,
+        border: `1.5px dashed ${translucent(EXP_COLOR, 47)}`,
         borderRadius: 13,
         padding: "16px 13px",
         cursor: "pointer",

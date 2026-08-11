@@ -19,7 +19,7 @@
   --chrome-text-mid: var(--palette-grey-650);
   --chrome-text-muted: var(--palette-grey-500);
   --chrome-accent: var(--palette-blue-600);
-  --chrome-accent-bg: var(--palette-blue-050);
+  --chrome-accent-bg: var(--palette-blue-050-alt);
   --chrome-accent-border: var(--palette-blue-200);
 
   /* Navigation chrome */
@@ -46,4 +46,114 @@
   --scrollbar-size: 4px;
   --scrollbar-thumb: var(--palette-grey-300);
   --scrollbar-thumb-hover: var(--palette-grey-500);
+
+  /* --- Stage tones -------------------------------------------------------
+   * One family per pipeline stage, keyed by the page key the stage already
+   * has (`PAGE.SOURCE` is `"source"`), so a component renders
+   * `data-step={node.key}` and never carries a second copy of the same fact.
+   *
+   *   line — the stage's own colour: cable, icon, rule
+   *   ink  — its deep shade: cable shadow, knob stroke
+   *   wash — its palest tint: earned-outcome badge background
+   */
+  --stage-source-line: var(--palette-amber-500);
+  --stage-source-ink: var(--palette-amber-800);
+  --stage-metadata-line: var(--palette-green-500);
+  --stage-metadata-ink: var(--palette-green-800);
+  --stage-hbom-line: var(--palette-teal-700);
+  --stage-hbom-ink: var(--palette-teal-900);
+  --stage-hbom-wash: var(--palette-cyan-050);
+  --stage-experiments-line: var(--palette-indigo-600);
+  --stage-experiments-ink: var(--palette-indigo-800);
+  --stage-evaluate-line: var(--palette-violet-600);
+  --stage-evaluate-ink: var(--palette-violet-950);
+  --stage-evaluate-wash: var(--palette-violet-050);
+  --stage-build-line: var(--palette-cyan-600);
+  --stage-build-ink: var(--palette-cyan-900);
+  --stage-build-wash: var(--palette-cyan-050);
+  --stage-sbom-line: var(--palette-green-600);
+  --stage-sbom-ink: var(--palette-green-900);
+  --stage-sbom-wash: var(--palette-green-050);
+  --stage-activation-line: var(--palette-violet-600);
+  --stage-activation-ink: var(--palette-violet-950);
+  --stage-activation-wash: var(--palette-violet-050);
+  --stage-archive-line: var(--palette-vermilion-500);
+  --stage-archive-ink: var(--palette-orange-900);
+  --stage-seal-line: var(--palette-red-700);
+  --stage-seal-ink: var(--palette-red-900);
+
+  /* --- Reproducibility axes --------------------------------------------- */
+  --axis-dependency-line: var(--palette-blue-500);
+  --axis-dependency-wash: var(--palette-blue-050);
+  --axis-dependency-ink: var(--palette-blue-700);
+  --axis-environment-line: var(--palette-cyan-500);
+  --axis-environment-wash: var(--palette-cyan-050);
+  --axis-environment-ink: var(--palette-cyan-700);
+  --axis-machine-line: var(--palette-indigo-500);
+  --axis-machine-wash: var(--palette-indigo-050);
+  --axis-machine-ink: var(--palette-indigo-800);
+
+  /* --- Dependency ecosystems -------------------------------------------- */
+  --eco-pypi-line: var(--palette-blue-500);
+  --eco-pypi-wash: var(--palette-blue-050);
+  --eco-conda-line: var(--palette-green-500);
+  --eco-conda-wash: var(--palette-green-050);
+  --eco-npm-line: var(--palette-red-600);
+  --eco-npm-wash: var(--palette-red-050);
+  --eco-apt-line: var(--palette-amber-500);
+  --eco-apt-wash: var(--palette-amber-050);
+  --eco-oci-line: var(--palette-cyan-600);
+  --eco-oci-wash: var(--palette-cyan-050);
+  --eco-other-line: var(--palette-slate-500);
+  --eco-other-wash: var(--palette-slate-050);
+
+  /* --- Dependency pinning status and SBOM cross-check verdict ------------
+   * `observed` and `version-mismatch` deliberately reuse the pinned/ranged
+   * tones: a dependency present in the runtime reads as settled, a version
+   * mismatch as the same caution as a loose range. `not-observed` stays muted
+   * because dev-only dependencies legitimately never reach the runtime.
+   */
+  --dependency-locked-line: var(--palette-blue-600);
+  --dependency-locked-wash: var(--palette-blue-100);
+  --dependency-locked-edge: var(--palette-blue-300);
+  --dependency-pinned-line: var(--palette-green-600);
+  --dependency-pinned-wash: var(--palette-green-100);
+  --dependency-pinned-edge: var(--palette-green-300);
+  --dependency-ranged-line: var(--palette-amber-600);
+  --dependency-ranged-wash: var(--palette-amber-100);
+  --dependency-ranged-edge: var(--palette-amber-300);
+  --dependency-unpinned-line: var(--palette-red-600);
+  --dependency-unpinned-wash: var(--palette-red-050);
+  --dependency-unpinned-edge: var(--palette-red-300);
+  --dependency-undeclared-line: var(--palette-purple-600);
+  --dependency-undeclared-wash: var(--palette-purple-050);
+  --dependency-undeclared-edge: var(--palette-purple-300);
+  --presence-observed-line: var(--dependency-pinned-line);
+  --presence-observed-wash: var(--dependency-pinned-wash);
+  --presence-observed-edge: var(--dependency-pinned-edge);
+  --presence-version-mismatch-line: var(--dependency-ranged-line);
+  --presence-version-mismatch-wash: var(--dependency-ranged-wash);
+  --presence-version-mismatch-edge: var(--dependency-ranged-edge);
+  --presence-not-observed-line: var(--palette-slate-500);
+  --presence-not-observed-wash: var(--palette-slate-050);
+  --presence-not-observed-edge: var(--palette-slate-200);
+
+  /* --- Archive repositories ---------------------------------------------- */
+  --archive-swh-line: var(--palette-vermilion-500);
+  --archive-swh-wash: var(--palette-vermilion-050);
+  --archive-swh-edge: var(--palette-vermilion-200);
+  --archive-zenodo-line: var(--palette-azure-600);
+  --archive-zenodo-wash: var(--palette-azure-050);
+  --archive-zenodo-edge: var(--palette-blue-200);
+  --archive-dataverse-line: var(--palette-iris-600);
+  --archive-dataverse-wash: var(--palette-violet-050);
+  --archive-dataverse-edge: var(--palette-violet-200);
+
+  /* --- Run failure tone --------------------------------------------------
+   * The three classes an API user acts on differently: an outage worth
+   * retrying, an actionable rejection, a genuine fault.
+   */
+  --failure-transient-line: var(--palette-amber-600);
+  --failure-rejected-line: var(--palette-yellow-600);
+  --failure-fault-line: var(--palette-red-600);
 }

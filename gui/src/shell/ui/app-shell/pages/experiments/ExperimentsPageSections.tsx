@@ -4,7 +4,7 @@ import type { LogEntry } from "@core/ree/ReeTypes";
 import type { ExperimentRunOutputs } from "@core/runs/ExperimentRun";
 import type { ReeRunFailure } from "@core/runs/ReeRun";
 import { isTerminalReeRunStatus } from "@core/runs/ReeRunStatus";
-import { FAILURE_TONE_COLOR, runFailurePresentation } from "@core/runs/runFailurePresentation";
+import { runFailurePresentation } from "@core/runs/runFailurePresentation";
 import { useGenerateExperimentScript } from "@shell/data/scriptInference/mutations";
 import { useScriptTemplates } from "@shell/data/scriptTemplates/catalog";
 import {
@@ -12,6 +12,7 @@ import {
   experimentVerifyScriptPath,
 } from "@shell/data/scriptTemplates/paths";
 import { Ic } from "@shell/ui/shared/components/Icon";
+import { failureTone } from "@shell/ui/theme/appearance";
 import {
   lgActionButton,
   lgColors,
@@ -403,7 +404,7 @@ function runResultSummary(outputs: ExperimentRunOutputs): string {
  */
 function ExperimentFailureNote({ failure }: { failure: ReeRunFailure }) {
   const view = runFailurePresentation(failure);
-  const color = FAILURE_TONE_COLOR[view.tone];
+  const color = failureTone(view.tone);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
