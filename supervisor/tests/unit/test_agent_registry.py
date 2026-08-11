@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from repo2ree_protocol.agent import AgentHello, IsRunningRequest, WorkbenchLocation
+from repo2ree_protocol.agent import AgentHello, IsRunningRequest, WorkbenchRef
 from repo2ree_supervisor import AgentConnection, AgentConnectionRegistry, WorkbenchUnavailableError
 
 
@@ -101,7 +101,7 @@ def test_reconnect_displaces_old_connection_without_stale_eviction() -> None:
     # `new` owns the id; `old` was closed so its callers unblock and it can't route.
     assert registry.pick("a1") is new
     with pytest.raises(WorkbenchUnavailableError, match="agent connection closed"):
-        next(old.request(IsRunningRequest(location=WorkbenchLocation(container_name="x", volume_name="x-vol"))))
+        next(old.request(IsRunningRequest(ref=WorkbenchRef(runtime="docker", token="x"))))  # noqa: S106
 
     # The stale `old` socket tearing down must NOT evict its live successor.
     registry.unregister("a1", old)

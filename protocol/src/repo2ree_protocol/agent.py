@@ -9,7 +9,7 @@ rather than in the supervisor because both sides of the wire share it.
 
 Each call returns a stream of ``AgentFrame`` records tagged with the request id.
 Lifecycle/exec calls that produce incremental output (image pulls, live command
-logs) emit ``log``/``span`` frames and end with a terminal frame (``location``
+logs) emit ``log``/``span`` frames and end with a terminal frame (``workbench_ref``
 for provision/reprovision, ``result`` / ``done``, or ``unavailable`` /
 ``error``). Request/response calls (remove, is-running) emit a single terminal
 frame (``running`` / ``done``, or ``unavailable`` / ``error``).
@@ -36,26 +36,35 @@ from repo2ree_protocol.result import ActionResult
 # ================================================
 
 
-class WorkbenchLocation(BaseModel):
-    """Where a provisioned workbench lives, as minted by the agent.
+class WorkbenchRef(BaseModel):
+    """Opaque agent-minted reference to a provisioned workbench.
 
-    The control plane treats this as an opaque address token it records in its
-    registry and hands back on later calls — like an ECS task ARN or a pod name.
-    The fields are the agent runtime's own vocabulary: only the runtime that
-    minted a location reads them, and every per-bench request carries the whole
-    token back rather than any single field, so the control plane never learns
-    what a bench *is* (today a docker container; later a pod or a tree on a
-    shared filesystem).
+    The control plane records and returns the token but never interprets it.
+    ``runtime`` lets the agent route the reference to the backend that minted
+    it; the backend alone owns the token's representation.
     """
 
     model_config = ConfigDict(extra="forbid")
 
-    container_name: str
-    volume_name: str
-    # How the runtime invokes the executor inside this bench. Benches with the
-    # executor baked into the image use the PATH default; benches the agent
-    # injected its executor bundle into carry the bundle's absolute entry point.
-    exec_path: str = "repo2ree-exec"
+    runtime: str = Field(min_length=1)
+    token: str = Field(min_length=1)
+
+
+class DockerWorkbenchSpec(BaseModel):
+    """Inputs for provisioning a Docker-backed workbench."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    runtime: Literal["docker"] = "docker"
+    # Fully resolved by the control plane: a caller-provided base image or the
+    # configured default. The agent deliberately applies no image default.
+    base_image: str = Field(min_length=1)
+
+
+# There is one runtime today. Make the request carry a distinct spec now so a
+# future discriminated union can grow here without overloading WorkbenchRef or
+# adding backend-specific fields to ProvisionRequest.
+WorkbenchSpec = DockerWorkbenchSpec
 
 
 # ================================================
@@ -68,46 +77,42 @@ class ProvisionRequest(BaseModel):
 
     op: Literal["provision"] = "provision"
     ree_id: str
-    # Always a fully-resolved concrete image reference; the agent never applies
-    # image defaults (that is control-plane policy).
-    image: str
+    spec: WorkbenchSpec
 
 
 class ReprovisionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     op: Literal["reprovision"] = "reprovision"
-    ree_id: str
-    location: WorkbenchLocation
-    image: str
+    ref: WorkbenchRef
+    spec: WorkbenchSpec
 
 
 class RemoveRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     op: Literal["remove"] = "remove"
-    ree_id: str
-    location: WorkbenchLocation
+    ref: WorkbenchRef
 
 
 class IsRunningRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     op: Literal["is_running"] = "is_running"
-    location: WorkbenchLocation
+    ref: WorkbenchRef
 
 
 class ExecSimpleRequest(BaseModel):
     """Run an executor subcommand in the bench, discarding output.
 
     ``argv`` is the ``repo2ree-exec`` subcommand argv (e.g. ``["init-ree", …]``)
-    — *without* the executor binary. The runtime prepends the bench's entry
-    point (``location.exec_path``); the control plane never names it."""
+    — *without* the executor binary. The runtime resolves its private executor
+    entry point from the opaque workbench reference."""
 
     model_config = ConfigDict(extra="forbid")
 
     op: Literal["exec_simple"] = "exec_simple"
-    location: WorkbenchLocation
+    ref: WorkbenchRef
     argv: list[str]
     timeout: int = 60
 
@@ -120,7 +125,7 @@ class ExecQueryRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     op: Literal["exec_query"] = "exec_query"
-    location: WorkbenchLocation
+    ref: WorkbenchRef
     argv: list[str]
     timeout: int = 30
 
@@ -129,7 +134,7 @@ class ExecActionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     op: Literal["exec_action"] = "exec_action"
-    location: WorkbenchLocation
+    ref: WorkbenchRef
     cmd_json: str
     run_id: str
     # Extra environment injected into the executor (trace propagation).
@@ -140,7 +145,7 @@ class CancelRunRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     op: Literal["cancel_run"] = "cancel_run"
-    location: WorkbenchLocation
+    ref: WorkbenchRef
     run_id: str
 
 
@@ -151,14 +156,14 @@ COPY_CHUNK_BYTES = 256 * 1024
 
 
 class CopyOpenRequest(BaseModel):
-    """Begin a chunked copy into ``container_path``; the agent replies with a
+    """Begin a chunked copy into ``workbench_path``; the agent replies with a
     ``transfer`` handle that later chunks reference."""
 
     model_config = ConfigDict(extra="forbid")
 
     op: Literal["copy_open"] = "copy_open"
-    location: WorkbenchLocation
-    container_path: str
+    ref: WorkbenchRef
+    workbench_path: str
 
 
 class CopyChunkRequest(BaseModel):
@@ -254,13 +259,13 @@ class SpanFrame(BaseModel):
     payload: str
 
 
-class LocationFrame(BaseModel):
+class WorkbenchRefFrame(BaseModel):
     """Terminal frame of a successful provision or reprovision."""
 
     model_config = ConfigDict(extra="forbid")
 
-    type: Literal["location"] = "location"
-    location: WorkbenchLocation
+    type: Literal["workbench_ref"] = "workbench_ref"
+    ref: WorkbenchRef
 
 
 class ResultFrame(BaseModel):
@@ -332,7 +337,7 @@ class TransferFrame(BaseModel):
 AgentFrame = Annotated[
     LogFrame
     | SpanFrame
-    | LocationFrame
+    | WorkbenchRefFrame
     | ResultFrame
     | DoneFrame
     | UnavailableFrame
@@ -347,7 +352,7 @@ agent_frame_adapter: TypeAdapter[AgentFrame] = TypeAdapter(AgentFrame)
 
 # Frame types that terminate a request's response stream. Everything else
 # (log, span, bytes_chunk) is incremental and more frames follow.
-TERMINAL_FRAME_TYPES = frozenset({"location", "result", "done", "unavailable", "error", "running", "transfer"})
+TERMINAL_FRAME_TYPES = frozenset({"workbench_ref", "result", "done", "unavailable", "error", "running", "transfer"})
 
 
 # ================================================

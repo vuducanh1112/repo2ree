@@ -14,7 +14,7 @@ import time
 from collections.abc import Iterator
 from contextlib import suppress
 
-from repo2ree_agent.workbench_runtime import WorkbenchGoneError
+from repo2ree_agent.runtimes.base import WorkbenchGoneError
 from repo2ree_protocol.agent import COPY_CHUNK_BYTES
 
 # Exit codes from `docker exec` that mean the container is gone / stopping.

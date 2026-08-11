@@ -83,7 +83,9 @@ if "TRACE_FILE" not in os.environ:
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from repo2ree_agent.control_link import run_agent  # noqa: E402
+from repo2ree_agent.control.connection import run_agent  # noqa: E402
+from repo2ree_agent.runtimes.docker import DockerRuntime  # noqa: E402
+from repo2ree_agent.service import WorkbenchService  # noqa: E402
 from repo2ree_api.deps import agent_registry  # noqa: E402
 from repo2ree_api.main import app  # noqa: E402
 from repo2ree_protocol.agent import ws_hello_adapter  # noqa: E402
@@ -192,7 +194,13 @@ def _connected_agent() -> Iterator[None]:
 
     async def serve_and_dial() -> None:
         async with serve(handler, "127.0.0.1", port):
-            await run_agent(f"ws://127.0.0.1:{port}/agent/connect", "dind", "api-itest-agent")
+            runtime = DockerRuntime("dind")
+            await run_agent(
+                f"ws://127.0.0.1:{port}/agent/connect",
+                WorkbenchService({runtime.runtime_name: runtime}),
+                "api-itest-agent",
+                docker_mode="dind",
+            )
 
     def run_loop() -> None:
         asyncio.set_event_loop(loop)

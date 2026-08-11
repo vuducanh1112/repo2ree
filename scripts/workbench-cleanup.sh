@@ -56,8 +56,8 @@ live_store_volume() {
     [ -d "$tools_bundle" ] || tools_bundle=""
     (cd "$root" && uv run --package repo2ree-agent python -c '
 import sys
-from repo2ree_agent.docker_runtime import _load_injection_bundle
-bundle = _load_injection_bundle(sys.argv[1], sys.argv[2] or None)
+from repo2ree_agent.runtimes.docker.injection import load_injection_bundle
+bundle = load_injection_bundle(sys.argv[1], sys.argv[2] or None)
 print(bundle.volume_name if bundle else "")
 ' "$exec_bundle" "$tools_bundle" 2>/dev/null) || true
 }

@@ -2,7 +2,7 @@
 
 Each agent dials the API and holds one connection; the API pushes commands down
 it. This module is the control-plane half (the agent half is
-``repo2ree_agent.control_link``):
+``repo2ree_agent.control.connection``):
 
 * ``AgentConnection`` bridges the async socket to the *synchronous* manager. It
   is transport-agnostic — the API's WebSocket route feeds it inbound frames via
@@ -57,7 +57,8 @@ from repo2ree_protocol.agent import (
     RunningFrame,
     TransferFrame,
     UnavailableFrame,
-    WorkbenchLocation,
+    WorkbenchRef,
+    WorkbenchSpec,
     WsRequest,
     ws_message_adapter,
 )
@@ -349,24 +350,24 @@ class WsAgentClient:
     # Streaming — hand the frame stream straight to the manager.
     # ------------------------------------------------
 
-    def provision(self, agent_id: str, ree_id: str, image: str) -> Iterator[AgentFrame]:
-        return self._registry.pick(agent_id).request(ProvisionRequest(ree_id=ree_id, image=image))
+    def provision(self, agent_id: str, ree_id: str, spec: WorkbenchSpec) -> Iterator[AgentFrame]:
+        return self._registry.pick(agent_id).request(ProvisionRequest(ree_id=ree_id, spec=spec))
 
-    def reprovision(self, agent_id: str, ree_id: str, location: WorkbenchLocation, image: str) -> Iterator[AgentFrame]:
-        return self._registry.pick(agent_id).request(ReprovisionRequest(ree_id=ree_id, location=location, image=image))
+    def reprovision(self, agent_id: str, ref: WorkbenchRef, spec: WorkbenchSpec) -> Iterator[AgentFrame]:
+        return self._registry.pick(agent_id).request(ReprovisionRequest(ref=ref, spec=spec))
 
     def exec_action(
-        self, agent_id: str, location: WorkbenchLocation, cmd_json: str, run_id: str, env: dict[str, str]
+        self, agent_id: str, ref: WorkbenchRef, cmd_json: str, run_id: str, env: dict[str, str]
     ) -> Iterator[AgentFrame]:
         return self._registry.pick(agent_id).request(
-            ExecActionRequest(location=location, cmd_json=cmd_json, run_id=run_id, env=env)
+            ExecActionRequest(ref=ref, cmd_json=cmd_json, run_id=run_id, env=env)
         )
 
-    def cancel_run(self, agent_id: str, location: WorkbenchLocation, run_id: str) -> None:
+    def cancel_run(self, agent_id: str, ref: WorkbenchRef, run_id: str) -> None:
         conn = self._registry.pick(agent_id)
         self._drain_void(
             conn.request(
-                CancelRunRequest(location=location, run_id=run_id),
+                CancelRunRequest(ref=ref, run_id=run_id),
                 frame_gap_timeout=QUICK_OP_TIMEOUT,
             )
         )
@@ -375,30 +376,28 @@ class WsAgentClient:
     # Request/response — materialise the terminal frame.
     # ------------------------------------------------
 
-    def remove(self, agent_id: str, ree_id: str, location: WorkbenchLocation) -> None:
+    def remove(self, agent_id: str, ref: WorkbenchRef) -> None:
         """Remove a workbench and require an acknowledgement from its agent."""
         conn = self._registry.pick(agent_id)
-        self._drain_void(
-            conn.request(RemoveRequest(ree_id=ree_id, location=location), frame_gap_timeout=QUICK_OP_TIMEOUT)
-        )
+        self._drain_void(conn.request(RemoveRequest(ref=ref), frame_gap_timeout=QUICK_OP_TIMEOUT))
 
-    def remove_best_effort(self, agent_id: str, ree_id: str, location: WorkbenchLocation) -> bool:
+    def remove_best_effort(self, agent_id: str, ref: WorkbenchRef) -> bool:
         """Try to remove a partially-created workbench during compensation."""
         try:
-            self.remove(agent_id, ree_id, location)
+            self.remove(agent_id, ref)
         except (WorkbenchUnavailableError, RuntimeError):
-            logger.warning("best-effort workbench removal failed for %s", ree_id, exc_info=True)
+            logger.warning("best-effort workbench removal failed for %s", ref.runtime, exc_info=True)
             return False
         return True
 
-    def is_running(self, agent_id: str, location: WorkbenchLocation) -> bool:
+    def is_running(self, agent_id: str, ref: WorkbenchRef) -> bool:
         try:
             conn = self._registry.pick(agent_id)
         except WorkbenchUnavailableError:
             return False
         try:
             frames = conn.request(
-                IsRunningRequest(location=location),
+                IsRunningRequest(ref=ref),
                 frame_gap_timeout=QUICK_OP_TIMEOUT,
             )
             for frame in frames:
@@ -410,24 +409,24 @@ class WsAgentClient:
             return False
         return False
 
-    def exec_simple(self, agent_id: str, location: WorkbenchLocation, argv: list[str], timeout: int = 60) -> None:
+    def exec_simple(self, agent_id: str, ref: WorkbenchRef, argv: list[str], timeout: int = 60) -> None:
         conn = self._registry.pick(agent_id)
-        req = ExecSimpleRequest(location=location, argv=argv, timeout=timeout)
+        req = ExecSimpleRequest(ref=ref, argv=argv, timeout=timeout)
         # The agent enforces ``timeout`` on the exec itself; the frame gap only
         # needs to cover it plus transport slack.
         self._drain_void(conn.request(req, frame_gap_timeout=timeout + QUICK_OP_TIMEOUT))
 
-    def exec_query(self, agent_id: str, location: WorkbenchLocation, argv: list[str], timeout: int = 30) -> bytes:
-        return b"".join(self.exec_query_stream(agent_id, location, argv, timeout))
+    def exec_query(self, agent_id: str, ref: WorkbenchRef, argv: list[str], timeout: int = 30) -> bytes:
+        return b"".join(self.exec_query_stream(agent_id, ref, argv, timeout))
 
     def exec_query_stream(
-        self, agent_id: str, location: WorkbenchLocation, argv: list[str], timeout: int = 30
+        self, agent_id: str, ref: WorkbenchRef, argv: list[str], timeout: int = 30
     ) -> Iterator[bytes]:
         # The result arrives as bounded chunks ending in ``done``; yield each
         # decoded chunk so large archives do not materialise in control-plane RAM.
         conn = self._registry.pick(agent_id)
         for frame in conn.request(
-            ExecQueryRequest(location=location, argv=argv, timeout=timeout),
+            ExecQueryRequest(ref=ref, argv=argv, timeout=timeout),
             frame_gap_timeout=timeout + QUICK_OP_TIMEOUT,
         ):
             if isinstance(frame, BytesChunkFrame):
@@ -438,7 +437,7 @@ class WsAgentClient:
                 raise_for_terminal_error(frame)
         raise RuntimeError("agent exec_query ended without a result")
 
-    def copy_in(self, agent_id: str, location: WorkbenchLocation, source_path: str, container_path: str) -> None:
+    def copy_in(self, agent_id: str, ref: WorkbenchRef, source_path: str, workbench_path: str) -> None:
         # Chunked copy-in (see repo2ree_protocol.agent), read straight from disk.
         # Chunks are pipelined: up to COPY_IN_WINDOW ride the wire before the
         # oldest ack is drained, so throughput is bound by bandwidth, not by one
@@ -446,7 +445,7 @@ class WsAgentClient:
         # apply them in whatever order they land.
         # On any failure, tell the agent to drop its partial temp file.
         conn = self._registry.pick(agent_id)
-        transfer_id = self._open_transfer(conn, location, container_path)
+        transfer_id = self._open_transfer(conn, ref, workbench_path)
         in_flight: deque[PendingReply] = deque()
         try:
             with Path(source_path).open("rb") as source:
@@ -478,8 +477,8 @@ class WsAgentClient:
                 )
             raise
 
-    def _open_transfer(self, conn: AgentConnection, location: WorkbenchLocation, container_path: str) -> str:
-        req = CopyOpenRequest(location=location, container_path=container_path)
+    def _open_transfer(self, conn: AgentConnection, ref: WorkbenchRef, workbench_path: str) -> str:
+        req = CopyOpenRequest(ref=ref, workbench_path=workbench_path)
         for frame in conn.request(req, frame_gap_timeout=QUICK_OP_TIMEOUT):
             if isinstance(frame, TransferFrame):
                 return frame.transfer_id

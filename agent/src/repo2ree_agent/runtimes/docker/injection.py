@@ -1,4 +1,4 @@
-"""Executor/tools bundle resolution for Docker workbench injection."""
+"""Resolve executor/tool bundles injected into Docker workbenches."""
 
 from __future__ import annotations
 

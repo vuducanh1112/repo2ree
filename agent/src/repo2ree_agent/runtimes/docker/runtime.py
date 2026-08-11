@@ -12,7 +12,7 @@ Executor injection: when the agent ships an executor bundle (the
 ``repo2ree-exec`` baked into their image. The runtime populates a
 content-addressed volume with the bundle's nix closure once per host, mounts
 it read-only at ``/nix/store`` in every bench, and drives the executor via
-the manifest's absolute path — carried on the minted ``WorkbenchLocation``
+the manifest's absolute path — carried in the minted ``WorkbenchRef`` token
 so later calls use it without re-deciding. Images that carry their own
 ``/nix`` (nix-built images) are detected and left un-injected: mounting over
 their ``/nix/store`` would shadow everything they contain, and they must
@@ -37,17 +37,24 @@ import time
 from collections.abc import Generator, Iterator
 from contextlib import contextmanager
 
-from repo2ree_agent import docker_cli, executor_frames
-from repo2ree_agent.injection import InjectionBundle, load_injection_bundle
-from repo2ree_agent.workbench_runtime import WorkbenchGoneError
+from repo2ree_agent.executor import frames as executor_frames
+from repo2ree_agent.runtimes.base import WorkbenchGoneError
+from repo2ree_agent.runtimes.docker import cli as docker_cli
+from repo2ree_agent.runtimes.docker.injection import InjectionBundle, load_injection_bundle
+from repo2ree_agent.runtimes.docker.reference import (
+    DockerWorkbenchHandle,
+    decode_reference,
+    encode_reference,
+)
 from repo2ree_protocol.agent import (
     AgentFrame,
+    DockerWorkbenchSpec,
     ErrorFrame,
-    LocationFrame,
     LogFrame,
     ResultFrame,
     UnavailableFrame,
-    WorkbenchLocation,
+    WorkbenchRef,
+    WorkbenchRefFrame,
 )
 from repo2ree_protocol.tracing import (
     command_metric_attrs,
@@ -95,6 +102,8 @@ _STARTUP_GRACE_SECONDS = 2.0
 
 
 class DockerRuntime:
+    runtime_name = "docker"
+
     def __init__(
         self,
         docker_mode: str = "dind",
@@ -140,9 +149,10 @@ class DockerRuntime:
     # Lifecycle (streaming)
     # ------------------------------------------------
 
-    def provision(self, ree_id: str, image: str) -> Iterator[AgentFrame]:
+    def provision(self, ree_id: str, spec: DockerWorkbenchSpec) -> Iterator[AgentFrame]:
         container_name = self._container_name(ree_id)
         volume_name = self._volume_name(ree_id)
+        image = spec.base_image
         with _docker_op("provision") as op:
             try:
                 _docker("volume", "create", volume_name)
@@ -151,7 +161,7 @@ class DockerRuntime:
                 exec_path = yield from self._run_workbench_container(container_name, ree_id, volume_name, image)
             except RuntimeError as exc:
                 op.status = "failed"
-                # Provision has not emitted a location yet, so the supervisor
+                # Provision has not emitted a reference yet, so the supervisor
                 # cannot compensate this partial creation. Reclaim every
                 # deterministic resource here before returning the error frame.
                 _docker_silent("rm", "-f", "-v", container_name)
@@ -160,40 +170,45 @@ class DockerRuntime:
                     _docker_silent("volume", "rm", self._dind_volume_name(ree_id))
                 yield ErrorFrame(detail=str(exc))
                 return
-            yield LocationFrame(
-                location=WorkbenchLocation(container_name=container_name, volume_name=volume_name, exec_path=exec_path)
+            yield WorkbenchRefFrame(
+                ref=encode_reference(
+                    DockerWorkbenchHandle(
+                        ree_id=ree_id,
+                        container_name=container_name,
+                        volume_name=volume_name,
+                        exec_path=exec_path,
+                    )
+                )
             )
 
-    def reprovision(self, ree_id: str, location: WorkbenchLocation, image: str) -> Iterator[AgentFrame]:
+    def reprovision(self, ref: WorkbenchRef, spec: DockerWorkbenchSpec) -> Iterator[AgentFrame]:
+        handle = decode_reference(ref)
         with _docker_op("reprovision") as op:
             try:
-                _docker_silent("rm", "-f", "-v", location.container_name)
+                _docker_silent("rm", "-f", "-v", handle.container_name)
                 exec_path = yield from self._run_workbench_container(
-                    location.container_name, ree_id, location.volume_name, image
+                    handle.container_name, handle.ree_id, handle.volume_name, spec.base_image
                 )
             except RuntimeError as exc:
                 op.status = "failed"
                 yield ErrorFrame(detail=str(exc))
                 return
-            # A fresh location, not a done: the replacement re-decides injection, so
-            # the exec path may differ from the one the caller handed in.
-            yield LocationFrame(
-                location=WorkbenchLocation(
-                    container_name=location.container_name, volume_name=location.volume_name, exec_path=exec_path
-                )
-            )
+            # A fresh reference, not a done: injection may have changed the
+            # executor path encoded in the runtime-private token.
+            yield WorkbenchRefFrame(ref=encode_reference(handle.model_copy(update={"exec_path": exec_path})))
 
-    def remove(self, ree_id: str, location: WorkbenchLocation) -> None:
+    def remove(self, ref: WorkbenchRef) -> None:
+        handle = decode_reference(ref)
         with _docker_op("remove"):
             # -v drops the anonymous volumes the image declared (docker:dind
             # declares /var/lib/docker and /certs, so every bench would leave
             # unreclaimable hex-named volumes behind). Named volumes — ours,
             # below — are never touched by it, which is why every `rm` here
             # carries it.
-            _docker_remove("rm", "-f", "-v", location.container_name)
-            _docker_remove("volume", "rm", location.volume_name)
+            _docker_remove("rm", "-f", "-v", handle.container_name)
+            _docker_remove("volume", "rm", handle.volume_name)
             if self._docker_mode == "dind":
-                _docker_remove("volume", "rm", self._dind_volume_name(ree_id))
+                _docker_remove("volume", "rm", self._dind_volume_name(handle.ree_id))
             # The injected store volume is shared across benches and content-
             # addressed — never removed per REE.
 
@@ -363,7 +378,7 @@ class DockerRuntime:
     # Queries / simple exec (request/response)
     # ------------------------------------------------
 
-    def is_running(self, location: WorkbenchLocation) -> bool:
+    def is_running(self, ref: WorkbenchRef) -> bool:
         """Liveness gate for the control plane's availability check.
 
         A *confirmed* verdict (running, or a genuinely absent container) is
@@ -373,10 +388,11 @@ class DockerRuntime:
         session's next action with a spurious "workbench unavailable", whereas a
         bench that really is gone surfaces a truthful error at the actual op.
         """
+        handle = decode_reference(ref)
         with _docker_op("is_running") as op:
             for attempt in range(2):
                 try:
-                    return _container_running(location.container_name)
+                    return _container_running(handle.container_name)
                 except ContainerStateUnknownError as exc:
                     if attempt == 0:
                         time.sleep(0.5)
@@ -384,23 +400,25 @@ class DockerRuntime:
                     op.status = "unknown"
                     logger.warning(
                         "liveness probe indeterminate for %s (%s); assuming running",
-                        location.container_name,
+                        handle.container_name,
                         exc,
                     )
                     return True
             return True  # unreachable: the loop always returns
 
-    def exec_simple(self, location: WorkbenchLocation, argv: list[str], timeout: int = 60) -> None:
+    def exec_simple(self, ref: WorkbenchRef, argv: list[str], timeout: int = 60) -> None:
+        handle = decode_reference(ref)
         with _docker_op("exec_simple"):
-            self._exec(location.container_name, [location.exec_path, *argv], timeout, what=f"docker exec {argv[0]}")
+            self._exec(handle.container_name, [handle.exec_path, *argv], timeout, what=f"docker exec {argv[0]}")
 
-    def cancel_run(self, location: WorkbenchLocation, run_id: str) -> None:
-        self.exec_simple(location, ["cancel-run", "--run-id", run_id], timeout=10)
+    def cancel_run(self, ref: WorkbenchRef, run_id: str) -> None:
+        self.exec_simple(ref, ["cancel-run", "--run-id", run_id], timeout=10)
 
-    def exec_query_stream(self, location: WorkbenchLocation, argv: list[str], timeout: int = 30) -> Iterator[bytes]:
+    def exec_query_stream(self, ref: WorkbenchRef, argv: list[str], timeout: int = 30) -> Iterator[bytes]:
+        handle = decode_reference(ref)
         with _docker_op("exec_query_stream"):
             yield from docker_cli.stream_exec(
-                ["docker", "exec", location.container_name, location.exec_path, *argv], timeout, what=f"query {argv!r}"
+                ["docker", "exec", handle.container_name, handle.exec_path, *argv], timeout, what=f"query {argv!r}"
             )
 
     @staticmethod
@@ -425,14 +443,15 @@ class DockerRuntime:
             raise RuntimeError(message)
         return result.stdout
 
-    def copy_in(self, location: WorkbenchLocation, source_path: str, container_path: str) -> None:
+    def copy_in(self, ref: WorkbenchRef, source_path: str, workbench_path: str) -> None:
         # ``source_path`` is a file on *our* host — the control plane streamed the
         # bytes here into a local temp file (see TransferStore), so there is no
         # shared-filesystem assumption with the control plane. ``docker cp``
         # resolves the destination path the same way it always has.
+        handle = decode_reference(ref)
         with _docker_op("copy_in"):
             result = subprocess.run(
-                ["docker", "cp", source_path, f"{location.container_name}:{container_path}"],
+                ["docker", "cp", source_path, f"{handle.container_name}:{workbench_path}"],
                 check=False,
                 capture_output=True,
                 text=True,
@@ -445,9 +464,8 @@ class DockerRuntime:
     # Action dispatch (streaming)
     # ------------------------------------------------
 
-    def exec_action(
-        self, location: WorkbenchLocation, cmd_json: str, run_id: str, env: dict[str, str]
-    ) -> Iterator[AgentFrame]:
+    def exec_action(self, ref: WorkbenchRef, cmd_json: str, run_id: str, env: dict[str, str]) -> Iterator[AgentFrame]:
+        handle = decode_reference(ref)
         started_at = time.monotonic()
         status = "succeeded"
         recorded = False
@@ -479,8 +497,8 @@ class DockerRuntime:
                     "exec",
                     "-i",
                     *env_args,
-                    location.container_name,
-                    location.exec_path,
+                    handle.container_name,
+                    handle.exec_path,
                     "execute",
                     "--action",
                     "-",

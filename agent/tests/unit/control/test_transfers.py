@@ -1,4 +1,4 @@
-"""Chunked copy-in reassembly on the agent side."""
+"""Chunked workbench copy-in reassembly on the agent side."""
 
 from __future__ import annotations
 
@@ -6,10 +6,10 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_agent.transfers import TransferStore
-from repo2ree_protocol.agent import WorkbenchLocation
+from repo2ree_agent.control.transfers import TransferStore
+from repo2ree_protocol.agent import WorkbenchRef
 
-_WB = WorkbenchLocation(container_name="wb", volume_name="wb-vol")
+_WB = WorkbenchRef(runtime="docker", token="wb")  # noqa: S106 - opaque reference
 
 
 def test_deliver_reassembles_chunks_and_cleans_up() -> None:
@@ -22,17 +22,17 @@ def test_deliver_reassembles_chunks_and_cleans_up() -> None:
     landed: dict[str, str] = {}
     contents: dict[str, bytes] = {}
 
-    def sink(location: WorkbenchLocation, source_path: str, container_path: str) -> None:
-        landed["container_name"] = location.container_name
-        landed["container_path"] = container_path
+    def sink(ref: WorkbenchRef, source_path: str, workbench_path: str) -> None:
+        landed["token"] = ref.token
+        landed["workbench_path"] = workbench_path
         landed["source_path"] = source_path
         contents["data"] = Path(source_path).read_bytes()
 
     store.deliver(transfer_id, sink)
 
     assert contents["data"] == b"hello world"
-    assert landed["container_name"] == "wb"
-    assert landed["container_path"] == "/ree/dest.bin"
+    assert landed["token"] == "wb"  # noqa: S105 - opaque reference
+    assert landed["workbench_path"] == "/ree/dest.bin"
     # The temp file is gone once delivered, and the handle is no longer tracked.
     assert not Path(landed["source_path"]).exists()
     with pytest.raises(KeyError):
@@ -46,7 +46,7 @@ def test_deliver_removes_temp_file_even_when_sink_raises() -> None:
 
     captured: dict[str, str] = {}
 
-    def failing_sink(location: WorkbenchLocation, source_path: str, container_path: str) -> None:
+    def failing_sink(ref: WorkbenchRef, source_path: str, workbench_path: str) -> None:
         captured["source_path"] = source_path
         raise RuntimeError("docker cp failed")
 

@@ -46,7 +46,10 @@ from uuid import uuid4
 import pytest
 from websockets.asyncio.server import ServerConnection, serve
 
-from repo2ree_agent.control_link import run_agent
+from repo2ree_agent.control.connection import run_agent
+from repo2ree_agent.runtimes.docker import DockerRuntime
+from repo2ree_agent.runtimes.docker.reference import decode_reference
+from repo2ree_agent.service import WorkbenchService
 from repo2ree_protocol.command import (
     AcquireSourceArgs,
     AcquireSourceCommand,
@@ -156,7 +159,13 @@ def agent_registry() -> Iterator[AgentConnectionRegistry]:
 
     async def serve_and_dial() -> None:
         async with serve(handler, "127.0.0.1", port):
-            await run_agent(f"ws://127.0.0.1:{port}/agent/connect", "dind", "e2e-agent")
+            runtime = DockerRuntime("dind")
+            await run_agent(
+                f"ws://127.0.0.1:{port}/agent/connect",
+                WorkbenchService({runtime.runtime_name: runtime}),
+                "e2e-agent",
+                docker_mode="dind",
+            )
 
     task_holder: list[asyncio.Task[None]] = []
 
@@ -206,7 +215,7 @@ def workbench(
     try:
         yield manager, handle
     finally:
-        _dump_workbench_logs(handle.container_name, request.node.name)
+        _dump_workbench_logs(decode_reference(handle.ref).container_name, request.node.name)
         manager.teardown(handle)
 
 

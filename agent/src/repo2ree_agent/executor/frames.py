@@ -1,4 +1,4 @@
-"""Translate executor stdout/stderr into typed protocol frames and results."""
+"""Translate executor output into typed protocol frames and results."""
 
 from __future__ import annotations
 

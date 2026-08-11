@@ -29,6 +29,7 @@ from repo2ree_core.domain.ree.model import (
     canonical_subject_digest,
 )
 from repo2ree_core.time_utils import utc_now_instant
+from repo2ree_protocol.agent import DockerWorkbenchSpec, WorkbenchRef
 from repo2ree_supervisor import WorkbenchHandle
 
 
@@ -70,7 +71,14 @@ def test_an_unnamed_ree_still_downloads(online_ree: WorkbenchHandle, monkeypatch
 
 def _staged(monkeypatch: pytest.MonkeyPatch, entries: list[tuple[str, dict[str, Any]]]) -> None:
     manifests = [
-        (WorkbenchHandle(ree_id=rid, container_name=f"wb-{rid}", volume_name=f"vol-{rid}"), manifest)
+        (
+            WorkbenchHandle(
+                ree_id=rid,
+                ref=WorkbenchRef(runtime="docker", token=rid),
+                spec=DockerWorkbenchSpec(base_image="bench:test"),
+            ),
+            manifest,
+        )
         for rid, manifest in entries
     ]
     monkeypatch.setattr(workbench_manager, "list_all_manifests", lambda: manifests)

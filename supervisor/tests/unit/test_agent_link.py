@@ -19,16 +19,17 @@ import pytest
 from repo2ree_protocol.agent import (
     BytesChunkFrame,
     CopyChunkRequest,
+    DockerWorkbenchSpec,
     DoneFrame,
     ErrorFrame,
     IsRunningRequest,
-    LocationFrame,
     LogFrame,
     ResultFrame,
     RunningFrame,
     TransferFrame,
     UnavailableFrame,
-    WorkbenchLocation,
+    WorkbenchRef,
+    WorkbenchRefFrame,
     WsMessage,
     WsRequest,
     ws_request_adapter,
@@ -36,7 +37,8 @@ from repo2ree_protocol.agent import (
 from repo2ree_protocol.result import ActionResult
 from repo2ree_supervisor import AgentConnection, AgentConnectionRegistry, WorkbenchUnavailableError, WsAgentClient
 
-_WB = WorkbenchLocation(container_name="wb", volume_name="wb-vol")
+_WB = WorkbenchRef(runtime="docker", token="wb")  # noqa: S106 - opaque reference
+_SPEC = DockerWorkbenchSpec(base_image="img:tag")
 
 
 class _ClosableIterator(Iterator[bytes], Protocol):
@@ -125,22 +127,22 @@ def test_exec_query_raises_on_unavailable() -> None:
         join()
 
 
-def test_provision_stream_yields_until_terminal_location() -> None:
+def test_provision_stream_yields_until_terminal_reference() -> None:
     socket = FakeSocket()
     registry = AgentConnectionRegistry()
     registry.register("a1", socket.connection)
     client = WsAgentClient(registry)
 
     frames: list[Any] = []
-    join = _run_in_thread(lambda: frames.extend(client.provision("a1", "ree1", "img:tag")))
+    join = _run_in_thread(lambda: frames.extend(client.provision("a1", "ree1", _SPEC)))
     socket.wait_for_request()
     socket.respond(LogFrame(stream="system", level="info", message="pulling"))
-    socket.respond(LocationFrame(location=WorkbenchLocation(container_name="wb-ree1", volume_name="vol-ree1")))
+    socket.respond(WorkbenchRefFrame(ref=WorkbenchRef(runtime="docker", token="wb-ree1")))  # noqa: S106
     join()
 
     assert isinstance(frames[0], LogFrame)
-    assert isinstance(frames[-1], LocationFrame)
-    assert frames[-1].location.container_name == "wb-ree1"
+    assert isinstance(frames[-1], WorkbenchRefFrame)
+    assert frames[-1].ref.token == "wb-ree1"  # noqa: S105 - opaque reference
 
 
 def test_is_running_true_and_no_agent_false() -> None:
@@ -185,7 +187,7 @@ def test_cancel_run_sends_cancel_run_request() -> None:
     join = _run_in_thread(lambda: client.cancel_run("a1", _WB, "run-7"))
     req = socket.wait_for_request()
     assert req.request.op == "cancel_run"
-    assert req.request.location == _WB
+    assert req.request.ref == _WB
     assert req.request.run_id == "run-7"
     socket.respond(DoneFrame())
     join()
@@ -204,8 +206,8 @@ def test_copy_in_streams_open_chunks_then_close(tmp_path) -> None:
 
     open_req = socket.wait_for_nth_request(1).request
     assert open_req.op == "copy_open"
-    assert open_req.location == _WB
-    assert open_req.container_path == "/ree/dest.bin"
+    assert open_req.ref == _WB
+    assert open_req.workbench_path == "/ree/dest.bin"
     socket.respond_to(0, TransferFrame(transfer_id="t1"))
 
     # Payload is smaller than one chunk, so a single copy_chunk carries it all.
@@ -354,7 +356,7 @@ def test_request_times_out_when_agent_goes_silent() -> None:
     registry.register("a1", socket.connection)
 
     def call() -> None:
-        for _ in socket.connection.request(IsRunningRequest(location=_WB), frame_gap_timeout=0.1):
+        for _ in socket.connection.request(IsRunningRequest(ref=_WB), frame_gap_timeout=0.1):
             pass
 
     join = _run_in_thread(call)

@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import BinaryIO
 from uuid import uuid4
 
-from repo2ree_protocol.agent import WorkbenchLocation
+from repo2ree_protocol.agent import WorkbenchRef
 
 # ================================================
 # Transfer store
@@ -31,8 +31,8 @@ from repo2ree_protocol.agent import WorkbenchLocation
 
 @dataclass
 class _Transfer:
-    location: WorkbenchLocation
-    container_path: str
+    ref: WorkbenchRef
+    workbench_path: str
     path: str
     handle: BinaryIO
     # Chunk requests are handled concurrently, so seek+write must be atomic
@@ -47,12 +47,12 @@ class TransferStore:
         self._transfers: dict[str, _Transfer] = {}
         self._lock = threading.Lock()
 
-    def open(self, location: WorkbenchLocation, container_path: str) -> str:
-        """Start a transfer landing in ``container_path``; return its handle id."""
+    def open(self, ref: WorkbenchRef, workbench_path: str) -> str:
+        """Start a transfer landing in ``workbench_path``; return its handle id."""
         fd, path = tempfile.mkstemp(prefix="repo2ree-copy-", suffix=".part")
         transfer = _Transfer(
-            location=location,
-            container_path=container_path,
+            ref=ref,
+            workbench_path=workbench_path,
             path=path,
             handle=os.fdopen(fd, "wb"),
         )
@@ -69,16 +69,15 @@ class TransferStore:
             transfer.handle.seek(offset)
             transfer.handle.write(data)
 
-    def deliver(self, transfer_id: str, sink: Callable[[WorkbenchLocation, str, str], None]) -> None:
-        """Close the assembled file, hand it to ``sink(location, path,
-        container_path)``, then delete the temp file — even if the sink raises."""
+    def deliver(self, transfer_id: str, sink: Callable[[WorkbenchRef, str, str], None]) -> None:
+        """Close the assembled file, deliver it, then delete the temporary file."""
         with self._lock:
             transfer = self._transfers.pop(transfer_id, None)
         if transfer is None:
             raise KeyError(f"unknown transfer {transfer_id!r}")
         transfer.handle.close()
         try:
-            sink(transfer.location, transfer.path, transfer.container_path)
+            sink(transfer.ref, transfer.path, transfer.workbench_path)
         finally:
             Path(transfer.path).unlink(missing_ok=True)
 

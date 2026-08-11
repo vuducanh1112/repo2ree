@@ -5,9 +5,9 @@ messages that arrive over the same connection — the control plane pushes work
 down the agent-initiated socket. Each request is handled concurrently; its
 response frames are tagged with the request id and streamed back.
 
-The runtime behind the requests is anything satisfying ``WorkbenchRuntime``
-(today: ``DockerRuntime``). Runtimes are synchronous (blocking subprocess +
-generators), so blocking work runs in a thread (``asyncio.to_thread``) and
+The service behind the requests routes each spec/reference to its runtime.
+Runtimes are synchronous (blocking subprocess + generators), so blocking work
+runs in a thread (``asyncio.to_thread``) and
 streaming ops pump their sync generator from a worker thread into the event
 loop through a bounded anyio memory stream, forwarding each frame as it
 arrives.
@@ -32,9 +32,10 @@ import websockets
 from pydantic import BaseModel, ConfigDict, ValidationError
 from websockets.asyncio.client import ClientConnection, connect
 
-from repo2ree_agent.docker_runtime import DockerRuntime
-from repo2ree_agent.transfers import TransferStore
-from repo2ree_agent.workbench_runtime import WorkbenchGoneError, WorkbenchRuntime
+from repo2ree_agent.control.dispatcher import dispatch_request
+from repo2ree_agent.control.transfers import TransferStore
+from repo2ree_agent.runtimes.base import WorkbenchGoneError
+from repo2ree_agent.service import WorkbenchService
 from repo2ree_protocol.agent import (
     AgentFrame,
     AgentHello,
@@ -42,21 +43,11 @@ from repo2ree_protocol.agent import (
     BytesChunkFrame,
     CancelRequest,
     CancelRunRequest,
-    CopyAbortRequest,
-    CopyChunkRequest,
-    CopyCloseRequest,
-    CopyOpenRequest,
     DoneFrame,
     ErrorFrame,
     ExecActionRequest,
-    ExecQueryRequest,
-    ExecSimpleRequest,
-    IsRunningRequest,
     ProvisionRequest,
-    RemoveRequest,
     ReprovisionRequest,
-    RunningFrame,
-    TransferFrame,
     UnavailableFrame,
     WsMessage,
     ws_request_adapter,
@@ -137,9 +128,15 @@ def _agent_version() -> str:
         return ""
 
 
-async def run_agent(api_ws_url: str, docker_mode: str, agent_id: str, *, reconnect_delay: float = 3.0) -> None:
+async def run_agent(
+    api_ws_url: str,
+    service: WorkbenchService,
+    agent_id: str,
+    *,
+    docker_mode: str = "",
+    reconnect_delay: float = 3.0,
+) -> None:
     """Dial the control plane and serve requests, reconnecting on drop."""
-    runtime: WorkbenchRuntime = DockerRuntime(docker_mode)
     hello = AgentHello(
         agent_id=agent_id,
         hostname=socket.gethostname(),
@@ -163,7 +160,7 @@ async def run_agent(api_ws_url: str, docker_mode: str, agent_id: str, *, reconne
                     logger.info("agent %s connected to %s", agent_id, api_ws_url)
                     _connection_connected_counter.add(1, connection_attrs)
                     await ws.send(hello.model_dump_json())
-                    await _serve(ws, runtime)
+                    await _serve(ws, service)
                 span.set_attribute("repo2ree.status", "closed")
         except (OSError, websockets.WebSocketException) as exc:
             _connection_lost_counter.add(1, {**connection_attrs, "repo2ree.status": "lost"})
@@ -184,7 +181,7 @@ class _RequestId(BaseModel):
     id: str
 
 
-async def _serve(ws: ClientConnection, runtime: WorkbenchRuntime) -> None:
+async def _serve(ws: ClientConnection, service: WorkbenchService) -> None:
     # Chunked copy-in transfers are scoped to this connection; if it drops with
     # any still open, their partial temp files are discarded rather than leaked.
     transfers = TransferStore()
@@ -222,7 +219,7 @@ async def _serve(ws: ClientConnection, runtime: WorkbenchRuntime) -> None:
                 await _send(ws, req.id, DoneFrame())
                 continue
             # One task per request so a long build never blocks other calls.
-            task = asyncio.create_task(_handle(ws, runtime, transfers, req.id, req.request, req.traceparent))
+            task = asyncio.create_task(_handle(ws, service, transfers, req.id, req.request, req.traceparent))
             inflight[req.id] = task
             task.add_done_callback(partial(_forget_inflight, inflight, req.id))
     finally:
@@ -237,7 +234,7 @@ def _forget_inflight(inflight: dict[str, asyncio.Task[None]], req_id: str, _task
 
 async def _handle(
     ws: ClientConnection,
-    runtime: WorkbenchRuntime,
+    service: WorkbenchService,
     transfers: TransferStore,
     req_id: str,
     req: AgentRequest,
@@ -262,51 +259,21 @@ async def _handle(
         ree_id = getattr(req, "ree_id", None)
         if ree_id:
             record_ree_id(span, ree_id)
-        location = getattr(req, "location", None)
         WorkbenchSpanAttrs(
-            container=location.container_name if location is not None else None,
-            image=getattr(req, "image", None),
+            image=req.spec.base_image if isinstance(req, ProvisionRequest | ReprovisionRequest) else None,
         ).apply(span)
         try:
-            if isinstance(req, ProvisionRequest):
-                await _pump(ws, req_id, lambda: runtime.provision(req.ree_id, req.image))
-            elif isinstance(req, ReprovisionRequest):
-                await _pump(ws, req_id, lambda: runtime.reprovision(req.ree_id, req.location, req.image))
-            elif isinstance(req, ExecActionRequest):
+            if isinstance(req, ExecActionRequest | CancelRunRequest):
                 span.set_attribute("repo2ree.run_id", req.run_id)
-                await _pump(ws, req_id, lambda: runtime.exec_action(req.location, req.cmd_json, req.run_id, req.env))
-            elif isinstance(req, CancelRunRequest):
-                span.set_attribute("repo2ree.run_id", req.run_id)
-                await asyncio.to_thread(runtime.cancel_run, req.location, req.run_id)
-                await _send(ws, req_id, DoneFrame())
-            elif isinstance(req, IsRunningRequest):
-                running = await asyncio.to_thread(runtime.is_running, req.location)
-                await _send(ws, req_id, RunningFrame(running=running))
-            elif isinstance(req, ExecQueryRequest):
-                await _pump_bytes(ws, req_id, lambda: runtime.exec_query_stream(req.location, req.argv, req.timeout))
-            elif isinstance(req, ExecSimpleRequest):
-                await asyncio.to_thread(runtime.exec_simple, req.location, req.argv, req.timeout)
-                await _send(ws, req_id, DoneFrame())
-            elif isinstance(req, CopyOpenRequest):
-                transfer_id = await asyncio.to_thread(transfers.open, req.location, req.container_path)
-                await _send(ws, req_id, TransferFrame(transfer_id=transfer_id))
-            elif isinstance(req, CopyChunkRequest):
-                chunk = base64.b64decode(req.data_b64)
-                _bytes_received_counter.add(len(chunk), command_metric_attrs(operation))
-                await asyncio.to_thread(transfers.write, req.transfer_id, req.offset, chunk)
-                await _send(ws, req_id, DoneFrame())
-            elif isinstance(req, CopyCloseRequest):
-                await asyncio.to_thread(transfers.deliver, req.transfer_id, runtime.copy_in)
-                await _send(ws, req_id, DoneFrame())
-            elif isinstance(req, CopyAbortRequest):
-                await asyncio.to_thread(transfers.abort, req.transfer_id)
-                await _send(ws, req_id, DoneFrame())
-            elif isinstance(req, RemoveRequest):
-                await asyncio.to_thread(runtime.remove, req.ree_id, req.location)
-                await _send(ws, req_id, DoneFrame())
-            else:
-                status = "failed"
-                await _send(ws, req_id, ErrorFrame(detail=f"unhandled op {req.op!r}"))
+            await dispatch_request(
+                req,
+                service,
+                transfers,
+                send=lambda frame: _send(ws, req_id, frame),
+                pump=lambda factory: _pump(ws, req_id, factory),
+                pump_bytes=lambda factory: _pump_bytes(ws, req_id, factory),
+                record_received=lambda size: _bytes_received_counter.add(size, metric_attrs),
+            )
         except WorkbenchGoneError as exc:
             status = "unavailable"
             await _send(ws, req_id, UnavailableFrame(detail=str(exc)))

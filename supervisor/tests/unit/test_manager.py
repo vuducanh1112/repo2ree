@@ -14,12 +14,13 @@ import pytest
 
 from repo2ree_protocol.agent import (
     AgentFrame,
-    LocationFrame,
     LogFrame,
     ResultFrame,
     SpanFrame,
     UnavailableFrame,
-    WorkbenchLocation,
+    WorkbenchRef,
+    WorkbenchRefFrame,
+    WorkbenchSpec,
 )
 from repo2ree_protocol.command import WriteFileArgs, WriteFileCommand
 from repo2ree_protocol.result import ActionResult
@@ -45,57 +46,55 @@ class FakeAgent:
         # No registry here; placement resolves to whatever the caller requested.
         return agent_id
 
-    def provision(self, agent_id: str, ree_id: str, image: str) -> Iterator[AgentFrame]:
+    def provision(self, agent_id: str, ree_id: str, spec: WorkbenchSpec) -> Iterator[AgentFrame]:
         self.routed_agent_ids.append(agent_id)
-        yield LogFrame(stream="system", level="info", message=f"pulling {image}")
-        yield LocationFrame(
-            location=WorkbenchLocation(container_name=f"repo2ree-wb-{ree_id}", volume_name=f"repo2ree-ree-{ree_id}")
-        )
+        yield LogFrame(stream="system", level="info", message=f"pulling {spec.base_image}")
+        yield WorkbenchRefFrame(ref=WorkbenchRef(runtime="docker", token=ree_id))
 
-    def reprovision(self, agent_id: str, ree_id: str, location: WorkbenchLocation, image: str) -> Iterator[AgentFrame]:
+    def reprovision(self, agent_id: str, ref: WorkbenchRef, spec: WorkbenchSpec) -> Iterator[AgentFrame]:
         self.routed_agent_ids.append(agent_id)
         yield from ()
 
-    def remove(self, agent_id: str, ree_id: str, location: WorkbenchLocation) -> None:
+    def remove(self, agent_id: str, ref: WorkbenchRef) -> None:
         self.routed_agent_ids.append(agent_id)
         if self.fail_remove:
             raise RuntimeError("remove failed")
 
-    def remove_best_effort(self, agent_id: str, ree_id: str, location: WorkbenchLocation) -> bool:
+    def remove_best_effort(self, agent_id: str, ref: WorkbenchRef) -> bool:
         self.routed_agent_ids.append(agent_id)
-        self.best_effort_remove_calls.append(ree_id)
+        self.best_effort_remove_calls.append(ref.token)
         return True
 
-    def is_running(self, agent_id: str, location: WorkbenchLocation) -> bool:
+    def is_running(self, agent_id: str, ref: WorkbenchRef) -> bool:
         return self.running
 
-    def exec_simple(self, agent_id: str, location: WorkbenchLocation, argv: list[str], timeout: int = 60) -> None:
+    def exec_simple(self, agent_id: str, ref: WorkbenchRef, argv: list[str], timeout: int = 60) -> None:
         self.routed_agent_ids.append(agent_id)
-        self.exec_simple_calls.append((location.container_name, argv))
+        self.exec_simple_calls.append((ref.token, argv))
         if self.fail_init and argv and argv[0] == "init-ree":
             raise RuntimeError("init failed")
 
-    def exec_query(self, agent_id: str, location: WorkbenchLocation, argv: list[str], timeout: int = 30) -> bytes:
+    def exec_query(self, agent_id: str, ref: WorkbenchRef, argv: list[str], timeout: int = 30) -> bytes:
         self.routed_agent_ids.append(agent_id)
         return self.query_returns
 
     def exec_query_stream(
-        self, agent_id: str, location: WorkbenchLocation, argv: list[str], timeout: int = 30
+        self, agent_id: str, ref: WorkbenchRef, argv: list[str], timeout: int = 30
     ) -> Iterator[bytes]:
         self.routed_agent_ids.append(agent_id)
         yield self.query_returns
 
     def exec_action(
-        self, agent_id: str, location: WorkbenchLocation, cmd_json: str, run_id: str, env: dict[str, str]
+        self, agent_id: str, ref: WorkbenchRef, cmd_json: str, run_id: str, env: dict[str, str]
     ) -> Iterator[AgentFrame]:
         self.routed_agent_ids.append(agent_id)
         yield from self.action_frames
 
-    def cancel_run(self, agent_id: str, location: WorkbenchLocation, run_id: str) -> None:
+    def cancel_run(self, agent_id: str, ref: WorkbenchRef, run_id: str) -> None:
         self.routed_agent_ids.append(agent_id)
-        self.cancel_run_calls.append((location.container_name, run_id))
+        self.cancel_run_calls.append((ref.token, run_id))
 
-    def copy_in(self, agent_id: str, location: WorkbenchLocation, source_path: str, container_path: str) -> None:
+    def copy_in(self, agent_id: str, ref: WorkbenchRef, source_path: str, workbench_path: str) -> None:
         self.routed_agent_ids.append(agent_id)
 
 
@@ -114,10 +113,10 @@ def test_provision_registers_handle_and_runs_init_ree(tmp_path) -> None:
 
     handle = manager.provision("ree1", name="My REE", log=lambda *e: logs.append(e))
 
-    assert handle.container_name == "repo2ree-wb-ree1"
+    assert handle.ref == WorkbenchRef(runtime="docker", token="ree1")  # noqa: S106
     assert handle.image == "default:img"
-    # init-ree was issued against the freshly provisioned container.
-    assert agent.exec_simple_calls == [("repo2ree-wb-ree1", ["init-ree", "--name", "My REE"])]
+    # init-ree was issued against the freshly provisioned opaque reference.
+    assert agent.exec_simple_calls == [("ree1", ["init-ree", "--name", "My REE"])]
     # Provision log frames were forwarded to the sink.
     assert any("pulling default:img" in message for _, _, message in logs)
     # The handle is persisted.
@@ -213,7 +212,7 @@ def test_cancel_run_routes_to_pinned_agent(tmp_path) -> None:
     agent.routed_agent_ids.clear()
     manager.cancel_run(handle, "run-7")
 
-    assert agent.cancel_run_calls == [("repo2ree-wb-ree1", "run-7")]
+    assert agent.cancel_run_calls == [("ree1", "run-7")]
     assert agent.routed_agent_ids == ["worker-2"]
 
 

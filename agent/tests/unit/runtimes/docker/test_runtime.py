@@ -1,3 +1,5 @@
+"""Docker runtime lifecycle, execution, and failure handling."""
+
 from __future__ import annotations
 
 import itertools
@@ -9,10 +11,18 @@ from typing import Any
 
 import pytest
 
-import repo2ree_agent.docker_runtime as rt_mod
-from repo2ree_agent import docker_cli
-from repo2ree_agent.docker_runtime import DockerRuntime
-from repo2ree_protocol.agent import AgentFrame, ErrorFrame, LocationFrame, LogFrame, WorkbenchLocation
+import repo2ree_agent.runtimes.docker.runtime as rt_mod
+from repo2ree_agent.runtimes.docker import cli as docker_cli
+from repo2ree_agent.runtimes.docker.reference import DockerWorkbenchHandle, decode_reference, encode_reference
+from repo2ree_agent.runtimes.docker.runtime import DockerRuntime
+from repo2ree_protocol.agent import (
+    AgentFrame,
+    DockerWorkbenchSpec,
+    ErrorFrame,
+    LogFrame,
+    WorkbenchRef,
+    WorkbenchRefFrame,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -42,7 +52,7 @@ def test_dind_mode_uses_per_ree_docker_daemon(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setattr(rt_mod, "_docker_stream_lines", lambda *args, timeout=600: iter(()))
 
     runtime = DockerRuntime()
-    frames = list(runtime.provision("ree123", "repo2ree-workbench:test"))
+    frames = list(runtime.provision("ree123", _spec("repo2ree-workbench:test")))
 
     run_call = _only_run_call(docker_calls)
     assert ("volume", "create", "repo2ree-ree-ree123") in docker_calls
@@ -52,10 +62,9 @@ def test_dind_mode_uses_per_ree_docker_daemon(monkeypatch: pytest.MonkeyPatch) -
     assert _has_option_value(run_call, "-v", "repo2ree-dind-ree123:/var/lib/docker")
     assert not _has_option_value(run_call, "-v", "/var/run/docker.sock:/var/run/docker.sock")
 
-    # A successful provision ends with the workbench's location.
-    location = _only_location(frames)
-    assert location.container_name == "repo2ree-wb-ree123"
-    assert location.volume_name == "repo2ree-ree-ree123"
+    handle = decode_reference(_only_ref(frames))
+    assert handle.container_name == "repo2ree-wb-ree123"
+    assert handle.volume_name == "repo2ree-ree-ree123"
 
 
 def test_host_socket_mode_reuses_host_daemon_without_dind_volume(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -66,7 +75,7 @@ def test_host_socket_mode_reuses_host_daemon_without_dind_volume(monkeypatch: py
     monkeypatch.setattr(rt_mod, "_docker_stream_lines", lambda *args, timeout=600: iter(()))
 
     runtime = DockerRuntime(docker_mode="host-socket")
-    list(runtime.provision("ree456", "repo2ree-workbench:test"))
+    list(runtime.provision("ree456", _spec("repo2ree-workbench:test")))
 
     run_call = _only_run_call(docker_calls)
     assert ("volume", "create", "repo2ree-ree-ree456") in docker_calls
@@ -82,7 +91,7 @@ def test_teardown_removes_dind_volume_only_in_dind_mode(monkeypatch: pytest.Monk
     monkeypatch.setattr(rt_mod, "_docker_remove", lambda *args: silent_calls.append(args))
 
     dind = DockerRuntime()
-    dind.remove("ree123", _location("ree123"))
+    dind.remove(_ref("ree123"))
     # -v: the bench image's own anonymous volumes (docker:dind declares
     # /var/lib/docker and /certs) are unaddressable once the container is gone,
     # so they have to be reclaimed with it.
@@ -92,7 +101,7 @@ def test_teardown_removes_dind_volume_only_in_dind_mode(monkeypatch: pytest.Monk
 
     silent_calls.clear()
     host = DockerRuntime(docker_mode="host-socket")
-    host.remove("ree456", _location("ree456"))
+    host.remove(_ref("ree456"))
     assert ("volume", "rm", "repo2ree-ree-ree456") in silent_calls
     assert ("volume", "rm", "repo2ree-dind-ree456") not in silent_calls
 
@@ -119,11 +128,11 @@ def test_provision_falls_back_to_cached_image_when_pull_fails(monkeypatch: pytes
     monkeypatch.setattr(rt_mod, "_image_present", lambda image: True)
     monkeypatch.setattr(rt_mod, "_docker_stream_lines", failing_pull)
 
-    frames = list(DockerRuntime().provision("ree-cached", "default:img"))
+    frames = list(DockerRuntime().provision("ree-cached", _spec("default:img")))
 
     # Warned about the fallback, still provisioned (ends with a location).
     assert any(isinstance(f, LogFrame) and f.level == "warn" and "using cached image" in f.message for f in frames)
-    assert _only_location(frames).container_name == "repo2ree-wb-ree-cached"
+    assert decode_reference(_only_ref(frames)).container_name == "repo2ree-wb-ree-cached"
 
 
 def test_provision_emits_error_frame_when_pull_fails_and_image_absent(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -137,11 +146,11 @@ def test_provision_emits_error_frame_when_pull_fails_and_image_absent(monkeypatc
     monkeypatch.setattr(rt_mod, "_image_present", lambda image: False)
     monkeypatch.setattr(rt_mod, "_docker_stream_lines", failing_pull)
 
-    frames = list(DockerRuntime().provision("ree-absent", "default:img"))
+    frames = list(DockerRuntime().provision("ree-absent", _spec("default:img")))
     errors = [f for f in frames if isinstance(f, ErrorFrame)]
     assert errors
     assert "network unreachable" in errors[0].detail
-    assert not any(isinstance(f, LocationFrame) for f in frames)
+    assert not any(isinstance(f, WorkbenchRefFrame) for f in frames)
 
 
 def test_invalid_docker_mode_fails_early() -> None:
@@ -166,14 +175,25 @@ def test_stream_exec_times_out_when_process_goes_silent() -> None:
     assert time.monotonic() - t0 < 5.0
 
 
-def _location(ree_id: str) -> WorkbenchLocation:
-    return WorkbenchLocation(container_name=f"repo2ree-wb-{ree_id}", volume_name=f"repo2ree-ree-{ree_id}")
+def _spec(image: str) -> DockerWorkbenchSpec:
+    return DockerWorkbenchSpec(base_image=image)
 
 
-def _only_location(frames: list[AgentFrame]) -> WorkbenchLocation:
-    locations = [f.location for f in frames if isinstance(f, LocationFrame)]
-    assert len(locations) == 1
-    return locations[0]
+def _ref(ree_id: str, *, exec_path: str = "repo2ree-exec") -> WorkbenchRef:
+    return encode_reference(
+        DockerWorkbenchHandle(
+            ree_id=ree_id,
+            container_name=f"repo2ree-wb-{ree_id}",
+            volume_name=f"repo2ree-ree-{ree_id}",
+            exec_path=exec_path,
+        )
+    )
+
+
+def _only_ref(frames: list[AgentFrame]) -> WorkbenchRef:
+    refs = [f.ref for f in frames if isinstance(f, WorkbenchRefFrame)]
+    assert len(refs) == 1
+    return refs[0]
 
 
 def _only_run_call(calls: list[tuple[str, ...]]) -> tuple[str, ...]:
@@ -248,11 +268,10 @@ def test_provision_injects_bundle_into_foreign_image(
     docker_calls = _mock_docker_plumbing(monkeypatch, image_has_nix=False, volume_populated=False)
 
     runtime = DockerRuntime(exec_bundle_dir=exec_bundle_dir, tools_bundle_dir=tools_bundle_dir)
-    frames = list(runtime.provision("ree1", "docker:dind"))
+    frames = list(runtime.provision("ree1", _spec("docker:dind")))
 
-    location = _only_location(frames)
-    # The minted location carries the bundle's absolute entry point.
-    assert location.exec_path == "/nix/store/aaa-exec/bin/repo2ree-exec"
+    handle = decode_reference(_only_ref(frames))
+    assert handle.exec_path == "/nix/store/aaa-exec/bin/repo2ree-exec"
 
     run_call = _only_run_call(docker_calls)
     # The store volume is mounted read-only at /nix/store and the bench is kept
@@ -277,10 +296,10 @@ def test_provision_skips_injection_when_image_ships_nix(monkeypatch: pytest.Monk
     docker_calls = _mock_docker_plumbing(monkeypatch, image_has_nix=True, volume_populated=False)
 
     runtime = DockerRuntime(exec_bundle_dir=exec_bundle_dir)
-    frames = list(runtime.provision("ree1", "repo2ree-workbench:edge"))
+    frames = list(runtime.provision("ree1", _spec("repo2ree-workbench:edge")))
 
     # Legacy path: PATH executor, plain sleep, no store mount.
-    assert _only_location(frames).exec_path == "repo2ree-exec"
+    assert decode_reference(_only_ref(frames)).exec_path == "repo2ree-exec"
     run_call = _only_run_call(docker_calls)
     assert run_call[-1] == "repo2ree-workbench:edge"
     assert not any("/nix/store" in part for part in run_call)
@@ -291,13 +310,13 @@ def test_populate_skipped_when_volume_already_populated(monkeypatch: pytest.Monk
     docker_calls = _mock_docker_plumbing(monkeypatch, image_has_nix=False, volume_populated=True)
 
     runtime = DockerRuntime(exec_bundle_dir=exec_bundle_dir)
-    list(runtime.provision("ree1", "docker:dind"))
+    list(runtime.provision("ree1", _spec("docker:dind")))
     # The sentinel was found; no closure paths were copied.
     assert not any(call[0] == "cp" and call[1].startswith("/nix/store/") for call in docker_calls)
 
     # A second provision short-circuits before even touching docker for the volume.
     docker_calls.clear()
-    list(runtime.provision("ree2", "docker:dind"))
+    list(runtime.provision("ree2", _spec("docker:dind")))
     assert not any(call[:2] == ("volume", "create") and call[2].startswith("repo2ree-store-") for call in docker_calls)
 
 
@@ -307,9 +326,8 @@ def test_reprovision_reports_fresh_exec_path(monkeypatch: pytest.MonkeyPatch, ex
     runtime = DockerRuntime(exec_bundle_dir=exec_bundle_dir)
     # The stored location predates injection (PATH default); the replacement
     # bench re-decides and reports the bundle entry point.
-    stale = WorkbenchLocation(container_name="repo2ree-wb-ree1", volume_name="repo2ree-ree-ree1")
-    frames = list(runtime.reprovision("ree1", stale, "docker:dind"))
-    assert _only_location(frames).exec_path == "/nix/store/aaa-exec/bin/repo2ree-exec"
+    frames = list(runtime.reprovision(_ref("ree1"), _spec("docker:dind")))
+    assert decode_reference(_only_ref(frames)).exec_path == "/nix/store/aaa-exec/bin/repo2ree-exec"
 
 
 def test_misconfigured_bundle_dir_fails_at_startup(tmp_path: Path) -> None:
@@ -325,7 +343,7 @@ def test_default_command_exit_falls_back_to_pause(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(rt_mod, "_container_running", lambda name: next(verdicts))
 
     runtime = DockerRuntime(exec_bundle_dir=exec_bundle_dir)
-    frames = list(runtime.provision("ree1", "alpine"))
+    frames = list(runtime.provision("ree1", _spec("alpine")))
 
     run_calls = [call for call in docker_calls if call[:2] == ("run", "-d")]
     assert len(run_calls) == 2
@@ -334,7 +352,7 @@ def test_default_command_exit_falls_back_to_pause(monkeypatch: pytest.MonkeyPatc
     # The failed attempt was removed so the retry could reuse the name.
     assert ("rm", "-f", "-v", "repo2ree-wb-ree1") in docker_calls
     assert any(isinstance(f, LogFrame) and "exited immediately" in f.message for f in frames)
-    assert _only_location(frames).exec_path == "/nix/store/aaa-exec/bin/repo2ree-exec"
+    assert decode_reference(_only_ref(frames)).exec_path == "/nix/store/aaa-exec/bin/repo2ree-exec"
     # The restart policy lands only on the surviving container.
     update_calls = [call for call in docker_calls if call[0] == "update"]
     assert update_calls == [("update", "--restart", "unless-stopped", "repo2ree-wb-ree1")]
@@ -344,11 +362,11 @@ def test_bench_that_cannot_stay_up_is_an_error_frame(monkeypatch: pytest.MonkeyP
     _mock_docker_plumbing(monkeypatch, image_has_nix=False, volume_populated=True)
     monkeypatch.setattr(rt_mod, "_container_running", lambda name: False)
 
-    frames = list(DockerRuntime(exec_bundle_dir=exec_bundle_dir).provision("ree1", "broken:img"))
+    frames = list(DockerRuntime(exec_bundle_dir=exec_bundle_dir).provision("ree1", _spec("broken:img")))
     errors = [f for f in frames if isinstance(f, ErrorFrame)]
     assert errors
     assert "would not stay running" in errors[0].detail
-    assert not any(isinstance(f, LocationFrame) for f in frames)
+    assert not any(isinstance(f, WorkbenchRefFrame) for f in frames)
 
 
 # ================================================
@@ -457,16 +475,14 @@ def test_is_running_leans_available_on_an_indeterminate_probe(monkeypatch: pytes
         raise rt_mod.ContainerStateUnknownError("daemon blip")
 
     monkeypatch.setattr(rt_mod, "_container_running", _unknown)
-    location = WorkbenchLocation(container_name="wb", volume_name="vol")
-    assert DockerRuntime().is_running(location) is True
+    assert DockerRuntime().is_running(_ref("probe")) is True
 
 
 def test_is_running_reports_a_confirmed_stopped_bench(monkeypatch: pytest.MonkeyPatch) -> None:
     """A confirmed-down verdict is passed through unchanged — leaning available
     is only for the indeterminate case, never for a bench that is really gone."""
     monkeypatch.setattr(rt_mod, "_container_running", lambda _name: False)
-    location = WorkbenchLocation(container_name="wb", volume_name="vol")
-    assert DockerRuntime().is_running(location) is False
+    assert DockerRuntime().is_running(_ref("probe")) is False
 
 
 # ================================================

@@ -16,7 +16,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from typing import Protocol
 
-from repo2ree_protocol.agent import AgentFrame, ErrorFrame, UnavailableFrame, WorkbenchLocation
+from repo2ree_protocol.agent import AgentFrame, ErrorFrame, UnavailableFrame, WorkbenchRef, WorkbenchSpec
 
 
 class WorkbenchUnavailableError(RuntimeError):
@@ -54,39 +54,37 @@ class AgentClient(Protocol):
         no matching agent is connected."""
         ...
 
-    def provision(self, agent_id: str, ree_id: str, image: str) -> Iterator[AgentFrame]: ...
+    def provision(self, agent_id: str, ree_id: str, spec: WorkbenchSpec) -> Iterator[AgentFrame]: ...
 
-    def reprovision(
-        self, agent_id: str, ree_id: str, location: WorkbenchLocation, image: str
-    ) -> Iterator[AgentFrame]: ...
+    def reprovision(self, agent_id: str, ref: WorkbenchRef, spec: WorkbenchSpec) -> Iterator[AgentFrame]: ...
 
-    def remove(self, agent_id: str, ree_id: str, location: WorkbenchLocation) -> None: ...
+    def remove(self, agent_id: str, ref: WorkbenchRef) -> None: ...
 
-    def remove_best_effort(self, agent_id: str, ree_id: str, location: WorkbenchLocation) -> bool: ...
+    def remove_best_effort(self, agent_id: str, ref: WorkbenchRef) -> bool: ...
 
-    def is_running(self, agent_id: str, location: WorkbenchLocation) -> bool: ...
+    def is_running(self, agent_id: str, ref: WorkbenchRef) -> bool: ...
 
-    def exec_simple(self, agent_id: str, location: WorkbenchLocation, argv: list[str], timeout: int = 60) -> None:
+    def exec_simple(self, agent_id: str, ref: WorkbenchRef, argv: list[str], timeout: int = 60) -> None:
         """Run an executor subcommand in the bench, discarding output.
 
         ``argv`` is the ``repo2ree-exec`` subcommand argv *without* the executor
         binary — the agent's runtime prepends the bench's entry point."""
         ...
 
-    def exec_query(self, agent_id: str, location: WorkbenchLocation, argv: list[str], timeout: int = 30) -> bytes: ...
+    def exec_query(self, agent_id: str, ref: WorkbenchRef, argv: list[str], timeout: int = 30) -> bytes: ...
 
     def exec_query_stream(
-        self, agent_id: str, location: WorkbenchLocation, argv: list[str], timeout: int = 30
+        self, agent_id: str, ref: WorkbenchRef, argv: list[str], timeout: int = 30
     ) -> Iterator[bytes]: ...
 
     def exec_action(
-        self, agent_id: str, location: WorkbenchLocation, cmd_json: str, run_id: str, env: dict[str, str]
+        self, agent_id: str, ref: WorkbenchRef, cmd_json: str, run_id: str, env: dict[str, str]
     ) -> Iterator[AgentFrame]: ...
 
-    def cancel_run(self, agent_id: str, location: WorkbenchLocation, run_id: str) -> None: ...
+    def cancel_run(self, agent_id: str, ref: WorkbenchRef, run_id: str) -> None: ...
 
-    def copy_in(self, agent_id: str, location: WorkbenchLocation, source_path: str, container_path: str) -> None:
-        """Stream a control-plane-local file into the bench at ``container_path``.
+    def copy_in(self, agent_id: str, ref: WorkbenchRef, source_path: str, workbench_path: str) -> None:
+        """Stream a control-plane-local file into the bench at ``workbench_path``.
 
         ``source_path`` need only exist on the control plane; the bytes travel
         as a chunked transfer (see ``repo2ree_protocol.agent``)."""
