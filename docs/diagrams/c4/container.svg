@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="940" viewBox="0 0 1600 940" role="img" aria-labelledby="title description">
+  <title id="title">repo2ree C4 container diagram</title>
+  <desc id="description">An author or reviewer uses the browser GUI or HTTP API. The API hosts the supervisor and sends commands over an agent-dialed WebSocket. The agent owns the runtime and invokes the executor inside a per-REE workbench. Control-plane state and the durable REE tree remain in separate stores.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#334155"/></marker>
+    <style>
+      .bg{fill:#f8fafc}.boundary{fill:#eff6ff;fill-opacity:.45;stroke:#2563eb;stroke-width:2;stroke-dasharray:9 6}.boundary-label{font:700 16px system-ui,sans-serif;fill:#1d4ed8}.heading{font:700 30px system-ui,sans-serif;fill:#0f172a}.sub{font:16px system-ui,sans-serif;fill:#475569}.box{fill:#2563eb;stroke:#1d4ed8;stroke-width:2.5}.exec{fill:#0f766e;stroke:#115e59;stroke-width:2.5}.store{fill:#fff;stroke:#64748b;stroke-width:2}.external{fill:#e2e8f0;stroke:#64748b;stroke-width:2}.person{fill:#0e7490;stroke:#155e75;stroke-width:2}.name{font:700 19px system-ui,sans-serif;fill:#fff;text-anchor:middle}.type{font:600 12px system-ui,sans-serif;fill:#dbeafe;text-anchor:middle;letter-spacing:1px}.copy{font:14px system-ui,sans-serif;fill:#eff6ff;text-anchor:middle}.dark-name{font:700 18px system-ui,sans-serif;fill:#0f172a;text-anchor:middle}.dark-type{font:600 12px system-ui,sans-serif;fill:#475569;text-anchor:middle;letter-spacing:1px}.dark-copy{font:14px system-ui,sans-serif;fill:#334155;text-anchor:middle}.line{fill:none;stroke:#334155;stroke-width:2.2;marker-end:url(#arrow)}.both{fill:none;stroke:#334155;stroke-width:2.2;marker-start:url(#arrow);marker-end:url(#arrow)}.label{font:600 13px system-ui,sans-serif;fill:#334155;text-anchor:middle}.note{font:12px system-ui,sans-serif;fill:#64748b;text-anchor:middle}
+    </style>
+  </defs>
+  <rect class="bg" width="1600" height="940" rx="16"/>
+  <text class="heading" x="45" y="52">repo2ree — Container view</text>
+  <text class="sub" x="45" y="80">Runtime units and stores; libraries are named inside the container that hosts them</text>
+
+  <rect class="boundary" x="255" y="200" width="1295" height="655" rx="15"/>
+  <text class="boundary-label" x="280" y="225">repo2ree [SOFTWARE SYSTEM]</text>
+
+  <!-- Relationships -->
+  <path class="line" d="M235 318 L320 318"/><text class="label" x="277" y="298">Uses</text>
+  <path class="line" d="M235 410 C300 410 420 410 640 340"/><text class="label" x="417" y="403">Automates via HTTPS/JSON</text>
+  <path class="line" d="M560 305 L640 305"/><text class="label" x="600" y="285">HTTPS/JSON</text>
+  <path class="both" d="M970 305 L1060 305"/><text class="label" x="1015" y="270">Agent-dialed</text><text class="note" x="1015" y="287">WebSocket</text>
+  <path class="line" d="M1235 380 L1235 500"/><text class="label" x="1320" y="435">Runtime API</text><text class="note" x="1320" y="453">provision / exec / transfer</text>
+  <path class="both" d="M810 400 L810 565"/><text class="label" x="900" y="478">Reads and persists</text><text class="note" x="900" y="496">registry and run state</text>
+  <path class="both" d="M1235 690 L1235 760"/><text class="label" x="1335" y="722">Reads and writes /ree</text>
+  <path class="line" d="M1385 592 L1525 592 L1525 180"/><text class="label" x="1518" y="410" transform="rotate(-90 1518 410)">Pulls base images and packages</text>
+  <path class="line" d="M1085 570 L1015 570 L1015 145 L525 145"/><text class="label" x="770" y="132">Fetches pinned source</text>
+
+  <!-- Person -->
+  <g><rect class="person" x="35" y="255" width="200" height="220" rx="12"/><circle cx="135" cy="292" r="16" fill="#cffafe"/><path d="M103 334c4-25 60-25 64 0v9h-64z" fill="#cffafe"/><text class="name" x="135" y="377">Author or reviewer</text><text class="type" x="135" y="401">[PERSON]</text><text class="copy" x="135" y="431">Authors, seals, loads,</text><text class="copy" x="135" y="451">and reproduces REEs</text></g>
+
+  <!-- External systems -->
+  <g><rect class="external" x="285" y="105" width="240" height="75" rx="9"/><text class="dark-name" x="405" y="135">Source hosting</text><text class="dark-type" x="405" y="158">[EXTERNAL SYSTEM]</text></g>
+  <g><rect class="external" x="1300" y="105" width="250" height="75" rx="9"/><text class="dark-name" x="1425" y="135">Package and image registries</text><text class="dark-type" x="1425" y="158">[EXTERNAL SYSTEMS]</text></g>
+
+  <!-- Containers -->
+  <g><rect class="box" x="320" y="240" width="240" height="145" rx="11"/><text class="name" x="440" y="278">Browser GUI</text><text class="type" x="440" y="301">[CONTAINER: REACT SPA]</text><text class="copy" x="440" y="331">Guides authoring and review;</text><text class="copy" x="440" y="352">renders runs and evidence</text></g>
+  <g><rect class="box" x="640" y="215" width="330" height="185" rx="11"/><text class="name" x="805" y="258">API / control plane</text><text class="type" x="805" y="282">[CONTAINER: FASTAPI SERVICE]</text><text class="copy" x="805" y="315">HTTP surface, run orchestration,</text><text class="copy" x="805" y="337">and workbench lifecycle</text><text class="copy" x="805" y="369">Hosts supervisor in-process</text></g>
+  <g><rect class="exec" x="1060" y="215" width="350" height="165" rx="11"/><text class="name" x="1235" y="258">Workbench agent</text><text class="type" x="1235" y="282">[CONTAINER: LONG-RUNNING PROCESS]</text><text class="copy" x="1235" y="315">Owns the local runtime, injects</text><text class="copy" x="1235" y="337">executor/tools, and ferries frames</text></g>
+  <g><rect class="exec" x="1085" y="500" width="300" height="190" rx="11"/><text class="name" x="1235" y="542">Per-REE workbench</text><text class="type" x="1235" y="566">[CONTAINER: ISOLATED ENVIRONMENT]</text><text class="copy" x="1235" y="599">Runs repo2ree-exec and core</text><text class="copy" x="1235" y="621">handlers; builds runtimes and</text><text class="copy" x="1235" y="643">executes experiments</text></g>
+
+  <!-- Data stores -->
+  <g><path class="store" d="M665 570c0-14 290-14 290 0v180c0 14-290 14-290 0z"/><ellipse class="store" cx="810" cy="570" rx="145" ry="18"/><text class="dark-name" x="810" y="622">Control-plane state</text><text class="dark-type" x="810" y="646">[DATA STORE]</text><text class="dark-copy" x="810" y="676">Workbench registry, run records,</text><text class="dark-copy" x="810" y="698">upload staging, and REE index</text></g>
+  <g><path class="store" d="M1085 770c0-12 300-12 300 0v60c0 12-300 12-300 0z"/><ellipse class="store" cx="1235" cy="770" rx="150" ry="16"/><text class="dark-name" x="1235" y="807">Durable REE tree</text><text class="dark-type" x="1235" y="829">[DATA STORE: PER-REE VOLUME]</text></g>
+
+  <text class="sub" x="45" y="903">Current deployment: the agent owns Docker; each persistent workbench holds an isolated, durable /ree tree. Deployment topology is intentionally omitted here.</text>
+</svg>

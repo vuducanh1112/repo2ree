@@ -14,6 +14,71 @@ orchestration/execution split, action envelopes, CAS, and bundle composition.
 For product evolution, see
 [REE_SERVICE_ROADMAP.md](../research/REE_SERVICE_ROADMAP.md).
 
+## System context
+
+repo2ree sits between the people authoring or reviewing a REE, its source hosting,
+and the infrastructure that exercises reproducibility. At this level the
+GUI, API, agent, and core are deliberately hidden inside the repo2ree software
+system; their boundaries appear later in the component reference.
+
+![C4 system-context diagram showing authors, reviewers, source origins, execution infrastructure, and registries around repo2ree](../diagrams/c4/system-context.svg)
+
+The GUI and HTTP API demonstrations exercise the same authoring lifecycle. This
+workflow is a companion to the C4 view rather than a C4 level: it describes how
+work advances, not the static boundary of the software system.
+
+![Authoring lifecycle from choosing execution infrastructure through sealing and downloading a portable REE](../diagrams/workflows/authoring-lifecycle.svg)
+
+We maintain the diagrams with the documentation; see the
+[diagram index](../diagrams/README.md).
+
+## Container view
+
+The container view opens the repo2ree system boundary. It distinguishes runtime
+units from libraries: the API hosts `repo2ree_supervisor` in-process, while the
+workbench executor loads `repo2ree_core` in-process. Neither library is an
+independently deployed service.
+
+![C4 container diagram showing the GUI, API, agent, workbench, control-plane state, and durable REE tree](../diagrams/c4/container.svg)
+
+The workbench appears as a repo2ree container because the agent injects the
+versioned executor and tools that make it part of the running system. The
+underlying Docker host is deployment infrastructure and therefore does not
+appear as another application container in this view.
+
+## Component views
+
+The API/control-plane view groups the thin HTTP adapters, orchestration,
+transfers, state, and the supervisor components that select agents and dispatch
+commands.
+
+![C4 component diagram for the API and control plane](../diagrams/c4/component-api-control-plane.svg)
+
+The agent view shows the other side of the network seam. Its components own
+runtime effects and frame transport, but core execution remains inside the
+workbench.
+
+![C4 component diagram for the workbench agent](../diagrams/c4/component-agent.svg)
+
+These boxes represent architectural responsibilities rather than individual
+source files. The generated import graphs remain the detailed source-level
+views.
+
+## Dynamic view: execute one pipeline stage
+
+Evaluation, build, SBOM, activation, experiment, and review stages all use the
+same control-to-execution interaction. The operation runs asynchronously: the
+caller receives a run identifier, while a typed command crosses the supervisor,
+agent, and workbench boundaries and returns logs plus a result.
+
+![C4 dynamic diagram showing a pipeline stage crossing from an API client through the supervisor and agent to core inside a workbench](../diagrams/c4/dynamic-stage-execution.svg)
+
+Review uses the same dispatch path but begins with another author's sealed REE,
+provisions fresh infrastructure, and records every comparison under a distinct
+attempt namespace.
+
+![C4 dynamic diagram showing a reviewer loading and independently reproducing a published REE](../diagrams/c4/dynamic-review-reproduction.svg)
+
 ## Current state
 
 The main REE path now has the intended package seam:

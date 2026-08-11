@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1180" viewBox="0 0 1600 1180" role="img" aria-labelledby="title description">
+  <title id="title">Reviewer reproduction dynamic diagram</title>
+  <desc id="description">A reviewer loads another author's published REE. The API reads its source, recipes, receipts, and experiment baselines, then provisions a fresh workbench through the supervisor and agent. The reviewer chooses a reproduction basis and starts the gated source, build, activation, and experiment chain. The workbench writes attempt-scoped evidence and returns an aggregate verdict without changing the author's evidence.</desc>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 10 5 0 10z" fill="#334155"/></marker>
+    <marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 10 5 0 10z" fill="#0f766e"/></marker>
+    <style>
+      .bg{fill:#f8fafc}.head{font:700 29px system-ui,sans-serif;fill:#0f172a}.sub{font:15px system-ui,sans-serif;fill:#475569}.p{fill:#0e7490;stroke:#155e75;stroke-width:2}.control{fill:#2563eb;stroke:#1d4ed8;stroke-width:2}.exec{fill:#0f766e;stroke:#115e59;stroke-width:2}.store{fill:#fff;stroke:#64748b;stroke-width:2}.pn{font:700 15px system-ui,sans-serif;fill:#fff;text-anchor:middle}.pt{font:600 10px system-ui,sans-serif;fill:#dbeafe;text-anchor:middle;letter-spacing:.7px}.dn{font:700 15px system-ui,sans-serif;fill:#0f172a;text-anchor:middle}.dt{font:600 10px system-ui,sans-serif;fill:#475569;text-anchor:middle;letter-spacing:.7px}.life{stroke:#94a3b8;stroke-width:1.5;stroke-dasharray:7 6}.call{stroke:#334155;stroke-width:2.1;marker-end:url(#a)}.reply{stroke:#0f766e;stroke-width:2.1;stroke-dasharray:6 4;marker-end:url(#r)}.msg{font:600 13px system-ui,sans-serif;fill:#334155;text-anchor:middle}.replymsg{font:600 13px system-ui,sans-serif;fill:#0f766e;text-anchor:middle}.num{fill:#334155}.numreply{fill:#0f766e}.nt{font:700 12px system-ui,sans-serif;fill:#fff;text-anchor:middle;dominant-baseline:central}.band{fill:#e2e8f0;fill-opacity:.55}.bandlabel{font:700 12px system-ui,sans-serif;fill:#64748b;letter-spacing:1px}
+    </style>
+  </defs>
+  <rect class="bg" width="1600" height="1180" rx="16"/><text class="head" x="42" y="50">Reproduce a published REE — Dynamic view</text><text class="sub" x="42" y="77">The reviewer path exercised by the GUI lifecycle demo, with author evidence kept immutable</text>
+
+  <g><rect class="p" x="30" y="115" width="170" height="75" rx="9"/><text class="pn" x="115" y="145">Reviewer</text><text class="pt" x="115" y="168">[PERSON]</text></g>
+  <g><rect class="control" x="250" y="115" width="170" height="75" rx="9"/><text class="pn" x="335" y="145">GUI / API</text><text class="pt" x="335" y="168">[CONTAINERS]</text></g>
+  <g><rect class="store" x="470" y="115" width="180" height="75" rx="9"/><text class="dn" x="560" y="145">Published REE</text><text class="dt" x="560" y="168">[SEALED ARTIFACT]</text></g>
+  <g><rect class="control" x="700" y="115" width="170" height="75" rx="9"/><text class="pn" x="785" y="145">Supervisor</text><text class="pt" x="785" y="168">[COMPONENT]</text></g>
+  <g><rect class="exec" x="920" y="115" width="170" height="75" rx="9"/><text class="pn" x="1005" y="145">Agent</text><text class="pt" x="1005" y="168">[CONTAINER]</text></g>
+  <g><rect class="exec" x="1140" y="115" width="190" height="75" rx="9"/><text class="pn" x="1235" y="145">Workbench + core</text><text class="pt" x="1235" y="168">[CONTAINER + LIBRARY]</text></g>
+  <g><rect class="store" x="1380" y="115" width="180" height="75" rx="9"/><text class="dn" x="1470" y="145">Review namespace</text><text class="dt" x="1470" y="168">[ATTEMPT-SCOPED STORE]</text></g>
+
+  <g><line class="life" x1="115" y1="190" x2="115" y2="1105"/><line class="life" x1="335" y1="190" x2="335" y2="1105"/><line class="life" x1="560" y1="190" x2="560" y2="1105"/><line class="life" x1="785" y1="190" x2="785" y2="1105"/><line class="life" x1="1005" y1="190" x2="1005" y2="1105"/><line class="life" x1="1235" y1="190" x2="1235" y2="1105"/><line class="life" x1="1470" y1="190" x2="1470" y2="1105"/></g>
+  <rect class="band" x="20" y="210" width="1560" height="285" rx="8"/><text class="bandlabel" x="35" y="234">LOAD ON FRESH INFRASTRUCTURE</text>
+  <rect class="band" x="20" y="510" width="1560" height="300" rx="8"/><text class="bandlabel" x="35" y="534">REPRODUCE THE GATED CHAIN</text>
+  <rect class="band" x="20" y="825" width="1560" height="280" rx="8"/><text class="bandlabel" x="35" y="849">REPORT WITHOUT MUTATING AUTHOR EVIDENCE</text>
+
+  <line class="call" x1="115" y1="270" x2="335" y2="270"/><circle class="num" cx="135" cy="288" r="14"/><text class="nt" x="135" y="288">1</text><text class="msg" x="225" y="255">Load another author's REE</text>
+  <line class="call" x1="335" y1="325" x2="560" y2="325"/><circle class="num" cx="355" cy="343" r="14"/><text class="nt" x="355" y="343">2</text><text class="msg" x="447" y="310">Read source, recipes, receipts, baselines</text>
+  <line class="call" x1="335" y1="380" x2="785" y2="380"/><circle class="num" cx="355" cy="398" r="14"/><text class="nt" x="355" y="398">3</text><text class="msg" x="560" y="365">Provision a fresh workbench</text>
+  <line class="call" x1="785" y1="435" x2="1005" y2="435"/><circle class="num" cx="805" cy="453" r="14"/><text class="nt" x="805" y="453">4</text><text class="msg" x="895" y="420">Typed provision request</text>
+  <line class="call" x1="1005" y1="480" x2="1235" y2="480"/><circle class="num" cx="1025" cy="498" r="14"/><text class="nt" x="1025" y="498">5</text><text class="msg" x="1120" y="465">Create bench and restore bundle</text>
+
+  <line class="call" x1="115" y1="570" x2="335" y2="570"/><circle class="num" cx="135" cy="588" r="14"/><text class="nt" x="135" y="588">6</text><text class="msg" x="225" y="555">Choose basis; reproduce source</text>
+  <line class="call" x1="335" y1="625" x2="785" y2="625"/><circle class="num" cx="355" cy="643" r="14"/><text class="nt" x="355" y="643">7</text><text class="msg" x="560" y="610">Dispatch source → build → activation → experiments</text>
+  <line class="call" x1="785" y1="680" x2="1005" y2="680"/><circle class="num" cx="805" cy="698" r="14"/><text class="nt" x="805" y="698">8</text><text class="msg" x="895" y="665">Typed commands, gated in order</text>
+  <line class="call" x1="1005" y1="735" x2="1235" y2="735"/><circle class="num" cx="1025" cy="753" r="14"/><text class="nt" x="1025" y="753">9</text><text class="msg" x="1120" y="720">Execute author's recipes</text>
+  <line class="call" x1="1235" y1="790" x2="1470" y2="790"/><circle class="num" cx="1255" cy="808" r="14"/><text class="nt" x="1255" y="808">10</text><text class="msg" x="1352" y="775">Write comparisons and review receipts</text>
+
+  <line class="reply" x1="1470" y1="870" x2="1235" y2="870"/><circle class="numreply" cx="1450" cy="888" r="14"/><text class="nt" x="1450" y="888">11</text><text class="replymsg" x="1352" y="855">Attempt-scoped verdicts</text>
+  <line class="reply" x1="1235" y1="920" x2="1005" y2="920"/><circle class="numreply" cx="1215" cy="938" r="14"/><text class="nt" x="1215" y="938">12</text><text class="replymsg" x="1120" y="905">LogFrames + ActionResult</text>
+  <line class="reply" x1="1005" y1="970" x2="785" y2="970"/><circle class="numreply" cx="985" cy="988" r="14"/><text class="nt" x="985" y="988">13</text><text class="replymsg" x="895" y="955">Forward ordered frames</text>
+  <line class="reply" x1="785" y1="1020" x2="335" y2="1020"/><circle class="numreply" cx="765" cy="1038" r="14"/><text class="nt" x="765" y="1038">14</text><text class="replymsg" x="560" y="1005">Settle runs and read aggregate audit</text>
+  <line class="reply" x1="335" y1="1070" x2="115" y2="1070"/><circle class="numreply" cx="315" cy="1088" r="14"/><text class="nt" x="315" y="1088">15</text><text class="replymsg" x="225" y="1055">Show source/build/activation/result chain</text>
+
+  <text class="sub" x="42" y="1145">Every review writes under its own attempt namespace; author receipts and baselines remain unchanged.</text>
+</svg>

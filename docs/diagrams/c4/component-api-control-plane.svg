@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1030" viewBox="0 0 1500 1030" role="img" aria-labelledby="title description">
+  <title id="title">API and control-plane component diagram</title>
+  <desc id="description">Inside the API container, HTTP route adapters call authoring and review orchestration, transfer services, and read models. Orchestration uses the supervisor workbench manager, run registry, workbench registry, and agent connection registry. The control plane communicates with the external workbench agent over an agent-dialed WebSocket.</desc>
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 10 5 0 10z" fill="#334155"/></marker><style>.bg{fill:#f8fafc}.bound{fill:#eff6ff;fill-opacity:.5;stroke:#2563eb;stroke-width:2;stroke-dasharray:9 6}.head{font:700 29px system-ui,sans-serif;fill:#0f172a}.sub{font:15px system-ui,sans-serif;fill:#475569}.bl{font:700 15px system-ui,sans-serif;fill:#1d4ed8}.comp{fill:#2563eb;stroke:#1d4ed8;stroke-width:2.3}.lib{fill:#0f766e;stroke:#115e59;stroke-width:2.3}.store{fill:#fff;stroke:#64748b;stroke-width:2}.ext{fill:#e2e8f0;stroke:#64748b;stroke-width:2}.n{font:700 18px system-ui,sans-serif;fill:#fff;text-anchor:middle}.t{font:600 11px system-ui,sans-serif;fill:#dbeafe;text-anchor:middle;letter-spacing:.8px}.c{font:13px system-ui,sans-serif;fill:#eff6ff;text-anchor:middle}.dn{font:700 17px system-ui,sans-serif;fill:#0f172a;text-anchor:middle}.dt{font:600 11px system-ui,sans-serif;fill:#475569;text-anchor:middle;letter-spacing:.8px}.dc{font:13px system-ui,sans-serif;fill:#334155;text-anchor:middle}.line{fill:none;stroke:#334155;stroke-width:2;marker-end:url(#a)}.label{font:600 12px system-ui,sans-serif;fill:#334155;text-anchor:middle}</style></defs>
+  <rect class="bg" width="1500" height="1030" rx="16"/><text class="head" x="42" y="50">API / control plane — Component view</text><text class="sub" x="42" y="77">Implemented responsibilities grouped at architectural seams, not one box per Python module</text>
+  <rect class="bound" x="225" y="105" width="1040" height="735" rx="14"/><text class="bl" x="250" y="137">API / control plane [CONTAINER]</text>
+
+  <!-- edges -->
+  <path class="line" d="M190 245 L285 245"/><text class="label" x="238" y="226">HTTPS/JSON</text>
+  <path class="line" d="M485 245 L585 245"/><text class="label" x="535" y="226">Calls use cases</text>
+  <path class="line" d="M385 315 L385 405"/><text class="label" x="455" y="365">Stages uploads</text>
+  <path class="line" d="M825 245 L940 245"/><text class="label" x="882" y="226">Dispatches</text>
+  <path class="line" d="M705 320 L705 875"/><text class="label" x="765" y="815">Persists runs</text>
+  <path class="line" d="M1060 320 L1060 405"/><text class="label" x="1125" y="367">Resolves bench</text>
+  <path class="line" d="M1060 565 L1060 650"/><text class="label" x="1122" y="612">Uses connection</text>
+  <path class="line" d="M1180 725 L1320 725"/><text class="label" x="1250" y="704">Typed frames</text>
+  <path class="line" d="M485 500 C700 500 800 340 940 300"/><text class="label" x="715" y="445">Transfers through selected agent</text>
+  <path class="line" d="M385 575 C385 810 620 810 620 875"/><text class="label" x="493" y="798">Persists staged uploads</text>
+
+  <!-- external -->
+  <g><rect class="ext" x="35" y="185" width="155" height="120" rx="9"/><text class="dn" x="112" y="225">GUI or API client</text><text class="dt" x="112" y="248">[EXTERNAL]</text><text class="dc" x="112" y="277">Requests operations</text></g>
+  <g><rect class="ext" x="1320" y="665" width="150" height="120" rx="9"/><text class="dn" x="1395" y="705">Agent</text><text class="dt" x="1395" y="728">[CONTAINER]</text><text class="dc" x="1395" y="757">Runtime owner</text></g>
+
+  <!-- components -->
+  <g><rect class="comp" x="285" y="180" width="200" height="135" rx="10"/><text class="n" x="385" y="220">HTTP route adapters</text><text class="t" x="385" y="243">[COMPONENT]</text><text class="c" x="385" y="270">Authoring, review, fleet,</text><text class="c" x="385" y="290">files, and run endpoints</text></g>
+  <g><rect class="comp" x="585" y="180" width="240" height="140" rx="10"/><text class="n" x="705" y="220">Run orchestration</text><text class="t" x="705" y="243">[COMPONENT]</text><text class="c" x="705" y="270">Starts background operations</text><text class="c" x="705" y="291">and maps results to runs</text></g>
+  <g><rect class="lib" x="940" y="180" width="240" height="140" rx="10"/><text class="n" x="1060" y="220">Workbench manager</text><text class="t" x="1060" y="243">[SUPERVISOR COMPONENT]</text><text class="c" x="1060" y="270">Lifecycle, agent selection,</text><text class="c" x="1060" y="291">and typed command dispatch</text></g>
+  <g><rect class="comp" x="285" y="405" width="200" height="170" rx="10"/><text class="n" x="385" y="447">Transfer services</text><text class="t" x="385" y="470">[COMPONENT]</text><text class="c" x="385" y="499">Upload staging, source</text><text class="c" x="385" y="520">and archive transfer,</text><text class="c" x="385" y="541">workspace file access</text></g>
+  <g><rect class="lib" x="940" y="405" width="240" height="160" rx="10"/><text class="n" x="1060" y="447">Workbench registry</text><text class="t" x="1060" y="470">[SUPERVISOR COMPONENT]</text><text class="c" x="1060" y="499">Maps REE identity to agent</text><text class="c" x="1060" y="520">and opaque location</text></g>
+  <g><rect class="lib" x="940" y="650" width="240" height="150" rx="10"/><text class="n" x="1060" y="691">Agent connection registry</text><text class="t" x="1060" y="714">[SUPERVISOR COMPONENT]</text><text class="c" x="1060" y="743">Owns live outbound sessions</text><text class="c" x="1060" y="764">and streams request frames</text></g>
+
+  <!-- stores -->
+  <g><path class="store" d="M585 875c0-12 240-12 240 0v100c0 12-240 12-240 0z"/><ellipse class="store" cx="705" cy="875" rx="120" ry="15"/><text class="dn" x="705" y="918">Run and control state</text><text class="dt" x="705" y="941">[CONTAINER: FILE STORES]</text><text class="dc" x="705" y="968">Run records, uploads, index</text></g>
+</svg>
