@@ -266,7 +266,7 @@ def otlp_log_handler(provider: LoggerProvider) -> logging.Handler:
     Owned here so callers (``log.py``, entry points) never import
     ``opentelemetry`` directly.
     """
-    from opentelemetry.sdk._logs import LoggingHandler
+    from opentelemetry.instrumentation.logging.handler import LoggingHandler
 
     return LoggingHandler(logger_provider=provider)
 
@@ -471,17 +471,26 @@ class ScriptSpanAttrs(_SpanFactCarrier):
 
 @dataclass(frozen=True, slots=True)
 class WorkbenchSpanAttrs(_SpanFactCarrier):
-    """Which workbench (container / image / agent) a span operates on."""
+    """Which workbench and provider a span operates on.
+
+    ``reference_hash`` is a safe correlation key for opaque references: spans
+    can be joined without exporting the reference token or its private runtime
+    payload. It belongs on spans, never metrics, because it is high-cardinality.
+    """
 
     container: str | None = None
     image: str | None = None
     agent_id: str | None = None
+    runtime: str | None = None
+    reference_hash: str | None = None
 
     def _facts(self) -> Mapping[str, object]:
         return {
             "workbench.container": self.container,
             "workbench.image": self.image,
             "agent_id": self.agent_id,
+            "workbench.runtime": self.runtime,
+            "workbench.reference_hash": self.reference_hash,
         }
 
 

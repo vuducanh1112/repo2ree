@@ -12,18 +12,30 @@ import base64
 import threading
 from typing import Any, ClassVar
 
-from repo2ree_agent.control.connection import _serve
+import pytest
+
+import repo2ree_agent.control.connection as connection
+from repo2ree_agent.control.connection import _serve, run_agent
+from repo2ree_agent.runtimes.base import WorkbenchGoneError
 from repo2ree_agent.service import WorkbenchService
 from repo2ree_protocol.agent import (
     COPY_CHUNK_BYTES,
+    AgentRequest,
     CancelRequest,
     CancelRunRequest,
+    DockerWorkbenchSpec,
+    ErrorFrame,
+    ExecActionRequest,
     ExecQueryRequest,
     IsRunningRequest,
+    ProvisionRequest,
+    ResultFrame,
     WorkbenchRef,
     WsRequest,
+    ws_hello_adapter,
     ws_message_adapter,
 )
+from repo2ree_protocol.result import ActionResult
 
 
 def _ref(container_name: str) -> WorkbenchRef:
@@ -182,3 +194,98 @@ def test_cancel_stops_an_inflight_request() -> None:
     by_id = {m.id: m.frame for m in _frames(ws)}
     assert by_id["c1"].type == "done"
     assert "r1" not in by_id
+
+
+@pytest.mark.parametrize(
+    ("runtime_type", "expected_frame", "expected_status"),
+    [
+        ("error", "error", "failed"),
+        ("gone", "unavailable", "unavailable"),
+        ("failed_result", "result", "failed"),
+    ],
+)
+def test_stream_terminal_frame_drives_request_telemetry(
+    runtime_type: str,
+    expected_frame: str,
+    expected_status: str,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    statuses: list[str] = []
+    failures: list[object | None] = []
+    exit_codes: list[int | None] = []
+    active: list[tuple[int, dict[str, str]]] = []
+    durations: list[dict[str, str]] = []
+    monkeypatch.setattr(connection, "record_command_status", lambda span, status: statuses.append(status))
+    monkeypatch.setattr(connection, "record_failure", lambda span, failure: failures.append(failure))
+    monkeypatch.setattr(connection, "record_exit_code", lambda span, exit_code: exit_codes.append(exit_code))
+    monkeypatch.setattr(connection._active_requests, "add", lambda value, attrs: active.append((value, attrs)))
+    monkeypatch.setattr(connection._request_duration, "record", lambda value, attrs: durations.append(attrs))
+
+    class TerminalRuntime(FakeRuntime):
+        def provision(self, ree_id: str, spec: DockerWorkbenchSpec):
+            if runtime_type == "gone":
+                raise WorkbenchGoneError("bench disappeared")
+            yield ErrorFrame(detail="pull failed")
+
+        def exec_action(self, ref: WorkbenchRef, cmd_json: str, run_id: str, env: dict[str, str]):
+            yield ResultFrame(result=ActionResult.failed("execution", "command failed", origin="agent"))
+
+    if runtime_type == "failed_result":
+        request: AgentRequest = ExecActionRequest(ref=_ref("wb"), cmd_json="{}", run_id="run-1")
+    else:
+        request = ProvisionRequest(ree_id="ree-1", spec=DockerWorkbenchSpec(base_image="ubuntu:24.04"))
+    ws = FakeSocket([WsRequest(id="r1", request=request).model_dump_json()])
+    service = WorkbenchService({"docker": TerminalRuntime()})  # type: ignore[dict-item]
+
+    with caplog.at_level("WARNING", logger=connection.__name__):
+        asyncio.run(asyncio.wait_for(_serve(ws, service), timeout=2.0))  # type: ignore[arg-type]
+
+    assert _frames(ws)[-1].frame.type == expected_frame
+    assert statuses == [expected_status]
+    assert [value for value, _ in active] == [1, -1]
+    assert durations[-1]["repo2ree.status"] == expected_status
+    assert durations[-1]["repo2ree.workbench.runtime"] == "docker"
+    assert expected_status in caplog.text
+    if runtime_type == "failed_result":
+        assert failures[-1] is not None
+        assert exit_codes[-1] == 1
+    else:
+        assert failures[-1] is None
+        assert exit_codes[-1] is None
+
+
+def test_connection_hello_and_connected_gauge_are_balanced(monkeypatch: pytest.MonkeyPatch) -> None:
+    ws = FakeSocket([])
+    connects = 0
+    connected_values: list[int] = []
+
+    class ConnectionContext:
+        async def __aenter__(self) -> FakeSocket:
+            return ws
+
+        async def __aexit__(self, *args: object) -> None:
+            return None
+
+    def connect_once(url: str) -> ConnectionContext:
+        nonlocal connects
+        connects += 1
+        if connects > 1:
+            raise asyncio.CancelledError
+        return ConnectionContext()
+
+    class ConnectedGauge:
+        def add(self, value: int, attrs: dict[str, str]) -> None:
+            connected_values.append(value)
+
+    monkeypatch.setattr(connection, "connect", connect_once)
+    monkeypatch.setattr(connection, "_connected_agents", ConnectedGauge())
+
+    with pytest.raises(asyncio.CancelledError):
+        asyncio.run(run_agent("ws://control/agent/connect", WorkbenchService({}), "agent-1", docker_mode="dind"))
+
+    hello = ws_hello_adapter.validate_json(ws.sent[0])
+    assert hello.agent_id == "agent-1"
+    assert hello.docker_mode == "dind"
+    assert hello.nonce
+    assert connected_values == [1, -1]

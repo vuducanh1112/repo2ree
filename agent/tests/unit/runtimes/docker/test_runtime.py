@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import itertools
 import json
 import subprocess
@@ -20,9 +21,13 @@ from repo2ree_protocol.agent import (
     DockerWorkbenchSpec,
     ErrorFrame,
     LogFrame,
+    ResultFrame,
+    SpanFrame,
+    UnavailableFrame,
     WorkbenchRef,
     WorkbenchRefFrame,
 )
+from repo2ree_protocol.result import ActionResult
 
 
 @pytest.fixture(autouse=True)
@@ -483,6 +488,97 @@ def test_is_running_reports_a_confirmed_stopped_bench(monkeypatch: pytest.Monkey
     is only for the indeterminate case, never for a bench that is really gone."""
     monkeypatch.setattr(rt_mod, "_container_running", lambda _name: False)
     assert DockerRuntime().is_running(_ref("probe")) is False
+
+
+# ================================================
+# Action execution
+# ================================================
+
+
+class _InputPipe:
+    def __init__(self) -> None:
+        self.value = ""
+        self.closed = False
+
+    def write(self, value: str) -> None:
+        self.value += value
+
+    def close(self) -> None:
+        self.closed = True
+
+
+class _ActionProcess:
+    def __init__(self, *, stdout: str, stderr: str = "", returncode: int = 0) -> None:
+        self.stdin = _InputPipe()
+        self.stdout = io.StringIO(stdout)
+        self.stderr = io.StringIO(stderr)
+        self.returncode = returncode
+
+    def wait(self) -> int:
+        return self.returncode
+
+
+def test_exec_action_streams_executor_events_and_records_success(monkeypatch: pytest.MonkeyPatch) -> None:
+    result = ActionResult(status="succeeded")
+    proc = _ActionProcess(
+        stdout=result.model_dump_json(),
+        stderr=(
+            '{"type":"log","stream":"stdout","level":"info","message":"working"}\n'
+            '{"type":"span","payload":"encoded-span"}\n'
+        ),
+    )
+    popen_args: list[str] = []
+
+    def open_process(args: list[str], **kwargs: object) -> _ActionProcess:
+        popen_args.extend(args)
+        return proc
+
+    monkeypatch.setattr(subprocess, "Popen", open_process)
+    monkeypatch.setattr(rt_mod, "current_traceparent", lambda: "00-trace-parent")
+    recorded = _capture_recorded(monkeypatch)
+
+    frames = list(DockerRuntime().exec_action(_ref("ree1"), '{"operation":"test"}', "run-1", {}))
+
+    assert isinstance(frames[0], LogFrame)
+    assert isinstance(frames[1], SpanFrame)
+    assert frames[1].payload == "encoded-span"
+    assert frames[2] == ResultFrame(result=result)
+    assert proc.stdin.value == '{"operation":"test"}'
+    assert proc.stdin.closed is True
+    assert "TRACEPARENT=00-trace-parent" in popen_args
+    assert recorded == [("exec_action", "succeeded")]
+
+
+def test_exec_action_reports_invalid_result_and_container_loss(monkeypatch: pytest.MonkeyPatch) -> None:
+    recorded = _capture_recorded(monkeypatch)
+    processes = iter(
+        [
+            _ActionProcess(stdout="not-json", returncode=9),
+            _ActionProcess(stdout="", returncode=137),
+        ]
+    )
+    monkeypatch.setattr(subprocess, "Popen", lambda *args, **kwargs: next(processes))
+
+    failed = list(DockerRuntime().exec_action(_ref("ree1"), "{}", "run-1", {}))
+    unavailable = list(DockerRuntime().exec_action(_ref("ree1"), "{}", "run-2", {}))
+
+    assert isinstance(failed[-1], ResultFrame)
+    assert failed[-1].result.status == "failed"
+    assert isinstance(unavailable[-1], UnavailableFrame)
+    assert recorded == [("exec_action", "failed"), ("exec_action", "unavailable")]
+
+
+def test_exec_action_records_spawn_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    recorded = _capture_recorded(monkeypatch)
+
+    def fail_spawn(*args: object, **kwargs: object) -> _ActionProcess:
+        raise OSError("cannot spawn")
+
+    monkeypatch.setattr(subprocess, "Popen", fail_spawn)
+
+    with pytest.raises(OSError, match="cannot spawn"):
+        list(DockerRuntime().exec_action(_ref("ree1"), "{}", "run-1", {}))
+    assert recorded == [("exec_action", "failed")]
 
 
 # ================================================

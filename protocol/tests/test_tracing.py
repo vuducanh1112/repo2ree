@@ -212,7 +212,13 @@ def test_typed_carriers_own_the_key_vocabulary() -> None:
 
     ExecSpanAttrs(argv="sh build.sh", cwd="/ree/workspace").apply(protocol_span)
     ScriptSpanAttrs(path="build.sh").apply(protocol_span)
-    WorkbenchSpanAttrs(container="wb-1", image="repo2ree:dev", agent_id="agent-1").apply(protocol_span)
+    WorkbenchSpanAttrs(
+        container="wb-1",
+        image="repo2ree:dev",
+        agent_id="agent-1",
+        runtime="docker",
+        reference_hash="a1b2c3",
+    ).apply(protocol_span)
     record_exit_code(protocol_span, 0)
 
     assert span.attributes == {
@@ -222,6 +228,8 @@ def test_typed_carriers_own_the_key_vocabulary() -> None:
         "repo2ree.workbench.container": "wb-1",
         "repo2ree.workbench.image": "repo2ree:dev",
         "repo2ree.agent_id": "agent-1",
+        "repo2ree.workbench.runtime": "docker",
+        "repo2ree.workbench.reference_hash": "a1b2c3",
         "repo2ree.exit_code": 0,
     }
 
@@ -546,7 +554,10 @@ def test_setup_logs_is_a_noop_without_an_endpoint() -> None:
 
 
 @pytest.mark.usefixtures("_stub_otlp_exporters")
-def test_setup_logs_returns_a_provider_backing_a_logging_handler(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_setup_logs_returns_a_provider_backing_a_logging_handler(
+    monkeypatch: pytest.MonkeyPatch,
+    recwarn: pytest.WarningsRecorder,
+) -> None:
     import opentelemetry._logs as logs_api
 
     monkeypatch.setattr(logs_api, "set_logger_provider", lambda provider: None)
@@ -554,6 +565,7 @@ def test_setup_logs_returns_a_provider_backing_a_logging_handler(monkeypatch: py
     provider = setup_logs("repo2ree-api", endpoint="http://collector:4318")
     assert provider is not None
     assert isinstance(otlp_log_handler(provider), logging.Handler)
+    assert not [warning for warning in recwarn if issubclass(warning.category, DeprecationWarning)]
     provider.shutdown()
 
 

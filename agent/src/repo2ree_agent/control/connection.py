@@ -21,7 +21,8 @@ import importlib.metadata
 import logging
 import socket
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import Awaitable, Callable, Iterator
+from dataclasses import dataclass
 from functools import partial
 from uuid import uuid4
 
@@ -36,6 +37,7 @@ from repo2ree_agent.control.dispatcher import dispatch_request
 from repo2ree_agent.control.transfers import TransferStore
 from repo2ree_agent.runtimes.base import WorkbenchGoneError
 from repo2ree_agent.service import WorkbenchService
+from repo2ree_agent.telemetry import workbench_reference_hash
 from repo2ree_protocol.agent import (
     AgentFrame,
     AgentHello,
@@ -48,10 +50,13 @@ from repo2ree_protocol.agent import (
     ExecActionRequest,
     ProvisionRequest,
     ReprovisionRequest,
+    ResultFrame,
     UnavailableFrame,
+    WorkbenchRef,
     WsMessage,
     ws_request_adapter,
 )
+from repo2ree_protocol.result import Failure
 from repo2ree_protocol.tracing import (
     CommandSpanAttrs,
     WorkbenchSpanAttrs,
@@ -59,6 +64,8 @@ from repo2ree_protocol.tracing import (
     get_meter,
     get_tracer,
     record_command_status,
+    record_exit_code,
+    record_failure,
     record_ree_id,
     remote_context,
 )
@@ -78,6 +85,10 @@ _connection_connected_counter = _meter.create_counter(
 _connection_lost_counter = _meter.create_counter(
     "agent.connection_lost",
     description="Number of agent WebSocket connections that closed or failed.",
+)
+_connected_agents = _meter.create_up_down_counter(
+    "agent.connected",
+    description="Whether this agent process currently has an active control-plane connection.",
 )
 _invalid_request_counter = _meter.create_counter(
     "agent.invalid_request",
@@ -159,8 +170,12 @@ async def run_agent(
                 async with connect(api_ws_url) as ws:
                     logger.info("agent %s connected to %s", agent_id, api_ws_url)
                     _connection_connected_counter.add(1, connection_attrs)
-                    await ws.send(hello.model_dump_json())
-                    await _serve(ws, service)
+                    _connected_agents.add(1, connection_attrs)
+                    try:
+                        await ws.send(hello.model_dump_json())
+                        await _serve(ws, service)
+                    finally:
+                        _connected_agents.add(-1, connection_attrs)
                 span.set_attribute("repo2ree.status", "closed")
         except (OSError, websockets.WebSocketException) as exc:
             _connection_lost_counter.add(1, {**connection_attrs, "repo2ree.status": "lost"})
@@ -232,6 +247,35 @@ def _forget_inflight(inflight: dict[str, asyncio.Task[None]], req_id: str, _task
     inflight.pop(req_id, None)
 
 
+@dataclass
+class _RequestOutcome:
+    """Terminal facts observed on frames or raised by request dispatch."""
+
+    status: str = "succeeded"
+    failure: Failure | None = None
+    exit_code: int | None = None
+    detail: str = ""
+
+    def observe(self, frame: AgentFrame) -> None:
+        if isinstance(frame, ResultFrame):
+            self.status = frame.result.status
+            self.failure = frame.result.failure
+            self.exit_code = frame.result.exit_code
+            if frame.result.failure is not None:
+                self.detail = frame.result.failure.message
+        elif isinstance(frame, UnavailableFrame):
+            self.status = "unavailable"
+            self.detail = frame.detail
+        elif isinstance(frame, ErrorFrame):
+            self.status = "failed"
+            self.detail = frame.detail
+
+
+def _request_ref(req: AgentRequest) -> WorkbenchRef | None:
+    ref = getattr(req, "ref", None)
+    return ref if isinstance(ref, WorkbenchRef) else None
+
+
 async def _handle(
     ws: ClientConnection,
     service: WorkbenchService,
@@ -241,11 +285,15 @@ async def _handle(
     traceparent: str | None = None,
 ) -> None:
     operation = str(req.op)
+    ref = _request_ref(req)
+    runtime = ref.runtime if ref is not None else getattr(getattr(req, "spec", None), "runtime", None)
     metric_attrs = command_metric_attrs(operation)
+    if runtime:
+        metric_attrs["repo2ree.workbench.runtime"] = runtime
     _active_requests.add(1, metric_attrs)
     _request_started_counter.add(1, metric_attrs)
     started_at = time.monotonic()
-    status = "succeeded"
+    outcome = _RequestOutcome()
     # Parent this request under the control plane's dispatching span (carried
     # on the WsRequest) so the agent's work joins the backend's trace instead
     # of rooting its own. A None context means "current", so an untraced
@@ -261,7 +309,14 @@ async def _handle(
             record_ree_id(span, ree_id)
         WorkbenchSpanAttrs(
             image=req.spec.base_image if isinstance(req, ProvisionRequest | ReprovisionRequest) else None,
+            runtime=runtime,
+            reference_hash=workbench_reference_hash(ref) if ref is not None else None,
         ).apply(span)
+
+        async def send_frame(frame: AgentFrame) -> None:
+            outcome.observe(frame)
+            await _send(ws, req_id, frame)
+
         try:
             if isinstance(req, ExecActionRequest | CancelRunRequest):
                 span.set_attribute("repo2ree.run_id", req.run_id)
@@ -269,27 +324,40 @@ async def _handle(
                 req,
                 service,
                 transfers,
-                send=lambda frame: _send(ws, req_id, frame),
-                pump=lambda factory: _pump(ws, req_id, factory),
-                pump_bytes=lambda factory: _pump_bytes(ws, req_id, factory),
+                send=send_frame,
+                pump=lambda factory: _pump(send_frame, factory),
+                pump_bytes=lambda factory: _pump_bytes(send_frame, factory),
                 record_received=lambda size: _bytes_received_counter.add(size, metric_attrs),
             )
         except WorkbenchGoneError as exc:
-            status = "unavailable"
-            await _send(ws, req_id, UnavailableFrame(detail=str(exc)))
+            outcome.status = "unavailable"
+            outcome.detail = str(exc)
+            await send_frame(UnavailableFrame(detail=str(exc)))
         except asyncio.CancelledError:
-            status = "canceled"
+            outcome.status = "canceled"
             raise
         except Exception as exc:  # noqa: BLE001 — any handler failure becomes an error frame
-            status = "failed"
+            outcome.status = "failed"
+            outcome.detail = str(exc)
             span.record_exception(exc)
-            await _send(ws, req_id, ErrorFrame(detail=str(exc)))
+            await send_frame(ErrorFrame(detail=str(exc)))
         finally:
-            record_command_status(span, status)
+            record_exit_code(span, outcome.exit_code)
+            record_failure(span, outcome.failure)
+            record_command_status(span, outcome.status)
+            if outcome.status != "succeeded":
+                log = logger.info if outcome.status == "canceled" else logger.warning
+                log(
+                    "agent request %s (%s) ended %s%s",
+                    req_id,
+                    operation,
+                    outcome.status,
+                    f": {outcome.detail}" if outcome.detail else "",
+                )
             _active_requests.add(-1, metric_attrs)
             _request_duration.record(
                 time.monotonic() - started_at,
-                command_metric_attrs(operation, status=status),
+                {**metric_attrs, **command_metric_attrs(operation, status=outcome.status)},
             )
 
 
@@ -298,7 +366,7 @@ async def _handle(
 # ================================================
 
 
-async def _pump(ws: ClientConnection, req_id: str, gen_factory: Callable[[], Iterator[AgentFrame]]) -> None:
+async def _pump(send: Callable[[AgentFrame], Awaitable[None]], gen_factory: Callable[[], Iterator[AgentFrame]]) -> None:
     """Run a sync frame generator in a worker thread, forwarding each frame.
 
     The memory stream is bounded, so a generator that outruns the socket blocks
@@ -331,12 +399,14 @@ async def _pump(ws: ClientConnection, req_id: str, gen_factory: Callable[[], Ite
         try:
             with receive_stream:
                 async for frame in receive_stream:
-                    await _send(ws, req_id, frame)
+                    await send(frame)
         finally:
             tg.cancel_scope.cancel()
 
 
-async def _pump_bytes(ws: ClientConnection, req_id: str, gen_factory: Callable[[], Iterator[bytes]]) -> None:
+async def _pump_bytes(
+    send: Callable[[AgentFrame], Awaitable[None]], gen_factory: Callable[[], Iterator[bytes]]
+) -> None:
     """Run a sync byte generator in a thread, framing chunks for the wire."""
 
     def frames() -> Iterator[AgentFrame]:
@@ -345,7 +415,7 @@ async def _pump_bytes(ws: ClientConnection, req_id: str, gen_factory: Callable[[
             yield BytesChunkFrame(data_b64=base64.b64encode(chunk).decode())
         yield DoneFrame()
 
-    await _pump(ws, req_id, frames)
+    await _pump(send, frames)
 
 
 async def _send(ws: ClientConnection, req_id: str, frame: AgentFrame) -> None:
