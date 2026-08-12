@@ -19,9 +19,12 @@ describe("OutcomeBadge", () => {
   });
 
   // The chip tints from the step it belongs to, so what it must never do is
-  // carry a colour of its own — the value it renders is a token reference.
+  // carry a colour of its own — what it hands Badge is a token reference, and
+  // Badge's module turns that into the fill and the edge.
   it("tints from the step rather than from a literal", () => {
     render(<OutcomeBadge outcome={outcome} />);
-    expect(screen.getByRole("status")).toHaveStyle({ color: "var(--stage-activation-line)" });
+    const badge = screen.getByRole("status");
+    expect(badge.style.getPropertyValue("--badge-line")).toBe("var(--stage-activation-line)");
+    expect(badge.style.getPropertyValue("--badge-wash")).toBe("var(--stage-activation-wash)");
   });
 });

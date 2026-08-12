@@ -1,0 +1,71 @@
+/* Field wraps a control with its label and hint and owns the association
+ * between them; Input/Select/Textarea are the controls themselves. All three
+ * share one skin, so a textarea and a text input never drift apart. */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  color: var(--field-label-ink);
+}
+
+.hint {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  color: var(--field-hint-ink);
+}
+
+.control {
+  width: 100%;
+  min-height: 42px;
+  padding: 12px 13px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--field-edge);
+  background: var(--field-bg);
+  color: var(--field-ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-lg);
+  box-shadow: var(--shadow-field-inset);
+  outline: none;
+  transition:
+    border-color var(--duration-normal) var(--ease-standard),
+    box-shadow var(--duration-normal) var(--ease-standard),
+    background var(--duration-normal) var(--ease-standard);
+}
+
+.control:focus {
+  border-color: var(--field-edge-active);
+  box-shadow: var(--shadow-field-focus), var(--shadow-field-inset);
+}
+
+.control:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.control:disabled {
+  background: var(--control-disabled-bg);
+  color: var(--control-disabled-ink);
+  cursor: not-allowed;
+}
+
+/* A code editor, not a paragraph box: monospace, resizable vertically only. */
+.control[data-flavor="code"] {
+  min-height: 240px;
+  padding: 10px 11px;
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  line-height: 1.55;
+  resize: vertical;
+  box-sizing: border-box;
+}

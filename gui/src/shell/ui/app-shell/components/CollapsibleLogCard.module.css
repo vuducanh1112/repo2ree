@@ -1,0 +1,61 @@
+/* A run log that opens itself while the step is running and can be collapsed
+ * again once it settles. */
+
+.toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.toggle:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  color: var(--field-ink);
+}
+
+.heading[data-running] {
+  color: var(--palette-sky-500);
+}
+
+.spinner {
+  display: flex;
+  color: var(--palette-sky-500);
+}
+
+.hint {
+  color: var(--field-hint-ink);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-regular);
+}
+
+.chevron {
+  display: flex;
+  color: var(--field-hint-ink);
+}
+
+.body {
+  margin-top: 10px;
+}
+
+/* Bounded by the caller's measured height, which is why it arrives as a
+ * custom property rather than a class. */
+.body[data-bounded] > * {
+  max-height: var(--log-max-height);
+  border: 1px solid var(--surface-card-edge);
+  border-radius: var(--radius-control);
+}

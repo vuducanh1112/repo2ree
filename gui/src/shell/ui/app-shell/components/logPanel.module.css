@@ -1,0 +1,161 @@
+/* The run log stream. A line's colour is its severity, which the backend
+ * already classifies, so `data-kind` selects it rather than a style object
+ * built per line. */
+
+.panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 200px;
+  max-height: 360px;
+  border-radius: 10px;
+  border: 1px solid var(--chrome-border);
+  background: var(--chrome-surface);
+  box-shadow: var(--shadow-panel);
+}
+
+.empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 200px;
+  gap: var(--space-2);
+  color: var(--chrome-text-muted);
+}
+
+.emptyLabel {
+  font-family: var(--font-sans);
+  font-size: 13px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-shrink: 0;
+  padding: 11px 20px;
+  border-bottom: 1px solid var(--chrome-border);
+  background: var(--palette-grey-025);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--chrome-text-muted);
+}
+
+.state {
+  margin-left: auto;
+}
+
+.state[data-running] {
+  color: var(--chrome-accent);
+}
+
+.copy {
+  padding: var(--space-1) var(--space-2);
+  border-radius: 6px;
+  border: 1px solid var(--chrome-border);
+  background: var(--chrome-surface);
+  color: var(--chrome-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+
+.copy:not(:disabled):hover {
+  background: var(--chrome-surface-alt);
+}
+
+.copy:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.copy:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.stream {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--space-2) 0;
+}
+
+.truncation {
+  margin: 0 14px var(--space-2);
+  padding: 7px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--chrome-border);
+  background: var(--chrome-surface-alt);
+  color: var(--chrome-text-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+}
+
+.copyNote {
+  padding: 6px 14px 9px;
+  border-top: 1px solid var(--chrome-border);
+  background: var(--chrome-surface);
+  color: var(--chrome-text-muted);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+}
+
+/* --- One line ---------------------------------------------------------- */
+
+.line {
+  display: flex;
+  padding: 3px 14px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--log-ink);
+  background: var(--log-bg, transparent);
+}
+
+.line[data-kind="info"] {
+  --log-ink: var(--log-info-ink);
+}
+
+.line[data-kind="out"] {
+  --log-ink: var(--log-out-ink);
+}
+
+.line[data-kind="ok"] {
+  --log-ink: var(--log-ok-ink);
+  --log-bg: var(--log-ok-bg);
+}
+
+.line[data-kind="warn"] {
+  --log-ink: var(--log-warn-ink);
+  --log-bg: var(--log-warn-bg);
+}
+
+.line[data-kind="err"] {
+  --log-ink: var(--log-err-ink);
+  --log-bg: var(--log-err-bg);
+}
+
+.severity {
+  flex-shrink: 0;
+  min-width: 52px;
+  margin-right: 14px;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  opacity: 0.75;
+}
+
+.timestamp {
+  flex-shrink: 0;
+  min-width: 58px;
+  margin-right: 10px;
+  font-size: var(--text-sm);
+  color: var(--chrome-text-muted);
+}

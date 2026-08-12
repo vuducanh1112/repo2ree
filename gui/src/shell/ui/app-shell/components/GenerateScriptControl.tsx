@@ -1,22 +1,15 @@
 import type { ScriptInferenceOutcome } from "@shell/data/scriptInference/mutations";
 import { renderDecisionDiagram, renderDecisionTrace } from "@shell/data/scriptInference/traceAscii";
+import { Button } from "@shell/ui/shared/components/Button";
 import { Ic } from "@shell/ui/shared/components/Icon";
-import { lgColors, lgGlassButton } from "@shell/ui/theme/lightGlassTheme";
-import { F } from "@shell/ui/theme/theme";
 import type { UseMutationResult } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
+import styles from "./GenerateScriptControl.module.css";
 
 type Tone = "ok" | "info" | "warn" | "error";
 interface Status {
   tone: Tone;
   message: string;
-}
-
-function toneColor(tone: Tone): string {
-  if (tone === "error") return lgColors.danger;
-  if (tone === "warn") return lgColors.warning;
-  if (tone === "info") return lgColors.suggestionText;
-  return lgColors.success;
 }
 
 interface Props {
@@ -96,56 +89,29 @@ export function GenerateScriptControl({
   }, [generate, onLoad, noun, notInferredHint]);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 8 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <button
-          type="button"
+    <div className={styles.control}>
+      <div className={styles.row}>
+        <Button
+          variant="secondary"
+          size="small"
           onClick={handleGenerate}
           disabled={disabled || generate.isPending}
+          busy={generate.isPending}
+          icon={generate.isPending ? Ic.loader(14) : Ic.fileCode(14)}
           title={`Infer a ${noun} from the built runtime. It loads into the editor below; nothing is saved until you save.`}
-          style={{
-            ...lgGlassButton(),
-            padding: "6px 12px",
-            fontSize: 12,
-            fontWeight: 700,
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            opacity: disabled || generate.isPending ? 0.55 : 1,
-            cursor: disabled || generate.isPending ? "not-allowed" : "pointer",
-          }}
         >
-          {generate.isPending ? Ic.loader(14) : Ic.fileCode(14)}
           {generate.isPending ? "Generating…" : "Generate from repository"}
-        </button>
+        </Button>
         {status && (
-          <span style={{ fontSize: 12, color: toneColor(status.tone) }}>{status.message}</span>
+          <span className={styles.status} data-tone={status.tone}>
+            {status.message}
+          </span>
         )}
       </div>
       {traceText && (
         <details>
-          <summary
-            style={{ cursor: "pointer", fontSize: 12, fontWeight: 700, color: lgColors.textMuted }}
-          >
-            Decision graph
-          </summary>
-          <pre
-            style={{
-              margin: "8px 0 0",
-              padding: "10px 12px",
-              overflowX: "auto",
-              borderRadius: 8,
-              background: "rgba(15, 23, 42, 0.04)",
-              border: "1px solid rgba(125, 211, 252, 0.35)",
-              fontFamily: F.mono,
-              fontSize: 11.5,
-              lineHeight: 1.5,
-              color: lgColors.textMid,
-              whiteSpace: "pre",
-            }}
-          >
-            {traceText}
-          </pre>
+          <summary className={styles.summary}>Decision graph</summary>
+          <pre className={styles.trace}>{traceText}</pre>
         </details>
       )}
     </div>

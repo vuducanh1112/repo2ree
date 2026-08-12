@@ -1,7 +1,7 @@
 import type { ReeStepKey } from "@core/ree-steps/ReeStepParams";
+import { Badge } from "../../shared/components/Badge";
 import { Ic } from "../../shared/components/Icon";
 import { stageTone } from "../../theme/appearance";
-import { lgOutcomeBadge } from "../../theme/lightGlassTheme";
 
 /** What a step earned by running successfully: which step, and what it says.
  * The step key is the identity the badge tints from — the chip carries no
@@ -20,12 +20,13 @@ export interface StepOutcome {
  */
 export function OutcomeBadge({ outcome }: { outcome: StepOutcome }) {
   return (
-    <span
+    <Badge
       role="status"
       aria-label={outcome.label}
-      style={lgOutcomeBadge(stageTone(outcome.step), stageTone(outcome.step, "wash"))}
+      icon={Ic.check(11)}
+      tint={{ line: stageTone(outcome.step), wash: stageTone(outcome.step, "wash") }}
     >
-      {Ic.check(11)} {outcome.label}
-    </span>
+      {outcome.label}
+    </Badge>
   );
 }

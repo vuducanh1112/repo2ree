@@ -8,13 +8,7 @@ import {
 } from "@core/hbom/hardwareBomDraft";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { useFocusScroll } from "@shell/ui/shared/hooks/useFocusScroll";
-import {
-  lgAccentActionButton,
-  lgColors,
-  lgGlassButton,
-  lgStatusBadge,
-  lgStyles,
-} from "@shell/ui/theme/lightGlassTheme";
+import { lgColors, lgGlassButton, lgStatusBadge, lgStyles } from "@shell/ui/theme/lightGlassTheme";
 import { S_ACTION_BUTTON_BASE } from "@shell/ui/theme/theme";
 import { useState } from "react";
 import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
@@ -301,7 +295,8 @@ export function PageHardwareBom({
         running={running}
         disabled={runDisabled}
         iconSize={13}
-        style={lgAccentActionButton(HBOM_ACCENT, runDisabled)}
+        variant="accent"
+        tint={HBOM_ACCENT}
         onRun={() => onRun("hbom", {})}
       />
     </div>

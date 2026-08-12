@@ -1,16 +1,8 @@
-import { lgColors } from "../../theme/lightGlassTheme";
-import { F } from "../../theme/theme";
+import styles from "./LastRunStamp.module.css";
 
 export function LastRunStamp({ label, ts }: { label: string; ts: string }) {
   return (
-    <span
-      style={{
-        fontSize: 11,
-        color: lgColors.textMuted,
-        fontFamily: F.mono,
-        flexShrink: 0,
-      }}
-    >
+    <span className={styles.stamp}>
       {label}{" "}
       {new Date(ts).toLocaleString([], {
         month: "short",

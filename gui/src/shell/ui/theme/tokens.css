@@ -53,6 +53,7 @@
 
   /* --- Palette: neutrals (canvas / app chrome) ------------------------- */
   --palette-white: #ffffff;
+  --palette-grey-025: #fafbfd;
   --palette-grey-050: #f4f6f9;
   --palette-grey-075: #f0f3f7;
   --palette-grey-150: #dde3ec;
@@ -66,6 +67,7 @@
   --palette-slate-400: #94a3b8;
   --palette-slate-500: #64748b;
   --palette-slate-600: #475569;
+  --palette-slate-800: #1e293b;
   --palette-slate-900: #111827;
   --palette-slate-950: #0f172a;
 
@@ -147,6 +149,39 @@
   --palette-emerald-500-glow: rgb(16 185 129 / 53%);
   --palette-amber-500-glow: rgb(245 158 11 / 53%);
 
+  /* --- Palette: glass ---------------------------------------------------
+   * The frosted "pages" surfaces are built from translucent whites and tinted
+   * films rather than flat fills, so their alpha is part of the palette value
+   * and not something a component appends.
+   */
+  --palette-film-white-soft: rgb(255 255 255 / 54%);
+  --palette-film-white: rgb(255 255 255 / 72%);
+  --palette-film-white-strong: rgb(255 255 255 / 92%);
+  --palette-film-mist: rgb(239 246 255 / 88%);
+  --palette-film-slate: rgb(241 245 249 / 72%);
+  --palette-film-ink: rgb(15 23 42 / 4%);
+  --palette-film-blush: rgb(255 241 242 / 82%);
+  --palette-film-mint: rgb(240 253 244 / 78%);
+  --palette-film-mint-strong: rgb(220 252 231 / 78%);
+  --palette-film-butter: rgb(254 249 195 / 82%);
+  --palette-edge-sky: rgb(14 165 233 / 35%);
+  --palette-edge-sky-strong: rgb(14 165 233 / 42%);
+  --palette-edge-sky-pale: rgb(125 211 252 / 42%);
+  --palette-edge-slate: rgb(148 163 184 / 34%);
+  --palette-edge-steel: rgb(95 142 190 / 42%);
+  --palette-edge-cyan: rgb(56 189 248 / 86%);
+  --palette-edge-rose: rgb(251 113 133 / 40%);
+  --palette-edge-green: rgb(34 197 94 / 32%);
+  --palette-edge-green-strong: rgb(34 197 94 / 42%);
+  --palette-edge-amber: rgb(245 158 11 / 45%);
+
   /* --- Shadow ---------------------------------------------------------- */
   --shadow-dot-glow: 0 0 7px;
+  --shadow-raised: 0 12px 24px rgb(14 165 233 / 22%);
+  --shadow-panel: 0 1px 3px rgb(0 0 0 / 4%);
+  --shadow-field-focus: 0 0 0 3px rgb(14 165 233 / 15%);
+  --shadow-field-inset: inset 0 1px 0 var(--palette-film-white-strong);
+
+  /* --- Gradient ---------------------------------------------------------- */
+  --gradient-primary: linear-gradient(135deg, var(--palette-sky-500), var(--palette-indigo-600));
 }

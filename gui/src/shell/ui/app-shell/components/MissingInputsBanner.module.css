@@ -1,0 +1,22 @@
+/* The list of names the step is still waiting on. They are readouts, not
+ * statuses, so they are plain chips rather than Badges. */
+
+.fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.field {
+  padding: 2px 8px;
+  border-radius: var(--space-1);
+  border: 1px solid var(--notice-danger-edge);
+  background: var(--palette-film-white-soft);
+  color: var(--notice-danger-ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+}
+
+.action {
+  display: flex;
+}

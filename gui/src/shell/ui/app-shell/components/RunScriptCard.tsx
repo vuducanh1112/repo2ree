@@ -1,14 +1,9 @@
 import type { ScriptTemplateEntry } from "@shell/data/scriptTemplates/catalog";
-import {
-  lgColors,
-  lgContentCard,
-  lgGlassButton,
-  lgInput,
-  lgPrimaryActionButton,
-  lgStyles,
-} from "@shell/ui/theme/lightGlassTheme";
-import { F } from "@shell/ui/theme/theme";
+import { Button } from "@shell/ui/shared/components/Button";
+import { Textarea } from "@shell/ui/shared/components/FormControl";
+import { Surface } from "@shell/ui/shared/components/Surface";
 import { useEffect, useRef, useState } from "react";
+import styles from "./RunScriptCard.module.css";
 
 interface RunScriptCardProps {
   // Workspace-relative path the script is stored at. When set, it is shown as a
@@ -97,118 +92,78 @@ export function RunScriptCard({
 
   const header = (
     <div>
-      <div style={lgStyles.label}>{label}</div>
-      <div style={lgStyles.helper}>{helper}</div>
-      {scriptPath && (
-        <div style={{ marginTop: 4, fontFamily: F.mono, fontSize: 11, color: lgColors.textMuted }}>
-          {scriptPath}
-        </div>
-      )}
+      <div className={styles.label}>{label}</div>
+      <div className={styles.helper}>{helper}</div>
+      {scriptPath && <div className={styles.path}>{scriptPath}</div>}
     </div>
   );
 
   return (
-    <div style={lgContentCard()}>
+    <Surface>
       {icon ? (
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 10 }}>
-          <span style={{ color: lgColors.blue }}>{icon}</span>
+        <div className={styles.headerRow}>
+          <span aria-hidden className={styles.headerIcon}>
+            {icon}
+          </span>
           {header}
         </div>
       ) : (
-        <div style={{ marginBottom: 10 }}>{header}</div>
+        <div className={styles.headerBlock}>{header}</div>
       )}
 
       {!disabled && templates && templates.length > 0 && (
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
-          <span
-            style={{
-              fontSize: 11,
-              fontWeight: 700,
-              color: lgColors.textMuted,
-              alignSelf: "center",
-            }}
-          >
-            Templates:
-          </span>
+        <div className={styles.templates}>
+          <span className={styles.templatesLabel}>Templates:</span>
           {templates.map((template) => (
-            <button
+            <Button
               key={template.key}
-              type="button"
+              size="tiny"
               title={`${template.description} Inserting replaces the editor content; nothing is saved until you save the script.`}
               onClick={() => setContent(template.body)}
-              style={{
-                ...lgGlassButton(),
-                padding: "3px 9px",
-                fontSize: 11,
-                fontWeight: 700,
-              }}
             >
               {template.label}
-            </button>
+            </Button>
           ))}
         </div>
       )}
 
       {!disabled && generateSlot}
 
-      <textarea
+      <Textarea
+        flavor="code"
         aria-label={label}
         value={content}
         onChange={(event) => setContent(event.target.value)}
         spellCheck={false}
         disabled={disabled}
         rows={13}
-        style={textareaStyle}
       />
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          gap: 10,
-          alignItems: "center",
-          marginTop: 10,
-          flexWrap: "wrap",
-        }}
-      >
-        <span style={{ ...lgStyles.helper, color: dirty ? lgColors.warning : lgColors.textMuted }}>
+      <div className={styles.footer}>
+        <span className={styles.state} data-dirty={dirty || undefined}>
           {dirty ? unsavedLabel : savedLabel}
         </span>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div className={styles.actions}>
           {dirty && !disabled && (
-            <button
-              type="button"
+            <Button
+              size="small"
               title="Discard the unsaved edits and restore the saved script (or the starter template if none is saved yet)."
               onClick={() => setContent(savedContent || defaultTemplate)}
-              style={{ ...lgGlassButton(), padding: "6px 12px", fontSize: 12 }}
             >
               Discard changes
-            </button>
+            </Button>
           )}
-          <button
-            type="button"
+          <Button
+            variant="primary"
             disabled={disabled || !content.trim() || !dirty}
             onClick={() => {
               onSave(content);
               setSavedContent(content);
             }}
-            style={lgPrimaryActionButton(disabled || !content.trim() || !dirty)}
           >
             {saveButtonContent}
-          </button>
+          </Button>
         </div>
       </div>
-    </div>
+    </Surface>
   );
 }
-
-const textareaStyle: React.CSSProperties = {
-  ...lgInput(false),
-  boxSizing: "border-box",
-  width: "100%",
-  resize: "vertical",
-  minHeight: 240,
-  padding: "10px 11px",
-  fontSize: 12,
-  lineHeight: 1.55,
-  fontFamily: F.mono,
-};

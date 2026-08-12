@@ -1,0 +1,21 @@
+/* A label stacked over its readout. Used down the side of every step page. */
+
+.line {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.label {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--field-hint-ink);
+}
+
+.value {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--field-ink);
+  overflow-wrap: anywhere;
+}

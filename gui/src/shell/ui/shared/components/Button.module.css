@@ -1,0 +1,134 @@
+/* The button primitive owns its interaction states. Nothing global reaches in:
+ * the module is unlayered, so these rules outrank the base defaults, and the
+ * hover lift and active press are declared here rather than inherited from a
+ * blanket `button:hover` rule. */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border-radius: var(--radius-control);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+  transition:
+    transform var(--duration-fast) var(--ease-standard),
+    filter var(--duration-fast) var(--ease-standard),
+    background var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
+}
+
+.button:not(:disabled):hover {
+  transform: translateY(-1px);
+  filter: brightness(0.95);
+}
+
+.button:not(:disabled):active {
+  transform: translateY(1px);
+  filter: brightness(0.92);
+}
+
+.button:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  background: var(--control-disabled-bg);
+  border: 1px solid var(--control-disabled-edge);
+  color: var(--control-disabled-ink);
+  box-shadow: none;
+  transform: none;
+  filter: none;
+}
+
+/* --- Variants --------------------------------------------------------- */
+
+.button[data-variant="primary"] {
+  padding: 10px 18px;
+  border: 1px solid var(--control-primary-edge);
+  background: var(--control-primary-bg);
+  color: var(--control-primary-ink);
+  font-weight: 800;
+  box-shadow: var(--control-primary-shadow);
+}
+
+.button[data-variant="secondary"] {
+  padding: 9px 14px;
+  border: 1px solid var(--control-secondary-edge);
+  background: var(--control-secondary-bg);
+  color: var(--control-secondary-ink);
+}
+
+/* Tinted by a domain identity — the stage a run belongs to, the archive a
+ * deposit targets. `--control-line` is the only thing a caller supplies; the
+ * washes and edges are derived from it so a tinted control still reads as the
+ * same control. */
+.button[data-variant="accent"] {
+  padding: 8px 16px;
+  border: 1px solid var(--control-line);
+  background: var(--control-line);
+  color: var(--control-primary-ink);
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--control-line) 25%, transparent);
+}
+
+.button[data-variant="secondary"][data-tinted="true"] {
+  border-color: color-mix(in srgb, var(--control-line) 40%, transparent);
+  background: color-mix(in srgb, var(--control-line) 8%, transparent);
+  color: var(--control-line);
+}
+
+.button[data-variant="danger"] {
+  padding: 8px 14px;
+  border: 1px solid var(--control-danger-edge);
+  background: var(--control-danger-bg);
+  color: var(--control-danger-ink);
+}
+
+/* --- Sizes ------------------------------------------------------------- */
+
+.button[data-size="small"] {
+  padding: 6px 12px;
+  font-size: var(--text-md);
+}
+
+.button[data-size="tiny"] {
+  padding: 3px 9px;
+  font-size: var(--text-sm);
+}
+
+.button[data-full-width="true"] {
+  width: 100%;
+}
+
+/* --- Icon --------------------------------------------------------------
+ * `busy` spins the icon in place. The animation is declared here rather than
+ * referenced by name from an inline style, which is what the global keyframes
+ * existed for. */
+
+.icon {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.button[aria-busy="true"] .icon {
+  animation: button-spin 0.9s linear infinite;
+}
+
+@keyframes button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button:not(:disabled):hover,
+  .button:not(:disabled):active {
+    transform: none;
+  }
+}

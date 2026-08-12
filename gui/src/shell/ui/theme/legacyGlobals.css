@@ -6,21 +6,21 @@
  *  - the keyframes are referenced by name from inline `animation` styles and
  *    move into the owning component's module (see the animation ownership
  *    table in the rework plan) as each component is converted;
- *  - the blanket button and input interaction rules are replaced by the
- *    `Button` and `FormControl` primitives in Phase 3.
+ *  - the blanket button hover/active rules still dress every control that has
+ *    not become a `Button` yet.
  *
- * The style guard counts the interaction rules below as recorded debt: they
- * are exactly the "broad global interaction selector" and "`!important`
- * outside reduced motion" violations the inventory must shrink to zero. Delete
- * this file when the last one goes.
+ * The blanket `input:focus` override is gone: it was `!important`, so it beat
+ * every field that did become a `FormControl`, and what it added over the
+ * focus-visible outline in globals.css was a tint, not the indicator itself.
+ * Unconverted inputs keep that outline.
+ *
+ * The style guard counts the rules below as recorded debt: they are exactly the
+ * "broad global interaction selector" violations the inventory must shrink to
+ * zero. Delete this file when the last one goes.
  *
  * `pulseGlow`, `busFlow`, `cableFlow`, and `.nav-item` are not here: nothing
  * referenced them, so they were dropped rather than carried.
  */
-
-/* biome-ignore-all lint/complexity/noImportantStyles: carried verbatim from the
- * injected GLOBAL_CSS. Both uses are recorded debt in the style-architecture
- * inventory and leave with the FormControl primitive in Phase 3. */
 
 @keyframes spin {
   to {
@@ -129,13 +129,6 @@
     opacity: 0.8;
     transform: translate(-50%, -50%) scale(1.04);
   }
-}
-
-input:focus,
-select:focus,
-textarea:focus {
-  border-color: var(--focus-ring) !important;
-  box-shadow: var(--focus-ring-shadow) !important;
 }
 
 :where(button, [role="button"]):not(:disabled) {

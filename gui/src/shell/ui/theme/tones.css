@@ -149,6 +149,65 @@
   --archive-dataverse-wash: var(--palette-violet-050);
   --archive-dataverse-edge: var(--palette-violet-200);
 
+  /* --- Shared primitives -------------------------------------------------
+   * The roles `shared/components/*` consume. They describe the glass "pages"
+   * chrome those primitives were lifted from; when Phase 4 introduces a glass
+   * surface boundary, these are the roles it overrides.
+   */
+  --control-primary-bg: var(--gradient-primary);
+  --control-primary-edge: var(--palette-edge-sky-strong);
+  --control-primary-ink: var(--palette-white);
+  --control-primary-shadow: var(--shadow-raised);
+  --control-secondary-bg: var(--palette-film-mist);
+  --control-secondary-edge: var(--palette-edge-sky);
+  --control-secondary-ink: var(--palette-sky-900);
+  --control-danger-bg: var(--palette-film-blush);
+  --control-danger-edge: var(--palette-edge-rose);
+  --control-danger-ink: var(--palette-rose-700);
+  --control-disabled-bg: var(--palette-film-slate);
+  --control-disabled-edge: var(--palette-edge-slate);
+  --control-disabled-ink: var(--palette-slate-500);
+
+  --field-bg: var(--palette-film-white);
+  --field-edge: var(--palette-edge-steel);
+  --field-edge-active: var(--palette-edge-cyan);
+  --field-ink: var(--palette-slate-950);
+  --field-label-ink: var(--palette-slate-950);
+  --field-hint-ink: var(--palette-slate-500);
+
+  --surface-card-bg: var(--palette-film-white-soft);
+  --surface-card-edge: var(--palette-edge-sky-pale);
+  --surface-sunken-bg: var(--palette-film-ink);
+
+  --notice-info-bg: var(--palette-film-white);
+  --notice-info-edge: var(--palette-edge-slate);
+  --notice-success-bg: var(--palette-film-mint);
+  --notice-success-edge: var(--palette-edge-green);
+  --notice-danger-bg: var(--palette-film-blush);
+  --notice-danger-edge: var(--palette-edge-rose);
+  --notice-danger-ink: var(--palette-rose-700);
+
+  --badge-success-ink: var(--palette-emerald-700);
+  --badge-success-bg: var(--palette-film-mint-strong);
+  --badge-success-edge: var(--palette-edge-green-strong);
+  --badge-warning-ink: var(--palette-yellow-700);
+  --badge-warning-bg: var(--palette-film-butter);
+  --badge-warning-edge: var(--palette-edge-amber);
+  --badge-neutral-ink: var(--palette-slate-500);
+  --badge-neutral-bg: var(--palette-film-white);
+  --badge-neutral-edge: var(--palette-edge-slate);
+
+  /* --- Run log lines ------------------------------------------------------
+   * A streamed line's severity, which the backend already classifies. */
+  --log-info-ink: var(--palette-slate-600);
+  --log-out-ink: var(--palette-slate-800);
+  --log-ok-ink: var(--palette-green-600);
+  --log-ok-bg: var(--palette-green-050);
+  --log-warn-ink: var(--palette-amber-600);
+  --log-warn-bg: var(--palette-amber-100);
+  --log-err-ink: var(--palette-red-600);
+  --log-err-bg: var(--palette-red-050);
+
   /* --- Run failure tone --------------------------------------------------
    * The three classes an API user acts on differently: an outage worth
    * retrying, an actionable rejection, a genuine fault.

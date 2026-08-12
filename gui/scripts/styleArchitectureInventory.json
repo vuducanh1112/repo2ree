@@ -1,6 +1,6 @@
 {
   "note": "Migration ratchet for the GUI styling rework — pre-existing violations, per file. It may only shrink: `make gui-checks` fails on a new violation and on a stale entry left behind by a conversion. Regenerate with `npm run check:style-architecture -- --update`. Phase 8 deletes this file and the rules become absolute.",
-  "total": 1603,
+  "total": 1499,
   "files": {
     "src/shell/ui/agents/AgentsView.tsx": {
       "legacy-theme-import": 1,
@@ -195,22 +195,6 @@
       "raw-color": 3,
       "style-object-literal": 6
     },
-    "src/shell/ui/app-shell/components/CollapsibleLogCard.tsx": {
-      "legacy-theme-import": 1,
-      "raw-color": 2,
-      "style-not-css-vars": 1,
-      "style-object-literal": 6
-    },
-    "src/shell/ui/app-shell/components/GenerateScriptControl.tsx": {
-      "legacy-theme-import": 2,
-      "raw-color": 2,
-      "style-object-literal": 6
-    },
-    "src/shell/ui/app-shell/components/GlassCancelButton.tsx": {
-      "legacy-theme-import": 1,
-      "raw-color": 1,
-      "style-object-literal": 1
-    },
     "src/shell/ui/app-shell/components/GlassPageHeader.tsx": {
       "legacy-theme-import": 1,
       "style-not-css-vars": 4,
@@ -229,39 +213,6 @@
     "src/shell/ui/app-shell/components/GlassSubPanel.tsx": {
       "legacy-theme-import": 1,
       "style-object-literal": 1
-    },
-    "src/shell/ui/app-shell/components/LastRunStamp.tsx": {
-      "legacy-theme-import": 2,
-      "style-object-literal": 1
-    },
-    "src/shell/ui/app-shell/components/MissingInputsBanner.tsx": {
-      "legacy-theme-import": 2,
-      "raw-color": 2,
-      "style-object-literal": 7
-    },
-    "src/shell/ui/app-shell/components/OutcomeBadge.tsx": {
-      "legacy-theme-import": 1,
-      "style-not-css-vars": 1
-    },
-    "src/shell/ui/app-shell/components/RunActionButton.tsx": {
-      "legacy-theme-import": 1,
-      "style-not-css-vars": 1,
-      "style-object-literal": 2
-    },
-    "src/shell/ui/app-shell/components/RunScriptCard.tsx": {
-      "legacy-theme-import": 2,
-      "style-not-css-vars": 5,
-      "style-object-literal": 11
-    },
-    "src/shell/ui/app-shell/components/SummaryLine.tsx": {
-      "legacy-theme-import": 2,
-      "style-object-literal": 3
-    },
-    "src/shell/ui/app-shell/components/logPanel.tsx": {
-      "legacy-theme-import": 1,
-      "raw-color": 8,
-      "style-not-css-vars": 3,
-      "style-object-literal": 10
     },
     "src/shell/ui/app-shell/components/sourceRuntime/SourceUploadCommitted.tsx": {
       "legacy-theme-import": 1,
@@ -290,10 +241,6 @@
     "src/shell/ui/app-shell/components/sourceRuntime/shared.tsx": {
       "legacy-theme-import": 1
     },
-    "src/shell/ui/app-shell/components/statusUiStyles.ts": {
-      "legacy-theme-import": 1,
-      "raw-color": 2
-    },
     "src/shell/ui/app-shell/components/stepRunPanels/DependencyGroupCard.tsx": {
       "legacy-theme-import": 1,
       "raw-color": 4,
@@ -315,9 +262,8 @@
       "style-object-literal": 2
     },
     "src/shell/ui/app-shell/pages/archive/sections/ArchiveActionPanel.tsx": {
-      "legacy-theme-import": 2,
-      "raw-color": 2,
-      "style-not-css-vars": 2,
+      "legacy-theme-import": 1,
+      "style-not-css-vars": 1,
       "style-object-literal": 5
     },
     "src/shell/ui/app-shell/pages/archive/sections/ArchiveParamsCard.tsx": {
@@ -376,9 +322,9 @@
     "src/shell/ui/app-shell/pages/experiments/ExperimentsPageSections.tsx": {
       "alpha-interpolation": 1,
       "legacy-theme-import": 2,
-      "raw-color": 11,
+      "raw-color": 8,
       "style-not-css-vars": 12,
-      "style-object-literal": 34
+      "style-object-literal": 33
     },
     "src/shell/ui/app-shell/pages/files/FileFilterInput.tsx": {
       "legacy-theme-import": 2,
@@ -397,7 +343,7 @@
     "src/shell/ui/app-shell/pages/generate-sbom/sections/CrossCheckCard.tsx": {
       "legacy-theme-import": 2,
       "raw-color": 3,
-      "style-not-css-vars": 5,
+      "style-not-css-vars": 4,
       "style-object-literal": 11
     },
     "src/shell/ui/app-shell/pages/generate-sbom/sections/RuntimeScanTargetCard.tsx": {
@@ -414,7 +360,7 @@
     "src/shell/ui/app-shell/pages/hardware-bom/HardwareBomPage.tsx": {
       "legacy-theme-import": 2,
       "raw-color": 9,
-      "style-not-css-vars": 8,
+      "style-not-css-vars": 7,
       "style-object-literal": 6
     },
     "src/shell/ui/app-shell/pages/hardware-bom/HardwareBomPageSections.tsx": {
@@ -524,11 +470,10 @@
       "style-object-literal": 2
     },
     "src/shell/ui/theme/legacyGlobals.css": {
-      "css-global-interaction": 2,
-      "css-important": 2
+      "css-global-interaction": 2
     },
     "src/shell/ui/theme/lightGlassTheme.ts": {
-      "alpha-interpolation": 5,
+      "alpha-interpolation": 4,
       "legacy-theme-import": 2,
       "raw-color": 117,
       "theme-style-object": 1

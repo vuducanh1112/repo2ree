@@ -1,7 +1,8 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
+import { Button } from "../../shared/components/Button";
 import { Ic } from "../../shared/components/Icon";
-import { lgPrimaryActionButton } from "../../theme/lightGlassTheme";
 import { GlassCancelButton } from "./GlassCancelButton";
+import styles from "./RunActionButton.module.css";
 
 interface RunActionButtonProps {
   /** Visible label, e.g. "Run build" / "Building…" / "Re-build". */
@@ -14,9 +15,13 @@ interface RunActionButtonProps {
   iconSize?: number;
   /** Icon shown when idle (defaults to the play triangle). */
   idleIcon?: (size: number) => ReactNode;
-  /** Override the button style (defaults to the shared primary-action style). */
-  style?: CSSProperties;
   title?: string;
+  /** How the run reads: the shared blue primary, or tinted by the page's own
+   * identity. `secondary` is the quieter inline run (an experiment row). */
+  variant?: "primary" | "accent" | "secondary";
+  /** The tone `accent` and a washed `secondary` are drawn in. */
+  tint?: string;
+  size?: "medium" | "small";
 }
 
 /**
@@ -26,6 +31,11 @@ interface RunActionButtonProps {
  * `aria-hidden` so the icon's <title> ("Play"/"Loading") never leaks into the
  * button's accessible name. The accessible name is exactly the visible label,
  * which is what tests select on.
+ *
+ * The `style` override this used to accept is gone. Callers that needed their
+ * own colour now name it — `variant="accent"` with the page's tone — and every
+ * other difference between the old overrides was a restatement of what `Button`
+ * already does.
  */
 export function RunActionButton({
   label,
@@ -35,31 +45,30 @@ export function RunActionButton({
   onCancel,
   iconSize = 14,
   idleIcon = Ic.play,
-  style,
   title,
+  variant = "primary",
+  tint,
+  size = "medium",
 }: RunActionButtonProps) {
   const button = (
-    <button
-      type="button"
+    <Button
+      variant={variant}
+      tint={tint}
+      size={size}
       onClick={onRun}
       disabled={disabled}
+      busy={running}
       title={title}
-      style={style ?? lgPrimaryActionButton(disabled)}
+      icon={running ? Ic.loader(iconSize) : idleIcon(iconSize)}
     >
-      <span
-        aria-hidden
-        style={{ display: "flex", animation: running ? "spin 0.9s linear infinite" : "none" }}
-      >
-        {running ? Ic.loader(iconSize) : idleIcon(iconSize)}
-      </span>
       {label}
-    </button>
+    </Button>
   );
 
   if (!onCancel) return button;
 
   return (
-    <div style={{ display: "flex", gap: 10, alignItems: "center", flexShrink: 0 }}>
+    <div className={styles.pair}>
       {button}
       {running && <GlassCancelButton onClick={onCancel} />}
     </div>

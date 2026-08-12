@@ -5,7 +5,6 @@
 // share only the font primitives (F) imported below. Keep the colors distinct.
 import type { FileTypeCategory } from "@core/workspace/PathUtils";
 import type React from "react";
-import { translucent } from "./appearance";
 import { S_ACTION_BUTTON_BASE } from "./stylesCore";
 import { F } from "./tokens";
 
@@ -495,24 +494,6 @@ export function lgStatusBadge(ready: boolean): React.CSSProperties {
   };
 }
 
-export function lgOutcomeBadge(line: string, wash: string): React.CSSProperties {
-  return {
-    fontSize: 11,
-    fontWeight: 700,
-    color: line,
-    background: wash,
-    // 25% is the old `${color}40` suffix (0x40 = 64/255). Composed rather than
-    // appended: `line` is a var() reference now, and text glued onto one is an
-    // invalid value that fails silently.
-    border: `1px solid ${translucent(line, 25)}`,
-    borderRadius: 99,
-    padding: "3px 9px",
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 4,
-  };
-}
-
 export function lgCorrespondingBadge(): React.CSSProperties {
   return {
     display: "inline-flex",
@@ -579,29 +560,6 @@ export function lgPrimaryActionButton(disabled = false): React.CSSProperties {
     cursor: disabled ? "not-allowed" : "pointer",
     fontFamily: F.sans,
     boxShadow: disabled ? "none" : "0 12px 24px rgba(14, 165, 233, 0.22)",
-  };
-}
-
-// Solid accent-coloured run button (SBOM, Hardware BOM). Identical shape to the
-// primary action, but tinted with a page-specific accent rather than the shared
-// blue, so each hub action keeps its own colour identity.
-export function lgAccentActionButton(accent: string, disabled = false): React.CSSProperties {
-  return {
-    ...S_ACTION_BUTTON_BASE,
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 6,
-    padding: "8px 16px",
-    borderRadius: 8,
-    fontSize: 12,
-    fontWeight: 800,
-    letterSpacing: 0.3,
-    cursor: disabled ? "not-allowed" : "pointer",
-    color: lgColors.white,
-    background: accent,
-    border: `1px solid ${accent}`,
-    boxShadow: `0 12px 24px ${accent}40`,
-    opacity: disabled ? 0.55 : 1,
   };
 }
 

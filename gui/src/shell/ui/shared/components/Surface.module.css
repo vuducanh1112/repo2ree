@@ -1,0 +1,26 @@
+/* The frosted panel every card on a glass page sits in. Variants are named
+ * readings, not a style hole: a caller picks `card` or `sunken`, and anything
+ * that genuinely differs earns a variant here rather than a style prop. */
+
+.surface {
+  border-radius: var(--radius-control);
+  border: 1px solid var(--surface-card-edge);
+  background: var(--surface-card-bg);
+  padding: var(--space-3);
+}
+
+/* Recessed, for content the surface contains rather than presents — a log
+ * stream, a rendered diagram. */
+.surface[data-variant="sunken"] {
+  background: var(--surface-sunken-bg);
+  padding: 0;
+  overflow: auto;
+}
+
+.surface[data-spacing="flush"] {
+  margin-top: 0;
+}
+
+.surface[data-spacing="separated"] {
+  margin-top: var(--space-3);
+}

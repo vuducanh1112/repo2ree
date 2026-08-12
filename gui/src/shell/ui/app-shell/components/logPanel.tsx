@@ -1,29 +1,21 @@
 import type { LogEntry, LogLine } from "@core/ree/ReeTypes";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Ic } from "../../shared/components/Icon";
-import { C, F } from "../../theme/theme";
-import {
-  RUN_LOG_EMPTY_STYLE,
-  RUN_LOG_PANEL_HEADER_STYLE,
-  RUN_LOG_PANEL_ROOT_STYLE,
-} from "./statusUiStyles";
+import styles from "./logPanel.module.css";
 
 const MAX_RENDER_LOG_LINES = 800;
 const MAX_COPY_LOG_LINES = 2000;
 
 type LogLineType = LogLine["type"];
 
-interface LogStyleEntry {
-  pre: string;
-  color: string;
-  bg: string;
-}
-const LOG_STYLE: Record<LogLineType, LogStyleEntry> = {
-  info: { pre: "  INFO", color: "#475569", bg: "transparent" },
-  ok: { pre: "    OK", color: "#16a34a", bg: "#f0fdf4" },
-  warn: { pre: "  WARN", color: "#d97706", bg: "#fef3c7" },
-  err: { pre: "   ERR", color: "#dc2626", bg: "#fef2f2" },
-  out: { pre: "      ", color: "#1e293b", bg: "transparent" },
+// The severity gutter, padded so the lines align. How each severity *reads* is
+// in logPanel.module.css, keyed off the same `type` the backend sends.
+const LOG_PREFIX: Record<LogLineType, string> = {
+  info: "  INFO",
+  ok: "    OK",
+  warn: "  WARN",
+  err: "   ERR",
+  out: "      ",
 };
 
 interface LogPanelProps {
@@ -77,9 +69,9 @@ export function LogPanel({ log, running = false }: LogPanelProps) {
     if (!log) return "";
     return copyLines
       .map((line) => {
-        const s = LOG_STYLE[line.type] || LOG_STYLE.info;
+        const prefix = LOG_PREFIX[line.type] || LOG_PREFIX.info;
         const ts = formatLineTimestamp(line.ts || log.ts);
-        return `${ts} [${s.pre.trim() || "OUT"}] ${line.msg}`;
+        return `${ts} [${prefix.trim() || "OUT"}] ${line.msg}`;
       })
       .join("\n");
   }, [copyLines, log]);
@@ -90,11 +82,7 @@ export function LogPanel({ log, running = false }: LogPanelProps) {
       const lineSig = `${line.type}:${line.msg}`;
       const occurrence = (seenLines.get(lineSig) ?? 0) + 1;
       seenLines.set(lineSig, occurrence);
-      return {
-        key: `${lineSig}::${occurrence}`,
-        line,
-        style: LOG_STYLE[line.type] || LOG_STYLE.info,
-      };
+      return { key: `${lineSig}::${occurrence}`, line };
     });
   }, [renderLines]);
 
@@ -128,37 +116,26 @@ export function LogPanel({ log, running = false }: LogPanelProps) {
   };
 
   return (
-    <div style={RUN_LOG_PANEL_ROOT_STYLE}>
+    <div className={styles.panel}>
       {!log ? (
-        <div style={RUN_LOG_EMPTY_STYLE}>
+        <div className={styles.empty}>
           {Ic.terminal()}
-          <span style={{ fontSize: 13, fontFamily: F.sans }}>No output yet</span>
+          <span className={styles.emptyLabel}>No output yet</span>
         </div>
       ) : (
         <>
-          <div style={RUN_LOG_PANEL_HEADER_STYLE}>
+          <div className={styles.header}>
             <span>
               Last run:{" "}
               {new Date(log.ts).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
             </span>
-            <span style={{ color: running ? C.accent : C.textMuted, marginLeft: "auto" }}>
+            <span className={styles.state} data-running={running || undefined}>
               {running ? "Running" : "Idle"}
             </span>
             <button
               type="button"
               onClick={onCopyLogs}
-              style={{
-                border: `1px solid ${C.border}`,
-                borderRadius: 6,
-                background: C.surface,
-                color: C.text,
-                fontFamily: F.sans,
-                fontSize: 11,
-                fontWeight: 600,
-                padding: "4px 8px",
-                cursor: copyText ? "pointer" : "not-allowed",
-                opacity: copyText ? 1 : 0.65,
-              }}
+              className={styles.copy}
               disabled={!copyText}
               aria-label="Copy logs"
             >
@@ -170,85 +147,24 @@ export function LogPanel({ log, running = false }: LogPanelProps) {
             </button>
           </div>
 
-          <div
-            ref={scrollRef}
-            onScroll={onLogScroll}
-            style={{
-              overflowY: "auto",
-              overflowX: "hidden",
-              flex: 1,
-              padding: "8px 0",
-            }}
-          >
+          <div ref={scrollRef} onScroll={onLogScroll} className={styles.stream}>
             {renderTruncated && (
-              <div
-                style={{
-                  margin: "0 14px 8px",
-                  padding: "7px 10px",
-                  borderRadius: 6,
-                  border: `1px solid ${C.border}`,
-                  background: C.surfaceAlt,
-                  color: C.textMuted,
-                  fontSize: 11,
-                  fontFamily: F.sans,
-                }}
-              >
+              <div className={styles.truncation}>
                 Showing last {renderLines.length} lines to keep the UI responsive.
               </div>
             )}
-            {renderedEntries.map(({ key, line, style: s }) => (
-              <div
-                key={key}
-                style={{
-                  display: "flex",
-                  padding: "3px 14px",
-                  background: s.bg,
-                  fontFamily: F.mono,
-                  fontSize: 13,
-                  lineHeight: 1.75,
-                }}
-              >
-                <span
-                  style={{
-                    color: s.color,
-                    fontWeight: 600,
-                    marginRight: 14,
-                    flexShrink: 0,
-                    fontSize: 11,
-                    opacity: 0.75,
-                    minWidth: 52,
-                  }}
-                >
-                  [{s.pre}]
+            {renderedEntries.map(({ key, line }) => (
+              <div key={key} className={styles.line} data-kind={line.type}>
+                <span className={styles.severity}>
+                  [{LOG_PREFIX[line.type] || LOG_PREFIX.info}]
                 </span>
-                <span
-                  style={{
-                    color: C.textMuted,
-                    marginRight: 10,
-                    flexShrink: 0,
-                    fontSize: 11,
-                    minWidth: 58,
-                  }}
-                >
-                  {formatLineTimestamp(line.ts || log.ts)}
-                </span>
-                <span style={{ color: s.color }}>{line.msg}</span>
+                <span className={styles.timestamp}>{formatLineTimestamp(line.ts || log.ts)}</span>
+                <span>{line.msg}</span>
               </div>
             ))}
           </div>
           {copyTruncated && (
-            <div
-              style={{
-                padding: "6px 14px 9px",
-                borderTop: `1px solid ${C.border}`,
-                color: C.textMuted,
-                fontSize: 10.5,
-                fontFamily: F.sans,
-                background: C.surface,
-              }}
-            >
-              Copy includes last {copyLines.length} lines.
-            </div>
+            <div className={styles.copyNote}>Copy includes last {copyLines.length} lines.</div>
           )}
         </>
       )}

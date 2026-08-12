@@ -1,3 +1,4 @@
+import { PAGE } from "@core/app-shell/pages";
 import { experimentValidation, expId } from "@core/ree/experimentRules";
 import type { ExperimentResourceEstimates, ReeExperiment } from "@core/ree/ReeSpec";
 import type { LogEntry } from "@core/ree/ReeTypes";
@@ -12,7 +13,7 @@ import {
   experimentVerifyScriptPath,
 } from "@shell/data/scriptTemplates/paths";
 import { Ic } from "@shell/ui/shared/components/Icon";
-import { failureTone } from "@shell/ui/theme/appearance";
+import { failureTone, stageTone } from "@shell/ui/theme/appearance";
 import {
   lgActionButton,
   lgColors,
@@ -313,21 +314,9 @@ export function ExperimentHeaderActions({
         disabled={!canRun || isRunning}
         iconSize={12}
         title={runTitle}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          border: "1px solid rgba(79, 70, 229, 0.45)",
-          background:
-            canRun && !isRunning ? "rgba(238, 242, 255, 0.9)" : "rgba(241, 245, 249, 0.72)",
-          color: canRun && !isRunning ? lgColors.blue : lgColors.textMuted,
-          padding: "6px 14px",
-          borderRadius: 8,
-          fontWeight: 700,
-          fontSize: 12,
-          cursor: canRun && !isRunning ? "pointer" : "not-allowed",
-          opacity: canRun && !isRunning ? 1 : 0.45,
-        }}
+        variant="secondary"
+        size="small"
+        tint={stageTone(PAGE.EXPERIMENTS)}
         onRun={onRun}
         onCancel={onCancel}
       />

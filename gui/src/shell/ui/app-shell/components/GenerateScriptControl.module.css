@@ -1,0 +1,60 @@
+/* The "generate from repository" affordance: a button, the outcome it reports,
+ * and the decision graph behind it. */
+
+.control {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/* The outcome's tone is the reading, not a colour the caller picks: `ok` means
+ * the script was applied outright, `info` that it wants confirmation, `warn`
+ * that nothing could be inferred, `error` that generation failed. */
+.status {
+  font-size: var(--text-md);
+}
+
+.status[data-tone="ok"] {
+  color: var(--badge-success-ink);
+}
+
+.status[data-tone="info"] {
+  color: var(--palette-indigo-800);
+}
+
+.status[data-tone="warn"] {
+  color: var(--badge-warning-ink);
+}
+
+.status[data-tone="error"] {
+  color: var(--notice-danger-ink);
+}
+
+.summary {
+  cursor: pointer;
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  color: var(--field-hint-ink);
+}
+
+.trace {
+  margin: var(--space-2) 0 0;
+  padding: 10px 12px;
+  overflow-x: auto;
+  white-space: pre;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--surface-card-edge);
+  background: var(--surface-sunken-bg);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--palette-slate-600);
+}

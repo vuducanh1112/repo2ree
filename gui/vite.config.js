@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { playwright } from '@vitest/browser-playwright'
 import { fileURLToPath, URL } from 'node:url'
 
 export default defineConfig({
@@ -34,8 +35,25 @@ export default defineConfig({
         test: {
           name: "component",
           include: ["src/**/*.test.tsx"],
+          exclude: ["src/**/*.browser.test.tsx"],
           environment: "jsdom",
           setupFiles: ["./tests/componentSetup.ts"],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "interaction",
+          include: ["src/**/*.browser.test.tsx"],
+          setupFiles: ["./tests/componentSetup.ts"],
+          browser: {
+            enabled: true,
+            headless: true,
+            provider: playwright({
+              launchOptions: { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH },
+            }),
+            instances: [{ browser: "chromium" }],
+          },
         },
       },
     ],

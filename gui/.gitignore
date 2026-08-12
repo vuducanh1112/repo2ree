@@ -2,6 +2,10 @@ node_modules/
 dist/
 .DS_Store
 
+# Browser-mode test attachments (failure screenshots). Written next to the
+# suite by the `interaction` project; regenerated on every failing run.
+.vitest-attachments/
+
 # Vite's dependency pre-bundling cache. Ignored explicitly because it was not:
 # the frontend -> gui rename swept an untracked frontend/.vite/deps/ into the
 # commit, which is how a stale frontend/ outlived the directory it belonged to.

@@ -15,9 +15,9 @@ type CssVarName = `--${string}`;
  * caller write one object for both the "measured" and "not yet measured"
  * renders rather than branching on the whole `style` prop.
  *
- * Neither name is exported: call sites pass an object literal, and the literal
- * key type is what makes `--windowX` a compile error. */
-type CssVarValues = Readonly<Partial<Record<CssVarName, string | number>>>;
+ * Exported so a primitive can accept calculated properties as a typed prop —
+ * `vars?: CssVarValues` — instead of an open `style` prop it cannot police. */
+export type CssVarValues = Readonly<Partial<Record<CssVarName, string | number>>>;
 
 /** Pack calculated custom properties into a `style` prop.
  *

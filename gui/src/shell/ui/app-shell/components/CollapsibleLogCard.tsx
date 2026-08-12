@@ -1,7 +1,8 @@
 import type { LogEntry } from "@core/ree/ReeTypes";
 import { useEffect, useState } from "react";
 import { Ic } from "../../shared/components/Icon";
-import { lgColors, lgContentCard, lgStyles } from "../../theme/lightGlassTheme";
+import { Surface } from "../../shared/components/Surface";
+import styles from "./CollapsibleLogCard.module.css";
 import { LogPanel } from "./logPanel";
 
 interface CollapsibleLogCardProps {
@@ -22,57 +23,41 @@ export function CollapsibleLogCard({ log, running, title, maxHeight }: Collapsib
   const hint = running ? "Streaming" : log ? "Latest run" : "No runs yet";
 
   return (
-    <div style={lgContentCard()}>
+    <Surface>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          width: "100%",
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          padding: 0,
-          gap: 8,
-        }}
+        className={styles.toggle}
+        aria-expanded={show}
       >
-        <span
-          style={{
-            ...lgStyles.label,
-            gap: 8,
-            color: running ? lgColors.blue : lgColors.text,
-          }}
-        >
+        <span className={styles.heading} data-running={running || undefined}>
           {running && (
-            <span style={{ display: "flex", color: lgColors.blue }}>{Ic.loader(14)}</span>
+            <span aria-hidden className={styles.spinner}>
+              {Ic.loader(14)}
+            </span>
           )}
           {title}
-          <span style={{ color: lgColors.textMuted, fontSize: 11, fontWeight: 400 }}>{hint}</span>
+          <span className={styles.hint}>{hint}</span>
         </span>
-        <span style={{ color: lgColors.textMuted, display: "flex" }}>
+        <span aria-hidden className={styles.chevron}>
           {show ? Ic.chevD(14) : Ic.chevR(14)}
         </span>
       </button>
       {show && (
-        <div
-          style={{
-            marginTop: 10,
-            ...(maxHeight
-              ? {
-                  maxHeight,
-                  overflow: "auto",
-                  borderRadius: 8,
-                  border: "1px solid rgba(125, 211, 252, 0.36)",
-                  background: "rgba(15, 23, 42, 0.04)",
-                }
-              : null),
-          }}
-        >
-          <LogPanel log={log} running={running} />
+        <div className={styles.body} data-bounded={maxHeight ? true : undefined}>
+          {maxHeight ? (
+            <Surface
+              variant="sunken"
+              spacing="flush"
+              vars={{ "--log-max-height": `${maxHeight}px` }}
+            >
+              <LogPanel log={log} running={running} />
+            </Surface>
+          ) : (
+            <LogPanel log={log} running={running} />
+          )}
         </div>
       )}
-    </div>
+    </Surface>
   );
 }

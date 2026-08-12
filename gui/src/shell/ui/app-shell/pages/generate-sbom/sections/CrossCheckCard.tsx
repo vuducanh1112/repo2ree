@@ -5,12 +5,7 @@ import { useApiRuntime } from "@shell/data/apiRuntime";
 import { useEvaluateReportQuery } from "@shell/data/evaluate/queries";
 import { useStartReeRunMutation } from "@shell/data/runs/mutations";
 import { useReeRunsQuery } from "@shell/data/runs/queries";
-import {
-  lgAccentActionButton,
-  lgColors,
-  lgStatusBadge,
-  lgStyles,
-} from "@shell/ui/theme/lightGlassTheme";
+import { lgColors, lgStatusBadge, lgStyles } from "@shell/ui/theme/lightGlassTheme";
 import { F } from "@shell/ui/theme/theme";
 import { RunActionButton } from "../../../components/RunActionButton";
 
@@ -56,7 +51,8 @@ export function CrossCheckCard({ sbomReady, color }: { sbomReady: boolean; color
           running={checking}
           disabled={disabled}
           iconSize={13}
-          style={lgAccentActionButton(color, disabled)}
+          variant="accent"
+          tint={color}
           onRun={() => startRun.mutate({ scriptKey: "crosscheck" })}
         />
       </div>
