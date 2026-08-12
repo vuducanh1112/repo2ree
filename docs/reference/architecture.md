@@ -16,6 +16,9 @@ For product evolution, see
 
 ## System context
 
+For a focused description of this diagram's scope, elements, and relationships,
+see the [system-context view](c4/system-context.md).
+
 repo2ree sits between the people authoring or reviewing a REE, its source hosting,
 and the infrastructure that exercises reproducibility. At this level the
 GUI, API, agent, and core are deliberately hidden inside the repo2ree software
@@ -34,6 +37,9 @@ We maintain the diagrams with the documentation; see the
 
 ## Container view
 
+For a focused description of this diagram's runtime units and state boundaries,
+see the [container view](c4/containers.md).
+
 The container view opens the repo2ree system boundary. It distinguishes runtime
 units from libraries: the API hosts `repo2ree_supervisor` in-process, while the
 workbench executor loads `repo2ree_core` in-process. Neither library is an
@@ -47,6 +53,10 @@ underlying Docker host is deployment infrastructure and therefore does not
 appear as another application container in this view.
 
 ## Component views
+
+The diagrams have focused companion pages for the
+[API/control plane](c4/component-api-control-plane.md) and
+[workbench agent](c4/component-agent.md).
 
 The API/control-plane view groups the thin HTTP adapters, orchestration,
 transfers, state, and the supervisor components that select agents and dispatch
@@ -65,6 +75,10 @@ source files. The generated import graphs remain the detailed source-level
 views.
 
 ## Dynamic view: execute one pipeline stage
+
+The two sequences have focused companion pages for
+[stage execution](c4/dynamic-stage-execution.md) and
+[review reproduction](c4/dynamic-review-reproduction.md).
 
 Evaluation, build, SBOM, activation, experiment, and review stages all use the
 same control-to-execution interaction. The operation runs asynchronously: the
