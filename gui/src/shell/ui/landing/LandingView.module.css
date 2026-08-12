@@ -1,0 +1,165 @@
+/* The entry screen: a card of actions, and the three reproducibility axes
+ * named underneath. */
+
+.screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--space-6);
+  background: var(--chrome-bg);
+}
+
+.column {
+  width: 100%;
+  max-width: 430px;
+  animation: landing-fade-up 0.4s ease;
+}
+
+.masthead {
+  margin-bottom: 28px;
+  text-align: center;
+}
+
+.mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  margin-bottom: 14px;
+  border-radius: 13px;
+  border: 1px solid var(--chrome-accent-border);
+  background: var(--chrome-accent-bg);
+  color: var(--chrome-accent);
+}
+
+.title {
+  margin-bottom: var(--space-2);
+  font-size: 28px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.5px;
+  color: var(--chrome-text);
+}
+
+.tagline {
+  font-size: var(--text-lg);
+  line-height: 1.6;
+  color: var(--chrome-text-mid);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 22px;
+  border-radius: 14px;
+  border: 1px solid var(--chrome-border);
+  background: var(--chrome-surface);
+  box-shadow: var(--shadow-landing-card);
+}
+
+.sectionLabel {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--chrome-text-muted);
+}
+
+/* --- The action buttons --------------------------------------------------
+ * Not the glass `Button`: this screen is app chrome, not a glass page, and
+ * these are full-width stacked choices rather than inline controls. */
+
+.action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 9px var(--space-4);
+  border-radius: 10px;
+  border: 1px solid var(--chrome-border);
+  background: transparent;
+  color: var(--chrome-text-mid);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
+}
+
+.action[data-emphasis="primary"] {
+  gap: 5px;
+  padding: 10px var(--space-4);
+  border: none;
+  background: var(--chrome-accent);
+  color: var(--palette-white);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.action:not([data-emphasis="primary"]):hover {
+  border-color: var(--chrome-border-strong);
+  background: var(--chrome-surface-alt);
+}
+
+.action[data-emphasis="primary"]:hover {
+  filter: brightness(0.95);
+}
+
+.action:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.actionIcon {
+  display: flex;
+}
+
+/* --- The axes legend ------------------------------------------------------ */
+
+.axes {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.axis {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--chrome-text-muted);
+}
+
+.axisDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--axis-tint);
+}
+
+@keyframes landing-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .action {
+    transition: none;
+  }
+}

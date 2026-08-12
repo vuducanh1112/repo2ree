@@ -5,7 +5,7 @@ import { useAgents } from "@shell/data/agents/agents";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Ic } from "../shared/components/Icon";
-import { C, F } from "../theme/theme";
+import styles from "./LabLocationView.module.css";
 
 interface LabLocationViewProps {
   onBack: () => void;
@@ -34,36 +34,17 @@ export function LabLocationView({ onBack }: LabLocationViewProps) {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, padding: 24, fontFamily: F.sans }}>
-      <div style={{ maxWidth: 620, margin: "0 auto", animation: "fadeUp 0.4s ease" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-          <button
-            type="button"
-            onClick={onBack}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-              background: C.surface,
-              border: `1px solid ${C.border}`,
-              borderRadius: 8,
-              padding: "7px 12px",
-              color: C.textMid,
-              fontSize: 13,
-              cursor: "pointer",
-            }}
-          >
+    <div className={styles.screen}>
+      <div className={styles.column}>
+        <div className={styles.backRow}>
+          <button type="button" onClick={onBack} className={styles.back}>
             {Ic.arrowLeft(15)} Back
           </button>
         </div>
 
-        <div style={{ marginBottom: 18 }}>
-          <h1
-            style={{ fontSize: 22, fontWeight: 600, color: C.text, letterSpacing: -0.4, margin: 0 }}
-          >
-            Choose a lab location
-          </h1>
-          <p style={{ fontSize: 13, color: C.textMuted, margin: "4px 0 0", lineHeight: 1.6 }}>
+        <div className={styles.heading}>
+          <h1 className={styles.title}>Choose a lab location</h1>
+          <p className={styles.subtitle}>
             Pick the agent that will host this REE's workbench. The REE stays pinned to it.
           </p>
         </div>
@@ -78,7 +59,7 @@ export function LabLocationView({ onBack }: LabLocationViewProps) {
         ) : !agents || agents.length === 0 ? (
           <EmptyState />
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div className={styles.choices}>
             {agents.map((agent) => (
               <AgentChoice
                 key={agent.id}
@@ -105,78 +86,30 @@ function AgentChoice({
 }) {
   const uptime = formatDuration(connectedDurationMs(agent, nowMs));
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 14,
-        width: "100%",
-        textAlign: "left",
-        background: C.surface,
-        border: `1px solid ${C.border}`,
-        borderRadius: 12,
-        padding: "14px 16px",
-        cursor: "pointer",
-        boxShadow: "0 1px 6px rgba(0,0,0,0.04)",
-        fontFamily: F.sans,
-      }}
-    >
-      <span
-        style={{
-          width: 38,
-          height: 38,
-          borderRadius: 10,
-          flexShrink: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: C.accentBg,
-          border: `1px solid ${C.accentBorder}`,
-          color: C.accent,
-        }}
-      >
+    <button type="button" onClick={onSelect} className={styles.choice}>
+      <span aria-hidden className={styles.choiceIcon}>
         {Ic.cpu(18)}
       </span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>
-          {agent.hostname || agent.id}
-        </div>
-        <div style={{ fontSize: 12, color: C.textMuted, fontFamily: F.mono, marginTop: 2 }}>
+      <div className={styles.choiceBody}>
+        <div className={styles.choiceName}>{agent.hostname || agent.id}</div>
+        <div className={styles.choiceMeta}>
           {agent.dockerMode || "—"} · {agent.version || "—"} · up {uptime}
         </div>
       </div>
-      <span
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          color: C.done,
-          fontSize: 12,
-          flexShrink: 0,
-        }}
-      >
-        <span style={{ width: 7, height: 7, borderRadius: "50%", background: C.done }} />
+      <span className={styles.connected}>
+        <span aria-hidden className={styles.connectedDot} />
         connected
       </span>
-      <span style={{ color: C.textMuted, display: "flex", flexShrink: 0 }}>{Ic.chevR(16)}</span>
+      <span aria-hidden className={styles.chevron}>
+        {Ic.chevR(16)}
+      </span>
     </button>
   );
 }
 
 function Notice({ text, tone }: { text: string; tone?: "error" }) {
   return (
-    <div
-      style={{
-        background: C.surface,
-        border: `1px solid ${C.border}`,
-        borderRadius: 12,
-        padding: "18px 18px",
-        fontSize: 13,
-        color: tone === "error" ? C.error : C.textMuted,
-      }}
-    >
+    <div className={styles.notice} data-tone={tone}>
       {text}
     </div>
   );
@@ -184,29 +117,15 @@ function Notice({ text, tone }: { text: string; tone?: "error" }) {
 
 function EmptyState() {
   return (
-    <div
-      style={{
-        background: C.surface,
-        border: `1px solid ${C.border}`,
-        borderRadius: 12,
-        padding: "32px 18px",
-        textAlign: "center",
-      }}
-    >
-      <div
-        style={{ color: C.textMuted, display: "flex", justifyContent: "center", marginBottom: 10 }}
-      >
+    <div className={styles.empty}>
+      <div aria-hidden className={styles.emptyIcon}>
         {Ic.cpu(24)}
       </div>
-      <div style={{ fontSize: 14, fontWeight: 500, color: C.textMid, marginBottom: 4 }}>
-        No agents connected
-      </div>
-      <div style={{ fontSize: 12, color: C.textMuted, lineHeight: 1.6 }}>
+      <div className={styles.emptyTitle}>No agents connected</div>
+      <div className={styles.emptyHint}>
         A workbench needs an agent to host it. Start one pointing at this control plane:
         <br />
-        <code style={{ fontFamily: F.mono, color: C.textMid }}>
-          WORKBENCH_API_WS_URL=ws://…/agent/connect python -m repo2ree_agent
-        </code>
+        <code>WORKBENCH_API_WS_URL=ws://…/agent/connect python -m repo2ree_agent</code>
       </div>
     </div>
   );

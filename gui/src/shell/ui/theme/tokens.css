@@ -65,6 +65,7 @@
   /* --- Palette: slate (navigation chrome, glass ink) ------------------- */
   --palette-slate-200: #e2e8f0;
   --palette-slate-400: #94a3b8;
+  --palette-slate-400-soft: rgb(148 163 184 / 85%);
   --palette-slate-500: #64748b;
   --palette-slate-600: #475569;
   --palette-slate-800: #1e293b;
@@ -136,9 +137,11 @@
   --palette-vermilion-500: #e4572e;
   --palette-orange-900: #7c2d12;
   --palette-red-050: #fef2f2;
+  --palette-red-100: #fee2e2;
   --palette-red-300: #fca5a5;
   --palette-red-600: #dc2626;
   --palette-red-700: #b91c1c;
+  --palette-red-800: #991b1b;
   --palette-red-900: #7f1d1d;
   --palette-rose-400: #fb7185;
   --palette-rose-700: #be123c;
@@ -158,6 +161,10 @@
    * and not something a component appends.
    */
   --palette-film-white-soft: rgb(255 255 255 / 54%);
+  --palette-film-selected: rgb(224 242 254 / 92%);
+  --palette-film-hover: rgb(239 246 255 / 70%);
+  --palette-film-viewer: rgb(248 250 252 / 62%);
+  --palette-film-callout: rgb(255 255 255 / 60%);
   --palette-film-window: rgb(255 255 255 / 82%);
   --palette-film-scrim: rgb(225 230 238 / 45%);
   --palette-film-white: rgb(255 255 255 / 72%);
@@ -176,6 +183,7 @@
   --palette-edge-sky-pale-soft: rgb(125 211 252 / 48%);
   --palette-edge-sky-pale-faint: rgb(125 211 252 / 38%);
   --palette-edge-sky-firm: rgb(14 165 233 / 58%);
+  --palette-edge-sky-half: rgb(14 165 233 / 50%);
   --palette-edge-sky-pale-strong: rgb(125 211 252 / 58%);
   --palette-film-sky-soft: rgb(240 249 255 / 72%);
   --palette-film-slate-soft: rgb(248 250 252 / 66%);
@@ -206,6 +214,10 @@
   --shadow-window-focus: 0 24px 60px rgb(13 17 23 / 22%);
   --shadow-window-dock: 0 18px 44px rgb(13 17 23 / 16%);
   --shadow-console: 0 18px 48px rgb(13 17 23 / 12%);
+  --shadow-toast: 0 2px 8px rgb(0 0 0 / 10%);
+  --shadow-landing-card: 0 2px 12px rgb(0 0 0 / 5%);
+  --shadow-choice-card: 0 1px 6px rgb(0 0 0 / 4%);
+  --shadow-knob: 0 1px 3px rgb(0 0 0 / 25%);
   --shadow-bench-tray: inset 0 0 0 1px rgb(255 255 255 / 50%), inset 0 18px 60px rgb(13 17 23 / 5%);
   --shadow-lab-bench: inset 0 1px 0 rgb(255 255 255 / 70%);
   --shadow-subpanel: 0 1px 2px rgb(15 23 42 / 5%), inset 0 1px 0 rgb(255 255 255 / 80%);

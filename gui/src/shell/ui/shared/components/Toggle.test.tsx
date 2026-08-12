@@ -3,20 +3,20 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Toggle } from "./Toggle";
 
-const color = "#2563eb";
+const tint = "var(--stage-seal-line)";
 
 describe("Toggle", () => {
   it("exposes its state as a pressed button rather than as styling", async () => {
-    const { rerender } = render(<Toggle on={false} color={color} onChange={() => {}} />);
+    const { rerender } = render(<Toggle on={false} tint={tint} onChange={() => {}} />);
     expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "false");
 
-    rerender(<Toggle on={true} color={color} onChange={() => {}} />);
+    rerender(<Toggle on={true} tint={tint} onChange={() => {}} />);
     expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "true");
   });
 
   it("reports a click without changing its own state", async () => {
     const onChange = vi.fn();
-    render(<Toggle on={false} color={color} onChange={onChange} />);
+    render(<Toggle on={false} tint={tint} onChange={onChange} />);
 
     await userEvent.click(screen.getByRole("button"));
 
@@ -27,7 +27,7 @@ describe("Toggle", () => {
 
   it("does not report clicks while disabled", async () => {
     const onChange = vi.fn();
-    render(<Toggle on={false} color={color} disabled onChange={onChange} />);
+    render(<Toggle on={false} tint={tint} disabled onChange={onChange} />);
 
     await userEvent.click(screen.getByRole("button"));
 
@@ -36,7 +36,7 @@ describe("Toggle", () => {
   });
 
   it("names itself from `title` so it is addressable without a visible label", () => {
-    render(<Toggle on={true} color={color} title="Show archived runs" onChange={() => {}} />);
+    render(<Toggle on={true} tint={tint} title="Show archived runs" onChange={() => {}} />);
     expect(screen.getByRole("button", { name: "Show archived runs" })).toBeInTheDocument();
   });
 });

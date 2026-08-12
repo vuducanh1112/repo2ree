@@ -1,0 +1,76 @@
+/* The read-only file preview. Its lightweight Dockerfile/shell highlighter
+ * classifies a line into one of four kinds; what each kind reads as is here,
+ * not in the classifier. */
+
+.viewer {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  background: var(--tree-viewer-bg);
+}
+
+.scroll {
+  flex: 1;
+  overflow: auto;
+  padding: var(--space-2) 0;
+}
+
+.callout {
+  margin: 0 10px var(--space-2);
+  padding: var(--space-2) 10px;
+  border-radius: 6px;
+  border: 1px solid var(--tree-pane-edge);
+  background: var(--tree-callout-bg);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--field-hint-ink);
+}
+
+.line {
+  display: flex;
+  align-items: baseline;
+}
+
+.lineNumber {
+  flex-shrink: 0;
+  min-width: 40px;
+  padding-right: 14px;
+  padding-left: 10px;
+  text-align: right;
+  user-select: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--syntax-line-number);
+}
+
+.code {
+  display: block;
+  padding-right: var(--space-4);
+  white-space: pre;
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  line-height: 1.75;
+  color: var(--field-ink);
+}
+
+/* Not the file's content — a note standing in for it. */
+.code[data-muted] {
+  color: var(--field-hint-ink);
+}
+
+.code[data-syntax="comment"] {
+  color: var(--syntax-comment);
+}
+
+.code[data-syntax="keyword"] {
+  color: var(--syntax-keyword);
+}
+
+.code[data-syntax="command"] {
+  color: var(--syntax-command);
+}
+
+.code[data-syntax="string"] {
+  color: var(--syntax-string);
+}

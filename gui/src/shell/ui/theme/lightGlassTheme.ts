@@ -1,9 +1,3 @@
-// Theme for the glass "pages" surfaces — the bright, frosted page views
-// (archive, build-runtime, evaluate, experiments, files, hardware-bom,
-// metadata, seal, source). This is intentionally
-// a separate palette from the canvas/chrome tokens in ./tokens (C): the two
-// share only the font primitives (F) imported below. Keep the colors distinct.
-import type { FileTypeCategory } from "@core/workspace/PathUtils";
 import type React from "react";
 import { S_ACTION_BUTTON_BASE } from "./stylesCore";
 import { F } from "./tokens";
@@ -511,49 +505,6 @@ export function lgSuggestionButton(): React.CSSProperties {
     fontSize: 12,
     cursor: "pointer",
   };
-}
-
-// File-browser surfaces. The tree pane and viewer are translucent glass
-// floating over the page's gradient backdrop.
-export const lgTree = {
-  pane: {
-    background: "rgba(255, 255, 255, 0.55)",
-    borderColor: "rgba(125, 211, 252, 0.42)",
-  },
-  sectionBg: "rgba(248, 250, 252, 0.86)",
-  selectedBg: "rgba(224, 242, 254, 0.92)",
-  selectedText: lgColors.primaryDeep,
-  selectedBorder: "rgba(14, 165, 233, 0.5)",
-  hoverBg: "rgba(239, 246, 255, 0.7)",
-  highlightBg: lgBackgrounds.draft,
-  highlightBorder: "rgba(245, 158, 11, 0.45)",
-  highlightText: lgColors.warning,
-  viewerBg: "rgba(248, 250, 252, 0.62)",
-  viewerHeaderBg: lgBackgrounds.glassStrong,
-  chipBg: lgBackgrounds.glassStrong,
-  inputBg: lgBackgrounds.input,
-  calloutBg: "rgba(255, 255, 255, 0.6)",
-} as const;
-
-// Tints for the file viewer's lightweight Dockerfile/shell syntax highlighter.
-export const lgSyntax = {
-  lineNumber: "rgba(148, 163, 184, 0.85)",
-  comment: "#94a3b8",
-  keyword: lgColors.accent,
-  command: "#15803d",
-  string: "#b45309",
-} as const;
-
-// Presentational tint per coarse file category (see classifyFileType).
-export function lgFileTypeColor(category: FileTypeCategory): string {
-  return {
-    code: lgColors.blue,
-    data: lgColors.indigo,
-    doc: lgColors.textMid,
-    container: lgColors.cyan,
-    archive: lgColors.violet,
-    binary: lgColors.textMuted,
-  }[category];
 }
 
 // ── Stage tints ──────────────────────────────────────────────────────────────

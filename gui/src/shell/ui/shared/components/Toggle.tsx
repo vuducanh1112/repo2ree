@@ -1,33 +1,22 @@
-import type { CSSProperties } from "react";
-import { C, hoverBrightness } from "../../theme/theme";
+import { cssVars } from "../../theme/styleVars";
+import styles from "./Toggle.module.css";
 
 interface ToggleProps {
   on: boolean;
   disabled?: boolean;
-  color: string;
+  /** The tone the switch reads in when on, as a `var(--…)` reference. */
+  tint: string;
   onChange: () => void;
   title?: string;
-  width?: number;
-  height?: number;
-  knobSize?: number;
-  padding?: number;
-  offColor?: string;
-  style?: CSSProperties;
 }
 
-export function Toggle({
-  on,
-  disabled = false,
-  color,
-  onChange,
-  title,
-  width = 32,
-  height = 16,
-  knobSize = 12,
-  padding = 2,
-  offColor = C.borderMid,
-  style,
-}: ToggleProps) {
+/**
+ * A small on/off switch.
+ *
+ * The geometry props this used to take — width, height, knobSize, padding,
+ * offColor, style — are gone: one caller existed and it passed none of them.
+ */
+export function Toggle({ on, disabled = false, tint, onChange, title }: ToggleProps) {
   return (
     <button
       type="button"
@@ -35,34 +24,10 @@ export function Toggle({
       aria-pressed={on}
       disabled={disabled}
       title={title}
-      style={{
-        width,
-        height,
-        borderRadius: 99,
-        border: "none",
-        cursor: disabled ? "not-allowed" : "pointer",
-        background: on ? color : offColor,
-        position: "relative",
-        transition: "all 0.18s",
-        flexShrink: 0,
-        opacity: disabled ? 0.6 : 1,
-        ...style,
-      }}
-      {...(disabled ? {} : hoverBrightness(93))}
+      className={styles.toggle}
+      style={cssVars({ "--switch-tint": tint })}
     >
-      <div
-        style={{
-          position: "absolute",
-          top: padding,
-          left: on ? width - knobSize - padding : padding,
-          width: knobSize,
-          height: knobSize,
-          borderRadius: "50%",
-          background: "#fff",
-          transition: "left 0.18s",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
-        }}
-      />
+      <span className={styles.knob} />
     </button>
   );
 }

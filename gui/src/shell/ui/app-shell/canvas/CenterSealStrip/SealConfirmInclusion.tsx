@@ -53,7 +53,7 @@ function Row({ label, available, included, tintLine, tintInk, onToggle }: Inclus
         >
           {on ? "Included" : "Include"}
         </span>
-        <Toggle on={on} disabled={!available} color={tintLine} onChange={onToggle} />
+        <Toggle on={on} disabled={!available} tint={tintLine} onChange={onToggle} />
       </div>
     </div>
   );

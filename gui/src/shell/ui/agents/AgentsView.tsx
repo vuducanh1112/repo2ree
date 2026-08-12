@@ -1,16 +1,13 @@
 import type { Agent } from "@core/agent/Agent";
 import { connectedDurationMs, formatDuration } from "@core/agent/Agent";
 import { useAgents } from "@shell/data/agents/agents";
-import type React from "react";
 import { useEffect, useState } from "react";
 import { Ic } from "../shared/components/Icon";
-import { C, F } from "../theme/theme";
+import styles from "./AgentsView.module.css";
 
 interface AgentsViewProps {
   onBack: () => void;
 }
-
-const COLS = "1.4fr 1fr 0.8fr 0.8fr 0.9fr" as const;
 
 export function AgentsView({ onBack }: AgentsViewProps) {
   const { data: agents, isLoading, isError, error, refetch, isFetching } = useAgents();
@@ -24,19 +21,11 @@ export function AgentsView({ onBack }: AgentsViewProps) {
   }, []);
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, padding: 24, fontFamily: F.sans }}>
-      <div style={{ maxWidth: 860, margin: "0 auto", animation: "fadeUp 0.4s ease" }}>
+    <div className={styles.screen}>
+      <div className={styles.column}>
         <Header onBack={onBack} onRefresh={() => void refetch()} isFetching={isFetching} />
 
-        <div
-          style={{
-            background: C.surface,
-            border: `1px solid ${C.border}`,
-            borderRadius: 14,
-            boxShadow: "0 2px 12px rgba(0,0,0,0.05)",
-            overflow: "hidden",
-          }}
-        >
+        <div className={styles.table}>
           <HeaderRow />
           {isLoading ? (
             <StatusRow text="Loading agents…" />
@@ -66,52 +55,20 @@ function Header({
   isFetching: boolean;
 }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-      <button
-        type="button"
-        onClick={onBack}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 4,
-          background: C.surface,
-          border: `1px solid ${C.border}`,
-          borderRadius: 8,
-          padding: "7px 12px",
-          color: C.textMid,
-          fontSize: 13,
-          cursor: "pointer",
-        }}
-      >
+    <div className={styles.header}>
+      <button type="button" onClick={onBack} className={styles.chromeButton}>
         {Ic.arrowLeft(15)} Back
       </button>
-      <div style={{ flex: 1 }}>
-        <h1
-          style={{ fontSize: 22, fontWeight: 600, color: C.text, letterSpacing: -0.4, margin: 0 }}
-        >
-          Workbench Agents
-        </h1>
-        <p style={{ fontSize: 13, color: C.textMuted, margin: "2px 0 0" }}>
-          Runners currently dialed into this control plane
-        </p>
+      <div className={styles.headings}>
+        <h1 className={styles.title}>Workbench Agents</h1>
+        <p className={styles.subtitle}>Runners currently dialed into this control plane</p>
       </div>
       <button
         type="button"
         onClick={onRefresh}
         title="Refresh"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 5,
-          background: C.surface,
-          border: `1px solid ${C.border}`,
-          borderRadius: 8,
-          padding: "7px 12px",
-          color: C.textMid,
-          fontSize: 13,
-          cursor: "pointer",
-          opacity: isFetching ? 0.6 : 1,
-        }}
+        className={styles.chromeButton}
+        data-busy={isFetching || undefined}
       >
         {Ic.refresh(15)} Refresh
       </button>
@@ -120,29 +77,13 @@ function Header({
 }
 
 function HeaderRow() {
-  const cell: React.CSSProperties = {
-    fontSize: 11,
-    fontWeight: 600,
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-    color: C.textMuted,
-  };
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: COLS,
-        gap: 12,
-        padding: "12px 18px",
-        borderBottom: `1px solid ${C.border}`,
-        background: C.surfaceAlt,
-      }}
-    >
-      <div style={cell}>Host</div>
-      <div style={cell}>Agent ID</div>
-      <div style={cell}>Runtime</div>
-      <div style={cell}>Version</div>
-      <div style={cell}>Connected</div>
+    <div className={styles.row} data-kind="head">
+      <div className={styles.headCell}>Host</div>
+      <div className={styles.headCell}>Agent ID</div>
+      <div className={styles.headCell}>Runtime</div>
+      <div className={styles.headCell}>Version</div>
+      <div className={styles.headCell}>Connected</div>
     </div>
   );
 }
@@ -150,50 +91,23 @@ function HeaderRow() {
 function AgentRow({ agent, nowMs }: { agent: Agent; nowMs: number }) {
   const uptime = formatDuration(connectedDurationMs(agent, nowMs));
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: COLS,
-        gap: 12,
-        padding: "14px 18px",
-        borderBottom: `1px solid ${C.border}`,
-        alignItems: "center",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-        <span style={{ color: C.done, display: "flex" }} title="Connected">
+    <div className={styles.row}>
+      <div className={styles.host}>
+        <span className={styles.hostIcon} title="Connected">
           {Ic.cpu(15)}
         </span>
-        <span
-          style={{
-            fontSize: 13,
-            fontWeight: 500,
-            color: C.text,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
-          {agent.hostname || "—"}
-        </span>
+        <span className={styles.hostName}>{agent.hostname || "—"}</span>
       </div>
-      <div
-        style={{
-          fontSize: 12,
-          color: C.textMid,
-          fontFamily: F.mono,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        }}
-      >
+      <div className={styles.cell} data-flavor="code">
         {agent.id}
       </div>
-      <div style={{ fontSize: 12, color: C.textMid }}>{agent.dockerMode || "—"}</div>
-      <div style={{ fontSize: 12, color: C.textMid, fontFamily: F.mono }}>
+      <div className={styles.cell}>{agent.dockerMode || "—"}</div>
+      <div className={styles.cell} data-flavor="code">
         {agent.version || "—"}
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <span style={{ width: 7, height: 7, borderRadius: "50%", background: C.done }} />
-        <span style={{ fontSize: 12, color: C.textMid }}>{uptime}</span>
+      <div className={styles.uptime}>
+        <span aria-hidden className={styles.uptimeDot} />
+        <span className={styles.cell}>{uptime}</span>
       </div>
     </div>
   );
@@ -201,13 +115,7 @@ function AgentRow({ agent, nowMs }: { agent: Agent; nowMs: number }) {
 
 function StatusRow({ text, tone }: { text: string; tone?: "error" }) {
   return (
-    <div
-      style={{
-        padding: "20px 18px",
-        fontSize: 13,
-        color: tone === "error" ? C.error : C.textMuted,
-      }}
-    >
+    <div className={styles.statusRow} data-tone={tone}>
       {text}
     </div>
   );
@@ -215,21 +123,15 @@ function StatusRow({ text, tone }: { text: string; tone?: "error" }) {
 
 function EmptyState() {
   return (
-    <div style={{ padding: "32px 18px", textAlign: "center" }}>
-      <div
-        style={{ color: C.textMuted, display: "flex", justifyContent: "center", marginBottom: 10 }}
-      >
+    <div className={styles.empty}>
+      <div aria-hidden className={styles.emptyIcon}>
         {Ic.cpu(24)}
       </div>
-      <div style={{ fontSize: 14, fontWeight: 500, color: C.textMid, marginBottom: 4 }}>
-        No agents connected
-      </div>
-      <div style={{ fontSize: 12, color: C.textMuted, lineHeight: 1.6 }}>
+      <div className={styles.emptyTitle}>No agents connected</div>
+      <div className={styles.emptyHint}>
         Start one pointing at this control plane:
         <br />
-        <code style={{ fontFamily: F.mono, color: C.textMid }}>
-          WORKBENCH_API_WS_URL=ws://…/agent/connect python -m repo2ree_agent
-        </code>
+        <code>WORKBENCH_API_WS_URL=ws://…/agent/connect python -m repo2ree_agent</code>
       </div>
     </div>
   );

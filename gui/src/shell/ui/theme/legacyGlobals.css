@@ -3,11 +3,9 @@
  * Everything here comes from the runtime-injected `GLOBAL_CSS` string and is
  * still global only because its owners have not been converted yet:
  *
- *  - the three keyframes left are referenced by name from inline `animation`
- *    styles in components that have not been converted yet. `dockIn`,
- *    `growIn`, `labDriftA`, `labDriftB` and `labScan` have gone to their
- *    owners' modules; `spin`, `fadeUp` and `slideIn` follow when the last of
- *    their consumers converts;
+ *  - `spin` is the last keyframe here, still referenced by name from an inline
+ *    `animation` style in the seal card. Every other keyframe has gone to the
+ *    module of the component that owns it;
  *  - the blanket button hover/active rules still dress every control that has
  *    not become a `Button` yet.
  *
@@ -27,43 +25,6 @@
 @keyframes spin {
   to {
     transform: rotate(360deg);
-  }
-}
-
-@keyframes fadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateX(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes cradlePulse {
-  0%,
-  100% {
-    opacity: 0.45;
-    transform: translate(-50%, -50%) scale(1);
-  }
-
-  50% {
-    opacity: 0.8;
-    transform: translate(-50%, -50%) scale(1.04);
   }
 }
 

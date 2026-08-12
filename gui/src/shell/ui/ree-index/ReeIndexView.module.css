@@ -1,0 +1,253 @@
+/* The durable record of what this control plane has sealed, and where each one
+ * was deposited. Outlives the workbench that authored it.
+ *
+ * Shares the agent table's chrome shape but not its module: the two are
+ * different tables of different things, and folding them together would mean a
+ * variant per column set. */
+
+.screen {
+  min-height: 100vh;
+  padding: var(--space-6);
+  background: var(--chrome-bg);
+  font-family: var(--font-sans);
+}
+
+.column {
+  max-width: 980px;
+  margin: 0 auto;
+  animation: ree-index-fade-up 0.4s ease;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.headings {
+  flex: 1;
+}
+
+.title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.4px;
+  color: var(--chrome-text);
+}
+
+.subtitle {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--chrome-text-muted);
+}
+
+.chromeButton {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px var(--space-3);
+  border-radius: var(--radius-control);
+  border: 1px solid var(--chrome-border);
+  background: var(--chrome-surface);
+  color: var(--chrome-text-mid);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.chromeButton:hover {
+  border-color: var(--chrome-border-strong);
+}
+
+.chromeButton:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* The filter is a toggle, so it says so rather than only looking pressed. */
+.chromeButton[aria-pressed="true"] {
+  border-color: var(--chrome-accent-border);
+  background: var(--chrome-accent-bg);
+  color: var(--chrome-accent);
+}
+
+.chromeButton[data-busy] {
+  opacity: 0.6;
+}
+
+.table {
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid var(--chrome-border);
+  background: var(--chrome-surface);
+  box-shadow: var(--shadow-landing-card);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1.5fr 0.8fr 1.1fr 1.5fr;
+  gap: var(--space-3);
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--chrome-border);
+}
+
+.row[data-kind="head"] {
+  padding: var(--space-3) 18px;
+  background: var(--chrome-surface-alt);
+}
+
+.headCell {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--chrome-text-muted);
+}
+
+.subject {
+  min-width: 0;
+}
+
+.subjectName {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.sealIcon {
+  display: flex;
+  color: var(--chrome-text-muted);
+}
+
+/* Deposited somewhere: the seal reads as settled rather than merely recorded. */
+.sealIcon[data-deposited] {
+  color: var(--status-ok);
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: var(--weight-medium);
+  color: var(--chrome-text);
+}
+
+/* The digest is the identity; the name is only a label, and two nodes can
+ * disagree about it while meaning the same REE. */
+.digest {
+  margin-top: 3px;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--chrome-text-muted);
+}
+
+.cell {
+  font-size: var(--text-md);
+  color: var(--chrome-text-mid);
+}
+
+.muted {
+  font-size: var(--text-md);
+  color: var(--chrome-text-muted);
+}
+
+.archives {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.archiveBadge {
+  padding: 2px 7px;
+  border-radius: 6px;
+  border: 1px solid var(--chrome-accent-border);
+  background: var(--chrome-accent-bg);
+  color: var(--chrome-accent);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.identifier {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  color: var(--chrome-text-mid);
+}
+
+/* Linkable only when the archive said where the record lives. */
+.identifier[data-linked] {
+  color: var(--chrome-accent);
+}
+
+.recordLink {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  text-decoration: none;
+}
+
+.recordLink:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.externalIcon {
+  display: flex;
+  flex-shrink: 0;
+  color: var(--chrome-text-muted);
+}
+
+.statusRow {
+  padding: var(--space-5) 18px;
+  font-size: 13px;
+  color: var(--chrome-text-muted);
+}
+
+.statusRow[data-tone="error"] {
+  color: var(--status-fault);
+}
+
+.empty {
+  padding: var(--space-8) 18px;
+  text-align: center;
+}
+
+.emptyIcon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 10px;
+  color: var(--chrome-text-muted);
+}
+
+.emptyTitle {
+  margin-bottom: var(--space-1);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-medium);
+  color: var(--chrome-text-mid);
+}
+
+.emptyHint {
+  font-size: var(--text-md);
+  line-height: 1.6;
+  color: var(--chrome-text-muted);
+}
+
+@keyframes ree-index-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

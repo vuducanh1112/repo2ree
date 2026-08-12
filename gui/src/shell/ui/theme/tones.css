@@ -219,6 +219,24 @@
   --option-marker: var(--palette-sky-500);
   --option-marker-edge: var(--palette-edge-slate);
 
+  /* Transient notification. Its three readings are the ones a toast has: it
+   * worked, it did not, or here is something you should know. */
+  --toast-info-bg: var(--palette-blue-100);
+  --toast-info-edge: var(--palette-blue-300);
+  --toast-info-ink: var(--palette-sky-700);
+  --toast-success-bg: var(--palette-green-100);
+  --toast-success-edge: var(--palette-green-300);
+  --toast-success-ink: var(--palette-green-700);
+  --toast-error-bg: var(--palette-red-100);
+  --toast-error-edge: var(--palette-red-300);
+  --toast-error-ink: var(--palette-red-800);
+  --toast-shadow: var(--shadow-toast);
+
+  /* A small on/off switch. */
+  --switch-off: var(--chrome-border-strong);
+  --switch-knob: var(--palette-white);
+  --switch-knob-shadow: var(--shadow-knob);
+
   /* Windows floating over the canvas: docked pages, hub panels, the viewer. */
   --window-bg: var(--chrome-surface);
   --window-edge: var(--chrome-border);
@@ -249,6 +267,35 @@
   --tree-pane-bg: var(--palette-film-white-soft);
   --tree-pane-edge: var(--palette-edge-sky-pale);
   --tree-input-bg: var(--palette-film-white);
+  --tree-viewer-bg: var(--palette-film-viewer);
+  --tree-callout-bg: var(--palette-film-callout);
+  --tree-row-ink: var(--palette-slate-600);
+  --tree-folder-ink: var(--palette-slate-950);
+  --tree-hover-bg: var(--palette-film-hover);
+  --tree-selected-bg: var(--palette-film-selected);
+  --tree-selected-edge: var(--palette-edge-sky-half);
+  --tree-selected-ink: var(--palette-sky-900);
+  --tree-marked-bg: var(--palette-film-butter);
+  --tree-marked-edge: var(--palette-edge-amber);
+  --tree-marked-ink: var(--palette-yellow-700);
+
+  /* The folder glyph carries its own colour; every other icon inherits. */
+  --icon-folder: var(--palette-amber-500);
+
+  /* Coarse file categories, from classifyFileType. */
+  --file-code-ink: var(--palette-sky-500);
+  --file-data-ink: var(--palette-indigo-600);
+  --file-doc-ink: var(--palette-slate-600);
+  --file-container-ink: var(--palette-cyan-600);
+  --file-archive-ink: var(--palette-violet-600);
+  --file-binary-ink: var(--palette-slate-500);
+
+  /* The viewer's lightweight Dockerfile/shell highlighter. */
+  --syntax-line-number: var(--palette-slate-400-soft);
+  --syntax-comment: var(--palette-slate-400);
+  --syntax-keyword: var(--palette-sky-700);
+  --syntax-command: var(--palette-green-700);
+  --syntax-string: var(--palette-amber-700);
   --footer-ink: var(--palette-slate-500);
 
   --notice-info-bg: var(--palette-film-white);

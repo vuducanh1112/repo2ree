@@ -9,10 +9,13 @@ export function normalizeSnapshotArchiveName(rawName: string): string {
 
 /**
  * Coarse content-type bucket for a file name, used to pick a file-browser icon
- * and tint. Presentational only — it never affects file handling. Returns
- * "binary" for anything unrecognized.
+ * and the tint its module gives that icon. Presentational only — it never
+ * affects file handling. Returns "binary" for anything unrecognized.
+ *
+ * Not exported: the shell renders the value as a `data-category` attribute and
+ * never names the type, which is the point of keying CSS off the identity.
  */
-export type FileTypeCategory = "code" | "data" | "doc" | "container" | "archive" | "binary";
+type FileTypeCategory = "code" | "data" | "doc" | "container" | "archive" | "binary";
 
 const CODE_EXTENSIONS = new Set([
   "py",

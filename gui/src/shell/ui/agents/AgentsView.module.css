@@ -1,0 +1,197 @@
+/* The agent table: runners currently dialed into this control plane.
+ *
+ * The column track is declared once here rather than shared as a TS constant
+ * between the header row and the body rows, which is what kept the two in step
+ * by convention rather than by construction. */
+
+.screen {
+  min-height: 100vh;
+  padding: var(--space-6);
+  background: var(--chrome-bg);
+  font-family: var(--font-sans);
+}
+
+.column {
+  max-width: 860px;
+  margin: 0 auto;
+  animation: agents-fade-up 0.4s ease;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.headings {
+  flex: 1;
+}
+
+.title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.4px;
+  color: var(--chrome-text);
+}
+
+.subtitle {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--chrome-text-muted);
+}
+
+.chromeButton {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 7px var(--space-3);
+  border-radius: var(--radius-control);
+  border: 1px solid var(--chrome-border);
+  background: var(--chrome-surface);
+  color: var(--chrome-text-mid);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.chromeButton:hover {
+  border-color: var(--chrome-border-strong);
+}
+
+.chromeButton:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* Refetching in the background: dimmed, but still usable. */
+.chromeButton[data-busy] {
+  opacity: 0.6;
+}
+
+.table {
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid var(--chrome-border);
+  background: var(--chrome-surface);
+  box-shadow: var(--shadow-landing-card);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 0.8fr 0.8fr 0.9fr;
+  gap: var(--space-3);
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--chrome-border);
+}
+
+.row[data-kind="head"] {
+  padding: var(--space-3) 18px;
+  background: var(--chrome-surface-alt);
+}
+
+.headCell {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--chrome-text-muted);
+}
+
+.host {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.hostIcon {
+  display: flex;
+  color: var(--status-ok);
+}
+
+.hostName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  font-weight: var(--weight-medium);
+  color: var(--chrome-text);
+}
+
+.cell {
+  font-size: var(--text-md);
+  color: var(--chrome-text-mid);
+}
+
+.cell[data-flavor="code"] {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-mono);
+}
+
+.uptime {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.uptimeDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--status-ok);
+}
+
+.statusRow {
+  padding: var(--space-5) 18px;
+  font-size: 13px;
+  color: var(--chrome-text-muted);
+}
+
+.statusRow[data-tone="error"] {
+  color: var(--status-fault);
+}
+
+.empty {
+  padding: var(--space-8) 18px;
+  text-align: center;
+}
+
+.emptyIcon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 10px;
+  color: var(--chrome-text-muted);
+}
+
+.emptyTitle {
+  margin-bottom: var(--space-1);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-medium);
+  color: var(--chrome-text-mid);
+}
+
+.emptyHint {
+  font-size: var(--text-md);
+  line-height: 1.6;
+  color: var(--chrome-text-muted);
+}
+
+.emptyHint code {
+  font-family: var(--font-mono);
+  color: var(--chrome-text-mid);
+}
+
+@keyframes agents-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

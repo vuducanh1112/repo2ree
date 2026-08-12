@@ -1,0 +1,115 @@
+/* The workspace file tree. Every reading a row can have — selected, marked as
+ * referenced, a folder, a file of some category — is a data attribute the
+ * selectors below drive, rather than a colour the component computes. */
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  /* Indent by depth: a measurement, so it rides a custom property. */
+  padding: var(--space-1) var(--space-2);
+  padding-left: calc(var(--space-2) + var(--tree-depth, 0) * 14px);
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--tree-row-ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+
+.row[data-kind="folder"] {
+  color: var(--tree-folder-ink);
+}
+
+/* Referenced by the thing being viewed — worth finding, not yet chosen. */
+.row[data-marked] {
+  background: var(--tree-marked-bg);
+  border-color: var(--tree-marked-edge);
+  color: var(--tree-marked-ink);
+}
+
+.row[data-selected] {
+  background: var(--tree-selected-bg);
+  border-color: var(--tree-selected-edge);
+  color: var(--tree-selected-ink);
+}
+
+.row:not([data-selected]):hover {
+  background: var(--tree-hover-bg);
+}
+
+.row:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: -1px;
+}
+
+.chevron {
+  display: flex;
+  width: 12px;
+  color: var(--chrome-text-muted);
+}
+
+/* Files sit where a folder's chevron would be. */
+.fileIcon {
+  display: flex;
+  margin-left: var(--space-3);
+  color: var(--file-ink);
+}
+
+.fileIcon[data-category="code"] {
+  --file-ink: var(--file-code-ink);
+}
+
+.fileIcon[data-category="data"] {
+  --file-ink: var(--file-data-ink);
+}
+
+.fileIcon[data-category="doc"] {
+  --file-ink: var(--file-doc-ink);
+}
+
+.fileIcon[data-category="container"] {
+  --file-ink: var(--file-container-ink);
+}
+
+.fileIcon[data-category="archive"] {
+  --file-ink: var(--file-archive-ink);
+}
+
+.fileIcon[data-category="binary"] {
+  --file-ink: var(--file-binary-ink);
+}
+
+.row[data-selected] .fileIcon {
+  --file-ink: var(--tree-selected-ink);
+}
+
+.name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.marker {
+  flex-shrink: 0;
+  padding: 0 3px;
+  border: 1px solid var(--tree-marked-edge);
+  border-radius: 3px;
+  background: var(--tree-marked-bg);
+  color: var(--tree-marked-ink);
+  font-family: var(--font-sans);
+  font-size: 9px;
+  font-weight: var(--weight-bold);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row {
+    transition: none;
+  }
+}

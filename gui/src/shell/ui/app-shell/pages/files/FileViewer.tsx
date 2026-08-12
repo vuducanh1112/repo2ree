@@ -6,8 +6,7 @@ import {
   isLikelyTextFile,
 } from "@core/workspace/reeFileTree";
 import { fmtBytes } from "@shell/ui/shared/formatting";
-import { lgColors, lgSyntax, lgTree } from "@shell/ui/theme/lightGlassTheme";
-import { F } from "@shell/ui/theme/theme";
+import styles from "./FileViewer.module.css";
 
 function isShellLike(fileName: string): boolean {
   const lower = fileName.toLowerCase();
@@ -19,43 +18,25 @@ function isShellLike(fileName: string): boolean {
   );
 }
 
-function classifyLine(line: string): string {
-  if (line.startsWith("#")) return lgSyntax.comment;
-  if (/^(FROM|RUN|COPY|CMD|WORKDIR|ARG|ENV)\b/.test(line)) return lgSyntax.keyword;
-  if (/^(set |echo |docker |pip )/.test(line)) return lgSyntax.command;
-  if (/^\s*"/.test(line) && line.includes(":")) return lgSyntax.string;
-  return lgColors.text;
+/** Which of the four kinds a line is, or undefined for ordinary content. The
+ * classifier names the kind; FileViewer.module.css decides how it reads. */
+function classifyLine(line: string): string | undefined {
+  if (line.startsWith("#")) return "comment";
+  if (/^(FROM|RUN|COPY|CMD|WORKDIR|ARG|ENV)\b/.test(line)) return "keyword";
+  if (/^(set |echo |docker |pip )/.test(line)) return "command";
+  if (/^\s*"/.test(line) && line.includes(":")) return "string";
+  return undefined;
 }
 
 function renderLines(lines: string[], muted: boolean, syntaxColor: boolean) {
   return lines.map((line, i) => (
     // biome-ignore lint/suspicious/noArrayIndexKey: static file content, lines never reorder
-    <div key={i} style={{ display: "flex", alignItems: "baseline" }}>
+    <div key={i} className={styles.line}>
+      <span className={styles.lineNumber}>{i + 1}</span>
       <span
-        style={{
-          minWidth: 40,
-          textAlign: "right",
-          paddingRight: 14,
-          paddingLeft: 10,
-          fontSize: 10,
-          fontFamily: F.mono,
-          color: lgSyntax.lineNumber,
-          userSelect: "none",
-          flexShrink: 0,
-        }}
-      >
-        {i + 1}
-      </span>
-      <span
-        style={{
-          fontSize: 12,
-          fontFamily: F.mono,
-          lineHeight: 1.75,
-          whiteSpace: "pre",
-          display: "block",
-          paddingRight: 16,
-          color: muted ? lgColors.textMuted : syntaxColor ? classifyLine(line) : lgColors.text,
-        }}
+        className={styles.code}
+        data-muted={muted || undefined}
+        data-syntax={syntaxColor ? classifyLine(line) : undefined}
       >
         {line || " "}
       </span>
@@ -95,31 +76,10 @@ export function FileViewer({ file }: FileViewerProps) {
         : previewLines;
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        flex: 1,
-        minWidth: 0,
-        background: lgTree.viewerBg,
-      }}
-    >
-      <div style={{ overflow: "auto", flex: 1, padding: "8px 0" }}>
+    <div className={styles.viewer}>
+      <div className={styles.scroll}>
         {truncated && (
-          <div
-            style={{
-              margin: "0 10px 8px",
-              padding: "8px 10px",
-              borderRadius: 6,
-              border: `1px solid ${lgTree.pane.borderColor}`,
-              background: lgTree.calloutBg,
-              fontSize: 11,
-              color: lgColors.textMuted,
-              fontFamily: F.sans,
-            }}
-          >
-            Preview truncated to keep the UI responsive.
-          </div>
+          <div className={styles.callout}>Preview truncated to keep the UI responsive.</div>
         )}
         {renderLines(lines, hasBinaryContent || unavailableInlineText, isShellLike(file.name))}
       </div>

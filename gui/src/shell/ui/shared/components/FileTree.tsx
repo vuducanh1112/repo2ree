@@ -1,8 +1,8 @@
 import type { FileTreeNode } from "@core/workspace/FileTree";
 import { classifyFileType } from "@core/workspace/PathUtils";
 import { useState } from "react";
-import { lgColors, lgFileTypeColor, lgTree } from "../../theme/lightGlassTheme";
-import { F, hoverBg, hoverIf } from "../../theme/theme";
+import { cssVars } from "../../theme/styleVars";
+import styles from "./FileTree.module.css";
 import { Ic } from "./Icon";
 
 interface FileNodeProps {
@@ -15,6 +15,8 @@ interface FileNodeProps {
   forceOpen?: boolean;
 }
 
+// The glyph and the category it belongs to; how the category *reads* is in
+// FileTree.module.css, keyed off the same value classifyFileType returns.
 function fileTypeIcon(name: string, size: number) {
   const category = classifyFileType(name);
   const glyph =
@@ -23,7 +25,7 @@ function fileTypeIcon(name: string, size: number) {
       : category === "archive"
         ? Ic.fileArchive(size)
         : Ic.file(size);
-  return { glyph, color: lgFileTypeColor(category) };
+  return { glyph, category };
 }
 
 export function FileNode({
@@ -54,95 +56,26 @@ export function FileNode({
       <button
         type="button"
         onClick={handleNodeClick}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 5,
-          padding: "4px 8px",
-          borderRadius: 5,
-          cursor: "pointer",
-          fontSize: 13,
-          fontFamily: F.mono,
-          transition: "background 0.1s",
-          userSelect: "none",
-          textAlign: "left",
-          width: "100%",
-          paddingLeft: 8 + depth * 14,
-          background: isSel
-            ? lgTree.selectedBg
-            : isHighlighted
-              ? lgTree.highlightBg
-              : "transparent",
-          border: `1px solid ${
-            isSel ? lgTree.selectedBorder : isHighlighted ? lgTree.highlightBorder : "transparent"
-          }`,
-          color: isSel
-            ? lgTree.selectedText
-            : isHighlighted
-              ? lgTree.highlightText
-              : isFolder
-                ? lgColors.text
-                : lgColors.textMid,
-        }}
-        {...hoverIf(
-          !isSel,
-          hoverBg(
-            isHighlighted ? lgTree.highlightBg : lgTree.hoverBg,
-            isHighlighted ? lgTree.highlightBg : "transparent",
-          ),
-        )}
+        className={styles.row}
+        data-kind={isFolder ? "folder" : "file"}
+        data-selected={isSel || undefined}
+        data-marked={isHighlighted && !isSel ? true : undefined}
+        style={cssVars({ "--tree-depth": depth })}
       >
         {isFolder ? (
           <>
-            <span
-              style={{
-                color: lgColors.textMuted,
-                display: "flex",
-                width: 12,
-              }}
-            >
+            <span aria-hidden className={styles.chevron}>
               {isOpen ? Ic.chevD(12) : Ic.chevR(12)}
             </span>
             {Ic.folder(14)}
           </>
         ) : (
-          <span
-            style={{
-              marginLeft: 12,
-              display: "flex",
-              color: isSel ? lgTree.selectedText : fileIcon?.color,
-            }}
-          >
+          <span aria-hidden className={styles.fileIcon} data-category={fileIcon?.category}>
             {fileIcon?.glyph}
           </span>
         )}
-        <span
-          style={{
-            flex: 1,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {node.name}
-        </span>
-        {isHighlighted && !isSel && (
-          <span
-            style={{
-              fontSize: 9,
-              fontWeight: 700,
-              color: lgTree.highlightText,
-              background: lgTree.highlightBg,
-              border: `1px solid ${lgTree.highlightBorder}`,
-              borderRadius: 3,
-              padding: "0 3px",
-              fontFamily: F.sans,
-              flexShrink: 0,
-            }}
-          >
-            REF
-          </span>
-        )}
+        <span className={styles.name}>{node.name}</span>
+        {isHighlighted && !isSel && <span className={styles.marker}>REF</span>}
       </button>
       {isFolder &&
         isOpen &&
