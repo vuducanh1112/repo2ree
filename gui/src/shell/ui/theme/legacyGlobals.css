@@ -3,9 +3,11 @@
  * Everything here comes from the runtime-injected `GLOBAL_CSS` string and is
  * still global only because its owners have not been converted yet:
  *
- *  - the keyframes are referenced by name from inline `animation` styles and
- *    move into the owning component's module (see the animation ownership
- *    table in the rework plan) as each component is converted;
+ *  - the three keyframes left are referenced by name from inline `animation`
+ *    styles in components that have not been converted yet. `dockIn`,
+ *    `growIn`, `labDriftA`, `labDriftB` and `labScan` have gone to their
+ *    owners' modules; `spin`, `fadeUp` and `slideIn` follow when the last of
+ *    their consumers converts;
  *  - the blanket button hover/active rules still dress every control that has
  *    not become a `Button` yet.
  *
@@ -49,72 +51,6 @@
   to {
     opacity: 1;
     transform: translateX(0);
-  }
-}
-
-@keyframes dockIn {
-  from {
-    opacity: 0;
-    transform: translateX(26px) scale(0.985);
-  }
-
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-@keyframes growIn {
-  from {
-    opacity: 0;
-    transform: scale(0.05);
-  }
-
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes labDriftA {
-  0%,
-  100% {
-    transform: translate(0, 0);
-    opacity: 0.65;
-  }
-
-  50% {
-    transform: translate(26px, -18px);
-    opacity: 1;
-  }
-}
-
-@keyframes labDriftB {
-  0%,
-  100% {
-    transform: translate(0, 0);
-    opacity: 0.5;
-  }
-
-  50% {
-    transform: translate(-22px, 16px);
-    opacity: 0.85;
-  }
-}
-
-@keyframes labScan {
-  0% {
-    transform: translateY(-30%);
-    opacity: 0;
-  }
-
-  40% {
-    opacity: 0.7;
-  }
-
-  100% {
-    transform: translateY(140%);
-    opacity: 0;
   }
 }
 

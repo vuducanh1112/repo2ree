@@ -55,7 +55,6 @@ export function Button({
 }: ButtonProps) {
   return (
     <button
-      // biome-ignore lint/a11y/useButtonType: `type` is a prop, defaulted to "button" above.
       type={type}
       className={cx(styles.button)}
       data-variant={variant}

@@ -1,0 +1,127 @@
+/* Decorative, non-interactive lab atmosphere behind the pod. Everything here
+ * is CSS and pointer-events: none — nothing in this file is addressable.
+ *
+ * The drift and scan keyframes live here now rather than in the global sheet:
+ * this component is their only owner. */
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Drifting ambient light pools. */
+.pool {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(8px);
+}
+
+.pool[data-side="left"] {
+  left: 10%;
+  top: 12%;
+  width: 420px;
+  height: 420px;
+  background: var(--lab-pool-a);
+  animation: lab-drift-a 16s ease-in-out infinite;
+}
+
+.pool[data-side="right"] {
+  right: 8%;
+  top: 8%;
+  width: 380px;
+  height: 380px;
+  background: var(--lab-pool-b);
+  animation: lab-drift-b 20s ease-in-out infinite;
+}
+
+/* Overhead glass light bar, and the beam it casts onto the bench. */
+.bar {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 320px;
+  height: 14px;
+  transform: translateX(-50%);
+  border-radius: 0 0 var(--radius-panel) var(--radius-panel);
+  border: 1px solid var(--lab-edge);
+  border-top: none;
+  background: var(--lab-bar);
+  box-shadow: var(--lab-bar-shadow);
+}
+
+.beam {
+  position: absolute;
+  left: 50%;
+  top: 14px;
+  width: 520px;
+  height: 62%;
+  transform: translateX(-50%);
+  background: var(--lab-beam);
+  clip-path: polygon(38% 0, 62% 0, 100% 100%, 0 100%);
+}
+
+/* Slow scanning sheen, for the sense of a live instrument. */
+.scan {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 45%;
+  background: var(--lab-scan);
+  animation: lab-scan 11s ease-in-out infinite;
+}
+
+/* The frosted workbench surface the pod is seated on. */
+.bench {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 34%;
+  border-top: 1px solid var(--lab-edge);
+  background: var(--lab-bench);
+  backdrop-filter: blur(1px);
+  box-shadow: var(--lab-bench-shadow);
+}
+
+@keyframes lab-drift-a {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0.65;
+  }
+
+  50% {
+    transform: translate(26px, -18px);
+    opacity: 1;
+  }
+}
+
+@keyframes lab-drift-b {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0.5;
+  }
+
+  50% {
+    transform: translate(-22px, 16px);
+    opacity: 0.85;
+  }
+}
+
+@keyframes lab-scan {
+  0% {
+    transform: translateY(-30%);
+    opacity: 0;
+  }
+
+  40% {
+    opacity: 0.7;
+  }
+
+  100% {
+    transform: translateY(140%);
+    opacity: 0;
+  }
+}

@@ -1,0 +1,193 @@
+/* The workbench lab: the bench the dormant pod sits on before the workbench is
+ * provisioned, and the console beside it that provisions one.
+ *
+ * The cradle pulse and the console's entrance live here — this component is
+ * their owner. */
+
+.benchSurface {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  background:
+    radial-gradient(circle at 50% 42%, var(--chrome-surface) 0%, var(--chrome-bg) 62%),
+    linear-gradient(var(--chrome-border) 1px, transparent 1px) 0 0 / 26px 26px,
+    linear-gradient(90deg, var(--chrome-border) 1px, transparent 1px) 0 0 / 26px 26px;
+}
+
+/* Inset frame that reads as the bench tray / lab walls around the surface. */
+.benchTray {
+  position: absolute;
+  inset: 14px;
+  border-radius: 18px;
+  border: 1px solid var(--chrome-border);
+  box-shadow: var(--bench-tray-shadow);
+  pointer-events: none;
+}
+
+.layout {
+  position: relative;
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 48px;
+  flex-wrap: wrap;
+  padding: 48px 56px;
+}
+
+/* --- The dormant specimen ------------------------------------------------ */
+
+.cradleColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.cradleStage {
+  position: relative;
+  width: 300px;
+  height: 300px;
+}
+
+.cradleDisc {
+  position: absolute;
+  left: 50%;
+  top: 64%;
+  width: 230px;
+  height: 78px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--cradle-disc);
+}
+
+.cradleRing {
+  position: absolute;
+  left: 50%;
+  top: 62%;
+  width: 196px;
+  height: 60px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 1.5px dashed var(--chrome-border-strong);
+}
+
+/* Only once the lab can be powered up does the cradle read as live. */
+.cradleRing[data-ready] {
+  animation: cradle-pulse 3.2s ease-in-out infinite;
+}
+
+/* De-energized until the lab is provisioned — the visual promise that powering
+ * up the workbench brings the specimen to life. */
+.dormantPod {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: grayscale(0.85) brightness(1.04);
+  opacity: 0.62;
+}
+
+.specimenCaption {
+  margin-top: var(--space-2);
+  text-align: center;
+}
+
+/* --- The provisioning console -------------------------------------------- */
+
+.console {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  width: 408px;
+  max-width: 100%;
+  flex-shrink: 0;
+  padding: 22px;
+  border-radius: var(--space-4);
+  border: 1px solid var(--chrome-border);
+  background: var(--chrome-surface);
+  box-shadow: var(--console-shadow);
+  animation: console-fade-up 0.4s ease;
+}
+
+.consoleIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  color: var(--workbench-tint);
+  background: var(--chrome-accent-bg);
+  border: 1px solid var(--chrome-accent-border);
+}
+
+/* --- The chosen-target readout ------------------------------------------- */
+
+.target {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 14px;
+  border-radius: 9px;
+  border: 1.5px solid var(--chrome-border);
+  background: var(--chrome-surface);
+}
+
+.targetIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  color: var(--workbench-tint);
+  background: var(--chrome-accent-bg);
+  border: 1px solid var(--chrome-accent-border);
+}
+
+.targetBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.targetLabel {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--field-ink);
+}
+
+.targetHint {
+  margin-top: 1px;
+  font-size: var(--text-md);
+  color: var(--field-hint-ink);
+}
+
+@keyframes cradle-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  50% {
+    opacity: 0.8;
+    transform: translate(-50%, -50%) scale(1.04);
+  }
+}
+
+@keyframes console-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

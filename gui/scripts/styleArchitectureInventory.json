@@ -1,6 +1,6 @@
 {
   "note": "Migration ratchet for the GUI styling rework — pre-existing violations, per file. It may only shrink: `make gui-checks` fails on a new violation and on a stale entry left behind by a conversion. Regenerate with `npm run check:style-architecture -- --update`. Phase 8 deletes this file and the rules become absolute.",
-  "total": 1196,
+  "total": 1134,
   "files": {
     "src/shell/ui/agents/AgentsView.tsx": {
       "legacy-theme-import": 1,
@@ -43,11 +43,6 @@
       "legacy-theme-import": 1,
       "raw-color": 3,
       "style-object-literal": 3
-    },
-    "src/shell/ui/app-shell/canvas/CanvasWindow.tsx": {
-      "legacy-theme-import": 1,
-      "raw-color": 1,
-      "style-object-literal": 8
     },
     "src/shell/ui/app-shell/canvas/CenterSealStrip.tsx": {
       "raw-color": 2,
@@ -92,20 +87,11 @@
       "style-object-literal": 8
     },
     "src/shell/ui/app-shell/canvas/FileTabsPanel.tsx": {
-      "legacy-theme-import": 1,
-      "style-object-literal": 6
+      "style-object-literal": 1
     },
     "src/shell/ui/app-shell/canvas/FileTreeConsole.tsx": {
       "legacy-theme-import": 2,
       "style-object-literal": 2
-    },
-    "src/shell/ui/app-shell/canvas/FocusDock.tsx": {
-      "legacy-theme-import": 1,
-      "raw-color": 2,
-      "style-object-literal": 4
-    },
-    "src/shell/ui/app-shell/canvas/HubPanel.tsx": {
-      "raw-color": 2
     },
     "src/shell/ui/app-shell/canvas/HudConsole.tsx": {
       "legacy-theme-import": 1,
@@ -117,11 +103,6 @@
       "legacy-theme-import": 1,
       "raw-color": 3,
       "style-object-literal": 2
-    },
-    "src/shell/ui/app-shell/canvas/LabBackdrop.tsx": {
-      "legacy-theme-import": 1,
-      "raw-color": 8,
-      "style-object-literal": 7
     },
     "src/shell/ui/app-shell/canvas/NodeCard.tsx": {
       "legacy-theme-import": 1,
@@ -153,15 +134,14 @@
     },
     "src/shell/ui/app-shell/canvas/SourceHubPanel.tsx": {
       "legacy-theme-import": 1,
-      "raw-color": 4,
+      "raw-color": 3,
       "style-not-css-vars": 1,
       "style-object-literal": 3
     },
     "src/shell/ui/app-shell/canvas/WorkbenchLab.tsx": {
       "legacy-theme-import": 2,
-      "raw-color": 4,
-      "style-not-css-vars": 8,
-      "style-object-literal": 30
+      "style-not-css-vars": 1,
+      "style-object-literal": 21
     },
     "src/shell/ui/app-shell/canvas/podWidget/PodDepGraph.tsx": {
       "legacy-theme-import": 1,

@@ -1,5 +1,7 @@
+import { PAGE } from "@core/app-shell/pages";
 import type { SourceUploadCommit } from "@core/ree/ReeTypes";
 import { useApiRuntime } from "@shell/data/apiRuntime";
+import { stageTone } from "@shell/ui/theme/appearance";
 import { useEffect, useState } from "react";
 import { Ic } from "../../shared/components/Icon";
 import { useFocusScroll } from "../../shared/hooks/useFocusScroll";
@@ -109,7 +111,7 @@ export function SourceHubPanel({
       header={
         <CanvasWindowTitle
           icon={Ic.globe(16)}
-          iconColor="#f59e0b"
+          iconTint={stageTone(PAGE.SOURCE)}
           title="Source Acquisition"
           subtitle="fetch or upload the source snapshot"
         />

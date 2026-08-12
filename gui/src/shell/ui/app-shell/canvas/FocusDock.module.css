@@ -1,0 +1,66 @@
+/* The enlarged panel a canvas node opens into. It sits below the app header,
+ * inset from the canvas edges so the constellation stays visible around it.
+ *
+ * The grow animation is anchored on the clicked panel's centre, which is a
+ * measurement — hence `--focus-origin` rather than a class per node. */
+
+.overlay {
+  position: fixed;
+  top: 48px; /* app header height; the dimming backdrop starts just below it */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 90;
+}
+
+.scrim {
+  position: absolute;
+  inset: 0;
+  border: none;
+  background: var(--window-scrim);
+  cursor: pointer;
+}
+
+.scrim:disabled {
+  cursor: default;
+}
+
+.dock {
+  position: fixed;
+  top: 60px;
+  left: 7%;
+  right: 7%;
+  bottom: var(--space-6);
+  border-radius: var(--space-4);
+  box-shadow: var(--shadow-window-focus);
+  transform-origin: var(--focus-origin, center);
+  animation: focus-grow 0.4s cubic-bezier(0.34, 1.1, 0.5, 1);
+}
+
+.nodeTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--chrome-text-muted);
+}
+
+.nodeIcon {
+  display: flex;
+  color: var(--node-tint);
+}
+
+@keyframes focus-grow {
+  from {
+    opacity: 0;
+    transform: scale(0.05);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

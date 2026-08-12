@@ -1,6 +1,7 @@
-import { type CSSProperties, type ReactNode, useEffect } from "react";
+import { type ReactNode, useEffect } from "react";
 import { Ic } from "../../shared/components/Icon";
-import { C, F } from "../../theme/theme";
+import { type CssVarValues, cssVars, cx } from "../../theme/styleVars";
+import styles from "./CanvasWindow.module.css";
 
 interface CanvasWindowProps {
   /** Accessible region name; tests select the window by this (role=region). */
@@ -14,11 +15,18 @@ interface CanvasWindowProps {
   header: ReactNode;
   /** Trailing title-bar slot rendered between the header and the X. */
   headerRight?: ReactNode;
-  /** Position, size, and entry animation — the caller owns placement. */
-  outerStyle?: CSSProperties;
+  /**
+   * Placement: the class from the caller's own module that positions, sizes and
+   * animates this window. The frame itself is not the caller's business — the
+   * `outerStyle` prop this replaces let every caller re-decide the border, the
+   * radius and the shadow, and they had drifted.
+   */
+  className?: string;
+  bodyClassName?: string;
+  /** Measured geometry the placement class reads. */
+  vars?: CssVarValues;
   /** True to let the frame scroll the body; false when children scroll themselves. */
   scrollBody?: boolean;
-  bodyStyle?: CSSProperties;
   children: ReactNode;
 }
 
@@ -35,9 +43,10 @@ export function CanvasWindow({
   escapeToClose = false,
   header,
   headerRight,
-  outerStyle,
+  className,
+  bodyClassName,
+  vars,
   scrollBody = false,
-  bodyStyle,
   children,
 }: CanvasWindowProps) {
   useEffect(() => {
@@ -53,67 +62,20 @@ export function CanvasWindow({
     <section
       aria-label={ariaLabel}
       data-canvas-hud
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        background: C.surface,
-        border: `1px solid ${C.border}`,
-        borderRadius: 14,
-        overflow: "hidden",
-        boxShadow: "0 24px 60px rgba(13,17,23,0.2)",
-        ...outerStyle,
-      }}
+      className={cx(styles.window, className)}
+      style={cssVars(vars ?? {})}
     >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          flexShrink: 0,
-          minHeight: 40,
-          padding: "0 8px 0 14px",
-          borderBottom: `1px solid ${C.border}`,
-          background: C.surfaceAlt,
-        }}
-      >
-        <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 8 }}>
-          {header}
-        </div>
+      <div className={styles.bar}>
+        <div className={styles.barMain}>{header}</div>
         {headerRight}
         {closable && (
-          <button
-            type="button"
-            aria-label="Close"
-            onClick={onClose}
-            style={{
-              width: 28,
-              height: 28,
-              flexShrink: 0,
-              border: "none",
-              borderRadius: 7,
-              background: "transparent",
-              color: C.textMuted,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
+          <button type="button" aria-label="Close" onClick={onClose} className={styles.close}>
             {Ic.x(14)}
           </button>
         )}
       </div>
 
-      <div
-        style={{
-          flex: 1,
-          minHeight: 0,
-          display: "flex",
-          flexDirection: "column",
-          overflowY: scrollBody ? "auto" : "hidden",
-          ...bodyStyle,
-        }}
-      >
+      <div className={cx(styles.body, bodyClassName)} data-scroll={scrollBody || undefined}>
         {children}
       </div>
     </section>
@@ -123,43 +85,27 @@ export function CanvasWindow({
 interface CanvasWindowTitleProps {
   /** Accent-coloured leading icon, e.g. `Ic.package(16)`. */
   icon?: ReactNode;
-  iconColor?: string;
+  /** The icon's tone, as a `var(--…)` reference. */
+  iconTint?: string;
   title: string;
   subtitle?: string;
 }
 
 /** The standard single-line title-bar content: icon, bold title, mono subtitle. */
-export function CanvasWindowTitle({ icon, iconColor, title, subtitle }: CanvasWindowTitleProps) {
+export function CanvasWindowTitle({ icon, iconTint, title, subtitle }: CanvasWindowTitleProps) {
   return (
     <>
-      {icon && <span style={{ color: iconColor, display: "flex", flexShrink: 0 }}>{icon}</span>}
-      <span
-        style={{
-          fontSize: 13,
-          fontWeight: 700,
-          color: C.text,
-          letterSpacing: -0.2,
-          whiteSpace: "nowrap",
-          flexShrink: 0,
-        }}
-      >
-        {title}
-      </span>
-      {subtitle && (
+      {icon && (
         <span
-          style={{
-            fontSize: 11,
-            fontFamily: F.mono,
-            color: C.textMuted,
-            minWidth: 0,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
+          aria-hidden
+          className={styles.titleIcon}
+          style={cssVars(iconTint ? { "--window-title-tint": iconTint } : {})}
         >
-          {subtitle}
+          {icon}
         </span>
       )}
+      <span className={styles.title}>{title}</span>
+      {subtitle && <span className={styles.subtitle}>{subtitle}</span>}
     </>
   );
 }

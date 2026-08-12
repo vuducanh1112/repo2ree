@@ -158,6 +158,8 @@
    * and not something a component appends.
    */
   --palette-film-white-soft: rgb(255 255 255 / 54%);
+  --palette-film-window: rgb(255 255 255 / 82%);
+  --palette-film-scrim: rgb(225 230 238 / 45%);
   --palette-film-white: rgb(255 255 255 / 72%);
   --palette-film-white-strong: rgb(255 255 255 / 92%);
   --palette-film-mist: rgb(239 246 255 / 88%);
@@ -199,9 +201,54 @@
   --shadow-selected-option: 0 8px 20px rgb(14 165 233 / 12%);
   --shadow-glass-panel: 0 24px 70px rgb(15 23 42 / 12%), inset 0 1px 0 rgb(255 255 255 / 88%);
   --shadow-page-frame: inset 0 0 80px rgb(14 165 233 / 7%);
+  --shadow-lab-bar: 0 8px 30px rgb(56 189 248 / 35%);
+  --shadow-window: 0 24px 60px rgb(13 17 23 / 20%);
+  --shadow-window-focus: 0 24px 60px rgb(13 17 23 / 22%);
+  --shadow-window-dock: 0 18px 44px rgb(13 17 23 / 16%);
+  --shadow-console: 0 18px 48px rgb(13 17 23 / 12%);
+  --shadow-bench-tray: inset 0 0 0 1px rgb(255 255 255 / 50%), inset 0 18px 60px rgb(13 17 23 / 5%);
+  --shadow-lab-bench: inset 0 1px 0 rgb(255 255 255 / 70%);
   --shadow-subpanel: 0 1px 2px rgb(15 23 42 / 5%), inset 0 1px 0 rgb(255 255 255 / 80%);
   --shadow-field-focus: 0 0 0 3px rgb(14 165 233 / 15%);
   --shadow-field-inset: inset 0 1px 0 var(--palette-film-white-strong);
+
+  /* --- Palette: lab atmosphere -----------------------------------------
+   * The decorative light behind the pod. Purely atmospheric, so these live as
+   * whole gradients rather than as hues something else might reuse.
+   */
+  --gradient-lab-pool-sky: radial-gradient(
+    circle,
+    rgb(56 189 248 / 20%) 0%,
+    rgb(56 189 248 / 0%) 70%
+  );
+  --gradient-lab-pool-indigo: radial-gradient(
+    circle,
+    rgb(129 140 248 / 18%) 0%,
+    rgb(129 140 248 / 0%) 70%
+  );
+  --gradient-lab-bar: linear-gradient(180deg, rgb(255 255 255 / 90%), rgb(186 230 253 / 50%));
+  --gradient-lab-beam: linear-gradient(
+    180deg,
+    rgb(186 230 253 / 28%) 0%,
+    rgb(186 230 253 / 0%) 78%
+  );
+  --gradient-lab-scan: linear-gradient(
+    180deg,
+    rgb(255 255 255 / 0%) 0%,
+    rgb(224 242 254 / 50%) 50%,
+    rgb(255 255 255 / 0%) 100%
+  );
+  --gradient-cradle-disc: radial-gradient(
+    ellipse at center,
+    rgb(100 116 139 / 16%) 0%,
+    transparent 70%
+  );
+  --gradient-lab-bench: linear-gradient(
+    180deg,
+    rgb(255 255 255 / 0%) 0%,
+    rgb(241 245 249 / 55%) 45%,
+    rgb(226 232 240 / 85%) 100%
+  );
 
   /* --- Gradient ---------------------------------------------------------- */
   --gradient-primary: linear-gradient(135deg, var(--palette-sky-500), var(--palette-indigo-600));

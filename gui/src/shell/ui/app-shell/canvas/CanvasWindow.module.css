@@ -1,0 +1,106 @@
+/* The one window frame for everything floating over the canvas. A desktop-style
+ * title bar above a separate content area: the bar never scrolls, so the close
+ * button is always reachable.
+ *
+ * Placement is the caller's — each window's own module positions it — but the
+ * frame itself is fixed here, which is what the `outerStyle` prop used to let
+ * every caller re-decide. */
+
+.window {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid var(--window-edge);
+  background: var(--window-bg);
+  box-shadow: var(--window-shadow);
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  min-height: 40px;
+  padding: 0 var(--space-2) 0 14px;
+  border-bottom: 1px solid var(--window-edge);
+  background: var(--window-bar-bg);
+}
+
+.barMain {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--chrome-text-muted);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+
+.close:hover {
+  background: var(--chrome-surface-alt);
+  color: var(--chrome-text);
+}
+
+.close:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: hidden;
+}
+
+.body[data-scroll] {
+  overflow-y: auto;
+}
+
+/* --- Title-bar content ---------------------------------------------------- */
+
+.titleIcon {
+  display: flex;
+  flex-shrink: 0;
+  color: var(--window-title-tint, currentcolor);
+}
+
+.title {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.2px;
+  color: var(--chrome-text);
+}
+
+.subtitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--chrome-text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .close {
+    transition: none;
+  }
+}

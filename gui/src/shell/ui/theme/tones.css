@@ -219,6 +219,32 @@
   --option-marker: var(--palette-sky-500);
   --option-marker-edge: var(--palette-edge-slate);
 
+  /* Windows floating over the canvas: docked pages, hub panels, the viewer. */
+  --window-bg: var(--chrome-surface);
+  --window-edge: var(--chrome-border);
+  --window-shadow: var(--shadow-window);
+  --window-bar-bg: var(--chrome-surface-alt);
+  --window-glass-bg: var(--palette-film-window);
+  --window-scrim: var(--palette-film-scrim);
+
+  /* The workbench lab: the bench the dormant pod is seated on. It carries the
+   * build stage's hue, because the runtime it provisions is that stage's. */
+  --workbench-tint: var(--stage-build-line);
+  --bench-tray-shadow: var(--shadow-bench-tray);
+  --cradle-disc: var(--gradient-cradle-disc);
+  --console-shadow: var(--shadow-console);
+
+  /* The decorative lab behind the pod. */
+  --lab-pool-a: var(--gradient-lab-pool-sky);
+  --lab-pool-b: var(--gradient-lab-pool-indigo);
+  --lab-bar: var(--gradient-lab-bar);
+  --lab-bar-shadow: var(--shadow-lab-bar);
+  --lab-beam: var(--gradient-lab-beam);
+  --lab-scan: var(--gradient-lab-scan);
+  --lab-bench: var(--gradient-lab-bench);
+  --lab-bench-shadow: var(--shadow-lab-bench);
+  --lab-edge: var(--chrome-border);
+
   /* File tree and viewer panes. */
   --tree-pane-bg: var(--palette-film-white-soft);
   --tree-pane-edge: var(--palette-edge-sky-pale);

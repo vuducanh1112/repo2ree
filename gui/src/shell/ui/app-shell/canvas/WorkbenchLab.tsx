@@ -23,6 +23,7 @@ import {
   WorkbenchImageSelector,
 } from "../pages/workbench/WorkbenchPageSections";
 import { PodWidget } from "./PodWidget";
+import styles from "./WorkbenchLab.module.css";
 
 interface WorkbenchLabProps {
   evaluation: EvaluationState;
@@ -139,16 +140,16 @@ export function WorkbenchLab({ evaluation }: WorkbenchLabProps) {
   }
 
   return (
-    <div style={benchSurface}>
+    <div className={styles.benchSurface}>
       {/* bench tray frame — the lab the pod sits in */}
-      <div style={benchTray} />
+      <div className={styles.benchTray} />
 
-      <div style={labLayout}>
+      <div className={styles.layout}>
         <DormantSpecimen evaluation={evaluation} ready />
 
-        <section style={consolePanel}>
+        <section className={styles.console}>
           <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 4 }}>
-            <span style={consoleIcon}>{Ic.package(20)}</span>
+            <span className={styles.consoleIcon}>{Ic.package(20)}</span>
             <div>
               <h1
                 style={{ fontSize: 17, fontWeight: 700, color: lgColors.text, letterSpacing: -0.3 }}
@@ -162,38 +163,13 @@ export function WorkbenchLab({ evaluation }: WorkbenchLabProps) {
           </div>
 
           <SectionLabel icon={Ic.cpu(14)}>Lab location</SectionLabel>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              padding: "12px 14px",
-              borderRadius: 9,
-              border: `1.5px solid ${C.border}`,
-              background: C.surface,
-            }}
-          >
-            <span
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: 9,
-                flexShrink: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: WORKBENCH_COLOR,
-                background: C.accentBg,
-                border: `1px solid ${C.accentBorder}`,
-              }}
-            >
+          <div className={styles.target}>
+            <span aria-hidden className={styles.targetIcon}>
               {Ic.cpu(16)}
             </span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: lgColors.text }}>
-                {provisionLabel}
-              </div>
-              <div style={{ fontSize: 12, color: lgColors.textMuted, marginTop: 1 }}>
+            <div className={styles.targetBody}>
+              <div className={styles.targetLabel}>{provisionLabel}</div>
+              <div className={styles.targetHint}>
                 {selectedAgent
                   ? `${selectedAgent.dockerMode} · ${selectedAgent.id}`
                   : "No specific agent selected"}
@@ -272,31 +248,16 @@ export function WorkbenchLab({ evaluation }: WorkbenchLabProps) {
 // powering up the workbench brings the specimen to life.
 function DormantSpecimen({ evaluation, ready }: { evaluation: EvaluationState; ready: boolean }) {
   return (
-    <div style={cradleColumn}>
-      <div style={{ position: "relative", width: 300, height: 300 }}>
+    <div className={styles.cradleColumn}>
+      <div className={styles.cradleStage}>
         {/* cradle socket on the bench surface */}
-        <div style={cradleDisc} />
-        <div
-          style={{
-            ...cradleRing,
-            animation: ready ? "cradlePulse 3.2s ease-in-out infinite" : "none",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            filter: "grayscale(0.85) brightness(1.04)",
-            opacity: 0.62,
-          }}
-        >
+        <div className={styles.cradleDisc} />
+        <div className={styles.cradleRing} data-ready={ready || undefined} />
+        <div className={styles.dormantPod}>
           <PodWidget evaluation={evaluation} size={250} />
         </div>
       </div>
-      <div style={{ textAlign: "center", marginTop: 6 }}>
+      <div className={styles.specimenCaption}>
         <div
           style={{
             fontFamily: F.mono,
@@ -440,92 +401,3 @@ function SectionLabel({ icon, children }: { icon: React.ReactNode; children: Rea
     </div>
   );
 }
-
-const benchSurface: React.CSSProperties = {
-  position: "absolute",
-  inset: 0,
-  overflow: "auto",
-  background: `
-    radial-gradient(circle at 50% 42%, #ffffff 0%, ${C.bg} 62%),
-    linear-gradient(${C.border} 1px, transparent 1px) 0 0 / 26px 26px,
-    linear-gradient(90deg, ${C.border} 1px, transparent 1px) 0 0 / 26px 26px`,
-};
-
-// Inset frame that reads as the bench tray / lab walls around the surface.
-const benchTray: React.CSSProperties = {
-  position: "absolute",
-  inset: 14,
-  borderRadius: 18,
-  border: `1px solid ${C.border}`,
-  boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.5), inset 0 18px 60px rgba(13,17,23,0.05)",
-  pointerEvents: "none",
-};
-
-const labLayout: React.CSSProperties = {
-  position: "relative",
-  minHeight: "100%",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 48,
-  flexWrap: "wrap",
-  padding: "48px 56px",
-};
-
-const cradleColumn: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  flexShrink: 0,
-};
-
-const cradleDisc: React.CSSProperties = {
-  position: "absolute",
-  left: "50%",
-  top: "64%",
-  width: 230,
-  height: 78,
-  transform: "translate(-50%,-50%)",
-  borderRadius: "50%",
-  background: "radial-gradient(ellipse at center, rgba(100,116,139,0.16) 0%, transparent 70%)",
-};
-
-const cradleRing: React.CSSProperties = {
-  position: "absolute",
-  left: "50%",
-  top: "62%",
-  width: 196,
-  height: 60,
-  transform: "translate(-50%,-50%)",
-  borderRadius: "50%",
-  border: `1.5px dashed ${C.borderMid}`,
-};
-
-const consolePanel: React.CSSProperties = {
-  position: "relative",
-  width: 408,
-  maxWidth: "100%",
-  flexShrink: 0,
-  display: "flex",
-  flexDirection: "column",
-  gap: 13,
-  background: C.surface,
-  border: `1px solid ${C.border}`,
-  borderRadius: 16,
-  padding: 22,
-  boxShadow: "0 18px 48px rgba(13,17,23,0.12)",
-  animation: "fadeUp 0.4s ease",
-};
-
-const consoleIcon: React.CSSProperties = {
-  width: 38,
-  height: 38,
-  borderRadius: 10,
-  flexShrink: 0,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  background: C.accentBg,
-  border: `1px solid ${C.accentBorder}`,
-  color: WORKBENCH_COLOR,
-};
