@@ -7,8 +7,8 @@ while applying the Diátaxis distinction inside each audience.
 ## Public documentation
 
 - [Public docs](public/README.md)
-  - **Tutorials** teach through a complete guided experience. This is the main
-    missing section; the executable GUI and API demos are its source material.
+  - [Tutorials](public/tutorials/README.md) teach through a complete guided
+    experience.
   - [How-to guides](public/README.md#how-to-guides) help authors and reviewers complete a goal.
   - [Reference](public/README.md#reference) defines concepts and current capabilities.
   - [Explanation](public/README.md#explanation) develops the product's purpose and mental
@@ -32,3 +32,13 @@ while applying the Diátaxis distinction inside each audience.
   current/target architecture shared across audiences.
 - [Research notes](research/README.md) support positioning, comparison, and
   manuscript work. They are a research corpus rather than a Diátaxis section.
+
+## Website publication boundary
+
+`make docs-site` publishes only `docs/public/` and assets stored below it. The
+generated static site is disposable and lives under `sites/docs/`.
+
+Engineering documentation, architecture decision records, shared design
+reference, research notes, and the remaining diagrams stay in the repository.
+The end-user website includes them only after a deliberate promotion into the
+public tree and `zensical.toml`.

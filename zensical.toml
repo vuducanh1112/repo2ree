@@ -1,0 +1,36 @@
+[project]
+site_name = "repo2ree"
+site_description = "Create, inspect, verify, and share Reproducible Execution Environments."
+docs_dir = "docs/public"
+site_dir = "sites/docs"
+use_directory_urls = true
+nav = [
+  { "Home" = "README.md" },
+  { "Tutorials" = [
+    { "Overview" = "tutorials/README.md" },
+    { "Create your first REE" = "tutorials/create-your-first-ree.md" },
+  ] },
+  { "How-to guides" = [
+    { "Evaluate a repository" = "how-to/evaluate.md" },
+    { "Build and run an REE" = "how-to/build-and-run.md" },
+    { "Verify a result" = "how-to/verify.md" },
+    { "Archive and share an REE" = "how-to/archive.md" },
+  ] },
+  { "Reference" = [
+    { "Concepts" = "reference/concepts.md" },
+    { "Current capabilities" = "reference/current-status.md" },
+    { "Frequently asked questions" = "reference/faq.md" },
+  ] },
+  { "Explanation" = [
+    { "Understanding repo2ree" = "explanation/what-is-repo2ree.md" },
+  ] },
+]
+
+[project.theme]
+features = [
+  "navigation.indexes",
+  "navigation.sections",
+  "navigation.top",
+  "search.highlight",
+  "toc.follow",
+]

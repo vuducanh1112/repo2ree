@@ -28,22 +28,11 @@ metadata and binds them into a Reproducible Execution Environment, or REE.
 
 ## Tutorials
 
-A guided first-REE tutorial is not written yet. The current how-to guides assume
-the reader already knows which task they need to complete; the GUI golden-path
-demo and API walkthrough are the executable source for a future tutorial.
+- [Create your first REE](tutorials/create-your-first-ree.md) — follow the GUI
+  golden path from a Python source archive to a sealed, runnable bundle.
 
-## Deeper background
+## Project documentation
 
-These public docs are the short, website-facing layer. The heavier design and
-paper-oriented notes stay one level up:
-
-- [Concept reference](../reference/concepts.md)
-- [Research notes](../research/README.md)
-- [Positioning](../research/POSITIONING.md)
-- [Architecture](../reference/architecture.md)
-- [Component architecture](../reference/components.md)
-- [Sealing and signatures](../research/sealing.md)
-- [Archive and dependency preservation](../research/archive.md)
-
-Contributor setup, deployment, and test instructions are separate:
-[engineering docs](../engineering/README.md).
+This website contains the end-user documentation. Contributor operations,
+architecture decisions, detailed design references, and research notes remain
+in the source repository until they receive a deliberate public treatment.

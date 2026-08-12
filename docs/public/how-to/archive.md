@@ -57,8 +57,8 @@ archive record or institutional workflow.
 
 The target design makes this stronger with a canonical Seal Manifest,
 `ree_digest`, detached signatures, timestamp evidence, and archive binding
-metadata. That target lifecycle is described in
-[sealing.md](../../research/sealing.md).
+metadata. These capabilities remain target design rather than claims about the
+current service.
 
 ## Archive tiers
 

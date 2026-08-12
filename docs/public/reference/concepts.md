@@ -1,7 +1,7 @@
 # Public Concept Reference
 
-These are the public names repo2ree uses. For the fuller design reference, see
-[full concept reference](../../reference/concepts.md).
+These are the public names repo2ree uses. They define the terms used throughout
+the tutorials and guides without exposing internal implementation vocabulary.
 
 ## Vocabulary boundary
 

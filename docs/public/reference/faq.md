@@ -55,5 +55,6 @@ stronger or institution-owned environments.
 
 ## Where are contributor docs?
 
-Contributor and operator docs start in the [engineering documentation](../../engineering/README.md).
-The public docs are meant for website readers, not local development setup.
+Contributor and operator documentation lives in the source repository. This
+website is for people using repo2ree, not for local development or service
+operation.
