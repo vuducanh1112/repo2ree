@@ -91,17 +91,6 @@ export const lgBackgrounds = {
 // rather than widened to string), while T keeps the specific keys for safety.
 const styleSheet = <T extends Record<string, React.CSSProperties>>(s: T): T => s;
 
-// Shared layout/background for the `footer` and `footerBar` styles below; only
-// their border/padding differ.
-const S_FOOTER_BASE: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 12,
-  justifyContent: "space-between",
-  background: lgBackgrounds.footer,
-  flexWrap: "wrap",
-};
-
 export const lgStyles = styleSheet({
   panel: {
     border: lgBorders.panel,
@@ -150,41 +139,6 @@ export const lgStyles = styleSheet({
     boxShadow: "inset 0 0 80px rgba(14, 165, 233, 0.07)",
     padding: 22,
   },
-  pageHeader: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 18,
-    borderBottom: "1px solid rgba(125, 211, 252, 0.44)",
-    paddingBottom: 20,
-    marginBottom: 22,
-  },
-  headerIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 13,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: lgColors.cyan,
-    background: lgBackgrounds.icon,
-    border: "1px solid rgba(14, 165, 233, 0.32)",
-    boxShadow: "0 14px 30px rgba(14, 165, 233, 0.16)",
-    flexShrink: 0,
-  },
-  title: {
-    margin: 0,
-    color: lgColors.text,
-    fontSize: 21,
-    lineHeight: 1.2,
-    fontWeight: 800,
-  },
-  subtitle: {
-    margin: 0,
-    color: lgColors.textMid,
-    fontSize: 13,
-    lineHeight: 1.45,
-  },
   mainGrid: {
     display: "grid",
     gridTemplateColumns: "minmax(320px, 1fr) minmax(260px, 340px)",
@@ -193,12 +147,6 @@ export const lgStyles = styleSheet({
   },
   sectionBody: {
     padding: 22,
-  },
-  sectionHeader: {
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 22,
   },
   sectionIcon: {
     width: 34,
@@ -210,25 +158,6 @@ export const lgStyles = styleSheet({
     color: lgColors.blue,
     border: lgBorders.sectionStrong,
     background: lgBackgrounds.iconSoft,
-  },
-  sectionTitle: {
-    margin: 0,
-    fontSize: 18,
-    color: lgColors.text,
-  },
-  sectionSubtitle: {
-    color: lgColors.textMuted,
-    fontSize: 12,
-  },
-  // An inset card for a single section, raised slightly off the main glass panel
-  // so each major section reads as its own bounded subpanel rather than blending
-  // into one continuous surface.
-  subPanel: {
-    border: lgBorders.section,
-    borderRadius: 10,
-    background: lgBackgrounds.glassStrong,
-    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.8)",
-    padding: 18,
   },
   fieldsGrid: {
     display: "grid",
@@ -287,20 +216,6 @@ export const lgStyles = styleSheet({
     display: "flex",
     flexWrap: "wrap",
     gap: 8,
-  },
-  // `footer` welds to the bottom of a single panel (top border only); `footerBar`
-  // is the standalone variant for pages split into separate subpanels (fully
-  // bordered, rounded bar). Both share the same layout/background base.
-  footer: {
-    ...S_FOOTER_BASE,
-    borderTop: "1px solid rgba(125, 211, 252, 0.38)",
-    padding: "14px 22px",
-  },
-  footerBar: {
-    ...S_FOOTER_BASE,
-    border: lgBorders.section,
-    borderRadius: 10,
-    padding: "12px 18px",
   },
   aside: {
     display: "flex",
@@ -468,10 +383,6 @@ export function lgActionButton(tone: ActionTone, disabled = false): React.CSSPro
     cursor: disabled ? "not-allowed" : "pointer",
     flexShrink: 0,
   };
-}
-
-export function pageIconTint(color: string): { color: string; border: string; shadow: string } {
-  return { color, border: `${color}55`, shadow: `${color}28` };
 }
 
 export const lgPageRoot: React.CSSProperties = {

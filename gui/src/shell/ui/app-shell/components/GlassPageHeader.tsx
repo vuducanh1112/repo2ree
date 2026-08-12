@@ -1,15 +1,15 @@
 import type React from "react";
-import { lgStyles } from "../../theme/lightGlassTheme";
-
-interface GlassIconTint {
-  color: string;
-  border: string;
-  shadow: string;
-}
+import { cssVars } from "../../theme/styleVars";
+import styles from "./GlassPage.module.css";
 
 interface GlassPageHeaderProps {
   icon: React.ReactNode;
-  iconTint?: GlassIconTint;
+  /**
+   * The page's own tone, as a `var(--…)` reference. The icon's edge and glow
+   * are derived from it, which is what the three-field `iconTint` object used
+   * to spell out at every call site.
+   */
+  tint?: string;
   title: string;
   badges?: React.ReactNode;
   subtitle: React.ReactNode;
@@ -18,39 +18,28 @@ interface GlassPageHeaderProps {
 
 export function GlassPageHeader({
   icon,
-  iconTint,
+  tint,
   title,
   badges,
   subtitle,
   right,
 }: GlassPageHeaderProps) {
-  const iconStyle: React.CSSProperties = iconTint
-    ? {
-        ...lgStyles.headerIcon,
-        color: iconTint.color,
-        border: `1px solid ${iconTint.border}`,
-        boxShadow: `0 14px 30px ${iconTint.shadow}`,
-      }
-    : lgStyles.headerIcon;
-
   return (
-    <div style={lgStyles.pageHeader}>
-      <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
-        <div style={iconStyle}>{icon}</div>
-        <div style={{ minWidth: 0 }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              flexWrap: "wrap",
-              marginBottom: 4,
-            }}
-          >
-            <h1 style={lgStyles.title}>{title}</h1>
+    <div className={styles.pageHeader}>
+      <div className={styles.identity}>
+        <div
+          className={styles.pageIcon}
+          data-tinted={tint ? true : undefined}
+          style={cssVars(tint ? { "--page-tint": tint } : {})}
+        >
+          {icon}
+        </div>
+        <div className={styles.headings}>
+          <div className={styles.titleRow}>
+            <h1 className={styles.title}>{title}</h1>
             {badges}
           </div>
-          <p style={lgStyles.subtitle}>{subtitle}</p>
+          <p className={styles.subtitle}>{subtitle}</p>
         </div>
       </div>
       {right}

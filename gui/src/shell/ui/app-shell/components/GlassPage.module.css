@@ -1,0 +1,154 @@
+/* The glass page scaffold: the header a page opens with, the section headers
+ * inside it, the inset subpanels those sections sit in, and the hint bar at the
+ * foot. One module for the family because they are one composition — a section
+ * header's icon is the page header's icon a size down, and keeping them apart
+ * is how the two drifted in the first place.
+ *
+ * The three near-identical hairlines these had (44%, 42% and 38% sky) are one
+ * `--surface-card-edge` now. They were the same intent recorded three times.
+ */
+
+/* --- Page header -------------------------------------------------------- */
+
+.pageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: var(--space-5);
+  margin-bottom: 22px;
+  border-bottom: 1px solid var(--surface-card-edge);
+}
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+/* Tinted by the page's own stage when it has one; the sky default is for the
+ * pages that are not a pipeline step. The edge and glow are derived from the
+ * tint so a caller supplies one value, not three. */
+.pageIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 13px;
+  color: var(--page-tint, var(--page-icon-ink));
+  background: var(--page-icon-bg);
+  border: 1px solid var(--page-icon-edge);
+  box-shadow: var(--page-icon-shadow);
+}
+
+.pageIcon[data-tinted] {
+  --page-icon-edge: color-mix(in srgb, var(--page-tint) 33%, transparent);
+  --page-icon-shadow: 0 14px 30px color-mix(in srgb, var(--page-tint) 16%, transparent);
+}
+
+.headings {
+  min-width: 0;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: var(--space-1);
+}
+
+.title {
+  margin: 0;
+  font-size: 21px;
+  line-height: 1.2;
+  font-weight: 800;
+  color: var(--page-title-ink);
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--page-subtitle-ink);
+}
+
+/* --- Section header ------------------------------------------------------ */
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: 22px;
+}
+
+.sectionIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  color: var(--section-tint, var(--section-icon-ink));
+  background: var(--section-icon-bg);
+  border: 1px solid var(--section-icon-edge);
+}
+
+.sectionIcon[data-tinted] {
+  --section-icon-edge: color-mix(in srgb, var(--section-tint) 28%, transparent);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: var(--text-xl);
+  color: var(--section-title-ink);
+}
+
+.sectionSubtitle {
+  font-size: var(--text-md);
+  color: var(--section-subtitle-ink);
+}
+
+/* --- Subpanel ------------------------------------------------------------
+ * An inset card for a single section, raised slightly off the main glass panel
+ * so each major section reads as its own bounded subpanel rather than blending
+ * into one continuous surface. */
+
+.subPanel {
+  padding: 18px;
+  border-radius: 10px;
+  border: 1px solid var(--surface-card-edge);
+  background: var(--surface-subpanel-bg);
+  box-shadow: var(--surface-subpanel-shadow);
+}
+
+/* --- Footer --------------------------------------------------------------
+ * The muted hint bar at the foot of a page. `bar` is the standalone rounded
+ * reading, for pages split into separate subpanels; the default welds to the
+ * bottom of a single glass panel. */
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: 14px 22px;
+  border-top: 1px solid var(--surface-card-edge);
+  background: var(--footer-bg);
+}
+
+.footer[data-shape="bar"] {
+  padding: var(--space-3) 18px;
+  border: 1px solid var(--surface-card-edge);
+  border-radius: 10px;
+}
+
+.footerText {
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  color: var(--footer-ink);
+}

@@ -1,3 +1,4 @@
+import { PAGE } from "@core/app-shell/pages";
 import { resolvedRuntimePath } from "@core/ree-steps/buildRuntimeUiState";
 import {
   findSbomArtifact,
@@ -7,7 +8,8 @@ import {
 } from "@core/ree-steps/sbomUiState";
 import type { ReeStepRunParams } from "@core/ree-steps/stepRunParams";
 import { workspaceFileExists } from "@core/workspace/fileTreeTraversal";
-import { lgPageRoot, lgStatusBadge, pageIconTint } from "@shell/ui/theme/lightGlassTheme";
+import { stageTone } from "@shell/ui/theme/appearance";
+import { lgPageRoot, lgStatusBadge } from "@shell/ui/theme/lightGlassTheme";
 import { useMemo } from "react";
 import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
@@ -18,7 +20,7 @@ import { stepIcon } from "../../stepIcons";
 import type { StepPageProps } from "../sharedStepUi";
 import { CrossCheckCard, RuntimeScanTargetCard, SbomOutputCard } from "./sections";
 
-const SBOM_PAGE_COLOR = "#16a34a";
+const SBOM_PAGE_COLOR = stageTone(PAGE.SBOM);
 
 export function PageGenerateSbom({
   step,
@@ -57,7 +59,7 @@ export function PageGenerateSbom({
     <div style={lgPageRoot}>
       <GlassPageHeader
         icon={IC(24)}
-        iconTint={pageIconTint(SBOM_PAGE_COLOR)}
+        tint={SBOM_PAGE_COLOR}
         title={step.label}
         subtitle={step.desc}
         badges={

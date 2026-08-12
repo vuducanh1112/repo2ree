@@ -1,4 +1,5 @@
 import { Ic } from "@shell/ui/shared/components/Icon";
+import { translucent } from "@shell/ui/theme/appearance";
 import {
   lgColors,
   lgInfoBanner,
@@ -52,8 +53,8 @@ export function SbomOutputCard({
         alignItems: "center",
         gap: 8,
         padding: "10px 14px",
-        background: `${color}0f`,
-        border: `1px solid ${color}24`,
+        background: translucent(color, 6),
+        border: `1px solid ${translucent(color, 14)}`,
         borderRadius: 10,
         flexWrap: "wrap",
       }}

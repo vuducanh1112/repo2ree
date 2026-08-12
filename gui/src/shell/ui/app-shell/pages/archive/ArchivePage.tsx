@@ -5,11 +5,11 @@ import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { ARCHIVE_REPOSITORIES } from "@core/ree-steps/archiveRepositories";
 import type { GenericReeStepParams } from "@core/ree-steps/stepTypes";
 import { Ic } from "@shell/ui/shared/components/Icon";
-import { archiveTone, translucent } from "@shell/ui/theme/appearance";
-import { lgColors, lgNextButton, lgStatusBadge, lgStyles } from "@shell/ui/theme/lightGlassTheme";
-import { F } from "@shell/ui/theme/theme";
+import { archiveTone } from "@shell/ui/theme/appearance";
+import { lgNextButton, lgStatusBadge, lgStyles } from "@shell/ui/theme/lightGlassTheme";
 import { useState } from "react";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
+import { GlassPanelFooter } from "../../components/GlassPanelFooter";
 import { GlassSectionHeader } from "../../components/GlassSectionHeader";
 import { ArchiveActionPanel } from "./sections/ArchiveActionPanel";
 import { ArchiveParamsCard } from "./sections/ArchiveParamsCard";
@@ -77,11 +77,7 @@ export function PageArchive({
       <div style={lgStyles.pageFrame}>
         <GlassPageHeader
           icon={Ic.globe(24)}
-          iconTint={{
-            color: archiveTone(repo.key),
-            border: translucent(archiveTone(repo.key), 33),
-            shadow: translucent(archiveTone(repo.key), 19),
-          }}
+          tint={archiveTone(repo.key)}
           title="Deposit & Share"
           subtitle="Deposit your REE to a long-term archive and receive a citable permanent identifier."
           badges={
@@ -117,7 +113,7 @@ export function PageArchive({
             <div style={lgStyles.sectionBody}>
               <GlassSectionHeader
                 icon={Ic.archive(19)}
-                color={archiveTone(repo.key)}
+                tint={archiveTone(repo.key)}
                 title={repo.label}
                 subtitle="Review the destination and provide the parameters this archive requires."
               />
@@ -126,16 +122,17 @@ export function PageArchive({
               <ArchiveParamsCard repo={repo} getParam={getParam} setParam={setParam} />
             </div>
 
-            <div style={lgStyles.footer}>
-              <span style={{ color: lgColors.textMuted, fontSize: 12, fontFamily: F.sans }}>
-                {isSealed
-                  ? "REE is sealed — deposits are final."
-                  : "Deposit can proceed before sealing, but Seal is still required to finish."}
-              </span>
-              <button type="button" onClick={() => onGo(PAGE.SEAL)} style={lgNextButton()}>
-                Next: Seal {Ic.chevR(15)}
-              </button>
-            </div>
+            <GlassPanelFooter
+              action={
+                <button type="button" onClick={() => onGo(PAGE.SEAL)} style={lgNextButton()}>
+                  Next: Seal {Ic.chevR(15)}
+                </button>
+              }
+            >
+              {isSealed
+                ? "REE is sealed — deposits are final."
+                : "Deposit can proceed before sealing, but Seal is still required to finish."}
+            </GlassPanelFooter>
           </section>
 
           <aside style={lgStyles.aside}>

@@ -164,7 +164,12 @@
   --palette-film-mint: rgb(240 253 244 / 78%);
   --palette-film-mint-strong: rgb(220 252 231 / 78%);
   --palette-film-butter: rgb(254 249 195 / 82%);
+  --palette-film-sky: rgb(240 249 255 / 88%);
+  --palette-film-sky-soft: rgb(240 249 255 / 72%);
+  --palette-film-slate-soft: rgb(248 250 252 / 66%);
   --palette-edge-sky: rgb(14 165 233 / 35%);
+  --palette-edge-sky-soft: rgb(14 165 233 / 32%);
+  --palette-edge-sky-faint: rgb(14 165 233 / 28%);
   --palette-edge-sky-strong: rgb(14 165 233 / 42%);
   --palette-edge-sky-pale: rgb(125 211 252 / 42%);
   --palette-edge-slate: rgb(148 163 184 / 34%);
@@ -179,6 +184,8 @@
   --shadow-dot-glow: 0 0 7px;
   --shadow-raised: 0 12px 24px rgb(14 165 233 / 22%);
   --shadow-panel: 0 1px 3px rgb(0 0 0 / 4%);
+  --shadow-header-icon: 0 14px 30px rgb(14 165 233 / 16%);
+  --shadow-subpanel: 0 1px 2px rgb(15 23 42 / 5%), inset 0 1px 0 rgb(255 255 255 / 80%);
   --shadow-field-focus: 0 0 0 3px rgb(14 165 233 / 15%);
   --shadow-field-inset: inset 0 1px 0 var(--palette-film-white-strong);
 

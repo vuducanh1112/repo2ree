@@ -1,6 +1,6 @@
 {
   "note": "Migration ratchet for the GUI styling rework — pre-existing violations, per file. It may only shrink: `make gui-checks` fails on a new violation and on a stale entry left behind by a conversion. Regenerate with `npm run check:style-architecture -- --update`. Phase 8 deletes this file and the rules become absolute.",
-  "total": 1499,
+  "total": 1443,
   "files": {
     "src/shell/ui/agents/AgentsView.tsx": {
       "legacy-theme-import": 1,
@@ -195,25 +195,6 @@
       "raw-color": 3,
       "style-object-literal": 6
     },
-    "src/shell/ui/app-shell/components/GlassPageHeader.tsx": {
-      "legacy-theme-import": 1,
-      "style-not-css-vars": 4,
-      "style-object-literal": 3
-    },
-    "src/shell/ui/app-shell/components/GlassPanelFooter.tsx": {
-      "legacy-theme-import": 2,
-      "style-not-css-vars": 1,
-      "style-object-literal": 1
-    },
-    "src/shell/ui/app-shell/components/GlassSectionHeader.tsx": {
-      "legacy-theme-import": 1,
-      "style-not-css-vars": 3,
-      "style-object-literal": 1
-    },
-    "src/shell/ui/app-shell/components/GlassSubPanel.tsx": {
-      "legacy-theme-import": 1,
-      "style-object-literal": 1
-    },
     "src/shell/ui/app-shell/components/sourceRuntime/SourceUploadCommitted.tsx": {
       "legacy-theme-import": 1,
       "raw-color": 4,
@@ -257,9 +238,9 @@
       "legacy-theme-import": 1
     },
     "src/shell/ui/app-shell/pages/archive/ArchivePage.tsx": {
-      "legacy-theme-import": 2,
-      "style-not-css-vars": 10,
-      "style-object-literal": 2
+      "legacy-theme-import": 1,
+      "style-not-css-vars": 9,
+      "style-object-literal": 1
     },
     "src/shell/ui/app-shell/pages/archive/sections/ArchiveActionPanel.tsx": {
       "legacy-theme-import": 1,
@@ -316,15 +297,15 @@
     "src/shell/ui/app-shell/pages/experiments/ExperimentsPage.tsx": {
       "legacy-theme-import": 1,
       "raw-color": 2,
-      "style-not-css-vars": 12,
-      "style-object-literal": 5
+      "style-not-css-vars": 7,
+      "style-object-literal": 4
     },
     "src/shell/ui/app-shell/pages/experiments/ExperimentsPageSections.tsx": {
       "alpha-interpolation": 1,
       "legacy-theme-import": 2,
       "raw-color": 8,
-      "style-not-css-vars": 12,
-      "style-object-literal": 33
+      "style-not-css-vars": 11,
+      "style-object-literal": 32
     },
     "src/shell/ui/app-shell/pages/files/FileFilterInput.tsx": {
       "legacy-theme-import": 2,
@@ -336,7 +317,6 @@
     },
     "src/shell/ui/app-shell/pages/generate-sbom/GenerateSbomPage.tsx": {
       "legacy-theme-import": 1,
-      "raw-color": 1,
       "style-not-css-vars": 2,
       "style-object-literal": 1
     },
@@ -352,16 +332,15 @@
       "style-object-literal": 9
     },
     "src/shell/ui/app-shell/pages/generate-sbom/sections/SbomOutputCard.tsx": {
-      "alpha-interpolation": 2,
       "legacy-theme-import": 2,
       "style-not-css-vars": 4,
       "style-object-literal": 7
     },
     "src/shell/ui/app-shell/pages/hardware-bom/HardwareBomPage.tsx": {
       "legacy-theme-import": 2,
-      "raw-color": 9,
-      "style-not-css-vars": 7,
-      "style-object-literal": 6
+      "raw-color": 3,
+      "style-not-css-vars": 4,
+      "style-object-literal": 5
     },
     "src/shell/ui/app-shell/pages/hardware-bom/HardwareBomPageSections.tsx": {
       "legacy-theme-import": 2,
@@ -392,8 +371,7 @@
     },
     "src/shell/ui/app-shell/pages/repo-analysis/RepoAnalysisPage.tsx": {
       "legacy-theme-import": 1,
-      "raw-color": 1,
-      "style-not-css-vars": 7,
+      "style-not-css-vars": 3,
       "style-object-literal": 2
     },
     "src/shell/ui/app-shell/pages/repo-analysis/RepoAnalysisPageHelpers.ts": {
@@ -426,7 +404,6 @@
     },
     "src/shell/ui/app-shell/pages/test-activation/ActivationTestPage.tsx": {
       "legacy-theme-import": 2,
-      "raw-color": 1,
       "style-not-css-vars": 2,
       "style-object-literal": 5
     },
@@ -473,9 +450,9 @@
       "css-global-interaction": 2
     },
     "src/shell/ui/theme/lightGlassTheme.ts": {
-      "alpha-interpolation": 4,
+      "alpha-interpolation": 2,
       "legacy-theme-import": 2,
-      "raw-color": 117,
+      "raw-color": 112,
       "theme-style-object": 1
     },
     "src/shell/ui/theme/stylesCore.ts": {

@@ -20,6 +20,8 @@ import {
 } from "@shell/ui/theme/lightGlassTheme";
 import { useEffect, useRef, useState } from "react";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
+import { GlassPanelFooter } from "../../components/GlassPanelFooter";
+import { GlassSectionHeader } from "../../components/GlassSectionHeader";
 import type { PageExperimentsProps } from "../sharedStepUi";
 import {
   ExperimentCardList,
@@ -294,16 +296,11 @@ export function PageExperiments({
           ) : (
             <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
               <div style={lgStyles.sectionBody}>
-                <div style={lgStyles.sectionHeader}>
-                  <div style={lgStyles.sectionIcon}>{Ic.layers(19)}</div>
-                  <div>
-                    <h2 style={lgStyles.sectionTitle}>Catalog</h2>
-                    <div style={lgStyles.sectionSubtitle}>
-                      Each experiment is a named, runnable check that proves the REE behaves as
-                      expected.
-                    </div>
-                  </div>
-                </div>
+                <GlassSectionHeader
+                  icon={Ic.layers(19)}
+                  title="Catalog"
+                  subtitle="Each experiment is a named, runnable check that proves the REE behaves as expected."
+                />
 
                 <ExperimentCardList
                   experiments={experiments}
@@ -314,36 +311,37 @@ export function PageExperiments({
                 />
               </div>
 
-              <div style={lgStyles.footer}>
-                <span style={{ color: lgColors.textMuted, fontSize: 12 }}>
-                  {total === 0
-                    ? "Experiments are optional but raise the achievable reproducibility level."
-                    : `${total} recorded — continue to deposit & share when ready.`}
-                </span>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  {!locked && (
+              <GlassPanelFooter
+                action={
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    {!locked && (
+                      <button
+                        type="button"
+                        onClick={addExperiment}
+                        style={{
+                          ...lgGlassButton(),
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        {Ic.plus(13)} Add experiment
+                      </button>
+                    )}
                     <button
                       type="button"
-                      onClick={addExperiment}
-                      style={{
-                        ...lgGlassButton(),
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 6,
-                      }}
+                      onClick={() => onGoPage(PAGE.ARCHIVE)}
+                      style={lgNextButton()}
                     >
-                      {Ic.plus(13)} Add experiment
+                      Next: Deposit & Share {Ic.chevR(15)}
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => onGoPage(PAGE.ARCHIVE)}
-                    style={lgNextButton()}
-                  >
-                    Next: Deposit & Share {Ic.chevR(15)}
-                  </button>
-                </div>
-              </div>
+                  </div>
+                }
+              >
+                {total === 0
+                  ? "Experiments are optional but raise the achievable reproducibility level."
+                  : `${total} recorded — continue to deposit & share when ready.`}
+              </GlassPanelFooter>
             </section>
           )}
 

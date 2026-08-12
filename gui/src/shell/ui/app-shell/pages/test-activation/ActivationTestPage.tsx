@@ -1,3 +1,4 @@
+import { PAGE } from "@core/app-shell/pages";
 import { createEmptyReeActivation, type ReeActivation } from "@core/ree/ReeSpec";
 import {
   activationFooterHint,
@@ -11,12 +12,8 @@ import { findFileByWorkspacePath, workspaceFileExists } from "@core/workspace/fi
 import { useGenerateActivationScript } from "@shell/data/scriptInference/mutations";
 import { useScriptTemplates } from "@shell/data/scriptTemplates/catalog";
 import { Ic } from "@shell/ui/shared/components/Icon";
-import {
-  lgPageRoot,
-  lgPillChip,
-  lgStatusBadge,
-  pageIconTint,
-} from "@shell/ui/theme/lightGlassTheme";
+import { stageTone } from "@shell/ui/theme/appearance";
+import { lgPageRoot, lgPillChip, lgStatusBadge } from "@shell/ui/theme/lightGlassTheme";
 import { F } from "@shell/ui/theme/theme";
 import { useCallback, useState } from "react";
 import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
@@ -33,7 +30,7 @@ import { RunScriptCard } from "../../components/RunScriptCard";
 import type { StepPageProps } from "../sharedStepUi";
 import { ActivationTargetCard } from "./sections";
 
-const ACTIVATION_PAGE_COLOR = "#7c3aed";
+const ACTIVATION_PAGE_COLOR = stageTone(PAGE.ACTIVATION);
 
 function ActivationRunControls({
   running,
@@ -154,7 +151,7 @@ export function PageTestActivation({
     <div style={lgPageRoot}>
       <GlassPageHeader
         icon={Ic.shield(24)}
-        iconTint={pageIconTint(ACTIVATION_PAGE_COLOR)}
+        tint={ACTIVATION_PAGE_COLOR}
         title="Test Activation"
         subtitle="Verify the packaged runtime actually starts and activates."
         badges={
@@ -188,7 +185,7 @@ export function PageTestActivation({
         <GlassSubPanel>
           <GlassSectionHeader
             icon={Ic.shield(19)}
-            color={ACTIVATION_PAGE_COLOR}
+            tint={ACTIVATION_PAGE_COLOR}
             title="Activation Run Script"
             subtitle="Activation owns its run script: it fully defines how the runtime is entered and probed for liveness."
           />
@@ -238,7 +235,7 @@ export function PageTestActivation({
         <GlassSubPanel>
           <GlassSectionHeader
             icon={Ic.cpu(19)}
-            color={ACTIVATION_PAGE_COLOR}
+            tint={ACTIVATION_PAGE_COLOR}
             title="Runtime Under Test"
             subtitle="Activation reuses the runtime artifact from Build Runtime and the inventory context from Generate SBOM."
           />

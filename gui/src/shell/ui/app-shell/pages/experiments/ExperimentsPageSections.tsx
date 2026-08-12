@@ -12,6 +12,7 @@ import {
   experimentRunScriptPath,
   experimentVerifyScriptPath,
 } from "@shell/data/scriptTemplates/paths";
+import { GlassPanelFooter } from "@shell/ui/app-shell/components/GlassPanelFooter";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { failureTone, stageTone } from "@shell/ui/theme/appearance";
 import {
@@ -213,28 +214,29 @@ export function ExperimentDetail({
         {runState && <RunResultPanel runState={runState} />}
       </div>
 
-      <div style={lgStyles.footer}>
-        <span style={{ color: lgColors.textMuted, fontSize: 12 }}>
-          {!locked && trimmedName === ""
-            ? "A name is required."
-            : !locked && isDuplicateName
-              ? "Fix the duplicate name to continue."
-              : !locked && isInvalidName
-                ? "Fix the invalid name to continue."
-                : "Edits save automatically."}
-        </span>
-        <button
-          type="button"
-          onClick={onBack}
-          disabled={!locked && !canRun}
-          style={{
-            ...lgNextButton(),
-            ...(!locked && !canRun ? { opacity: 0.45, cursor: "not-allowed" } : {}),
-          }}
-        >
-          {Ic.check(15)} Save & back to catalog
-        </button>
-      </div>
+      <GlassPanelFooter
+        action={
+          <button
+            type="button"
+            onClick={onBack}
+            disabled={!locked && !canRun}
+            style={{
+              ...lgNextButton(),
+              ...(!locked && !canRun ? { opacity: 0.45, cursor: "not-allowed" } : {}),
+            }}
+          >
+            {Ic.check(15)} Save & back to catalog
+          </button>
+        }
+      >
+        {!locked && trimmedName === ""
+          ? "A name is required."
+          : !locked && isDuplicateName
+            ? "Fix the duplicate name to continue."
+            : !locked && isInvalidName
+              ? "Fix the invalid name to continue."
+              : "Edits save automatically."}
+      </GlassPanelFooter>
     </section>
   );
 }

@@ -1,25 +1,28 @@
 import type React from "react";
-import { translucent } from "../../theme/appearance";
-import { lgStyles } from "../../theme/lightGlassTheme";
+import { cssVars } from "../../theme/styleVars";
+import styles from "./GlassPage.module.css";
 
 interface GlassSectionHeaderProps {
   icon: React.ReactNode;
-  color: string;
+  /** The section's tone, as a `var(--…)` reference. Defaults to the page's. */
+  tint?: string;
   title: string;
-  subtitle: string;
+  subtitle?: string;
 }
 
-export function GlassSectionHeader({ icon, color, title, subtitle }: GlassSectionHeaderProps) {
+export function GlassSectionHeader({ icon, tint, title, subtitle }: GlassSectionHeaderProps) {
   return (
-    <div style={lgStyles.sectionHeader}>
+    <div className={styles.sectionHeader}>
       <div
-        style={{ ...lgStyles.sectionIcon, color, border: `1px solid ${translucent(color, 28)}` }}
+        className={styles.sectionIcon}
+        data-tinted={tint ? true : undefined}
+        style={cssVars(tint ? { "--section-tint": tint } : {})}
       >
         {icon}
       </div>
       <div>
-        <h2 style={lgStyles.sectionTitle}>{title}</h2>
-        <div style={lgStyles.sectionSubtitle}>{subtitle}</div>
+        <h2 className={styles.sectionTitle}>{title}</h2>
+        {subtitle && <div className={styles.sectionSubtitle}>{subtitle}</div>}
       </div>
     </div>
   );

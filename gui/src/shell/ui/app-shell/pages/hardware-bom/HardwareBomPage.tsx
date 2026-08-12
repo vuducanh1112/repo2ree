@@ -1,3 +1,4 @@
+import { PAGE } from "@core/app-shell/pages";
 import {
   type HardwareBomDraft,
   newCpuRow,
@@ -8,12 +9,14 @@ import {
 } from "@core/hbom/hardwareBomDraft";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { useFocusScroll } from "@shell/ui/shared/hooks/useFocusScroll";
+import { stageTone } from "@shell/ui/theme/appearance";
 import { lgColors, lgGlassButton, lgStatusBadge, lgStyles } from "@shell/ui/theme/lightGlassTheme";
 import { S_ACTION_BUTTON_BASE } from "@shell/ui/theme/theme";
 import { useState } from "react";
 import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
 import { GlassPanelFooter } from "../../components/GlassPanelFooter";
+import { GlassSectionHeader } from "../../components/GlassSectionHeader";
 import { RunActionButton } from "../../components/RunActionButton";
 import { useHardwareBomDraft } from "../../hooks/useHardwareBomDraft";
 import type { PageHardwareBomProps } from "../sharedStepUi";
@@ -31,7 +34,7 @@ import {
 } from "./hardwareBomColumns";
 import { inp, selectInp } from "./hardwareBomPageHelpers";
 
-const HBOM_ACCENT = "#0f766e";
+const HBOM_ACCENT = stageTone(PAGE.HBOM);
 
 function generateRowId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random()}`;
@@ -307,11 +310,7 @@ export function PageHardwareBom({
       <div style={lgStyles.pageFrame}>
         <GlassPageHeader
           icon={Ic.cpu(24)}
-          iconTint={{
-            color: "#0f766e",
-            border: "rgba(15, 118, 110, 0.32)",
-            shadow: "rgba(15, 118, 110, 0.14)",
-          }}
+          tint={HBOM_ACCENT}
           title="Hardware BOM"
           subtitle="Document the machine assumptions that matter today — expand later to remote targets."
           badges={headerBadges}
@@ -320,23 +319,12 @@ export function PageHardwareBom({
 
         <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
           <div style={lgStyles.sectionBody}>
-            <div style={lgStyles.sectionHeader}>
-              <div
-                style={{
-                  ...lgStyles.sectionIcon,
-                  color: "#0f766e",
-                  border: "1px solid rgba(15, 118, 110, 0.28)",
-                }}
-              >
-                {Ic.layers(19)}
-              </div>
-              <div>
-                <h2 style={lgStyles.sectionTitle}>Hardware Inventory</h2>
-                <div style={lgStyles.sectionSubtitle}>
-                  Switch categories below — only the device model is required per row.
-                </div>
-              </div>
-            </div>
+            <GlassSectionHeader
+              icon={Ic.layers(19)}
+              tint={HBOM_ACCENT}
+              title="Hardware Inventory"
+              subtitle="Switch categories below — only the device model is required per row."
+            />
 
             <HardwareCategoryTabs
               categories={CATEGORIES}

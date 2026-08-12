@@ -1,3 +1,4 @@
+import { PAGE } from "@core/app-shell/pages";
 import {
   buildFooterHint,
   buildRunStatusLabel,
@@ -9,13 +10,8 @@ import { findFileByWorkspacePath, workspaceFileExists } from "@core/workspace/fi
 import { useGenerateBuildScript } from "@shell/data/scriptInference/mutations";
 import { useScriptTemplates } from "@shell/data/scriptTemplates/catalog";
 import { Ic } from "@shell/ui/shared/components/Icon";
-import {
-  lgPageColors,
-  lgPageRoot,
-  lgPillChip,
-  lgStatusBadge,
-  pageIconTint,
-} from "@shell/ui/theme/lightGlassTheme";
+import { stageTone } from "@shell/ui/theme/appearance";
+import { lgPageRoot, lgPillChip, lgStatusBadge } from "@shell/ui/theme/lightGlassTheme";
 import { F } from "@shell/ui/theme/theme";
 import { useCallback, useMemo, useState } from "react";
 import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
@@ -31,7 +27,7 @@ import { RunActionButton } from "../../components/RunActionButton";
 import type { StepPageProps } from "../sharedStepUi";
 import { ReservedBuildScriptCard, RuntimeArtifactCard } from "./sections";
 
-const BUILD_PAGE_COLOR = lgPageColors.runtimeEnv;
+const BUILD_PAGE_COLOR = stageTone(PAGE.BUILD);
 
 function BuildRunControls({
   running,
@@ -144,7 +140,7 @@ export function PageBuildRuntime({
     <div style={lgPageRoot}>
       <GlassPageHeader
         icon={Ic.cpu(24)}
-        iconTint={pageIconTint(BUILD_PAGE_COLOR)}
+        tint={BUILD_PAGE_COLOR}
         title="Build Runtime"
         subtitle="Declare where the build writes its runtime, author the build recipe, then run it to give experiments a reusable run target."
         badges={
@@ -176,7 +172,7 @@ export function PageBuildRuntime({
         <GlassSubPanel>
           <GlassSectionHeader
             icon={Ic.archive(19)}
-            color={BUILD_PAGE_COLOR}
+            tint={BUILD_PAGE_COLOR}
             title="1. Declare the runtime the build produces"
             subtitle="Name the path the build script writes its runtime to. The build refuses to run until it is declared, and fails if nothing lands there."
           />
@@ -193,7 +189,7 @@ export function PageBuildRuntime({
         <GlassSubPanel>
           <GlassSectionHeader
             icon={Ic.file(19)}
-            color={BUILD_PAGE_COLOR}
+            tint={BUILD_PAGE_COLOR}
             title="Build recipe"
             subtitle="Edit REE’s reserved build program. It can call any build scripts already supplied by the project."
           />

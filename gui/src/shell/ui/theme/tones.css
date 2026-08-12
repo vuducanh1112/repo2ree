@@ -1,11 +1,11 @@
 /* Semantic tone mappings: domain and state identities expressed as roles.
  *
  * Components consume the roles below, never `--palette-*` directly. Root
- * aliases describe the default app chrome. When the glass "pages" surfaces are
- * migrated (Phase 4), they add a surface boundary here — a selector that
- * overrides only the roles that genuinely differ under glass — instead of a
- * second palette object. Nothing declares that boundary yet, so it is not
- * written here yet either.
+ * aliases describe the default app chrome. The glass "pages" surfaces will add
+ * a surface boundary here — a selector overriding only the roles that genuinely
+ * differ under glass — instead of a second palette object. Nothing renders a
+ * glass root element yet (each page still applies `lgStyles.pageRoot` itself),
+ * so that boundary waits for the page conversions.
  */
 
 :root {
@@ -150,9 +150,9 @@
   --archive-dataverse-edge: var(--palette-violet-200);
 
   /* --- Shared primitives -------------------------------------------------
-   * The roles `shared/components/*` consume. They describe the glass "pages"
-   * chrome those primitives were lifted from; when Phase 4 introduces a glass
-   * surface boundary, these are the roles it overrides.
+   * The roles `shared/components/*` and the page scaffold consume. They
+   * describe the glass "pages" chrome those were lifted from; when a glass
+   * surface boundary lands, these are the roles it overrides.
    */
   --control-primary-bg: var(--gradient-primary);
   --control-primary-edge: var(--palette-edge-sky-strong);
@@ -176,8 +176,25 @@
   --field-hint-ink: var(--palette-slate-500);
 
   --surface-card-bg: var(--palette-film-white-soft);
+  --surface-subpanel-bg: var(--palette-film-white);
+  --surface-subpanel-shadow: var(--shadow-subpanel);
   --surface-card-edge: var(--palette-edge-sky-pale);
   --surface-sunken-bg: var(--palette-film-ink);
+
+  /* The glass page scaffold: header, section headers, subpanels, footer. */
+  --page-title-ink: var(--palette-slate-950);
+  --page-subtitle-ink: var(--palette-slate-600);
+  --page-icon-ink: var(--palette-cyan-600);
+  --page-icon-bg: var(--palette-film-sky);
+  --page-icon-edge: var(--palette-edge-sky-soft);
+  --page-icon-shadow: var(--shadow-header-icon);
+  --section-title-ink: var(--palette-slate-950);
+  --section-subtitle-ink: var(--palette-slate-500);
+  --section-icon-ink: var(--palette-sky-500);
+  --section-icon-bg: var(--palette-film-sky-soft);
+  --section-icon-edge: var(--palette-edge-sky-faint);
+  --footer-bg: var(--palette-film-slate-soft);
+  --footer-ink: var(--palette-slate-500);
 
   --notice-info-bg: var(--palette-film-white);
   --notice-info-edge: var(--palette-edge-slate);

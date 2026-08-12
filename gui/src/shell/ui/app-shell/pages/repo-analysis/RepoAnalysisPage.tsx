@@ -1,12 +1,15 @@
+import { PAGE } from "@core/app-shell/pages";
 import { groupEvaluatedDependencies } from "@core/evaluate/dependencyPresentation";
 import { countEnvironmentFiles } from "@core/workspace/environmentFiles";
 import { useApiRuntime } from "@shell/data/apiRuntime";
 import { useEvaluateReportQuery } from "@shell/data/evaluate/queries";
 import { Ic } from "@shell/ui/shared/components/Icon";
-import { lgPageRoot, lgStatusBadge, lgStyles, pageIconTint } from "@shell/ui/theme/lightGlassTheme";
+import { stageTone } from "@shell/ui/theme/appearance";
+import { lgPageRoot, lgStatusBadge, lgStyles } from "@shell/ui/theme/lightGlassTheme";
 import { useEffect, useMemo } from "react";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
 import { GlassPanelFooter } from "../../components/GlassPanelFooter";
+import { GlassSectionHeader } from "../../components/GlassSectionHeader";
 import { OutcomeBadge } from "../../components/OutcomeBadge";
 import { stepIcon } from "../../stepIcons";
 import type { StepPageProps } from "../sharedStepUi";
@@ -65,7 +68,7 @@ export function PageRepoAnalysis({
     <div style={lgPageRoot}>
       <GlassPageHeader
         icon={IC(24)}
-        iconTint={pageIconTint("#7c3aed")}
+        tint={stageTone(PAGE.EVALUATE)}
         title={step.label}
         subtitle={step.desc}
         badges={
@@ -90,16 +93,11 @@ export function PageRepoAnalysis({
 
         <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
           <div style={lgStyles.sectionBody}>
-            <div style={lgStyles.sectionHeader}>
-              <div style={lgStyles.sectionIcon}>{Ic.layers(19)}</div>
-              <div>
-                <h2 style={lgStyles.sectionTitle}>Source Repository Analysis</h2>
-                <div style={lgStyles.sectionSubtitle}>
-                  What the repository gives anyone who clones it: dependency declaration,
-                  environment capture, and machine capture as independent axes.
-                </div>
-              </div>
-            </div>
+            <GlassSectionHeader
+              icon={Ic.layers(19)}
+              title="Source Repository Analysis"
+              subtitle="What the repository gives anyone who clones it: dependency declaration, environment capture, and machine capture as independent axes."
+            />
 
             <RepoAnalysisAxesCard hasReport={hasReport} report={report} />
 
