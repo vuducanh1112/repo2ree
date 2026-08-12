@@ -2,17 +2,18 @@ import type { ReviewAttempt, ReviewExperimentComparison } from "@core/reviews/Re
 import type { ReviewStepKey, ReviewStepStatus } from "@core/reviews/reviewDag";
 import { experimentReviewStatus, reproducedExperimentCount } from "@core/reviews/reviewStatuses";
 import { Ic } from "../../../shared/components/Icon";
-import { C, F } from "../../../theme/theme";
+import styles from "./ReviewConsole.module.css";
 
-const VERDICT_META: Partial<Record<ReviewStepStatus, { label: string; color: string }>> = {
-  ready: { label: "Ready", color: C.textMuted },
-  queued: { label: "Queued", color: "#d97706" },
-  running: { label: "Running", color: C.accent },
-  identical: { label: "Identical", color: C.done },
-  reproduced: { label: "Reproduced", color: C.done },
-  different: { label: "Different", color: "#d97706" },
-  inconclusive: { label: "Inconclusive", color: C.textMuted },
-  unavailable: { label: "Locked", color: C.textMuted },
+// What each verdict is called; ReviewConsole.module.css decides how it reads.
+const VERDICT_LABEL: Partial<Record<ReviewStepStatus, string>> = {
+  ready: "Ready",
+  queued: "Queued",
+  running: "Running",
+  identical: "Identical",
+  reproduced: "Reproduced",
+  different: "Different",
+  inconclusive: "Inconclusive",
+  unavailable: "Locked",
 };
 
 /**
@@ -49,18 +50,9 @@ export function ExperimentReviewPanel({
   const reproduced = reproducedExperimentCount(attempt);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span
-          style={{
-            flex: 1,
-            color: C.textMuted,
-            fontFamily: F.mono,
-            fontSize: 9,
-            fontWeight: 800,
-            letterSpacing: 0.4,
-          }}
-        >
+    <div className={styles.results}>
+      <div className={styles.resultsHead}>
+        <span className={styles.resultsCount}>
           RESULTS · {reproduced}/{experimentNames.length} REPRODUCED
         </span>
         <button
@@ -68,21 +60,7 @@ export function ExperimentReviewPanel({
           onClick={onRunAll}
           disabled={!canRun || sweeping}
           aria-label="Reproduce all experiments"
-          style={{
-            minHeight: 26,
-            padding: "0 10px",
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            border: `1px solid ${!canRun || sweeping ? C.border : C.accent}`,
-            borderRadius: 7,
-            background: C.surfaceAlt,
-            color: !canRun || sweeping ? C.textMuted : C.text,
-            cursor: !canRun || sweeping ? "not-allowed" : "pointer",
-            fontFamily: F.mono,
-            fontSize: 9.5,
-            fontWeight: 750,
-          }}
+          className={styles.runAll}
         >
           {sweeping ? Ic.loader(12) : Ic.play(12)}
           <span>{sweeping ? "Running all" : "Run all"}</span>
@@ -116,65 +94,24 @@ function ExperimentRow({
   canRun: boolean;
   onRun: (experimentName: string) => void;
 }) {
-  const meta = VERDICT_META[status] ?? { label: status, color: C.textMuted };
+  const label = VERDICT_LABEL[status] ?? status;
   const disabled = !canRun || status === "unavailable" || status === "running";
 
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        padding: "5px 8px",
-        border: `1px solid ${C.border}`,
-        borderRadius: 7,
-        background: C.surfaceAlt,
-      }}
-    >
-      <span
-        style={{
-          flex: 1,
-          minWidth: 0,
-          color: C.text,
-          fontSize: 10.5,
-          fontWeight: 650,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-        title={name}
-      >
+    <div className={styles.experiment}>
+      <span className={styles.experimentName} title={name}>
         {name}
       </span>
       {comparison ? <CriterionNote comparison={comparison} /> : null}
-      <span
-        style={{
-          color: meta.color,
-          fontFamily: F.mono,
-          fontSize: 8.5,
-          fontWeight: 800,
-          whiteSpace: "nowrap",
-        }}
-      >
-        {meta.label.toUpperCase()}
+      <span className={styles.verdict} data-status={status}>
+        {label.toUpperCase()}
       </span>
       <button
         type="button"
         onClick={() => onRun(name)}
         disabled={disabled}
         aria-label={`Reproduce experiment ${name}`}
-        style={{
-          minHeight: 22,
-          padding: "0 8px",
-          border: `1px solid ${C.border}`,
-          borderRadius: 6,
-          background: C.surface,
-          color: disabled ? C.textMuted : C.text,
-          cursor: disabled ? "not-allowed" : "pointer",
-          fontFamily: F.mono,
-          fontSize: 9,
-          fontWeight: 750,
-        }}
+        className={styles.runOne}
       >
         {comparison ? "Re-run" : "Run"}
       </button>
@@ -204,15 +141,7 @@ function CriterionNote({ comparison }: { comparison: ReviewExperimentComparison 
 
   return (
     <span
-      style={{
-        color: C.textMuted,
-        fontFamily: F.mono,
-        fontSize: 8.5,
-        maxWidth: 190,
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-      }}
+      className={styles.criterion}
       title={
         criterion
           ? `criterion: ${criterion}${

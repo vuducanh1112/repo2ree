@@ -4,15 +4,18 @@ import type { ReproducibilityReport } from "@core/evaluate/Threat";
 import type { LogEntry } from "@core/ree/ReeTypes";
 import type { ReeStepRequirement } from "@core/ree-steps/stepTypes";
 import { GlassPanel } from "@shell/ui/app-shell/components/GlassPageShell";
+import { Badge } from "@shell/ui/shared/components/Badge";
 import { Ic } from "@shell/ui/shared/components/Icon";
-import { lgColors, lgContentCard, lgStatusBadge, lgStyles } from "@shell/ui/theme/lightGlassTheme";
-import { F } from "@shell/ui/theme/theme";
+import { Surface } from "@shell/ui/shared/components/Surface";
+import { axisTone } from "@shell/ui/theme/appearance";
+import { cssVars } from "@shell/ui/theme/styleVars";
 import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
 import { MissingInputsBanner } from "../../components/MissingInputsBanner";
 import { RunActionButton } from "../../components/RunActionButton";
 import { SummaryLine } from "../../components/SummaryLine";
 import { DependencyPanel } from "../../components/stepRunPanels/DependencyPanel";
 import { CardHeader } from "./RepoAnalysisCardHeader";
+import styles from "./RepoAnalysisPage.module.css";
 import { EXPECTED_DEP_FILES } from "./RepoAnalysisPageHelpers";
 
 // RepoAnalysisThreatsCard lives in its own module; re-exported so the page keeps a
@@ -73,57 +76,26 @@ function AxisTrack({
   accent: string;
 }) {
   return (
-    <div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "baseline",
-          justifyContent: "space-between",
-          gap: 8,
-          marginBottom: 8,
-        }}
-      >
-        <span style={{ fontSize: 12, fontWeight: 800, color: lgColors.text }}>{label}</span>
-        <span style={{ fontSize: 11, color: accent, fontFamily: F.mono, fontWeight: 700 }}>
-          {hint}
-        </span>
+    <div style={cssVars({ "--axis-tint": accent })}>
+      <div className={styles.axisHead}>
+        <span className={styles.axisLabel}>{label}</span>
+        <span className={styles.axisLevel}>{hint}</span>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+      <div className={styles.axisTrack}>
         {stepLabels.map((stepLabel, idx) => {
           const reached = idx <= level;
           const isActive = idx === level;
           return (
-            <div key={stepLabel} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div key={stepLabel} className={styles.axisStepWrap}>
               <div
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  height: 24,
-                  padding: "0 10px",
-                  borderRadius: 99,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  fontFamily: F.mono,
-                  color: reached ? accent : lgColors.textMuted,
-                  background: reached ? `${accent}14` : "rgba(255,255,255,0.6)",
-                  border: `1px solid ${
-                    isActive ? `${accent}aa` : reached ? `${accent}55` : "rgba(148,163,184,0.32)"
-                  }`,
-                  boxShadow: isActive ? `0 0 0 3px ${accent}22` : "none",
-                }}
+                className={styles.axisStep}
+                data-reached={reached || undefined}
+                data-current={isActive || undefined}
               >
                 {stepLabel}
               </div>
               {idx < stepLabels.length - 1 && (
-                <div
-                  style={{
-                    width: 14,
-                    height: 2,
-                    borderRadius: 99,
-                    background: reached ? `${accent}88` : "rgba(148,163,184,0.28)",
-                  }}
-                />
+                <div className={styles.axisLink} data-reached={reached || undefined} />
               )}
             </div>
           );
@@ -141,53 +113,43 @@ export function RepoAnalysisAxesCard({
   report: ReproducibilityReport | null;
 }) {
   return (
-    <div style={lgContentCard()}>
+    <Surface>
       <CardHeader
         label="Repository Axes"
         hint={hasReport ? "Three independent axes" : "Awaiting run"}
       />
 
       {hasReport && report ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div className={styles.axes}>
           <AxisTrack
             label="Dependency declaration"
             hint={report.dependencyLevelLabel}
             stepLabels={DEPENDENCY_AXIS.steps}
             level={report.dependencyLevel}
-            accent={lgColors.blue}
+            accent={axisTone(DEPENDENCY_AXIS.key)}
           />
           <AxisTrack
             label="Environment capture"
             hint={report.environmentLevelLabel}
             stepLabels={ENVIRONMENT_AXIS.steps}
             level={report.environmentLevel}
-            accent={lgColors.cyan}
+            accent={axisTone(ENVIRONMENT_AXIS.key)}
           />
           <AxisTrack
             label="Machine capture"
             hint={report.machineLevelLabel}
             stepLabels={MACHINE_AXIS.steps}
             level={report.machineLevel}
-            accent={lgColors.indigo}
+            accent={axisTone(MACHINE_AXIS.key)}
           />
         </div>
       ) : (
-        <div
-          style={{
-            border: "1px dashed rgba(148, 163, 184, 0.5)",
-            background: "rgba(255,255,255,0.45)",
-            borderRadius: 9,
-            padding: 16,
-            textAlign: "center",
-            color: lgColors.textMuted,
-            fontSize: 12,
-          }}
-        >
+        <div className={styles.placeholder}>
           No Evaluate output yet. Run the evaluator to analyze the repository&apos;s dependency,
           environment, and machine axes.
         </div>
       )}
-    </div>
+    </Surface>
   );
 }
 
@@ -203,7 +165,7 @@ export function RepoAnalysisDependenciesCard({
   nixCount: number;
 }) {
   return (
-    <div style={lgContentCard()}>
+    <Surface>
       <CardHeader
         label="Detected Dependencies"
         hint={
@@ -218,67 +180,38 @@ export function RepoAnalysisDependenciesCard({
           {depGroups.length > 0 ? (
             <DependencyPanel depGroups={depGroups} />
           ) : (
-            <div
-              style={{
-                border: "1.5px dashed rgba(148, 163, 184, 0.55)",
-                borderRadius: 9,
-                padding: 16,
-                textAlign: "center",
-                color: lgColors.textMuted,
-              }}
-            >
-              <div
-                style={{ display: "flex", justifyContent: "center", marginBottom: 6, opacity: 0.5 }}
-              >
+            <div className={styles.placeholder} data-emphasis="strong">
+              <div aria-hidden className={styles.placeholderIcon}>
                 {Ic.package(20)}
               </div>
-              <div style={{ fontSize: 12 }}>No manifest files found</div>
-              <div style={{ fontSize: 11, marginTop: 3 }}>
+              <div>No manifest files found</div>
+              <div className={styles.placeholderHint}>
                 Add requirements.txt, pyproject.toml, environment.yml, or package.json.
               </div>
             </div>
           )}
 
-          <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <span style={lgStatusBadge(containerCount > 0)}>Container files: {containerCount}</span>
-            <span style={lgStatusBadge(nixCount > 0)}>Nix files: {nixCount}</span>
+          <div className={styles.counts}>
+            <Badge tone={containerCount > 0 ? "success" : "warning"}>
+              Container files: {containerCount}
+            </Badge>
+            <Badge tone={nixCount > 0 ? "success" : "warning"}>Nix files: {nixCount}</Badge>
           </div>
         </>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <div className={styles.manifests}>
           {EXPECTED_DEP_FILES.map((item) => (
-            <div
-              key={item.label}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "7px 10px",
-                border: `1px dashed ${item.color}40`,
-                borderRadius: 8,
-                background: "rgba(255,255,255,0.45)",
-              }}
-            >
-              <span style={{ display: "flex", color: item.color, opacity: 0.7 }}>
+            <div key={item.label} className={styles.manifest} data-kind={item.kind}>
+              <span aria-hidden className={styles.manifestIcon}>
                 {Ic.file(12)}
               </span>
-              <span
-                style={{
-                  fontSize: 11,
-                  fontFamily: F.mono,
-                  color: item.color,
-                  fontWeight: 700,
-                  flex: 1,
-                }}
-              >
-                {item.label}
-              </span>
-              <span style={{ fontSize: 10, color: lgColors.textMuted }}>{item.hint}</span>
+              <span className={styles.manifestName}>{item.label}</span>
+              <span className={styles.manifestHint}>{item.hint}</span>
             </div>
           ))}
         </div>
       )}
-    </div>
+    </Surface>
   );
 }
 
@@ -301,25 +234,29 @@ export function RepoAnalysisWorkspaceAside({
 }) {
   return (
     <GlassPanel density="compact">
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-        <span style={{ color: lgColors.cyan, display: "flex" }}>{Ic.package(22)}</span>
-        <h2 style={{ margin: 0, fontSize: 15, color: lgColors.text }}>Workspace Inputs</h2>
+      <div className={styles.asideHead}>
+        <span aria-hidden className={styles.asideIcon}>
+          {Ic.package(22)}
+        </span>
+        <h2 className={styles.asideTitle}>Workspace Inputs</h2>
       </div>
 
-      <div style={lgStyles.summaryBox}>
-        <SummaryLine
-          label="Source"
-          value={
-            <span style={lgStatusBadge(sourceLoadedInWorkspace)}>
-              {sourceLoadedInWorkspace ? "Loaded" : "Not loaded"}
-            </span>
-          }
-        />
-        <SummaryLine label="Files scanned" value={fileCount.toString()} />
-        <SummaryLine label="Manifest groups" value={manifestCount.toString()} />
-        <SummaryLine label="Container files" value={containerCount.toString()} />
-        <SummaryLine label="Nix files" value={nixCount.toString()} />
-      </div>
+      <Surface spacing="flush">
+        <div className={styles.readout}>
+          <SummaryLine
+            label="Source"
+            value={
+              <Badge tone={sourceLoadedInWorkspace ? "success" : "warning"}>
+                {sourceLoadedInWorkspace ? "Loaded" : "Not loaded"}
+              </Badge>
+            }
+          />
+          <SummaryLine label="Files scanned" value={fileCount.toString()} />
+          <SummaryLine label="Manifest groups" value={manifestCount.toString()} />
+          <SummaryLine label="Container files" value={containerCount.toString()} />
+          <SummaryLine label="Nix files" value={nixCount.toString()} />
+        </div>
+      </Surface>
     </GlassPanel>
   );
 }

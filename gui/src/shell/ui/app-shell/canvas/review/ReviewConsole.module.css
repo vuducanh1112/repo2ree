@@ -1,0 +1,324 @@
+/* The reproduce-and-compare console: a step DAG across the top, and the panel
+ * for whichever step is being inspected.
+ *
+ * A step button's tint is the stage's; its *status* is a separate reading —
+ * the lifecycle state or verdict the run reached — so the two are different
+ * properties rather than one colour computed in TypeScript. */
+
+.step {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  column-gap: 7px;
+  align-items: start;
+  width: 116px;
+  min-height: 66px;
+  padding: var(--space-2) 9px;
+  border-radius: 9px;
+  border: 1px solid var(--chrome-border);
+  background: var(--chrome-surface);
+  color: var(--chrome-text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-standard);
+}
+
+/* Queued or running: the step is the one to watch. */
+.step[data-active] {
+  border-color: var(--step-tint);
+  background: color-mix(in srgb, var(--step-tint) 5%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--step-tint) 8.6%, transparent);
+}
+
+.step:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.step:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.stepIcon {
+  display: flex;
+  padding-top: 1px;
+  color: var(--step-tint);
+}
+
+.stepBody {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.stepLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-sm);
+  font-weight: 750;
+}
+
+.stepDetail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  color: var(--chrome-text-muted);
+}
+
+/* --- The status line ------------------------------------------------------
+ * One reading per lifecycle state and per verdict. "Identical" is a stronger
+ * and rarer thing than "reproduced", and "did not activate" is a settled
+ * finding rather than a breakdown — but both read as their outcome. */
+
+.stepStatus {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  font-weight: 800;
+  color: var(--status-ink, var(--chrome-text-muted));
+}
+
+.stepStatus[data-status="queued"],
+.stepStatus[data-status="different"] {
+  --status-ink: var(--palette-amber-600);
+}
+
+.stepStatus[data-status="running"] {
+  --status-ink: var(--chrome-accent);
+}
+
+.stepStatus[data-status="succeeded"],
+.stepStatus[data-status="identical"],
+.stepStatus[data-status="reproduced"] {
+  --status-ink: var(--status-ok);
+}
+
+.stepStatus[data-status="equivalent"] {
+  --status-ink: var(--palette-cyan-600);
+}
+
+.stepStatus[data-status="uninhabitable"],
+.stepStatus[data-status="failed"] {
+  --status-ink: var(--status-fault);
+}
+
+.connector {
+  flex-shrink: 0;
+  width: 18px;
+  height: 1px;
+  margin-top: 33px;
+  background: var(--chrome-border-strong);
+}
+
+.dag {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+/* --- Per-experiment results ---------------------------------------------- */
+
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.resultsHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.resultsCount {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  color: var(--chrome-text-muted);
+}
+
+.experiment {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 5px var(--space-2);
+  border: 1px solid var(--chrome-border);
+  border-radius: 7px;
+  background: var(--chrome-surface-alt);
+}
+
+.experimentName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10.5px;
+  font-weight: 650;
+  color: var(--chrome-text);
+}
+
+/* What the verdict rests on, in the one line there is room for. */
+.criterion {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  color: var(--chrome-text-muted);
+}
+
+.verdict {
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  font-weight: 800;
+  color: var(--status-ink, var(--chrome-text-muted));
+}
+
+.verdict[data-status="queued"],
+.verdict[data-status="different"] {
+  --status-ink: var(--palette-amber-600);
+}
+
+.verdict[data-status="running"] {
+  --status-ink: var(--chrome-accent);
+}
+
+.verdict[data-status="identical"],
+.verdict[data-status="reproduced"] {
+  --status-ink: var(--status-ok);
+}
+
+/* --- The run buttons ------------------------------------------------------ */
+
+.runOne,
+.runAll {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 1px solid var(--chrome-border);
+  border-radius: 6px;
+  background: var(--chrome-surface);
+  color: var(--chrome-text);
+  font-family: var(--font-mono);
+  cursor: pointer;
+}
+
+.runOne {
+  min-height: 22px;
+  padding: 0 var(--space-2);
+  font-size: 9px;
+  font-weight: 750;
+}
+
+.runAll {
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 7px;
+  border-color: var(--chrome-accent);
+  background: var(--chrome-surface-alt);
+  font-size: 9.5px;
+  font-weight: 750;
+}
+
+.runOne:focus-visible,
+.runAll:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.runOne:disabled,
+.runAll:disabled {
+  cursor: not-allowed;
+  border-color: var(--chrome-border);
+  color: var(--chrome-text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step {
+    transition: none;
+  }
+}
+
+/* --- Console body --------------------------------------------------------- */
+
+.topSpacer {
+  height: 4px;
+}
+
+/* Which artifacts a review attempt is allowed to trust as its starting point. */
+.basis {
+  display: flex;
+  gap: 5px;
+}
+
+.basisOption {
+  flex: 1;
+  min-height: 28px;
+  border: 1px solid var(--chrome-border);
+  border-radius: 7px;
+  background: var(--chrome-surface-alt);
+  color: var(--chrome-text-muted);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+.basisOption[aria-pressed="true"] {
+  border-color: var(--chrome-accent);
+  background: var(--chrome-surface);
+  color: var(--chrome-text);
+  font-weight: 750;
+}
+
+.basisOption:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.basisOption:disabled {
+  cursor: not-allowed;
+}
+
+/* A qualification of a verdict, or a detail behind one. Same shape; the tone
+ * says whether the thing being reported went well. */
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 9px;
+  border: 1px solid var(--chrome-border);
+  border-radius: 7px;
+  background: var(--chrome-surface-alt);
+  color: var(--chrome-text-muted);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.detail[data-tone="notice"] {
+  padding: var(--space-2) 9px;
+  border-color: var(--chrome-border-strong);
+}
+
+.detail[data-tone="fault"] {
+  color: var(--status-fault);
+}
+
+.error {
+  padding: var(--space-2) var(--space-2);
+  border: 1px solid var(--chrome-border);
+  border-radius: 7px;
+  background: var(--chrome-surface-alt);
+  color: var(--status-fault);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+}

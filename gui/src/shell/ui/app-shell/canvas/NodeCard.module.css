@@ -1,0 +1,121 @@
+/* A panel floating around the pod on the hub canvas. Its position is measured
+ * from the live layout, so it rides custom properties; everything else — done,
+ * locked, active, and which stage it belongs to — is an attribute. */
+
+.card {
+  position: absolute;
+  left: var(--node-x);
+  top: var(--node-y);
+  transform: translate(-50%, -50%) translate(var(--node-dx), var(--node-dy))
+    scale(var(--node-scale));
+  width: 176px;
+  padding: 11px 13px;
+  border-radius: 13px;
+  border: 1px solid var(--node-edge);
+  background: var(--node-bg);
+  box-shadow: var(--node-shadow);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.15s,
+    border-color 0.15s,
+    opacity 0.35s;
+}
+
+/* The step behind this panel has a result. */
+.card[data-done] {
+  border-color: var(--node-done-edge);
+}
+
+/* The page this panel opens is the one on screen. */
+.card[data-active] {
+  border-color: var(--node-active-edge);
+  box-shadow:
+    0 0 0 3px var(--chrome-accent-bg),
+    var(--node-active-shadow);
+}
+
+/* Nothing on the ring is reachable until the workbench is provisioned. */
+.card:disabled {
+  cursor: default;
+  opacity: 0.34;
+}
+
+.card:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.head[data-with-rows] {
+  margin-bottom: 9px;
+}
+
+.glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  border: 1px solid var(--chrome-border);
+  background: var(--chrome-surface-alt);
+  color: var(--chrome-text-muted);
+}
+
+.card[data-done] .glyph {
+  border-color: var(--node-done-edge);
+  background: var(--node-done-wash);
+  color: var(--node-tint);
+}
+
+.titleBox {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: -0.1px;
+  color: var(--chrome-text);
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 2px 0;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+
+.rowLabel {
+  color: var(--chrome-text-muted);
+}
+
+.rowValue {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 104px;
+  color: var(--chrome-text-mid);
+}
+
+/* Nothing known for this fact yet. */
+.rowValue[data-empty] {
+  color: var(--chrome-border-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+}

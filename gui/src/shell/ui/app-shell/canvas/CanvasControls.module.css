@@ -1,0 +1,42 @@
+/* Zoom and reset, pinned to the canvas's bottom-right corner. */
+
+.controls {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 10px;
+  border: 1px solid var(--chrome-border);
+  background: var(--chrome-surface);
+  box-shadow: var(--shadow-canvas-controls);
+}
+
+.button {
+  width: 34px;
+  height: 32px;
+  border: none;
+  background: var(--chrome-surface);
+  color: var(--chrome-text-mid);
+  font-size: var(--text-lg);
+  cursor: pointer;
+}
+
+.button + .button {
+  border-top: 1px solid var(--chrome-border);
+}
+
+.button:hover {
+  background: var(--chrome-surface-alt);
+}
+
+.button:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+/* The reset glyph is wider than the zoom signs, so it sets smaller. */
+.button[data-glyph="reset"] {
+  font-size: var(--text-md);
+}

@@ -63,10 +63,12 @@
   --palette-grey-950: #0d1117;
 
   /* --- Palette: slate (navigation chrome, glass ink) ------------------- */
+  --palette-slate-100: #cbd5e1;
   --palette-slate-200: #e2e8f0;
   --palette-slate-400: #94a3b8;
   --palette-slate-400-soft: rgb(148 163 184 / 85%);
   --palette-slate-500: #64748b;
+  --palette-slate-700: #334155;
   --palette-slate-600: #475569;
   --palette-slate-800: #1e293b;
   --palette-slate-900: #111827;
@@ -98,12 +100,14 @@
   --palette-teal-700: #0f766e;
   --palette-teal-900: #134e4a;
   --palette-indigo-050: #eef2ff;
+  --palette-indigo-200: #c7d2fe;
   --palette-indigo-500: #6366f1;
   --palette-indigo-600: #4f46e5;
   --palette-indigo-800: #3730a3;
   --palette-iris-600: #5e4fa2;
   --palette-violet-050: #f5f3ff;
   --palette-violet-200: #ddd6fe;
+  --palette-violet-500: #8b5cf6;
   --palette-violet-600: #7c3aed;
   --palette-violet-950: #3b0764;
   --palette-purple-050: #faf5ff;
@@ -115,6 +119,8 @@
   --palette-green-050: #f0fdf4;
   --palette-green-100: #dcfce7;
   --palette-green-200: #bbf7d0;
+  --palette-mint-100: #e7f9f1;
+  --palette-mint-200: #bbf0d8;
   --palette-green-300: #86efac;
   --palette-green-500: #22c55e;
   --palette-green-600: #16a34a;
@@ -163,9 +169,15 @@
   --palette-film-white-soft: rgb(255 255 255 / 54%);
   --palette-film-selected: rgb(224 242 254 / 92%);
   --palette-film-hover: rgb(239 246 255 / 70%);
+  --palette-film-indigo: rgb(238 242 255 / 60%);
   --palette-film-viewer: rgb(248 250 252 / 62%);
+  --palette-film-sealed: rgb(255 255 255 / 62%);
+  --palette-film-inset: rgb(248 250 252 / 70%);
   --palette-film-callout: rgb(255 255 255 / 60%);
   --palette-film-window: rgb(255 255 255 / 82%);
+  --palette-film-hud: rgb(255 255 255 / 92%);
+  --palette-film-accent: rgb(3 105 161 / 8%);
+  --palette-film-accent-strong: rgb(3 105 161 / 10%);
   --palette-film-scrim: rgb(225 230 238 / 45%);
   --palette-film-white: rgb(255 255 255 / 72%);
   --palette-film-white-strong: rgb(255 255 255 / 92%);
@@ -193,13 +205,50 @@
   --palette-edge-sky-strong: rgb(14 165 233 / 42%);
   --palette-edge-sky-pale: rgb(125 211 252 / 42%);
   --palette-edge-slate: rgb(148 163 184 / 34%);
+  --palette-edge-slate-soft: rgb(148 163 184 / 28%);
+  --palette-edge-slate-faint: rgb(148 163 184 / 24%);
+  --palette-track-slate: rgb(148 163 184 / 40%);
+  --palette-track-slate-soft: rgb(148 163 184 / 45%);
   --palette-edge-indigo: rgb(79 70 229 / 28%);
+  --palette-edge-indigo-soft: rgb(79 70 229 / 24%);
+  --palette-edge-slate-firm: rgb(148 163 184 / 35%);
+  --palette-edge-slate-hard: rgb(148 163 184 / 45%);
+  --palette-edge-slate-mid: rgb(148 163 184 / 32%);
+  --palette-film-slate-55: rgb(248 250 252 / 55%);
+  --palette-film-white-62: rgb(255 255 255 / 62%);
+  --palette-film-white-45: rgb(255 255 255 / 45%);
+  --palette-film-mint-60: rgb(220 252 231 / 60%);
+  --palette-film-mint-70b: rgb(220 252 231 / 70%);
+  --palette-film-rose-70: rgb(254 226 226 / 70%);
+  --palette-film-slate-70: rgb(248 250 252 / 70%);
+  --palette-edge-slate-half: rgb(148 163 184 / 55%);
+  --palette-film-white-85: rgb(255 255 255 / 85%);
+  --palette-film-mist-92: rgb(239 246 255 / 92%);
+  --palette-film-sky-85: rgb(240 249 255 / 85%);
+  --palette-film-mint-85: rgb(220 252 231 / 85%);
+  --palette-film-indigo-88: rgb(238 242 255 / 88%);
+  --palette-film-sky-88: rgb(240 249 255 / 88%);
+  --palette-film-slate-78: rgb(248 250 252 / 78%);
+  --palette-edge-green-mid: rgb(34 197 94 / 35%);
+  --palette-edge-slate-row: rgb(148 163 184 / 30%);
+  --palette-film-row: rgb(248 250 252 / 80%);
+  --palette-film-suggestion: rgb(248 250 252 / 88%);
   --palette-edge-steel: rgb(95 142 190 / 42%);
   --palette-edge-cyan: rgb(56 189 248 / 86%);
   --palette-edge-rose: rgb(251 113 133 / 40%);
   --palette-edge-green: rgb(34 197 94 / 32%);
   --palette-edge-green-strong: rgb(34 197 94 / 42%);
   --palette-edge-amber: rgb(245 158 11 / 45%);
+  --palette-edge-ochre: rgb(202 138 4 / 38%);
+  --palette-film-ochre: rgb(254 249 195 / 72%);
+  --palette-film-ochre-70: rgb(254 249 195 / 70%);
+  --palette-film-slate-track: rgb(226 232 240 / 76%);
+  --palette-film-cream: rgb(254 252 232 / 86%);
+  --palette-film-mist-86: rgb(239 246 255 / 86%);
+  --palette-edge-amber-firm: rgb(245 158 11 / 42%);
+  --palette-edge-sky-pale-half: rgb(125 211 252 / 50%);
+  --palette-film-mint-70: rgb(220 252 231 / 70%);
+  --palette-film-mint-90: rgb(220 252 231 / 90%);
 
   /* --- Shadow ---------------------------------------------------------- */
   --shadow-dot-glow: 0 0 7px;
@@ -213,21 +262,76 @@
   --shadow-window: 0 24px 60px rgb(13 17 23 / 20%);
   --shadow-window-focus: 0 24px 60px rgb(13 17 23 / 22%);
   --shadow-window-dock: 0 18px 44px rgb(13 17 23 / 16%);
+  --shadow-hud-open: 0 18px 48px rgb(13 17 23 / 16%);
+  --shadow-hud-collapsed: 0 4px 14px rgb(13 17 23 / 8%);
+  --shadow-canvas-controls: 0 4px 14px rgb(13 17 23 / 10%);
+  --shadow-node: 0 4px 16px rgb(13 17 23 / 7%);
+  --shadow-node-wired: 0 6px 20px rgb(79 70 229 / 14%);
+  --shadow-node-active: 0 10px 28px rgb(37 99 235 / 22%);
+  --shadow-hub-vignette: inset 0 0 220px rgb(30 58 138 / 10%);
+  --glow-explode-pod: drop-shadow(0 0 26px rgb(99 102 241 / 85%))
+    drop-shadow(0 0 60px rgb(79 70 229 / 55%)) brightness(1.08);
   --shadow-console: 0 18px 48px rgb(13 17 23 / 12%);
   --shadow-toast: 0 2px 8px rgb(0 0 0 / 10%);
+  --shadow-app-header: 0 1px 0 rgb(0 0 0 / 6%), 0 2px 8px rgb(0 0 0 / 4%);
   --shadow-landing-card: 0 2px 12px rgb(0 0 0 / 5%);
   --shadow-choice-card: 0 1px 6px rgb(0 0 0 / 4%);
+  --shadow-seal-panel: 0 12px 32px rgb(15 23 42 / 9%), inset 0 1px 0 rgb(255 255 255 / 85%);
+  --shadow-sealed-card: 0 12px 32px rgb(15 23 42 / 10%);
   --shadow-knob: 0 1px 3px rgb(0 0 0 / 25%);
+  --shadow-banner-inset: inset 0 1px 0 rgb(255 255 255 / 70%);
+  --shadow-inset-highlight: inset 0 1px 0 rgb(255 255 255 / 92%);
+  --shadow-pill-active: 0 6px 16px rgb(14 165 233 / 16%);
+  --shadow-card: 0 6px 16px rgb(15 23 42 / 5%);
+  --shadow-card-hover: 0 14px 30px rgb(14 165 233 / 16%);
+  --shadow-progress-glow: 0 0 16px rgb(14 165 233 / 28%);
   --shadow-bench-tray: inset 0 0 0 1px rgb(255 255 255 / 50%), inset 0 18px 60px rgb(13 17 23 / 5%);
   --shadow-lab-bench: inset 0 1px 0 rgb(255 255 255 / 70%);
   --shadow-subpanel: 0 1px 2px rgb(15 23 42 / 5%), inset 0 1px 0 rgb(255 255 255 / 80%);
   --shadow-field-focus: 0 0 0 3px rgb(14 165 233 / 15%);
   --shadow-field-inset: inset 0 1px 0 var(--palette-film-white-strong);
 
+  /* --- Palette: pod materials -------------------------------------------
+   * The machined-metal greys the specimen pod is drawn from, and the sky
+   * ramp its inner shell glows with. Only the pod widget uses them.
+   */
+  --palette-pod-face: #e8edf4;
+  --palette-pod-raised: #f2f5f9;
+  --palette-pod-shadow: #c8d0dc;
+  --palette-pod-deep: #a8b4c4;
+  --palette-pod-bolt: #cdd5e0;
+  --palette-pod-bolt-core: #9aa5b4;
+  --palette-pod-weld: #b8c4d4;
+  --palette-sky-050: #f0f9ff;
+  --palette-sky-100: #bae6fd;
+  --palette-sky-200: #7dd3fc;
+  --palette-sky-400: #38bdf8;
+  --palette-navy-950: #0c1a2e;
+  --palette-core-violet: #1a0838;
+  --palette-core-indigo: #08071a;
+  --palette-core-black: #030612;
+  --palette-terminal-bg: #0d1117;
+  --palette-terminal-edge: #1f2733;
+  --palette-mint-300: #6ee7b7;
+
   /* --- Palette: lab atmosphere -----------------------------------------
    * The decorative light behind the pod. Purely atmospheric, so these live as
    * whole gradients rather than as hues something else might reuse.
    */
+  --gradient-hub:
+    radial-gradient(120% 75% at 50% -8%, #ffffff 0%, rgb(255 255 255 / 0%) 58%),
+    radial-gradient(58% 48% at 18% 22%, rgb(56 189 248 / 12%) 0%, rgb(56 189 248 / 0%) 70%),
+    radial-gradient(54% 44% at 83% 16%, rgb(129 140 248 / 12%) 0%, rgb(129 140 248 / 0%) 72%),
+    radial-gradient(75% 60% at 50% 118%, rgb(13 148 136 / 10%) 0%, rgb(13 148 136 / 0%) 72%),
+    linear-gradient(rgb(221 227 236 / 80%) 1px, transparent 1px) 0 0 / 130px 130px,
+    linear-gradient(90deg, rgb(221 227 236 / 80%) 1px, transparent 1px) 0 0 / 130px 130px,
+    linear-gradient(rgb(221 227 236 / 33%) 1px, transparent 1px) 0 0 / 26px 26px,
+    linear-gradient(90deg, rgb(221 227 236 / 33%) 1px, transparent 1px) 0 0 / 26px 26px,
+    radial-gradient(circle at 50% 44%, #f6fafe 0%, #f4f6f9 72%);
+  --gradient-workspace: linear-gradient(135deg, #f0f4ff 0%, #f8f9ff 35%, #fff5f9 65%, #f4f8ff 100%);
+  --gradient-workspace-blob-a: radial-gradient(ellipse, rgb(199 217 255 / 53%) 0%, transparent 70%);
+  --gradient-workspace-blob-b: radial-gradient(ellipse, rgb(224 208 255 / 40%) 0%, transparent 70%);
+  --gradient-workspace-blob-c: radial-gradient(ellipse, rgb(255 214 232 / 33%) 0%, transparent 70%);
   --gradient-lab-pool-sky: radial-gradient(
     circle,
     rgb(56 189 248 / 20%) 0%,
@@ -263,6 +367,7 @@
   );
 
   /* --- Gradient ---------------------------------------------------------- */
+  --gradient-progress: linear-gradient(90deg, var(--palette-cyan-600), var(--palette-indigo-600));
   --gradient-primary: linear-gradient(135deg, var(--palette-sky-500), var(--palette-indigo-600));
   --gradient-page:
     radial-gradient(circle at 80% 8%, rgb(14 165 233 / 18%), transparent 28%),

@@ -1,0 +1,176 @@
+/* The experiment satellites orbiting the core pod, and the slot that adds one.
+ *
+ * Every satellite is placed by measurement — position and scale come from the
+ * live canvas — so those ride custom properties while everything else is a
+ * class. */
+
+.satellite {
+  position: absolute;
+  left: var(--sat-x);
+  top: var(--sat-y);
+  transform: translate(-50%, -50%) scale(var(--sat-scale));
+  width: 188px;
+  padding: 11px 13px;
+  border-radius: 13px;
+  border: 1px solid var(--node-edge);
+  background: var(--node-bg);
+  box-shadow: var(--node-shadow);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    box-shadow 0.15s,
+    border-color 0.15s;
+}
+
+/* Wired = named and given a command: the experiment can actually run. */
+.satellite[data-wired] {
+  border-color: var(--satellite-wired-edge);
+  box-shadow: var(--satellite-wired-shadow);
+}
+
+.satellite:focus-visible,
+.addSlot:focus-visible,
+.coreHit:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.satelliteHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.index {
+  padding: 2px 7px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--stage-experiments-line) 27%, transparent);
+  background: var(--satellite-index-wash);
+  color: var(--stage-experiments-line);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--chrome-text);
+}
+
+/* Unnamed yet — shown, but plainly a placeholder. */
+.name[data-untitled] {
+  font-style: italic;
+  color: var(--chrome-text-muted);
+}
+
+.wiredDot {
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--chrome-border-strong);
+}
+
+.satellite[data-wired] .wiredDot {
+  background: var(--status-ok);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-ok) 13%, transparent);
+}
+
+.command {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: var(--space-2) 9px;
+  border-radius: 7px;
+  border: 1px solid var(--chrome-border);
+  background: var(--chrome-surface-alt);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--chrome-text-mid);
+}
+
+.command[data-unset] {
+  opacity: 0.7;
+  color: var(--chrome-text-muted);
+}
+
+/* --- The add slot --------------------------------------------------------- */
+
+.addSlot {
+  position: absolute;
+  left: var(--sat-x);
+  top: var(--sat-y);
+  transform: translate(-50%, -50%) scale(var(--sat-scale));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 188px;
+  padding: var(--space-4) 13px;
+  border-radius: 13px;
+  border: 1.5px dashed color-mix(in srgb, var(--stage-experiments-line) 47%, transparent);
+  background: var(--satellite-add-wash);
+  color: var(--stage-experiments-line);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+/* --- The core's own hit area ---------------------------------------------- */
+
+.coreHit {
+  position: absolute;
+  left: var(--core-x);
+  top: var(--core-y);
+  width: var(--core-size);
+  height: var(--core-size);
+  transform: translate(-50%, -50%);
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+
+.coreLabel {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translate(-50%, 14px);
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--core-label) * 0.4);
+  white-space: nowrap;
+  padding: calc(var(--core-label) * 0.45) calc(var(--core-label) * 0.9);
+  border-radius: var(--radius-round);
+  background: var(--stage-experiments-line);
+  color: var(--palette-white);
+  font-family: var(--font-sans);
+  font-size: calc(var(--core-label) * 1px);
+  font-weight: var(--weight-bold);
+  box-shadow: 0 calc(var(--core-label) * 0.3) calc(var(--core-label) * 1px)
+    color-mix(in srgb, var(--stage-experiments-ink) 33%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+
+.coreHit:hover .coreLabel,
+.coreHit:focus-visible .coreLabel {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .satellite,
+  .coreLabel {
+    transition: none;
+  }
+}

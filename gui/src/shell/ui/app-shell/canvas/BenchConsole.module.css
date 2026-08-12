@@ -1,0 +1,141 @@
+/* The workbench console: what the lab is, its provisioning terminal, and the
+ * two actions that replace or end it. */
+
+.spacer {
+  height: 6px;
+}
+
+/* --- Facts about the bench ------------------------------------------------ */
+
+.stat {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--chrome-border);
+  background: var(--chrome-surface-alt);
+}
+
+.statLabel {
+  min-width: 62px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  color: var(--chrome-text-muted);
+}
+
+.statValue {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  color: var(--chrome-text);
+}
+
+.statValue[data-flavor="code"] {
+  font-family: var(--font-mono);
+}
+
+/* --- Provisioning terminal ------------------------------------------------
+ * The one dark surface in the app: this is a console, and reads as one. */
+
+.terminal {
+  max-height: 150px;
+  overflow: auto;
+  padding: 9px 11px;
+  border-radius: 9px;
+  border: 1px solid var(--terminal-edge);
+  background: var(--terminal-bg);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+
+.line {
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--line-ink, var(--terminal-out));
+}
+
+.line[data-kind="info"] {
+  --line-ink: var(--terminal-info);
+}
+
+.line[data-kind="ok"] {
+  --line-ink: var(--terminal-ok);
+}
+
+.line[data-kind="warn"] {
+  --line-ink: var(--terminal-warn);
+}
+
+.line[data-kind="err"] {
+  --line-ink: var(--terminal-err);
+}
+
+.gutter {
+  color: var(--terminal-gutter);
+}
+
+.cursor {
+  color: var(--terminal-cursor);
+}
+
+/* --- Actions -------------------------------------------------------------- */
+
+.action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  padding: 9px 14px;
+  border-radius: 9px;
+  border: 1px solid var(--chrome-border);
+  background: var(--chrome-surface-alt);
+  color: var(--chrome-text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.action[data-kind="reprovision"] {
+  margin-top: 2px;
+}
+
+/* Ending the session is not destructive enough to be danger, but it is not
+ * routine either — ochre says "this one you do not take back". */
+.action[data-kind="release"] {
+  border-color: var(--release-edge);
+  background: var(--release-bg);
+  color: var(--release-ink);
+}
+
+.action:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.action:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.actionNote {
+  text-align: center;
+  line-height: 1.4;
+  font-size: var(--text-sm);
+  color: var(--chrome-text-muted);
+}
+
+.divider {
+  height: 2px;
+  margin: var(--space-1) 0;
+  border-radius: var(--radius-round);
+  background: var(--chrome-border);
+}

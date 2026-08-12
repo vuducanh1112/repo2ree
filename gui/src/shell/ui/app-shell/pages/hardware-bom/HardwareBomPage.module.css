@@ -1,0 +1,174 @@
+/* The hardware BOM: the machine assumptions this REE was authored against,
+ * one table per device category. */
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+/* --- Category pills ------------------------------------------------------- */
+
+.categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.category {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 7px var(--space-3);
+  border-radius: var(--radius-round);
+  border: 1px solid var(--pill-edge);
+  background: var(--pill-bg);
+  color: var(--pill-ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+  box-shadow: var(--shadow-inset-highlight);
+}
+
+.category[aria-pressed="true"] {
+  border-color: var(--pill-active-edge);
+  background: var(--pill-active-bg);
+  color: var(--pill-active-ink);
+  box-shadow: var(--pill-active-shadow);
+}
+
+.category:focus-visible,
+.rowRemove:focus-visible,
+.addRow:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.categoryIcon {
+  display: flex;
+  color: var(--field-hint-ink);
+}
+
+.category[aria-pressed="true"] .categoryIcon {
+  color: var(--palette-sky-500);
+}
+
+.categoryCount {
+  padding: 1px 7px;
+  border-radius: var(--radius-round);
+  border: 1px solid var(--pill-count-edge);
+  background: var(--pill-count-bg);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--field-hint-ink);
+}
+
+.category[aria-pressed="true"] .categoryCount {
+  color: var(--pill-active-ink);
+}
+
+/* --- One category's table ------------------------------------------------- */
+
+.tableHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: var(--space-3);
+}
+
+.tableIdentity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.tableIcon {
+  display: flex;
+  color: var(--palette-sky-500);
+}
+
+.empty {
+  padding: 18px var(--space-3);
+  text-align: center;
+  border: 1px dashed var(--table-empty-edge);
+  border-radius: var(--radius-control);
+  background: var(--table-empty-bg);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  color: var(--field-hint-ink);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* The column track is the caller's — it is derived from the column set — so it
+ * arrives as a custom property both the header and the rows read. */
+.grid {
+  display: grid;
+  grid-template-columns: var(--table-columns);
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.columnHeaders {
+  padding: 0 10px;
+}
+
+.columnLabel {
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  color: var(--field-hint-ink);
+}
+
+.row {
+  padding: 10px;
+  border-radius: 9px;
+  border: 1px solid var(--table-row-edge);
+  background: var(--table-row-bg);
+  box-shadow: var(--table-row-shadow);
+}
+
+.rowRemove {
+  display: flex;
+  padding: var(--space-1);
+  border: none;
+  border-radius: 5px;
+  background: none;
+  color: var(--field-hint-ink);
+  cursor: pointer;
+}
+
+.rowRemove:hover {
+  color: var(--notice-danger-ink);
+}
+
+.addRowWrap {
+  margin-top: var(--space-3);
+}
+
+.addRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 7px var(--space-3);
+  border: 1.5px dashed var(--table-empty-edge);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--page-subtitle-ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}

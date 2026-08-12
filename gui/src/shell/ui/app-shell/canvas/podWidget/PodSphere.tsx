@@ -1,7 +1,6 @@
 import { axisFraction, axisStandings, bottleneckAxis } from "@core/evaluate/axes";
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import { axisTone } from "@shell/ui/theme/appearance";
-import { F } from "@shell/ui/theme/theme";
 import { PodBolt } from "./PodBolt";
 import { PodBoltRing } from "./PodBoltRing";
 import { PodShellCore } from "./PodShellCore";
@@ -57,8 +56,8 @@ export function PodSphere({
           <stop offset="100%" stopColor={POD_M.shadow} />
         </radialGradient>
         <radialGradient id={`${oId}PortholeGloss`} cx="32%" cy="28%" r="56%">
-          <stop offset="0%" stopColor="#fff" stopOpacity="0.55" />
-          <stop offset="100%" stopColor="#fff" stopOpacity="0" />
+          <stop offset="0%" stopColor="var(--pod-gloss)" stopOpacity="0.55" />
+          <stop offset="100%" stopColor="var(--pod-gloss)" stopOpacity="0" />
         </radialGradient>
         <clipPath id={`${oId}PortholeClip`}>
           <circle cx={CX} cy={CY} r={PR} />
@@ -71,7 +70,7 @@ export function PodSphere({
         cy={CY + SR * 0.85}
         rx={SR * 0.72}
         ry={SR * 0.14}
-        fill="#0d1117"
+        fill="var(--pod-void)"
         opacity="0.08"
       />
 
@@ -243,7 +242,7 @@ export function PodSphere({
         y={CY + SR - 16}
         textAnchor="middle"
         fontSize="7"
-        fontFamily={F.mono}
+        fontFamily="var(--font-mono)"
         fill={axisTone(tint.key, "ink")}
         letterSpacing="1.5"
       >

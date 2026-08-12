@@ -1,0 +1,15 @@
+/* The REE filesystem console's body: a filter, then the tree. */
+
+.tree {
+  overflow-y: auto;
+  max-height: min(52vh, 460px);
+  padding: 0 var(--space-1) var(--space-2);
+}
+
+.empty {
+  padding: 10px var(--space-3);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-style: italic;
+  color: var(--field-hint-ink);
+}

@@ -9,8 +9,9 @@ import { GlassPanel } from "@shell/ui/app-shell/components/GlassPageShell";
 import { RunActionButton } from "@shell/ui/app-shell/components/RunActionButton";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { archiveTone } from "@shell/ui/theme/appearance";
-import { lgColors, lgStyles } from "@shell/ui/theme/lightGlassTheme";
+import { cssVars } from "@shell/ui/theme/styleVars";
 import { MissingInputsBanner } from "../../../components/MissingInputsBanner";
+import styles from "../ArchivePage.module.css";
 
 interface ArchiveActionPanelProps {
   repo: ArchiveRepo;
@@ -46,12 +47,14 @@ export function ArchiveActionPanel({
 
   return (
     <GlassPanel density="compact">
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-        <span style={{ color: tone, display: "flex" }}>{Ic.upload(22)}</span>
-        <h2 style={{ margin: 0, fontSize: 15, color: lgColors.text }}>Deposit</h2>
+      <div className={styles.asideHead} style={cssVars({ "--archive-tint": tone })}>
+        <span aria-hidden className={styles.asideIcon}>
+          {Ic.upload(22)}
+        </span>
+        <h2 className={styles.asideTitle}>Deposit</h2>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div className={styles.depositActions}>
         <MissingInputsBanner missing={missing} />
 
         <RunActionButton
@@ -71,7 +74,7 @@ export function ArchiveActionPanel({
         />
 
         {!hasMissing && (
-          <span style={lgStyles.helper}>
+          <span className={styles.depositHint}>
             {earned
               ? `Already deposited — re-deposit to update the ${repo.label} record.`
               : `Submits this REE to ${repo.label} and records the returned ${repo.idLabel}.`}

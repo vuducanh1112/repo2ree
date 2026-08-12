@@ -1,32 +1,25 @@
 /* Style-architecture guard.
  *
- * The rework's boundary is that CSS owns visual values, core owns identities,
- * and a `style` prop carries calculated custom properties or nothing. Biome and
- * tsc see neither of those, so this is the only thing that does.
+ * The boundary is that CSS owns visual values, core owns identities, and a
+ * `style` prop carries calculated custom properties or nothing. Biome and tsc
+ * see none of that, so this is the only thing that does.
  *
- * It runs as a ratchet while the migration is in flight: every violation that
- * exists today is recorded in `styleArchitectureInventory.json`, and the check
- * fails both when a file gains a violation *and* when it loses one without the
- * inventory being updated. A ratchet that only counts up lets debt sit; one
- * that also fails on stale entries makes each phase's shrinkage show up in the
- * diff. Regenerate with `--update` after a conversion.
- *
- * The inventory is a migration mechanism, not an accepted boundary. Phase 8
- * deletes it and the rules below become absolute.
+ * The rules are absolute. There is no baseline file and no exceptions list:
+ * during the migration this ran as a ratchet over a recorded inventory, and
+ * that inventory reached zero and was deleted. A violation here is a violation,
+ * wherever it is.
  *
  * TS/TSX rules run over the TypeScript AST rather than the file text, so
  * reformatting, nesting, or splitting an expression cannot hide a violation.
  */
 
-import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, extname, join, posix, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
 const guiRoot = fileURLToPath(new URL("..", import.meta.url));
 const sourceRoot = join(guiRoot, "src");
-const inventoryPath = join(guiRoot, "scripts", "styleArchitectureInventory.json");
-const update = process.argv.includes("--update");
 
 // ================================================
 // What counts as production source
@@ -38,6 +31,8 @@ const GENERATED = "src/shell/infra/api/generated/";
 /** The stylesheet that owns the raw palette; every other one consumes roles. */
 const TOKENS_STYLESHEET = "src/shell/ui/theme/tokens.css";
 
+/** The modules the migration deleted. Naming them keeps the deletion from
+ * being quietly undone by a re-introduced file of the same name. */
 const LEGACY_THEME_MODULES = new Set(
   [
     "globalCss",
@@ -48,6 +43,7 @@ const LEGACY_THEME_MODULES = new Set(
     "stylesLayout",
     "lightGlassTheme",
     "hover",
+    "legacyGlobals",
   ].map((name) => `src/shell/ui/theme/${name}`),
 );
 
@@ -342,82 +338,26 @@ for (const path of walk(sourceRoot)) {
   else if (extension === ".css") checkCss(path);
 }
 
-/** file -> rule -> count */
-function tally(entries) {
-  const counts = {};
-  for (const violation of entries) {
-    counts[violation.file] ??= {};
-    counts[violation.file][violation.rule] = (counts[violation.file][violation.rule] ?? 0) + 1;
+if (violations.length > 0) {
+  const byFile = new Map();
+  for (const violation of violations) {
+    if (!byFile.has(violation.file)) byFile.set(violation.file, []);
+    byFile.get(violation.file).push(violation);
   }
-  return Object.fromEntries(
-    Object.keys(counts)
-      .sort()
-      .map((file) => [
-        file,
-        Object.fromEntries(
-          Object.keys(counts[file])
-            .sort()
-            .map((rule) => [rule, counts[file][rule]]),
-        ),
-      ]),
-  );
-}
-
-const found = tally(violations);
-const total = violations.length;
-
-if (update) {
-  const inventory = {
-    note:
-      "Migration ratchet for the GUI styling rework — pre-existing violations, per file. " +
-      "It may only shrink: `make gui-checks` fails on a new violation and on a stale entry " +
-      "left behind by a conversion. Regenerate with `npm run check:style-architecture -- --update`. " +
-      "Phase 8 deletes this file and the rules become absolute.",
-    total,
-    files: found,
-  };
-  writeFileSync(inventoryPath, `${JSON.stringify(inventory, null, 2)}\n`);
-  console.log(`Recorded ${total} style-architecture violations in ${relativePath(inventoryPath)}.`);
-  process.exit(0);
-}
-
-const recorded = JSON.parse(readFileSync(inventoryPath, "utf8")).files;
-const failures = [];
-
-for (const [file, rules] of Object.entries(found)) {
-  for (const [rule, count] of Object.entries(rules)) {
-    const allowed = recorded[file]?.[rule] ?? 0;
-    if (count > allowed) {
-      const sites = violations.filter((entry) => entry.file === file && entry.rule === rule);
-      failures.push(
-        `${file}: ${count - allowed} new ${rule} violation(s) (recorded ${allowed}) — ${RULES[rule]}\n` +
-          sites
-            .slice(allowed)
-            .map((site) => `    ${site.file}:${site.line}:${site.column}  ${site.detail}`)
-            .join("\n"),
-      );
-    }
-  }
-}
-
-for (const [file, rules] of Object.entries(recorded)) {
-  for (const [rule, allowed] of Object.entries(rules)) {
-    const count = found[file]?.[rule] ?? 0;
-    if (count < allowed) {
-      failures.push(
-        `${file}: ${rule} is down to ${count} from a recorded ${allowed} — the ratchet has to ` +
-          "record it: npm run check:style-architecture -- --update",
-      );
-    }
-  }
-}
-
-if (failures.length > 0) {
-  console.error(`Style-architecture violations:\n\n${failures.join("\n\n")}\n`);
+  const report = [...byFile.keys()]
+    .sort()
+    .map((file) =>
+      byFile
+        .get(file)
+        .map(
+          (site) =>
+            `  ${site.file}:${site.line}:${site.column}  ${RULES[site.rule]}\n      ${site.detail}`,
+        )
+        .join("\n"),
+    )
+    .join("\n");
+  console.error(`Style-architecture violations (${violations.length}):\n\n${report}\n`);
   process.exitCode = 1;
 } else {
-  console.log(
-    `Style architecture holds: ${total} recorded violation(s) across ${Object.keys(found).length} ` +
-      "file(s), none new.",
-  );
+  console.log("Style architecture holds: no violations.");
 }

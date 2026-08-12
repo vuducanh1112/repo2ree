@@ -1,10 +1,12 @@
 import type { ArchiveRepo } from "@core/ree-steps/stepTypes";
 import { GlassPanel } from "@shell/ui/app-shell/components/GlassPageShell";
 import { SummaryLine } from "@shell/ui/app-shell/components/SummaryLine";
+import { Badge } from "@shell/ui/shared/components/Badge";
 import { Ic } from "@shell/ui/shared/components/Icon";
+import { Surface } from "@shell/ui/shared/components/Surface";
 import { archiveTone } from "@shell/ui/theme/appearance";
-import { lgColors, lgStatusBadge, lgStyles } from "@shell/ui/theme/lightGlassTheme";
-import { F } from "@shell/ui/theme/theme";
+import { cssVars } from "@shell/ui/theme/styleVars";
+import styles from "../ArchivePage.module.css";
 
 interface ArchiveReadinessAsideProps {
   buildDone: boolean;
@@ -17,19 +19,11 @@ interface ArchiveReadinessAsideProps {
 
 function CheckRow({ label, done }: { label: string; done: boolean }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <span style={{ color: done ? lgColors.success : lgColors.textMuted, display: "flex" }}>
+    <div className={styles.check} data-done={done || undefined}>
+      <span aria-hidden className={styles.checkIcon}>
         {done ? Ic.check(14) : Ic.x(14)}
       </span>
-      <span
-        style={{
-          fontSize: 13,
-          fontFamily: F.sans,
-          color: done ? lgColors.text : lgColors.textMuted,
-        }}
-      >
-        {label}
-      </span>
+      <span className={styles.checkLabel}>{label}</span>
     </div>
   );
 }
@@ -46,39 +40,54 @@ export function ArchiveReadinessAside({
 
   return (
     <GlassPanel density="compact">
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-        <span style={{ color: lgColors.cyan, display: "flex" }}>{Ic.shield(22)}</span>
-        <h2 style={{ margin: 0, fontSize: 15, color: lgColors.text }}>Deposit Readiness</h2>
+      <div className={styles.asideHead}>
+        <span aria-hidden className={styles.asideIcon}>
+          {Ic.shield(22)}
+        </span>
+        <h2 className={styles.asideTitle}>Deposit Readiness</h2>
       </div>
 
-      <div style={lgStyles.summaryBox}>
-        <div style={lgStyles.asideHeader}>
-          <span style={lgStyles.asideLabel}>Prerequisites</span>
-          <span style={lgStatusBadge(capstoneReady)}>{capstoneReady ? "Ready" : "Pending"}</span>
+      <Surface spacing="flush" vars={{ "--archive-tint": archiveTone(repo.key) }}>
+        <div className={styles.readout}>
+          <div className={styles.readoutHead}>
+            <span className={styles.readoutLabel}>Prerequisites</span>
+            <Badge tone={capstoneReady ? "success" : "warning"}>
+              {capstoneReady ? "Ready" : "Pending"}
+            </Badge>
+          </div>
+
+          <div className={styles.checks}>
+            <CheckRow label="Runtime built" done={buildDone} />
+            <CheckRow label="SBOM generated" done={sbomDone} />
+            <CheckRow label="Activation tested" done={activationDone} />
+          </div>
+
+          <SummaryLine
+            label={repo.idLabel}
+            value={
+              assignedId ? (
+                <span
+                  className={styles.assignedId}
+                  style={cssVars({ "--archive-tint": archiveTone(repo.key) })}
+                >
+                  {assignedId}
+                </span>
+              ) : (
+                <span className={styles.unassigned}>Not assigned yet</span>
+              )
+            }
+          />
+
+          <SummaryLine
+            label="Seal status"
+            value={
+              <Badge tone={isSealed ? "success" : "warning"}>
+                {isSealed ? "Sealed" : "Not sealed"}
+              </Badge>
+            }
+          />
         </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <CheckRow label="Runtime built" done={buildDone} />
-          <CheckRow label="SBOM generated" done={sbomDone} />
-          <CheckRow label="Activation tested" done={activationDone} />
-        </div>
-
-        <SummaryLine
-          label={repo.idLabel}
-          value={
-            assignedId ? (
-              <span style={{ fontFamily: F.mono, color: archiveTone(repo.key) }}>{assignedId}</span>
-            ) : (
-              <span style={{ color: lgColors.textMuted }}>Not assigned yet</span>
-            )
-          }
-        />
-
-        <SummaryLine
-          label="Seal status"
-          value={<span style={lgStatusBadge(isSealed)}>{isSealed ? "Sealed" : "Not sealed"}</span>}
-        />
-      </div>
+      </Surface>
     </GlassPanel>
   );
 }

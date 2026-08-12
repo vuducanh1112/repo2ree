@@ -6,13 +6,9 @@ import {
   tallyByStatus,
 } from "@core/evaluate/dependencyPresentation";
 import { Ic } from "@shell/ui/shared/components/Icon";
-import {
-  dependencyStatusTone,
-  ecosystemTone,
-  presenceTone,
-  translucent,
-} from "@shell/ui/theme/appearance";
-import { C, F, hoverBg, S_SECTION_LABEL } from "@shell/ui/theme/theme";
+import { ecosystemTone } from "@shell/ui/theme/appearance";
+import { cssVars } from "@shell/ui/theme/styleVars";
+import styles from "./DependencyPanel.module.css";
 
 interface DependencyGroupCardProps {
   group: DependencyGroup;
@@ -34,109 +30,36 @@ export function DependencyGroupCard({ group, filter, isOpen, onToggle }: Depende
 
   return (
     <div
-      style={{
-        border: `1.5px solid ${translucent(ecoLine, 20.8)}`,
-        borderRadius: 10,
-        overflow: "hidden",
-        background: "rgba(255,255,255,0.7)",
-      }}
+      className={styles.group}
+      style={cssVars({
+        "--eco-line": ecoLine,
+        "--eco-wash": ecosystemTone(group.ecosystem, "wash"),
+      })}
     >
-      <button
-        type="button"
-        onClick={onToggle}
-        style={{
-          width: "100%",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          padding: "9px 12px",
-          background: translucent(ecoLine, 7),
-          borderTopWidth: 0,
-          borderLeftWidth: 0,
-          borderRightWidth: 0,
-          borderBottomWidth: isOpen ? 1 : 0,
-          borderBottomStyle: "solid",
-          borderBottomColor: isOpen ? translucent(ecoLine, 14.5) : "transparent",
-          cursor: "pointer",
-          textAlign: "left",
-          transition: "background 0.12s",
-        }}
-        {...hoverBg(translucent(ecoLine, 11.8), translucent(ecoLine, 7))}
-      >
-        <span style={{ display: "flex", color: ecoLine }}>{Ic.file(13)}</span>
-        <span
-          style={{
-            fontSize: 12,
-            fontWeight: 700,
-            fontFamily: F.mono,
-            color: ecoLine,
-            flex: 1,
-            minWidth: 0,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {group.path}
+      <button type="button" onClick={onToggle} aria-expanded={isOpen} className={styles.groupHead}>
+        <span aria-hidden className={styles.groupIcon}>
+          {Ic.file(13)}
         </span>
-        <span
-          style={{
-            fontSize: 10,
-            fontWeight: 700,
-            letterSpacing: 0.5,
-            color: ecoLine,
-            background: ecosystemTone(group.ecosystem, "wash"),
-            border: `1px solid ${translucent(ecoLine, 25)}`,
-            borderRadius: 99,
-            padding: "1px 6px",
-            fontFamily: F.sans,
-            flexShrink: 0,
-          }}
-        >
-          {ECO_LABEL[group.ecosystem]}
-        </span>
-        <span
-          style={{
-            fontSize: 10,
-            color: "#16a34a",
-            fontFamily: F.mono,
-            flexShrink: 0,
-            marginLeft: 4,
-          }}
-        >
+        <span className={styles.groupPath}>{group.path}</span>
+        <span className={styles.ecosystem}>{ECO_LABEL[group.ecosystem]}</span>
+        <span className={styles.tally} data-kind="resolved">
           {groupResolved}✓
         </span>
         {groupUnpinned > 0 && (
-          <span style={{ fontSize: 10, color: "#dc2626", fontFamily: F.mono, flexShrink: 0 }}>
+          <span className={styles.tally} data-kind="unpinned">
             {groupUnpinned}✗
           </span>
         )}
-        <span style={{ display: "flex", color: C.textMuted, marginLeft: 4 }}>
+        <span aria-hidden className={styles.groupChevron}>
           {isOpen ? Ic.chevD(12) : Ic.chevR(12)}
         </span>
       </button>
 
       {isOpen && (
         <div>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 130px 80px",
-              gap: 0,
-              padding: "4px 12px",
-              background: C.surfaceAlt,
-              borderBottom: `1px solid ${C.border}`,
-            }}
-          >
+          <div className={styles.tableHead}>
             {["Package", "Version / Constraint", "Status"].map((h) => (
-              <span
-                key={h}
-                style={{
-                  ...S_SECTION_LABEL,
-                  fontSize: 10,
-                  letterSpacing: 0.8,
-                }}
-              >
+              <span key={h} className={styles.columnLabel}>
                 {h}
               </span>
             ))}
@@ -146,73 +69,18 @@ export function DependencyGroupCard({ group, filter, isOpen, onToggle }: Depende
             return (
               <div
                 key={`${pkg.name}:${pkg.version ?? ""}:${pkg.status}`}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 130px 80px",
-                  gap: 0,
-                  padding: "5px 12px",
-                  borderBottom: `1px solid ${C.border}`,
-                  background: i % 2 === 0 ? "transparent" : "#fafbfd",
-                }}
+                className={styles.packageRow}
+                data-odd={i % 2 === 1 ? true : undefined}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
-                  <span
-                    style={{
-                      fontSize: 12,
-                      fontFamily: F.mono,
-                      color: C.text,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {pkg.name}
-                  </span>
-                  {pkg.scope && (
-                    <span
-                      style={{
-                        fontSize: 9,
-                        fontWeight: 700,
-                        letterSpacing: 0.4,
-                        color: C.textMuted,
-                        border: `1px solid ${C.border}`,
-                        borderRadius: 99,
-                        padding: "0 5px",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {pkg.scope}
-                    </span>
-                  )}
+                <div className={styles.packageName}>
+                  <span className={styles.packageLabel}>{pkg.name}</span>
+                  {pkg.scope && <span className={styles.scope}>{pkg.scope}</span>}
                 </div>
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontFamily: F.mono,
-                    color: pkg.version ? C.textMid : C.textMuted,
-                    fontStyle: pkg.version ? "normal" : "italic",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    alignSelf: "center",
-                  }}
-                >
+                <span className={styles.version} data-unset={pkg.version ? undefined : true}>
                   {pkg.version || "—"}
                 </span>
-                <span style={{ alignSelf: "center", display: "flex", gap: 4, flexWrap: "wrap" }}>
-                  <span
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 700,
-                      color: dependencyStatusTone(pkg.status),
-                      background: dependencyStatusTone(pkg.status, "wash"),
-                      border: `1px solid ${dependencyStatusTone(pkg.status, "edge")}`,
-                      borderRadius: 99,
-                      padding: "1px 6px",
-                      fontFamily: F.sans,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
+                <span className={styles.verdicts}>
+                  <span className={styles.verdict} data-status={pkg.status}>
                     {statusLabel}
                   </span>
                   {pkg.runtimePresence && (
@@ -222,17 +90,8 @@ export function DependencyGroupCard({ group, filter, isOpen, onToggle }: Depende
                           ? `runtime has ${pkg.observedVersion}`
                           : undefined
                       }
-                      style={{
-                        fontSize: 10,
-                        fontWeight: 700,
-                        color: presenceTone(pkg.runtimePresence),
-                        background: presenceTone(pkg.runtimePresence, "wash"),
-                        border: `1px solid ${presenceTone(pkg.runtimePresence, "edge")}`,
-                        borderRadius: 99,
-                        padding: "1px 6px",
-                        fontFamily: F.sans,
-                        whiteSpace: "nowrap",
-                      }}
+                      className={styles.verdict}
+                      data-presence={pkg.runtimePresence}
                     >
                       {PRESENCE_LABEL[pkg.runtimePresence]}
                     </span>

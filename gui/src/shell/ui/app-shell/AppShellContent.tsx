@@ -1,11 +1,4 @@
-import {
-  S_WORKSPACE_EDITOR_MAIN_CONTENT_BG_BLOB_CENTER,
-  S_WORKSPACE_EDITOR_MAIN_CONTENT_BG_BLOB_LEFT,
-  S_WORKSPACE_EDITOR_MAIN_CONTENT_BG_BLOB_RIGHT,
-  S_WORKSPACE_EDITOR_MAIN_CONTENT_BG_LAYER,
-  S_WORKSPACE_EDITOR_MAIN_CONTENT_INNER,
-  S_WORKSPACE_EDITOR_MAIN_CONTENT_ROOT,
-} from "../theme/theme";
+import styles from "./AppShellContent.module.css";
 import { ArchivePageContainer } from "./pages/pageContainers/ArchivePageContainer";
 import {
   ExperimentsPageContainer,
@@ -17,13 +10,13 @@ import type { AppShellPageContainerProps } from "./pages/pageContainers/shared";
 
 export function AppShellContent(props: AppShellPageContainerProps) {
   return (
-    <main style={S_WORKSPACE_EDITOR_MAIN_CONTENT_ROOT}>
-      <div style={S_WORKSPACE_EDITOR_MAIN_CONTENT_BG_LAYER}>
-        <div style={S_WORKSPACE_EDITOR_MAIN_CONTENT_BG_BLOB_LEFT} />
-        <div style={S_WORKSPACE_EDITOR_MAIN_CONTENT_BG_BLOB_RIGHT} />
-        <div style={S_WORKSPACE_EDITOR_MAIN_CONTENT_BG_BLOB_CENTER} />
+    <main className={styles.main}>
+      <div aria-hidden className={styles.backdrop}>
+        <div className={styles.blob} data-place="left" />
+        <div className={styles.blob} data-place="right" />
+        <div className={styles.blob} data-place="center" />
       </div>
-      <div style={S_WORKSPACE_EDITOR_MAIN_CONTENT_INNER}>
+      <div className={styles.inner}>
         <MetadataPageContainer {...props} />
         <ExperimentsPageContainer {...props} />
         <HardwareBomPageContainer {...props} />

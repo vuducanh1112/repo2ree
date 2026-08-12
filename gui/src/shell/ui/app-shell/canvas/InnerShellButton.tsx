@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Ic } from "../../shared/components/Icon";
-import { F } from "../../theme/theme";
+import { cssVars } from "../../theme/styleVars";
+import styles from "./InnerShellButton.module.css";
 
-// The inner shell is the execution substrate, themed cyan like the runtime pages.
-const RUNTIME_COLOR = "#0891b2";
-const RUNTIME_SHADOW = "#164e63";
+// The inner shell is the execution substrate, so it carries the build stage's
+// tone — the same one the runtime pages do. InnerShellButton.module.css reads it.
 
 // Mirrors CoreExperiments' CoreOverviewButton: the inner-shell pod is just a
 // graphic, so this is a transparent hit area over it that opens the Build
@@ -25,7 +25,7 @@ export function InnerShellButton({
   onHoverChange: (hovered: boolean) => void;
   onOpenRuntime: () => void;
 }) {
-  const [hovered, setHovered] = useState(false);
+  const [_hovered, setHovered] = useState(false);
   const setHover = (next: boolean) => {
     setHovered(next);
     onHoverChange(next);
@@ -47,44 +47,15 @@ export function InnerShellButton({
         if (wasNodeDragged.current) return;
         onOpenRuntime();
       }}
-      style={{
-        position: "absolute",
-        left: center.x,
-        top: center.y,
-        width: podDiameter,
-        height: podDiameter,
-        transform: "translate(-50%,-50%)",
-        borderRadius: "50%",
-        border: "none",
-        background: "transparent",
-        cursor: "pointer",
-      }}
+      className={styles.hit}
+      style={cssVars({
+        "--shell-x": `${center.x}px`,
+        "--shell-y": `${center.y}px`,
+        "--shell-size": `${podDiameter}px`,
+        "--shell-label": label,
+      })}
     >
-      <span
-        style={{
-          position: "absolute",
-          left: "50%",
-          top: "100%",
-          transform: "translate(-50%, 14px)",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: label * 0.4,
-          whiteSpace: "nowrap",
-          padding: `${label * 0.45}px ${label * 0.9}px`,
-          borderRadius: 999,
-          background: RUNTIME_COLOR,
-          color: "#fff",
-          fontFamily: F.sans,
-          fontWeight: 700,
-          fontSize: label,
-          boxShadow: `0 ${label * 0.3}px ${label}px ${RUNTIME_SHADOW}55`,
-          opacity: hovered ? 1 : 0,
-          transition: "opacity 0.15s",
-          pointerEvents: "none",
-        }}
-      >
-        {Ic.cpu(label)} Open build runtime
-      </span>
+      <span className={styles.label}>{Ic.cpu(label)} Open build runtime</span>
     </button>
   );
 }

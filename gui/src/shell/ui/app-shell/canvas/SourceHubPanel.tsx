@@ -3,9 +3,10 @@ import type { SourceUploadCommit } from "@core/ree/ReeTypes";
 import { useApiRuntime } from "@shell/data/apiRuntime";
 import { stageTone } from "@shell/ui/theme/appearance";
 import { useEffect, useState } from "react";
+import { Badge } from "../../shared/components/Badge";
+import { Button } from "../../shared/components/Button";
 import { Ic } from "../../shared/components/Icon";
 import { useFocusScroll } from "../../shared/hooks/useFocusScroll";
-import { lgColors, lgStatusBadge } from "../../theme/lightGlassTheme";
 import { CollapsibleLogCard } from "../components/CollapsibleLogCard";
 import { isLikelySourceUrl } from "../components/sourceRuntime/SourceUrlField";
 import type { AppShellPageContainerProps } from "../pages/pageContainers/shared";
@@ -15,6 +16,7 @@ import { SourceAcquisitionCard } from "../pages/source/SourceAcquisitionPageSect
 import { SourceStep3Section } from "../pages/source/SourceAcquisitionPageStep3Section";
 import { CanvasWindowTitle } from "./CanvasWindow";
 import { HubPanel } from "./HubPanel";
+import styles from "./SourceHubPanel.module.css";
 
 type SourceHubPanelProps = Pick<
   AppShellPageContainerProps,
@@ -117,34 +119,22 @@ export function SourceHubPanel({
         />
       }
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={lgStatusBadge(sourceInWorkspace)}>{statusLabel}</span>
-        <div style={{ flex: 1 }} />
+      <div className={styles.statusBar}>
+        <Badge tone={sourceInWorkspace ? "success" : "warning"}>{statusLabel}</Badge>
+        <div className={styles.spacer} />
         {sourceInWorkspace && (
-          <button
-            type="button"
+          <Button
+            variant="danger"
+            size="small"
+            icon={Ic.x(12)}
             disabled={locked}
             onClick={() => {
               focus("sourceAvailable");
               commands.onRemoveWorkspaceSource();
             }}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 5,
-              padding: "5px 9px",
-              borderRadius: 8,
-              fontSize: 12,
-              fontWeight: 700,
-              border: "1px solid rgba(251, 113, 133, 0.4)",
-              background: locked ? "rgba(241, 245, 249, 0.72)" : "rgba(255, 241, 242, 0.82)",
-              color: locked ? lgColors.textMuted : lgColors.danger,
-              cursor: locked ? "not-allowed" : "pointer",
-              flexShrink: 0,
-            }}
           >
-            {Ic.x(12)} Clear source
-          </button>
+            Clear source
+          </Button>
         )}
       </div>
 

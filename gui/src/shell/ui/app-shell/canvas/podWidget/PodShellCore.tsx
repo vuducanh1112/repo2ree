@@ -24,9 +24,9 @@ export function PodShellCore({ CX, CY, SR, evaluation, idSuffix = "" }: PodShell
     <g>
       <defs>
         <radialGradient id={`${gId}Bg`} cx="45%" cy="38%" r="66%">
-          <stop offset="0%" stopColor="#1a0838" />
-          <stop offset="55%" stopColor="#08071a" />
-          <stop offset="100%" stopColor="#030612" />
+          <stop offset="0%" stopColor="var(--pod-core-near)" />
+          <stop offset="55%" stopColor="var(--pod-core-mid)" />
+          <stop offset="100%" stopColor="var(--pod-core-far)" />
         </radialGradient>
         <radialGradient id={`${gId}Glow`} cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor={color} stopOpacity="0.65" />

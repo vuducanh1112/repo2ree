@@ -18,10 +18,11 @@ import type { Badges, ReeFile } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
 import { useMemo, useRef, useState } from "react";
-import { C } from "../../theme/theme";
+import { cssVars } from "../../theme/styleVars";
 import { BenchConsole } from "./BenchConsole";
 import { CableOverlaySvg } from "./CableOverlay";
 import { CanvasControls } from "./CanvasControls";
+import styles from "./CanvasHub.module.css";
 import { CoreExperiments, experimentCableTargets } from "./CoreExperiments";
 import { ExplodeScaffold, ExplodeToggle, ProjectionPod } from "./ExplodeView";
 import { FileTreeConsole } from "./FileTreeConsole";
@@ -170,32 +171,20 @@ export function CanvasHub({
     animate,
   });
 
-  const levelMeta = { color: C.accent, bg: C.surfaceAlt, label: "REE evidence" };
+  const levelMeta = {
+    color: "var(--chrome-accent)",
+    bg: "var(--chrome-surface-alt)",
+    label: "REE evidence",
+  };
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: pannable canvas surface; nodes inside are buttons
     <div
       ref={stageRef}
       onMouseDown={startPan}
-      style={{
-        position: "absolute",
-        inset: 0,
-        overflow: "hidden",
-        cursor: isPanning ? "grabbing" : "grab",
-        opacity: dimmed ? 0.4 : 1,
-        transition: "opacity 0.3s",
-        boxShadow: "inset 0 0 220px rgba(30,58,138,0.10)",
-        background: `
-          radial-gradient(120% 75% at 50% -8%, #ffffff 0%, rgba(255,255,255,0) 58%),
-          radial-gradient(58% 48% at 18% 22%, rgba(56,189,248,0.12) 0%, rgba(56,189,248,0) 70%),
-          radial-gradient(54% 44% at 83% 16%, rgba(129,140,248,0.12) 0%, rgba(129,140,248,0) 72%),
-          radial-gradient(75% 60% at 50% 118%, rgba(13,148,136,0.10) 0%, rgba(13,148,136,0) 72%),
-          linear-gradient(${C.border}cc 1px, transparent 1px) 0 0 / 130px 130px,
-          linear-gradient(90deg, ${C.border}cc 1px, transparent 1px) 0 0 / 130px 130px,
-          linear-gradient(${C.border}55 1px, transparent 1px) 0 0 / 26px 26px,
-          linear-gradient(90deg, ${C.border}55 1px, transparent 1px) 0 0 / 26px 26px,
-          radial-gradient(circle at 50% 44%, #f6fafe 0%, ${C.bg} 72%)`,
-      }}
+      className={styles.stage}
+      data-panning={isPanning || undefined}
+      data-dimmed={dimmed || undefined}
     >
       <LabBackdrop />
 
@@ -205,30 +194,16 @@ export function CanvasHub({
 
       <div
         ref={worldRef}
-        style={{
-          position: "absolute",
-          left: "50%",
-          top: "50%",
-          transformOrigin: "0 0",
-          transform: `translate(${tf.x}px, ${tf.y}px) scale(${tf.z})`,
-          transition: animate ? "transform 0.4s cubic-bezier(0.4,0,0.2,1)" : "none",
-        }}
+        className={styles.world}
+        data-animate={animate || undefined}
+        style={cssVars({
+          "--world-x": `${tf.x}px`,
+          "--world-y": `${tf.y}px`,
+          "--world-z": tf.z,
+        })}
       >
         {/* cradle socket: the pod is seated in the bench, not floating */}
-        <div
-          style={{
-            position: "absolute",
-            left: 0,
-            top: 96,
-            width: 320,
-            height: 96,
-            transform: "translate(-50%,-50%)",
-            borderRadius: "50%",
-            background:
-              "radial-gradient(ellipse at center, rgba(100,116,139,0.14) 0%, transparent 70%)",
-            pointerEvents: "none",
-          }}
-        />
+        <div aria-hidden className={styles.cradle} />
         {/* projection axis + per-column captions for the decomposed view */}
         <ExplodeScaffold exploded={exploded} />
 

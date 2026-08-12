@@ -278,53 +278,41 @@ const networkFields: FieldSpec<NetworkRow>[] = [
 
 export function createCpuColumns({
   locked,
-  inp,
-  selectInp,
   onFocusHardwareDescription,
   patchCpuRow,
 }: CpuColumnsArgs): HardwareColumn<CPURow>[] {
   return buildColumns(cpuFields, patchCpuRow, {
     locked,
-    inp,
-    selectInp,
     onFocus: onFocusHardwareDescription,
   });
 }
 
 export function createGpuColumns({
   locked,
-  inp,
-  selectInp,
   patchGpuRow,
 }: GpuColumnsArgs): HardwareColumn<GPURow>[] {
-  return buildColumns(gpuFields, patchGpuRow, { locked, inp, selectInp });
+  return buildColumns(gpuFields, patchGpuRow, { locked });
 }
 
 export function createMemoryColumns({
   locked,
-  inp,
-  selectInp,
   patchMemoryRow,
 }: MemoryColumnsArgs): HardwareColumn<MemoryRow>[] {
-  return buildColumns(memoryFields, patchMemoryRow, { locked, inp, selectInp });
+  return buildColumns(memoryFields, patchMemoryRow, { locked });
 }
 
 export function createStorageColumns({
   locked,
-  inp,
-  selectInp,
   patchStorageRow,
 }: StorageColumnsArgs): HardwareColumn<StorageRow>[] {
-  return buildColumns(storageFields, patchStorageRow, { locked, inp, selectInp });
+  return buildColumns(storageFields, patchStorageRow, { locked });
 }
 
 export function createNetworkColumns({
   locked,
-  inp,
-  selectInp,
   patchNetworkRow,
 }: NetworkColumnsArgs): HardwareColumn<NetworkRow>[] {
-  return buildColumns(networkFields, patchNetworkRow, { locked, inp, selectInp });
+  return buildColumns(networkFields, patchNetworkRow, { locked });
 }
 
 export type { HardwareColumn } from "./hardwareBomColumns.types";

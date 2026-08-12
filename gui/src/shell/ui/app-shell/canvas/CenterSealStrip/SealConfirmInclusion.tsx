@@ -1,6 +1,8 @@
+import { PAGE } from "@core/app-shell/pages";
 import { Toggle } from "@shell/ui/shared/components/Toggle";
-import { lgColors, lgStage } from "@shell/ui/theme/lightGlassTheme";
-import { F } from "@shell/ui/theme/theme";
+import { stageTone } from "@shell/ui/theme/appearance";
+import { cssVars } from "@shell/ui/theme/styleVars";
+import styles from "./CenterSealStrip.module.css";
 
 interface InclusionRow {
   label: string;
@@ -27,30 +29,18 @@ function Row({ label, available, included, tintLine, tintInk, onToggle }: Inclus
   const on = available && included;
   return (
     <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        opacity: available ? 1 : 0.45,
-      }}
+      className={styles.inclusionRow}
+      data-unavailable={available ? undefined : true}
+      style={cssVars({ "--seal-ink": tintInk })}
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-        <span style={{ fontSize: 12, fontFamily: F.sans, fontWeight: 700, color: lgColors.text }}>
-          {label}
-        </span>
-        <span style={{ fontSize: 10, fontFamily: F.sans, color: lgColors.textMuted }}>
+      <div className={styles.inclusionLabels}>
+        <span className={styles.inclusionName}>{label}</span>
+        <span className={styles.inclusionState}>
           {!available ? "Not in workspace" : on ? "Bundled into the archive" : "Excluded"}
         </span>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span
-          style={{
-            fontSize: 10,
-            fontFamily: F.sans,
-            fontWeight: 700,
-            color: on ? tintInk : lgColors.textMuted,
-          }}
-        >
+      <div className={styles.inclusionControl}>
+        <span className={styles.inclusionVerb} data-on={on || undefined}>
           {on ? "Included" : "Include"}
         </span>
         <Toggle on={on} disabled={!available} tint={tintLine} onChange={onToggle} />
@@ -71,52 +61,30 @@ export function SealConfirmInclusion({
   onToggleResults,
 }: SealConfirmInclusionProps) {
   return (
-    <div
-      style={{
-        margin: "0 20px 4px",
-        padding: "12px 14px",
-        borderRadius: 10,
-        background: "rgba(248, 250, 252, 0.7)",
-        border: "1px solid rgba(148, 163, 184, 0.28)",
-        display: "flex",
-        flexDirection: "column",
-        gap: 10,
-      }}
-    >
-      <span
-        style={{
-          fontSize: 10,
-          fontFamily: F.sans,
-          fontWeight: 800,
-          letterSpacing: 0.5,
-          color: lgColors.textMuted,
-          textTransform: "uppercase",
-        }}
-      >
-        Bundle contents
-      </span>
+    <div className={styles.inclusion}>
+      <span className={styles.inclusionHeading}>Bundle contents</span>
       <Row
         label="Source"
         available={sourceAvailable}
         included={includeSource}
-        tintLine={lgStage.source.line}
-        tintInk={lgStage.source.ink}
+        tintLine={stageTone(PAGE.SOURCE)}
+        tintInk={stageTone(PAGE.SOURCE, "ink")}
         onToggle={onToggleSource}
       />
       <Row
         label="Runtime"
         available={runtimeAvailable}
         included={includeRuntime}
-        tintLine={lgStage.runtime.line}
-        tintInk={lgStage.runtime.ink}
+        tintLine={stageTone(PAGE.BUILD)}
+        tintInk={stageTone(PAGE.BUILD, "ink")}
         onToggle={onToggleRuntime}
       />
       <Row
         label="Results"
         available={resultsAvailable}
         included={includeResults}
-        tintLine={lgStage.experiments.line}
-        tintInk={lgStage.experiments.ink}
+        tintLine={stageTone(PAGE.EXPERIMENTS)}
+        tintInk={stageTone(PAGE.EXPERIMENTS, "ink")}
         onToggle={onToggleResults}
       />
     </div>

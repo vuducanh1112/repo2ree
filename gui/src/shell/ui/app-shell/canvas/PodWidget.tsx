@@ -2,6 +2,8 @@ import { bottleneckAxis } from "@core/evaluate/axes";
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import type React from "react";
 import { axisTone, translucent } from "../../theme/appearance";
+import { cssVars } from "../../theme/styleVars";
+import styles from "./PodWidget.module.css";
 import { type PodShell, PodSphere } from "./podWidget/PodSphere";
 import { POD_M } from "./podWidget/podWidgetData";
 
@@ -29,7 +31,7 @@ export function PodWidget({
     Cy = 290,
     Sr = 118;
 
-  const glowColor = shell === "inner" || shell === "core" ? "#38bdf8" : tint;
+  const glowColor = shell === "inner" || shell === "core" ? "var(--pod-glow-mid)" : tint;
   // The glow percentages are the old `${color}25` / `${color}35` hex-alpha
   // suffixes: 0x25 is 14.5% and 0x35 is 20.8%. They are composed rather than
   // appended because `tint` is now a var() reference, and text glued onto one
@@ -53,11 +55,8 @@ export function PodWidget({
       width={size}
       height={size}
       viewBox={`0 0 ${W} ${H}`}
-      style={{
-        flexShrink: 0,
-        overflow: "visible",
-        filter: shadow,
-      }}
+      className={styles.pod}
+      style={cssVars({ "--pod-glow": shadow })}
     >
       <title>{title}</title>
       <PodSphere

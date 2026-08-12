@@ -237,6 +237,18 @@
   --switch-knob: var(--palette-white);
   --switch-knob-shadow: var(--shadow-knob);
 
+  /* The application shell: its header, and the workspace behind the canvas. */
+  --app-header-bg: var(--chrome-surface);
+  --app-header-shadow: var(--shadow-app-header);
+  --workspace-bg: var(--gradient-workspace);
+  --workspace-blob-a: var(--gradient-workspace-blob-a);
+  --workspace-blob-b: var(--gradient-workspace-blob-b);
+  --workspace-blob-c: var(--gradient-workspace-blob-c);
+  --download-bg: var(--palette-film-mint-70);
+  --download-bg-hover: var(--palette-film-mint-90);
+  --download-edge: var(--palette-edge-green-strong);
+  --download-ink: var(--palette-green-700);
+
   /* Windows floating over the canvas: docked pages, hub panels, the viewer. */
   --window-bg: var(--chrome-surface);
   --window-edge: var(--chrome-border);
@@ -245,12 +257,105 @@
   --window-glass-bg: var(--palette-film-window);
   --window-scrim: var(--palette-film-scrim);
 
+  /* The seal strip: the card that seals an REE, and the record once it is. */
+  --seal-panel-bg: var(--palette-film-white-soft);
+  --seal-panel-edge: var(--palette-edge-sky-pale-strong);
+  --seal-panel-shadow: var(--shadow-seal-panel);
+  --seal-bar-bg: var(--palette-film-white);
+  --seal-bar-edge: var(--palette-edge-slate-faint);
+  --seal-track-dim: var(--palette-track-slate);
+  --seal-track-dim-soft: var(--palette-track-slate-soft);
+  --sealed-card-bg: var(--palette-film-sealed);
+  --sealed-card-shadow: var(--shadow-sealed-card);
+  --seal-inset-bg: var(--palette-film-inset);
+  --seal-inset-edge: var(--palette-edge-slate-soft);
+  --seal-warn-bg: var(--palette-film-butter);
+  --seal-warn-edge: var(--palette-edge-amber);
+  --seal-warn-ink: var(--palette-amber-800);
+  --seal-warn-dot: var(--palette-amber-500);
+  /* The evidence level a seal freezes the REE at. One level exists today. */
+  --seal-level-line: var(--palette-indigo-600);
+  --seal-level-wash: var(--palette-indigo-050);
+
+  /* The specimen pod: machined shell, and the energised core inside it. */
+  --pod-face: var(--palette-pod-face);
+  --pod-raised: var(--palette-pod-raised);
+  --pod-shadow: var(--palette-pod-shadow);
+  --pod-deep: var(--palette-pod-deep);
+  --pod-bolt: var(--palette-pod-bolt);
+  --pod-bolt-core: var(--palette-pod-bolt-core);
+  --pod-weld: var(--palette-pod-weld);
+  --pod-glow-near: var(--palette-sky-100);
+  --pod-glow-mid: var(--palette-sky-400);
+  --pod-glow-far: var(--palette-sky-700);
+  --pod-glow-deep: var(--palette-navy-950);
+  --pod-rim: var(--palette-sky-200);
+  --pod-node: var(--palette-white);
+  --pod-gloss: var(--palette-white);
+  --pod-void: var(--palette-grey-950);
+  --pod-core-near: var(--palette-core-violet);
+  --pod-core-mid: var(--palette-core-indigo);
+  --pod-core-far: var(--palette-core-black);
+
   /* The workbench lab: the bench the dormant pod is seated on. It carries the
    * build stage's hue, because the runtime it provisions is that stage's. */
   --workbench-tint: var(--stage-build-line);
   --bench-tray-shadow: var(--shadow-bench-tray);
   --cradle-disc: var(--gradient-cradle-disc);
   --console-shadow: var(--shadow-console);
+
+  /* The pinned HUD consoles at the edges of the canvas. */
+  --hud-bg: var(--palette-film-hud);
+  --hud-edge: var(--chrome-border);
+  --hud-shadow-open: var(--shadow-hud-open);
+  --hud-shadow-collapsed: var(--shadow-hud-collapsed);
+
+  /* The hub canvas itself: its ground, and the decomposed view over it. */
+  --hub-bg: var(--gradient-hub);
+  --hub-vignette: var(--shadow-hub-vignette);
+  --explode-pod-glow: var(--glow-explode-pod);
+
+  /* Canvas node cards, and the experiment satellites around the core. */
+  --node-bg: var(--chrome-surface);
+  --node-edge: var(--chrome-border);
+  --node-shadow: var(--shadow-node);
+  --node-done-edge: var(--palette-mint-200);
+  --node-done-wash: var(--palette-mint-100);
+  --node-active-edge: var(--chrome-accent);
+  --node-active-shadow: var(--shadow-node-active);
+  --satellite-wired-edge: var(--palette-indigo-200);
+  --satellite-wired-shadow: var(--shadow-node-wired);
+  --satellite-index-wash: var(--palette-indigo-050);
+  --satellite-add-wash: var(--palette-film-indigo);
+
+  /* A cable that is drawn but not yet carrying anything. */
+  --cable-dim: var(--palette-slate-400);
+  --cable-dim-ink: var(--palette-slate-700);
+  --cable-dim-core: var(--palette-slate-200);
+  --cable-gloss: var(--palette-white);
+
+  /* Run lifecycle, as the logs console reports it. */
+  --run-active: var(--chrome-accent);
+  --run-succeeded: var(--palette-green-600);
+  --run-failed: var(--status-fault);
+  --run-canceling: var(--palette-amber-600);
+  --run-idle: var(--chrome-text-muted);
+  --run-tab-selected-bg: var(--palette-film-accent-strong);
+  --run-stream-on-bg: var(--palette-film-accent);
+
+  /* The workbench console's embedded terminal, and its release action. */
+  --terminal-bg: var(--palette-terminal-bg);
+  --terminal-edge: var(--palette-terminal-edge);
+  --terminal-gutter: var(--palette-slate-600);
+  --terminal-cursor: var(--palette-mint-300);
+  --terminal-info: var(--palette-blue-300);
+  --terminal-out: var(--palette-slate-100);
+  --terminal-ok: var(--palette-mint-300);
+  --terminal-warn: var(--palette-amber-300);
+  --terminal-err: var(--palette-red-300);
+  --release-bg: var(--palette-film-ochre);
+  --release-edge: var(--palette-edge-ochre);
+  --release-ink: var(--palette-amber-800);
 
   /* The decorative lab behind the pod. */
   --lab-pool-a: var(--gradient-lab-pool-sky);
@@ -262,6 +367,103 @@
   --lab-bench: var(--gradient-lab-bench);
   --lab-bench-shadow: var(--shadow-lab-bench);
   --lab-edge: var(--chrome-border);
+
+  /* How badly a reproducibility threat blocks the next level. */
+  --threat-high-line: var(--palette-red-600);
+  --threat-high-wash: var(--palette-red-050);
+  --threat-high-edge: var(--palette-red-300);
+  --threat-medium-line: var(--palette-amber-600);
+  --threat-medium-wash: var(--palette-amber-050);
+  --threat-medium-edge: var(--palette-amber-300);
+  --threat-low-line: var(--palette-sky-700);
+  --threat-low-wash: var(--palette-sky-050);
+  --threat-low-edge: var(--palette-sky-200);
+  --remedy-bg: var(--palette-film-mint-60);
+  --remedy-edge: var(--palette-edge-green-strong);
+  --remedy-ink: var(--badge-success-ink);
+
+  /* A progress meter. */
+  --progress-track-bg: var(--palette-film-slate-track);
+  --progress-track-edge: var(--palette-edge-sky-pale);
+  --progress-fill: var(--gradient-progress);
+  --progress-glow: var(--shadow-progress-glow);
+  --tally-warn-bg: var(--palette-film-ochre-70);
+
+  /* A finished experiment run's verdict wash. */
+  --verdict-pass-wash: var(--palette-film-mint-70b);
+  --verdict-fail-wash: var(--palette-film-rose-70);
+  --verdict-idle-wash: var(--palette-film-slate-70);
+
+  /* An experiment card, and the facts it advertises at a glance. */
+  --exp-card-bg: var(--palette-film-white);
+  --exp-card-edge: var(--surface-card-edge);
+  --exp-card-shadow: var(--shadow-card);
+  --exp-card-edge-hover: var(--palette-edge-sky-firm);
+  --exp-card-shadow-hover: var(--shadow-card-hover);
+  --exp-id-ink: var(--palette-cyan-600);
+  --exp-id-bg: var(--palette-film-sky-85);
+  --exp-id-edge: var(--palette-edge-sky-soft);
+  --exp-verified-ink: var(--badge-success-ink);
+  --exp-verified-bg: var(--palette-film-mint-85);
+  --exp-verified-edge: var(--palette-edge-green-mid);
+  --exp-runtime-ink: var(--palette-sky-500);
+  --exp-runtime-bg: var(--palette-film-indigo-88);
+  --exp-runtime-edge: var(--palette-edge-indigo);
+  --exp-resources-ink: var(--palette-cyan-600);
+  --exp-resources-bg: var(--palette-film-sky-88);
+  --exp-resources-edge: var(--palette-edge-sky-faint);
+  --exp-command-bg: var(--palette-film-slate-78);
+  --exp-command-edge: var(--palette-edge-slate-soft);
+
+  /* An empty result: the run has not happened, or found nothing. */
+  --placeholder-bg: var(--palette-film-white-45);
+  --placeholder-edge: var(--palette-edge-slate-hard);
+  --placeholder-edge-strong: var(--palette-edge-slate-half);
+
+  /* The manifest files the evaluator looks for, before it has run. */
+  --manifest-pip: var(--palette-blue-500);
+  --manifest-pyproject: var(--palette-violet-500);
+  --manifest-conda: var(--palette-green-500);
+  --manifest-npm: var(--palette-red-600);
+  --manifest-container: var(--palette-cyan-600);
+  --manifest-nix: var(--palette-violet-600);
+
+  /* Data tables: the hardware inventory's rows and its category pills. */
+  --table-row-bg: var(--palette-film-white);
+  --table-row-edge: var(--palette-edge-slate-mid);
+  --table-row-shadow: var(--shadow-inset-highlight);
+  --table-empty-bg: var(--palette-film-slate-55);
+  --table-empty-edge: var(--palette-edge-slate-hard);
+  --pill-bg: var(--palette-film-white-62);
+  --pill-edge: var(--palette-edge-slate);
+  --pill-ink: var(--page-subtitle-ink);
+  --pill-active-bg: var(--palette-film-mist-92);
+  --pill-active-edge: var(--palette-edge-sky-strong);
+  --pill-active-ink: var(--palette-sky-900);
+  --pill-active-shadow: var(--shadow-pill-active);
+  --pill-count-bg: var(--palette-film-white-85);
+  --pill-count-edge: var(--palette-edge-slate-soft);
+
+  /* Page-level advisories: something to do first, or something to know. */
+  --advisory-warn-bg: var(--palette-film-cream);
+  --advisory-warn-edge: var(--palette-edge-amber-firm);
+  --advisory-warn-ink: var(--badge-warning-ink);
+  --advisory-info-bg: var(--palette-film-mist-86);
+  --advisory-info-edge: var(--palette-edge-sky-pale-half);
+  --advisory-info-ink: var(--palette-sky-500);
+  --advisory-shadow: var(--shadow-banner-inset);
+
+  /* Chips, and the small icon buttons beside them. */
+  --chip-ink: var(--palette-blue-700);
+  --chip-bg: var(--palette-film-chip);
+  --chip-edge: var(--palette-edge-indigo);
+  --chip-remove-bg: var(--palette-film-white);
+  --chip-remove-edge: var(--palette-edge-slate-firm);
+  --suggestion-ink: var(--palette-indigo-800);
+  --suggestion-bg: var(--palette-film-suggestion);
+  --suggestion-edge: var(--palette-edge-indigo-soft);
+  --row-bg: var(--palette-film-row);
+  --row-edge: var(--palette-edge-slate-row);
 
   /* File tree and viewer panes. */
   --tree-pane-bg: var(--palette-film-white-soft);

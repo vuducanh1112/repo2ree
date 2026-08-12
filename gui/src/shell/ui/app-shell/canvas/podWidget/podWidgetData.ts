@@ -1,11 +1,14 @@
+// The pod's machined-metal materials, as references to the roles in tones.css.
+// SVG presentation attributes resolve var(), so these go straight into fill and
+// stroke without an adapter.
 export const POD_M: Record<string, string> = {
-  face: "#e8edf4",
-  raised: "#f2f5f9",
-  shadow: "#c8d0dc",
-  deep: "#a8b4c4",
-  bolt: "#cdd5e0",
-  boltC: "#9aa5b4",
-  weld: "#b8c4d4",
+  face: "var(--pod-face)",
+  raised: "var(--pod-raised)",
+  shadow: "var(--pod-shadow)",
+  deep: "var(--pod-deep)",
+  bolt: "var(--pod-bolt)",
+  boltC: "var(--pod-bolt-core)",
+  weld: "var(--pod-weld)",
 };
 
 interface PodGraphNode {

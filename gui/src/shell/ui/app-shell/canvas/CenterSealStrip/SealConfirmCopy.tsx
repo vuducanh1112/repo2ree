@@ -1,5 +1,4 @@
-import { lgColors } from "@shell/ui/theme/lightGlassTheme";
-import { F } from "@shell/ui/theme/theme";
+import styles from "./CenterSealStrip.module.css";
 
 interface SealConfirmCopyProps {
   allLive: boolean;
@@ -9,19 +8,8 @@ interface SealConfirmCopyProps {
 
 export function SealConfirmCopy({ allLive, totalCables, currentLabel }: SealConfirmCopyProps) {
   return (
-    <div
-      style={{
-        padding: "12px 20px",
-      }}
-    >
-      <div
-        style={{
-          fontSize: 12,
-          fontFamily: F.sans,
-          color: lgColors.textMid,
-          lineHeight: 1.6,
-        }}
-      >
+    <div className={styles.copy}>
+      <div>
         {allLive ? (
           <>
             All <strong>{totalCables}</strong> panels are connected. The REE will be frozen at{" "}

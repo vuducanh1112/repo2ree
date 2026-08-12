@@ -3,17 +3,18 @@ import { groupEvaluatedDependencies } from "@core/evaluate/dependencyPresentatio
 import { countEnvironmentFiles } from "@core/workspace/environmentFiles";
 import { useApiRuntime } from "@shell/data/apiRuntime";
 import { useEvaluateReportQuery } from "@shell/data/evaluate/queries";
+import { Badge } from "@shell/ui/shared/components/Badge";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { stageTone } from "@shell/ui/theme/appearance";
-import { lgPageRoot, lgStatusBadge } from "@shell/ui/theme/lightGlassTheme";
 import { useEffect, useMemo } from "react";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
-import { GlassPanel, GlassSectionBody } from "../../components/GlassPageShell";
+import { GlassPageShell, GlassPanel, GlassSectionBody } from "../../components/GlassPageShell";
 import { GlassPanelFooter } from "../../components/GlassPanelFooter";
 import { GlassSectionHeader } from "../../components/GlassSectionHeader";
 import { OutcomeBadge } from "../../components/OutcomeBadge";
 import { stepIcon } from "../../stepIcons";
 import type { StepPageProps } from "../sharedStepUi";
+import styles from "./RepoAnalysisPage.module.css";
 import {
   RepoAnalysisAxesCard,
   RepoAnalysisDependenciesCard,
@@ -66,7 +67,7 @@ export function PageRepoAnalysis({
   return (
     // Single column sitting directly on the focus dock — no right rail. The Run
     // action lives in the header; the evaluation result folds into the column.
-    <div style={lgPageRoot}>
+    <GlassPageShell variant="docked">
       <GlassPageHeader
         icon={IC(24)}
         tint={stageTone(PAGE.EVALUATE)}
@@ -74,7 +75,7 @@ export function PageRepoAnalysis({
         subtitle={step.desc}
         badges={
           <>
-            <span style={lgStatusBadge(statusReady)}>{statusLabel}</span>
+            <Badge tone={statusReady ? "success" : "warning"}>{statusLabel}</Badge>
             {hasReport && badge && <OutcomeBadge outcome={badge} />}
           </>
         }
@@ -89,7 +90,7 @@ export function PageRepoAnalysis({
         }
       />
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <div className={styles.stack}>
         <RepoAnalysisMissingInputs missing={missing} onGoFields={onGoFields} />
 
         <GlassPanel clipped>
@@ -133,6 +134,6 @@ export function PageRepoAnalysis({
 
         <RepoAnalysisLogCard log={log} running={running} />
       </div>
-    </div>
+    </GlassPageShell>
   );
 }

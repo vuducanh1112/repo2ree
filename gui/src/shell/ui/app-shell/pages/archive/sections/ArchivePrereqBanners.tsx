@@ -1,6 +1,5 @@
 import { Ic } from "@shell/ui/shared/components/Icon";
-import { lgColors } from "@shell/ui/theme/lightGlassTheme";
-import { F } from "@shell/ui/theme/theme";
+import styles from "../ArchivePage.module.css";
 
 interface ArchivePrereqBannersProps {
   capstoneReady: boolean;
@@ -11,22 +10,7 @@ interface ArchivePrereqBannersProps {
 }
 
 function PrereqChip({ label }: { label: string }) {
-  return (
-    <span
-      style={{
-        fontSize: 12,
-        fontFamily: F.sans,
-        fontWeight: 600,
-        color: lgColors.warning,
-        background: "rgba(255, 255, 255, 0.6)",
-        border: "1px solid rgba(245, 158, 11, 0.45)",
-        borderRadius: 6,
-        padding: "2px 8px",
-      }}
-    >
-      ✗ {label}
-    </span>
-  );
+  return <span className={styles.prereq}>✗ {label}</span>;
 }
 
 export function ArchivePrereqBanners({
@@ -39,47 +23,17 @@ export function ArchivePrereqBanners({
   return (
     <>
       {!capstoneReady && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 12,
-            padding: "12px 16px",
-            marginBottom: 16,
-            background: "rgba(254, 252, 232, 0.86)",
-            border: "1px solid rgba(245, 158, 11, 0.42)",
-            borderRadius: 10,
-            boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.7)",
-          }}
-        >
-          <span style={{ color: lgColors.warning, display: "flex", flexShrink: 0, marginTop: 1 }}>
+        <div className={styles.advisory} data-tone="warn">
+          <span aria-hidden className={styles.advisoryIcon}>
             {Ic.info()}
           </span>
-          <div style={{ flex: 1 }}>
-            <div
-              style={{
-                fontSize: 13,
-                fontWeight: 700,
-                color: lgColors.warning,
-                marginBottom: 4,
-                fontFamily: F.sans,
-              }}
-            >
-              Complete earlier steps before depositing
-            </div>
-            <div
-              style={{
-                fontSize: 13,
-                color: lgColors.textMid,
-                lineHeight: 1.5,
-                marginBottom: 8,
-                fontFamily: F.sans,
-              }}
-            >
+          <div className={styles.advisoryBody}>
+            <div className={styles.advisoryTitle}>Complete earlier steps before depositing</div>
+            <div className={styles.advisoryCopy}>
               Archiving before building and validating risks depositing an environment that can't be
               reproduced. Complete these steps first:
             </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <div className={styles.prereqs}>
               {!buildDone && <PrereqChip label="Build Runtime not run" />}
               {!sbomDone && <PrereqChip label="SBOM not generated" />}
               {!activationDone && <PrereqChip label="Activation test not run" />}
@@ -89,31 +43,11 @@ export function ArchivePrereqBanners({
       )}
 
       {!isSealed && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 12,
-            padding: "12px 16px",
-            marginBottom: 16,
-            background: "rgba(239, 246, 255, 0.86)",
-            border: "1px solid rgba(125, 211, 252, 0.5)",
-            borderRadius: 10,
-            boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.7)",
-          }}
-        >
-          <span style={{ color: lgColors.blue, display: "flex", flexShrink: 0, marginTop: 1 }}>
+        <div className={styles.advisory} data-tone="info">
+          <span aria-hidden className={styles.advisoryIcon}>
             {Ic.info()}
           </span>
-          <div
-            style={{
-              flex: 1,
-              fontSize: 13,
-              color: lgColors.textMid,
-              lineHeight: 1.5,
-              fontFamily: F.sans,
-            }}
-          >
+          <div className={styles.advisoryBody}>
             Deposit can proceed before sealing, but the final Seal step is still required before
             your REE is considered complete.
           </div>

@@ -1,7 +1,7 @@
 import { GlassPanel } from "@shell/ui/app-shell/components/GlassPageShell";
 import { Ic } from "@shell/ui/shared/components/Icon";
-import { lgColors, lgStyles, lgSuggestionButton } from "@shell/ui/theme/lightGlassTheme";
-import { F } from "@shell/ui/theme/theme";
+import { cssVars } from "@shell/ui/theme/styleVars";
+import styles from "./ExperimentsPage.module.css";
 
 export interface ExperimentSuggestion {
   name: string;
@@ -53,16 +53,18 @@ export function ExperimentsCoverageAside({
   const allComplete = total > 0 && incomplete === 0;
   return (
     <GlassPanel density="compact">
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-        <span style={{ color: lgColors.cyan, display: "flex" }}>{Ic.layers(18)}</span>
-        <h3 style={{ margin: 0, fontSize: 14, color: lgColors.text }}>Coverage</h3>
+      <div className={styles.asideHead}>
+        <span aria-hidden className={styles.asideIcon}>
+          {Ic.layers(18)}
+        </span>
+        <h3 className={styles.asideTitle}>Coverage</h3>
       </div>
       {total === 0 ? (
-        <div style={{ fontSize: 12, color: lgColors.textMid, lineHeight: 1.5 }}>
+        <div className={styles.asideCopy}>
           No experiments yet. Add one to start tracking coverage.
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className={styles.coverage}>
           <CoverageRow label="Experiments" value={total} total={total} />
           <CoverageRow label="With name" value={withName} total={total} />
           <CoverageRow label="With command" value={withCommand} total={total} />
@@ -71,40 +73,18 @@ export function ExperimentsCoverageAside({
           <CoverageRow label="With runtime est." value={withRuntimeEstimate} total={total} />
           <CoverageRow label="With resource est." value={withResourceEstimates} total={total} />
           {!allComplete && (
-            <div
-              style={{
-                marginTop: 4,
-                fontSize: 11,
-                color: lgColors.warning,
-                background: "rgba(254, 249, 195, 0.7)",
-                border: "1px solid rgba(245, 158, 11, 0.45)",
-                borderRadius: 7,
-                padding: "6px 9px",
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              <span style={{ display: "flex" }}>{Ic.info(12)}</span>
+            <div className={styles.tally}>
+              <span aria-hidden className={styles.tallyIcon}>
+                {Ic.info(12)}
+              </span>
               {incomplete} still need the core runnable fields or a verify script.
             </div>
           )}
           {allComplete && (
-            <div
-              style={{
-                marginTop: 4,
-                fontSize: 11,
-                color: lgColors.success,
-                background: "rgba(220, 252, 231, 0.78)",
-                border: "1px solid rgba(34, 197, 94, 0.42)",
-                borderRadius: 7,
-                padding: "6px 9px",
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              <span style={{ display: "flex" }}>{Ic.check(12)}</span>
+            <div className={styles.tally} data-complete>
+              <span aria-hidden className={styles.tallyIcon}>
+                {Ic.check(12)}
+              </span>
               All experiments are complete.
             </div>
           )}
@@ -117,22 +97,15 @@ export function ExperimentsCoverageAside({
 function CoverageRow({ label, value, total }: { label: string; value: number; total: number }) {
   const pct = total === 0 ? 0 : Math.round((value / total) * 100);
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          fontSize: 11,
-          color: lgColors.textMid,
-        }}
-      >
+    <div className={styles.coverageRow}>
+      <div className={styles.coverageHead}>
         <span>{label}</span>
-        <span style={{ fontFamily: F.mono, color: lgColors.text, fontWeight: 700 }}>
+        <span className={styles.coverageCount}>
           {value}/{total}
         </span>
       </div>
-      <div style={lgStyles.progressTrack}>
-        <div style={{ ...lgStyles.progressFill, width: `${pct}%` }} />
+      <div className={styles.track}>
+        <div className={styles.fill} style={cssVars({ "--coverage-pct": `${pct}%` })} />
       </div>
     </div>
   );
@@ -147,14 +120,16 @@ export function ExperimentsSuggestionsAside({
 }) {
   return (
     <GlassPanel density="compact">
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-        <span style={{ color: lgColors.cyan, display: "flex" }}>{Ic.plus(18)}</span>
-        <h3 style={{ margin: 0, fontSize: 14, color: lgColors.text }}>Quick add</h3>
+      <div className={styles.asideHead} data-tight>
+        <span aria-hidden className={styles.asideIcon}>
+          {Ic.plus(18)}
+        </span>
+        <h3 className={styles.asideTitle}>Quick add</h3>
       </div>
-      <div style={{ fontSize: 11, color: lgColors.textMuted, marginBottom: 10 }}>
+      <div className={styles.asideHint}>
         Common verifications — click to add a prefilled experiment.
       </div>
-      <div style={lgStyles.suggestionWrap}>
+      <div className={styles.suggestions}>
         {EXPERIMENT_SUGGESTIONS.map((suggestion) => (
           <button
             key={suggestion.name}
@@ -162,11 +137,7 @@ export function ExperimentsSuggestionsAside({
             disabled={locked}
             onClick={() => onAdd(suggestion)}
             title={suggestion.command}
-            style={{
-              ...lgSuggestionButton(),
-              opacity: locked ? 0.5 : 1,
-              cursor: locked ? "not-allowed" : "pointer",
-            }}
+            className={styles.suggestion}
           >
             {suggestion.name}
           </button>
@@ -179,11 +150,13 @@ export function ExperimentsSuggestionsAside({
 export function ExperimentsAboutAside() {
   return (
     <GlassPanel density="compact">
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-        <span style={{ color: lgColors.cyan, display: "flex" }}>{Ic.info(18)}</span>
-        <h3 style={{ margin: 0, fontSize: 14, color: lgColors.text }}>About experiments</h3>
+      <div className={styles.asideHead} data-tight>
+        <span aria-hidden className={styles.asideIcon}>
+          {Ic.info(18)}
+        </span>
+        <h3 className={styles.asideTitle}>About experiments</h3>
       </div>
-      <div style={{ fontSize: 12, color: lgColors.textMid, lineHeight: 1.5 }}>
+      <div className={styles.asideCopy}>
         Experiments are run inside the assembled REE, then their verify script checks the claimed
         results. Runtime and resource estimates help future users plan how expensive those checks
         will be.

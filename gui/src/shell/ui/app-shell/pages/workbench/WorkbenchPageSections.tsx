@@ -1,15 +1,8 @@
-import { PAGE } from "@core/app-shell/pages";
 import type { WorkbenchImage } from "@core/workbench/WorkbenchImage";
 import { Input } from "@shell/ui/shared/components/FormControl";
 import { Ic } from "@shell/ui/shared/components/Icon";
-import { stageTone } from "@shell/ui/theme/appearance";
 import type React from "react";
 import styles from "./WorkbenchPage.module.css";
-
-// The workbench owns the build stage's hue across this page (header icon,
-// section accents, summary glyphs) so it reads as one coherent stage rather
-// than a generic form. It is the same tone the runtime it provisions carries.
-export const WORKBENCH_COLOR = stageTone(PAGE.BUILD);
 
 // ── Image selection ────────────────────────────────────────────────────────
 // The base image is chosen at provision time from the backend's image catalog

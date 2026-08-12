@@ -1,0 +1,313 @@
+/* Deposit & Share: the archive targets, their parameters, and the prerequisites
+ * a deposit really ought to have behind it. */
+
+/* --- Prerequisite advisories ---------------------------------------------- */
+
+.advisory {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: 10px;
+  border: 1px solid var(--advisory-edge);
+  background: var(--advisory-bg);
+  box-shadow: var(--advisory-shadow);
+  font-family: var(--font-sans);
+}
+
+.advisory[data-tone="warn"] {
+  --advisory-bg: var(--advisory-warn-bg);
+  --advisory-edge: var(--advisory-warn-edge);
+  --advisory-ink: var(--advisory-warn-ink);
+}
+
+.advisory[data-tone="info"] {
+  --advisory-bg: var(--advisory-info-bg);
+  --advisory-edge: var(--advisory-info-edge);
+  --advisory-ink: var(--advisory-info-ink);
+}
+
+.advisoryIcon {
+  display: flex;
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--advisory-ink);
+}
+
+.advisoryBody {
+  flex: 1;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--page-subtitle-ink);
+}
+
+.advisoryTitle {
+  margin-bottom: var(--space-1);
+  font-size: 13px;
+  font-weight: var(--weight-bold);
+  color: var(--advisory-ink);
+}
+
+.advisoryCopy {
+  margin-bottom: var(--space-2);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--page-subtitle-ink);
+}
+
+.prereqs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* One unmet prerequisite. Not a Badge: it names work outstanding rather than a
+ * state something is in. */
+.prereq {
+  padding: 2px var(--space-2);
+  border-radius: 6px;
+  border: 1px solid var(--advisory-warn-edge);
+  background: var(--palette-film-white-soft);
+  color: var(--advisory-warn-ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+/* --- Deposit parameters --------------------------------------------------- */
+
+.paramsLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  color: var(--field-label-ink);
+}
+
+.params {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.param {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.paramLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  color: var(--field-label-ink);
+}
+
+.paramHint {
+  font-weight: var(--weight-regular);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  color: var(--field-hint-ink);
+}
+
+/* --- Repository tabs ------------------------------------------------------ */
+
+.tabs {
+  margin-bottom: 22px;
+}
+
+/* --- Repository summary --------------------------------------------------- */
+
+.summaryHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.accentBar {
+  flex-shrink: 0;
+  width: 3px;
+  height: var(--space-4);
+  border-radius: var(--radius-round);
+  background: var(--archive-tint);
+}
+
+.repoName {
+  font-family: var(--font-sans);
+  font-size: var(--text-lg);
+  font-weight: 800;
+  color: var(--archive-tint);
+}
+
+.repoLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+  text-decoration: none;
+  opacity: 0.85;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--archive-tint);
+}
+
+.repoLink:hover {
+  opacity: 1;
+}
+
+.repoLink:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.repoDesc {
+  margin: 0 0 var(--space-3);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--page-subtitle-ink);
+}
+
+/* The identifier this archive issued, or the shape one will take. */
+.identifier {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 9px var(--space-3);
+  border-radius: var(--radius-control);
+  border: 1px solid var(--palette-edge-slate-row);
+  background: var(--palette-film-white-soft);
+}
+
+.identifier[data-assigned] {
+  border-color: color-mix(in srgb, var(--archive-tint) 33%, transparent);
+  background: color-mix(in srgb, var(--archive-tint) 7%, transparent);
+}
+
+.identifierKind {
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 800;
+  color: var(--field-hint-ink);
+}
+
+.identifierValue {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--field-hint-ink);
+}
+
+.identifier[data-assigned] .identifierKind,
+.identifier[data-assigned] .identifierValue {
+  color: var(--archive-tint);
+}
+
+/* --- Aside panels --------------------------------------------------------- */
+
+.asideHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.asideIcon {
+  display: flex;
+  color: var(--archive-tint, var(--palette-cyan-600));
+}
+
+.asideTitle {
+  margin: 0;
+  font-size: 15px;
+  color: var(--field-ink);
+}
+
+.readout {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.readoutHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.readoutLabel {
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: var(--text-sm);
+  font-weight: 800;
+  color: var(--palette-sky-700);
+}
+
+.checks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.checkIcon {
+  display: flex;
+  color: var(--field-hint-ink);
+}
+
+.checkLabel {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--field-hint-ink);
+}
+
+/* Done: the step behind this prerequisite has a result. */
+.check[data-done] .checkIcon {
+  color: var(--badge-success-ink);
+}
+
+.check[data-done] .checkLabel {
+  color: var(--field-ink);
+}
+
+.assignedId {
+  font-family: var(--font-mono);
+  color: var(--archive-tint);
+}
+
+.unassigned {
+  color: var(--field-hint-ink);
+}
+
+.depositActions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.depositHint {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  color: var(--field-hint-ink);
+}

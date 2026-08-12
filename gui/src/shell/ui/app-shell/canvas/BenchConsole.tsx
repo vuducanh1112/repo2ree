@@ -1,6 +1,6 @@
 import { APP_ROUTE } from "@core/app-shell/pages";
 import { appendLine } from "@core/ree/logEntry";
-import type { LogEntry, LogLine } from "@core/ree/ReeTypes";
+import type { LogEntry } from "@core/ree/ReeTypes";
 import { appShellPorts } from "@shell/app/bootstrap/appShellPorts";
 import { useApiRuntime } from "@shell/data/apiRuntime";
 import { useReeClient } from "@shell/data/ree/client";
@@ -9,16 +9,9 @@ import { defaultImageRef, useWorkbenchImageCatalog } from "@shell/data/workbench
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Ic } from "../../shared/components/Icon";
-import { C, F } from "../../theme/theme";
+import styles from "./BenchConsole.module.css";
 import { HudConsole } from "./HudConsole";
-
-const LOG_COLOR: Record<LogLine["type"], string> = {
-  info: "#93c5fd",
-  out: "#cbd5e1",
-  ok: "#6ee7b7",
-  warn: "#fcd34d",
-  err: "#fca5a5",
-};
+import hud from "./HudConsole.module.css";
 
 interface BenchConsoleProps {
   provisioned: boolean;
@@ -103,9 +96,9 @@ export function BenchConsole({ provisioned, reeName }: BenchConsoleProps) {
       onToggle={() => setOpen((v) => !v)}
       widthOpen={320}
       widthCollapsed={212}
-      outerStyle={{ left: 16, bottom: 16 }}
+      className={hud.benchPlacement}
       icon={Ic.package(16)}
-      iconColor="#64748b"
+      iconTint="var(--chrome-text-muted)"
       title="Workbench"
       subtitle={open ? `The lab hosting ${reeName || "this REE"}` : (imageRef ?? "Workbench")}
       on={provisioned}
@@ -113,7 +106,7 @@ export function BenchConsole({ provisioned, reeName }: BenchConsoleProps) {
       collapseLabel="Collapse workbench console"
       bodyMaxHeight={420}
     >
-      <div style={{ height: 6 }} />
+      <div className={styles.spacer} />
       <StatRow label="Image" value={imageRef ?? "—"} mono />
       <StatRow label="Location" value="Local" />
       <StatRow label="Isolation" value="Docker-in-docker sandbox" />
@@ -124,83 +117,34 @@ export function BenchConsole({ provisioned, reeName }: BenchConsoleProps) {
         type="button"
         onClick={handleReprovision}
         disabled={reprovisioning}
-        style={reprovisionBtn(reprovisioning)}
+        className={styles.action}
+        data-kind="reprovision"
       >
         {reprovisioning ? Ic.loader(14) : Ic.refresh(14)}
         <span>{reprovisioning ? "Reprovisioning…" : "Reprovision workbench"}</span>
       </button>
-      <span style={{ fontSize: 11, color: C.textMuted, textAlign: "center", lineHeight: 1.4 }}>
-        Replaces the container, keeping the /ree volume.
-      </span>
-      <div style={{ height: 2, background: C.border, borderRadius: 99, margin: "4px 0" }} />
+      <span className={styles.actionNote}>Replaces the container, keeping the /ree volume.</span>
+      <div className={styles.divider} />
       <button
         type="button"
         onClick={handleReleaseWorkbench}
         disabled={releasing}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 7,
-          width: "100%",
-          padding: "9px 14px",
-          borderRadius: 9,
-          border: "1px solid rgba(202, 138, 4, 0.38)",
-          background: "rgba(254, 249, 195, 0.72)",
-          color: "#92400e",
-          fontSize: 13,
-          fontWeight: 600,
-          fontFamily: F.sans,
-          cursor: releasing ? "default" : "pointer",
-          opacity: releasing ? 0.6 : 1,
-        }}
+        className={styles.action}
+        data-kind="release"
       >
         {releasing ? Ic.loader(14) : Ic.x(14)}
         <span>{releasing ? "Releasing…" : "Release workbench"}</span>
       </button>
-      <span style={{ fontSize: 11, color: C.textMuted, textAlign: "center", lineHeight: 1.4 }}>
-        Ends the REE session and removes this workbench.
-      </span>
+      <span className={styles.actionNote}>Ends the REE session and removes this workbench.</span>
     </HudConsole>
   );
 }
 
 function StatRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "7px 10px",
-        borderRadius: 8,
-        background: C.surfaceAlt,
-        border: `1px solid ${C.border}`,
-      }}
-    >
-      <span
-        style={{
-          fontSize: 10,
-          fontWeight: 700,
-          color: C.textMuted,
-          fontFamily: F.mono,
-          minWidth: 62,
-          textTransform: "uppercase",
-          letterSpacing: 0.5,
-        }}
-      >
-        {label}
-      </span>
-      <span
-        style={{
-          fontSize: 12,
-          color: C.text,
-          fontFamily: mono ? F.mono : F.sans,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-      >
+    <div className={styles.stat}>
+      <span className={styles.statLabel}>{label}</span>
+      <span className={styles.statValue} data-flavor={mono ? "code" : undefined}>
         {value}
       </span>
     </div>
@@ -210,51 +154,19 @@ function StatRow({ label, value, mono }: { label: string; value: string; mono?: 
 function Terminal({ log, running }: { log: LogEntry | null; running: boolean }) {
   if (!log) return null;
   return (
-    <div
-      style={{
-        background: "#0d1117",
-        border: "1px solid #1f2733",
-        borderRadius: 9,
-        padding: "9px 11px",
-        maxHeight: 150,
-        overflow: "auto",
-        fontFamily: F.mono,
-        fontSize: 11,
-        lineHeight: 1.6,
-      }}
-    >
+    <div className={styles.terminal}>
       {log.lines.map((line, i) => (
         <div
           // biome-ignore lint/suspicious/noArrayIndexKey: append-only log, never reordered
           key={i}
-          style={{ color: LOG_COLOR[line.type], whiteSpace: "pre-wrap", wordBreak: "break-word" }}
+          className={styles.line}
+          data-kind={line.type}
         >
-          <span style={{ color: "#475569" }}>{line.type === "err" ? "✗ " : "› "}</span>
+          <span className={styles.gutter}>{line.type === "err" ? "✗ " : "› "}</span>
           {line.msg}
         </div>
       ))}
-      {running && <span style={{ color: "#6ee7b7" }}>▋</span>}
+      {running && <span className={styles.cursor}>▋</span>}
     </div>
   );
-}
-
-function reprovisionBtn(busy: boolean): React.CSSProperties {
-  return {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 7,
-    width: "100%",
-    marginTop: 2,
-    padding: "9px 14px",
-    borderRadius: 9,
-    border: `1px solid ${C.border}`,
-    background: C.surfaceAlt,
-    color: C.text,
-    fontSize: 13,
-    fontWeight: 600,
-    fontFamily: F.sans,
-    cursor: busy ? "default" : "pointer",
-    opacity: busy ? 0.6 : 1,
-  };
 }

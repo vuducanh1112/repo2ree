@@ -2,7 +2,8 @@ import { EXPLODE_BASE_POD, EXPLODE_LAYERS } from "@core/canvas/canvasNodes";
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import type React from "react";
 import { Ic } from "../../shared/components/Icon";
-import { C, F } from "../../theme/theme";
+import { cssVars } from "../../theme/styleVars";
+import styles from "./ExplodeView.module.css";
 import { PodWidget } from "./PodWidget";
 import type { PodShell } from "./podWidget/PodSphere";
 
@@ -35,18 +36,10 @@ export function ProjectionPod({
   const shell: PodShell = exploded ? (ZONE_SHELL[layer.zone] ?? "full") : "full";
   return (
     <div
-      style={{
-        position: "absolute",
-        left: layer.cx,
-        top: 0,
-        transform: `translate(-50%,-50%) scale(${glow ? 1.04 : 1})`,
-        opacity: isMain || exploded ? 1 : 0,
-        filter: glow
-          ? "drop-shadow(0 0 26px rgba(99,102,241,0.85)) drop-shadow(0 0 60px rgba(79,70,229,0.55)) brightness(1.08)"
-          : undefined,
-        transition: "opacity 0.4s, filter 0.2s, transform 0.2s",
-        pointerEvents: "none",
-      }}
+      className={styles.column}
+      data-visible={isMain || exploded ? true : undefined}
+      data-glow={glow || undefined}
+      style={cssVars({ "--column-x": `${layer.cx}px` })}
     >
       <PodWidget
         evaluation={evaluation}
@@ -64,53 +57,24 @@ export function ProjectionPod({
 // inside the world transform so it pans/zooms with everything else.
 export function ExplodeScaffold({ exploded }: { exploded: boolean }) {
   return (
-    <div
-      aria-hidden
-      style={{
-        position: "absolute",
-        left: 0,
-        top: 0,
-        opacity: exploded ? 1 : 0,
-        transition: "opacity 0.5s",
-        pointerEvents: "none",
-      }}
-    >
+    <div aria-hidden className={styles.labels} data-visible={exploded || undefined}>
       <div
-        style={{
-          position: "absolute",
-          left: 0,
-          top: 0,
-          width: EXPLODE_LAYERS[EXPLODE_LAYERS.length - 1].cx,
-          borderTop: `2px dashed ${C.accent}`,
-          opacity: 0.35,
-        }}
+        className={styles.axis}
+        style={cssVars({
+          "--axis-width": `${EXPLODE_LAYERS[EXPLODE_LAYERS.length - 1].cx}px`,
+        })}
       />
       {EXPLODE_LAYERS.map((layer) => (
         <div
           key={layer.zone}
-          style={{
-            position: "absolute",
-            left: layer.cx,
-            top: -(EXPLODE_BASE_POD * layer.scale) / 2 - 54,
-            width: 260,
-            transform: "translateX(-50%)",
-            textAlign: "center",
-          }}
+          className={styles.caption}
+          style={cssVars({
+            "--column-x": `${layer.cx}px`,
+            "--caption-y": `${-(EXPLODE_BASE_POD * layer.scale) / 2 - 54}px`,
+          })}
         >
-          <div style={{ fontSize: 21, fontWeight: 700, color: C.text, letterSpacing: -0.3 }}>
-            {layer.label}
-          </div>
-          <div
-            style={{
-              fontFamily: F.mono,
-              fontSize: 11.5,
-              letterSpacing: 0.6,
-              color: C.textMuted,
-              textTransform: "uppercase",
-            }}
-          >
-            {layer.sub}
-          </div>
+          <div className={styles.captionTitle}>{layer.label}</div>
+          <div className={styles.captionSub}>{layer.sub}</div>
         </div>
       ))}
     </div>
@@ -124,26 +88,12 @@ export function ExplodeToggle({ exploded, onToggle }: { exploded: boolean; onTog
       data-canvas-hud
       onClick={onToggle}
       title={exploded ? "Reassemble the pod" : "Decompose the pod into its shells"}
-      style={{
-        position: "absolute",
-        bottom: 128,
-        right: 16,
-        display: "flex",
-        alignItems: "center",
-        gap: 7,
-        padding: "7px 12px",
-        background: exploded ? C.accent : C.surface,
-        color: exploded ? "#fff" : C.textMid,
-        border: `1px solid ${exploded ? C.accent : C.border}`,
-        borderRadius: 9,
-        cursor: "pointer",
-        fontSize: 12.5,
-        fontWeight: 600,
-        fontFamily: F.sans,
-        boxShadow: "0 4px 14px rgba(13,17,23,0.1)",
-      }}
+      aria-pressed={exploded}
+      className={styles.toggle}
     >
-      <span style={{ display: "flex" }}>{Ic.layers(14)}</span>
+      <span aria-hidden className={styles.toggleIcon}>
+        {Ic.layers(14)}
+      </span>
       {exploded ? "Reassemble" : "Decompose"}
     </button>
   );

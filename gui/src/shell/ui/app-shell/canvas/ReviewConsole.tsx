@@ -1,3 +1,4 @@
+import { PAGE } from "@core/app-shell/pages";
 import type { ReeExperiment } from "@core/ree/ReeSpec";
 import type { ReviewAttempt, ReviewBasisRequest } from "@core/reviews/Review";
 import { type ReviewStepKey, settledReviewStepCount } from "@core/reviews/reviewDag";
@@ -16,9 +17,11 @@ import {
 import { useReviewsQuery } from "@shell/data/reviews/queries";
 import { useEffect, useState } from "react";
 import { Ic } from "../../shared/components/Icon";
-import { C, F } from "../../theme/theme";
+import { stageTone } from "../../theme/appearance";
 import { HudConsole } from "./HudConsole";
+import hud from "./HudConsole.module.css";
 import { ExperimentReviewPanel } from "./review/ExperimentReviewPanel";
+import styles from "./review/ReviewConsole.module.css";
 import { ReviewDag } from "./review/ReviewDag";
 
 interface ReviewConsoleProps {
@@ -141,24 +144,18 @@ export function ReviewConsole({ experiments }: ReviewConsoleProps) {
       onToggle={() => setOpen((value) => !value)}
       widthOpen={660}
       widthCollapsed={270}
-      outerStyle={{
-        left: "50%",
-        bottom: 16,
-        transform: "translateX(-50%)",
-        zIndex: 35,
-        maxWidth: "calc(100% - 640px)",
-      }}
+      className={hud.reviewPlacement}
       icon={Ic.refresh(16)}
-      iconColor={running ? C.accent : "#7c3aed"}
+      iconTint={running ? "var(--chrome-accent)" : stageTone(PAGE.EVALUATE)}
       title="Review"
       subtitle={attempt ? attemptSubtitle(attempt, statuses) : "ready for source review"}
       on={running || complete > 0}
       expandLabel="Expand review controls"
       collapseLabel="Collapse review controls"
       bodyMaxHeight={360}
-      bodyStyle={{ gap: 10, overflowX: "auto" }}
+      bodyClassName={hud.reviewBody}
     >
-      <div style={{ height: 4 }} />
+      <div className={styles.topSpacer} />
       <ReviewDag
         experimentCount={experiments.filter((experiment) => experiment.name.trim()).length}
         statuses={statuses}
@@ -183,18 +180,7 @@ export function ReviewConsole({ experiments }: ReviewConsoleProps) {
       />
 
       {error ? (
-        <div
-          role="alert"
-          style={{
-            padding: "6px 8px",
-            border: `1px solid ${C.border}`,
-            borderRadius: 7,
-            background: C.surfaceAlt,
-            color: C.error,
-            fontFamily: F.mono,
-            fontSize: 9.5,
-          }}
-        >
+        <div role="alert" className={styles.error}>
           {error instanceof Error ? error.message : "Review unavailable"}
         </div>
       ) : null}
@@ -242,7 +228,7 @@ function BasisPicker({
   disabled: boolean;
 }) {
   return (
-    <div style={{ display: "flex", gap: 5 }}>
+    <div className={styles.basis}>
       {BASIS_OPTIONS.map((option) => {
         const active = option.value === value;
         return (
@@ -252,18 +238,8 @@ function BasisPicker({
             title={option.hint}
             disabled={disabled}
             onClick={() => onChange(option.value)}
-            style={{
-              flex: 1,
-              minHeight: 28,
-              border: `1px solid ${active ? C.accent : C.border}`,
-              borderRadius: 7,
-              background: active ? C.surface : C.surfaceAlt,
-              color: active ? C.text : C.textMuted,
-              cursor: disabled ? "not-allowed" : "pointer",
-              fontFamily: F.mono,
-              fontSize: 9.5,
-              fontWeight: active ? 750 : 500,
-            }}
+            aria-pressed={active}
+            className={styles.basisOption}
           >
             {option.label}
           </button>
@@ -291,18 +267,7 @@ function BasisNotice({ attempt }: { attempt: ReviewAttempt }) {
   if (bundled.length === 0) return null;
 
   return (
-    <div
-      style={{
-        padding: "6px 9px",
-        border: `1px solid ${C.borderMid}`,
-        borderRadius: 7,
-        background: C.surfaceAlt,
-        color: C.textMuted,
-        fontFamily: F.mono,
-        fontSize: 9,
-        lineHeight: 1.5,
-      }}
-    >
+    <div className={styles.detail} data-tone="notice">
       {bundled.join(" and ")} verified from the REE's own artifacts — integrity check, not an
       independent reproduction.
     </div>
@@ -322,21 +287,7 @@ function ActivationOutcomeDetail({ attempt }: { attempt: ReviewAttempt }) {
   const passed = outcome.verdict === "passed";
 
   return (
-    <div
-      style={{
-        padding: "7px 9px",
-        border: `1px solid ${C.border}`,
-        borderRadius: 7,
-        background: C.surfaceAlt,
-        color: passed ? C.textMuted : C.error,
-        fontFamily: F.mono,
-        fontSize: 9,
-        lineHeight: 1.5,
-        display: "flex",
-        flexDirection: "column",
-        gap: 2,
-      }}
-    >
+    <div className={styles.detail} data-tone={passed ? undefined : "fault"}>
       <span>
         activation: {passed ? "the runtime is inhabitable" : "the runtime did not activate"}
       </span>
@@ -363,21 +314,7 @@ function BuildVerdictDetail({ attempt }: { attempt: ReviewAttempt }) {
     comparison.expectedRuntimeDigest === comparison.observedRuntimeDigest;
 
   return (
-    <div
-      style={{
-        padding: "7px 9px",
-        border: `1px solid ${C.border}`,
-        borderRadius: 7,
-        background: C.surfaceAlt,
-        color: C.textMuted,
-        fontFamily: F.mono,
-        fontSize: 9,
-        lineHeight: 1.5,
-        display: "flex",
-        flexDirection: "column",
-        gap: 2,
-      }}
-    >
+    <div className={styles.detail}>
       <span>
         runtime digest: {digestsMatch ? "bit-identical" : "differs — closure decides the verdict"}
       </span>

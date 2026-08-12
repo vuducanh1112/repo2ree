@@ -48,23 +48,29 @@ interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "classN
   flavor?: ControlFlavor;
   /** Leaves room at the left edge for a glyph the caller positions over it. */
   adorned?: boolean;
+  /** `compact` is the shorter box used in dense grids — keyword entry, a
+   * contributor's fields — where the full-height control would dominate. */
+  density?: "comfortable" | "compact";
 }
 
-export function Input({ flavor = "prose", adorned, ...rest }: InputProps) {
+export function Input({ flavor = "prose", adorned, density, ...rest }: InputProps) {
   return (
     <input
       className={styles.control}
       data-flavor={flavor}
       data-adorned={adorned || undefined}
+      data-density={density}
       {...rest}
     />
   );
 }
 
-type SelectProps = Omit<SelectHTMLAttributes<HTMLSelectElement>, "className" | "style">;
+interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, "className" | "style"> {
+  density?: "comfortable" | "compact";
+}
 
-export function Select(props: SelectProps) {
-  return <select className={styles.control} {...props} />;
+export function Select({ density, ...rest }: SelectProps) {
+  return <select className={styles.control} data-density={density} {...rest} />;
 }
 
 interface TextareaProps

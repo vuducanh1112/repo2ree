@@ -1,0 +1,487 @@
+/* The experiments catalog: each experiment is an independent claim about what
+ * the assembled REE does. */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* --- One experiment card -------------------------------------------------- */
+
+.card {
+  overflow: hidden;
+  border-radius: 11px;
+  border: 1px solid var(--exp-card-edge);
+  background: var(--exp-card-bg);
+  box-shadow: var(--exp-card-shadow);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.card:has(.open:hover),
+.card:has(.open:focus-visible) {
+  border-color: var(--exp-card-edge-hover);
+  box-shadow: var(--exp-card-shadow-hover);
+}
+
+.open {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 14px var(--space-4) var(--space-3);
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.open:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.expId {
+  padding: 2px 7px;
+  border-radius: 6px;
+  border: 1px solid var(--exp-id-edge);
+  background: var(--exp-id-bg);
+  color: var(--exp-id-ink);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.expName {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: var(--weight-bold);
+  color: var(--field-ink);
+}
+
+.expName[data-untitled] {
+  font-style: italic;
+  color: var(--field-hint-ink);
+}
+
+/* The three facts a card advertises without being opened. */
+.fact {
+  padding: 2px 7px;
+  border-radius: var(--radius-round);
+  border: 1px solid var(--fact-edge);
+  background: var(--fact-bg);
+  color: var(--fact-ink);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+}
+
+.fact[data-kind="verified"] {
+  --fact-ink: var(--exp-verified-ink);
+  --fact-bg: var(--exp-verified-bg);
+  --fact-edge: var(--exp-verified-edge);
+}
+
+.fact[data-kind="runtime"] {
+  --fact-ink: var(--exp-runtime-ink);
+  --fact-bg: var(--exp-runtime-bg);
+  --fact-edge: var(--exp-runtime-edge);
+}
+
+.fact[data-kind="resources"] {
+  --fact-ink: var(--exp-resources-ink);
+  --fact-bg: var(--exp-resources-bg);
+  --fact-edge: var(--exp-resources-edge);
+}
+
+.cardChevron {
+  display: flex;
+  color: var(--field-hint-ink);
+  transition: color 0.15s;
+}
+
+.open:hover .cardChevron,
+.open:focus-visible .cardChevron {
+  color: var(--palette-sky-500);
+}
+
+.command {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 7px 10px;
+  border-radius: 7px;
+  border: 1px solid var(--exp-command-edge);
+  background: var(--exp-command-bg);
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  color: var(--page-subtitle-ink);
+}
+
+.command[data-unset] {
+  opacity: 0.7;
+  color: var(--field-hint-ink);
+}
+
+/* Two lines of the description, then elided. */
+.description {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: var(--text-md);
+  line-height: 1.45;
+  color: var(--page-subtitle-ink);
+}
+
+.cardActions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 var(--space-3) 10px;
+}
+
+/* --- Nothing recorded yet ------------------------------------------------- */
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 40px var(--space-6);
+  text-align: center;
+}
+
+.emptyIcon {
+  display: flex;
+  color: var(--palette-cyan-600);
+}
+
+.emptyTitle {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--field-ink);
+}
+
+.emptyHint {
+  max-width: 320px;
+  font-size: var(--text-md);
+  line-height: 1.5;
+  color: var(--page-subtitle-ink);
+}
+
+.emptyAction {
+  margin-top: var(--space-1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .cardChevron {
+    transition: none;
+  }
+}
+
+/* --- Asides --------------------------------------------------------------- */
+
+.asideHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.asideHead[data-tight] {
+  margin-bottom: var(--space-2);
+}
+
+.asideIcon {
+  display: flex;
+  color: var(--palette-cyan-600);
+}
+
+.asideTitle {
+  margin: 0;
+  font-size: var(--text-lg);
+  color: var(--field-ink);
+}
+
+.asideCopy {
+  font-size: var(--text-md);
+  line-height: 1.5;
+  color: var(--page-subtitle-ink);
+}
+
+.asideHint {
+  margin-bottom: 10px;
+  font-size: var(--text-sm);
+  color: var(--field-hint-ink);
+}
+
+.coverage {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.coverageRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.coverageHead {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-sm);
+  color: var(--page-subtitle-ink);
+}
+
+.coverageCount {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-bold);
+  color: var(--field-ink);
+}
+
+.track {
+  height: var(--space-2);
+  overflow: hidden;
+  border-radius: var(--radius-round);
+  border: 1px solid var(--progress-track-edge);
+  background: var(--progress-track-bg);
+}
+
+.fill {
+  height: 100%;
+  width: var(--coverage-pct);
+  border-radius: var(--radius-round);
+  background: var(--progress-fill);
+  box-shadow: var(--progress-glow);
+  transition: width 0.25s ease;
+}
+
+/* The tally at the foot: whether every experiment is fully specified. */
+.tally {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  padding: var(--space-2) 9px;
+  border-radius: 7px;
+  border: 1px solid var(--tally-edge);
+  background: var(--tally-bg);
+  color: var(--tally-ink);
+  font-size: var(--text-sm);
+}
+
+.tally[data-complete] {
+  --tally-bg: var(--badge-success-bg);
+  --tally-edge: var(--badge-success-edge);
+  --tally-ink: var(--badge-success-ink);
+}
+
+.tally:not([data-complete]) {
+  --tally-bg: var(--tally-warn-bg);
+  --tally-edge: var(--badge-warning-edge);
+  --tally-ink: var(--badge-warning-ink);
+}
+
+.tallyIcon {
+  display: flex;
+}
+
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.suggestion {
+  padding: 5px 10px;
+  border-radius: var(--radius-round);
+  border: 1px solid var(--suggestion-edge);
+  background: var(--suggestion-bg);
+  color: var(--suggestion-ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  cursor: pointer;
+}
+
+.suggestion:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.suggestion:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fill {
+    transition: none;
+  }
+}
+
+.footerActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* --- The experiment detail view ------------------------------------------- */
+
+.detailBody {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 22px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.fieldLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  color: var(--field-label-ink);
+}
+
+.required {
+  color: var(--palette-rose-400);
+}
+
+.fieldHelp {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  color: var(--field-hint-ink);
+}
+
+.fieldError {
+  margin-top: 2px;
+  font-size: var(--text-sm);
+  color: var(--palette-rose-400);
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: var(--space-3) 18px;
+  border-bottom: 1px solid var(--surface-card-edge);
+  background: var(--palette-film-white-soft);
+}
+
+.breadcrumbSep {
+  color: var(--field-hint-ink);
+}
+
+.detailActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* --- Run result ----------------------------------------------------------- */
+
+.resultHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.verdict {
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-round);
+  border: 1px solid color-mix(in srgb, var(--verdict-ink) 27%, transparent);
+  background: var(--verdict-wash);
+  color: var(--verdict-ink);
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+}
+
+.running {
+  padding: 10px 0;
+  text-align: center;
+  font-size: var(--text-md);
+  color: var(--field-hint-ink);
+}
+
+.resultDetail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.resultSummary {
+  font-size: var(--text-md);
+  color: var(--field-hint-ink);
+}
+
+.resultMissing {
+  font-size: var(--text-md);
+  color: var(--palette-rose-400);
+}
+
+.resultLog {
+  margin-top: 10px;
+}
+
+.failure {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-md);
+}
+
+.failureHead {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.failureLabel {
+  font-weight: var(--weight-bold);
+  color: var(--failure-ink);
+}
+
+.failureRetryable {
+  font-size: var(--text-sm);
+  color: var(--field-hint-ink);
+}
+
+.failureMessage {
+  color: var(--field-hint-ink);
+}
+
+/* --- Estimates and output paths ------------------------------------------- */
+
+.estimateGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}

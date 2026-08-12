@@ -1,0 +1,55 @@
+/* The hub canvas: the ground the constellation sits on, and the world layer
+ * that pans and zooms over it. */
+
+.stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  cursor: grab;
+  background: var(--hub-bg);
+  box-shadow: var(--hub-vignette);
+  transition: opacity 0.3s;
+}
+
+.stage[data-panning] {
+  cursor: grabbing;
+}
+
+/* Dimmed while a focus dock is open over it. */
+.stage[data-dimmed] {
+  opacity: 0.4;
+}
+
+.world {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform-origin: 0 0;
+  transform: translate(var(--world-x), var(--world-y)) scale(var(--world-z));
+}
+
+/* Animated only when the camera is being moved for the user, not while they
+ * are dragging it themselves. */
+.world[data-animate] {
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage,
+  .world[data-animate] {
+    transition: none;
+  }
+}
+
+/* The cradle socket: the pod is seated in the bench, not floating. */
+.cradle {
+  position: absolute;
+  left: 0;
+  top: 96px;
+  width: 320px;
+  height: 96px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--cradle-disc);
+  pointer-events: none;
+}

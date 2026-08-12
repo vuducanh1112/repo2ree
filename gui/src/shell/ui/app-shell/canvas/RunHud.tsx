@@ -18,20 +18,11 @@ import { useEffect, useRef, useState } from "react";
 import { Ic } from "../../shared/components/Icon";
 import { useCornerResize } from "../../shared/hooks/useCornerResize";
 import { failureTone } from "../../theme/appearance";
-import { C, F } from "../../theme/theme";
+import { cssVars } from "../../theme/styleVars";
 import { LogPanel } from "../components/logPanel";
 import { HudConsole } from "./HudConsole";
-
-const STATUS_COLOR: Record<ReeRunSummary["status"], string> = {
-  created: C.accent,
-  queued: C.accent,
-  provisioning: C.accent,
-  running: C.accent,
-  canceling: "#d97706",
-  succeeded: "#16a34a",
-  failed: "#dc2626",
-  canceled: "#d97706",
-};
+import hud from "./HudConsole.module.css";
+import styles from "./RunHud.module.css";
 
 type StreamKey = "stdout" | "stderr" | "system";
 const STREAMS: StreamKey[] = ["stdout", "stderr", "system"];
@@ -100,16 +91,10 @@ export function RunHud() {
       widthOpen={size.width}
       widthCollapsed={264}
       // Docked bottom-right, beside the zoom controls that own the corner.
-      outerStyle={{
-        right: 60,
-        bottom: 16,
-        zIndex: 40,
-        display: "flex",
-        flexDirection: "column",
-        ...(resizing ? { transition: "none" } : null),
-      }}
+      className={hud.logsPlacement}
+      resizing={resizing}
       icon={Ic.terminal(16)}
-      iconColor={activeCount > 0 ? C.accent : "#64748b"}
+      iconTint={activeCount > 0 ? "var(--chrome-accent)" : undefined}
       title="Logs"
       subtitle={
         latest
@@ -119,7 +104,8 @@ export function RunHud() {
       on={runs.length > 0}
       expandLabel="Expand logs console"
       collapseLabel="Collapse logs console"
-      bodyStyle={{ maxHeight: size.height }}
+      bodyClassName={hud.logsBody}
+      vars={{ "--hud-logs-height": `${size.height}px` }}
       resizeGrip={
         open && (
           <button
@@ -127,22 +113,7 @@ export function RunHud() {
             aria-label="Resize logs console"
             title="Drag to resize"
             onMouseDown={startResize}
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: 18,
-              height: 18,
-              zIndex: 2,
-              border: "none",
-              background: "transparent",
-              cursor: "nwse-resize",
-              padding: 0,
-              display: "flex",
-              alignItems: "flex-start",
-              justifyContent: "flex-start",
-              color: C.borderMid,
-            }}
+            className={styles.resizeGrip}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
               <title>resize</title>
@@ -158,19 +129,7 @@ export function RunHud() {
         )
       }
     >
-      <div
-        role="tablist"
-        aria-label="Run log steps"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 2,
-          padding: "7px 10px 6px",
-          borderBottom: `1px solid ${C.border}`,
-          flexShrink: 0,
-          overflowX: "auto",
-        }}
-      >
+      <div role="tablist" aria-label="Run log steps" className={styles.tabs}>
         {RUN_HUD_TABS.map((t) => (
           <HudTab
             key={t.key}
@@ -183,35 +142,16 @@ export function RunHud() {
         ))}
       </div>
 
-      <div style={{ overflowY: "auto", minHeight: 0, padding: "8px 10px 10px" }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            marginBottom: 8,
-          }}
-        >
-          <span style={{ fontSize: 12, fontWeight: 650, color: C.text, flex: 1 }}>
-            {tabLabel(tab)}
-          </span>
+      <div className={styles.runs}>
+        <div className={styles.runsHead}>
+          <span className={styles.runsTitle}>{tabLabel(tab)}</span>
           {STREAMS.map((stream) => (
             <button
               key={stream}
               type="button"
               aria-pressed={streams.has(stream)}
               onClick={() => toggleStream(stream)}
-              style={{
-                border: `1px solid ${streams.has(stream) ? C.accent : C.border}`,
-                borderRadius: 999,
-                background: streams.has(stream) ? "rgba(3, 105, 161, 0.08)" : C.surface,
-                color: streams.has(stream) ? C.accent : C.textMuted,
-                fontFamily: F.mono,
-                fontSize: 9.5,
-                fontWeight: 600,
-                padding: "2px 8px",
-                cursor: "pointer",
-              }}
+              className={styles.stream}
             >
               {stream}
             </button>
@@ -219,19 +159,9 @@ export function RunHud() {
         </div>
 
         {tabRuns.length === 0 ? (
-          <div
-            style={{
-              padding: "18px 0 12px",
-              textAlign: "center",
-              color: C.textMuted,
-              fontSize: 12,
-              fontFamily: F.sans,
-            }}
-          >
-            No {tabLabel(tab).toLowerCase()} runs yet
-          </div>
+          <div className={styles.empty}>No {tabLabel(tab).toLowerCase()} runs yet</div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div className={styles.runList}>
             {tabRuns.map((run) => (
               <RunRow
                 key={run.runId}
@@ -279,49 +209,11 @@ function HudTab({
       onClick={onSelect}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-        border: "none",
-        borderRadius: 6,
-        background: selected ? "rgba(3, 105, 161, 0.1)" : "transparent",
-        color: selected ? C.accent : C.textMuted,
-        fontFamily: F.mono,
-        fontSize: 9.5,
-        fontWeight: 700,
-        letterSpacing: 0.4,
-        padding: "4px 6px",
-        cursor: "pointer",
-        whiteSpace: "nowrap",
-        flexShrink: 0,
-        transition: "background 0.12s, color 0.12s",
-      }}
+      className={styles.tab}
     >
       <span>{hovered ? label.toUpperCase() : abbrev}</span>
-      {activity.active && (
-        <span
-          style={{
-            width: 6,
-            height: 6,
-            borderRadius: "50%",
-            background: C.accent,
-            boxShadow: `0 0 6px ${C.accent}88`,
-            flexShrink: 0,
-          }}
-        />
-      )}
-      {activity.failed && (
-        <span
-          style={{
-            width: 6,
-            height: 6,
-            borderRadius: "50%",
-            background: "#dc2626",
-            flexShrink: 0,
-          }}
-        />
-      )}
+      {activity.active && <span aria-hidden className={styles.tabDot} data-kind="active" />}
+      {activity.failed && <span aria-hidden className={styles.tabDot} data-kind="failed" />}
     </button>
   );
 }
@@ -340,73 +232,27 @@ function RunRow({
   onToggle: () => void;
 }) {
   const duration = formatRunDuration(run);
-  const statusColor = STATUS_COLOR[run.status] ?? C.textMuted;
   return (
-    <div
-      style={{
-        border: `1px solid ${C.border}`,
-        borderRadius: 8,
-        background: C.surface,
-        overflow: "hidden",
-      }}
-    >
+    <div className={styles.run}>
       <button
         type="button"
         aria-expanded={expanded}
         onClick={onToggle}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          width: "100%",
-          padding: "7px 10px",
-          border: "none",
-          background: "transparent",
-          cursor: "pointer",
-          textAlign: "left",
-        }}
+        className={styles.runHeader}
       >
-        <span
-          style={{
-            display: "flex",
-            color: C.textMuted,
-            flexShrink: 0,
-            transform: expanded ? "rotate(90deg)" : "none",
-            transition: "transform 0.15s",
-          }}
-        >
+        <span aria-hidden className={styles.runChevron}>
           {Ic.chevR(12)}
         </span>
-        <span
-          style={{
-            fontFamily: F.mono,
-            fontSize: 11,
-            color: C.textMid,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            flex: 1,
-            minWidth: 0,
-          }}
-        >
-          {run.runId}
-        </span>
-        <span style={{ fontFamily: F.mono, fontSize: 10, color: C.textMuted, flexShrink: 0 }}>
+        <span className={styles.runId}>{run.runId}</span>
+        <span className={styles.runWhen}>
           {formatStartTime(run)}
           {duration ? ` · ${duration}` : ""}
         </span>
         <span
           role="status"
           aria-label={`Run ${run.status}`}
-          style={{
-            fontFamily: F.mono,
-            fontSize: 9.5,
-            fontWeight: 700,
-            color: statusColor,
-            flexShrink: 0,
-            minWidth: 56,
-            textAlign: "right",
-          }}
+          className={styles.runStatus}
+          data-status={run.status}
         >
           {run.status.toUpperCase()}
         </span>
@@ -424,33 +270,14 @@ function RunFailureNote({ failure }: { failure: ReeRunFailure }) {
   const view = runFailurePresentation(failure);
   const color = failureTone(view.tone);
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "baseline",
-        gap: 8,
-        padding: "6px 10px 8px 30px",
-        borderTop: `1px solid ${C.border}`,
-        fontFamily: F.mono,
-        fontSize: 10.5,
-      }}
-    >
-      <span style={{ color, fontWeight: 700, flexShrink: 0 }}>{view.label}</span>
+    <div className={styles.failure} style={cssVars({ "--failure-ink": color })}>
+      <span className={styles.failureLabel}>{view.label}</span>
       {view.retryable && (
-        <span style={{ color: C.textMuted, flexShrink: 0 }} title="Safe to retry">
+        <span className={styles.failureRetryable} title="Safe to retry">
           retryable
         </span>
       )}
-      <span
-        style={{
-          color: C.textMid,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-          minWidth: 0,
-        }}
-        title={view.message}
-      >
+      <span className={styles.failureMessage} title={view.message}>
         {view.message}
       </span>
     </div>
@@ -480,15 +307,7 @@ function RunLogView({
     logsQuery.data == null ? null : { lines, ts: run.startedAt ?? run.createdAt };
 
   return (
-    <div
-      style={{
-        borderTop: `1px solid ${C.border}`,
-        padding: 8,
-        display: "flex",
-        flexDirection: "column",
-        maxHeight,
-      }}
-    >
+    <div className={styles.logView} style={cssVars({ "--run-log-height": `${maxHeight}px` })}>
       <LogPanel log={log} running={running} />
     </div>
   );

@@ -1,9 +1,10 @@
+import { PAGE } from "@core/app-shell/pages";
 import { REE_STEPS } from "@core/ree-steps/stepCatalog";
 import { REVIEW_STEPS, type ReviewStepKey, type ReviewStepStatus } from "@core/reviews/reviewDag";
 import { Ic } from "../../../shared/components/Icon";
 import { stageTone } from "../../../theme/appearance";
-import { C } from "../../../theme/theme";
 import { stepIcon } from "../../stepIcons";
+import styles from "./ReviewConsole.module.css";
 import { ReviewStepButton } from "./ReviewStepButton";
 
 const SHARED_STEP_META = Object.fromEntries(REE_STEPS.map((step) => [step.key, step]));
@@ -17,23 +18,14 @@ function presentation(key: ReviewStepKey) {
       icon: stepIcon(shared.iconKey)(16),
     };
   }
-  if (key === "source") return { label: "Source", color: "#2563eb", icon: Ic.globe(16) };
-  return { label: "Experiments", color: "#7c3aed", icon: Ic.terminal(16) };
+  if (key === "source") {
+    return { label: "Source", color: stageTone(PAGE.SOURCE), icon: Ic.globe(16) };
+  }
+  return { label: "Experiments", color: stageTone(PAGE.EXPERIMENTS), icon: Ic.terminal(16) };
 }
 
 function Connector() {
-  return (
-    <span
-      aria-hidden="true"
-      style={{
-        width: 18,
-        height: 1,
-        background: C.borderMid,
-        flexShrink: 0,
-        marginTop: 33,
-      }}
-    />
-  );
+  return <span aria-hidden="true" className={styles.connector} />;
 }
 
 export function ReviewDag({
@@ -69,7 +61,7 @@ export function ReviewDag({
   };
 
   return (
-    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "center" }}>
+    <div className={styles.dag}>
       {button(source, "SWHID")}
       <Connector />
       {button(build, "runtime · SBOM diff")}

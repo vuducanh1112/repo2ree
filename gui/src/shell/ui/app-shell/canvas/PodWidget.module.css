@@ -1,0 +1,8 @@
+/* The specimen pod's frame. The drop-shadow glow is computed from the
+ * bottleneck axis, so it arrives as a custom property. */
+
+.pod {
+  flex-shrink: 0;
+  overflow: visible;
+  filter: var(--pod-glow);
+}

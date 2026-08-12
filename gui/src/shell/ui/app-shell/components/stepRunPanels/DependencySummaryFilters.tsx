@@ -5,8 +5,8 @@ import {
 } from "@core/evaluate/dependencyPresentation";
 import type { DependencyStatus } from "@core/evaluate/Threat";
 import { dependencyStatusTone } from "@shell/ui/theme/appearance";
-import { C, hoverBg, hoverBorderColor, hoverIf } from "@shell/ui/theme/theme";
-import { actionBtn } from "./shared";
+import { cssVars } from "@shell/ui/theme/styleVars";
+import styles from "./DependencyPanel.module.css";
 
 interface DependencySummaryFiltersProps {
   depGroups: DependencyGroup[];
@@ -20,9 +20,9 @@ function statusFilter(status: DependencyStatus, count: number) {
   return {
     key: status,
     label: `${count} ${STATUS_LABEL[status]}`,
-    color: dependencyStatusTone(status),
-    bg: dependencyStatusTone(status, "wash"),
-    border: dependencyStatusTone(status, "edge"),
+    ink: dependencyStatusTone(status),
+    wash: dependencyStatusTone(status, "wash"),
+    edge: dependencyStatusTone(status, "edge"),
   };
 }
 
@@ -34,14 +34,14 @@ export function DependencySummaryFilters({
   const tally = tallyByStatus(depGroups.flatMap((group) => group.packages));
 
   return (
-    <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+    <div className={styles.filters}>
       {[
         {
           key: "all",
           label: `${tally.total} total`,
-          color: C.textMid,
-          bg: C.surfaceAlt,
-          border: C.border,
+          ink: undefined,
+          wash: undefined,
+          edge: undefined,
         },
         ...(["locked", "pinned", "ranged", "unpinned"] as const).map((status) =>
           statusFilter(status, tally[status]),
@@ -51,23 +51,13 @@ export function DependencySummaryFilters({
           type="button"
           key={summaryFilter.key}
           onClick={() => onFilter(summaryFilter.key)}
-          style={{
-            ...actionBtn({
-              fontSize: 11,
-              borderRadius: 99,
-              padding: "3px 10px",
-              transition: "all 0.12s",
-            }),
-            color: summaryFilter.color,
-            background: filter === summaryFilter.key ? summaryFilter.bg : "transparent",
-            border: `1.5px solid ${filter === summaryFilter.key ? summaryFilter.border : C.border}`,
-            cursor: "pointer",
-          }}
-          {...hoverIf(filter !== summaryFilter.key, hoverBg(summaryFilter.bg, "transparent"))}
-          {...hoverIf(
-            filter !== summaryFilter.key,
-            hoverBorderColor(summaryFilter.border, C.border),
-          )}
+          aria-pressed={filter === summaryFilter.key}
+          className={styles.filter}
+          style={cssVars({
+            "--filter-ink": summaryFilter.ink,
+            "--filter-wash": summaryFilter.wash,
+            "--filter-edge": summaryFilter.edge,
+          })}
         >
           {summaryFilter.label}
         </button>

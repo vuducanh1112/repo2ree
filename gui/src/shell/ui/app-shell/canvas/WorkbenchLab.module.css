@@ -191,3 +191,160 @@
     transform: translateY(0);
   }
 }
+
+/* --- Console heading ------------------------------------------------------ */
+
+.consoleHeading {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: var(--space-1);
+}
+
+.consoleTitle {
+  font-size: 17px;
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.3px;
+  color: var(--field-ink);
+}
+
+.consoleSubtitle {
+  margin-top: 1px;
+  font-size: 12.5px;
+  color: var(--field-hint-ink);
+}
+
+.sectionLabel {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: var(--space-2);
+}
+
+.sectionIcon {
+  display: flex;
+  color: var(--workbench-tint);
+}
+
+.sectionText {
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--page-subtitle-ink);
+}
+
+/* --- Specimen caption ----------------------------------------------------- */
+
+.specimenKind {
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--chrome-text-muted);
+}
+
+.specimenHint {
+  max-width: 240px;
+  margin-top: 5px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--chrome-text-mid);
+}
+
+/* --- Bundle choice --------------------------------------------------------
+ * Blank vs. loaded: the REE either starts empty or *is* a downloaded bundle
+ * restored onto this workbench. */
+
+.bundle {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) 14px;
+  border-radius: 9px;
+  border: 1.5px solid var(--chrome-border);
+  background: var(--chrome-surface);
+}
+
+/* Loading was asked for, so a bundle is the one thing still missing. */
+.bundle[data-required] {
+  border-color: var(--chrome-accent-border);
+}
+
+.bundleCopy {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--page-subtitle-ink);
+}
+
+.bundleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chooser {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  padding: var(--space-2) 10px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--chrome-border);
+  background: transparent;
+  color: var(--page-subtitle-ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  cursor: pointer;
+}
+
+.chooser:has(input:disabled) {
+  cursor: not-allowed;
+}
+
+.chooser:focus-within {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.hiddenFileInput {
+  display: none;
+}
+
+.bundleName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  color: var(--field-hint-ink);
+}
+
+.bundleName[data-chosen] {
+  color: var(--field-ink);
+}
+
+.clear {
+  flex-shrink: 0;
+  padding: var(--space-2) 10px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--chrome-border);
+  background: transparent;
+  color: var(--page-subtitle-ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  cursor: pointer;
+}
+
+.clear:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.provisionNote {
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--field-hint-ink);
+}

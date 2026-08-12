@@ -1,0 +1,130 @@
+/* The application shell: a sticky header over the canvas or a docked page. */
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--chrome-bg);
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  height: 48px;
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--chrome-border);
+  background: var(--app-header-bg);
+  box-shadow: var(--app-header-shadow);
+}
+
+.back {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: var(--space-1) var(--space-2);
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--chrome-text-muted);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+
+.back:hover {
+  background: var(--chrome-surface-alt);
+  color: var(--chrome-text-mid);
+}
+
+.back:focus-visible,
+.download:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.rule {
+  width: 1px;
+  height: 18px;
+  background: var(--chrome-border);
+}
+
+.mark {
+  display: flex;
+  color: var(--chrome-accent);
+}
+
+.product {
+  font-size: 15px;
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.3px;
+  color: var(--chrome-text);
+}
+
+.separator {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--chrome-border-strong);
+}
+
+.reeName {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--chrome-text-muted);
+}
+
+.spacer {
+  flex: 1;
+}
+
+/* Only a sealed REE can be downloaded, so the button is present but plainly
+ * inert until then. */
+.download {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 5px 11px;
+  border-radius: 7px;
+  border: 1px solid var(--download-edge);
+  background: var(--download-bg);
+  color: var(--download-ink);
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+
+.download:not(:disabled):hover {
+  background: var(--download-bg-hover);
+}
+
+.download:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.downloadIcon {
+  display: flex;
+}
+
+.stage {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .back,
+  .download {
+    transition: none;
+  }
+}

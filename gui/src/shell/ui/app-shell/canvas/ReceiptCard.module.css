@@ -1,0 +1,105 @@
+/* One author receipt: a collapsed summary that opens to its recorded fields,
+ * and beneath those the raw document it was read from. */
+
+.card {
+  overflow: hidden;
+  border: 1px solid var(--chrome-border);
+  border-radius: var(--radius-control);
+  background: var(--chrome-surface);
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: var(--space-2) var(--space-2);
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.summary:focus-visible,
+.rawToggle:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.chevron {
+  display: flex;
+  flex-shrink: 0;
+  color: var(--chrome-text-muted);
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: var(--weight-bold);
+  color: var(--chrome-text-mid);
+}
+
+.duration {
+  flex-shrink: 0;
+  color: var(--chrome-text-muted);
+}
+
+.fields {
+  display: grid;
+  gap: 5px;
+  padding: 7px var(--space-2);
+  border-top: 1px solid var(--chrome-border);
+}
+
+.rawToggle {
+  justify-self: start;
+  margin-top: 2px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--chrome-text-muted);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.raw {
+  margin: 0;
+  max-height: 200px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: var(--space-2);
+  border-radius: 6px;
+  background: var(--chrome-surface-alt);
+  color: var(--chrome-text-mid);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  line-height: 1.5;
+}
+
+.row {
+  display: flex;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+}
+
+.rowLabel {
+  flex-shrink: 0;
+  width: 108px;
+  color: var(--chrome-text-muted);
+}
+
+.rowValue {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--chrome-text-mid);
+}

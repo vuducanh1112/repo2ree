@@ -10,13 +10,9 @@ import type { ReeExperiment, ReeSpec } from "@core/ree/ReeSpec";
 import { findFileByWorkspacePath } from "@core/workspace/fileTreeTraversal";
 import { useScriptTemplates } from "@shell/data/scriptTemplates/catalog";
 import { experimentRunScriptPath } from "@shell/data/scriptTemplates/paths";
+import { Badge } from "@shell/ui/shared/components/Badge";
+import { Button } from "@shell/ui/shared/components/Button";
 import { Ic } from "@shell/ui/shared/components/Icon";
-import {
-  lgColors,
-  lgGlassButton,
-  lgNextButton,
-  lgStatusBadge,
-} from "@shell/ui/theme/lightGlassTheme";
 import { useEffect, useRef, useState } from "react";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
 import {
@@ -29,6 +25,7 @@ import {
 import { GlassPanelFooter } from "../../components/GlassPanelFooter";
 import { GlassSectionHeader } from "../../components/GlassSectionHeader";
 import type { PageExperimentsProps } from "../sharedStepUi";
+import styles from "./ExperimentsPage.module.css";
 import {
   ExperimentCardList,
   ExperimentDetail,
@@ -227,20 +224,10 @@ export function PageExperiments({
 
   const headerBadges = (
     <>
-      <span
-        style={{
-          fontSize: 11,
-          fontWeight: 700,
-          color: lgColors.chipText,
-          background: "rgba(239, 246, 255, 0.85)",
-          border: "1px solid rgba(79, 70, 229, 0.28)",
-          borderRadius: 99,
-          padding: "3px 9px",
-        }}
-      >
+      <Badge tone="info">
         {total} {total === 1 ? "experiment" : "experiments"}
-      </span>
-      <span style={lgStatusBadge(total > 0)}>{total > 0 ? "Defined" : "Empty"}</span>
+      </Badge>
+      <Badge tone={total > 0 ? "success" : "warning"}>{total > 0 ? "Defined" : "Empty"}</Badge>
     </>
   );
 
@@ -318,28 +305,15 @@ export function PageExperiments({
 
             <GlassPanelFooter
               action={
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <div className={styles.footerActions}>
                   {!locked && (
-                    <button
-                      type="button"
-                      onClick={addExperiment}
-                      style={{
-                        ...lgGlassButton(),
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 6,
-                      }}
-                    >
-                      {Ic.plus(13)} Add experiment
-                    </button>
+                    <Button icon={Ic.plus(13)} onClick={addExperiment}>
+                      Add experiment
+                    </Button>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => onGoPage(PAGE.ARCHIVE)}
-                    style={lgNextButton()}
-                  >
-                    Next: Deposit & Share {Ic.chevR(15)}
-                  </button>
+                  <Button variant="primary" onClick={() => onGoPage(PAGE.ARCHIVE)}>
+                    Next: Deposit &amp; Share {Ic.chevR(15)}
+                  </Button>
                 </div>
               }
             >

@@ -14,23 +14,18 @@ import {
 } from "@shell/data/scriptTemplates/paths";
 import { GlassPanel } from "@shell/ui/app-shell/components/GlassPageShell";
 import { GlassPanelFooter } from "@shell/ui/app-shell/components/GlassPanelFooter";
+import { Button } from "@shell/ui/shared/components/Button";
+import { Field, Input, Textarea } from "@shell/ui/shared/components/FormControl";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { failureTone, stageTone } from "@shell/ui/theme/appearance";
-import {
-  lgActionButton,
-  lgColors,
-  lgGlassButton,
-  lgInput,
-  lgNextButton,
-  lgStyles,
-} from "@shell/ui/theme/lightGlassTheme";
-import { F } from "@shell/ui/theme/theme";
+import { cssVars } from "@shell/ui/theme/styleVars";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
 import { GenerateScriptControl } from "../../components/GenerateScriptControl";
 import { RunActionButton } from "../../components/RunActionButton";
 import { RunScriptCard } from "../../components/RunScriptCard";
+import styles from "./ExperimentsPage.module.css";
 import type { RunState } from "./useExperimentRun";
 
 // The experiments page is composed from three modules; re-exported here so the
@@ -103,40 +98,32 @@ export function ExperimentDetail({
     <GlassPanel clipped>
       <DetailBreadcrumb index={index} onBack={onBack} />
 
-      <div style={{ ...lgStyles.sectionBody, display: "flex", flexDirection: "column", gap: 18 }}>
+      <div className={styles.detailBody}>
         <DetailField label="Name" required>
-          <input
+          <Input
             disabled={locked}
             value={experiment.name}
             onChange={(e) => onUpdate({ name: e.target.value })}
             placeholder="smoke-test"
-            style={{
-              ...lgInput(locked),
-              ...(isDuplicateName || isInvalidName
-                ? { borderColor: "rgba(239, 68, 68, 0.7)" }
-                : {}),
-            }}
+            aria-invalid={isDuplicateName || isInvalidName}
           />
           {isDuplicateName && (
-            <span style={{ fontSize: 11, color: lgColors.required, marginTop: 2 }}>
-              Another experiment already uses this name.
-            </span>
+            <span className={styles.fieldError}>Another experiment already uses this name.</span>
           )}
           {!isDuplicateName && isInvalidName && (
-            <span style={{ fontSize: 11, color: lgColors.required, marginTop: 2 }}>
+            <span className={styles.fieldError}>
               Use only letters, digits, spaces, '.', '_' and '-'.
             </span>
           )}
         </DetailField>
 
         <DetailField label="Description" help="What this experiment verifies in the REE.">
-          <textarea
+          <Textarea
             disabled={locked}
             value={experiment.description}
             onChange={(e) => onUpdate({ description: e.target.value })}
             placeholder="Imports the main package and runs the smoke suite."
             rows={3}
-            style={{ ...lgInput(locked), resize: "vertical", minHeight: 84, lineHeight: 1.5 }}
           />
         </DetailField>
 
@@ -191,12 +178,12 @@ export function ExperimentDetail({
           label="Runtime estimate"
           help="Expected wall-clock duration for a typical successful run."
         >
-          <input
+          <Input
             disabled={locked}
             value={experiment.runtimeEstimate}
             onChange={(e) => onUpdate({ runtimeEstimate: e.target.value })}
             placeholder="5-10 min"
-            style={{ ...lgInput(locked), fontFamily: F.mono, fontSize: 13 }}
+            flavor="code"
           />
         </DetailField>
 
@@ -217,17 +204,14 @@ export function ExperimentDetail({
 
       <GlassPanelFooter
         action={
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            icon={Ic.check(15)}
             onClick={onBack}
             disabled={!locked && !canRun}
-            style={{
-              ...lgNextButton(),
-              ...(!locked && !canRun ? { opacity: 0.45, cursor: "not-allowed" } : {}),
-            }}
           >
-            {Ic.check(15)} Save & back to catalog
-          </button>
+            Save &amp; back to catalog
+          </Button>
         }
       >
         {!locked && trimmedName === ""
@@ -244,46 +228,14 @@ export function ExperimentDetail({
 
 function DetailBreadcrumb({ index, onBack }: { index: number; onBack: () => void }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "12px 18px",
-        borderBottom: "1px solid rgba(125, 211, 252, 0.4)",
-        background: "rgba(255, 255, 255, 0.55)",
-      }}
-    >
-      <button
-        type="button"
-        onClick={onBack}
-        style={{
-          ...lgGlassButton(),
-          padding: "6px 12px",
-          fontSize: 12,
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-        }}
-      >
-        {Ic.arrowLeft(13)} Experiments
-      </button>
-      <span style={{ color: lgColors.textMuted }}>/</span>
-      <span
-        style={{
-          fontFamily: F.mono,
-          fontSize: 11,
-          fontWeight: 800,
-          letterSpacing: "0.08em",
-          color: lgColors.cyan,
-          border: "1px solid rgba(14, 165, 233, 0.32)",
-          background: "rgba(240, 249, 255, 0.85)",
-          borderRadius: 6,
-          padding: "3px 8px",
-        }}
-      >
-        {expId(index)}
+    <div className={styles.breadcrumb}>
+      <Button size="small" icon={Ic.arrowLeft(13)} onClick={onBack}>
+        Experiments
+      </Button>
+      <span aria-hidden className={styles.breadcrumbSep}>
+        /
       </span>
+      <span className={styles.expId}>{expId(index)}</span>
     </div>
   );
 }
@@ -310,7 +262,7 @@ export function ExperimentHeaderActions({
     ? "Run the experiment and verify its result"
     : "Add a unique name and run script before running";
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+    <div className={styles.detailActions}>
       <RunActionButton
         label={isRunning ? "Running…" : "Run"}
         running={isRunning}
@@ -324,20 +276,9 @@ export function ExperimentHeaderActions({
         onCancel={onCancel}
       />
       {!locked && (
-        <button
-          type="button"
-          onClick={onRemove}
-          style={{
-            ...lgActionButton("danger"),
-            width: "auto",
-            padding: "6px 12px",
-            fontSize: 12,
-            fontWeight: 700,
-            gap: 6,
-          }}
-        >
-          {Ic.x(12)} Delete
-        </button>
+        <Button variant="danger" size="small" icon={Ic.x(12)} onClick={onRemove}>
+          Delete
+        </Button>
       )}
     </div>
   );
@@ -355,13 +296,13 @@ function DetailField({
   children: React.ReactNode;
 }) {
   return (
-    <div style={lgStyles.fieldFrame}>
-      <span style={lgStyles.label}>
+    <div className={styles.field}>
+      <span className={styles.fieldLabel}>
         {label}
-        {required && <span style={{ color: lgColors.required }}>*</span>}
+        {required && <span className={styles.required}>*</span>}
       </span>
       {children}
-      {help && <span style={lgStyles.helper}>{help}</span>}
+      {help && <span className={styles.fieldHelp}>{help}</span>}
     </div>
   );
 }
@@ -398,16 +339,16 @@ function ExperimentFailureNote({ failure }: { failure: ReeRunFailure }) {
   const view = runFailurePresentation(failure);
   const color = failureTone(view.tone);
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-        <span style={{ color, fontWeight: 700 }}>{view.label}</span>
+    <div className={styles.failure} style={cssVars({ "--failure-ink": color })}>
+      <div className={styles.failureHead}>
+        <span className={styles.failureLabel}>{view.label}</span>
         {view.retryable && (
-          <span style={{ color: lgColors.textMuted, fontSize: 11 }} title="Safe to retry">
+          <span className={styles.failureRetryable} title="Safe to retry">
             retryable
           </span>
         )}
       </div>
-      <div style={{ color: lgColors.textMuted }}>{view.message}</div>
+      <div className={styles.failureMessage}>{view.message}</div>
     </div>
   );
 }
@@ -420,55 +361,35 @@ function RunResultPanel({ runState }: { runState: RunState }) {
 
   const headerColor =
     outputs?.verdict === "pass"
-      ? lgColors.success
+      ? "var(--badge-success-ink)"
       : outputs?.verdict === "fail" || runState.status === "failed"
-        ? lgColors.required
-        : lgColors.textMuted;
+        ? "var(--palette-rose-400)"
+        : "var(--field-hint-ink)";
 
   const headerBg =
     outputs?.verdict === "pass"
-      ? "rgba(220, 252, 231, 0.7)"
+      ? "var(--verdict-pass-wash)"
       : outputs?.verdict === "fail" || runState.status === "failed"
-        ? "rgba(254, 226, 226, 0.7)"
-        : "rgba(248, 250, 252, 0.7)";
+        ? "var(--verdict-fail-wash)"
+        : "var(--verdict-idle-wash)";
 
   return (
-    <section aria-label="Run result" style={lgStyles.fieldFrame}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={lgStyles.label}>Run result</span>
+    <section aria-label="Run result" className={styles.field}>
+      <div className={styles.resultHead}>
+        <span className={styles.fieldLabel}>Run result</span>
         <span
-          style={{
-            fontSize: 10,
-            fontWeight: 700,
-            color: headerColor,
-            background: headerBg,
-            border: `1px solid ${headerColor}44`,
-            borderRadius: 99,
-            padding: "2px 8px",
-            fontFamily: F.mono,
-            textTransform: "uppercase",
-          }}
+          className={styles.verdict}
+          style={cssVars({ "--verdict-ink": headerColor, "--verdict-wash": headerBg })}
         >
           {!isTerminal ? runState.status : (outputs?.verdict ?? runState.status)}
         </span>
       </div>
 
-      {!isTerminal && (
-        <div
-          style={{
-            color: lgColors.textMuted,
-            fontSize: 12,
-            textAlign: "center",
-            padding: "10px 0",
-          }}
-        >
-          {Ic.loader(13)} Running experiment…
-        </div>
-      )}
+      {!isTerminal && <div className={styles.running}>{Ic.loader(13)} Running experiment…</div>}
 
       {isTerminal && outputs && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <div style={{ fontSize: 12, color: lgColors.textMuted }}>{runResultSummary(outputs)}</div>
+        <div className={styles.resultDetail}>
+          <div className={styles.resultSummary}>{runResultSummary(outputs)}</div>
         </div>
       )}
 
@@ -477,12 +398,12 @@ function RunResultPanel({ runState }: { runState: RunState }) {
       )}
 
       {isTerminal && !outputs && !runState.failure && (
-        <div style={{ fontSize: 12, color: lgColors.required }}>
+        <div className={styles.resultMissing}>
           Run {runState.status} — no output data available.
         </div>
       )}
 
-      <div style={{ marginTop: 10 }}>
+      <div className={styles.resultLog}>
         <CollapsibleLogCard log={logEntry} running={!isTerminal} title="Run log" maxHeight={320} />
       </div>
     </section>
@@ -519,34 +440,26 @@ function ResourceEstimatesEditor({
   ];
 
   return (
-    <div style={lgStyles.fieldFrame}>
-      <span style={lgStyles.label}>Resource estimates</span>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: 10,
-        }}
-      >
+    <div className={styles.field}>
+      <span className={styles.fieldLabel}>Resource estimates</span>
+      <div className={styles.estimateGrid}>
         {resourceFields.map(({ field, label, placeholder }) => (
-          <label
-            key={field}
-            style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}
-          >
-            <span style={{ fontSize: 11, fontWeight: 700, color: lgColors.textMuted }}>
-              {label}
-            </span>
-            <input
-              disabled={locked}
-              value={estimates[field]}
-              onChange={(e) => updateField(field, e.target.value)}
-              placeholder={placeholder}
-              style={{ ...lgInput(locked), fontFamily: F.mono, fontSize: 12 }}
-            />
-          </label>
+          <Field key={field} label={label}>
+            {(bound) => (
+              <Input
+                {...bound}
+                disabled={locked}
+                value={estimates[field]}
+                onChange={(e) => updateField(field, e.target.value)}
+                placeholder={placeholder}
+                flavor="code"
+                density="compact"
+              />
+            )}
+          </Field>
         ))}
       </div>
-      <span style={lgStyles.helper}>
+      <span className={styles.fieldHelp}>
         Capture the expected compute footprint so others can budget time and infrastructure.
       </span>
     </div>
@@ -590,9 +503,9 @@ function OutputPathsEditor({
   }, [outputPaths]);
 
   return (
-    <div style={lgStyles.fieldFrame}>
-      <span style={lgStyles.label}>Output files</span>
-      <textarea
+    <div className={styles.field}>
+      <span className={styles.fieldLabel}>Output files</span>
+      <Textarea
         aria-label="Output files"
         disabled={locked}
         value={text}
@@ -603,16 +516,9 @@ function OutputPathsEditor({
         placeholder={"results/output.csv\nfigures/plot.png"}
         rows={3}
         spellCheck={false}
-        style={{
-          ...lgInput(locked),
-          resize: "vertical",
-          minHeight: 66,
-          lineHeight: 1.6,
-          fontFamily: F.mono,
-          fontSize: 12,
-        }}
+        flavor="code"
       />
-      <span style={lgStyles.helper}>
+      <span className={styles.fieldHelp}>
         Workspace-relative files this experiment produces, one per line. Captured after each run;
         include them in the bundle from the Seal page. Also excluded from workspace-drift checks.
       </span>

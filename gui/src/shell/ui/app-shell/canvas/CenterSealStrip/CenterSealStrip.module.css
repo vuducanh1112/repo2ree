@@ -1,0 +1,390 @@
+/* Sealing an REE, and the record it becomes.
+ *
+ * The whole strip is tinted by the evidence level the REE reaches, so every
+ * rule below reads `--seal-tint` rather than a colour a component computed. */
+
+/* The strip the seal card sits in, at the centre of the hub. */
+.strip {
+  width: 100%;
+  max-width: 480px;
+}
+
+.panel {
+  width: 100%;
+  max-width: 480px;
+  overflow: hidden;
+  border-radius: 10px;
+  border: 1px solid var(--seal-panel-edge);
+  background: var(--seal-panel-bg);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--seal-panel-shadow);
+}
+
+/* --- Connection bar ------------------------------------------------------- */
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--seal-bar-edge);
+  background: var(--seal-bar-bg);
+}
+
+.count {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--field-hint-ink);
+}
+
+.track {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex: 1;
+}
+
+.segment {
+  flex: 1;
+  height: 3px;
+  border-radius: var(--radius-round);
+  background: var(--seal-track-dim);
+  transition: background var(--duration-normal) var(--ease-standard);
+}
+
+/* A panel whose evidence is present: lit in the level's tint. */
+.segment[data-live] {
+  background: var(--seal-tint);
+}
+
+.readiness {
+  flex-shrink: 0;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-round);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.5px;
+  color: var(--seal-warn-ink);
+  background: var(--seal-warn-bg);
+  border: 1px solid var(--seal-warn-edge);
+}
+
+.readiness[data-ready] {
+  color: var(--seal-tint);
+  background: color-mix(in srgb, var(--seal-tint) 8%, transparent);
+  border-color: color-mix(in srgb, var(--seal-tint) 25%, transparent);
+}
+
+/* --- Warning about what is missing ---------------------------------------- */
+
+.warning {
+  margin: var(--space-3) var(--space-5) 0;
+  padding: 10px var(--space-3);
+  border-radius: var(--radius-control);
+  border: 1px solid var(--seal-warn-edge);
+  background: var(--seal-warn-bg);
+}
+
+.warningRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.warningGlyph {
+  flex-shrink: 0;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.warningGroups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.warningHeadline {
+  margin-bottom: 5px;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--seal-warn-ink);
+}
+
+.warningItems {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.warningItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.warningDot {
+  flex-shrink: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--seal-warn-dot);
+}
+
+.warningText {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--seal-warn-ink);
+}
+
+/* --- What sealing means --------------------------------------------------- */
+
+.copy {
+  padding: var(--space-3) var(--space-5);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: 1.6;
+  color: var(--page-subtitle-ink);
+}
+
+/* --- What goes into the bundle -------------------------------------------- */
+
+.inclusion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0 var(--space-5) var(--space-1);
+  padding: var(--space-3) 14px;
+  border-radius: 10px;
+  border: 1px solid var(--seal-inset-edge);
+  background: var(--seal-inset-bg);
+}
+
+/* The inclusion list is headed by what it is. */
+.inclusionHeading {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--field-hint-ink);
+}
+
+.inclusionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Nothing to include: shown, but plainly not a choice. */
+.inclusionRow[data-unavailable] {
+  opacity: 0.45;
+}
+
+.inclusionLabels {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.inclusionName {
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  color: var(--field-ink);
+}
+
+.inclusionState {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--field-hint-ink);
+}
+
+.inclusionControl {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.inclusionVerb {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  color: var(--field-hint-ink);
+}
+
+.inclusionVerb[data-on] {
+  color: var(--seal-ink);
+}
+
+/* --- The seal action ------------------------------------------------------ */
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--space-3) 14px;
+}
+
+.seal {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+  padding: 9px 18px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--seal-tint);
+  background: var(--seal-tint);
+  color: var(--palette-white);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--seal-tint) 25%, transparent);
+  transition: filter var(--duration-fast) var(--ease-standard);
+}
+
+.seal:not(:disabled):hover {
+  filter: brightness(0.92);
+}
+
+.seal:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.seal:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.sealIcon {
+  display: flex;
+}
+
+.seal[aria-busy="true"] .sealIcon {
+  animation: seal-spin 0.9s linear infinite;
+}
+
+/* --- The sealed record ---------------------------------------------------- */
+
+.sealed {
+  width: 100%;
+  max-width: 480px;
+  overflow: hidden;
+  border-radius: var(--radius-panel);
+  background: var(--sealed-card-bg);
+  backdrop-filter: blur(14px);
+  border: 1px solid color-mix(in srgb, var(--seal-tint) 31%, transparent);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--seal-tint) 8%, transparent),
+    var(--sealed-card-shadow);
+}
+
+.sealedBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 10px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--seal-tint) 19%, transparent);
+  background: color-mix(in srgb, var(--seal-tint) 6%, transparent);
+}
+
+.sealedIcon {
+  display: flex;
+  flex-shrink: 0;
+  color: var(--seal-tint);
+}
+
+.sealedTitle {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  color: var(--seal-tint);
+}
+
+.sealedLevel {
+  margin-left: auto;
+  padding: 2px 7px;
+  border-radius: var(--radius-round);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.6px;
+  color: var(--seal-tint);
+  background: color-mix(in srgb, var(--seal-tint) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--seal-tint) 25%, transparent);
+}
+
+.sealedBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) 14px;
+}
+
+.metaRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.metaKey {
+  flex-shrink: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--chrome-text-muted);
+}
+
+.metaHash {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.8px;
+  color: var(--field-ink);
+}
+
+.metaDate {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--page-subtitle-ink);
+}
+
+.sealedTrack {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 2px;
+}
+
+.sealedSegment {
+  flex: 1;
+  height: 3px;
+  border-radius: var(--radius-round);
+  opacity: 0.5;
+  background: var(--seal-track-dim-soft);
+}
+
+.sealedSegment[data-live] {
+  opacity: 0.85;
+  background: var(--seal-tint);
+}
+
+@keyframes seal-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .segment,
+  .seal {
+    transition: none;
+  }
+}

@@ -59,6 +59,13 @@
   cursor: not-allowed;
 }
 
+/* Dense grids: a shorter box, so a row of them does not dominate. */
+.control[data-density="compact"] {
+  min-height: 38px;
+  padding: var(--space-2) 11px;
+  font-size: 13px;
+}
+
 /* Room for a leading glyph the caller overlays. */
 .control[data-adorned] {
   padding-left: 32px;

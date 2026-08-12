@@ -4,9 +4,10 @@ import type { ActionStates, Badges, ReeRunLogs } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { ARCHIVE_REPOSITORIES } from "@core/ree-steps/archiveRepositories";
 import type { GenericReeStepParams } from "@core/ree-steps/stepTypes";
+import { Badge } from "@shell/ui/shared/components/Badge";
+import { Button } from "@shell/ui/shared/components/Button";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { archiveTone } from "@shell/ui/theme/appearance";
-import { lgNextButton, lgStatusBadge } from "@shell/ui/theme/lightGlassTheme";
 import { useState } from "react";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
 import {
@@ -88,13 +89,13 @@ export function PageArchive({
         subtitle="Deposit your REE to a long-term archive and receive a citable permanent identifier."
         badges={
           <>
-            <span style={lgStatusBadge(capstoneReady)}>
+            <Badge tone={capstoneReady ? "success" : "warning"}>
               {capstoneReady ? "Prereqs ready" : "Prereqs pending"}
-            </span>
-            <span style={lgStatusBadge(depositedAnywhere)}>
+            </Badge>
+            <Badge tone={depositedAnywhere ? "success" : "warning"}>
               {depositedAnywhere ? "Deposited" : "Not deposited"}
-            </span>
-            {assignedId && <span style={lgStatusBadge(true)}>{repo.idLabel} assigned</span>}
+            </Badge>
+            {assignedId && <Badge tone="success">{repo.idLabel} assigned</Badge>}
           </>
         }
       />
@@ -130,9 +131,9 @@ export function PageArchive({
 
           <GlassPanelFooter
             action={
-              <button type="button" onClick={() => onGo(PAGE.SEAL)} style={lgNextButton()}>
+              <Button variant="primary" onClick={() => onGo(PAGE.SEAL)}>
                 Next: Seal {Ic.chevR(15)}
-              </button>
+              </Button>
             }
           >
             {isSealed

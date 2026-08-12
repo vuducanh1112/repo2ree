@@ -1,7 +1,7 @@
 import type { ReceiptView } from "@core/receipts/authorReceipts";
 import { useState } from "react";
 import { Ic } from "../../shared/components/Icon";
-import { C, F } from "../../theme/theme";
+import styles from "./ReceiptCard.module.css";
 
 // One materialised receipt: the operation it attests, when it ran and how
 // long it took, and — on expand — its typed payload plus the raw JSON.
@@ -10,62 +10,22 @@ export function ReceiptCard({ receipt }: { receipt: ReceiptView }) {
   const [rawOpen, setRawOpen] = useState(false);
 
   return (
-    <div
-      style={{
-        border: `1px solid ${C.border}`,
-        borderRadius: 8,
-        background: C.surface,
-        overflow: "hidden",
-      }}
-    >
+    <div className={styles.card}>
       <button
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 7,
-          width: "100%",
-          padding: "6px 8px",
-          background: "transparent",
-          border: "none",
-          cursor: "pointer",
-          textAlign: "left",
-          fontFamily: F.mono,
-          fontSize: 10,
-        }}
+        className={styles.summary}
       >
-        <span style={{ display: "flex", color: C.textMuted, flexShrink: 0 }}>
+        <span aria-hidden className={styles.chevron}>
           {open ? Ic.chevD(12) : Ic.chevR(12)}
         </span>
-        <span
-          style={{
-            flex: 1,
-            minWidth: 0,
-            color: C.textMid,
-            fontWeight: 700,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {receipt.title}
-        </span>
-        {receipt.duration && (
-          <span style={{ color: C.textMuted, flexShrink: 0 }}>{receipt.duration}</span>
-        )}
+        <span className={styles.title}>{receipt.title}</span>
+        {receipt.duration && <span className={styles.duration}>{receipt.duration}</span>}
       </button>
 
       {open && (
-        <div
-          style={{
-            borderTop: `1px solid ${C.border}`,
-            padding: "7px 8px",
-            display: "grid",
-            gap: 5,
-          }}
-        >
+        <div className={styles.fields}>
           <Row label="run" value={receipt.runId} />
           <Row label="recorded" value={receipt.recordedAt} />
           {receipt.fields.map((field) => (
@@ -75,65 +35,22 @@ export function ReceiptCard({ receipt }: { receipt: ReceiptView }) {
           <button
             type="button"
             onClick={() => setRawOpen((value) => !value)}
-            style={{
-              justifySelf: "start",
-              marginTop: 2,
-              padding: 0,
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              color: C.textMuted,
-              fontFamily: F.mono,
-              fontSize: 9.5,
-              textDecoration: "underline",
-            }}
+            className={styles.rawToggle}
           >
             {rawOpen ? "hide raw receipt" : "raw receipt"}
           </button>
-          {rawOpen && (
-            <pre
-              style={{
-                margin: 0,
-                maxHeight: 200,
-                overflow: "auto",
-                padding: 8,
-                borderRadius: 6,
-                background: C.surfaceAlt,
-                color: C.textMid,
-                fontFamily: F.mono,
-                fontSize: 9.5,
-                lineHeight: 1.5,
-                whiteSpace: "pre-wrap",
-                overflowWrap: "anywhere",
-              }}
-            >
-              {JSON.stringify(receipt.raw, null, 2)}
-            </pre>
-          )}
+          {rawOpen && <pre className={styles.raw}>{JSON.stringify(receipt.raw, null, 2)}</pre>}
         </div>
       )}
     </div>
   );
 }
 
-function Row({
-  label,
-  value,
-  title,
-  color = C.textMid,
-}: {
-  label: string;
-  value: string;
-  title?: string;
-  color?: string;
-}) {
+function Row({ label, value, title }: { label: string; value: string; title?: string }) {
   return (
-    <div style={{ display: "flex", gap: 8, fontFamily: F.mono, fontSize: 9.5 }}>
-      <span style={{ width: 108, flexShrink: 0, color: C.textMuted }}>{label}</span>
-      <span
-        title={title || value}
-        style={{ flex: 1, minWidth: 0, color, overflowWrap: "anywhere" }}
-      >
+    <div className={styles.row}>
+      <span className={styles.rowLabel}>{label}</span>
+      <span title={title || value} className={styles.rowValue}>
         {value}
       </span>
     </div>

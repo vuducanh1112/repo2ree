@@ -1,28 +1,30 @@
 import type { ReviewStepKey, ReviewStepStatus } from "@core/reviews/reviewDag";
 import type { ReactNode } from "react";
 import { Ic } from "../../../shared/components/Icon";
-import { translucent } from "../../../theme/appearance";
-import { C, F } from "../../../theme/theme";
+import { cssVars } from "../../../theme/styleVars";
+import styles from "./ReviewConsole.module.css";
 
-const STATUS_META: Record<ReviewStepStatus, { label: string; color: string }> = {
-  unavailable: { label: "Coming next", color: C.textMuted },
-  ready: { label: "Ready", color: C.textMuted },
-  queued: { label: "Queued", color: "#d97706" },
-  running: { label: "Running", color: C.accent },
-  succeeded: { label: "Complete", color: C.done },
-  identical: { label: "Identical", color: C.done },
-  equivalent: { label: "Equivalent", color: "#0891b2" },
+// What each state is called. How it reads is in ReviewConsole.module.css,
+// keyed off the same status value.
+const STATUS_LABEL: Record<ReviewStepStatus, string> = {
+  unavailable: "Coming next",
+  ready: "Ready",
+  queued: "Queued",
+  running: "Running",
+  succeeded: "Complete",
+  identical: "Identical",
+  equivalent: "Equivalent",
   // The ordinary pass for a result: the author's own verify script accepted it.
   // Distinct from "identical" because matching output bytes are a stronger and
   // rarer thing, and from "complete" because this is a verdict, not a lifecycle
   // state.
-  reproduced: { label: "Reproduced", color: C.done },
-  different: { label: "Different", color: "#d97706" },
-  inconclusive: { label: "Inconclusive", color: C.textMuted },
+  reproduced: "Reproduced",
+  different: "Different",
+  inconclusive: "Inconclusive",
   // A settled finding, not a breakdown — hence its own label. Coloured like a
   // failure because that is what it means for the reviewer, but the step ran.
-  uninhabitable: { label: "Did not activate", color: C.error },
-  failed: { label: "Failed", color: C.error },
+  uninhabitable: "Did not activate",
+  failed: "Failed",
 };
 
 export function ReviewStepButton({
@@ -44,7 +46,6 @@ export function ReviewStepButton({
   disabled?: boolean;
   onRun: (step: ReviewStepKey) => void;
 }) {
-  const meta = STATUS_META[status];
   const active = status === "queued" || status === "running";
 
   return (
@@ -53,53 +54,18 @@ export function ReviewStepButton({
       onClick={() => onRun(stepKey)}
       aria-label={`Reproduce ${label}`}
       disabled={disabled}
-      style={{
-        width: 116,
-        minHeight: 66,
-        padding: "8px 9px",
-        display: "grid",
-        gridTemplateColumns: "22px 1fr",
-        columnGap: 7,
-        alignItems: "start",
-        borderRadius: 9,
-        border: `1px solid ${active ? color : C.border}`,
-        background: active ? translucent(color, 5) : C.surface,
-        color: C.text,
-        cursor: disabled ? "not-allowed" : "pointer",
-        opacity: disabled ? 0.58 : 1,
-        textAlign: "left",
-        boxShadow: active ? `0 0 0 2px ${translucent(color, 8.6)}` : "none",
-      }}
+      className={styles.step}
+      data-active={active || undefined}
+      style={cssVars({ "--step-tint": color })}
     >
-      <span style={{ color, display: "flex", paddingTop: 1 }}>{active ? Ic.loader(16) : icon}</span>
-      <span style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
-        <span
-          style={{
-            fontSize: 11,
-            fontWeight: 750,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {label}
-        </span>
-        {detail ? (
-          <span
-            style={{
-              color: C.textMuted,
-              fontFamily: F.mono,
-              fontSize: 8.5,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {detail}
-          </span>
-        ) : null}
-        <span style={{ color: meta.color, fontFamily: F.mono, fontSize: 8.5, fontWeight: 800 }}>
-          {meta.label.toUpperCase()}
+      <span aria-hidden className={styles.stepIcon}>
+        {active ? Ic.loader(16) : icon}
+      </span>
+      <span className={styles.stepBody}>
+        <span className={styles.stepLabel}>{label}</span>
+        {detail ? <span className={styles.stepDetail}>{detail}</span> : null}
+        <span className={styles.stepStatus} data-status={status}>
+          {STATUS_LABEL[status].toUpperCase()}
         </span>
       </span>
     </button>

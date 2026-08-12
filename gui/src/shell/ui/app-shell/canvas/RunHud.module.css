@@ -1,0 +1,280 @@
+/* The logs console: a tab per pipeline step, the runs under the selected one,
+ * and one expanded run's log feed.
+ *
+ * A run's status is the backend's own lifecycle value, so it selects its colour
+ * here rather than being looked up in a table beside the component. */
+
+.resizeGrip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--chrome-border-strong);
+  cursor: nwse-resize;
+}
+
+.resizeGrip:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: 0;
+}
+
+/* --- Tab strip ------------------------------------------------------------ */
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  overflow-x: auto;
+  padding: 7px 10px 6px;
+  border-bottom: 1px solid var(--chrome-border);
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding: var(--space-1) var(--space-2);
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--chrome-text-muted);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+
+.tab[aria-selected="true"] {
+  background: var(--run-tab-selected-bg);
+  color: var(--chrome-accent);
+}
+
+.tab:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+/* A step with something happening, and one whose last run failed. */
+.tabDot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.tabDot[data-kind="active"] {
+  background: var(--run-active);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--run-active) 53%, transparent);
+}
+
+.tabDot[data-kind="failed"] {
+  background: var(--run-failed);
+}
+
+/* --- Run list ------------------------------------------------------------- */
+
+.runs {
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-2) 10px 10px;
+}
+
+.runsHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.runsTitle {
+  flex: 1;
+  font-size: var(--text-md);
+  font-weight: 650;
+  color: var(--chrome-text);
+}
+
+/* Which of the three streams are shown. */
+.stream {
+  padding: 2px var(--space-2);
+  border: 1px solid var(--chrome-border);
+  border-radius: var(--radius-round);
+  background: var(--chrome-surface);
+  color: var(--chrome-text-muted);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.stream[aria-pressed="true"] {
+  border-color: var(--chrome-accent);
+  background: var(--run-stream-on-bg);
+  color: var(--chrome-accent);
+}
+
+.stream:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.empty {
+  padding: 18px 0 var(--space-3);
+  text-align: center;
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  color: var(--chrome-text-muted);
+}
+
+.runList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* --- One run -------------------------------------------------------------- */
+
+.run {
+  overflow: hidden;
+  border: 1px solid var(--chrome-border);
+  border-radius: var(--radius-control);
+  background: var(--chrome-surface);
+}
+
+.runHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.runHeader:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.runChevron {
+  display: flex;
+  flex-shrink: 0;
+  color: var(--chrome-text-muted);
+  transition: transform 0.15s;
+}
+
+.runHeader[aria-expanded="true"] .runChevron {
+  transform: rotate(90deg);
+}
+
+.runId {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--chrome-text-mid);
+}
+
+.runWhen {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--chrome-text-muted);
+}
+
+.runStatus {
+  flex-shrink: 0;
+  min-width: 56px;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: var(--weight-bold);
+  color: var(--run-ink, var(--run-idle));
+}
+
+.runStatus[data-status="created"],
+.runStatus[data-status="queued"],
+.runStatus[data-status="provisioning"],
+.runStatus[data-status="running"] {
+  --run-ink: var(--run-active);
+}
+
+.runStatus[data-status="succeeded"] {
+  --run-ink: var(--run-succeeded);
+}
+
+.runStatus[data-status="failed"] {
+  --run-ink: var(--run-failed);
+}
+
+.runStatus[data-status="canceling"],
+.runStatus[data-status="canceled"] {
+  --run-ink: var(--run-canceling);
+}
+
+/* --- Failure note --------------------------------------------------------- */
+
+.failure {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-2) 10px var(--space-2) 30px;
+  border-top: 1px solid var(--chrome-border);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+
+.failureLabel {
+  flex-shrink: 0;
+  font-weight: var(--weight-bold);
+  color: var(--failure-ink);
+}
+
+.failureRetryable {
+  flex-shrink: 0;
+  color: var(--chrome-text-muted);
+}
+
+.failureMessage {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--chrome-text-mid);
+}
+
+/* --- Expanded log --------------------------------------------------------- */
+
+.logView {
+  display: flex;
+  flex-direction: column;
+  max-height: var(--run-log-height);
+  padding: var(--space-2);
+  border-top: 1px solid var(--chrome-border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab,
+  .runChevron {
+    transition: none;
+  }
+}

@@ -4,6 +4,7 @@ import type { Badges, LogEntry } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { CollapsibleLogCard } from "@shell/ui/app-shell/components/CollapsibleLogCard";
 import React from "react";
+import styles from "./CenterSealStrip/CenterSealStrip.module.css";
 import { SealedSealCard } from "./CenterSealStrip/SealedSealCard";
 import { SealStatusCard } from "./CenterSealStrip/SealStatusCard";
 
@@ -50,10 +51,14 @@ export function CenterSealStrip({
   const totalCables = cableItems.length;
   const allLive = liveCount === totalCables;
   const missing = cableItems.filter((item) => !item.live);
-  const currentLevelMeta = { color: "#4f46e5", bg: "#e0e7ff", label: "REE evidence" };
+  const currentLevelMeta = {
+    color: "var(--seal-level-line)",
+    bg: "var(--seal-level-wash)",
+    label: "REE evidence",
+  };
 
   const logPanel = (
-    <div style={{ width: "100%", maxWidth: 480 }}>
+    <div className={styles.strip}>
       <CollapsibleLogCard log={sealLog} running={sealRunning} title="Seal log" />
     </div>
   );

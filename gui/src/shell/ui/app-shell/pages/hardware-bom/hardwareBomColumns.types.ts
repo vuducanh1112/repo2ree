@@ -16,8 +16,6 @@ export interface HardwareColumn<RowT> {
 
 export interface ColumnBuilderBaseArgs {
   locked: boolean;
-  inp: (locked: boolean, extra?: React.CSSProperties) => React.CSSProperties;
-  selectInp: (locked: boolean, extra?: React.CSSProperties) => React.CSSProperties;
 }
 
 export interface CpuColumnsArgs extends ColumnBuilderBaseArgs {

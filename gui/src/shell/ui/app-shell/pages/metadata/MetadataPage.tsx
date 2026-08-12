@@ -8,23 +8,17 @@ import {
   updateCatalogContributor,
 } from "@core/ree/catalogMetadataOps";
 import type { ReeContributor } from "@core/ree/ReeSpec";
+import { Badge } from "@shell/ui/shared/components/Badge";
+import { Button } from "@shell/ui/shared/components/Button";
+import { Input, Textarea } from "@shell/ui/shared/components/FormControl";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { useFocusScroll } from "@shell/ui/shared/hooks/useFocusScroll";
-import {
-  lgActionButton,
-  lgColors,
-  lgCorrespondingBadge,
-  lgGlassButton,
-  lgInput,
-  lgPageRoot,
-  lgStatusBadge,
-  lgStyles,
-  lgSuggestionButton,
-} from "@shell/ui/theme/lightGlassTheme";
 import type React from "react";
 import { useMemo, useState } from "react";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
+import { GlassPageShell } from "../../components/GlassPageShell";
 import type { PageMetadataEntryProps } from "../sharedStepUi";
+import styles from "./MetadataPage.module.css";
 
 function MetadataField({
   label,
@@ -38,20 +32,22 @@ function MetadataField({
   children: React.ReactNode;
 }) {
   return (
-    <div style={lgStyles.fieldFrame}>
-      <span style={lgStyles.label}>
+    <div className={styles.field}>
+      <span className={styles.label}>
         {label}
-        {required && <span style={{ color: lgColors.required }}>*</span>}
-        <span style={{ color: lgColors.blue, display: "flex" }}>{Ic.info(12)}</span>
+        {required && <span className={styles.required}>*</span>}
+        <span aria-hidden className={styles.labelInfo}>
+          {Ic.info(12)}
+        </span>
       </span>
       {children}
-      {help && <span style={lgStyles.helper}>{help}</span>}
+      {help && <span className={styles.helper}>{help}</span>}
     </div>
   );
 }
 
 function MetadataChip({ children }: { children: React.ReactNode }) {
-  return <span style={lgStyles.chip}>{children}</span>;
+  return <span className={styles.chip}>{children}</span>;
 }
 
 const KEYWORD_SUGGESTIONS = [
@@ -168,36 +164,37 @@ export function PageMetadataEntry({
     // Minimal form sitting directly on the focus dock — no nested frame/panel
     // layers. The dock supplies the floating surface over the canvas; the page
     // only paints its own content.
-    <div style={lgPageRoot}>
+    <GlassPageShell variant="docked">
       <GlassPageHeader
         icon={Ic.grid(24)}
         title="Metadata"
         subtitle="Provide the identity details that follow this Reusable Execution Environment through every step to the seal."
         badges={
-          <span style={lgStatusBadge(identityFilled)}>{identityFilled ? "Ready" : "Draft"}</span>
+          <Badge tone={identityFilled ? "success" : "warning"}>
+            {identityFilled ? "Ready" : "Draft"}
+          </Badge>
         }
       />
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-        <div style={lgStyles.fieldsGrid}>
+      <div className={styles.stack}>
+        <div className={styles.fieldsGrid}>
           <MetadataField
             label="REE Name"
             required
             help="Use a stable, descriptive name. Include a version suffix if that is part of your project convention."
           >
-            <input
+            <Input
               id="field-name"
               disabled={locked}
               value={reeSpec.name}
               onChange={(event) => set("name", event.target.value)}
               onFocus={() => focus("name")}
               placeholder="deepfold-protein-structure-prediction"
-              style={lgInput(locked, focusedField === "name")}
             />
           </MetadataField>
 
           <MetadataField label="Version" required help="Semantic version of this REE snapshot.">
-            <input
+            <Input
               disabled={locked}
               value={version}
               onChange={(event) =>
@@ -207,7 +204,6 @@ export function PageMetadataEntry({
               }
               onFocus={() => focus("catalogMetadata.version")}
               placeholder="1.0.0"
-              style={lgInput(locked)}
             />
           </MetadataField>
 
@@ -215,7 +211,7 @@ export function PageMetadataEntry({
             label="Website"
             help="Project page, documentation, or repository landing page."
           >
-            <input
+            <Input
               disabled={locked}
               value={website}
               onChange={(event) =>
@@ -225,7 +221,6 @@ export function PageMetadataEntry({
               }
               onFocus={() => focus("catalogMetadata.website")}
               placeholder="https://example.org/project"
-              style={lgInput(locked)}
             />
           </MetadataField>
 
@@ -234,7 +229,7 @@ export function PageMetadataEntry({
             required
             help="Capture what this REE does, for whom, and any key assumptions."
           >
-            <textarea
+            <Textarea
               value={description}
               onChange={(event) =>
                 onReeChange((current) =>
@@ -243,28 +238,22 @@ export function PageMetadataEntry({
               }
               onFocus={() => focus("catalogMetadata.description")}
               placeholder="REE for reproducible execution of..."
-              style={{
-                ...lgInput(locked, false),
-                minHeight: 112,
-                resize: "vertical",
-                lineHeight: 1.45,
-              }}
               disabled={locked}
             />
           </MetadataField>
         </div>
 
-        <div style={sectionDivider}>
-          <div style={{ ...lgStyles.label, marginBottom: 10 }}>Keywords</div>
-          <div style={lgStyles.chipRow}>
+        <div className={styles.section}>
+          <div className={styles.sectionLabel}>Keywords</div>
+          <div className={styles.chipRow}>
             {keywords.map((keyword) => (
-              <span key={keyword} style={lgStyles.inlineChipWrap}>
+              <span key={keyword} className={styles.chipWrap}>
                 <MetadataChip>{keyword}</MetadataChip>
                 {!locked && (
                   <button
                     type="button"
                     onClick={() => removeKeyword(keyword)}
-                    style={lgStyles.iconRemoveSmall}
+                    className={styles.chipRemove}
                     aria-label={`Remove keyword ${keyword}`}
                   >
                     {Ic.x(12)}
@@ -274,9 +263,9 @@ export function PageMetadataEntry({
             ))}
           </div>
           {!locked && (
-            <div style={lgStyles.keywordControls}>
-              <div style={lgStyles.flexWrapRow}>
-                <input
+            <div className={styles.keywordControls}>
+              <div className={styles.keywordRow}>
+                <Input
                   value={pendingKeyword}
                   onChange={(event) => setPendingKeyword(event.target.value)}
                   onKeyDown={(event) => {
@@ -286,24 +275,20 @@ export function PageMetadataEntry({
                     }
                   }}
                   placeholder="Add custom keyword"
-                  style={{ ...lgInput(false), minHeight: 38, flex: "1 1 220px" }}
+                  density="compact"
                 />
-                <button
-                  type="button"
-                  onClick={() => addKeyword(pendingKeyword)}
-                  style={lgGlassButton()}
-                >
+                <button type="button" onClick={() => addKeyword(pendingKeyword)}>
                   Add keyword
                 </button>
               </div>
               {availableSuggestions.length > 0 && (
-                <div style={lgStyles.suggestionWrap}>
+                <div className={styles.suggestions}>
                   {availableSuggestions.map((keyword) => (
                     <button
                       key={keyword}
                       type="button"
                       onClick={() => addKeyword(keyword)}
-                      style={lgSuggestionButton()}
+                      className={styles.suggestion}
                     >
                       + {keyword}
                     </button>
@@ -312,32 +297,32 @@ export function PageMetadataEntry({
               )}
             </div>
           )}
-          {locked && <div style={lgStyles.helper}>Unlock fields to add or remove keywords.</div>}
+          {locked && <div className={styles.helper}>Unlock fields to add or remove keywords.</div>}
           {keywords.length === 0 && (
-            <div style={lgStyles.helper}>
+            <div className={styles.helper}>
               No keywords yet. Add at least one for discoverability.
             </div>
           )}
         </div>
 
-        <div style={sectionDivider}>
-          <div style={{ ...lgStyles.label, marginBottom: 10 }}>Contributors</div>
+        <div className={styles.section}>
+          <div className={styles.sectionLabel}>Contributors</div>
 
           {contributors.length > 0 && (
-            <div style={lgStyles.contributorList}>
+            <div className={styles.contributorList}>
               {contributors.map((contributor) => (
-                <div key={`${contributor.identifier}-detail`} style={lgStyles.contributorCard}>
-                  <div style={lgStyles.contributorHeader}>
-                    <strong style={{ color: lgColors.text, fontSize: 13 }}>
-                      {contributor.name}
-                    </strong>
+                <div key={`${contributor.identifier}-detail`} className={styles.contributorCard}>
+                  <div className={styles.contributorHeader}>
+                    <strong className={styles.contributorName}>{contributor.name}</strong>
                     {correspondingAuthor === contributor.identifier && (
-                      <span style={lgCorrespondingBadge()}>{Ic.check(11)} Corresponding</span>
+                      <Badge tone="success" icon={Ic.check(11)}>
+                        Corresponding
+                      </Badge>
                     )}
                   </div>
                   {editingContributorId === contributor.identifier ? (
-                    <div style={lgStyles.contributorFieldsGrid}>
-                      <input
+                    <div className={styles.contributorFields}>
+                      <Input
                         value={contributorDraft.identifier}
                         onChange={(event) =>
                           setContributorDraft((prev) => ({
@@ -346,9 +331,9 @@ export function PageMetadataEntry({
                           }))
                         }
                         placeholder="Identifier"
-                        style={{ ...lgInput(false), minHeight: 38 }}
+                        density="compact"
                       />
-                      <input
+                      <Input
                         value={contributorDraft.name}
                         onChange={(event) =>
                           setContributorDraft((prev) => ({
@@ -357,9 +342,9 @@ export function PageMetadataEntry({
                           }))
                         }
                         placeholder="Name"
-                        style={{ ...lgInput(false), minHeight: 38 }}
+                        density="compact"
                       />
-                      <input
+                      <Input
                         value={contributorDraft.affiliationName}
                         onChange={(event) =>
                           setContributorDraft((prev) => ({
@@ -368,9 +353,9 @@ export function PageMetadataEntry({
                           }))
                         }
                         placeholder="Affiliation name"
-                        style={{ ...lgInput(false), minHeight: 38 }}
+                        density="compact"
                       />
-                      <input
+                      <Input
                         value={contributorDraft.affiliationIdentifier}
                         onChange={(event) =>
                           setContributorDraft((prev) => ({
@@ -379,72 +364,71 @@ export function PageMetadataEntry({
                           }))
                         }
                         placeholder="Affiliation identifier"
-                        style={{ ...lgInput(false), minHeight: 38 }}
+                        density="compact"
                       />
                     </div>
                   ) : (
-                    <div style={lgStyles.contributorFieldsGrid}>
-                      <div style={lgStyles.helper}>
-                        <strong style={{ color: lgColors.text }}>Identifier:</strong>{" "}
+                    <div className={styles.contributorFields}>
+                      <div className={styles.helper}>
+                        <strong className={styles.factLabel}>Identifier:</strong>{" "}
                         {contributor.identifier}
                       </div>
-                      <div style={lgStyles.helper}>
-                        <strong style={{ color: lgColors.text }}>Name:</strong> {contributor.name}
+                      <div className={styles.helper}>
+                        <strong className={styles.factLabel}>Name:</strong> {contributor.name}
                       </div>
-                      <div style={lgStyles.helper}>
-                        <strong style={{ color: lgColors.text }}>Affiliation Name:</strong>{" "}
+                      <div className={styles.helper}>
+                        <strong className={styles.factLabel}>Affiliation Name:</strong>{" "}
                         {contributor.affiliationName || "Not set"}
                       </div>
-                      <div style={lgStyles.helper}>
-                        <strong style={{ color: lgColors.text }}>Affiliation Identifier:</strong>{" "}
+                      <div className={styles.helper}>
+                        <strong className={styles.factLabel}>Affiliation Identifier:</strong>{" "}
                         {contributor.affiliationIdentifier || "Not set"}
                       </div>
                     </div>
                   )}
-                  <div style={lgStyles.contributorActions}>
+                  <div className={styles.contributorActions}>
                     {editingContributorId === contributor.identifier ? (
                       <>
-                        <button
-                          type="button"
+                        <Button
+                          variant="primary"
+                          size="tiny"
                           onClick={saveContributor}
-                          style={lgActionButton("primary")}
                           aria-label={`Save contributor ${contributor.name}`}
                           title="Save"
                         >
                           {Ic.check(14)}
-                        </button>
-                        <button
-                          type="button"
+                        </Button>
+                        <Button
+                          size="tiny"
                           onClick={cancelContributorEdit}
-                          style={lgActionButton("neutral")}
                           aria-label={`Cancel editing contributor ${contributor.name}`}
                           title="Cancel"
                         >
                           {Ic.x(14)}
-                        </button>
+                        </Button>
                       </>
                     ) : (
                       <>
-                        <button
-                          type="button"
+                        <Button
+                          variant="primary"
+                          size="tiny"
                           disabled={locked}
                           onClick={() => editContributor(contributor)}
-                          style={lgActionButton("primary", locked)}
                           aria-label={`Edit contributor ${contributor.name}`}
                           title="Edit"
                         >
                           {Ic.pen(14)}
-                        </button>
-                        <button
-                          type="button"
+                        </Button>
+                        <Button
+                          variant="danger"
+                          size="tiny"
                           disabled={locked}
                           onClick={() => removeContributor(contributor.identifier)}
-                          style={lgActionButton("danger", locked)}
                           aria-label={`Remove contributor ${contributor.name}`}
                           title="Remove"
                         >
                           {Ic.x(14)}
-                        </button>
+                        </Button>
                         <button
                           type="button"
                           disabled={locked || correspondingAuthor === contributor.identifier}
@@ -453,10 +437,6 @@ export function PageMetadataEntry({
                               setCorrespondingCatalogContributor(current, contributor.identifier),
                             )
                           }
-                          style={lgActionButton(
-                            "success",
-                            locked || correspondingAuthor === contributor.identifier,
-                          )}
                           aria-label={
                             correspondingAuthor === contributor.identifier
                               ? `${contributor.name} is corresponding author`
@@ -480,8 +460,8 @@ export function PageMetadataEntry({
             </div>
           )}
           {!locked && (
-            <div style={lgStyles.contributorAddGrid}>
-              <input
+            <div className={styles.contributorAddFields}>
+              <Input
                 value={pendingContributor.identifier}
                 onChange={(event) =>
                   setPendingContributor((prev) => ({
@@ -496,18 +476,18 @@ export function PageMetadataEntry({
                   }
                 }}
                 placeholder="Identifier"
-                style={{ ...lgInput(false), minHeight: 38 }}
+                density="compact"
               />
-              <input
+              <Input
                 value={pendingContributor.name}
                 onChange={(event) =>
                   setPendingContributor((prev) => ({ ...prev, name: event.target.value }))
                 }
                 placeholder="Name *"
                 aria-required="true"
-                style={{ ...lgInput(false), minHeight: 38 }}
+                density="compact"
               />
-              <input
+              <Input
                 value={pendingContributor.affiliationName}
                 onChange={(event) =>
                   setPendingContributor((prev) => ({
@@ -516,9 +496,9 @@ export function PageMetadataEntry({
                   }))
                 }
                 placeholder="Affiliation name"
-                style={{ ...lgInput(false), minHeight: 38 }}
+                density="compact"
               />
-              <input
+              <Input
                 value={pendingContributor.affiliationIdentifier}
                 onChange={(event) =>
                   setPendingContributor((prev) => ({
@@ -533,30 +513,21 @@ export function PageMetadataEntry({
                   }
                 }}
                 placeholder="Affiliation identifier"
-                style={{ ...lgInput(false), minHeight: 38 }}
+                density="compact"
               />
             </div>
           )}
-          {contributorAddError && (
-            <div style={{ ...lgStyles.helper, color: lgColors.danger, marginTop: 8 }}>
-              {contributorAddError}
-            </div>
-          )}
+          {contributorAddError && <div className={styles.addError}>{contributorAddError}</div>}
           {!locked && (
-            <div style={{ marginTop: 8 }}>
-              <button type="button" onClick={addContributor} style={lgGlassButton()}>
+            <div className={styles.addAction}>
+              <button type="button" onClick={addContributor}>
                 Add contributor entity
               </button>
             </div>
           )}
-          {contributors.length === 0 && <div style={lgStyles.helper}>No contributors yet.</div>}
+          {contributors.length === 0 && <div className={styles.helper}>No contributors yet.</div>}
         </div>
       </div>
-    </div>
+    </GlassPageShell>
   );
 }
-
-const sectionDivider: React.CSSProperties = {
-  borderTop: "1px solid rgba(125, 211, 252, 0.28)",
-  paddingTop: 20,
-};

@@ -1,0 +1,186 @@
+/* Shared chrome for the pinned HUD consoles at the canvas edges — files, bench,
+ * logs, review. The frosted card, its expand/collapse header, and the
+ * collapsible body.
+ *
+ * Each console's *placement* is its own module's business; what the card looks
+ * like is decided once, here. The `outerStyle` prop this replaces let every
+ * caller re-decide the border, radius and shadow. */
+
+.console {
+  position: absolute;
+  overflow: hidden;
+  width: var(--hud-width-collapsed);
+  border-radius: var(--radius-panel);
+  border: 1px solid var(--hud-edge);
+  background: var(--hud-bg);
+  backdrop-filter: blur(4px);
+  box-shadow: var(--hud-shadow-collapsed);
+  transition:
+    width 0.26s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.26s;
+}
+
+.console[data-open] {
+  width: var(--hud-width-open);
+  box-shadow: var(--hud-shadow-open);
+}
+
+/* Mid-drag the width is the pointer's, so the easing has to stand down. */
+.console[data-resizing] {
+  transition: none;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-shrink: 0;
+  width: 100%;
+  padding: 9px var(--space-3);
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.header:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.icon {
+  display: flex;
+  color: var(--hud-icon-tint, var(--chrome-text-muted));
+}
+
+.labels {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.title {
+  font-size: var(--text-md);
+  font-weight: 650;
+  color: var(--chrome-text);
+}
+
+.subtitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--chrome-text-muted);
+}
+
+.chevron {
+  display: flex;
+  flex-shrink: 0;
+  color: var(--chrome-text-muted);
+  transition: transform 0.26s;
+}
+
+.console[data-open] .chevron {
+  transform: rotate(180deg);
+}
+
+/* --- Body -----------------------------------------------------------------
+ * Two shapes: a measured collapse (max-height animated to a known number) and
+ * a plain conditional one for bodies that size themselves. */
+
+.collapse {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition:
+    max-height 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.2s;
+}
+
+.console[data-open] .collapse {
+  max-height: var(--hud-body-height);
+  opacity: 1;
+}
+
+.collapseBody {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 2px var(--space-3) var(--space-3);
+  border-top: 1px solid var(--hud-edge);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-top: 1px solid var(--hud-edge);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .console,
+  .chevron,
+  .collapse {
+    transition: none;
+  }
+}
+
+/* --- Placements ----------------------------------------------------------
+ * Where each of the four pinned consoles sits. They live together because
+ * they are one arrangement — the canvas's four corners and its foot — and
+ * splitting them across four modules hid that they have to agree. */
+
+.filesPlacement {
+  left: 16px;
+  top: 16px;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100% - 32px);
+}
+
+.benchPlacement {
+  left: 16px;
+  bottom: 16px;
+}
+
+.receiptsPlacement {
+  right: 16px;
+  top: 16px;
+  max-height: calc(100% - 32px);
+}
+
+.logsPlacement {
+  right: 60px;
+  bottom: 16px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+}
+
+.reviewPlacement {
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 35;
+  max-width: calc(100% - 640px);
+}
+
+/* --- Body shapes ---------------------------------------------------------- */
+
+.receiptsBody {
+  gap: 9px;
+  overflow-y: auto;
+}
+
+.reviewBody {
+  gap: 10px;
+  overflow-x: auto;
+}
+
+/* Bounded by the height the user dragged the logs console to. */
+.logsBody {
+  max-height: var(--hud-logs-height);
+}

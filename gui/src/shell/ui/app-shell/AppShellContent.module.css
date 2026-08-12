@@ -1,0 +1,59 @@
+/* The workspace behind the canvas: a soft gradient with three drifting colour
+ * pools, purely atmospheric and never interactive. */
+
+.main {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--workspace-bg);
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.blob {
+  position: absolute;
+  border-radius: 50%;
+}
+
+.blob[data-place="left"] {
+  top: -80px;
+  left: 10%;
+  width: 480px;
+  height: 320px;
+  background: var(--workspace-blob-a);
+}
+
+.blob[data-place="right"] {
+  top: 20px;
+  right: 5%;
+  width: 360px;
+  height: 280px;
+  background: var(--workspace-blob-b);
+}
+
+.blob[data-place="center"] {
+  top: 160px;
+  left: 35%;
+  width: 300px;
+  height: 200px;
+  background: var(--workspace-blob-c);
+}
+
+.inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}

@@ -1,8 +1,9 @@
 import type { LogEntry } from "@core/ree/ReeTypes";
 import type { ReeRun } from "@core/runs/ReeRun";
 import { useReeRunLogsQuery, useReeRunQuery } from "@shell/data/runs/queries";
-import { type CSSProperties, type ReactNode, useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 import type { useAppShell } from "../../hooks/useAppShell";
+import styles from "./pageContainers.module.css";
 
 export type AppShellController = ReturnType<typeof useAppShell>;
 
@@ -19,15 +20,8 @@ export interface AppShellPageContainerProps {
   sealLog: AppShellController["sealLog"];
 }
 
-const CONTENT_SECTION_STYLE: CSSProperties = {
-  flex: 1,
-  overflow: "hidden",
-  display: "flex",
-  flexDirection: "column",
-};
-
 export function ContentSection({ children }: { children: ReactNode }) {
-  return <div style={CONTENT_SECTION_STYLE}>{children}</div>;
+  return <div className={styles.contentSection}>{children}</div>;
 }
 
 export function useStepRunLogEntry(args: {

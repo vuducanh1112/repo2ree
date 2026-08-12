@@ -1,5 +1,6 @@
 import { type CableGeo, cableHl, cablePath } from "@core/canvas/cableGeometry";
 import { stageTone } from "../../theme/appearance";
+import styles from "./CableOverlay.module.css";
 
 interface CableOverlaySvgProps {
   geo: CableGeo;
@@ -72,15 +73,15 @@ function CableStrand({
       <path
         d={dHl}
         fill="none"
-        stroke="#ffffff"
+        stroke="var(--cable-gloss)"
         strokeWidth="1.8"
         opacity="0.60"
         strokeLinecap="round"
       />
       <circle cx={x1} cy={y1} r="5.5" fill={knobFill} stroke={knobStroke} strokeWidth="1.3" />
-      <circle cx={x1} cy={y1} r="2.4" fill="#fff" opacity="0.85" />
+      <circle cx={x1} cy={y1} r="2.4" fill="var(--cable-gloss)" opacity="0.85" />
       <circle cx={x2} cy={y2} r="5.5" fill={knobFill} stroke={knobStroke} strokeWidth="1.3" />
-      <circle cx={x2} cy={y2} r="2.4" fill="#fff" opacity="0.85" />
+      <circle cx={x2} cy={y2} r="2.4" fill="var(--cable-gloss)" opacity="0.85" />
     </>
   );
 }
@@ -89,27 +90,14 @@ export function CableOverlaySvg({ geo, levelMeta }: CableOverlaySvgProps) {
   const { cables, w, h } = geo;
 
   return (
-    <svg
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%",
-        pointerEvents: "none",
-        overflow: "visible",
-        zIndex: 0,
-      }}
-      viewBox={`0 0 ${w} ${h}`}
-      preserveAspectRatio="none"
-    >
+    <svg className={styles.overlay} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none">
       <title>Panel connections</title>
       {cables.map((c) => {
-        const color = c.connected ? stageTone(c.stageKey) : "#94a3b8";
-        const shadow = c.connected ? stageTone(c.stageKey, "ink") : "#334155";
-        const inner = c.connected ? levelMeta.bg : "#e2e8f0";
+        const color = c.connected ? stageTone(c.stageKey) : "var(--cable-dim)";
+        const shadow = c.connected ? stageTone(c.stageKey, "ink") : "var(--cable-dim-ink)";
+        const inner = c.connected ? levelMeta.bg : "var(--cable-dim-core)";
         return (
-          <g key={c.id} opacity={c.connected ? 1 : 0.38}>
+          <g key={c.id} className={styles.cable} data-connected={c.connected || undefined}>
             <CableStrand
               x1={c.x1}
               y1={c.y1}

@@ -7,11 +7,11 @@ import {
   newNetworkRow,
   newStorageRow,
 } from "@core/hbom/hardwareBomDraft";
+import { Badge } from "@shell/ui/shared/components/Badge";
+import { Button } from "@shell/ui/shared/components/Button";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { useFocusScroll } from "@shell/ui/shared/hooks/useFocusScroll";
 import { stageTone } from "@shell/ui/theme/appearance";
-import { lgColors, lgGlassButton, lgStatusBadge } from "@shell/ui/theme/lightGlassTheme";
-import { S_ACTION_BUTTON_BASE } from "@shell/ui/theme/theme";
 import { useState } from "react";
 import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
@@ -21,6 +21,7 @@ import { GlassSectionHeader } from "../../components/GlassSectionHeader";
 import { RunActionButton } from "../../components/RunActionButton";
 import { useHardwareBomDraft } from "../../hooks/useHardwareBomDraft";
 import type { PageHardwareBomProps } from "../sharedStepUi";
+import styles from "./HardwareBomPage.module.css";
 import {
   type CategoryDescriptor,
   HardwareCategoryTabs,
@@ -33,7 +34,6 @@ import {
   createNetworkColumns,
   createStorageColumns,
 } from "./hardwareBomColumns";
-import { inp, selectInp } from "./hardwareBomPageHelpers";
 
 const HBOM_ACCENT = stageTone(PAGE.HBOM);
 
@@ -129,33 +129,23 @@ export function PageHardwareBom({
 
   const cpuColumns = createCpuColumns({
     locked,
-    inp,
-    selectInp,
     onFocusHardwareDescription: focusHardwareDescription,
     patchCpuRow: (index, patch) => patchRow("cpus", index, patch),
   });
   const gpuColumns = createGpuColumns({
     locked,
-    inp,
-    selectInp,
     patchGpuRow: (index, patch) => patchRow("gpus", index, patch),
   });
   const memoryColumns = createMemoryColumns({
     locked,
-    inp,
-    selectInp,
     patchMemoryRow: (index, patch) => patchRow("memory", index, patch),
   });
   const storageColumns = createStorageColumns({
     locked,
-    inp,
-    selectInp,
     patchStorageRow: (index, patch) => patchRow("storage", index, patch),
   });
   const networkColumns = createNetworkColumns({
     locked,
-    inp,
-    selectInp,
     patchNetworkRow: (index, patch) => patchRow("network", index, patch),
   });
 
@@ -236,20 +226,10 @@ export function PageHardwareBom({
 
   const headerBadges = (
     <>
-      <span
-        style={{
-          fontSize: 11,
-          fontWeight: 700,
-          color: lgColors.chipText,
-          background: "rgba(239, 246, 255, 0.85)",
-          border: "1px solid rgba(79, 70, 229, 0.28)",
-          borderRadius: 99,
-          padding: "3px 9px",
-        }}
-      >
+      <Badge tone="info">
         {totalRows} {totalRows === 1 ? "device" : "devices"}
-      </span>
-      <span style={lgStatusBadge(statusReady)}>{statusLabel}</span>
+      </Badge>
+      <Badge tone={statusReady ? "success" : "warning"}>{statusLabel}</Badge>
     </>
   );
 
@@ -257,42 +237,21 @@ export function PageHardwareBom({
   const runLabel = running ? "Profiling…" : runDone ? "Re-profile" : "Profile machine";
 
   const headerRight = (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+    <div className={styles.headerActions}>
       {locked && (
-        <button
-          type="button"
-          onClick={() => onLockedChange(false)}
-          style={{
-            ...lgGlassButton(),
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            fontSize: 12,
-          }}
-        >
-          {Ic.unlock(13)} Unlock fields
-        </button>
+        <Button size="small" icon={Ic.unlock(13)} onClick={() => onLockedChange(false)}>
+          Unlock fields
+        </Button>
       )}
       {running && onCancel && (
-        <button
-          type="button"
+        <Button
+          variant="danger"
+          size="small"
+          aria-label="Cancel profiling"
           onClick={() => onCancel("hbom")}
-          style={{
-            ...S_ACTION_BUTTON_BASE,
-            display: "flex",
-            alignItems: "center",
-            padding: "8px 10px",
-            borderRadius: 8,
-            fontSize: 12,
-            fontWeight: 700,
-            cursor: "pointer",
-            color: lgColors.danger,
-            background: "rgba(255, 241, 242, 0.82)",
-            border: `1px solid ${lgColors.dangerBorder}`,
-          }}
         >
           {Ic.x(13)}
-        </button>
+        </Button>
       )}
       <RunActionButton
         label={runLabel}

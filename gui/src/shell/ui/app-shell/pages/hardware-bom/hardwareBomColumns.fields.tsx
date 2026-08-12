@@ -1,12 +1,8 @@
-import type React from "react";
+import { Input, Select } from "@shell/ui/shared/components/FormControl";
 import type { HardwareColumn } from "./hardwareBomColumns.types";
-
-type CellStyle = (locked: boolean, extra?: React.CSSProperties) => React.CSSProperties;
 
 interface CellRenderContext {
   locked: boolean;
-  inp: CellStyle;
-  selectInp: CellStyle;
   /** Invoked on focus of fields declared with `focusOnEdit`. */
   onFocus?: () => void;
 }
@@ -41,26 +37,27 @@ export function buildColumns<RowT>(
 
       if (spec.kind === "select") {
         return (
-          <select
+          <Select
+            density="compact"
             disabled={ctx.locked}
             value={value as string}
             onChange={(event) =>
               patch(index, { [spec.field]: event.target.value } as Partial<RowT>)
             }
-            style={ctx.selectInp(ctx.locked)}
           >
             {spec.options.map((option) => (
               <option key={option} value={option}>
                 {option}
               </option>
             ))}
-          </select>
+          </Select>
         );
       }
 
       const isNumber = spec.kind === "number";
       return (
-        <input
+        <Input
+          density="compact"
           disabled={ctx.locked}
           type={isNumber ? "number" : undefined}
           min={isNumber ? spec.min : undefined}
@@ -72,7 +69,6 @@ export function buildColumns<RowT>(
               [spec.field]: isNumber ? Number(event.target.value) : event.target.value,
             } as Partial<RowT>)
           }
-          style={ctx.inp(ctx.locked)}
         />
       );
     },

@@ -2,8 +2,9 @@ import type { AppShellPage } from "@core/app-shell/pages";
 import type { CanvasNode, NodeProjection, SummaryRow } from "@core/canvas/canvasNodes";
 import type React from "react";
 import { stageTone } from "../../theme/appearance";
-import { C, F } from "../../theme/theme";
+import { cssVars } from "../../theme/styleVars";
 import { canvasIcon } from "./canvasIcons";
+import styles from "./NodeCard.module.css";
 import { StatusDot } from "./StatusDot";
 
 interface NodeCardProps {
@@ -53,75 +54,35 @@ export function NodeCard({
         if (wasNodeDragged.current) return;
         onNavigate(node.key, e.currentTarget.getBoundingClientRect());
       }}
-      style={{
-        position: "absolute",
-        left: node.x + offsetX,
-        top: node.y + offsetY,
-        transform: `translate(-50%,-50%) translate(${projection.dx}px,${projection.dy}px) scale(${projection.scale})`,
-        width: 176,
-        textAlign: "left",
-        background: C.surface,
-        border: active ? `1px solid ${C.accent}` : `1px solid ${done ? "#bbf0d8" : C.border}`,
-        borderRadius: 13,
-        padding: "11px 13px",
-        cursor: locked ? "default" : "pointer",
-        opacity: locked ? 0.34 : 1,
-        boxShadow: active
-          ? `0 0 0 3px ${C.accentBg}, 0 10px 28px rgba(37,99,235,0.22)`
-          : "0 4px 16px rgba(13,17,23,0.07)",
-        transition:
-          "transform 0.4s cubic-bezier(0.4,0,0.2,1), box-shadow 0.15s, border-color 0.15s, opacity 0.35s",
-      }}
+      className={styles.card}
+      data-done={done || undefined}
+      data-active={active || undefined}
+      style={cssVars({
+        "--node-x": `${node.x + offsetX}px`,
+        "--node-y": `${node.y + offsetY}px`,
+        "--node-dx": `${projection.dx}px`,
+        "--node-dy": `${projection.dy}px`,
+        "--node-scale": projection.scale,
+        "--node-tint": stageTone(node.key),
+      })}
     >
-      <div
-        style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: rows.length ? 9 : 0 }}
-      >
-        <span
-          style={{
-            width: 26,
-            height: 26,
-            borderRadius: 7,
-            flexShrink: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: done ? "#e7f9f1" : C.surfaceAlt,
-            border: `1px solid ${done ? "#bbf0d8" : C.border}`,
-            color: done ? stageTone(node.key) : C.textMuted,
-          }}
-        >
+      <div className={styles.head} data-with-rows={rows.length ? true : undefined}>
+        <span aria-hidden className={styles.glyph}>
           {canvasIcon(node.iconKey)(14)}
         </span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 650, color: C.text, letterSpacing: -0.1 }}>
-            {node.label}
-          </div>
+        <div className={styles.titleBox}>
+          <div className={styles.title}>{node.label}</div>
         </div>
         <StatusDot on={done} stale={stale} />
       </div>
 
       {rows.map((row) => (
-        <div
-          key={row.label}
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            gap: 8,
-            padding: "2px 0",
-            fontFamily: F.mono,
-            fontSize: 10.5,
-          }}
-        >
-          <span style={{ color: C.textMuted }}>{row.label}</span>
+        <div key={row.label} className={styles.row}>
+          <span className={styles.rowLabel}>{row.label}</span>
           <span
             title={row.title}
-            style={{
-              color: row.value ? C.textMid : C.borderMid,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              maxWidth: 104,
-            }}
+            className={styles.rowValue}
+            data-empty={row.value ? undefined : true}
           >
             {row.value ?? "—"}
           </span>

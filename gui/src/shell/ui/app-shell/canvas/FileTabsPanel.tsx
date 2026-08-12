@@ -87,7 +87,7 @@ export function FileTabsPanel({
         {activeEntry.path}
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
+      <div className={styles.viewerSlot}>
         <FileViewer key={activeEntry.node.id} file={activeEntry.node} />
       </div>
     </CanvasWindow>

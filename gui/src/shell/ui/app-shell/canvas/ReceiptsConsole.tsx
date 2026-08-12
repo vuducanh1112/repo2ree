@@ -2,13 +2,11 @@ import { parseAuthorReceipts } from "@core/receipts/authorReceipts";
 import { useAuthorReceiptsQuery } from "@shell/data/receipts/queries";
 import { type ReactNode, useMemo, useState } from "react";
 import { Ic } from "../../shared/components/Icon";
-import { lgColors } from "../../theme/lightGlassTheme";
-import { C, F } from "../../theme/theme";
 import { HudConsole } from "./HudConsole";
+import hud from "./HudConsole.module.css";
 import { ReceiptCard } from "./ReceiptCard";
+import styles from "./ReceiptsConsole.module.css";
 
-const HUD_RIGHT = 16;
-const HUD_TOP = 16;
 const HUD_WIDTH_OPEN = 380;
 const HUD_WIDTH_COLLAPSED = 224;
 
@@ -38,16 +36,16 @@ export function ReceiptsConsole({ provisioned }: ReceiptsConsoleProps) {
       onToggle={() => setOpen((value) => !value)}
       widthOpen={HUD_WIDTH_OPEN}
       widthCollapsed={HUD_WIDTH_COLLAPSED}
-      outerStyle={{ right: HUD_RIGHT, top: HUD_TOP, maxHeight: "calc(100% - 32px)" }}
+      className={hud.receiptsPlacement}
       icon={Ic.shield(16)}
-      iconColor={receipts.length > 0 ? C.accent : lgColors.textMuted}
+      iconTint={receipts.length > 0 ? "var(--chrome-accent)" : undefined}
       title="Receipts"
       subtitle={subtitle}
       on={receipts.length > 0}
       expandLabel="Expand receipts"
       collapseLabel="Collapse receipts"
       bodyMaxHeight={560}
-      bodyStyle={{ gap: 9, overflowY: "auto" }}
+      bodyClassName={hud.receiptsBody}
     >
       <Section title="Author evidence">
         {query.isError ? (
@@ -64,24 +62,13 @@ export function ReceiptsConsole({ provisioned }: ReceiptsConsoleProps) {
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <div
-        style={{
-          color: C.textMid,
-          fontSize: 10,
-          fontWeight: 800,
-          fontFamily: F.mono,
-          textTransform: "uppercase",
-          letterSpacing: 0.5,
-        }}
-      >
-        {title}
-      </div>
+    <div className={styles.section}>
+      <div className={styles.sectionTitle}>{title}</div>
       {children}
     </div>
   );
 }
 
 function Empty({ children }: { children: ReactNode }) {
-  return <div style={{ color: C.textMuted, fontSize: 10.5 }}>{children}</div>;
+  return <div className={styles.empty}>{children}</div>;
 }

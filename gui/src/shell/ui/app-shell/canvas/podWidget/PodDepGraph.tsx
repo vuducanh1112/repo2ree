@@ -1,4 +1,3 @@
-import { C } from "@shell/ui/theme/theme";
 import { POD_GRAPHS } from "./podWidgetData";
 
 interface PodDepGraphProps {
@@ -16,7 +15,7 @@ export function PodDepGraph({ level, color }: PodDepGraphProps) {
           cy="0"
           r="7"
           fill="none"
-          stroke="#c8d0dc"
+          stroke="var(--pod-shadow)"
           strokeWidth="1.5"
           strokeDasharray="4 4"
         />
@@ -48,7 +47,7 @@ export function PodDepGraph({ level, color }: PodDepGraphProps) {
             cx={graphNode.x}
             cy={graphNode.y}
             r={graphNode.r}
-            fill={graphNode.root ? color : C.surface}
+            fill={graphNode.root ? color : "var(--chrome-surface)"}
             stroke={color}
             strokeWidth={graphNode.root ? 0 : 1.8}
           />
@@ -57,7 +56,7 @@ export function PodDepGraph({ level, color }: PodDepGraphProps) {
               cx={graphNode.x}
               cy={graphNode.y}
               r={graphNode.r * 0.38}
-              fill="#fff"
+              fill="var(--pod-node)"
               opacity="0.75"
             />
           )}

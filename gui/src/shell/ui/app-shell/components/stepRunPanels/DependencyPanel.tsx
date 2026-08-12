@@ -1,6 +1,7 @@
 import type { DependencyGroup } from "@core/evaluate/dependencyPresentation";
 import { useState } from "react";
 import { DependencyGroupCard } from "./DependencyGroupCard";
+import styles from "./DependencyPanel.module.css";
 import { DependencySummaryFilters } from "./DependencySummaryFilters";
 
 interface DependencyPanelProps {
@@ -15,10 +16,10 @@ export function DependencyPanel({ depGroups }: DependencyPanelProps) {
   const toggle = (path: string) => setOpenGroups((o) => ({ ...o, [path]: !o[path] }));
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 0, minHeight: 0 }}>
+    <div className={styles.panel}>
       <DependencySummaryFilters depGroups={depGroups} filter={filter} onFilter={setFilter} />
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div className={styles.groups}>
         {depGroups.map((group) => (
           <DependencyGroupCard
             key={group.path}

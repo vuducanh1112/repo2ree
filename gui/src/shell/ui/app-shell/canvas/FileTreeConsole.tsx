@@ -3,12 +3,12 @@ import { filterFileTree } from "@core/workspace/fileTreeFilter";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FileNode } from "../../shared/components/FileTree";
 import { Ic } from "../../shared/components/Icon";
-import { lgColors } from "../../theme/lightGlassTheme";
-import { F } from "../../theme/theme";
 import { FileFilterInput } from "../pages/files/FileFilterInput";
 import { useReeFileTree } from "../pages/files/useReeFileTree";
 import { FileTabsPanel } from "./FileTabsPanel";
+import styles from "./FileTreeConsole.module.css";
 import { HudConsole } from "./HudConsole";
+import hud from "./HudConsole.module.css";
 
 const HUD_LEFT = 16;
 const HUD_TOP = 16;
@@ -100,15 +100,8 @@ export function FileTreeConsole({ reeFiles, open, onOpenChange }: FileTreeConsol
         }}
         widthOpen={HUD_WIDTH_OPEN}
         widthCollapsed={HUD_WIDTH_COLLAPSED}
-        outerStyle={{
-          left: HUD_LEFT,
-          top: HUD_TOP,
-          maxHeight: "calc(100% - 32px)",
-          display: "flex",
-          flexDirection: "column",
-        }}
+        className={hud.filesPlacement}
         icon={Ic.files(16)}
-        iconColor={lgColors.textMuted}
         title="Files"
         subtitle={
           fileCount > 0
@@ -120,17 +113,9 @@ export function FileTreeConsole({ reeFiles, open, onOpenChange }: FileTreeConsol
         collapseLabel="Collapse files"
       >
         <FileFilterInput query={query} onChange={setQuery} />
-        <div style={{ overflowY: "auto", padding: "0 4px 8px", maxHeight: "min(52vh, 460px)" }}>
+        <div className={styles.tree}>
           {filtered.length === 0 ? (
-            <div
-              style={{
-                padding: "10px 12px",
-                fontSize: 11,
-                color: lgColors.textMuted,
-                fontFamily: F.sans,
-                fontStyle: "italic",
-              }}
-            >
+            <div className={styles.empty}>
               {filtering
                 ? "No matching REE files"
                 : fileCount === 0

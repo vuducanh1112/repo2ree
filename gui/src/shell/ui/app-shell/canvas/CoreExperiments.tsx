@@ -2,14 +2,15 @@ import { PAGE } from "@core/app-shell/pages";
 import type { ReeExperiment } from "@core/ree/ReeSpec";
 import { useState } from "react";
 import { Ic } from "../../shared/components/Icon";
-import { stageTone, translucent } from "../../theme/appearance";
-import { C, F } from "../../theme/theme";
+import { stageTone } from "../../theme/appearance";
+import { cssVars } from "../../theme/styleVars";
+import styles from "./CoreExperiments.module.css";
 import type { CoreCableTarget } from "./useExperimentCables";
 
 // The experiments live in the `core` zone of the master canvas, so the core
 // column keeps that node's indigo — the satellite cables read as the same family.
-const EXP_COLOR = stageTone(PAGE.EXPERIMENTS);
-const EXP_SHADOW = stageTone(PAGE.EXPERIMENTS, "ink");
+const _EXP_COLOR = stageTone(PAGE.EXPERIMENTS);
+const _EXP_SHADOW = stageTone(PAGE.EXPERIMENTS, "ink");
 const ADD_KEY = "__add-experiment__";
 
 function satelliteKey(index: number): string {
@@ -149,7 +150,7 @@ function CoreOverviewButton({
   onHoverChange: (hovered: boolean) => void;
   onOpenOverview: () => void;
 }) {
-  const [hovered, setHovered] = useState(false);
+  const [_hovered, setHovered] = useState(false);
   const setHover = (next: boolean) => {
     setHovered(next);
     onHoverChange(next);
@@ -171,44 +172,15 @@ function CoreOverviewButton({
         if (wasNodeDragged.current) return;
         onOpenOverview();
       }}
-      style={{
-        position: "absolute",
-        left: center.x,
-        top: center.y,
-        width: podDiameter,
-        height: podDiameter,
-        transform: "translate(-50%,-50%)",
-        borderRadius: "50%",
-        border: "none",
-        background: "transparent",
-        cursor: "pointer",
-      }}
+      className={styles.coreHit}
+      style={cssVars({
+        "--core-x": `${center.x}px`,
+        "--core-y": `${center.y}px`,
+        "--core-size": `${podDiameter}px`,
+        "--core-label": label,
+      })}
     >
-      <span
-        style={{
-          position: "absolute",
-          left: "50%",
-          top: "100%",
-          transform: "translate(-50%, 14px)",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: label * 0.4,
-          whiteSpace: "nowrap",
-          padding: `${label * 0.45}px ${label * 0.9}px`,
-          borderRadius: 999,
-          background: EXP_COLOR,
-          color: "#fff",
-          fontFamily: F.sans,
-          fontWeight: 700,
-          fontSize: label,
-          boxShadow: `0 ${label * 0.3}px ${label}px ${translucent(EXP_SHADOW, 33)}`,
-          opacity: hovered ? 1 : 0,
-          transition: "opacity 0.15s",
-          pointerEvents: "none",
-        }}
-      >
-        {Ic.layers(label)} Open catalog
-      </span>
+      <span className={styles.coreLabel}>{Ic.layers(label)} Open catalog</span>
     </button>
   );
 }
@@ -252,79 +224,18 @@ function ExperimentSatellite({
         if (wasNodeDragged.current) return;
         onSelect();
       }}
-      style={{
-        position: "absolute",
-        left: x,
-        top: y,
-        transform: `translate(-50%,-50%) scale(${scale})`,
-        width: 188,
-        textAlign: "left",
-        background: C.surface,
-        border: `1px solid ${wired ? "#c7d2fe" : C.border}`,
-        borderRadius: 13,
-        padding: "11px 13px",
-        cursor: "pointer",
-        boxShadow: wired ? "0 6px 20px rgba(79,70,229,0.14)" : "0 4px 16px rgba(13,17,23,0.07)",
-        transition: "box-shadow 0.15s, border-color 0.15s",
-      }}
+      className={styles.satellite}
+      data-wired={wired || undefined}
+      style={cssVars({ "--sat-x": `${x}px`, "--sat-y": `${y}px`, "--sat-scale": scale })}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-        <span
-          style={{
-            fontFamily: F.mono,
-            fontSize: 10,
-            fontWeight: 800,
-            letterSpacing: "0.08em",
-            color: EXP_COLOR,
-            border: `1px solid ${translucent(EXP_COLOR, 27)}`,
-            background: "#eef2ff",
-            borderRadius: 6,
-            padding: "2px 7px",
-          }}
-        >
-          {String(index + 1).padStart(2, "0")}
-        </span>
-        <span
-          style={{
-            flex: 1,
-            minWidth: 0,
-            fontSize: 13,
-            fontWeight: 650,
-            color: name ? C.text : C.textMuted,
-            fontStyle: name ? "normal" : "italic",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
+      <div className={styles.satelliteHead}>
+        <span className={styles.index}>{String(index + 1).padStart(2, "0")}</span>
+        <span className={styles.name} data-untitled={name ? undefined : true}>
           {name || "untitled"}
         </span>
-        <span
-          style={{
-            width: 9,
-            height: 9,
-            borderRadius: "50%",
-            flexShrink: 0,
-            background: wired ? C.done : C.borderMid,
-            boxShadow: wired ? `0 0 0 3px ${C.done}22` : "none",
-          }}
-        />
+        <span aria-hidden className={styles.wiredDot} />
       </div>
-      <div
-        style={{
-          fontFamily: F.mono,
-          fontSize: 11,
-          color: command ? C.textMid : C.textMuted,
-          background: C.surfaceAlt,
-          border: `1px solid ${C.border}`,
-          borderRadius: 7,
-          padding: "6px 9px",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-          opacity: command ? 1 : 0.7,
-        }}
-      >
+      <div className={styles.command} data-unset={command ? undefined : true}>
         {command || "no command set"}
       </div>
     </button>
@@ -353,26 +264,8 @@ function AddSatellite({
       title="Add experiment"
       ref={setRef}
       onClick={onAdd}
-      style={{
-        position: "absolute",
-        left: x,
-        top: y,
-        transform: `translate(-50%,-50%) scale(${scale})`,
-        width: 188,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 8,
-        background: "rgba(238,242,255,0.6)",
-        border: `1.5px dashed ${translucent(EXP_COLOR, 47)}`,
-        borderRadius: 13,
-        padding: "16px 13px",
-        cursor: "pointer",
-        color: EXP_COLOR,
-        fontSize: 13,
-        fontWeight: 650,
-        fontFamily: F.sans,
-      }}
+      className={styles.addSlot}
+      style={cssVars({ "--sat-x": `${x}px`, "--sat-y": `${y}px`, "--sat-scale": scale })}
     >
       {Ic.plus(15)} Add experiment
     </button>

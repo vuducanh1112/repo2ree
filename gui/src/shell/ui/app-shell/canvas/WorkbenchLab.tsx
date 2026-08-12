@@ -11,14 +11,13 @@ import { useWorkbenchImageCatalog } from "@shell/data/workbench/images";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { Button } from "../../shared/components/Button";
 import { Ic } from "../../shared/components/Icon";
-import { lgColors, lgInfoBanner, lgPrimaryActionButton } from "../../theme/lightGlassTheme";
-import { C, F } from "../../theme/theme";
+import { Notice } from "../../shared/components/Notice";
 import { CollapsibleLogCard } from "../components/CollapsibleLogCard";
 import {
   DEFAULT_WORKBENCH_IMAGE_SELECTION,
   resolveWorkbenchImage,
-  WORKBENCH_COLOR,
   type WorkbenchImageSelection,
   WorkbenchImageSelector,
 } from "../pages/workbench/WorkbenchPageSections";
@@ -148,15 +147,13 @@ export function WorkbenchLab({ evaluation }: WorkbenchLabProps) {
         <DormantSpecimen evaluation={evaluation} ready />
 
         <section className={styles.console}>
-          <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 4 }}>
-            <span className={styles.consoleIcon}>{Ic.package(20)}</span>
+          <div className={styles.consoleHeading}>
+            <span aria-hidden className={styles.consoleIcon}>
+              {Ic.package(20)}
+            </span>
             <div>
-              <h1
-                style={{ fontSize: 17, fontWeight: 700, color: lgColors.text, letterSpacing: -0.3 }}
-              >
-                Set up the workbench
-              </h1>
-              <p style={{ fontSize: 12.5, color: lgColors.textMuted, marginTop: 1 }}>
+              <h1 className={styles.consoleTitle}>Set up the workbench</h1>
+              <p className={styles.consoleSubtitle}>
                 Configure the isolated lab that will host this REE.
               </p>
             </div>
@@ -178,17 +175,7 @@ export function WorkbenchLab({ evaluation }: WorkbenchLabProps) {
             <button
               type="button"
               onClick={() => navigate(APP_ROUTE.LAB_LOCATION)}
-              style={{
-                background: "transparent",
-                border: `1px solid ${C.border}`,
-                borderRadius: 8,
-                padding: "6px 10px",
-                color: lgColors.textMid,
-                fontSize: 12,
-                cursor: "pointer",
-                fontFamily: F.sans,
-                flexShrink: 0,
-              }}
+              className={styles.clear}
             >
               Change
             </button>
@@ -212,29 +199,24 @@ export function WorkbenchLab({ evaluation }: WorkbenchLabProps) {
           />
 
           {error && (
-            <div style={lgInfoBanner("danger")}>
-              <span style={{ color: lgColors.danger, display: "flex" }}>{Ic.x(14)}</span>
-              <span style={{ fontSize: 13, color: lgColors.danger }}>{error}</span>
-            </div>
+            <Notice tone="danger" icon={Ic.x(14)}>
+              {error}
+            </Notice>
           )}
 
           {log && <CollapsibleLogCard log={log} running={loading} title="Provisioning log" />}
 
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            fullWidth
+            busy={loading}
+            icon={loading ? Ic.loader(15) : Ic.package(15)}
             onClick={handleProvision}
             disabled={loading || (loadRequested && !bundle)}
-            style={{
-              ...lgPrimaryActionButton(loading || (loadRequested && !bundle)),
-              justifyContent: "center",
-            }}
           >
-            {loading ? Ic.loader(15) : Ic.package(15)}
-            <span>
-              {loading ? "Powering up…" : bundle ? "Provision and load REE" : "Provision workbench"}
-            </span>
-          </button>
-          <span style={{ fontSize: 11.5, color: lgColors.textMuted, textAlign: "center" }}>
+            {loading ? "Powering up…" : bundle ? "Provision and load REE" : "Provision workbench"}
+          </Button>
+          <span className={styles.provisionNote}>
             Brings the lab online — this can take a moment on first run.
           </span>
         </section>
@@ -258,20 +240,8 @@ function DormantSpecimen({ evaluation, ready }: { evaluation: EvaluationState; r
         </div>
       </div>
       <div className={styles.specimenCaption}>
-        <div
-          style={{
-            fontFamily: F.mono,
-            fontSize: 10.5,
-            letterSpacing: 1.4,
-            textTransform: "uppercase",
-            color: C.textMuted,
-          }}
-        >
-          Specimen pod · dormant
-        </div>
-        <div
-          style={{ fontSize: 12.5, color: C.textMid, marginTop: 5, maxWidth: 240, lineHeight: 1.5 }}
-        >
+        <div className={styles.specimenKind}>Specimen pod · dormant</div>
+        <div className={styles.specimenHint}>
           Provision the workbench to bring the lab online and seat the specimen.
         </div>
       </div>
@@ -294,41 +264,16 @@ function BundleChoice({
   onChange: (file: File | null) => void;
 }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 8,
-        padding: "12px 14px",
-        borderRadius: 9,
-        border: `1.5px solid ${required && !bundle ? C.accentBorder : C.border}`,
-        background: C.surface,
-      }}
-    >
-      <div style={{ fontSize: 13, color: lgColors.textMid, lineHeight: 1.5 }}>
+    <div className={styles.bundle} data-required={required && !bundle ? true : undefined}>
+      <div className={styles.bundleCopy}>
         {bundle
           ? "This workbench will be loaded with the uploaded REE."
           : required
             ? "Choose the downloaded REE bundle (.zip) to load onto this workbench."
             : "Start blank, or load a downloaded REE bundle (.zip) onto this workbench."}
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <label
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            border: `1px solid ${C.border}`,
-            borderRadius: 8,
-            padding: "6px 10px",
-            background: "transparent",
-            color: lgColors.textMid,
-            fontSize: 12,
-            fontFamily: F.sans,
-            cursor: disabled ? "not-allowed" : "pointer",
-            flexShrink: 0,
-          }}
-        >
+      <div className={styles.bundleRow}>
+        <label className={styles.chooser}>
           {Ic.upload(14)}
           <span>{bundle ? "Choose another" : "Choose REE bundle"}</span>
           <input
@@ -336,44 +281,23 @@ function BundleChoice({
             accept=".zip,application/zip"
             disabled={disabled}
             aria-label="REE bundle"
-            style={{ display: "none" }}
+            className={styles.hiddenFileInput}
             onChange={(event) => onChange(event.target.files?.[0] ?? null)}
           />
         </label>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div
-            style={{
-              fontSize: 12,
-              fontFamily: F.mono,
-              color: bundle ? lgColors.text : lgColors.textMuted,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {bundle
-              ? bundle.name
-              : required
-                ? "No bundle selected yet"
-                : "No bundle selected — blank REE"}
-          </div>
+        <div className={styles.bundleName} data-chosen={bundle ? true : undefined}>
+          {bundle
+            ? bundle.name
+            : required
+              ? "No bundle selected yet"
+              : "No bundle selected — blank REE"}
         </div>
         {bundle && (
           <button
             type="button"
             onClick={() => onChange(null)}
             disabled={disabled}
-            style={{
-              background: "transparent",
-              border: `1px solid ${C.border}`,
-              borderRadius: 8,
-              padding: "6px 10px",
-              color: lgColors.textMid,
-              fontSize: 12,
-              fontFamily: F.sans,
-              cursor: "pointer",
-              flexShrink: 0,
-            }}
+            className={styles.clear}
           >
             Clear
           </button>
@@ -385,19 +309,11 @@ function BundleChoice({
 
 function SectionLabel({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 6 }}>
-      <span style={{ color: WORKBENCH_COLOR, display: "flex" }}>{icon}</span>
-      <span
-        style={{
-          fontSize: 11,
-          fontWeight: 700,
-          letterSpacing: 0.8,
-          textTransform: "uppercase",
-          color: lgColors.textMid,
-        }}
-      >
-        {children}
+    <div className={styles.sectionLabel}>
+      <span aria-hidden className={styles.sectionIcon}>
+        {icon}
       </span>
+      <span className={styles.sectionText}>{children}</span>
     </div>
   );
 }

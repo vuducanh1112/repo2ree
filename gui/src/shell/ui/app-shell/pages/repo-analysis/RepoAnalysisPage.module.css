@@ -1,0 +1,396 @@
+/* Source Repository Analysis: what the repository gives anyone who clones it,
+ * across three independent axes. */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.cardLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  color: var(--field-label-ink);
+}
+
+.cardHint {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  color: var(--field-hint-ink);
+}
+
+/* --- Axis tracks ---------------------------------------------------------- */
+
+.axes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.axisHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.axisLabel {
+  font-size: var(--text-md);
+  font-weight: 800;
+  color: var(--field-ink);
+}
+
+.axisLevel {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--axis-tint);
+}
+
+.axisTrack {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.axisStepWrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.axisStep {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: var(--radius-round);
+  border: 1px solid var(--palette-edge-slate-mid);
+  background: var(--palette-film-white-soft);
+  color: var(--field-hint-ink);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+/* Reached: the repository is at least this good on this axis. */
+.axisStep[data-reached] {
+  border-color: color-mix(in srgb, var(--axis-tint) 33%, transparent);
+  background: color-mix(in srgb, var(--axis-tint) 8%, transparent);
+  color: var(--axis-tint);
+}
+
+/* Current: the level it actually sits at. */
+.axisStep[data-current] {
+  border-color: color-mix(in srgb, var(--axis-tint) 67%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--axis-tint) 13%, transparent);
+}
+
+.axisLink {
+  width: 14px;
+  height: 2px;
+  border-radius: var(--radius-round);
+  background: var(--palette-edge-slate-soft);
+}
+
+.axisLink[data-reached] {
+  background: color-mix(in srgb, var(--axis-tint) 53%, transparent);
+}
+
+/* --- Empty results -------------------------------------------------------- */
+
+.placeholder {
+  padding: var(--space-4);
+  text-align: center;
+  border: 1px dashed var(--placeholder-edge);
+  border-radius: 9px;
+  background: var(--placeholder-bg);
+  font-size: var(--text-md);
+  color: var(--field-hint-ink);
+}
+
+.placeholder[data-emphasis="strong"] {
+  border-width: 1.5px;
+  border-color: var(--placeholder-edge-strong);
+}
+
+.placeholderIcon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--space-2);
+  opacity: 0.5;
+}
+
+.placeholderHint {
+  margin-top: 3px;
+  font-size: var(--text-sm);
+}
+
+.counts {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-top: var(--space-3);
+}
+
+/* --- Expected manifests --------------------------------------------------- */
+
+.manifests {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.manifest {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 7px 10px;
+  border-radius: var(--radius-control);
+  border: 1px dashed color-mix(in srgb, var(--manifest-tint) 25%, transparent);
+  background: var(--palette-film-white-45);
+}
+
+.manifest[data-kind="pip"] {
+  --manifest-tint: var(--manifest-pip);
+}
+
+.manifest[data-kind="pyproject"] {
+  --manifest-tint: var(--manifest-pyproject);
+}
+
+.manifest[data-kind="conda"] {
+  --manifest-tint: var(--manifest-conda);
+}
+
+.manifest[data-kind="npm"] {
+  --manifest-tint: var(--manifest-npm);
+}
+
+.manifest[data-kind="container"] {
+  --manifest-tint: var(--manifest-container);
+}
+
+.manifest[data-kind="nix"] {
+  --manifest-tint: var(--manifest-nix);
+}
+
+.manifestIcon {
+  display: flex;
+  opacity: 0.7;
+  color: var(--manifest-tint);
+}
+
+.manifestName {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--manifest-tint);
+}
+
+.manifestHint {
+  font-size: var(--text-xs);
+  color: var(--field-hint-ink);
+}
+
+/* --- The workspace-inputs aside ------------------------------------------- */
+
+.asideHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.asideIcon {
+  display: flex;
+  color: var(--palette-cyan-600);
+}
+
+.asideTitle {
+  margin: 0;
+  font-size: 15px;
+  color: var(--field-ink);
+}
+
+.readout {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* --- Reproducibility threats ----------------------------------------------
+ * A threat's severity is the backend's classification; how it reads follows
+ * from that rather than from a table beside the component. */
+
+.dimensions {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dimension {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.dimensionLabel {
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 800;
+  color: var(--field-hint-ink);
+}
+
+.threat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: 9px;
+  border: 1px solid var(--palette-edge-slate-mid);
+  background: var(--palette-film-white-soft);
+}
+
+.threat[data-severity="high"] {
+  --threat-line: var(--threat-high-line);
+  --threat-wash: var(--threat-high-wash);
+  --threat-edge: var(--threat-high-edge);
+}
+
+.threat[data-severity="medium"] {
+  --threat-line: var(--threat-medium-line);
+  --threat-wash: var(--threat-medium-wash);
+  --threat-edge: var(--threat-medium-edge);
+}
+
+.threat[data-severity="low"] {
+  --threat-line: var(--threat-low-line);
+  --threat-wash: var(--threat-low-wash);
+  --threat-edge: var(--threat-low-edge);
+}
+
+/* Blocking the next level: the row itself takes the severity's colour. */
+.threat[data-blocking] {
+  border-color: var(--threat-edge);
+  background: var(--threat-wash);
+}
+
+.threatHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.severity {
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-round);
+  border: 1px solid var(--threat-edge);
+  background: var(--threat-wash);
+  color: var(--threat-line);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 800;
+}
+
+.threatCategory {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--field-hint-ink);
+}
+
+.threatTitle {
+  font-size: 13px;
+  font-weight: var(--weight-bold);
+  color: var(--field-ink);
+}
+
+.blocking {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+  font-size: var(--text-xs);
+  font-weight: 800;
+  color: var(--threat-line);
+}
+
+.threatDetail {
+  font-size: var(--text-md);
+  line-height: 1.45;
+  color: var(--page-subtitle-ink);
+}
+
+.affected {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.affectedItem {
+  padding: 1px var(--space-2);
+  border-radius: var(--space-1);
+  border: 1px solid var(--palette-edge-slate-mid);
+  background: var(--palette-film-white);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--page-subtitle-ink);
+}
+
+.affectedMore {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--field-hint-ink);
+}
+
+/* What to do about it — always present, and always reads as the way out. */
+.remedy {
+  display: flex;
+  gap: var(--space-2);
+  padding: 7px 10px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--remedy-edge);
+  background: var(--remedy-bg);
+  font-size: var(--text-md);
+  color: var(--remedy-ink);
+}
+
+.remedyIcon {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.clear {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: 9px;
+  border: 1px solid var(--remedy-edge);
+  background: var(--remedy-bg);
+  font-size: var(--text-md);
+  color: var(--remedy-ink);
+}

@@ -1,0 +1,21 @@
+/* The cables between the panels and the pod. A cable that is connected carries
+ * its stage's tone; one that is not reads as drawn-but-inert. */
+
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.cable {
+  opacity: 0.38;
+}
+
+.cable[data-connected] {
+  opacity: 1;
+}
