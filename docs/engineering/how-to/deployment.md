@@ -1,6 +1,6 @@
 # How to Deploy repo2ree
 
-> Status: current demo/dev deployment shape (2026-06). This is not yet a
+> Status: current demo/dev deployment shape (2026-08). This is not yet a
 > hardened production runbook. The current stack is useful for local demos and
 > engineering validation.
 
@@ -178,8 +178,8 @@ Each compose file creates one named volume:
 | `repo2ree-demo-data` | `/app/.repo2ree` in the backend | Backend-local metadata such as upload staging and workbench registry. |
 | `repo2ree-agent-state` | `/var/lib/repo2ree-agent` in the agent | The agent's stable identity across container replacements (created by `docker-compose.agent.yml`, with a pinned volume name so it survives recreation). |
 
-REE execution state lives in per-REE Docker volumes created by the supervisor,
-not inside `repo2ree-demo-data`.
+REE execution state lives in per-REE Docker volumes created by the selected
+agent's runtime at the supervisor's request, not inside `repo2ree-demo-data`.
 
 `docker compose down` keeps both volumes, which is what a stack you intend to
 restart wants. To stop a stack and reclaim everything it stored — the compose
@@ -196,7 +196,13 @@ Backend variables:
 | Variable | Default | Purpose |
 |---|---|---|
 | `UPLOAD_STAGING_DIR` | `.repo2ree/upload-staging` | Temporary upload landing zone before files enter a workbench. |
-| `WORKBENCH_REGISTRY_FILE` | `.repo2ree/workbench-registry.json` | Registry file mapping REE ids to workbench containers and volumes. |
+| `UPLOAD_MAX_BYTES` | 2 GiB | Per-upload staging limit. |
+| `UPLOAD_STAGING_MAX_BYTES` | 8 GiB | Aggregate staging budget. |
+| `UPLOAD_TTL_SECONDS` | `3600` | Abandoned-upload and token lifetime. |
+| `WORKBENCH_REGISTRY_FILE` | `.repo2ree/workbench-registry.json` | Registry mapping REE ids to agents, opaque workbench references, and workbench specifications. |
+| `REE_INDEX_FILE` | `.repo2ree/ree-index.json` | Durable index of sealed REEs and archive attestations. |
+| `RUN_REGISTRY_DIR` | `.repo2ree/runs` | Durable background-run state. |
+| `RUN_MAX_WORKERS` | `4` | Concurrent workbench-command and worker-thread limit. |
 | `OTLP_ENDPOINT` | unset | OTLP collector base URL for API and agent traces/metrics/logs (see `observability/`). |
 | `OTEL_EXPORTER_OTLP_HEADERS` | unset | Headers for authenticated OTLP ingest (e.g. ClickStack's `authorization=<key>`). |
 | `TRACE_FILE` | unset | Local NDJSON trace sink for API/agent spans when no collector is configured. |

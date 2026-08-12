@@ -1,86 +1,94 @@
-# repo2ree — Toward a Truly REE Service
+# repo2ree — Current Product Gaps
 
-A feature analysis grounded in the current codebase. repo2ree now has the
-outline of an REE builder: source acquisition, build/runtime scripts, SBOM/HBOM
-generation, dependency evaluation, experiment runs, author-provided verify scripts,
-and sealing. Becoming a true *Reusable Execution Environment* service still requires
-three pillars: stronger **verification**, a consumer-side **reuse** loop, and
-durable **trust over time**.
+> Status: implementation-grounded research roadmap, 2026-08. This is a product
+> analysis, not the implementation contract. Current behavior is documented in
+> the public capability status and engineering references.
 
-## The core gap: receipts are not yet durable claims
+repo2ree now has both sides of its central loop. Authors can acquire source,
+evaluate it, build and inspect a runtime, validate activation and experiments,
+capture typed receipts, and seal a portable bundle. Reviewers can load that
+bundle, reproduce source/build/activation/experiments in an isolated attempt,
+and retain receipts plus comparison verdicts without changing author evidence.
 
-Reproducibility = same inputs + same environment → **same outputs**.
+The next step is no longer “add a review loop.” It is to make the evidence that
+loop already produces portable, citable, and durable beyond one service node.
 
-`ReeSpec` (`gui/src/core/ree/ReeSpec.ts`) now captures a runnable
-`verify_script` and declared `output_paths`, and the backend can run experiments
-through the typed command envelope
-(`api/src/repo2ree_api/authoring/stages.py`,
-`core/src/repo2ree_core/experiment/run.py`). That is the right foundation.
+## Current foundation
 
-The remaining gap is that an experiment run is still mostly an execution result,
-not a durable **Run Receipt** with content-addressed inputs, output contracts,
-predecessor lineage, archive identity, and reviewer-facing diffs. The product
-can execute author-owned checks, but it has not yet turned those checks into the
-citable claim object promised by the concept docs.
+- Successful author operations produce immutable typed receipts in the portable
+  REE aggregate (`core/domain/ree/receipt.py`).
+- Review operations produce attempt-scoped receipts and comparisons for source,
+  runtime/SBOM closure, activation, and experiments
+  (`core/evidence/review/`, `core/operations/handlers/review/`).
+- The GUI exposes the gated review chain and per-experiment verdicts.
+- Seal records a canonical `ree_digest`, bundle-entry inventory, and immutable
+  ZIP, then writes a durable node-local REE index entry.
+- Bundles ship `run.sh` and `REPRODUCING.md`, so reproduction is possible without
+  installing repo2ree.
 
-## Pillar 1 — Outputs & reproduction verification (keystone)
+## Pillar 1 — Portable and citable verification evidence
 
-The highest-leverage direction. The code has the first loop; now make it a
-publication-grade loop.
+Review evidence currently lives under the workbench's review-attempt namespace.
+Make it an artifact that can leave that workbench and retain its meaning:
 
-- Promote experiment run results into immutable Run Receipts.
-- Add predecessor links so reviewer runs point at author runs.
-- Preserve captured files/stdout/stderr as content-addressed evidence.
-- Surface a **re-run → diff against baseline** loop in the UI, not just a
-  pass/fail run status.
-- A green/red "this rerun matched the author baseline" verdict, distinct from
-  both "this author run validated" and "this REE has strong evidence."
+- define a portable verification envelope over reviewer receipts, comparisons,
+  evidence basis, and the author `ree_digest`;
+- add explicit predecessor/baseline identity where a comparison refers to an
+  author receipt;
+- include or content-address logs and selected output evidence;
+- export a review independently, without mutating or resealing the author's REE;
+- render a stable human-readable report from the same typed evidence.
 
-GUI-visible today: experiment run actions exist, and verify scripts can
-produce pass/fail verdicts plus named check rows. The missing surface is a
-durable receipt view:
-baseline vs. rerun, predecessor, captured artifacts, and claim-level comparison
-in one object a reviewer can cite.
+The important distinction already exists in code and must survive export:
+`independent` evidence supports a reproduction claim, while `bundled` evidence
+certifies the integrity or ability to replay what the bundle already carried.
 
-## Pillar 2 — Reuse (the consumer side)
+## Pillar 2 — Archive deposits and attestations
 
-The app is overwhelmingly **author-side** (build & seal). "Reusable" implies a
-second persona: someone who finds an REE and runs it.
+The adapter interfaces, provider models, archive UI, and REE index exist, but
+live external deposits are not wired. Complete one provider end to end before
+expanding the abstraction:
 
-- **REE library / registry**: list, search, and filter REEs (by keyword,
-  runtime, reproducibility standing). Today there is only the landing loader.
-- **Versioning & diff**: an REE evolves as dependencies drift. Need real
-  versions and a diff between them — not the single free-text `version` string
-  inside `catalog_metadata`.
-- **Fork / re-instantiate**: take an existing REE as a starting point.
+- create and publish a draft deposit;
+- bind the archive-issued identifier to the exact `ree_digest`;
+- append that binding to the durable REE index;
+- expose retry/idempotency and failure semantics;
+- verify archive presence after publication.
+
+Zenodo is the narrowest first vertical slice. Software Heritage source-presence
+checks and Dataverse can follow once the binding contract has been exercised by
+one real service.
 
 ## Pillar 3 — Trust over time
 
-A service implies REEs that outlive their authors.
+The current seal gives content identity, not external trust. Extend it without
+changing the digest it names:
 
-- **Sealed identity**: promote sealing from a UI action into a durable Seal
-  Manifest with `ree_digest`, detached signatures, timestamp evidence, and
-  archive-binding metadata.
-- **Drift detection**: dependencies rot. Dependencies are already extracted by
-  the first-party manifest parsers — the natural extension is *scheduled
-  re-build + re-run* with an alert when a previously-reproducing REE stops. A
-  background/scheduled job fits here.
-- **Shareable trust artifact**: a consumer-facing "reproducibility report card" /
-  badge that can be relied on without re-running. The evaluate report and
-  experiment verdicts are the seed, but they are still inward-facing.
+- detached typed signatures over `ree_digest`;
+- timestamp evidence and algorithm identifiers;
+- digest-migration attestations when algorithms age;
+- scheduled rebuild/review jobs that report drift against earlier evidence;
+- retention rules for the indexed bundle bytes, not only their metadata.
 
-## Lower-priority / ecosystem
+## Pillar 4 — Discovery, reuse, and version relations
 
-- **Standard export**: RO-Crate, Nix flake, OCI image, CodeMeta — interop with
-  the broader reproducibility ecosystem.
-- **Hardware matching**: HBOM is descriptive only today; actually
-  provisioning/matching captured hardware (especially GPU) is what makes
-  hardware-sensitive science reproduce.
-- **Multi-user**: accounts, ownership, permissions (appears single-user/demo
-  now).
+The durable REE index now provides a real starting point for consumer discovery.
+It lists seals and archive bindings, but does not yet provide:
+
+- search and filtering by catalog metadata, runtime, or evidence standing;
+- explicit version/predecessor relations between different sealed subjects;
+- fork/re-instantiate workflows that preserve lineage;
+- resolution from a DOI/PID or peer index entry to retrievable bundle bytes.
+
+## Lower-priority ecosystem work
+
+- Standard exports such as RO-Crate, CodeMeta, OCI artifacts, or Nix flakes.
+- Rebuild-tier dependency closure capture and replay after upstream disappearance.
+- Hardware-aware placement based on declared and observed HBOM constraints.
+- Multi-user ownership, authorization, quotas, and policy enforcement.
 
 ## Recommendation
 
-Build toward **durable Run Receipts and a reproduction-diff loop** first. The
-verify-script model is now present; the product move is to make each run
-citable, comparable, and depositable.
+Build the portable verification envelope and one live archive-deposit vertical
+slice next. Together they turn the already-implemented review verdict from
+workbench-local evidence into a citable claim bound to a sealed REE.

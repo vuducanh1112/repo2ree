@@ -1,7 +1,7 @@
 # repo2ree — Concept Reference
 
-> **Status: concept reference (2026-06).** The **what** of repo2ree —
-> normative definitions of the nouns, verbs, tiers, and states used
+> **Status: current concepts plus explicitly marked target vocabulary.** The
+> **what** of repo2ree — definitions of the nouns, verbs, tiers, and states used
 > across the project. For *why* these concepts exist see
 > [research/POSITIONING.md](../research/POSITIONING.md); for *how* they are implemented see
 > [architecture.md](architecture.md).
@@ -70,8 +70,9 @@ outputs.
 *Integrates: Environment substrate → Lifecycle vocabulary.*
 
 The repo's standing reproducibility disclosure, produced by Evaluate and shown
-on independent axes — today: *dependency declaration*, *environment capture*; with
-archival also: *source-identifier stability*, *closure-capturability*.
+on independent axes — today: *dependency declaration*, *environment capture*,
+and *machine declaration*; with archival also: *source-identifier stability*
+and *closure-capturability*.
 
 **Observational**: describes the repo as-is, without modifying it. A
 nutrition label, not a grade. The Label reads whatever environment
@@ -89,7 +90,10 @@ it does not compare a later run with prior evidence.
 
 *Integrates: Experiment substrate → Archive substrate.*
 
-A single execution's structured, content-addressed record:
+A successful author operation already produces an immutable typed receipt with
+operation identity, timing, relevant input and artifact digests, and result
+evidence. Review operations produce their own typed receipts plus explicit
+comparison records. The target independently citable wrapper adds:
 
 ```
 ree_digest      which sealed REE executed the run
@@ -102,16 +106,18 @@ signatures      optional executor attestation
 predecessor     optional pointer to the run this re-derives
 ```
 
-Receipts are immutable. They **wrap whatever the experiment substrate
+Current receipts are immutable and carried by the REE or review attempt. The
+target citable receipt can also **wrap whatever the experiment substrate
 produced**: an MLflow run becomes a Receipt with MLflow metadata
 preserved; a Weights & Biases run becomes a Receipt pointing at the
 W&B record; a plain Python script becomes a Receipt assembled from
 stdout and outputs. The substrate stays the substrate; the Receipt is
 the citable wrapper that pushes the run toward the archive.
 
-Author-Receipts and reviewer-Receipts are **structurally identical**;
-the `predecessor` pointer is what binds a reviewer's verification to
-the author's original claim. A verification receipt can be signed by the
+Author and reviewer receipts are currently distinct types because review
+receipts bind an evidence basis and sit beside comparison records. In the target
+portable wrapper, a `predecessor` pointer binds a reviewer's verification to
+the author's original claim. That verification receipt can be signed by the
 reviewer, executor, or venue as a claim about what was re-derived and under
 which comparison policy. **Primitive 2.**
 
@@ -119,17 +125,23 @@ An author receipt may record that its declared validation passed. It becomes
 reproduction evidence only when a later receipt or comparison names it as the
 baseline or predecessor.
 
-### Seal Manifest
+### Seal identity and target manifest
 
-The content identity of a finalized REE. Seal computes a canonical manifest over
-the source identity, overlay, runtime artifact, dependency closure when present,
-Label, and Receipts:
+The implemented Seal operation stores a `ReeSeal` in `ree/ree.json`. Its
+`ree_digest` is the SHA-256 digest of the canonical REE subject, including the
+definition, receipts, bundle inventory, and review evidence. The deterministic
+ZIP carries that same sealed document; there is no separate Seal Manifest file
+in the current bundle.
+
+The target archival format generalizes that identity into a canonical Seal
+Manifest over the source identity, overlay, runtime artifact, dependency closure
+when present, Label, and Receipts:
 
 ```text
 ree_digest = sha256(canonical_seal_manifest)
 ```
 
-The digest names the REE. It does not by itself mean the REE is trusted,
+In both forms, the digest names the REE. It does not by itself mean the REE is trusted,
 reproducible, signed, or deposited. Signatures are separate attestations over
 the digest. See [research/sealing.md](../research/sealing.md).
 
@@ -139,26 +151,26 @@ the digest. See [research/sealing.md](../research/sealing.md).
 
 *Integrates: Archive substrate → Environment substrate → Experiment substrate.*
 
-The reviewer's one-click moment. Composes the two primitives:
+The implemented reviewer lifecycle is:
 
-1. Load the repo's Repro Label; re-score against the local environment.
-2. Re-execute each published Run Receipt against the same REE.
-3. Each re-execution produces a new Receipt whose `predecessor` points at
-   the author's.
-4. The verifier may sign the new Receipt as a reviewer-verification claim.
-5. Diffs are surfaced; the reviewer's Receipt set is itself depositable
-   via [Archive](#archive) as a citable verification artifact.
+1. Load a sealed REE into a workbench and start an isolated review attempt.
+2. Reacquire source, rebuild the runtime, test activation, and rerun experiments.
+3. Record reviewer receipts and compare source identity, runtime digest or SBOM
+   closure, and experiment criteria/output evidence with the author baseline.
+4. Surface per-step evidence basis and verdicts without changing author evidence.
 
-Author and reviewer use the same machinery. No special "review mode"
-exists.
+The target extension packages those receipts and comparisons with predecessor
+links and signatures so the review itself can be cited or deposited.
 
 ### Seal
 
 *Integrates: Lifecycle artifacts → Trust vocabulary.*
 
-The freeze point before Archive. Seal creates the Seal Manifest and `ree_digest`
-from stable content digests. After sealing, edits to source, overlay, receipts,
-runtime artifacts, or selected archive tier create a new seal.
+The freeze point before Archive. Today Seal records `ree_digest` over the
+canonical REE subject and writes the immutable bundle. The target Seal Manifest
+makes the component digest inventory a separately named archival object. After
+sealing, authoring mutations are rejected; changing the subject requires a new
+draft and seal.
 
 Signing is append-only: authors, executors, reviewers, venues, institutions, and
 archive adapters can each sign typed claims over the same `ree_digest`.
@@ -168,7 +180,7 @@ Signatures are not included in the digest they sign.
 
 *Integrates: Lifecycle artifacts → Archive substrates.*
 
-The author's deposit/export workflow. Composes the primitives with
+The target author deposit/export workflow composes the primitives with
 institutional archival infrastructure:
 
 1. Compose the bundle: declaration + overlay + source-pointer + Receipts
@@ -185,9 +197,9 @@ bundles for services that do.
 
 ## Fidelity tiers
 
-The author chooses a tier at Archive time. Each tier is a strict superset
-of the previous. The chosen tier is recorded in the bundle metadata and
-disclosed by the Label.
+These are target archive tiers, each a strict superset of the previous. The
+current seal UI/API independently selects source, runtime, and result payloads;
+it does not yet record one of these tier names.
 
 | Tier        | Contents                                                  | Re-runnable?           | Re-derivable?              | Storage |
 |-------------|-----------------------------------------------------------|------------------------|----------------------------|---------|
@@ -200,7 +212,9 @@ cost of full dependency-closure capture.
 
 ## REE lifecycle states
 
-The REE moves through states as its archival readiness changes:
+The implementation exposes `draft` and `sealed` as REE status and separately
+derives whether a seal has archive attestations. The following four-state model
+is target archival-readiness vocabulary:
 
 | State              | What's true                                                   | Eligible for canonical Archive?                                                |
 |--------------------|---------------------------------------------------------------|--------------------------------------------------------------------------------|

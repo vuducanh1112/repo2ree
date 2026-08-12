@@ -39,9 +39,9 @@ its exit code is the verdict; it inspects whatever it needs straight from the
 workspace (a run whose stdout is checked materializes it to a workspace file).
 When the command and verify script pass, that run is **validated** against the
 declared check. It is not yet a reproduction: reproduction requires a later run
-to be compared with prior author evidence. This is the foundation for Run
-Receipts, but the current public object is still an execution result rather than
-a fully citable receipt.
+to be compared with prior author evidence. The operation already produces an
+immutable typed receipt stored in the REE. It is not yet an independently
+citable receipt with predecessor lineage, signatures, or its own deposit form.
 
 A successful experiment run also captures the files it declares as outputs into
 a per-experiment results store and records their digest on the receipt. An

@@ -1,6 +1,6 @@
 # repo2ree Public Documentation
 
-> Status: public docs draft, 2026-06. These pages are written for a website
+> Status: public docs draft, 2026-08. These pages are written for a website
 > audience. They describe what repo2ree is, what the current prototype can do,
 > and which pieces are still target design.
 

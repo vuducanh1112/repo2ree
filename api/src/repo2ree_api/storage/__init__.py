@@ -1,7 +1,8 @@
 """The API's only host-side persistence: the upload staging area.
 
 ``upload_staging`` owns the transient dir that HTTP uploads land in before they
-are ``docker cp``'d into a workbench; ``init_storage`` creates it at startup.
+are streamed through the selected agent into a workbench; ``init_storage``
+creates it at startup.
 Everything else the API touches lives inside an REE, which is why this is the
 one tier below :mod:`repo2ree_api.workbench` rather than beside it.
 

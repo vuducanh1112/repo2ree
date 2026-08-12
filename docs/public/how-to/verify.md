@@ -3,28 +3,39 @@
 Verify is the reviewer and reader loop. The goal is to re-run a published
 result and get a comparable record instead of informal notes.
 
-## Target workflow
+## Current workflow
 
 1. Open a published REE.
 2. Inspect the Repro Label and archive metadata.
-3. Re-run one or more published Run Receipts.
-4. Run the author-provided verify script against the new run evidence.
-5. Save the verification as a new receipt that points back to the original.
+3. Start a review attempt and choose an evidence basis. `Auto` prefers an
+   independent fetch; `Bundled` deliberately checks the source carried by the REE.
+4. Reproduce source, build, and activation in order.
+5. Re-run one or more experiments and apply the author's verify script to the
+   reviewer's fresh outputs.
+6. Inspect the per-step receipts, comparisons, evidence basis, and verdicts.
 
-That predecessor link matters. It turns "I tried to reproduce this" into a
-structured relation between the author's evidence and the reviewer's evidence.
+The current comparison records bind the reviewer evidence to the author
+baseline and the criterion that was applied. A portable predecessor link that
+turns the whole attempt into an independently citable verification artifact is
+still target work.
 
 ## Current status
 
-The current app has the pieces needed for the first version of Verify:
+The current app implements the first end-to-end Verify loop:
 
-- experiment commands can be declared and run;
-- author-provided verify scripts run from the workspace root after the run and check whatever they read from it (a run that wants its stdout checked materializes it to a workspace file); their exit code is the verdict;
-- logs and run status are captured;
-- reviewer-facing preview and review paths exist in the app shape.
+- every attempt has an isolated source/overlay/workspace/evidence tree inside
+  the REE workbench, while author evidence remains read-only;
+- source identity is compared by SWHID;
+- rebuilt runtimes are compared first by artifact digest, then by SBOM closure;
+- activation records whether the runtime built by that attempt is inhabitable;
+- experiments apply the same author-provided verify script to fresh outputs and
+  compare output digests when both baselines exist;
+- receipts, comparisons, logs, evidence bases, and verdicts are persisted and
+  surfaced through the API and Review console.
 
-The durable verification receipt, receipt-to-receipt diff view, and citable
-reviewer artifact are still target work.
+An independently portable verification bundle, explicit receipt predecessor
+links, reviewer signatures, and deposit of the review as its own citable
+artifact are still target work.
 
 An author run whose verify script passes is a **validated baseline**, not a
 reproduction. The term reproduction is reserved for the later comparison: a

@@ -69,11 +69,12 @@ are present, omitted, or missing.
 
 ## Run Receipt
 
-The target durable record of one execution: command, inputs, parameters,
-runtime, outputs, logs, result, and provenance. The current prototype has the
-execution pieces; the durable receipt object is still being shaped. An
-experiment run also records a digest of its declared outputs, captured into a
-per-experiment results store — the baseline a reviewer diffs against and the
+The immutable typed record of one successful operation: its identity, timing,
+inputs, relevant digests, and result evidence. Author and reviewer operations
+already persist receipts, while the independently citable wrapper described by
+the long-term design still needs predecessor lineage, signatures, and a deposit
+format. An experiment run also records a digest of its declared outputs,
+captured into a per-experiment results store — the baseline a reviewer diffs against and the
 signal that flags a result whose bytes drifted before it was sealed.
 
 A successful author run whose verify script passes is **validated**. Calling it
@@ -81,15 +82,17 @@ A successful author run whose verify script passes is **validated**. Calling it
 
 ## Verify
 
-The reviewer or reader workflow: re-run a declared result, execute the
-author-provided verify script against the new evidence, and keep that evidence
-as a verification record.
+The reviewer or reader workflow: acquire source into an isolated attempt,
+rebuild and compare the runtime, test activation, re-run declared experiments,
+execute the author-provided verify scripts, and keep receipts plus comparison
+verdicts without changing the author's evidence.
 
 ## Seal
 
-The freeze point before sharing or archiving. In the current prototype, Seal
-creates a sealed downloadable bundle. The target design gives the sealed REE a
-canonical manifest and stable digest that signatures and archives can refer to.
+The freeze point before sharing or archiving. Seal creates an immutable
+downloadable bundle and a canonical `ree_digest` over the REE subject and its
+bundle inventory. The target design extends that identity with detached
+signatures, timestamp evidence, and archive attestations.
 
 ## Archive
 

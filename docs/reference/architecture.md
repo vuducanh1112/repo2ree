@@ -1,6 +1,6 @@
 # repo2ree — Execution and Isolation Architecture Reference
 
-> **Status: implementation + target design (2026-06).** The **how** of repo2ree —
+> **Status: implementation + target design (2026-08).** The **how** of repo2ree —
 > the implemented workbench/typed-envelope path and the target isolation/CAS
 > model that should harden it. For
 > *why* the integration is shaped this way see
@@ -73,9 +73,10 @@ agent, and workbench boundaries and returns logs plus a result.
 
 ![C4 dynamic diagram showing a pipeline stage crossing from an API client through the supervisor and agent to core inside a workbench](../diagrams/c4/dynamic-stage-execution.svg)
 
-Review uses the same dispatch path but begins with another author's sealed REE,
-provisions fresh infrastructure, and records every comparison under a distinct
-attempt namespace.
+Review uses the same dispatch path against an REE loaded into a workbench. Each
+attempt gets a fresh, isolated `reviews/<id>/` tree inside that workbench and
+records every comparison there; it does not provision another workbench per
+attempt.
 
 ![C4 dynamic diagram showing a reviewer loading and independently reproducing a published REE](../diagrams/c4/dynamic-review-reproduction.svg)
 
@@ -84,7 +85,8 @@ attempt namespace.
 The main REE path now has the intended package seam:
 
 - `api` calls `repo2ree_supervisor.WorkbenchManager`.
-- `supervisor` provisions one persistent workbench container per REE.
+- `supervisor` requests one persistent workbench per REE through the selected
+  agent and retains its opaque reference.
 - Commands cross the host/workbench boundary as typed `repo2ree_protocol`
   commands.
 - The workbench invokes `repo2ree-exec`, which calls `core` handlers inside the
@@ -93,7 +95,7 @@ The main REE path now has the intended package seam:
 Current isolation is **Docker-in-Docker inside a privileged workbench**. The
 backend never touches a container runtime: workbenches are launched by the
 *agent* (its own deployable, holding the docker socket —
-[docker-compose.yml](../../docker-compose.yml)) over the outbound WebSocket. The
+[docker-compose.agent.yml](../../docker-compose.agent.yml)) over the outbound WebSocket. The
 workbench does not receive the host socket. It runs its own daemon and stores
 `/var/lib/docker` in a per-REE volume
 ([runtime.py](../../agent/src/repo2ree_agent/runtimes/docker/runtime.py)).
@@ -125,46 +127,35 @@ inside the workbench, but the workbench gets its own kernel boundary.
 
 ## The three-tier nesting
 
-A working environment is provisioned on the **first execution-needing operation**
-(not at REE creation; see
-[State ownership](#state-ownership-portable-aggregate-and-durable-tree)). It
-then hosts the fixed `/ree` layout and the tools that act on it:
+A working environment is provisioned asynchronously by **REE creation**. It then
+hosts the fixed `/ree` layout and the tools that act on it:
 
 ```
-┌─ HOST / backend (control plane) ──────────────────────────────────────┐
-│  repo2ree-api + supervisor                                            │
-│  owns: durable REE state (host storage), workbench lifecycle,         │
-│  command dispatch. Touches host docker/containerd to launch workbenches.│
-│                                                                       │
-│   on first action:  docker run <env image>                          │
-│        │                                                              │
-│        ▼                                                              │
-│  ┌─ WORKING ENV  (today: privileged dind; target: Kata microVM) ────┐ │
-│  │  base tools: dockerd, repo2ree-exec, git, build toolchains        │ │
-│  │                                                                   │ │
-│  │  /ree                          ── the REE's durable structure ──  │ │
-│  │  ├── upstream/    extracted source snapshot                        │ │
-│  │  ├── overlay/     REE definition: ree-scripts/ (build, activation, │ │
-│  │  │                experiments), generated recipes                  │ │
-│  │  │                        ▲ declared via the GUI             │ │
-│  │  ├── workspace/   materialized upstream + overlay view             │ │
-│  │  ├── artifacts/   produced evidence:                              │ │
-│  │  │   ├── <runtime>.tar             ◄── the REE                    │ │
-│  │  │   ├── sbom.json                                                │ │
-│  │  │   └── reproducibility-report.json                              │ │
-│  │  ├── results/<name>/   captured experiment outputs (baseline)     │ │
-│  │  ├── runs/<id>/        NDJSON logs & run results                  │ │
-│  │  └── reviews/<id>/     one reviewer attempt (its own tree)        │ │
-│  │                                                                   │ │
-│  │  assembly functions (repo2ree-exec/core) read workspace+overlay,  │ │
-│  │  write artifacts:                                                 │ │
-│  │    build-runtime             ─ docker build ─► <runtime>.tar      │ │
-│  │    generate-sbom             ────────────────► sbom.json          │ │
-│  │    evaluate-dependency-score ─────► reproducibility-report.json   │ │
-│  │    run-experiment   ─ docker run runtime-image ─► runs/<id>       │ │
-│  └───────────────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────────────────┘
-        ✗ main path: no host docker.sock crosses into the workbench
+┌─ CONTROL PLANE ───────────────────────────────────────────────────────┐
+│ API + supervisor: control metadata, workbench references, runs,      │
+│ and typed command dispatch. No container-runtime socket.              │
+└──────────────────────────────┬─────────────────────────────────────────┘
+                               │ agent-dialed WebSocket
+                               ▼
+┌─ RUNTIME HOST ────────────────────────────────────────────────────────┐
+│ Agent: owns the Docker socket, creates volumes and benches, injects   │
+│ repo2ree-exec + tools, and ferries typed frames.                      │
+│                               │                                      │
+│                               ▼                                      │
+│  ┌─ WORKBENCH (today: privileged dind; target: VM-backed) ─────────┐ │
+│  │ /ree                                                           │ │
+│  │ ├── upstream/          extracted source                         │ │
+│  │ ├── overlay/           authored recipes                         │ │
+│  │ ├── workspace/         upstream + overlay working view          │ │
+│  │ ├── artifacts/         runtime, SBOM, evaluation evidence       │ │
+│  │ ├── results/<name>/    captured author baselines                │ │
+│  │ ├── runs/<id>/         logs and operation history               │ │
+│  │ └── reviews/<id>/      isolated reviewer attempt tree           │ │
+│  │                                                                  │ │
+│  │ repo2ree-exec/core read the workspace and write receipts and     │ │
+│  │ artifacts. Nested Docker activity uses the workbench daemon.     │ │
+│  └──────────────────────────────────────────────────────────────────┘ │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
 In the target form it is containers-inside-a-VM, **not** VM-in-VM — only one
@@ -206,8 +197,8 @@ The workspace↔REE seam must not collapse — this names the tiers carefully:
 | Term | What it is | Lifetime |
 |------|-----------|----------|
 | **Workspace** | The materialized build/run view (`/ree/workspace`). | Durable but derived |
-| **Working env** | The per-REE **sandbox** provisioned on the first execution-needing operation; today a privileged Docker-in-Docker workbench, target a Kata/Sysbox-backed one. Hosts the `/ree` tree and all assembly functions; never shipped. | Rehydratable; the `/ree` tree is the durable state |
-| **Runtime image (the REE)** | The reproducible artifact built inside the working env (`artifacts/runtime-image`). The thing whose reproducibility is guaranteed. | The product |
+| **Working env** | The per-REE **sandbox** provisioned by `createRee`; today a privileged Docker-in-Docker workbench, target a Kata/Sysbox-backed one. Hosts the `/ree` tree and all assembly functions; never shipped. | Rehydratable; the `/ree` tree is the durable state |
+| **Runtime image (the REE)** | The artifact built inside the working env (`artifacts/runtime-image`). Its reproducibility is assessed from receipts and later comparisons; a successful build alone is not a guarantee. | The product |
 | **Experiment run** | An *instance* of the runtime image, executed in its own container to produce results. | Per-run |
 
 The seam: upstream source + overlay definition → materialized workspace →
@@ -275,11 +266,11 @@ mistake:
 - **One aggregate, one mutation boundary.** Author operations load the current
   REE, update files or definition, and compare-and-swap the aggregate revision.
 
-**Consequence — provision the lab lazily.** Because declaring and editing need no
-executor, the working env is created on the first execution-needing operation
-(acquire / build / run), *not* when the REE manifest is created. A freshly-created
-REE the user is still naming and declaring has no workbench and costs nothing — which is
-also why the autosave path above must not depend on one.
+**Current consequence — provision before authoring.** REE creation starts a
+background provisioning run, initializes the manifest inside the resulting
+workbench, and returns the `ree_id` immediately. Definition and file operations
+therefore address that provisioned workbench. Lazy creation remains a possible
+future cost optimization, not the implemented lifecycle.
 
 ### The command envelope is the contract
 
@@ -405,7 +396,7 @@ Likely provider implementations:
 
 | Provider | Target | Notes |
 |---|---|---|
-| `docker-local` | A Docker daemon on the runner machine | Matches today's workbench manager. |
+| `docker-local` | A Docker daemon on the runner machine | Matches today's agent-side `DockerRuntime`. |
 | `docker-context` | A Docker context or SSH-backed daemon chosen by the user | Single-user CLI/offload path; the hosted service still never sees SSH material. |
 | `kubernetes` | A namespace with scoped RBAC | Creates Pods/Jobs/PVCs and uses cluster policy for isolation and quota. |
 | `cloud-vm` | A VM or node pool created by limited cloud IAM | Useful when repo2ree is allowed to provision compute but not hold login secrets. |
@@ -629,7 +620,26 @@ GC are deferrable — they're bolt-on once the envelope is right.
    Discipline: *touches docker/fs/network → executor in workbench; pure
    translation/validation → library host-side.*
 
-## Archival composition
+## Target archival composition
+
+The downloadable bundle implemented today is a deterministic ZIP that mirrors
+the REE tree. It contains:
+
+```
+run.sh
+REPRODUCING.md
+ree/ree.json
+ree/snapshot.tar.gz       # when source is included
+ree/overlay/...
+ree/artifacts/...
+ree/results/<name>/...    # selected author baselines
+# ree/workspace/ is created and materialized by run.sh after extraction
+```
+
+`ree/ree.json` contains the definition, selected successful author receipts,
+bundle-entry inventory, and seal (`sealed_at` plus `ree_digest`). The sections
+below describe the intended archive/deposit composition beyond this implemented
+portable ZIP.
 
 A deposited REE is a **composition manifest**, not a self-contained
 tarball. The same source/overlay split that defines `/ree/` at runtime
@@ -648,11 +658,11 @@ institution best suited to hold it.
 | Artifacts (selectively)          | Built runtime image, inputs closure                           | Inline by fidelity tier               | Optional; size-versus-fidelity tradeoff                           |
 | Identifiers (DOI / SWHID / PID)  | The handles that resolve to the above                         | Their issuing services                | Each handle is a service's responsibility, not a content artifact |
 
-repo2ree owns the **hot tier** (live CAS + ActionCache), the **bundle
-format** (RO-Crate-shaped, defined here), and the **deposit and
-resolution workflow**. Long-term archival itself is delegated.
+In this target, repo2ree would own the **hot tier** (live CAS + ActionCache),
+the **bundle format** (RO-Crate-shaped, defined here), and the **deposit and
+resolution workflow**. Long-term archival itself remains delegated.
 
-### Bundle layout
+### Target deposit layout
 
 ```
 bundle/
@@ -671,12 +681,12 @@ bundle/
     └── inputs-closure/       # Rebuild only
 ```
 
-### Seal manifest and signatures
+### Target detached manifest and signatures
 
-`seal-manifest.json` is the content identity of the REE. It records the digest
-of each sealed component: source identity, overlay tree, Label, Receipts,
-runtime artifact for Replay+, and dependency closure for Rebuild. The
-`ree_digest` is the digest of the canonical manifest.
+Today `ree/ree.json` is the canonical document: its subject records the bundle
+inventory and `ree_digest` is computed over that subject. A future detached
+`seal-manifest.json` can project the same identity into an attestation-oriented
+deposit layout without changing what the digest names.
 
 Signatures are excluded from the manifest digest. Each signature is a typed
 statement over `ree_digest` with signer role, policy, timestamp evidence, and
@@ -690,8 +700,9 @@ digest to a new digest over the same manifest instead of rewriting history.
 
 ### Fidelity tiers
 
-Three tiers, each a strict superset of the previous. The chosen tier is
-recorded in the RO-Crate metadata and surfaced through the Label.
+Three target tiers, each a strict superset of the previous. The current seal API
+instead exposes independent source, runtime, and results inclusion flags; it
+does not yet persist a `Cite`/`Replay`/`Rebuild` tier or RO-Crate metadata.
 
 | Tier        | Contents                                                  | Re-runnable?           | Re-derivable?              | Storage |
 |-------------|-----------------------------------------------------------|------------------------|----------------------------|---------|
@@ -724,8 +735,9 @@ grades. Rebuild is not on the critical path; Cite and Replay are.
 
 ### REE lifecycle states
 
-Archival readiness is a property of the REE, exposed in the UI and
-recorded by the Label:
+The implemented REE status is `draft` or `sealed`. The durable REE index
+separately reports whether archive attestations exist. `Archive-ready` and a
+single four-state archival lifecycle remain target vocabulary:
 
 | State              | What's true                                          | Eligible for canonical deposit?                                                 |
 |--------------------|------------------------------------------------------|---------------------------------------------------------------------------------|
@@ -758,8 +770,7 @@ explicit SWH save/deposit request.
   one; the later switch to a hardened workbench becomes a transport change, not a
   protocol change. See
   [Content-addressed state](#content-addressed-state-cas-and-the-action-cache).
-- **Establish the `/ree` layout on first provisioning** (not REE creation — see
-  [State ownership](#state-ownership-portable-aggregate-and-durable-tree)).
+- **Establish the `/ree` layout during REE creation.**
   The persistent workbench path already lays down `upstream/`, `overlay/`,
   `workspace/`, `artifacts/`, and `runs/`. Keep review/legacy paths converging on
   the same layout.
@@ -774,14 +785,14 @@ explicit SWH save/deposit request.
   crosses the boundary as a remote signal to the agent
   ([manager.py:287](../../supervisor/src/repo2ree_supervisor/manager.py#L287))
   rather than a local flag check.
-- **Keep Docker image construction inside the workbench.** The main build path
-  now reaches `core` through `repo2ree-exec` inside the workbench. Any remaining
-  direct host-side Docker build paths should be treated as legacy/review code and
-  migrated behind the same command envelope.
+- **Keep Docker image construction inside the workbench.** The author and review
+  build paths both reach `core` through `repo2ree-exec`; the control plane has no
+  direct host-side Docker build path.
 - **`WorkingEnvironmentSpec` gains fields:** `runtime` (`kata`/`runc`), the
   workbench `image`, and `resources` (CPU/mem) — the latter fed by the existing
   experiment resource-estimate fields, which now double as **workbench sizing**.
-- **Harden `WorkbenchManager.provision()`.** Today it launches a privileged
+- **Harden workbench provisioning.** Today `WorkbenchManager.provision()` asks
+  the selected agent, whose `DockerRuntime` launches a privileged
   Docker-in-Docker workbench. The target is the same `/ree` volume and command
   envelope under a Kata/Sysbox-backed runtime, without relying on a privileged
   shared-kernel container.
@@ -801,9 +812,8 @@ explicit SWH save/deposit request.
   the running container/VM. Standing-workbench-per-REE is simplest but costly at
   scale; rehydrate-on-demand
   (persist the tree, recreate the workbench when an REE is opened) bounds cost.
-  Recommend rehydratable, with the tree as source of truth. *First* provisioning
-  is likewise lazy — deferred to the first execution-needing operation — so an REE
-  that is only being declared/edited costs no workbench (see
-  [State ownership](#state-ownership-portable-aggregate-and-durable-tree)).
+  Recommend rehydratable, with the tree as source of truth. First provisioning
+  currently happens during `createRee`; making that lazy would be a separate
+  lifecycle change.
 - **KVM availability in the deployment target** decides Kata vs. the Sysbox
   fallback.

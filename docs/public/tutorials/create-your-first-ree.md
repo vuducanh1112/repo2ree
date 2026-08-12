@@ -412,8 +412,8 @@ select **Seal REE** and download the resulting ZIP archive.
 
 The seal digest identifies the complete record rather than its human-readable
 name. The archive contains the selected source and runtime payloads, authored
-scripts, evidence, experiment baseline, and a portable shell reproducer. The
-You have sealed the bundle and validated its experiment, but nobody has yet
+scripts, evidence, experiment baseline, and a portable shell reproducer. You
+have sealed the bundle and validated its experiment, but nobody has yet
 reproduced it independently or deposited it in a citable archive.
 
 You have now completed the hosted workflow. If your computer has a POSIX shell,
@@ -457,5 +457,7 @@ You followed the complete authoring chain:
 6. experiment plus explicit verification;
 7. sealed, independently runnable bundle.
 
-Next, use [Verify a result](../how-to/verify.md) when you want to reproduce
-another author's REE rather than create one of your own.
+Next, use [Verify a result](../how-to/verify.md) and the Review console when you
+want repo2ree to record and compare an independent attempt against another
+author's evidence. The standalone `run.sh` remains the service-free portability
+path.

@@ -36,7 +36,8 @@ sh run.sh test-activation          # prove the runtime is inhabitable
 sh run.sh experiment <name>        # run a named experiment
 ```
 
-`run.sh` exposes the same reproduction verbs as the in-workbench `repo2ree` CLI,
+`run.sh` exposes the same reproduction verbs as the in-workbench
+`repo2ree-exec` CLI,
 so the two `--help` outputs mirror each other (the CLI additionally has the
 authoring commands). `materialize-workspace` assembles `ree/workspace/` from the
 acquired source with the author scripts overlaid on top, so each script runs
@@ -55,10 +56,10 @@ Archive should preserve a stable object, not a mutable workspace. Seal is the
 freeze point. Once sealed, the bundle can be downloaded and attached to an
 archive record or institutional workflow.
 
-The target design makes this stronger with a canonical Seal Manifest,
-`ree_digest`, detached signatures, timestamp evidence, and archive binding
-metadata. These capabilities remain target design rather than claims about the
-current service.
+The current seal already binds a canonical REE subject and bundle inventory to
+`ree_digest`. The target design allows external attestation of that identity with
+detached signatures, timestamp evidence, digest migration, and archive binding
+metadata. Those attestation capabilities remain target design.
 
 ## Archive tiers
 

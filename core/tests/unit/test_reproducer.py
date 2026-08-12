@@ -89,7 +89,10 @@ def _seed_extracted_bundle(
     ree = root / "ree"
     (ree / OVERLAY_DIRNAME / "ree-scripts" / "experiments").mkdir(parents=True)
     (ree / ARTIFACTS_DIRNAME).mkdir(parents=True)
-    (ree / WORKSPACE_DIRNAME).mkdir(parents=True)  # the empty placeholder the bundle ships
+    # An extracted bundle need not contain this directory: run.sh creates and
+    # materializes it. Seed it here so individual reproducer commands can be
+    # exercised against an already-extracted working tree.
+    (ree / WORKSPACE_DIRNAME).mkdir(parents=True)
 
     # snapshot.tar.gz with a single source file at top level
     src = tmp_path / "src"

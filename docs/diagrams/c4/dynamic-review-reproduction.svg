@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1180" viewBox="0 0 1600 1180" role="img" aria-labelledby="title description">
   <title id="title">Reviewer reproduction dynamic diagram</title>
-  <desc id="description">A reviewer loads another author's published REE. The API reads its source, recipes, receipts, and experiment baselines, then provisions a fresh workbench through the supervisor and agent. The reviewer chooses a reproduction basis and starts the gated source, build, activation, and experiment chain. The workbench writes attempt-scoped evidence and returns an aggregate verdict without changing the author's evidence.</desc>
+  <desc id="description">A reviewer creates a REE workbench and loads another author's published bundle into it. The reviewer then chooses a reproduction basis and starts the gated source, build, activation, and experiment chain. Each review uses a fresh attempt-scoped tree inside that workbench, writes comparison evidence there, and returns verdicts without changing the author's evidence.</desc>
   <defs>
     <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 10 5 0 10z" fill="#334155"/></marker>
     <marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 10 5 0 10z" fill="#0f766e"/></marker>
@@ -19,15 +19,15 @@
   <g><rect class="store" x="1380" y="115" width="180" height="75" rx="9"/><text class="dn" x="1470" y="145">Review namespace</text><text class="dt" x="1470" y="168">[ATTEMPT-SCOPED STORE]</text></g>
 
   <g><line class="life" x1="115" y1="190" x2="115" y2="1105"/><line class="life" x1="335" y1="190" x2="335" y2="1105"/><line class="life" x1="560" y1="190" x2="560" y2="1105"/><line class="life" x1="785" y1="190" x2="785" y2="1105"/><line class="life" x1="1005" y1="190" x2="1005" y2="1105"/><line class="life" x1="1235" y1="190" x2="1235" y2="1105"/><line class="life" x1="1470" y1="190" x2="1470" y2="1105"/></g>
-  <rect class="band" x="20" y="210" width="1560" height="285" rx="8"/><text class="bandlabel" x="35" y="234">LOAD ON FRESH INFRASTRUCTURE</text>
+  <rect class="band" x="20" y="210" width="1560" height="285" rx="8"/><text class="bandlabel" x="35" y="234">PROVISION ONCE, THEN LOAD THE BUNDLE</text>
   <rect class="band" x="20" y="510" width="1560" height="300" rx="8"/><text class="bandlabel" x="35" y="534">REPRODUCE THE GATED CHAIN</text>
   <rect class="band" x="20" y="825" width="1560" height="280" rx="8"/><text class="bandlabel" x="35" y="849">REPORT WITHOUT MUTATING AUTHOR EVIDENCE</text>
 
-  <line class="call" x1="115" y1="270" x2="335" y2="270"/><circle class="num" cx="135" cy="288" r="14"/><text class="nt" x="135" y="288">1</text><text class="msg" x="225" y="255">Load another author's REE</text>
-  <line class="call" x1="335" y1="325" x2="560" y2="325"/><circle class="num" cx="355" cy="343" r="14"/><text class="nt" x="355" y="343">2</text><text class="msg" x="447" y="310">Read source, recipes, receipts, baselines</text>
-  <line class="call" x1="335" y1="380" x2="785" y2="380"/><circle class="num" cx="355" cy="398" r="14"/><text class="nt" x="355" y="398">3</text><text class="msg" x="560" y="365">Provision a fresh workbench</text>
-  <line class="call" x1="785" y1="435" x2="1005" y2="435"/><circle class="num" cx="805" cy="453" r="14"/><text class="nt" x="805" y="453">4</text><text class="msg" x="895" y="420">Typed provision request</text>
-  <line class="call" x1="1005" y1="480" x2="1235" y2="480"/><circle class="num" cx="1025" cy="498" r="14"/><text class="nt" x="1025" y="498">5</text><text class="msg" x="1120" y="465">Create bench and restore bundle</text>
+  <line class="call" x1="115" y1="270" x2="335" y2="270"/><circle class="num" cx="135" cy="288" r="14"/><text class="nt" x="135" y="288">1</text><text class="msg" x="225" y="255">Create REE on a chosen agent</text>
+  <line class="call" x1="335" y1="325" x2="785" y2="325"/><circle class="num" cx="355" cy="343" r="14"/><text class="nt" x="355" y="343">2</text><text class="msg" x="560" y="310">Start asynchronous provisioning</text>
+  <line class="call" x1="785" y1="380" x2="1005" y2="380"/><circle class="num" cx="805" cy="398" r="14"/><text class="nt" x="805" y="398">3</text><text class="msg" x="895" y="365">Typed provision request</text>
+  <line class="call" x1="335" y1="435" x2="560" y2="435"/><circle class="num" cx="355" cy="453" r="14"/><text class="nt" x="355" y="453">4</text><text class="msg" x="447" y="420">Upload published bundle</text>
+  <line class="call" x1="1005" y1="480" x2="1235" y2="480"/><circle class="num" cx="1025" cy="498" r="14"/><text class="nt" x="1025" y="498">5</text><text class="msg" x="1120" y="465">Restore bundle into the bench</text>
 
   <line class="call" x1="115" y1="570" x2="335" y2="570"/><circle class="num" cx="135" cy="588" r="14"/><text class="nt" x="135" y="588">6</text><text class="msg" x="225" y="555">Choose basis; reproduce source</text>
   <line class="call" x1="335" y1="625" x2="785" y2="625"/><circle class="num" cx="355" cy="643" r="14"/><text class="nt" x="355" y="643">7</text><text class="msg" x="560" y="610">Dispatch source → build → activation → experiments</text>

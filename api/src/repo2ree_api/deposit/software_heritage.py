@@ -3,8 +3,9 @@
 SWH archives *source code reached by URL*, not deposited bytes. So it splits
 cleanly in two:
 
-* **Presence lookup** (implemented seam, no credentials): ``POST /api/1/known/``
-  answers whether a SWHID is already in the archive. This is the piece worth
+* **Presence lookup** (planned behind the implemented adapter seam, no
+  credentials): ``POST /api/1/known/`` answers whether a SWHID is already in
+  the archive. This is the piece worth
   having — it turns "we computed a SWHID" into "this source is independently
   preserved", which is a genuine reproducibility signal and the only honest
   basis for an "archived at Software Heritage" badge.
@@ -13,7 +14,8 @@ cleanly in two:
   self-service. Save Code Now is not a substitute — it takes a public VCS origin
   URL, so it can do nothing for an uploaded tarball, which has no URL at all.
 
-Two caveats worth keeping in view when the lookup is wired up:
+Two caveats worth keeping in view when the lookup is wired up (the current
+``check_presence`` method deliberately raises ``NotImplementedError``):
 
 * A ``known`` hit means the *object* exists, not that it is citable. A citation
   wants the qualified form (``…;origin=…;visit=…;anchor=…``), which is a second

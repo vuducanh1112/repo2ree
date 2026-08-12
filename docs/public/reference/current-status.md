@@ -17,22 +17,33 @@ adapters.
 - Generate SBOM and HBOM evidence.
 - Test that a built runtime activates.
 - Run experiment commands and validate results with author-provided verify scripts.
+- Reproduce source, runtime builds, activation, and experiments in isolated
+  review-attempt workspaces, keeping author evidence unchanged.
+- Compare reviewer evidence with the author baseline: source identity, runtime
+  digest or SBOM closure, activation outcome, and experiment verify/output evidence.
+- Persist typed author and reviewer operation receipts and expose review verdicts
+  in the API and GUI.
 - Derive a per-step REE assessment from its definition, inline receipts, and
   bundle contents; this is evidence state, not a reproduction verdict.
 - Seal the current REE state and download a sealed ZIP bundle.
+- Give a sealed REE a canonical `ree_digest`, bind that digest to its bundle
+  inventory, and retain a durable index entry after sealing.
 - Track archive-oriented metadata such as SWHID, Zenodo DOI, and Dataverse DOI.
 
 ## Partially implemented or target design
 
-- Run Receipts are the target public object for one execution. The current code
-  has run records, logs, verify-script verdicts, and artifacts, but not yet
-  a durable, citable receipt format with predecessor lineage.
-- Verify is the target reviewer/reader workflow. The current app can re-run
-  experiment commands and run their verify scripts; the full verification
-  receipt and claim-level diff loop is still future work.
-- Seal currently freezes a downloadable REE bundle. The target design adds a
-  canonical Seal Manifest, stable `ree_digest`, detached signatures, timestamp
-  evidence, and archive binding metadata.
+- Successful author and reviewer operations already produce immutable typed
+  receipts. They are durable inside the REE or review attempt, but they are not
+  yet independently citable objects with predecessor lineage, signatures, or a
+  deposit format of their own.
+- Verify is implemented as a reviewer lifecycle over source, build, activation,
+  and experiments. The remaining target work is portable/citable verification
+  artifacts, explicit receipt-to-receipt predecessor links, and signing or
+  depositing a review independently of its workbench.
+- Seal currently creates a stable `ree_digest` over the canonical REE subject,
+  records the bundle inventory, writes an immutable ZIP, and indexes the seal.
+  Detached signatures, timestamp evidence, digest-migration attestations, and
+  archive-issued binding records remain target work.
 - Archive support currently prepares and records archive metadata. Live deposit
   adapters for external repositories are planned work.
 - Remote runners, institutional execution clients, and peer rebuilders are
@@ -40,10 +51,11 @@ adapters.
 
 ## Current execution model
 
-The current demo uses Docker. The API provisions a workbench for each REE and
-dispatches typed commands into that workbench. The long-term architecture keeps
-that control-plane/execution-plane split but can move the workbench from local
-Docker to stronger VM-backed or institution-owned runner deployments.
+The current demo uses Docker. The API asks a connected agent to provision a
+workbench for each REE, then dispatches typed commands through that agent. The
+agent alone owns the Docker socket and container runtime. The long-term
+architecture keeps that control-plane/execution-plane split but can move the
+workbench to stronger VM-backed or institution-owned runner deployments.
 
 Deployment and local-development instructions belong to the engineering
 documentation in the source repository, not this end-user website.

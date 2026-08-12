@@ -1,6 +1,6 @@
 # How to Set Up repo2ree for Development
 
-> Status: current contributor setup (2026-06). This is for people developing
+> Status: current contributor setup (2026-08). This is for people developing
 > or operating repo2ree itself. User-facing service guides should live outside
 > `docs/engineering/`.
 
@@ -67,6 +67,26 @@ Start the API:
 uv run --package repo2ree-api uvicorn repo2ree_api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
+Build the executor and tools closures that a source-run agent injects into each
+workbench:
+
+```bash
+make e2e-bundles
+```
+
+Start the agent in another shell. It dials the API and owns the Docker runtime;
+without a connected agent, REE provisioning cannot complete:
+
+```bash
+REPO2REE_EXEC_BUNDLE=$PWD/dist/bundles/exec \
+REPO2REE_TOOLS_BUNDLE=$PWD/dist/bundles/tools \
+uv run --package repo2ree-agent python -m repo2ree_agent
+```
+
+For trusted local iteration, add `WORKBENCH_DOCKER_MODE=host-socket` to share
+the host daemon's image cache. The default `dind` mode gives each workbench its
+own nested daemon and stronger separation.
+
 Start the GUI in another shell:
 
 ```bash
@@ -79,7 +99,7 @@ The GUI reads `VITE_API_BASE_URL` at build/dev-server time. In local dev,
 point it at the API. In the Docker demo image, the GUI uses same-origin
 `/api` and Caddy proxies API traffic to the backend service.
 
-## Workbench Benches
+## Workbenches
 
 The implemented execution path provisions one persistent Docker-in-Docker
 workbench per REE from the pinned upstream `docker:dind` bench, with the
@@ -118,12 +138,27 @@ The API reads `.env` through `pydantic-settings`. Useful local variables:
 | Variable | Default | Purpose |
 |---|---|---|
 | `UPLOAD_STAGING_DIR` | `.repo2ree/upload-staging` | Temporary HTTP upload landing zone before files enter a workbench. |
-| `WORKBENCH_REGISTRY_FILE` | `.repo2ree/workbench-registry.json` | Host-side map from REE id to workbench container/volume. |
+| `UPLOAD_MAX_BYTES` | 2 GiB | Maximum size of one staged upload. |
+| `UPLOAD_STAGING_MAX_BYTES` | 8 GiB | Aggregate budget for concurrent staged uploads. |
+| `UPLOAD_TTL_SECONDS` | `3600` | Lifetime of an abandoned staged upload and its token. |
+| `WORKBENCH_REGISTRY_FILE` | `.repo2ree/workbench-registry.json` | Control-plane map from REE id to agent, opaque workbench reference, and workbench specification. |
+| `REE_INDEX_FILE` | `.repo2ree/ree-index.json` | Durable index of sealed REEs and archive attestations. |
+| `RUN_REGISTRY_DIR` | `.repo2ree/runs` | Durable background-run records. |
+| `RUN_MAX_WORKERS` | `4` | Maximum concurrent workbench commands and API worker threads. |
 | `OTLP_ENDPOINT` | unset | OTLP collector base URL for API and agent traces/metrics/logs (see `observability/`). |
 | `OTEL_EXPORTER_OTLP_HEADERS` | unset | Headers for authenticated OTLP ingest (e.g. ClickStack's `authorization=<key>`). |
 | `TRACE_FILE` | unset | Local NDJSON trace sink for API/agent spans when no collector is used. |
 | `LOG_LEVEL` | `INFO` | Python log level for API, agent, and executor processes. |
 | `VITE_API_BASE_URL` | unset | GUI API origin for local Vite builds/dev server. |
+
+Agent variables:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `WORKBENCH_API_WS_URL` | `ws://localhost:8000/agent/connect` | Control-plane WebSocket dialed by the agent. |
+| `WORKBENCH_AGENT_ID` | generated | Explicit stable agent identity override. |
+| `WORKBENCH_AGENT_STATE_DIR` | `~/.repo2ree` | Storage used to persist a generated agent identity. |
+| `WORKBENCH_DOCKER_MODE` | `dind` | `dind` for a nested daemon or `host-socket` for trusted local iteration. |
 
 Containerized dev/demo runs may also need `DOCKER_GID`, the numeric group id of
 the host Docker socket:
