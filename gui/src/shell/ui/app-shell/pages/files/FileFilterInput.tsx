@@ -1,29 +1,23 @@
 import { Ic } from "@shell/ui/shared/components/Icon";
-import { lgColors, lgTree } from "@shell/ui/theme/lightGlassTheme";
-import { F } from "@shell/ui/theme/theme";
+import { cssVars } from "@shell/ui/theme/styleVars";
+import styles from "./FilesPage.module.css";
 
 interface FileFilterInputProps {
   query: string;
   onChange: (q: string) => void;
+  /** Where the pane places the control; a measurement, so it rides a custom
+   * property rather than a class. */
   margin?: string | number;
 }
 
-export function FileFilterInput({ query, onChange, margin = "8px 8px 6px" }: FileFilterInputProps) {
+export function FileFilterInput({ query, onChange, margin }: FileFilterInputProps) {
   const filtering = query.trim().length > 0;
   return (
     <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-        margin,
-        padding: "0 8px",
-        borderRadius: 7,
-        border: `1px solid ${lgTree.pane.borderColor}`,
-        background: lgTree.inputBg,
-      }}
+      className={styles.filter}
+      style={cssVars(margin === undefined ? {} : { "--filter-margin": margin })}
     >
-      <span style={{ display: "flex", color: lgColors.textMuted, flexShrink: 0 }}>
+      <span aria-hidden className={styles.filterIcon}>
         {Ic.search(13)}
       </span>
       <input
@@ -32,33 +26,14 @@ export function FileFilterInput({ query, onChange, margin = "8px 8px 6px" }: Fil
         onChange={(e) => onChange(e.target.value)}
         placeholder="Filter files…"
         aria-label="Filter files"
-        style={{
-          flex: 1,
-          minWidth: 0,
-          border: "none",
-          outline: "none",
-          background: "transparent",
-          padding: "7px 0",
-          fontSize: 12,
-          fontFamily: F.sans,
-          color: lgColors.text,
-        }}
+        className={styles.filterInput}
       />
       {filtering && (
         <button
           type="button"
           onClick={() => onChange("")}
           aria-label="Clear filter"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            border: "none",
-            background: "transparent",
-            cursor: "pointer",
-            color: lgColors.textMuted,
-            padding: 2,
-            flexShrink: 0,
-          }}
+          className={styles.clear}
         >
           {Ic.x(12)}
         </button>

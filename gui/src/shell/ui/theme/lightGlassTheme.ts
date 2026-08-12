@@ -30,11 +30,6 @@ export const lgColors = {
   white: "#fff",
 } as const;
 
-export const lgPageColors = {
-  runtimeEnv: lgColors.cyan,
-  files: lgColors.indigo,
-} as const;
-
 const lgBorders = {
   panel: "1px solid rgba(125, 211, 252, 0.58)",
   frame: "1px solid rgba(125, 211, 252, 0.48)",
@@ -491,19 +486,6 @@ export function lgInfoBanner(tone: LgBannerTone): React.CSSProperties {
     border: `1px solid ${palette.border}`,
     background: palette.background,
     flexWrap: "wrap",
-    fontFamily: F.sans,
-  };
-}
-
-export function lgPillChip(active: boolean): React.CSSProperties {
-  return {
-    fontSize: 11,
-    fontWeight: 700,
-    color: active ? lgColors.chipText : lgColors.textMuted,
-    background: active ? lgBackgrounds.chip : lgBackgrounds.disabled,
-    border: active ? lgBorders.chip : lgBorders.actionNeutral,
-    borderRadius: 99,
-    padding: "3px 9px",
     fontFamily: F.sans,
   };
 }

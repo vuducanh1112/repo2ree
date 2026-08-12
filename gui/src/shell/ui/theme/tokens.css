@@ -113,9 +113,11 @@
   --palette-slate-050: #f8fafc;
   --palette-green-050: #f0fdf4;
   --palette-green-100: #dcfce7;
+  --palette-green-200: #bbf7d0;
   --palette-green-300: #86efac;
   --palette-green-500: #22c55e;
   --palette-green-600: #16a34a;
+  --palette-green-700: #15803d;
   --palette-green-800: #166534;
   --palette-green-900: #14532d;
   --palette-emerald-500: #10b981;
@@ -125,6 +127,7 @@
   --palette-amber-300: #fcd34d;
   --palette-amber-500: #f59e0b;
   --palette-amber-600: #d97706;
+  --palette-amber-700: #b45309;
   --palette-amber-800: #92400e;
   --palette-yellow-600: #ca8a04;
   --palette-yellow-700: #a16207;
@@ -158,6 +161,8 @@
   --palette-film-white: rgb(255 255 255 / 72%);
   --palette-film-white-strong: rgb(255 255 255 / 92%);
   --palette-film-mist: rgb(239 246 255 / 88%);
+  --palette-film-chip: rgb(239 246 255 / 82%);
+  --palette-film-mist-strong: rgb(239 246 255 / 94%);
   --palette-film-slate: rgb(241 245 249 / 72%);
   --palette-film-ink: rgb(15 23 42 / 4%);
   --palette-film-blush: rgb(255 241 242 / 82%);
@@ -165,6 +170,11 @@
   --palette-film-mint-strong: rgb(220 252 231 / 78%);
   --palette-film-butter: rgb(254 249 195 / 82%);
   --palette-film-sky: rgb(240 249 255 / 88%);
+  --palette-film-frame: rgb(255 255 255 / 38%);
+  --palette-edge-sky-pale-soft: rgb(125 211 252 / 48%);
+  --palette-edge-sky-pale-faint: rgb(125 211 252 / 38%);
+  --palette-edge-sky-firm: rgb(14 165 233 / 58%);
+  --palette-edge-sky-pale-strong: rgb(125 211 252 / 58%);
   --palette-film-sky-soft: rgb(240 249 255 / 72%);
   --palette-film-slate-soft: rgb(248 250 252 / 66%);
   --palette-edge-sky: rgb(14 165 233 / 35%);
@@ -173,6 +183,7 @@
   --palette-edge-sky-strong: rgb(14 165 233 / 42%);
   --palette-edge-sky-pale: rgb(125 211 252 / 42%);
   --palette-edge-slate: rgb(148 163 184 / 34%);
+  --palette-edge-indigo: rgb(79 70 229 / 28%);
   --palette-edge-steel: rgb(95 142 190 / 42%);
   --palette-edge-cyan: rgb(56 189 248 / 86%);
   --palette-edge-rose: rgb(251 113 133 / 40%);
@@ -185,10 +196,26 @@
   --shadow-raised: 0 12px 24px rgb(14 165 233 / 22%);
   --shadow-panel: 0 1px 3px rgb(0 0 0 / 4%);
   --shadow-header-icon: 0 14px 30px rgb(14 165 233 / 16%);
+  --shadow-selected-option: 0 8px 20px rgb(14 165 233 / 12%);
+  --shadow-glass-panel: 0 24px 70px rgb(15 23 42 / 12%), inset 0 1px 0 rgb(255 255 255 / 88%);
+  --shadow-page-frame: inset 0 0 80px rgb(14 165 233 / 7%);
   --shadow-subpanel: 0 1px 2px rgb(15 23 42 / 5%), inset 0 1px 0 rgb(255 255 255 / 80%);
   --shadow-field-focus: 0 0 0 3px rgb(14 165 233 / 15%);
   --shadow-field-inset: inset 0 1px 0 var(--palette-film-white-strong);
 
   /* --- Gradient ---------------------------------------------------------- */
   --gradient-primary: linear-gradient(135deg, var(--palette-sky-500), var(--palette-indigo-600));
+  --gradient-page:
+    radial-gradient(circle at 80% 8%, rgb(14 165 233 / 18%), transparent 28%),
+    radial-gradient(circle at 12% 18%, rgb(99 102 241 / 12%), transparent 24%),
+    linear-gradient(135deg, #f8fbff 0%, #eef8ff 48%, #ffffff 100%);
+  --gradient-panel: linear-gradient(
+    145deg,
+    rgb(255 255 255 / 82%),
+    rgb(240 249 255 / 70%) 52%,
+    rgb(255 255 255 / 76%)
+  );
+  --gradient-frame-grid:
+    linear-gradient(rgb(14 165 233 / 6%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(14 165 233 / 6%) 1px, transparent 1px);
 }

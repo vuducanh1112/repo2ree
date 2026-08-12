@@ -2,16 +2,13 @@ import {
   runtimeArtifactStatus,
   runtimeArtifactStatusLabel,
 } from "@core/ree-steps/buildRuntimeUiState";
+import { Badge } from "@shell/ui/shared/components/Badge";
+import { Caption } from "@shell/ui/shared/components/Caption";
+import { Input } from "@shell/ui/shared/components/FormControl";
 import { Ic } from "@shell/ui/shared/components/Icon";
-import {
-  lgColors,
-  lgContentCard,
-  lgInfoBanner,
-  lgInput,
-  lgStatusBadge,
-  lgStyles,
-} from "@shell/ui/theme/lightGlassTheme";
-import { F } from "@shell/ui/theme/theme";
+import { Notice } from "@shell/ui/shared/components/Notice";
+import { Surface } from "@shell/ui/shared/components/Surface";
+import styles from "../BuildRuntimePage.module.css";
 
 interface RuntimeArtifactCardProps {
   runtimePath: string;
@@ -33,85 +30,46 @@ export function RuntimeArtifactCard({
   onRuntimeChange,
 }: RuntimeArtifactCardProps) {
   const hasRuntime = !!runtimePath;
-  const status = runtimeArtifactStatus({
-    hasRuntime,
-    runtimePathExists,
-  });
+  const status = runtimeArtifactStatus({ hasRuntime, runtimePathExists });
   const produced = status === "produced";
 
   return (
-    <div style={lgContentCard()}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 10,
-          marginBottom: 10,
-          flexWrap: "wrap",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ color: lgColors.blue, display: "flex" }}>{Ic.archive(15)}</span>
-          <div>
-            <div style={lgStyles.label}>Runtime Artifact</div>
-            <div style={lgStyles.helper}>
-              Where the build script writes the runtime, relative to the workspace. Downstream SBOM
-              and activation read the same path.
-            </div>
-          </div>
+    <Surface spacing="separated">
+      <div className={styles.artifactHeader}>
+        <div className={styles.artifactIdentity}>
+          <span aria-hidden className={styles.artifactIcon}>
+            {Ic.archive(15)}
+          </span>
+          <Caption
+            title="Runtime Artifact"
+            hint="Where the build script writes the runtime, relative to the workspace. Downstream SBOM and activation read the same path."
+          />
         </div>
-        <span style={lgStatusBadge(produced)}>{runtimeArtifactStatusLabel(status)}</span>
+        <Badge tone={produced ? "success" : "warning"}>{runtimeArtifactStatusLabel(status)}</Badge>
       </div>
 
       <section aria-label="Runtime artifact">
-        <input
+        <Input
           type="text"
           aria-label="Runtime output path"
           value={runtimePath}
           placeholder="runtime.tar.gz"
           onChange={(event) => onRuntimeChange(event.target.value)}
-          style={{ ...lgInput(false), fontFamily: F.mono }}
+          flavor="code"
         />
       </section>
 
       {hasRuntime && (
-        <div style={{ ...lgInfoBanner(produced ? "success" : "muted"), marginTop: 12 }}>
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              fontSize: 12,
-              color: produced ? lgColors.success : lgColors.textMid,
-              fontFamily: F.sans,
-              fontWeight: 700,
-              flex: 1,
-              minWidth: 0,
-            }}
-          >
-            {produced ? Ic.check(13) : Ic.info(13)}
-            <code style={{ overflowWrap: "anywhere" }}>
-              {produced ? runtimePath : `${runtimePath} — not built yet`}
-            </code>
-          </span>
-          {runtimeSize && (
-            <span
-              style={{
-                fontSize: 11,
-                color: lgColors.textMid,
-                fontFamily: F.mono,
-                background: "rgba(255,255,255,0.65)",
-                border: "1px solid rgba(148, 163, 184, 0.34)",
-                borderRadius: 6,
-                padding: "2px 8px",
-              }}
-            >
-              {runtimeSize}
+        <div className={styles.outcome}>
+          <Notice tone={produced ? "success" : "info"}>
+            <span className={styles.outcomePath} data-produced={produced || undefined}>
+              {produced ? Ic.check(13) : Ic.info(13)}
+              <code>{produced ? runtimePath : `${runtimePath} — not built yet`}</code>
             </span>
-          )}
+            {runtimeSize && <span className={styles.size}>{runtimeSize}</span>}
+          </Notice>
         </div>
       )}
-    </div>
+    </Surface>
   );
 }

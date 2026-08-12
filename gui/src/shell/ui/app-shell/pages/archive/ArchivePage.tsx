@@ -6,9 +6,16 @@ import { ARCHIVE_REPOSITORIES } from "@core/ree-steps/archiveRepositories";
 import type { GenericReeStepParams } from "@core/ree-steps/stepTypes";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { archiveTone } from "@shell/ui/theme/appearance";
-import { lgNextButton, lgStatusBadge, lgStyles } from "@shell/ui/theme/lightGlassTheme";
+import { lgNextButton, lgStatusBadge } from "@shell/ui/theme/lightGlassTheme";
 import { useState } from "react";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
+import {
+  GlassAside,
+  GlassMainGrid,
+  GlassPageShell,
+  GlassPanel,
+  GlassSectionBody,
+} from "../../components/GlassPageShell";
 import { GlassPanelFooter } from "../../components/GlassPanelFooter";
 import { GlassSectionHeader } from "../../components/GlassSectionHeader";
 import { ArchiveActionPanel } from "./sections/ArchiveActionPanel";
@@ -73,90 +80,88 @@ export function PageArchive({
   const depositedAnywhere = !!badges.swh || !!badges.zenodo || !!badges.dataverse;
 
   return (
-    <div style={lgStyles.pageRoot}>
-      <div style={lgStyles.pageFrame}>
-        <GlassPageHeader
-          icon={Ic.globe(24)}
-          tint={archiveTone(repo.key)}
-          title="Deposit & Share"
-          subtitle="Deposit your REE to a long-term archive and receive a citable permanent identifier."
-          badges={
-            <>
-              <span style={lgStatusBadge(capstoneReady)}>
-                {capstoneReady ? "Prereqs ready" : "Prereqs pending"}
-              </span>
-              <span style={lgStatusBadge(depositedAnywhere)}>
-                {depositedAnywhere ? "Deposited" : "Not deposited"}
-              </span>
-              {assignedId && <span style={lgStatusBadge(true)}>{repo.idLabel} assigned</span>}
-            </>
-          }
-        />
+    <GlassPageShell>
+      <GlassPageHeader
+        icon={Ic.globe(24)}
+        tint={archiveTone(repo.key)}
+        title="Deposit & Share"
+        subtitle="Deposit your REE to a long-term archive and receive a citable permanent identifier."
+        badges={
+          <>
+            <span style={lgStatusBadge(capstoneReady)}>
+              {capstoneReady ? "Prereqs ready" : "Prereqs pending"}
+            </span>
+            <span style={lgStatusBadge(depositedAnywhere)}>
+              {depositedAnywhere ? "Deposited" : "Not deposited"}
+            </span>
+            {assignedId && <span style={lgStatusBadge(true)}>{repo.idLabel} assigned</span>}
+          </>
+        }
+      />
 
-        <ArchivePrereqBanners
-          capstoneReady={capstoneReady}
-          buildDone={buildDone}
-          sbomDone={sbomDone}
-          activationDone={activationDone}
-          isSealed={isSealed}
-        />
+      <ArchivePrereqBanners
+        capstoneReady={capstoneReady}
+        buildDone={buildDone}
+        sbomDone={sbomDone}
+        activationDone={activationDone}
+        isSealed={isSealed}
+      />
 
-        <ArchiveRepoTabs
-          repositories={ARCHIVE_REPOSITORIES}
-          activeRepo={activeRepo}
-          badges={badges}
-          onSelect={setActiveRepo}
-        />
+      <ArchiveRepoTabs
+        repositories={ARCHIVE_REPOSITORIES}
+        activeRepo={activeRepo}
+        badges={badges}
+        onSelect={setActiveRepo}
+      />
 
-        <div style={lgStyles.mainGrid}>
-          <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
-            <div style={lgStyles.sectionBody}>
-              <GlassSectionHeader
-                icon={Ic.archive(19)}
-                tint={archiveTone(repo.key)}
-                title={repo.label}
-                subtitle="Review the destination and provide the parameters this archive requires."
-              />
-
-              <ArchiveRepoSummaryCard repo={repo} assignedId={assignedId} />
-              <ArchiveParamsCard repo={repo} getParam={getParam} setParam={setParam} />
-            </div>
-
-            <GlassPanelFooter
-              action={
-                <button type="button" onClick={() => onGo(PAGE.SEAL)} style={lgNextButton()}>
-                  Next: Seal {Ic.chevR(15)}
-                </button>
-              }
-            >
-              {isSealed
-                ? "REE is sealed — deposits are final."
-                : "Deposit can proceed before sealing, but Seal is still required to finish."}
-            </GlassPanelFooter>
-          </section>
-
-          <aside style={lgStyles.aside}>
-            <ArchiveActionPanel
-              repo={repo}
-              canRun={canRun}
-              earned={earned}
-              running={running}
-              missing={missing}
-              logs={logs}
-              onRun={onRun}
-              getParam={getParam}
+      <GlassMainGrid>
+        <GlassPanel clipped>
+          <GlassSectionBody>
+            <GlassSectionHeader
+              icon={Ic.archive(19)}
+              tint={archiveTone(repo.key)}
+              title={repo.label}
+              subtitle="Review the destination and provide the parameters this archive requires."
             />
-            <ArchiveReadinessAside
-              buildDone={buildDone}
-              sbomDone={sbomDone}
-              activationDone={activationDone}
-              isSealed={isSealed}
-              repo={repo}
-              assignedId={assignedId}
-            />
-          </aside>
-        </div>
-      </div>
-    </div>
+
+            <ArchiveRepoSummaryCard repo={repo} assignedId={assignedId} />
+            <ArchiveParamsCard repo={repo} getParam={getParam} setParam={setParam} />
+          </GlassSectionBody>
+
+          <GlassPanelFooter
+            action={
+              <button type="button" onClick={() => onGo(PAGE.SEAL)} style={lgNextButton()}>
+                Next: Seal {Ic.chevR(15)}
+              </button>
+            }
+          >
+            {isSealed
+              ? "REE is sealed — deposits are final."
+              : "Deposit can proceed before sealing, but Seal is still required to finish."}
+          </GlassPanelFooter>
+        </GlassPanel>
+
+        <GlassAside>
+          <ArchiveActionPanel
+            repo={repo}
+            canRun={canRun}
+            earned={earned}
+            running={running}
+            missing={missing}
+            logs={logs}
+            onRun={onRun}
+            getParam={getParam}
+          />
+          <ArchiveReadinessAside
+            buildDone={buildDone}
+            sbomDone={sbomDone}
+            activationDone={activationDone}
+            isSealed={isSealed}
+            repo={repo}
+            assignedId={assignedId}
+          />
+        </GlassAside>
+      </GlassMainGrid>
+    </GlassPageShell>
   );
 }

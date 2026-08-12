@@ -181,6 +181,18 @@
   --surface-card-edge: var(--palette-edge-sky-pale);
   --surface-sunken-bg: var(--palette-film-ink);
 
+  /* The glass page shell: the scrollable page, the framed board inside it, and
+   * the panels that sit on the board. */
+  --page-bg: var(--gradient-page);
+  --page-ink: var(--palette-slate-950);
+  --page-frame-bg: var(--palette-film-frame);
+  --page-frame-grid: var(--gradient-frame-grid);
+  --page-frame-edge: var(--palette-edge-sky-pale-soft);
+  --page-frame-shadow: var(--shadow-page-frame);
+  --panel-bg: var(--gradient-panel);
+  --panel-edge: var(--palette-edge-sky-pale-strong);
+  --panel-shadow: var(--shadow-glass-panel);
+
   /* The glass page scaffold: header, section headers, subpanels, footer. */
   --page-title-ink: var(--palette-slate-950);
   --page-subtitle-ink: var(--palette-slate-600);
@@ -194,6 +206,23 @@
   --section-icon-bg: var(--palette-film-sky-soft);
   --section-icon-edge: var(--palette-edge-sky-faint);
   --footer-bg: var(--palette-film-slate-soft);
+
+  /* A pick-one option row: the workbench image and lab location choosers. */
+  --option-bg: var(--palette-film-white);
+  --option-edge: var(--palette-edge-sky-pale-faint);
+  --option-ink: var(--field-ink);
+  --option-hint-ink: var(--field-hint-ink);
+  --option-selected-bg: var(--palette-film-mist-strong);
+  --option-selected-edge: var(--palette-edge-sky-firm);
+  --option-selected-ink: var(--palette-sky-900);
+  --option-selected-shadow: var(--shadow-selected-option);
+  --option-marker: var(--palette-sky-500);
+  --option-marker-edge: var(--palette-edge-slate);
+
+  /* File tree and viewer panes. */
+  --tree-pane-bg: var(--palette-film-white-soft);
+  --tree-pane-edge: var(--palette-edge-sky-pale);
+  --tree-input-bg: var(--palette-film-white);
   --footer-ink: var(--palette-slate-500);
 
   --notice-info-bg: var(--palette-film-white);
@@ -211,8 +240,11 @@
   --badge-warning-bg: var(--palette-film-butter);
   --badge-warning-edge: var(--palette-edge-amber);
   --badge-neutral-ink: var(--palette-slate-500);
-  --badge-neutral-bg: var(--palette-film-white);
+  --badge-neutral-bg: var(--palette-film-slate);
   --badge-neutral-edge: var(--palette-edge-slate);
+  --badge-info-ink: var(--palette-blue-700);
+  --badge-info-bg: var(--palette-film-chip);
+  --badge-info-edge: var(--palette-edge-indigo);
 
   /* --- Run log lines ------------------------------------------------------
    * A streamed line's severity, which the backend already classifies. */

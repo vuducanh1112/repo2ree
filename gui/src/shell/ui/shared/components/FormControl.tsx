@@ -41,10 +41,24 @@ export function Field({ label, hint, children }: FieldProps) {
   );
 }
 
-type InputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "className" | "style">;
+/** `code` switches to the monospace face, for paths, hashes and identifiers. */
+type ControlFlavor = "prose" | "code";
 
-export function Input(props: InputProps) {
-  return <input className={styles.control} {...props} />;
+interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "className" | "style"> {
+  flavor?: ControlFlavor;
+  /** Leaves room at the left edge for a glyph the caller positions over it. */
+  adorned?: boolean;
+}
+
+export function Input({ flavor = "prose", adorned, ...rest }: InputProps) {
+  return (
+    <input
+      className={styles.control}
+      data-flavor={flavor}
+      data-adorned={adorned || undefined}
+      {...rest}
+    />
+  );
 }
 
 type SelectProps = Omit<SelectHTMLAttributes<HTMLSelectElement>, "className" | "style">;
@@ -55,8 +69,7 @@ export function Select(props: SelectProps) {
 
 interface TextareaProps
   extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "className" | "style"> {
-  /** `code` switches to the monospace editor skin. */
-  flavor?: "prose" | "code";
+  flavor?: ControlFlavor;
 }
 
 export function Textarea({ flavor = "prose", ...rest }: TextareaProps) {

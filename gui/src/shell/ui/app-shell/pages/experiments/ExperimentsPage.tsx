@@ -16,10 +16,16 @@ import {
   lgGlassButton,
   lgNextButton,
   lgStatusBadge,
-  lgStyles,
 } from "@shell/ui/theme/lightGlassTheme";
 import { useEffect, useRef, useState } from "react";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
+import {
+  GlassAside,
+  GlassMainGrid,
+  GlassPageShell,
+  GlassPanel,
+  GlassSectionBody,
+} from "../../components/GlassPageShell";
 import { GlassPanelFooter } from "../../components/GlassPanelFooter";
 import { GlassSectionHeader } from "../../components/GlassSectionHeader";
 import type { PageExperimentsProps } from "../sharedStepUi";
@@ -239,127 +245,125 @@ export function PageExperiments({
   );
 
   return (
-    <div style={lgStyles.pageRoot}>
-      <div style={lgStyles.pageFrame}>
-        <GlassPageHeader
-          icon={Ic.terminal(24)}
-          title="Experiments"
-          subtitle="Reproducibility verification commands recorded in the REE."
-          badges={headerBadges}
-          right={
-            selectedExperiment !== null && selectedIndex !== null ? (
-              <ExperimentHeaderActions
-                locked={locked}
-                canRun={canRun}
-                isRunning={run.isRunning}
-                onRun={() => run.startRun()}
-                onCancel={() => run.cancelRun()}
-                onRemove={() => removeExperiment(selectedIndex)}
-              />
-            ) : undefined
-          }
-        />
-
-        <div style={lgStyles.mainGrid}>
-          {selectedExperiment !== null && selectedIndex !== null ? (
-            <ExperimentDetail
-              experiment={selectedExperiment}
-              index={selectedIndex}
-              otherNames={otherNames}
+    <GlassPageShell>
+      <GlassPageHeader
+        icon={Ic.terminal(24)}
+        title="Experiments"
+        subtitle="Reproducibility verification commands recorded in the REE."
+        badges={headerBadges}
+        right={
+          selectedExperiment !== null && selectedIndex !== null ? (
+            <ExperimentHeaderActions
               locked={locked}
-              scriptContent={
-                findFileByWorkspacePath(workspaceFiles, selectedExperiment.runScript)?.content ?? ""
-              }
-              verifyScriptContent={
-                findFileByWorkspacePath(workspaceFiles, selectedExperiment.verifyScript)?.content ??
-                ""
-              }
-              onUpdate={(patch) => updateExperiment(selectedIndex, patch)}
-              onSaveScript={(path, content) => {
-                void onPersistWorkspaceFile(undefined, path, content);
-                if (path !== selectedExperiment.runScript) {
-                  updateExperiment(selectedIndex, { runScript: path });
-                }
-              }}
-              onSaveVerifyScript={(path, content) => {
-                void onPersistWorkspaceFile(undefined, path, content);
-                if (path !== selectedExperiment.verifyScript) {
-                  updateExperiment(selectedIndex, { verifyScript: path });
-                }
-              }}
-              onBack={() => {
-                setSelectedIndex(null);
-                onFocusedFieldChange(null);
-              }}
-              runState={run.runState}
+              canRun={canRun}
+              isRunning={run.isRunning}
+              onRun={() => run.startRun()}
+              onCancel={() => run.cancelRun()}
+              onRemove={() => removeExperiment(selectedIndex)}
             />
-          ) : (
-            <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
-              <div style={lgStyles.sectionBody}>
-                <GlassSectionHeader
-                  icon={Ic.layers(19)}
-                  title="Catalog"
-                  subtitle="Each experiment is a named, runnable check that proves the REE behaves as expected."
-                />
+          ) : undefined
+        }
+      />
 
-                <ExperimentCardList
-                  experiments={experiments}
-                  locked={locked}
-                  onSelect={setSelectedIndex}
-                  onAdd={addExperiment}
-                  onRemove={removeExperiment}
-                />
-              </div>
+      <GlassMainGrid>
+        {selectedExperiment !== null && selectedIndex !== null ? (
+          <ExperimentDetail
+            experiment={selectedExperiment}
+            index={selectedIndex}
+            otherNames={otherNames}
+            locked={locked}
+            scriptContent={
+              findFileByWorkspacePath(workspaceFiles, selectedExperiment.runScript)?.content ?? ""
+            }
+            verifyScriptContent={
+              findFileByWorkspacePath(workspaceFiles, selectedExperiment.verifyScript)?.content ??
+              ""
+            }
+            onUpdate={(patch) => updateExperiment(selectedIndex, patch)}
+            onSaveScript={(path, content) => {
+              void onPersistWorkspaceFile(undefined, path, content);
+              if (path !== selectedExperiment.runScript) {
+                updateExperiment(selectedIndex, { runScript: path });
+              }
+            }}
+            onSaveVerifyScript={(path, content) => {
+              void onPersistWorkspaceFile(undefined, path, content);
+              if (path !== selectedExperiment.verifyScript) {
+                updateExperiment(selectedIndex, { verifyScript: path });
+              }
+            }}
+            onBack={() => {
+              setSelectedIndex(null);
+              onFocusedFieldChange(null);
+            }}
+            runState={run.runState}
+          />
+        ) : (
+          <GlassPanel clipped>
+            <GlassSectionBody>
+              <GlassSectionHeader
+                icon={Ic.layers(19)}
+                title="Catalog"
+                subtitle="Each experiment is a named, runnable check that proves the REE behaves as expected."
+              />
 
-              <GlassPanelFooter
-                action={
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    {!locked && (
-                      <button
-                        type="button"
-                        onClick={addExperiment}
-                        style={{
-                          ...lgGlassButton(),
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 6,
-                        }}
-                      >
-                        {Ic.plus(13)} Add experiment
-                      </button>
-                    )}
+              <ExperimentCardList
+                experiments={experiments}
+                locked={locked}
+                onSelect={setSelectedIndex}
+                onAdd={addExperiment}
+                onRemove={removeExperiment}
+              />
+            </GlassSectionBody>
+
+            <GlassPanelFooter
+              action={
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  {!locked && (
                     <button
                       type="button"
-                      onClick={() => onGoPage(PAGE.ARCHIVE)}
-                      style={lgNextButton()}
+                      onClick={addExperiment}
+                      style={{
+                        ...lgGlassButton(),
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
                     >
-                      Next: Deposit & Share {Ic.chevR(15)}
+                      {Ic.plus(13)} Add experiment
                     </button>
-                  </div>
-                }
-              >
-                {total === 0
-                  ? "Experiments are optional but raise the achievable reproducibility level."
-                  : `${total} recorded — continue to deposit & share when ready.`}
-              </GlassPanelFooter>
-            </section>
-          )}
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => onGoPage(PAGE.ARCHIVE)}
+                    style={lgNextButton()}
+                  >
+                    Next: Deposit & Share {Ic.chevR(15)}
+                  </button>
+                </div>
+              }
+            >
+              {total === 0
+                ? "Experiments are optional but raise the achievable reproducibility level."
+                : `${total} recorded — continue to deposit & share when ready.`}
+            </GlassPanelFooter>
+          </GlassPanel>
+        )}
 
-          <aside style={lgStyles.aside}>
-            <ExperimentsCoverageAside
-              total={total}
-              withName={withName}
-              withCommand={withCommand}
-              withDescription={withDescription}
-              withVerify={withVerify}
-              withRuntimeEstimate={withRuntimeEstimate}
-              withResourceEstimates={withResourceEstimates}
-            />
-            <ExperimentsSuggestionsAside locked={locked} onAdd={addFromSuggestion} />
-            <ExperimentsAboutAside />
-          </aside>
-        </div>
-      </div>
-    </div>
+        <GlassAside>
+          <ExperimentsCoverageAside
+            total={total}
+            withName={withName}
+            withCommand={withCommand}
+            withDescription={withDescription}
+            withVerify={withVerify}
+            withRuntimeEstimate={withRuntimeEstimate}
+            withResourceEstimates={withResourceEstimates}
+          />
+          <ExperimentsSuggestionsAside locked={locked} onAdd={addFromSuggestion} />
+          <ExperimentsAboutAside />
+        </GlassAside>
+      </GlassMainGrid>
+    </GlassPageShell>
   );
 }

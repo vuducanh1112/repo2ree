@@ -1,4 +1,5 @@
 import type { ArchiveRepo } from "@core/ree-steps/stepTypes";
+import { GlassPanel } from "@shell/ui/app-shell/components/GlassPageShell";
 import { SummaryLine } from "@shell/ui/app-shell/components/SummaryLine";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { archiveTone } from "@shell/ui/theme/appearance";
@@ -44,7 +45,7 @@ export function ArchiveReadinessAside({
   const capstoneReady = buildDone && sbomDone && activationDone;
 
   return (
-    <section style={{ ...lgStyles.panel, padding: 16 }}>
+    <GlassPanel density="compact">
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
         <span style={{ color: lgColors.cyan, display: "flex" }}>{Ic.shield(22)}</span>
         <h2 style={{ margin: 0, fontSize: 15, color: lgColors.text }}>Deposit Readiness</h2>
@@ -78,6 +79,6 @@ export function ArchiveReadinessAside({
           value={<span style={lgStatusBadge(isSealed)}>{isSealed ? "Sealed" : "Not sealed"}</span>}
         />
       </div>
-    </section>
+    </GlassPanel>
   );
 }

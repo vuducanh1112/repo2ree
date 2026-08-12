@@ -1,7 +1,6 @@
 import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
-import { lgColors, lgStyles } from "@shell/ui/theme/lightGlassTheme";
-import { F } from "@shell/ui/theme/theme";
 import { SummaryLine } from "../../components/SummaryLine";
+import styles from "./SourceAcquisitionPage.module.css";
 
 interface Step3Props {
   step3Ready: boolean;
@@ -12,25 +11,14 @@ interface Step3Props {
 export function SourceStep3Section(props: Step3Props) {
   const { sourceMeta } = props;
   return (
-    <section
-      aria-label="Workspace Snapshot"
-      style={{ borderTop: "1px solid rgba(125, 211, 252, 0.28)", paddingTop: 20 }}
-    >
-      <div style={{ ...lgStyles.label, marginBottom: 10 }}>Workspace Snapshot</div>
+    <section aria-label="Workspace Snapshot" className={styles.snapshotSection}>
+      <div className={styles.snapshotLabel}>Workspace Snapshot</div>
 
       {props.step3Ready && sourceMeta ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ fontSize: 13, color: lgColors.textMid, fontFamily: F.sans }}>
-            {props.acquisitionNarrative}
-          </div>
+        <div className={styles.snapshotBody}>
+          <div className={styles.narrative}>{props.acquisitionNarrative}</div>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
-              gap: "14px 24px",
-            }}
-          >
+          <div className={styles.facts}>
             <SummaryLine label="Name" value={sourceMeta.name} />
             <SummaryLine label="Origin" value={sourceMeta.origin || "—"} />
             <SummaryLine label="Type" value={sourceMeta.sourceType || "—"} />
@@ -39,7 +27,7 @@ export function SourceStep3Section(props: Step3Props) {
               label="SWHID"
               value={
                 sourceMeta.swhid ? (
-                  <span style={{ fontFamily: F.mono, fontSize: 12 }}>{sourceMeta.swhid}</span>
+                  <span className={styles.swhid}>{sourceMeta.swhid}</span>
                 ) : (
                   "Not computed yet"
                 )
@@ -48,7 +36,7 @@ export function SourceStep3Section(props: Step3Props) {
           </div>
         </div>
       ) : (
-        <div style={lgStyles.helper}>
+        <div className={styles.hint}>
           Complete the Source Snapshot step above to configure snapshot behavior.
         </div>
       )}

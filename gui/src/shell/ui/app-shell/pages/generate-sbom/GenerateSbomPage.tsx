@@ -8,16 +8,18 @@ import {
 } from "@core/ree-steps/sbomUiState";
 import type { ReeStepRunParams } from "@core/ree-steps/stepRunParams";
 import { workspaceFileExists } from "@core/workspace/fileTreeTraversal";
+import { Badge } from "@shell/ui/shared/components/Badge";
 import { stageTone } from "@shell/ui/theme/appearance";
-import { lgPageRoot, lgStatusBadge } from "@shell/ui/theme/lightGlassTheme";
 import { useMemo } from "react";
 import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
+import { GlassPageShell } from "../../components/GlassPageShell";
 import { MissingInputsBanner } from "../../components/MissingInputsBanner";
 import { OutcomeBadge } from "../../components/OutcomeBadge";
 import { RunActionButton } from "../../components/RunActionButton";
 import { stepIcon } from "../../stepIcons";
 import type { StepPageProps } from "../sharedStepUi";
+import styles from "./GenerateSbomPage.module.css";
 import { CrossCheckCard, RuntimeScanTargetCard, SbomOutputCard } from "./sections";
 
 const SBOM_PAGE_COLOR = stageTone(PAGE.SBOM);
@@ -56,7 +58,7 @@ export function PageGenerateSbom({
   const disabled = running || missing.length > 0 || !runtimePathExists;
 
   return (
-    <div style={lgPageRoot}>
+    <GlassPageShell variant="docked">
       <GlassPageHeader
         icon={IC(24)}
         tint={SBOM_PAGE_COLOR}
@@ -64,9 +66,9 @@ export function PageGenerateSbom({
         subtitle={step.desc}
         badges={
           <>
-            <span style={lgStatusBadge(sbomReady)}>
+            <Badge tone={sbomReady ? "success" : "warning"}>
               {sbomReady ? "SBOM ready" : "SBOM pending"}
-            </span>
+            </Badge>
             {badge && <OutcomeBadge outcome={badge} />}
           </>
         }
@@ -81,7 +83,7 @@ export function PageGenerateSbom({
         }
       />
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div className={styles.stack}>
         <MissingInputsBanner missing={missing} onGoFields={onGoFields} />
 
         <RuntimeScanTargetCard
@@ -103,6 +105,6 @@ export function PageGenerateSbom({
 
         <CollapsibleLogCard log={log} running={running} title={ts ? "SBOM log" : "SBOM logs"} />
       </div>
-    </div>
+    </GlassPageShell>
   );
 }

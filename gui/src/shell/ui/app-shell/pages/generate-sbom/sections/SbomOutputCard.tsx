@@ -1,13 +1,9 @@
+import { Badge } from "@shell/ui/shared/components/Badge";
 import { Ic } from "@shell/ui/shared/components/Icon";
-import { translucent } from "@shell/ui/theme/appearance";
-import {
-  lgColors,
-  lgInfoBanner,
-  lgPillChip,
-  lgStatusBadge,
-  lgStyles,
-} from "@shell/ui/theme/lightGlassTheme";
-import { F } from "@shell/ui/theme/theme";
+import { Notice } from "@shell/ui/shared/components/Notice";
+import { Surface } from "@shell/ui/shared/components/Surface";
+import { cssVars } from "@shell/ui/theme/styleVars";
+import styles from "../GenerateSbomPage.module.css";
 
 interface SbomOutputCardProps {
   color: string;
@@ -26,58 +22,36 @@ export function SbomOutputCard({
 }: SbomOutputCardProps) {
   if (!sbomPath) {
     return (
-      <div style={{ ...lgStyles.summaryBox, alignItems: "flex-start" }}>
-        <span style={lgStatusBadge(false)}>Not generated</span>
-        <div style={{ color: lgColors.textMuted, fontSize: 13 }}>
-          No SBOM has been attached yet. Generate one from the selected runtime.
+      <Surface spacing="flush">
+        <div className={styles.empty}>
+          <Badge tone="warning">Not generated</Badge>
+          <div className={styles.emptyHint}>
+            No SBOM has been attached yet. Generate one from the selected runtime.
+          </div>
         </div>
-      </div>
+      </Surface>
     );
   }
 
   if (!sbomFilePresent) {
     return (
-      <div style={lgInfoBanner("danger")}>
-        <span style={{ color: lgColors.danger, display: "flex" }}>{Ic.info(13)}</span>
-        <span style={{ color: lgColors.danger, fontSize: 12 }}>
-          SBOM is set to <code>{sbomPath}</code>, but that file is not present in the REE.
-        </span>
-      </div>
+      <Notice tone="danger" icon={Ic.info(13)}>
+        SBOM is set to <code>{sbomPath}</code>, but that file is not present in the REE.
+      </Notice>
     );
   }
 
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        padding: "10px 14px",
-        background: translucent(color, 6),
-        border: `1px solid ${translucent(color, 14)}`,
-        borderRadius: 10,
-        flexWrap: "wrap",
-      }}
-    >
-      <span style={{ color, display: "flex" }}>{Ic.file(13)}</span>
-      <span
-        style={{
-          fontSize: 13,
-          fontFamily: F.mono,
-          fontWeight: 700,
-          color,
-          flex: 1,
-          minWidth: 140,
-          overflowWrap: "anywhere",
-        }}
-      >
-        {sbomPath}
+    <div className={styles.attached} style={cssVars({ "--sbom-tint": color })}>
+      <span aria-hidden className={styles.attachedIcon}>
+        {Ic.file(13)}
       </span>
-      {sbomFormat && <span style={lgPillChip(true)}>{sbomFormat}</span>}
+      <span className={styles.attachedPath}>{sbomPath}</span>
+      {sbomFormat && <Badge tone="info">{sbomFormat}</Badge>}
       {pkgCount !== null && (
-        <span style={lgPillChip(true)}>
+        <Badge tone="info">
           {pkgCount} package{pkgCount !== 1 ? "s" : ""}
-        </span>
+        </Badge>
       )}
     </div>
   );

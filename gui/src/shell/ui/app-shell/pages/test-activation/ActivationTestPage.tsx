@@ -11,14 +11,14 @@ import type { ReeStepRunParams } from "@core/ree-steps/stepRunParams";
 import { findFileByWorkspacePath, workspaceFileExists } from "@core/workspace/fileTreeTraversal";
 import { useGenerateActivationScript } from "@shell/data/scriptInference/mutations";
 import { useScriptTemplates } from "@shell/data/scriptTemplates/catalog";
+import { Badge } from "@shell/ui/shared/components/Badge";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { stageTone } from "@shell/ui/theme/appearance";
-import { lgPageRoot, lgPillChip, lgStatusBadge } from "@shell/ui/theme/lightGlassTheme";
-import { F } from "@shell/ui/theme/theme";
 import { useCallback, useState } from "react";
 import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
 import { GenerateScriptControl } from "../../components/GenerateScriptControl";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
+import { GlassPageShell } from "../../components/GlassPageShell";
 import { GlassPanelFooter } from "../../components/GlassPanelFooter";
 import { GlassSectionHeader } from "../../components/GlassSectionHeader";
 import { GlassSubPanel } from "../../components/GlassSubPanel";
@@ -28,6 +28,7 @@ import { OutcomeBadge } from "../../components/OutcomeBadge";
 import { RunActionButton } from "../../components/RunActionButton";
 import { RunScriptCard } from "../../components/RunScriptCard";
 import type { StepPageProps } from "../sharedStepUi";
+import styles from "./ActivationTestPage.module.css";
 import { ActivationTargetCard } from "./sections";
 
 const ACTIVATION_PAGE_COLOR = stageTone(PAGE.ACTIVATION);
@@ -148,7 +149,7 @@ export function PageTestActivation({
   const commandLabel = activationScriptPath;
 
   return (
-    <div style={lgPageRoot}>
+    <GlassPageShell variant="docked">
       <GlassPageHeader
         icon={Ic.shield(24)}
         tint={ACTIVATION_PAGE_COLOR}
@@ -157,16 +158,18 @@ export function PageTestActivation({
         badges={
           <>
             {commandLabel && (
-              <span style={{ ...lgPillChip(true), fontFamily: F.mono }}>{commandLabel}</span>
+              <Badge tone="info" flavor="code">
+                {commandLabel}
+              </Badge>
             )}
-            <span style={lgStatusBadge(activationReady)}>
+            <Badge tone={activationReady ? "success" : "warning"}>
               {activationReady ? "Activation ready" : "Activation pending"}
-            </span>
+            </Badge>
             {badge && <OutcomeBadge outcome={badge} />}
           </>
         }
         right={
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+          <div className={styles.headerActions}>
             {runDone && ts && <LastRunStamp label="Last verified" ts={ts} />}
             <ActivationRunControls
               running={running}
@@ -179,7 +182,7 @@ export function PageTestActivation({
         }
       />
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div className={styles.stack}>
         <MissingInputsBanner missing={missing} onGoFields={onGoFields} />
 
         <GlassSubPanel>
@@ -190,7 +193,7 @@ export function PageTestActivation({
             subtitle="Activation owns its run script: it fully defines how the runtime is entered and probed for liveness."
           />
 
-          <div style={{ marginTop: 10 }}>
+          <div className={styles.section}>
             <RunScriptCard
               scriptPath={activationScriptPath}
               currentContent={activationScriptContent}
@@ -216,7 +219,7 @@ export function PageTestActivation({
             />
           </div>
 
-          <div style={{ marginTop: 10 }}>
+          <div className={styles.section}>
             <RunScriptCard
               scriptPath={activationVerifyScriptPath}
               currentContent={activationVerifyScriptContent}
@@ -258,6 +261,6 @@ export function PageTestActivation({
 
         <GlassPanelFooter bar>{activationFooterHint({ runDone, runFailed })}</GlassPanelFooter>
       </div>
-    </div>
+    </GlassPageShell>
   );
 }

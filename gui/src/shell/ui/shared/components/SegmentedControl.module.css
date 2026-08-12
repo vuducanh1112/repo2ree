@@ -1,0 +1,76 @@
+/* A pick-one row. The selected segment is `aria-pressed`, which is both what
+ * the styling keys off and what a screen reader announces — the two cannot
+ * drift apart. */
+
+.group {
+  margin: 0;
+  padding: 0;
+  border: none;
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.segment:not(:disabled):hover {
+  border-color: var(--palette-edge-sky);
+}
+
+.segment {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 9px 14px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--option-edge);
+  background: var(--option-bg);
+  color: var(--page-subtitle-ink);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  transition:
+    border-color var(--duration-normal) var(--ease-standard),
+    background var(--duration-normal) var(--ease-standard),
+    color var(--duration-normal) var(--ease-standard);
+}
+
+.segment[aria-pressed="true"] {
+  border-color: var(--palette-edge-sky-strong);
+  background: var(--palette-film-mist);
+  color: var(--option-selected-ink);
+  font-weight: 800;
+}
+
+.group[data-stretch] .segment {
+  flex: 1;
+  min-width: 140px;
+  justify-content: center;
+}
+
+/* Tinted by a domain identity — an archive target, a stage. */
+.segment[aria-pressed="true"][data-tinted] {
+  border-color: color-mix(in srgb, var(--segment-tint) 60%, transparent);
+  color: var(--segment-tint);
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--segment-tint) 15%, transparent);
+}
+
+.segment:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.segment:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.icon {
+  display: flex;
+  flex-shrink: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .segment {
+    transition: none;
+  }
+}

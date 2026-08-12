@@ -3,6 +3,7 @@ import type { DependencyGroup } from "@core/evaluate/dependencyPresentation";
 import type { ReproducibilityReport } from "@core/evaluate/Threat";
 import type { LogEntry } from "@core/ree/ReeTypes";
 import type { ReeStepRequirement } from "@core/ree-steps/stepTypes";
+import { GlassPanel } from "@shell/ui/app-shell/components/GlassPageShell";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { lgColors, lgContentCard, lgStatusBadge, lgStyles } from "@shell/ui/theme/lightGlassTheme";
 import { F } from "@shell/ui/theme/theme";
@@ -299,7 +300,7 @@ export function RepoAnalysisWorkspaceAside({
   fileCount: number;
 }) {
   return (
-    <section style={{ ...lgStyles.panel, padding: 16 }}>
+    <GlassPanel density="compact">
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
         <span style={{ color: lgColors.cyan, display: "flex" }}>{Ic.package(22)}</span>
         <h2 style={{ margin: 0, fontSize: 15, color: lgColors.text }}>Workspace Inputs</h2>
@@ -319,6 +320,6 @@ export function RepoAnalysisWorkspaceAside({
         <SummaryLine label="Container files" value={containerCount.toString()} />
         <SummaryLine label="Nix files" value={nixCount.toString()} />
       </div>
-    </section>
+    </GlassPanel>
   );
 }

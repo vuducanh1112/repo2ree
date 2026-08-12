@@ -33,20 +33,3 @@ export const S_SEALED_META_KEY: React.CSSProperties = {
   color: C.textMuted,
   flexShrink: 0,
 };
-
-export const S_SOURCE_UPLOAD_STATUS_LINE_BASE: React.CSSProperties = {
-  marginTop: 6,
-  fontSize: 11,
-  fontFamily: F.sans,
-  display: "flex",
-  alignItems: "center",
-  gap: 4,
-};
-
-export const S_SOURCE_URL_STATUS_BASE: React.CSSProperties = {
-  fontSize: 11,
-  fontFamily: F.sans,
-  display: "flex",
-  alignItems: "center",
-  gap: 4,
-};

@@ -9,14 +9,14 @@ import {
 import { findFileByWorkspacePath, workspaceFileExists } from "@core/workspace/fileTreeTraversal";
 import { useGenerateBuildScript } from "@shell/data/scriptInference/mutations";
 import { useScriptTemplates } from "@shell/data/scriptTemplates/catalog";
+import { Badge } from "@shell/ui/shared/components/Badge";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { stageTone } from "@shell/ui/theme/appearance";
-import { lgPageRoot, lgPillChip, lgStatusBadge } from "@shell/ui/theme/lightGlassTheme";
-import { F } from "@shell/ui/theme/theme";
 import { useCallback, useMemo, useState } from "react";
 import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
 import { GenerateScriptControl } from "../../components/GenerateScriptControl";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
+import { GlassPageShell } from "../../components/GlassPageShell";
 import { GlassPanelFooter } from "../../components/GlassPanelFooter";
 import { GlassSectionHeader } from "../../components/GlassSectionHeader";
 import { GlassSubPanel } from "../../components/GlassSubPanel";
@@ -25,6 +25,7 @@ import { MissingInputsBanner } from "../../components/MissingInputsBanner";
 import { OutcomeBadge } from "../../components/OutcomeBadge";
 import { RunActionButton } from "../../components/RunActionButton";
 import type { StepPageProps } from "../sharedStepUi";
+import styles from "./BuildRuntimePage.module.css";
 import { ReservedBuildScriptCard, RuntimeArtifactCard } from "./sections";
 
 const BUILD_PAGE_COLOR = stageTone(PAGE.BUILD);
@@ -137,7 +138,7 @@ export function PageBuildRuntime({
   const canRun = canRunBuild({ running, hasMissing, hasScript, hasRuntimePath: !!runtimePath });
 
   return (
-    <div style={lgPageRoot}>
+    <GlassPageShell variant="docked">
       <GlassPageHeader
         icon={Ic.cpu(24)}
         tint={BUILD_PAGE_COLOR}
@@ -146,14 +147,16 @@ export function PageBuildRuntime({
         badges={
           <>
             {scriptPath && (
-              <span style={{ ...lgPillChip(true), fontFamily: F.mono }}>{scriptPath}</span>
+              <Badge tone="info" flavor="code">
+                {scriptPath}
+              </Badge>
             )}
-            <span style={lgStatusBadge(runDone && !runFailed)}>{statusLabel}</span>
+            <Badge tone={runDone && !runFailed ? "success" : "warning"}>{statusLabel}</Badge>
             {badge && <OutcomeBadge outcome={badge} />}
           </>
         }
         right={
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+          <div className={styles.headerActions}>
             {runDone && ts && <LastRunStamp label="Last built" ts={ts} />}
             <BuildRunControls
               running={running}
@@ -166,7 +169,7 @@ export function PageBuildRuntime({
         }
       />
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div className={styles.stack}>
         <MissingInputsBanner missing={missing} onGoFields={onGoFields} />
 
         <GlassSubPanel>
@@ -176,7 +179,7 @@ export function PageBuildRuntime({
             title="1. Declare the runtime the build produces"
             subtitle="Name the path the build script writes its runtime to. The build refuses to run until it is declared, and fails if nothing lands there."
           />
-          <div style={{ marginTop: 10 }}>
+          <div className={styles.section}>
             <RuntimeArtifactCard
               runtimePath={runtimePath}
               runtimeSize={runtimeSize}
@@ -193,7 +196,7 @@ export function PageBuildRuntime({
             title="Build recipe"
             subtitle="Edit REE’s reserved build program. It can call any build scripts already supplied by the project."
           />
-          <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+          <div className={styles.scriptSection}>
             <GenerateScriptControl
               generate={generate}
               onLoad={loadGenerated}
@@ -222,6 +225,6 @@ export function PageBuildRuntime({
           {buildFooterHint({ runDone, runFailed, hasScript, hasRuntimePath: !!runtimePath })}
         </GlassPanelFooter>
       </div>
-    </div>
+    </GlassPageShell>
   );
 }

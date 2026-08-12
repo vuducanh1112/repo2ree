@@ -5,6 +5,7 @@ import type {
   ReeStepRequirement,
 } from "@core/ree-steps/stepTypes";
 import { CollapsibleLogCard } from "@shell/ui/app-shell/components/CollapsibleLogCard";
+import { GlassPanel } from "@shell/ui/app-shell/components/GlassPageShell";
 import { RunActionButton } from "@shell/ui/app-shell/components/RunActionButton";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { archiveTone } from "@shell/ui/theme/appearance";
@@ -44,7 +45,7 @@ export function ArchiveActionPanel({
       : `Deposit to ${repo.label}`;
 
   return (
-    <section style={{ ...lgStyles.panel, padding: 16 }}>
+    <GlassPanel density="compact">
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
         <span style={{ color: tone, display: "flex" }}>{Ic.upload(22)}</span>
         <h2 style={{ margin: 0, fontSize: 15, color: lgColors.text }}>Deposit</h2>
@@ -79,6 +80,6 @@ export function ArchiveActionPanel({
 
         <CollapsibleLogCard log={log} running={running} title="Deposit Log" maxHeight={260} />
       </div>
-    </section>
+    </GlassPanel>
   );
 }

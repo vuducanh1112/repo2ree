@@ -12,6 +12,7 @@ import {
   experimentRunScriptPath,
   experimentVerifyScriptPath,
 } from "@shell/data/scriptTemplates/paths";
+import { GlassPanel } from "@shell/ui/app-shell/components/GlassPageShell";
 import { GlassPanelFooter } from "@shell/ui/app-shell/components/GlassPanelFooter";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { failureTone, stageTone } from "@shell/ui/theme/appearance";
@@ -99,7 +100,7 @@ export function ExperimentDetail({
   >();
 
   return (
-    <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
+    <GlassPanel clipped>
       <DetailBreadcrumb index={index} onBack={onBack} />
 
       <div style={{ ...lgStyles.sectionBody, display: "flex", flexDirection: "column", gap: 18 }}>
@@ -237,7 +238,7 @@ export function ExperimentDetail({
               ? "Fix the invalid name to continue."
               : "Edits save automatically."}
       </GlassPanelFooter>
-    </section>
+    </GlassPanel>
   );
 }
 

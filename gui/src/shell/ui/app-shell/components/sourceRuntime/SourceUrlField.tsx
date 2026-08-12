@@ -1,6 +1,6 @@
+import { Input } from "@shell/ui/shared/components/FormControl";
 import { Ic } from "@shell/ui/shared/components/Icon";
-import { C, F, S_SOURCE_URL_STATUS_BASE } from "@shell/ui/theme/theme";
-import { inp } from "./shared";
+import styles from "./SourceRuntime.module.css";
 
 interface SourceUrlFieldProps {
   locked: boolean;
@@ -34,61 +34,39 @@ export function SourceUrlField({
   const changesPrior = !!prior && trimmed !== prior;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <div style={{ flex: 1, position: "relative" }}>
-        <div
-          style={{
-            position: "absolute",
-            left: 10,
-            top: "50%",
-            transform: "translateY(-50%)",
-            color: C.textMuted,
-            pointerEvents: "none",
-          }}
-        >
+    <div className={styles.field}>
+      <div className={styles.urlBox}>
+        <div aria-hidden className={styles.urlIcon}>
           {Ic.link()}
         </div>
-        <input
+        <Input
+          aria-label="Origin URL"
+          adorned
           disabled={locked}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           onFocus={onFocus}
           placeholder="https://github.com/org/repo"
-          style={{
-            ...inp(locked),
-            paddingLeft: 32,
-            borderColor: trimmed && !valid ? "#f59e0b" : undefined,
-          }}
+          aria-invalid={trimmed !== "" && !valid}
         />
       </div>
 
       {changesPrior && (
-        <div style={{ ...S_SOURCE_URL_STATUS_BASE, color: "#92400e" }}>
+        <div className={styles.status} data-tone="warning">
           {Ic.info(10)} Setting a new source will reset all downstream results.
         </div>
       )}
 
       {trimmed && !valid && (
-        <div style={{ ...S_SOURCE_URL_STATUS_BASE, color: "#b45309" }}>
+        <div className={styles.status} data-tone="caution">
           {Ic.info(10)} Enter a full http(s) URL.
         </div>
       )}
 
       {valid && !changesPrior && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 5,
-            fontSize: 11,
-            fontFamily: F.mono,
-            color: "#16a34a",
-          }}
-        >
+        <div className={styles.status} data-tone="ok">
           {Ic.check(10)}
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {trimmed}
-          </span>
+          <span className={styles.statusValue}>{trimmed}</span>
         </div>
       )}
     </div>

@@ -1,0 +1,82 @@
+/* The Build Runtime page: where the build script and its declared output are
+ * authored, and where the build is run from. */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+.section {
+  margin-top: 10px;
+}
+
+.scriptSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: 10px;
+}
+
+/* --- Runtime artifact card ---------------------------------------------- */
+
+.artifactHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.artifactIdentity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.artifactIcon {
+  display: flex;
+  color: var(--palette-sky-500);
+}
+
+.outcome {
+  margin-top: var(--space-3);
+}
+
+.outcomePath {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  color: var(--page-subtitle-ink);
+}
+
+.outcomePath[data-produced] {
+  color: var(--badge-success-ink);
+}
+
+.outcomePath code {
+  overflow-wrap: anywhere;
+}
+
+.size {
+  padding: 2px var(--space-2);
+  border-radius: 6px;
+  border: 1px solid var(--palette-edge-slate);
+  background: var(--palette-film-white-soft);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--page-subtitle-ink);
+}

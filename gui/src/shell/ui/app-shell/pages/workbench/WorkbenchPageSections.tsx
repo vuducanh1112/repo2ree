@@ -1,13 +1,15 @@
+import { PAGE } from "@core/app-shell/pages";
 import type { WorkbenchImage } from "@core/workbench/WorkbenchImage";
+import { Input } from "@shell/ui/shared/components/FormControl";
 import { Ic } from "@shell/ui/shared/components/Icon";
-import { lgBackgrounds, lgColors, lgInput } from "@shell/ui/theme/lightGlassTheme";
-import { F } from "@shell/ui/theme/theme";
+import { stageTone } from "@shell/ui/theme/appearance";
 import type React from "react";
+import styles from "./WorkbenchPage.module.css";
 
-// The workbench owns the cyan hue across this page (header icon, section
-// accents, summary glyphs) so it reads as one coherent stage rather than a
-// generic form.
-export const WORKBENCH_COLOR = lgColors.cyan;
+// The workbench owns the build stage's hue across this page (header icon,
+// section accents, summary glyphs) so it reads as one coherent stage rather
+// than a generic form. It is the same tone the runtime it provisions carries.
+export const WORKBENCH_COLOR = stageTone(PAGE.BUILD);
 
 // ── Image selection ────────────────────────────────────────────────────────
 // The base image is chosen at provision time from the backend's image catalog
@@ -57,9 +59,9 @@ export function WorkbenchImageSelector({
   // Before the user picks anything, the catalog default reads as selected.
   const activeId = selection.selectedId || defaultId;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    <div className={styles.options}>
       {images.map((image) => (
-        <div key={image.id} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <div key={image.id} className={styles.imageChoice}>
           <LocationOption
             selected={activeId === image.id}
             icon={Ic.layers(16)}
@@ -67,17 +69,7 @@ export function WorkbenchImageSelector({
             description={image.description}
             onSelect={() => !disabled && onChange({ ...selection, selectedId: image.id })}
           />
-          <span
-            style={{
-              fontFamily: F.mono,
-              fontSize: 11.5,
-              color: lgColors.textMuted,
-              paddingLeft: 4,
-              wordBreak: "break-all",
-            }}
-          >
-            {image.ref}
-          </span>
+          <span className={styles.imageRef}>{image.ref}</span>
         </div>
       ))}
       <LocationOption
@@ -88,13 +80,14 @@ export function WorkbenchImageSelector({
         onSelect={() => !disabled && onChange({ ...selection, selectedId: CUSTOM_IMAGE_ID })}
       />
       {activeId === CUSTOM_IMAGE_ID && (
-        <input
+        <Input
           type="text"
+          aria-label="Custom image reference"
           value={selection.customRef}
           onChange={(e) => onChange({ ...selection, customRef: e.target.value })}
           placeholder="e.g. docker.io/library/docker:29-dind"
           disabled={disabled}
-          style={{ ...lgInput(disabled), fontFamily: F.mono, fontSize: 12 }}
+          flavor="code"
         />
       )}
     </div>
@@ -111,68 +104,15 @@ interface LocationOptionProps {
 
 function LocationOption({ selected, icon, label, description, onSelect }: LocationOptionProps) {
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        padding: "12px 14px",
-        borderRadius: 9,
-        border: selected
-          ? "1.5px solid rgba(14, 165, 233, 0.58)"
-          : "1.5px solid rgba(125, 211, 252, 0.38)",
-        background: selected ? "rgba(239, 246, 255, 0.94)" : lgBackgrounds.glassStrong,
-        cursor: "pointer",
-        textAlign: "left",
-        transition: "all 0.14s",
-        boxShadow: selected ? "0 8px 20px rgba(14, 165, 233, 0.12)" : "none",
-        fontFamily: F.sans,
-      }}
-    >
-      <div
-        style={{
-          width: 34,
-          height: 34,
-          borderRadius: 9,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: selected ? lgColors.primaryDeep : lgColors.textMid,
-          background: selected ? lgBackgrounds.primary : lgBackgrounds.iconSoft,
-          border: selected
-            ? "1px solid rgba(14, 165, 233, 0.35)"
-            : "1px solid rgba(125, 211, 252, 0.38)",
-          flexShrink: 0,
-        }}
-      >
+    <button type="button" onClick={onSelect} aria-pressed={selected} className={styles.option}>
+      <div aria-hidden className={styles.optionIcon}>
         {icon}
       </div>
-      <div style={{ flex: 1 }}>
-        <div
-          style={{
-            fontSize: 14,
-            fontWeight: selected ? 700 : 500,
-            color: selected ? lgColors.primaryDeep : lgColors.text,
-          }}
-        >
-          {label}
-        </div>
-        <div style={{ fontSize: 12, color: lgColors.textMuted, marginTop: 1 }}>{description}</div>
+      <div className={styles.optionBody}>
+        <div className={styles.optionLabel}>{label}</div>
+        <div className={styles.optionHint}>{description}</div>
       </div>
-      <div
-        style={{
-          width: 16,
-          height: 16,
-          borderRadius: "50%",
-          border: `2px solid ${selected ? lgColors.blue : "rgba(148, 163, 184, 0.5)"}`,
-          background: selected ? lgColors.blue : "transparent",
-          flexShrink: 0,
-          boxShadow: selected ? `0 0 8px ${lgColors.blue}66` : "none",
-          transition: "all 0.14s",
-        }}
-      />
+      <div aria-hidden className={styles.optionMarker} />
     </button>
   );
 }

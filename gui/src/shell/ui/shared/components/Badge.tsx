@@ -5,7 +5,7 @@ import styles from "./Badge.module.css";
 /** The semantic readings a badge has on its own. A badge whose colour is a
  * domain identity — the stage an outcome belongs to, an archive target — passes
  * `tint` instead, because that identity is not one of three fixed moods. */
-type BadgeTone = "success" | "warning" | "neutral";
+type BadgeTone = "success" | "warning" | "info" | "neutral";
 
 interface BadgeProps {
   tone?: BadgeTone;
@@ -16,6 +16,8 @@ interface BadgeProps {
    */
   tint?: { line: string; wash: string };
   icon?: ReactNode;
+  /** `code` puts a path or identifier in the monospace face. */
+  flavor?: "prose" | "code";
   /** Announce the badge as a live status region rather than plain text. */
   role?: "status";
   "aria-label"?: string;
@@ -26,6 +28,7 @@ export function Badge({
   tone = "neutral",
   tint,
   icon,
+  flavor,
   role,
   "aria-label": ariaLabel,
   children,
@@ -39,6 +42,7 @@ export function Badge({
     <span
       className={styles.badge}
       data-tone={tint ? undefined : tone}
+      data-flavor={flavor}
       style={cssVars(vars)}
       {...live}
     >

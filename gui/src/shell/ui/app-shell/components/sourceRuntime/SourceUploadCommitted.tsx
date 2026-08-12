@@ -1,5 +1,6 @@
+import { Button } from "@shell/ui/shared/components/Button";
 import { Ic } from "@shell/ui/shared/components/Icon";
-import { C, F, hoverBorderColor, hoverColor } from "@shell/ui/theme/theme";
+import styles from "./SourceRuntime.module.css";
 
 interface SourceUploadCommittedProps {
   committedName: string;
@@ -13,63 +14,15 @@ export function SourceUploadCommitted({
   onReplace,
 }: SourceUploadCommittedProps) {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "10px 14px",
-        borderRadius: 8,
-        background: "#f0fdf4",
-        border: "1.5px solid #bbf7d0",
-        marginBottom: 8,
-      }}
-    >
-      <span
-        style={{
-          color: "#16a34a",
-          display: "flex",
-        }}
-      >
+    <div className={styles.committed}>
+      <span aria-hidden className={styles.committedIcon}>
         {Ic.archive()}
       </span>
-      <span
-        style={{
-          flex: 1,
-          fontSize: 13,
-          fontFamily: F.mono,
-          color: "#15803d",
-          fontWeight: 600,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {committedName}
-      </span>
+      <span className={styles.committedName}>{committedName}</span>
       {!inputDisabled && (
-        <button
-          type="button"
-          onClick={onReplace}
-          disabled={inputDisabled}
-          style={{
-            background: "none",
-            border: `1px solid ${C.border}`,
-            borderRadius: 5,
-            cursor: "pointer",
-            color: C.textMuted,
-            fontSize: 11,
-            fontFamily: F.sans,
-            padding: "2px 8px",
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-          }}
-          {...hoverBorderColor(C.accent, C.border)}
-          {...hoverColor(C.accent, C.textMuted)}
-        >
-          {Ic.upload(11)} Replace
-        </button>
+        <Button size="tiny" icon={Ic.upload(11)} onClick={onReplace}>
+          Replace
+        </Button>
       )}
     </div>
   );

@@ -5,9 +5,10 @@ import { useApiRuntime } from "@shell/data/apiRuntime";
 import { useEvaluateReportQuery } from "@shell/data/evaluate/queries";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { stageTone } from "@shell/ui/theme/appearance";
-import { lgPageRoot, lgStatusBadge, lgStyles } from "@shell/ui/theme/lightGlassTheme";
+import { lgPageRoot, lgStatusBadge } from "@shell/ui/theme/lightGlassTheme";
 import { useEffect, useMemo } from "react";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
+import { GlassPanel, GlassSectionBody } from "../../components/GlassPageShell";
 import { GlassPanelFooter } from "../../components/GlassPanelFooter";
 import { GlassSectionHeader } from "../../components/GlassSectionHeader";
 import { OutcomeBadge } from "../../components/OutcomeBadge";
@@ -91,8 +92,8 @@ export function PageRepoAnalysis({
       <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
         <RepoAnalysisMissingInputs missing={missing} onGoFields={onGoFields} />
 
-        <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
-          <div style={lgStyles.sectionBody}>
+        <GlassPanel clipped>
+          <GlassSectionBody>
             <GlassSectionHeader
               icon={Ic.layers(19)}
               title="Source Repository Analysis"
@@ -113,14 +114,14 @@ export function PageRepoAnalysis({
               containerCount={containerCount}
               nixCount={nixCount}
             />
-          </div>
+          </GlassSectionBody>
 
           <GlassPanelFooter>
             {hasReport
               ? "Evaluate output is current."
               : "Run Evaluate to analyze the source repository."}
           </GlassPanelFooter>
-        </section>
+        </GlassPanel>
 
         <RepoAnalysisWorkspaceAside
           sourceLoadedInWorkspace={sourceLoadedInWorkspace}

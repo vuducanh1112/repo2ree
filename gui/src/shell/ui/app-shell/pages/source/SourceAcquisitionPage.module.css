@@ -1,0 +1,99 @@
+/* Source acquisition: choose how the source arrives, then bring it in. */
+
+.sectionLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  color: var(--field-label-ink);
+}
+
+.modes {
+  margin-bottom: 10px;
+}
+
+.methodHint {
+  margin-bottom: 14px;
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  color: var(--field-hint-ink);
+}
+
+.snapshot {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--surface-card-edge);
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.revision {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.hint {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  color: var(--field-hint-ink);
+}
+
+.acquireRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.originType {
+  flex: 1 1 140px;
+}
+
+/* --- Workspace snapshot -------------------------------------------------- */
+
+.snapshotSection {
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--surface-card-edge);
+}
+
+.snapshotLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: 10px;
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  color: var(--field-label-ink);
+}
+
+.snapshotBody {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.narrative {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--page-subtitle-ink);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px var(--space-6);
+}
+
+.swhid {
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+}

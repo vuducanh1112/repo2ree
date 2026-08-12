@@ -18,6 +18,11 @@
   white-space: nowrap;
 }
 
+/* Paths and identifiers read as code even inside a chip. */
+.badge[data-flavor="code"] {
+  font-family: var(--font-mono);
+}
+
 .badge[data-tone="success"] {
   --badge-line: var(--badge-success-ink);
   --badge-wash: var(--badge-success-bg);
@@ -28,6 +33,12 @@
   --badge-line: var(--badge-warning-ink);
   --badge-wash: var(--badge-warning-bg);
   --badge-edge: var(--badge-warning-edge);
+}
+
+.badge[data-tone="info"] {
+  --badge-line: var(--badge-info-ink);
+  --badge-wash: var(--badge-info-bg);
+  --badge-edge: var(--badge-info-edge);
 }
 
 .badge[data-tone="neutral"] {

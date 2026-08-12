@@ -1,8 +1,8 @@
 import type { SourceUploadCommit } from "@core/ree/ReeTypes";
 import { Ic } from "@shell/ui/shared/components/Icon";
-import { C, S_SOURCE_UPLOAD_STATUS_LINE_BASE } from "@shell/ui/theme/theme";
 import type React from "react";
 import { useRef, useState } from "react";
+import styles from "./SourceRuntime.module.css";
 import { SourceUploadCommitted } from "./SourceUploadCommitted";
 import { SourceUploadDropzone } from "./SourceUploadDropzone";
 import { SourceUploadPending } from "./SourceUploadPending";
@@ -55,11 +55,7 @@ export function SourceUploadField({
   const handleCancel = () => setPending(null);
 
   return (
-    <div
-      style={{
-        padding: "8px 0 14px",
-      }}
-    >
+    <div className={styles.uploadField}>
       <input
         ref={archiveRef}
         type="file"
@@ -69,9 +65,7 @@ export function SourceUploadField({
           if (file) handleArchive(file);
           event.currentTarget.value = "";
         }}
-        style={{
-          display: "none",
-        }}
+        className={styles.hiddenFileInput}
       />
 
       {committedName && (
@@ -101,13 +95,13 @@ export function SourceUploadField({
       )}
 
       {disabledReason && (
-        <div style={{ ...S_SOURCE_UPLOAD_STATUS_LINE_BASE, color: C.textMuted }}>
+        <div className={styles.statusLine}>
           {Ic.info(10)} {disabledReason}
         </div>
       )}
 
       {dropError && (
-        <div style={{ ...S_SOURCE_UPLOAD_STATUS_LINE_BASE, color: "#b45309" }}>
+        <div className={styles.statusLine} data-tone="caution">
           {Ic.info(10)} {dropError}
         </div>
       )}

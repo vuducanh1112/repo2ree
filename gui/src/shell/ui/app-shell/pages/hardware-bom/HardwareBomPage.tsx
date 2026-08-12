@@ -10,11 +10,12 @@ import {
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { useFocusScroll } from "@shell/ui/shared/hooks/useFocusScroll";
 import { stageTone } from "@shell/ui/theme/appearance";
-import { lgColors, lgGlassButton, lgStatusBadge, lgStyles } from "@shell/ui/theme/lightGlassTheme";
+import { lgColors, lgGlassButton, lgStatusBadge } from "@shell/ui/theme/lightGlassTheme";
 import { S_ACTION_BUTTON_BASE } from "@shell/ui/theme/theme";
 import { useState } from "react";
 import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
+import { GlassPageShell, GlassPanel, GlassSectionBody } from "../../components/GlassPageShell";
 import { GlassPanelFooter } from "../../components/GlassPanelFooter";
 import { GlassSectionHeader } from "../../components/GlassSectionHeader";
 import { RunActionButton } from "../../components/RunActionButton";
@@ -306,49 +307,47 @@ export function PageHardwareBom({
   );
 
   return (
-    <div style={lgStyles.pageRoot}>
-      <div style={lgStyles.pageFrame}>
-        <GlassPageHeader
-          icon={Ic.cpu(24)}
-          tint={HBOM_ACCENT}
-          title="Hardware BOM"
-          subtitle="Document the machine assumptions that matter today — expand later to remote targets."
-          badges={headerBadges}
-          right={headerRight}
-        />
+    <GlassPageShell>
+      <GlassPageHeader
+        icon={Ic.cpu(24)}
+        tint={HBOM_ACCENT}
+        title="Hardware BOM"
+        subtitle="Document the machine assumptions that matter today — expand later to remote targets."
+        badges={headerBadges}
+        right={headerRight}
+      />
 
-        <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
-          <div style={lgStyles.sectionBody}>
-            <GlassSectionHeader
-              icon={Ic.layers(19)}
-              tint={HBOM_ACCENT}
-              title="Hardware Inventory"
-              subtitle="Switch categories below — only the device model is required per row."
-            />
+      <GlassPanel clipped>
+        <GlassSectionBody>
+          <GlassSectionHeader
+            icon={Ic.layers(19)}
+            tint={HBOM_ACCENT}
+            title="Hardware Inventory"
+            subtitle="Switch categories below — only the device model is required per row."
+          />
 
-            <HardwareCategoryTabs
-              categories={CATEGORIES}
-              counts={counts}
-              activeKey={activeCategory}
-              onSelect={setActiveCategory}
-            />
+          <HardwareCategoryTabs
+            categories={CATEGORIES}
+            counts={counts}
+            activeKey={activeCategory}
+            onSelect={setActiveCategory}
+          />
 
-            {renderActiveCategory()}
+          {renderActiveCategory()}
 
-            <CollapsibleLogCard
-              log={log}
-              running={running}
-              title={ts ? "Profiling log" : "Profiling logs"}
-            />
-          </div>
+          <CollapsibleLogCard
+            log={log}
+            running={running}
+            title={ts ? "Profiling log" : "Profiling logs"}
+          />
+        </GlassSectionBody>
 
-          <GlassPanelFooter>
-            {totalRows === 0
-              ? "Run Profile This Machine to prefill the tables, then adjust as needed."
-              : `${totalRows} ${totalRows === 1 ? "device" : "devices"} across ${categoriesWithRows} of 5 categories.`}
-          </GlassPanelFooter>
-        </section>
-      </div>
-    </div>
+        <GlassPanelFooter>
+          {totalRows === 0
+            ? "Run Profile This Machine to prefill the tables, then adjust as needed."
+            : `${totalRows} ${totalRows === 1 ? "device" : "devices"} across ${categoriesWithRows} of 5 categories.`}
+        </GlassPanelFooter>
+      </GlassPanel>
+    </GlassPageShell>
   );
 }

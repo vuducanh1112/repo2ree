@@ -1,3 +1,4 @@
+import { GlassPanel } from "@shell/ui/app-shell/components/GlassPageShell";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { lgColors, lgStyles, lgSuggestionButton } from "@shell/ui/theme/lightGlassTheme";
 import { F } from "@shell/ui/theme/theme";
@@ -51,7 +52,7 @@ export function ExperimentsCoverageAside({
   const incomplete = total - Math.min(withName, withCommand, withVerify);
   const allComplete = total > 0 && incomplete === 0;
   return (
-    <section style={{ ...lgStyles.panel, padding: 16 }}>
+    <GlassPanel density="compact">
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
         <span style={{ color: lgColors.cyan, display: "flex" }}>{Ic.layers(18)}</span>
         <h3 style={{ margin: 0, fontSize: 14, color: lgColors.text }}>Coverage</h3>
@@ -109,7 +110,7 @@ export function ExperimentsCoverageAside({
           )}
         </div>
       )}
-    </section>
+    </GlassPanel>
   );
 }
 
@@ -145,7 +146,7 @@ export function ExperimentsSuggestionsAside({
   onAdd: (suggestion: ExperimentSuggestion) => void;
 }) {
   return (
-    <section style={{ ...lgStyles.panel, padding: 16 }}>
+    <GlassPanel density="compact">
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
         <span style={{ color: lgColors.cyan, display: "flex" }}>{Ic.plus(18)}</span>
         <h3 style={{ margin: 0, fontSize: 14, color: lgColors.text }}>Quick add</h3>
@@ -171,13 +172,13 @@ export function ExperimentsSuggestionsAside({
           </button>
         ))}
       </div>
-    </section>
+    </GlassPanel>
   );
 }
 
 export function ExperimentsAboutAside() {
   return (
-    <section style={{ ...lgStyles.panel, padding: 16 }}>
+    <GlassPanel density="compact">
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
         <span style={{ color: lgColors.cyan, display: "flex" }}>{Ic.info(18)}</span>
         <h3 style={{ margin: 0, fontSize: 14, color: lgColors.text }}>About experiments</h3>
@@ -187,6 +188,6 @@ export function ExperimentsAboutAside() {
         results. Runtime and resource estimates help future users plan how expensive those checks
         will be.
       </div>
-    </section>
+    </GlassPanel>
   );
 }

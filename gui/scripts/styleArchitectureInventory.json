@@ -1,6 +1,6 @@
 {
   "note": "Migration ratchet for the GUI styling rework — pre-existing violations, per file. It may only shrink: `make gui-checks` fails on a new violation and on a stale entry left behind by a conversion. Regenerate with `npm run check:style-architecture -- --update`. Phase 8 deletes this file and the rules become absolute.",
-  "total": 1443,
+  "total": 1196,
   "files": {
     "src/shell/ui/agents/AgentsView.tsx": {
       "legacy-theme-import": 1,
@@ -195,33 +195,6 @@
       "raw-color": 3,
       "style-object-literal": 6
     },
-    "src/shell/ui/app-shell/components/sourceRuntime/SourceUploadCommitted.tsx": {
-      "legacy-theme-import": 1,
-      "raw-color": 4,
-      "style-object-literal": 4
-    },
-    "src/shell/ui/app-shell/components/sourceRuntime/SourceUploadDropzone.tsx": {
-      "legacy-theme-import": 1,
-      "style-object-literal": 5
-    },
-    "src/shell/ui/app-shell/components/sourceRuntime/SourceUploadField.tsx": {
-      "legacy-theme-import": 1,
-      "raw-color": 1,
-      "style-object-literal": 4
-    },
-    "src/shell/ui/app-shell/components/sourceRuntime/SourceUploadPending.tsx": {
-      "legacy-theme-import": 1,
-      "raw-color": 9,
-      "style-object-literal": 7
-    },
-    "src/shell/ui/app-shell/components/sourceRuntime/SourceUrlField.tsx": {
-      "legacy-theme-import": 1,
-      "raw-color": 4,
-      "style-object-literal": 8
-    },
-    "src/shell/ui/app-shell/components/sourceRuntime/shared.tsx": {
-      "legacy-theme-import": 1
-    },
     "src/shell/ui/app-shell/components/stepRunPanels/DependencyGroupCard.tsx": {
       "legacy-theme-import": 1,
       "raw-color": 4,
@@ -239,13 +212,12 @@
     },
     "src/shell/ui/app-shell/pages/archive/ArchivePage.tsx": {
       "legacy-theme-import": 1,
-      "style-not-css-vars": 9,
-      "style-object-literal": 1
+      "style-not-css-vars": 4
     },
     "src/shell/ui/app-shell/pages/archive/sections/ArchiveActionPanel.tsx": {
       "legacy-theme-import": 1,
       "style-not-css-vars": 1,
-      "style-object-literal": 5
+      "style-object-literal": 4
     },
     "src/shell/ui/app-shell/pages/archive/sections/ArchiveParamsCard.tsx": {
       "legacy-theme-import": 2,
@@ -261,7 +233,7 @@
     "src/shell/ui/app-shell/pages/archive/sections/ArchiveReadinessAside.tsx": {
       "legacy-theme-import": 2,
       "style-not-css-vars": 5,
-      "style-object-literal": 10
+      "style-object-literal": 9
     },
     "src/shell/ui/app-shell/pages/archive/sections/ArchiveRepoSummaryCard.tsx": {
       "legacy-theme-import": 2,
@@ -272,17 +244,6 @@
       "legacy-theme-import": 1,
       "style-object-literal": 3
     },
-    "src/shell/ui/app-shell/pages/build-runtime/BuildRuntimePage.tsx": {
-      "legacy-theme-import": 2,
-      "style-not-css-vars": 2,
-      "style-object-literal": 5
-    },
-    "src/shell/ui/app-shell/pages/build-runtime/sections/RuntimeArtifactCard.tsx": {
-      "legacy-theme-import": 2,
-      "raw-color": 2,
-      "style-not-css-vars": 4,
-      "style-object-literal": 8
-    },
     "src/shell/ui/app-shell/pages/experiments/ExperimentCardList.tsx": {
       "legacy-theme-import": 2,
       "raw-color": 15,
@@ -292,55 +253,30 @@
       "legacy-theme-import": 2,
       "raw-color": 4,
       "style-not-css-vars": 2,
-      "style-object-literal": 25
+      "style-object-literal": 22
     },
     "src/shell/ui/app-shell/pages/experiments/ExperimentsPage.tsx": {
       "legacy-theme-import": 1,
       "raw-color": 2,
-      "style-not-css-vars": 7,
-      "style-object-literal": 4
+      "style-not-css-vars": 2,
+      "style-object-literal": 3
     },
     "src/shell/ui/app-shell/pages/experiments/ExperimentsPageSections.tsx": {
       "alpha-interpolation": 1,
       "legacy-theme-import": 2,
       "raw-color": 8,
       "style-not-css-vars": 11,
-      "style-object-literal": 32
-    },
-    "src/shell/ui/app-shell/pages/files/FileFilterInput.tsx": {
-      "legacy-theme-import": 2,
-      "style-object-literal": 4
+      "style-object-literal": 31
     },
     "src/shell/ui/app-shell/pages/files/FileViewer.tsx": {
       "legacy-theme-import": 2,
       "style-object-literal": 6
     },
-    "src/shell/ui/app-shell/pages/generate-sbom/GenerateSbomPage.tsx": {
-      "legacy-theme-import": 1,
-      "style-not-css-vars": 2,
-      "style-object-literal": 1
-    },
-    "src/shell/ui/app-shell/pages/generate-sbom/sections/CrossCheckCard.tsx": {
-      "legacy-theme-import": 2,
-      "raw-color": 3,
-      "style-not-css-vars": 4,
-      "style-object-literal": 11
-    },
-    "src/shell/ui/app-shell/pages/generate-sbom/sections/RuntimeScanTargetCard.tsx": {
-      "legacy-theme-import": 2,
-      "style-not-css-vars": 3,
-      "style-object-literal": 9
-    },
-    "src/shell/ui/app-shell/pages/generate-sbom/sections/SbomOutputCard.tsx": {
-      "legacy-theme-import": 2,
-      "style-not-css-vars": 4,
-      "style-object-literal": 7
-    },
     "src/shell/ui/app-shell/pages/hardware-bom/HardwareBomPage.tsx": {
       "legacy-theme-import": 2,
       "raw-color": 3,
-      "style-not-css-vars": 4,
-      "style-object-literal": 5
+      "style-not-css-vars": 1,
+      "style-object-literal": 4
     },
     "src/shell/ui/app-shell/pages/hardware-bom/HardwareBomPageSections.tsx": {
       "legacy-theme-import": 2,
@@ -371,8 +307,8 @@
     },
     "src/shell/ui/app-shell/pages/repo-analysis/RepoAnalysisPage.tsx": {
       "legacy-theme-import": 1,
-      "style-not-css-vars": 3,
-      "style-object-literal": 2
+      "style-not-css-vars": 2,
+      "style-object-literal": 1
     },
     "src/shell/ui/app-shell/pages/repo-analysis/RepoAnalysisPageHelpers.ts": {
       "raw-color": 6
@@ -382,41 +318,13 @@
       "legacy-theme-import": 2,
       "raw-color": 7,
       "style-not-css-vars": 6,
-      "style-object-literal": 23
+      "style-object-literal": 22
     },
     "src/shell/ui/app-shell/pages/repo-analysis/RepoAnalysisThreatsCard.tsx": {
       "legacy-theme-import": 2,
       "raw-color": 19,
       "style-not-css-vars": 1,
       "style-object-literal": 18
-    },
-    "src/shell/ui/app-shell/pages/source/SourceAcquisitionPageSections.tsx": {
-      "legacy-theme-import": 2,
-      "raw-color": 13,
-      "style-not-css-vars": 6,
-      "style-object-literal": 11
-    },
-    "src/shell/ui/app-shell/pages/source/SourceAcquisitionPageStep3Section.tsx": {
-      "legacy-theme-import": 2,
-      "raw-color": 1,
-      "style-not-css-vars": 1,
-      "style-object-literal": 6
-    },
-    "src/shell/ui/app-shell/pages/test-activation/ActivationTestPage.tsx": {
-      "legacy-theme-import": 2,
-      "style-not-css-vars": 2,
-      "style-object-literal": 5
-    },
-    "src/shell/ui/app-shell/pages/test-activation/sections/ActivationTargetCard.tsx": {
-      "legacy-theme-import": 2,
-      "style-not-css-vars": 4,
-      "style-object-literal": 9
-    },
-    "src/shell/ui/app-shell/pages/workbench/WorkbenchPageSections.tsx": {
-      "alpha-interpolation": 1,
-      "legacy-theme-import": 2,
-      "raw-color": 7,
-      "style-object-literal": 10
     },
     "src/shell/ui/landing/LandingView.tsx": {
       "legacy-theme-import": 1,
@@ -457,7 +365,7 @@
     },
     "src/shell/ui/theme/stylesCore.ts": {
       "legacy-theme-import": 1,
-      "theme-style-object": 6
+      "theme-style-object": 4
     },
     "src/shell/ui/theme/stylesLayout.ts": {
       "raw-color": 4,

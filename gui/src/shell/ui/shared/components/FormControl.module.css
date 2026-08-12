@@ -59,11 +59,25 @@
   cursor: not-allowed;
 }
 
-/* A code editor, not a paragraph box: monospace, resizable vertically only. */
+/* Room for a leading glyph the caller overlays. */
+.control[data-adorned] {
+  padding-left: 32px;
+}
+
+/* Not yet valid rather than rejected — the user may still be typing. */
+.control[aria-invalid="true"] {
+  border-color: var(--status-stale);
+}
+
+/* Paths, hashes, identifiers: the monospace face, same box. */
 .control[data-flavor="code"] {
+  font-family: var(--font-mono);
+}
+
+/* A code editor, not a paragraph box: taller, and resizable vertically only. */
+textarea.control[data-flavor="code"] {
   min-height: 240px;
   padding: 10px 11px;
-  font-family: var(--font-mono);
   font-size: var(--text-md);
   line-height: 1.55;
   resize: vertical;

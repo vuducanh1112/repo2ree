@@ -8,6 +8,79 @@
  * `--surface-card-edge` now. They were the same intent recorded three times.
  */
 
+/* --- Page shell ----------------------------------------------------------
+ * The scrollable page, the framed board inside it, and the panels on that
+ * board. `.pageRoot` is the glass surface boundary: everything under it reads
+ * the glass values of the shared roles, so a primitive on a glass page needs no
+ * variant of its own. Today the roles are the same at `:root`, which is why the
+ * block below restates only what the boundary owns — as more of the app leaves
+ * the glass palette, the divergence lands here rather than in a second theme.
+ */
+
+.pageRoot {
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-6);
+  font-family: var(--font-sans);
+  color: var(--page-ink);
+  background: var(--page-bg);
+}
+
+/* Docked inside the canvas rather than filling the window: the canvas already
+ * paints the ground, so the page brings padding and ink and nothing else. */
+.pageRoot[data-variant="docked"] {
+  padding: 46px 36px 32px;
+  background: none;
+}
+
+.pageFrame {
+  min-height: 100%;
+  padding: 22px;
+  border-radius: 14px;
+  border: 1px solid var(--page-frame-edge);
+  background-color: var(--page-frame-bg);
+  background-image: var(--page-frame-grid);
+  background-size: 22px 22px;
+  box-shadow: var(--page-frame-shadow);
+}
+
+.panel {
+  border-radius: var(--radius-panel);
+  border: 1px solid var(--panel-edge);
+  background: var(--panel-bg);
+  box-shadow: var(--panel-shadow);
+  backdrop-filter: blur(18px);
+}
+
+/* Panels that hold a scrolling or clipped body. */
+.panel[data-clipped] {
+  overflow: hidden;
+}
+
+/* An aside's panel: padded in place of a section body, since it holds one
+ * block rather than a page section. */
+.panel[data-density="compact"] {
+  padding: var(--space-4);
+}
+
+.mainGrid {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(260px, 340px);
+  gap: 18px;
+  align-items: start;
+}
+
+.aside {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sectionBody {
+  padding: 22px;
+}
+
 /* --- Page header -------------------------------------------------------- */
 
 .pageHeader {

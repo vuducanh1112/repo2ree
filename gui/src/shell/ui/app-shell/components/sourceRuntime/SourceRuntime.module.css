@@ -1,0 +1,245 @@
+/* Bringing source into the workspace: the URL field, the tarball dropzone, and
+ * the pending/committed states between picking a file and adding it. */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.urlBox {
+  flex: 1;
+  position: relative;
+}
+
+/* The link glyph sits inside the input's left padding. */
+.urlIcon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--field-hint-ink);
+  pointer-events: none;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.status[data-tone="warning"] {
+  color: var(--palette-amber-800);
+}
+
+.status[data-tone="caution"] {
+  color: var(--palette-amber-700);
+}
+
+.status[data-tone="ok"] {
+  color: var(--palette-green-600);
+}
+
+.statusValue {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- Pending upload ------------------------------------------------------
+ * A tarball chosen but not yet committed. Amber throughout: nothing has
+ * happened to the workspace yet, and confirming resets downstream results. */
+
+.pending {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: var(--space-2);
+}
+
+.pendingRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 10px 14px;
+  border-radius: var(--radius-control);
+  border: 1.5px solid var(--status-stale);
+  background: var(--palette-amber-050);
+}
+
+.pendingIcon {
+  display: flex;
+  color: var(--palette-amber-600);
+}
+
+.pendingName {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: var(--weight-semibold);
+  color: var(--palette-amber-800);
+}
+
+.pendingNote {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding-left: 2px;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--palette-amber-800);
+}
+
+.dismiss {
+  display: flex;
+  padding: 2px;
+  border: none;
+  border-radius: var(--space-1);
+  background: none;
+  color: var(--chrome-text-muted);
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+
+.dismiss:hover {
+  color: var(--status-fault);
+}
+
+.dismiss:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* --- Committed upload ----------------------------------------------------
+ * The tarball is in the workspace. Green because this is the settled state,
+ * not a warning about one. */
+
+.committed {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+  padding: 10px 14px;
+  border-radius: var(--radius-control);
+  border: 1.5px solid var(--palette-green-200);
+  background: var(--palette-green-050);
+}
+
+.committedIcon {
+  display: flex;
+  color: var(--palette-green-600);
+}
+
+.committedName {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: var(--weight-semibold);
+  color: var(--palette-green-700);
+}
+
+/* --- Dropzone ------------------------------------------------------------ */
+
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 22px var(--space-4);
+  border-radius: var(--radius-control);
+  border: 1.5px dashed var(--chrome-border-strong);
+  background: var(--chrome-bg);
+  appearance: none;
+  cursor: pointer;
+  transition:
+    border-color var(--duration-normal) var(--ease-standard),
+    background var(--duration-normal) var(--ease-standard);
+}
+
+.dropzone:not(:disabled):hover,
+.dropzone[data-dragging] {
+  border-color: var(--chrome-accent);
+  background: var(--chrome-accent-bg);
+}
+
+.dropzone:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.dropzone:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.dropIcon {
+  display: flex;
+  color: var(--chrome-text-muted);
+}
+
+.dropzone[data-dragging] .dropIcon,
+.dropzone:not(:disabled):hover .dropIcon {
+  color: var(--chrome-accent);
+}
+
+.dropPrompt {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--chrome-text-mid);
+}
+
+.dropzone[data-dragging] .dropPrompt {
+  color: var(--chrome-accent);
+}
+
+.dropAction {
+  color: var(--chrome-accent);
+  font-weight: var(--weight-semibold);
+}
+
+.dropFormats {
+  margin-top: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--chrome-text-muted);
+}
+
+/* --- Upload field wrapper ------------------------------------------------ */
+
+.uploadField {
+  padding: var(--space-2) 0 14px;
+}
+
+.hiddenFileInput {
+  display: none;
+}
+
+.statusLine {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--chrome-text-muted);
+}
+
+.statusLine[data-tone="caution"] {
+  color: var(--palette-amber-700);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dropzone,
+  .dismiss {
+    transition: none;
+  }
+}
