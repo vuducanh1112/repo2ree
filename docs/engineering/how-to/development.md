@@ -1,17 +1,15 @@
-# How to Set Up repo2ree for Development
+# How to set up repo2ree for development
 
 > Status: current contributor setup (2026-08). This is for people developing
 > or operating repo2ree itself. User-facing service guides should live outside
 > `docs/engineering/`.
 
-repo2ree is a Python workspace plus a React/Vite GUI. Workbench
-containers are driven by the agent, so most realistic flows need a reachable
-Docker daemon. Every tier — the browser e2e/demo runs and the docker-gated
-integration tiers — provisions the production default bench: upstream
-`docker:dind` with the executor and tools injected by the agent
-(`make e2e-bundles` builds what the agent injects).
+repo2ree is a Python workspace with a React/Vite GUI. Most integration and
+browser flows need Docker because the agent provisions the default
+`docker:dind` workbench. Run `make e2e-bundles` first to build the executor and
+tools that the agent injects.
 
-## Recommended Toolchain
+## Recommended toolchain
 
 Use the Nix dev shell when possible:
 
@@ -40,7 +38,7 @@ Without Nix, install equivalent tools yourself:
 - Docker
 - Playwright browser dependencies, if running e2e tests
 
-## Initial Setup
+## Initial setup
 
 From the repository root:
 
@@ -59,7 +57,7 @@ Important local paths:
 | `gui/node_modules/` | GUI npm dependencies. Gitignored. |
 | `test-artifacts/` | The one artifact root: coverage (by runtime, then tier), traces, Playwright output, logs. Gitignored. |
 
-## Run The App Locally
+## Run the app locally
 
 Start the API:
 
@@ -167,7 +165,7 @@ the host Docker socket:
 stat -c '%g' /var/run/docker.sock
 ```
 
-## Package Layout
+## Package layout
 
 The Python workspace members are:
 
@@ -182,7 +180,7 @@ The Python workspace members are:
 
 The GUI lives under `gui/` and is a Vite/React app.
 
-## Common Commands
+## Common commands
 
 ```bash
 # Python workspace dependencies

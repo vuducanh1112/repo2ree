@@ -52,8 +52,8 @@ container, is the REE state that a workbench must preserve or rehydrate.
 
 ## Evidence
 
-- [Working-environment directory layout](../../reference/architecture.md#working-environment-directory-layout)
-- [State ownership](../../reference/architecture.md#state-ownership-portable-aggregate-and-durable-tree)
+- [Working-environment directory layout](../reference/architecture.md#working-environment-directory-layout)
+- [State ownership](../reference/architecture.md#state-ownership-portable-aggregate-and-durable-tree)
 - [Script inference: scan upstream](../explanation/script-inference.md#scan-upstream-never-the-workspace)
 - [`repo2ree_core.persistence`](../../../core/src/repo2ree_core/persistence/)
 - [`repo2ree_core.workspace`](../../../core/src/repo2ree_core/workspace/)

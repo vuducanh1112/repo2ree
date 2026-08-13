@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="980" viewBox="0 0 1600 980" role="img" aria-labelledby="title description">
-  <title id="title">Pipeline stage execution dynamic diagram</title>
+  <title id="title">How a pipeline stage runs</title>
   <desc id="description">A client starts a pipeline stage through the API and receives a run identifier. Background orchestration sends a typed command through the supervisor and agent to the executor and core inside a workbench. Core writes evidence to the durable REE tree. Log frames and the action result return through the agent, settle the run record, and become visible when the client polls.</desc>
   <defs>
     <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 10 5 0 10z" fill="#334155"/></marker>
@@ -8,7 +8,7 @@
       .bg{fill:#f8fafc}.head{font:700 29px system-ui,sans-serif;fill:#0f172a}.sub{font:15px system-ui,sans-serif;fill:#475569}.p{fill:#2563eb;stroke:#1d4ed8;stroke-width:2}.exec{fill:#0f766e;stroke:#115e59;stroke-width:2}.store{fill:#fff;stroke:#64748b;stroke-width:2}.pn{font:700 15px system-ui,sans-serif;fill:#fff;text-anchor:middle}.pt{font:600 10px system-ui,sans-serif;fill:#dbeafe;text-anchor:middle;letter-spacing:.7px}.dn{font:700 15px system-ui,sans-serif;fill:#0f172a;text-anchor:middle}.dt{font:600 10px system-ui,sans-serif;fill:#475569;text-anchor:middle;letter-spacing:.7px}.life{stroke:#94a3b8;stroke-width:1.5;stroke-dasharray:7 6}.call{stroke:#334155;stroke-width:2.1;marker-end:url(#a)}.reply{stroke:#0f766e;stroke-width:2.1;stroke-dasharray:6 4;marker-end:url(#r)}.msg{font:600 13px system-ui,sans-serif;fill:#334155;text-anchor:middle}.replymsg{font:600 13px system-ui,sans-serif;fill:#0f766e;text-anchor:middle}.num{fill:#334155}.numreply{fill:#0f766e}.nt{font:700 12px system-ui,sans-serif;fill:#fff;text-anchor:middle;dominant-baseline:central}.band{fill:#e2e8f0;fill-opacity:.55}.bandlabel{font:700 12px system-ui,sans-serif;fill:#64748b;letter-spacing:1px}
     </style>
   </defs>
-  <rect class="bg" width="1600" height="980" rx="16"/><text class="head" x="42" y="50">Execute one pipeline stage — Dynamic view</text><text class="sub" x="42" y="77">The common interaction behind evaluate, build, SBOM, activation, experiment, and review operations</text>
+  <rect class="bg" width="1600" height="980" rx="16"/><text class="head" x="42" y="50">How a pipeline stage runs</text><text class="sub" x="42" y="77">The common interaction behind evaluate, build, SBOM, activation, experiment, and review operations</text>
 
   <g><rect class="p" x="30" y="115" width="170" height="75" rx="9"/><text class="pn" x="115" y="145">GUI or API client</text><text class="pt" x="115" y="168">[PERSON / SYSTEM]</text></g>
   <g><rect class="p" x="250" y="115" width="170" height="75" rx="9"/><text class="pn" x="335" y="145">HTTP routes</text><text class="pt" x="335" y="168">[COMPONENT]</text></g>

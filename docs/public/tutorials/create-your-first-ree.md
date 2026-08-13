@@ -1,4 +1,4 @@
-# Create Your First REE
+# Create your first REE
 
 In this tutorial you will turn a small Python project into a Reproducible
 Execution Environment (REE). You will acquire its source, build a runtime,
@@ -8,7 +8,7 @@ sealed bundle that can reproduce itself without repo2ree.
 The tutorial assumes that you use a hosted repo2ree service. You do not need to
 install repo2ree or administer its execution infrastructure.
 
-## Concepts You Will Use
+## Concepts you will use
 
 Read this section before starting the application. The terms describe one
 continuous chain rather than independent features:
@@ -38,7 +38,7 @@ checks used to judge those results. You need this combined record because
 sharing any one part alone leaves a future reader to guess how the parts fit
 together.
 
-### Control Plane, Agent, and Lab Location
+### Control plane, agent, and lab location
 
 **The control plane records intent, while an agent carries that intent to the execution infrastructure identified in the GUI as a lab location.**
 
@@ -59,7 +59,7 @@ to give the authoring process a controlled filesystem. It is not the product:
 you can release the workbench after sealing the REE because the portable record
 must outlive the machinery that created it.
 
-### Source Snapshot and Source Identity
+### Source snapshot and source identity
 
 **A source snapshot is the exact source tree used for the REE, and its source identity records which tree those bytes represent.**
 
@@ -96,7 +96,7 @@ other signals before a runtime exists. Evaluation exposes what the project
 claims and what may drift, but it does not prove that a build succeeds or that
 declared dependencies appear in the resulting environment.
 
-### Build Recipe
+### Build recipe
 
 **A build recipe is the executable, author-approved instruction that constructs the REE's runtime artifact.**
 
@@ -106,7 +106,7 @@ and confirm the recipe because choosing how a project should build is a
 substantive claim. Recording the recipe lets a reviewer rebuild the environment
 instead of receiving an unexplained binary.
 
-### Runtime Artifact
+### Runtime artifact
 
 **A runtime artifact is the reusable execution environment produced by the build recipe and later entered by activation and experiment scripts.**
 
@@ -146,7 +146,7 @@ where it writes results. Declaring the command and outputs lets repo2ree capture
 the right baseline and lets a reviewer repeat the same operation rather than
 reconstructing it from prose.
 
-### Verify Script and Validation
+### Verify script and validation
 
 **A verify script is an executable success criterion, and validation means that one run and its verify script both passed.**
 
@@ -157,7 +157,7 @@ command ran” does not say whether it produced an acceptable result. Validation
 describes the author's current run only; it is not yet independent
 reproduction.
 
-### Evidence and Receipts
+### Evidence and receipts
 
 **Evidence is the recorded observation from an operation, and a receipt binds that observation to the operation and REE state that produced it.**
 
@@ -167,7 +167,7 @@ record to show which conclusions are current and which became stale after an
 input changed. Evidence keeps a green badge traceable to what ran instead of
 letting it become an unsupported assertion.
 
-### Sealing, Reproduction, and Archiving
+### Sealing, reproduction, and archiving
 
 **Sealing freezes and identifies a shareable REE, reproduction compares a later run with its author evidence, and archiving deposits the sealed object with a durable repository.**
 

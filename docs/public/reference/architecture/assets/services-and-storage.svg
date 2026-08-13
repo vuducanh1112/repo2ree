@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="940" viewBox="0 0 1600 940" role="img" aria-labelledby="title description">
-  <title id="title">repo2ree C4 container diagram</title>
+  <title id="title">Services, workbenches, and data stores</title>
   <desc id="description">An author or reviewer uses the browser GUI or HTTP API. The API hosts the supervisor and sends commands over an agent-dialed WebSocket. The agent owns the runtime and invokes the executor inside a per-REE workbench. Control-plane state and the durable REE tree remain in separate stores.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#334155"/></marker>
@@ -8,7 +8,7 @@
     </style>
   </defs>
   <rect class="bg" width="1600" height="940" rx="16"/>
-  <text class="heading" x="45" y="52">repo2ree — Container view</text>
+  <text class="heading" x="45" y="52">Services, workbenches, and data stores</text>
   <text class="sub" x="45" y="80">Runtime units and stores; libraries are named inside the container that hosts them</text>
 
   <rect class="boundary" x="255" y="200" width="1295" height="655" rx="15"/>

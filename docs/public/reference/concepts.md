@@ -1,4 +1,4 @@
-# Public Concept Reference
+# Public concept reference
 
 These are the public names repo2ree uses. They define the terms used throughout
 the tutorials and guides without exposing internal implementation vocabulary.

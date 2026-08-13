@@ -147,4 +147,4 @@ an author baseline.
 
 - [step-lifecycle.md](step-lifecycle.md) — the handler shape these steps share.
 - [Public verification guide](../../public/how-to/verify.md) — the reviewer workflow this implements.
-- [Concept reference](../../reference/concepts.md) — Run Receipt, Repro Label, fidelity tiers.
+- [Concept reference](../reference/concepts.md) — Run Receipt, Repro Label, fidelity tiers.

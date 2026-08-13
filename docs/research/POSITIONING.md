@@ -2,8 +2,9 @@
 
 > **Status: positioning statement (2026-05).** The **why** of repo2ree —
 > strategic framing, audience, and relationship to neighbouring tools.
-> For *what* each named concept means see [concepts.md](../reference/concepts.md);
-> for *how* it's implemented see [architecture.md](../reference/architecture.md).
+> For *what* each named concept means see
+> [concepts.md](../engineering/reference/concepts.md); for *how* it is implemented
+> see [architecture.md](../engineering/reference/architecture.md).
 
 ## In one sentence
 
@@ -62,8 +63,8 @@ Three principles shape the product. The first explains the other two.
 
 ### Asymmetric by design: the author pays once, every reader collects
 
-repo2ree deliberately puts work on the author in order to take it off
-everyone downstream. That trade **is** the product, not a rough edge of the
+repo2ree puts work on the author to remove it from everyone downstream. That
+trade **is** the product, not a rough edge of the
 prototype.
 
 Today the cost sits in the wrong place. A reviewer clones a repo, finds a
@@ -82,13 +83,11 @@ Three asymmetries put the burden with the author:
 | **Decay** | The author's knowledge is perishable. Within a year it is gone — including from the author. Capture is only cheap while it is still fresh. |
 
 repo2ree therefore asks the author for **convention where the ecosystem has
-none**: a
-reserved build script, a reserved activation script, a named experiment whose
-verify script owns the claim. Little of this is new intellectual work. It is
-knowledge the author already has, written down in a place a machine can act on
-— which is precisely what a README is not. What comes back is an artifact a
-reviewer can execute and compare without the author present, and the
-[Verify](#verify) workflow that this makes possible at all.
+none**: a reserved build script, a reserved activation script, and a named
+experiment whose verify script defines the claim. This records knowledge the
+author already has in a machine-readable form. The result is an artifact a
+reviewer can execute and compare without the author, enabling the
+[Verify](#verify) workflow.
 
 This principle sets two obligations on everything else in the product.
 
@@ -100,17 +99,14 @@ cannot know what the author's software does, and a wrong guess that *runs*
 produces evidence worse than no evidence at all. Burden reduction stops at the
 point where it would start manufacturing claims.
 
-**Pay the author back in the same transaction.** Costs and benefits landing on
-different people is the standing risk of this design, and no amount of
-engineering removes it — it is why reproducibility tooling historically lives
-or dies on mandates from venues and funding bodies rather than on merit. The
-mitigation is
-that the sealed bundle must be worth having for the author too: a runnable
-artifact for their own future self, a deposit-ready object with a DOI, a
-citable record of a run they will otherwise re-derive by hand next year. Every
-increment of author burden should buy the author something, not only their
-readers. Where it does not, the burden is a defect rather than a design
-choice.
+**Pay the author back in the same transaction.** This design asks one person to
+work for the benefit of others. Reproducibility tools often depend on mandates
+when that incentive is missing.
+
+The sealed bundle must therefore benefit the author: it should be runnable by
+their future self, ready for deposit, and citable. Every increment of author
+effort should buy the author something. Otherwise, the burden is a product
+defect.
 
 ### Not a work environment
 
@@ -247,7 +243,7 @@ Each Receipt is content-addressed and immutable. What this changes:
 
 The machinery — typed action envelope, content-addressed inputs and
 outputs, signable result — is in
-[architecture.md](../reference/architecture.md#the-wire-form-a-typed-action-envelope).
+[architecture.md](../engineering/reference/architecture.md#the-wire-form-a-typed-action-envelope).
 
 ---
 
@@ -533,7 +529,7 @@ Two commitments make repo2ree survivable past any one service:
   are only as reproducible as the pulls happened to be at the time.
   The Label will say so loudly.
 - **Bit-for-bit determinism is opt-in.** Default is input-identity caching
-  ([architecture.md](../reference/architecture.md#content-addressed-state-cas-and-the-action-cache)).
+  ([architecture.md](../engineering/reference/architecture.md#content-addressed-state-cas-and-the-action-cache)).
   Bit-equal verification only applies to bit-reproducible substrates.
 - **GPU and hardware variation are out of scope.** Software-deterministic
   to the extent the substrate is; floating-point identity across GPU

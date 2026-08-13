@@ -8,7 +8,7 @@
 
 An archived REE must remain usable by someone who has the bundle but does not
 have repo2ree, its Python packages, its API, or a running workbench. Requiring
-the service that created an artifact in order to execute it would make
+the service that created an artifact to execute it would make
 repo2ree itself another live dependency in the artifact's reproduction chain.
 
 The bundle already carries the stable ingredients of execution: source or a

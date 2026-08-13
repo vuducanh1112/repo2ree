@@ -1,4 +1,4 @@
-# Frequently Asked Questions
+# Frequently asked questions
 
 ## Is repo2ree a hosted IDE?
 
@@ -14,13 +14,10 @@ workflow.
 
 ## Why does repo2ree ask so much of the author?
 
-Because the alternative is asking far more of everyone else. The author knows
-how their software builds and runs; a reviewer facing the same repository a year
-later does not, and neither does the author's future self. repo2ree moves that
-work upstream, where it is cheap and accurate, so it is not repeated downstream
-by each reader as guesswork. Script inference keeps the cost down by proposing
-build and run scripts from the repository — but it will not guess what your code
-does, because a wrong guess that runs is worse than no answer.
+The author knows how the software builds and runs; a future reviewer may not.
+Recording that knowledge once prevents each reader from reconstructing it by
+guesswork. Script inference reduces the effort by proposing build and run
+scripts, but the author must confirm what the code does.
 
 ## Is a Repro Label a grade?
 
@@ -49,9 +46,9 @@ or institutional repositories.
 
 ## Do I need Docker?
 
-For the current local prototype, yes. The current demo provisions Docker-backed
-workbenches. The architecture is designed so future runners can execute in
-stronger or institution-owned environments.
+For the current local prototype, yes. It provisions Docker-backed workbenches.
+The architecture also supports a future path to stronger or institution-owned
+execution environments.
 
 ## Where are contributor docs?
 

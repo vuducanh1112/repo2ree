@@ -19,6 +19,16 @@ nav = [
   { "Reference" = [
     { "Concepts" = "reference/concepts.md" },
     { "Current capabilities" = "reference/current-status.md" },
+    { "System architecture" = [
+      { "Overview" = "reference/architecture/README.md" },
+      { "The repo2ree ecosystem" = "reference/architecture/ecosystem.md" },
+      { "Services, workbenches, and data stores" = "reference/architecture/services-and-storage.md" },
+      { "How the control plane is organized" = "reference/architecture/control-plane.md" },
+      { "How the workbench agent is organized" = "reference/architecture/workbench-agent.md" },
+      { "Federated compute through connected agents" = "reference/architecture/federated-compute.md" },
+      { "How a pipeline stage runs" = "reference/architecture/pipeline-stage-execution.md" },
+      { "How independent reproduction works" = "reference/architecture/independent-reproduction.md" },
+    ] },
     { "Frequently asked questions" = "reference/faq.md" },
   ] },
   { "Explanation" = [

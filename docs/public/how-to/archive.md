@@ -1,4 +1,4 @@
-# How to Archive and Share an REE
+# How to archive and share an REE
 
 Archive is the workflow that turns a working REE into something another person,
 venue, or repository can keep.
@@ -19,11 +19,10 @@ Live external deposit adapters are planned work.
 
 ## Reproduce from the bundle
 
-The sealed ZIP is self-reproducing: it ships a top-level `run.sh` and
-`REPRODUCING.md` alongside the `ree/` tree, so a recipient can run the build and
-experiments without installing repo2ree (the Code Ocean "one-click" model). The
-`ree/` tree holds the frozen source snapshot, the author's overlay scripts, and
-any sealed build artifacts; `run.sh` reconstructs the workspace from them.
+The sealed ZIP includes `run.sh` and `REPRODUCING.md` beside the `ree/` tree. A
+recipient can run the build and experiments without installing repo2ree. The
+tree holds the frozen source snapshot, author overlay, and sealed build
+artifacts. `run.sh` reconstructs the workspace from them.
 
 After extracting the ZIP, from that folder:
 
@@ -36,19 +35,20 @@ sh run.sh test-activation          # prove the runtime is inhabitable
 sh run.sh experiment <name>        # run a named experiment
 ```
 
-`run.sh` exposes the same reproduction verbs as the in-workbench
-`repo2ree-exec` CLI,
-so the two `--help` outputs mirror each other (the CLI additionally has the
-authoring commands). `materialize-workspace` assembles `ree/workspace/` from the
-acquired source with the author scripts overlaid on top, so each script runs
-from the workspace root exactly as it did in the workbench; it resets the
-workspace so a re-run starts clean. When a runtime was sealed in (Replay tier or
-higher), `test-activation` and `experiment` reuse it and skip the build;
-otherwise they build it first. For a sourceless (Cite-tier) bundle,
-`acquire-source` re-fetches from the origin and verifies against the recorded
-SWHID when the `swh` tool is available, warning rather than failing when it is
-not. The only baseline host requirements are a POSIX shell, `tar`, and whatever
-runtime the author's scripts call into (commonly Docker).
+`run.sh` exposes the same reproduction commands as the in-workbench
+`repo2ree-exec` CLI. The CLI also provides authoring commands.
+
+`materialize-workspace` assembles `ree/workspace/` from the acquired source and
+author overlay. It resets the workspace before each run. If the bundle includes
+a runtime artifact (Replay tier or higher), `test-activation` and `experiment`
+reuse it and skip the build. Otherwise, they build it first.
+
+For a sourceless Cite-tier bundle, `acquire-source` fetches the origin and checks
+the recorded SWHID when the `swh` tool is available. A missing `swh` tool
+produces a warning, not a failure.
+
+The host needs a POSIX shell, `tar`, and the runtime used by the author's
+scripts—usually Docker.
 
 ## Why Seal comes first
 
@@ -56,10 +56,9 @@ Archive should preserve a stable object, not a mutable workspace. Seal is the
 freeze point. Once sealed, the bundle can be downloaded and attached to an
 archive record or institutional workflow.
 
-The current seal already binds a canonical REE subject and bundle inventory to
-`ree_digest`. The target design allows external attestation of that identity with
-detached signatures, timestamp evidence, digest migration, and archive binding
-metadata. Those attestation capabilities remain target design.
+The current seal binds a canonical REE subject and bundle inventory to
+`ree_digest`. Detached signatures, timestamp evidence, digest migration, and
+archive binding metadata remain target design.
 
 ## Archive tiers
 

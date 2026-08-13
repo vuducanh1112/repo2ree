@@ -127,4 +127,4 @@ splitting, and no assumption that the runtime image has a shell.
 ## See also
 
 - [step-lifecycle.md](step-lifecycle.md) — how a generated script is later run and receipted.
-- [Concept reference](../../reference/concepts.md) — Overlay, REE, Repro Label.
+- [Concept reference](../reference/concepts.md) — Overlay, REE, Repro Label.

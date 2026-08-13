@@ -49,6 +49,6 @@ deployment model itself changes.
 
 ## Evidence
 
-- [Component call graph](../../reference/components.md#call-graph--what-is-and-isnt-a-process-boundary)
+- [Component call graph](../reference/components.md#call-graph--what-is-and-isnt-a-process-boundary)
 - [`agent.control.connection`](../../../agent/src/repo2ree_agent/control/connection.py)
 - [`protocol.agent`](../../../protocol/src/repo2ree_protocol/agent.py)

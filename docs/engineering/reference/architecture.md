@@ -4,7 +4,7 @@
 > the implemented workbench/typed-envelope path and the target isolation/CAS
 > model that should harden it. For
 > *why* the integration is shaped this way see
-> [research/POSITIONING.md](../research/POSITIONING.md); for *what* each named concept means
+> [research/POSITIONING.md](../../research/POSITIONING.md); for *what* each named concept means
 > normatively see [concepts.md](concepts.md); for *how the code is organized*
 > into packages (the libraries/surfaces split, dependency rules) see
 > [components.md](components.md).
@@ -12,87 +12,27 @@
 This doc covers how REEs are built and run: isolation, directory layout,
 orchestration/execution split, action envelopes, CAS, and bundle composition.
 For product evolution, see
-[REE_SERVICE_ROADMAP.md](../research/REE_SERVICE_ROADMAP.md).
+[REE_SERVICE_ROADMAP.md](../../research/REE_SERVICE_ROADMAP.md).
 
-## System context
+## System maps and execution flows
 
-For a focused description of this diagram's scope, elements, and relationships,
-see the [system-context view](c4/system-context.md).
+The canonical system maps and their descriptions are published together in the
+[system architecture reference](../../public/reference/architecture/README.md).
+That section covers the ecosystem, runtime services and stores, control plane,
+workbench agent, pipeline-stage execution, and independent reproduction.
 
-repo2ree sits between the people authoring or reviewing a REE, its source hosting,
-and the infrastructure that exercises reproducibility. At this level the
-GUI, API, agent, and core are deliberately hidden inside the repo2ree software
-system; their boundaries appear later in the component reference.
+This document begins where those maps stop: it specifies the cross-cutting
+implementation and target design for isolation, the durable `/ree` tree,
+command transport, state ownership, and bundle composition.
 
-![C4 system-context diagram showing authors, reviewers, source origins, execution infrastructure, and registries around repo2ree](../diagrams/c4/system-context.svg)
+The GUI and HTTP API demonstrations also exercise the authoring lifecycle. The
+companion workflow below describes how work advances rather than the static
+structure of the system.
 
-The GUI and HTTP API demonstrations exercise the same authoring lifecycle. This
-workflow is a companion to the C4 view rather than a C4 level: it describes how
-work advances, not the static boundary of the software system.
+![Authoring lifecycle from choosing execution infrastructure through sealing and downloading a portable REE](../../diagrams/workflows/authoring-lifecycle.svg)
 
-![Authoring lifecycle from choosing execution infrastructure through sealing and downloading a portable REE](../diagrams/workflows/authoring-lifecycle.svg)
-
-We maintain the diagrams with the documentation; see the
-[diagram index](../diagrams/README.md).
-
-## Container view
-
-For a focused description of this diagram's runtime units and state boundaries,
-see the [container view](c4/containers.md).
-
-The container view opens the repo2ree system boundary. It distinguishes runtime
-units from libraries: the API hosts `repo2ree_supervisor` in-process, while the
-workbench executor loads `repo2ree_core` in-process. Neither library is an
-independently deployed service.
-
-![C4 container diagram showing the GUI, API, agent, workbench, control-plane state, and durable REE tree](../diagrams/c4/container.svg)
-
-The workbench appears as a repo2ree container because the agent injects the
-versioned executor and tools that make it part of the running system. The
-underlying Docker host is deployment infrastructure and therefore does not
-appear as another application container in this view.
-
-## Component views
-
-The diagrams have focused companion pages for the
-[API/control plane](c4/component-api-control-plane.md) and
-[workbench agent](c4/component-agent.md).
-
-The API/control-plane view groups the thin HTTP adapters, orchestration,
-transfers, state, and the supervisor components that select agents and dispatch
-commands.
-
-![C4 component diagram for the API and control plane](../diagrams/c4/component-api-control-plane.svg)
-
-The agent view shows the other side of the network seam. Its components own
-runtime effects and frame transport, but core execution remains inside the
-workbench.
-
-![C4 component diagram for the workbench agent](../diagrams/c4/component-agent.svg)
-
-These boxes represent architectural responsibilities rather than individual
-source files. The generated import graphs remain the detailed source-level
-views.
-
-## Dynamic view: execute one pipeline stage
-
-The two sequences have focused companion pages for
-[stage execution](c4/dynamic-stage-execution.md) and
-[review reproduction](c4/dynamic-review-reproduction.md).
-
-Evaluation, build, SBOM, activation, experiment, and review stages all use the
-same control-to-execution interaction. The operation runs asynchronously: the
-caller receives a run identifier, while a typed command crosses the supervisor,
-agent, and workbench boundaries and returns logs plus a result.
-
-![C4 dynamic diagram showing a pipeline stage crossing from an API client through the supervisor and agent to core inside a workbench](../diagrams/c4/dynamic-stage-execution.svg)
-
-Review uses the same dispatch path against an REE loaded into a workbench. Each
-attempt gets a fresh, isolated `reviews/<id>/` tree inside that workbench and
-records every comparison there; it does not provision another workbench per
-attempt.
-
-![C4 dynamic diagram showing a reviewer loading and independently reproducing a published REE](../diagrams/c4/dynamic-review-reproduction.svg)
+See the [diagram asset index](../../diagrams/README.md) for the maintained visual
+sources.
 
 ## Current state
 
@@ -109,10 +49,10 @@ The main REE path now has the intended package seam:
 Current isolation is **Docker-in-Docker inside a privileged workbench**. The
 backend never touches a container runtime: workbenches are launched by the
 *agent* (its own deployable, holding the docker socket —
-[docker-compose.agent.yml](../../docker-compose.agent.yml)) over the outbound WebSocket. The
+[docker-compose.agent.yml](../../../docker-compose.agent.yml)) over the outbound WebSocket. The
 workbench does not receive the host socket. It runs its own daemon and stores
 `/var/lib/docker` in a per-REE volume
-([runtime.py](../../agent/src/repo2ree_agent/runtimes/docker/runtime.py)).
+([runtime.py](../../../agent/src/repo2ree_agent/runtimes/docker/runtime.py)).
 
 The risk has moved: untrusted repo code no longer holds the host Docker socket
 on the main path, but the workbench is still privileged and not VM-backed.
@@ -196,8 +136,8 @@ workspace↔REE seam:
 view. The source stays pristine while REE-defining material lives beside it.
 Author receipts live inline in `ree.json`; review receipts live under their
 attempt namespace. Receipts and review attempts are covered in
-[step lifecycle](../engineering/explanation/step-lifecycle.md) and
-[review evidence](../engineering/explanation/review-evidence.md).
+[step lifecycle](../explanation/step-lifecycle.md) and
+[review evidence](../explanation/review-evidence.md).
 
 This **tree** — not the running container/VM — is the durable REE state. The
 workbench is rehydratable: tear it down and recreate it by re-mounting the
@@ -220,18 +160,20 @@ artifacts (REE products, incl. the runtime image) → experiment run.
 
 ### The workbench env image
 
-The working env boots from an *env image* that provides only the substrate —
-the default is upstream `docker:dind`, **pinned by manifest-list digest** in
-the backend's image catalog (`api/src/repo2ree_api/settings.py`); the bench is
-part of reproducibility, so the catalog pins refs and bumps them deliberately.
-The image carries no repo2ree content: at provision time the agent injects its
-**executor bundle** (the `repo2ree-exec` nix closure, mounted read-only at
-`/nix/store` from a content-addressed volume) and its **tools bundle**
-(`syft`, `git`, `curl`, `tar`, … + TLS roots), then verifies the bench
-contract with
-`repo2ree-exec doctor`. Executor and tools therefore version with the agent,
-never with the env image — any image that keeps a process alive and has a
-writable `/ree` can be a bench.
+The working environment boots from a substrate-only *environment image*. The
+default is upstream `docker:dind`, pinned by manifest-list digest in the
+backend image catalog (`api/src/repo2ree_api/settings.py`).
+
+At provision time, the agent injects two versioned bundles:
+
+- The `repo2ree-exec` Nix closure, mounted read-only at `/nix/store` from a
+  content-addressed volume.
+- Tools such as `syft`, `git`, `curl`, and `tar`, plus TLS roots.
+
+The agent then verifies the workbench contract with `repo2ree-exec doctor`.
+Executor and tools versions follow the agent, not the environment image. Any
+image that keeps a process alive and provides a writable `/ree` can serve as a
+workbench.
 
 Images that ship their own `/nix` (nix-built env images) can't take the
 `/nix/store` mount; the agent detects them, skips injection, and expects
@@ -271,7 +213,7 @@ mistake:
 
 - **The definition is part of the portable aggregate.** Runtime, source, hardware,
   and experiment definitions are persisted in `ree.json` through the definition
-  API ([definition.py](../../api/src/repo2ree_api/authoring/definition.py)). Script
+  API ([definition.py](../../../api/src/repo2ree_api/authoring/definition.py)). Script
   identities are hydrated from the authoritative overlay bytes, and aggregate
   replacement is guarded by the subject revision.
 - **The durable tree and artifacts are execution-plane state.** The workspace
@@ -790,14 +732,14 @@ explicit SWH save/deposit request.
   the same layout.
 - **Remote the existing job model; don't reinvent it.** *(Done.)* The
   submit→stream→cancel async-job shape lives in
-  [`RunRegistry`](../../api/src/repo2ree_api/control/run_registry.py), fronted by
+  [`RunRegistry`](../../../api/src/repo2ree_api/control/run_registry.py), fronted by
   `start_background_run` / `run_summary` / `is_cancel_requested`, plus the
   `start_provisioning_run` / `start_single_command_run` shapes
-  ([control/run_orchestration.py](../../api/src/repo2ree_api/control/run_orchestration.py)).
+  ([control/run_orchestration.py](../../../api/src/repo2ree_api/control/run_orchestration.py)).
   Operations dispatch to `repo2ree-exec` through
   `WorkbenchManager.dispatch_action` with logs streamed back, and cancellation
   crosses the boundary as a remote signal to the agent
-  ([manager.py:287](../../supervisor/src/repo2ree_supervisor/manager.py#L287))
+  ([manager.py:287](../../../supervisor/src/repo2ree_supervisor/manager.py#L287))
   rather than a local flag check.
 - **Keep Docker image construction inside the workbench.** The author and review
   build paths both reach `core` through `repo2ree-exec`; the control plane has no

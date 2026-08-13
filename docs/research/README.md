@@ -1,8 +1,8 @@
 # repo2ree research notes
 
-> Status: research and paper-facing material. These notes are useful for
-> arguments, comparisons, feature analysis, and manuscript development. They are
-> not the public website docs or the canonical implementation contract.
+> Status: research and paper-facing material. These notes support arguments,
+> comparisons, feature analysis, and manuscripts. They are neither public docs
+> nor implementation contracts.
 
 ## Main notes
 
@@ -15,9 +15,9 @@
 
 ## Canonical project references
 
-- [Concept reference](../reference/concepts.md)
-- [Architecture](../reference/architecture.md)
-- [Component architecture](../reference/components.md)
+- [Concept reference](../engineering/reference/concepts.md)
+- [Architecture](../engineering/reference/architecture.md)
+- [Component architecture](../engineering/reference/components.md)
 
 ## Other docs sections
 

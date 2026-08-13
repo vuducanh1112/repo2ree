@@ -1,4 +1,4 @@
-# How to Evaluate a Repository
+# How to evaluate a repository
 
 Evaluate is the first public-facing question repo2ree answers:
 
@@ -30,12 +30,11 @@ metadata.
 
 ## Relationship to the REE assessment
 
-Evaluate and the aggregate assessment answer different questions. Evaluate reads
-the source repository and discloses what it declares. The assessment reads the
-whole REE definition, inline receipts, and bundle contents to summarize which
-lifecycle evidence is current and which payloads are present. Evaluate findings can feed later
-runtime-SBOM reconciliation, but running Evaluate does not validate a result or
-prove a reproduction.
+Evaluate and the REE assessment answer different questions. Evaluate reports
+what the source repository declares. The assessment reads the REE definition,
+receipts, and bundle contents to report current evidence and available payloads.
+Evaluate can inform later runtime-SBOM reconciliation, but it does not validate
+a result or prove a reproduction.
 
 ## What it does not prove
 

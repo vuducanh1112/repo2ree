@@ -1,9 +1,8 @@
-# Current Capability Status
+# Current capability status
 
-repo2ree is an active prototype. The current app can create and manage an REE
-workspace backed by an isolated workbench, while the long-term docs describe a
-broader service around durable receipts, signatures, runners, and archive
-adapters.
+repo2ree is an active prototype. The app manages REEs in isolated workbenches.
+The target design adds independently citable receipts, signatures, federated
+compute, and archive adapters.
 
 ## Implemented in the current prototype
 
@@ -40,18 +39,18 @@ adapters.
   and experiments. The remaining target work is portable/citable verification
   artifacts, explicit receipt-to-receipt predecessor links, and signing or
   depositing a review independently of its workbench.
-- Seal currently creates a stable `ree_digest` over the canonical REE subject,
+- Seal creates a stable `ree_digest` over the canonical REE subject,
   records the bundle inventory, writes an immutable ZIP, and indexes the seal.
   Detached signatures, timestamp evidence, digest-migration attestations, and
   archive-issued binding records remain target work.
-- Archive support currently prepares and records archive metadata. Live deposit
+- Archive support prepares and records archive metadata. Live deposit
   adapters for external repositories are planned work.
 - Remote runners, institutional execution clients, and peer rebuilders are
   architectural targets, not required for the local prototype.
 
 ## Current execution model
 
-The current demo uses Docker. The API asks a connected agent to provision a
+The prototype uses Docker. The API asks a connected agent to provision a
 workbench for each REE, then dispatches typed commands through that agent. The
 agent alone owns the Docker socket and container runtime. The long-term
 architecture keeps that control-plane/execution-plane split but can move the

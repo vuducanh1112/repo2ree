@@ -1,9 +1,9 @@
-# How to Test repo2ree
+# How to test repo2ree
 
-> Status: current test layout (2026-07). The suite intentionally separates
-> container-free checks from Docker-gated integration and e2e flows.
+> Status: current test layout (2026-07). Container-free checks run separately
+> from Docker-gated integration and end-to-end flows.
 
-## Quick Map
+## Quick map
 
 | Target | What it runs |
 |---|---|
@@ -146,13 +146,10 @@ demonstration, `-gui` is browser-driven, `-api` drives the same stack over HTTP.
 Every stack suite measures the same thing — the backend — whichever interface
 drove it; see "The browser is not measured" below.
 
-Measuring costs roughly 30% wall clock on the pytest tiers (branch coverage is
-on). That is the price of the guarantee above, and it is why the **per-package**
-targets — `make core-unit-tests`, `make api-integration-tests`, and friends —
-stay unmeasured. They are the debugging loop, and a partial run writing a tier's
-data directory would make that tier's number mean "core, plus whatever else
-someone happened to run today", which is exactly the blend the tier split exists
-to prevent.
+Branch coverage adds roughly 30% to pytest runtime. Per-package targets such as
+`make core-unit-tests` therefore stay unmeasured and serve as the debugging
+loop. Allowing partial runs to write tier data would make a tier's result an
+unreliable blend of whichever packages ran most recently.
 
 A tier run produces *data*, not HTML. Render it when you want to look:
 
@@ -164,7 +161,7 @@ make be-coverage-report TIER=unit    # render, from data already on disk
 Pass `COV_REPORT=term-missing` to a tier target for a terminal report during the
 run itself, when you are actively closing gaps.
 
-Three things the table does not say, all worth knowing before reading a number:
+Three details matter when reading coverage:
 
 - **`integration` is not defined by docker**, even though the target requires it.
   `core/tests/integration` spans components without containers, so it sits in
@@ -174,15 +171,13 @@ Three things the table does not say, all worth knowing before reading a number:
   must not run against bundles from an older tree.)
 - **The image-backed variants are unmeasured, permanently.** `-on-stack`,
   `-stack-local` and `-stack-published` run the backend and agents *inside
-  containers*, where the host's coverage process cannot see them. That is a
-  division of labour rather than a gap: the measured source-run path produces the
-  numbers, and the image-backed path — which `push-gate` runs — proves the
-  un-instrumented topology works.
+  containers*, beyond the host coverage process. Source-run suites produce the
+  numbers; image-backed suites prove the production topology works without
+  coverage instrumentation.
 - **`combined` is rarely everything, and says so.** `make be-coverage-combined`
-  prints the tiers it included *and* the ones it did not, because a number
-  labelled "combined" otherwise reads as complete. A full `push-gate` measures
+  prints included and missing tiers. A full `push-gate` measures
   `unit`, `integration`, `e2e-gui` and `e2e-gui-review`; the demo tiers are
-  absent because no gate runs a demo, deliberately.
+  absent because gates do not run demos.
 
 The report targets carry the runtime, like the rest of the Makefile:
 `be-coverage-*` reports on Python, `gui-coverage-*` on the GUI.
@@ -201,11 +196,10 @@ not the tier:
 | `coverage/python/` | coverage.py | the six uv workspace packages |
 | `coverage/node/` | V8 via vitest | the GUI |
 
-That order is what keeps `combined` meaningful. Combining tiers is a *coverage.py
-operation* — `coverage combine`, over `.coverage` databases — with no
-cross-language form: no algorithm unions a Python line count with a JavaScript
-one, and the two share no denominator. Each runtime therefore owns a `combined/` inside
-its own subtree, and there is deliberately **no** `coverage/combined/` above them.
+That order keeps `combined` meaningful. `coverage combine` merges Python
+`.coverage` databases; it cannot combine Python and JavaScript line counts.
+Each runtime therefore owns a `combined/` directory; no shared
+`coverage/combined/` sits above them.
 
 Every python tier writes into `coverage/python/`; `node` is the GUI's only tier,
 so it has nothing to union. An absent tier directory means "this way of testing
@@ -234,16 +228,12 @@ recording the demos — and keep measuring the **backend**, which is unaffected.
 
 ### The GUI reads low in `node`
 
-`make gui-tests` reads low, and unlike the other low numbers here that one is
-**a real gap, not a measurement artifact**. The React shell is only beginning to
-be covered, and nothing else covers it either: the Playwright suites drive the
-shell but record no JavaScript coverage, for the reasons above. Closing it means
-writing more component tests, which land in this same tier and lift this same
-number.
+`make gui-tests` reports low coverage because the React shell has few component
+tests. Playwright drives the shell but records no JavaScript coverage. Add
+component tests to close this gap.
 
-The figure itself is deliberately not written down here or in `vite.config.js`.
-It moves on every run that adds a test, so a copy in prose is a copy that goes
-stale; run the tier and read the report it prints.
+This page does not copy the changing percentage. Run the tier and read its
+report.
 
 Every file matching the config's `include` counts, whether a test imported it or
 not. That is what makes the number honest rather than flattering: measure only
@@ -267,13 +257,10 @@ select by **role and accessible name** rather than by styled text — several
 components (`RunActionButton`, `OutcomeBadge`) carry doc comments promising that
 name, and the tests are what hold them to it.
 
-The split is a cost and a correctness measure, not a preference. jsdom costs
-~1.7s of environment setup per file, so switching it on globally took the suite
-from 2.9s to 11s; it also broke `scriptTemplates/paths.test.ts`, which reads a
-contract fixture off disk through `import.meta.url` and cannot resolve it once
-that URL is `http://`. Projects split the *run*, not the measurement — `coverage`
-stays at the config root and both projects report into it — so this remains one
-tier with one number.
+jsdom adds about 1.7 seconds of setup per file. Enabling it globally increased
+the suite from 2.9 to 11 seconds and broke a disk fixture that relies on
+`import.meta.url`. Projects split the run, while root-level coverage combines
+both projects into one tier.
 
 Run one side alone while iterating:
 
@@ -358,7 +345,7 @@ Data layout is configured in `pyproject.toml`; one directory per tier rather
 than one suffixed file per tier, because `coverage combine` treats sibling
 `.coverage.*` files as its own parallel-mode output and consumes them.
 
-## GUI Checks And Tests
+## GUI checks and tests
 
 Install dependencies:
 
@@ -381,7 +368,7 @@ make gui-tests
 `make gui-checks` runs TypeScript for the app and e2e configs, Biome, knip, and
 dependency-cruiser.
 
-## End-To-End Tests
+## End-to-end tests
 
 The Playwright config is `gui/playwright.config.ts`. It starts the Vite dev
 server on `127.0.0.1:4173` and points the GUI at
@@ -426,26 +413,19 @@ servers. The suffix names **who provides the stack**:
 | `-stack-local` | the target, from `:local` images it builds first | yes |
 | `-stack-published` | the target, from the pushed registry images | no |
 
-The `-stack-local` targets do the whole flow in one command: build the local images,
-`make stack-up` (compose control plane + agent container, via
-`scripts/image-stack.sh`), run the playwright project, `make stack-clean`. With a
-stack already up, `make e2e-gui-on-stack` / `make e2e-gui-review-on-stack` /
-`make demo-gui-on-stack` run just the playwright part. Playwright is pointed at the Caddy-served GUI (via `E2E_BASE_URL`,
-which also skips the Vite dev server), so the GUI image's `/api` reverse
-proxy and the backend/agent images are what get exercised. The stack is
-addressed as `localhost` from the host or via compose service DNS from the
-devcontainer; `scripts/image-stack.sh` picks automatically.
+The `-stack-local` targets build local images, start the stack, run Playwright,
+and clean up. With a stack already running, the `*-on-stack` targets run only
+Playwright. `E2E_BASE_URL` points Playwright to the Caddy-served GUI and skips
+the Vite server, exercising the GUI proxy and all three images.
 
-Those one-command flows own the whole lifecycle, so they end on `stack-clean`
-(`image-stack.sh down --volumes`): the compose volumes go with the containers,
-and so do any workbench containers and per-REE volumes the specs left on the
-daemon. A stack you started yourself with `make stack-up` ends with
-`make stack-down` instead, which keeps the volumes so the backend state and the
-agent's identity survive to the next run — use `make stack-clean` when you want
-that state gone too. The source-run `e2e-*` targets prune workbench leftovers on
-exit for the same reason: their backend state is throwaway, so any REE the specs
-did not delete is already unreachable. `make workbench-clean` does that prune on
-its own, after an interrupted run.
+The host reaches the stack through `localhost`; the devcontainer uses Compose
+service DNS. `scripts/image-stack.sh` selects the correct address.
+
+One-command flows end with `stack-clean`, which removes Compose volumes,
+leftover workbenches, and per-REE volumes. For a manually started stack, use
+`stack-down` to preserve backend state and agent identity, or `stack-clean` to
+remove them. Source-run `e2e-*` targets also prune unreachable workbenches.
+After an interrupted run, invoke `make workbench-clean` directly.
 
 The prune also sweeps unreferenced anonymous volumes — the hex-named ones the
 bench image declares for itself (`docker:dind` declares `/var/lib/docker` and
@@ -453,17 +433,14 @@ bench image declares for itself (`docker:dind` declares `/var/lib/docker` and
 now removes containers with `docker rm -v` so they no longer accumulate; the
 sweep is what reclaims the ones from earlier runs.
 
-The `repo2ree-store-{hash}` volumes are the exception: no cleanup touches them
-by default. Each holds the executor/tools closure every bench mounts (~450MB),
-keyed by bundle content — so rebuilding the executor or the tools bundle mints a
-new one and orphans the old, which nothing will mount again. That makes them a
-cache needing eviction, not state to preserve. `make store-gc` drops the ones no
-container references and no build has recreated in `STORE_GC_DAYS` (14),
-protecting the bundle this checkout resolves to so the next run still starts
-warm; `make workbench-clean STORE=1` drops all of them, live one included, at
-the cost of one full store copy per bundle on the next provision. Neither runs
-as part of an e2e teardown — a test target should not silently evict a cache the
-next run needs.
+Cleanup preserves `repo2ree-store-{hash}` volumes because each is a reusable
+executor/tools cache of about 450 MB. A bundle change creates a new volume and
+leaves the old one unused.
+
+`make store-gc` removes unreferenced caches older than `STORE_GC_DAYS` (14) but
+keeps the bundle used by the current checkout. `make workbench-clean STORE=1`
+removes every cache, including the current one. End-to-end teardown never
+evicts these caches automatically.
 
 The `*-stack-published` variants validate pushed images instead of local builds
 (Docker pulls the refs; nothing is built). For an ad hoc run they default to the
@@ -477,23 +454,14 @@ The source-run `e2e-gui` remains the iteration loop (fast, easy to debug,
 coverage-capable); the image-backed variants are the deployment gate before
 pushing or promoting images.
 
-`make commit-gate` is the fast pre-commit companion: offline documentation and
-static checks plus every test tier that needs no docker, nix builds, or browsers
-(GUI unit, backend unit, core integration). It runs in about a minute warm —
-commits should stay cheap, and that budget is the constraint any change to the
-gate has to answer to. Two of its three suites are tier targets, so a green gate
-also leaves fresh `unit` and `node` coverage on disk; that costs roughly 13s of
-the minute, which is the price of never having an unmeasured tier run. The
-exhaustive counterpart is the push gate below.
+`make commit-gate` runs offline docs and static checks plus all tests that need
+no Docker, Nix build, or browser. It takes about a minute when warm and leaves
+fresh `unit` and `node` coverage. Use the push gate for the exhaustive suite.
 
-The pre-commit hook does not run the gate — it checks that you did. On a green
-run the gate records the tree it validated under `.validation-certificates/`,
-whose own `.gitignore` keeps every certificate out of the repository while
-keeping the directory in it. That ignore rule is load-bearing rather than
-tidiness: a certificate is a hash of the working tree and lives inside it, so a
-tracked one would change the thing it measures. `commit-gate-stamp.sh` refuses
-to write a certificate git would track, so editing the rule away fails loudly
-instead of rejecting every commit for no visible reason.
+The pre-commit hook checks that you ran the gate. A successful gate records a
+tree hash under `.validation-certificates/`. Its `.gitignore` keeps certificates
+untracked because tracking a certificate would change the tree it measures.
+`commit-gate-stamp.sh` refuses to write a certificate Git would track.
 
 The hook (`.pre-commit-config.yaml`) compares that certificate against the tree
 you are about to commit. The comparison is a hash, so it costs milliseconds, and
@@ -535,29 +503,24 @@ heaviest exercise the agent package gets (docker runtime, control link,
 injection, chunked transfers), so measuring only the server reported that work
 as uncovered.
 
-E2E tests provision real workbench containers — the most expensive part of
-any e2e test (bench start, nested dockerd boot, and a cold-cache DinD build
-for anything that builds). The golden path therefore lives in one journey
-spec, `tests/e2e/ree-pipeline.spec.ts`: a single run from provisioning
-through seal and release, with each pipeline page asserted as a named
-`test.step`, so the suite pays for one workbench and one runtime build.
-Separate specs exist only for branches off that path (e.g. the origin-URL
-source fetch). The shared e2e fixture attempts to release the workbench
-after each test, including failures.
+End-to-end tests provision real workbenches. Starting a workbench, booting its
+nested daemon, and building against a cold cache dominate test time. The golden
+path therefore uses one journey spec, `tests/e2e/ree-pipeline.spec.ts`, from
+provisioning through seal and release. Named `test.step` blocks identify each
+stage without repeating setup.
 
-## Artifacts And Logs
+Separate specs cover only branches such as origin-URL source fetch. The shared
+fixture attempts to release the workbench after every test, including failures.
 
-All generated test artifacts stay under the single repo-root `test-artifacts/`
-— the GUI suites included, which is why `gui/` has no artifact root of its own.
-Paths are derived from the file that writes them (`gui/tests/artifacts.ts`
-anchors on `__dirname`; the Playwright config resolves `outputDir` against its
-own directory), never from `process.cwd()`, so they cannot drift with the
-working directory a suite happens to be invoked from. That
-directory must stay safe to delete: nothing under it may be an input a suite
-needs or a nix GC root. The executor/tools bundles are the counter-example that
-motivated the rule — they live under `dist/bundles/` (see `mk/e2e.mk`) because
-`nix build -o` makes them GC roots holding their store closures alive, and
-because the suites *consume* them rather than produce them.
+## Artifacts and logs
+
+All generated test output lives under the repository-level `test-artifacts/`.
+Writers resolve paths from their own files, not `process.cwd()`, so invocation
+location cannot change the destination.
+
+The directory must remain safe to delete: it cannot contain suite inputs or Nix
+GC roots. Executor and tools bundles therefore live under `dist/bundles/`; tests
+consume them, and `nix build -o` keeps their store closures alive.
 
 Useful locations:
 
@@ -583,7 +546,7 @@ docker logs repo2ree-wb-{ree_id}
 docker exec repo2ree-wb-{ree_id} cat /var/log/dockerd.log
 ```
 
-## Direct Commands
+## Direct commands
 
 Direct commands are useful while debugging one tier:
 

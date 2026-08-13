@@ -1,7 +1,7 @@
-# repo2ree Engineering Documentation
+# repo2ree engineering documentation
 
-Contributor-facing documentation: how to run the thing, how to test it, how to
-ship it, and why the backend is shaped the way it is.
+Contributor documentation for development, testing, deployment, and system
+design.
 
 ## How-to guides
 
@@ -13,9 +13,8 @@ ship it, and why the backend is shaped the way it is.
 
 ## Explanation
 
-These record *why* the backend code is shaped as it is. The modules themselves
-document what each piece does; these pages carry the argument, so it lives in one
-place instead of being restated in every docstring that touches it.
+These pages explain why the backend has its current shape. Module docstrings
+describe individual mechanisms.
 
 | Doc | What it covers |
 |---|---|
@@ -35,12 +34,15 @@ Consequential choices and their tradeoffs live in the
 choice was made; the architecture documents below remain the living description
 of the system.
 
-## Where the rest lives
+## Reference
 
-- [Architecture reference](../reference/architecture.md) — execution and isolation: the `/ree`
+- [Reference overview](reference/README.md) — technical concepts, architecture,
+  and package boundaries.
+- [Architecture reference](reference/architecture.md) — execution and isolation: the `/ree`
   tree, the control/execution plane split, the typed action envelope, CAS, bundles.
-- [Component reference](../reference/components.md) — package architecture, the dependency
+- [Component reference](reference/components.md) — package architecture, the dependency
   rules and the import-linter contracts that enforce them.
-- [Concept reference](../reference/concepts.md) — normative definitions of the named concepts.
-- [../public/](../public/) — product-facing docs and workflows.
-- [../research/](../research/) — positioning, roadmap, and paper-facing notes.
+- [Concept reference](reference/concepts.md) — normative definitions of technical concepts.
+
+Product workflows live in the [public docs](../public/). Positioning, plans,
+and manuscript material live in [research notes](../research/).

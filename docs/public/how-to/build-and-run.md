@@ -1,4 +1,4 @@
-# How to Build and Run an REE
+# How to build and run an REE
 
 Build and run is the author-side loop: take source, add the instructions needed
 to execute it, build a runtime, and run declared commands inside that runtime.
@@ -32,21 +32,20 @@ the run:
 
 ## Experiment runs
 
-Experiment commands can be run from the app and checked by an author-provided
-verify script. The verify script runs from the workspace root after the run —
-exactly like the run script, with nothing injected into its environment — and
-its exit code is the verdict; it inspects whatever it needs straight from the
-workspace (a run whose stdout is checked materializes it to a workspace file).
-When the command and verify script pass, that run is **validated** against the
-declared check. It is not yet a reproduction: reproduction requires a later run
-to be compared with prior author evidence. The operation already produces an
-immutable typed receipt stored in the REE. It is not yet an independently
-citable receipt with predecessor lineage, signatures, or its own deposit form.
+The app runs each experiment command and then applies an author-provided verify
+script. Both scripts run from the workspace root with no injected environment.
+The verify script inspects workspace files, and its exit code is the verdict.
+To check stdout, the run script must first write it to a workspace file.
 
-A successful experiment run also captures the files it declares as outputs into
-a per-experiment results store and records their digest on the receipt. An
-experiment can opt into sealing those results so the author baseline ships in
-the downloadable bundle for reviewers to diff against (see
+When both scripts pass, the run is **validated** against the declared check. It
+is not a reproduction: that requires a later run compared with author evidence.
+The operation stores an immutable typed receipt in the REE. Independently
+citable receipts with predecessor lineage, signatures, and deposit formats
+remain target work.
+
+A successful run captures its declared output files in a per-experiment results
+store and records their digest in the receipt. An experiment can include those
+results in the sealed bundle as the author baseline for later comparison (see
 [Verify](verify.md)).
 
 The target receipt will make each run durable: command, inputs, outputs, traces,

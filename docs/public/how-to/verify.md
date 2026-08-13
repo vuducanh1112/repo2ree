@@ -1,4 +1,4 @@
-# How to Verify a Result
+# How to verify a result
 
 Verify is the reviewer and reader loop. The goal is to re-run a published
 result and get a comparable record instead of informal notes.

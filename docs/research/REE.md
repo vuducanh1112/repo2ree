@@ -3,7 +3,7 @@
 > **Status: research thesis and target product description.** This document
 > develops the complete REE model; it is not a current support matrix. See the
 > [public capability status](../public/reference/current-status.md) for implemented
-> behavior and the [architecture reference](../reference/architecture.md) for the
+> behavior and the [architecture reference](../engineering/reference/architecture.md) for the
 > explicit implementation/target boundary.
 
 ## 1. One-sentence description

@@ -5,8 +5,8 @@ constrain repo2ree. The records explain why a choice was made, which alternative
 were rejected, and which consequences the project accepts.
 
 These are historical decision records, not the living architecture reference.
-[Architecture](../../reference/architecture.md) and
-[component architecture](../../reference/components.md) describe the implemented and
+[Architecture](../reference/architecture.md) and
+[component architecture](../reference/components.md) describe the implemented and
 target system; the records here explain accepted decisions behind the current
 shape. When the implementation changes, update the living documentation and
 supersede the affected record rather than rewriting its original decision.

@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1400" height="900" viewBox="0 0 1400 900" role="img" aria-labelledby="title description">
-  <title id="title">repo2ree C4 system context</title>
+  <title id="title">The repo2ree ecosystem</title>
   <desc id="description">REE authors and reviewers use repo2ree. Repo2ree acquires pinned source from source hosting, dispatches work to isolated execution infrastructure, and returns sealed portable REEs with evidence. Execution infrastructure obtains dependencies from package and image registries.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
@@ -26,7 +26,7 @@
   </defs>
 
   <rect class="canvas" width="1400" height="900" rx="16"/>
-  <text class="title" x="48" y="55">repo2ree — System context</text>
+  <text class="title" x="48" y="55">The repo2ree ecosystem</text>
   <text class="subtitle" x="48" y="84">Who uses repo2ree and which systems participate in authoring and reproducing a REE</text>
 
   <!-- Relationships are drawn first so nodes remain visually dominant. -->

@@ -4,7 +4,7 @@
 > code-organization companion to [architecture.md](architecture.md). It maps
 > the runtime model onto source packages, deployment locations, and dependency
 > rules. For concepts see [concepts.md](concepts.md); for product framing see
-> [research/POSITIONING.md](../research/POSITIONING.md).
+> [research/POSITIONING.md](../../research/POSITIONING.md).
 
 ## Mental model
 
@@ -214,14 +214,13 @@ Two modes follow:
 | **cli / single agent** | docker + benches + one agent | ephemeral library, in-process per command — *no control-plane service to run, but an agent must be up* |
 | **hosted / multi-user** | **the `api`** (a long-lived server) **+ one or more agents** | same library, hosted in-process by the api → effectively continuous; fleet background work (idle-TTL GC, health, orphan cleanup) is a background task *inside the api process* |
 
-A **separate** supervisor daemon is still the wrong default: it breaks the
-zero-service cli flow and adds an IPC hop the api gains nothing from. The agent
-is *not* that daemon — it lives on the execution-plane host and owns the
-substrate, which is exactly the concern the control plane must not hold. Only
-introduce a standalone control-plane worker if fleet-wide background work must
-be decoupled from the request lifecycle (global quotas, cross-host draining) —
-and even then it's an *optional worker that imports the supervisor library*,
-never a reimplementation.
+A separate supervisor daemon would break the zero-service CLI flow and add an
+unnecessary IPC hop. The agent is different: it runs on the execution host and
+owns the substrate that the control plane must not hold.
+
+Introduce a standalone control-plane worker only when fleet-wide work, such as
+global quotas or cross-host draining, must outlive request handling. That worker
+should import the supervisor library, not reimplement it.
 
 ## The service tier — multi-user, persistence, auth (hosted only)
 
@@ -347,7 +346,7 @@ The package split is now largely real:
   single hardcoded local-Docker path. Additional runtimes (cloud/HPC) are the
   intended next impls.
 - **Done:** the dependency rules above are machine-enforced. `[tool.importlinter]`
-  in [pyproject.toml](../../pyproject.toml) carries workspace-level layers, per-package
+  in [pyproject.toml](../../../pyproject.toml) carries workspace-level layers, per-package
   layer contracts for `api` and `core` (both marked exhaustive, so a new top-level
   module must declare its tier), and independence contracts holding the author and
   review sides apart in both `core.operations.handlers` and `api`.

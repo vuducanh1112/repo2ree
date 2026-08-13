@@ -1,4 +1,4 @@
-# How to Deploy repo2ree
+# How to deploy repo2ree
 
 > Status: current demo/dev deployment shape (2026-08). This is not yet a
 > hardened production runbook. The current stack is useful for local demos and
@@ -10,18 +10,16 @@ repo2ree has three deployed surfaces today:
   workbench operations go to whichever agents have dialed in.
 - `agent`: the workbench agent. It holds the docker socket, dials the backend
   over an outbound WebSocket, provisions benches, and injects its embedded
-  executor/tools bundles into them. Anyone can run one to contribute benches.
-  It is deliberately not part of the control-plane compose stack — that stack
-  is control plane only (GUI + backend). The agent ships its own compose
-  file (`docker-compose.agent.yml`) so it can be started separately wherever
-  benches should live, with an independent lifecycle.
+  executor and tools. It has its own compose file
+  (`docker-compose.agent.yml`) and lifecycle, so it can run wherever benches
+  should live. The control-plane stack contains only the GUI and backend.
 - `gui`: a static Vite bundle served by Caddy. Caddy also reverse-proxies
   `/api/*` to the backend so the browser uses one origin.
 
 Each REE gets a separate workbench container named `repo2ree-wb-{ree_id}` plus
 Docker volumes for `/ree` state and the nested Docker daemon.
 
-## Run With Published Images
+## Run with published images
 
 The public demo path uses Docker Hub images and does not require Nix. Compose
 brings up the control plane; a second compose file brings up the agent, which
@@ -50,19 +48,15 @@ WORKBENCH_API_WS_URL=ws://backend.example:8000/agent/connect \
 | `REPO2REE_GUI_IMAGE` | `docker.io/vuducanh1112/repo2ree-gui:edge` | GUI image served by Caddy. |
 | `REPO2REE_BACKEND_IMAGE` | `docker.io/vuducanh1112/repo2ree-backend:edge` | FastAPI backend image. |
 
-The agent image is set on its own compose file via `REPO2REE_AGENT_IMAGE`
-(default `docker.io/vuducanh1112/repo2ree-agent:edge`) — it holds the docker
-socket, provisions benches, and injects the executor/tools bundles, and is
-always started from `docker-compose.agent.yml` as above.
+Set the agent image with `REPO2REE_AGENT_IMAGE` in its compose file. It defaults
+to `docker.io/vuducanh1112/repo2ree-agent:edge`.
 
-The per-REE workbench env image is not a deployment variable: it defaults to
-the backend's image catalog (`api/src/repo2ree_api/settings.py` — a pinned
-upstream `docker:dind` digest; the agent injects the executor and tools) and
-is chosen per REE at provision time (the image picker in the UI, or a custom
-ref). To ship a different set, override the `WORKBENCH_IMAGE_CATALOG` env var
-on the backend.
+The backend image catalog defines the available per-REE workbench images
+(`api/src/repo2ree_api/settings.py`). Its default is a pinned upstream
+`docker:dind` digest; the agent injects the executor and tools. Override
+`WORKBENCH_IMAGE_CATALOG` to publish a different catalog.
 
-## Build Images Locally
+## Build images locally
 
 Build and load the GUI image:
 
@@ -89,7 +83,7 @@ bundles):
 make agent-image
 ```
 
-## Publishing Images
+## Publishing images
 
 Publishing treats the GUI, backend, and agent as one image candidate. The
 candidate is pushed under a Git revision, validated by manifest digest, then
@@ -141,7 +135,7 @@ requires matching versions. Registries default to GHCR and Docker Hub under
 `vuducanh1112`; override `REGISTRIES`, `GHCR_NAMESPACE`, or
 `DOCKERHUB_NAMESPACE` for another deployment set.
 
-## Run With Local Images
+## Run with local images
 
 ```bash
 REPO2REE_GUI_IMAGE=repo2ree-gui:local \
@@ -169,7 +163,7 @@ containers; the backend has no Docker access at all. The workbench containers
 do not receive the host socket either; they run privileged Docker-in-Docker
 with their own daemon.
 
-## Compose Storage
+## Compose storage
 
 Each compose file creates one named volume:
 
@@ -189,7 +183,7 @@ volumes plus any workbench containers and per-REE volumes left behind — use
 also sweeps unreferenced anonymous volumes, which the bench image declares for
 itself and which nothing can address once their container is gone.
 
-## Runtime Configuration
+## Runtime configuration
 
 Backend variables:
 
@@ -221,7 +215,7 @@ Container socket access:
 |---|---|
 | `DOCKER_GID` | Optional numeric group id for `/var/run/docker.sock` when building/running non-root containers. Discover with `stat -c '%g' /var/run/docker.sock`. |
 
-## Security And Isolation Notes
+## Security and isolation notes
 
 Current state:
 
@@ -237,7 +231,7 @@ Target hardening, described in the architecture docs, is VM-backed workbenches
 and stronger content-addressed/cache semantics. Do not describe the current
 compose deployment as production isolation.
 
-## Operational Checks
+## Operational checks
 
 Useful checks after starting the stack:
 
@@ -262,7 +256,7 @@ If workbench provisioning fails, check:
 - Workbench logs with `docker logs repo2ree-wb-{ree_id}`.
 - Nested Docker logs inside the workbench at `/var/log/dockerd.log`.
 
-## Non-Compose Deployments
+## Non-Compose deployments
 
 For a non-compose deployment, keep the same boundaries:
 
