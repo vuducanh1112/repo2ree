@@ -9,51 +9,51 @@
   gap: var(--space-3);
   margin-bottom: var(--space-4);
   padding: var(--space-3) var(--space-4);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--advisory-edge);
   background: var(--advisory-bg);
-  box-shadow: var(--feedback-callout-shadow);
+  box-shadow: var(--shadow-inset-highlight);
   font-family: var(--font-sans);
 }
 
 .advisory[data-tone="warn"] {
-  --advisory-bg: var(--feedback-warning-callout-bg);
-  --advisory-edge: var(--feedback-warning-callout-edge);
-  --advisory-ink: var(--feedback-warning-callout-ink);
+  --advisory-bg: var(--tone-warning-surface);
+  --advisory-edge: var(--tone-warning-border);
+  --advisory-ink: var(--tone-warning-ink);
 }
 
 .advisory[data-tone="info"] {
-  --advisory-bg: var(--feedback-info-callout-bg);
-  --advisory-edge: var(--feedback-info-callout-edge);
-  --advisory-ink: var(--feedback-info-callout-ink);
+  --advisory-bg: var(--tone-info-surface);
+  --advisory-edge: var(--tone-info-border);
+  --advisory-ink: var(--tone-info-line);
 }
 
 .advisoryIcon {
   display: flex;
   flex-shrink: 0;
-  margin-top: 1px;
+  margin-top: var(--space-0-5);
   color: var(--advisory-ink);
 }
 
 .advisoryBody {
   flex: 1;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--page-subtitle-ink);
+  font-size: var(--text-body);
+  line-height: var(--leading-normal);
+  color: var(--ink-muted);
 }
 
 .advisoryTitle {
   margin-bottom: var(--space-1);
-  font-size: 13px;
+  font-size: var(--text-body);
   font-weight: var(--weight-bold);
   color: var(--advisory-ink);
 }
 
 .advisoryCopy {
   margin-bottom: var(--space-2);
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--page-subtitle-ink);
+  font-size: var(--text-body);
+  line-height: var(--leading-normal);
+  color: var(--ink-muted);
 }
 
 .prereqs {
@@ -65,13 +65,13 @@
 /* One unmet prerequisite. Not a Badge: it names work outstanding rather than a
  * state something is in. */
 .prereq {
-  padding: 2px var(--space-2);
-  border-radius: 6px;
-  border: 1px solid var(--feedback-warning-callout-edge);
-  background: var(--surface-glass-soft);
-  color: var(--feedback-warning-callout-ink);
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--tone-warning-border);
+  background: var(--surface-raised);
+  color: var(--tone-warning-ink);
   font-family: var(--font-sans);
-  font-size: var(--text-md);
+  font-size: var(--text-label);
   font-weight: var(--weight-semibold);
 }
 
@@ -83,21 +83,21 @@
   gap: var(--space-2);
   margin-bottom: var(--space-3);
   font-family: var(--font-sans);
-  font-size: var(--text-md);
+  font-size: var(--text-label);
   font-weight: var(--weight-bold);
-  color: var(--field-label-ink);
+  color: var(--ink-default);
 }
 
 .params {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--space-3);
 }
 
 .param {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: var(--space-2);
   min-width: 0;
 }
 
@@ -106,22 +106,22 @@
   align-items: center;
   gap: var(--space-2);
   font-family: var(--font-sans);
-  font-size: var(--text-md);
+  font-size: var(--text-label);
   font-weight: var(--weight-bold);
-  color: var(--field-label-ink);
+  color: var(--ink-default);
 }
 
 .paramHint {
   font-weight: var(--weight-regular);
-  font-size: var(--text-sm);
-  line-height: 1.4;
-  color: var(--field-hint-ink);
+  font-size: var(--text-caption);
+  line-height: var(--leading-snug);
+  color: var(--ink-subtle);
 }
 
 /* --- Repository tabs ------------------------------------------------------ */
 
 .tabs {
-  margin-bottom: 22px;
+  margin-bottom: var(--space-5);
 }
 
 /* --- Repository summary --------------------------------------------------- */
@@ -131,7 +131,7 @@
   align-items: center;
   gap: var(--space-2);
   flex-wrap: wrap;
-  margin-bottom: 10px;
+  margin-bottom: var(--space-2-5);
 }
 
 .accentBar {
@@ -144,8 +144,8 @@
 
 .repoName {
   font-family: var(--font-sans);
-  font-size: var(--text-lg);
-  font-weight: 800;
+  font-size: var(--text-body-large);
+  font-weight: var(--weight-extrabold);
   color: var(--archive-tint);
 }
 
@@ -155,9 +155,9 @@
   gap: var(--space-1);
   margin-left: auto;
   text-decoration: none;
-  opacity: 0.85;
+  opacity: var(--opacity-strong);
   font-family: var(--font-mono);
-  font-size: var(--text-sm);
+  font-size: var(--text-caption);
   color: var(--archive-tint);
 }
 
@@ -172,9 +172,9 @@
 
 .repoDesc {
   margin: 0 0 var(--space-3);
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--page-subtitle-ink);
+  font-size: var(--text-body);
+  line-height: var(--leading-relaxed);
+  color: var(--ink-muted);
 }
 
 /* The identifier this archive issued, or the shape one will take. */
@@ -182,10 +182,10 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 9px var(--space-3);
+  padding: var(--space-2-5) var(--space-3);
   border-radius: var(--radius-control);
-  border: 1px solid var(--edge-neutral-row);
-  background: var(--surface-glass-soft);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
 }
 
 .identifier[data-assigned] {
@@ -196,11 +196,11 @@
 .identifierKind {
   flex-shrink: 0;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: var(--tracking-label);
   font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  font-weight: 800;
-  color: var(--field-hint-ink);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-extrabold);
+  color: var(--ink-subtle);
 }
 
 .identifierValue {
@@ -209,8 +209,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--font-mono);
-  font-size: 13px;
-  color: var(--field-hint-ink);
+  font-size: var(--text-body);
+  color: var(--ink-subtle);
 }
 
 .identifier[data-assigned] .identifierKind,
@@ -223,38 +223,38 @@
 .asideHead {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 14px;
+  gap: var(--space-2-5);
+  margin-bottom: var(--space-3);
 }
 
 .asideIcon {
   display: flex;
-  color: var(--archive-tint, var(--ink-info));
+  color: var(--archive-tint, var(--tone-info-line));
 }
 
 .asideTitle {
   margin: 0;
-  font-size: 15px;
-  color: var(--field-ink);
+  font-size: var(--text-heading-small);
+  color: var(--ink-default);
 }
 
 .readout {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--space-3);
 }
 
 .readoutHead {
   display: flex;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--space-2-5);
 }
 
 .readoutLabel {
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-size: var(--text-sm);
-  font-weight: 800;
+  letter-spacing: var(--tracking-label);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-extrabold);
   color: var(--ink-accent-strong);
 }
 
@@ -272,22 +272,22 @@
 
 .checkIcon {
   display: flex;
-  color: var(--field-hint-ink);
+  color: var(--ink-subtle);
 }
 
 .checkLabel {
   font-family: var(--font-sans);
-  font-size: 13px;
-  color: var(--field-hint-ink);
+  font-size: var(--text-body);
+  color: var(--ink-subtle);
 }
 
 /* Done: the step behind this prerequisite has a result. */
 .check[data-done] .checkIcon {
-  color: var(--feedback-success-ink);
+  color: var(--tone-success-ink);
 }
 
 .check[data-done] .checkLabel {
-  color: var(--field-ink);
+  color: var(--ink-default);
 }
 
 .assignedId {
@@ -296,18 +296,18 @@
 }
 
 .unassigned {
-  color: var(--field-hint-ink);
+  color: var(--ink-subtle);
 }
 
 .depositActions {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-2-5);
 }
 
 .depositHint {
   font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  line-height: 1.4;
-  color: var(--field-hint-ink);
+  font-size: var(--text-caption);
+  line-height: var(--leading-snug);
+  color: var(--ink-subtle);
 }

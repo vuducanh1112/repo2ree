@@ -17,7 +17,6 @@
 @layer reset, tokens, theme, semantics, base, components;
 
 @import "./tokens.css" layer(tokens);
-@import "./themes/light.css" layer(theme);
-@import "./artwork/index.css" layer(theme);
+@import "./light.css" layer(theme);
 @import "./tones.css" layer(semantics);
 @import "./globals.css" layer(base);

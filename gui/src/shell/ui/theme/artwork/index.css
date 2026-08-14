@@ -1,6 +1,0 @@
-/* Decorative recipes are kept out of the application theme contract. Each
- * file owns one illustration family; components consume only --art-* roles. */
-
-@import "./pod.css";
-@import "./laboratory.css";
-@import "./icons.css";

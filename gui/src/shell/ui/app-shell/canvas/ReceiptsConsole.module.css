@@ -8,14 +8,14 @@
 
 .sectionTitle {
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: var(--tracking-label);
   font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  font-weight: 800;
+  font-size: var(--text-micro);
+  font-weight: var(--weight-extrabold);
   color: var(--chrome-text-mid);
 }
 
 .empty {
-  font-size: 10.5px;
+  font-size: var(--text-caption);
   color: var(--chrome-text-muted);
 }

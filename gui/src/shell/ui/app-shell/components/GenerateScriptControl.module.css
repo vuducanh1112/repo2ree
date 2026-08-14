@@ -19,42 +19,42 @@
  * the script was applied outright, `info` that it wants confirmation, `warn`
  * that nothing could be inferred, `error` that generation failed. */
 .status {
-  font-size: var(--text-md);
+  font-size: var(--text-label);
 }
 
 .status[data-tone="ok"] {
-  color: var(--feedback-success-ink);
+  color: var(--tone-success-ink);
 }
 
 .status[data-tone="info"] {
-  color: var(--ink-suggestion);
+  color: var(--accent-suggestion);
 }
 
 .status[data-tone="warn"] {
-  color: var(--feedback-warning-ink);
+  color: var(--tone-warning-ink);
 }
 
 .status[data-tone="error"] {
-  color: var(--feedback-danger-quiet-ink);
+  color: var(--tone-danger-ink);
 }
 
 .summary {
   cursor: pointer;
-  font-size: var(--text-md);
+  font-size: var(--text-label);
   font-weight: var(--weight-bold);
-  color: var(--field-hint-ink);
+  color: var(--ink-subtle);
 }
 
 .trace {
   margin: var(--space-2) 0 0;
-  padding: 10px 12px;
+  padding: var(--space-2-5) var(--space-3);
   overflow-x: auto;
   white-space: pre;
   border-radius: var(--radius-control);
-  border: 1px solid var(--surface-card-edge);
-  background: var(--surface-sunken-bg);
+  border: 1px solid var(--border-accent);
+  background: var(--surface-sunken);
   font-family: var(--font-mono);
-  font-size: 11.5px;
-  line-height: 1.5;
+  font-size: var(--text-label);
+  line-height: var(--leading-normal);
   color: var(--ink-muted);
 }

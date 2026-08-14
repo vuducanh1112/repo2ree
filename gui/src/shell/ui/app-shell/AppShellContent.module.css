@@ -8,7 +8,7 @@
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  background: var(--workspace-bg);
+  background: var(--surface-canvas);
 }
 
 .backdrop {
@@ -29,7 +29,7 @@
   left: 10%;
   width: 480px;
   height: 320px;
-  background: var(--workspace-blob-a);
+  background: var(--surface-accent);
 }
 
 .blob[data-place="right"] {
@@ -37,7 +37,7 @@
   right: 5%;
   width: 360px;
   height: 280px;
-  background: var(--workspace-blob-b);
+  background: var(--surface-accent);
 }
 
 .blob[data-place="center"] {
@@ -45,7 +45,7 @@
   left: 35%;
   width: 300px;
   height: 200px;
-  background: var(--workspace-blob-c);
+  background: var(--tone-danger-surface);
 }
 
 .inner {

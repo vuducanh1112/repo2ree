@@ -7,10 +7,10 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--chrome-border);
   background: var(--chrome-surface);
-  box-shadow: var(--elevation-controls);
+  box-shadow: var(--shadow-md);
 }
 
 .button {
@@ -19,7 +19,7 @@
   border: none;
   background: var(--chrome-surface);
   color: var(--chrome-text-mid);
-  font-size: var(--text-lg);
+  font-size: var(--text-body-large);
   cursor: pointer;
 }
 
@@ -38,5 +38,5 @@
 
 /* The reset glyph is wider than the zoom signs, so it sets smaller. */
 .button[data-glyph="reset"] {
-  font-size: var(--text-md);
+  font-size: var(--text-label);
 }

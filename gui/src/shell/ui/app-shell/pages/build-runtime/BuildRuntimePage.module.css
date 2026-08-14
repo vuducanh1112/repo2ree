@@ -15,14 +15,14 @@
 }
 
 .section {
-  margin-top: 10px;
+  margin-top: var(--space-2-5);
 }
 
 .scriptSection {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  margin-top: 10px;
+  margin-top: var(--space-2-5);
 }
 
 /* --- Runtime artifact card ---------------------------------------------- */
@@ -31,8 +31,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: var(--space-2-5);
+  margin-bottom: var(--space-2-5);
   flex-wrap: wrap;
 }
 
@@ -58,13 +58,13 @@
   flex: 1;
   min-width: 0;
   font-family: var(--font-sans);
-  font-size: var(--text-md);
+  font-size: var(--text-label);
   font-weight: var(--weight-bold);
-  color: var(--page-subtitle-ink);
+  color: var(--ink-muted);
 }
 
 .outcomePath[data-produced] {
-  color: var(--feedback-success-ink);
+  color: var(--tone-success-ink);
 }
 
 .outcomePath code {
@@ -72,11 +72,11 @@
 }
 
 .size {
-  padding: 2px var(--space-2);
-  border-radius: 6px;
-  border: 1px solid var(--edge-neutral);
-  background: var(--surface-glass-soft);
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  background: var(--surface-raised);
   font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  color: var(--page-subtitle-ink);
+  font-size: var(--text-caption);
+  color: var(--ink-muted);
 }

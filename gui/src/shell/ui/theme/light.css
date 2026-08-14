@@ -1,0 +1,89 @@
+/* The product's single visual theme. This file owns shared visual semantics;
+ * component recipes stay in their CSS Modules and domain mappings in tones.css. */
+
+:root {
+  /* Accent identities */
+  --accent-primary: var(--palette-sky-500);
+  --accent-primary-strong: var(--palette-sky-700);
+  --accent-primary-deep: var(--palette-sky-900);
+  --accent-secondary: var(--palette-indigo-600);
+  --accent-suggestion: var(--palette-indigo-800);
+
+  /* Ink */
+  --ink-default: var(--palette-neutral-950);
+  --ink-muted: var(--palette-neutral-600);
+  --ink-subtle: var(--palette-neutral-500);
+  --ink-inverse: var(--palette-white);
+  --ink-inverse-muted: var(--palette-neutral-100);
+  --ink-inverse-subtle: var(--palette-neutral-300);
+  --ink-accent: var(--accent-primary);
+  --ink-accent-strong: var(--accent-primary-strong);
+  --ink-code-muted: var(--palette-neutral-300);
+
+  /* A small, perceptible material ladder. */
+  --surface-canvas: var(--palette-neutral-025);
+  --surface-glass-subtle: rgb(255 255 255 / 45%);
+  --surface-raised: rgb(255 255 255 / 62%);
+  --surface-control: rgb(255 255 255 / 72%);
+  --surface-overlay: rgb(255 255 255 / 85%);
+  --surface-solid: rgb(255 255 255 / 92%);
+  --surface-sunken: rgb(15 23 42 / 4%);
+  --surface-hover: rgb(248 250 252 / 80%);
+  --surface-selected: rgb(224 242 254 / 92%);
+  --surface-accent-subtle: rgb(3 105 161 / 10%);
+  --surface-accent: rgb(239 246 255 / 85%);
+  --surface-accent-strong: rgb(239 246 255 / 92%);
+
+  /* Border strength is intentionally limited to three neutral and three
+   * accent stops. */
+  --border-subtle: rgb(148 163 184 / 28%);
+  --border-default: rgb(148 163 184 / 35%);
+  --border-strong: rgb(148 163 184 / 45%);
+  --border-accent-subtle: rgb(14 165 233 / 28%);
+  --border-accent: rgb(14 165 233 / 42%);
+  --border-accent-strong: rgb(14 165 233 / 58%);
+
+  /* Elevation describes depth, not the component using it. */
+  --shadow-sm: 0 2px 8px rgb(15 23 42 / 6%);
+  --shadow-md: 0 6px 16px rgb(15 23 42 / 10%);
+  --shadow-lg: 0 18px 48px rgb(13 17 23 / 16%);
+  --shadow-xl: 0 24px 60px rgb(13 17 23 / 20%);
+  --shadow-accent: 0 8px 20px rgb(14 165 233 / 16%);
+  --shadow-accent-strong: 0 12px 28px rgb(37 99 235 / 22%);
+  --shadow-inset-highlight: inset 0 1px 0 var(--surface-solid);
+  --shadow-focus: 0 0 0 3px rgb(14 165 233 / 15%);
+  --glow-accent: 0 0 16px rgb(14 165 233 / 28%);
+
+  /* Structural chrome */
+  --chrome-bg: var(--palette-neutral-075);
+  --chrome-surface: var(--palette-white);
+  --chrome-surface-alt: var(--palette-neutral-050);
+  --chrome-border: var(--palette-neutral-100);
+  --chrome-border-strong: var(--palette-neutral-200);
+  --chrome-text: var(--palette-neutral-950);
+  --chrome-text-mid: var(--palette-neutral-600);
+  --chrome-text-muted: var(--palette-neutral-400);
+  --chrome-accent: var(--palette-blue-600);
+  --chrome-accent-bg: var(--palette-blue-050);
+  --chrome-accent-border: var(--palette-blue-200);
+
+  --focus-ring: var(--palette-blue-600);
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+
+  --scrollbar-size: 4px;
+  --scrollbar-thumb: var(--palette-neutral-200);
+  --scrollbar-thumb-hover: var(--palette-neutral-400);
+
+  --track-neutral: rgb(148 163 184 / 40%);
+  --track-neutral-strong: rgb(148 163 184 / 45%);
+
+  /* The embedded terminal is deliberately dark inside the light interface. */
+  --terminal-surface: #0d1117;
+  --terminal-border: #1f2733;
+  --terminal-ink: var(--palette-neutral-100);
+  --terminal-info: var(--palette-blue-300);
+  --terminal-success: var(--palette-green-300);
+  --terminal-warning: var(--palette-amber-300);
+  --terminal-danger: var(--palette-red-300);
+}

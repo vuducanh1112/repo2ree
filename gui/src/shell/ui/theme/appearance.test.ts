@@ -8,7 +8,6 @@ import {
   dependencyStatusTone,
   ecosystemTone,
   failureTone,
-  presenceTone,
   stageTone,
   translucent,
 } from "./appearance";
@@ -42,9 +41,9 @@ describe("appearance", () => {
     }
   });
 
-  it("resolves every axis, ecosystem, pinning status, presence, archive and failure tone", () => {
+  it("resolves every axis, ecosystem, pinning status, archive and failure tone", () => {
     for (const axis of ["dependency", "environment", "machine"] as const) {
-      for (const role of ["line", "wash", "ink"] as const) {
+      for (const role of ["line", "ink"] as const) {
         expect(declared(axisTone(axis, role)), `${axis} ${role}`).toBe(true);
       }
     }
@@ -58,15 +57,8 @@ describe("appearance", () => {
         expect(declared(dependencyStatusTone(status, role)), `${status} ${role}`).toBe(true);
       }
     }
-    for (const presence of ["observed", "version-mismatch", "not-observed"] as const) {
-      for (const role of ["line", "wash", "edge"] as const) {
-        expect(declared(presenceTone(presence, role)), `${presence} ${role}`).toBe(true);
-      }
-    }
     for (const repo of ["swh", "zenodo", "dataverse"] as const) {
-      for (const role of ["line", "wash", "edge"] as const) {
-        expect(declared(archiveTone(repo, role)), `${repo} ${role}`).toBe(true);
-      }
+      expect(declared(archiveTone(repo)), `${repo} line`).toBe(true);
     }
     for (const tone of ["transient", "rejected", "fault"] as const) {
       expect(declared(failureTone(tone)), tone).toBe(true);

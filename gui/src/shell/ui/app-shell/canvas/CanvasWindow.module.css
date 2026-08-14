@@ -10,10 +10,10 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-radius: 14px;
-  border: 1px solid var(--window-edge);
-  background: var(--window-bg);
-  box-shadow: var(--window-shadow);
+  border-radius: var(--radius-panel);
+  border: 1px solid var(--chrome-border);
+  background: var(--chrome-surface);
+  box-shadow: var(--shadow-xl);
 }
 
 .bar {
@@ -22,9 +22,9 @@
   gap: var(--space-2);
   flex-shrink: 0;
   min-height: 40px;
-  padding: 0 var(--space-2) 0 14px;
-  border-bottom: 1px solid var(--window-edge);
-  background: var(--window-bar-bg);
+  padding: 0 var(--space-2) 0 var(--space-3);
+  border-bottom: 1px solid var(--chrome-border);
+  background: var(--chrome-surface-alt);
 }
 
 .barMain {
@@ -43,7 +43,7 @@
   width: 28px;
   height: 28px;
   border: none;
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--chrome-text-muted);
   cursor: pointer;
@@ -83,9 +83,9 @@
 .title {
   flex-shrink: 0;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: var(--text-body);
   font-weight: var(--weight-bold);
-  letter-spacing: -0.2px;
+  letter-spacing: var(--tracking-tight);
   color: var(--chrome-text);
 }
 
@@ -95,7 +95,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--font-mono);
-  font-size: var(--text-sm);
+  font-size: var(--text-caption);
   color: var(--chrome-text-muted);
 }
 

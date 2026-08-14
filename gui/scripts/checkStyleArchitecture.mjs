@@ -28,13 +28,15 @@ const sourceRoot = join(guiRoot, "src");
 const TEST_FILE = /[.](?:test|spec)[.]tsx?$/;
 const GENERATED = "src/shell/infra/api/generated/";
 
-/** Stylesheets that own raw color values; every other stylesheet consumes roles. */
+/** Raw colors belong to the primitive/theme layers or a co-located illustration. */
 const COLOR_VALUE_STYLESHEETS = new Set([
   "src/shell/ui/theme/tokens.css",
-  "src/shell/ui/theme/themes/light.css",
-  "src/shell/ui/theme/artwork/pod.css",
-  "src/shell/ui/theme/artwork/laboratory.css",
-  "src/shell/ui/theme/artwork/icons.css",
+  "src/shell/ui/theme/light.css",
+  "src/shell/ui/app-shell/canvas/PodWidget.module.css",
+  "src/shell/ui/app-shell/canvas/ExplodeView.module.css",
+  "src/shell/ui/app-shell/canvas/LabBackdrop.module.css",
+  "src/shell/ui/app-shell/canvas/WorkbenchLab.module.css",
+  "src/shell/ui/app-shell/canvas/CanvasHub.module.css",
 ]);
 
 /** Files that map low-level palette and material values to semantic roles. */
@@ -77,11 +79,27 @@ const RULES = {
   "css-important": "!important outside the reduced-motion policy",
   "css-global-interaction":
     "global interaction selector — the component's module owns hover/active",
+  "css-font-size-literal": "font-size outside the approved role-based type scale",
+  "css-spacing-literal": "literal spacing — use the spacing scale",
+  "css-radius-literal": "literal radius — use the radius scale",
+  "css-font-weight-literal": "literal font weight — use the weight scale",
+  "css-line-height-literal": "literal line-height — use the leading scale",
+  "css-letter-spacing-literal": "literal letter-spacing — use the tracking scale",
+  "css-opacity-literal": "fractional opacity — use the state opacity scale",
+  "css-motion-duration-literal": "literal interaction duration — use the motion scale",
+  "css-transition-all": "transition: all — name the properties that animate",
+  "css-neutral-film-alpha": "neutral white film alpha outside the five-stop palette",
+  "css-unused-theme-property":
+    "theme custom property is unreachable from production CSS or TypeScript",
+  "theme-component-recipe": "component-specific recipe declared in the global theme",
+  "theme-alias-depth": "theme alias chain is deeper than two definitions",
+  "theme-property-budget": "theme custom-property budget exceeded",
+  "custom-property-budget": "GUI custom-property budget exceeded",
 };
 
 const HEX_COLOR = /#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})(?![0-9a-fA-F])/;
 const FUNCTIONAL_COLOR = /\b(?:rgb|rgba|hsl|hsla)\(/;
-const LOW_LEVEL_THEME_REFERENCE = /var\(--(?:palette|gradient|shadow|glow)-/;
+const LOW_LEVEL_THEME_REFERENCE = /var\(--palette-/;
 /** `${token}88` — an alpha suffix glued onto an interpolated value. */
 const ALPHA_SUFFIX = /^[0-9a-fA-F]{2}(?![0-9a-zA-Z])/;
 
@@ -286,6 +304,30 @@ function checkTypeScript(path) {
 const INTERACTION_PSEUDO = /:(?:hover|active)\b/;
 const SCROLLBAR = /::-webkit-scrollbar/;
 const REDUCED_MOTION = /@media[^{]*prefers-reduced-motion[^{]*\{/g;
+const TYPE_TOKENS = "src/shell/ui/theme/tokens.css";
+const LIGHT_THEME = "src/shell/ui/theme/light.css";
+const TYPE_ROLES = new Set([
+  "--text-micro",
+  "--text-caption",
+  "--text-label",
+  "--text-body",
+  "--text-body-large",
+  "--text-heading-small",
+  "--text-heading",
+  "--text-heading-large",
+  "--text-display",
+]);
+const NEUTRAL_FILM_STOPS = new Map([
+  ["--surface-glass-subtle", "45"],
+  ["--surface-raised", "62"],
+  ["--surface-control", "72"],
+  ["--surface-overlay", "85"],
+  ["--surface-solid", "92"],
+]);
+const COMPONENT_RECIPE_PREFIX =
+  /^--(?:app|control|download|field|footer|option|page|panel|section|switch|window|workspace)-/;
+const THEME_PROPERTY_BUDGET = 325;
+const GUI_PROPERTY_BUDGET = 400;
 
 function positionOf(text, index) {
   const before = text.slice(0, index);
@@ -338,6 +380,68 @@ function checkCss(path) {
     }
   }
 
+  // Typography is a deliberately small, role-based scale. Calculated canvas
+  // labels remain geometry, but every ordinary component must choose a text
+  // role instead of introducing another optical near-duplicate.
+  if (file === TYPE_TOKENS) {
+    for (const match of text.matchAll(/(--text-[a-z-]+)\s*:/g)) {
+      if (!TYPE_ROLES.has(match[1])) {
+        at(match.index, "css-font-size-literal", match[1]);
+      }
+    }
+  } else {
+    for (const match of text.matchAll(/font-size\s*:\s*([^;}]+)/g)) {
+      const value = match[1].trim();
+      const role = value.match(/^var\((--text-[a-z-]+)\)$/)?.[1];
+      if (!value.startsWith("calc(") && (!role || !TYPE_ROLES.has(role))) {
+        at(match.index, "css-font-size-literal", value);
+      }
+    }
+  }
+
+  if (file !== TYPE_TOKENS) {
+    const declarationRules = [
+      [
+        /(?:margin(?:-[a-z-]+)?|padding(?:-[a-z-]+)?|gap|row-gap|column-gap)\s*:[^;}]*[1-9][0-9.]*px/g,
+        "css-spacing-literal",
+      ],
+      [/border-radius\s*:[^;}]*[0-9.]+px/g, "css-radius-literal"],
+      [/font-weight\s*:\s*[0-9]+/g, "css-font-weight-literal"],
+      [/line-height\s*:\s*[0-9.]+/g, "css-line-height-literal"],
+      [/letter-spacing\s*:\s*-?[0-9.]+(?:px|em)/g, "css-letter-spacing-literal"],
+      [/opacity\s*:\s*0\.[0-9]+/g, "css-opacity-literal"],
+      [
+        /(?:transition|animation)(?:-[a-z-]+)?\s*:[^;}]*\b0\.[0-9]+s/g,
+        "css-motion-duration-literal",
+      ],
+      [/transition\s*:\s*all\b/g, "css-transition-all"],
+    ];
+    for (const [pattern, rule] of declarationRules) {
+      for (const match of text.matchAll(pattern)) at(match.index, rule, match[0].trim());
+    }
+  }
+
+  if (file.startsWith(THEME_ROOT)) {
+    for (const match of text.matchAll(/^\s*(--[a-zA-Z0-9_-]+)\s*:/gm)) {
+      if (COMPONENT_RECIPE_PREFIX.test(match[1])) {
+        at(match.index, "theme-component-recipe", match[1]);
+      }
+    }
+  }
+
+  // Neutral glass has five perceptible opacity stops. Tinted films have their
+  // own palettes; this guard addresses only white films in the light theme.
+  if (file === LIGHT_THEME) {
+    for (const match of text.matchAll(/rgb\(255 255 255 \/ ([0-9.]+)%\)/g)) {
+      const lineStart = text.lastIndexOf("\n", match.index) + 1;
+      const property = text.slice(lineStart, match.index).match(/^\s*(--[a-z0-9-]+)\s*:\s*$/)?.[1];
+      const alpha = match[1];
+      if (NEUTRAL_FILM_STOPS.get(property) !== alpha) {
+        at(match.index, "css-neutral-film-alpha", `${property ?? "inline value"}: ${alpha}%`);
+      }
+    }
+  }
+
   const exempt = reducedMotionRanges(text);
   for (const match of text.matchAll(/!important/g)) {
     const inside = exempt.some(([start, end]) => match.index > start && match.index < end);
@@ -355,16 +459,136 @@ function checkCss(path) {
 }
 
 // ================================================
+// Theme custom-property reachability
+// ================================================
+
+const THEME_ROOT = "src/shell/ui/theme/";
+const CUSTOM_PROPERTY_DEFINITION = /^\s*(--[a-zA-Z0-9_-]+)\s*:\s*([\s\S]*?);/gm;
+const CUSTOM_PROPERTY_REFERENCE = /var\((--[a-zA-Z0-9_-]+)/g;
+const DYNAMIC_TONE_REFERENCE =
+  /^(?:--stage-.+-(?:line|ink|wash)|--axis-.+-(?:line|ink)|--eco-.+-(?:line|wash)|--dependency-.+-(?:line|wash|edge)|--archive-.+-line|--failure-.+-line)$/;
+
+/**
+ * A theme property is live when production CSS/TS references it, or when a
+ * live property references it. Dynamic tone helpers build a small, typed set
+ * of names in appearance.ts, so those declared families are explicit roots.
+ */
+function checkThemePropertyReachability(paths) {
+  const definitions = new Map();
+  const dependencies = new Map();
+  const roots = new Set();
+
+  for (const path of paths) {
+    const file = relativePath(path);
+    if (file.startsWith(GENERATED) || TEST_FILE.test(file)) continue;
+    const extension = extname(path);
+    if (extension !== ".css" && extension !== ".ts" && extension !== ".tsx") continue;
+
+    const raw = readFileSync(path, "utf8");
+    const text = raw.replace(/\/\*[\s\S]*?\*\//g, (comment) => comment.replace(/[^\n]/g, " "));
+    const isThemeCss = file.startsWith(THEME_ROOT) && extension === ".css";
+
+    if (!isThemeCss) {
+      for (const match of text.matchAll(CUSTOM_PROPERTY_REFERENCE)) roots.add(match[1]);
+      continue;
+    }
+
+    const ranges = [];
+    for (const match of text.matchAll(CUSTOM_PROPERTY_DEFINITION)) {
+      const name = match[1];
+      definitions.set(name, { file, path, index: match.index });
+      dependencies.set(
+        name,
+        new Set([...match[2].matchAll(CUSTOM_PROPERTY_REFERENCE)].map((reference) => reference[1])),
+      );
+      ranges.push([match.index, match.index + match[0].length]);
+    }
+
+    for (const match of text.matchAll(CUSTOM_PROPERTY_REFERENCE)) {
+      const insideDefinition = ranges.some(
+        ([start, end]) => match.index >= start && match.index < end,
+      );
+      if (!insideDefinition) roots.add(match[1]);
+    }
+  }
+
+  for (const name of definitions.keys()) {
+    if (DYNAMIC_TONE_REFERENCE.test(name)) roots.add(name);
+  }
+
+  const reachable = new Set();
+  const visit = (name) => {
+    if (reachable.has(name)) return;
+    reachable.add(name);
+    for (const dependency of dependencies.get(name) ?? []) visit(dependency);
+  };
+  for (const root of roots) visit(root);
+
+  for (const [name, definition] of definitions) {
+    if (reachable.has(name)) continue;
+    const source = readFileSync(definition.path, "utf8");
+    const { line, character } = positionOf(source, definition.index);
+    report(definition.file, line, character, "css-unused-theme-property", name);
+  }
+
+  const exactAliases = new Map();
+  for (const [name, values] of dependencies) {
+    if (values.size === 1) exactAliases.set(name, [...values][0]);
+  }
+  const aliasDepth = (name, seen = new Set()) => {
+    if (!exactAliases.has(name)) return 0;
+    if (seen.has(name)) return Number.POSITIVE_INFINITY;
+    seen.add(name);
+    return 1 + aliasDepth(exactAliases.get(name), seen);
+  };
+  for (const [name, definition] of definitions) {
+    const depth = aliasDepth(name);
+    if (depth <= 2) continue;
+    const source = readFileSync(definition.path, "utf8");
+    const { line, character } = positionOf(source, definition.index);
+    report(definition.file, line, character, "theme-alias-depth", `${name}: ${depth}`);
+  }
+
+  if (definitions.size > THEME_PROPERTY_BUDGET) {
+    report(
+      "src/shell/ui/theme/index.css",
+      0,
+      0,
+      "theme-property-budget",
+      `${definitions.size} > ${THEME_PROPERTY_BUDGET}`,
+    );
+  }
+
+  const allDefinitions = new Set();
+  for (const path of paths) {
+    if (extname(path) !== ".css") continue;
+    const text = readFileSync(path, "utf8");
+    for (const match of text.matchAll(CUSTOM_PROPERTY_DEFINITION)) allDefinitions.add(match[1]);
+  }
+  if (allDefinitions.size > GUI_PROPERTY_BUDGET) {
+    report(
+      "src/shell/ui/theme/index.css",
+      0,
+      0,
+      "custom-property-budget",
+      `${allDefinitions.size} > ${GUI_PROPERTY_BUDGET}`,
+    );
+  }
+}
+
+// ================================================
 // Run
 // ================================================
 
-for (const path of walk(sourceRoot)) {
+const productionPaths = walk(sourceRoot);
+for (const path of productionPaths) {
   const file = relativePath(path);
   if (file.startsWith(GENERATED) || TEST_FILE.test(file)) continue;
   const extension = extname(path);
   if (extension === ".ts" || extension === ".tsx") checkTypeScript(path);
   else if (extension === ".css") checkCss(path);
 }
+checkThemePropertyReachability(productionPaths);
 
 if (violations.length > 0) {
   const byFile = new Map();

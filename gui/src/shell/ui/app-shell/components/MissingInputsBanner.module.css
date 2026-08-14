@@ -8,13 +8,13 @@
 }
 
 .field {
-  padding: 2px 8px;
+  padding: var(--space-0-5) var(--space-2);
   border-radius: var(--space-1);
-  border: 1px solid var(--feedback-danger-quiet-edge);
-  background: var(--surface-glass-soft);
-  color: var(--feedback-danger-quiet-ink);
+  border: 1px solid var(--tone-danger-border);
+  background: var(--surface-raised);
+  color: var(--tone-danger-ink);
   font-family: var(--font-sans);
-  font-size: var(--text-sm);
+  font-size: var(--text-caption);
 }
 
 .action {

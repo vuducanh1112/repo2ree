@@ -100,9 +100,7 @@ describe("Button interaction states", () => {
 
     // Background is transitioned, so each swap is polled rather than sampled.
     rerender(<Button variant="danger">Go</Button>);
-    await expect
-      .poll(() => getComputedStyle(button).backgroundColor)
-      .toBe("rgba(255, 241, 242, 0.82)");
+    await expect.poll(() => getComputedStyle(button).backgroundColor).toBe("rgb(254, 242, 242)");
 
     rerender(
       <Button variant="accent" tint="var(--stage-build-line)">

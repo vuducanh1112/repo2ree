@@ -27,7 +27,7 @@ export const Ic = {
     <Svg
       size={s}
       d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"
-      fill="var(--art-folder-fill)"
+      fill="var(--tone-warning-line)"
       sw={0}
       title="Folder"
     />

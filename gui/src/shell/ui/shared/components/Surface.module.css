@@ -4,15 +4,15 @@
 
 .surface {
   border-radius: var(--radius-control);
-  border: 1px solid var(--surface-card-edge);
-  background: var(--surface-card-bg);
+  border: 1px solid var(--border-accent);
+  background: var(--surface-raised);
   padding: var(--space-3);
 }
 
 /* Recessed, for content the surface contains rather than presents — a log
  * stream, a rendered diagram. */
 .surface[data-variant="sunken"] {
-  background: var(--surface-sunken-bg);
+  background: var(--surface-sunken);
   padding: 0;
   overflow: auto;
 }

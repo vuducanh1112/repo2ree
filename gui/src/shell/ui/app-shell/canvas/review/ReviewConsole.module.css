@@ -8,12 +8,12 @@
 .step {
   display: grid;
   grid-template-columns: 22px 1fr;
-  column-gap: 7px;
+  column-gap: var(--space-2);
   align-items: start;
   width: 116px;
   min-height: 66px;
-  padding: var(--space-2) 9px;
-  border-radius: 9px;
+  padding: var(--space-2) var(--space-2-5);
+  border-radius: var(--radius-control);
   border: 1px solid var(--chrome-border);
   background: var(--chrome-surface);
   color: var(--chrome-text);
@@ -36,19 +36,19 @@
 
 .step:disabled {
   cursor: not-allowed;
-  opacity: 0.58;
+  opacity: var(--opacity-muted);
 }
 
 .stepIcon {
   display: flex;
-  padding-top: 1px;
+  padding-top: var(--space-0-5);
   color: var(--step-tint);
 }
 
 .stepBody {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: var(--space-1);
   min-width: 0;
 }
 
@@ -56,8 +56,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: var(--text-sm);
-  font-weight: 750;
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
 }
 
 .stepDetail {
@@ -65,7 +65,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--font-mono);
-  font-size: 8.5px;
+  font-size: var(--text-micro);
   color: var(--chrome-text-muted);
 }
 
@@ -76,14 +76,14 @@
 
 .stepStatus {
   font-family: var(--font-mono);
-  font-size: 8.5px;
-  font-weight: 800;
+  font-size: var(--text-micro);
+  font-weight: var(--weight-extrabold);
   color: var(--status-ink, var(--chrome-text-muted));
 }
 
 .stepStatus[data-status="queued"],
 .stepStatus[data-status="different"] {
-  --status-ink: var(--feedback-warning-line);
+  --status-ink: var(--tone-warning-line);
 }
 
 .stepStatus[data-status="running"] {
@@ -97,7 +97,7 @@
 }
 
 .stepStatus[data-status="equivalent"] {
-  --status-ink: var(--ink-info);
+  --status-ink: var(--tone-info-line);
 }
 
 .stepStatus[data-status="uninhabitable"],
@@ -109,7 +109,7 @@
   flex-shrink: 0;
   width: 18px;
   height: 1px;
-  margin-top: 33px;
+  margin-top: var(--space-8);
   background: var(--chrome-border-strong);
 }
 
@@ -124,7 +124,7 @@
 .results {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: var(--space-1-5);
 }
 
 .resultsHead {
@@ -136,9 +136,9 @@
 .resultsCount {
   flex: 1;
   font-family: var(--font-mono);
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.4px;
+  font-size: var(--text-micro);
+  font-weight: var(--weight-extrabold);
+  letter-spacing: var(--tracking-label);
   color: var(--chrome-text-muted);
 }
 
@@ -146,9 +146,9 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 5px var(--space-2);
+  padding: var(--space-1-5) var(--space-2);
   border: 1px solid var(--chrome-border);
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   background: var(--chrome-surface-alt);
 }
 
@@ -158,8 +158,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 10.5px;
-  font-weight: 650;
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
   color: var(--chrome-text);
 }
 
@@ -170,21 +170,21 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--font-mono);
-  font-size: 8.5px;
+  font-size: var(--text-micro);
   color: var(--chrome-text-muted);
 }
 
 .verdict {
   white-space: nowrap;
   font-family: var(--font-mono);
-  font-size: 8.5px;
-  font-weight: 800;
+  font-size: var(--text-micro);
+  font-weight: var(--weight-extrabold);
   color: var(--status-ink, var(--chrome-text-muted));
 }
 
 .verdict[data-status="queued"],
 .verdict[data-status="different"] {
-  --status-ink: var(--feedback-warning-line);
+  --status-ink: var(--tone-warning-line);
 }
 
 .verdict[data-status="running"] {
@@ -204,7 +204,7 @@
   align-items: center;
   gap: var(--space-2);
   border: 1px solid var(--chrome-border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--chrome-surface);
   color: var(--chrome-text);
   font-family: var(--font-mono);
@@ -214,18 +214,18 @@
 .runOne {
   min-height: 22px;
   padding: 0 var(--space-2);
-  font-size: 9px;
-  font-weight: 750;
+  font-size: var(--text-micro);
+  font-weight: var(--weight-bold);
 }
 
 .runAll {
   min-height: 26px;
-  padding: 0 10px;
-  border-radius: 7px;
+  padding: 0 var(--space-2-5);
+  border-radius: var(--radius-sm);
   border-color: var(--chrome-accent);
   background: var(--chrome-surface-alt);
-  font-size: 9.5px;
-  font-weight: 750;
+  font-size: var(--text-micro);
+  font-weight: var(--weight-bold);
 }
 
 .runOne:focus-visible,
@@ -256,18 +256,18 @@
 /* Which artifacts a review attempt is allowed to trust as its starting point. */
 .basis {
   display: flex;
-  gap: 5px;
+  gap: var(--space-1-5);
 }
 
 .basisOption {
   flex: 1;
   min-height: 28px;
   border: 1px solid var(--chrome-border);
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   background: var(--chrome-surface-alt);
   color: var(--chrome-text-muted);
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--text-micro);
   font-weight: var(--weight-medium);
   cursor: pointer;
 }
@@ -276,7 +276,7 @@
   border-color: var(--chrome-accent);
   background: var(--chrome-surface);
   color: var(--chrome-text);
-  font-weight: 750;
+  font-weight: var(--weight-bold);
 }
 
 .basisOption:focus-visible {
@@ -293,19 +293,19 @@
 .detail {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 7px 9px;
+  gap: var(--space-0-5);
+  padding: var(--space-2) var(--space-2-5);
   border: 1px solid var(--chrome-border);
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   background: var(--chrome-surface-alt);
   color: var(--chrome-text-muted);
   font-family: var(--font-mono);
-  font-size: 9px;
-  line-height: 1.5;
+  font-size: var(--text-micro);
+  line-height: var(--leading-normal);
 }
 
 .detail[data-tone="notice"] {
-  padding: var(--space-2) 9px;
+  padding: var(--space-2) var(--space-2-5);
   border-color: var(--chrome-border-strong);
 }
 
@@ -316,9 +316,9 @@
 .error {
   padding: var(--space-2) var(--space-2);
   border: 1px solid var(--chrome-border);
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   background: var(--chrome-surface-alt);
   color: var(--status-fault);
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--text-micro);
 }

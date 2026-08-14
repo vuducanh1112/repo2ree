@@ -12,7 +12,7 @@
 .column {
   max-width: 620px;
   margin: 0 auto;
-  animation: lab-location-fade-up 0.4s ease;
+  animation: lab-location-fade-up var(--duration-slow) ease;
 }
 
 .backRow {
@@ -26,13 +26,13 @@
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  padding: 7px var(--space-3);
+  padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-control);
   border: 1px solid var(--chrome-border);
   background: var(--chrome-surface);
   color: var(--chrome-text-mid);
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: var(--text-body);
   cursor: pointer;
 }
 
@@ -47,28 +47,28 @@
 }
 
 .heading {
-  margin-bottom: 18px;
+  margin-bottom: var(--space-4);
 }
 
 .title {
   margin: 0;
-  font-size: 22px;
+  font-size: var(--text-heading-large);
   font-weight: var(--weight-semibold);
-  letter-spacing: -0.4px;
+  letter-spacing: var(--tracking-tight);
   color: var(--chrome-text);
 }
 
 .subtitle {
   margin: var(--space-1) 0 0;
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: var(--text-body);
+  line-height: var(--leading-relaxed);
   color: var(--chrome-text-muted);
 }
 
 .choices {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-2-5);
 }
 
 /* --- One agent ------------------------------------------------------------ */
@@ -76,13 +76,13 @@
 .choice {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: var(--space-3);
   width: 100%;
-  padding: 14px var(--space-4);
+  padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-panel);
   border: 1px solid var(--chrome-border);
   background: var(--chrome-surface);
-  box-shadow: var(--elevation-choice);
+  box-shadow: var(--shadow-sm);
   text-align: left;
   cursor: pointer;
   font-family: var(--font-sans);
@@ -100,7 +100,7 @@
   flex-shrink: 0;
   width: 38px;
   height: 38px;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--chrome-accent-border);
   background: var(--chrome-accent-bg);
   color: var(--chrome-accent);
@@ -112,15 +112,15 @@
 }
 
 .choiceName {
-  font-size: var(--text-lg);
+  font-size: var(--text-body-large);
   font-weight: var(--weight-semibold);
   color: var(--chrome-text);
 }
 
 .choiceMeta {
-  margin-top: 2px;
+  margin-top: var(--space-0-5);
   font-family: var(--font-mono);
-  font-size: var(--text-md);
+  font-size: var(--text-label);
   color: var(--chrome-text-muted);
 }
 
@@ -129,7 +129,7 @@
   align-items: center;
   gap: var(--space-2);
   flex-shrink: 0;
-  font-size: var(--text-md);
+  font-size: var(--text-label);
   color: var(--status-ok);
 }
 
@@ -149,11 +149,11 @@
 /* --- Loading, failure, and nothing-to-choose ------------------------------ */
 
 .notice {
-  padding: 18px;
+  padding: var(--space-4);
   border-radius: var(--radius-panel);
   border: 1px solid var(--chrome-border);
   background: var(--chrome-surface);
-  font-size: 13px;
+  font-size: var(--text-body);
   color: var(--chrome-text-muted);
 }
 
@@ -162,7 +162,7 @@
 }
 
 .empty {
-  padding: var(--space-8) 18px;
+  padding: var(--space-8) var(--space-4);
   border-radius: var(--radius-panel);
   border: 1px solid var(--chrome-border);
   background: var(--chrome-surface);
@@ -172,20 +172,20 @@
 .emptyIcon {
   display: flex;
   justify-content: center;
-  margin-bottom: 10px;
+  margin-bottom: var(--space-2-5);
   color: var(--chrome-text-muted);
 }
 
 .emptyTitle {
   margin-bottom: var(--space-1);
-  font-size: var(--text-lg);
+  font-size: var(--text-body-large);
   font-weight: var(--weight-medium);
   color: var(--chrome-text-mid);
 }
 
 .emptyHint {
-  font-size: var(--text-md);
-  line-height: 1.6;
+  font-size: var(--text-label);
+  line-height: var(--leading-relaxed);
   color: var(--chrome-text-muted);
 }
 

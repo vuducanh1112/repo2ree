@@ -2,10 +2,8 @@
  * reset, document/body defaults, focus defaults, scrollbar policy, and the
  * reduced-motion policy. Component appearance — including hover and active
  * effects — belongs to the component's own module, not here.
- *
- * The interaction rules the old runtime-injected stylesheet applied to every
- * button in the app still exist, but in `legacyGlobals.css`, where the style
- * guard counts them as migration debt.
+ * The former runtime-injected blanket button rules are gone. Each control owns
+ * its interaction styling in its component module.
  */
 
 /* biome-ignore-all lint/complexity/noImportantStyles: the reduced-motion policy

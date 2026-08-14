@@ -7,13 +7,13 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  padding: 3px 9px;
+  padding: var(--space-1) var(--space-2-5);
   border-radius: var(--radius-round);
   border: 1px solid var(--badge-edge, color-mix(in srgb, var(--badge-line) 25%, transparent));
   background: var(--badge-wash);
   color: var(--badge-line);
   font-family: var(--font-sans);
-  font-size: var(--text-sm);
+  font-size: var(--text-caption);
   font-weight: var(--weight-bold);
   white-space: nowrap;
 }
@@ -24,27 +24,27 @@
 }
 
 .badge[data-tone="success"] {
-  --badge-line: var(--feedback-success-ink);
-  --badge-wash: var(--feedback-success-bg);
-  --badge-edge: var(--feedback-success-edge);
+  --badge-line: var(--tone-success-ink);
+  --badge-wash: var(--tone-success-surface);
+  --badge-edge: var(--tone-success-border);
 }
 
 .badge[data-tone="warning"] {
-  --badge-line: var(--feedback-warning-ink);
-  --badge-wash: var(--feedback-warning-bg);
-  --badge-edge: var(--feedback-warning-edge);
+  --badge-line: var(--tone-warning-ink);
+  --badge-wash: var(--tone-warning-surface);
+  --badge-edge: var(--tone-warning-border);
 }
 
 .badge[data-tone="info"] {
-  --badge-line: var(--feedback-info-ink);
-  --badge-wash: var(--feedback-info-bg);
-  --badge-edge: var(--feedback-info-edge);
+  --badge-line: var(--tone-info-ink);
+  --badge-wash: var(--tone-info-surface);
+  --badge-edge: var(--tone-info-border);
 }
 
 .badge[data-tone="neutral"] {
-  --badge-line: var(--feedback-neutral-ink);
-  --badge-wash: var(--feedback-neutral-bg);
-  --badge-edge: var(--feedback-neutral-edge);
+  --badge-line: var(--tone-neutral-ink);
+  --badge-wash: var(--tone-neutral-surface);
+  --badge-edge: var(--tone-neutral-border);
 }
 
 .icon {

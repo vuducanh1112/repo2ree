@@ -6,7 +6,7 @@
   align-items: center;
   gap: var(--space-3);
   flex-wrap: wrap;
-  padding: 10px 14px;
+  padding: var(--space-2-5) var(--space-3);
   border-radius: var(--radius-control);
   border: 1px solid var(--notice-edge);
   background: var(--notice-bg);
@@ -14,18 +14,18 @@
 }
 
 .notice[data-tone="info"] {
-  --notice-edge: var(--feedback-info-quiet-edge);
-  --notice-bg: var(--feedback-info-quiet-bg);
+  --notice-edge: var(--tone-info-border);
+  --notice-bg: var(--tone-info-surface);
 }
 
 .notice[data-tone="success"] {
-  --notice-edge: var(--feedback-success-quiet-edge);
-  --notice-bg: var(--feedback-success-quiet-bg);
+  --notice-edge: var(--tone-success-border);
+  --notice-bg: var(--tone-success-surface);
 }
 
 .notice[data-tone="danger"] {
-  --notice-edge: var(--feedback-danger-quiet-edge);
-  --notice-bg: var(--feedback-danger-quiet-bg);
+  --notice-edge: var(--tone-danger-border);
+  --notice-bg: var(--tone-danger-surface);
 }
 
 /* Stacked: a heading, then detail, then whatever action resolves it. */
@@ -38,13 +38,13 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: var(--text-md);
+  font-size: var(--text-label);
   font-weight: var(--weight-bold);
   color: var(--notice-ink, inherit);
 }
 
 .notice[data-tone="danger"] .title {
-  --notice-ink: var(--feedback-danger-quiet-ink);
+  --notice-ink: var(--tone-danger-ink);
 }
 
 .icon {

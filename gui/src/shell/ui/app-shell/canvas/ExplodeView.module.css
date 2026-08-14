@@ -11,9 +11,9 @@
   opacity: 0;
   pointer-events: none;
   transition:
-    opacity 0.4s,
-    filter 0.2s,
-    transform 0.2s;
+    opacity var(--duration-slow),
+    filter var(--duration-normal),
+    transform var(--duration-normal);
 }
 
 .column[data-visible] {
@@ -23,7 +23,8 @@
 /* Hovered, or otherwise called out: the column lights up. */
 .column[data-glow] {
   transform: translate(-50%, -50%) scale(1.04);
-  filter: var(--art-pod-explode-glow);
+  filter: drop-shadow(0 0 26px rgb(99 102 241 / 85%)) drop-shadow(0 0 60px rgb(79 70 229 / 55%))
+    brightness(1.08);
 }
 
 .labels {
@@ -32,7 +33,7 @@
   top: 0;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.5s;
+  transition: opacity var(--duration-slow);
 }
 
 .labels[data-visible] {
@@ -54,7 +55,7 @@
   top: 0;
   width: var(--axis-width);
   border-top: 2px dashed var(--chrome-accent);
-  opacity: 0.35;
+  opacity: var(--opacity-subtle);
 }
 
 .caption {
@@ -67,17 +68,17 @@
 }
 
 .captionTitle {
-  font-size: 21px;
+  font-size: var(--text-heading-large);
   font-weight: var(--weight-bold);
-  letter-spacing: -0.3px;
+  letter-spacing: var(--tracking-tight);
   color: var(--chrome-text);
 }
 
 .captionSub {
   text-transform: uppercase;
-  letter-spacing: 0.6px;
+  letter-spacing: var(--tracking-label);
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: var(--text-label);
   color: var(--chrome-text-muted);
 }
 
@@ -89,23 +90,23 @@
   bottom: 128px;
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 7px var(--space-3);
-  border-radius: 9px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
   border: 1px solid var(--chrome-border);
   background: var(--chrome-surface);
   color: var(--chrome-text-mid);
   font-family: var(--font-sans);
-  font-size: 12.5px;
+  font-size: var(--text-body);
   font-weight: var(--weight-semibold);
   cursor: pointer;
-  box-shadow: var(--elevation-controls);
+  box-shadow: var(--shadow-md);
 }
 
 .toggle[aria-pressed="true"] {
   border-color: var(--chrome-accent);
   background: var(--chrome-accent);
-  color: var(--ink-on-accent);
+  color: var(--ink-inverse);
 }
 
 .toggle:focus-visible {

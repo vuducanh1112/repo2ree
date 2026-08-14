@@ -1,6 +1,6 @@
 import type { AppShellPage } from "@core/app-shell/pages";
 import type { AxisKey } from "@core/evaluate/axes";
-import type { DependencyEcosystem, DependencyStatus, RuntimePresence } from "@core/evaluate/Threat";
+import type { DependencyEcosystem, DependencyStatus } from "@core/evaluate/Threat";
 import type { ArchiveRepoKey } from "@core/ree-steps/stepTypes";
 import type { ReeRunFailureTone } from "@core/runs/runFailurePresentation";
 
@@ -18,35 +18,37 @@ import type { ReeRunFailureTone } from "@core/runs/runFailurePresentation";
  * compile error here rather than a silently unstyled element.
  */
 
-/** How strongly a tone is being asked to read. */
-type ToneRole = "line" | "ink" | "wash" | "edge";
+type StageToneRole = "line" | "ink" | "wash";
+type AxisToneRole = "line" | "ink";
+type EcosystemToneRole = "line" | "wash";
+type DependencyToneRole = "line" | "wash" | "edge";
+type ToneRole = StageToneRole | DependencyToneRole;
 
 const reference = (family: string, identity: string, role: ToneRole): string =>
   `var(--${family}-${identity}-${role})`;
 
 /** A pipeline stage, keyed by the page key it already has. */
-export const stageTone = (page: AppShellPage, role: ToneRole = "line"): string =>
+export const stageTone = (page: AppShellPage, role: StageToneRole = "line"): string =>
   reference("stage", page, role);
 
 /** One of the three reproducibility axes. */
-export const axisTone = (axis: AxisKey, role: ToneRole = "line"): string =>
+export const axisTone = (axis: AxisKey, role: AxisToneRole = "line"): string =>
   reference("axis", axis, role);
 
 /** A dependency's ecosystem — PyPI, conda, npm, apt, OCI. */
-export const ecosystemTone = (ecosystem: DependencyEcosystem, role: ToneRole = "line"): string =>
-  reference("eco", ecosystem, role);
+export const ecosystemTone = (
+  ecosystem: DependencyEcosystem,
+  role: EcosystemToneRole = "line",
+): string => reference("eco", ecosystem, role);
 
 /** How tightly a dependency is pinned. */
-export const dependencyStatusTone = (status: DependencyStatus, role: ToneRole = "line"): string =>
-  reference("dependency", status, role);
-
-/** The SBOM cross-check verdict for a dependency. */
-export const presenceTone = (presence: RuntimePresence, role: ToneRole = "line"): string =>
-  reference("presence", presence, role);
+export const dependencyStatusTone = (
+  status: DependencyStatus,
+  role: DependencyToneRole = "line",
+): string => reference("dependency", status, role);
 
 /** A deposit target — Software Heritage, Zenodo, Dataverse. */
-export const archiveTone = (repo: ArchiveRepoKey, role: ToneRole = "line"): string =>
-  reference("archive", repo, role);
+export const archiveTone = (repo: ArchiveRepoKey): string => reference("archive", repo, "line");
 
 /** A failed run's class: transient, rejected, or fault. */
 export const failureTone = (tone: ReeRunFailureTone): string => reference("failure", tone, "line");

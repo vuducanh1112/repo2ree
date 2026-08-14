@@ -6,25 +6,25 @@
   gap: var(--space-2);
   margin-bottom: var(--space-2);
   font-family: var(--font-sans);
-  font-size: var(--text-md);
+  font-size: var(--text-label);
   font-weight: var(--weight-bold);
-  color: var(--field-label-ink);
+  color: var(--ink-default);
 }
 
 .modes {
-  margin-bottom: 10px;
+  margin-bottom: var(--space-2-5);
 }
 
 .methodHint {
-  margin-bottom: 14px;
+  margin-bottom: var(--space-3);
   font-family: var(--font-sans);
-  font-size: var(--text-md);
-  color: var(--field-hint-ink);
+  font-size: var(--text-label);
+  color: var(--ink-subtle);
 }
 
 .snapshot {
   padding-top: var(--space-3);
-  border-top: 1px solid var(--surface-card-edge);
+  border-top: 1px solid var(--border-accent);
 }
 
 .fields {
@@ -41,9 +41,9 @@
 
 .hint {
   font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  line-height: 1.4;
-  color: var(--field-hint-ink);
+  font-size: var(--text-caption);
+  line-height: var(--leading-snug);
+  color: var(--ink-subtle);
 }
 
 .acquireRow {
@@ -61,39 +61,39 @@
 
 .snapshotSection {
   padding-top: var(--space-5);
-  border-top: 1px solid var(--surface-card-edge);
+  border-top: 1px solid var(--border-accent);
 }
 
 .snapshotLabel {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin-bottom: 10px;
+  margin-bottom: var(--space-2-5);
   font-family: var(--font-sans);
-  font-size: var(--text-md);
+  font-size: var(--text-label);
   font-weight: var(--weight-bold);
-  color: var(--field-label-ink);
+  color: var(--ink-default);
 }
 
 .snapshotBody {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--space-3);
 }
 
 .narrative {
   font-family: var(--font-sans);
-  font-size: 13px;
-  color: var(--page-subtitle-ink);
+  font-size: var(--text-body);
+  color: var(--ink-muted);
 }
 
 .facts {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 14px var(--space-6);
+  gap: var(--space-3) var(--space-6);
 }
 
 .swhid {
   font-family: var(--font-mono);
-  font-size: var(--text-md);
+  font-size: var(--text-label);
 }

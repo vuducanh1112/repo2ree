@@ -1,145 +1,134 @@
-/* Invariant design primitives: typography, spacing, radii, motion, and raw
- * color ramps. These values do not describe a surface, component, or feature.
- * The active visual theme composes them into recipes; tones.css maps only
- * domain and feedback meaning.
- */
+/* Invariant design primitives. Components consume the semantic roles in
+ * light.css and tones.css; these raw scales are private theme ingredients. */
 
 :root {
-  /* --- Typography -------------------------------------------------------
-   * The families resolve against locally installed fonts and otherwise fall
-   * through to the system stack. Production performs no runtime font
-   * download; there is no @import url(...) here by design.
-   */
+  /* Typography */
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", "Menlo", monospace;
 
-  --text-2xs: 9px;
-  --text-xs: 10px;
-  --text-sm: 11px;
-  --text-md: 12px;
-  --text-lg: 14px;
-  --text-xl: 18px;
+  --text-micro: 10px;
+  --text-caption: 11px;
+  --text-label: 12px;
+  --text-body: 13px;
+  --text-body-large: 14px;
+  --text-heading-small: 16px;
+  --text-heading: 18px;
+  --text-heading-large: 22px;
+  --text-display: 28px;
 
   --weight-regular: 400;
   --weight-medium: 500;
   --weight-semibold: 600;
   --weight-bold: 700;
+  --weight-extrabold: 800;
 
-  /* --- Space ----------------------------------------------------------- */
+  --leading-tight: 1.2;
+  --leading-snug: 1.4;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.6;
+
+  --tracking-tight: -0.02em;
+  --tracking-label: 0.03em;
+  --tracking-caps: 0.08em;
+
+  /* Spacing: a 4px base with half steps for dense operational controls. */
+  --space-0-5: 2px;
   --space-1: 4px;
+  --space-1-5: 6px;
   --space-2: 8px;
+  --space-2-5: 10px;
   --space-3: 12px;
   --space-4: 16px;
   --space-5: 20px;
   --space-6: 24px;
   --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-14: 56px;
 
-  /* --- Radius ---------------------------------------------------------- */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
   --radius-control: 8px;
   --radius-panel: 12px;
+  --radius-large: 16px;
   --radius-round: 999px;
 
-  /* --- Motion ---------------------------------------------------------- */
   --duration-fast: 120ms;
   --duration-normal: 180ms;
-  --ease-standard: ease;
+  --duration-moderate: 250ms;
+  --duration-slow: 400ms;
+  --duration-spinner: 900ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.34, 1.1, 0.5, 1);
 
-  /* --- Palette: neutrals (canvas / app chrome) ------------------------- */
+  --opacity-subtle: 0.4;
+  --opacity-disabled: 0.5;
+  --opacity-muted: 0.7;
+  --opacity-strong: 0.85;
+
+  /* Neutral ramp. The former grey and slate inventories are one scale. */
   --palette-white: #ffffff;
-  --palette-grey-025: #fafbfd;
-  --palette-grey-050: #f4f6f9;
-  --palette-grey-075: #f0f3f7;
-  --palette-grey-150: #dde3ec;
-  --palette-grey-300: #c4cdd9;
-  --palette-grey-500: #8896a5;
-  --palette-grey-650: #4a5568;
-  --palette-grey-950: #0d1117;
+  --palette-neutral-025: #fafbfd;
+  --palette-neutral-050: #f8fafc;
+  --palette-neutral-075: #f1f5f9;
+  --palette-neutral-100: #e2e8f0;
+  --palette-neutral-200: #cbd5e1;
+  --palette-neutral-300: #94a3b8;
+  --palette-neutral-400: #8896a5;
+  --palette-neutral-500: #64748b;
+  --palette-neutral-600: #475569;
+  --palette-neutral-800: #1e293b;
+  --palette-neutral-950: #0f172a;
 
-  /* --- Palette: slate (navigation chrome, glass ink) ------------------- */
-  --palette-slate-100: #cbd5e1;
-  --palette-slate-200: #e2e8f0;
-  --palette-slate-400: #94a3b8;
-  --palette-slate-400-soft: rgb(148 163 184 / 85%);
-  --palette-slate-500: #64748b;
-  --palette-slate-700: #334155;
-  --palette-slate-600: #475569;
-  --palette-slate-800: #1e293b;
-  --palette-slate-900: #111827;
-  --palette-slate-950: #0f172a;
-
-  /* --- Palette: blue / sky / indigo / violet ---------------------------
-   * `-alt` marks a shade the product picked itself, next to one that matches
-   * the conventional ramp. The two are genuinely different values, so they get
-   * different names rather than one rounding into the other.
-   */
+  /* Information and product accents. */
   --palette-blue-050: #eff6ff;
-  --palette-blue-050-alt: #eef4ff;
   --palette-blue-100: #dbeafe;
   --palette-blue-200: #bfdbfe;
   --palette-blue-300: #93c5fd;
   --palette-blue-500: #3b82f6;
   --palette-blue-600: #2563eb;
   --palette-blue-700: #1d4ed8;
-  --palette-azure-050: #f0f7ff;
-  --palette-azure-600: #1d6fa4;
+
   --palette-sky-050: #f0f9ff;
-  --palette-sky-100: #bae6fd;
   --palette-sky-200: #7dd3fc;
-  --palette-sky-400: #38bdf8;
   --palette-sky-500: #0ea5e9;
   --palette-sky-700: #0369a1;
   --palette-sky-900: #0c4a6e;
+
   --palette-cyan-050: #ecfeff;
   --palette-cyan-500: #06b6d4;
   --palette-cyan-600: #0891b2;
   --palette-cyan-700: #0e7490;
   --palette-cyan-900: #164e63;
-  --palette-teal-700: #0f766e;
-  --palette-teal-900: #134e4a;
+
   --palette-indigo-050: #eef2ff;
-  --palette-indigo-200: #c7d2fe;
   --palette-indigo-500: #6366f1;
   --palette-indigo-600: #4f46e5;
   --palette-indigo-800: #3730a3;
-  --palette-iris-600: #5e4fa2;
+
   --palette-violet-050: #f5f3ff;
-  --palette-violet-200: #ddd6fe;
+  --palette-violet-300: #d8b4fe;
   --palette-violet-500: #8b5cf6;
   --palette-violet-600: #7c3aed;
   --palette-violet-950: #3b0764;
-  --palette-purple-050: #faf5ff;
-  --palette-purple-300: #d8b4fe;
-  --palette-purple-600: #9333ea;
 
-  /* --- Palette: status hues -------------------------------------------- */
-  --palette-slate-050: #f8fafc;
+  /* Status ramps. */
   --palette-green-050: #f0fdf4;
   --palette-green-100: #dcfce7;
-  --palette-green-200: #bbf7d0;
-  --palette-mint-100: #e7f9f1;
-  --palette-mint-200: #bbf0d8;
-  --palette-mint-300: #6ee7b7;
   --palette-green-300: #86efac;
   --palette-green-500: #22c55e;
   --palette-green-600: #16a34a;
   --palette-green-700: #15803d;
   --palette-green-800: #166534;
   --palette-green-900: #14532d;
-  --palette-emerald-500: #10b981;
-  --palette-emerald-700: #047857;
+
   --palette-amber-050: #fffbeb;
   --palette-amber-100: #fef3c7;
   --palette-amber-300: #fcd34d;
   --palette-amber-500: #f59e0b;
   --palette-amber-600: #d97706;
-  --palette-amber-700: #b45309;
   --palette-amber-800: #92400e;
-  --palette-yellow-600: #ca8a04;
-  --palette-yellow-700: #a16207;
-  --palette-vermilion-050: #fff7f5;
-  --palette-vermilion-200: #fbd0c4;
-  --palette-vermilion-500: #e4572e;
-  --palette-orange-900: #7c2d12;
+
   --palette-red-050: #fef2f2;
   --palette-red-100: #fee2e2;
   --palette-red-300: #fca5a5;
@@ -147,6 +136,4 @@
   --palette-red-700: #b91c1c;
   --palette-red-800: #991b1b;
   --palette-red-900: #7f1d1d;
-  --palette-rose-400: #fb7185;
-  --palette-rose-700: #be123c;
 }

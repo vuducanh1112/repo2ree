@@ -13,11 +13,11 @@
   width: 100%;
   max-width: 480px;
   overflow: hidden;
-  border-radius: 10px;
-  border: 1px solid var(--edge-accent-pale-strong);
-  background: var(--surface-glass-soft);
+  border-radius: var(--radius-control);
+  border: 1px solid var(--border-accent-strong);
+  background: var(--surface-raised);
   backdrop-filter: blur(14px);
-  box-shadow: var(--elevation-seal);
+  box-shadow: var(--shadow-lg);
 }
 
 /* --- Connection bar ------------------------------------------------------- */
@@ -25,23 +25,23 @@
 .bar {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--edge-neutral-faint);
-  background: var(--surface-glass);
+  gap: var(--space-2-5);
+  padding: var(--space-2-5) var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-control);
 }
 
 .count {
   flex-shrink: 0;
   font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  color: var(--field-hint-ink);
+  font-size: var(--text-micro);
+  color: var(--ink-subtle);
 }
 
 .track {
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: var(--space-1);
   flex: 1;
 }
 
@@ -60,15 +60,15 @@
 
 .readiness {
   flex-shrink: 0;
-  padding: 2px var(--space-2);
+  padding: var(--space-0-5) var(--space-2);
   border-radius: var(--radius-round);
   font-family: var(--font-mono);
-  font-size: var(--text-xs);
+  font-size: var(--text-micro);
   font-weight: var(--weight-bold);
-  letter-spacing: 0.5px;
-  color: var(--feedback-warning-ink-strong);
-  background: var(--feedback-warning-bg);
-  border: 1px solid var(--feedback-warning-edge);
+  letter-spacing: var(--tracking-label);
+  color: var(--tone-warning-ink);
+  background: var(--tone-warning-surface);
+  border: 1px solid var(--tone-warning-border);
 }
 
 .readiness[data-ready] {
@@ -81,10 +81,10 @@
 
 .warning {
   margin: var(--space-3) var(--space-5) 0;
-  padding: 10px var(--space-3);
+  padding: var(--space-2-5) var(--space-3);
   border-radius: var(--radius-control);
-  border: 1px solid var(--feedback-warning-edge);
-  background: var(--feedback-warning-bg);
+  border: 1px solid var(--tone-warning-border);
+  background: var(--tone-warning-surface);
 }
 
 .warningRow {
@@ -95,8 +95,8 @@
 
 .warningGlyph {
   flex-shrink: 0;
-  font-size: 15px;
-  line-height: 1.2;
+  font-size: var(--text-heading-small);
+  line-height: var(--leading-tight);
 }
 
 .warningGroups {
@@ -106,17 +106,17 @@
 }
 
 .warningHeadline {
-  margin-bottom: 5px;
+  margin-bottom: var(--space-1-5);
   font-family: var(--font-sans);
-  font-size: var(--text-sm);
+  font-size: var(--text-caption);
   font-weight: var(--weight-bold);
-  color: var(--feedback-warning-ink-strong);
+  color: var(--tone-warning-ink);
 }
 
 .warningItems {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: var(--space-1);
 }
 
 .warningItem {
@@ -130,13 +130,13 @@
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: var(--feedback-warning-line-muted);
+  background: var(--tone-warning-line);
 }
 
 .warningText {
   font-family: var(--font-sans);
-  font-size: var(--text-xs);
-  color: var(--feedback-warning-ink-strong);
+  font-size: var(--text-micro);
+  color: var(--tone-warning-ink);
 }
 
 /* --- What sealing means --------------------------------------------------- */
@@ -144,9 +144,9 @@
 .copy {
   padding: var(--space-3) var(--space-5);
   font-family: var(--font-sans);
-  font-size: var(--text-md);
-  line-height: 1.6;
-  color: var(--page-subtitle-ink);
+  font-size: var(--text-label);
+  line-height: var(--leading-relaxed);
+  color: var(--ink-muted);
 }
 
 /* --- What goes into the bundle -------------------------------------------- */
@@ -156,20 +156,20 @@
   flex-direction: column;
   gap: var(--space-2);
   margin: 0 var(--space-5) var(--space-1);
-  padding: var(--space-3) 14px;
-  border-radius: 10px;
-  border: 1px solid var(--edge-neutral-soft);
-  background: var(--surface-inset);
+  padding: var(--space-3) var(--space-3);
+  border-radius: var(--radius-control);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-control);
 }
 
 /* The inclusion list is headed by what it is. */
 .inclusionHeading {
   font-family: var(--font-sans);
-  font-size: var(--text-xs);
-  font-weight: 800;
-  letter-spacing: 0.5px;
+  font-size: var(--text-micro);
+  font-weight: var(--weight-extrabold);
+  letter-spacing: var(--tracking-label);
   text-transform: uppercase;
-  color: var(--field-hint-ink);
+  color: var(--ink-subtle);
 }
 
 .inclusionRow {
@@ -180,26 +180,26 @@
 
 /* Nothing to include: shown, but plainly not a choice. */
 .inclusionRow[data-unavailable] {
-  opacity: 0.45;
+  opacity: var(--opacity-subtle);
 }
 
 .inclusionLabels {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: var(--space-0-5);
 }
 
 .inclusionName {
   font-family: var(--font-sans);
-  font-size: var(--text-md);
+  font-size: var(--text-label);
   font-weight: var(--weight-bold);
-  color: var(--field-ink);
+  color: var(--ink-default);
 }
 
 .inclusionState {
   font-family: var(--font-sans);
-  font-size: var(--text-xs);
-  color: var(--field-hint-ink);
+  font-size: var(--text-micro);
+  color: var(--ink-subtle);
 }
 
 .inclusionControl {
@@ -210,9 +210,9 @@
 
 .inclusionVerb {
   font-family: var(--font-sans);
-  font-size: var(--text-xs);
+  font-size: var(--text-micro);
   font-weight: var(--weight-bold);
-  color: var(--field-hint-ink);
+  color: var(--ink-subtle);
 }
 
 .inclusionVerb[data-on] {
@@ -224,23 +224,23 @@
 .actions {
   display: flex;
   justify-content: flex-end;
-  padding: var(--space-3) 14px;
+  padding: var(--space-3) var(--space-3);
 }
 
 .seal {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--space-2);
   flex-shrink: 0;
-  padding: 9px 18px;
+  padding: var(--space-2-5) var(--space-4);
   border-radius: var(--radius-control);
   border: 1px solid var(--seal-tint);
   background: var(--seal-tint);
-  color: var(--ink-on-accent);
+  color: var(--ink-inverse);
   font-family: var(--font-sans);
-  font-size: var(--text-md);
-  font-weight: 800;
-  letter-spacing: 0.3px;
+  font-size: var(--text-label);
+  font-weight: var(--weight-extrabold);
+  letter-spacing: var(--tracking-label);
   cursor: pointer;
   box-shadow: 0 12px 24px color-mix(in srgb, var(--seal-tint) 25%, transparent);
   transition: filter var(--duration-fast) var(--ease-standard);
@@ -257,7 +257,7 @@
 
 .seal:disabled {
   cursor: not-allowed;
-  opacity: 0.7;
+  opacity: var(--opacity-muted);
 }
 
 .sealIcon {
@@ -265,7 +265,7 @@
 }
 
 .seal[aria-busy="true"] .sealIcon {
-  animation: seal-spin 0.9s linear infinite;
+  animation: seal-spin var(--duration-spinner) linear infinite;
 }
 
 /* --- The sealed record ---------------------------------------------------- */
@@ -275,19 +275,19 @@
   max-width: 480px;
   overflow: hidden;
   border-radius: var(--radius-panel);
-  background: var(--surface-sealed);
+  background: var(--surface-raised);
   backdrop-filter: blur(14px);
   border: 1px solid color-mix(in srgb, var(--seal-tint) 31%, transparent);
   box-shadow:
     0 0 0 3px color-mix(in srgb, var(--seal-tint) 8%, transparent),
-    var(--elevation-sealed);
+    var(--shadow-lg);
 }
 
 .sealedBar {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 10px 14px;
+  padding: var(--space-2-5) var(--space-3);
   border-bottom: 1px solid color-mix(in srgb, var(--seal-tint) 19%, transparent);
   background: color-mix(in srgb, var(--seal-tint) 6%, transparent);
 }
@@ -300,20 +300,20 @@
 
 .sealedTitle {
   font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  font-weight: 800;
-  letter-spacing: 0.4px;
+  font-size: var(--text-caption);
+  font-weight: var(--weight-extrabold);
+  letter-spacing: var(--tracking-label);
   color: var(--seal-tint);
 }
 
 .sealedLevel {
   margin-left: auto;
-  padding: 2px 7px;
+  padding: var(--space-0-5) var(--space-2);
   border-radius: var(--radius-round);
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: var(--text-micro);
   font-weight: var(--weight-bold);
-  letter-spacing: 0.6px;
+  letter-spacing: var(--tracking-label);
   color: var(--seal-tint);
   background: color-mix(in srgb, var(--seal-tint) 9%, transparent);
   border: 1px solid color-mix(in srgb, var(--seal-tint) 25%, transparent);
@@ -323,7 +323,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding: var(--space-3) 14px;
+  padding: var(--space-3) var(--space-3);
 }
 
 .metaRow {
@@ -335,7 +335,7 @@
 .metaKey {
   flex-shrink: 0;
   font-family: var(--font-sans);
-  font-size: var(--text-xs);
+  font-size: var(--text-micro);
   color: var(--chrome-text-muted);
 }
 
@@ -344,35 +344,35 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--font-mono);
-  font-size: var(--text-sm);
+  font-size: var(--text-caption);
   font-weight: var(--weight-semibold);
-  letter-spacing: 0.8px;
-  color: var(--field-ink);
+  letter-spacing: var(--tracking-caps);
+  color: var(--ink-default);
 }
 
 .metaDate {
   font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  color: var(--page-subtitle-ink);
+  font-size: var(--text-micro);
+  color: var(--ink-muted);
 }
 
 .sealedTrack {
   display: flex;
   align-items: center;
-  gap: 3px;
-  margin-top: 2px;
+  gap: var(--space-1);
+  margin-top: var(--space-0-5);
 }
 
 .sealedSegment {
   flex: 1;
   height: 3px;
   border-radius: var(--radius-round);
-  opacity: 0.5;
+  opacity: var(--opacity-disabled);
   background: var(--track-neutral-strong);
 }
 
 .sealedSegment[data-live] {
-  opacity: 0.85;
+  opacity: var(--opacity-strong);
   background: var(--seal-tint);
 }
 

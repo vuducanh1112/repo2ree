@@ -7,7 +7,7 @@
   flex-direction: column;
   flex: 1;
   min-width: 0;
-  background: var(--surface-viewer);
+  background: var(--surface-raised);
 }
 
 .scroll {
@@ -17,14 +17,14 @@
 }
 
 .callout {
-  margin: 0 10px var(--space-2);
-  padding: var(--space-2) 10px;
-  border-radius: 6px;
-  border: 1px solid var(--edge-accent-pale);
-  background: var(--surface-callout);
+  margin: 0 var(--space-2-5) var(--space-2);
+  padding: var(--space-2) var(--space-2-5);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-accent);
+  background: var(--surface-raised);
   font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  color: var(--field-hint-ink);
+  font-size: var(--text-caption);
+  color: var(--ink-subtle);
 }
 
 .line {
@@ -35,13 +35,13 @@
 .lineNumber {
   flex-shrink: 0;
   min-width: 40px;
-  padding-right: 14px;
-  padding-left: 10px;
+  padding-right: var(--space-3);
+  padding-left: var(--space-2-5);
   text-align: right;
   user-select: none;
   font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  color: var(--ink-code-line-number);
+  font-size: var(--text-micro);
+  color: var(--ink-code-muted);
 }
 
 .code {
@@ -49,18 +49,18 @@
   padding-right: var(--space-4);
   white-space: pre;
   font-family: var(--font-mono);
-  font-size: var(--text-md);
-  line-height: 1.75;
-  color: var(--field-ink);
+  font-size: var(--text-label);
+  line-height: var(--leading-relaxed);
+  color: var(--ink-default);
 }
 
 /* Not the file's content — a note standing in for it. */
 .code[data-muted] {
-  color: var(--field-hint-ink);
+  color: var(--ink-subtle);
 }
 
 .code[data-syntax="comment"] {
-  color: var(--ink-on-dark-subtle);
+  color: var(--ink-inverse-subtle);
 }
 
 .code[data-syntax="keyword"] {
@@ -68,9 +68,9 @@
 }
 
 .code[data-syntax="command"] {
-  color: var(--feedback-success-ink-strong);
+  color: var(--tone-success-ink);
 }
 
 .code[data-syntax="string"] {
-  color: var(--feedback-warning-ink-medium);
+  color: var(--tone-warning-ink);
 }

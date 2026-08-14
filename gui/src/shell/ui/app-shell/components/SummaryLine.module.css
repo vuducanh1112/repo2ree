@@ -3,19 +3,19 @@
 .line {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: var(--space-1);
 }
 
 .label {
   font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  color: var(--field-hint-ink);
+  font-size: var(--text-caption);
+  color: var(--ink-subtle);
 }
 
 .value {
   font-family: var(--font-sans);
-  font-size: 13px;
-  line-height: 1.35;
-  color: var(--field-ink);
+  font-size: var(--text-body);
+  line-height: var(--leading-snug);
+  color: var(--ink-default);
   overflow-wrap: anywhere;
 }

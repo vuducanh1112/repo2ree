@@ -5,17 +5,17 @@
 .row {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--space-1-5);
   width: 100%;
   /* Indent by depth: a measurement, so it rides a custom property. */
   padding: var(--space-1) var(--space-2);
-  padding-left: calc(var(--space-2) + var(--tree-depth, 0) * 14px);
+  padding-left: calc(var(--space-2) + var(--tree-depth, 0) * var(--space-3));
   border: 1px solid transparent;
-  border-radius: 5px;
+  border-radius: var(--radius-xs);
   background: transparent;
   color: var(--ink-muted);
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--text-body);
   text-align: left;
   cursor: pointer;
   user-select: none;
@@ -28,19 +28,19 @@
 
 /* Referenced by the thing being viewed — worth finding, not yet chosen. */
 .row[data-marked] {
-  background: var(--feedback-warning-bg);
-  border-color: var(--feedback-warning-edge);
-  color: var(--feedback-warning-ink);
+  background: var(--tone-warning-surface);
+  border-color: var(--tone-warning-border);
+  color: var(--tone-warning-ink);
 }
 
 .row[data-selected] {
-  background: var(--surface-accent-selected);
-  border-color: var(--edge-accent-half);
-  color: var(--ink-accent-deep);
+  background: var(--surface-selected);
+  border-color: var(--border-accent-strong);
+  color: var(--accent-primary-deep);
 }
 
 .row:not([data-selected]):hover {
-  background: var(--surface-accent-hover);
+  background: var(--surface-accent);
 }
 
 .row:focus-visible {
@@ -66,7 +66,7 @@
 }
 
 .fileIcon[data-category="data"] {
-  --file-ink: var(--ink-accent-secondary);
+  --file-ink: var(--accent-secondary);
 }
 
 .fileIcon[data-category="doc"] {
@@ -74,11 +74,11 @@
 }
 
 .fileIcon[data-category="container"] {
-  --file-ink: var(--ink-info);
+  --file-ink: var(--tone-info-line);
 }
 
 .fileIcon[data-category="archive"] {
-  --file-ink: var(--ink-accent-violet);
+  --file-ink: var(--accent-secondary);
 }
 
 .fileIcon[data-category="binary"] {
@@ -86,7 +86,7 @@
 }
 
 .row[data-selected] .fileIcon {
-  --file-ink: var(--ink-accent-deep);
+  --file-ink: var(--accent-primary-deep);
 }
 
 .name {
@@ -98,13 +98,13 @@
 
 .marker {
   flex-shrink: 0;
-  padding: 0 3px;
-  border: 1px solid var(--feedback-warning-edge);
-  border-radius: 3px;
-  background: var(--feedback-warning-bg);
-  color: var(--feedback-warning-ink);
+  padding: 0 var(--space-1);
+  border: 1px solid var(--tone-warning-border);
+  border-radius: var(--radius-xs);
+  background: var(--tone-warning-surface);
+  color: var(--tone-warning-ink);
   font-family: var(--font-sans);
-  font-size: 9px;
+  font-size: var(--text-micro);
   font-weight: var(--weight-bold);
 }
 

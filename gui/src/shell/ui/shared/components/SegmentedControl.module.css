@@ -12,20 +12,20 @@
 }
 
 .segment:not(:disabled):hover {
-  border-color: var(--edge-accent);
+  border-color: var(--border-accent);
 }
 
 .segment {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 9px 14px;
+  padding: var(--space-2-5) var(--space-3);
   border-radius: var(--radius-control);
-  border: 1px solid var(--option-edge);
-  background: var(--option-bg);
-  color: var(--page-subtitle-ink);
+  border: 1px solid var(--border-accent-subtle);
+  background: var(--surface-control);
+  color: var(--ink-muted);
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: var(--text-body);
   font-weight: var(--weight-semibold);
   cursor: pointer;
   transition:
@@ -35,10 +35,10 @@
 }
 
 .segment[aria-pressed="true"] {
-  border-color: var(--edge-accent-strong);
-  background: var(--surface-control-secondary);
-  color: var(--option-selected-ink);
-  font-weight: 800;
+  border-color: var(--border-accent);
+  background: var(--surface-accent);
+  color: var(--accent-primary-deep);
+  font-weight: var(--weight-extrabold);
 }
 
 .group[data-stretch] .segment {
@@ -60,7 +60,7 @@
 }
 
 .segment:disabled {
-  opacity: 0.5;
+  opacity: var(--opacity-disabled);
   cursor: not-allowed;
 }
 

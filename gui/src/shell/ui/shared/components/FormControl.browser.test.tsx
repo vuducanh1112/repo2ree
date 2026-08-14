@@ -15,14 +15,14 @@ describe("FormControl focus states", () => {
     const { getByLabelText } = render(<Input aria-label="Repository" />);
     const input = getByLabelText("Repository");
 
-    // --field-edge → --palette-edge-steel.
-    expect(getComputedStyle(input).borderTopColor).toBe("rgba(95, 142, 190, 0.42)");
+    // The field consumes the shared neutral border scale.
+    expect(getComputedStyle(input).borderTopColor).toBe("rgba(148, 163, 184, 0.35)");
 
     await userEvent.click(input);
-    // --field-edge-active → --palette-edge-cyan.
+    // Focus promotes that border to the strongest shared accent stop.
     await expect
       .poll(() => getComputedStyle(input).borderTopColor)
-      .toBe("rgba(56, 189, 248, 0.86)");
+      .toBe("rgba(14, 165, 233, 0.58)");
   });
 
   it("rings for the keyboard", async () => {
@@ -39,7 +39,7 @@ describe("FormControl focus states", () => {
     const { getByLabelText } = render(<Input aria-label="Repository" disabled />);
     const input = getByLabelText("Repository");
     expect(getComputedStyle(input).cursor).toBe("not-allowed");
-    expect(getComputedStyle(input).backgroundColor).toBe("rgba(241, 245, 249, 0.72)");
+    expect(getComputedStyle(input).backgroundColor).toBe("rgba(15, 23, 42, 0.04)");
   });
 
   it("gives the code flavour a monospace face and the prose one the sans", () => {

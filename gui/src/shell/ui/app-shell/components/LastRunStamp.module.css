@@ -3,6 +3,6 @@
 .stamp {
   flex-shrink: 0;
   font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  color: var(--field-hint-ink);
+  font-size: var(--text-caption);
+  color: var(--ink-subtle);
 }

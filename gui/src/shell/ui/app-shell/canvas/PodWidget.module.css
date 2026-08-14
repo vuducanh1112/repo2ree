@@ -4,24 +4,24 @@
 .pod {
   /* The pod's material palette belongs to this illustration, not the app-wide
    * semantic contract. SVG descendants inherit these local recipes. */
-  --pod-face: var(--art-pod-face);
-  --pod-raised: var(--art-pod-raised);
-  --pod-shadow: var(--art-pod-shadow);
-  --pod-deep: var(--art-pod-deep);
-  --pod-bolt: var(--art-pod-bolt);
-  --pod-bolt-core: var(--art-pod-bolt-core);
-  --pod-weld: var(--art-pod-weld);
-  --pod-glow-near: var(--art-pod-glow-near);
-  --pod-glow-mid: var(--art-pod-glow-mid);
-  --pod-glow-far: var(--art-pod-glow-far);
-  --pod-glow-deep: var(--art-pod-glow-deep);
-  --pod-rim: var(--art-pod-rim);
-  --pod-node: var(--art-pod-node);
-  --pod-gloss: var(--art-pod-gloss);
-  --pod-void: var(--art-pod-void);
-  --pod-core-near: var(--art-pod-core-near);
-  --pod-core-mid: var(--art-pod-core-mid);
-  --pod-core-far: var(--art-pod-core-far);
+  --pod-face: #e8edf4;
+  --pod-raised: #f2f5f9;
+  --pod-shadow: #c8d0dc;
+  --pod-deep: #a8b4c4;
+  --pod-bolt: #cdd5e0;
+  --pod-bolt-core: #9aa5b4;
+  --pod-weld: #b8c4d4;
+  --pod-glow-near: #bae6fd;
+  --pod-glow-mid: #38bdf8;
+  --pod-glow-far: #0369a1;
+  --pod-glow-deep: #0c1a2e;
+  --pod-rim: #7dd3fc;
+  --pod-node: #ffffff;
+  --pod-gloss: #ffffff;
+  --pod-void: #0f172a;
+  --pod-core-near: #1a0838;
+  --pod-core-mid: #08071a;
+  --pod-core-far: #030612;
 
   flex-shrink: 0;
   overflow: visible;

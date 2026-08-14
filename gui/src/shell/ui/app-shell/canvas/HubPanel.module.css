@@ -12,15 +12,15 @@
   width: min(var(--hub-panel-width), calc(100% - 32px));
   max-height: calc(100% - 88px);
   border-radius: var(--space-4);
-  background: var(--window-glass-bg);
+  background: var(--surface-overlay);
   backdrop-filter: blur(8px);
-  box-shadow: var(--elevation-window-dock);
-  animation: hub-dock-in 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-lg);
+  animation: hub-dock-in var(--duration-moderate) var(--ease-standard);
 }
 
 .body {
   gap: var(--space-3);
-  padding: 14px 18px 18px;
+  padding: var(--space-3) var(--space-4) var(--space-4);
   align-items: var(--hub-panel-align, stretch);
 }
 

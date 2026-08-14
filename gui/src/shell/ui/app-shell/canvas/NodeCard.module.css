@@ -9,23 +9,23 @@
   transform: translate(-50%, -50%) translate(var(--node-dx), var(--node-dy))
     scale(var(--node-scale));
   width: 176px;
-  padding: 11px 13px;
-  border-radius: 13px;
+  padding: var(--space-3) var(--space-3);
+  border-radius: var(--radius-panel);
   border: 1px solid var(--chrome-border);
   background: var(--chrome-surface);
-  box-shadow: var(--elevation-node);
+  box-shadow: var(--shadow-md);
   text-align: left;
   cursor: pointer;
   transition:
-    transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 0.15s,
-    border-color 0.15s,
-    opacity 0.35s;
+    transform var(--duration-slow) var(--ease-standard),
+    box-shadow var(--duration-normal),
+    border-color var(--duration-normal),
+    opacity var(--duration-slow);
 }
 
 /* The step behind this panel has a result. */
 .card[data-done] {
-  border-color: var(--feedback-success-edge-muted);
+  border-color: var(--tone-success-border);
 }
 
 /* The page this panel opens is the one on screen. */
@@ -33,13 +33,13 @@
   border-color: var(--chrome-accent);
   box-shadow:
     0 0 0 3px var(--chrome-accent-bg),
-    var(--elevation-node-active);
+    var(--shadow-accent-strong);
 }
 
 /* Nothing on the ring is reachable until the workbench is provisioned. */
 .card:disabled {
   cursor: default;
-  opacity: 0.34;
+  opacity: var(--opacity-subtle);
 }
 
 .card:focus-visible {
@@ -54,7 +54,7 @@
 }
 
 .head[data-with-rows] {
-  margin-bottom: 9px;
+  margin-bottom: var(--space-2-5);
 }
 
 .glyph {
@@ -64,15 +64,15 @@
   flex-shrink: 0;
   width: 26px;
   height: 26px;
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--chrome-border);
   background: var(--chrome-surface-alt);
   color: var(--chrome-text-muted);
 }
 
 .card[data-done] .glyph {
-  border-color: var(--feedback-success-edge-muted);
-  background: var(--feedback-success-bg-muted);
+  border-color: var(--tone-success-border);
+  background: var(--tone-success-surface);
   color: var(--node-tint);
 }
 
@@ -82,9 +82,9 @@
 }
 
 .title {
-  font-size: 13px;
-  font-weight: 650;
-  letter-spacing: -0.1px;
+  font-size: var(--text-body);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
   color: var(--chrome-text);
 }
 
@@ -92,9 +92,9 @@
   display: flex;
   justify-content: space-between;
   gap: var(--space-2);
-  padding: 2px 0;
+  padding: var(--space-0-5) 0;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: var(--text-caption);
 }
 
 .rowLabel {

@@ -20,10 +20,10 @@
   justify-content: center;
   width: 42px;
   height: 42px;
-  border-radius: 9px;
+  border-radius: var(--radius-control);
   color: var(--target-tint);
   border: 1px solid color-mix(in srgb, var(--target-tint) 28%, transparent);
-  background: var(--section-icon-bg);
+  background: var(--surface-accent);
 }
 
 .body {
@@ -33,23 +33,23 @@
 
 .kind {
   font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  font-weight: 800;
+  font-size: var(--text-caption);
+  font-weight: var(--weight-extrabold);
   color: var(--ink-accent-strong);
 }
 
 .path {
-  margin-top: 3px;
+  margin-top: var(--space-1);
   font-family: var(--font-sans);
-  font-size: 13px;
-  color: var(--field-hint-ink);
+  font-size: var(--text-body);
+  color: var(--ink-subtle);
   overflow-wrap: anywhere;
 }
 
 /* Once a runtime is named, it reads as the path it is. */
 .path[data-declared] {
   font-family: var(--font-mono);
-  color: var(--field-ink);
+  color: var(--ink-default);
 }
 
 .chips {

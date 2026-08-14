@@ -18,28 +18,28 @@
   left: 10px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--field-hint-ink);
+  color: var(--ink-subtle);
   pointer-events: none;
 }
 
 .status {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--space-1-5);
   font-family: var(--font-mono);
-  font-size: var(--text-sm);
+  font-size: var(--text-caption);
 }
 
 .status[data-tone="warning"] {
-  color: var(--feedback-warning-ink-strong);
+  color: var(--tone-warning-ink);
 }
 
 .status[data-tone="caution"] {
-  color: var(--feedback-warning-ink-medium);
+  color: var(--tone-warning-ink);
 }
 
 .status[data-tone="ok"] {
-  color: var(--feedback-success-line);
+  color: var(--tone-success-line);
 }
 
 .statusValue {
@@ -55,7 +55,7 @@
 .pending {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: var(--space-1-5);
   margin-bottom: var(--space-2);
 }
 
@@ -63,15 +63,15 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: 10px 14px;
+  padding: var(--space-2-5) var(--space-3);
   border-radius: var(--radius-control);
   border: 1.5px solid var(--status-stale);
-  background: var(--feedback-warning-bg-soft);
+  background: var(--tone-warning-surface);
 }
 
 .pendingIcon {
   display: flex;
-  color: var(--feedback-warning-line);
+  color: var(--tone-warning-line);
 }
 
 .pendingName {
@@ -80,24 +80,24 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--text-body);
   font-weight: var(--weight-semibold);
-  color: var(--feedback-warning-ink-strong);
+  color: var(--tone-warning-ink);
 }
 
 .pendingNote {
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  padding-left: 2px;
+  padding-left: var(--space-0-5);
   font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  color: var(--feedback-warning-ink-strong);
+  font-size: var(--text-caption);
+  color: var(--tone-warning-ink);
 }
 
 .dismiss {
   display: flex;
-  padding: 2px;
+  padding: var(--space-0-5);
   border: none;
   border-radius: var(--space-1);
   background: none;
@@ -124,15 +124,15 @@
   align-items: center;
   gap: var(--space-3);
   margin-bottom: var(--space-2);
-  padding: 10px 14px;
+  padding: var(--space-2-5) var(--space-3);
   border-radius: var(--radius-control);
-  border: 1.5px solid var(--feedback-success-edge-soft);
-  background: var(--feedback-success-bg-soft);
+  border: 1.5px solid var(--tone-success-border);
+  background: var(--tone-success-surface);
 }
 
 .committedIcon {
   display: flex;
-  color: var(--feedback-success-line);
+  color: var(--tone-success-line);
 }
 
 .committedName {
@@ -141,9 +141,9 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--text-body);
   font-weight: var(--weight-semibold);
-  color: var(--feedback-success-ink-strong);
+  color: var(--tone-success-ink);
 }
 
 /* --- Dropzone ------------------------------------------------------------ */
@@ -155,7 +155,7 @@
   justify-content: center;
   gap: var(--space-2);
   width: 100%;
-  padding: 22px var(--space-4);
+  padding: var(--space-5) var(--space-4);
   border-radius: var(--radius-control);
   border: 1.5px dashed var(--chrome-border-strong);
   background: var(--chrome-bg);
@@ -179,7 +179,7 @@
 
 .dropzone:disabled {
   cursor: default;
-  opacity: 0.55;
+  opacity: var(--opacity-disabled);
 }
 
 .dropIcon {
@@ -194,7 +194,7 @@
 
 .dropPrompt {
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: var(--text-body);
   color: var(--chrome-text-mid);
 }
 
@@ -210,14 +210,14 @@
 .dropFormats {
   margin-top: var(--space-1);
   font-family: var(--font-mono);
-  font-size: var(--text-sm);
+  font-size: var(--text-caption);
   color: var(--chrome-text-muted);
 }
 
 /* --- Upload field wrapper ------------------------------------------------ */
 
 .uploadField {
-  padding: var(--space-2) 0 14px;
+  padding: var(--space-2) 0 var(--space-3);
 }
 
 .hiddenFileInput {
@@ -229,12 +229,12 @@
   align-items: center;
   gap: var(--space-1);
   font-family: var(--font-sans);
-  font-size: var(--text-sm);
+  font-size: var(--text-caption);
   color: var(--chrome-text-muted);
 }
 
 .statusLine[data-tone="caution"] {
-  color: var(--feedback-warning-ink-medium);
+  color: var(--tone-warning-ink);
 }
 
 @media (prefers-reduced-motion: reduce) {

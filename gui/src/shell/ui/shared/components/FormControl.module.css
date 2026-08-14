@@ -13,29 +13,29 @@
   align-items: center;
   gap: var(--space-2);
   font-family: var(--font-sans);
-  font-size: var(--text-md);
+  font-size: var(--text-label);
   font-weight: var(--weight-bold);
-  color: var(--field-label-ink);
+  color: var(--ink-default);
 }
 
 .hint {
   font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  line-height: 1.4;
-  color: var(--field-hint-ink);
+  font-size: var(--text-caption);
+  line-height: var(--leading-snug);
+  color: var(--ink-subtle);
 }
 
 .control {
   width: 100%;
   min-height: 42px;
-  padding: 12px 13px;
+  padding: var(--space-3) var(--space-3);
   border-radius: var(--radius-control);
-  border: 1px solid var(--field-edge);
-  background: var(--field-bg);
-  color: var(--field-ink);
+  border: 1px solid var(--border-default);
+  background: var(--surface-control);
+  color: var(--ink-default);
   font-family: var(--font-sans);
-  font-size: var(--text-lg);
-  box-shadow: var(--elevation-field-inset);
+  font-size: var(--text-body-large);
+  box-shadow: var(--shadow-inset-highlight);
   outline: none;
   transition:
     border-color var(--duration-normal) var(--ease-standard),
@@ -44,8 +44,8 @@
 }
 
 .control:focus {
-  border-color: var(--field-edge-active);
-  box-shadow: var(--elevation-field-focus), var(--elevation-field-inset);
+  border-color: var(--border-accent-strong);
+  box-shadow: var(--shadow-focus), var(--shadow-inset-highlight);
 }
 
 .control:focus-visible {
@@ -54,21 +54,21 @@
 }
 
 .control:disabled {
-  background: var(--control-disabled-bg);
-  color: var(--control-disabled-ink);
+  background: var(--surface-sunken);
+  color: var(--ink-subtle);
   cursor: not-allowed;
 }
 
 /* Dense grids: a shorter box, so a row of them does not dominate. */
 .control[data-density="compact"] {
   min-height: 38px;
-  padding: var(--space-2) 11px;
-  font-size: 13px;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-body);
 }
 
 /* Room for a leading glyph the caller overlays. */
 .control[data-adorned] {
-  padding-left: 32px;
+  padding-left: var(--space-8);
 }
 
 /* Not yet valid rather than rejected — the user may still be typing. */
@@ -84,9 +84,9 @@
 /* A code editor, not a paragraph box: taller, and resizable vertically only. */
 textarea.control[data-flavor="code"] {
   min-height: 240px;
-  padding: 10px 11px;
-  font-size: var(--text-md);
-  line-height: 1.55;
+  padding: var(--space-2-5) var(--space-3);
+  font-size: var(--text-label);
+  line-height: var(--leading-normal);
   resize: vertical;
   box-sizing: border-box;
 }

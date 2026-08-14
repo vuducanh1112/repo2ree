@@ -4,30 +4,30 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin: var(--filter-margin, 8px 8px 6px);
+  margin: var(--filter-margin, var(--space-2) var(--space-2) var(--space-1-5));
   padding: 0 var(--space-2);
-  border-radius: 7px;
-  border: 1px solid var(--edge-accent-pale);
-  background: var(--surface-glass);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-accent);
+  background: var(--surface-control);
 }
 
 .filterIcon {
   display: flex;
   flex-shrink: 0;
-  color: var(--field-hint-ink);
+  color: var(--ink-subtle);
 }
 
 /* Deliberately chromeless: the row around it is the control's frame. */
 .filterInput {
   flex: 1;
   min-width: 0;
-  padding: 7px 0;
+  padding: var(--space-2) 0;
   border: none;
   outline: none;
   background: transparent;
   font-family: var(--font-sans);
-  font-size: var(--text-md);
-  color: var(--field-ink);
+  font-size: var(--text-label);
+  color: var(--ink-default);
 }
 
 .filterInput:focus-visible {
@@ -39,15 +39,15 @@
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  padding: 2px;
+  padding: var(--space-0-5);
   border: none;
   background: transparent;
-  color: var(--field-hint-ink);
+  color: var(--ink-subtle);
   cursor: pointer;
 }
 
 .clear:hover {
-  color: var(--field-ink);
+  color: var(--ink-default);
 }
 
 .clear:focus-visible {

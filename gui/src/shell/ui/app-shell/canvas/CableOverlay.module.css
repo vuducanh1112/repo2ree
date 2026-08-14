@@ -2,10 +2,10 @@
  * its stage's tone; one that is not reads as drawn-but-inert. */
 
 .overlay {
-  --cable-dim: var(--ink-on-dark-subtle);
-  --cable-dim-ink: var(--ink-muted-strong);
-  --cable-dim-core: var(--ink-on-dark-muted);
-  --cable-gloss: var(--ink-on-accent);
+  --cable-dim: var(--ink-inverse-subtle);
+  --cable-dim-ink: var(--ink-muted);
+  --cable-dim-core: var(--ink-inverse-muted);
+  --cable-gloss: var(--ink-inverse);
 
   position: absolute;
   top: 0;
@@ -18,7 +18,7 @@
 }
 
 .cable {
-  opacity: 0.38;
+  opacity: var(--opacity-subtle);
 }
 
 .cable[data-connected] {

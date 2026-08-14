@@ -15,7 +15,7 @@
 .column {
   max-width: 980px;
   margin: 0 auto;
-  animation: ree-index-fade-up 0.4s ease;
+  animation: ree-index-fade-up var(--duration-slow) ease;
 }
 
 .header {
@@ -31,29 +31,29 @@
 
 .title {
   margin: 0;
-  font-size: 22px;
+  font-size: var(--text-heading-large);
   font-weight: var(--weight-semibold);
-  letter-spacing: -0.4px;
+  letter-spacing: var(--tracking-tight);
   color: var(--chrome-text);
 }
 
 .subtitle {
-  margin: 2px 0 0;
-  font-size: 13px;
+  margin: var(--space-0-5) 0 0;
+  font-size: var(--text-body);
   color: var(--chrome-text-muted);
 }
 
 .chromeButton {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 7px var(--space-3);
+  gap: var(--space-1-5);
+  padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-control);
   border: 1px solid var(--chrome-border);
   background: var(--chrome-surface);
   color: var(--chrome-text-mid);
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: var(--text-body);
   cursor: pointer;
 }
 
@@ -74,15 +74,15 @@
 }
 
 .chromeButton[data-busy] {
-  opacity: 0.6;
+  opacity: var(--opacity-muted);
 }
 
 .table {
   overflow: hidden;
-  border-radius: 14px;
+  border-radius: var(--radius-panel);
   border: 1px solid var(--chrome-border);
   background: var(--chrome-surface);
-  box-shadow: var(--elevation-card-low);
+  box-shadow: var(--shadow-sm);
 }
 
 .row {
@@ -90,19 +90,19 @@
   grid-template-columns: 1.5fr 0.8fr 1.1fr 1.5fr;
   gap: var(--space-3);
   align-items: center;
-  padding: 14px 18px;
+  padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--chrome-border);
 }
 
 .row[data-kind="head"] {
-  padding: var(--space-3) 18px;
+  padding: var(--space-3) var(--space-4);
   background: var(--chrome-surface-alt);
 }
 
 .headCell {
-  font-size: var(--text-sm);
+  font-size: var(--text-caption);
   font-weight: var(--weight-semibold);
-  letter-spacing: 0.8px;
+  letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
   color: var(--chrome-text-muted);
 }
@@ -132,7 +132,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: var(--text-body);
   font-weight: var(--weight-medium);
   color: var(--chrome-text);
 }
@@ -140,35 +140,35 @@
 /* The digest is the identity; the name is only a label, and two nodes can
  * disagree about it while meaning the same REE. */
 .digest {
-  margin-top: 3px;
+  margin-top: var(--space-1);
   font-family: var(--font-mono);
-  font-size: var(--text-sm);
+  font-size: var(--text-caption);
   color: var(--chrome-text-muted);
 }
 
 .cell {
-  font-size: var(--text-md);
+  font-size: var(--text-label);
   color: var(--chrome-text-mid);
 }
 
 .muted {
-  font-size: var(--text-md);
+  font-size: var(--text-label);
   color: var(--chrome-text-muted);
 }
 
 .archives {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: var(--space-1-5);
 }
 
 .archiveBadge {
-  padding: 2px 7px;
-  border-radius: 6px;
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--chrome-accent-border);
   background: var(--chrome-accent-bg);
   color: var(--chrome-accent);
-  font-size: var(--text-sm);
+  font-size: var(--text-caption);
   white-space: nowrap;
 }
 
@@ -177,7 +177,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--font-mono);
-  font-size: var(--text-md);
+  font-size: var(--text-label);
   color: var(--chrome-text-mid);
 }
 
@@ -189,7 +189,7 @@
 .recordLink {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--space-1-5);
   min-width: 0;
   text-decoration: none;
 }
@@ -206,8 +206,8 @@
 }
 
 .statusRow {
-  padding: var(--space-5) 18px;
-  font-size: 13px;
+  padding: var(--space-5) var(--space-4);
+  font-size: var(--text-body);
   color: var(--chrome-text-muted);
 }
 
@@ -216,27 +216,27 @@
 }
 
 .empty {
-  padding: var(--space-8) 18px;
+  padding: var(--space-8) var(--space-4);
   text-align: center;
 }
 
 .emptyIcon {
   display: flex;
   justify-content: center;
-  margin-bottom: 10px;
+  margin-bottom: var(--space-2-5);
   color: var(--chrome-text-muted);
 }
 
 .emptyTitle {
   margin-bottom: var(--space-1);
-  font-size: var(--text-lg);
+  font-size: var(--text-body-large);
   font-weight: var(--weight-medium);
   color: var(--chrome-text-mid);
 }
 
 .emptyHint {
-  font-size: var(--text-md);
-  line-height: 1.6;
+  font-size: var(--text-label);
+  line-height: var(--leading-relaxed);
   color: var(--chrome-text-muted);
 }
 
