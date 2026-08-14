@@ -28,8 +28,11 @@ const sourceRoot = join(guiRoot, "src");
 const TEST_FILE = /[.](?:test|spec)[.]tsx?$/;
 const GENERATED = "src/shell/infra/api/generated/";
 
-/** The stylesheet that owns the raw palette; every other one consumes roles. */
-const TOKENS_STYLESHEET = "src/shell/ui/theme/tokens.css";
+/** Stylesheets that own raw color values; every other stylesheet consumes variables. */
+const COLOR_VALUE_STYLESHEETS = new Set([
+  "src/shell/ui/theme/tokens.css",
+  "src/shell/ui/theme/themes/light.css",
+]);
 
 /** The modules the migration deleted. Naming them keeps the deletion from
  * being quietly undone by a re-introduced file of the same name. */
@@ -304,7 +307,7 @@ function checkCss(path) {
     report(file, line, character, rule, detail);
   };
 
-  if (file !== TOKENS_STYLESHEET) {
+  if (!COLOR_VALUE_STYLESHEETS.has(file)) {
     for (const pattern of [new RegExp(HEX_COLOR, "g"), new RegExp(FUNCTIONAL_COLOR, "g")]) {
       for (const match of text.matchAll(pattern)) at(match.index, "css-raw-color", match[0]);
     }

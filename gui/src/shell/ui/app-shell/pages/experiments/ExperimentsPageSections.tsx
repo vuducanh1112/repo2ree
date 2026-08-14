@@ -361,10 +361,10 @@ function RunResultPanel({ runState }: { runState: RunState }) {
 
   const headerColor =
     outputs?.verdict === "pass"
-      ? "var(--badge-success-ink)"
+      ? "var(--verdict-pass-ink)"
       : outputs?.verdict === "fail" || runState.status === "failed"
-        ? "var(--palette-rose-400)"
-        : "var(--field-hint-ink)";
+        ? "var(--verdict-fail-ink)"
+        : "var(--verdict-idle-ink)";
 
   const headerBg =
     outputs?.verdict === "pass"

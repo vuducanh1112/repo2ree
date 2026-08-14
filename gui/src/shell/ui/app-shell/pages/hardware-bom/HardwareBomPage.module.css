@@ -23,9 +23,9 @@
   gap: var(--space-2);
   padding: 7px var(--space-3);
   border-radius: var(--radius-round);
-  border: 1px solid var(--pill-edge);
-  background: var(--pill-bg);
-  color: var(--pill-ink);
+  border: 1px solid var(--palette-edge-slate);
+  background: var(--palette-film-white-62);
+  color: var(--page-subtitle-ink);
   font-family: var(--font-sans);
   font-size: var(--text-md);
   font-weight: var(--weight-bold);
@@ -34,10 +34,10 @@
 }
 
 .category[aria-pressed="true"] {
-  border-color: var(--pill-active-edge);
-  background: var(--pill-active-bg);
-  color: var(--pill-active-ink);
-  box-shadow: var(--pill-active-shadow);
+  border-color: var(--palette-edge-sky-strong);
+  background: var(--palette-film-mist-92);
+  color: var(--palette-sky-900);
+  box-shadow: var(--shadow-pill-active);
 }
 
 .category:focus-visible,
@@ -59,15 +59,15 @@
 .categoryCount {
   padding: 1px 7px;
   border-radius: var(--radius-round);
-  border: 1px solid var(--pill-count-edge);
-  background: var(--pill-count-bg);
+  border: 1px solid var(--palette-edge-slate-soft);
+  background: var(--palette-film-white-85);
   font-size: var(--text-sm);
   font-weight: var(--weight-bold);
   color: var(--field-hint-ink);
 }
 
 .category[aria-pressed="true"] .categoryCount {
-  color: var(--pill-active-ink);
+  color: var(--palette-sky-900);
 }
 
 /* --- One category's table ------------------------------------------------- */
@@ -95,9 +95,9 @@
 .empty {
   padding: 18px var(--space-3);
   text-align: center;
-  border: 1px dashed var(--table-empty-edge);
+  border: 1px dashed var(--palette-edge-slate-hard);
   border-radius: var(--radius-control);
-  background: var(--table-empty-bg);
+  background: var(--palette-film-slate-55);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   line-height: 1.4;
@@ -135,9 +135,9 @@
 .row {
   padding: 10px;
   border-radius: 9px;
-  border: 1px solid var(--table-row-edge);
-  background: var(--table-row-bg);
-  box-shadow: var(--table-row-shadow);
+  border: 1px solid var(--palette-edge-slate-mid);
+  background: var(--palette-film-white);
+  box-shadow: var(--shadow-inset-highlight);
 }
 
 .rowRemove {
@@ -163,7 +163,7 @@
   align-items: center;
   gap: var(--space-2);
   padding: 7px var(--space-3);
-  border: 1.5px dashed var(--table-empty-edge);
+  border: 1.5px dashed var(--palette-edge-slate-hard);
   border-radius: var(--radius-control);
   background: transparent;
   color: var(--page-subtitle-ink);

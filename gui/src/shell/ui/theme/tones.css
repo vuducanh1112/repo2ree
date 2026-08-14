@@ -1,11 +1,6 @@
-/* Semantic tone mappings: domain and state identities expressed as roles.
- *
- * Components consume the roles below, never `--palette-*` directly. Root
- * aliases describe the default app chrome. The glass "pages" surfaces will add
- * a surface boundary here — a selector overriding only the roles that genuinely
- * differ under glass — instead of a second palette object. Nothing renders a
- * glass root element yet (each page still applies `lgStyles.pageRoot` itself),
- * so that boundary waits for the page conversions.
+/* Semantic tone mappings for product-domain identities and user feedback.
+ * Layout, glass recipes, and feature presentation belong to the active theme
+ * or to the CSS Module that owns them.
  */
 
 :root {
@@ -149,76 +144,19 @@
   --archive-dataverse-wash: var(--palette-violet-050);
   --archive-dataverse-edge: var(--palette-violet-200);
 
-  /* --- Shared primitives -------------------------------------------------
-   * The roles `shared/components/*` and the page scaffold consume. They
-   * describe the glass "pages" chrome those were lifted from; when a glass
-   * surface boundary lands, these are the roles it overrides.
-   */
-  --control-primary-bg: var(--gradient-primary);
-  --control-primary-edge: var(--palette-edge-sky-strong);
-  --control-primary-ink: var(--palette-white);
-  --control-primary-shadow: var(--shadow-raised);
-  --control-secondary-bg: var(--palette-film-mist);
-  --control-secondary-edge: var(--palette-edge-sky);
-  --control-secondary-ink: var(--palette-sky-900);
-  --control-danger-bg: var(--palette-film-blush);
-  --control-danger-edge: var(--palette-edge-rose);
-  --control-danger-ink: var(--palette-rose-700);
-  --control-disabled-bg: var(--palette-film-slate);
-  --control-disabled-edge: var(--palette-edge-slate);
-  --control-disabled-ink: var(--palette-slate-500);
+  /* A seal currently freezes one evidence level. */
+  --seal-level-line: var(--palette-indigo-600);
+  --seal-level-wash: var(--palette-indigo-050);
 
-  --field-bg: var(--palette-film-white);
-  --field-edge: var(--palette-edge-steel);
-  --field-edge-active: var(--palette-edge-cyan);
-  --field-ink: var(--palette-slate-950);
-  --field-label-ink: var(--palette-slate-950);
-  --field-hint-ink: var(--palette-slate-500);
+  /* A finished experiment run's verdict. */
+  --verdict-pass-ink: var(--badge-success-ink);
+  --verdict-pass-wash: var(--palette-film-mint-70b);
+  --verdict-fail-ink: var(--palette-rose-400);
+  --verdict-fail-wash: var(--palette-film-rose-70);
+  --verdict-idle-ink: var(--field-hint-ink);
+  --verdict-idle-wash: var(--palette-film-slate-70);
 
-  --surface-card-bg: var(--palette-film-white-soft);
-  --surface-subpanel-bg: var(--palette-film-white);
-  --surface-subpanel-shadow: var(--shadow-subpanel);
-  --surface-card-edge: var(--palette-edge-sky-pale);
-  --surface-sunken-bg: var(--palette-film-ink);
-
-  /* The glass page shell: the scrollable page, the framed board inside it, and
-   * the panels that sit on the board. */
-  --page-bg: var(--gradient-page);
-  --page-ink: var(--palette-slate-950);
-  --page-frame-bg: var(--palette-film-frame);
-  --page-frame-grid: var(--gradient-frame-grid);
-  --page-frame-edge: var(--palette-edge-sky-pale-soft);
-  --page-frame-shadow: var(--shadow-page-frame);
-  --panel-bg: var(--gradient-panel);
-  --panel-edge: var(--palette-edge-sky-pale-strong);
-  --panel-shadow: var(--shadow-glass-panel);
-
-  /* The glass page scaffold: header, section headers, subpanels, footer. */
-  --page-title-ink: var(--palette-slate-950);
-  --page-subtitle-ink: var(--palette-slate-600);
-  --page-icon-ink: var(--palette-cyan-600);
-  --page-icon-bg: var(--palette-film-sky);
-  --page-icon-edge: var(--palette-edge-sky-soft);
-  --page-icon-shadow: var(--shadow-header-icon);
-  --section-title-ink: var(--palette-slate-950);
-  --section-subtitle-ink: var(--palette-slate-500);
-  --section-icon-ink: var(--palette-sky-500);
-  --section-icon-bg: var(--palette-film-sky-soft);
-  --section-icon-edge: var(--palette-edge-sky-faint);
-  --footer-bg: var(--palette-film-slate-soft);
-
-  /* A pick-one option row: the workbench image and lab location choosers. */
-  --option-bg: var(--palette-film-white);
-  --option-edge: var(--palette-edge-sky-pale-faint);
-  --option-ink: var(--field-ink);
-  --option-hint-ink: var(--field-hint-ink);
-  --option-selected-bg: var(--palette-film-mist-strong);
-  --option-selected-edge: var(--palette-edge-sky-firm);
-  --option-selected-ink: var(--palette-sky-900);
-  --option-selected-shadow: var(--shadow-selected-option);
-  --option-marker: var(--palette-sky-500);
-  --option-marker-edge: var(--palette-edge-slate);
-
+  /* --- Feedback and domain-specific states ----------------------------- */
   /* Transient notification. Its three readings are the ones a toast has: it
    * worked, it did not, or here is something you should know. */
   --toast-info-bg: var(--palette-blue-100);
@@ -232,141 +170,12 @@
   --toast-error-ink: var(--palette-red-800);
   --toast-shadow: var(--shadow-toast);
 
-  /* A small on/off switch. */
-  --switch-off: var(--chrome-border-strong);
-  --switch-knob: var(--palette-white);
-  --switch-knob-shadow: var(--shadow-knob);
-
-  /* The application shell: its header, and the workspace behind the canvas. */
-  --app-header-bg: var(--chrome-surface);
-  --app-header-shadow: var(--shadow-app-header);
-  --workspace-bg: var(--gradient-workspace);
-  --workspace-blob-a: var(--gradient-workspace-blob-a);
-  --workspace-blob-b: var(--gradient-workspace-blob-b);
-  --workspace-blob-c: var(--gradient-workspace-blob-c);
-  --download-bg: var(--palette-film-mint-70);
-  --download-bg-hover: var(--palette-film-mint-90);
-  --download-edge: var(--palette-edge-green-strong);
-  --download-ink: var(--palette-green-700);
-
-  /* Windows floating over the canvas: docked pages, hub panels, the viewer. */
-  --window-bg: var(--chrome-surface);
-  --window-edge: var(--chrome-border);
-  --window-shadow: var(--shadow-window);
-  --window-bar-bg: var(--chrome-surface-alt);
-  --window-glass-bg: var(--palette-film-window);
-  --window-scrim: var(--palette-film-scrim);
-
-  /* The seal strip: the card that seals an REE, and the record once it is. */
-  --seal-panel-bg: var(--palette-film-white-soft);
-  --seal-panel-edge: var(--palette-edge-sky-pale-strong);
-  --seal-panel-shadow: var(--shadow-seal-panel);
-  --seal-bar-bg: var(--palette-film-white);
-  --seal-bar-edge: var(--palette-edge-slate-faint);
-  --seal-track-dim: var(--palette-track-slate);
-  --seal-track-dim-soft: var(--palette-track-slate-soft);
-  --sealed-card-bg: var(--palette-film-sealed);
-  --sealed-card-shadow: var(--shadow-sealed-card);
-  --seal-inset-bg: var(--palette-film-inset);
-  --seal-inset-edge: var(--palette-edge-slate-soft);
-  --seal-warn-bg: var(--palette-film-butter);
-  --seal-warn-edge: var(--palette-edge-amber);
-  --seal-warn-ink: var(--palette-amber-800);
-  --seal-warn-dot: var(--palette-amber-500);
-  /* The evidence level a seal freezes the REE at. One level exists today. */
-  --seal-level-line: var(--palette-indigo-600);
-  --seal-level-wash: var(--palette-indigo-050);
-
-  /* The specimen pod: machined shell, and the energised core inside it. */
-  --pod-face: var(--palette-pod-face);
-  --pod-raised: var(--palette-pod-raised);
-  --pod-shadow: var(--palette-pod-shadow);
-  --pod-deep: var(--palette-pod-deep);
-  --pod-bolt: var(--palette-pod-bolt);
-  --pod-bolt-core: var(--palette-pod-bolt-core);
-  --pod-weld: var(--palette-pod-weld);
-  --pod-glow-near: var(--palette-sky-100);
-  --pod-glow-mid: var(--palette-sky-400);
-  --pod-glow-far: var(--palette-sky-700);
-  --pod-glow-deep: var(--palette-navy-950);
-  --pod-rim: var(--palette-sky-200);
-  --pod-node: var(--palette-white);
-  --pod-gloss: var(--palette-white);
-  --pod-void: var(--palette-grey-950);
-  --pod-core-near: var(--palette-core-violet);
-  --pod-core-mid: var(--palette-core-indigo);
-  --pod-core-far: var(--palette-core-black);
-
-  /* The workbench lab: the bench the dormant pod is seated on. It carries the
-   * build stage's hue, because the runtime it provisions is that stage's. */
-  --workbench-tint: var(--stage-build-line);
-  --bench-tray-shadow: var(--shadow-bench-tray);
-  --cradle-disc: var(--gradient-cradle-disc);
-  --console-shadow: var(--shadow-console);
-
-  /* The pinned HUD consoles at the edges of the canvas. */
-  --hud-bg: var(--palette-film-hud);
-  --hud-edge: var(--chrome-border);
-  --hud-shadow-open: var(--shadow-hud-open);
-  --hud-shadow-collapsed: var(--shadow-hud-collapsed);
-
-  /* The hub canvas itself: its ground, and the decomposed view over it. */
-  --hub-bg: var(--gradient-hub);
-  --hub-vignette: var(--shadow-hub-vignette);
-  --explode-pod-glow: var(--glow-explode-pod);
-
-  /* Canvas node cards, and the experiment satellites around the core. */
-  --node-bg: var(--chrome-surface);
-  --node-edge: var(--chrome-border);
-  --node-shadow: var(--shadow-node);
-  --node-done-edge: var(--palette-mint-200);
-  --node-done-wash: var(--palette-mint-100);
-  --node-active-edge: var(--chrome-accent);
-  --node-active-shadow: var(--shadow-node-active);
-  --satellite-wired-edge: var(--palette-indigo-200);
-  --satellite-wired-shadow: var(--shadow-node-wired);
-  --satellite-index-wash: var(--palette-indigo-050);
-  --satellite-add-wash: var(--palette-film-indigo);
-
-  /* A cable that is drawn but not yet carrying anything. */
-  --cable-dim: var(--palette-slate-400);
-  --cable-dim-ink: var(--palette-slate-700);
-  --cable-dim-core: var(--palette-slate-200);
-  --cable-gloss: var(--palette-white);
-
   /* Run lifecycle, as the logs console reports it. */
   --run-active: var(--chrome-accent);
   --run-succeeded: var(--palette-green-600);
   --run-failed: var(--status-fault);
   --run-canceling: var(--palette-amber-600);
   --run-idle: var(--chrome-text-muted);
-  --run-tab-selected-bg: var(--palette-film-accent-strong);
-  --run-stream-on-bg: var(--palette-film-accent);
-
-  /* The workbench console's embedded terminal, and its release action. */
-  --terminal-bg: var(--palette-terminal-bg);
-  --terminal-edge: var(--palette-terminal-edge);
-  --terminal-gutter: var(--palette-slate-600);
-  --terminal-cursor: var(--palette-mint-300);
-  --terminal-info: var(--palette-blue-300);
-  --terminal-out: var(--palette-slate-100);
-  --terminal-ok: var(--palette-mint-300);
-  --terminal-warn: var(--palette-amber-300);
-  --terminal-err: var(--palette-red-300);
-  --release-bg: var(--palette-film-ochre);
-  --release-edge: var(--palette-edge-ochre);
-  --release-ink: var(--palette-amber-800);
-
-  /* The decorative lab behind the pod. */
-  --lab-pool-a: var(--gradient-lab-pool-sky);
-  --lab-pool-b: var(--gradient-lab-pool-indigo);
-  --lab-bar: var(--gradient-lab-bar);
-  --lab-bar-shadow: var(--shadow-lab-bar);
-  --lab-beam: var(--gradient-lab-beam);
-  --lab-scan: var(--gradient-lab-scan);
-  --lab-bench: var(--gradient-lab-bench);
-  --lab-bench-shadow: var(--shadow-lab-bench);
-  --lab-edge: var(--chrome-border);
 
   /* How badly a reproducibility threat blocks the next level. */
   --threat-high-line: var(--palette-red-600);
@@ -382,44 +191,6 @@
   --remedy-edge: var(--palette-edge-green-strong);
   --remedy-ink: var(--badge-success-ink);
 
-  /* A progress meter. */
-  --progress-track-bg: var(--palette-film-slate-track);
-  --progress-track-edge: var(--palette-edge-sky-pale);
-  --progress-fill: var(--gradient-progress);
-  --progress-glow: var(--shadow-progress-glow);
-  --tally-warn-bg: var(--palette-film-ochre-70);
-
-  /* A finished experiment run's verdict wash. */
-  --verdict-pass-wash: var(--palette-film-mint-70b);
-  --verdict-fail-wash: var(--palette-film-rose-70);
-  --verdict-idle-wash: var(--palette-film-slate-70);
-
-  /* An experiment card, and the facts it advertises at a glance. */
-  --exp-card-bg: var(--palette-film-white);
-  --exp-card-edge: var(--surface-card-edge);
-  --exp-card-shadow: var(--shadow-card);
-  --exp-card-edge-hover: var(--palette-edge-sky-firm);
-  --exp-card-shadow-hover: var(--shadow-card-hover);
-  --exp-id-ink: var(--palette-cyan-600);
-  --exp-id-bg: var(--palette-film-sky-85);
-  --exp-id-edge: var(--palette-edge-sky-soft);
-  --exp-verified-ink: var(--badge-success-ink);
-  --exp-verified-bg: var(--palette-film-mint-85);
-  --exp-verified-edge: var(--palette-edge-green-mid);
-  --exp-runtime-ink: var(--palette-sky-500);
-  --exp-runtime-bg: var(--palette-film-indigo-88);
-  --exp-runtime-edge: var(--palette-edge-indigo);
-  --exp-resources-ink: var(--palette-cyan-600);
-  --exp-resources-bg: var(--palette-film-sky-88);
-  --exp-resources-edge: var(--palette-edge-sky-faint);
-  --exp-command-bg: var(--palette-film-slate-78);
-  --exp-command-edge: var(--palette-edge-slate-soft);
-
-  /* An empty result: the run has not happened, or found nothing. */
-  --placeholder-bg: var(--palette-film-white-45);
-  --placeholder-edge: var(--palette-edge-slate-hard);
-  --placeholder-edge-strong: var(--palette-edge-slate-half);
-
   /* The manifest files the evaluator looks for, before it has run. */
   --manifest-pip: var(--palette-blue-500);
   --manifest-pyproject: var(--palette-violet-500);
@@ -427,22 +198,6 @@
   --manifest-npm: var(--palette-red-600);
   --manifest-container: var(--palette-cyan-600);
   --manifest-nix: var(--palette-violet-600);
-
-  /* Data tables: the hardware inventory's rows and its category pills. */
-  --table-row-bg: var(--palette-film-white);
-  --table-row-edge: var(--palette-edge-slate-mid);
-  --table-row-shadow: var(--shadow-inset-highlight);
-  --table-empty-bg: var(--palette-film-slate-55);
-  --table-empty-edge: var(--palette-edge-slate-hard);
-  --pill-bg: var(--palette-film-white-62);
-  --pill-edge: var(--palette-edge-slate);
-  --pill-ink: var(--page-subtitle-ink);
-  --pill-active-bg: var(--palette-film-mist-92);
-  --pill-active-edge: var(--palette-edge-sky-strong);
-  --pill-active-ink: var(--palette-sky-900);
-  --pill-active-shadow: var(--shadow-pill-active);
-  --pill-count-bg: var(--palette-film-white-85);
-  --pill-count-edge: var(--palette-edge-slate-soft);
 
   /* Page-level advisories: something to do first, or something to know. */
   --advisory-warn-bg: var(--palette-film-cream);
@@ -452,53 +207,6 @@
   --advisory-info-edge: var(--palette-edge-sky-pale-half);
   --advisory-info-ink: var(--palette-sky-500);
   --advisory-shadow: var(--shadow-banner-inset);
-
-  /* Chips, and the small icon buttons beside them. */
-  --chip-ink: var(--palette-blue-700);
-  --chip-bg: var(--palette-film-chip);
-  --chip-edge: var(--palette-edge-indigo);
-  --chip-remove-bg: var(--palette-film-white);
-  --chip-remove-edge: var(--palette-edge-slate-firm);
-  --suggestion-ink: var(--palette-indigo-800);
-  --suggestion-bg: var(--palette-film-suggestion);
-  --suggestion-edge: var(--palette-edge-indigo-soft);
-  --row-bg: var(--palette-film-row);
-  --row-edge: var(--palette-edge-slate-row);
-
-  /* File tree and viewer panes. */
-  --tree-pane-bg: var(--palette-film-white-soft);
-  --tree-pane-edge: var(--palette-edge-sky-pale);
-  --tree-input-bg: var(--palette-film-white);
-  --tree-viewer-bg: var(--palette-film-viewer);
-  --tree-callout-bg: var(--palette-film-callout);
-  --tree-row-ink: var(--palette-slate-600);
-  --tree-folder-ink: var(--palette-slate-950);
-  --tree-hover-bg: var(--palette-film-hover);
-  --tree-selected-bg: var(--palette-film-selected);
-  --tree-selected-edge: var(--palette-edge-sky-half);
-  --tree-selected-ink: var(--palette-sky-900);
-  --tree-marked-bg: var(--palette-film-butter);
-  --tree-marked-edge: var(--palette-edge-amber);
-  --tree-marked-ink: var(--palette-yellow-700);
-
-  /* The folder glyph carries its own colour; every other icon inherits. */
-  --icon-folder: var(--palette-amber-500);
-
-  /* Coarse file categories, from classifyFileType. */
-  --file-code-ink: var(--palette-sky-500);
-  --file-data-ink: var(--palette-indigo-600);
-  --file-doc-ink: var(--palette-slate-600);
-  --file-container-ink: var(--palette-cyan-600);
-  --file-archive-ink: var(--palette-violet-600);
-  --file-binary-ink: var(--palette-slate-500);
-
-  /* The viewer's lightweight Dockerfile/shell highlighter. */
-  --syntax-line-number: var(--palette-slate-400-soft);
-  --syntax-comment: var(--palette-slate-400);
-  --syntax-keyword: var(--palette-sky-700);
-  --syntax-command: var(--palette-green-700);
-  --syntax-string: var(--palette-amber-700);
-  --footer-ink: var(--palette-slate-500);
 
   --notice-info-bg: var(--palette-film-white);
   --notice-info-edge: var(--palette-edge-slate);

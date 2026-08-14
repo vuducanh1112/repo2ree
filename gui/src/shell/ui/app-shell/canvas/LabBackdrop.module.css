@@ -23,7 +23,7 @@
   top: 12%;
   width: 420px;
   height: 420px;
-  background: var(--lab-pool-a);
+  background: var(--gradient-lab-pool-sky);
   animation: lab-drift-a 16s ease-in-out infinite;
 }
 
@@ -32,7 +32,7 @@
   top: 8%;
   width: 380px;
   height: 380px;
-  background: var(--lab-pool-b);
+  background: var(--gradient-lab-pool-indigo);
   animation: lab-drift-b 20s ease-in-out infinite;
 }
 
@@ -45,10 +45,10 @@
   height: 14px;
   transform: translateX(-50%);
   border-radius: 0 0 var(--radius-panel) var(--radius-panel);
-  border: 1px solid var(--lab-edge);
+  border: 1px solid var(--chrome-border);
   border-top: none;
-  background: var(--lab-bar);
-  box-shadow: var(--lab-bar-shadow);
+  background: var(--gradient-lab-bar);
+  box-shadow: var(--shadow-lab-bar);
 }
 
 .beam {
@@ -58,7 +58,7 @@
   width: 520px;
   height: 62%;
   transform: translateX(-50%);
-  background: var(--lab-beam);
+  background: var(--gradient-lab-beam);
   clip-path: polygon(38% 0, 62% 0, 100% 100%, 0 100%);
 }
 
@@ -67,7 +67,7 @@
   position: absolute;
   inset: 0 0 auto 0;
   height: 45%;
-  background: var(--lab-scan);
+  background: var(--gradient-lab-scan);
   animation: lab-scan 11s ease-in-out infinite;
 }
 
@@ -78,10 +78,10 @@
   right: 0;
   bottom: 0;
   height: 34%;
-  border-top: 1px solid var(--lab-edge);
-  background: var(--lab-bench);
+  border-top: 1px solid var(--chrome-border);
+  background: var(--gradient-lab-bench);
   backdrop-filter: blur(1px);
-  box-shadow: var(--lab-bench-shadow);
+  box-shadow: var(--shadow-lab-bench);
 }
 
 @keyframes lab-drift-a {

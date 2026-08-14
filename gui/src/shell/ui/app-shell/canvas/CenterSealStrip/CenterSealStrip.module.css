@@ -14,10 +14,10 @@
   max-width: 480px;
   overflow: hidden;
   border-radius: 10px;
-  border: 1px solid var(--seal-panel-edge);
-  background: var(--seal-panel-bg);
+  border: 1px solid var(--palette-edge-sky-pale-strong);
+  background: var(--palette-film-white-soft);
   backdrop-filter: blur(14px);
-  box-shadow: var(--seal-panel-shadow);
+  box-shadow: var(--shadow-seal-panel);
 }
 
 /* --- Connection bar ------------------------------------------------------- */
@@ -27,8 +27,8 @@
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  border-bottom: 1px solid var(--seal-bar-edge);
-  background: var(--seal-bar-bg);
+  border-bottom: 1px solid var(--palette-edge-slate-faint);
+  background: var(--palette-film-white);
 }
 
 .count {
@@ -49,7 +49,7 @@
   flex: 1;
   height: 3px;
   border-radius: var(--radius-round);
-  background: var(--seal-track-dim);
+  background: var(--palette-track-slate);
   transition: background var(--duration-normal) var(--ease-standard);
 }
 
@@ -66,9 +66,9 @@
   font-size: var(--text-xs);
   font-weight: var(--weight-bold);
   letter-spacing: 0.5px;
-  color: var(--seal-warn-ink);
-  background: var(--seal-warn-bg);
-  border: 1px solid var(--seal-warn-edge);
+  color: var(--palette-amber-800);
+  background: var(--palette-film-butter);
+  border: 1px solid var(--palette-edge-amber);
 }
 
 .readiness[data-ready] {
@@ -83,8 +83,8 @@
   margin: var(--space-3) var(--space-5) 0;
   padding: 10px var(--space-3);
   border-radius: var(--radius-control);
-  border: 1px solid var(--seal-warn-edge);
-  background: var(--seal-warn-bg);
+  border: 1px solid var(--palette-edge-amber);
+  background: var(--palette-film-butter);
 }
 
 .warningRow {
@@ -110,7 +110,7 @@
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   font-weight: var(--weight-bold);
-  color: var(--seal-warn-ink);
+  color: var(--palette-amber-800);
 }
 
 .warningItems {
@@ -130,13 +130,13 @@
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: var(--seal-warn-dot);
+  background: var(--palette-amber-500);
 }
 
 .warningText {
   font-family: var(--font-sans);
   font-size: var(--text-xs);
-  color: var(--seal-warn-ink);
+  color: var(--palette-amber-800);
 }
 
 /* --- What sealing means --------------------------------------------------- */
@@ -158,8 +158,8 @@
   margin: 0 var(--space-5) var(--space-1);
   padding: var(--space-3) 14px;
   border-radius: 10px;
-  border: 1px solid var(--seal-inset-edge);
-  background: var(--seal-inset-bg);
+  border: 1px solid var(--palette-edge-slate-soft);
+  background: var(--palette-film-inset);
 }
 
 /* The inclusion list is headed by what it is. */
@@ -275,12 +275,12 @@
   max-width: 480px;
   overflow: hidden;
   border-radius: var(--radius-panel);
-  background: var(--sealed-card-bg);
+  background: var(--palette-film-sealed);
   backdrop-filter: blur(14px);
   border: 1px solid color-mix(in srgb, var(--seal-tint) 31%, transparent);
   box-shadow:
     0 0 0 3px color-mix(in srgb, var(--seal-tint) 8%, transparent),
-    var(--sealed-card-shadow);
+    var(--shadow-sealed-card);
 }
 
 .sealedBar {
@@ -368,7 +368,7 @@
   height: 3px;
   border-radius: var(--radius-round);
   opacity: 0.5;
-  background: var(--seal-track-dim-soft);
+  background: var(--palette-track-slate-soft);
 }
 
 .sealedSegment[data-live] {

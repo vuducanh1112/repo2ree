@@ -2,6 +2,27 @@
  * bottleneck axis, so it arrives as a custom property. */
 
 .pod {
+  /* The pod's material palette belongs to this illustration, not the app-wide
+   * semantic contract. SVG descendants inherit these local recipes. */
+  --pod-face: var(--palette-pod-face);
+  --pod-raised: var(--palette-pod-raised);
+  --pod-shadow: var(--palette-pod-shadow);
+  --pod-deep: var(--palette-pod-deep);
+  --pod-bolt: var(--palette-pod-bolt);
+  --pod-bolt-core: var(--palette-pod-bolt-core);
+  --pod-weld: var(--palette-pod-weld);
+  --pod-glow-near: var(--palette-sky-100);
+  --pod-glow-mid: var(--palette-sky-400);
+  --pod-glow-far: var(--palette-sky-700);
+  --pod-glow-deep: var(--palette-navy-950);
+  --pod-rim: var(--palette-sky-200);
+  --pod-node: var(--palette-white);
+  --pod-gloss: var(--palette-white);
+  --pod-void: var(--palette-grey-950);
+  --pod-core-near: var(--palette-core-violet);
+  --pod-core-mid: var(--palette-core-indigo);
+  --pod-core-far: var(--palette-core-black);
+
   flex-shrink: 0;
   overflow: visible;
   filter: var(--pod-glow);

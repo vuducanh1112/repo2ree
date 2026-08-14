@@ -13,7 +13,7 @@
   border: 1px solid transparent;
   border-radius: 5px;
   background: transparent;
-  color: var(--tree-row-ink);
+  color: var(--palette-slate-600);
   font-family: var(--font-mono);
   font-size: 13px;
   text-align: left;
@@ -23,24 +23,24 @@
 }
 
 .row[data-kind="folder"] {
-  color: var(--tree-folder-ink);
+  color: var(--palette-slate-950);
 }
 
 /* Referenced by the thing being viewed — worth finding, not yet chosen. */
 .row[data-marked] {
-  background: var(--tree-marked-bg);
-  border-color: var(--tree-marked-edge);
-  color: var(--tree-marked-ink);
+  background: var(--palette-film-butter);
+  border-color: var(--palette-edge-amber);
+  color: var(--palette-yellow-700);
 }
 
 .row[data-selected] {
-  background: var(--tree-selected-bg);
-  border-color: var(--tree-selected-edge);
-  color: var(--tree-selected-ink);
+  background: var(--palette-film-selected);
+  border-color: var(--palette-edge-sky-half);
+  color: var(--palette-sky-900);
 }
 
 .row:not([data-selected]):hover {
-  background: var(--tree-hover-bg);
+  background: var(--palette-film-hover);
 }
 
 .row:focus-visible {
@@ -62,31 +62,31 @@
 }
 
 .fileIcon[data-category="code"] {
-  --file-ink: var(--file-code-ink);
+  --file-ink: var(--palette-sky-500);
 }
 
 .fileIcon[data-category="data"] {
-  --file-ink: var(--file-data-ink);
+  --file-ink: var(--palette-indigo-600);
 }
 
 .fileIcon[data-category="doc"] {
-  --file-ink: var(--file-doc-ink);
+  --file-ink: var(--palette-slate-600);
 }
 
 .fileIcon[data-category="container"] {
-  --file-ink: var(--file-container-ink);
+  --file-ink: var(--palette-cyan-600);
 }
 
 .fileIcon[data-category="archive"] {
-  --file-ink: var(--file-archive-ink);
+  --file-ink: var(--palette-violet-600);
 }
 
 .fileIcon[data-category="binary"] {
-  --file-ink: var(--file-binary-ink);
+  --file-ink: var(--palette-slate-500);
 }
 
 .row[data-selected] .fileIcon {
-  --file-ink: var(--tree-selected-ink);
+  --file-ink: var(--palette-sky-900);
 }
 
 .name {
@@ -99,10 +99,10 @@
 .marker {
   flex-shrink: 0;
   padding: 0 3px;
-  border: 1px solid var(--tree-marked-edge);
+  border: 1px solid var(--palette-edge-amber);
   border-radius: 3px;
-  background: var(--tree-marked-bg);
-  color: var(--tree-marked-ink);
+  background: var(--palette-film-butter);
+  color: var(--palette-yellow-700);
   font-family: var(--font-sans);
   font-size: 9px;
   font-weight: var(--weight-bold);

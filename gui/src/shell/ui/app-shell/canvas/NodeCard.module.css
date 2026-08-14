@@ -11,9 +11,9 @@
   width: 176px;
   padding: 11px 13px;
   border-radius: 13px;
-  border: 1px solid var(--node-edge);
-  background: var(--node-bg);
-  box-shadow: var(--node-shadow);
+  border: 1px solid var(--chrome-border);
+  background: var(--chrome-surface);
+  box-shadow: var(--shadow-node);
   text-align: left;
   cursor: pointer;
   transition:
@@ -25,15 +25,15 @@
 
 /* The step behind this panel has a result. */
 .card[data-done] {
-  border-color: var(--node-done-edge);
+  border-color: var(--palette-mint-200);
 }
 
 /* The page this panel opens is the one on screen. */
 .card[data-active] {
-  border-color: var(--node-active-edge);
+  border-color: var(--chrome-accent);
   box-shadow:
     0 0 0 3px var(--chrome-accent-bg),
-    var(--node-active-shadow);
+    var(--shadow-node-active);
 }
 
 /* Nothing on the ring is reachable until the workbench is provisioned. */
@@ -71,8 +71,8 @@
 }
 
 .card[data-done] .glyph {
-  border-color: var(--node-done-edge);
-  background: var(--node-done-wash);
+  border-color: var(--palette-mint-200);
+  background: var(--palette-mint-100);
   color: var(--node-tint);
 }
 

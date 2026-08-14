@@ -12,9 +12,9 @@
 .card {
   overflow: hidden;
   border-radius: 11px;
-  border: 1px solid var(--exp-card-edge);
-  background: var(--exp-card-bg);
-  box-shadow: var(--exp-card-shadow);
+  border: 1px solid var(--surface-card-edge);
+  background: var(--palette-film-white);
+  box-shadow: var(--shadow-card);
   transition:
     border-color 0.15s,
     box-shadow 0.15s;
@@ -22,8 +22,8 @@
 
 .card:has(.open:hover),
 .card:has(.open:focus-visible) {
-  border-color: var(--exp-card-edge-hover);
-  box-shadow: var(--exp-card-shadow-hover);
+  border-color: var(--palette-edge-sky-firm);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .open {
@@ -53,9 +53,9 @@
 .expId {
   padding: 2px 7px;
   border-radius: 6px;
-  border: 1px solid var(--exp-id-edge);
-  background: var(--exp-id-bg);
-  color: var(--exp-id-ink);
+  border: 1px solid var(--palette-edge-sky-soft);
+  background: var(--palette-film-sky-85);
+  color: var(--palette-cyan-600);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   font-weight: 800;
@@ -91,21 +91,21 @@
 }
 
 .fact[data-kind="verified"] {
-  --fact-ink: var(--exp-verified-ink);
-  --fact-bg: var(--exp-verified-bg);
-  --fact-edge: var(--exp-verified-edge);
+  --fact-ink: var(--badge-success-ink);
+  --fact-bg: var(--palette-film-mint-85);
+  --fact-edge: var(--palette-edge-green-mid);
 }
 
 .fact[data-kind="runtime"] {
-  --fact-ink: var(--exp-runtime-ink);
-  --fact-bg: var(--exp-runtime-bg);
-  --fact-edge: var(--exp-runtime-edge);
+  --fact-ink: var(--palette-sky-500);
+  --fact-bg: var(--palette-film-indigo-88);
+  --fact-edge: var(--palette-edge-indigo);
 }
 
 .fact[data-kind="resources"] {
-  --fact-ink: var(--exp-resources-ink);
-  --fact-bg: var(--exp-resources-bg);
-  --fact-edge: var(--exp-resources-edge);
+  --fact-ink: var(--palette-cyan-600);
+  --fact-bg: var(--palette-film-sky-88);
+  --fact-edge: var(--palette-edge-sky-faint);
 }
 
 .cardChevron {
@@ -125,8 +125,8 @@
   white-space: nowrap;
   padding: 7px 10px;
   border-radius: 7px;
-  border: 1px solid var(--exp-command-edge);
-  background: var(--exp-command-bg);
+  border: 1px solid var(--palette-edge-slate-soft);
+  background: var(--palette-film-slate-78);
   font-family: var(--font-mono);
   font-size: var(--text-md);
   color: var(--page-subtitle-ink);
@@ -259,16 +259,16 @@
   height: var(--space-2);
   overflow: hidden;
   border-radius: var(--radius-round);
-  border: 1px solid var(--progress-track-edge);
-  background: var(--progress-track-bg);
+  border: 1px solid var(--palette-edge-sky-pale);
+  background: var(--palette-film-slate-track);
 }
 
 .fill {
   height: 100%;
   width: var(--coverage-pct);
   border-radius: var(--radius-round);
-  background: var(--progress-fill);
-  box-shadow: var(--progress-glow);
+  background: var(--gradient-progress);
+  box-shadow: var(--shadow-progress-glow);
   transition: width 0.25s ease;
 }
 
@@ -293,7 +293,7 @@
 }
 
 .tally:not([data-complete]) {
-  --tally-bg: var(--tally-warn-bg);
+  --tally-bg: var(--palette-film-ochre-70);
   --tally-edge: var(--badge-warning-edge);
   --tally-ink: var(--badge-warning-ink);
 }
@@ -311,9 +311,9 @@
 .suggestion {
   padding: 5px 10px;
   border-radius: var(--radius-round);
-  border: 1px solid var(--suggestion-edge);
-  background: var(--suggestion-bg);
-  color: var(--suggestion-ink);
+  border: 1px solid var(--palette-edge-indigo-soft);
+  background: var(--palette-film-suggestion);
+  color: var(--palette-indigo-800);
   font-family: var(--font-sans);
   font-size: var(--text-md);
   cursor: pointer;

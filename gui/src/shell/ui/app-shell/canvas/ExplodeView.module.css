@@ -23,7 +23,7 @@
 /* Hovered, or otherwise called out: the column lights up. */
 .column[data-glow] {
   transform: translate(-50%, -50%) scale(1.04);
-  filter: var(--explode-pod-glow);
+  filter: var(--glow-explode-pod);
 }
 
 .labels {

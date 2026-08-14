@@ -7,8 +7,8 @@
   margin: var(--filter-margin, 8px 8px 6px);
   padding: 0 var(--space-2);
   border-radius: 7px;
-  border: 1px solid var(--tree-pane-edge);
-  background: var(--tree-input-bg);
+  border: 1px solid var(--palette-edge-sky-pale);
+  background: var(--palette-film-white);
 }
 
 .filterIcon {

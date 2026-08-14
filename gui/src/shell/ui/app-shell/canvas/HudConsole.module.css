@@ -11,10 +11,10 @@
   overflow: hidden;
   width: var(--hud-width-collapsed);
   border-radius: var(--radius-panel);
-  border: 1px solid var(--hud-edge);
-  background: var(--hud-bg);
+  border: 1px solid var(--chrome-border);
+  background: var(--palette-film-hud);
   backdrop-filter: blur(4px);
-  box-shadow: var(--hud-shadow-collapsed);
+  box-shadow: var(--shadow-hud-collapsed);
   transition:
     width 0.26s cubic-bezier(0.4, 0, 0.2, 1),
     box-shadow 0.26s;
@@ -22,7 +22,7 @@
 
 .console[data-open] {
   width: var(--hud-width-open);
-  box-shadow: var(--hud-shadow-open);
+  box-shadow: var(--shadow-hud-open);
 }
 
 /* Mid-drag the width is the pointer's, so the easing has to stand down. */
@@ -110,14 +110,14 @@
   flex-direction: column;
   gap: 7px;
   padding: 2px var(--space-3) var(--space-3);
-  border-top: 1px solid var(--hud-edge);
+  border-top: 1px solid var(--chrome-border);
 }
 
 .body {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  border-top: 1px solid var(--hud-edge);
+  border-top: 1px solid var(--chrome-border);
 }
 
 @media (prefers-reduced-motion: reduce) {

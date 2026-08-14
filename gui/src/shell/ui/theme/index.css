@@ -7,7 +7,7 @@
  * head of globals.css. CSS Modules stay unlayered on purpose: unlayered rules
  * outrank every layer, so a component module always beats the base defaults.
  *
- * There is no fourth import. The migration holdover that carried the injected
+ * There is no runtime-injected stylesheet. The migration holdover that carried the injected
  * GLOBAL_CSS through the conversion — its keyframes and its blanket button
  * rules — is gone: every keyframe now lives in the module of the component that
  * owns it, and every control that had a hover is a primitive that declares its
@@ -17,5 +17,6 @@
 @layer reset, tokens, base, components;
 
 @import "./tokens.css" layer(tokens);
+@import "./themes/light.css" layer(tokens);
 @import "./tones.css" layer(tokens);
 @import "./globals.css" layer(base);

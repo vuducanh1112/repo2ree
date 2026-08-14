@@ -60,7 +60,7 @@
 }
 
 .tab[aria-selected="true"] {
-  background: var(--run-tab-selected-bg);
+  background: var(--palette-film-accent-strong);
   color: var(--chrome-accent);
 }
 
@@ -123,7 +123,7 @@
 
 .stream[aria-pressed="true"] {
   border-color: var(--chrome-accent);
-  background: var(--run-stream-on-bg);
+  background: var(--palette-film-accent);
   color: var(--chrome-accent);
 }
 

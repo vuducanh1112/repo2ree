@@ -6,8 +6,8 @@
   inset: 0;
   overflow: hidden;
   cursor: grab;
-  background: var(--hub-bg);
-  box-shadow: var(--hub-vignette);
+  background: var(--gradient-hub);
+  box-shadow: var(--shadow-hub-vignette);
   transition: opacity 0.3s;
 }
 
@@ -50,6 +50,6 @@
   height: 96px;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  background: var(--cradle-disc);
+  background: var(--gradient-cradle-disc);
   pointer-events: none;
 }
