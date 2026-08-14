@@ -1,6 +1,6 @@
 import type { FileTreeNode } from "@core/workspace/FileTree";
 import { planWorkspaceFilePersistence } from "@core/workspace/workspaceFileMutationPlanning";
-import { useApiRuntime } from "@shell/data/apiRuntime";
+import { useReeId } from "@shell/data/apiRuntime";
 import { useReeClient } from "@shell/data/ree/client";
 import type { ShowToast } from "../types";
 
@@ -13,7 +13,7 @@ export function useWorkspaceFilePersistence({
   refreshWorkspaceFiles,
   showToast,
 }: UseWorkspaceFilePersistenceArgs) {
-  const { reeId } = useApiRuntime();
+  const reeId = useReeId();
   const reeClient = useReeClient();
 
   const persistWorkspaceFile = async (

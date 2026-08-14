@@ -1,11 +1,11 @@
 import type { ReeReceiptsWire } from "@shell/infra/api/apiTypes";
 import { useQuery } from "@tanstack/react-query";
-import { useApiRuntime } from "../apiRuntime";
+import { useReeRuntime } from "../apiRuntime";
 import { resolveReeId } from "../client";
 import { queryKeys } from "../queryKeys";
 
 export function useAuthorReceiptsQuery({ enabled = true }: { enabled?: boolean } = {}) {
-  const runtime = useApiRuntime();
+  const runtime = useReeRuntime();
   const reeId = resolveReeId(runtime);
 
   return useQuery<ReeReceiptsWire>({

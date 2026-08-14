@@ -1,12 +1,12 @@
 import type { ReviewBasisRequest } from "@core/reviews/Review";
 import type { RunSummary } from "@shell/infra/api/apiTypes";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useApiRuntime } from "../apiRuntime";
+import { useReeRuntime } from "../apiRuntime";
 import { resolveReeId } from "../client";
 import { queryKeys } from "../queryKeys";
 
 export function useStartSourceReviewMutation() {
-  const runtime = useApiRuntime();
+  const runtime = useReeRuntime();
   const reeId = resolveReeId(runtime);
   const invalidate = useReviewInvalidation(reeId);
 
@@ -40,7 +40,7 @@ function openedReviewId(run: RunSummary): string | undefined {
  * source step opened, which is not known when the console mounts.
  */
 export function useStartBuildReviewMutation() {
-  const runtime = useApiRuntime();
+  const runtime = useReeRuntime();
   const reeId = resolveReeId(runtime);
   const invalidate = useReviewInvalidation(reeId);
 
@@ -59,7 +59,7 @@ export function useStartBuildReviewMutation() {
  * evidence is worth, so offering the choice here would be offering a fiction.
  */
 export function useStartActivationReviewMutation() {
-  const runtime = useApiRuntime();
+  const runtime = useReeRuntime();
   const reeId = resolveReeId(runtime);
   const invalidate = useReviewInvalidation(reeId);
 
@@ -78,7 +78,7 @@ export function useStartActivationReviewMutation() {
  * already settled.
  */
 export function useStartExperimentReviewMutation() {
-  const runtime = useApiRuntime();
+  const runtime = useReeRuntime();
   const reeId = resolveReeId(runtime);
   const invalidate = useReviewInvalidation(reeId);
 

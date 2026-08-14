@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useApiRuntime } from "../apiRuntime";
+import { useReeRuntime } from "../apiRuntime";
 import { resolveReeId } from "../client";
 import { queryKeys } from "../queryKeys";
 import { useReeRunsClient } from "./client";
@@ -7,7 +7,7 @@ import { useReeRunsClient } from "./client";
 type ReeRunParams = Record<string, string | boolean | number | null | undefined>;
 
 export function useStartReeRunMutation(reeId?: string) {
-  const runtime = useApiRuntime();
+  const runtime = useReeRuntime();
   const executionRunsClient = useReeRunsClient();
   const queryClient = useQueryClient();
   const resolvedReeId = resolveReeId(runtime, reeId);
@@ -30,7 +30,7 @@ export function useStartReeRunMutation(reeId?: string) {
  * instead of spending another round-trip re-fetching it.
  */
 export function useStartExperimentRunMutation(reeId?: string) {
-  const runtime = useApiRuntime();
+  const runtime = useReeRuntime();
   const executionRunsClient = useReeRunsClient();
   const queryClient = useQueryClient();
   const resolvedReeId = resolveReeId(runtime, reeId);
@@ -45,7 +45,7 @@ export function useStartExperimentRunMutation(reeId?: string) {
 }
 
 export function useCancelReeRunMutation(reeId?: string) {
-  const runtime = useApiRuntime();
+  const runtime = useReeRuntime();
   const executionRunsClient = useReeRunsClient();
   const queryClient = useQueryClient();
   const resolvedReeId = resolveReeId(runtime, reeId);

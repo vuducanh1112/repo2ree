@@ -11,11 +11,11 @@ import {
   toSourceAcquireRequest,
 } from "../../infra/api/apiTypes";
 import type { ReeApi } from "../../infra/api/ReeApi";
-import { type ApiRuntimeValue, useApiRuntime } from "../apiRuntime";
-import { ensureReeId } from "../client";
+import { type ReeRuntimeValue, useReeRuntime } from "../apiRuntime";
+import { requireReeId } from "../client";
 import { mapReeDetailToReeProject } from "./reeMapping";
 
-type ReeApiRuntime = ApiRuntimeValue & { reeApi: ReeApi };
+type ReeApiRuntime = ReeRuntimeValue & { reeApi: ReeApi };
 type ReeProjectState = NonNullable<ReturnType<typeof mapReeDetailToReeProject>["ree"]>;
 
 export interface ReeClient<TFile = unknown, TRee = unknown> {
@@ -37,16 +37,16 @@ export interface ReeClient<TFile = unknown, TRee = unknown> {
 function createReeClient(runtime: ReeApiRuntime): ReeClient<FileTreeNode, ReeProjectState> {
   return {
     async getRee(id) {
-      const reeId = await ensureReeId(runtime, id);
+      const reeId = requireReeId(runtime, id);
       const ree = await runtime.reeApi.getRee(reeId);
       return mapReeDetailToReeProject(ree);
     },
     async updateFile(id, path, content) {
-      const reeId = await ensureReeId(runtime, id);
+      const reeId = requireReeId(runtime, id);
       await runtime.reeApi.putFileContent(reeId, { path, content });
     },
     async updateReeIntent(id, intentPatch) {
-      const reeId = await ensureReeId(runtime, id);
+      const reeId = requireReeId(runtime, id);
       // The domain serializers emit loosely-typed records in the wire's shape;
       // the backend validates the patch strictly (unknown keys are rejected).
       await runtime.reeApi.patchReeDefinition(reeId, {
@@ -54,23 +54,23 @@ function createReeClient(runtime: ReeApiRuntime): ReeClient<FileTreeNode, ReePro
       });
     },
     async deleteFile(id, path) {
-      const reeId = await ensureReeId(runtime, id);
+      const reeId = requireReeId(runtime, id);
       await runtime.reeApi.deleteFileContent(reeId, path);
     },
     async getReeFileBytes(id, path) {
-      const reeId = await ensureReeId(runtime, id);
+      const reeId = requireReeId(runtime, id);
       return runtime.reeApi.getReeFileBytes(reeId, path);
     },
     async sealRee(id, opts) {
-      const reeId = await ensureReeId(runtime, id);
+      const reeId = requireReeId(runtime, id);
       return runtime.reeApi.sealRee(reeId, opts);
     },
     async getReeArchive(id) {
-      const reeId = await ensureReeId(runtime, id);
+      const reeId = requireReeId(runtime, id);
       return runtime.reeApi.getReeArchive(reeId);
     },
     async releaseRee(id) {
-      const reeId = await ensureReeId(runtime, id);
+      const reeId = requireReeId(runtime, id);
       try {
         await runtime.reeApi.deleteRee(reeId);
       } catch (err) {
@@ -81,7 +81,7 @@ function createReeClient(runtime: ReeApiRuntime): ReeClient<FileTreeNode, ReePro
       }
     },
     async resetWorkspaceRequest(id, request) {
-      const reeId = await ensureReeId(runtime, id);
+      const reeId = requireReeId(runtime, id);
       const mode = request.mode || "clear";
       if (mode === "clear") {
         await runtime.reeApi.removeSource(reeId);
@@ -118,7 +118,7 @@ function createReeClient(runtime: ReeApiRuntime): ReeClient<FileTreeNode, ReePro
 }
 
 export function useReeClient(): ReeClient<FileTreeNode, ReeProjectState> {
-  const runtime = useApiRuntime();
+  const runtime = useReeRuntime();
   return useMemo(() => createReeClient(runtime), [runtime]);
 }
 

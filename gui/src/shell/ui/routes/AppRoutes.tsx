@@ -1,6 +1,7 @@
 import { APP_ROUTE } from "@core/app-shell/pages";
+import { DEFAULT_REE_ID } from "@core/ree/ReeId";
 import { Navigate, Route, Routes, useNavigate, useSearchParams } from "react-router-dom";
-import { ApiClientProvider } from "../../data/apiRuntime";
+import { ReeScopeProvider } from "../../data/apiRuntime";
 import { AgentsView } from "../agents/AgentsView";
 import { LabLocationView } from "../agents/LabLocationView";
 import { AppShellView } from "../app-shell/AppShellView";
@@ -27,9 +28,9 @@ function WorkspaceRoute({
       resetKey={workspaceKey}
       fallback={({ retry }) => <WorkspaceErrorFallback onRetry={retry} onBack={onBack} />}
     >
-      <ApiClientProvider reeId={reeId} key={workspaceKey}>
+      <ReeScopeProvider reeId={reeId ?? DEFAULT_REE_ID} key={workspaceKey}>
         <AppShellView onBack={onBack} />
-      </ApiClientProvider>
+      </ReeScopeProvider>
     </ErrorBoundary>
   );
 }
@@ -52,12 +53,7 @@ export function AppRoutes({ reportError }: { reportError: UiErrorReporter }) {
       <Route path="/explorer" element={<Navigate to={APP_ROUTE.WORKSPACE} replace />} />
       <Route
         path={APP_ROUTE.LAB_LOCATION}
-        element={
-          // Agent selection is global (pre-REE); the provider just supplies reeApi.
-          <ApiClientProvider>
-            <LabLocationView onBack={() => navigate(APP_ROUTE.ROOT)} />
-          </ApiClientProvider>
-        }
+        element={<LabLocationView onBack={() => navigate(APP_ROUTE.ROOT)} />}
       />
       <Route
         path={APP_ROUTE.WORKSPACE}
@@ -67,22 +63,11 @@ export function AppRoutes({ reportError }: { reportError: UiErrorReporter }) {
       />
       <Route
         path={APP_ROUTE.AGENTS}
-        element={
-          // Agents are global, not REE-scoped; the provider just supplies reeApi.
-          <ApiClientProvider>
-            <AgentsView onBack={() => navigate(APP_ROUTE.ROOT)} />
-          </ApiClientProvider>
-        }
+        element={<AgentsView onBack={() => navigate(APP_ROUTE.ROOT)} />}
       />
       <Route
         path={APP_ROUTE.REE_INDEX}
-        element={
-          // The index spans every REE this node has sealed, so like agents it
-          // is global and the provider only supplies reeApi.
-          <ApiClientProvider>
-            <ReeIndexView onBack={() => navigate(APP_ROUTE.ROOT)} />
-          </ApiClientProvider>
-        }
+        element={<ReeIndexView onBack={() => navigate(APP_ROUTE.ROOT)} />}
       />
       <Route path="*" element={<Navigate to={APP_ROUTE.ROOT} replace />} />
     </Routes>

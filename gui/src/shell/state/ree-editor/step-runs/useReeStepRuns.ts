@@ -5,7 +5,7 @@ import type { ReeStepRunParams } from "@core/ree-steps/stepRunParams";
 import type { GenericReeStepParams } from "@core/ree-steps/stepTypes";
 import type { FileTreeNode } from "@core/workspace/FileTree";
 import { appShellPorts } from "@shell/app/bootstrap/appShellPorts";
-import { useApiRuntime } from "@shell/data/apiRuntime";
+import { useReeId } from "@shell/data/apiRuntime";
 import { useReeRunsClient } from "@shell/data/runs/client";
 import { useCancelReeRunMutation, useStartReeRunMutation } from "@shell/data/runs/mutations";
 import { setStepParams } from "@shell/ui/app-shell/state/actions";
@@ -39,7 +39,7 @@ export function useReeStepRuns({
   showToast,
   getActiveRunId,
 }: UseReeStepRunsArgs) {
-  const { reeId } = useApiRuntime();
+  const reeId = useReeId();
   const queryClient = useQueryClient();
   const executionRunsClient = useReeRunsClient();
   const startReeRunMutation = useStartReeRunMutation(reeId);

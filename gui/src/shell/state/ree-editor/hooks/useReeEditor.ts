@@ -10,7 +10,7 @@ import {
 } from "@core/ree-editor/reeEditorViewModel";
 import type { FileTreeNode } from "@core/workspace/FileTree";
 import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
-import { useApiRuntime } from "@shell/data/apiRuntime";
+import { useReeId } from "@shell/data/apiRuntime";
 import { useReeQuery } from "@shell/data/ree/queries";
 import { showToast as enqueueToast } from "@shell/ui/app-shell/state/actions";
 import type { ReeIntentState } from "@shell/ui/app-shell/state/reeIntent";
@@ -45,7 +45,7 @@ export function useReeEditor({
   uiChrome,
   dispatch,
 }: UseReeEditorArgs) {
-  const { reeId } = useApiRuntime();
+  const reeId = useReeId();
   const provisioned = reeId !== DEFAULT_REE_ID;
   const reeQuery = useReeQuery({ enabled: provisioned });
   const workspaceFiles = reeQuery.data?.files ?? [];

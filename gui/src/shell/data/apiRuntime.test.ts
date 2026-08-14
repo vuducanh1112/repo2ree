@@ -1,21 +1,23 @@
-import { describe, expect, it } from "vitest";
-import { DEFAULT_REE_ID } from "../../core/ree/ReeId";
-import { createApiRuntime } from "./apiRuntime";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { createApiServices } from "./apiRuntime";
 
-describe("createApiRuntime", () => {
-  it("exposes the initial REE id when a default REE id prop is also provided", async () => {
-    const runtime = createApiRuntime({
-      initialReeId: "ree-from-url",
-      reeId: DEFAULT_REE_ID,
-    });
+describe("createApiServices", () => {
+  afterEach(() => vi.restoreAllMocks());
 
-    expect(runtime.reeId).toBe("ree-from-url");
-    await expect(runtime.ensureReeId(DEFAULT_REE_ID)).resolves.toBe("ree-from-url");
-  });
+  it("configures every service with the application API base URL", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ agents: [] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
 
-  it("falls back to the default REE id when no initial or explicit id is provided", () => {
-    const runtime = createApiRuntime({});
+    const services = createApiServices({ baseUrl: "https://api.example.test" });
+    await services.reeApi.listAgents();
 
-    expect(runtime.reeId).toBe(DEFAULT_REE_ID);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.example.test/api/v1/agents",
+      expect.any(Object),
+    );
   });
 });

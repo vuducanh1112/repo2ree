@@ -1,6 +1,6 @@
 import type { DecisionDag, DecisionTrace } from "@shell/infra/api/apiTypes";
 import { useMutation } from "@tanstack/react-query";
-import { useApiRuntime } from "../apiRuntime";
+import { useReeRuntime } from "../apiRuntime";
 import { resolveReeId } from "../client";
 import { type ScriptTargetKind, selectCandidate, selectDag, selectTrace } from "./candidate";
 import type { ScriptGeneration } from "./generation";
@@ -50,7 +50,7 @@ function useGenerateScriptForTarget(
   experimentName: string | undefined,
   reeId: string | undefined,
 ) {
-  const runtime = useApiRuntime();
+  const runtime = useReeRuntime();
   const resolvedReeId = resolveReeId(runtime, reeId);
 
   return useMutation<ScriptInferenceOutcome>({

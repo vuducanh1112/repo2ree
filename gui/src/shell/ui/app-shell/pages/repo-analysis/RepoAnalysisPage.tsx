@@ -1,7 +1,7 @@
 import { PAGE } from "@core/app-shell/pages";
 import { groupEvaluatedDependencies } from "@core/evaluate/dependencyPresentation";
 import { countEnvironmentFiles } from "@core/workspace/environmentFiles";
-import { useApiRuntime } from "@shell/data/apiRuntime";
+import { useReeId } from "@shell/data/apiRuntime";
 import { useEvaluateReportQuery } from "@shell/data/evaluate/queries";
 import { Badge } from "@shell/ui/shared/components/Badge";
 import { Ic } from "@shell/ui/shared/components/Icon";
@@ -41,7 +41,7 @@ export function PageRepoAnalysis({
 }: StepPageProps) {
   const files = workspaceFiles;
   const { containerCount, nixCount } = countEnvironmentFiles(files || []);
-  const { reeId } = useApiRuntime();
+  const reeId = useReeId();
   // The report is a persisted artifact, so fetch it whenever we have an REE — this
   // keeps the page populated across reloads/navigation (runDone is transient).
   const reportQuery = useEvaluateReportQuery({ reeId, enabled: !!reeId });

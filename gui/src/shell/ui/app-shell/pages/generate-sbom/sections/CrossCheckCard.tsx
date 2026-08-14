@@ -1,7 +1,7 @@
 import { latestCrossCheckSummary } from "@core/evaluate/crossCheckRun";
 import type { SbomCrossCheckSummary } from "@core/evaluate/Threat";
 import { isTerminalReeRunStatus } from "@core/runs/ReeRunStatus";
-import { useApiRuntime } from "@shell/data/apiRuntime";
+import { useReeId } from "@shell/data/apiRuntime";
 import { useEvaluateReportQuery } from "@shell/data/evaluate/queries";
 import { useStartReeRunMutation } from "@shell/data/runs/mutations";
 import { useReeRunsQuery } from "@shell/data/runs/queries";
@@ -18,7 +18,7 @@ import styles from "../GenerateSbomPage.module.css";
  * table; this card owns the trigger and the aggregates.
  */
 export function CrossCheckCard({ sbomReady, color }: { sbomReady: boolean; color: string }) {
-  const { reeId } = useApiRuntime();
+  const reeId = useReeId();
   const reportQuery = useEvaluateReportQuery({ reeId, enabled: !!reeId });
   const runsQuery = useReeRunsQuery();
   const startRun = useStartReeRunMutation();

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useApiRuntime } from "../apiRuntime";
+import { useApiServices } from "../apiRuntime";
 import { queryKeys } from "../queryKeys";
 
 // UI components take template lists as props; surface the entry type here so
@@ -11,7 +11,7 @@ export type { ScriptTemplateEntry } from "@shell/infra/api/apiTypes";
 // (core reserved_templates) and static for a session, so cache indefinitely
 // and share across every script editor.
 export function useScriptTemplates() {
-  const { reeApi } = useApiRuntime();
+  const { reeApi } = useApiServices();
   return useQuery({
     queryKey: queryKeys.scriptTemplates(),
     queryFn: async () => reeApi.listScriptTemplates(),

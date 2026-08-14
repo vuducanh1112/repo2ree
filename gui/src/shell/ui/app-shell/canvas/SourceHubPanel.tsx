@@ -1,6 +1,6 @@
 import { PAGE } from "@core/app-shell/pages";
 import type { SourceUploadCommit } from "@core/ree/ReeTypes";
-import { useApiRuntime } from "@shell/data/apiRuntime";
+import { useReeId } from "@shell/data/apiRuntime";
 import { stageTone } from "@shell/ui/theme/appearance";
 import { useEffect, useState } from "react";
 import { Badge } from "../../shared/components/Badge";
@@ -36,7 +36,7 @@ export function SourceHubPanel({
   commands,
   onClose,
 }: SourceHubPanelProps) {
-  const { reeId } = useApiRuntime();
+  const reeId = useReeId();
   const { focusedField, locked, repoMode } = uiChrome;
   const { actionStates } = stepRuns;
   const { workspaceSourceState, sourceRepo } = workspaceRemote;

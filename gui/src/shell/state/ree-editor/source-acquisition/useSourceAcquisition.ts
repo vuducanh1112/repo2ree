@@ -1,7 +1,7 @@
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import type { FileTreeNode } from "@core/workspace/FileTree";
 import { appShellPorts } from "@shell/app/bootstrap/appShellPorts";
-import { useApiRuntime } from "@shell/data/apiRuntime";
+import { useReeId } from "@shell/data/apiRuntime";
 import { useReeClient } from "@shell/data/ree/client";
 import { useReeRunsClient } from "@shell/data/runs/client";
 import type { AppShellAction } from "@shell/ui/app-shell/state/types";
@@ -23,7 +23,7 @@ export function useSourceAcquisition({
   refreshWorkspaceFiles,
   showToast,
 }: UseSourceAcquisitionArgs) {
-  const { reeId } = useApiRuntime();
+  const reeId = useReeId();
   const queryClient = useQueryClient();
   const reeClient = useReeClient();
   const executionRunsClient = useReeRunsClient();

@@ -2,7 +2,7 @@ import { APP_ROUTE } from "@core/app-shell/pages";
 import { appendLine } from "@core/ree/logEntry";
 import type { LogEntry } from "@core/ree/ReeTypes";
 import { appShellPorts } from "@shell/app/bootstrap/appShellPorts";
-import { useApiRuntime } from "@shell/data/apiRuntime";
+import { useReeRuntime } from "@shell/data/apiRuntime";
 import { useReeClient } from "@shell/data/ree/client";
 import { useReeQuery } from "@shell/data/ree/queries";
 import { defaultImageRef, useWorkbenchImageCatalog } from "@shell/data/workbench/images";
@@ -24,7 +24,7 @@ interface BenchConsoleProps {
 // to surface live bench status and the one action that matters here:
 // reprovision, with a terminal-style readout.
 export function BenchConsole({ provisioned, reeName }: BenchConsoleProps) {
-  const { reeId, reeApi } = useApiRuntime();
+  const { reeId, reeApi } = useReeRuntime();
   const { data: reeProject } = useReeQuery();
   const reeClient = useReeClient();
   const { data: imageCatalog } = useWorkbenchImageCatalog();

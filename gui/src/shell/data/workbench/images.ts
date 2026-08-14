@@ -1,7 +1,7 @@
 import type { WorkbenchImageCatalog } from "@core/workbench/WorkbenchImage";
 import type { WorkbenchImageCatalog as WorkbenchImageCatalogWire } from "@shell/infra/api/apiTypes";
 import { useQuery } from "@tanstack/react-query";
-import { useApiRuntime } from "../apiRuntime";
+import { useApiServices } from "../apiRuntime";
 import { queryKeys } from "../queryKeys";
 
 function mapCatalog(wire: WorkbenchImageCatalogWire): WorkbenchImageCatalog {
@@ -12,7 +12,7 @@ function mapCatalog(wire: WorkbenchImageCatalogWire): WorkbenchImageCatalog {
 // so cache it indefinitely and share it across the provisioning selector and the
 // bench console.
 export function useWorkbenchImageCatalog() {
-  const { reeApi } = useApiRuntime();
+  const { reeApi } = useApiServices();
   return useQuery({
     queryKey: queryKeys.workbenchImages(),
     queryFn: async () => mapCatalog(await reeApi.listWorkbenchImages()),

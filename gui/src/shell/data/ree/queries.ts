@@ -1,14 +1,14 @@
 import type { FileTreeNode } from "@core/workspace/FileTree";
 import { type QueryClient, queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
-import { type ApiRuntimeValue, useApiRuntime } from "../apiRuntime";
+import { type ReeRuntimeValue, useReeRuntime } from "../apiRuntime";
 import { resolveReeId } from "../client";
 import { queryKeys } from "../queryKeys";
 import type { ReeClient } from "./client";
 import { useReeClient } from "./client";
 
 function createReeQueryOptions<TRee>(
-  runtime: ApiRuntimeValue,
+  runtime: ReeRuntimeValue,
   reeClient: ReeClient<FileTreeNode, TRee>,
   reeId?: string,
 ) {
@@ -21,7 +21,7 @@ function createReeQueryOptions<TRee>(
 
 async function fetchReeQuery<TRee>(
   queryClient: QueryClient,
-  runtime: ApiRuntimeValue,
+  runtime: ReeRuntimeValue,
   reeClient: ReeClient<FileTreeNode, TRee>,
   reeId?: string,
 ) {
@@ -29,7 +29,7 @@ async function fetchReeQuery<TRee>(
 }
 
 export function useReeQuery({ reeId, enabled = true }: { reeId?: string; enabled?: boolean } = {}) {
-  const runtime = useApiRuntime();
+  const runtime = useReeRuntime();
   const reeClient = useReeClient();
   return useQuery({
     ...createReeQueryOptions(runtime, reeClient, reeId),
@@ -38,7 +38,7 @@ export function useReeQuery({ reeId, enabled = true }: { reeId?: string; enabled
 }
 
 export function useRefreshReeQuery(reeId?: string) {
-  const runtime = useApiRuntime();
+  const runtime = useReeRuntime();
   const reeClient = useReeClient();
   const queryClient = useQueryClient();
 

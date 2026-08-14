@@ -4,7 +4,7 @@ import type { ReeRun, ReeRunLogChunk, ReeRunSummary } from "@core/runs/ReeRun";
 import type { ReeRunStatus } from "@core/runs/ReeRunStatus";
 import { isTerminalReeRunStatus } from "@core/runs/ReeRunStatus";
 import { type QueryClient, queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useApiRuntime } from "../apiRuntime";
+import { useReeRuntime } from "../apiRuntime";
 import { resolveReeId } from "../client";
 import { queryKeys } from "../queryKeys";
 import type { ReeRunsClient } from "./client";
@@ -110,15 +110,15 @@ const RUNS_ACTIVE_POLL_MS = 1500;
 const RUNS_IDLE_POLL_MS = 5000;
 
 export function useReeRunsQuery(reeId?: string) {
-  const runtime = useApiRuntime();
+  const runtime = useReeRuntime();
   const executionRunsClient = useReeRunsClient();
   const resolvedReeId = resolveReeId(runtime, reeId);
 
   return useQuery({
     queryKey: queryKeys.reeRuns(resolvedReeId),
     queryFn: (): Promise<ReeRunSummary[]> => executionRunsClient.listReeRuns(resolvedReeId),
-    // The sentinel id means "no REE yet" — polling through ensureReeId with it
-    // would lazily *create* one, which a passive listing must never do.
+    // The sentinel id means "no REE yet"; passive listings stay disabled until
+    // the provisioning flow navigates to a concrete REE scope.
     enabled: !!resolvedReeId && resolvedReeId !== DEFAULT_REE_ID,
     refetchInterval: (query) => {
       const anyActive = query.state.data?.some((run) => !isTerminalReeRunStatus(run.status));
@@ -128,7 +128,7 @@ export function useReeRunsQuery(reeId?: string) {
 }
 
 export function useReeRunQuery(reeId: string | undefined, runId: string | undefined) {
-  const runtime = useApiRuntime();
+  const runtime = useReeRuntime();
   const executionRunsClient = useReeRunsClient();
   const resolvedReeId = resolveReeId(runtime, reeId);
 
@@ -148,7 +148,7 @@ export function useReeRunQuery(reeId: string | undefined, runId: string | undefi
 }
 
 export function useReeRunLogsQuery(reeId: string | undefined, runId: string | undefined) {
-  const runtime = useApiRuntime();
+  const runtime = useReeRuntime();
   const executionRunsClient = useReeRunsClient();
   const queryClient = useQueryClient();
   const resolvedReeId = resolveReeId(runtime, reeId);

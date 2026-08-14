@@ -4,8 +4,8 @@ import type { ReeRunStatus } from "@core/runs/ReeRunStatus";
 import { useMemo } from "react";
 import { type RunStatus, type RunSummary, toSourceAcquireRequest } from "../../infra/api/apiTypes";
 import { mapRunLogsToLines } from "../../infra/api/ReeRunsApi";
-import { type ApiRuntimeValue, useApiRuntime } from "../apiRuntime";
-import { ensureReeId } from "../client";
+import { type ReeRuntimeValue, useReeRuntime } from "../apiRuntime";
+import { requireReeId } from "../client";
 
 export interface ReeRunsClient {
   /**
@@ -52,7 +52,7 @@ export interface ReeRunsClient {
   cancelReeRun(id: ReeId | string, runId: string): Promise<ReeRunStatus>;
 }
 
-function createReeRunsClient(runtime: ApiRuntimeValue): ReeRunsClient {
+function createReeRunsClient(runtime: ReeRuntimeValue): ReeRunsClient {
   return {
     async createWorkspace(name = "REE", image, agentId) {
       const run = await runtime.reeApi.createRee({
@@ -63,7 +63,7 @@ function createReeRunsClient(runtime: ApiRuntimeValue): ReeRunsClient {
       return { reeId: run.ree_id, run: mapRun(run) };
     },
     async loadReeBundle(id, bundle) {
-      const reeId = await ensureReeId(runtime, id);
+      const reeId = requireReeId(runtime, id);
       const archiveName = bundle.name || "ree.zip";
       const init = await runtime.reeApi.initBundleUpload(reeId, {
         file_name: archiveName,
@@ -74,7 +74,7 @@ function createReeRunsClient(runtime: ApiRuntimeValue): ReeRunsClient {
       return mapRun(await runtime.reeApi.loadReeBundle(reeId, init.upload_token, archiveName));
     },
     async startReeRun(id, scriptKey, params = {}) {
-      const reeId = await ensureReeId(runtime, id);
+      const reeId = requireReeId(runtime, id);
       let run: RunSummary;
       switch (scriptKey) {
         case "build":
@@ -138,21 +138,21 @@ function createReeRunsClient(runtime: ApiRuntimeValue): ReeRunsClient {
       return mapRun(run);
     },
     async startExperimentRun(id, experimentName) {
-      const reeId = await ensureReeId(runtime, id);
+      const reeId = requireReeId(runtime, id);
       const run = await runtime.runsApi.createExperimentRun(reeId, experimentName, {});
       return { reeId, run: mapRun(run) };
     },
     async listReeRuns(id) {
-      const reeId = await ensureReeId(runtime, id);
+      const reeId = requireReeId(runtime, id);
       const { runs } = await runtime.runsApi.listRuns(reeId);
       return runs.map((run) => ({ ...mapRun(run), operation: run.operation }));
     },
     async getReeRun(id, runId) {
-      const reeId = await ensureReeId(runtime, id);
+      const reeId = requireReeId(runtime, id);
       return mapRun(await runtime.runsApi.getRun(reeId, runId));
     },
     async getReeRunLogs(id, runId, cursor): Promise<ReeRunLogChunk> {
-      const reeId = await ensureReeId(runtime, id);
+      const reeId = requireReeId(runtime, id);
       const logs = await runtime.runsApi.listRunLogs(reeId, runId, {
         cursor,
         limit: 200,
@@ -164,7 +164,7 @@ function createReeRunsClient(runtime: ApiRuntimeValue): ReeRunsClient {
       };
     },
     async cancelReeRun(id, runId) {
-      const reeId = await ensureReeId(runtime, id);
+      const reeId = requireReeId(runtime, id);
       const response = await runtime.runsApi.cancelRun(reeId, runId);
       return mapStatus(response.status);
     },
@@ -182,7 +182,7 @@ export function nextRunLogCursor(
 }
 
 export function useReeRunsClient(): ReeRunsClient {
-  const runtime = useApiRuntime();
+  const runtime = useReeRuntime();
   return useMemo(() => createReeRunsClient(runtime), [runtime]);
 }
 

@@ -2,7 +2,7 @@ import type { ArchiveBinding, ReeIndexEntry } from "@core/ree-index/ReeIndexEntr
 import { sortReeIndexEntries } from "@core/ree-index/ReeIndexEntry";
 import type { ReeIndexEntryWire } from "@shell/infra/api/apiTypes";
 import { useQuery } from "@tanstack/react-query";
-import { useApiRuntime } from "../apiRuntime";
+import { useApiServices } from "../apiRuntime";
 import { queryKeys } from "../queryKeys";
 
 // Pure wire shape → domain map. The wire nests the descriptive fields under
@@ -39,7 +39,7 @@ function mapBinding(
 // this UI. So no polling — refetching on focus is enough to pick up a seal made
 // in another tab.
 export function useReeIndex(options: { depositedOnly?: boolean } = {}) {
-  const { reeApi } = useApiRuntime();
+  const { reeApi } = useApiServices();
   const depositedOnly = options.depositedOnly ?? false;
   return useQuery({
     queryKey: queryKeys.reeIndex(depositedOnly),

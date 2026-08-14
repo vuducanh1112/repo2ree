@@ -1,12 +1,12 @@
 import type { ReviewAttempt } from "@core/reviews/Review";
 import { useQuery } from "@tanstack/react-query";
-import { useApiRuntime } from "../apiRuntime";
+import { useReeRuntime } from "../apiRuntime";
 import { resolveReeId } from "../client";
 import { queryKeys } from "../queryKeys";
 import { mapReviewRecord } from "./mapping";
 
 export function useReviewsQuery() {
-  const runtime = useApiRuntime();
+  const runtime = useReeRuntime();
   const reeId = resolveReeId(runtime);
 
   return useQuery<ReviewAttempt[]>({

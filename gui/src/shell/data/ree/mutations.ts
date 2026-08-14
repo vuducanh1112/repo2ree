@@ -1,12 +1,12 @@
 import type { ReeIntentPatch } from "@core/ree/reePatch";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useApiRuntime } from "../apiRuntime";
+import { useReeRuntime } from "../apiRuntime";
 import { resolveReeId } from "../client";
 import { queryKeys } from "../queryKeys";
 import { useReeClient } from "./client";
 
 export function useUpdateReeIntentMutation(reeId?: string) {
-  const runtime = useApiRuntime();
+  const runtime = useReeRuntime();
   const reeClient = useReeClient();
   const queryClient = useQueryClient();
   const resolvedReeId = resolveReeId(runtime, reeId);

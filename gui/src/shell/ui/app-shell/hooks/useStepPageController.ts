@@ -5,7 +5,7 @@ import { missingReeStepRequirements } from "@core/ree-steps/stepPolicies";
 import type { ReeStepRunParams } from "@core/ree-steps/stepRunParams";
 import type { ReeStepParamValue } from "@core/ree-steps/stepTypes";
 import type { ReeRun } from "@core/runs/ReeRun";
-import { useApiRuntime } from "@shell/data/apiRuntime";
+import { useReeId } from "@shell/data/apiRuntime";
 import { useReeRunLogsQuery, useReeRunQuery } from "@shell/data/runs/queries";
 import { useCallback, useMemo } from "react";
 import type { useAppShell } from "./useAppShell";
@@ -25,7 +25,7 @@ export function useStepPageController({
   uiChrome,
   commands,
 }: UseStepPageControllerArgs) {
-  const { reeId } = useApiRuntime();
+  const reeId = useReeId();
   const { page } = uiChrome;
   const { badges, stepParams, actionStates, timestamps, activeRunIds } = stepRuns;
   const step = useMemo(() => REE_STEPS.find((step) => step.key === page), [page]);

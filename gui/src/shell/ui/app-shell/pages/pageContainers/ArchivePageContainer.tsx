@@ -1,6 +1,6 @@
 import { PAGE } from "@core/app-shell/pages";
 import type { ReeRunLogs } from "@core/ree/ReeTypes";
-import { useApiRuntime } from "@shell/data/apiRuntime";
+import { useReeId } from "@shell/data/apiRuntime";
 import { PageArchive as ArchivePage } from "../archive/ArchivePage";
 import { type AppShellPageContainerProps, ContentSection, useStepRunLogEntry } from "./shared";
 
@@ -11,7 +11,7 @@ export function ArchivePageContainer({
   ree,
   commands,
 }: AppShellPageContainerProps) {
-  const { reeId } = useApiRuntime();
+  const reeId = useReeId();
   const { page } = uiChrome;
   const { badges, actionStates } = stepRuns;
   const swhLog = useStepRunLogEntry({

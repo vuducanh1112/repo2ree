@@ -1,5 +1,5 @@
 import { PAGE } from "@core/app-shell/pages";
-import { useApiRuntime } from "@shell/data/apiRuntime";
+import { useReeId } from "@shell/data/apiRuntime";
 import { useStepPageController } from "../../hooks/useStepPageController";
 import {
   PageBuildRuntime,
@@ -55,7 +55,7 @@ export function ExperimentsPageContainer({
   commands,
   workspaceRemote,
 }: AppShellPageContainerProps) {
-  const { reeId } = useApiRuntime();
+  const reeId = useReeId();
   const { page, focusedField, locked } = uiChrome;
   const { reeSpec } = reeIntent;
   const { badges } = stepRuns;
@@ -88,7 +88,7 @@ export function HardwareBomPageContainer({
   uiChrome,
   commands,
 }: AppShellPageContainerProps) {
-  const { reeId } = useApiRuntime();
+  const reeId = useReeId();
   const { page, focusedField, locked } = uiChrome;
   const { badges, actionStates, timestamps } = stepRuns;
   const hbomLog = useStepRunLogEntry({
