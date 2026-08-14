@@ -1,9 +1,11 @@
 import type { Agent } from "@core/agent/Agent";
 import { connectedDurationMs, formatDuration } from "@core/agent/Agent";
 import { useAgents } from "@shell/data/agents/agents";
-import { useEffect, useState } from "react";
 import { Ic } from "../shared/components/Icon";
 import styles from "./AgentsView.module.css";
+import { agentLoadErrorMessage } from "./agentPresentation";
+import { NoAgentsState } from "./NoAgentsState";
+import { useAgentUptimeClock } from "./useAgentUptimeClock";
 
 interface AgentsViewProps {
   onBack: () => void;
@@ -12,13 +14,7 @@ interface AgentsViewProps {
 export function AgentsView({ onBack }: AgentsViewProps) {
   const { data: agents, isLoading, isError, error, refetch, isFetching } = useAgents();
 
-  // Tick a wall clock so the "connected for" column counts up live; the pure
-  // duration helpers read it. One interval for the whole table.
-  const [nowMs, setNowMs] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNowMs(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
+  const nowMs = useAgentUptimeClock(Boolean(agents?.length));
 
   return (
     <div className={styles.screen}>
@@ -30,12 +26,9 @@ export function AgentsView({ onBack }: AgentsViewProps) {
           {isLoading ? (
             <StatusRow text="Loading agents…" />
           ) : isError ? (
-            <StatusRow
-              text={`Failed to load agents: ${error instanceof Error ? error.message : "unknown error"}`}
-              tone="error"
-            />
+            <StatusRow text={agentLoadErrorMessage(error)} tone="error" />
           ) : !agents || agents.length === 0 ? (
-            <EmptyState />
+            <NoAgentsState description="Start one pointing at this control plane:" />
           ) : (
             agents.map((agent) => <AgentRow key={agent.id} agent={agent} nowMs={nowMs} />)
           )}
@@ -115,24 +108,8 @@ function AgentRow({ agent, nowMs }: { agent: Agent; nowMs: number }) {
 
 function StatusRow({ text, tone }: { text: string; tone?: "error" }) {
   return (
-    <div className={styles.statusRow} data-tone={tone}>
+    <div className={styles.statusRow} data-tone={tone} role={tone === "error" ? "alert" : "status"}>
       {text}
-    </div>
-  );
-}
-
-function EmptyState() {
-  return (
-    <div className={styles.empty}>
-      <div aria-hidden className={styles.emptyIcon}>
-        {Ic.cpu(24)}
-      </div>
-      <div className={styles.emptyTitle}>No agents connected</div>
-      <div className={styles.emptyHint}>
-        Start one pointing at this control plane:
-        <br />
-        <code>WORKBENCH_API_WS_URL=ws://…/agent/connect python -m repo2ree_agent</code>
-      </div>
     </div>
   );
 }

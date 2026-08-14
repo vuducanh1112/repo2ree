@@ -2,10 +2,13 @@ import type { Agent } from "@core/agent/Agent";
 import { connectedDurationMs, formatDuration } from "@core/agent/Agent";
 import { APP_ROUTE, LOAD_REE_PARAM } from "@core/app-shell/pages";
 import { useAgents } from "@shell/data/agents/agents";
-import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Ic } from "../shared/components/Icon";
+import { Notice } from "../shared/components/Notice";
+import { agentLoadErrorMessage } from "./agentPresentation";
 import styles from "./LabLocationView.module.css";
+import { NoAgentsState } from "./NoAgentsState";
+import { useAgentUptimeClock } from "./useAgentUptimeClock";
 
 interface LabLocationViewProps {
   onBack: () => void;
@@ -19,11 +22,7 @@ export function LabLocationView({ onBack }: LabLocationViewProps) {
   const [searchParams] = useSearchParams();
   const { data: agents, isLoading, isError, error } = useAgents();
 
-  const [nowMs, setNowMs] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNowMs(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
+  const nowMs = useAgentUptimeClock(Boolean(agents?.length));
 
   const chooseAgent = (agent: Agent) => {
     // "Load an existing REE" is chosen on the landing screen and asked for on
@@ -50,14 +49,16 @@ export function LabLocationView({ onBack }: LabLocationViewProps) {
         </div>
 
         {isLoading ? (
-          <Notice text="Loading agents…" />
+          <div role="status">
+            <Notice>Loading agents…</Notice>
+          </div>
         ) : isError ? (
-          <Notice
-            text={`Failed to load agents: ${error instanceof Error ? error.message : "unknown error"}`}
-            tone="error"
-          />
+          <Notice tone="danger">{agentLoadErrorMessage(error)}</Notice>
         ) : !agents || agents.length === 0 ? (
-          <EmptyState />
+          <NoAgentsState
+            standalone
+            description="A workbench needs an agent to host it. Start one pointing at this control plane:"
+          />
         ) : (
           <div className={styles.choices}>
             {agents.map((agent) => (
@@ -104,29 +105,5 @@ function AgentChoice({
         {Ic.chevR(16)}
       </span>
     </button>
-  );
-}
-
-function Notice({ text, tone }: { text: string; tone?: "error" }) {
-  return (
-    <div className={styles.notice} data-tone={tone}>
-      {text}
-    </div>
-  );
-}
-
-function EmptyState() {
-  return (
-    <div className={styles.empty}>
-      <div aria-hidden className={styles.emptyIcon}>
-        {Ic.cpu(24)}
-      </div>
-      <div className={styles.emptyTitle}>No agents connected</div>
-      <div className={styles.emptyHint}>
-        A workbench needs an agent to host it. Start one pointing at this control plane:
-        <br />
-        <code>WORKBENCH_API_WS_URL=ws://…/agent/connect python -m repo2ree_agent</code>
-      </div>
-    </div>
   );
 }

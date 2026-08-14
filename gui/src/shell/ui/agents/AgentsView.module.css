@@ -154,36 +154,6 @@
   color: var(--status-fault);
 }
 
-.empty {
-  padding: var(--space-8) var(--space-4);
-  text-align: center;
-}
-
-.emptyIcon {
-  display: flex;
-  justify-content: center;
-  margin-bottom: var(--space-2-5);
-  color: var(--chrome-text-muted);
-}
-
-.emptyTitle {
-  margin-bottom: var(--space-1);
-  font-size: var(--text-body-large);
-  font-weight: var(--weight-medium);
-  color: var(--chrome-text-mid);
-}
-
-.emptyHint {
-  font-size: var(--text-label);
-  line-height: var(--leading-relaxed);
-  color: var(--chrome-text-muted);
-}
-
-.emptyHint code {
-  font-family: var(--font-mono);
-  color: var(--chrome-text-mid);
-}
-
 @keyframes agents-fade-up {
   from {
     opacity: 0;
