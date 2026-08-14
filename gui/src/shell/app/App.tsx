@@ -1,10 +1,15 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { ApiClientProvider } from "../data/apiRuntime";
+import type { UiErrorReporter } from "../ui/errors/ErrorBoundary";
 import { AppBootstrap } from "./bootstrap/AppBootstrap";
 import { createAppQueryClient } from "./query/queryClient";
 
-export default function App() {
+interface AppProps {
+  reportError: UiErrorReporter;
+}
+
+export default function App({ reportError }: AppProps) {
   const queryClient = useMemo(() => createAppQueryClient(), []);
   const baseUrl = useMemo(() => {
     const env =
@@ -15,7 +20,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ApiClientProvider baseUrl={baseUrl}>
-        <AppBootstrap />
+        <AppBootstrap reportError={reportError} />
       </ApiClientProvider>
     </QueryClientProvider>
   );

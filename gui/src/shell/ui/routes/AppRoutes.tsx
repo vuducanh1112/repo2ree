@@ -4,21 +4,37 @@ import { ApiClientProvider } from "../../data/apiRuntime";
 import { AgentsView } from "../agents/AgentsView";
 import { LabLocationView } from "../agents/LabLocationView";
 import { AppShellView } from "../app-shell/AppShellView";
+import { ErrorBoundary, type UiErrorReporter } from "../errors/ErrorBoundary";
+import { WorkspaceErrorFallback } from "../errors/ErrorFallback";
 import { LandingView } from "../landing/LandingView";
 import { ReeIndexView } from "../ree-index/ReeIndexView";
 
-function WorkspaceRoute({ onBack }: { onBack: () => void }) {
+function WorkspaceRoute({
+  onBack,
+  reportError,
+}: {
+  onBack: () => void;
+  reportError: UiErrorReporter;
+}) {
   const [searchParams] = useSearchParams();
   const reeId = searchParams.get("reeId") || undefined;
+  const workspaceKey = reeId ?? "new";
 
   return (
-    <ApiClientProvider reeId={reeId} key={reeId ?? "new"}>
-      <AppShellView onBack={onBack} />
-    </ApiClientProvider>
+    <ErrorBoundary
+      scope="workspace"
+      reportError={reportError}
+      resetKey={workspaceKey}
+      fallback={({ retry }) => <WorkspaceErrorFallback onRetry={retry} onBack={onBack} />}
+    >
+      <ApiClientProvider reeId={reeId} key={workspaceKey}>
+        <AppShellView onBack={onBack} />
+      </ApiClientProvider>
+    </ErrorBoundary>
   );
 }
 
-export function AppRoutes() {
+export function AppRoutes({ reportError }: { reportError: UiErrorReporter }) {
   const navigate = useNavigate();
 
   return (
@@ -45,7 +61,9 @@ export function AppRoutes() {
       />
       <Route
         path={APP_ROUTE.WORKSPACE}
-        element={<WorkspaceRoute onBack={() => navigate(APP_ROUTE.ROOT)} />}
+        element={
+          <WorkspaceRoute onBack={() => navigate(APP_ROUTE.ROOT)} reportError={reportError} />
+        }
       />
       <Route
         path={APP_ROUTE.AGENTS}
