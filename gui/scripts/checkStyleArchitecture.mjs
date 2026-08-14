@@ -70,6 +70,8 @@ const RULES = {
   "legacy-theme-import": "imports a legacy theme module — use CSS Modules and semantic roles",
   "style-object-literal": "literal style={{ ... }} — move the declarations into a CSS Module",
   "style-not-css-vars": "style prop not produced by cssVars() — pass calculated custom properties",
+  "unowned-button":
+    "intrinsic button has no visual owner — use Button or add an explicit CSS Module class",
   "alpha-interpolation": "alpha appended to a token — declare the translucent value in tokens.css",
   "theme-style-object": "theme module exports a style object — a CSS Module owns declarations",
   "core-visual-field": "visual field in core — expose the domain identity, not its presentation",
@@ -261,6 +263,24 @@ function checkTypeScript(path) {
           ts.isIdentifier(call.expression) &&
           call.expression.text === "cssVars";
         if (!producedByCssVars) at(node, "style-not-css-vars", call.getText(source).slice(0, 60));
+      }
+    }
+
+    if (
+      (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) &&
+      ts.isIdentifier(node.tagName) &&
+      node.tagName.text === "button"
+    ) {
+      const hasExplicitClassName = node.attributes.properties.some(
+        (attribute) =>
+          ts.isJsxAttribute(attribute) && attribute.name.getText(source) === "className",
+      );
+      if (!hasExplicitClassName) {
+        at(
+          node,
+          "unowned-button",
+          "use the shared Button primitive or give this specialized control a className",
+        );
       }
     }
 

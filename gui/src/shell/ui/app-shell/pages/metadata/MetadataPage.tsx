@@ -277,9 +277,9 @@ export function PageMetadataEntry({
                   placeholder="Add custom keyword"
                   density="compact"
                 />
-                <button type="button" onClick={() => addKeyword(pendingKeyword)}>
+                <Button size="small" onClick={() => addKeyword(pendingKeyword)}>
                   Add keyword
-                </button>
+                </Button>
               </div>
               {availableSuggestions.length > 0 && (
                 <div className={styles.suggestions}>
@@ -429,8 +429,8 @@ export function PageMetadataEntry({
                         >
                           {Ic.x(14)}
                         </Button>
-                        <button
-                          type="button"
+                        <Button
+                          size="tiny"
                           disabled={locked || correspondingAuthor === contributor.identifier}
                           onClick={() =>
                             onReeChange((current) =>
@@ -451,7 +451,7 @@ export function PageMetadataEntry({
                           {correspondingAuthor === contributor.identifier
                             ? Ic.check(14)
                             : Ic.star(14)}
-                        </button>
+                        </Button>
                       </>
                     )}
                   </div>
@@ -520,9 +520,9 @@ export function PageMetadataEntry({
           {contributorAddError && <div className={styles.addError}>{contributorAddError}</div>}
           {!locked && (
             <div className={styles.addAction}>
-              <button type="button" onClick={addContributor}>
+              <Button size="small" onClick={addContributor}>
                 Add contributor entity
-              </button>
+              </Button>
             </div>
           )}
           {contributors.length === 0 && <div className={styles.helper}>No contributors yet.</div>}

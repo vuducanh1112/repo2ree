@@ -184,6 +184,26 @@ describe("PageMetadataEntry", () => {
     });
   });
 
+  it("uses the shared button primitive for each generic metadata action", async () => {
+    renderPage();
+
+    for (const name of ["Add keyword", "Add contributor entity"]) {
+      const action = screen.getByRole("button", { name });
+      expect(action).toHaveAttribute("data-variant", "secondary");
+      expect(action).toHaveAttribute("data-size", "small");
+    }
+
+    await userEvent.type(screen.getByPlaceholderText("Identifier"), "0000-0002-1825-0097");
+    await userEvent.type(screen.getByPlaceholderText("Name *"), "Josiah Carberry");
+    await userEvent.click(screen.getByRole("button", { name: "Add contributor entity" }));
+
+    const corresponding = screen.getByRole("button", {
+      name: "Josiah Carberry is corresponding author",
+    });
+    expect(corresponding).toHaveAttribute("data-variant", "secondary");
+    expect(corresponding).toHaveAttribute("data-size", "tiny");
+  });
+
   describe("when locked", () => {
     const spec = createEmptyReeSpec();
     spec.name = "hello-world";
