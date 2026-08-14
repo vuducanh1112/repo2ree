@@ -29,12 +29,12 @@
 }
 
 .heading[data-running] {
-  color: var(--palette-sky-500);
+  color: var(--ink-accent);
 }
 
 .spinner {
   display: flex;
-  color: var(--palette-sky-500);
+  color: var(--ink-accent);
 }
 
 .hint {

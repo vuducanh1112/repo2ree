@@ -24,27 +24,27 @@
 }
 
 .badge[data-tone="success"] {
-  --badge-line: var(--badge-success-ink);
-  --badge-wash: var(--badge-success-bg);
-  --badge-edge: var(--badge-success-edge);
+  --badge-line: var(--feedback-success-ink);
+  --badge-wash: var(--feedback-success-bg);
+  --badge-edge: var(--feedback-success-edge);
 }
 
 .badge[data-tone="warning"] {
-  --badge-line: var(--badge-warning-ink);
-  --badge-wash: var(--badge-warning-bg);
-  --badge-edge: var(--badge-warning-edge);
+  --badge-line: var(--feedback-warning-ink);
+  --badge-wash: var(--feedback-warning-bg);
+  --badge-edge: var(--feedback-warning-edge);
 }
 
 .badge[data-tone="info"] {
-  --badge-line: var(--badge-info-ink);
-  --badge-wash: var(--badge-info-bg);
-  --badge-edge: var(--badge-info-edge);
+  --badge-line: var(--feedback-info-ink);
+  --badge-wash: var(--feedback-info-bg);
+  --badge-edge: var(--feedback-info-edge);
 }
 
 .badge[data-tone="neutral"] {
-  --badge-line: var(--badge-neutral-ink);
-  --badge-wash: var(--badge-neutral-bg);
-  --badge-edge: var(--badge-neutral-edge);
+  --badge-line: var(--feedback-neutral-ink);
+  --badge-wash: var(--feedback-neutral-bg);
+  --badge-edge: var(--feedback-neutral-edge);
 }
 
 .icon {

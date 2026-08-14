@@ -10,9 +10,9 @@
 .field {
   padding: 2px 8px;
   border-radius: var(--space-1);
-  border: 1px solid var(--notice-danger-edge);
-  background: var(--palette-film-white-soft);
-  color: var(--notice-danger-ink);
+  border: 1px solid var(--feedback-danger-quiet-edge);
+  background: var(--surface-glass-soft);
+  color: var(--feedback-danger-quiet-ink);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
 }

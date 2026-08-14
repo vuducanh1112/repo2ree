@@ -30,12 +30,12 @@
 }
 
 .required {
-  color: var(--palette-rose-400);
+  color: var(--feedback-danger-line);
 }
 
 .labelInfo {
   display: flex;
-  color: var(--palette-sky-500);
+  color: var(--ink-accent);
 }
 
 .helper {
@@ -70,9 +70,9 @@
   max-width: 100%;
   padding: 5px var(--space-2);
   border-radius: 6px;
-  border: 1px solid var(--palette-edge-indigo);
-  background: var(--palette-film-chip);
-  color: var(--palette-blue-700);
+  border: 1px solid var(--edge-suggestion);
+  background: var(--surface-accent);
+  color: var(--feedback-info-ink);
   font-family: var(--font-sans);
   font-size: var(--text-md);
 }
@@ -98,8 +98,8 @@
   height: 22px;
   padding: 0;
   border-radius: var(--radius-round);
-  border: 1px solid var(--palette-edge-slate-firm);
-  background: var(--palette-film-white);
+  border: 1px solid var(--edge-neutral-firm);
+  background: var(--surface-glass);
   color: var(--page-subtitle-ink);
   cursor: pointer;
 }
@@ -137,9 +137,9 @@
 .suggestion {
   padding: 5px 10px;
   border-radius: var(--radius-round);
-  border: 1px solid var(--palette-edge-indigo-soft);
-  background: var(--palette-film-suggestion);
-  color: var(--palette-indigo-800);
+  border: 1px solid var(--edge-suggestion-soft);
+  background: var(--surface-suggestion);
+  color: var(--ink-suggestion);
   font-family: var(--font-sans);
   font-size: var(--text-md);
   cursor: pointer;
@@ -156,8 +156,8 @@
 .contributorCard {
   padding: var(--space-2) 10px;
   border-radius: var(--radius-control);
-  border: 1px solid var(--palette-edge-slate-row);
-  background: var(--palette-film-row);
+  border: 1px solid var(--edge-neutral-row);
+  background: var(--surface-row);
 }
 
 .contributorHeader {
@@ -202,7 +202,7 @@
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   line-height: 1.4;
-  color: var(--notice-danger-ink);
+  color: var(--feedback-danger-quiet-ink);
 }
 
 .addAction {

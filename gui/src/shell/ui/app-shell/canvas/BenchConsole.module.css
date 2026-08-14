@@ -48,8 +48,8 @@
   overflow: auto;
   padding: 9px 11px;
   border-radius: 9px;
-  border: 1px solid var(--palette-terminal-edge);
-  background: var(--palette-terminal-bg);
+  border: 1px solid var(--terminal-edge);
+  background: var(--terminal-surface);
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   line-height: 1.6;
@@ -58,31 +58,31 @@
 .line {
   white-space: pre-wrap;
   word-break: break-word;
-  color: var(--line-ink, var(--palette-slate-100));
+  color: var(--line-ink, var(--terminal-ink));
 }
 
 .line[data-kind="info"] {
-  --line-ink: var(--palette-blue-300);
+  --line-ink: var(--terminal-info);
 }
 
 .line[data-kind="ok"] {
-  --line-ink: var(--palette-mint-300);
+  --line-ink: var(--terminal-success);
 }
 
 .line[data-kind="warn"] {
-  --line-ink: var(--palette-amber-300);
+  --line-ink: var(--terminal-warning);
 }
 
 .line[data-kind="err"] {
-  --line-ink: var(--palette-red-300);
+  --line-ink: var(--terminal-danger);
 }
 
 .gutter {
-  color: var(--palette-slate-600);
+  color: var(--ink-muted);
 }
 
 .cursor {
-  color: var(--palette-mint-300);
+  color: var(--terminal-success);
 }
 
 /* --- Actions -------------------------------------------------------------- */
@@ -111,9 +111,9 @@
 /* Ending the session is not destructive enough to be danger, but it is not
  * routine either — ochre says "this one you do not take back". */
 .action[data-kind="release"] {
-  border-color: var(--palette-edge-ochre);
-  background: var(--palette-film-ochre);
-  color: var(--palette-amber-800);
+  border-color: var(--feedback-warning-edge-strong);
+  background: var(--feedback-warning-bg-strong);
+  color: var(--feedback-warning-ink-strong);
 }
 
 .action:focus-visible {

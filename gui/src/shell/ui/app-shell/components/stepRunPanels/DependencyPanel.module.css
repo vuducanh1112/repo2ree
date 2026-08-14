@@ -59,7 +59,7 @@
   overflow: hidden;
   border-radius: 10px;
   border: 1.5px solid color-mix(in srgb, var(--eco-line) 21%, transparent);
-  background: var(--palette-film-white);
+  background: var(--surface-glass);
 }
 
 .groupHead {
@@ -173,7 +173,7 @@
 
 /* Zebra striping, so a wide row stays readable across its three columns. */
 .packageRow[data-odd] {
-  background: var(--palette-grey-025);
+  background: var(--surface-plain);
 }
 
 .packageName {

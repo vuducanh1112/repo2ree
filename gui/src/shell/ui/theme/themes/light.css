@@ -110,7 +110,6 @@
   --shadow-selected-option: 0 8px 20px rgb(14 165 233 / 12%);
   --shadow-glass-panel: 0 24px 70px rgb(15 23 42 / 12%), inset 0 1px 0 rgb(255 255 255 / 88%);
   --shadow-page-frame: inset 0 0 80px rgb(14 165 233 / 7%);
-  --shadow-lab-bar: 0 8px 30px rgb(56 189 248 / 35%);
   --shadow-window: 0 24px 60px rgb(13 17 23 / 20%);
   --shadow-window-focus: 0 24px 60px rgb(13 17 23 / 22%);
   --shadow-window-dock: 0 18px 44px rgb(13 17 23 / 16%);
@@ -120,9 +119,6 @@
   --shadow-node: 0 4px 16px rgb(13 17 23 / 7%);
   --shadow-node-wired: 0 6px 20px rgb(79 70 229 / 14%);
   --shadow-node-active: 0 10px 28px rgb(37 99 235 / 22%);
-  --shadow-hub-vignette: inset 0 0 220px rgb(30 58 138 / 10%);
-  --glow-explode-pod: drop-shadow(0 0 26px rgb(99 102 241 / 85%))
-    drop-shadow(0 0 60px rgb(79 70 229 / 55%)) brightness(1.08);
   --shadow-console: 0 18px 48px rgb(13 17 23 / 12%);
   --shadow-toast: 0 2px 8px rgb(0 0 0 / 10%);
   --shadow-app-header: 0 1px 0 rgb(0 0 0 / 6%), 0 2px 8px rgb(0 0 0 / 4%);
@@ -138,85 +134,19 @@
   --shadow-card-hover: 0 14px 30px rgb(14 165 233 / 16%);
   --shadow-progress-glow: 0 0 16px rgb(14 165 233 / 28%);
   --shadow-bench-tray: inset 0 0 0 1px rgb(255 255 255 / 50%), inset 0 18px 60px rgb(13 17 23 / 5%);
-  --shadow-lab-bench: inset 0 1px 0 rgb(255 255 255 / 70%);
   --shadow-subpanel: 0 1px 2px rgb(15 23 42 / 5%), inset 0 1px 0 rgb(255 255 255 / 80%);
   --shadow-field-focus: 0 0 0 3px rgb(14 165 233 / 15%);
   --shadow-field-inset: inset 0 1px 0 var(--palette-film-white-strong);
 
-  /* --- Palette: pod materials -------------------------------------------
-   * The machined-metal greys the specimen pod is drawn from, and the sky
-   * ramp its inner shell glows with. Only the pod widget uses them.
-   */
-  --palette-pod-face: #e8edf4;
-  --palette-pod-raised: #f2f5f9;
-  --palette-pod-shadow: #c8d0dc;
-  --palette-pod-deep: #a8b4c4;
-  --palette-pod-bolt: #cdd5e0;
-  --palette-pod-bolt-core: #9aa5b4;
-  --palette-pod-weld: #b8c4d4;
-  --palette-sky-050: #f0f9ff;
-  --palette-sky-100: #bae6fd;
-  --palette-sky-200: #7dd3fc;
-  --palette-sky-400: #38bdf8;
-  --palette-navy-950: #0c1a2e;
-  --palette-core-violet: #1a0838;
-  --palette-core-indigo: #08071a;
-  --palette-core-black: #030612;
+  /* The embedded terminal is deliberately dark inside the light interface. */
   --palette-terminal-bg: #0d1117;
   --palette-terminal-edge: #1f2733;
-  --palette-mint-300: #6ee7b7;
 
-  /* --- Palette: lab atmosphere -----------------------------------------
-   * The decorative light behind the pod. Purely atmospheric, so these live as
-   * whole gradients rather than as hues something else might reuse.
-   */
-  --gradient-hub:
-    radial-gradient(120% 75% at 50% -8%, #ffffff 0%, rgb(255 255 255 / 0%) 58%),
-    radial-gradient(58% 48% at 18% 22%, rgb(56 189 248 / 12%) 0%, rgb(56 189 248 / 0%) 70%),
-    radial-gradient(54% 44% at 83% 16%, rgb(129 140 248 / 12%) 0%, rgb(129 140 248 / 0%) 72%),
-    radial-gradient(75% 60% at 50% 118%, rgb(13 148 136 / 10%) 0%, rgb(13 148 136 / 0%) 72%),
-    linear-gradient(rgb(221 227 236 / 80%) 1px, transparent 1px) 0 0 / 130px 130px,
-    linear-gradient(90deg, rgb(221 227 236 / 80%) 1px, transparent 1px) 0 0 / 130px 130px,
-    linear-gradient(rgb(221 227 236 / 33%) 1px, transparent 1px) 0 0 / 26px 26px,
-    linear-gradient(90deg, rgb(221 227 236 / 33%) 1px, transparent 1px) 0 0 / 26px 26px,
-    radial-gradient(circle at 50% 44%, #f6fafe 0%, #f4f6f9 72%);
+  /* The application workspace is structural chrome, not illustration. */
   --gradient-workspace: linear-gradient(135deg, #f0f4ff 0%, #f8f9ff 35%, #fff5f9 65%, #f4f8ff 100%);
   --gradient-workspace-blob-a: radial-gradient(ellipse, rgb(199 217 255 / 53%) 0%, transparent 70%);
   --gradient-workspace-blob-b: radial-gradient(ellipse, rgb(224 208 255 / 40%) 0%, transparent 70%);
   --gradient-workspace-blob-c: radial-gradient(ellipse, rgb(255 214 232 / 33%) 0%, transparent 70%);
-  --gradient-lab-pool-sky: radial-gradient(
-    circle,
-    rgb(56 189 248 / 20%) 0%,
-    rgb(56 189 248 / 0%) 70%
-  );
-  --gradient-lab-pool-indigo: radial-gradient(
-    circle,
-    rgb(129 140 248 / 18%) 0%,
-    rgb(129 140 248 / 0%) 70%
-  );
-  --gradient-lab-bar: linear-gradient(180deg, rgb(255 255 255 / 90%), rgb(186 230 253 / 50%));
-  --gradient-lab-beam: linear-gradient(
-    180deg,
-    rgb(186 230 253 / 28%) 0%,
-    rgb(186 230 253 / 0%) 78%
-  );
-  --gradient-lab-scan: linear-gradient(
-    180deg,
-    rgb(255 255 255 / 0%) 0%,
-    rgb(224 242 254 / 50%) 50%,
-    rgb(255 255 255 / 0%) 100%
-  );
-  --gradient-cradle-disc: radial-gradient(
-    ellipse at center,
-    rgb(100 116 139 / 16%) 0%,
-    transparent 70%
-  );
-  --gradient-lab-bench: linear-gradient(
-    180deg,
-    rgb(255 255 255 / 0%) 0%,
-    rgb(241 245 249 / 55%) 45%,
-    rgb(226 232 240 / 85%) 100%
-  );
 
   /* --- Gradient ---------------------------------------------------------- */
   --gradient-progress: linear-gradient(90deg, var(--palette-cyan-600), var(--palette-indigo-600));
@@ -234,6 +164,116 @@
   --gradient-frame-grid:
     linear-gradient(rgb(14 165 233 / 6%) 1px, transparent 1px),
     linear-gradient(90deg, rgb(14 165 233 / 6%) 1px, transparent 1px);
+
+  /* --- Glass foundation -------------------------------------------------
+   * Components consume these roles. The palette, film, edge, gradient, and
+   * shadow names above are private construction details of this light theme.
+   */
+  --ink-on-accent: var(--palette-white);
+  --ink-default: var(--palette-slate-950);
+  --ink-muted-strong: var(--palette-slate-700);
+  --ink-muted: var(--palette-slate-600);
+  --ink-subtle: var(--palette-slate-500);
+  --ink-on-dark-muted: var(--palette-slate-200);
+  --ink-on-dark-subtle: var(--palette-slate-400);
+  --ink-accent: var(--palette-sky-500);
+  --ink-accent-strong: var(--palette-sky-700);
+  --ink-accent-deep: var(--palette-sky-900);
+  --ink-info: var(--palette-cyan-600);
+  --ink-accent-secondary: var(--palette-indigo-600);
+  --ink-accent-violet: var(--palette-violet-600);
+  --ink-suggestion: var(--palette-indigo-800);
+  --ink-code-line-number: var(--palette-slate-400-soft);
+  --ink-code-comment: var(--palette-slate-400);
+
+  --surface-plain: var(--palette-grey-025);
+  --surface-glass-faint: var(--palette-film-white-45);
+  --surface-glass-soft: var(--palette-film-white-soft);
+  --surface-glass-muted: var(--palette-film-white-62);
+  --surface-glass: var(--palette-film-white);
+  --surface-glass-strong: var(--palette-film-white-85);
+  --surface-glass-solid: var(--palette-film-white-strong);
+  --surface-neutral-faint: var(--palette-film-slate-55);
+  --surface-neutral-soft: var(--palette-film-slate-70);
+  --surface-neutral: var(--palette-film-slate-78);
+  --surface-neutral-track: var(--palette-film-slate-track);
+  --surface-row: var(--palette-film-row);
+  --surface-suggestion: var(--palette-film-suggestion);
+  --surface-viewer: var(--palette-film-viewer);
+  --surface-callout: var(--palette-film-callout);
+  --surface-inset: var(--palette-film-inset);
+  --surface-sealed: var(--palette-film-sealed);
+  --surface-hud: var(--palette-film-hud);
+  --surface-accent-faint: var(--palette-film-accent);
+  --surface-accent-soft: var(--palette-film-accent-strong);
+  --surface-accent-muted: var(--palette-film-indigo);
+  --surface-accent: var(--palette-film-chip);
+  --surface-accent-strong: var(--palette-film-mist-92);
+  --surface-accent-hover: var(--palette-film-hover);
+  --surface-accent-selected: var(--palette-film-selected);
+  --surface-accent-translucent: var(--palette-film-indigo-88);
+  --surface-control-secondary: var(--palette-film-mist);
+  --surface-info-soft: var(--palette-film-sky-85);
+  --surface-info: var(--palette-film-sky-88);
+
+  --edge-neutral-faint: var(--palette-edge-slate-faint);
+  --edge-neutral-soft: var(--palette-edge-slate-soft);
+  --edge-neutral-row: var(--palette-edge-slate-row);
+  --edge-neutral-mid: var(--palette-edge-slate-mid);
+  --edge-neutral: var(--palette-edge-slate);
+  --edge-neutral-firm: var(--palette-edge-slate-firm);
+  --edge-neutral-strong: var(--palette-edge-slate-hard);
+  --edge-neutral-hard: var(--palette-edge-slate-half);
+  --edge-accent-faint: var(--palette-edge-sky-faint);
+  --edge-accent-soft: var(--palette-edge-sky-soft);
+  --edge-accent: var(--palette-edge-sky);
+  --edge-accent-strong: var(--palette-edge-sky-strong);
+  --edge-accent-firm: var(--palette-edge-sky-firm);
+  --edge-accent-half: var(--palette-edge-sky-half);
+  --edge-accent-pale-faint: var(--palette-edge-sky-pale-faint);
+  --edge-accent-pale: var(--palette-edge-sky-pale);
+  --edge-accent-pale-soft: var(--palette-edge-sky-pale-soft);
+  --edge-accent-pale-half: var(--palette-edge-sky-pale-half);
+  --edge-accent-pale-strong: var(--palette-edge-sky-pale-strong);
+  --edge-suggestion: var(--palette-edge-indigo);
+  --edge-suggestion-soft: var(--palette-edge-indigo-soft);
+
+  --elevation-low: var(--shadow-panel);
+  --elevation-card-low: var(--shadow-landing-card);
+  --elevation-choice: var(--shadow-choice-card);
+  --elevation-card: var(--shadow-card);
+  --elevation-card-hover: var(--shadow-card-hover);
+  --elevation-inset-highlight: var(--shadow-inset-highlight);
+  --elevation-active: var(--shadow-pill-active);
+  --elevation-controls: var(--shadow-canvas-controls);
+  --elevation-window-focus: var(--shadow-window-focus);
+  --elevation-window-dock: var(--shadow-window-dock);
+  --elevation-hud-open: var(--shadow-hud-open);
+  --elevation-hud-collapsed: var(--shadow-hud-collapsed);
+  --elevation-node: var(--shadow-node);
+  --elevation-node-wired: var(--shadow-node-wired);
+  --elevation-node-active: var(--shadow-node-active);
+  --elevation-console: var(--shadow-console);
+  --elevation-bench: var(--shadow-bench-tray);
+  --elevation-seal: var(--shadow-seal-panel);
+  --elevation-sealed: var(--shadow-sealed-card);
+  --elevation-progress-glow: var(--shadow-progress-glow);
+  --elevation-field-focus: var(--shadow-field-focus);
+  --elevation-field-inset: var(--shadow-field-inset);
+  --effect-dot-glow: var(--shadow-dot-glow);
+  --progress-fill: var(--gradient-progress);
+
+  --track-neutral: var(--palette-track-slate);
+  --track-neutral-strong: var(--palette-track-slate-soft);
+  --terminal-surface: var(--palette-terminal-bg);
+  --terminal-edge: var(--palette-terminal-edge);
+  --terminal-ink: var(--palette-slate-100);
+  --terminal-gutter: var(--palette-slate-600);
+  --terminal-cursor: var(--palette-mint-300);
+  --terminal-info: var(--palette-blue-300);
+  --terminal-success: var(--palette-mint-300);
+  --terminal-warning: var(--palette-amber-300);
+  --terminal-danger: var(--palette-red-300);
 
   /* --- Shared primitives -------------------------------------------------
    * The roles `shared/components/*` and the page scaffold consume. They
@@ -329,7 +369,4 @@
   --window-bar-bg: var(--chrome-surface-alt);
   --window-glass-bg: var(--palette-film-window);
   --window-scrim: var(--palette-film-scrim);
-
-  /* Shared icon artwork. */
-  --icon-folder: var(--palette-amber-500);
 }

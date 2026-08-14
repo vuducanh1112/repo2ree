@@ -75,7 +75,7 @@
   border-radius: 14px;
   border: 1px solid var(--chrome-border);
   background: var(--chrome-surface);
-  box-shadow: var(--shadow-landing-card);
+  box-shadow: var(--elevation-card-low);
 }
 
 .row {

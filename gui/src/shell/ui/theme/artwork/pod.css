@@ -1,0 +1,23 @@
+:root {
+  /* Machined shell and energised core of the specimen pod. */
+  --art-pod-face: #e8edf4;
+  --art-pod-raised: #f2f5f9;
+  --art-pod-shadow: #c8d0dc;
+  --art-pod-deep: #a8b4c4;
+  --art-pod-bolt: #cdd5e0;
+  --art-pod-bolt-core: #9aa5b4;
+  --art-pod-weld: #b8c4d4;
+  --art-pod-glow-near: var(--palette-sky-100);
+  --art-pod-glow-mid: var(--palette-sky-400);
+  --art-pod-glow-far: var(--palette-sky-700);
+  --art-pod-glow-deep: #0c1a2e;
+  --art-pod-rim: var(--palette-sky-200);
+  --art-pod-node: var(--palette-white);
+  --art-pod-gloss: var(--palette-white);
+  --art-pod-void: var(--palette-grey-950);
+  --art-pod-core-near: #1a0838;
+  --art-pod-core-mid: #08071a;
+  --art-pod-core-far: #030612;
+  --art-pod-explode-glow: drop-shadow(0 0 26px rgb(99 102 241 / 85%))
+    drop-shadow(0 0 60px rgb(79 70 229 / 55%)) brightness(1.08);
+}

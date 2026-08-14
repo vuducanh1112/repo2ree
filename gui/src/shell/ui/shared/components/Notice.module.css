@@ -14,18 +14,18 @@
 }
 
 .notice[data-tone="info"] {
-  --notice-edge: var(--notice-info-edge);
-  --notice-bg: var(--notice-info-bg);
+  --notice-edge: var(--feedback-info-quiet-edge);
+  --notice-bg: var(--feedback-info-quiet-bg);
 }
 
 .notice[data-tone="success"] {
-  --notice-edge: var(--notice-success-edge);
-  --notice-bg: var(--notice-success-bg);
+  --notice-edge: var(--feedback-success-quiet-edge);
+  --notice-bg: var(--feedback-success-quiet-bg);
 }
 
 .notice[data-tone="danger"] {
-  --notice-edge: var(--notice-danger-edge);
-  --notice-bg: var(--notice-danger-bg);
+  --notice-edge: var(--feedback-danger-quiet-edge);
+  --notice-bg: var(--feedback-danger-quiet-bg);
 }
 
 /* Stacked: a heading, then detail, then whatever action resolves it. */
@@ -44,7 +44,7 @@
 }
 
 .notice[data-tone="danger"] .title {
-  --notice-ink: var(--notice-danger-ink);
+  --notice-ink: var(--feedback-danger-quiet-ink);
 }
 
 .icon {

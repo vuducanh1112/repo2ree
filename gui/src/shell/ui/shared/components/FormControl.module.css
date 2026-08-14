@@ -35,7 +35,7 @@
   color: var(--field-ink);
   font-family: var(--font-sans);
   font-size: var(--text-lg);
-  box-shadow: var(--shadow-field-inset);
+  box-shadow: var(--elevation-field-inset);
   outline: none;
   transition:
     border-color var(--duration-normal) var(--ease-standard),
@@ -45,7 +45,7 @@
 
 .control:focus {
   border-color: var(--field-edge-active);
-  box-shadow: var(--shadow-field-focus), var(--shadow-field-inset);
+  box-shadow: var(--elevation-field-focus), var(--elevation-field-inset);
 }
 
 .control:focus-visible {

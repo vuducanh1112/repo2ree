@@ -223,5 +223,5 @@
 .footerText {
   font-family: var(--font-sans);
   font-size: var(--text-md);
-  color: var(--palette-slate-500);
+  color: var(--ink-subtle);
 }

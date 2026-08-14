@@ -60,6 +60,8 @@
   --stage-hbom-wash: var(--palette-cyan-050);
   --stage-experiments-line: var(--palette-indigo-600);
   --stage-experiments-ink: var(--palette-indigo-800);
+  --stage-experiments-wash: var(--palette-indigo-050);
+  --stage-experiments-edge: var(--palette-indigo-200);
   --stage-evaluate-line: var(--palette-violet-600);
   --stage-evaluate-ink: var(--palette-violet-950);
   --stage-evaluate-wash: var(--palette-violet-050);
@@ -149,7 +151,7 @@
   --seal-level-wash: var(--palette-indigo-050);
 
   /* A finished experiment run's verdict. */
-  --verdict-pass-ink: var(--badge-success-ink);
+  --verdict-pass-ink: var(--feedback-success-ink);
   --verdict-pass-wash: var(--palette-film-mint-70b);
   --verdict-fail-ink: var(--palette-rose-400);
   --verdict-fail-wash: var(--palette-film-rose-70);
@@ -157,18 +159,65 @@
   --verdict-idle-wash: var(--palette-film-slate-70);
 
   /* --- Feedback and domain-specific states ----------------------------- */
-  /* Transient notification. Its three readings are the ones a toast has: it
-   * worked, it did not, or here is something you should know. */
-  --toast-info-bg: var(--palette-blue-100);
-  --toast-info-edge: var(--palette-blue-300);
-  --toast-info-ink: var(--palette-sky-700);
-  --toast-success-bg: var(--palette-green-100);
-  --toast-success-edge: var(--palette-green-300);
-  --toast-success-ink: var(--palette-green-700);
-  --toast-error-bg: var(--palette-red-100);
-  --toast-error-edge: var(--palette-red-300);
-  --toast-error-ink: var(--palette-red-800);
-  --toast-shadow: var(--shadow-toast);
+  /* Feedback roles describe meaning and emphasis, not the component that
+   * happens to render them. This keeps badges, notices, and toasts aligned. */
+  --feedback-info-ink: var(--palette-blue-700);
+  --feedback-info-bg: var(--palette-film-chip);
+  --feedback-info-edge: var(--palette-edge-indigo);
+  --feedback-success-ink: var(--palette-emerald-700);
+  --feedback-success-bg: var(--palette-film-mint-strong);
+  --feedback-success-edge: var(--palette-edge-green-strong);
+  --feedback-warning-ink: var(--palette-yellow-700);
+  --feedback-warning-bg: var(--palette-film-butter);
+  --feedback-warning-edge: var(--palette-edge-amber);
+  --feedback-neutral-ink: var(--palette-slate-500);
+  --feedback-neutral-bg: var(--palette-film-slate);
+  --feedback-neutral-edge: var(--palette-edge-slate);
+
+  --feedback-info-quiet-bg: var(--palette-film-white);
+  --feedback-info-quiet-edge: var(--palette-edge-slate);
+  --feedback-success-quiet-bg: var(--palette-film-mint);
+  --feedback-success-quiet-edge: var(--palette-edge-green);
+  --feedback-danger-quiet-bg: var(--palette-film-blush);
+  --feedback-danger-quiet-edge: var(--palette-edge-rose);
+  --feedback-danger-quiet-ink: var(--palette-rose-700);
+
+  --feedback-info-prominent-bg: var(--palette-blue-100);
+  --feedback-info-prominent-edge: var(--palette-blue-300);
+  --feedback-info-prominent-ink: var(--palette-sky-700);
+  --feedback-success-prominent-bg: var(--palette-green-100);
+  --feedback-success-prominent-edge: var(--palette-green-300);
+  --feedback-success-prominent-ink: var(--palette-green-700);
+  --feedback-danger-prominent-bg: var(--palette-red-100);
+  --feedback-danger-prominent-edge: var(--palette-red-300);
+  --feedback-danger-prominent-ink: var(--palette-red-800);
+  --feedback-floating-shadow: var(--shadow-toast);
+
+  --feedback-warning-callout-bg: var(--palette-film-cream);
+  --feedback-warning-callout-edge: var(--palette-edge-amber-firm);
+  --feedback-warning-callout-ink: var(--feedback-warning-ink);
+  --feedback-info-callout-bg: var(--palette-film-mist-86);
+  --feedback-info-callout-edge: var(--palette-edge-sky-pale-half);
+  --feedback-info-callout-ink: var(--palette-sky-500);
+  --feedback-callout-shadow: var(--shadow-banner-inset);
+
+  --feedback-warning-bg-soft: var(--palette-amber-050);
+  --feedback-warning-bg-strong: var(--palette-film-ochre);
+  --feedback-warning-bg-muted: var(--palette-film-ochre-70);
+  --feedback-warning-edge-strong: var(--palette-edge-ochre);
+  --feedback-warning-line: var(--palette-amber-600);
+  --feedback-warning-line-muted: var(--palette-amber-500);
+  --feedback-warning-ink-medium: var(--palette-amber-700);
+  --feedback-warning-ink-strong: var(--palette-amber-800);
+  --feedback-success-bg-soft: var(--palette-green-050);
+  --feedback-success-bg-muted: var(--palette-mint-100);
+  --feedback-success-bg-translucent: var(--palette-film-mint-85);
+  --feedback-success-edge-soft: var(--palette-green-200);
+  --feedback-success-edge-muted: var(--palette-mint-200);
+  --feedback-success-edge-mid: var(--palette-edge-green-mid);
+  --feedback-success-line: var(--palette-green-600);
+  --feedback-success-ink-strong: var(--palette-green-700);
+  --feedback-danger-line: var(--palette-rose-400);
 
   /* Run lifecycle, as the logs console reports it. */
   --run-active: var(--chrome-accent);
@@ -189,7 +238,7 @@
   --threat-low-edge: var(--palette-sky-200);
   --remedy-bg: var(--palette-film-mint-60);
   --remedy-edge: var(--palette-edge-green-strong);
-  --remedy-ink: var(--badge-success-ink);
+  --remedy-ink: var(--feedback-success-ink);
 
   /* The manifest files the evaluator looks for, before it has run. */
   --manifest-pip: var(--palette-blue-500);
@@ -198,36 +247,6 @@
   --manifest-npm: var(--palette-red-600);
   --manifest-container: var(--palette-cyan-600);
   --manifest-nix: var(--palette-violet-600);
-
-  /* Page-level advisories: something to do first, or something to know. */
-  --advisory-warn-bg: var(--palette-film-cream);
-  --advisory-warn-edge: var(--palette-edge-amber-firm);
-  --advisory-warn-ink: var(--badge-warning-ink);
-  --advisory-info-bg: var(--palette-film-mist-86);
-  --advisory-info-edge: var(--palette-edge-sky-pale-half);
-  --advisory-info-ink: var(--palette-sky-500);
-  --advisory-shadow: var(--shadow-banner-inset);
-
-  --notice-info-bg: var(--palette-film-white);
-  --notice-info-edge: var(--palette-edge-slate);
-  --notice-success-bg: var(--palette-film-mint);
-  --notice-success-edge: var(--palette-edge-green);
-  --notice-danger-bg: var(--palette-film-blush);
-  --notice-danger-edge: var(--palette-edge-rose);
-  --notice-danger-ink: var(--palette-rose-700);
-
-  --badge-success-ink: var(--palette-emerald-700);
-  --badge-success-bg: var(--palette-film-mint-strong);
-  --badge-success-edge: var(--palette-edge-green-strong);
-  --badge-warning-ink: var(--palette-yellow-700);
-  --badge-warning-bg: var(--palette-film-butter);
-  --badge-warning-edge: var(--palette-edge-amber);
-  --badge-neutral-ink: var(--palette-slate-500);
-  --badge-neutral-bg: var(--palette-film-slate);
-  --badge-neutral-edge: var(--palette-edge-slate);
-  --badge-info-ink: var(--palette-blue-700);
-  --badge-info-bg: var(--palette-film-chip);
-  --badge-info-edge: var(--palette-edge-indigo);
 
   /* --- Run log lines ------------------------------------------------------
    * A streamed line's severity, which the backend already classifies. */

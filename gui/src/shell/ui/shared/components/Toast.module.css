@@ -18,26 +18,26 @@
   color: var(--toast-ink);
   font-family: var(--font-sans);
   font-size: 13px;
-  box-shadow: var(--toast-shadow);
+  box-shadow: var(--feedback-floating-shadow);
   animation: toast-slide-in 0.3s ease;
 }
 
 .toast[data-tone="info"] {
-  --toast-bg: var(--toast-info-bg);
-  --toast-edge: var(--toast-info-edge);
-  --toast-ink: var(--toast-info-ink);
+  --toast-bg: var(--feedback-info-prominent-bg);
+  --toast-edge: var(--feedback-info-prominent-edge);
+  --toast-ink: var(--feedback-info-prominent-ink);
 }
 
 .toast[data-tone="success"] {
-  --toast-bg: var(--toast-success-bg);
-  --toast-edge: var(--toast-success-edge);
-  --toast-ink: var(--toast-success-ink);
+  --toast-bg: var(--feedback-success-prominent-bg);
+  --toast-edge: var(--feedback-success-prominent-edge);
+  --toast-ink: var(--feedback-success-prominent-ink);
 }
 
 .toast[data-tone="error"] {
-  --toast-bg: var(--toast-error-bg);
-  --toast-edge: var(--toast-error-edge);
-  --toast-ink: var(--toast-error-ink);
+  --toast-bg: var(--feedback-danger-prominent-bg);
+  --toast-edge: var(--feedback-danger-prominent-edge);
+  --toast-ink: var(--feedback-danger-prominent-ink);
 }
 
 .icon {

@@ -32,7 +32,7 @@
   right: 7%;
   bottom: var(--space-6);
   border-radius: var(--space-4);
-  box-shadow: var(--shadow-window-focus);
+  box-shadow: var(--elevation-window-focus);
   transform-origin: var(--focus-origin, center);
   animation: focus-grow 0.4s cubic-bezier(0.34, 1.1, 0.5, 1);
 }

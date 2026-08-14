@@ -10,7 +10,7 @@
 
 .headerIcon {
   display: flex;
-  color: var(--palette-sky-500);
+  color: var(--ink-accent);
 }
 
 .headerBlock {
@@ -74,7 +74,7 @@
 
 /* Unsaved edits are the one thing this card exists to make impossible to miss. */
 .state[data-dirty] {
-  color: var(--badge-warning-ink);
+  color: var(--feedback-warning-ink);
 }
 
 .actions {

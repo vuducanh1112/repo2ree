@@ -23,21 +23,21 @@
   gap: var(--space-2);
   padding: 7px var(--space-3);
   border-radius: var(--radius-round);
-  border: 1px solid var(--palette-edge-slate);
-  background: var(--palette-film-white-62);
+  border: 1px solid var(--edge-neutral);
+  background: var(--surface-glass-muted);
   color: var(--page-subtitle-ink);
   font-family: var(--font-sans);
   font-size: var(--text-md);
   font-weight: var(--weight-bold);
   cursor: pointer;
-  box-shadow: var(--shadow-inset-highlight);
+  box-shadow: var(--elevation-inset-highlight);
 }
 
 .category[aria-pressed="true"] {
-  border-color: var(--palette-edge-sky-strong);
-  background: var(--palette-film-mist-92);
-  color: var(--palette-sky-900);
-  box-shadow: var(--shadow-pill-active);
+  border-color: var(--edge-accent-strong);
+  background: var(--surface-accent-strong);
+  color: var(--ink-accent-deep);
+  box-shadow: var(--elevation-active);
 }
 
 .category:focus-visible,
@@ -53,21 +53,21 @@
 }
 
 .category[aria-pressed="true"] .categoryIcon {
-  color: var(--palette-sky-500);
+  color: var(--ink-accent);
 }
 
 .categoryCount {
   padding: 1px 7px;
   border-radius: var(--radius-round);
-  border: 1px solid var(--palette-edge-slate-soft);
-  background: var(--palette-film-white-85);
+  border: 1px solid var(--edge-neutral-soft);
+  background: var(--surface-glass-strong);
   font-size: var(--text-sm);
   font-weight: var(--weight-bold);
   color: var(--field-hint-ink);
 }
 
 .category[aria-pressed="true"] .categoryCount {
-  color: var(--palette-sky-900);
+  color: var(--ink-accent-deep);
 }
 
 /* --- One category's table ------------------------------------------------- */
@@ -89,15 +89,15 @@
 
 .tableIcon {
   display: flex;
-  color: var(--palette-sky-500);
+  color: var(--ink-accent);
 }
 
 .empty {
   padding: 18px var(--space-3);
   text-align: center;
-  border: 1px dashed var(--palette-edge-slate-hard);
+  border: 1px dashed var(--edge-neutral-strong);
   border-radius: var(--radius-control);
-  background: var(--palette-film-slate-55);
+  background: var(--surface-neutral-faint);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   line-height: 1.4;
@@ -135,9 +135,9 @@
 .row {
   padding: 10px;
   border-radius: 9px;
-  border: 1px solid var(--palette-edge-slate-mid);
-  background: var(--palette-film-white);
-  box-shadow: var(--shadow-inset-highlight);
+  border: 1px solid var(--edge-neutral-mid);
+  background: var(--surface-glass);
+  box-shadow: var(--elevation-inset-highlight);
 }
 
 .rowRemove {
@@ -151,7 +151,7 @@
 }
 
 .rowRemove:hover {
-  color: var(--notice-danger-ink);
+  color: var(--feedback-danger-quiet-ink);
 }
 
 .addRowWrap {
@@ -163,7 +163,7 @@
   align-items: center;
   gap: var(--space-2);
   padding: 7px var(--space-3);
-  border: 1.5px dashed var(--palette-edge-slate-hard);
+  border: 1.5px dashed var(--edge-neutral-strong);
   border-radius: var(--radius-control);
   background: transparent;
   color: var(--page-subtitle-ink);

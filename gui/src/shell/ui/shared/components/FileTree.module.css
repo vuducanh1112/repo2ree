@@ -13,7 +13,7 @@
   border: 1px solid transparent;
   border-radius: 5px;
   background: transparent;
-  color: var(--palette-slate-600);
+  color: var(--ink-muted);
   font-family: var(--font-mono);
   font-size: 13px;
   text-align: left;
@@ -23,24 +23,24 @@
 }
 
 .row[data-kind="folder"] {
-  color: var(--palette-slate-950);
+  color: var(--ink-default);
 }
 
 /* Referenced by the thing being viewed — worth finding, not yet chosen. */
 .row[data-marked] {
-  background: var(--palette-film-butter);
-  border-color: var(--palette-edge-amber);
-  color: var(--palette-yellow-700);
+  background: var(--feedback-warning-bg);
+  border-color: var(--feedback-warning-edge);
+  color: var(--feedback-warning-ink);
 }
 
 .row[data-selected] {
-  background: var(--palette-film-selected);
-  border-color: var(--palette-edge-sky-half);
-  color: var(--palette-sky-900);
+  background: var(--surface-accent-selected);
+  border-color: var(--edge-accent-half);
+  color: var(--ink-accent-deep);
 }
 
 .row:not([data-selected]):hover {
-  background: var(--palette-film-hover);
+  background: var(--surface-accent-hover);
 }
 
 .row:focus-visible {
@@ -62,31 +62,31 @@
 }
 
 .fileIcon[data-category="code"] {
-  --file-ink: var(--palette-sky-500);
+  --file-ink: var(--ink-accent);
 }
 
 .fileIcon[data-category="data"] {
-  --file-ink: var(--palette-indigo-600);
+  --file-ink: var(--ink-accent-secondary);
 }
 
 .fileIcon[data-category="doc"] {
-  --file-ink: var(--palette-slate-600);
+  --file-ink: var(--ink-muted);
 }
 
 .fileIcon[data-category="container"] {
-  --file-ink: var(--palette-cyan-600);
+  --file-ink: var(--ink-info);
 }
 
 .fileIcon[data-category="archive"] {
-  --file-ink: var(--palette-violet-600);
+  --file-ink: var(--ink-accent-violet);
 }
 
 .fileIcon[data-category="binary"] {
-  --file-ink: var(--palette-slate-500);
+  --file-ink: var(--ink-subtle);
 }
 
 .row[data-selected] .fileIcon {
-  --file-ink: var(--palette-sky-900);
+  --file-ink: var(--ink-accent-deep);
 }
 
 .name {
@@ -99,10 +99,10 @@
 .marker {
   flex-shrink: 0;
   padding: 0 3px;
-  border: 1px solid var(--palette-edge-amber);
+  border: 1px solid var(--feedback-warning-edge);
   border-radius: 3px;
-  background: var(--palette-film-butter);
-  color: var(--palette-yellow-700);
+  background: var(--feedback-warning-bg);
+  color: var(--feedback-warning-ink);
   font-family: var(--font-sans);
   font-size: 9px;
   font-weight: var(--weight-bold);

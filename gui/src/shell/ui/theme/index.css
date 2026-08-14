@@ -14,9 +14,10 @@
  * own.
  */
 
-@layer reset, tokens, base, components;
+@layer reset, tokens, theme, semantics, base, components;
 
 @import "./tokens.css" layer(tokens);
-@import "./themes/light.css" layer(tokens);
-@import "./tones.css" layer(tokens);
+@import "./themes/light.css" layer(theme);
+@import "./artwork/index.css" layer(theme);
+@import "./tones.css" layer(semantics);
 @import "./globals.css" layer(base);

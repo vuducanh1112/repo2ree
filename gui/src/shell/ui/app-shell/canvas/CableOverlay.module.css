@@ -2,10 +2,10 @@
  * its stage's tone; one that is not reads as drawn-but-inert. */
 
 .overlay {
-  --cable-dim: var(--palette-slate-400);
-  --cable-dim-ink: var(--palette-slate-700);
-  --cable-dim-core: var(--palette-slate-200);
-  --cable-gloss: var(--palette-white);
+  --cable-dim: var(--ink-on-dark-subtle);
+  --cable-dim-ink: var(--ink-muted-strong);
+  --cable-dim-core: var(--ink-on-dark-muted);
+  --cable-gloss: var(--ink-on-accent);
 
   position: absolute;
   top: 0;

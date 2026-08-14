@@ -12,10 +12,10 @@
 
 .dot[data-state="ready"] {
   background: var(--status-ok);
-  box-shadow: var(--shadow-dot-glow) var(--status-ok-glow);
+  box-shadow: var(--effect-dot-glow) var(--status-ok-glow);
 }
 
 .dot[data-state="stale"] {
   background: var(--status-stale);
-  box-shadow: var(--shadow-dot-glow) var(--status-stale-glow);
+  box-shadow: var(--effect-dot-glow) var(--status-stale-glow);
 }

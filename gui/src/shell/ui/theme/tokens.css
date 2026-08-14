@@ -82,6 +82,10 @@
   --palette-blue-700: #1d4ed8;
   --palette-azure-050: #f0f7ff;
   --palette-azure-600: #1d6fa4;
+  --palette-sky-050: #f0f9ff;
+  --palette-sky-100: #bae6fd;
+  --palette-sky-200: #7dd3fc;
+  --palette-sky-400: #38bdf8;
   --palette-sky-500: #0ea5e9;
   --palette-sky-700: #0369a1;
   --palette-sky-900: #0c4a6e;
@@ -114,6 +118,7 @@
   --palette-green-200: #bbf7d0;
   --palette-mint-100: #e7f9f1;
   --palette-mint-200: #bbf0d8;
+  --palette-mint-300: #6ee7b7;
   --palette-green-300: #86efac;
   --palette-green-500: #22c55e;
   --palette-green-600: #16a34a;

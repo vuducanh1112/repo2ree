@@ -12,7 +12,7 @@
 }
 
 .segment:not(:disabled):hover {
-  border-color: var(--palette-edge-sky);
+  border-color: var(--edge-accent);
 }
 
 .segment {
@@ -35,8 +35,8 @@
 }
 
 .segment[aria-pressed="true"] {
-  border-color: var(--palette-edge-sky-strong);
-  background: var(--palette-film-mist);
+  border-color: var(--edge-accent-strong);
+  background: var(--surface-control-secondary);
   color: var(--option-selected-ink);
   font-weight: 800;
 }

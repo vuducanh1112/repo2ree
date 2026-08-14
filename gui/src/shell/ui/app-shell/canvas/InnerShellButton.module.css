@@ -34,7 +34,7 @@
   padding: calc(var(--shell-label) * 0.45) calc(var(--shell-label) * 0.9);
   border-radius: var(--radius-round);
   background: var(--stage-build-line);
-  color: var(--palette-white);
+  color: var(--ink-on-accent);
   font-family: var(--font-sans);
   font-size: calc(var(--shell-label) * 1px);
   font-weight: var(--weight-bold);

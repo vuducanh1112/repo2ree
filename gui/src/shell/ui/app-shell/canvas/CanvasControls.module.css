@@ -10,7 +10,7 @@
   border-radius: 10px;
   border: 1px solid var(--chrome-border);
   background: var(--chrome-surface);
-  box-shadow: var(--shadow-canvas-controls);
+  box-shadow: var(--elevation-controls);
 }
 
 .button {

@@ -44,7 +44,7 @@
 
 .artifactIcon {
   display: flex;
-  color: var(--palette-sky-500);
+  color: var(--ink-accent);
 }
 
 .outcome {
@@ -64,7 +64,7 @@
 }
 
 .outcomePath[data-produced] {
-  color: var(--badge-success-ink);
+  color: var(--feedback-success-ink);
 }
 
 .outcomePath code {
@@ -74,8 +74,8 @@
 .size {
   padding: 2px var(--space-2);
   border-radius: 6px;
-  border: 1px solid var(--palette-edge-slate);
-  background: var(--palette-film-white-soft);
+  border: 1px solid var(--edge-neutral);
+  background: var(--surface-glass-soft);
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   color: var(--page-subtitle-ink);

@@ -14,7 +14,7 @@
   border-radius: 13px;
   border: 1px solid var(--chrome-border);
   background: var(--chrome-surface);
-  box-shadow: var(--shadow-node);
+  box-shadow: var(--elevation-node);
   text-align: left;
   cursor: pointer;
   transition:
@@ -24,8 +24,8 @@
 
 /* Wired = named and given a command: the experiment can actually run. */
 .satellite[data-wired] {
-  border-color: var(--palette-indigo-200);
-  box-shadow: var(--shadow-node-wired);
+  border-color: var(--stage-experiments-edge);
+  box-shadow: var(--elevation-node-wired);
 }
 
 .satellite:focus-visible,
@@ -46,7 +46,7 @@
   padding: 2px 7px;
   border-radius: 6px;
   border: 1px solid color-mix(in srgb, var(--stage-experiments-line) 27%, transparent);
-  background: var(--palette-indigo-050);
+  background: var(--stage-experiments-wash);
   color: var(--stage-experiments-line);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
@@ -117,7 +117,7 @@
   padding: var(--space-4) 13px;
   border-radius: 13px;
   border: 1.5px dashed color-mix(in srgb, var(--stage-experiments-line) 47%, transparent);
-  background: var(--palette-film-indigo);
+  background: var(--surface-accent-muted);
   color: var(--stage-experiments-line);
   font-family: var(--font-sans);
   font-size: 13px;
@@ -152,7 +152,7 @@
   padding: calc(var(--core-label) * 0.45) calc(var(--core-label) * 0.9);
   border-radius: var(--radius-round);
   background: var(--stage-experiments-line);
-  color: var(--palette-white);
+  color: var(--ink-on-accent);
   font-family: var(--font-sans);
   font-size: calc(var(--core-label) * 1px);
   font-weight: var(--weight-bold);

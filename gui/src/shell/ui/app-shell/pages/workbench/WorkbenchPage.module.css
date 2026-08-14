@@ -66,8 +66,8 @@
 
 .option[aria-pressed="true"] .optionIcon {
   color: var(--option-selected-ink);
-  background: var(--palette-film-chip);
-  border-color: var(--palette-edge-sky);
+  background: var(--surface-accent);
+  border-color: var(--edge-accent);
 }
 
 .optionBody {

@@ -23,19 +23,19 @@
 }
 
 .status[data-tone="ok"] {
-  color: var(--badge-success-ink);
+  color: var(--feedback-success-ink);
 }
 
 .status[data-tone="info"] {
-  color: var(--palette-indigo-800);
+  color: var(--ink-suggestion);
 }
 
 .status[data-tone="warn"] {
-  color: var(--badge-warning-ink);
+  color: var(--feedback-warning-ink);
 }
 
 .status[data-tone="error"] {
-  color: var(--notice-danger-ink);
+  color: var(--feedback-danger-quiet-ink);
 }
 
 .summary {
@@ -56,5 +56,5 @@
   font-family: var(--font-mono);
   font-size: 11.5px;
   line-height: 1.5;
-  color: var(--palette-slate-600);
+  color: var(--ink-muted);
 }

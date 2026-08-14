@@ -28,10 +28,19 @@ const sourceRoot = join(guiRoot, "src");
 const TEST_FILE = /[.](?:test|spec)[.]tsx?$/;
 const GENERATED = "src/shell/infra/api/generated/";
 
-/** Stylesheets that own raw color values; every other stylesheet consumes variables. */
+/** Stylesheets that own raw color values; every other stylesheet consumes roles. */
 const COLOR_VALUE_STYLESHEETS = new Set([
   "src/shell/ui/theme/tokens.css",
   "src/shell/ui/theme/themes/light.css",
+  "src/shell/ui/theme/artwork/pod.css",
+  "src/shell/ui/theme/artwork/laboratory.css",
+  "src/shell/ui/theme/artwork/icons.css",
+]);
+
+/** Files that map low-level palette and material values to semantic roles. */
+const LOW_LEVEL_THEME_STYLESHEETS = new Set([
+  ...COLOR_VALUE_STYLESHEETS,
+  "src/shell/ui/theme/tones.css",
 ]);
 
 /** The modules the migration deleted. Naming them keeps the deletion from
@@ -55,14 +64,16 @@ const LEGACY_THEME_MODULES = new Set(
 // ================================================
 
 const RULES = {
-  "raw-color": "raw color literal — move the value into theme/tokens.css",
+  "raw-color": "raw color literal — move the value into a theme-owned stylesheet",
   "legacy-theme-import": "imports a legacy theme module — use CSS Modules and semantic roles",
   "style-object-literal": "literal style={{ ... }} — move the declarations into a CSS Module",
   "style-not-css-vars": "style prop not produced by cssVars() — pass calculated custom properties",
   "alpha-interpolation": "alpha appended to a token — declare the translucent value in tokens.css",
   "theme-style-object": "theme module exports a style object — a CSS Module owns declarations",
   "core-visual-field": "visual field in core — expose the domain identity, not its presentation",
-  "css-raw-color": "raw color outside theme/tokens.css — consume a semantic role",
+  "low-level-theme-reference":
+    "low-level theme reference outside a theme mapping — consume a semantic or artwork role",
+  "css-raw-color": "raw color outside a theme-owned stylesheet — consume a semantic role",
   "css-important": "!important outside the reduced-motion policy",
   "css-global-interaction":
     "global interaction selector — the component's module owns hover/active",
@@ -70,6 +81,7 @@ const RULES = {
 
 const HEX_COLOR = /#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})(?![0-9a-fA-F])/;
 const FUNCTIONAL_COLOR = /\b(?:rgb|rgba|hsl|hsla)\(/;
+const LOW_LEVEL_THEME_REFERENCE = /var\(--(?:palette|gradient|shadow|glow)-/;
 /** `${token}88` — an alpha suffix glued onto an interpolated value. */
 const ALPHA_SUFFIX = /^[0-9a-fA-F]{2}(?![0-9a-zA-Z])/;
 
@@ -191,10 +203,16 @@ function checkTypeScript(path) {
   function visit(node) {
     if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
       if (hasRawColor(node.text)) at(node, "raw-color", node.text.trim().slice(0, 60));
+      if (LOW_LEVEL_THEME_REFERENCE.test(node.text)) {
+        at(node, "low-level-theme-reference", node.text.trim().slice(0, 60));
+      }
     } else if (ts.isTemplateExpression(node)) {
       const chunks = [node.head, ...node.templateSpans.map((span) => span.literal)];
       if (chunks.some((chunk) => hasRawColor(chunk.text)))
         at(node, "raw-color", "template literal");
+      if (chunks.some((chunk) => LOW_LEVEL_THEME_REFERENCE.test(chunk.text))) {
+        at(node, "low-level-theme-reference", "template literal");
+      }
       for (const span of node.templateSpans) {
         if (ALPHA_SUFFIX.test(span.literal.text)) {
           at(span, "alpha-interpolation", `\${…}${span.literal.text.slice(0, 4)}`);
@@ -310,6 +328,13 @@ function checkCss(path) {
   if (!COLOR_VALUE_STYLESHEETS.has(file)) {
     for (const pattern of [new RegExp(HEX_COLOR, "g"), new RegExp(FUNCTIONAL_COLOR, "g")]) {
       for (const match of text.matchAll(pattern)) at(match.index, "css-raw-color", match[0]);
+    }
+  }
+
+  if (!LOW_LEVEL_THEME_STYLESHEETS.has(file)) {
+    const pattern = new RegExp(LOW_LEVEL_THEME_REFERENCE, "g");
+    for (const match of text.matchAll(pattern)) {
+      at(match.index, "low-level-theme-reference", match[0]);
     }
   }
 

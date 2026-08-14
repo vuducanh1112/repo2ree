@@ -23,7 +23,7 @@
 /* Hovered, or otherwise called out: the column lights up. */
 .column[data-glow] {
   transform: translate(-50%, -50%) scale(1.04);
-  filter: var(--glow-explode-pod);
+  filter: var(--art-pod-explode-glow);
 }
 
 .labels {
@@ -99,13 +99,13 @@
   font-size: 12.5px;
   font-weight: var(--weight-semibold);
   cursor: pointer;
-  box-shadow: var(--shadow-canvas-controls);
+  box-shadow: var(--elevation-controls);
 }
 
 .toggle[aria-pressed="true"] {
   border-color: var(--chrome-accent);
   background: var(--chrome-accent);
-  color: var(--palette-white);
+  color: var(--ink-on-accent);
 }
 
 .toggle:focus-visible {

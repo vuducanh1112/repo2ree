@@ -35,7 +35,7 @@ export function PodShellInner({
         </radialGradient>
         <radialGradient id={`${iId}CenterGlow`} cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="var(--pod-rim)" stopOpacity="0.5" />
-          <stop offset="100%" stopColor="var(--palette-sky-500)" stopOpacity="0" />
+          <stop offset="100%" stopColor="var(--ink-accent)" stopOpacity="0" />
         </radialGradient>
         <filter id={`${iId}Blur`} x="-25%" y="-25%" width="150%" height="150%">
           <feGaussianBlur stdDeviation={Math.max(SR * 0.09, 2)} />

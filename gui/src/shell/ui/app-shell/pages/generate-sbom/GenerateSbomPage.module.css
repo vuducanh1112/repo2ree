@@ -76,7 +76,7 @@
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   font-weight: 800;
-  color: var(--palette-sky-700);
+  color: var(--ink-accent-strong);
 }
 
 .spacer {

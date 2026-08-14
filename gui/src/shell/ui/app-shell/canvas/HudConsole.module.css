@@ -12,9 +12,9 @@
   width: var(--hud-width-collapsed);
   border-radius: var(--radius-panel);
   border: 1px solid var(--chrome-border);
-  background: var(--palette-film-hud);
+  background: var(--surface-hud);
   backdrop-filter: blur(4px);
-  box-shadow: var(--shadow-hud-collapsed);
+  box-shadow: var(--elevation-hud-collapsed);
   transition:
     width 0.26s cubic-bezier(0.4, 0, 0.2, 1),
     box-shadow 0.26s;
@@ -22,7 +22,7 @@
 
 .console[data-open] {
   width: var(--hud-width-open);
-  box-shadow: var(--shadow-hud-open);
+  box-shadow: var(--elevation-hud-open);
 }
 
 /* Mid-drag the width is the pointer's, so the easing has to stand down. */

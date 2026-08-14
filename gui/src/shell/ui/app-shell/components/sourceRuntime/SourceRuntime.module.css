@@ -31,15 +31,15 @@
 }
 
 .status[data-tone="warning"] {
-  color: var(--palette-amber-800);
+  color: var(--feedback-warning-ink-strong);
 }
 
 .status[data-tone="caution"] {
-  color: var(--palette-amber-700);
+  color: var(--feedback-warning-ink-medium);
 }
 
 .status[data-tone="ok"] {
-  color: var(--palette-green-600);
+  color: var(--feedback-success-line);
 }
 
 .statusValue {
@@ -66,12 +66,12 @@
   padding: 10px 14px;
   border-radius: var(--radius-control);
   border: 1.5px solid var(--status-stale);
-  background: var(--palette-amber-050);
+  background: var(--feedback-warning-bg-soft);
 }
 
 .pendingIcon {
   display: flex;
-  color: var(--palette-amber-600);
+  color: var(--feedback-warning-line);
 }
 
 .pendingName {
@@ -82,7 +82,7 @@
   font-family: var(--font-mono);
   font-size: 13px;
   font-weight: var(--weight-semibold);
-  color: var(--palette-amber-800);
+  color: var(--feedback-warning-ink-strong);
 }
 
 .pendingNote {
@@ -92,7 +92,7 @@
   padding-left: 2px;
   font-family: var(--font-sans);
   font-size: var(--text-sm);
-  color: var(--palette-amber-800);
+  color: var(--feedback-warning-ink-strong);
 }
 
 .dismiss {
@@ -126,13 +126,13 @@
   margin-bottom: var(--space-2);
   padding: 10px 14px;
   border-radius: var(--radius-control);
-  border: 1.5px solid var(--palette-green-200);
-  background: var(--palette-green-050);
+  border: 1.5px solid var(--feedback-success-edge-soft);
+  background: var(--feedback-success-bg-soft);
 }
 
 .committedIcon {
   display: flex;
-  color: var(--palette-green-600);
+  color: var(--feedback-success-line);
 }
 
 .committedName {
@@ -143,7 +143,7 @@
   font-family: var(--font-mono);
   font-size: 13px;
   font-weight: var(--weight-semibold);
-  color: var(--palette-green-700);
+  color: var(--feedback-success-ink-strong);
 }
 
 /* --- Dropzone ------------------------------------------------------------ */
@@ -234,7 +234,7 @@
 }
 
 .statusLine[data-tone="caution"] {
-  color: var(--palette-amber-700);
+  color: var(--feedback-warning-ink-medium);
 }
 
 @media (prefers-reduced-motion: reduce) {

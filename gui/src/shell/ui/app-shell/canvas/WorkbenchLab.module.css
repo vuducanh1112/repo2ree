@@ -20,7 +20,7 @@
   inset: 14px;
   border-radius: 18px;
   border: 1px solid var(--chrome-border);
-  box-shadow: var(--shadow-bench-tray);
+  box-shadow: var(--elevation-bench);
   pointer-events: none;
 }
 
@@ -58,7 +58,7 @@
   height: 78px;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  background: var(--gradient-cradle-disc);
+  background: var(--art-cradle-disc);
 }
 
 .cradleRing {
@@ -108,7 +108,7 @@
   border-radius: var(--space-4);
   border: 1px solid var(--chrome-border);
   background: var(--chrome-surface);
-  box-shadow: var(--shadow-console);
+  box-shadow: var(--elevation-console);
   animation: console-fade-up 0.4s ease;
 }
 

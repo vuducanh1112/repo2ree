@@ -83,7 +83,7 @@
 
 .stepStatus[data-status="queued"],
 .stepStatus[data-status="different"] {
-  --status-ink: var(--palette-amber-600);
+  --status-ink: var(--feedback-warning-line);
 }
 
 .stepStatus[data-status="running"] {
@@ -97,7 +97,7 @@
 }
 
 .stepStatus[data-status="equivalent"] {
-  --status-ink: var(--palette-cyan-600);
+  --status-ink: var(--ink-info);
 }
 
 .stepStatus[data-status="uninhabitable"],
@@ -184,7 +184,7 @@
 
 .verdict[data-status="queued"],
 .verdict[data-status="different"] {
-  --status-ink: var(--palette-amber-600);
+  --status-ink: var(--feedback-warning-line);
 }
 
 .verdict[data-status="running"] {

@@ -12,7 +12,7 @@
   border-radius: 10px;
   border: 1px solid var(--chrome-border);
   background: var(--chrome-surface);
-  box-shadow: var(--shadow-panel);
+  box-shadow: var(--elevation-low);
 }
 
 .empty {
@@ -40,7 +40,7 @@
   flex-shrink: 0;
   padding: 11px 20px;
   border-bottom: 1px solid var(--chrome-border);
-  background: var(--palette-grey-025);
+  background: var(--surface-plain);
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   color: var(--chrome-text-muted);

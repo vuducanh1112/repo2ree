@@ -56,7 +56,7 @@
   border-radius: 14px;
   border: 1px solid var(--chrome-border);
   background: var(--chrome-surface);
-  box-shadow: var(--shadow-landing-card);
+  box-shadow: var(--elevation-card-low);
 }
 
 .sectionLabel {
@@ -97,7 +97,7 @@
   padding: 10px var(--space-4);
   border: none;
   background: var(--chrome-accent);
-  color: var(--palette-white);
+  color: var(--ink-on-accent);
   font-size: var(--text-lg);
   font-weight: var(--weight-semibold);
 }

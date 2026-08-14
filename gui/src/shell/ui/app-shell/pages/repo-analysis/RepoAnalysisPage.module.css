@@ -82,8 +82,8 @@
   height: 24px;
   padding: 0 10px;
   border-radius: var(--radius-round);
-  border: 1px solid var(--palette-edge-slate-mid);
-  background: var(--palette-film-white-soft);
+  border: 1px solid var(--edge-neutral-mid);
+  background: var(--surface-glass-soft);
   color: var(--field-hint-ink);
   font-family: var(--font-mono);
   font-size: var(--text-sm);
@@ -107,7 +107,7 @@
   width: 14px;
   height: 2px;
   border-radius: var(--radius-round);
-  background: var(--palette-edge-slate-soft);
+  background: var(--edge-neutral-soft);
 }
 
 .axisLink[data-reached] {
@@ -119,16 +119,16 @@
 .placeholder {
   padding: var(--space-4);
   text-align: center;
-  border: 1px dashed var(--palette-edge-slate-hard);
+  border: 1px dashed var(--edge-neutral-strong);
   border-radius: 9px;
-  background: var(--palette-film-white-45);
+  background: var(--surface-glass-faint);
   font-size: var(--text-md);
   color: var(--field-hint-ink);
 }
 
 .placeholder[data-emphasis="strong"] {
   border-width: 1.5px;
-  border-color: var(--palette-edge-slate-half);
+  border-color: var(--edge-neutral-hard);
 }
 
 .placeholderIcon {
@@ -165,7 +165,7 @@
   padding: 7px 10px;
   border-radius: var(--radius-control);
   border: 1px dashed color-mix(in srgb, var(--manifest-tint) 25%, transparent);
-  background: var(--palette-film-white-45);
+  background: var(--surface-glass-faint);
 }
 
 .manifest[data-kind="pip"] {
@@ -222,7 +222,7 @@
 
 .asideIcon {
   display: flex;
-  color: var(--palette-cyan-600);
+  color: var(--ink-info);
 }
 
 .asideTitle {
@@ -268,8 +268,8 @@
   gap: var(--space-2);
   padding: var(--space-3);
   border-radius: 9px;
-  border: 1px solid var(--palette-edge-slate-mid);
-  background: var(--palette-film-white-soft);
+  border: 1px solid var(--edge-neutral-mid);
+  background: var(--surface-glass-soft);
 }
 
 .threat[data-severity="high"] {
@@ -353,8 +353,8 @@
 .affectedItem {
   padding: 1px var(--space-2);
   border-radius: var(--space-1);
-  border: 1px solid var(--palette-edge-slate-mid);
-  background: var(--palette-film-white);
+  border: 1px solid var(--edge-neutral-mid);
+  background: var(--surface-glass);
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   color: var(--page-subtitle-ink);
