@@ -52,7 +52,7 @@ export interface ReeRunsClient {
   cancelReeRun(id: ReeId | string, runId: string): Promise<ReeRunStatus>;
 }
 
-function createReeRunsClient(runtime: ReeRuntimeValue): ReeRunsClient {
+export function createReeRunsClient(runtime: ReeRuntimeValue): ReeRunsClient {
   return {
     async createWorkspace(name = "REE", image, agentId) {
       const run = await runtime.reeApi.createRee({

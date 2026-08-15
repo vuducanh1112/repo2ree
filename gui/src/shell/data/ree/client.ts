@@ -34,7 +34,7 @@ export interface ReeClient<TFile = unknown, TRee = unknown> {
   releaseRee(id: ReeId | string): Promise<void>;
 }
 
-function createReeClient(runtime: ReeApiRuntime): ReeClient<FileTreeNode, ReeProjectState> {
+export function createReeClient(runtime: ReeApiRuntime): ReeClient<FileTreeNode, ReeProjectState> {
   return {
     async getRee(id) {
       const reeId = requireReeId(runtime, id);

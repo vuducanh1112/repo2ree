@@ -80,6 +80,20 @@ export default defineConfig({
       // Extension-scoped: `src/**` unscoped also tries to instrument a stray
       // src/.DS_Store and dies.
       include: ["src/**/*.ts", "src/**/*.tsx"],
+      // Ratchet each architectural layer independently. A single aggregate
+      // floor can be satisfied by adding more core tests while the React shell
+      // remains untouched; these deliberately start at the measured baseline.
+      thresholds: {
+        statements: 43,
+        branches: 37,
+        functions: 42,
+        lines: 43,
+        "src/core/**": { lines: 82 },
+        "src/shell/data/**": { lines: 52 },
+        "src/shell/infra/**": { lines: 96 },
+        "src/shell/state/**": { lines: 39 },
+        "src/shell/ui/**": { lines: 18 },
+      },
     },
   },
   server: {

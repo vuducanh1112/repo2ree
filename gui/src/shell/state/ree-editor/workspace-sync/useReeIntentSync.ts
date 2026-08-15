@@ -98,11 +98,16 @@ export function useReeIntentSync({
         }
       })();
       pendingSyncRef.current = sync;
-      void sync.finally(() => {
-        if (pendingSyncRef.current === sync) {
-          pendingSyncRef.current = null;
-        }
-      });
+      // `finally()` creates a second promise. Consume rejection on that cleanup
+      // branch while leaving `sync` itself rejected for flush/autosave callers;
+      // otherwise a failed PATCH produces an unrelated unhandled rejection.
+      void sync
+        .finally(() => {
+          if (pendingSyncRef.current === sync) {
+            pendingSyncRef.current = null;
+          }
+        })
+        .catch(() => {});
       return sync;
     },
     [updateReeIntent, refreshWorkspaceFiles],

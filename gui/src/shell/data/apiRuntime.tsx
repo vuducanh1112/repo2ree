@@ -27,11 +27,15 @@ export function createApiServices({ baseUrl = "" }: { baseUrl?: string } = {}): 
 export function ApiServicesProvider({
   children,
   baseUrl,
+  services,
 }: {
   children: ReactNode;
   baseUrl?: string;
+  /** Test/composition seam; production creates the services from `baseUrl`. */
+  services?: ApiServicesValue;
 }) {
-  const value = useMemo(() => createApiServices({ baseUrl }), [baseUrl]);
+  const created = useMemo(() => createApiServices({ baseUrl }), [baseUrl]);
+  const value = services ?? created;
   return <ApiServicesContext.Provider value={value}>{children}</ApiServicesContext.Provider>;
 }
 

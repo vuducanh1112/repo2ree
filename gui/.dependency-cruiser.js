@@ -135,7 +135,9 @@ module.exports = {
         "or there's something in the test folder that isn't a test.",
       severity: 'error',
       from: {
-        pathNot: '^(tests)'
+        // Co-located specs may consume shared harnesses from tests/support;
+        // production modules still may not depend on anything under tests.
+        pathNot: ['^(tests)', TEST_FILE_PATTERN]
       },
       to: {
         path: '^(tests)'
