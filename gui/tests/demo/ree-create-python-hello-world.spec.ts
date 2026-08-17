@@ -129,13 +129,14 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
     await clickDemo(
       page,
       page.getByRole("button", { name: "Expand files" }),
-      "Browse the REE's own files in the docked file console",
+      "Browse the REE's files in the docked file console",
     );
 
     await expect(page.getByRole("button", { name: "Collapse files" })).toBeVisible();
-    // This console browses the REE tree, which excludes `workspace/` — the
-    // materialized view has its own inventory and its own surface. An uploaded
-    // archive lands in `upstream/`, the acquired source.
+    // The console browses both published inventories in a section each: the
+    // materialized `workspace/`, and the REE tree that excludes it. An uploaded
+    // archive lands in `upstream/`, the acquired source, so the filter below
+    // narrows to the REE section.
     await page.getByPlaceholder("Filter files…").fill("upstream");
     for (const nodeName of archiveNodeNames) {
       const escapedNodeName = nodeName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

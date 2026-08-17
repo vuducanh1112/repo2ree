@@ -35,6 +35,12 @@ describe("FileNode", () => {
     expect(screen.queryByRole("button", { name: /test_main\.py/ })).not.toBeInTheDocument();
   });
 
+  it("leaves even the root shut when the caller asks for no open depth", () => {
+    renderTree({ defaultOpenDepth: 0 });
+    expect(screen.getByRole("button", { name: /src/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /\bmain\.py/ })).not.toBeInTheDocument();
+  });
+
   it("toggles a folder open and shut instead of selecting it", async () => {
     const { onSelect } = renderTree();
 

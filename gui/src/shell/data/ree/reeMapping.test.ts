@@ -50,4 +50,34 @@ describe("shell/data/ree/reeMapping", () => {
 
     expect(project.reeFiles?.map((file) => file.name)).toEqual(["overlay/build.sh"]);
   });
+
+  it("namespaces node ids per inventory, so one path in both stays two files", () => {
+    const project = mapReeDetailToReeProject(
+      baseRee({
+        workspace_files: [{ path: "build.sh", kind: "generated", size: 9 }],
+        ree_files: [{ path: "build.sh", kind: "ree", tag: "Overlay", size: 9 }],
+      }),
+    );
+
+    expect(project.files.map((file) => file.id)).toEqual(["ws:build.sh"]);
+    expect(project.reeFiles?.map((file) => file.id)).toEqual(["ree:build.sh"]);
+  });
+
+  it("derives ids from the path, so an insertion does not renumber the rest", () => {
+    const later = mapReeDetailToReeProject(
+      baseRee({
+        ree_files: [
+          { path: "artifacts/sbom.json", kind: "ree", tag: "Artifact", size: 2 },
+          { path: "overlay/build.sh", kind: "ree", tag: "Overlay", size: 9 },
+        ],
+      }),
+    );
+
+    // The console keys its open tabs by node id and prunes any it can no longer
+    // find, so an id that moved with its neighbour's arrival would close tabs.
+    expect(later.reeFiles?.map((file) => file.id)).toEqual([
+      "ree:artifacts/sbom.json",
+      "ree:overlay/build.sh",
+    ]);
+  });
 });

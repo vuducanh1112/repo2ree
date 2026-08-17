@@ -13,6 +13,12 @@ interface FileNodeProps {
   highlightedPaths?: Set<string>;
   /** Force every folder open (used while a filter is active). */
   forceOpen?: boolean;
+  /**
+   * Folders shallower than this start open. The default reveals the roots'
+   * contents, which suits a shallow tree; pass 0 for one deep enough that an
+   * opened first level would bury whatever follows it.
+   */
+  defaultOpenDepth?: number;
 }
 
 // The glyph and the category it belongs to; how the category *reads* is in
@@ -35,8 +41,9 @@ export function FileNode({
   selectedId,
   highlightedPaths = new Set(),
   forceOpen = false,
+  defaultOpenDepth = 1,
 }: FileNodeProps) {
-  const [open, setOpen] = useState(depth < 1);
+  const [open, setOpen] = useState(depth < defaultOpenDepth);
   const isFolder = node.type === "folder";
   const isSel = selectedId === node.id;
   const isHighlighted = !isFolder && highlightedPaths.has(node.name);
@@ -88,6 +95,7 @@ export function FileNode({
             selectedId={selectedId}
             highlightedPaths={highlightedPaths}
             forceOpen={forceOpen}
+            defaultOpenDepth={defaultOpenDepth}
           />
         ))}
     </div>

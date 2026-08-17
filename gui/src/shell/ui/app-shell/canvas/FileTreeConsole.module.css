@@ -1,9 +1,67 @@
-/* The REE filesystem console's body: a filter, then the tree. */
+/* The REE filesystem console's body: a filter, then one tree per inventory. */
 
+/* The height the two inventories divide between them. This box is not itself a
+ * scroller: a scrolling parent would chain against the sections' own scrollers,
+ * so it clips instead and the sections do all the scrolling. */
 .tree {
-  overflow-y: auto;
-  max-height: min(52vh, 460px);
+  --tree-budget: min(52vh, 460px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: var(--tree-budget);
   padding: 0 var(--space-1) var(--space-2);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-bottom: var(--space-2);
+}
+
+/* Where one inventory ends and the other begins. Each tree scrolls on its own,
+ * so the seam has to hold even when both are mid-scroll and the headings are
+ * the only fixed thing on screen. Full-bleed, to read as the console's own rule
+ * rather than as part of either tree. */
+.section + .section {
+  margin: 0 calc(-1 * var(--space-1));
+  border-top: 1px solid var(--chrome-border);
+  padding: var(--space-1) var(--space-1) var(--space-2);
+}
+
+/* Contested budget — see FileTreeConsole's `sharing`. The workspace is the one
+ * that can be a whole checkout, so it takes the larger share and the REE keeps
+ * the rest; below these heights each section is simply as tall as it needs to
+ * be. An empty inventory is not a claim, so an unshared section is uncapped and
+ * takes the console. */
+.section[data-share][data-inventory="workspace"] {
+  max-height: calc(var(--tree-budget) * 0.55);
+}
+
+.section[data-share][data-inventory="ree"] {
+  max-height: calc(var(--tree-budget) * 0.45);
+}
+
+/* One scroller per inventory, and they are siblings: whichever tree the pointer
+ * is over is the one that scrolls, with nothing above it to hand the gesture
+ * on to. */
+.sectionScroll {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Outside the scroller, so nothing passes under it and it needs no background
+ * of its own to stay legible. Shrinking is the tree's job, never the heading's. */
+.sectionTitle {
+  flex-shrink: 0;
+  padding: var(--space-1-5) var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-extrabold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--chrome-text-mid);
 }
 
 .empty {

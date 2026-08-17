@@ -95,10 +95,10 @@ test.describe("REE pipeline", () => {
             .filter((name): name is string => Boolean(name)),
         ),
       ];
-      // This console browses the REE tree, which deliberately excludes
-      // `workspace/` — that materialized view has its own inventory and its own
-      // surface (the editor). An uploaded archive lands in `upstream/`, the
-      // acquired source, so that is where these entries are.
+      // The console browses both inventories the backend publishes, in a section
+      // each: the materialized `workspace/`, and the REE tree that excludes it.
+      // An uploaded archive lands in `upstream/`, the acquired source, so the
+      // filter below narrows to the REE section and these entries are its.
       await page.getByPlaceholder("Filter files…").fill("upstream");
       for (const nodeName of archiveNodeNames) {
         const escaped = nodeName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

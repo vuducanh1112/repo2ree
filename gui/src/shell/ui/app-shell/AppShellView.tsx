@@ -117,6 +117,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
               commands.setFocusedField(null);
               openPage(PAGE.BUILD);
             }}
+            workspaceFiles={workspaceRemote.workspaceFiles}
             reeFiles={currentReeFiles}
             sourceRepo={workspaceRemote.sourceRepo}
             filesConsoleOpen={uiChrome.filesConsoleOpen}

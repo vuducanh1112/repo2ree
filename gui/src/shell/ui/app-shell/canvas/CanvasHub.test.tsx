@@ -63,6 +63,7 @@ describe("CanvasHub", () => {
         onOpenExperimentsOverview={vi.fn()}
         onOpenExperiment={vi.fn()}
         onOpenRuntime={vi.fn()}
+        workspaceFiles={[{ id: "ws:main.py", name: "main.py", type: "file", content: "print()" }]}
         reeFiles={[
           { id: "readme", name: "README.md", type: "file", content: "hello" },
           { id: "sbom", name: "artifacts/sbom.json", type: "file", content: "{}" },
@@ -88,6 +89,11 @@ describe("CanvasHub", () => {
     await user.click(screen.getByRole("button", { name: "README.md" }));
     expect(screen.getByRole("region", { name: "Open files" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Close README.md" }));
+
+    // The one console browses both inventories, and a workspace file names
+    // itself with the `workspace/` prefix the wire format strips.
+    await user.click(screen.getByRole("button", { name: "main.py" }));
+    expect(screen.getByText("workspace/main.py")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Collapse files" }));
     expect(onFilesConsoleOpenChange).toHaveBeenCalledWith(false);
@@ -124,6 +130,7 @@ describe("CanvasHub", () => {
         onOpenExperimentsOverview={onOpenExperimentsOverview}
         onOpenExperiment={onOpenExperiment}
         onOpenRuntime={onOpenRuntime}
+        workspaceFiles={[]}
         reeFiles={[]}
         sourceRepo={undefined}
         filesConsoleOpen={false}

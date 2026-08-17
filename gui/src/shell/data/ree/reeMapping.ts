@@ -1,5 +1,6 @@
 import type { ReeFile } from "@core/ree/ReeTypes";
 import type { FileTreeNode } from "@core/workspace/FileTree";
+import { reeFileId, workspaceDirId, workspaceFileId } from "@core/workspace/fileNodeIds";
 import type { ReeProject, SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
 import type { ReeDocument } from "../../infra/api/apiTypes";
 import { mapReeDetailToReeSlices } from "./mapping";
@@ -24,6 +25,8 @@ function mapSourceRepo(ree: ReeDocument): SourceRepoMetadata | undefined {
   };
 }
 
+// Ids come from `fileNodeIds`, which owns why they are namespaced by inventory
+// and derived from the path.
 function upsertTreeFile(
   roots: FileTreeNode[],
   relativePath: string,
@@ -44,7 +47,7 @@ function upsertTreeFile(
     let folder = cursor.find((node) => node.type === "folder" && node.name === segment);
     if (!folder) {
       folder = {
-        id: `remote-dir-${prefix}`,
+        id: workspaceDirId(prefix),
         name: segment,
         type: "folder",
         children: [],
@@ -58,9 +61,8 @@ function upsertTreeFile(
   }
 
   const fileName = parts[parts.length - 1];
-  const fileId = `remote-${relativePath}`;
   const fileNode: FileTreeNode = {
-    id: fileId,
+    id: workspaceFileId(relativePath),
     name: fileName,
     type: "file",
     content,
@@ -86,8 +88,8 @@ export function mapReeDetailToReeProject(
     upsertTreeFile(files, file.path, file.content ?? undefined, file.size ?? undefined, file.kind);
   }
 
-  const reeFiles: ReeFile[] = (ree.ree_files || []).map((file, index) => ({
-    id: `remote-ree-${index}-${file.path}`,
+  const reeFiles: ReeFile[] = (ree.ree_files || []).map((file) => ({
+    id: reeFileId(file.path),
     name: file.path,
     type: "file",
     tag: file.tag || "REE",

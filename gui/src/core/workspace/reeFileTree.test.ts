@@ -92,7 +92,7 @@ describe("buildReeFileTree", () => {
   it("gives folders path-derived ids, so same-named folders stay distinct", () => {
     const tree = buildReeFileTree([reeFile("a/deep/x.txt"), reeFile("b/deep/y.txt")]);
     const ids = tree.map((root) => root.children?.[0].id);
-    expect(ids).toEqual(["ree-dir-a/deep", "ree-dir-b/deep"]);
+    expect(ids).toEqual(["ree-dir:a/deep", "ree-dir:b/deep"]);
   });
 
   it("replaces a file of the same name instead of listing it twice", () => {

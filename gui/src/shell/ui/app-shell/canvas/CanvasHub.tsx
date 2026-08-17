@@ -16,6 +16,7 @@ import { satellitePositions } from "@core/canvas/experimentRing";
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import type { Badges, ReeFile } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
+import type { FileTreeNode } from "@core/workspace/FileTree";
 import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
 import { useMemo, useRef, useState } from "react";
 import { cssVars } from "../../theme/styleVars";
@@ -63,6 +64,7 @@ interface CanvasHubProps {
   onOpenExperiment: (index: number) => void;
   /** Inner-shell pod → the runtime environment page. */
   onOpenRuntime: () => void;
+  workspaceFiles: FileTreeNode[];
   reeFiles: ReeFile[];
   sourceRepo: SourceRepoMetadata | undefined;
   /** Node keys whose recorded run result is stale (see sealConsistency). */
@@ -83,6 +85,7 @@ export function CanvasHub({
   onOpenExperimentsOverview,
   onOpenExperiment,
   onOpenRuntime,
+  workspaceFiles,
   reeFiles,
   sourceRepo,
   staleNodeKeys,
@@ -295,6 +298,7 @@ export function CanvasHub({
       </div>
 
       <FileTreeConsole
+        workspaceFiles={workspaceFiles}
         reeFiles={reeFiles}
         open={filesConsoleOpen}
         onOpenChange={onFilesConsoleOpenChange}
