@@ -42,6 +42,32 @@ export default defineConfig({
       },
   projects: [
     {
+      // Page-level visual regression tests. These render the real routed GUI,
+      // but fulfill the HTTP contract from deterministic fixtures so a visual
+      // check never pays for workbench provisioning or a runtime build.
+      name: "gui-screenshot-tests",
+      testDir: "./tests/gui-screenshot-tests",
+      outputDir: "../test-artifacts/playwright/gui-screenshot-tests",
+      timeout: 30 * 1000,
+      expect: {
+        timeout: 10 * 1000,
+        toHaveScreenshot: {
+          animations: "disabled",
+          caret: "hide",
+          maxDiffPixels: 0,
+          // Ignore only sub-pixel antialiasing noise. Any pixel whose RGB
+          // distance exceeds this still fails because maxDiffPixels is zero.
+          threshold: 0.05,
+        },
+      },
+      use: {
+        ...baseUse,
+        video: "off",
+        trace: "retain-on-failure",
+        screenshot: "only-on-failure",
+      },
+    },
+    {
       // Lean regression tests: no narration, no artificial delays.
       // No video (avoids the ffmpeg dependency + per-test recording cost);
       // a trace is kept only for failures, which is cheap and debuggable.

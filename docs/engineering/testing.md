@@ -9,6 +9,7 @@
 |---|---|
 | `make gui-checks` | GUI TypeScript, Biome, knip, dependency-cruiser. |
 | `make gui-tests` | GUI Vitest tests — the `node` tier, measured (V8) into `coverage/node/unit/`. |
+| `make gui-screenshot-tests` | Page-level screenshot regression suite with a real GUI and deterministic mocked API. |
 | `make be-checks` | Ruff, Ruff format, and mypy across Python workspace packages. |
 | `make scripts-checks` | ShellCheck over `scripts/*.sh`. |
 | `make be-unit-tests` | The container-free backend `unit` tier, measured into its data directory. |
@@ -379,6 +380,38 @@ make gui-tests
 
 `make gui-checks` runs TypeScript for the app and e2e configs, Biome, knip, and
 dependency-cruiser.
+
+## GUI Screenshot Tests
+
+The `gui-screenshot-tests` Playwright project renders the real routed application in
+Chromium at a fixed desktop viewport. It replaces only `/api/v1/**` with
+deterministic fixtures, so slow workbench operations do not make screenshot
+checks slow or flaky. Unexpected API calls fail the test instead of silently
+falling through to a backend.
+
+Run all canonical application-page scenarios with:
+
+```bash
+make gui-screenshot-tests
+```
+
+Committed reference screenshots live beside the spec in
+`gui/tests/gui-screenshot-tests/application-pages.screenshot.spec.ts-snapshots/`. Failed
+comparisons and Playwright traces are written beneath
+`test-artifacts/playwright/gui-screenshot-tests/`.
+
+After intentionally changing the GUI, inspect the rendered pages and update the
+references with:
+
+```bash
+cd gui
+npm exec -- playwright test -c playwright.config.ts \
+  --project=gui-screenshot-tests --update-snapshots
+```
+
+This suite protects layout and appearance. It complements, rather than replaces,
+the live-stack e2e projects below, which prove that the browser, API, and real
+workbench operations integrate correctly.
 
 ## End-To-End Tests
 
