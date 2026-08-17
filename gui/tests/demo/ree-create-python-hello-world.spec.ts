@@ -49,6 +49,9 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
   // page; its Clear-source action lives in that panel's header.
   const sourcePanel = page.getByRole("region", { name: "Source Acquisition" });
   const clearSourceButton = sourcePanel.getByRole("button", { name: /Clear source/i });
+  // Short seal digest of the REE this run produces, read off the seal card and
+  // used to pick this run's row out of the index (which keeps earlier runs').
+  let sealedShortDigest = "";
 
   await demoStep(page, "Open REE creation flow", async () => {
     await page.goto("/");
@@ -504,6 +507,19 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
       timeout: 60000,
     });
 
+    // Capture this run's content identity from the seal card. The REE index is
+    // host-side and outlives every workbench, so a host that has run this demo
+    // before already holds other REEs named "ree-hello-world" — the digest is
+    // what tells this run's entry apart from them. First match is the seal
+    // card's hash row — the seal log sits below it.
+    const sealHash = (
+      await sealPanel
+        .getByText(/^sha256:[0-9a-f]{64}$/)
+        .first()
+        .innerText()
+    ).trim();
+    sealedShortDigest = sealHash.slice("sha256:".length, "sha256:".length + 12);
+
     // The Download REE button lives in the app header once the REE is sealed.
     const [download] = await Promise.all([
       page.waitForEvent("download"),
@@ -548,20 +564,25 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
     );
     await expect(page.getByRole("heading", { name: "REE Index" })).toBeVisible();
 
-    const entry = page.getByText("ree-hello-world", { exact: true });
+    // Identity is the seal digest, not the name: the name is a label two nodes
+    // could disagree on (and every earlier run of this demo left one just like
+    // it in the index), while the digest is what a deposit would be bound to.
+    // So this run's row is found by digest, and the rest of the chapter is
+    // scoped to it rather than to the name.
+    const digestCell = page.getByText(sealedShortDigest, { exact: true });
+    await expect(digestCell).toBeVisible();
+
+    // The index lists newest seal first, so this run's REE is the top row — the
+    // digest above is what proves the identity, the position only picks the row.
     await showcasePanel(
       page,
-      entry,
+      page.getByText("ree-hello-world", { exact: true }).first(),
       "The REE just sealed is listed — its workbench is released, but the record survives it",
     );
 
-    // Identity is the seal digest, not the name: the name is a label two nodes
-    // could disagree on, while the digest is what a deposit would be bound to.
-    await expect(page.getByText(/^[0-9a-f]{12}$/)).toBeVisible();
-
     await showcasePanel(
       page,
-      page.getByText("Not deposited", { exact: true }),
+      page.getByText("Not deposited", { exact: true }).first(),
       "No DOI yet — nothing has been deposited to an archive, and the index says so rather than leaving it blank",
     );
 
@@ -572,7 +593,9 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
       page.getByRole("button", { name: /Deposited only/i }),
       "Filter to what an archive has actually accepted — this REE is sealed, not yet deposited, so it drops out",
     );
-    await expect(page.getByText("Nothing deposited yet")).toBeVisible();
-    await expect(page.getByText("ree-hello-world", { exact: true })).toHaveCount(0);
+    // Asserted on this run's digest, not on the empty state: whether the list
+    // ends up empty depends on what else the host has ever deposited, which is
+    // not this demo's claim.
+    await expect(digestCell).toHaveCount(0);
   });
 });
