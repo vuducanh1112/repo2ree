@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { emptyHBOM } from "./HbomSummary";
-import { draftFromHBOM, hbomFromDraft, newCpuRow, newGpuRow } from "./hardwareBomDraft";
+import {
+  draftFromHBOM,
+  hbomFromDraft,
+  hbomSyncKey,
+  newCpuRow,
+  newGpuRow,
+  newMemoryRow,
+  newNetworkRow,
+  newStorageRow,
+} from "./hardwareBomDraft";
 
 describe("hardwareBomDraft", () => {
   it("round-trips model-keyed HBOM entries through draft conversion", () => {
@@ -83,5 +92,126 @@ describe("hardwareBomDraft", () => {
 
     const rebuilt = hbomFromDraft(draft, hbom);
     expect(rebuilt.extraInfo).toEqual({ note: "keep me" });
+  });
+
+  it("creates editable defaults for every hardware category", () => {
+    const id = (prefix: string) => `${prefix}-new`;
+    expect(newCpuRow(id)).toMatchObject({ id: "cpu-new", quantity: 1, coresPerCpu: 1 });
+    expect(newGpuRow(id)).toMatchObject({ id: "gpu-new", quantity: 1, memoryGb: 0 });
+    expect(newMemoryRow(id)).toMatchObject({
+      id: "memory-new",
+      capacityGb: 0,
+      memoryType: "DDR5",
+    });
+    expect(newStorageRow(id)).toMatchObject({
+      id: "storage-new",
+      capacityGb: 0,
+      storageType: "NVMe",
+    });
+    expect(newNetworkRow(id)).toMatchObject({
+      id: "network-new",
+      bandwidthGbps: 0,
+      networkType: "ethernet",
+    });
+  });
+
+  it("projects every category with stable ids and carries each unnamed draft row", () => {
+    const hbom = emptyHBOM();
+    hbom.cpus.cpu = {
+      vendor: "v",
+      quantity: 1,
+      coresPerCpu: 2,
+      threadsPerCore: 1,
+      architecture: "x",
+      extraInfo: {},
+    };
+    hbom.gpus.gpu = {
+      vendor: "v",
+      quantity: 1,
+      memoryGb: 2,
+      interface: "i",
+      extraInfo: {},
+    };
+    hbom.memory.ram = {
+      vendor: "v",
+      quantity: 1,
+      capacityGb: 2,
+      memoryType: "DDR5",
+      speedMtS: 3,
+      extraInfo: {},
+    };
+    hbom.storage.disk = {
+      vendor: "v",
+      quantity: 1,
+      capacityGb: 2,
+      storageType: "NVMe",
+      interface: "i",
+      extraInfo: {},
+    };
+    hbom.network.nic = {
+      vendor: "v",
+      quantity: 1,
+      bandwidthGbps: 2,
+      networkType: "ethernet",
+      interface: "i",
+      extraInfo: {},
+    };
+    const previous = draftFromHBOM(hbom);
+    previous.cpus.push(newCpuRow(() => "cpu-blank"));
+    previous.gpus.push(newGpuRow(() => "gpu-blank"));
+    previous.memory.push(newMemoryRow(() => "memory-blank"));
+    previous.storage.push(newStorageRow(() => "storage-blank"));
+    previous.network.push(newNetworkRow(() => "network-blank"));
+
+    const synced = draftFromHBOM(hbom, previous);
+    expect(synced.cpus.map(({ id }) => id)).toEqual(["cpu-0", "cpu-blank"]);
+    expect(synced.gpus.map(({ id }) => id)).toEqual(["gpu-0", "gpu-blank"]);
+    expect(synced.memory.map(({ id }) => id)).toEqual(["memory-0", "memory-blank"]);
+    expect(synced.storage.map(({ id }) => id)).toEqual(["storage-0", "storage-blank"]);
+    expect(synced.network.map(({ id }) => id)).toEqual(["network-0", "network-blank"]);
+  });
+
+  it("normalizes numeric fields while preserving valid values in every category", () => {
+    const id = (prefix: string) => prefix;
+    const draft = draftFromHBOM(emptyHBOM());
+    draft.cpus = [
+      {
+        ...newCpuRow(id),
+        model: " CPU ",
+        vendor: " Vendor ",
+        quantity: 1.9,
+        coresPerCpu: 0,
+        threadsPerCore: Number.POSITIVE_INFINITY,
+      },
+    ];
+    draft.gpus = [
+      { ...newGpuRow(id), model: " GPU ", quantity: -1, memoryGb: 12.5, interface: " PCIe " },
+    ];
+    draft.memory = [
+      { ...newMemoryRow(id), model: " RAM ", capacityGb: Number.NaN, speedMtS: 6400.8 },
+    ];
+    draft.storage = [{ ...newStorageRow(id), model: " Disk ", quantity: 2, capacityGb: -4 }];
+    draft.network = [{ ...newNetworkRow(id), model: " NIC ", quantity: 2.7, bandwidthGbps: 100 }];
+
+    expect(hbomFromDraft(draft, emptyHBOM())).toMatchObject({
+      cpus: { CPU: { vendor: "Vendor", quantity: 1, coresPerCpu: 1, threadsPerCore: 1 } },
+      gpus: { GPU: { quantity: 1, memoryGb: 12.5, interface: "PCIe" } },
+      memory: { RAM: { capacityGb: 0, speedMtS: 6400 } },
+      storage: { Disk: { quantity: 2, capacityGb: 0 } },
+      network: { NIC: { quantity: 2, bandwidthGbps: 100 } },
+    });
+  });
+
+  it("drops unnamed rows in every category and serializes a stable sync key", () => {
+    const draft = {
+      cpus: [newCpuRow(() => "cpu")],
+      gpus: [newGpuRow(() => "gpu")],
+      memory: [newMemoryRow(() => "memory")],
+      storage: [newStorageRow(() => "storage")],
+      network: [newNetworkRow(() => "network")],
+    };
+    const rebuilt = hbomFromDraft(draft, emptyHBOM());
+    expect(rebuilt).toEqual(emptyHBOM());
+    expect(hbomSyncKey(rebuilt)).toBe(JSON.stringify(emptyHBOM()));
   });
 });

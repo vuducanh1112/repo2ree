@@ -80,4 +80,124 @@ describe("shell/data/ree/reeMapping", () => {
       "ree:overlay/build.sh",
     ]);
   });
+
+  it("builds nested workspace trees, skips empty paths, and replaces duplicate files", () => {
+    const project = mapReeDetailToReeProject(
+      baseRee({
+        workspace_files: [
+          { path: "", kind: "source", size: 0 },
+          { path: "/src/main.py", kind: "source", size: 1, content: "old" },
+          {
+            path: "src/helper.py",
+            kind: "source",
+            size: undefined as unknown as number,
+            content: null,
+          },
+          { path: "src/main.py", kind: "generated", size: 2, content: "new" },
+        ],
+      }),
+    );
+
+    expect(project.files).toEqual([
+      {
+        id: "ws-dir:src",
+        name: "src",
+        type: "folder",
+        children: [
+          {
+            id: "ws:src/main.py",
+            name: "main.py",
+            type: "file",
+            content: "new",
+            size: 2,
+            tag: "generated",
+          },
+          {
+            id: "ws:src/helper.py",
+            name: "helper.py",
+            type: "file",
+            content: undefined,
+            size: undefined,
+            tag: "source",
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("maps source metadata with and without a receipt", () => {
+    const withReceipt = baseRee();
+    const subjectWithReceipt = withReceipt.ree.subject;
+    if (!subjectWithReceipt?.definition || !subjectWithReceipt.receipts) {
+      throw new Error("incomplete subject fixture");
+    }
+    subjectWithReceipt.definition.source = {
+      origin_url: "https://example.test/repo",
+      source_type: "git",
+    };
+    subjectWithReceipt.receipts.source = {
+      schema_version: 1,
+      run_id: "run",
+      started_at: "start",
+      finished_at: "finish",
+      duration_ms: 1,
+      recorded_at: "recorded",
+      operation: "acquire_source",
+      origin_url: "https://example.test/repo",
+      source_type: "git",
+      requested_ref: "main",
+      resolved_revision: "abc",
+      observed_swhid: "swh:1:dir:value",
+      snapshot_digest: "sha256:value",
+    };
+    const project = mapReeDetailToReeProject({
+      ...withReceipt,
+      workbench_image: "image:tag",
+      ree_files: [
+        {
+          path: "artifact",
+          kind: "ree",
+          tag: "",
+          size: undefined as unknown as number,
+          content: null,
+        },
+      ],
+    });
+    expect(project.sourceRepo).toMatchObject({
+      name: "workspace-demo",
+      acquiredBy: "authoring",
+      sourceType: "git",
+      swhid: "swh:1:dir:value",
+    });
+    expect(project.workbenchImage).toBe("image:tag");
+    expect(project.reeFiles?.[0]).toMatchObject({
+      tag: "REE",
+      content: undefined,
+      size: undefined,
+    });
+
+    const withoutReceipt = baseRee();
+    const subjectWithoutReceipt = withoutReceipt.ree.subject;
+    if (!subjectWithoutReceipt?.definition) throw new Error("incomplete subject fixture");
+    subjectWithoutReceipt.definition.name = "";
+    subjectWithoutReceipt.definition.source = {
+      origin_url: "https://example.test/fallback",
+      source_type: "tarball",
+    };
+    expect(mapReeDetailToReeProject(withoutReceipt).sourceRepo).toMatchObject({
+      name: "https://example.test/fallback",
+      acquiredBy: "",
+      swhid: "",
+    });
+  });
+
+  it("defaults absent optional inventories and source metadata", () => {
+    const project = mapReeDetailToReeProject(
+      baseRee({ workspace_files: undefined, ree_files: undefined, workbench_image: null }),
+    );
+    expect(project.files).toEqual([]);
+    expect(project.reeFiles).toEqual([]);
+    expect(project.sourceRepo).toBeUndefined();
+    expect(project.workbenchImage).toBeUndefined();
+  });
 });

@@ -126,4 +126,95 @@ describe("ReviewConsole", () => {
     expect(screen.getByText(/runtime is inhabitable/i)).toBeInTheDocument();
     expect(screen.getByText("hello")).toBeInTheDocument();
   });
+
+  it("qualifies bundled evidence and explains matching builds and failed activation", async () => {
+    const user = userEvent.setup();
+    const review = {
+      review_id: "review-bundled",
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:01:00Z",
+      status: "failed",
+      steps: [
+        { step: "source", status: "succeeded", failure: null },
+        { step: "build", status: "succeeded", failure: null },
+        { step: "activation", status: "failed", failure: "activation failed" },
+      ],
+      source_comparison: {
+        basis: "bundled",
+        verdict: "identical",
+        expected_swhid: null,
+        observed_swhid: null,
+      },
+      build_comparison: {
+        basis: "bundled",
+        verdict: "equivalent",
+        expected_runtime_digest: "sha256:same",
+        observed_runtime_digest: "sha256:same",
+        matched: 3,
+        missing_count: 0,
+        extra_count: 0,
+        version_mismatch_count: 0,
+        advisory_count: 2,
+        missing: [],
+        extra: [],
+        version_mismatches: [],
+      },
+      activation_outcome: {
+        basis: "bundled",
+        verdict: "failed",
+        runtime_digest: "sha256:same",
+        run_exit_code: 1,
+        verify_exit_code: null,
+      },
+      experiment_comparisons: [],
+      failure: "activation failed",
+    };
+    renderWithShell(<ReviewConsole experiments={[]} />, {
+      reeId: "ree-1",
+      services: fakeApiServices({
+        ree: { listReviews: vi.fn().mockResolvedValue({ reviews: [review] }) },
+      }),
+    });
+    await user.click(screen.getByRole("button", { name: "Expand review controls" }));
+    expect(await screen.findByText(/source and runtime verified from/)).toBeInTheDocument();
+    expect(screen.getByText(/runtime digest: bit-identical/)).toBeInTheDocument();
+    expect(screen.getByText(/2 advisory/)).toBeInTheDocument();
+    expect(screen.getByText(/runtime did not activate/)).toBeInTheDocument();
+    expect(screen.getByText(/verify not run/)).toBeInTheDocument();
+  });
+
+  it("shows the verify exit code for an activation failure", async () => {
+    const user = userEvent.setup();
+    const review = {
+      review_id: "review-verify-failed",
+      created_at: "created",
+      updated_at: "updated",
+      status: "failed",
+      steps: [
+        { step: "source", status: "succeeded", failure: null },
+        { step: "build", status: "succeeded", failure: null },
+        { step: "activation", status: "failed", failure: "verify failed" },
+      ],
+      source_comparison: { basis: "independent", verdict: "identical" },
+      build_comparison: null,
+      activation_outcome: {
+        basis: "independent",
+        verdict: "failed",
+        runtime_digest: null,
+        run_exit_code: 0,
+        verify_exit_code: 2,
+      },
+      experiment_comparisons: [],
+      failure: "verify failed",
+    };
+    renderWithShell(<ReviewConsole experiments={[]} />, {
+      reeId: "ree-1",
+      services: fakeApiServices({
+        ree: { listReviews: vi.fn().mockResolvedValue({ reviews: [review] }) },
+      }),
+    });
+    await user.click(screen.getByRole("button", { name: "Expand review controls" }));
+    expect(await screen.findByText(/verify exited 2/)).toBeInTheDocument();
+    expect(screen.queryByText(/verified from the REE/)).not.toBeInTheDocument();
+  });
 });

@@ -78,4 +78,96 @@ describe("mapReviewRecord", () => {
       verifyScriptPath: "",
     });
   });
+
+  it("maps an empty record without inventing optional evidence", () => {
+    const wire = {
+      review_id: "review-empty",
+      created_at: "created",
+      updated_at: "updated",
+      status: "queued",
+      steps: null,
+      source_comparison: null,
+      build_comparison: null,
+      activation_outcome: null,
+      experiment_comparisons: null,
+      failure: null,
+    } as unknown as ReviewRecordWire;
+
+    expect(mapReviewRecord(wire)).toEqual({
+      reviewId: "review-empty",
+      createdAt: "created",
+      updatedAt: "updated",
+      status: "queued",
+      steps: [],
+      sourceComparison: undefined,
+      buildComparison: undefined,
+      activationOutcome: undefined,
+      experimentComparisons: [],
+      failure: undefined,
+    });
+  });
+
+  it("defaults absent comparison counts and arrays while retaining failure values", () => {
+    const wire = {
+      review_id: "review-defaults",
+      created_at: "created",
+      updated_at: "updated",
+      status: "failed",
+      steps: [{ step: "build", status: "failed", failure: "build failed" }],
+      source_comparison: { basis: "receipt", verdict: "match" },
+      build_comparison: { basis: "receipt", verdict: "unknown" },
+      activation_outcome: {
+        basis: "receipt",
+        verdict: "unknown",
+        runtime_digest: null,
+        run_exit_code: null,
+        verify_exit_code: null,
+      },
+      experiment_comparisons: [
+        {
+          basis: "receipt",
+          verdict: "unknown",
+          experiment_name: "experiment",
+        },
+      ],
+      failure: "review failed",
+    } as unknown as ReviewRecordWire;
+    const mapped = mapReviewRecord(wire);
+
+    expect(mapped.steps[0].failure).toBe("build failed");
+    expect(mapped.sourceComparison).toEqual({
+      basis: "receipt",
+      expectedSwhid: undefined,
+      observedSwhid: undefined,
+      verdict: "match",
+    });
+    expect(mapped.buildComparison).toMatchObject({
+      basis: "receipt",
+      matched: 0,
+      missingCount: 0,
+      extraCount: 0,
+      versionMismatchCount: 0,
+      advisoryCount: 0,
+      missing: [],
+      extra: [],
+      versionMismatches: [],
+    });
+    expect(mapped.activationOutcome).toMatchObject({
+      runtimeDigest: undefined,
+      runExitCode: undefined,
+      verifyExitCode: undefined,
+    });
+    expect(mapped.experimentComparisons[0]).toMatchObject({
+      verifyScriptPath: "",
+      expectedVerifyScriptDigest: undefined,
+      verifyScriptDigest: undefined,
+      expectedVerifyExitCode: undefined,
+      observedVerifyExitCode: undefined,
+      runExitCode: undefined,
+      expectedOutputDigest: undefined,
+      observedOutputDigest: undefined,
+      runtimeDigest: undefined,
+    });
+    expect(mapped.failure).toBe("review failed");
+  });
 });

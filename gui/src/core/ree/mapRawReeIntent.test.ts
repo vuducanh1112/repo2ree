@@ -100,4 +100,128 @@ describe("mapRawReeIntentToSlices", () => {
     expect(mapped.artifactStatus.runtimeIncluded).toBe(false);
     expect(mapped.workspaceSourceState.sourceAvailable).toBe(true);
   });
+
+  it("maps every persisted intent and session field", () => {
+    const mapped = mapRawReeIntentToSlices({
+      reeIntent: {
+        name: "persisted",
+        catalog_metadata: {
+          description: "description",
+          version: "1",
+          website: "https://example.test",
+          keywords: ["one", 2],
+          contributors: [
+            {
+              identifier: "id",
+              name: "name",
+              affiliation_name: "lab",
+              affiliation_identifier: "ror",
+            },
+          ],
+          corresponding_author_identifier: "id",
+        },
+        origin_url: "https://example.test/repo",
+        source_type: "git",
+        revision: "abc",
+        runtime: "runtime.tar",
+        activation: {
+          description: "activate",
+          run_script: "run.sh",
+          verify_script: "verify.sh",
+          output_paths: ["one", "", 2],
+          runtime_estimate: "minute",
+          resource_estimates: { cpu: 2, memory: "1GB", gpu: 0, storage: 3, network: "fast" },
+        },
+        sbom: "sbom.json",
+        swhid: "swh:1:dir:test",
+        hardware_description: {},
+        experiments: [null],
+      },
+      reeSession: {
+        source_available: true,
+        source_included: true,
+        source_acquired_by: "url",
+        uploaded_archive: "source.tar",
+        source_snapshot_archive: "snapshot.tar",
+        source_snapshot_captured_at: "now",
+        runtime_included: true,
+        sealed_at: "sealed",
+        seal_hash: "hash",
+        dependency_level: 1,
+        environment_level: 2,
+        machine_level: 3,
+        detected_dependencies: "requirements.txt",
+      },
+      fallbackName: "fallback",
+      fallbackOriginUrl: "fallback-url",
+    });
+
+    expect(mapped.reeSpec).toMatchObject({
+      name: "persisted",
+      originUrl: "https://example.test/repo",
+      sourceType: "git",
+      resolvedRevision: "abc",
+      runtime: "runtime.tar",
+      sbom: "sbom.json",
+      swhid: "swh:1:dir:test",
+      catalogMetadata: {
+        keywords: ["one", "2"],
+        correspondingAuthorIdentifier: "id",
+        contributors: [{ affiliationName: "lab", affiliationIdentifier: "ror" }],
+      },
+      activation: {
+        runScript: "run.sh",
+        verifyScript: "verify.sh",
+        outputPaths: ["one", "2"],
+        resourceEstimates: { cpu: "2", memory: "1GB", gpu: "0", storage: "3", network: "fast" },
+      },
+    });
+    expect(mapped.workspaceSourceState).toMatchObject({
+      sourceAcquiredBy: "url",
+      uploadedArchive: "source.tar",
+      sourceSnapshotArchive: "snapshot.tar",
+      sourceSnapshotCapturedAt: "now",
+    });
+    expect(mapped.artifactStatus).toEqual({
+      runtimeIncluded: true,
+      sealedAt: "sealed",
+      sealHash: "hash",
+    });
+    expect(mapped.evaluationState).toEqual({
+      dependencyLevel: 1,
+      environmentLevel: 2,
+      machineLevel: 3,
+      detectedDependencies: "requirements.txt",
+    });
+  });
+
+  it("uses fallbacks and defaults for null or malformed slices", () => {
+    const mapped = mapRawReeIntentToSlices({
+      reeIntent: null,
+      reeSession: null,
+      fallbackName: "fallback",
+      fallbackOriginUrl: "fallback-url",
+    });
+    expect(mapped.reeSpec.name).toBe("fallback");
+    expect(mapped.reeSpec.originUrl).toBe("fallback-url");
+    expect(mapped.reeSpec.catalogMetadata).toMatchObject({
+      keywords: [],
+      contributors: [],
+      correspondingAuthorIdentifier: null,
+    });
+    expect(mapped.reeSpec.experiments).toEqual([]);
+    expect(mapped.workspaceSourceState).toEqual({
+      sourceAvailable: false,
+      sourceIncluded: false,
+      sourceAcquiredBy: undefined,
+      uploadedArchive: undefined,
+      sourceSnapshotArchive: undefined,
+      sourceSnapshotCapturedAt: undefined,
+    });
+    expect(mapped.artifactStatus).toEqual({
+      runtimeIncluded: false,
+      sealedAt: undefined,
+      sealHash: undefined,
+    });
+  });
 });

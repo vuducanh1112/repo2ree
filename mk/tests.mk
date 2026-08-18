@@ -86,10 +86,9 @@ coverage_render = set -e; \
 # Always measured, like the backend tiers: this suite *is* the node tier. Vitest
 # writes its report inline (reportsDirectory in gui/vite.config.js), so there is
 # no separate render step to match the python side's.
-#
-# Reads ~23%: 57 files of pure logic and no component tests yet, so the React
-# shell is untested — and nothing else measures it, since the Playwright suites
-# record no JS coverage. See docs/engineering/testing.md.
+# Component and pure-logic tests contribute to this report. The Playwright
+# suites deliberately record no JavaScript coverage; see
+# docs/engineering/testing.md.
 gui-tests:
 	@echo "Running GUI unit tests..."
 	cd gui && npx vitest run --coverage.enabled

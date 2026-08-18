@@ -103,6 +103,68 @@ describe("major step page workflows", () => {
     );
   });
 
+  it("shows activation prerequisite, failed outcome, timestamp, and cancellation states", async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+    renderWithShell(
+      <PageTestActivation
+        {...createStepPageProps("activation", {
+          ree: {
+            ...exampleEditorRee,
+            runtime: "",
+            activation: createEmptyReeSpec().activation,
+          },
+          workspaceFiles: [],
+          reeFiles: [],
+          running: true,
+          runDone: true,
+          runFailed: true,
+          badge: { step: "activation", label: "failed" },
+          ts: "2026-01-01T00:00:00Z",
+          missing: [{ field: "runtime", label: "Runtime" }],
+          onCancel,
+        })}
+      />,
+      { reeId: "ree-1", services: catalogServices() },
+    );
+
+    expect(await screen.findByText("Activation pending")).toBeInTheDocument();
+    expect(screen.getByText("Runtime")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Cancel/ }));
+    expect(onCancel).toHaveBeenCalledWith("activation");
+  });
+
+  it("declares catalog fallback activation paths when their scripts are first saved", async () => {
+    const user = userEvent.setup();
+    const onReeSpecChange = vi.fn();
+    const onPersistWorkspaceFile = vi.fn().mockResolvedValue(undefined);
+    renderWithShell(
+      <PageTestActivation
+        {...createStepPageProps("activation", {
+          ree: { ...exampleEditorRee, activation: createEmptyReeSpec().activation },
+          onReeSpecChange,
+          onPersistWorkspaceFile,
+        })}
+      />,
+      { reeId: "ree-1", services: catalogServices() },
+    );
+
+    const runEditor = await screen.findByLabelText("Activation run script");
+    await waitFor(() => expect(runEditor).toBeEnabled());
+    await user.clear(runEditor);
+    await user.type(runEditor, "echo activate");
+    await user.click(screen.getByRole("button", { name: "Save run script" }));
+    const runUpdate = onReeSpecChange.mock.calls[0][0];
+    expect(runUpdate(createEmptyReeSpec()).activation.runScript).toBe("overlay/activate.sh");
+
+    const verifyEditor = screen.getByLabelText("Activation verify script (optional)");
+    await user.clear(verifyEditor);
+    await user.type(verifyEditor, "echo verify");
+    await user.click(screen.getByRole("button", { name: "Save verify script" }));
+    const verifyUpdate = onReeSpecChange.mock.calls[1][0];
+    expect(verifyUpdate(createEmptyReeSpec()).activation.verifyScript).toBe("overlay/verify.sh");
+  });
+
   it("adds hardware rows across categories and invokes profiling", async () => {
     const user = userEvent.setup();
     const onReeSpecChange = vi.fn();
