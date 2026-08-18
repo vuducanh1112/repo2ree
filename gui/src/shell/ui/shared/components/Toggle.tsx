@@ -23,6 +23,7 @@ export function Toggle({ on, disabled = false, tint, onChange, title }: TogglePr
       onClick={onChange}
       aria-pressed={on}
       disabled={disabled}
+      data-ui="toggle"
       title={title}
       className={styles.toggle}
       style={cssVars({ "--switch-tint": tint })}

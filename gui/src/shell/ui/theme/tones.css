@@ -5,7 +5,7 @@
 
 :root {
   /* Run and step state */
-  --status-ok: var(--palette-green-500);
+  --status-ok: var(--palette-green-700);
   --status-ok-glow: color-mix(in srgb, var(--palette-green-500) 53%, transparent);
   --status-stale: var(--palette-amber-500);
   --status-stale-glow: color-mix(in srgb, var(--palette-amber-500) 53%, transparent);
@@ -158,7 +158,7 @@
   --threat-high-line: var(--palette-red-600);
   --threat-high-wash: var(--palette-red-050);
   --threat-high-edge: var(--palette-red-300);
-  --threat-medium-line: var(--palette-amber-600);
+  --threat-medium-line: var(--palette-amber-800);
   --threat-medium-wash: var(--palette-amber-050);
   --threat-medium-edge: var(--palette-amber-300);
   --threat-low-line: var(--palette-sky-700);

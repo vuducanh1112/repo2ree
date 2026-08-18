@@ -1,5 +1,5 @@
 import { expect, type Page } from "@playwright/test";
-import { VISUAL_REE_ID } from "../fixtures/scenario";
+import { VISUAL_REE_ID } from "./scenario";
 
 export async function settleVisualPage(page: Page): Promise<void> {
   await page.evaluate(async () => {

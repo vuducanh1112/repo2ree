@@ -42,6 +42,22 @@ export default defineConfig({
       },
   projects: [
     {
+      // WCAG text-contrast checks over the same deterministic application
+      // states as the screenshot suite. Unresolved axe results are attached for
+      // review because transparent or layered surfaces need human judgment.
+      name: "gui-contrast-tests",
+      testDir: "./tests/gui-contrast-tests",
+      outputDir: "../test-artifacts/playwright/gui-contrast-tests",
+      timeout: 30 * 1000,
+      expect: { timeout: 10 * 1000 },
+      use: {
+        ...baseUse,
+        video: "off",
+        trace: "retain-on-failure",
+        screenshot: "only-on-failure",
+      },
+    },
+    {
       // Page-level visual regression tests. These render the real routed GUI,
       // but fulfill the HTTP contract from deterministic fixtures so a visual
       // check never pays for workbench provisioning or a runtime build.

@@ -9,6 +9,7 @@
 |---|---|
 | `make gui-checks` | GUI TypeScript, Biome, knip, dependency-cruiser. |
 | `make gui-tests` | GUI Vitest tests — the `node` tier, measured (V8) into `coverage/node/unit/`. |
+| `make gui-contrast-tests` | WCAG contrast checks over deterministic, browser-rendered application pages. |
 | `make gui-screenshot-tests` | Page-level screenshot regression suite with a real GUI and deterministic mocked API. |
 | `make be-checks` | Ruff, Ruff format, and mypy across Python workspace packages. |
 | `make scripts-checks` | ShellCheck over `scripts/*.sh`. |
@@ -412,6 +413,21 @@ npm exec -- playwright test -c playwright.config.ts \
 This suite protects layout and appearance. It complements, rather than replaces,
 the live-stack e2e projects below, which prove that the browser, API, and real
 workbench operations integrate correctly.
+
+## GUI Contrast Tests
+
+The `gui-contrast-tests` Playwright project runs axe's `color-contrast` rule
+over the same 16 deterministic application states as the screenshot project,
+plus a matrix of the semantic text roles used across those pages:
+
+```bash
+make gui-contrast-tests
+```
+
+Definite violations fail the suite. Results axe cannot resolve automatically
+are attached to the test as JSON for review because transparent, layered, or
+image-backed surfaces can prevent an automated contrast calculation. The
+browser suite is part of `push-gate`, not the fast browser-free `commit-gate`.
 
 ## End-To-End Tests
 

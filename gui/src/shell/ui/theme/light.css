@@ -11,8 +11,8 @@
 
   /* Ink */
   --ink-default: var(--palette-neutral-950);
-  --ink-muted: var(--palette-neutral-600);
-  --ink-subtle: var(--palette-neutral-500);
+  --ink-muted: var(--palette-neutral-800);
+  --ink-subtle: var(--palette-neutral-600);
   --ink-inverse: var(--palette-white);
   --ink-inverse-muted: var(--palette-neutral-100);
   --ink-inverse-subtle: var(--palette-neutral-300);
@@ -61,8 +61,8 @@
   --chrome-border: var(--palette-neutral-100);
   --chrome-border-strong: var(--palette-neutral-200);
   --chrome-text: var(--palette-neutral-950);
-  --chrome-text-mid: var(--palette-neutral-600);
-  --chrome-text-muted: var(--palette-neutral-400);
+  --chrome-text-mid: var(--palette-neutral-800);
+  --chrome-text-muted: var(--palette-neutral-600);
   --chrome-accent: var(--palette-blue-600);
   --chrome-accent-bg: var(--palette-blue-050);
   --chrome-accent-border: var(--palette-blue-200);

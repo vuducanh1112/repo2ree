@@ -51,6 +51,7 @@ push-gate: require-clean-tree
 	$(MAKE) scripts-checks gui-checks be-checks
 	$(MAKE) e2e-bundles
 	$(MAKE) gui-tests be-tests
+	$(MAKE) gui-contrast-tests gui-screenshot-tests
 	$(MAKE) e2e-gui
 	$(MAKE) e2e-gui-review
 	$(MAKE) e2e-gui-stack-local
