@@ -6,6 +6,10 @@ site_dir = "sites/docs"
 use_directory_urls = true
 nav = [
   { "Home" = "README.md" },
+  { "Explanation" = [
+    { "What is an REE?" = "explanation/what-is-an-ree.md" },
+    { "What is repo2ree?" = "explanation/what-is-repo2ree.md" },
+  ] },
   { "Tutorials" = [
     { "Overview" = "tutorials/README.md" },
     { "Create your first REE" = "tutorials/create-your-first-ree.md" },
@@ -18,6 +22,7 @@ nav = [
   ] },
   { "Reference" = [
     { "Concepts" = "reference/concepts.md" },
+    { "Anatomy of an REE" = "reference/ree-anatomy.md" },
     { "Current capabilities" = "reference/current-status.md" },
     { "System architecture" = [
       { "Overview" = "reference/architecture/README.md" },
@@ -30,9 +35,6 @@ nav = [
       { "How independent reproduction works" = "reference/architecture/independent-reproduction.md" },
     ] },
     { "Frequently asked questions" = "reference/faq.md" },
-  ] },
-  { "Explanation" = [
-    { "Understanding repo2ree" = "explanation/what-is-repo2ree.md" },
   ] },
 ]
 

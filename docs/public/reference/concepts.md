@@ -52,7 +52,9 @@ network details.
 
 A Reproducible Execution Environment. Publicly, this is the object a researcher
 can share: source identity, overlay, runtime evidence, run evidence, labels,
-and archive metadata.
+and archive metadata. [What is an REE?](../explanation/what-is-an-ree.md)
+explains the idea; [Anatomy of an REE](ree-anatomy.md) gives its directory
+layout and the `ree.json` schema.
 
 ## Repro Label
 
