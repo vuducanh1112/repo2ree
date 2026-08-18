@@ -25,6 +25,6 @@ loaded REE uses one workbench; separate attempts are isolated by their
 namespaces within its durable tree rather than by provisioning a workbench for
 every stage.
 
-For definitions of validation, reproduction, receipts, and sealing, see the
-[concept reference](../concepts.md).
+For what a receipt records and what sealing fixes, see
+[Anatomy of an REE](../ree-anatomy.md).
 

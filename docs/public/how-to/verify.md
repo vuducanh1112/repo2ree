@@ -63,4 +63,5 @@ reviewer's fresh run writes its own outputs to the declared paths in the
 workspace, and can diff them against the author's baseline sitting outside the
 workspace. Verify itself always reads the fresh workspace, never the baseline.
 
-For the deeper design, see [Run Receipt](../reference/concepts.md#run-receipt).
+For what a receipt records and how it is checked later, see
+[Anatomy of an REE](../reference/ree-anatomy.md#receipts).

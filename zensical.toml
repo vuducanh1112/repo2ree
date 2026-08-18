@@ -21,9 +21,7 @@ nav = [
     { "Archive and share an REE" = "how-to/archive.md" },
   ] },
   { "Reference" = [
-    { "Concepts" = "reference/concepts.md" },
     { "Anatomy of an REE" = "reference/ree-anatomy.md" },
-    { "Current capabilities" = "reference/current-status.md" },
     { "System architecture" = [
       { "Overview" = "reference/architecture/README.md" },
       { "The repo2ree ecosystem" = "reference/architecture/ecosystem.md" },
@@ -34,7 +32,6 @@ nav = [
       { "How a pipeline stage runs" = "reference/architecture/pipeline-stage-execution.md" },
       { "How independent reproduction works" = "reference/architecture/independent-reproduction.md" },
     ] },
-    { "Frequently asked questions" = "reference/faq.md" },
   ] },
 ]
 

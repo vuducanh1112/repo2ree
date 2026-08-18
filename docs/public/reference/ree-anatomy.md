@@ -5,9 +5,8 @@ bytes — source, recipe files, produced evidence — and the document,
 `ree.json`, records what the REE declares and what running it produced. A
 published bundle is that same directory, packed.
 
-This page is the layout and schema reference. For what the terms mean, see
-[Concepts](concepts.md); for why the object is shaped this way, see
-[What is an REE?](../explanation/what-is-an-ree.md).
+This page is the layout and schema reference. For why the object is shaped this
+way, see [What is an REE?](../explanation/what-is-an-ree.md).
 
 ## Directory layout
 

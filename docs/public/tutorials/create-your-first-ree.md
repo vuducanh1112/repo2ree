@@ -178,8 +178,8 @@ with the recorded baseline. Archiving is a separate publication step that may
 issue a DOI or another persistent identifier. These distinctions prevent
 “sealed,” “reproduced,” and “published” from overstating one another.
 
-For concise definitions after completing the tutorial, use the
-[public concept reference](../reference/concepts.md).
+For the object you just built, described field by field, see
+[Anatomy of an REE](../reference/ree-anatomy.md).
 
 ## Scope of this exercise
 

@@ -1,7 +1,7 @@
 # What is repo2ree?
 
-repo2ree is an integration layer for reproducible computer-science research: it
-helps an author turn a repository into a
+repo2ree is an integration layer for reproducible computational research: it
+helps an author create a
 [Reproducible Execution Environment](what-is-an-ree.md), and gives everyone
 after them a way to check it.
 
@@ -16,20 +16,15 @@ Researchers already have capable tools at three layers:
 Nothing binds them. A build system describes an environment but does not grade
 it. A tracker records a run but does not tie it to a rebuildable environment. An
 archive preserves files but does not compose them into something a reader can
-re-run. repo2ree leaves each substrate in place and supplies the binding.
+re-run. repo2ree leaves each substrate in place and supplies the binding, in
+the form of an REE.
 
 ## Authoring an REE
 
-Authoring is a guided pass over a repository that ends in a sealed bundle. You
-point repo2ree at source, it evaluates what the repository declares, and you
-fill in what a README would leave implicit: where the build lives, how the built
-runtime is activated, which command is the experiment, and what counts as a
-passing result. Each step runs in an isolated workbench and leaves a receipt.
-
-repo2ree asks for convention where the ecosystem offers none — a reserved build
-script, a reserved activation script, and named experiments whose verify scripts
-define the claim. That records knowledge the author already has in a form a
-machine can act on later.
+Authoring is a guided pass over a repository that ends in a downloadable REE.
+You specify how to obtain the source code, how to build the runtime, how the
+built runtime is activated, which command is the experiment, and what counts as
+a passing result. Each step runs in an isolated workbench and leaves a receipt.
 
 The work sits with the author deliberately, for three reasons:
 
@@ -46,7 +41,7 @@ because it cannot know what your software does, and a wrong guess that runs
 produces evidence worse than none.
 
 The second is to pay the author back in the same transaction. The sealed bundle
-has to be worth something to the person who made it — runnable by their future
+has to be worth something to the person who made it: runnable by their future
 self, ready for deposit, citable. Effort that only benefits downstream readers
 is a design defect, not a virtue.
 
@@ -64,8 +59,8 @@ SBOM closure, activation outcome, and experiment results.
 
 repo2ree has no special review mode. A review attempt is an ordinary REE tree of
 its own, and the reviewer runs the same operations the author ran, producing the
-same kind of receipts. What makes it a review is that the attempt is isolated —
-the author's evidence is read and never written — and that each step ends in a
+same kind of receipts. Two things make it a review. The attempt is isolated, so
+the author's evidence is read and never written, and each step ends in a
 recorded comparison rather than only a receipt.
 
 This is what the authoring discipline buys. Because the experiment was named and
@@ -79,9 +74,9 @@ See [Verify a result](../how-to/verify.md).
 
 Before anything is built, repo2ree can assess a repository as it stands. Evaluate
 scans for dependency declarations, manifests, lockfiles, runtime hints, and
-concrete risks — floating image tags, unpinned installs, missing base-image
-digests — and scores independent axes for dependencies, environment, and
-machine. The result is the seed of a **Repro Label**.
+concrete risks such as floating image tags, unpinned installs, and missing
+base-image digests. It scores independent axes for dependencies, environment,
+and machine.
 
 Two properties matter more than the score.
 
@@ -101,7 +96,7 @@ product; generation is one remedy inside it.
 
 Evaluate grades the *source*. It is separate from the REE assessment, which
 reads an assembled REE and reports which evidence is current and which has gone
-stale. Neither one proves a reproduction — that takes a review.
+stale. Neither proves a reproduction; that takes a review.
 
 See [Evaluate a repository](../how-to/evaluate.md).
 
@@ -116,66 +111,125 @@ a cloud account each runs its own agent.
 The agent is a gateway, not the compute. It translates repo2ree operations into
 calls to whatever runtime or scheduler exists locally, and advertises only the
 capabilities its owner chooses to expose. It connects outward, so no institution
-has to open an inbound endpoint. Infrastructure credentials — cloud keys,
-kubeconfig, scheduler access, the container socket — stay on the owner's side
-and are never handed to the repo2ree API.
+has to open an inbound endpoint. Infrastructure credentials stay on the owner's
+side: cloud keys, kubeconfig, scheduler access, the container socket. The
+repo2ree API never receives them.
 
 That split is what lets the work go to the data rather than the reverse. Corpora
 that legally cannot leave an institution can still be used in an REE, because
 the workbench runs inside the institution. Clusters where Docker is unavailable
 are an adapter problem rather than an exclusion.
 
-Today the agent drives Docker and provisions a workbench per REE on its host.
-Scheduler, cluster, and cloud adapters are designed extension points rather than
-shipped features — see [Current capabilities](../reference/current-status.md)
-for the line between the two, and
-[Federated compute](../reference/architecture/federated-compute.md) for the
-design.
+See [Federated compute](../reference/architecture/federated-compute.md) for the
+architecture.
 
 ## How repo2ree compares
 
-The nearest neighbour is Code Ocean, whose Compute Capsule bundles code,
-environment, data, and results into a hosted runnable, and whose Reproducible
-Run badge is used in peer review at Nature-family journals. It sets the usability
-bar: one button, and a reviewer gets an answer.
+Several projects address neighbouring parts of this problem. Four questions
+separate them: what each asks of you before it says anything, what it means when
+it reports that something reproduced, where the computation happens, and what a
+reader still holds once the service behind it is gone.
 
-The differences are structural rather than competitive.
+**[Code Ocean](https://codeocean.com/)** is the closest comparator, and a source
+of ideas. A Compute Capsule bundles code, environment, data, and results into one
+hosted runnable, and its Reproducible Run badge appears in peer review at
+Nature-family journals. It sets the usability bar: one button, and a reviewer
+gets an answer.
 
-| | Hosted platform | repo2ree |
-|---|---|---|
-| Entry price | Migrate the project into the platform | Point at the repository you already have |
-| Disclosure | Nothing to say until migration is done | A Repro Label on the repository as-is |
-| Verification | Did it execute | Did it execute, did artifacts match their contracts, does the claim still hold |
-| Compute | The platform's cloud | Wherever an agent runs, including self-hosted and institutional |
-| Archive | An identifier resolving to the platform | Software Heritage, Zenodo, and DataCite; the bundle opens without repo2ree |
+Capsules version their experiment results inside the platform. An REE instead
+carries the author's verify scripts and per-experiment output baselines, so a
+review reports separately whether the run happened and whether the claim held.
 
-The sharpest of these is the last. "We are open, they are commercial" is true and
-not enough — Whole Tale and Binder are open too. The argument that holds is
-tolerance of platform mortality: a capsule identifier resolves to one company's
-domain, and if that company pivots or shuts down, the artifact degrades. An REE
-is a directory of ordinary files with a documented layout, its source resolvable
-through Software Heritage and its bundle deposited in repositories that outlive
-any single vendor. Openness is the mechanism here, not the slogan: anyone can
-re-host the machinery, so the evidence chain has no single commercial point of
-failure.
+Code Ocean also ships a run script that reproduces a capsule on a local machine,
+outside the platform. That idea shaped ours: every REE bundle carries a
+standalone run script.
 
-Prior formats are inputs rather than rivals. A Code Ocean capsule maps almost
-directly onto an REE — `code/` to source, `environment/` to an overlay build
-recipe, `metadata.yml` to declarations, `results/` to baseline outputs — and the
-same holds for Whole Tale tales, Binder configs, and RO-Crate metadata.
+**[Whole Tale](https://wholetale.org/)** binds narrative, code, data, and
+environment into a "tale" that runs inside the platform. The same two points
+apply: verification means the tale ran, and the entry price is porting the
+project into a tale first.
 
-Tools that make *authoring* reproducible — Renku, JupyterHub, devcontainers,
-Codespaces — sit upstream of repo2ree rather than opposite it. They answer "how
-do I work reproducibly?"; repo2ree answers "now that the work exists, how do I
-disclose, verify, and archive it?" The two questions stack, and a project that
-arrives from one of those environments earns a better Label for it.
+**[Binder](https://mybinder.org/) and
+[repo2docker](https://repo2docker.readthedocs.io/)** build an ephemeral session
+on demand from a repository. That is a different goal: nothing is meant to
+persist, and nothing is claimed about results. A Binder link works while the
+service and its base images remain.
+
+**[ReproZip](https://www.reprozip.org/)** takes the opposite approach: it
+captures one execution post hoc by tracing it, and packs the trace for replay.
+No authoring discipline is required, which is its appeal, and nothing
+declarative comes out of it. An `.rpz` replays, but it cannot say what the run
+was supposed to prove.
+
+**[Renku](https://renkulab.io/), [JupyterHub](https://jupyter.org/hub),
+[devcontainers](https://containers.dev/), and
+[Codespaces](https://github.com/features/codespaces)** are not rivals at all.
+They answer "how do I work reproducibly?", a question that comes *before*
+repo2ree's. Renku records provenance, dataset versions, and workflow executions
+continuously as you work, so a Renku-authored project arrives with code, data,
+and provenance already in a working state, and earns a better Repro Label for
+it. The two questions stack: repo2ree starts when the work exists and asks how
+to disclose, verify, and archive it.
+
+### Compute goes to the data
+
+This is where the architectures diverge most sharply, and it is easy to
+misread as a self-hosting question.
+
+Renku and BinderHub are open source, so an institution can deploy its own
+instance. What it gets is an island: a second, separate platform, with its own
+users, its own projects, and no relationship to the deployment next door.
+Code Ocean and Whole Tale do not offer even that: computation happens in their
+cloud, on their terms.
+
+repo2ree splits the control plane from the execution plane. One coordinating
+service can dispatch work to agents run by many different owners, each keeping
+its own credentials, quotas, and hardware, and each connecting outward rather
+than exposing an endpoint. A university does not have to run a whole platform to
+contribute compute; it runs an agent. A dataset that cannot legally leave the
+building is still usable, because the workbench comes to it.
+
+That is a different shape of problem than "can I self-host this?", and it is
+the one an institutional consortium actually has. Today the agent drives Docker
+and provisions a workbench per REE on its host; scheduler, cluster, and cloud
+adapters are designed extension points rather than shipped features. See
+[Federated compute](../reference/architecture/federated-compute.md) for the
+design.
+
+### Platform mortality
+
+"We are open, they are commercial" is true of Code Ocean and insufficient.
+Renku, Whole Tale, and Binder are open too, and none of them displaced it in
+artifact evaluation.
+
+The argument that holds is what survives the platform. A capsule DOI resolves to
+one company's domain; a tale lives in a Whole Tale instance; a Binder link
+rebuilds only while the service and the base images remain. An REE is a
+directory of ordinary files with a documented layout, its source resolvable
+through [Software Heritage](https://www.softwareheritage.org/) and its bundle
+deposited in repositories built to outlive any single vendor, repo2ree
+included. Openness is the mechanism, not
+the message: anyone can re-host the machinery, so the evidence chain has no
+single point of failure.
+
+### Prior formats are inputs
+
+A Code Ocean capsule maps almost directly onto an REE: `code/` to source,
+`environment/` to an overlay build recipe, `metadata.yml` to declarations, and
+`results/` to baseline outputs. The same holds for Whole Tale tales, Binder
+configs, and [RO-Crate](https://www.researchobject.org/ro-crate/) metadata.
+Importing one is an upgrade rather than a port: the author keeps what they built
+and gains a Label, receipts on re-execution,
+and a bundle that outlives the platform it came from.
 
 ## What repo2ree is not
 
 repo2ree is not a hosted IDE, notebook server, JupyterHub, or replacement for a
-lab's authoring environment. You keep your editor and your research workflow.
-repo2ree starts when there is an artifact to make understandable, runnable, and
-shareable.
+lab's authoring environment. Software development and experiments belong in your
+preferred environment. repo2ree starts when there is an artifact to make
+understandable, runnable, and shareable.
 
-It is also not a permanent archive. Archives preserve objects and identifiers.
-repo2ree prepares a better object for them to preserve.
+It is also not an archive. repo2ree prepares bundles and metadata for archiving
+services such as [Zenodo](https://zenodo.org/) and
+[Dataverse](https://dataverse.org/), which supply the durable storage and the
+identifiers. Live deposit adapters for those services are planned work.

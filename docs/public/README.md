@@ -10,8 +10,8 @@ and the object that answers it, then work through
 [Create your first REE](tutorials/create-your-first-ree.md).
 
 repo2ree is an active prototype. These pages describe both what works today and
-what the target design adds; [Current capabilities](reference/current-status.md)
-says which is which.
+what the target design adds, and say which is which where the difference
+matters.
 
 ## Explanation
 
@@ -40,14 +40,11 @@ Task recipes for a specific goal, once you know your way around.
 
 ## Reference
 
-Lookup material: vocabulary, current scope, and how the system is put together.
+Lookup material: the shape of an REE, and how the system is put together.
 
-- [Concepts](reference/concepts.md)
 - [Anatomy of an REE](reference/ree-anatomy.md) — the directory layout and the
   `ree.json` schema.
-- [Current capabilities](reference/current-status.md)
 - [System architecture](reference/architecture/README.md)
-- [Frequently asked questions](reference/faq.md)
 
 ## Project documentation
 

@@ -43,4 +43,5 @@ declared validation, that a later run reproduces prior evidence, or that an
 archive can preserve every dependency. Those questions need the build, run,
 verify, and archive workflows.
 
-For the deeper design, see [Repro Label](../reference/concepts.md#repro-label).
+For why the Label grades a repository rather than passing or failing it, see
+[Grading reproducibility](../explanation/what-is-repo2ree.md#grading-reproducibility).
