@@ -3,11 +3,11 @@ import styles from "./CanvasControls.module.css";
 export function CanvasControls({
   onZoomIn,
   onZoomOut,
-  onReset,
+  onFit,
 }: {
   onZoomIn: () => void;
   onZoomOut: () => void;
-  onReset: () => void;
+  onFit: () => void;
 }) {
   return (
     <div data-canvas-hud className={styles.controls}>
@@ -19,8 +19,9 @@ export function CanvasControls({
       </button>
       <button
         type="button"
-        title="Reset view"
-        onClick={onReset}
+        title="Fit view"
+        aria-label="Fit canvas to viewport"
+        onClick={onFit}
         className={styles.button}
         data-glyph="reset"
       >

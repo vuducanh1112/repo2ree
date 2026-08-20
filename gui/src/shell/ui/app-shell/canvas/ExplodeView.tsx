@@ -94,7 +94,7 @@ export function ExplodeToggle({ exploded, onToggle }: { exploded: boolean; onTog
       <span aria-hidden className={styles.toggleIcon}>
         {Ic.layers(14)}
       </span>
-      {exploded ? "Reassemble" : "Decompose"}
+      <span className={styles.toggleLabel}>{exploded ? "Reassemble" : "Decompose"}</span>
     </button>
   );
 }

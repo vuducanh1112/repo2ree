@@ -3,6 +3,7 @@ import {
   clampZoom,
   dragOffset,
   exceedsDragThreshold,
+  fitBounds,
   type StageBox,
   type Transform,
   ZOOM_MAX,
@@ -27,6 +28,26 @@ describe("clampZoom", () => {
   it("clamps either end", () => {
     expect(clampZoom(0.01)).toBe(ZOOM_MIN);
     expect(clampZoom(99)).toBe(ZOOM_MAX);
+  });
+});
+
+describe("fitBounds", () => {
+  const bounds = { left: -500, top: -400, width: 1150, height: 800 };
+
+  it("fits the whole world into a narrow viewport", () => {
+    const fitted = fitBounds({ width: 390, height: 720 }, bounds, 16);
+    expect(fitted.z).toBeCloseTo(358 / 1150);
+    expect(bounds.width * fitted.z).toBeLessThanOrEqual(390 - 32);
+  });
+
+  it("centres asymmetric world bounds", () => {
+    const fitted = fitBounds({ width: 1200, height: 900 }, bounds);
+    expect(fitted.x).toBeCloseTo(-75 * fitted.z);
+    expect(fitted.y).toBeCloseTo(0);
+  });
+
+  it("does not enlarge a compact world past 100 percent", () => {
+    expect(fitBounds({ width: 1600, height: 1000 }, bounds).z).toBe(1);
   });
 });
 

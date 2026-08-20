@@ -49,6 +49,9 @@ const INNER_POD_DIAMETER = EXPLODE_BASE_POD * INNER_LAYER.scale;
 // EXPLODE_ZOOM, so any extra shrink here makes the panels unreadable. The ring
 // radius (experimentRing) keeps them clear of the core pod.
 const CORE_SAT_SCALE = 1;
+// Includes the 760-unit pod and every assembled card, with room for shadows and
+// cable endpoints. The viewport fitter turns these world units into screen fit.
+const ASSEMBLED_BOUNDS = { left: -500, top: -400, width: 1150, height: 800 } as const;
 
 interface CanvasHubProps {
   page: AppShellPage;
@@ -111,10 +114,10 @@ export function CanvasHub({
     isPanning,
     startPan,
     startNodeDrag,
-    resetView,
+    fitView,
     zoomBy,
     focusView,
-  } = useCanvasViewport(stageRef);
+  } = useCanvasViewport(stageRef, ASSEMBLED_BOUNDS);
 
   const [exploded, setExploded] = useState(false);
   // Hover over the core pod (the experiment-catalog affordance) makes it shine.
@@ -192,10 +195,9 @@ export function CanvasHub({
   };
 
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: pannable canvas surface; nodes inside are buttons
     <div
       ref={stageRef}
-      onMouseDown={startPan}
+      onPointerDown={startPan}
       className={styles.stage}
       data-panning={isPanning || undefined}
       data-dimmed={dimmed || undefined}
@@ -326,7 +328,7 @@ export function CanvasHub({
       <CanvasControls
         onZoomIn={() => zoomBy(1.2)}
         onZoomOut={() => zoomBy(1 / 1.2)}
-        onReset={resetView}
+        onFit={fitView}
       />
     </div>
   );

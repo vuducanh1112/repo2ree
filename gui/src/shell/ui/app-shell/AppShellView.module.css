@@ -75,9 +75,46 @@
 }
 
 .reeName {
+  min-width: 0;
+  overflow: hidden;
   font-family: var(--font-mono);
   font-size: var(--text-body);
   color: var(--chrome-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .header {
+    gap: var(--space-1-5);
+    padding: 0 var(--space-2);
+  }
+
+  .rule,
+  .product,
+  .separator,
+  .reeName {
+    display: none;
+  }
+
+  .back {
+    padding-inline: var(--space-1-5);
+  }
+
+  .back span,
+  .downloadLabel {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .download {
+    padding: var(--space-2);
+  }
 }
 
 .spacer {

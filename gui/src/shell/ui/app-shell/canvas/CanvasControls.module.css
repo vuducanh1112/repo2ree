@@ -40,3 +40,10 @@
 .button[data-glyph="reset"] {
   font-size: var(--text-label);
 }
+
+@media (max-width: 760px) {
+  .controls {
+    right: 8px;
+    bottom: 8px;
+  }
+}

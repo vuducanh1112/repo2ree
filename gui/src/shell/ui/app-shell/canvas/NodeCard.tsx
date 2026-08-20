@@ -21,7 +21,7 @@ interface NodeCardProps {
   /** Where the card sits in the decomposed view (identity when assembled). */
   projection: NodeProjection;
   onNavigate: (page: AppShellPage, originRect?: DOMRect) => void;
-  onStartDrag: (key: string, sx: number, sy: number) => void;
+  onStartDrag: (key: string, event: React.PointerEvent) => void;
   wasNodeDragged: React.RefObject<boolean>;
 }
 
@@ -47,8 +47,8 @@ export function NodeCard({
       aria-label={node.label}
       ref={setRef}
       disabled={locked}
-      onMouseDown={(e) => {
-        if (!locked) onStartDrag(node.key, e.clientX, e.clientY);
+      onPointerDown={(event) => {
+        if (!locked) onStartDrag(node.key, event);
       }}
       onClick={(e) => {
         if (wasNodeDragged.current) return;

@@ -184,3 +184,62 @@
 .logsBody {
   max-height: var(--hud-logs-height);
 }
+
+@media (max-width: 760px) {
+  .console:not([data-open]) {
+    width: 44px;
+    border-radius: var(--radius-control);
+  }
+
+  .console:not([data-open]) .header {
+    justify-content: center;
+    min-height: 42px;
+    padding: var(--space-2);
+  }
+
+  .console:not([data-open]) .header > :not(.icon) {
+    display: none;
+  }
+
+  .console[data-open] {
+    z-index: 80;
+    top: auto;
+    right: 8px;
+    bottom: 8px;
+    left: 8px;
+    width: auto;
+    max-width: none;
+    max-height: calc(100% - 16px);
+    transform: none;
+  }
+
+  .filesPlacement,
+  .benchPlacement {
+    left: 8px;
+  }
+
+  .filesPlacement,
+  .receiptsPlacement {
+    top: 8px;
+  }
+
+  .receiptsPlacement {
+    right: 8px;
+  }
+
+  .benchPlacement,
+  .logsPlacement,
+  .reviewPlacement {
+    bottom: 8px;
+  }
+
+  .logsPlacement {
+    right: 52px;
+  }
+
+  .reviewPlacement {
+    left: 60px;
+    max-width: none;
+    transform: none;
+  }
+}

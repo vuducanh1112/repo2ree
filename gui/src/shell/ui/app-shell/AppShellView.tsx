@@ -14,6 +14,7 @@ import { RunHud } from "./canvas/RunHud";
 import { SealHubPanel } from "./canvas/SealHubPanel";
 import { SourceHubPanel } from "./canvas/SourceHubPanel";
 import { WorkbenchLab } from "./canvas/WorkbenchLab";
+import { CompactWorkflowNav } from "./components/CompactWorkflowNav";
 import { ReeSyncStatus } from "./components/ReeSyncStatus";
 import { useAppShell } from "./hooks/useAppShell";
 import { AppShellProvider } from "./providers/AppShellProvider";
@@ -105,6 +106,9 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
         {provisioned && (
           <ReeSyncStatus state={reeIntentSyncState} onRetry={() => void retryReeIntentSync()} />
         )}
+        {provisioned && (
+          <CompactWorkflowNav page={page} ree={ree} badges={badges} onNavigate={openPage} />
+        )}
         <div className={styles.spacer} />
         <button
           type="button"
@@ -115,7 +119,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
           <span aria-hidden className={styles.downloadIcon}>
             {Ic.download(13)}
           </span>
-          Download REE
+          <span className={styles.downloadLabel}>Download REE</span>
         </button>
       </header>
 

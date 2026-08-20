@@ -54,7 +54,7 @@ interface CoreExperimentsProps {
   scale: number;
   satEls: React.MutableRefObject<Record<string, HTMLElement | null>>;
   nodeOffsets: Record<string, { x: number; y: number }>;
-  onStartDrag: (key: string, sx: number, sy: number) => void;
+  onStartDrag: (key: string, event: React.PointerEvent) => void;
   wasNodeDragged: React.RefObject<boolean>;
   /** Reports hover over the core pod so the parent can make the pod shine. */
   onCoreHoverChange: (hovered: boolean) => void;
@@ -205,7 +205,7 @@ function ExperimentSatellite({
   locked: boolean;
   setRef: (el: HTMLButtonElement | null) => void;
   onSelect: () => void;
-  onStartDrag: (key: string, sx: number, sy: number) => void;
+  onStartDrag: (key: string, event: React.PointerEvent) => void;
   wasNodeDragged: React.RefObject<boolean>;
 }) {
   const name = experiment.name.trim();
@@ -217,8 +217,8 @@ function ExperimentSatellite({
       data-canvas-node
       aria-label={name || `Experiment ${String(index + 1).padStart(2, "0")}`}
       ref={setRef}
-      onMouseDown={(e) => {
-        if (!locked) onStartDrag(satelliteKey(index), e.clientX, e.clientY);
+      onPointerDown={(event) => {
+        if (!locked) onStartDrag(satelliteKey(index), event);
       }}
       onClick={() => {
         if (wasNodeDragged.current) return;

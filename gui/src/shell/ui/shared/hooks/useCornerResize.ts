@@ -26,15 +26,29 @@ export function useCornerResize({
   // Grip drags must not animate: width transitions would make the panel lag
   // behind the cursor, so the consumer disables them while this is true.
   const [resizing, setResizing] = useState(false);
-  const drag = useRef<{ sx: number; sy: number; w0: number; h0: number } | null>(null);
+  const drag = useRef<{
+    pointerId: number;
+    sx: number;
+    sy: number;
+    w0: number;
+    h0: number;
+  } | null>(null);
 
-  const startResize = (e: React.MouseEvent) => {
+  const startResize = (e: React.PointerEvent) => {
+    if (!e.isPrimary || e.button !== 0) return;
     e.preventDefault();
-    drag.current = { sx: e.clientX, sy: e.clientY, w0: size.width, h0: size.height };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    drag.current = {
+      pointerId: e.pointerId,
+      sx: e.clientX,
+      sy: e.clientY,
+      w0: size.width,
+      h0: size.height,
+    };
     setResizing(true);
-    const onMove = (ev: MouseEvent) => {
+    const onMove = (ev: PointerEvent) => {
       const d = drag.current;
-      if (!d) return;
+      if (!d || ev.pointerId !== d.pointerId) return;
       const maxWidth = Math.max(minWidth, window.innerWidth - viewportMargin);
       const maxHeight = Math.max(minHeight, window.innerHeight - viewportMargin);
       setSize({
@@ -42,14 +56,17 @@ export function useCornerResize({
         height: Math.min(maxHeight, Math.max(minHeight, d.h0 + (d.sy - ev.clientY))),
       });
     };
-    const onUp = () => {
+    const onUp = (ev: PointerEvent) => {
+      if (drag.current && ev.pointerId !== drag.current.pointerId) return;
       drag.current = null;
       setResizing(false);
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
     };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
   };
 
   return { size, resizing, startResize };

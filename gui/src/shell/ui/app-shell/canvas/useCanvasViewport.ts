@@ -2,8 +2,10 @@ import {
   clampZoom,
   dragOffset,
   exceedsDragThreshold,
+  fitBounds,
   type NodeOffsets,
   type Transform,
+  type WorldBounds,
   zoomToward,
 } from "@core/canvas/viewportMath";
 import { useEffect, useRef, useState } from "react";
@@ -12,8 +14,9 @@ import { useEffect, useRef, useState } from "react";
 // their public home, since the canvas imports them from the hook it drives.
 export type { NodeOffsets, Transform };
 
-type PanState = { sx: number; sy: number; x0: number; y0: number } | null;
+type PanState = { pointerId: number; sx: number; sy: number; x0: number; y0: number } | null;
 type NodeDragState = {
+  pointerId: number;
   key: string;
   sx: number;
   sy: number;
@@ -31,9 +34,9 @@ interface CanvasViewport {
   wasNodeDragged: React.RefObject<boolean>;
   /** True while a pan is in progress — drives the grab/grabbing cursor. */
   isPanning: boolean;
-  startPan: (event: React.MouseEvent) => void;
-  startNodeDrag: (key: string, sx: number, sy: number) => void;
-  resetView: () => void;
+  startPan: (event: React.PointerEvent) => void;
+  startNodeDrag: (key: string, event: React.PointerEvent) => void;
+  fitView: () => void;
   zoomBy: (factor: number) => void;
   /** Eased move to an absolute transform (used to frame the exploded view). */
   focusView: (next: Partial<Transform>) => void;
@@ -42,7 +45,10 @@ interface CanvasViewport {
 // Owns pan/zoom of the canvas and per-node drag offsets. Pan and node-drag share
 // one window-level move/up pump; node-drag deltas are divided by the live zoom so
 // a card tracks the cursor 1:1 at any scale.
-export function useCanvasViewport(stageRef: React.RefObject<HTMLDivElement>): CanvasViewport {
+export function useCanvasViewport(
+  stageRef: React.RefObject<HTMLDivElement>,
+  worldBounds: WorldBounds,
+): CanvasViewport {
   const [tf, setTf] = useState<Transform>({ x: 0, y: 0, z: 1 });
   const tfRef = useRef<Transform>({ x: 0, y: 0, z: 1 });
   const [animate, setAnimate] = useState(false);
@@ -51,6 +57,7 @@ export function useCanvasViewport(stageRef: React.RefObject<HTMLDivElement>): Ca
   const pan = useRef<PanState>(null);
   const nodeDrag = useRef<NodeDragState | null>(null);
   const wasNodeDragged = useRef(false);
+  const sizeClass = useRef<"compact" | "regular" | null>(null);
 
   // Mirror tf so the move handler reads current zoom without re-subscribing the
   // global listeners on every zoom change.
@@ -75,11 +82,32 @@ export function useCanvasViewport(stageRef: React.RefObject<HTMLDivElement>): Ca
     return () => stage.removeEventListener("wheel", onWheel);
   }, [stageRef]);
 
+  // Frame the full constellation on first layout and when crossing the compact
+  // breakpoint. Ordinary resizes preserve the camera the user chose.
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const observer = new ResizeObserver((entries) => {
+      const box = entries[0]?.contentRect;
+      if (!box || box.width <= 0 || box.height <= 0) return;
+      const nextClass = box.width <= 760 ? "compact" : "regular";
+      if (sizeClass.current === nextClass) return;
+      sizeClass.current = nextClass;
+      const next = fitBounds(box, worldBounds, nextClass === "compact" ? 16 : 32);
+      tfRef.current = next;
+      setAnimate(false);
+      setTf(next);
+    });
+    observer.observe(stage);
+    return () => observer.disconnect();
+  }, [stageRef, worldBounds]);
+
   // One shared drag pump: node-drag takes priority over panning when active.
   useEffect(() => {
-    const onMove = (event: MouseEvent) => {
+    const onMove = (event: PointerEvent) => {
       const nd = nodeDrag.current;
       if (nd) {
+        if (event.pointerId !== nd.pointerId) return;
         const dx = event.clientX - nd.sx;
         const dy = event.clientY - nd.sy;
         if (!nd.moved && exceedsDragThreshold(dx, dy)) nd.moved = true;
@@ -94,46 +122,74 @@ export function useCanvasViewport(stageRef: React.RefObject<HTMLDivElement>): Ca
       }
       const p = pan.current;
       if (!p) return;
+      if (event.pointerId !== p.pointerId) return;
       setTf((prev) => ({
         ...prev,
         x: p.x0 + (event.clientX - p.sx),
         y: p.y0 + (event.clientY - p.sy),
       }));
     };
-    const onUp = () => {
+    const onUp = (event: PointerEvent) => {
+      const pointerId = nodeDrag.current?.pointerId ?? pan.current?.pointerId;
+      if (pointerId != null && event.pointerId !== pointerId) return;
       wasNodeDragged.current = nodeDrag.current?.moved ?? false;
       if (pan.current) setIsPanning(false);
       pan.current = null;
       nodeDrag.current = null;
     };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
     return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
     };
   }, []);
 
-  const startNodeDrag = (key: string, sx: number, sy: number) => {
+  const startNodeDrag = (key: string, event: React.PointerEvent) => {
+    if (!event.isPrimary || event.button !== 0) return;
+    event.currentTarget.setPointerCapture?.(event.pointerId);
     setAnimate(false);
+    wasNodeDragged.current = false;
     const off = nodeOffsets[key] ?? { x: 0, y: 0 };
-    nodeDrag.current = { key, sx, sy, x0: off.x, y0: off.y, moved: false };
+    nodeDrag.current = {
+      pointerId: event.pointerId,
+      key,
+      sx: event.clientX,
+      sy: event.clientY,
+      x0: off.x,
+      y0: off.y,
+      moved: false,
+    };
   };
 
-  const startPan = (event: React.MouseEvent) => {
+  const startPan = (event: React.PointerEvent) => {
+    if (!event.isPrimary || event.button !== 0) return;
     if (
       event.target instanceof Element &&
       event.target.closest("[data-canvas-node],[data-canvas-hud]")
     )
       return;
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    event.preventDefault();
     setAnimate(false);
     setIsPanning(true);
-    pan.current = { sx: event.clientX, sy: event.clientY, x0: tf.x, y0: tf.y };
+    pan.current = {
+      pointerId: event.pointerId,
+      sx: event.clientX,
+      sy: event.clientY,
+      x0: tf.x,
+      y0: tf.y,
+    };
   };
 
-  const resetView = () => {
+  const fitView = () => {
+    const stage = stageRef.current?.getBoundingClientRect();
+    if (!stage || stage.width <= 0 || stage.height <= 0) return;
+    const next = fitBounds(stage, worldBounds, stage.width <= 760 ? 16 : 32);
     setAnimate(true);
-    setTf({ x: 0, y: 0, z: 1 });
+    setTf(next);
     setNodeOffsets({});
   };
 
@@ -159,7 +215,7 @@ export function useCanvasViewport(stageRef: React.RefObject<HTMLDivElement>): Ca
     isPanning,
     startPan,
     startNodeDrag,
-    resetView,
+    fitView,
     zoomBy,
     focusView,
   };

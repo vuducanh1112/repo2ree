@@ -35,3 +35,12 @@
     transform: none;
   }
 }
+
+@media (max-width: 760px) {
+  .panel {
+    bottom: 0;
+    width: 100%;
+    max-height: calc(100% - 24px);
+    border-radius: var(--space-4) var(--space-4) 0 0;
+  }
+}

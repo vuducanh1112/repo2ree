@@ -112,7 +112,7 @@ export function RunHud() {
             type="button"
             aria-label="Resize logs console"
             title="Drag to resize"
-            onMouseDown={startResize}
+            onPointerDown={startResize}
             className={styles.resizeGrip}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">

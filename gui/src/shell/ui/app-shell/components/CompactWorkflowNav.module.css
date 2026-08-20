@@ -1,0 +1,134 @@
+.root {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .root {
+    display: block;
+  }
+
+  .toggle {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    max-width: 42vw;
+    gap: var(--space-1-5);
+    padding: var(--space-1-5) var(--space-2);
+    border: 1px solid var(--chrome-border);
+    border-radius: var(--radius-sm);
+    background: var(--chrome-surface-alt);
+    color: var(--chrome-text);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .toggle:focus-visible,
+  .menu button:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring);
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  .toggleGlyph {
+    flex: none;
+    font-size: var(--text-label);
+  }
+
+  .toggleLabel {
+    overflow: hidden;
+    font-size: var(--text-body);
+    font-weight: var(--weight-semibold);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .scrim {
+    position: fixed;
+    z-index: 98;
+    inset: 48px 0 0;
+    border: 0;
+    background: var(--surface-overlay);
+  }
+
+  .menu {
+    position: fixed;
+    z-index: 99;
+    top: 48px;
+    right: 0;
+    left: 0;
+    max-height: calc(100dvh - 48px);
+    overflow-y: auto;
+    padding: var(--space-2);
+    border-bottom: 1px solid var(--chrome-border-strong);
+    background: var(--chrome-surface);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .steps {
+    display: grid;
+    margin: var(--space-1) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .overview,
+  .step {
+    display: grid;
+    grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+    align-items: center;
+    width: 100%;
+    min-height: 42px;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--chrome-text-mid);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .overview {
+    grid-template-columns: 2.5rem minmax(0, 1fr);
+    border-bottom: 1px solid var(--chrome-border);
+    border-radius: 0;
+  }
+
+  .overview:hover,
+  .step:hover {
+    background: var(--chrome-surface-alt);
+  }
+
+  .overview[aria-current],
+  .step[aria-current] {
+    background: var(--chrome-accent-bg);
+    color: var(--chrome-text);
+  }
+
+  .stepNumber,
+  .status {
+    font-family: var(--font-mono);
+    font-size: var(--text-caption);
+    color: var(--chrome-text-muted);
+  }
+
+  .stepLabel {
+    overflow: hidden;
+    font-weight: var(--weight-medium);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .status {
+    color: var(--chrome-text-subtle);
+  }
+
+  .step[data-complete] .status {
+    color: var(--tone-success-ink);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scrim {
+    transition: none;
+  }
+}

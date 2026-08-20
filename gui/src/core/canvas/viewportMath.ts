@@ -9,7 +9,9 @@ export interface Transform {
 
 export type NodeOffsets = Record<string, { x: number; y: number }>;
 
-export const ZOOM_MIN = 0.38;
+// Small screens need to frame the complete assembled constellation. Keep this
+// below EXPLODE_ZOOM so both the fitted and decomposed cameras remain valid.
+export const ZOOM_MIN = 0.28;
 export const ZOOM_MAX = 1.7;
 // Movement past this many screen px turns a node click into a drag. Private:
 // callers ask `exceedsDragThreshold` rather than comparing against it.
@@ -26,8 +28,30 @@ export interface StageBox {
   height: number;
 }
 
+/** Axis-aligned bounds in world coordinates. */
+export interface WorldBounds {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
 export function clampZoom(z: number): number {
   return Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
+}
+
+/** Frame world-space bounds inside a viewport with an even screen-space inset. */
+export function fitBounds(
+  viewport: Pick<StageBox, "width" | "height">,
+  bounds: WorldBounds,
+  padding = 24,
+): Transform {
+  const availableWidth = Math.max(1, viewport.width - padding * 2);
+  const availableHeight = Math.max(1, viewport.height - padding * 2);
+  const z = clampZoom(Math.min(availableWidth / bounds.width, availableHeight / bounds.height, 1));
+  const centreX = bounds.left + bounds.width / 2;
+  const centreY = bounds.top + bounds.height / 2;
+  return { x: -centreX * z, y: -centreY * z, z };
 }
 
 /**

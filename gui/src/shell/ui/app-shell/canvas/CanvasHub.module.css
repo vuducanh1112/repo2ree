@@ -6,6 +6,7 @@
   inset: 0;
   overflow: hidden;
   cursor: grab;
+  touch-action: none;
   background:
     radial-gradient(120% 75% at 50% -8%, #ffffff 0%, rgb(255 255 255 / 0%) 58%),
     radial-gradient(58% 48% at 18% 22%, rgb(56 189 248 / 12%) 0%, rgb(56 189 248 / 0%) 70%),
@@ -18,6 +19,10 @@
     radial-gradient(circle at 50% 44%, #f6fafe 0%, #f4f6f9 72%);
   box-shadow: inset 0 0 220px rgb(30 58 138 / 10%);
   transition: opacity var(--duration-moderate);
+}
+
+.stage [data-canvas-hud] {
+  touch-action: pan-y;
 }
 
 .stage[data-panning] {
