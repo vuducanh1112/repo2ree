@@ -95,6 +95,8 @@ function controller(page: AppShellPage = PAGE.CANVAS, provisioned = true) {
   };
   shell.value = {
     provisioned,
+    workspaceHydration: { status: "ready", error: null },
+    retryWorkspaceHydration: vi.fn(),
     reeIntent: {},
     ree: { name: "Example" },
     workspaceRemote: {
@@ -125,6 +127,36 @@ describe("AppShellView", () => {
     expect(screen.queryByText("Run HUD")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /back/ }));
     expect(onBack).toHaveBeenCalledOnce();
+  });
+
+  it("gates a provisioned workspace while its remote definition is loading", () => {
+    const onBack = vi.fn();
+    shell.value = {
+      ...shell.value,
+      workspaceHydration: { status: "loading", error: null },
+    };
+    render(<AppShellView onBack={onBack} />);
+
+    expect(screen.getByRole("status", { name: "Loading workspace" })).toBeInTheDocument();
+    expect(screen.queryByText("Run HUD")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Download REE" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Return home" }));
+    expect(onBack).toHaveBeenCalledOnce();
+  });
+
+  it("shows a retryable load error without rendering editable workspace content", () => {
+    const retryWorkspaceHydration = vi.fn();
+    shell.value = {
+      ...shell.value,
+      workspaceHydration: { status: "error", error: new Error("control plane offline") },
+      retryWorkspaceHydration,
+    };
+    render(<AppShellView onBack={vi.fn()} />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("control plane offline");
+    expect(screen.queryByText("Run HUD")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(retryWorkspaceHydration).toHaveBeenCalledOnce();
   });
 
   it("wires every canvas navigation action", () => {

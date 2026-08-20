@@ -68,6 +68,8 @@ export function useReeEditor({
 
   const hydrateWorkspace = useMemo(() => createHydrateReeWorkspace(dispatch), [dispatch]);
   const {
+    hydration: workspaceHydration,
+    retryHydration: retryWorkspaceHydration,
     refreshWorkspace,
     refreshWorkspaceFiles,
     flush: flushReeIntent,
@@ -171,6 +173,8 @@ export function useReeEditor({
 
   return {
     provisioned,
+    workspaceHydration,
+    retryWorkspaceHydration,
     reeIntent,
     reeSession,
     ree,

@@ -2,6 +2,7 @@ import { PAGE } from "@core/app-shell/pages";
 import { activeNode } from "@core/canvas/canvasNodes";
 import { addExperiment } from "@core/ree/experimentOps";
 import { useState } from "react";
+import { WorkspaceLoadErrorView, WorkspaceLoadingView } from "../errors/WorkspaceLoadView";
 import { Ic } from "../shared/components/Icon";
 import { Toast } from "../shared/components/Toast";
 import { AppShellContent } from "./AppShellContent";
@@ -30,6 +31,8 @@ export function AppShellView({ onBack }: AppShellViewProps) {
 function AppShellViewInner({ onBack }: AppShellViewProps) {
   const {
     provisioned,
+    workspaceHydration,
+    retryWorkspaceHydration,
     reeIntent,
     ree,
     workspaceRemote,
@@ -58,6 +61,20 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
     if (rect) setOriginRect(rect);
     commands.setPage(next);
   };
+
+  if (provisioned && workspaceHydration.status === "loading") {
+    return <WorkspaceLoadingView onBack={onBack} />;
+  }
+
+  if (provisioned && workspaceHydration.status === "error") {
+    return (
+      <WorkspaceLoadErrorView
+        error={workspaceHydration.error}
+        onRetry={retryWorkspaceHydration}
+        onBack={onBack}
+      />
+    );
+  }
 
   return (
     <div className={styles.shell}>

@@ -4,8 +4,22 @@ import type { FileTreeNode } from "@core/workspace/FileTree";
 import { shouldHydrateRemoteRee, shouldScheduleReeIntentSync } from "@core/workspace/syncReeIntent";
 import { useUpdateReeIntentMutation } from "@shell/data/ree/mutations";
 import { useRefreshReeQuery } from "@shell/data/ree/queries";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { HydratedWorkspaceSnapshot } from "./hydrateReeWorkspace";
+
+type WorkspaceHydrationState =
+  | { status: "loading"; error: null }
+  | { status: "ready"; error: null }
+  | { status: "error"; error: Error };
+
+interface RefreshWorkspaceOptions {
+  forceReeHydration?: boolean;
+  requireReeHydration?: boolean;
+}
+
+function normalizeError(error: unknown): Error {
+  return error instanceof Error ? error : new Error("The workspace could not be loaded");
+}
 
 interface UseReeIntentSyncArgs {
   ree: ReeEditorViewModel;
@@ -27,14 +41,24 @@ export function useReeIntentSync({
   const hasHydratedRemoteReeRef = useRef<boolean>(false);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSyncRef = useRef<Promise<void> | null>(null);
+  const mountedRef = useRef(false);
+  const hydrationRequestRef = useRef(0);
+  const [hydration, setHydration] = useState<WorkspaceHydrationState>(
+    provisioned ? { status: "loading", error: null } : { status: "ready", error: null },
+  );
   const fetchWorkspace = useRefreshReeQuery(reeId);
   const { mutateAsync: updateReeIntent } = useUpdateReeIntentMutation(reeId);
 
   const refreshWorkspace = useCallback(
-    async (options: { forceReeHydration?: boolean } = {}): Promise<HydratedWorkspaceSnapshot> => {
-      const { forceReeHydration = false } = options;
+    async (options: RefreshWorkspaceOptions = {}): Promise<HydratedWorkspaceSnapshot> => {
+      const { forceReeHydration = false, requireReeHydration = false } = options;
       const requestStartedPatchKey = latestLocalPatchKeyRef.current;
       const workspace = await fetchWorkspace();
+
+      if (requireReeHydration && !workspace.ree) {
+        throw new Error("The workspace response did not contain its REE definition");
+      }
+
       let reeToHydrate = workspace.ree;
 
       if (workspace.ree) {
@@ -59,6 +83,10 @@ export function useReeIntentSync({
         }
       }
 
+      if (requireReeHydration && !reeToHydrate) {
+        throw new Error("The remote REE could not be safely applied");
+      }
+
       const hydratedWorkspace = {
         workspaceFiles: workspace.files,
         reeArtifactFiles: workspace.reeFiles || [],
@@ -71,7 +99,7 @@ export function useReeIntentSync({
   );
 
   const refreshWorkspaceFiles = useCallback(
-    async (options: { forceReeHydration?: boolean } = {}): Promise<FileTreeNode[]> => {
+    async (options: RefreshWorkspaceOptions = {}): Promise<FileTreeNode[]> => {
       const workspace = await refreshWorkspace(options);
       return workspace.workspaceFiles;
     },
@@ -118,6 +146,12 @@ export function useReeIntentSync({
   // experiment, which the backend validates against the saved draft) await
   // this first so they never race the 300ms autosave timer below.
   const flush = useCallback(async () => {
+    if (provisioned && hydration.status !== "ready") {
+      throw hydration.status === "error"
+        ? hydration.error
+        : new Error("The workspace is still loading");
+    }
+
     // Drain any in-flight sync(s) before issuing our own so we never run two
     // concurrent PATCHes. A `while` (not `if`) is required: two flush() calls
     // can both await the same pending sync, so after it settles we re-check —
@@ -138,22 +172,46 @@ export function useReeIntentSync({
       syncTimerRef.current = null;
     }
     await runReeIntentSync(patch, patchKey);
-  }, [provisioned, buildReePatch, runReeIntentSync]);
+  }, [provisioned, hydration, buildReePatch, runReeIntentSync]);
 
   useEffect(() => {
     latestLocalPatchKeyRef.current = JSON.stringify(buildReePatch());
   }, [buildReePatch]);
 
-  useEffect(() => {
-    if (!provisioned) return;
-    void refreshWorkspace({ forceReeHydration: true });
+  const loadInitialWorkspace = useCallback(async () => {
+    if (!provisioned) {
+      setHydration({ status: "ready", error: null });
+      return;
+    }
+
+    const request = hydrationRequestRef.current + 1;
+    hydrationRequestRef.current = request;
+    setHydration({ status: "loading", error: null });
+    try {
+      await refreshWorkspace({ forceReeHydration: true, requireReeHydration: true });
+      if (mountedRef.current && hydrationRequestRef.current === request) {
+        setHydration({ status: "ready", error: null });
+      }
+    } catch (error) {
+      if (mountedRef.current && hydrationRequestRef.current === request) {
+        setHydration({ status: "error", error: normalizeError(error) });
+      }
+    }
   }, [provisioned, refreshWorkspace]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    void loadInitialWorkspace();
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [loadInitialWorkspace]);
 
   useEffect(() => {
     const patch = buildReePatch();
     const patchKey = JSON.stringify(patch);
     const shouldScheduleSync = shouldScheduleReeIntentSync({
-      canUpdateReeIntent: provisioned,
+      canUpdateReeIntent: provisioned && hydration.status === "ready",
       patchKey,
       lastSyncedPatchKey: lastSyncedReeRef.current,
     });
@@ -180,9 +238,15 @@ export function useReeIntentSync({
         syncTimerRef.current = null;
       }
     };
-  }, [buildReePatch, provisioned, runReeIntentSync]);
+  }, [buildReePatch, provisioned, hydration.status, runReeIntentSync]);
+
+  const retryHydration = useCallback(() => {
+    void loadInitialWorkspace();
+  }, [loadInitialWorkspace]);
 
   return {
+    hydration,
+    retryHydration,
     buildReePatch,
     refreshWorkspace,
     refreshWorkspaceFiles,
