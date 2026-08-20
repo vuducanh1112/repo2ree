@@ -10,43 +10,16 @@ import {
 import type { ReeContributor } from "@core/ree/ReeSpec";
 import { Badge } from "@shell/ui/shared/components/Badge";
 import { Button } from "@shell/ui/shared/components/Button";
-import { Input, Textarea } from "@shell/ui/shared/components/FormControl";
+import { Field, Input, Textarea } from "@shell/ui/shared/components/FormControl";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { useFocusScroll } from "@shell/ui/shared/hooks/useFocusScroll";
-import type React from "react";
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
 import { GlassPageShell } from "../../components/GlassPageShell";
 import type { PageMetadataEntryProps } from "../sharedStepUi";
 import styles from "./MetadataPage.module.css";
 
-function MetadataField({
-  label,
-  required,
-  help,
-  children,
-}: {
-  label: string;
-  required?: boolean;
-  help?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className={styles.field}>
-      <span className={styles.label}>
-        {label}
-        {required && <span className={styles.required}>*</span>}
-        <span aria-hidden className={styles.labelInfo}>
-          {Ic.info(12)}
-        </span>
-      </span>
-      {children}
-      {help && <span className={styles.helper}>{help}</span>}
-    </div>
-  );
-}
-
-function MetadataChip({ children }: { children: React.ReactNode }) {
+function MetadataChip({ children }: { children: ReactNode }) {
   return <span className={styles.chip}>{children}</span>;
 }
 
@@ -58,6 +31,24 @@ const KEYWORD_SUGGESTIONS = [
   "workflow-automation",
   "scientific-computing",
 ];
+
+type ContributorError = {
+  context: "add" | "edit";
+  field: "identifier" | "name";
+  message: string;
+};
+
+function contributorError(
+  message: string,
+  context: ContributorError["context"],
+  contributor: ReeContributor,
+): ContributorError {
+  return {
+    context,
+    field: contributor.name.trim() === "" ? "name" : "identifier",
+    message,
+  };
+}
 
 export function PageMetadataEntry({
   reeSpec,
@@ -76,7 +67,8 @@ export function PageMetadataEntry({
     affiliationName: "",
     affiliationIdentifier: "",
   });
-  const [contributorAddError, setContributorAddError] = useState("");
+  const [contributorValidationError, setContributorValidationError] =
+    useState<ContributorError | null>(null);
   const [editingContributorId, setEditingContributorId] = useState<string | null>(null);
   const [contributorDraft, setContributorDraft] = useState<ReeContributor>({
     identifier: "",
@@ -91,6 +83,13 @@ export function PageMetadataEntry({
   const { description, version, website, keywords, contributors } = metadata;
   const correspondingAuthor = metadata.correspondingAuthorIdentifier || "";
   const identityFilled = reeSpec.name.trim().length > 0;
+  const contributorFieldError = (
+    context: ContributorError["context"],
+    field: ContributorError["field"],
+  ) =>
+    contributorValidationError?.context === context && contributorValidationError.field === field
+      ? contributorValidationError.message
+      : undefined;
   const availableSuggestions = useMemo(
     () => KEYWORD_SUGGESTIONS.filter((kw) => !keywords.includes(kw)),
     [keywords],
@@ -111,7 +110,7 @@ export function PageMetadataEntry({
     if (locked) return;
     const result = addCatalogContributor(reeSpec, pendingContributor);
     if (!result.ok) {
-      setContributorAddError(result.error);
+      setContributorValidationError(contributorError(result.error, "add", pendingContributor));
       return;
     }
     onReeChange(() => result.spec);
@@ -121,7 +120,7 @@ export function PageMetadataEntry({
       affiliationName: "",
       affiliationIdentifier: "",
     });
-    setContributorAddError("");
+    setContributorValidationError(null);
   };
 
   const removeContributor = (identifier: string) => {
@@ -136,22 +135,24 @@ export function PageMetadataEntry({
     if (locked) return;
     setEditingContributorId(contributor.identifier);
     setContributorDraft({ ...contributor });
+    setContributorValidationError(null);
   };
 
   const saveContributor = () => {
     if (locked || !editingContributorId) return;
     const result = updateCatalogContributor(reeSpec, editingContributorId, contributorDraft);
     if (!result.ok) {
-      setContributorAddError(result.error);
+      setContributorValidationError(contributorError(result.error, "edit", contributorDraft));
       return;
     }
     onReeChange(() => result.spec);
-    setContributorAddError("");
+    setContributorValidationError(null);
     setEditingContributorId(null);
   };
 
   const cancelContributorEdit = () => {
     setEditingContributorId(null);
+    setContributorValidationError(null);
     setContributorDraft({
       identifier: "",
       name: "",
@@ -178,69 +179,77 @@ export function PageMetadataEntry({
 
       <div className={styles.stack}>
         <div className={styles.fieldsGrid}>
-          <MetadataField
+          <Field
             label="REE Name"
             required
-            help="Use a stable, descriptive name. Include a version suffix if that is part of your project convention."
+            hint="Use a stable, descriptive name. Include a version suffix if that is part of your project convention."
           >
-            <Input
-              id="field-name"
-              disabled={locked}
-              value={reeSpec.name}
-              onChange={(event) => set("name", event.target.value)}
-              onFocus={() => focus("name")}
-              placeholder="deepfold-protein-structure-prediction"
-            />
-          </MetadataField>
+            {(bound) => (
+              <Input
+                {...bound}
+                disabled={locked}
+                value={reeSpec.name}
+                onChange={(event) => set("name", event.target.value)}
+                onFocus={() => focus("name")}
+                placeholder="deepfold-protein-structure-prediction"
+              />
+            )}
+          </Field>
 
-          <MetadataField label="Version" required help="Semantic version of this REE snapshot.">
-            <Input
-              disabled={locked}
-              value={version}
-              onChange={(event) =>
-                onReeChange((current) =>
-                  patchCatalogMetadata(current, { version: event.target.value }),
-                )
-              }
-              onFocus={() => focus("catalogMetadata.version")}
-              placeholder="1.0.0"
-            />
-          </MetadataField>
+          <Field label="Version" required hint="Semantic version of this REE snapshot.">
+            {(bound) => (
+              <Input
+                {...bound}
+                disabled={locked}
+                value={version}
+                onChange={(event) =>
+                  onReeChange((current) =>
+                    patchCatalogMetadata(current, { version: event.target.value }),
+                  )
+                }
+                onFocus={() => focus("catalogMetadata.version")}
+                placeholder="1.0.0"
+              />
+            )}
+          </Field>
 
-          <MetadataField
-            label="Website"
-            help="Project page, documentation, or repository landing page."
-          >
-            <Input
-              disabled={locked}
-              value={website}
-              onChange={(event) =>
-                onReeChange((current) =>
-                  patchCatalogMetadata(current, { website: event.target.value }),
-                )
-              }
-              onFocus={() => focus("catalogMetadata.website")}
-              placeholder="https://example.org/project"
-            />
-          </MetadataField>
+          <Field label="Website" hint="Project page, documentation, or repository landing page.">
+            {(bound) => (
+              <Input
+                {...bound}
+                disabled={locked}
+                value={website}
+                onChange={(event) =>
+                  onReeChange((current) =>
+                    patchCatalogMetadata(current, { website: event.target.value }),
+                  )
+                }
+                onFocus={() => focus("catalogMetadata.website")}
+                placeholder="https://example.org/project"
+              />
+            )}
+          </Field>
 
-          <MetadataField
+          <Field
             label="Description"
             required
-            help="Capture what this REE does, for whom, and any key assumptions."
+            hint="Capture what this REE does, for whom, and any key assumptions."
           >
-            <Textarea
-              value={description}
-              onChange={(event) =>
-                onReeChange((current) =>
-                  patchCatalogMetadata(current, { description: event.target.value }),
-                )
-              }
-              onFocus={() => focus("catalogMetadata.description")}
-              placeholder="REE for reproducible execution of..."
-              disabled={locked}
-            />
-          </MetadataField>
+            {(bound) => (
+              <Textarea
+                {...bound}
+                value={description}
+                onChange={(event) =>
+                  onReeChange((current) =>
+                    patchCatalogMetadata(current, { description: event.target.value }),
+                  )
+                }
+                onFocus={() => focus("catalogMetadata.description")}
+                placeholder="REE for reproducible execution of..."
+                disabled={locked}
+              />
+            )}
+          </Field>
         </div>
 
         <div className={styles.section}>
@@ -266,6 +275,7 @@ export function PageMetadataEntry({
             <div className={styles.keywordControls}>
               <div className={styles.keywordRow}>
                 <Input
+                  aria-label="Custom keyword"
                   value={pendingKeyword}
                   onChange={(event) => setPendingKeyword(event.target.value)}
                   onKeyDown={(event) => {
@@ -322,50 +332,78 @@ export function PageMetadataEntry({
                   </div>
                   {editingContributorId === contributor.identifier ? (
                     <div className={styles.contributorFields}>
-                      <Input
-                        value={contributorDraft.identifier}
-                        onChange={(event) =>
-                          setContributorDraft((prev) => ({
-                            ...prev,
-                            identifier: event.target.value,
-                          }))
-                        }
-                        placeholder="Identifier"
-                        density="compact"
-                      />
-                      <Input
-                        value={contributorDraft.name}
-                        onChange={(event) =>
-                          setContributorDraft((prev) => ({
-                            ...prev,
-                            name: event.target.value,
-                          }))
-                        }
-                        placeholder="Name"
-                        density="compact"
-                      />
-                      <Input
-                        value={contributorDraft.affiliationName}
-                        onChange={(event) =>
-                          setContributorDraft((prev) => ({
-                            ...prev,
-                            affiliationName: event.target.value,
-                          }))
-                        }
-                        placeholder="Affiliation name"
-                        density="compact"
-                      />
-                      <Input
-                        value={contributorDraft.affiliationIdentifier}
-                        onChange={(event) =>
-                          setContributorDraft((prev) => ({
-                            ...prev,
-                            affiliationIdentifier: event.target.value,
-                          }))
-                        }
-                        placeholder="Affiliation identifier"
-                        density="compact"
-                      />
+                      <Field
+                        label="Contributor identifier"
+                        required
+                        error={contributorFieldError("edit", "identifier")}
+                      >
+                        {(bound) => (
+                          <Input
+                            {...bound}
+                            value={contributorDraft.identifier}
+                            onChange={(event) =>
+                              setContributorDraft((prev) => ({
+                                ...prev,
+                                identifier: event.target.value,
+                              }))
+                            }
+                            placeholder="Identifier"
+                            density="compact"
+                          />
+                        )}
+                      </Field>
+                      <Field
+                        label="Contributor name"
+                        required
+                        error={contributorFieldError("edit", "name")}
+                      >
+                        {(bound) => (
+                          <Input
+                            {...bound}
+                            value={contributorDraft.name}
+                            onChange={(event) =>
+                              setContributorDraft((prev) => ({
+                                ...prev,
+                                name: event.target.value,
+                              }))
+                            }
+                            placeholder="Name"
+                            density="compact"
+                          />
+                        )}
+                      </Field>
+                      <Field label="Affiliation name">
+                        {(bound) => (
+                          <Input
+                            {...bound}
+                            value={contributorDraft.affiliationName}
+                            onChange={(event) =>
+                              setContributorDraft((prev) => ({
+                                ...prev,
+                                affiliationName: event.target.value,
+                              }))
+                            }
+                            placeholder="Affiliation name"
+                            density="compact"
+                          />
+                        )}
+                      </Field>
+                      <Field label="Affiliation identifier">
+                        {(bound) => (
+                          <Input
+                            {...bound}
+                            value={contributorDraft.affiliationIdentifier}
+                            onChange={(event) =>
+                              setContributorDraft((prev) => ({
+                                ...prev,
+                                affiliationIdentifier: event.target.value,
+                              }))
+                            }
+                            placeholder="Affiliation identifier"
+                            density="compact"
+                          />
+                        )}
+                      </Field>
                     </div>
                   ) : (
                     <div className={styles.contributorFields}>
@@ -461,63 +499,85 @@ export function PageMetadataEntry({
           )}
           {!locked && (
             <div className={styles.contributorAddFields}>
-              <Input
-                value={pendingContributor.identifier}
-                onChange={(event) =>
-                  setPendingContributor((prev) => ({
-                    ...prev,
-                    identifier: event.target.value,
-                  }))
-                }
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    addContributor();
-                  }
-                }}
-                placeholder="Identifier"
-                density="compact"
-              />
-              <Input
-                value={pendingContributor.name}
-                onChange={(event) =>
-                  setPendingContributor((prev) => ({ ...prev, name: event.target.value }))
-                }
-                placeholder="Name *"
-                aria-required="true"
-                density="compact"
-              />
-              <Input
-                value={pendingContributor.affiliationName}
-                onChange={(event) =>
-                  setPendingContributor((prev) => ({
-                    ...prev,
-                    affiliationName: event.target.value,
-                  }))
-                }
-                placeholder="Affiliation name"
-                density="compact"
-              />
-              <Input
-                value={pendingContributor.affiliationIdentifier}
-                onChange={(event) =>
-                  setPendingContributor((prev) => ({
-                    ...prev,
-                    affiliationIdentifier: event.target.value,
-                  }))
-                }
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    addContributor();
-                  }
-                }}
-                placeholder="Affiliation identifier"
-                density="compact"
-              />
+              <Field
+                label="Contributor identifier"
+                required
+                error={contributorFieldError("add", "identifier")}
+              >
+                {(bound) => (
+                  <Input
+                    {...bound}
+                    value={pendingContributor.identifier}
+                    onChange={(event) =>
+                      setPendingContributor((prev) => ({
+                        ...prev,
+                        identifier: event.target.value,
+                      }))
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        addContributor();
+                      }
+                    }}
+                    placeholder="Identifier"
+                    density="compact"
+                  />
+                )}
+              </Field>
+              <Field label="Contributor name" required error={contributorFieldError("add", "name")}>
+                {(bound) => (
+                  <Input
+                    {...bound}
+                    value={pendingContributor.name}
+                    onChange={(event) =>
+                      setPendingContributor((prev) => ({ ...prev, name: event.target.value }))
+                    }
+                    placeholder="Name *"
+                    density="compact"
+                  />
+                )}
+              </Field>
+              <Field label="Affiliation name">
+                {(bound) => (
+                  <Input
+                    {...bound}
+                    value={pendingContributor.affiliationName}
+                    onChange={(event) =>
+                      setPendingContributor((prev) => ({
+                        ...prev,
+                        affiliationName: event.target.value,
+                      }))
+                    }
+                    placeholder="Affiliation name"
+                    density="compact"
+                  />
+                )}
+              </Field>
+              <Field label="Affiliation identifier">
+                {(bound) => (
+                  <Input
+                    {...bound}
+                    value={pendingContributor.affiliationIdentifier}
+                    onChange={(event) =>
+                      setPendingContributor((prev) => ({
+                        ...prev,
+                        affiliationIdentifier: event.target.value,
+                      }))
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        addContributor();
+                      }
+                    }}
+                    placeholder="Affiliation identifier"
+                    density="compact"
+                  />
+                )}
+              </Field>
             </div>
           )}
-          {contributorAddError && <div className={styles.addError}>{contributorAddError}</div>}
           {!locked && (
             <div className={styles.addAction}>
               <Button size="small" onClick={addContributor}>

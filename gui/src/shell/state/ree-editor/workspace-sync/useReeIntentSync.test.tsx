@@ -63,6 +63,7 @@ describe("useReeIntentSync", () => {
     });
 
     rerender({ ree: { ...initial, name: "Edited now" }, provisioned: true });
+    await waitFor(() => expect(result.current.syncState.phase).toBe("dirty"));
     await act(() => result.current.flush());
 
     expect(mocks.updateReeIntent).toHaveBeenCalledOnce();
@@ -70,6 +71,7 @@ describe("useReeIntentSync", () => {
       expect.objectContaining({ name: "Edited now" }),
     );
     expect(mocks.fetchWorkspace).toHaveBeenCalledTimes(2);
+    expect(result.current.syncState.phase).toBe("clean");
   });
 
   it("surfaces flush failures to callers", async () => {
@@ -89,7 +91,18 @@ describe("useReeIntentSync", () => {
     await waitFor(() => expect(result.current.hydration.status).toBe("ready"));
     rerender({ ree: { ...initial, name: "Unsaved" } });
 
-    await expect(act(() => result.current.flush())).rejects.toThrow("offline");
+    await act(async () => {
+      await expect(result.current.flush()).rejects.toThrow("offline");
+    });
+    await waitFor(() =>
+      expect(result.current.syncState).toEqual({
+        phase: "error",
+        error: expect.objectContaining({ message: "offline" }),
+      }),
+    );
+
+    await act(() => result.current.retrySync());
+    expect(result.current.syncState.phase).toBe("clean");
   });
 
   it("reports initial hydration failure without sending the default draft", async () => {

@@ -12,32 +12,6 @@
   gap: var(--space-4);
 }
 
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
-.label {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-family: var(--font-sans);
-  font-size: var(--text-label);
-  font-weight: var(--weight-bold);
-  color: var(--ink-default);
-}
-
-.required {
-  color: var(--tone-danger-line);
-}
-
-.labelInfo {
-  display: flex;
-  color: var(--ink-accent);
-}
-
 .helper {
   font-family: var(--font-sans);
   font-size: var(--text-caption);
@@ -195,14 +169,6 @@
 
 .factLabel {
   color: var(--ink-default);
-}
-
-.addError {
-  margin-top: var(--space-2);
-  font-family: var(--font-sans);
-  font-size: var(--text-caption);
-  line-height: var(--leading-snug);
-  color: var(--tone-danger-ink);
 }
 
 .addAction {

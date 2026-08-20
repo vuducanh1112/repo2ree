@@ -12,6 +12,12 @@ type WorkspaceHydrationState =
   | { status: "ready"; error: null }
   | { status: "error"; error: Error };
 
+export type ReeIntentSyncState =
+  | { phase: "clean" }
+  | { phase: "dirty" }
+  | { phase: "saving" }
+  | { phase: "error"; error: Error };
+
 interface RefreshWorkspaceOptions {
   forceReeHydration?: boolean;
   requireReeHydration?: boolean;
@@ -37,6 +43,7 @@ export function useReeIntentSync({
   const initialPatchKey = JSON.stringify(toReePatch(ree));
   const lastSyncedReeRef = useRef<string>(initialPatchKey);
   const latestLocalPatchKeyRef = useRef<string>(initialPatchKey);
+  const observedLocalPatchKeyRef = useRef<string>(initialPatchKey);
   const isSyncingReeRef = useRef<boolean>(false);
   const hasHydratedRemoteReeRef = useRef<boolean>(false);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -46,6 +53,7 @@ export function useReeIntentSync({
   const [hydration, setHydration] = useState<WorkspaceHydrationState>(
     provisioned ? { status: "loading", error: null } : { status: "ready", error: null },
   );
+  const [syncState, setSyncState] = useState<ReeIntentSyncState>({ phase: "clean" });
   const fetchWorkspace = useRefreshReeQuery(reeId);
   const { mutateAsync: updateReeIntent } = useUpdateReeIntentMutation(reeId);
 
@@ -117,10 +125,18 @@ export function useReeIntentSync({
     (patch: ReturnType<typeof buildReePatch>, patchKey: string): Promise<void> => {
       const sync = (async () => {
         isSyncingReeRef.current = true;
+        setSyncState({ phase: "saving" });
         try {
           await updateReeIntent(patch);
           lastSyncedReeRef.current = patchKey;
           await refreshWorkspaceFiles();
+          setSyncState(
+            latestLocalPatchKeyRef.current === patchKey ? { phase: "clean" } : { phase: "dirty" },
+          );
+        } catch (error) {
+          const normalized = normalizeError(error);
+          setSyncState({ phase: "error", error: normalized });
+          throw normalized;
         } finally {
           isSyncingReeRef.current = false;
         }
@@ -175,8 +191,21 @@ export function useReeIntentSync({
   }, [provisioned, hydration, buildReePatch, runReeIntentSync]);
 
   useEffect(() => {
-    latestLocalPatchKeyRef.current = JSON.stringify(buildReePatch());
-  }, [buildReePatch]);
+    const patchKey = JSON.stringify(buildReePatch());
+    const changed = observedLocalPatchKeyRef.current !== patchKey;
+    observedLocalPatchKeyRef.current = patchKey;
+    latestLocalPatchKeyRef.current = patchKey;
+    if (
+      changed &&
+      provisioned &&
+      hydration.status === "ready" &&
+      patchKey !== lastSyncedReeRef.current
+    ) {
+      setSyncState((current) =>
+        current.phase === "saving" || current.phase === "error" ? current : { phase: "dirty" },
+      );
+    }
+  }, [buildReePatch, hydration.status, provisioned]);
 
   const loadInitialWorkspace = useCallback(async () => {
     if (!provisioned) {
@@ -227,9 +256,10 @@ export function useReeIntentSync({
 
     syncTimerRef.current = setTimeout(() => {
       syncTimerRef.current = null;
-      // Keep local metadata editable: swallow the failure here so a transient
-      // backend error doesn't surface mid-edit; it retries on the next change.
-      void runReeIntentSync(patch, patchKey).catch(() => {});
+      // `flush` serializes behind an in-flight PATCH and publishes failures in
+      // `syncState`; consuming the rejection here only prevents an unrelated
+      // unhandled-promise report from the background branch.
+      void flush().catch(() => {});
     }, 300);
 
     return () => {
@@ -238,7 +268,7 @@ export function useReeIntentSync({
         syncTimerRef.current = null;
       }
     };
-  }, [buildReePatch, provisioned, hydration.status, runReeIntentSync]);
+  }, [buildReePatch, provisioned, hydration.status, flush]);
 
   const retryHydration = useCallback(() => {
     void loadInitialWorkspace();
@@ -251,5 +281,8 @@ export function useReeIntentSync({
     refreshWorkspace,
     refreshWorkspaceFiles,
     flush,
+    syncState,
+    isDirty: syncState.phase !== "clean",
+    retrySync: flush,
   };
 }

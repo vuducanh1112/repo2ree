@@ -1,0 +1,36 @@
+.status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--chrome-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  white-space: nowrap;
+}
+
+button.status {
+  cursor: pointer;
+}
+
+.status[data-phase="dirty"] {
+  color: var(--tone-warning-ink);
+}
+
+.status[data-phase="error"] {
+  border-color: var(--tone-danger-border);
+  background: var(--tone-danger-surface);
+  color: var(--tone-danger-ink);
+}
+
+.status[data-phase="error"]:hover {
+  background: var(--tone-danger-surface-strong);
+}
+
+.status[data-phase="error"]:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}

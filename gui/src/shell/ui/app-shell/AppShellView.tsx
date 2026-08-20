@@ -1,6 +1,7 @@
 import { PAGE } from "@core/app-shell/pages";
 import { activeNode } from "@core/canvas/canvasNodes";
 import { addExperiment } from "@core/ree/experimentOps";
+import { useWorkspaceNavigationGuard } from "@shell/state/ree-editor/workspace-sync/useWorkspaceNavigationGuard";
 import { useState } from "react";
 import { WorkspaceLoadErrorView, WorkspaceLoadingView } from "../errors/WorkspaceLoadView";
 import { Ic } from "../shared/components/Icon";
@@ -13,6 +14,7 @@ import { RunHud } from "./canvas/RunHud";
 import { SealHubPanel } from "./canvas/SealHubPanel";
 import { SourceHubPanel } from "./canvas/SourceHubPanel";
 import { WorkbenchLab } from "./canvas/WorkbenchLab";
+import { ReeSyncStatus } from "./components/ReeSyncStatus";
 import { useAppShell } from "./hooks/useAppShell";
 import { AppShellProvider } from "./providers/AppShellProvider";
 
@@ -41,6 +43,9 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
     evaluation,
     currentReeFiles,
     authorReceipts,
+    reeIntentSyncState,
+    isReeIntentDirty,
+    retryReeIntentSync,
     commands,
     sealRunning,
     sealLog,
@@ -48,6 +53,10 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
   const { badges } = stepRuns;
   const { toast } = uiChrome;
   const page = uiChrome.page;
+  useWorkspaceNavigationGuard({
+    shouldBlock: isReeIntentDirty,
+    flush: commands.flushReeIntent,
+  });
   // The constellation (pod hub) is the home view. Seal and source acquisition
   // live inside the hub as compact floating panels; every other page docks
   // beside the pod.
@@ -93,6 +102,9 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
           /
         </span>
         <span className={styles.reeName}>{ree.name || "untitled"}</span>
+        {provisioned && (
+          <ReeSyncStatus state={reeIntentSyncState} onRetry={() => void retryReeIntentSync()} />
+        )}
         <div className={styles.spacer} />
         <button
           type="button"

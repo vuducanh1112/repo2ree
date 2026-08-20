@@ -6,6 +6,9 @@ import { AppShellView } from "./AppShellView";
 const shell = vi.hoisted(() => ({ value: {} as Record<string, unknown> }));
 
 vi.mock("./hooks/useAppShell", () => ({ useAppShell: () => shell.value }));
+vi.mock("@shell/state/ree-editor/workspace-sync/useWorkspaceNavigationGuard", () => ({
+  useWorkspaceNavigationGuard: vi.fn(),
+}));
 vi.mock("./providers/AppShellProvider", () => ({
   AppShellProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
@@ -92,6 +95,7 @@ function controller(page: AppShellPage = PAGE.CANVAS, provisioned = true) {
     onDownloadRee: vi.fn(),
     onSeal: vi.fn(),
     clearToast: vi.fn(),
+    flushReeIntent: vi.fn().mockResolvedValue(undefined),
   };
   shell.value = {
     provisioned,
@@ -108,6 +112,10 @@ function controller(page: AppShellPage = PAGE.CANVAS, provisioned = true) {
     uiChrome: { page, toast: null, locked: false, filesConsoleOpen: false },
     evaluation: {},
     currentReeFiles: [],
+    authorReceipts: [],
+    reeIntentSyncState: { phase: "clean" },
+    isReeIntentDirty: false,
+    retryReeIntentSync: vi.fn().mockResolvedValue(undefined),
     commands,
     sealRunning: false,
     sealLog: null,
@@ -211,5 +219,22 @@ describe("AppShellView", () => {
     expect(commands.onSeal).toHaveBeenCalledOnce();
     expect(commands.onDownloadRee).toHaveBeenCalledOnce();
     expect(commands.clearToast).toHaveBeenCalledOnce();
+  });
+
+  it("shows persistent save state and retries a failed autosave", () => {
+    const retryReeIntentSync = vi.fn().mockResolvedValue(undefined);
+    controller();
+    shell.value = {
+      ...shell.value,
+      reeIntentSyncState: { phase: "error", error: new Error("offline") },
+      isReeIntentDirty: true,
+      retryReeIntentSync,
+    };
+    render(<AppShellView onBack={vi.fn()} />);
+
+    const retry = screen.getByRole("button", { name: "Save failed · Retry" });
+    expect(retry).toHaveAttribute("title", "offline");
+    fireEvent.click(retry);
+    expect(retryReeIntentSync).toHaveBeenCalledOnce();
   });
 });

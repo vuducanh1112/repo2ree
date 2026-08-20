@@ -18,23 +18,47 @@ import styles from "./FormControl.module.css";
 interface FieldProps {
   label: ReactNode;
   hint?: ReactNode;
+  required?: boolean;
+  error?: ReactNode;
   /** Receives the ids to bind. A render prop because the control is arbitrary —
    * an Input here, a Select there, occasionally something bespoke. */
-  children: (bound: { id: string; "aria-describedby": string | undefined }) => ReactNode;
+  children: (bound: {
+    id: string;
+    "aria-describedby": string | undefined;
+    "aria-invalid": true | undefined;
+    required: true | undefined;
+  }) => ReactNode;
 }
 
-export function Field({ label, hint, children }: FieldProps) {
+export function Field({ label, hint, required, error, children }: FieldProps) {
   const id = useId();
   const hintId = `${id}-hint`;
+  const errorId = `${id}-error`;
+  const describedBy = [hint ? hintId : null, error ? errorId : null].filter(Boolean).join(" ");
   return (
     <div className={styles.field}>
       <label className={styles.label} htmlFor={id}>
         {label}
+        {required && (
+          <span aria-hidden="true" className={styles.required}>
+            *
+          </span>
+        )}
       </label>
-      {children({ id, "aria-describedby": hint ? hintId : undefined })}
+      {children({
+        id,
+        "aria-describedby": describedBy || undefined,
+        "aria-invalid": error ? true : undefined,
+        required: required ? true : undefined,
+      })}
       {hint && (
         <span className={styles.hint} id={hintId}>
           {hint}
+        </span>
+      )}
+      {error && (
+        <span className={styles.error} id={errorId} role="alert">
+          {error}
         </span>
       )}
     </div>

@@ -74,7 +74,7 @@ export const applicationPageScenarios: ApplicationPageScenario[] = [
     "Source Acquisition",
   ),
   workspaceScenario("metadata editor", "metadata.png", "Metadata", async (page) => {
-    await expect(page.locator('input[value="climate-model-lab"]')).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "REE Name" })).toHaveValue("climate-model-lab");
   }),
   workspaceScenario("hardware bill of materials", "hardware-bom.png", "Hardware", async (page) => {
     await expect(page.locator('input[value="Intel Xeon Gold 6338"]')).toBeVisible();

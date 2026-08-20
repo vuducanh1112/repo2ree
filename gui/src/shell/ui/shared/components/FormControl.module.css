@@ -18,11 +18,22 @@
   color: var(--ink-default);
 }
 
+.required {
+  color: var(--tone-danger-line);
+}
+
 .hint {
   font-family: var(--font-sans);
   font-size: var(--text-caption);
   line-height: var(--leading-snug);
   color: var(--ink-subtle);
+}
+
+.error {
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  line-height: var(--leading-snug);
+  color: var(--tone-danger-ink);
 }
 
 .control {

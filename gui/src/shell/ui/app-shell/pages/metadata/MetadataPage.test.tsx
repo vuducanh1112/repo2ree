@@ -43,6 +43,19 @@ const DESCRIPTION = "REE for reproducible execution of...";
 
 describe("PageMetadataEntry", () => {
   describe("identity fields", () => {
+    it("names required fields and associates their guidance", () => {
+      renderPage();
+
+      const name = screen.getByRole("textbox", { name: "REE Name" });
+      const version = screen.getByRole("textbox", { name: "Version" });
+      const description = screen.getByRole("textbox", { name: "Description" });
+
+      expect(name).toBeRequired();
+      expect(version).toBeRequired();
+      expect(description).toBeRequired();
+      expect(version).toHaveAccessibleDescription("Semantic version of this REE snapshot.");
+    });
+
     it("reports the name as it is typed", async () => {
       const page = renderPage();
 
@@ -148,6 +161,11 @@ describe("PageMetadataEntry", () => {
       await userEvent.click(screen.getByRole("button", { name: "Add contributor entity" }));
 
       expect(screen.getByText("Name is required to add a contributor.")).toBeInTheDocument();
+      expect(screen.getByRole("textbox", { name: "Contributor name" })).toHaveAttribute(
+        "aria-invalid",
+        "true",
+      );
+      expect(screen.getByRole("alert")).toHaveTextContent("Name is required to add a contributor.");
       expect(page.current().catalogMetadata.contributors).toHaveLength(0);
     });
 
@@ -160,6 +178,10 @@ describe("PageMetadataEntry", () => {
       expect(
         screen.getByText("A contributor with this identifier already exists."),
       ).toBeInTheDocument();
+      expect(screen.getByRole("textbox", { name: "Contributor identifier" })).toHaveAttribute(
+        "aria-invalid",
+        "true",
+      );
       expect(page.current().catalogMetadata.contributors).toHaveLength(1);
     });
 

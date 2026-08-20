@@ -39,6 +39,27 @@ describe("Field", () => {
     );
     expect(screen.getByLabelText("First").id).not.toBe(screen.getByLabelText("Second").id);
   });
+
+  it("exposes required state without adding the visual marker to the accessible name", () => {
+    render(
+      <Field label="Name" required>
+        {(bound) => <Input {...bound} />}
+      </Field>,
+    );
+    expect(screen.getByRole("textbox", { name: "Name" })).toBeRequired();
+  });
+
+  it("associates an error with its invalid control", () => {
+    render(
+      <Field label="Name" hint="Your full name" error="Name is required">
+        {(bound) => <Input {...bound} />}
+      </Field>,
+    );
+    const input = screen.getByRole("textbox", { name: "Name" });
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(input).toHaveAccessibleDescription("Your full name Name is required");
+    expect(screen.getByRole("alert")).toHaveTextContent("Name is required");
+  });
 });
 
 describe("controls", () => {
