@@ -1,5 +1,6 @@
 /* biome-ignore-all lint/style/useNamingConvention: backend fixtures intentionally use wire field names */
 import { PAGE } from "@core/app-shell/pages";
+import { parseAuthorReceipts } from "@core/receipts/authorReceipts";
 import { createEmptyReeExperiment } from "@core/ree/ReeSpec";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -22,6 +23,15 @@ const reeDocument = {
   workbench_image: "bench:python",
 };
 
+const authorReceipts = parseAuthorReceipts({
+  source: {
+    operation: "acquire_source",
+    run_id: "run-source",
+    duration_ms: 1000,
+    recorded_at: "2026-01-01T00:00:01Z",
+  },
+});
+
 function services() {
   return fakeApiServices({
     ree: {
@@ -30,7 +40,6 @@ function services() {
         images: [{ id: "python", ref: "bench:python", label: "Python", description: "" }],
         default_id: "python",
       }),
-      listAuthorReceipts: vi.fn().mockResolvedValue({ receipts: [] }),
       listReviews: vi.fn().mockResolvedValue({ reviews: [] }),
     },
   });
@@ -77,6 +86,7 @@ describe("CanvasHub", () => {
           sizeBytes: null,
           sizeLabel: null,
         }}
+        authorReceipts={authorReceipts}
         filesConsoleOpen
         onFilesConsoleOpenChange={onFilesConsoleOpenChange}
       />,
@@ -98,7 +108,7 @@ describe("CanvasHub", () => {
     await user.click(screen.getByRole("button", { name: "Collapse files" }));
     expect(onFilesConsoleOpenChange).toHaveBeenCalledWith(false);
     await user.click(screen.getByRole("button", { name: "Expand receipts" }));
-    expect(await screen.findByText("No author receipts recorded yet.")).toBeInTheDocument();
+    expect(await screen.findByText("Source acquired")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Expand workbench console" }));
     expect((await screen.findAllByText("bench:python")).length).toBeGreaterThan(0);
     await user.click(screen.getByRole("button", { name: "Expand review controls" }));
@@ -133,6 +143,7 @@ describe("CanvasHub", () => {
         workspaceFiles={[]}
         reeFiles={[]}
         sourceRepo={undefined}
+        authorReceipts={[]}
         filesConsoleOpen={false}
         onFilesConsoleOpenChange={vi.fn()}
       />,
@@ -168,6 +179,7 @@ describe("CanvasHub", () => {
         workspaceFiles={[]}
         reeFiles={[]}
         sourceRepo={undefined}
+        authorReceipts={[]}
         filesConsoleOpen={false}
         onFilesConsoleOpenChange={vi.fn()}
       />,

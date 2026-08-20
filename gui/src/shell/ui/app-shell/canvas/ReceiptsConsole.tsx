@@ -1,6 +1,5 @@
-import { parseAuthorReceipts } from "@core/receipts/authorReceipts";
-import { useAuthorReceiptsQuery } from "@shell/data/receipts/queries";
-import { type ReactNode, useMemo, useState } from "react";
+import type { ReceiptView } from "@core/receipts/authorReceipts";
+import { type ReactNode, useState } from "react";
 import { Ic } from "../../shared/components/Icon";
 import { HudConsole } from "./HudConsole";
 import hud from "./HudConsole.module.css";
@@ -12,17 +11,16 @@ const HUD_WIDTH_COLLAPSED = 224;
 
 interface ReceiptsConsoleProps {
   provisioned: boolean;
+  receipts: ReceiptView[];
 }
 
 // The receipts console — the upper-right HUD, and the one place the REE's
-// materialised evidence lives. Today it holds the author receipts the backend
-// keeps under `receipts/author`; review receipts (and the diffs they carry)
+// materialised evidence lives. Today it holds the author receipts carried by
+// the portable REE document; review receipts (and the diffs they carry)
 // become a second section of the same console, which is why the body is built
 // from titled sections rather than a single flat list.
-export function ReceiptsConsole({ provisioned }: ReceiptsConsoleProps) {
+export function ReceiptsConsole({ provisioned, receipts }: ReceiptsConsoleProps) {
   const [open, setOpen] = useState(false);
-  const query = useAuthorReceiptsQuery({ enabled: provisioned });
-  const receipts = useMemo(() => parseAuthorReceipts(query.data), [query.data]);
 
   const subtitle = !provisioned
     ? "awaiting workbench"
@@ -48,9 +46,7 @@ export function ReceiptsConsole({ provisioned }: ReceiptsConsoleProps) {
       bodyClassName={hud.receiptsBody}
     >
       <Section title="Author evidence">
-        {query.isError ? (
-          <Empty>Receipts unavailable.</Empty>
-        ) : receipts.length === 0 ? (
+        {receipts.length === 0 ? (
           <Empty>No author receipts recorded yet.</Empty>
         ) : (
           receipts.map((receipt) => <ReceiptCard key={receipt.key} receipt={receipt} />)

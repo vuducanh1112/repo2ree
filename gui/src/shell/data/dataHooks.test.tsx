@@ -5,7 +5,6 @@ import { fakeApiServices } from "../../../tests/support/fakeApiServices";
 import { createShellWrapper } from "../../../tests/support/renderApp";
 import { useAgents } from "./agents/agents";
 import { useEvaluateReportQuery } from "./evaluate/queries";
-import { useAuthorReceiptsQuery } from "./receipts/queries";
 import { useUpdateReeIntentMutation } from "./ree/mutations";
 import { useReeQuery } from "./ree/queries";
 import { useReeIndex } from "./ree-index/reeIndex";
@@ -87,7 +86,6 @@ describe("shell data hooks", () => {
       ree_files: [],
     });
     const getEvaluateReport = vi.fn().mockResolvedValue({ dependencies: [], threats: [] });
-    const listAuthorReceipts = vi.fn().mockResolvedValue({ receipts: [] });
     const listReviews = vi.fn().mockResolvedValue({ reviews: [] });
     const listReeIndex = vi.fn().mockResolvedValue({
       items: [
@@ -111,14 +109,13 @@ describe("shell data hooks", () => {
     const { Wrapper } = createShellWrapper({
       reeId: "ree-1",
       services: fakeApiServices({
-        ree: { getRee, getEvaluateReport, listAuthorReceipts, listReviews, listReeIndex },
+        ree: { getRee, getEvaluateReport, listReviews, listReeIndex },
       }),
     });
     const { result } = renderHook(
       () => ({
         ree: useReeQuery(),
         report: useEvaluateReportQuery({}),
-        receipts: useAuthorReceiptsQuery(),
         reviews: useReviewsQuery(),
         index: useReeIndex({ depositedOnly: true }),
       }),
@@ -129,12 +126,10 @@ describe("shell data hooks", () => {
       expect(result.current.index.isSuccess).toBe(true);
       expect(result.current.ree.isSuccess).toBe(true);
       expect(result.current.report.isSuccess).toBe(true);
-      expect(result.current.receipts.isSuccess).toBe(true);
       expect(result.current.reviews.isSuccess).toBe(true);
     });
     expect(result.current.ree.data).toMatchObject({ id: "ree-1" });
     expect(result.current.report.data).toBeNull();
-    expect(result.current.receipts.data).toEqual({ receipts: [] });
     expect(result.current.reviews.data).toEqual([]);
     expect(result.current.index.data?.[0]).toMatchObject({
       name: "Demo",

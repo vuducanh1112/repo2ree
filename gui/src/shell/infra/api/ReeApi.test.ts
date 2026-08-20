@@ -97,11 +97,10 @@ describe("ReeApi", () => {
     });
   });
 
-  it("maps reports, receipts, reviews and reprovisioning", async () => {
+  it("maps reports, reviews and reprovisioning", async () => {
     const { api, client } = harness();
     const reeId = asReeId("ree-1");
     await api.getEvaluateReport(reeId);
-    await api.listAuthorReceipts(reeId);
     await api.listReviews(reeId);
     await api.startSourceReview(reeId, { basis: "auto" });
     await api.startBuildReview(reeId, "review/1", { basis: "auto", prune_workspace: false });
@@ -111,7 +110,6 @@ describe("ReeApi", () => {
 
     expect(client.request.mock.calls.map(([path]) => path)).toEqual([
       "/api/v1/rees/ree-1/evaluate/report",
-      "/api/v1/rees/ree-1/receipts/author",
       "/api/v1/rees/ree-1/reviews",
       "/api/v1/rees/ree-1/reviews/source:reproduce",
       "/api/v1/rees/ree-1/reviews/review%2F1/build:reproduce",

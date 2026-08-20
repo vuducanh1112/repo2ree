@@ -427,7 +427,6 @@ function responseFor(request: Request): unknown {
   if (path === `/api/v1/rees/${VISUAL_REE_ID}`) return visualRee;
   if (path === `/api/v1/rees/${VISUAL_REE_ID}/runs`) return runs;
   if (path === `/api/v1/rees/${VISUAL_REE_ID}/evaluate/report`) return evaluateReport;
-  if (path === `/api/v1/rees/${VISUAL_REE_ID}/receipts/author`) return { receipts: [] };
   if (path === `/api/v1/rees/${VISUAL_REE_ID}/reviews`) return reviews;
   throw new Error(`Unexpected visual API request: ${request.method()} ${path}`);
 }

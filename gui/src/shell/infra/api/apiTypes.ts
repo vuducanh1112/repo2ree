@@ -17,8 +17,6 @@ export interface ApiListResponse<TItem> {
 
 export type ReeSummary = Schema<"ReeSummary">;
 
-export type ReeReceiptsWire = Schema<"ReeReceipts">;
-
 export type ReviewRecordWire = Schema<"ReviewRecord">;
 
 /** The lifecycle state of one step within a review attempt. */

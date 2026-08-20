@@ -40,6 +40,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
     uiChrome,
     evaluation,
     currentReeFiles,
+    authorReceipts,
     commands,
     sealRunning,
     sealLog,
@@ -137,6 +138,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
             workspaceFiles={workspaceRemote.workspaceFiles}
             reeFiles={currentReeFiles}
             sourceRepo={workspaceRemote.sourceRepo}
+            authorReceipts={authorReceipts}
             filesConsoleOpen={uiChrome.filesConsoleOpen}
             onFilesConsoleOpenChange={commands.setFilesConsoleOpen}
           />

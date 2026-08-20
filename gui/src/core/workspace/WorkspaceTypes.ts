@@ -1,3 +1,4 @@
+import type { ReceiptView } from "../receipts/authorReceipts";
 import type { ReeFile } from "../ree/ReeTypes";
 
 export interface WorkspaceBinaryDownload {
@@ -23,6 +24,8 @@ export interface ReeProject<TFile = unknown, TRee = unknown> {
   files: TFile[];
   reeFiles?: ReeFile[];
   ree?: TRee;
+  /** Author evidence parsed from the portable REE document. */
+  authorReceipts?: ReceiptView[];
   sourceRepo?: SourceRepoMetadata;
   /** The image this REE's workbench was provisioned from. */
   workbenchImage?: string;

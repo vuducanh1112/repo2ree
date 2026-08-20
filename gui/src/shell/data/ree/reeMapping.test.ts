@@ -51,6 +51,36 @@ describe("shell/data/ree/reeMapping", () => {
     expect(project.reeFiles?.map((file) => file.name)).toEqual(["overlay/build.sh"]);
   });
 
+  it("parses author receipts carried by the REE document", () => {
+    const document = baseRee();
+    const receipts = document.ree.subject?.receipts;
+    if (!receipts) throw new Error("incomplete subject fixture");
+    receipts.source = {
+      schema_version: 1,
+      run_id: "run-source",
+      started_at: "2026-01-01T00:00:00Z",
+      finished_at: "2026-01-01T00:00:01Z",
+      duration_ms: 1000,
+      recorded_at: "2026-01-01T00:00:01Z",
+      operation: "acquire_source",
+      origin_url: "https://example.test/repo",
+      source_type: "git",
+      requested_ref: "main",
+      resolved_revision: "abc",
+      observed_swhid: "swh:1:dir:value",
+      snapshot_digest: "sha256:value",
+    };
+
+    expect(mapReeDetailToReeProject(document).authorReceipts).toMatchObject([
+      {
+        key: "acquire_source:run-source",
+        title: "Source acquired",
+        operation: "acquire_source",
+        runId: "run-source",
+      },
+    ]);
+  });
+
   it("namespaces node ids per inventory, so one path in both stays two files", () => {
     const project = mapReeDetailToReeProject(
       baseRee({

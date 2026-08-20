@@ -50,6 +50,7 @@ export function useReeEditor({
   const reeQuery = useReeQuery({ enabled: provisioned });
   const workspaceFiles = reeQuery.data?.files ?? [];
   const reeArtifactFiles = reeQuery.data?.reeFiles ?? [];
+  const authorReceipts = reeQuery.data?.authorReceipts ?? [];
   const sourceRepo = reeQuery.data?.sourceRepo;
 
   const reeEditorState: ReeEditorState = useMemo(
@@ -186,6 +187,7 @@ export function useReeEditor({
       machineLevel: ree.machineLevel ?? 0,
     },
     currentReeFiles: reeArtifactFiles,
+    authorReceipts,
     commands,
     sealRunning,
     sealLog,

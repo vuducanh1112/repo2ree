@@ -12,7 +12,6 @@ import type {
   ReeDefinitionPatchPayload,
   ReeDocument,
   ReeIndexList,
-  ReeReceiptsWire,
   ReeSummary,
   ReproducibilityReportWire,
   ReprovisionResponse,
@@ -150,12 +149,6 @@ export class ReeApi {
 
   async getEvaluateReport(reeId: ReeId): Promise<ReproducibilityReportWire> {
     return this.client.request<ReproducibilityReportWire>(endpoints.reeEvaluateReport(reeId), {
-      method: "GET",
-    });
-  }
-
-  async listAuthorReceipts(reeId: ReeId): Promise<ReeReceiptsWire> {
-    return this.client.request<ReeReceiptsWire>(endpoints.reeAuthorReceipts(reeId), {
       method: "GET",
     });
   }

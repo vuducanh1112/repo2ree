@@ -14,6 +14,7 @@ import {
 } from "@core/canvas/canvasNodes";
 import { satellitePositions } from "@core/canvas/experimentRing";
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
+import type { ReceiptView } from "@core/receipts/authorReceipts";
 import type { Badges, ReeFile } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import type { FileTreeNode } from "@core/workspace/FileTree";
@@ -67,6 +68,7 @@ interface CanvasHubProps {
   workspaceFiles: FileTreeNode[];
   reeFiles: ReeFile[];
   sourceRepo: SourceRepoMetadata | undefined;
+  authorReceipts: ReceiptView[];
   /** Node keys whose recorded run result is stale (see sealConsistency). */
   staleNodeKeys?: ReadonlySet<string>;
   filesConsoleOpen: boolean;
@@ -88,6 +90,7 @@ export function CanvasHub({
   workspaceFiles,
   reeFiles,
   sourceRepo,
+  authorReceipts,
   staleNodeKeys,
   filesConsoleOpen,
   onFilesConsoleOpenChange,
@@ -312,7 +315,7 @@ export function CanvasHub({
         onOpenChange={onFilesConsoleOpenChange}
       />
 
-      <ReceiptsConsole provisioned={provisioned} />
+      <ReceiptsConsole provisioned={provisioned} receipts={authorReceipts} />
 
       <BenchConsole provisioned={provisioned} reeName={ree.name} />
 

@@ -6,9 +6,18 @@ import { useExperimentRun } from "./useExperimentRun";
 const runtime = vi.hoisted(() => ({
   start: vi.fn(),
   cancel: vi.fn(),
+  invalidate: vi.fn(),
   run: undefined as Record<string, unknown> | undefined,
   logs: undefined as { lines: { type: "info"; msg: string }[] } | undefined,
 }));
+
+vi.mock("@tanstack/react-query", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
+  return {
+    ...actual,
+    useQueryClient: () => ({ invalidateQueries: runtime.invalidate }),
+  };
+});
 
 vi.mock("@shell/data/runs/mutations", () => ({
   useStartExperimentRunMutation: () => ({ mutateAsync: runtime.start }),
@@ -23,6 +32,7 @@ describe("useExperimentRun", () => {
   beforeEach(() => {
     runtime.start.mockReset();
     runtime.cancel.mockReset();
+    runtime.invalidate.mockReset();
     runtime.run = undefined;
     runtime.logs = undefined;
   });
@@ -93,6 +103,9 @@ describe("useExperimentRun", () => {
       logLines: [{ type: "info", msg: "done" }],
     });
     expect(result.current.isRunning).toBe(false);
+    await waitFor(() =>
+      expect(runtime.invalidate).toHaveBeenCalledWith({ queryKey: ["ree", "started-ree"] }),
+    );
     act(() => result.current.cancelRun());
     expect(runtime.cancel).toHaveBeenCalledWith({ runId: "run-1" });
   });

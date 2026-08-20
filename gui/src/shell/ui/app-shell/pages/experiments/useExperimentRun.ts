@@ -2,9 +2,11 @@ import type { LogLine } from "@core/ree/ReeTypes";
 import type { ExperimentRunOutputs } from "@core/runs/ExperimentRun";
 import type { ReeRunFailure } from "@core/runs/ReeRun";
 import { isTerminalReeRunStatus, type ReeRunStatus } from "@core/runs/ReeRunStatus";
+import { queryKeys } from "@shell/data/queryKeys";
 import { useCancelReeRunMutation, useStartExperimentRunMutation } from "@shell/data/runs/mutations";
 import { useReeRunLogsQuery, useReeRunQuery } from "@shell/data/runs/queries";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type RunState = {
   reeId: string;
@@ -70,6 +72,7 @@ export function useExperimentRun({
   experimentName,
   onBeforeRun,
 }: UseExperimentRunOptions): ExperimentRunController {
+  const queryClient = useQueryClient();
   // Destructured: react-query keeps these callbacks stable across renders while
   // the mutation object itself is new each time, so the handlers below stay
   // memoized.
@@ -94,6 +97,17 @@ export function useExperimentRun({
 
   const runQuery = useReeRunQuery(target?.reeId, target?.runId);
   const logsQuery = useReeRunLogsQuery(target?.reeId, target?.runId);
+  const refreshedRunId = useRef<string | null>(null);
+
+  // Experiment execution does not use the generic step gateway, whose terminal
+  // path refreshes the REE document. Refresh it here once so the receipt filed
+  // by a completed experiment appears on the canvas without a remount.
+  useEffect(() => {
+    if (!target || !isTerminalReeRunStatus(runQuery.data?.status)) return;
+    if (refreshedRunId.current === target.runId) return;
+    refreshedRunId.current = target.runId;
+    void queryClient.invalidateQueries({ queryKey: queryKeys.ree(target.reeId) });
+  }, [queryClient, runQuery.data?.status, target]);
 
   const startRun = useCallback(() => {
     if (!experimentName) return;

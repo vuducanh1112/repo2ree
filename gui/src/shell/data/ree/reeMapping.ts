@@ -1,3 +1,4 @@
+import { parseAuthorReceipts } from "@core/receipts/authorReceipts";
 import type { ReeFile } from "@core/ree/ReeTypes";
 import type { FileTreeNode } from "@core/workspace/FileTree";
 import { reeFileId, workspaceDirId, workspaceFileId } from "@core/workspace/fileNodeIds";
@@ -103,6 +104,7 @@ export function mapReeDetailToReeProject(
     files,
     reeFiles,
     ree: reeState,
+    authorReceipts: parseAuthorReceipts(ree.ree.subject?.receipts),
     sourceRepo: mapSourceRepo(ree),
     workbenchImage: ree.workbench_image ?? undefined,
   };
