@@ -28,7 +28,7 @@ export function ReeIndexView({ onBack }: ReeIndexViewProps) {
   });
 
   return (
-    <div className={styles.screen}>
+    <main className={styles.screen}>
       <div className={styles.column}>
         <Header
           onBack={onBack}
@@ -54,7 +54,7 @@ export function ReeIndexView({ onBack }: ReeIndexViewProps) {
           )}
         </div>
       </div>
-    </div>
+    </main>
   );
 }
 

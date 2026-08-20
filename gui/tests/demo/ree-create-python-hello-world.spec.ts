@@ -218,7 +218,9 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
         .getByRole("button", { name: "Reproducibility Readiness", exact: true }),
       "Evaluate the projects risks to reproducibility, by analyzing declared dependencies",
     );
-    await expect(main.getByText("Reproducibility Readiness", { exact: true })).toBeVisible();
+    await expect(
+      main.getByRole("heading", { name: "Reproducibility Readiness", exact: true }),
+    ).toBeVisible();
     await clickDemo(
       page,
       main.getByRole("button", { name: /^Run Evaluate$/ }),
@@ -403,15 +405,18 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
       page.getByRole("button", { name: "Open experiments" }),
       "Open the core experiment catalog from the decomposed view",
     );
-    await expect(main.getByRole("heading", { name: "Experiments", exact: true })).toBeVisible();
+    const experimentsDialog = page.getByRole("dialog", { name: "Experiments" });
+    await expect(
+      experimentsDialog.getByRole("heading", { name: "Experiments", exact: true }),
+    ).toBeVisible();
     await clickDemo(
       page,
-      main.getByRole("button", { name: /Add experiment/i }).first(),
+      experimentsDialog.getByRole("button", { name: /Add experiment/i }).first(),
       "Add a new experiment",
     );
     await fillDemo(
       page,
-      main.getByPlaceholder("smoke-test"),
+      experimentsDialog.getByPlaceholder("smoke-test"),
       "python-hello",
       "Name the experiment — naming it declares it on the REE and settles its reserved script paths",
     );

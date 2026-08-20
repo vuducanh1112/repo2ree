@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect } from "react";
+import { type KeyboardEventHandler, type ReactNode, useEffect } from "react";
 import { Ic } from "../../shared/components/Icon";
 import { type CssVarValues, cssVars, cx } from "../../theme/styleVars";
 import styles from "./CanvasWindow.module.css";
@@ -11,6 +11,9 @@ interface CanvasWindowProps {
   closable?: boolean;
   /** Close on Escape. Off for windows whose parent owns the Escape key. */
   escapeToClose?: boolean;
+  /** Present the window as a modal dialog rather than an ambient canvas region. */
+  modal?: boolean;
+  onKeyDown?: KeyboardEventHandler<HTMLElement>;
   /** Left side of the title bar (icon + title, tab strip, …). */
   header: ReactNode;
   /** Trailing title-bar slot rendered between the header and the X. */
@@ -41,6 +44,8 @@ export function CanvasWindow({
   onClose,
   closable = true,
   escapeToClose = false,
+  modal = false,
+  onKeyDown,
   header,
   headerRight,
   className,
@@ -49,6 +54,8 @@ export function CanvasWindow({
   scrollBody = false,
   children,
 }: CanvasWindowProps) {
+  const modalAttributes = modal ? ({ role: "dialog", "aria-modal": true } as const) : {};
+
   useEffect(() => {
     if (!closable || !escapeToClose) return;
     const onKey = (event: KeyboardEvent) => {
@@ -60,7 +67,9 @@ export function CanvasWindow({
 
   return (
     <section
+      {...modalAttributes}
       aria-label={ariaLabel}
+      onKeyDown={onKeyDown}
       data-canvas-hud
       className={cx(styles.window, className)}
       style={cssVars(vars ?? {})}

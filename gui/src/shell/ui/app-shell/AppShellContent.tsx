@@ -10,7 +10,7 @@ import type { AppShellPageContainerProps } from "./pages/pageContainers/shared";
 
 export function AppShellContent(props: AppShellPageContainerProps) {
   return (
-    <main className={styles.main}>
+    <div className={styles.main}>
       <div aria-hidden className={styles.backdrop}>
         <div className={styles.blob} data-place="left" />
         <div className={styles.blob} data-place="right" />
@@ -23,6 +23,6 @@ export function AppShellContent(props: AppShellPageContainerProps) {
         <StepPageContainer {...props} />
         <ArchivePageContainer {...props} />
       </div>
-    </main>
+    </div>
   );
 }

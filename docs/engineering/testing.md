@@ -9,7 +9,7 @@
 |---|---|
 | `make gui-checks` | GUI TypeScript, Biome, knip, dependency-cruiser. |
 | `make gui-tests` | GUI Vitest tests — the `node` tier, measured (V8) into `coverage/node/unit/`. |
-| `make gui-contrast-tests` | WCAG contrast checks over deterministic, browser-rendered application pages. |
+| `make gui-accessibility-tests` | WCAG 2.2 AA, axe best-practice, and focused contrast checks over deterministic, browser-rendered application pages. |
 | `make gui-screenshot-tests` | Page-level screenshot regression suite with a real GUI and deterministic mocked API. |
 | `make be-checks` | Ruff, Ruff format, and mypy across Python workspace packages. |
 | `make scripts-checks` | ShellCheck over `scripts/*.sh`. |
@@ -414,14 +414,15 @@ This suite protects layout and appearance. It complements, rather than replaces,
 the live-stack e2e projects below, which prove that the browser, API, and real
 workbench operations integrate correctly.
 
-## GUI Contrast Tests
+## GUI Accessibility Tests
 
-The `gui-contrast-tests` Playwright project runs axe's `color-contrast` rule
+The `gui-accessibility-tests` Playwright project runs WCAG 2.2 AA and axe
+best-practice rules, plus a focused pass of axe's `color-contrast` rule,
 over the same 16 deterministic application states as the screenshot project,
 plus a matrix of the semantic text roles used across those pages:
 
 ```bash
-make gui-contrast-tests
+make gui-accessibility-tests
 ```
 
 Definite violations fail the suite. Results axe cannot resolve automatically

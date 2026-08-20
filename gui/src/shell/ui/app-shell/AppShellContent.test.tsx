@@ -106,7 +106,8 @@ describe("AppShellContent", () => {
       reeId: "ree-1",
       services,
     });
-    expect(container.querySelector("main")).toBeInTheDocument();
+    expect(container.firstElementChild).toBeInstanceOf(HTMLDivElement);
+    expect(container.querySelector("main")).not.toBeInTheDocument();
     expect(screen.queryByRole("heading")).not.toBeInTheDocument();
   });
 });

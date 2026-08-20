@@ -50,7 +50,7 @@ export function LandingView({ onLoad, onViewAgents, onViewReeIndex }: LandingVie
   };
 
   return (
-    <div className={styles.screen}>
+    <main className={styles.screen}>
       <div className={styles.column}>
         <div className={styles.masthead}>
           <div aria-hidden className={styles.mark}>
@@ -85,6 +85,6 @@ export function LandingView({ onLoad, onViewAgents, onViewReeIndex }: LandingVie
           ))}
         </div>
       </div>
-    </div>
+    </main>
   );
 }

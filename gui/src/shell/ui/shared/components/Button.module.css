@@ -98,6 +98,7 @@
 }
 
 .button[data-size="tiny"] {
+  min-height: 24px;
   padding: var(--space-1) var(--space-2-5);
   font-size: var(--text-caption);
 }

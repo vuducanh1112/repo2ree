@@ -18,7 +18,7 @@ import type { Badges, ReeFile } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import type { FileTreeNode } from "@core/workspace/FileTree";
 import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { cssVars } from "../../theme/styleVars";
 import { BenchConsole } from "./BenchConsole";
 import { CableOverlaySvg } from "./CableOverlay";
@@ -120,6 +120,14 @@ export function CanvasHub({
   const [innerHovered, setInnerHovered] = useState(false);
   // The pan/zoom the user had before decomposing, restored when they reassemble.
   const preExplodeTf = useRef<Transform | null>(null);
+
+  // A focused step page behaves as a modal over the constellation. `inert`
+  // removes this background canvas from both keyboard navigation and the
+  // accessibility tree while the dock is open; the visual dimming alone does
+  // not communicate that interaction boundary to assistive technology.
+  useEffect(() => {
+    stageRef.current?.toggleAttribute("inert", dimmed);
+  }, [dimmed]);
 
   // Pull the camera back and centre the spread when decomposing; on reassemble,
   // return to wherever the user was framed before, not a hard reset.

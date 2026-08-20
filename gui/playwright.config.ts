@@ -42,12 +42,12 @@ export default defineConfig({
       },
   projects: [
     {
-      // WCAG text-contrast checks over the same deterministic application
-      // states as the screenshot suite. Unresolved axe results are attached for
-      // review because transparent or layered surfaces need human judgment.
-      name: "gui-contrast-tests",
-      testDir: "./tests/gui-contrast-tests",
-      outputDir: "../test-artifacts/playwright/gui-contrast-tests",
+      // WCAG 2.2 AA, axe best-practice, and focused text-contrast checks over
+      // the same deterministic application states as the screenshot suite.
+      // Axe results are attached for review and debugging.
+      name: "gui-accessibility-tests",
+      testDir: "./tests/gui-accessibility-tests",
+      outputDir: "../test-artifacts/playwright/gui-accessibility-tests",
       timeout: 30 * 1000,
       expect: { timeout: 10 * 1000 },
       use: {

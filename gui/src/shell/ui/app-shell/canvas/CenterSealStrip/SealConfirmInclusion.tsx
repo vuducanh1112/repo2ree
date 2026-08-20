@@ -43,7 +43,13 @@ function Row({ label, available, included, tintLine, tintInk, onToggle }: Inclus
         <span className={styles.inclusionVerb} data-on={on || undefined}>
           {on ? "Included" : "Include"}
         </span>
-        <Toggle on={on} disabled={!available} tint={tintLine} onChange={onToggle} />
+        <Toggle
+          on={on}
+          disabled={!available}
+          ariaLabel={`Include ${label.toLowerCase()} in bundle`}
+          tint={tintLine}
+          onChange={onToggle}
+        />
       </div>
     </div>
   );

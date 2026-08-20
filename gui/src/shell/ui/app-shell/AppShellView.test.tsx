@@ -124,6 +124,7 @@ describe("AppShellView", () => {
     render(<AppShellView onBack={onBack} />);
 
     expect(screen.getByText("Workbench")).toBeInTheDocument();
+    expect(screen.getByRole("main")).toContainElement(screen.getByText("Workbench"));
     expect(screen.queryByText("Run HUD")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /back/ }));
     expect(onBack).toHaveBeenCalledOnce();

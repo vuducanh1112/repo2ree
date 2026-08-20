@@ -30,6 +30,7 @@ export function ArchiveParamsCard({ repo, getParam, setParam }: ArchiveParamsCar
               {p.type === "bool" ? (
                 <Toggle
                   on={!!value}
+                  ariaLabel={p.label}
                   tint={archiveTone(repo.key)}
                   title={value ? "Yes" : "No"}
                   onChange={() => setParam(repo.key, p.key, !value)}

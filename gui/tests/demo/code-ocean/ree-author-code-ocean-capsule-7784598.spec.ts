@@ -78,9 +78,14 @@ async function addExperiment(
   page: Page,
   experiment: { name: string; command: string; output: string },
 ) {
-  const main = page.getByRole("main");
-  await clickDemo(page, main.getByRole("button", { name: /Add experiment/i }).first());
-  await fillDemo(page, main.getByPlaceholder("smoke-test"), experiment.name, "Name the experiment");
+  const experimentsDialog = page.getByRole("dialog", { name: "Experiments" });
+  await clickDemo(page, experimentsDialog.getByRole("button", { name: /Add experiment/i }).first());
+  await fillDemo(
+    page,
+    experimentsDialog.getByPlaceholder("smoke-test"),
+    experiment.name,
+    "Name the experiment",
+  );
   await saveRunScript(
     page,
     "Experiment run script",
@@ -89,12 +94,12 @@ async function addExperiment(
   );
   await fillDemo(
     page,
-    main.getByRole("textbox", { name: "Output files" }),
+    experimentsDialog.getByRole("textbox", { name: "Output files" }),
     experiment.output,
     "Declare the result file the run produces — captured after every run",
   );
-  await clickDemo(page, main.getByRole("button", { name: /Save & back to catalog/ }));
-  await expect(main.getByRole("button", { name: experiment.name })).toBeVisible();
+  await clickDemo(page, experimentsDialog.getByRole("button", { name: /Save & back to catalog/ }));
+  await expect(experimentsDialog.getByRole("button", { name: experiment.name })).toBeVisible();
 }
 
 test("author Code Ocean capsule 7784598 inputs", async ({ page }) => {
@@ -256,7 +261,11 @@ test("author Code Ocean capsule 7784598 inputs", async ({ page }) => {
       page.getByRole("button", { name: "Open experiments" }),
       "Open the experiment catalog",
     );
-    await expect(main.getByRole("heading", { name: "Experiments", exact: true })).toBeVisible();
+    await expect(
+      page
+        .getByRole("dialog", { name: "Experiments" })
+        .getByRole("heading", { name: "Experiments", exact: true }),
+    ).toBeVisible();
     await addExperiment(page, {
       name: "previous modulation day 0",
       command: "cd code && bash run",

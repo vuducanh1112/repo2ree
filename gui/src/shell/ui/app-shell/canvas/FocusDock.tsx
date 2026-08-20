@@ -1,5 +1,5 @@
 import type { CanvasNode } from "@core/canvas/canvasNodes";
-import type { ReactNode } from "react";
+import { type KeyboardEvent, type ReactNode, useEffect, useRef } from "react";
 import { stageTone } from "../../theme/appearance";
 import { cssVars } from "../../theme/styleVars";
 import { CanvasWindow } from "./CanvasWindow";
@@ -21,8 +21,43 @@ interface FocusDockProps {
 // panel's rect into the panel's own box. They mirror FocusDock.module.css.
 const TOP = 60; // panel top edge, in viewport px
 const SIDE_FRAC = 0.07; // panel inset from each side, as a fraction of viewport width
+const FOCUSABLE_SELECTOR =
+  'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export function FocusDock({ node, originRect, closable, onClose, children }: FocusDockProps) {
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    previousFocusRef.current = document.activeElement as HTMLElement | null;
+    const dialog = overlayRef.current?.querySelector<HTMLElement>('[role="dialog"]');
+    dialog?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)?.focus();
+
+    return () => previousFocusRef.current?.focus();
+  }, []);
+
+  const trapFocus = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Tab") return;
+    const dialog = overlayRef.current?.querySelector<HTMLElement>('[role="dialog"]');
+    const focusable = Array.from(
+      dialog?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? [],
+    ).filter((element) => element.getClientRects().length > 0);
+    if (focusable.length === 0) {
+      event.preventDefault();
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
   // Anchor the grow animation on the clicked panel's centre. transform-origin is
   // relative to the panel's own box, so subtract the panel's top-left corner.
   const sidePx = window.innerWidth * SIDE_FRAC;
@@ -33,7 +68,7 @@ export function FocusDock({ node, originRect, closable, onClose, children }: Foc
     : "center";
 
   return (
-    <div className={styles.overlay}>
+    <div ref={overlayRef} className={styles.overlay}>
       <button
         type="button"
         aria-label="Back to constellation"
@@ -47,6 +82,8 @@ export function FocusDock({ node, originRect, closable, onClose, children }: Foc
         onClose={onClose}
         closable={closable}
         escapeToClose
+        modal
+        onKeyDown={trapFocus}
         className={styles.dock}
         vars={{ "--focus-origin": focusOrigin }}
         header={

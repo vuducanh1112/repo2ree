@@ -106,7 +106,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
         </button>
       </header>
 
-      <div className={styles.stage}>
+      <main className={styles.stage}>
         {!provisioned ? (
           // First screen of REE creation: the workbench IS the canvas — the lab
           // the dormant pod sits in. Configuring it powers the lab on.
@@ -189,7 +189,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
             onClose={() => commands.setPage(PAGE.CANVAS)}
           />
         )}
-      </div>
+      </main>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={commands.clearToast} />}
     </div>

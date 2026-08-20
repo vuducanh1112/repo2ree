@@ -150,4 +150,30 @@ describe("CanvasHub", () => {
     await user.click(screen.getByRole("button", { name: "Reassemble" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Decompose" })).toBeVisible());
   });
+
+  it("makes the background canvas inert while a focused page is open", () => {
+    const { container } = renderWithShell(
+      <CanvasHub
+        page={PAGE.METADATA}
+        ree={exampleEditorRee}
+        evaluation={{ dependencyLevel: 1, environmentLevel: 1, machineLevel: 1 }}
+        badges={{}}
+        provisioned
+        dimmed
+        onNavigate={vi.fn()}
+        onAddExperiment={vi.fn()}
+        onOpenExperimentsOverview={vi.fn()}
+        onOpenExperiment={vi.fn()}
+        onOpenRuntime={vi.fn()}
+        workspaceFiles={[]}
+        reeFiles={[]}
+        sourceRepo={undefined}
+        filesConsoleOpen={false}
+        onFilesConsoleOpenChange={vi.fn()}
+      />,
+      { reeId: "ree-1", services: services() },
+    );
+
+    expect(container.querySelector("[data-dimmed]")).toHaveAttribute("inert");
+  });
 });

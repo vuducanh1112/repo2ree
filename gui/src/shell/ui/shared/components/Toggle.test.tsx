@@ -4,19 +4,22 @@ import { describe, expect, it, vi } from "vitest";
 import { Toggle } from "./Toggle";
 
 const tint = "var(--stage-seal-line)";
+const ariaLabel = "Include source in bundle";
 
 describe("Toggle", () => {
   it("exposes its state as a pressed button rather than as styling", async () => {
-    const { rerender } = render(<Toggle on={false} tint={tint} onChange={() => {}} />);
+    const { rerender } = render(
+      <Toggle on={false} ariaLabel={ariaLabel} tint={tint} onChange={() => {}} />,
+    );
     expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "false");
 
-    rerender(<Toggle on={true} tint={tint} onChange={() => {}} />);
+    rerender(<Toggle on={true} ariaLabel={ariaLabel} tint={tint} onChange={() => {}} />);
     expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "true");
   });
 
   it("reports a click without changing its own state", async () => {
     const onChange = vi.fn();
-    render(<Toggle on={false} tint={tint} onChange={onChange} />);
+    render(<Toggle on={false} ariaLabel={ariaLabel} tint={tint} onChange={onChange} />);
 
     await userEvent.click(screen.getByRole("button"));
 
@@ -27,7 +30,7 @@ describe("Toggle", () => {
 
   it("does not report clicks while disabled", async () => {
     const onChange = vi.fn();
-    render(<Toggle on={false} tint={tint} disabled onChange={onChange} />);
+    render(<Toggle on={false} ariaLabel={ariaLabel} tint={tint} disabled onChange={onChange} />);
 
     await userEvent.click(screen.getByRole("button"));
 
@@ -35,8 +38,10 @@ describe("Toggle", () => {
     expect(screen.getByRole("button")).toBeDisabled();
   });
 
-  it("names itself from `title` so it is addressable without a visible label", () => {
-    render(<Toggle on={true} tint={tint} title="Show archived runs" onChange={() => {}} />);
-    expect(screen.getByRole("button", { name: "Show archived runs" })).toBeInTheDocument();
+  it("uses a stable accessible name independently of its tooltip", () => {
+    render(
+      <Toggle on={true} ariaLabel={ariaLabel} tint={tint} title="Included" onChange={() => {}} />,
+    );
+    expect(screen.getByRole("button", { name: ariaLabel })).toBeInTheDocument();
   });
 });

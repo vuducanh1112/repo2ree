@@ -33,7 +33,7 @@ export function LabLocationView({ onBack }: LabLocationViewProps) {
   };
 
   return (
-    <div className={styles.screen}>
+    <main className={styles.screen}>
       <div className={styles.column}>
         <div className={styles.backRow}>
           <button type="button" onClick={onBack} className={styles.back}>
@@ -72,7 +72,7 @@ export function LabLocationView({ onBack }: LabLocationViewProps) {
           </div>
         )}
       </div>
-    </div>
+    </main>
   );
 }
 

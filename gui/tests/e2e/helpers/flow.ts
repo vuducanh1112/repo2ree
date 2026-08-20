@@ -363,7 +363,9 @@ export async function provideMetadata(
 export async function runEvaluate(page: Page) {
   await stepShot(page, "run-evaluate", "before");
   await openPort(page, "Reproducibility Readiness");
-  await expect(main(page).getByText("Reproducibility Readiness", { exact: true })).toBeVisible();
+  await expect(
+    main(page).getByRole("heading", { name: "Reproducibility Readiness", exact: true }),
+  ).toBeVisible();
   await main(page)
     .getByRole("button", { name: /^Run Evaluate$/ })
     .click();
@@ -577,19 +579,22 @@ export async function runExperiment(
 ) {
   await stepShot(page, "run-experiment", "before");
   await openPort(page, "Experiments");
-  await expect(main(page).getByRole("heading", { name: "Experiments", exact: true })).toBeVisible();
+  const experimentsDialog = page.getByRole("dialog", { name: "Experiments" });
+  await expect(
+    experimentsDialog.getByRole("heading", { name: "Experiments", exact: true }),
+  ).toBeVisible();
   // Adding the row autosaves an experiment that has no name yet, which the
   // backend cannot declare — settle that round-trip without demanding it
   // succeed, so the naming patch below is the one held to the standard.
   const experimentAdded = waitForDefinitionPatch(page, { expectOk: false });
-  await main(page)
+  await experimentsDialog
     .getByRole("button", { name: /Add experiment/i })
     .first()
     .click();
   await experimentAdded;
 
   const nameSaved = waitForDefinitionPatch(page);
-  await main(page).getByPlaceholder("smoke-test").fill(experiment.name);
+  await experimentsDialog.getByPlaceholder("smoke-test").fill(experiment.name);
   await nameSaved;
 
   if (experiment.generateFirst) {
