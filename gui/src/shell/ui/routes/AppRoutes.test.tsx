@@ -74,15 +74,22 @@ describe("AppRoutes", () => {
     expect(screen.getByText(expected)).toBeInTheDocument();
   });
 
+  it("announces a lazy route while its chunk loads", () => {
+    renderRoute("/lab-location");
+    const loadingView = screen.getByText("Loading view…").closest("main");
+    expect(loadingView).toHaveAttribute("role", "status");
+    expect(loadingView).toHaveAttribute("aria-live", "polite");
+  });
+
   it.each([
     ["/lab-location", "Lab back"],
     ["/agents", "Agents back"],
     ["/ree-index", "Index back"],
     ["/workspace?reeId=loaded", "Workspace back"],
     ["/workspace", "Workspace back"],
-  ])("returns from %s to landing", (route, button) => {
+  ])("returns from %s to landing", async (route, button) => {
     renderRoute(route);
-    fireEvent.click(screen.getByRole("button", { name: button }));
+    fireEvent.click(await screen.findByRole("button", { name: button }));
     expect(screen.getByText("/")).toBeInTheDocument();
   });
 

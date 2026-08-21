@@ -1,16 +1,8 @@
 import { useReeId } from "@shell/data/apiRuntime";
 import { useStepRunLogEntry } from "@shell/state/ree-editor/step-runs/useStepRunLogEntry";
+import { type ComponentType, type LazyExoticComponent, lazy } from "react";
 import { useStepPageController } from "../../hooks/useStepPageController";
-import {
-  PageBuildRuntime,
-  PageExperiments,
-  PageGenerateSbom,
-  PageHardwareBom,
-  PageMetadataEntry,
-  PageRepoAnalysis,
-  PageTestActivation,
-  type StepPageProps,
-} from "../index";
+import type { StepPageProps } from "../sharedStepUi";
 import type {
   ExperimentsPageContainerProps,
   HardwareBomPageContainerProps,
@@ -19,11 +11,43 @@ import type {
 } from "./controllerContracts";
 import { ContentSection } from "./shared";
 
-const STEP_PAGE_COMPONENTS: Record<string, (props: StepPageProps) => JSX.Element> = {
-  evaluate: (props) => <PageRepoAnalysis {...props} />,
-  build: (props) => <PageBuildRuntime {...props} />,
-  sbom: (props) => <PageGenerateSbom {...props} />,
-  activation: (props) => <PageTestActivation {...props} />,
+const PageMetadataEntry = lazy(() =>
+  import("../metadata/MetadataPage").then(({ PageMetadataEntry: Page }) => ({ default: Page })),
+);
+const PageExperiments = lazy(() =>
+  import("../experiments/ExperimentsPage").then(({ PageExperiments: Page }) => ({ default: Page })),
+);
+const PageHardwareBom = lazy(() =>
+  import("../hardware-bom/HardwareBomPage").then(({ PageHardwareBom: Page }) => ({
+    default: Page,
+  })),
+);
+const PageRepoAnalysis = lazy(() =>
+  import("../repo-analysis/RepoAnalysisPage").then(({ PageRepoAnalysis: Page }) => ({
+    default: Page,
+  })),
+);
+const PageBuildRuntime = lazy(() =>
+  import("../build-runtime/BuildRuntimePage").then(({ PageBuildRuntime: Page }) => ({
+    default: Page,
+  })),
+);
+const PageGenerateSbom = lazy(() =>
+  import("../generate-sbom/GenerateSbomPage").then(({ PageGenerateSbom: Page }) => ({
+    default: Page,
+  })),
+);
+const PageTestActivation = lazy(() =>
+  import("../test-activation/ActivationTestPage").then(({ PageTestActivation: Page }) => ({
+    default: Page,
+  })),
+);
+
+const STEP_PAGE_COMPONENTS: Record<string, LazyExoticComponent<ComponentType<StepPageProps>>> = {
+  evaluate: PageRepoAnalysis,
+  build: PageBuildRuntime,
+  sbom: PageGenerateSbom,
+  activation: PageTestActivation,
 };
 
 export function MetadataPageContainer({

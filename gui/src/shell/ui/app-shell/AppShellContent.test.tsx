@@ -92,6 +92,15 @@ describe("AppShellContent", () => {
     runQueries.logs.mockClear();
   });
 
+  it("announces a lazy workspace page while its chunk loads", () => {
+    renderWithShell(<AppShellContent {...contentProps(PAGE.METADATA)} />, {
+      reeId: "ree-1",
+      services,
+    });
+
+    expect(screen.getByRole("status")).toHaveTextContent("Loading workspace page…");
+  });
+
   it.each([
     [PAGE.METADATA, "Metadata"],
     [PAGE.EXPERIMENTS, "Experiments"],

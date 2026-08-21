@@ -1,9 +1,13 @@
 import type { ReeRunLogs } from "@core/ree/ReeTypes";
 import { useReeId } from "@shell/data/apiRuntime";
 import { useStepRunLogEntry } from "@shell/state/ree-editor/step-runs/useStepRunLogEntry";
-import { PageArchive as ArchivePage } from "../archive/ArchivePage";
+import { lazy } from "react";
 import type { ArchivePageContainerProps } from "./controllerContracts";
 import { ContentSection } from "./shared";
+
+const ArchivePage = lazy(() =>
+  import("../archive/ArchivePage").then(({ PageArchive: Page }) => ({ default: Page })),
+);
 
 export function ArchivePageContainer({
   workspaceRemote,

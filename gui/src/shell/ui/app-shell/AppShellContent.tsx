@@ -1,4 +1,5 @@
 import { PAGE } from "@core/app-shell/pages";
+import { Suspense } from "react";
 import styles from "./AppShellContent.module.css";
 import { ArchivePageContainer } from "./pages/pageContainers/ArchivePageContainer";
 import type { AppShellContentProps } from "./pages/pageContainers/controllerContracts";
@@ -17,7 +18,18 @@ export function AppShellContent(props: AppShellContentProps) {
         <div className={styles.blob} data-place="right" />
         <div className={styles.blob} data-place="center" />
       </div>
-      <div className={styles.inner}>{activePageContent(props)}</div>
+      <div className={styles.inner}>
+        <Suspense
+          fallback={
+            <div className={styles.pageLoading} role="status" aria-live="polite">
+              <span className={styles.pageLoadingIndicator} aria-hidden />
+              <span>Loading workspace page…</span>
+            </div>
+          }
+        >
+          {activePageContent(props)}
+        </Suspense>
+      </div>
     </div>
   );
 }
