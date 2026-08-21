@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { createMemoryRouter, Link, RouterProvider } from "react-router-dom";
+import { createMemoryRouter, Link, RouterProvider } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { useWorkspaceNavigationGuard } from "./useWorkspaceNavigationGuard";
 

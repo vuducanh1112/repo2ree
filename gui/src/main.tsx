@@ -1,6 +1,6 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, RouterProvider } from "react-router";
 import { APP_ROUTE } from "./core/app-shell/pages";
 import App from "./shell/app/App";
 import { reportUiError } from "./shell/app/bootstrap/uiErrorReporter";

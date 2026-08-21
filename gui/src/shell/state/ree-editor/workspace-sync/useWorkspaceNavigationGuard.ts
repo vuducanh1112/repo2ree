@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import { useBeforeUnload, useBlocker } from "react-router-dom";
+import { useBeforeUnload, useBlocker } from "react-router";
 
 interface WorkspaceNavigationGuardOptions {
   shouldBlock: boolean;

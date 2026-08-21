@@ -2,7 +2,7 @@ import type { Agent } from "@core/agent/Agent";
 import { connectedDurationMs, formatDuration } from "@core/agent/Agent";
 import { APP_ROUTE, LOAD_REE_PARAM } from "@core/app-shell/pages";
 import { useAgents } from "@shell/data/agents/agents";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router";
 import { Ic } from "../shared/components/Icon";
 import { Notice } from "../shared/components/Notice";
 import { agentLoadErrorMessage } from "./agentPresentation";

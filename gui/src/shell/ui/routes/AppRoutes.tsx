@@ -1,7 +1,7 @@
 import { APP_ROUTE } from "@core/app-shell/pages";
 import { DEFAULT_REE_ID } from "@core/ree/ReeId";
 import { lazy, type ReactNode, Suspense } from "react";
-import { Navigate, Route, Routes, useNavigate, useSearchParams } from "react-router-dom";
+import { Navigate, Route, Routes, useNavigate, useSearchParams } from "react-router";
 import { ReeScopeProvider } from "../../data/apiRuntime";
 import { ErrorBoundary, type UiErrorReporter } from "../errors/ErrorBoundary";
 import { WorkspaceErrorFallback } from "../errors/ErrorFallback";

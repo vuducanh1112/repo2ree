@@ -7,7 +7,7 @@ import { useReeClient } from "@shell/data/ree/client";
 import { useReeQuery } from "@shell/data/ree/queries";
 import { defaultImageRef, useWorkbenchImageCatalog } from "@shell/data/workbench/images";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { Ic } from "../../shared/components/Icon";
 import styles from "./BenchConsole.module.css";
 import { HudConsole } from "./HudConsole";

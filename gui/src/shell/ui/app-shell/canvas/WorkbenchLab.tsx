@@ -10,7 +10,7 @@ import { observeReeRun } from "@shell/data/runs/queries";
 import { useWorkbenchImageCatalog } from "@shell/data/workbench/images";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router";
 import { Button } from "../../shared/components/Button";
 import { Ic } from "../../shared/components/Icon";
 import { Notice } from "../../shared/components/Notice";

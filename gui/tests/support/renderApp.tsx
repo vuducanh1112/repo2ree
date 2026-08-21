@@ -3,7 +3,7 @@ import { ApiServicesProvider, ReeScopeProvider } from "@shell/data/apiRuntime";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { type RenderOptions, type RenderResult, render } from "@testing-library/react";
 import type { ReactElement, ReactNode } from "react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import { fakeApiServices } from "./fakeApiServices";
 import { createTestQueryClient } from "./testQueryClient";
 
