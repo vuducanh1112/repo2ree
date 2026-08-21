@@ -57,6 +57,10 @@ dind
 linuxkit
 systemd
 virtualenv
+venvs?
+rootfs
+chroot
+Spack
 lockfiles?
 sdists?
 toolchains?
@@ -113,6 +117,7 @@ hyperparameters
 namespaces?
 subprocess
 syscall
+hostnames?
 stdin
 stdout
 stderr
@@ -141,8 +146,10 @@ autosave
 hardcoded
 prepended
 vendored
+gzipped
 escrowed
 untracked
+unconfigured
 reprovision
 requeue
 rehost

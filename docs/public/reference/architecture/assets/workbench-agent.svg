@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="860" viewBox="0 0 1500 860" role="img" aria-labelledby="title description">
+  <title id="title">How the workbench agent is organized</title>
+  <desc id="description">The agent connection loop dials the control plane and passes typed requests to a dispatcher. The agent service applies workbench lifecycle operations through the WorkbenchRuntime interface. DockerRuntime owns Docker, injects executor and tools bundles, executes commands, and returns protocol frames.</desc>
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#334155"/></marker><style>.bg{fill:#f8fafc}.bound{fill:#f0fdfa;fill-opacity:.55;stroke:#0f766e;stroke-width:2;stroke-dasharray:9 6}.head{font:700 29px system-ui,sans-serif;fill:#0f172a}.sub{font:15px system-ui,sans-serif;fill:#475569}.bl{font:700 15px system-ui,sans-serif;fill:#0f766e}.comp{fill:#0f766e;stroke:#115e59;stroke-width:2.3}.port{fill:#2563eb;stroke:#1d4ed8;stroke-width:2.3}.ext{fill:#e2e8f0;stroke:#64748b;stroke-width:2}.n{font:700 18px system-ui,sans-serif;fill:#fff;text-anchor:middle}.t{font:600 11px system-ui,sans-serif;fill:#ccfbf1;text-anchor:middle;letter-spacing:.8px}.c{font:13px system-ui,sans-serif;fill:#f0fdfa;text-anchor:middle}.dn{font:700 17px system-ui,sans-serif;fill:#0f172a;text-anchor:middle}.dt{font:600 11px system-ui,sans-serif;fill:#475569;text-anchor:middle;letter-spacing:.8px}.dc{font:13px system-ui,sans-serif;fill:#334155;text-anchor:middle}.line{fill:none;stroke:#334155;stroke-width:2;marker-end:url(#a)}.both{fill:none;stroke:#334155;stroke-width:2;marker-start:url(#a);marker-end:url(#a)}.label{font:600 12px system-ui,sans-serif;fill:#334155;text-anchor:middle}</style></defs>
+  <rect class="bg" width="1500" height="860" rx="16"/><text class="head" x="42" y="50">How the workbench agent is organized</text><text class="sub" x="42" y="77">The agent owns runtime effects but never imports or executes core business logic itself</text>
+  <rect class="bound" x="225" y="105" width="1040" height="700" rx="14"/><text class="bl" x="250" y="137">Workbench agent [CONTAINER]</text>
+
+  <!-- edges -->
+  <path class="both" d="M190 245 L300 245"/><text class="label" x="245" y="225">WebSocket</text>
+  <path class="line" d="M500 245 L595 245"/><text class="label" x="548" y="225">Typed requests</text>
+  <path class="line" d="M795 245 L900 245"/><text class="label" x="848" y="225">Calls verbs</text>
+  <path class="line" d="M1020 320 L1020 410"/><text class="label" x="1085" y="370">Uses port</text>
+  <path class="line" d="M900 500 L795 500"/><text class="label" x="848" y="481">Implemented by</text>
+  <path class="line" d="M595 570 L500 650"/><text class="label" x="526" y="605">Uses to stage closures</text>
+  <path class="line" d="M795 530 L850 530 L850 605 L1285 605 L1315 530"/><text class="label" x="1080" y="596">Docker CLI / socket</text>
+  <path class="line" d="M1392 565 L1392 650"/><text class="label" x="1450" y="612">docker exec</text>
+
+  <!-- external -->
+  <g><rect class="ext" x="35" y="185" width="155" height="120" rx="9"/><text class="dn" x="112" y="225">Control plane</text><text class="dt" x="112" y="248">[CONTAINER]</text><text class="dc" x="112" y="277">Accepts outbound dial</text></g>
+  <g><rect class="ext" x="1315" y="430" width="155" height="135" rx="9"/><text class="dn" x="1392" y="470">Docker engine</text><text class="dt" x="1392" y="493">[EXTERNAL RUNTIME]</text><text class="dc" x="1392" y="521">Owns benches, volumes,</text><text class="dc" x="1392" y="541">and exec processes</text></g>
+
+  <!-- components -->
+  <g><rect class="comp" x="300" y="180" width="200" height="140" rx="10"/><text class="n" x="400" y="220">Connection loop</text><text class="t" x="400" y="243">[COMPONENT]</text><text class="c" x="400" y="270">Dials outbound, identifies</text><text class="c" x="400" y="291">the agent, ferries frames</text></g>
+  <g><rect class="comp" x="595" y="180" width="200" height="140" rx="10"/><text class="n" x="695" y="220">Request dispatcher</text><text class="t" x="695" y="243">[COMPONENT]</text><text class="c" x="695" y="270">Decodes protocol verbs and</text><text class="c" x="695" y="291">streams ordered responses</text></g>
+  <g><rect class="comp" x="900" y="180" width="240" height="140" rx="10"/><text class="n" x="1020" y="220">Agent service</text><text class="t" x="1020" y="243">[COMPONENT]</text><text class="c" x="1020" y="270">Coordinates provision, execute,</text><text class="c" x="1020" y="291">transfer, inspect, and teardown</text></g>
+  <g><rect class="port" x="900" y="410" width="240" height="160" rx="10"/><text class="n" x="1020" y="451">WorkbenchRuntime</text><text class="t" x="1020" y="474">[COMPONENT INTERFACE]</text><text class="c" x="1020" y="503">Runtime-neutral lifecycle</text><text class="c" x="1020" y="524">and execution contract</text></g>
+  <g><rect class="comp" x="595" y="410" width="200" height="180" rx="10"/><text class="n" x="695" y="451">DockerRuntime</text><text class="t" x="695" y="474">[COMPONENT]</text><text class="c" x="695" y="503">Creates persistent benches,</text><text class="c" x="695" y="524">mounts volumes, executes,</text><text class="c" x="695" y="545">and transfers bytes</text></g>
+  <g><rect class="comp" x="300" y="620" width="200" height="135" rx="10"/><text class="n" x="400" y="660">Bundle injector</text><text class="t" x="400" y="683">[COMPONENT]</text><text class="c" x="400" y="710">Places executor and tools</text><text class="c" x="400" y="731">closures into new benches</text></g>
+  <g><rect class="ext" x="1315" y="650" width="155" height="120" rx="9"/><text class="dn" x="1392" y="682">Workbench</text><text class="dn" x="1392" y="703">executor</text><text class="dt" x="1392" y="725">[CONTAINER PROCESS]</text><text class="dc" x="1392" y="752">Runs inside the bench</text></g>
+</svg>

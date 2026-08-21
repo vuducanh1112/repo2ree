@@ -1,40 +1,53 @@
-# repo2ree public docs
-
-> Status: public docs draft, 2026-06. These pages are written for a website
-> audience. They describe what repo2ree is, what the current prototype can do,
-> and which pieces are still target design.
+# repo2ree documentation
 
 repo2ree turns research repositories into reusable, verifiable, citable
-execution artifacts. It is not a new workbench for writing code. It is the
-layer that takes code, runtime instructions, experiment runs, and archive
-metadata and binds them into a Reproducible Execution Environment, or REE.
+execution artifacts. It binds code, runtime instructions, experiment runs, and
+archive metadata into a Reproducible Execution Environment (REE). It is not an
+environment for writing code.
 
-## Start here
+New here? Read [What is an REE?](explanation/what-is-an-ree.md) for the problem
+and the object that answers it, then work through
+[Create your first REE](tutorials/create-your-first-ree.md).
 
-- [What is repo2ree?](what-is-repo2ree.md)
-- [Current status](current-status.md)
-- [Concepts](concepts.md)
-- [FAQ](faq.md)
+repo2ree is an active prototype. These pages describe both what works today and
+what the target design adds, and say which is which where the difference
+matters.
 
-## Workflows
+## Explanation
 
-- [Evaluate a repository](workflows/evaluate.md)
-- [Build and run an REE](workflows/build-and-run.md)
-- [Verify a result](workflows/verify.md)
-- [Archive and share](workflows/archive.md)
+Background on the problem repo2ree addresses and the shape of its answer.
 
-## Deeper background
+- [What is an REE?](explanation/what-is-an-ree.md) — the central concept: what
+  the object is and why it is shaped that way.
+- [What is repo2ree?](explanation/what-is-repo2ree.md)
 
-These public docs are the short, website-facing layer. The heavier design and
-paper-oriented notes stay one level up:
+## Tutorials
 
-- [Concept reference](../CONCEPTS.md)
-- [Research notes](../research/README.md)
-- [Positioning](../research/POSITIONING.md)
-- [Architecture](../ARCHITECTURE.md)
-- [Component architecture](../COMPONENTS.md)
-- [Sealing and signatures](../research/sealing.md)
-- [Archive and dependency preservation](../research/archive.md)
+Guided, end-to-end lessons for readers who have not built an REE before.
 
-Contributor setup, deployment, and test instructions are separate:
-[engineering docs](../engineering/development.md).
+- [Overview](tutorials/README.md)
+- [Create your first REE](tutorials/create-your-first-ree.md) — use the GUI to
+  turn a Python source archive into a sealed, runnable bundle.
+
+## How-to guides
+
+Task recipes for a specific goal, once you know your way around.
+
+- [The runtime of an REE](how-to/build-runtimes.md) — package software so the
+  REE builds today and still builds later.
+- [Experiments in an REE](how-to/experiments.md) — turn a command and a check
+  into a claim a reviewer can re-run.
+
+## Reference
+
+Lookup material: the shape of an REE, and how the system is put together.
+
+- [Anatomy of an REE](reference/ree-anatomy.md) — the directory layout and the
+  `ree.json` schema.
+- [System architecture](reference/architecture/README.md)
+
+## Project documentation
+
+This website contains end-user documentation. Contributor operations,
+engineering decisions, detailed designs, and research notes remain in the
+source repository.

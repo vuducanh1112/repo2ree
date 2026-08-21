@@ -7,6 +7,7 @@ result-*
 
 # Local build artifacts
 /dist/
+/sites/
 
 .pytest_cache/
 # Hypothesis's local example database: replays past failing cases on the next
@@ -44,3 +45,4 @@ fastapi.log
 .env.example
 .vale/styles/proselint/
 .vale/styles/write-good/
+/.lycheecache

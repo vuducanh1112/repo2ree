@@ -1,9 +1,10 @@
 """Transient host-side staging for HTTP uploads.
 
-Uploaded bytes must land on host disk before they can be ``docker cp``'d into a
-workbench container, where ``extract_upload`` consumes them. This is the only
-host persistence in the REE flow; it is keyed solely by upload token and holds
-no per-REE durable state.
+Uploaded bytes must land on control-plane disk before they are streamed to the
+selected agent. The agent assembles the transfer and copies it into the
+workbench, where ``extract_upload`` consumes it. This is the only host
+persistence in the REE flow; it is keyed solely by upload token and holds no
+per-REE durable state.
 
 Guardrails: tokens are validated before they touch a path (a request-supplied
 token must never escape the staging dir), and only *minted* tokens can land

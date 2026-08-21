@@ -2,7 +2,7 @@
 # (docker-compose.yml). It holds the docker socket, provisions benches, and
 # dials the backend over an outbound WebSocket, so it can run anywhere a
 # container runtime lives. Kept out of the control-plane compose so the two
-# lifecycles stay independent (see docs/engineering/deployment.md).
+# lifecycles stay independent (see docs/engineering/how-to/deployment.md).
 #
 #   docker compose -f docker-compose.agent.yml up -d      # start
 #   docker compose -f docker-compose.agent.yml down       # stop

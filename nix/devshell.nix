@@ -28,8 +28,11 @@ pkgs.mkShell {
     # graphviz for generating graphs with dependency cruiser
     graphviz
 
-    # vale lints prose in docs/ (config in ./.vale.ini)
+    # Documentation: Vale lints prose, Lychee validates links and fragments,
+    # and Zensical builds the public Markdown tree into a static website.
     vale
+    lychee
+    zensical
 
     # static analyser for shell scripts
     shellcheck

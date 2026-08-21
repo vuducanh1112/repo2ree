@@ -2,7 +2,7 @@
 # so there is one definition of each tier rather than a "run" target and a
 # "measure" target that can disagree. The e2e/demo tiers live in mk/e2e.mk; the
 # rationale for the tier scheme and the runtime-above-tier artifact layout lives
-# in docs/engineering/testing.md, not here.
+# in docs/engineering/how-to/testing.md, not here.
 
 .PHONY: gui-tests \
 	be-tests be-unit-tests be-integration-tests \

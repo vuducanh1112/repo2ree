@@ -6,14 +6,14 @@
 #   mk/metrics.mk  advisory code-metric reports
 #   mk/architecture.mk  generated architecture diagrams
 #   mk/domain.mk        generated domain-model diagrams
-#   mk/docs.mk          prose linting
+#   mk/docs.mk          prose and documentation-link checks
 #   mk/contracts.mk contract generation (OpenAPI + GUI API types)
 #   mk/tests.mk    unit/integration suites and coverage variants
 #   mk/e2e.mk      e2e bundles, stacks, playwright runs
 #   mk/images.mk   image builds and the archive path
 #   mk/publish.mk  gates and the push → validate → promote publish flow
 
-.DEFAULT_GOAL := docs-lint
+.DEFAULT_GOAL := docs-checks
 
 # ================================================
 # Configuration

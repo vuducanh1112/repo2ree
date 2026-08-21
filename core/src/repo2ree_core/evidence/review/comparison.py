@@ -6,7 +6,7 @@ by the author's own verify script. Activation has no comparison at all — the
 reviewer's probe is the whole claim, recorded as an ``ActivationOutcome`` rather
 than a comparison to keep that visible in the type.
 
-The rationale for each is in ``docs/engineering/review-evidence.md``.
+The rationale for each is in ``docs/engineering/explanation/review-evidence.md``.
 
 Pure: these functions take facts and return comparison records. Nothing here
 touches the filesystem.

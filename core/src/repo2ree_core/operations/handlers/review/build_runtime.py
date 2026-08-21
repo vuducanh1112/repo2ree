@@ -8,7 +8,7 @@ reproduction).
 
 Both bases leave the same workspace behind, because activation and the
 experiments run in it and cannot tell the difference. See
-``docs/engineering/review-evidence.md``.
+``docs/engineering/explanation/review-evidence.md``.
 """
 
 from __future__ import annotations

@@ -1,5 +1,10 @@
 # repo2ree - Reproducible Execution Environments
 
+> **Status: research thesis and target product description.** This document
+> develops the complete REE model; it is not a current support matrix. See the
+> [architecture reference](../engineering/reference/architecture.md) for the
+> explicit implementation/target boundary.
+
 ## 1. One-sentence description
 
 repo2ree is the integration layer for reproducible computer-science research:
@@ -503,10 +508,10 @@ main path uses a privileged Docker-in-Docker workbench; the target hardening
 model is a VM-backed workbench, such as Kata Containers, where Docker activity
 happens against a daemon inside the workbench rather than the host daemon.
 
-The host may use Docker or another container runtime to launch the workbench,
-but build scripts and experiment commands run inside the isolated execution
-plane. This keeps the convenient OCI workflow while putting repository code
-under stronger isolation.
+In the current implementation, a separately deployed agent owns Docker and
+launches the workbench; the API and supervisor do not hold the Docker socket.
+Future agents may use another container or VM runtime. Build scripts and
+experiment commands still run inside the isolated execution plane.
 
 ### REAPI alignment
 
@@ -571,20 +576,22 @@ equivalence for the declared claim.
 
 ### Component model
 
-The package shape is three libraries and three entry points; the libraries and
-executor exist today, while the host CLI is still target work:
+The implemented package shape has three libraries plus the agent runtime host,
+the executor, and the API. The user-facing host CLI remains target work:
 
 | Type | Name | Role | Deployed |
 |---|---|---|---|
 | Library | protocol | Typed command, result, and log-event contract. | Host and workbench |
 | Library | core | Execution logic and `/ree` operations. | Workbench |
 | Library | supervisor | Workbench lifecycle, registry, dispatch, transport. | Host |
-| Entry point | repo2ree-exec | Image-internal executor that reads commands and runs core. | Workbench |
+| Runtime host | repo2ree-agent | Owns the runtime, provisions workbenches, injects the executor, and ferries protocol frames. | Agent host |
+| Entry point | repo2ree-exec | Injected in-bench executor that reads commands and runs core. | Workbench |
 | Entry point | repo2ree | User-facing host CLI that drives workbenches. | Host, planned |
 | Entry point | api | Hosted HTTP API over service/supervisor logic. | Host |
 
 The dependency rule is simple: host-side code speaks the protocol and manages
-workbenches; effectful execution logic lives inside the workbench.
+workbench intent through the agent; effectful execution logic lives inside the
+workbench.
 
 ### Archive bundle
 

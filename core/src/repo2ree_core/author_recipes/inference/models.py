@@ -6,7 +6,7 @@ envelope handler exchange lives here so the closed discriminated unions
 cycle forms between the machinery modules.
 
 The load-bearing rule of this design is that the *published, versioned decision
-DAG is the only control-flow authority* (see ``docs/engineering/script-inference.md``).
+DAG is the only control-flow authority* (see ``docs/engineering/explanation/script-inference.md``).
 These models are the data that DAG is built from and the trace it emits; there
 is no parallel imperative rule implementation.
 """

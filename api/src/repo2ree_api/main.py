@@ -75,10 +75,11 @@ runtime agents.
 
 ## Authoring lifecycle
 
-Operations that mutate a workbench are asynchronous: they return a `run_id`, and
-clients await completion by long-polling `observeRun` until the run reaches a
-terminal status (`succeeded`, `failed`, `canceled`). A REE is authored end to
-end in this order:
+Provisioning, uploads, and execution stages are asynchronous: they return a
+`run_id`, and clients await completion by long-polling `observeRun` until the
+run reaches a terminal status (`succeeded`, `failed`, `canceled`). Definition
+and file edits, reads, and sealing are synchronous. A REE is authored end to end
+in this order:
 
 1. `createRee` — provision a workbench; await the returned provisioning run.
 2. Bring in source, either by reference (`startSourceAcquisition`) or by upload —
@@ -90,8 +91,8 @@ end in this order:
    metadata via `patchReeDefinition`.
 5. Optionally build and assess: `startBuild`, `startActivationTest`,
    `startEvaluate` / `getEvaluateReport`.
-6. `sealRee` — freeze the REE (returns its `seal_hash`), then download the
-   sealed archive via `downloadReeArchive`.
+6. `sealRee` — freeze the REE; the returned document carries
+   `ree.seal.ree_digest`. Download the sealed archive via `downloadReeArchive`.
 7. `deleteRee` — tear the workbench down.
 
 A complete, CI-asserted walkthrough of this sequence as real `curl` calls lives

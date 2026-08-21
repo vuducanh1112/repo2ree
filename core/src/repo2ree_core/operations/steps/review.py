@@ -7,7 +7,7 @@ run before a step is marked running.
 
 The ``require_*`` / ``open_*`` helpers return either their value or the
 ``ActionResult`` the caller returns unchanged; guard-only helpers return
-``ActionResult | None``. Design rationale: ``docs/engineering/step-lifecycle.md``.
+``ActionResult | None``. Design rationale: ``docs/engineering/explanation/step-lifecycle.md``.
 """
 
 from __future__ import annotations
@@ -377,7 +377,7 @@ class ReviewRunnableStep:
 
     Covers how a step *gets to* its run and stops there; what each handler does
     with the outcome stays in the handler. See
-    ``docs/engineering/step-lifecycle.md``.
+    ``docs/engineering/explanation/step-lifecycle.md``.
 
     ``admit`` is the one genuinely per-step precondition — activation needs a
     runtime artifact to probe, an experiment needs an activation that passed. It

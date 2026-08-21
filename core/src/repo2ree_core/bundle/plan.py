@@ -7,10 +7,10 @@ top-level files that make the download self-reproducing without repo2ree:
     REPRODUCING.md        human instructions for the reproducer
     ree/ree.json          the REE document, the same file the workbench keeps
     ree/snapshot.tar.gz   frozen source archive (when available)
-    ree/overlay/...       user recipe files (empty dir entry if none)
+    ree/overlay/...       user recipe files (omitted when the tree is empty)
     ree/artifacts/...     build outputs (runtime, sbom, ...)
     ree/results/<name>/   author result baselines for sealed experiments (opt-in)
-    ree/workspace/        empty placeholder — materialized by run.sh on extract
+    # ree/workspace/ is created and materialized by run.sh on extract
 
 ``upstream/`` is intentionally omitted: its contents are already in
 ``snapshot.tar.gz``. The paths above are spelled once, in

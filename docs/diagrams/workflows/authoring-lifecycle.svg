@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1580" height="720" viewBox="0 0 1580 720" role="img" aria-labelledby="title description">
+  <title id="title">repo2ree authoring lifecycle</title>
+  <desc id="description">The demonstrated authoring workflow proceeds from selecting execution infrastructure through provisioning, source acquisition, evaluation, recipe authoring, runtime construction, software bill of materials checking, activation testing, experiment execution, evidence inspection, and sealing a portable REE.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
+    </marker>
+    <style>
+      .canvas { fill: #f8fafc; }
+      .title { font: 700 30px system-ui, sans-serif; fill: #0f172a; }
+      .subtitle { font: 16px system-ui, sans-serif; fill: #475569; }
+      .step { fill: #fff; stroke: #64748b; stroke-width: 2; }
+      .build-step { fill: #eff6ff; stroke: #2563eb; stroke-width: 2.4; }
+      .evidence-step { fill: #f0fdfa; stroke: #0f766e; stroke-width: 2.4; }
+      .final-step { fill: #2563eb; stroke: #1d4ed8; stroke-width: 2.4; }
+      .number { fill: #334155; }
+      .number-build { fill: #2563eb; }
+      .number-evidence { fill: #0f766e; }
+      .step-number { font: 700 14px system-ui, sans-serif; fill: #fff; text-anchor: middle; dominant-baseline: central; }
+      .step-title { font: 700 17px system-ui, sans-serif; fill: #0f172a; text-anchor: middle; }
+      .step-copy { font: 14px system-ui, sans-serif; fill: #475569; text-anchor: middle; }
+      .final-title { font: 700 18px system-ui, sans-serif; fill: #fff; text-anchor: middle; }
+      .final-copy { font: 14px system-ui, sans-serif; fill: #dbeafe; text-anchor: middle; }
+      .flow { fill: none; stroke: #475569; stroke-width: 2.5; marker-end: url(#arrow); }
+      .phase { font: 700 13px system-ui, sans-serif; letter-spacing: 1.2px; fill: #64748b; }
+      .artifact { font: 700 15px system-ui, sans-serif; fill: #1e3a8a; text-anchor: middle; }
+    </style>
+  </defs>
+
+  <rect class="canvas" width="1580" height="720" rx="16"/>
+  <text class="title" x="48" y="55">Authoring a reproducible execution environment</text>
+  <text class="subtitle" x="48" y="84">The shared golden path exercised by the GUI and HTTP API end-to-end demos</text>
+
+  <text class="phase" x="48" y="135">PREPARE</text>
+  <text class="phase" x="548" y="135">AUTHOR AND BUILD</text>
+  <text class="phase" x="1048" y="135">VALIDATE</text>
+
+  <!-- Top-row flow -->
+  <path class="flow" d="M 276 215 L 306 215"/>
+  <path class="flow" d="M 526 215 L 556 215"/>
+  <path class="flow" d="M 776 215 L 806 215"/>
+  <path class="flow" d="M 1026 215 L 1056 215"/>
+  <path class="flow" d="M 1276 215 L 1306 215"/>
+
+  <!-- Turn into the second row, which reads right to left. -->
+  <path class="flow" d="M 1416 280 L 1416 384"/>
+  <path class="flow" d="M 1306 449 L 1276 449"/>
+  <path class="flow" d="M 1056 449 L 1026 449"/>
+  <path class="flow" d="M 806 449 L 776 449"/>
+  <path class="flow" d="M 556 449 L 526 449"/>
+  <path class="flow" d="M 306 449 L 276 449"/>
+
+  <!-- Final output -->
+  <path class="flow" d="M 166 514 L 166 596 L 556 596"/>
+
+  <!-- Steps 1-6 -->
+  <g>
+    <rect class="step" x="56" y="150" width="220" height="130" rx="10"/>
+    <circle class="number" cx="82" cy="176" r="16"/><text class="step-number" x="82" y="176">1</text>
+    <text class="step-title" x="166" y="205">Choose execution</text><text class="step-title" x="166" y="227">location</text>
+    <text class="step-copy" x="166" y="255">Select a connected runner</text>
+  </g>
+  <g>
+    <rect class="step" x="306" y="150" width="220" height="130" rx="10"/>
+    <circle class="number" cx="332" cy="176" r="16"/><text class="step-number" x="332" y="176">2</text>
+    <text class="step-title" x="416" y="205">Provision isolated</text><text class="step-title" x="416" y="227">workbench</text>
+    <text class="step-copy" x="416" y="255">Prepare the execution space</text>
+  </g>
+  <g>
+    <rect class="step" x="556" y="150" width="220" height="130" rx="10"/>
+    <circle class="number" cx="582" cy="176" r="16"/><text class="step-number" x="582" y="176">3</text>
+    <text class="step-title" x="666" y="205">Acquire pinned</text><text class="step-title" x="666" y="227">source</text>
+    <text class="step-copy" x="666" y="255">Fetch or upload a snapshot</text>
+  </g>
+  <g>
+    <rect class="step" x="806" y="150" width="220" height="130" rx="10"/>
+    <circle class="number" cx="832" cy="176" r="16"/><text class="step-number" x="832" y="176">4</text>
+    <text class="step-title" x="916" y="216">Evaluate source</text>
+    <text class="step-copy" x="916" y="248">Discover dependency signals</text>
+  </g>
+  <g>
+    <rect class="build-step" x="1056" y="150" width="220" height="130" rx="10"/>
+    <circle class="number-build" cx="1082" cy="176" r="16"/><text class="step-number" x="1082" y="176">5</text>
+    <text class="step-title" x="1166" y="205">Author execution</text><text class="step-title" x="1166" y="227">recipes</text>
+    <text class="step-copy" x="1166" y="255">Infer, inspect, and confirm</text>
+  </g>
+  <g>
+    <rect class="build-step" x="1306" y="150" width="220" height="130" rx="10"/>
+    <circle class="number-build" cx="1332" cy="176" r="16"/><text class="step-number" x="1332" y="176">6</text>
+    <text class="step-title" x="1416" y="216">Build runtime</text>
+    <text class="step-copy" x="1416" y="248">Execute the build recipe</text>
+  </g>
+
+  <!-- Steps 7-11, ordered right to left -->
+  <g>
+    <rect class="evidence-step" x="1306" y="384" width="220" height="130" rx="10"/>
+    <circle class="number-evidence" cx="1332" cy="410" r="16"/><text class="step-number" x="1332" y="410">7</text>
+    <text class="step-title" x="1416" y="439">Generate and check</text><text class="step-title" x="1416" y="461">the SBOM</text>
+    <text class="step-copy" x="1416" y="489">Compare source and runtime</text>
+  </g>
+  <g>
+    <rect class="evidence-step" x="1056" y="384" width="220" height="130" rx="10"/>
+    <circle class="number-evidence" cx="1082" cy="410" r="16"/><text class="step-number" x="1082" y="410">8</text>
+    <text class="step-title" x="1166" y="450">Test activation</text>
+    <text class="step-copy" x="1166" y="481">Prove the runtime starts</text>
+  </g>
+  <g>
+    <rect class="evidence-step" x="806" y="384" width="220" height="130" rx="10"/>
+    <circle class="number-evidence" cx="832" cy="410" r="16"/><text class="step-number" x="832" y="410">9</text>
+    <text class="step-title" x="916" y="450">Run experiment</text>
+    <text class="step-copy" x="916" y="481">Capture declared outputs</text>
+  </g>
+  <g>
+    <rect class="evidence-step" x="556" y="384" width="220" height="130" rx="10"/>
+    <circle class="number-evidence" cx="582" cy="410" r="16"/><text class="step-number" x="582" y="410">10</text>
+    <text class="step-title" x="666" y="450">Inspect evidence</text>
+    <text class="step-copy" x="666" y="481">Review the aggregate audit</text>
+  </g>
+  <g>
+    <rect class="final-step" x="306" y="384" width="220" height="130" rx="10"/>
+    <circle cx="332" cy="410" r="16" fill="#dbeafe"/><text x="332" y="410" style="font:700 14px system-ui,sans-serif;fill:#1d4ed8;text-anchor:middle;dominant-baseline:central">11</text>
+    <text class="final-title" x="416" y="450">Seal and download</text>
+    <text class="final-copy" x="416" y="481">Bind the complete record</text>
+  </g>
+  <g>
+    <rect class="step" x="56" y="384" width="220" height="130" rx="10" stroke-dasharray="7 5"/>
+    <text class="step-title" x="166" y="439">Release workbench</text>
+    <text class="step-copy" x="166" y="469">Execution is disposable;</text>
+    <text class="step-copy" x="166" y="490">the REE remains portable</text>
+  </g>
+
+  <g>
+    <rect x="556" y="555" width="390" height="84" rx="42" fill="#dbeafe" stroke="#2563eb" stroke-width="2.4"/>
+    <text class="artifact" x="751" y="589">SEALED, PORTABLE REE</text>
+    <text class="step-copy" x="751" y="615">source + recipes + evidence + reproducer</text>
+  </g>
+
+  <text class="subtitle" x="48" y="684">The workbench is released after authoring; a reviewer can load the sealed REE and replay its recorded chain on fresh infrastructure.</text>
+</svg>

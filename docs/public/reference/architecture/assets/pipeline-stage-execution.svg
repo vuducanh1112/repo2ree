@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="980" viewBox="0 0 1600 980" role="img" aria-labelledby="title description">
+  <title id="title">How a pipeline stage runs</title>
+  <desc id="description">A client starts a pipeline stage through the API and receives a run identifier. Background orchestration sends a typed command through the supervisor and agent to the executor and core inside a workbench. Core writes evidence to the durable REE tree. Log frames and the action result return through the agent, settle the run record, and become visible when the client polls.</desc>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 10 5 0 10z" fill="#334155"/></marker>
+    <marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 10 5 0 10z" fill="#0f766e"/></marker>
+    <style>
+      .bg{fill:#f8fafc}.head{font:700 29px system-ui,sans-serif;fill:#0f172a}.sub{font:15px system-ui,sans-serif;fill:#475569}.p{fill:#2563eb;stroke:#1d4ed8;stroke-width:2}.exec{fill:#0f766e;stroke:#115e59;stroke-width:2}.store{fill:#fff;stroke:#64748b;stroke-width:2}.pn{font:700 15px system-ui,sans-serif;fill:#fff;text-anchor:middle}.pt{font:600 10px system-ui,sans-serif;fill:#dbeafe;text-anchor:middle;letter-spacing:.7px}.dn{font:700 15px system-ui,sans-serif;fill:#0f172a;text-anchor:middle}.dt{font:600 10px system-ui,sans-serif;fill:#475569;text-anchor:middle;letter-spacing:.7px}.life{stroke:#94a3b8;stroke-width:1.5;stroke-dasharray:7 6}.call{stroke:#334155;stroke-width:2.1;marker-end:url(#a)}.reply{stroke:#0f766e;stroke-width:2.1;stroke-dasharray:6 4;marker-end:url(#r)}.msg{font:600 13px system-ui,sans-serif;fill:#334155;text-anchor:middle}.replymsg{font:600 13px system-ui,sans-serif;fill:#0f766e;text-anchor:middle}.num{fill:#334155}.numreply{fill:#0f766e}.nt{font:700 12px system-ui,sans-serif;fill:#fff;text-anchor:middle;dominant-baseline:central}.band{fill:#e2e8f0;fill-opacity:.55}.bandlabel{font:700 12px system-ui,sans-serif;fill:#64748b;letter-spacing:1px}
+    </style>
+  </defs>
+  <rect class="bg" width="1600" height="980" rx="16"/><text class="head" x="42" y="50">How a pipeline stage runs</text><text class="sub" x="42" y="77">The common interaction behind evaluate, build, SBOM, activation, experiment, and review operations</text>
+
+  <g><rect class="p" x="30" y="115" width="170" height="75" rx="9"/><text class="pn" x="115" y="145">GUI or API client</text><text class="pt" x="115" y="168">[PERSON / SYSTEM]</text></g>
+  <g><rect class="p" x="250" y="115" width="170" height="75" rx="9"/><text class="pn" x="335" y="145">HTTP routes</text><text class="pt" x="335" y="168">[COMPONENT]</text></g>
+  <g><rect class="p" x="470" y="115" width="180" height="75" rx="9"/><text class="pn" x="560" y="145">Run orchestration</text><text class="pt" x="560" y="168">[COMPONENT]</text></g>
+  <g><rect class="p" x="700" y="115" width="170" height="75" rx="9"/><text class="pn" x="785" y="145">Supervisor</text><text class="pt" x="785" y="168">[COMPONENT]</text></g>
+  <g><rect class="exec" x="920" y="115" width="170" height="75" rx="9"/><text class="pn" x="1005" y="145">Agent</text><text class="pt" x="1005" y="168">[CONTAINER]</text></g>
+  <g><rect class="exec" x="1140" y="115" width="190" height="75" rx="9"/><text class="pn" x="1235" y="145">Executor + core</text><text class="pt" x="1235" y="168">[PROCESS + LIBRARY]</text></g>
+  <g><rect class="store" x="1380" y="115" width="180" height="75" rx="9"/><text class="dn" x="1470" y="145">Durable REE tree</text><text class="dt" x="1470" y="168">[DATA STORE]</text></g>
+
+  <g stroke-linecap="round"><line class="life" x1="115" y1="190" x2="115" y2="910"/><line class="life" x1="335" y1="190" x2="335" y2="910"/><line class="life" x1="560" y1="190" x2="560" y2="910"/><line class="life" x1="785" y1="190" x2="785" y2="910"/><line class="life" x1="1005" y1="190" x2="1005" y2="910"/><line class="life" x1="1235" y1="190" x2="1235" y2="910"/><line class="life" x1="1470" y1="190" x2="1470" y2="910"/></g>
+  <rect class="band" x="20" y="210" width="1560" height="205" rx="8"/><text class="bandlabel" x="35" y="234">ACCEPT AND SCHEDULE</text>
+  <rect class="band" x="20" y="430" width="1560" height="265" rx="8"/><text class="bandlabel" x="35" y="454">DISPATCH AND EXECUTE</text>
+  <rect class="band" x="20" y="710" width="1560" height="215" rx="8"/><text class="bandlabel" x="35" y="734">SETTLE AND OBSERVE</text>
+
+  <line class="call" x1="115" y1="270" x2="335" y2="270"/><circle class="num" cx="135" cy="288" r="14"/><text class="nt" x="135" y="288">1</text><text class="msg" x="225" y="255">POST stage operation</text>
+  <line class="call" x1="335" y1="330" x2="560" y2="330"/><circle class="num" cx="355" cy="348" r="14"/><text class="nt" x="355" y="348">2</text><text class="msg" x="447" y="315">Create background run</text>
+  <line class="reply" x1="335" y1="390" x2="115" y2="390"/><circle class="numreply" cx="315" cy="408" r="14"/><text class="nt" x="315" y="408">3</text><text class="replymsg" x="225" y="375">202 + run identifier</text>
+  <line class="call" x1="560" y1="490" x2="785" y2="490"/><circle class="num" cx="580" cy="508" r="14"/><text class="nt" x="580" y="508">4</text><text class="msg" x="672" y="475">Dispatch typed Command</text>
+  <line class="call" x1="785" y1="550" x2="1005" y2="550"/><circle class="num" cx="805" cy="568" r="14"/><text class="nt" x="805" y="568">5</text><text class="msg" x="895" y="535">AgentRequest over WebSocket</text>
+  <line class="call" x1="1005" y1="610" x2="1235" y2="610"/><circle class="num" cx="1025" cy="628" r="14"/><text class="nt" x="1025" y="628">6</text><text class="msg" x="1120" y="595">docker exec; Command on stdin</text>
+  <line class="call" x1="1235" y1="670" x2="1470" y2="670"/><circle class="num" cx="1255" cy="688" r="14"/><text class="nt" x="1255" y="688">7</text><text class="msg" x="1352" y="655">Read workspace; write receipt/artifact</text>
+  <line class="reply" x1="1235" y1="755" x2="1005" y2="755"/><circle class="numreply" cx="1215" cy="773" r="14"/><text class="nt" x="1215" y="773">8</text><text class="replymsg" x="1120" y="740">LogFrames + ActionResult</text>
+  <line class="reply" x1="1005" y1="800" x2="785" y2="800"/><circle class="numreply" cx="985" cy="818" r="14"/><text class="nt" x="985" y="818">9</text><text class="replymsg" x="895" y="785">Forward ordered frames</text>
+  <line class="reply" x1="785" y1="845" x2="560" y2="845"/><circle class="numreply" cx="765" cy="863" r="14"/><text class="nt" x="765" y="863">10</text><text class="replymsg" x="672" y="830">Persist terminal run state</text>
+  <line class="call" x1="115" y1="895" x2="335" y2="895"/><circle class="num" cx="135" cy="913" r="14"/><text class="nt" x="135" y="913">11</text><text class="msg" x="225" y="880">Poll run; read evidence</text>
+  <text class="sub" x="42" y="948">The control plane never invokes the container runtime or core directly; typed protocol frames cross both execution boundaries.</text>
+</svg>

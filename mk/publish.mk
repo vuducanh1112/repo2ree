@@ -23,9 +23,10 @@ IMAGE_CANDIDATE_PENDING = $(IMAGE_CANDIDATE_RECEIPT).pending
 IMAGE_CANDIDATE_TOOL = scripts/image-candidate.sh
 IMAGE_VALIDATION_REGISTRY ?= $(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE)
 
-# The commit gate: fast and container-free by design — static checks plus
-# every test tier that runs without docker/nix/browsers, so it's cheap enough
-# to run before each commit. The heavyweight counterpart is push-gate.
+# The commit gate: fast and container-free by design — documentation and static
+# checks plus every test tier that runs without docker/nix/browsers, so it's
+# cheap enough to run before each commit. The heavyweight counterpart is
+# push-gate.
 #
 # The last step records the tree this run validated, which is what the
 # pre-commit hook checks (scripts/commit-gate-stamp.sh). It runs only after
@@ -33,7 +34,7 @@ IMAGE_VALIDATION_REGISTRY ?= $(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE)
 # a failed gate leaves the previous certificate in place, and a stale
 # certificate never matches new content anyway.
 commit-gate:
-	$(MAKE) scripts-checks gui-checks be-checks
+	$(MAKE) docs-checks scripts-checks gui-checks be-checks
 	$(MAKE) gui-tests be-unit-tests core-integration-tests
 	scripts/commit-gate-stamp.sh write
 	@echo ">> commit gate green — certificate written for the current tree"

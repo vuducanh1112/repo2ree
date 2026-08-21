@@ -1,0 +1,43 @@
+[project]
+site_name = "repo2ree"
+site_description = "Create, inspect, verify, and share Reproducible Execution Environments."
+docs_dir = "docs/public"
+site_dir = "sites/docs"
+use_directory_urls = true
+nav = [
+  { "Home" = "README.md" },
+  { "Explanation" = [
+    { "What is an REE?" = "explanation/what-is-an-ree.md" },
+    { "What is repo2ree?" = "explanation/what-is-repo2ree.md" },
+  ] },
+  { "Tutorials" = [
+    { "Overview" = "tutorials/README.md" },
+    { "Create your first REE" = "tutorials/create-your-first-ree.md" },
+  ] },
+  { "How-to guides" = [
+    { "The runtime of an REE" = "how-to/build-runtimes.md" },
+    { "Experiments in an REE" = "how-to/experiments.md" },
+  ] },
+  { "Reference" = [
+    { "Anatomy of an REE" = "reference/ree-anatomy.md" },
+    { "System architecture" = [
+      { "Overview" = "reference/architecture/README.md" },
+      { "The repo2ree ecosystem" = "reference/architecture/ecosystem.md" },
+      { "Services, workbenches, and data stores" = "reference/architecture/services-and-storage.md" },
+      { "How the control plane is organized" = "reference/architecture/control-plane.md" },
+      { "How the workbench agent is organized" = "reference/architecture/workbench-agent.md" },
+      { "Federated compute through connected agents" = "reference/architecture/federated-compute.md" },
+      { "How a pipeline stage runs" = "reference/architecture/pipeline-stage-execution.md" },
+      { "How independent reproduction works" = "reference/architecture/independent-reproduction.md" },
+    ] },
+  ] },
+]
+
+[project.theme]
+features = [
+  "navigation.indexes",
+  "navigation.sections",
+  "navigation.top",
+  "search.highlight",
+  "toc.follow",
+]
