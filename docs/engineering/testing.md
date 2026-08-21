@@ -242,7 +242,7 @@ shell but record no JavaScript coverage, for the reasons above. Closing it means
 writing more component tests, which land in this same tier and lift this same
 number.
 
-The figure itself is deliberately not written down here or in `vite.config.js`.
+The figure itself is deliberately not written down here or in `vite.config.mjs`.
 It moves on every run that adds a test, so a copy in prose is a copy that goes
 stale; run the tier and read the report it prints.
 

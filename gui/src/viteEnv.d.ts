@@ -8,4 +8,4 @@
 // The provider reference is what fills in `vitest/browser`'s `CDPSession`.
 // Vitest ships it as an empty interface and each provider augments it; the
 // augmentation lives in the provider's own entry point, which nothing in `src`
-// imports — the browser project wires it up in vite.config.js instead.
+// imports — the browser project wires it up in vite.config.mjs instead.

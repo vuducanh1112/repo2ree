@@ -84,7 +84,7 @@ coverage_render = set -e; \
 # ================================================
 
 # Always measured, like the backend tiers: this suite *is* the node tier. Vitest
-# writes its report inline (reportsDirectory in gui/vite.config.js), so there is
+# writes its report inline (reportsDirectory in gui/vite.config.mjs), so there is
 # no separate render step to match the python side's.
 # Component and pure-logic tests contribute to this report. The Playwright
 # suites deliberately record no JavaScript coverage; see
