@@ -102,4 +102,3 @@ any replacement.
 - [Shared reproduction commands](../../../core/src/repo2ree_core/reproduction/commands.py)
 - [Bundle assembly](../../../core/src/repo2ree_core/bundle/seal.py)
 - [Generated reproducer tests](../../../core/tests/unit/test_reproducer.py)
-- [Public reproduction instructions](../../public/how-to/archive.md#reproduce-from-the-bundle)

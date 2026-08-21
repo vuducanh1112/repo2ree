@@ -33,10 +33,10 @@ Guided, end-to-end lessons for readers who have not built an REE before.
 
 Task recipes for a specific goal, once you know your way around.
 
-- [Evaluate a repository](how-to/evaluate.md)
-- [Build and run an REE](how-to/build-and-run.md)
-- [Verify a result](how-to/verify.md)
-- [Archive and share an REE](how-to/archive.md)
+- [The runtime of an REE](how-to/build-runtimes.md) — package software so the
+  REE builds today and still builds later.
+- [Experiments in an REE](how-to/experiments.md) — turn a command and a check
+  into a claim a reviewer can re-run.
 
 ## Reference
 

@@ -457,7 +457,7 @@ You followed the complete authoring chain:
 6. experiment plus explicit verification;
 7. sealed, independently runnable bundle.
 
-Next, use [Verify a result](../how-to/verify.md) and the Review console when you
-want repo2ree to record and compare an independent attempt against another
-author's evidence. The standalone `run.sh` remains the service-free portability
-path.
+Next, use the Review console when you want repo2ree to record and compare an
+independent attempt against another author's evidence. The standalone `run.sh`
+remains the service-free portability path. For the packaging decisions behind
+the build step, see [The runtime of an REE](../how-to/build-runtimes.md).

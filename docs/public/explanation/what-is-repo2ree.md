@@ -46,8 +46,8 @@ self, ready for deposit, citable. Effort that only benefits downstream readers
 is a design defect, not a virtue.
 
 See [Create your first REE](../tutorials/create-your-first-ree.md) for the
-walkthrough, or [Build and run an REE](../how-to/build-and-run.md) for the
-individual steps.
+walkthrough, or [The runtime of an REE](../how-to/build-runtimes.md) for the packaging
+decisions the build step depends on.
 
 ## Reviewing an REE
 
@@ -68,7 +68,6 @@ its verify script declared, "did it reproduce" has an answer that does not depen
 on a reviewer's judgment about which script to run. Where a result differs, the
 disagreement is located in a specific step with specific digests on both sides.
 
-See [Verify a result](../how-to/verify.md).
 
 ## Grading reproducibility
 
@@ -98,7 +97,6 @@ Evaluate grades the *source*. It is separate from the REE assessment, which
 reads an assembled REE and reports which evidence is current and which has gone
 stale. Neither proves a reproduction; that takes a review.
 
-See [Evaluate a repository](../how-to/evaluate.md).
 
 ## Compute that stays where the data is
 

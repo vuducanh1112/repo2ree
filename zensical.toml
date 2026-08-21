@@ -15,10 +15,8 @@ nav = [
     { "Create your first REE" = "tutorials/create-your-first-ree.md" },
   ] },
   { "How-to guides" = [
-    { "Evaluate a repository" = "how-to/evaluate.md" },
-    { "Build and run an REE" = "how-to/build-and-run.md" },
-    { "Verify a result" = "how-to/verify.md" },
-    { "Archive and share an REE" = "how-to/archive.md" },
+    { "The runtime of an REE" = "how-to/build-runtimes.md" },
+    { "Experiments in an REE" = "how-to/experiments.md" },
   ] },
   { "Reference" = [
     { "Anatomy of an REE" = "reference/ree-anatomy.md" },
