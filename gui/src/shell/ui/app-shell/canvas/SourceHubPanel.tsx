@@ -1,6 +1,12 @@
 import { PAGE } from "@core/app-shell/pages";
 import type { SourceUploadCommit } from "@core/ree/ReeTypes";
+import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { useReeId } from "@shell/data/apiRuntime";
+import type { ReeEditorCommands } from "@shell/state/ree-editor/hooks/createReeEditorCommands";
+import type { WorkspaceRemoteState } from "@shell/state/ree-editor/hooks/useReeEditor";
+import { useStepRunLogEntry } from "@shell/state/ree-editor/step-runs/useStepRunLogEntry";
+import type { StepRunState } from "@shell/state/ree-editor/store/stepRunState";
+import type { UiChromeState } from "@shell/state/ree-editor/store/uiChrome";
 import { stageTone } from "@shell/ui/theme/appearance";
 import { useEffect, useState } from "react";
 import { Badge } from "../../shared/components/Badge";
@@ -9,8 +15,6 @@ import { Ic } from "../../shared/components/Icon";
 import { useFocusScroll } from "../../shared/hooks/useFocusScroll";
 import { CollapsibleLogCard } from "../components/CollapsibleLogCard";
 import { isLikelySourceUrl } from "../components/sourceRuntime/SourceUrlField";
-import type { AppShellPageContainerProps } from "../pages/pageContainers/shared";
-import { useStepRunLogEntry } from "../pages/pageContainers/shared";
 import type { SourceTypeOption } from "../pages/source/SourceAcquisitionPageHelpers";
 import { SourceAcquisitionCard } from "../pages/source/SourceAcquisitionPageSections";
 import { SourceStep3Section } from "../pages/source/SourceAcquisitionPageStep3Section";
@@ -18,12 +22,22 @@ import { CanvasWindowTitle } from "./CanvasWindow";
 import { HubPanel } from "./HubPanel";
 import styles from "./SourceHubPanel.module.css";
 
-type SourceHubPanelProps = Pick<
-  AppShellPageContainerProps,
-  "ree" | "workspaceRemote" | "stepRuns" | "uiChrome" | "commands"
-> & {
+interface SourceHubPanelProps {
+  ree: ReeEditorViewModel;
+  workspaceRemote: WorkspaceRemoteState;
+  stepRuns: StepRunState;
+  uiChrome: UiChromeState;
+  commands: Pick<
+    ReeEditorCommands,
+    | "setFocusedField"
+    | "onRemoveWorkspaceSource"
+    | "setRepoMode"
+    | "onDownloadSourceFiles"
+    | "onCancelAction"
+    | "onWorkspaceUpload"
+  >;
   onClose: () => void;
-};
+}
 
 // Source acquisition is a short form (a URL + type, or a tarball upload), so it
 // opens as a compact floating hub panel — like SBOM and the seal — instead of a
@@ -48,20 +62,20 @@ export function SourceHubPanel({
   });
 
   const [originTypeDraft, setOriginTypeDraft] = useState<SourceTypeOption | "">(
-    ree.sourceType || "",
+    ree.spec.sourceType || "",
   );
-  const [originUrlDraft, setOriginUrlDraft] = useState(ree.originUrl || "");
+  const [originUrlDraft, setOriginUrlDraft] = useState(ree.spec.originUrl || "");
   // The requested revision — an acquisition input that pins the git fetch. It is
   // not persisted intent (that is ReeSpec.resolvedRevision, the commit it settles
   // to); it starts blank (HEAD) and is recorded afterward as the resolved commit.
   const [revisionDraft, setRevisionDraft] = useState("");
 
   useEffect(() => {
-    setOriginTypeDraft(ree.sourceType || "");
-  }, [ree.sourceType]);
+    setOriginTypeDraft(ree.spec.sourceType || "");
+  }, [ree.spec.sourceType]);
   useEffect(() => {
-    setOriginUrlDraft(ree.originUrl || "");
-  }, [ree.originUrl]);
+    setOriginUrlDraft(ree.spec.originUrl || "");
+  }, [ree.spec.originUrl]);
   // The revision draft has no persisted backing, so clear it when the source
   // leaves the workspace — otherwise a stale pin lingers into the next acquire.
   useEffect(() => {
@@ -148,9 +162,9 @@ export function SourceHubPanel({
         originUrlDraft={originUrlDraft}
         originTypeDraft={originTypeDraft}
         revisionDraft={revisionDraft}
-        resolvedRevision={ree.resolvedRevision || ""}
+        resolvedRevision={ree.spec.resolvedRevision || ""}
         originInputLocked={originInputLocked}
-        priorOriginUrl={ree.originUrl || ""}
+        priorOriginUrl={ree.spec.originUrl || ""}
         canDownload={canDownload}
         canUpload={canUpload}
         downloadRunning={downloadRunning}

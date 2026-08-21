@@ -111,8 +111,11 @@ describe("major step page workflows", () => {
         {...createStepPageProps("activation", {
           ree: {
             ...exampleEditorRee,
-            runtime: "",
-            activation: createEmptyReeSpec().activation,
+            spec: {
+              ...exampleEditorRee.spec,
+              runtime: "",
+              activation: createEmptyReeSpec().activation,
+            },
           },
           workspaceFiles: [],
           reeFiles: [],
@@ -141,7 +144,10 @@ describe("major step page workflows", () => {
     renderWithShell(
       <PageTestActivation
         {...createStepPageProps("activation", {
-          ree: { ...exampleEditorRee, activation: createEmptyReeSpec().activation },
+          ree: {
+            ...exampleEditorRee,
+            spec: { ...exampleEditorRee.spec, activation: createEmptyReeSpec().activation },
+          },
           onReeSpecChange,
           onPersistWorkspaceFile,
         })}

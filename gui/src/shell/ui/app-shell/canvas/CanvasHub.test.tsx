@@ -55,13 +55,16 @@ describe("CanvasHub", () => {
         page={PAGE.CANVAS}
         ree={{
           ...exampleEditorRee,
-          experiments: [
-            {
-              ...createEmptyReeExperiment(),
-              name: "hello",
-              runScript: "overlay/experiments/hello.sh",
-            },
-          ],
+          spec: {
+            ...exampleEditorRee.spec,
+            experiments: [
+              {
+                ...createEmptyReeExperiment(),
+                name: "hello",
+                runScript: "overlay/experiments/hello.sh",
+              },
+            ],
+          },
         }}
         evaluation={{ dependencyLevel: 2, environmentLevel: 2, machineLevel: 1 }}
         badges={{ build: true, sbom: "succeeded" }}
@@ -129,7 +132,10 @@ describe("CanvasHub", () => {
         page={PAGE.CANVAS}
         ree={{
           ...exampleEditorRee,
-          experiments: [{ ...createEmptyReeExperiment(), name: "hello" }],
+          spec: {
+            ...exampleEditorRee.spec,
+            experiments: [{ ...createEmptyReeExperiment(), name: "hello" }],
+          },
         }}
         evaluation={{ dependencyLevel: 1, environmentLevel: 1, machineLevel: 1 }}
         badges={{}}

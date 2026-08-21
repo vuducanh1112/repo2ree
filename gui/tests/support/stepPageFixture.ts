@@ -22,17 +22,19 @@ export const exampleWorkspaceFiles = [
 
 export const exampleEditorRee = {
   ...createEmptyReeEditorViewModel(),
-  name: "Python hello world",
-  sourceAvailable: true,
-  sourceIncluded: true,
-  runtime: "runtime.tar",
-  runtimeIncluded: true,
-  sbom: "artifacts/sbom.json",
-  activation: {
-    ...createEmptyReeEditorViewModel().activation,
-    runScript: "overlay/activate.sh",
-    verifyScript: "overlay/verify.sh",
+  spec: {
+    ...createEmptyReeEditorViewModel().spec,
+    name: "Python hello world",
+    runtime: "runtime.tar",
+    sbom: "artifacts/sbom.json",
+    activation: {
+      ...createEmptyReeEditorViewModel().spec.activation,
+      runScript: "overlay/activate.sh",
+      verifyScript: "overlay/verify.sh",
+    },
   },
+  source: { sourceAvailable: true, sourceIncluded: true },
+  artifact: { runtimeIncluded: true },
 };
 
 export function createStepPageProps(

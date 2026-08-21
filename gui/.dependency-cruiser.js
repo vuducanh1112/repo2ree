@@ -297,6 +297,19 @@ module.exports = {
       }
     },
     {
+      name: "shell-state-no-ui",
+      severity: "error",
+      comment:
+        "Editor state and orchestration must not depend on UI modules. UI consumes state, never owns it.",
+      from: {
+        path: "^src/shell/state",
+        pathNot: TEST_FILE_PATTERN
+      },
+      to: {
+        path: "^src/shell/ui(/|$)"
+      }
+    },
+    {
       name: "shell-app-imports-ui-only-from-bootstrap",
       severity: "error",
       comment:

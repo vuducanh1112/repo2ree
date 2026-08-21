@@ -89,7 +89,7 @@ export function PageTestActivation({
     { content: string; nonce: number } | undefined
   >();
 
-  const activation: ReeActivation = ree.activation ?? createEmptyReeActivation();
+  const activation: ReeActivation = ree.spec.activation ?? createEmptyReeActivation();
   // The backend settles the activation run-script path on the intent; the
   // catalog covers the moment before that lands and the not-yet-declared
   // verify script.
@@ -102,9 +102,9 @@ export function PageTestActivation({
   const activationVerifyScriptContent =
     findFileByWorkspacePath(files, activationVerifyScriptPath)?.content ?? "";
 
-  const runtimePath = resolvedRuntimePath(ree.runtime);
+  const runtimePath = resolvedRuntimePath(ree.spec.runtime);
   const runtimePathExists = runtimePath ? workspaceFileExists(files, runtimePath) : false;
-  const sbomPath = resolvedSbomPath(ree.sbom);
+  const sbomPath = resolvedSbomPath(ree.spec.sbom);
   const sbomPathExists = !!findSbomArtifact(reeFiles, sbomPath);
 
   const activationParams: ReeStepRunParams<"activation"> = params as ReeStepRunParams<"activation">;

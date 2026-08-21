@@ -3,7 +3,7 @@ import type { ReeId } from "@core/ree/ReeId";
 import type { LogEntry } from "@core/ree/ReeTypes";
 import { useReeClient } from "@shell/data/ree/client";
 import { mapReeDetailToReeProject } from "@shell/data/ree/reeMapping";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import type { ShowToast } from "../types";
 import type { HydratedWorkspaceSnapshot } from "../workspace-sync/hydrateReeWorkspace";
 
@@ -27,49 +27,52 @@ export function useReeSeal({ reeId, showToast, hydrateWorkspace, flushReeIntent 
   const [sealRunning, setSealRunning] = useState(false);
   const [sealLog, setSealLog] = useState<LogEntry | null>(null);
 
-  const handleSealRee = async (inclusionOpts: InclusionOpts): Promise<void> => {
-    const ts = new Date().toISOString();
-    setSealRunning(true);
-    setSealLog({ ts, lines: [{ type: "info", msg: "Sealing REE…" }] });
-    try {
+  const handleSealRee = useCallback(
+    async (inclusionOpts: InclusionOpts): Promise<void> => {
+      const ts = new Date().toISOString();
+      setSealRunning(true);
+      setSealLog({ ts, lines: [{ type: "info", msg: "Sealing REE…" }] });
       try {
-        await flushReeIntent();
-      } catch {
-        throw new Error("could not save pending changes");
+        try {
+          await flushReeIntent();
+        } catch {
+          throw new Error("could not save pending changes");
+        }
+        const workspaceWire = await reeClient.sealRee(reeId, {
+          includeSource: inclusionOpts.includeSource,
+          includeRuntime: inclusionOpts.includeRuntime,
+          includeResults: inclusionOpts.includeResults,
+        });
+        const project = mapReeDetailToReeProject(workspaceWire);
+        hydrateWorkspace({
+          workspaceFiles: project.files,
+          reeArtifactFiles: project.reeFiles ?? [],
+          ree: project.ree,
+        });
+        setSealLog({
+          ts,
+          lines: [
+            { type: "info", msg: "Sealing REE…" },
+            { type: "ok", msg: "Sealed — workspace updated" },
+          ],
+        });
+        showToast("REE sealed — now read-only", "success");
+      } catch (error) {
+        const msg = `Seal failed: ${error instanceof Error ? error.message : "unknown error"}`;
+        setSealLog({
+          ts,
+          lines: [
+            { type: "info", msg: "Sealing REE…" },
+            { type: "err", msg },
+          ],
+        });
+        showToast(msg, "error");
+      } finally {
+        setSealRunning(false);
       }
-      const workspaceWire = await reeClient.sealRee(reeId, {
-        includeSource: inclusionOpts.includeSource,
-        includeRuntime: inclusionOpts.includeRuntime,
-        includeResults: inclusionOpts.includeResults,
-      });
-      const project = mapReeDetailToReeProject(workspaceWire);
-      hydrateWorkspace({
-        workspaceFiles: project.files,
-        reeArtifactFiles: project.reeFiles ?? [],
-        ree: project.ree,
-      });
-      setSealLog({
-        ts,
-        lines: [
-          { type: "info", msg: "Sealing REE…" },
-          { type: "ok", msg: "Sealed — workspace updated" },
-        ],
-      });
-      showToast("REE sealed — now read-only", "success");
-    } catch (error) {
-      const msg = `Seal failed: ${error instanceof Error ? error.message : "unknown error"}`;
-      setSealLog({
-        ts,
-        lines: [
-          { type: "info", msg: "Sealing REE…" },
-          { type: "err", msg },
-        ],
-      });
-      showToast(msg, "error");
-    } finally {
-      setSealRunning(false);
-    }
-  };
+    },
+    [flushReeIntent, hydrateWorkspace, reeClient, reeId, showToast],
+  );
 
   return { handleSealRee, sealRunning, sealLog };
 }

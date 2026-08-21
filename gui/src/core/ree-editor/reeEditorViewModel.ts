@@ -4,17 +4,42 @@ import { createEmptyReeSpec, type ReeSpec } from "../../core/ree/ReeSpec";
 import type { WorkspaceSourceState } from "../../core/workspace/WorkspaceSourceState";
 import type { ReeEditorState } from "./reeEditorState";
 
-export type ReeEditorViewModel = ReeSpec & WorkspaceSourceState & ArtifactStatus & EvaluationState;
+export interface ReeEditorViewModel {
+  spec: ReeSpec;
+  source: WorkspaceSourceState;
+  artifact: ArtifactStatus;
+  evaluation: EvaluationState;
+}
+
+export interface ReeEditorViewModelPatch {
+  spec?: Partial<ReeSpec>;
+  source?: Partial<WorkspaceSourceState>;
+  artifact?: Partial<ArtifactStatus>;
+  evaluation?: Partial<EvaluationState>;
+}
+
+export function patchReeEditorViewModel(
+  current: ReeEditorViewModel,
+  patch: ReeEditorViewModelPatch,
+): ReeEditorViewModel {
+  return {
+    spec: { ...current.spec, ...patch.spec },
+    source: { ...current.source, ...patch.source },
+    artifact: { ...current.artifact, ...patch.artifact },
+    evaluation: { ...current.evaluation, ...patch.evaluation },
+  };
+}
 
 export function createEmptyReeEditorViewModel(): ReeEditorViewModel {
   return {
-    ...createEmptyReeSpec(),
-    sourceAvailable: false,
-    sourceIncluded: false,
-    runtimeIncluded: false,
-    dependencyLevel: 0,
-    environmentLevel: 0,
-    machineLevel: 0,
+    spec: createEmptyReeSpec(),
+    source: { sourceAvailable: false, sourceIncluded: false },
+    artifact: { runtimeIncluded: false },
+    evaluation: {
+      dependencyLevel: 0,
+      environmentLevel: 0,
+      machineLevel: 0,
+    },
   };
 }
 
@@ -25,9 +50,9 @@ export function createReeEditorViewModel(
   >,
 ): ReeEditorViewModel {
   return {
-    ...editorState.reeSpec,
-    ...editorState.workspaceSourceState,
-    ...editorState.artifactStatus,
-    ...editorState.evaluationState,
+    spec: editorState.reeSpec,
+    source: editorState.workspaceSourceState,
+    artifact: editorState.artifactStatus,
+    evaluation: editorState.evaluationState,
   };
 }

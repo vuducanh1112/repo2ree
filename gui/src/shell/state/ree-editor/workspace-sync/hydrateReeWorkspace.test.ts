@@ -29,7 +29,7 @@ describe("createHydrateReeWorkspace", () => {
     expect(dispatch.mock.calls[1][0].value({})).toBe(ree.workspaceSourceState);
     expect(dispatch.mock.calls[2][0].value({})).toBe(ree.artifactStatus);
     expect(dispatch.mock.calls[3][0].value({})).toBe(ree.evaluationState);
-    expect(dispatch.mock.calls[4][0]).toEqual({ type: "setLocked", locked: true });
+    expect(dispatch.mock.calls[4][0]).toEqual({ type: "setLocked", value: true });
   });
 
   it("ignores file-only snapshots and preserves an existing seal", () => {

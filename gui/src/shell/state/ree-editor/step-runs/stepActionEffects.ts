@@ -17,8 +17,8 @@ import {
   setStepRunLoading,
   setWorkspaceSourceState,
   updateReeSpec,
-} from "@shell/ui/app-shell/state/actions";
-import type { AppShellAction } from "@shell/ui/app-shell/state/types";
+} from "@shell/state/ree-editor/store/actions";
+import type { AppShellAction } from "@shell/state/ree-editor/store/types";
 import type { ShowToast } from "../types";
 
 export type ReeEditorDispatch = (action: AppShellAction) => void;

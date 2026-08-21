@@ -1,13 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { createEmptyReeSpec } from "../ree/ReeSpec";
-import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 import {
   getReeStepRequirements,
   missingReeStepRequirements,
   shouldRefreshWorkspaceAfterStep,
 } from "./stepPolicies";
 
-function buildRee(): ReeEditorViewModel {
+function buildRee() {
   return {
     ...createEmptyReeSpec(),
     name: "demo",

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { createEmptyReeSpec } from "../ree/ReeSpec";
-import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 import {
   buildActivationStepRunRequest,
   buildBuildStepRunRequest,
@@ -8,7 +7,7 @@ import {
   buildSbomStepRunRequest,
 } from "./stepRunRequests";
 
-function buildRee(): ReeEditorViewModel {
+function buildRee() {
   return {
     ...createEmptyReeSpec(),
     name: "demo",

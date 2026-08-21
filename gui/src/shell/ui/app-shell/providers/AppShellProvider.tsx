@@ -2,10 +2,10 @@ import type { ArtifactStatus } from "@core/artifact/ArtifactStatus";
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import type { ReeSpec } from "@core/ree/ReeSpec";
 import type { WorkspaceSourceState } from "@core/workspace/WorkspaceSourceState";
+import { appShellReducer, createInitialState } from "@shell/state/ree-editor/store/appShellReducer";
+import type { AppShellAction, AppShellContextState } from "@shell/state/ree-editor/store/types";
 import type { ReactNode } from "react";
 import { createContext, useContext, useMemo, useReducer } from "react";
-import { appShellReducer, createInitialState } from "../state/appShellReducer";
-import type { AppShellAction, AppShellContextState } from "../state/types";
 
 interface AppShellContextValue {
   state: AppShellContextState;

@@ -42,14 +42,14 @@ export function PageGenerateSbom({
 }: StepPageProps) {
   const files = workspaceFiles || [];
 
-  const runtimePath = resolvedRuntimePath(ree.runtime);
+  const runtimePath = resolvedRuntimePath(ree.spec.runtime);
   const runtimePathExists = runtimePath ? workspaceFileExists(files, runtimePath) : false;
   const runtimeIsTarball = !!runtimePath && isRuntimeTarballPath(runtimePath);
 
   // The runtime is scanned where the build left it, in the workspace; the SBOM
   // that comes back is REE evidence and lives in artifacts/, so it is found
   // among the REE's own files rather than in the materialized tree.
-  const sbomPath = resolvedSbomPath(ree.sbom);
+  const sbomPath = resolvedSbomPath(ree.spec.sbom);
   const sbomNode = findSbomArtifact(reeFiles, sbomPath);
   const sbomSummary = useMemo(() => summarizeSbom(sbomNode), [sbomNode]);
   const sbomReady = !!sbomPath && !!sbomNode;

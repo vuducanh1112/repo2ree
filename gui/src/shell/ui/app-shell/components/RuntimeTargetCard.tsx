@@ -40,7 +40,7 @@ export function RuntimeTargetCard({
             {icon}
           </div>
           <div className={styles.body}>
-            <div className={styles.kind}>ree.runtime</div>
+            <div className={styles.kind}>ree.spec.runtime</div>
             <div className={styles.path} data-declared={runtimePath ? true : undefined}>
               {runtimePath || "No runtime selected yet"}
             </div>

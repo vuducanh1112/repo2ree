@@ -1,4 +1,5 @@
-import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
+import type { ReeSpec } from "@core/ree/ReeSpec";
+import type { WorkspaceSourceState } from "@core/workspace/WorkspaceSourceState";
 
 // Workspace shell pages.
 export const PAGE = {
@@ -45,7 +46,9 @@ export type AppShellPage = (typeof PAGE)[keyof typeof PAGE];
 const WORKSPACE_SHELL_PAGES = Object.values(PAGE) as AppShellPage[];
 
 // Maps a draft view-model field key to the app-shell page where it can be edited.
-const FIELD_TO_PAGE: Partial<Record<keyof ReeEditorViewModel, AppShellPage>> = {
+type EditorField = keyof ReeSpec | keyof WorkspaceSourceState;
+
+const FIELD_TO_PAGE: Partial<Record<EditorField, AppShellPage>> = {
   originUrl: PAGE.SOURCE,
   sourceType: PAGE.SOURCE,
   experiments: PAGE.EXPERIMENTS,
@@ -76,5 +79,5 @@ export function appShellPageForField(
   fieldKey: string,
   fallback: AppShellPage = PAGE.METADATA,
 ): AppShellPage {
-  return FIELD_TO_PAGE[fieldKey as keyof typeof FIELD_TO_PAGE] ?? fallback;
+  return FIELD_TO_PAGE[fieldKey as EditorField] ?? fallback;
 }

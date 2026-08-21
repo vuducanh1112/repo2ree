@@ -1,6 +1,9 @@
 import { emptyEvaluationState } from "@core/evaluate/EvaluationState";
 import { createEmptyReeSpec } from "@core/ree/ReeSpec";
-import { createEmptyReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
+import {
+  createEmptyReeEditorViewModel,
+  patchReeEditorViewModel,
+} from "@core/ree-editor/reeEditorViewModel";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useReeIntentSync } from "./useReeIntentSync";
@@ -62,7 +65,10 @@ describe("useReeIntentSync", () => {
       ree: remoteRee,
     });
 
-    rerender({ ree: { ...initial, name: "Edited now" }, provisioned: true });
+    rerender({
+      ree: patchReeEditorViewModel(initial, { spec: { name: "Edited now" } }),
+      provisioned: true,
+    });
     await waitFor(() => expect(result.current.syncState.phase).toBe("dirty"));
     await act(() => result.current.flush());
 
@@ -89,7 +95,7 @@ describe("useReeIntentSync", () => {
       { initialProps: { ree: initial } },
     );
     await waitFor(() => expect(result.current.hydration.status).toBe("ready"));
-    rerender({ ree: { ...initial, name: "Unsaved" } });
+    rerender({ ree: patchReeEditorViewModel(initial, { spec: { name: "Unsaved" } }) });
 
     await act(async () => {
       await expect(result.current.flush()).rejects.toThrow("offline");
@@ -126,7 +132,9 @@ describe("useReeIntentSync", () => {
       error: expect.objectContaining({ message: "offline" }),
     });
 
-    rerender({ ree: { ...initial, name: "Must not be sent" } });
+    rerender({
+      ree: patchReeEditorViewModel(initial, { spec: { name: "Must not be sent" } }),
+    });
     await new Promise((resolve) => setTimeout(resolve, 350));
 
     expect(hydrateWorkspace).not.toHaveBeenCalled();

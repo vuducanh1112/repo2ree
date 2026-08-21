@@ -31,18 +31,18 @@ describe("reeEditorViewModel", () => {
 
     const viewModel = createReeEditorViewModel(editorState);
 
-    expect(viewModel.name).toBe("demo");
-    expect(viewModel.sourceAvailable).toBe(true);
-    expect(viewModel.runtimeIncluded).toBe(true);
-    expect(viewModel.dependencyLevel).toBe(3);
+    expect(viewModel.spec.name).toBe("demo");
+    expect(viewModel.source.sourceAvailable).toBe(true);
+    expect(viewModel.artifact.runtimeIncluded).toBe(true);
+    expect(viewModel.evaluation.dependencyLevel).toBe(3);
   });
 
   it("creates an empty view model with product and editor defaults", () => {
     const viewModel = createEmptyReeEditorViewModel();
 
-    expect(viewModel.name).toBe("");
-    expect(viewModel.sourceAvailable).toBe(false);
-    expect(viewModel.runtimeIncluded).toBe(false);
-    expect(viewModel.dependencyLevel).toBe(0);
+    expect(viewModel.spec.name).toBe("");
+    expect(viewModel.source.sourceAvailable).toBe(false);
+    expect(viewModel.artifact.runtimeIncluded).toBe(false);
+    expect(viewModel.evaluation.dependencyLevel).toBe(0);
   });
 });

@@ -113,7 +113,7 @@ export function PageBuildRuntime({
     [],
   );
 
-  const runtimePath = resolvedRuntimePath(ree.runtime);
+  const runtimePath = resolvedRuntimePath(ree.spec.runtime);
   const runtimeFile = useMemo(
     () => (runtimePath ? findFileByWorkspacePath(files, runtimePath) : null),
     [files, runtimePath],

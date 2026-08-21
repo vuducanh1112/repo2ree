@@ -8,8 +8,8 @@ import {
   setLocked,
   setWorkspaceSourceState,
   updateReeSpec,
-} from "@shell/ui/app-shell/state/actions";
-import type { AppShellAction } from "@shell/ui/app-shell/state/types";
+} from "@shell/state/ree-editor/store/actions";
+import type { AppShellAction } from "@shell/state/ree-editor/store/types";
 import type React from "react";
 
 export interface HydratedWorkspaceSnapshot {

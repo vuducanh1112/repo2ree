@@ -1,4 +1,7 @@
-import { createEmptyReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
+import {
+  createEmptyReeEditorViewModel,
+  patchReeEditorViewModel,
+} from "@core/ree-editor/reeEditorViewModel";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -106,23 +109,24 @@ describe("seal status surfaces", () => {
 
   it("updates inclusion defaults from availability and seals selected content", () => {
     const onSeal = vi.fn();
-    const ree = {
-      ...createEmptyReeEditorViewModel(),
-      name: "Example",
-      sourceAvailable: true,
-      runtime: "runtime.tar",
-      experiments: [
-        {
-          name: "experiment",
-          description: "",
-          runScript: "run.sh",
-          verifyScript: "",
-          outputPaths: ["result.txt"],
-          runtimeEstimate: "",
-          resourceEstimates: { cpu: "", memory: "", gpu: "", storage: "", network: "" },
-        },
-      ],
-    };
+    const ree = patchReeEditorViewModel(createEmptyReeEditorViewModel(), {
+      spec: {
+        name: "Example",
+        runtime: "runtime.tar",
+        experiments: [
+          {
+            name: "experiment",
+            description: "",
+            runScript: "run.sh",
+            verifyScript: "",
+            outputPaths: ["result.txt"],
+            runtimeEstimate: "",
+            resourceEstimates: { cpu: "", memory: "", gpu: "", storage: "", network: "" },
+          },
+        ],
+      },
+      source: { sourceAvailable: true },
+    });
     const { rerender } = render(
       <CenterSealStrip
         ree={ree}
@@ -143,7 +147,10 @@ describe("seal status surfaces", () => {
 
     rerender(
       <CenterSealStrip
-        ree={{ ...ree, sourceAvailable: false, runtime: "__skipped__", experiments: [] }}
+        ree={patchReeEditorViewModel(ree, {
+          source: { sourceAvailable: false },
+          spec: { runtime: "__skipped__", experiments: [] },
+        })}
         locked={false}
         badges={{}}
         onSeal={onSeal}
@@ -154,11 +161,9 @@ describe("seal status surfaces", () => {
   });
 
   it("renders sealed metadata with a hash and with fallbacks", () => {
-    const ree = {
-      ...createEmptyReeEditorViewModel(),
-      sealedAt: "2026-01-01T00:00:00Z",
-      sealHash: "sha256:value",
-    };
+    const ree = patchReeEditorViewModel(createEmptyReeEditorViewModel(), {
+      artifact: { sealedAt: "2026-01-01T00:00:00Z", sealHash: "sha256:value" },
+    });
     const { rerender } = render(
       <SealedSealCard
         ree={ree}
@@ -182,11 +187,9 @@ describe("seal status surfaces", () => {
   it("uses the sealed card through the composed strip", () => {
     render(
       <CenterSealStrip
-        ree={{
-          ...createEmptyReeEditorViewModel(),
-          sealedAt: "2026-01-01T00:00:00Z",
-          sealHash: "hash",
-        }}
+        ree={patchReeEditorViewModel(createEmptyReeEditorViewModel(), {
+          artifact: { sealedAt: "2026-01-01T00:00:00Z", sealHash: "hash" },
+        })}
         locked
         badges={{}}
         onSeal={vi.fn()}

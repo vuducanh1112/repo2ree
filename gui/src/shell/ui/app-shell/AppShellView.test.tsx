@@ -98,27 +98,30 @@ function controller(page: AppShellPage = PAGE.CANVAS, provisioned = true) {
     flushReeIntent: vi.fn().mockResolvedValue(undefined),
   };
   shell.value = {
-    provisioned,
-    workspaceHydration: { status: "ready", error: null },
-    retryWorkspaceHydration: vi.fn(),
-    reeIntent: {},
-    ree: { name: "Example" },
-    workspaceRemote: {
-      artifactStatus: { sealedAt: undefined },
-      workspaceFiles: [],
-      sourceRepo: undefined,
+    model: {
+      provisioned,
+      reeIntent: {},
+      ree: { spec: { name: "Example" } },
+      workspaceRemote: {
+        artifactStatus: { sealedAt: undefined },
+        workspaceFiles: [],
+        sourceRepo: undefined,
+      },
+      stepRuns: { badges: {} },
+      evaluation: {},
+      currentReeFiles: [],
+      authorReceipts: [],
     },
-    stepRuns: { badges: {} },
-    uiChrome: { page, toast: null, locked: false, filesConsoleOpen: false },
-    evaluation: {},
-    currentReeFiles: [],
-    authorReceipts: [],
-    reeIntentSyncState: { phase: "clean" },
-    isReeIntentDirty: false,
-    retryReeIntentSync: vi.fn().mockResolvedValue(undefined),
+    chrome: { page, toast: null, locked: false, filesConsoleOpen: false },
+    sync: {
+      workspaceHydration: { status: "ready", error: null },
+      retryWorkspaceHydration: vi.fn(),
+      reeIntentSyncState: { phase: "clean" },
+      isReeIntentDirty: false,
+      retryReeIntentSync: vi.fn().mockResolvedValue(undefined),
+    },
     commands,
-    sealRunning: false,
-    sealLog: null,
+    seal: { running: false, log: null },
   };
   return commands;
 }
@@ -142,7 +145,10 @@ describe("AppShellView", () => {
     const onBack = vi.fn();
     shell.value = {
       ...shell.value,
-      workspaceHydration: { status: "loading", error: null },
+      sync: {
+        ...(shell.value.sync as object),
+        workspaceHydration: { status: "loading", error: null },
+      },
     };
     render(<AppShellView onBack={onBack} />);
 
@@ -157,8 +163,11 @@ describe("AppShellView", () => {
     const retryWorkspaceHydration = vi.fn();
     shell.value = {
       ...shell.value,
-      workspaceHydration: { status: "error", error: new Error("control plane offline") },
-      retryWorkspaceHydration,
+      sync: {
+        ...(shell.value.sync as object),
+        workspaceHydration: { status: "error", error: new Error("control plane offline") },
+        retryWorkspaceHydration,
+      },
     };
     render(<AppShellView onBack={vi.fn()} />);
 
@@ -208,8 +217,11 @@ describe("AppShellView", () => {
     const commands = controller(PAGE.SEAL);
     shell.value = {
       ...shell.value,
-      workspaceRemote: { artifactStatus: { sealedAt: "now" }, workspaceFiles: [] },
-      uiChrome: { page: PAGE.SEAL, toast: { message: "Saved", type: "info" }, locked: false },
+      model: {
+        ...(shell.value.model as object),
+        workspaceRemote: { artifactStatus: { sealedAt: "now" }, workspaceFiles: [] },
+      },
+      chrome: { page: PAGE.SEAL, toast: { message: "Saved", type: "info" }, locked: false },
     };
     render(<AppShellView onBack={vi.fn()} />);
 
@@ -226,9 +238,12 @@ describe("AppShellView", () => {
     controller();
     shell.value = {
       ...shell.value,
-      reeIntentSyncState: { phase: "error", error: new Error("offline") },
-      isReeIntentDirty: true,
-      retryReeIntentSync,
+      sync: {
+        ...(shell.value.sync as object),
+        reeIntentSyncState: { phase: "error", error: new Error("offline") },
+        isReeIntentDirty: true,
+        retryReeIntentSync,
+      },
     };
     render(<AppShellView onBack={vi.fn()} />);
 

@@ -44,8 +44,9 @@ export type AppShellAction =
   | { type: "setStepParams"; value: Updater<ReeStepParams> }
   | { type: "setActiveRunId"; key: string; runId: string }
   | { type: "cancelStepRun"; key: string; runId?: string }
-  | { type: "setLocked"; locked: boolean }
-  | { type: "setRepoMode"; repoMode: "url" | "upload" }
+  | { type: "setLocked"; value: Updater<boolean> }
+  | { type: "setRepoMode"; value: Updater<"url" | "upload"> }
+  | { type: "setFocusedField"; value: Updater<string | null> }
   | { type: "setStepRunLoading"; key: string }
   | { type: "completeStepRun"; completion: StepRunCompletionPayload }
   | { type: "resetStepsAfterSourceChange"; stepParams: ReeStepParams }

@@ -1,7 +1,11 @@
 import { PAGE } from "@core/app-shell/pages";
-import { createEmptyReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
-import { createInitialStepRunState } from "@shell/ui/app-shell/state/stepRunState";
-import { createInitialUiChromeState } from "@shell/ui/app-shell/state/uiChrome";
+import {
+  createEmptyReeEditorViewModel,
+  patchReeEditorViewModel,
+  type ReeEditorViewModelPatch,
+} from "@core/ree-editor/reeEditorViewModel";
+import { createInitialStepRunState } from "@shell/state/ree-editor/store/stepRunState";
+import { createInitialUiChromeState } from "@shell/state/ree-editor/store/uiChrome";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useStepPageController } from "./useStepPageController";
@@ -30,14 +34,14 @@ type ControllerArgs = Parameters<typeof useStepPageController>[0];
 function controllerArgs(
   overrides: {
     page?: ControllerArgs["uiChrome"]["page"];
-    ree?: Partial<ControllerArgs["ree"]>;
+    ree?: ReeEditorViewModelPatch;
     stepRuns?: Partial<ControllerArgs["stepRuns"]>;
   } = {},
 ) {
   const setStepParams = vi.fn();
   const setPage = vi.fn();
   const args = {
-    ree: { ...createEmptyReeEditorViewModel(), ...overrides.ree },
+    ree: patchReeEditorViewModel(createEmptyReeEditorViewModel(), overrides.ree ?? {}),
     stepRuns: { ...createInitialStepRunState(), ...overrides.stepRuns },
     uiChrome: { ...createInitialUiChromeState(), page: overrides.page ?? PAGE.BUILD },
     commands: { setStepParams, setPage },
@@ -60,7 +64,7 @@ describe("useStepPageController", () => {
     const initialStepParams = createInitialStepRunState().stepParams;
     const { args, setPage, setStepParams } = controllerArgs({
       page: PAGE.EVALUATE,
-      ree: { sourceAvailable: false },
+      ree: { source: { sourceAvailable: false } },
       stepRuns: { stepParams: initialStepParams },
     });
     const { result } = renderHook(() => useStepPageController(args));
@@ -85,7 +89,7 @@ describe("useStepPageController", () => {
     };
     const { args, setPage, setStepParams } = controllerArgs({
       page: PAGE.EVALUATE,
-      ree: { sourceAvailable: true },
+      ree: { source: { sourceAvailable: true } },
       stepRuns: { stepParams },
     });
     const { result } = renderHook(() => useStepPageController(args));

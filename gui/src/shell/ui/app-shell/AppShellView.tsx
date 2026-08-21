@@ -1,8 +1,8 @@
 import { PAGE } from "@core/app-shell/pages";
 import { activeNode } from "@core/canvas/canvasNodes";
-import { addExperiment } from "@core/ree/experimentOps";
+import { addExperiment as addExperimentToSpec } from "@core/ree/experimentOps";
 import { useWorkspaceNavigationGuard } from "@shell/state/ree-editor/workspace-sync/useWorkspaceNavigationGuard";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { WorkspaceLoadErrorView, WorkspaceLoadingView } from "../errors/WorkspaceLoadView";
 import { Ic } from "../shared/components/Icon";
 import { Toast } from "../shared/components/Toast";
@@ -23,6 +23,8 @@ interface AppShellViewProps {
   onBack: () => void;
 }
 
+const NO_STALE_NODE_KEYS = new Set<string>();
+
 export function AppShellView({ onBack }: AppShellViewProps) {
   return (
     <AppShellProvider>
@@ -33,23 +35,26 @@ export function AppShellView({ onBack }: AppShellViewProps) {
 
 function AppShellViewInner({ onBack }: AppShellViewProps) {
   const {
-    provisioned,
-    workspaceHydration,
-    retryWorkspaceHydration,
-    reeIntent,
-    ree,
-    workspaceRemote,
-    stepRuns,
-    uiChrome,
-    evaluation,
-    currentReeFiles,
-    authorReceipts,
-    reeIntentSyncState,
-    isReeIntentDirty,
-    retryReeIntentSync,
+    model: {
+      provisioned,
+      reeIntent,
+      ree,
+      workspaceRemote,
+      stepRuns,
+      evaluation,
+      currentReeFiles,
+      authorReceipts,
+    },
+    chrome: uiChrome,
+    sync: {
+      workspaceHydration,
+      retryWorkspaceHydration,
+      reeIntentSyncState,
+      isReeIntentDirty,
+      retryReeIntentSync,
+    },
     commands,
-    sealRunning,
-    sealLog,
+    seal: { running: sealRunning, log: sealLog },
   } = useAppShell();
   const { badges } = stepRuns;
   const { toast } = uiChrome;
@@ -68,10 +73,29 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
   // Screen rect of the canvas panel that opened the dock, so the edit view can
   // grow out of the panel the user clicked instead of feeling like a new page.
   const [originRect, setOriginRect] = useState<DOMRect | null>(null);
-  const openPage = (next: typeof page, rect?: DOMRect) => {
-    if (rect) setOriginRect(rect);
-    commands.setPage(next);
-  };
+  const openPage = useCallback(
+    (next: typeof page, rect?: DOMRect) => {
+      if (rect) setOriginRect(rect);
+      commands.setPage(next);
+    },
+    [commands],
+  );
+  const addExperiment = useCallback(() => commands.setReeSpec(addExperimentToSpec), [commands]);
+  const openExperimentsOverview = useCallback(() => {
+    commands.setFocusedField(null);
+    openPage(PAGE.EXPERIMENTS);
+  }, [commands, openPage]);
+  const openExperiment = useCallback(
+    (index: number) => {
+      commands.setFocusedField(`experiments[${index}].name`);
+      openPage(PAGE.EXPERIMENTS);
+    },
+    [commands, openPage],
+  );
+  const openRuntime = useCallback(() => {
+    commands.setFocusedField(null);
+    openPage(PAGE.BUILD);
+  }, [commands, openPage]);
 
   if (provisioned && workspaceHydration.status === "loading") {
     return <WorkspaceLoadingView onBack={onBack} />;
@@ -102,7 +126,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
         <span aria-hidden className={styles.separator}>
           /
         </span>
-        <span className={styles.reeName}>{ree.name || "untitled"}</span>
+        <span className={styles.reeName}>{ree.spec.name || "untitled"}</span>
         {provisioned && (
           <ReeSyncStatus state={reeIntentSyncState} onRetry={() => void retryReeIntentSync()} />
         )}
@@ -134,23 +158,14 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
             ree={ree}
             evaluation={evaluation}
             badges={badges}
-            staleNodeKeys={new Set<string>()}
+            staleNodeKeys={NO_STALE_NODE_KEYS}
             provisioned={provisioned}
             dimmed={dockOpen}
             onNavigate={openPage}
-            onAddExperiment={() => commands.setReeSpec(addExperiment)}
-            onOpenExperimentsOverview={() => {
-              commands.setFocusedField(null);
-              openPage(PAGE.EXPERIMENTS);
-            }}
-            onOpenExperiment={(index) => {
-              commands.setFocusedField(`experiments[${index}].name`);
-              openPage(PAGE.EXPERIMENTS);
-            }}
-            onOpenRuntime={() => {
-              commands.setFocusedField(null);
-              openPage(PAGE.BUILD);
-            }}
+            onAddExperiment={addExperiment}
+            onOpenExperimentsOverview={openExperimentsOverview}
+            onOpenExperiment={openExperiment}
+            onOpenRuntime={openRuntime}
             workspaceFiles={workspaceRemote.workspaceFiles}
             reeFiles={currentReeFiles}
             sourceRepo={workspaceRemote.sourceRepo}
@@ -173,11 +188,8 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
               workspaceRemote={workspaceRemote}
               stepRuns={stepRuns}
               uiChrome={uiChrome}
-              evaluation={evaluation}
               currentReeFiles={currentReeFiles}
               commands={commands}
-              sealRunning={sealRunning}
-              sealLog={sealLog}
             />
           </FocusDock>
         )}

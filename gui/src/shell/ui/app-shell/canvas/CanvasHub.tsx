@@ -19,7 +19,7 @@ import type { Badges, ReeFile } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import type { FileTreeNode } from "@core/workspace/FileTree";
 import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { cssVars } from "../../theme/styleVars";
 import { BenchConsole } from "./BenchConsole";
 import { CableOverlaySvg } from "./CableOverlay";
@@ -78,7 +78,7 @@ interface CanvasHubProps {
   onFilesConsoleOpenChange: (open: boolean) => void;
 }
 
-export function CanvasHub({
+export const CanvasHub = memo(function CanvasHub({
   page,
   ree,
   evaluation,
@@ -166,9 +166,9 @@ export function CanvasHub({
 
   // Decomposed, the core column becomes the experiment space: one satellite per
   // experiment cabled to the core pod, plus an add-ghost slot.
-  const experiments = ree.experiments ?? [];
+  const experiments = ree.spec.experiments ?? [];
   // Once sealed the REE is frozen, so the ring drops its add-ghost slot.
-  const withAddSlot = !ree.sealedAt;
+  const withAddSlot = !ree.artifact.sealedAt;
   const satellitePos = useMemo(
     () => satellitePositions(experiments.length, withAddSlot),
     [experiments.length, withAddSlot],
@@ -319,7 +319,7 @@ export function CanvasHub({
 
       <ReceiptsConsole provisioned={provisioned} receipts={authorReceipts} />
 
-      <BenchConsole provisioned={provisioned} reeName={ree.name} />
+      <BenchConsole provisioned={provisioned} reeName={ree.spec.name} />
 
       <ReviewConsole experiments={experiments} />
 
@@ -332,4 +332,4 @@ export function CanvasHub({
       />
     </div>
   );
-}
+});

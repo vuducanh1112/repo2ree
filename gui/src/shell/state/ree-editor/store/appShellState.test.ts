@@ -1,6 +1,6 @@
-import { createEmptyReeSpec } from "@core/ree/ReeSpec";
 import {
   createEmptyReeEditorViewModel,
+  patchReeEditorViewModel,
   type ReeEditorViewModel,
 } from "@core/ree-editor/reeEditorViewModel";
 import { describe, expect, it } from "vitest";
@@ -21,47 +21,17 @@ import { appShellReducer, createInitialState } from "./appShellReducer";
 import { createAppShellState } from "./appShellState";
 
 function buildRee(): ReeEditorViewModel {
-  return {
-    ...createEmptyReeSpec(),
-    name: "demo",
-    sourceAvailable: false,
-    sourceIncluded: false,
-    runtimeIncluded: false,
-    dependencyLevel: 0,
-  };
+  return patchReeEditorViewModel(createEmptyReeEditorViewModel(), {
+    spec: { name: "demo" },
+  });
 }
 
 function toInitialSlices(ree: ReeEditorViewModel) {
   return {
-    reeSpec: {
-      name: ree.name,
-      catalogMetadata: ree.catalogMetadata,
-      originUrl: ree.originUrl,
-      sourceType: ree.sourceType,
-      resolvedRevision: ree.resolvedRevision,
-      runtime: ree.runtime,
-      activation: ree.activation,
-      sbom: ree.sbom,
-      swhid: ree.swhid,
-      experiments: ree.experiments,
-      hardwareDescription: ree.hardwareDescription,
-    },
-    workspaceSourceState: {
-      sourceAvailable: ree.sourceAvailable,
-      sourceIncluded: ree.sourceIncluded,
-      sourceAcquiredBy: ree.sourceAcquiredBy,
-      uploadedArchive: ree.uploadedArchive,
-      sourceSnapshotArchive: ree.sourceSnapshotArchive,
-      sourceSnapshotCapturedAt: ree.sourceSnapshotCapturedAt,
-    },
-    artifactStatus: {
-      runtimeIncluded: ree.runtimeIncluded,
-      sealedAt: ree.sealedAt,
-      sealHash: ree.sealHash,
-    },
-    evaluationState: {
-      dependencyLevel: ree.dependencyLevel,
-    },
+    reeSpec: ree.spec,
+    workspaceSourceState: ree.source,
+    artifactStatus: ree.artifact,
+    evaluationState: ree.evaluation,
   };
 }
 
@@ -142,17 +112,17 @@ describe("appShellState", () => {
     expect(view.page).toBe(state.uiChrome.page);
     expect(view.stepParams).toBe(state.stepRuns.stepParams);
     expect(view.locked).toBe(state.uiChrome.locked);
-    expect(createEmptyReeEditorViewModel().name).toBe("");
+    expect(createEmptyReeEditorViewModel().spec.name).toBe("");
   });
 
   it("updates ree metadata without mutating source or artifact slices", () => {
     const initial = createInitialState(
-      toInitialSlices({
-        ...buildRee(),
-        sourceAvailable: true,
-        sourceIncluded: true,
-        runtimeIncluded: true,
-      }),
+      toInitialSlices(
+        patchReeEditorViewModel(buildRee(), {
+          source: { sourceAvailable: true, sourceIncluded: true },
+          artifact: { runtimeIncluded: true },
+        }),
+      ),
     );
 
     const next = appShellReducer(

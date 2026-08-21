@@ -245,37 +245,43 @@ export function nodeSummary(
     case PAGE.SOURCE: {
       // Once a source is in the workspace, surface the backend-computed stats;
       // before that, fall back to the declared origin so the card isn't empty.
-      const repo = ree.sourceAvailable ? sourceRepo : undefined;
+      const repo = ree.source.sourceAvailable ? sourceRepo : undefined;
       return [
         { label: "Name", value: repo?.name ?? null },
         { label: "Size", value: repo?.sizeLabel ?? null },
         {
           label: "Origin",
-          value: repo ? hostOf(repo.origin) : ree.originUrl ? hostOf(ree.originUrl) : null,
+          value: repo
+            ? hostOf(repo.origin)
+            : ree.spec.originUrl
+              ? hostOf(ree.spec.originUrl)
+              : null,
         },
         { label: "SWHID", value: repo?.swhid || null, title: repo?.swhid },
       ];
     }
     case PAGE.METADATA:
       return [
-        { label: "Name", value: ree.name || null },
-        { label: "Version", value: ree.catalogMetadata?.version || null },
+        { label: "Name", value: ree.spec.name || null },
+        { label: "Version", value: ree.spec.catalogMetadata?.version || null },
       ];
     case PAGE.HBOM:
       return [
         {
           label: "Components",
-          value: hbomHasAnyComponents(ree.hardwareDescription) ? "described" : null,
+          value: hbomHasAnyComponents(ree.spec.hardwareDescription) ? "described" : null,
         },
       ];
     case PAGE.EXPERIMENTS: {
-      const count = (ree.experiments ?? []).filter((entry) => entry.runScript.trim() !== "").length;
+      const count = (ree.spec.experiments ?? []).filter(
+        (entry) => entry.runScript.trim() !== "",
+      ).length;
       return [{ label: "Run scripts", value: count > 0 ? `${count} defined` : null }];
     }
     case PAGE.EVALUATE:
       // Always surface each axis's standing — level 0 reads as "None", so the
       // three axes are visible whether or not the REE has been scored yet.
-      return axisStandings(ree).map(({ axis, level }) => ({
+      return axisStandings(ree.evaluation).map(({ axis, level }) => ({
         label: axis.label,
         value: axisStepLabel(axis, level),
       }));
@@ -283,25 +289,25 @@ export function nodeSummary(
       return [
         {
           label: "Runtime",
-          value: ree.runtime && ree.runtime !== "__skipped__" ? "image ready" : null,
+          value: ree.spec.runtime && ree.spec.runtime !== "__skipped__" ? "image ready" : null,
         },
       ];
     case PAGE.SBOM:
-      return [{ label: "SBOM", value: ree.sbom ? "inventoried" : null }];
+      return [{ label: "SBOM", value: ree.spec.sbom ? "inventoried" : null }];
     case PAGE.ACTIVATION:
       return [
         {
           label: "Run script",
-          value: ree.activation?.runScript?.trim() ? "configured" : null,
+          value: ree.spec.activation?.runScript?.trim() ? "configured" : null,
         },
       ];
     case PAGE.ARCHIVE:
       return [
         { label: "DOI", value: null },
-        { label: "SWHID", value: ree.swhid || null, title: ree.swhid },
+        { label: "SWHID", value: ree.spec.swhid || null, title: ree.spec.swhid },
       ];
     case PAGE.SEAL:
-      return [{ label: "State", value: ree.sealedAt ? "sealed" : "draft" }];
+      return [{ label: "State", value: ree.artifact.sealedAt ? "sealed" : "draft" }];
     default:
       return [];
   }

@@ -12,24 +12,17 @@ import {
   patch,
   setArtifactStatus,
   setEvaluationState,
+  setFocusedField,
   setLocked,
   setRepoMode,
   setStepParams,
   setWorkspaceSourceState,
   updateReeSpec,
-} from "@shell/ui/app-shell/state/actions";
-import type { ReeIntentState } from "@shell/ui/app-shell/state/reeIntent";
-import type { ReeSessionState } from "@shell/ui/app-shell/state/reeSession";
-import type { StepRunState } from "@shell/ui/app-shell/state/stepRunState";
-import { type AppShellAction, resolveUpdater, type Updater } from "@shell/ui/app-shell/state/types";
-import type { UiChromeState } from "@shell/ui/app-shell/state/uiChrome";
+} from "@shell/state/ree-editor/store/actions";
+import type { AppShellAction, Updater } from "@shell/state/ree-editor/store/types";
 import type React from "react";
 
 interface CreateReeEditorCommandsArgs {
-  reeIntent: ReeIntentState;
-  reeSession: ReeSessionState;
-  stepRuns: StepRunState;
-  uiChrome: UiChromeState;
   dispatch: React.Dispatch<AppShellAction>;
   runAction: (key: string, params?: GenericReeStepParams) => Promise<void>;
   runStep: <K extends ReeStepKey>(key: K, params: ReeStepRunParams<K>) => Promise<void>;
@@ -42,7 +35,7 @@ interface CreateReeEditorCommandsArgs {
   handleDownloadRee: () => void;
   handleSealRee: (inclusionOpts: InclusionOpts) => Promise<void>;
   handleDownloadSourceFiles: (
-    originType: ReeIntentState["reeSpec"]["sourceType"],
+    originType: ReeSpec["sourceType"],
     sourceUrl: string,
     revision?: string,
   ) => Promise<void>;
@@ -52,11 +45,51 @@ interface CreateReeEditorCommandsArgs {
   flushReeIntent: () => Promise<void>;
 }
 
+export interface EditorStateCommands {
+  setReeSpec(value: Updater<ReeSpec>): void;
+  setWorkspaceSourceState(value: Updater<WorkspaceSourceState>): void;
+  setArtifactStatus(value: Updater<ArtifactStatus>): void;
+  setEvaluationState(value: Updater<EvaluationState>): void;
+  setStepParams(value: Updater<ReeStepParams>): void;
+}
+
+export interface EditorChromeCommands {
+  setPage(nextPage: AppShellPage): void;
+  setLocked(value: Updater<boolean>): void;
+  setRepoMode(value: Updater<"url" | "upload">): void;
+  setFocusedField(value: Updater<string | null>): void;
+  setFilesConsoleOpen(open: boolean): void;
+  clearToast(): void;
+}
+
+export interface EditorWorkflowCommands {
+  onSeal(inclusionOpts: InclusionOpts): void;
+  onDownloadRee(): void;
+  onDownloadSourceFiles(
+    originType: ReeSpec["sourceType"],
+    sourceUrl: string,
+    revision?: string,
+  ): Promise<void>;
+  onWorkspaceUpload(payload: SourceUploadCommit): void;
+  onRemoveWorkspaceSource(): void;
+  onDownloadWorkspaceFile(path: string, suggestedName?: string): Promise<void>;
+  onRunAction(key: string, params?: GenericReeStepParams): Promise<void>;
+  onCancelAction(key: string): Promise<void>;
+  onRunStep<K extends ReeStepKey>(key: K, params: ReeStepRunParams<K>): Promise<void>;
+  onPersistWorkspaceFile(
+    previousPath: string | undefined,
+    path: string,
+    content: string,
+  ): Promise<void>;
+  flushReeIntent(): Promise<void>;
+}
+
+export interface ReeEditorCommands
+  extends EditorStateCommands,
+    EditorChromeCommands,
+    EditorWorkflowCommands {}
+
 export function createReeEditorCommands({
-  reeIntent,
-  reeSession,
-  stepRuns,
-  uiChrome,
   dispatch,
   runAction,
   runStep,
@@ -69,9 +102,7 @@ export function createReeEditorCommands({
   handleRemoveWorkspaceSource,
   downloadWorkspaceFile,
   flushReeIntent,
-}: CreateReeEditorCommandsArgs) {
-  const resolveNext = <T>(previous: T, value: Updater<T>): T => resolveUpdater(previous, value);
-
+}: CreateReeEditorCommandsArgs): ReeEditorCommands {
   const handleSeal = (inclusionOpts: InclusionOpts) => {
     void handleSealRee(inclusionOpts);
   };
@@ -80,24 +111,14 @@ export function createReeEditorCommands({
   // (page/nav/focus/repo-mode); everything else goes through typed actions.
   return {
     setPage: (nextPage: AppShellPage) => dispatch(patch("uiChrome", { page: nextPage })),
-    setReeSpec: (value: Updater<ReeSpec>) =>
-      dispatch(updateReeSpec(() => resolveNext(reeIntent.reeSpec, value))),
+    setReeSpec: (value: Updater<ReeSpec>) => dispatch(updateReeSpec(value)),
     setWorkspaceSourceState: (value: Updater<WorkspaceSourceState>) =>
-      dispatch(setWorkspaceSourceState(() => resolveNext(reeSession.workspaceSourceState, value))),
-    setArtifactStatus: (value: Updater<ArtifactStatus>) =>
-      dispatch(setArtifactStatus(() => resolveNext(reeSession.artifactStatus, value))),
-    setEvaluationState: (value: Updater<EvaluationState>) =>
-      dispatch(setEvaluationState(() => resolveNext(stepRuns.evaluationState, value))),
-    setLocked: (value: boolean | ((current: boolean) => boolean)) =>
-      dispatch(setLocked(typeof value === "function" ? value(uiChrome.locked) : value)),
-    setRepoMode: (value: "url" | "upload" | ((current: "url" | "upload") => "url" | "upload")) =>
-      dispatch(setRepoMode(typeof value === "function" ? value(uiChrome.repoMode) : value)),
-    setFocusedField: (value: string | null | ((current: string | null) => string | null)) =>
-      dispatch(
-        patch("uiChrome", {
-          focusedField: typeof value === "function" ? value(uiChrome.focusedField) : value,
-        }),
-      ),
+      dispatch(setWorkspaceSourceState(value)),
+    setArtifactStatus: (value: Updater<ArtifactStatus>) => dispatch(setArtifactStatus(value)),
+    setEvaluationState: (value: Updater<EvaluationState>) => dispatch(setEvaluationState(value)),
+    setLocked: (value: Updater<boolean>) => dispatch(setLocked(value)),
+    setRepoMode: (value: Updater<"url" | "upload">) => dispatch(setRepoMode(value)),
+    setFocusedField: (value: Updater<string | null>) => dispatch(setFocusedField(value)),
     setStepParams: (value: ReeStepParams | ((current: ReeStepParams) => ReeStepParams)) =>
       dispatch(setStepParams((current) => (typeof value === "function" ? value(current) : value))),
     setFilesConsoleOpen: (open: boolean) => dispatch(patch("uiChrome", { filesConsoleOpen: open })),

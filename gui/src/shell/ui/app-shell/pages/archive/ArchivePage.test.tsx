@@ -1,19 +1,21 @@
 import { PAGE } from "@core/app-shell/pages";
-import { createEmptyReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
+import {
+  createEmptyReeEditorViewModel,
+  patchReeEditorViewModel,
+  type ReeEditorViewModelPatch,
+} from "@core/ree-editor/reeEditorViewModel";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithShell } from "../../../../../../tests/support/renderApp";
 import { PageArchive } from "./ArchivePage";
 
-function renderArchive(
-  reeOverrides: Partial<ReturnType<typeof createEmptyReeEditorViewModel>> = {},
-) {
+function renderArchive(reeOverrides: ReeEditorViewModelPatch = {}) {
   const onRun = vi.fn();
   const onGo = vi.fn();
   renderWithShell(
     <PageArchive
-      ree={{ ...createEmptyReeEditorViewModel(), ...reeOverrides }}
+      ree={patchReeEditorViewModel(createEmptyReeEditorViewModel(), reeOverrides)}
       artifactStatus={{}}
       badges={{}}
       logs={{}}
@@ -35,7 +37,7 @@ describe("PageArchive workflow", () => {
 
   it("collects destination parameters and submits a ready deposit", async () => {
     const user = userEvent.setup();
-    const { onRun } = renderArchive({ sourceAvailable: true });
+    const { onRun } = renderArchive({ source: { sourceAvailable: true } });
     await user.selectOptions(screen.getByLabelText("Visit type", { exact: false }), "tar");
     await user.click(screen.getByTitle("No"));
     await user.click(screen.getByRole("button", { name: "Deposit to Software Heritage" }));
@@ -50,7 +52,7 @@ describe("PageArchive workflow", () => {
 
   it("switches repository requirements and routes to sealing", async () => {
     const user = userEvent.setup();
-    const { onGo } = renderArchive({ name: "Demo", sbom: "sbom.json" });
+    const { onGo } = renderArchive({ spec: { name: "Demo", sbom: "sbom.json" } });
     await user.click(screen.getByRole("button", { name: "Zenodo" }));
     expect(screen.getByRole("button", { name: "Deposit to Zenodo" })).toBeEnabled();
     await user.click(screen.getByRole("button", { name: /Next: Seal/ }));

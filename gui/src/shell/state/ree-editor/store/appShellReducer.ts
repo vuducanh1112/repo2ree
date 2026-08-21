@@ -220,20 +220,36 @@ function cancelStepRun(
   };
 }
 
-function setLocked(state: AppShellContextState, locked: boolean): AppShellContextState {
+function setLocked(
+  state: AppShellContextState,
+  value: Extract<AppShellAction, { type: "setLocked" }>["value"],
+): AppShellContextState {
   return {
     ...state,
-    uiChrome: { ...state.uiChrome, locked },
+    uiChrome: { ...state.uiChrome, locked: resolveUpdater(state.uiChrome.locked, value) },
   };
 }
 
 function setRepoMode(
   state: AppShellContextState,
-  repoMode: "url" | "upload",
+  value: Extract<AppShellAction, { type: "setRepoMode" }>["value"],
 ): AppShellContextState {
   return {
     ...state,
-    uiChrome: { ...state.uiChrome, repoMode },
+    uiChrome: { ...state.uiChrome, repoMode: resolveUpdater(state.uiChrome.repoMode, value) },
+  };
+}
+
+function setFocusedField(
+  state: AppShellContextState,
+  value: Extract<AppShellAction, { type: "setFocusedField" }>["value"],
+): AppShellContextState {
+  return {
+    ...state,
+    uiChrome: {
+      ...state.uiChrome,
+      focusedField: resolveUpdater(state.uiChrome.focusedField, value),
+    },
   };
 }
 
@@ -330,9 +346,11 @@ export function appShellReducer(
     case "cancelStepRun":
       return cancelStepRun(state, action);
     case "setLocked":
-      return setLocked(state, action.locked);
+      return setLocked(state, action.value);
     case "setRepoMode":
-      return setRepoMode(state, action.repoMode);
+      return setRepoMode(state, action.value);
+    case "setFocusedField":
+      return setFocusedField(state, action.value);
     case "setStepRunLoading":
       return setStepRunLoading(state, action.key);
     case "completeStepRun":

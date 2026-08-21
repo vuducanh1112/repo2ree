@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
 import type { FileTreeNode } from "../../core/workspace/FileTree";
-import { createEmptyReeSpec } from "../ree/ReeSpec";
-import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 import {
   planClearedSourceStateResult,
   planDownloadedSourceState,
@@ -11,11 +9,8 @@ import {
   planUploadedSourceState,
 } from "./sourceAcquisitionPlanning";
 
-function buildRee(): ReeEditorViewModel {
-  return {
-    ...createEmptyReeSpec(),
-    name: "demo",
-  };
+function buildRee() {
+  return { sourceAvailable: false };
 }
 
 describe("sourceAcquisitionPlanning", () => {

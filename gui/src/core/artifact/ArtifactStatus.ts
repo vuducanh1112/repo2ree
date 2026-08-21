@@ -7,7 +7,7 @@ export interface ArtifactStatus {
 /**
  * A REE is sealed once the backend has stamped both a seal time and a content
  * hash into the session. This is the single source of truth for sealed-ness;
- * the read-only UI lock derives from it (see `createReeEditorStateFromModel`).
+ * the shell's read-only UI lock derives from it during workspace hydration.
  */
 export function isSealed(status: ArtifactStatus): boolean {
   return Boolean(status.sealedAt && status.sealHash);

@@ -4,9 +4,10 @@ import { appShellPorts } from "@shell/app/bootstrap/appShellPorts";
 import { useReeId } from "@shell/data/apiRuntime";
 import { useReeClient } from "@shell/data/ree/client";
 import { useReeRunsClient } from "@shell/data/runs/client";
-import type { AppShellAction } from "@shell/ui/app-shell/state/types";
+import type { AppShellAction } from "@shell/state/ree-editor/store/types";
 import { useQueryClient } from "@tanstack/react-query";
 import type React from "react";
+import { useMemo } from "react";
 import type { ShowToast } from "../types";
 import { createSourceActions } from "./sourceActions";
 
@@ -28,16 +29,29 @@ export function useSourceAcquisition({
   const reeClient = useReeClient();
   const executionRunsClient = useReeRunsClient();
 
-  return createSourceActions({
-    ree,
-    reeClient,
-    executionRunsClient,
-    reeId,
-    queryClient,
-    dispatch,
-    refreshWorkspaceFiles,
-    showToast,
-    clock: appShellPorts.clock,
-    sleep: appShellPorts.sleep,
-  });
+  return useMemo(
+    () =>
+      createSourceActions({
+        ree,
+        reeClient,
+        executionRunsClient,
+        reeId,
+        queryClient,
+        dispatch,
+        refreshWorkspaceFiles,
+        showToast,
+        clock: appShellPorts.clock,
+        sleep: appShellPorts.sleep,
+      }),
+    [
+      dispatch,
+      executionRunsClient,
+      queryClient,
+      ree,
+      reeClient,
+      reeId,
+      refreshWorkspaceFiles,
+      showToast,
+    ],
+  );
 }

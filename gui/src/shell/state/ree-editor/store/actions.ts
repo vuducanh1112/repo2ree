@@ -66,14 +66,19 @@ export const cancelStepRun = (key: string, runId?: string): AppShellAction => ({
   runId,
 });
 
-export const setLocked = (locked: boolean): AppShellAction => ({
+export const setLocked = (value: Updater<boolean>): AppShellAction => ({
   type: "setLocked",
-  locked,
+  value,
 });
 
-export const setRepoMode = (repoMode: "url" | "upload"): AppShellAction => ({
+export const setRepoMode = (value: Updater<"url" | "upload">): AppShellAction => ({
   type: "setRepoMode",
-  repoMode,
+  value,
+});
+
+export const setFocusedField = (value: Updater<string | null>): AppShellAction => ({
+  type: "setFocusedField",
+  value,
 });
 
 export const setStepRunLoading = (key: string): AppShellAction => ({

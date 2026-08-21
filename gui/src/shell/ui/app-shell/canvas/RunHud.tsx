@@ -14,7 +14,7 @@ import {
   runsForHudTab,
 } from "@core/runs/runHud";
 import { useReeRunLogsQuery, useReeRunQuery, useReeRunsQuery } from "@shell/data/runs/queries";
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { Ic } from "../../shared/components/Icon";
 import { useCornerResize } from "../../shared/hooks/useCornerResize";
 import { failureTone } from "../../theme/appearance";
@@ -42,7 +42,7 @@ function formatStartTime(run: ReeRunSummary): string {
  * open REE, split into one tab per pipeline step. Auto-follows new runs (also
  * ones started outside this tab, e.g. by an agent) until the user picks a tab.
  */
-export function RunHud() {
+export const RunHud = memo(function RunHud() {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<RunHudTabKey>("source");
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
@@ -181,7 +181,7 @@ export function RunHud() {
       </div>
     </HudConsole>
   );
-}
+});
 
 function HudTab({
   abbrev,

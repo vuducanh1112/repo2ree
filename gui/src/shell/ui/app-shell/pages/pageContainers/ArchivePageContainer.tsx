@@ -1,18 +1,17 @@
-import { PAGE } from "@core/app-shell/pages";
 import type { ReeRunLogs } from "@core/ree/ReeTypes";
 import { useReeId } from "@shell/data/apiRuntime";
+import { useStepRunLogEntry } from "@shell/state/ree-editor/step-runs/useStepRunLogEntry";
 import { PageArchive as ArchivePage } from "../archive/ArchivePage";
-import { type AppShellPageContainerProps, ContentSection, useStepRunLogEntry } from "./shared";
+import type { ArchivePageContainerProps } from "./controllerContracts";
+import { ContentSection } from "./shared";
 
 export function ArchivePageContainer({
   workspaceRemote,
   stepRuns,
-  uiChrome,
   ree,
   commands,
-}: AppShellPageContainerProps) {
+}: ArchivePageContainerProps) {
   const reeId = useReeId();
-  const { page } = uiChrome;
   const { badges, actionStates } = stepRuns;
   const swhLog = useStepRunLogEntry({
     reeId,
@@ -33,10 +32,6 @@ export function ArchivePageContainer({
   if (swhLog) logs.swh = swhLog;
   if (zenodoLog) logs.zenodo = zenodoLog;
   if (dataverseLog) logs.dataverse = dataverseLog;
-
-  if (page !== PAGE.ARCHIVE) {
-    return null;
-  }
 
   return (
     <ContentSection>

@@ -17,6 +17,6 @@ export function useAppShell() {
 
   return {
     ...reeEditor,
-    uiChrome,
+    chrome: uiChrome,
   };
 }

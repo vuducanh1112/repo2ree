@@ -1,4 +1,4 @@
-import { toReePatch, toReePatchFromSlices } from "@core/ree/reePatch";
+import { toReePatchFromSlices } from "@core/ree/reePatch";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import type { FileTreeNode } from "@core/workspace/FileTree";
 import { shouldHydrateRemoteRee, shouldScheduleReeIntentSync } from "@core/workspace/syncReeIntent";
@@ -40,7 +40,7 @@ export function useReeIntentSync({
   provisioned,
   hydrateWorkspace,
 }: UseReeIntentSyncArgs) {
-  const initialPatchKey = JSON.stringify(toReePatch(ree));
+  const initialPatchKey = JSON.stringify(toReePatchFromSlices(toPatchSlices(ree)));
   const lastSyncedReeRef = useRef<string>(initialPatchKey);
   const latestLocalPatchKeyRef = useRef<string>(initialPatchKey);
   const observedLocalPatchKeyRef = useRef<string>(initialPatchKey);
@@ -114,7 +114,7 @@ export function useReeIntentSync({
     [refreshWorkspace],
   );
 
-  const buildReePatch = useCallback(() => toReePatch(ree), [ree]);
+  const buildReePatch = useCallback(() => toReePatchFromSlices(toPatchSlices(ree)), [ree]);
 
   // Single owner of the PATCH + refresh round-trip, shared by the debounced
   // autosave and the explicit flush() below. Publishing the in-flight promise
@@ -284,5 +284,14 @@ export function useReeIntentSync({
     syncState,
     isDirty: syncState.phase !== "clean",
     retrySync: flush,
+  };
+}
+
+function toPatchSlices(ree: ReeEditorViewModel) {
+  return {
+    reeSpec: ree.spec,
+    workspaceSourceState: ree.source,
+    artifactStatus: ree.artifact,
+    evaluationState: ree.evaluation,
   };
 }

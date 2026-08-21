@@ -14,7 +14,7 @@ import type { ReeRun } from "@core/runs/ReeRun";
 import type { FileTreeNode } from "@core/workspace/FileTree";
 import type { AppShellRuntimePorts } from "@shell/app/bootstrap/ports";
 import type { ReeRunsClient } from "@shell/data/runs/client";
-import { cancelStepRun } from "@shell/ui/app-shell/state/actions";
+import { cancelStepRun } from "@shell/state/ree-editor/store/actions";
 import type { QueryClient } from "@tanstack/react-query";
 import type { ShowToast } from "../types";
 import { executeStepRunAction } from "./executeStepRunAction";

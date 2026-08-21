@@ -1,22 +1,22 @@
 import { appShellPageForField } from "@core/app-shell/pages";
 import { isFailedStepOutcome } from "@core/ree/ReeTypes";
+import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { defaultParamsForReeStep, REE_STEPS } from "@core/ree-steps/stepCatalog";
 import { missingReeStepRequirements } from "@core/ree-steps/stepPolicies";
 import type { ReeStepRunParams } from "@core/ree-steps/stepRunParams";
 import type { ReeStepParamValue } from "@core/ree-steps/stepTypes";
-import type { ReeRun } from "@core/runs/ReeRun";
 import { useReeId } from "@shell/data/apiRuntime";
-import { useReeRunLogsQuery, useReeRunQuery } from "@shell/data/runs/queries";
+import type { ReeEditorCommands } from "@shell/state/ree-editor/hooks/createReeEditorCommands";
+import { useStepRunLogEntry } from "@shell/state/ree-editor/step-runs/useStepRunLogEntry";
+import type { StepRunState } from "@shell/state/ree-editor/store/stepRunState";
+import type { UiChromeState } from "@shell/state/ree-editor/store/uiChrome";
 import { useCallback, useMemo } from "react";
-import type { useAppShell } from "./useAppShell";
-
-type AppShellController = ReturnType<typeof useAppShell>;
 
 interface UseStepPageControllerArgs {
-  ree: AppShellController["ree"];
-  stepRuns: AppShellController["stepRuns"];
-  uiChrome: AppShellController["uiChrome"];
-  commands: AppShellController["commands"];
+  ree: ReeEditorViewModel;
+  stepRuns: StepRunState;
+  uiChrome: UiChromeState;
+  commands: Pick<ReeEditorCommands, "setStepParams" | "setPage">;
 }
 
 export function useStepPageController({
@@ -34,7 +34,7 @@ export function useStepPageController({
     if (!step) {
       return [];
     }
-    return missingReeStepRequirements(step.key, ree);
+    return missingReeStepRequirements(step.key, { ...ree.spec, ...ree.source });
   }, [step, ree]);
 
   const params = useMemo(() => {
@@ -73,18 +73,11 @@ export function useStepPageController({
   }, [commands, missing]);
 
   const runId = step ? activeRunIds[step.key] : undefined;
-  const runQuery = useReeRunQuery(reeId, runId);
-  const logsQuery = useReeRunLogsQuery(reeId, runId);
-  const log = useMemo(() => {
-    if (!step || !runId) {
-      return null;
-    }
-    const runTimestamp = resolveStepRunTimestamp(runQuery.data, timestamps[step.key]);
-    return {
-      lines: logsQuery.data?.lines ?? [],
-      ts: runTimestamp,
-    };
-  }, [logsQuery.data?.lines, runId, runQuery.data, timestamps, step]);
+  const log = useStepRunLogEntry({
+    reeId,
+    runId,
+    fallbackTimestamp: step ? timestamps[step.key] : undefined,
+  });
 
   if (!step || !params) {
     return null;
@@ -107,10 +100,4 @@ export function useStepPageController({
     setParam,
     goToRequirements,
   };
-}
-
-function resolveStepRunTimestamp(run: ReeRun | undefined, fallback?: string): string {
-  return (
-    run?.finishedAt || run?.startedAt || run?.createdAt || fallback || new Date().toISOString()
-  );
 }

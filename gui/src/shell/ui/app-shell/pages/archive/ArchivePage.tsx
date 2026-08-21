@@ -65,7 +65,8 @@ export function PageArchive({
   const setParam = (repoKey: string, paramKey: string, val: string | boolean) =>
     setParams((prevParams) => ({ ...prevParams, [`${repoKey}_${paramKey}`]: val }));
 
-  const missing = repo.requires.filter((requiredField) => !ree[requiredField.field]);
+  const requirementValues = { ...ree.spec, ...ree.source };
+  const missing = repo.requires.filter((requiredField) => !requirementValues[requiredField.field]);
   const canRun = missing.length === 0 && !running;
 
   // Deposit identifiers are archive-binding attestations held server-side, not

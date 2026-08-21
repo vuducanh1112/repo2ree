@@ -1,10 +1,6 @@
 import { DEFAULT_REE_ID } from "@core/ree/ReeId";
 import type { ReeFile } from "@core/ree/ReeTypes";
 import {
-  createReeEditorStateFromModel,
-  type ReeEditorState,
-} from "@core/ree-editor/reeEditorState";
-import {
   createReeEditorViewModel,
   type ReeEditorViewModel,
 } from "@core/ree-editor/reeEditorViewModel";
@@ -12,12 +8,12 @@ import type { FileTreeNode } from "@core/workspace/FileTree";
 import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
 import { useReeId } from "@shell/data/apiRuntime";
 import { useReeQuery } from "@shell/data/ree/queries";
-import { showToast as enqueueToast } from "@shell/ui/app-shell/state/actions";
-import type { ReeIntentState } from "@shell/ui/app-shell/state/reeIntent";
-import type { ReeSessionState } from "@shell/ui/app-shell/state/reeSession";
-import type { StepRunState } from "@shell/ui/app-shell/state/stepRunState";
-import type { AppShellAction } from "@shell/ui/app-shell/state/types";
-import type { UiChromeState } from "@shell/ui/app-shell/state/uiChrome";
+import { showToast as enqueueToast } from "@shell/state/ree-editor/store/actions";
+import type { ReeIntentState } from "@shell/state/ree-editor/store/reeIntent";
+import type { ReeSessionState } from "@shell/state/ree-editor/store/reeSession";
+import type { StepRunState } from "@shell/state/ree-editor/store/stepRunState";
+import type { AppShellAction } from "@shell/state/ree-editor/store/types";
+import type { UiChromeState } from "@shell/state/ree-editor/store/uiChrome";
 import type React from "react";
 import { useCallback, useMemo, useRef } from "react";
 import { useReeDownloads } from "../downloads/useReeDownloads";
@@ -38,6 +34,16 @@ interface UseReeEditorArgs {
   dispatch: React.Dispatch<AppShellAction>;
 }
 
+export interface WorkspaceRemoteState {
+  workspaceFiles: FileTreeNode[];
+  reeArtifactFiles: ReeFile[];
+  workspaceSourceState: ReeSessionState["workspaceSourceState"];
+  artifactStatus: ReeSessionState["artifactStatus"];
+  sourceSnapshotArchiveName: string;
+  sourceSnapshotFiles: FileTreeNode[];
+  sourceRepo: SourceRepoMetadata | undefined;
+}
+
 export function useReeEditor({
   reeIntent,
   reeSession,
@@ -53,13 +59,28 @@ export function useReeEditor({
   const authorReceipts = reeQuery.data?.authorReceipts ?? [];
   const sourceRepo = reeQuery.data?.sourceRepo;
 
-  const reeEditorState: ReeEditorState = useMemo(
-    () => createReeEditorStateFromModel({ reeIntent, reeSession, uiChrome, stepRuns }),
-    [reeIntent, reeSession, uiChrome, stepRuns],
-  );
   const ree: ReeEditorViewModel = useMemo(
-    () => createReeEditorViewModel(reeEditorState),
-    [reeEditorState],
+    () =>
+      createReeEditorViewModel({
+        reeSpec: reeIntent.reeSpec,
+        workspaceSourceState: reeSession.workspaceSourceState,
+        artifactStatus: reeSession.artifactStatus,
+        evaluationState: stepRuns.evaluationState,
+      }),
+    [
+      reeIntent.reeSpec,
+      reeSession.artifactStatus,
+      reeSession.workspaceSourceState,
+      stepRuns.evaluationState,
+    ],
+  );
+  const evaluation = useMemo(
+    () => ({
+      dependencyLevel: ree.evaluation.dependencyLevel ?? 0,
+      environmentLevel: ree.evaluation.environmentLevel ?? 0,
+      machineLevel: ree.evaluation.machineLevel ?? 0,
+    }),
+    [ree.evaluation],
   );
 
   const showToast = useCallback<ShowToast>(
@@ -112,8 +133,9 @@ export function useReeEditor({
       refreshWorkspaceFiles,
       showToast,
     });
+  const getReeName = useCallback(() => ree.spec.name || "", [ree.spec.name]);
   const { downloadWorkspaceFile, handleDownloadRee } = useReeDownloads({
-    getReeName: () => ree.name || "",
+    getReeName,
     showToast,
     reeId,
   });
@@ -130,18 +152,14 @@ export function useReeEditor({
         workspaceFiles,
         reeArtifactFiles,
         reeSession,
-        uiChrome,
+        sourceSnapshotArchiveName: uiChrome.sourceSnapshotArchiveName,
         sourceRepo,
       }),
-    [workspaceFiles, reeArtifactFiles, reeSession, uiChrome, sourceRepo],
+    [workspaceFiles, reeArtifactFiles, reeSession, uiChrome.sourceSnapshotArchiveName, sourceRepo],
   );
   const commands = useMemo(
     () =>
       createReeEditorCommands({
-        reeIntent,
-        reeSession,
-        stepRuns,
-        uiChrome,
         dispatch,
         runAction,
         runStep,
@@ -156,7 +174,6 @@ export function useReeEditor({
         flushReeIntent,
       }),
     [
-      stepRuns,
       cancelAction,
       dispatch,
       downloadWorkspaceFile,
@@ -167,36 +184,35 @@ export function useReeEditor({
       handleRemoveWorkspaceSource,
       handleWorkspaceUpload,
       persistWorkspaceFile,
-      reeIntent,
-      reeSession,
       runAction,
       runStep,
-      uiChrome,
     ],
   );
 
   return {
-    provisioned,
-    workspaceHydration,
-    retryWorkspaceHydration,
-    reeIntent,
-    reeSession,
-    ree,
-    workspaceRemote,
-    stepRuns,
-    evaluation: {
-      dependencyLevel: ree.dependencyLevel ?? 0,
-      environmentLevel: ree.environmentLevel ?? 0,
-      machineLevel: ree.machineLevel ?? 0,
+    model: {
+      provisioned,
+      reeIntent,
+      reeSession,
+      ree,
+      workspaceRemote,
+      stepRuns,
+      evaluation,
+      currentReeFiles: reeArtifactFiles,
+      authorReceipts,
     },
-    currentReeFiles: reeArtifactFiles,
-    authorReceipts,
-    reeIntentSyncState,
-    isReeIntentDirty,
-    retryReeIntentSync,
+    sync: {
+      workspaceHydration,
+      retryWorkspaceHydration,
+      reeIntentSyncState,
+      isReeIntentDirty,
+      retryReeIntentSync,
+    },
     commands,
-    sealRunning,
-    sealLog,
+    seal: {
+      running: sealRunning,
+      log: sealLog,
+    },
   };
 }
 
@@ -204,15 +220,15 @@ function createWorkspaceRemoteState(args: {
   workspaceFiles: FileTreeNode[];
   reeArtifactFiles: ReeFile[];
   reeSession: ReeSessionState;
-  uiChrome: UiChromeState;
+  sourceSnapshotArchiveName: string;
   sourceRepo: SourceRepoMetadata | undefined;
-}) {
+}): WorkspaceRemoteState {
   return {
     workspaceFiles: args.workspaceFiles,
     reeArtifactFiles: args.reeArtifactFiles,
     workspaceSourceState: args.reeSession.workspaceSourceState,
     artifactStatus: args.reeSession.artifactStatus,
-    sourceSnapshotArchiveName: args.uiChrome.sourceSnapshotArchiveName,
+    sourceSnapshotArchiveName: args.sourceSnapshotArchiveName,
     sourceSnapshotFiles: [] as FileTreeNode[],
     sourceRepo: args.sourceRepo,
   };

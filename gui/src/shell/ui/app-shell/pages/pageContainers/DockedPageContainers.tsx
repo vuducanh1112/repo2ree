@@ -1,5 +1,5 @@
-import { PAGE } from "@core/app-shell/pages";
 import { useReeId } from "@shell/data/apiRuntime";
+import { useStepRunLogEntry } from "@shell/state/ree-editor/step-runs/useStepRunLogEntry";
 import { useStepPageController } from "../../hooks/useStepPageController";
 import {
   PageBuildRuntime,
@@ -11,7 +11,13 @@ import {
   PageTestActivation,
   type StepPageProps,
 } from "../index";
-import { type AppShellPageContainerProps, ContentSection, useStepRunLogEntry } from "./shared";
+import type {
+  ExperimentsPageContainerProps,
+  HardwareBomPageContainerProps,
+  MetadataPageContainerProps,
+  StepPageContainerProps,
+} from "./controllerContracts";
+import { ContentSection } from "./shared";
 
 const STEP_PAGE_COMPONENTS: Record<string, (props: StepPageProps) => JSX.Element> = {
   evaluate: (props) => <PageRepoAnalysis {...props} />,
@@ -25,14 +31,10 @@ export function MetadataPageContainer({
   stepRuns,
   uiChrome,
   commands,
-}: AppShellPageContainerProps) {
-  const { page, focusedField, locked } = uiChrome;
+}: MetadataPageContainerProps) {
+  const { focusedField, locked } = uiChrome;
   const { reeSpec } = reeIntent;
   const { badges } = stepRuns;
-
-  if (page !== PAGE.METADATA) {
-    return null;
-  }
 
   return (
     <PageMetadataEntry
@@ -54,16 +56,12 @@ export function ExperimentsPageContainer({
   uiChrome,
   commands,
   workspaceRemote,
-}: AppShellPageContainerProps) {
+}: ExperimentsPageContainerProps) {
   const reeId = useReeId();
-  const { page, focusedField, locked } = uiChrome;
+  const { focusedField, locked } = uiChrome;
   const { reeSpec } = reeIntent;
   const { badges } = stepRuns;
   const { workspaceFiles } = workspaceRemote;
-
-  if (page !== PAGE.EXPERIMENTS) {
-    return null;
-  }
 
   return (
     <PageExperiments
@@ -87,19 +85,15 @@ export function HardwareBomPageContainer({
   stepRuns,
   uiChrome,
   commands,
-}: AppShellPageContainerProps) {
+}: HardwareBomPageContainerProps) {
   const reeId = useReeId();
-  const { page, focusedField, locked } = uiChrome;
+  const { focusedField, locked } = uiChrome;
   const { badges, actionStates, timestamps } = stepRuns;
   const hbomLog = useStepRunLogEntry({
     reeId,
     runId: stepRuns.activeRunIds.hbom,
     fallbackTimestamp: timestamps.hbom,
   });
-
-  if (page !== PAGE.HBOM) {
-    return null;
-  }
 
   return (
     <PageHardwareBom
@@ -121,7 +115,7 @@ export function HardwareBomPageContainer({
   );
 }
 
-export function StepPageContainer(props: AppShellPageContainerProps) {
+export function StepPageContainer(props: StepPageContainerProps) {
   const { ree, workspaceRemote, stepRuns, commands, currentReeFiles } = props;
   const { badges } = stepRuns;
   const { workspaceFiles, workspaceSourceState, artifactStatus } = workspaceRemote;

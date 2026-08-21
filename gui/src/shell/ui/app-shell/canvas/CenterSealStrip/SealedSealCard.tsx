@@ -23,7 +23,7 @@ export function SealedSealCard({
   cableItems,
   currentLevelMeta,
 }: SealedSealCardProps) {
-  const sealDate = new Date(ree.sealedAt ?? new Date().toISOString()).toLocaleString([], {
+  const sealDate = new Date(ree.artifact.sealedAt ?? new Date().toISOString()).toLocaleString([], {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -47,7 +47,7 @@ export function SealedSealCard({
       <div className={styles.sealedBody}>
         <div className={styles.metaRow}>
           <span className={styles.metaKey}>hash</span>
-          <span className={styles.metaHash}>{ree.sealHash || "—"}</span>
+          <span className={styles.metaHash}>{ree.artifact.sealHash || "—"}</span>
         </div>
         <div className={styles.metaRow}>
           <span className={styles.metaKey}>sealed</span>

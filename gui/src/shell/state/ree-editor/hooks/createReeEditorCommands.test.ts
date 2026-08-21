@@ -1,30 +1,30 @@
 import { PAGE } from "@core/app-shell/pages";
-import { createInitialState } from "@shell/ui/app-shell/state/appShellReducer";
+import { appShellReducer, createInitialState } from "@shell/state/ree-editor/store/appShellReducer";
+import type { AppShellAction } from "@shell/state/ree-editor/store/types";
 import { describe, expect, it, vi } from "vitest";
 import { createReeEditorCommands } from "./createReeEditorCommands";
 
+function commandDelegates() {
+  return {
+    runAction: vi.fn().mockResolvedValue(undefined),
+    runStep: vi.fn().mockResolvedValue(undefined),
+    cancelAction: vi.fn().mockResolvedValue(undefined),
+    persistWorkspaceFile: vi.fn().mockResolvedValue(undefined),
+    handleDownloadRee: vi.fn(),
+    handleSealRee: vi.fn().mockResolvedValue(undefined),
+    handleDownloadSourceFiles: vi.fn().mockResolvedValue(undefined),
+    handleWorkspaceUpload: vi.fn(),
+    handleRemoveWorkspaceSource: vi.fn(),
+    downloadWorkspaceFile: vi.fn().mockResolvedValue(undefined),
+    flushReeIntent: vi.fn().mockResolvedValue(undefined),
+  };
+}
+
 describe("createReeEditorCommands", () => {
   it("adapts UI setters and imperative commands to their owners", async () => {
-    const state = createInitialState();
     const dispatch = vi.fn();
-    const delegates = {
-      runAction: vi.fn().mockResolvedValue(undefined),
-      runStep: vi.fn().mockResolvedValue(undefined),
-      cancelAction: vi.fn().mockResolvedValue(undefined),
-      persistWorkspaceFile: vi.fn().mockResolvedValue(undefined),
-      handleDownloadRee: vi.fn(),
-      handleSealRee: vi.fn().mockResolvedValue(undefined),
-      handleDownloadSourceFiles: vi.fn().mockResolvedValue(undefined),
-      handleWorkspaceUpload: vi.fn(),
-      handleRemoveWorkspaceSource: vi.fn(),
-      downloadWorkspaceFile: vi.fn().mockResolvedValue(undefined),
-      flushReeIntent: vi.fn().mockResolvedValue(undefined),
-    };
+    const delegates = commandDelegates();
     const commands = createReeEditorCommands({
-      reeIntent: state.reeIntent,
-      reeSession: state.reeSession,
-      stepRuns: state.stepRuns,
-      uiChrome: state.uiChrome,
       dispatch,
       ...delegates,
     });
@@ -60,7 +60,7 @@ describe("createReeEditorCommands", () => {
       "setEvaluationState",
       "setLocked",
       "setRepoMode",
-      "patch",
+      "setFocusedField",
       "setStepParams",
       "patch",
       "clearToast",
@@ -69,5 +69,25 @@ describe("createReeEditorCommands", () => {
     expect(delegates.runAction).toHaveBeenCalledWith("build", {});
     expect(delegates.runStep).toHaveBeenCalledWith("build", {});
     expect(delegates.persistWorkspaceFile).toHaveBeenCalledWith(undefined, "run.sh", "echo ok");
+  });
+
+  it("composes functional updates against reducer-current state", () => {
+    let state = createInitialState();
+    const dispatch = (action: AppShellAction) => {
+      state = appShellReducer(state, action);
+    };
+    const commands = createReeEditorCommands({ dispatch, ...commandDelegates() });
+
+    commands.setReeSpec((current) => ({ ...current, name: "first update" }));
+    commands.setReeSpec((current) => ({
+      ...current,
+      catalogMetadata: { ...current.catalogMetadata, version: "2" },
+    }));
+    commands.setLocked((current) => !current);
+    commands.setLocked((current) => !current);
+
+    expect(state.reeIntent.reeSpec.name).toBe("first update");
+    expect(state.reeIntent.reeSpec.catalogMetadata.version).toBe("2");
+    expect(state.uiChrome.locked).toBe(false);
   });
 });

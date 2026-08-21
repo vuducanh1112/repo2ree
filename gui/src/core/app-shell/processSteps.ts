@@ -94,13 +94,13 @@ export const PROCESS_STEPS: ProcessStep[] = [
 ];
 
 function hasProcessStepCompleted(stepKey: AppShellPage, ree: ReeEditorViewModel, badges: Badges) {
-  if (stepKey === PAGE.SOURCE) return !!ree.sourceAvailable;
-  if (stepKey === PAGE.METADATA) return !!ree.name;
+  if (stepKey === PAGE.SOURCE) return !!ree.source.sourceAvailable;
+  if (stepKey === PAGE.METADATA) return !!ree.spec.name;
   if (stepKey === PAGE.EXPERIMENTS)
-    return (ree.experiments || []).some((entry) => !!entry.name.trim());
-  if (stepKey === PAGE.HBOM) return hbomHasAnyComponents(ree.hardwareDescription);
+    return (ree.spec.experiments || []).some((entry) => !!entry.name.trim());
+  if (stepKey === PAGE.HBOM) return hbomHasAnyComponents(ree.spec.hardwareDescription);
   if (stepKey === PAGE.BUILD) return !!badges?.build;
-  if (stepKey === PAGE.SEAL) return !!ree.sealedAt;
+  if (stepKey === PAGE.SEAL) return !!ree.artifact.sealedAt;
   if (stepKey === PAGE.ARCHIVE) return !!badges?.swh || !!badges?.zenodo || !!badges?.dataverse;
   return !!badges?.[stepKey];
 }

@@ -16,7 +16,7 @@ import { queryKeys } from "@shell/data/queryKeys";
 import type { ReeClient } from "@shell/data/ree/client";
 import type { ReeRunsClient } from "@shell/data/runs/client";
 import { observeReeRun } from "@shell/data/runs/queries";
-import { updateReeSpec } from "@shell/ui/app-shell/state/actions";
+import { updateReeSpec } from "@shell/state/ree-editor/store/actions";
 import type { QueryClient } from "@tanstack/react-query";
 import { executeSourceCommands, type ReeEditorDispatch } from "../step-runs/stepActionEffects";
 import type { ShowToast } from "../types";
@@ -109,7 +109,7 @@ export function createSourceActions({
     });
 
   const sourceAcquisition = createSourceUseCase({
-    ree,
+    ree: ree.source,
     executeCommands: runCommands,
     sourceChanged: resetSourceStepsState,
     runSourceAction: runRemoteOrLocalSourceAction,
@@ -119,7 +119,7 @@ export function createSourceActions({
   });
 
   const handleDownloadSourceFiles = async (
-    originType: ReeEditorViewModel["sourceType"],
+    originType: ReeEditorViewModel["spec"]["sourceType"],
     sourceUrl: string,
     revision?: string,
   ) => sourceAcquisition.downloadSource(originType, sourceUrl, revision);

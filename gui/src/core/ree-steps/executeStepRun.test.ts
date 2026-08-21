@@ -1,10 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { createEmptyReeSpec } from "../ree/ReeSpec";
-import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 import { executeStepRun } from "./executeStepRun";
 import type { StepCommandPlannerMap } from "./stepCommands";
 
-function buildRee(): ReeEditorViewModel {
+function buildRee() {
   return {
     ...createEmptyReeSpec(),
     name: "demo",

@@ -63,7 +63,7 @@ export async function executeStepRunAction({
   return executeStepRun({
     key,
     params,
-    ree,
+    ree: ree.spec,
     workspaceFiles,
     executionRunner: {
       startReeRun: (scriptKey, runParams) => startReeRun(scriptKey, runParams),

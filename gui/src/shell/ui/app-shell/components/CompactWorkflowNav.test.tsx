@@ -12,7 +12,10 @@ describe("CompactWorkflowNav", () => {
     render(
       <CompactWorkflowNav
         page={PAGE.METADATA}
-        ree={{ ...createEmptyReeEditorViewModel(), name: "Responsive REE" }}
+        ree={{
+          ...createEmptyReeEditorViewModel(),
+          spec: { ...createEmptyReeEditorViewModel().spec, name: "Responsive REE" },
+        }}
         badges={{ build: true }}
         onNavigate={onNavigate}
       />,
