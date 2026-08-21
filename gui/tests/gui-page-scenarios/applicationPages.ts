@@ -88,10 +88,10 @@ export const applicationPageScenarios: ApplicationPageScenario[] = [
     },
   ),
   workspaceScenario("build runtime", "build-runtime.png", "Build", async (page) => {
-    await expect(page.getByText("Build Runtime", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Build Runtime" })).toBeVisible();
   }),
   workspaceScenario("software bill of materials", "sbom.png", "SBOM", async (page) => {
-    await expect(page.getByText("Generate SBOM", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Generate SBOM" })).toBeVisible();
   }),
   workspaceScenario("activation", "activation.png", "Activation", async (page) => {
     await expect(page.getByRole("heading", { name: "Test Activation" })).toBeVisible();
@@ -100,7 +100,7 @@ export const applicationPageScenarios: ApplicationPageScenario[] = [
     await expect(page.getByRole("button", { name: "EXP-001 regional-forecast" })).toBeVisible();
   }),
   workspaceScenario("archive", "archive.png", "Archive", async (page) => {
-    await expect(page.getByText("Deposit & Share", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Deposit & Share" })).toBeVisible();
   }),
   workspaceScenario("seal readiness", "seal-ready.png", "Seal", async (page) => {
     await expect(page.getByRole("button", { name: "Seal anyway" })).toBeVisible();
