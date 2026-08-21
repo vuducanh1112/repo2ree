@@ -51,32 +51,42 @@ function createReeRunQueryOptions(
 }
 
 function createReeRunLogsQueryOptions(
+  queryClient: QueryClient,
   executionRunsClient: ReeRunsClient,
   reeId: string,
   runId: string,
 ) {
+  const queryKey = queryKeys.stepRunLogs(reeId, runId);
   return queryOptions({
-    queryKey: queryKeys.stepRunLogs(reeId, runId),
+    queryKey,
     queryFn: async (): Promise<ReeRunLogChunk> => {
-      let cursor: string | undefined;
+      const existing = queryClient.getQueryData<ReeRunLogChunk>(queryKey);
+      let cursor = existing?.nextCursor;
       let chunk: ReeRunLogChunk | undefined;
-      let lines: LogLine[] = [];
+      let lines = existing?.lines ?? [];
+      let hasMore = false;
 
       for (let page = 0; page < MAX_LOG_PAGES; page += 1) {
+        const previousCursor = cursor;
         chunk = await executionRunsClient.getReeRunLogs(reeId, runId, cursor);
         lines = mergeCappedLines(lines, chunk.lines);
+        cursor = chunk.nextCursor ?? cursor;
+        hasMore = chunk.hasMore;
         if (!chunk.hasMore) {
           break;
         }
-        cursor = chunk.nextCursor || cursor;
-        if (!cursor) {
+        // A backend that reports more data without advancing its cursor would
+        // otherwise make every poll repeat the same page until the safety cap.
+        if (!cursor || cursor === previousCursor) {
+          hasMore = false;
           break;
         }
       }
 
       return {
         lines,
-        hasMore: false,
+        nextCursor: cursor,
+        hasMore,
       };
     },
   });
@@ -97,7 +107,9 @@ async function fetchReeRunLogs(
   reeId: string,
   runId: string,
 ) {
-  return queryClient.fetchQuery(createReeRunLogsQueryOptions(executionRunsClient, reeId, runId));
+  return queryClient.fetchQuery(
+    createReeRunLogsQueryOptions(queryClient, executionRunsClient, reeId, runId),
+  );
 }
 
 // How briskly anything in flight is polled — the run listing that drives the
@@ -153,7 +165,7 @@ export function useReeRunLogsQuery(reeId: string | undefined, runId: string | un
   const queryClient = useQueryClient();
   const resolvedReeId = resolveReeId(runtime, reeId);
   const baseOptions = runId
-    ? createReeRunLogsQueryOptions(executionRunsClient, resolvedReeId, runId)
+    ? createReeRunLogsQueryOptions(queryClient, executionRunsClient, resolvedReeId, runId)
     : {
         queryKey: queryKeys.stepRunLogs(resolvedReeId, "idle"),
         queryFn: async () => {
@@ -164,9 +176,14 @@ export function useReeRunLogsQuery(reeId: string | undefined, runId: string | un
   return useQuery({
     ...baseOptions,
     enabled: !!runId,
-    refetchInterval: () => {
+    refetchInterval: (query) => {
       if (!runId) {
         return false;
+      }
+      // A single fetch deliberately has a page ceiling. Keep draining from the
+      // cached cursor even if the associated run has already become terminal.
+      if (query.state.data?.hasMore) {
+        return RUNS_ACTIVE_POLL_MS;
       }
       const run = queryClient.getQueryData<ReeRun>(queryKeys.stepRuns(resolvedReeId, runId));
       return isTerminalReeRunStatus(run?.status) ? false : RUNS_ACTIVE_POLL_MS;
@@ -202,6 +219,12 @@ export async function observeReeRun(
     };
 
     args.onUpdate?.(snapshot);
+
+    // Catch up immediately when one fetch reached its page ceiling. The query
+    // cache retains the cursor, so the next pass starts where this one stopped.
+    if (logs.hasMore) {
+      continue;
+    }
 
     if (isTerminalReeRunStatus(run.status)) {
       return snapshot;
