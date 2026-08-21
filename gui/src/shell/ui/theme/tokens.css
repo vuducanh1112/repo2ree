@@ -7,11 +7,11 @@
   --font-mono:
     "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, "SF Mono", "Menlo", monospace;
 
-  --text-micro: 10px;
-  --text-caption: 11px;
-  --text-label: 12px;
-  --text-body: 13px;
-  --text-body-large: 14px;
+  --text-micro: 11px;
+  --text-caption: 12px;
+  --text-label: 13px;
+  --text-body: 14px;
+  --text-body-large: 15px;
   --text-heading-small: 16px;
   --text-heading: 18px;
   --text-heading-large: 22px;

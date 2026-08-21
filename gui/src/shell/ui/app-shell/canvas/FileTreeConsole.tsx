@@ -14,7 +14,7 @@ import hud from "./HudConsole.module.css";
 const HUD_LEFT = 16;
 const HUD_TOP = 16;
 const HUD_WIDTH_OPEN = 286;
-const HUD_WIDTH_COLLAPSED = 222;
+const HUD_WIDTH_COLLAPSED = 238;
 const VIEWER_GAP = 12;
 
 interface FileTreeConsoleProps {
