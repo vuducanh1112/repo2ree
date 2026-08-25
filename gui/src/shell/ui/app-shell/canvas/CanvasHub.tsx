@@ -49,6 +49,8 @@ interface CanvasHubProps {
   onFilesConsoleOpenChange: (open: boolean) => void;
   receiptsConsoleOpen: boolean;
   onReceiptsConsoleOpenChange: (open: boolean) => void;
+  benchConsoleOpen: boolean;
+  onBenchConsoleOpenChange: (open: boolean) => void;
 }
 
 export const CanvasHub = memo(function CanvasHub({
@@ -68,6 +70,8 @@ export const CanvasHub = memo(function CanvasHub({
   onFilesConsoleOpenChange,
   receiptsConsoleOpen,
   onReceiptsConsoleOpenChange,
+  benchConsoleOpen,
+  onBenchConsoleOpenChange,
 }: CanvasHubProps) {
   const stageRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<HTMLDivElement>(null);
@@ -183,7 +187,13 @@ export const CanvasHub = memo(function CanvasHub({
         externallyTriggered
       />
 
-      <BenchConsole provisioned={provisioned} reeName={ree.spec.name} />
+      <BenchConsole
+        provisioned={provisioned}
+        reeName={ree.spec.name}
+        open={benchConsoleOpen}
+        onOpenChange={onBenchConsoleOpenChange}
+        externallyTriggered
+      />
 
       <CanvasControls
         onZoomIn={() => zoomBy(1.2)}

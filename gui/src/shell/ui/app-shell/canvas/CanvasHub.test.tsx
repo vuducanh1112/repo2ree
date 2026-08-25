@@ -103,6 +103,8 @@ describe("CanvasHub", () => {
         onFilesConsoleOpenChange={onFilesConsoleOpenChange}
         receiptsConsoleOpen
         onReceiptsConsoleOpenChange={vi.fn()}
+        benchConsoleOpen
+        onBenchConsoleOpenChange={vi.fn()}
       />,
       { reeId: "ree-1", services: services() },
     );
@@ -138,7 +140,8 @@ describe("CanvasHub", () => {
     await user.click(screen.getByRole("button", { name: "Collapse files" }));
     expect(onFilesConsoleOpenChange).toHaveBeenCalledWith(false);
     expect(await screen.findByText("Source acquired")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Expand workbench console" }));
+    // The footer bar owns the bench console's resting state, so it is handed to
+    // the canvas already open rather than expanded from a collapsed card here.
     expect((await screen.findAllByText("bench:python")).length).toBeGreaterThan(0);
   });
 
@@ -160,6 +163,8 @@ describe("CanvasHub", () => {
         onFilesConsoleOpenChange={vi.fn()}
         receiptsConsoleOpen={false}
         onReceiptsConsoleOpenChange={vi.fn()}
+        benchConsoleOpen={false}
+        onBenchConsoleOpenChange={vi.fn()}
       />,
       { reeId: "ree-1", services: services() },
     );

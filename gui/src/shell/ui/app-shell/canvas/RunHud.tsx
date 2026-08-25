@@ -12,6 +12,7 @@ import {
   type RunHudTabKey,
   runHudTabForOperation,
   runsForHudTab,
+  runHudTabLabel as tabLabel,
 } from "@core/runs/runHud";
 import { useReeRunLogsQuery, useReeRunQuery, useReeRunsQuery } from "@shell/data/runs/queries";
 import { memo, useEffect, useRef, useState } from "react";
@@ -27,23 +28,30 @@ import styles from "./RunHud.module.css";
 type StreamKey = "stdout" | "stderr" | "system";
 const STREAMS: StreamKey[] = ["stdout", "stderr", "system"];
 
-function tabLabel(key: RunHudTabKey): string {
-  return RUN_HUD_TABS.find((tab) => tab.key === key)?.label ?? key;
-}
-
 function formatStartTime(run: ReeRunSummary): string {
   const date = new Date(run.startedAt ?? run.createdAt);
   if (Number.isNaN(date.getTime())) return "—";
   return date.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit" });
 }
 
+interface RunHudProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** The persistent footer bar owns the closed-state trigger. */
+  externallyTriggered?: boolean;
+}
+
 /**
- * The logs HUD: one always-available console collecting every run of the
- * open REE, split into one tab per pipeline step. Auto-follows new runs (also
- * ones started outside this tab, e.g. by an agent) until the user picks a tab.
+ * The logs HUD: the console collecting every run of the open REE, split into
+ * one tab per pipeline step, opened from the footer bar. Auto-follows new runs
+ * (also ones started outside this tab, e.g. by an agent) until the user picks a
+ * tab, so opening it lands on whatever ran last.
  */
-export const RunHud = memo(function RunHud() {
-  const [open, setOpen] = useState(false);
+export const RunHud = memo(function RunHud({
+  open,
+  onOpenChange,
+  externallyTriggered = false,
+}: RunHudProps) {
   const [tab, setTab] = useState<RunHudTabKey>("source");
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
   const [streams, setStreams] = useState<Set<StreamKey>>(() => new Set(STREAMS));
@@ -84,10 +92,12 @@ export const RunHud = memo(function RunHud() {
     });
   };
 
+  if (externallyTriggered && !open) return null;
+
   return (
     <HudConsole
       open={open}
-      onToggle={() => setOpen((v) => !v)}
+      onToggle={() => onOpenChange(!open)}
       widthOpen={size.width}
       widthCollapsed={264}
       // Docked bottom-right, beside the zoom controls that own the corner.

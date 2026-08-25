@@ -3,6 +3,7 @@ import type { WorkbenchImageCatalog as WorkbenchImageCatalogWire } from "@shell/
 import { useQuery } from "@tanstack/react-query";
 import { useApiServices } from "../apiRuntime";
 import { queryKeys } from "../queryKeys";
+import { useReeQuery } from "../ree/queries";
 
 function mapCatalog(wire: WorkbenchImageCatalogWire): WorkbenchImageCatalog {
   return { images: wire.images, defaultId: wire.default_id };
@@ -29,4 +30,13 @@ export function defaultImageRef(catalog: WorkbenchImageCatalog | undefined): str
   return (
     catalog.images.find((image) => image.id === catalog.defaultId)?.ref ?? catalog.images[0]?.ref
   );
+}
+
+// The image this REE's workbench actually runs, falling back to the catalog
+// default until the REE detail has loaded. Both the bench console and the
+// footer bar report it, so the fallback rule is stated once.
+export function useWorkbenchImageRef(): string | undefined {
+  const { data: reeProject } = useReeQuery();
+  const { data: imageCatalog } = useWorkbenchImageCatalog();
+  return reeProject?.workbenchImage ?? defaultImageRef(imageCatalog);
 }

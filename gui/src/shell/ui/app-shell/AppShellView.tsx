@@ -14,6 +14,7 @@ import { SourceAcquisitionContent } from "./canvas/SourceAcquisitionContent";
 import { WorkbenchLab } from "./canvas/WorkbenchLab";
 import { WorkspaceDrawer } from "./canvas/WorkspaceDrawer";
 import { ReeSyncStatus } from "./components/ReeSyncStatus";
+import { WorkspaceFooterBar } from "./components/WorkspaceFooterBar";
 import { WorkspaceStatusBar } from "./components/WorkspaceStatusBar";
 import { useAppShell } from "./hooks/useAppShell";
 import { AppShellProvider } from "./providers/AppShellProvider";
@@ -163,6 +164,8 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
             onFilesConsoleOpenChange={commands.setFilesConsoleOpen}
             receiptsConsoleOpen={uiChrome.receiptsConsoleOpen}
             onReceiptsConsoleOpenChange={commands.setReceiptsConsoleOpen}
+            benchConsoleOpen={uiChrome.benchConsoleOpen}
+            onBenchConsoleOpenChange={commands.setBenchConsoleOpen}
           />
         )}
 
@@ -204,8 +207,24 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
         )}
 
         {/* Cross-page logs console: every run of this REE, split by step. */}
-        {provisioned && <RunHud />}
+        {provisioned && (
+          <RunHud
+            open={uiChrome.logsConsoleOpen}
+            onOpenChange={commands.setLogsConsoleOpen}
+            externallyTriggered
+          />
+        )}
       </main>
+
+      {provisioned && (
+        <WorkspaceFooterBar
+          provisioned={provisioned}
+          benchOpen={uiChrome.benchConsoleOpen}
+          logsOpen={uiChrome.logsConsoleOpen}
+          onBenchOpenChange={commands.setBenchConsoleOpen}
+          onLogsOpenChange={commands.setLogsConsoleOpen}
+        />
+      )}
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={commands.clearToast} />}
     </div>

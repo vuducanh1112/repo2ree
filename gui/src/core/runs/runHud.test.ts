@@ -9,6 +9,7 @@ import {
   RUN_HUD_TABS,
   runHudTabForOperation,
   runsForHudTab,
+  runTicker,
 } from "./runHud";
 
 function run(overrides: Partial<ReeRunSummary> & { runId: string }): ReeRunSummary {
@@ -148,5 +149,50 @@ describe("formatRunDuration", () => {
     expect(
       formatRunDuration(run({ runId: "r", startedAt: "garbage", finishedAt: "also-garbage" })),
     ).toBeUndefined();
+  });
+});
+
+describe("runTicker", () => {
+  it("reads an empty history as idle", () => {
+    expect(runTicker([])).toEqual({ detail: "No runs yet", tone: "idle" });
+  });
+
+  it("names the step of the newest run once everything is terminal", () => {
+    expect(
+      runTicker([
+        run({ runId: "old", operation: "source", createdAt: "2026-01-01T10:00:00Z" }),
+        run({
+          runId: "new",
+          operation: "sbom",
+          status: "failed",
+          createdAt: "2026-01-01T11:00:00Z",
+        }),
+      ]),
+    ).toEqual({ detail: "SBOM · failed", tone: "failed" });
+  });
+
+  it("lets an active run claim the line over a newer finished one", () => {
+    const ticker = runTicker([
+      run({
+        runId: "live",
+        operation: "build",
+        status: "running",
+        createdAt: "2026-01-01T10:00:00Z",
+      }),
+      run({ runId: "done", operation: "sbom", createdAt: "2026-01-01T11:00:00Z" }),
+    ]);
+    expect(ticker).toEqual({ detail: "Build · running", tone: "active" });
+  });
+
+  it("counts concurrent runs instead of naming one of them", () => {
+    const ticker = runTicker([
+      run({ runId: "a", operation: "build", status: "running" }),
+      run({ runId: "b", operation: "sbom", status: "queued" }),
+    ]);
+    expect(ticker).toEqual({ detail: "2 runs active", tone: "active" });
+  });
+
+  it("reads a canceled run as failed, not idle", () => {
+    expect(runTicker([run({ runId: "c", status: "canceled" })]).tone).toBe("failed");
   });
 });

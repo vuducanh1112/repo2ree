@@ -35,6 +35,11 @@ export const RUN_HUD_TABS = [
 
 export type RunHudTabKey = (typeof RUN_HUD_TABS)[number]["key"];
 
+/** A tab's full name, for headings and the footer ticker. */
+export function runHudTabLabel(key: RunHudTabKey): string {
+  return RUN_HUD_TABS.find((tab) => tab.key === key)?.label ?? key;
+}
+
 export function runHudTabForOperation(operation: ReeRunOperation): RunHudTabKey {
   const tab = RUN_HUD_TABS.find((t) => (t.operations as readonly string[]).includes(operation));
   // Every ReeRunOperation is listed in RUN_HUD_TABS; guard for forward compat
@@ -106,4 +111,40 @@ export function formatRunDuration(run: ReeRunSummary): string | undefined {
   const seconds = totalSeconds % 60;
   if (minutes === 0) return `${seconds}s`;
   return `${minutes}m ${String(seconds).padStart(2, "0")}s`;
+}
+
+/** How the ticker reads a run's state. A colour identity, not a colour. */
+export type RunTickerTone = "idle" | "active" | "succeeded" | "failed";
+
+interface RunTicker {
+  /** The one line the footer's logs cell shows, e.g. "Build · succeeded". */
+  detail: string;
+  tone: RunTickerTone;
+}
+
+/**
+ * The resting summary of every run of this REE, for the footer bar's logs cell.
+ * An active run is what the user wants to see even when a later one has already
+ * finished, so it wins the line; otherwise the newest run overall reports.
+ */
+export function runTicker(runs: readonly ReeRunSummary[]): RunTicker {
+  const active = activeRunCount(runs);
+  const featured = newestActiveRun(runs) ?? newestRun(runs);
+  if (!featured) return { detail: "No runs yet", tone: "idle" };
+
+  // One run can be named by its step. Several cannot — naming one of them while
+  // counting all of them reads as though that step ran twice — so the count
+  // stands alone.
+  if (active > 1) return { detail: `${active} runs active`, tone: "active" };
+
+  const label = runHudTabLabel(runHudTabForOperation(featured.operation));
+  const tone: RunTickerTone =
+    active > 0
+      ? "active"
+      : featured.status === "succeeded"
+        ? "succeeded"
+        : featured.status === "failed" || featured.status === "canceled"
+          ? "failed"
+          : "idle";
+  return { detail: `${label} · ${featured.status}`, tone };
 }

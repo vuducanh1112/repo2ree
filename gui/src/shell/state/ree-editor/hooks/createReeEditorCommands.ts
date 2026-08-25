@@ -60,6 +60,8 @@ export interface EditorChromeCommands {
   setFocusedField(value: Updater<string | null>): void;
   setFilesConsoleOpen(open: boolean): void;
   setReceiptsConsoleOpen(open: boolean): void;
+  setBenchConsoleOpen(open: boolean): void;
+  setLogsConsoleOpen(open: boolean): void;
   clearToast(): void;
 }
 
@@ -125,6 +127,8 @@ export function createReeEditorCommands({
     setFilesConsoleOpen: (open: boolean) => dispatch(patch("uiChrome", { filesConsoleOpen: open })),
     setReceiptsConsoleOpen: (open: boolean) =>
       dispatch(patch("uiChrome", { receiptsConsoleOpen: open })),
+    setBenchConsoleOpen: (open: boolean) => dispatch(patch("uiChrome", { benchConsoleOpen: open })),
+    setLogsConsoleOpen: (open: boolean) => dispatch(patch("uiChrome", { logsConsoleOpen: open })),
     clearToast: () => dispatch(clearToast()),
     onSeal: handleSeal,
     onDownloadRee: handleDownloadRee,

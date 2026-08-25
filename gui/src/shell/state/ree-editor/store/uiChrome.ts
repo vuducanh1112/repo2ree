@@ -11,6 +11,8 @@ export interface UiChromeState {
   sourceSnapshotArchiveName: string;
   filesConsoleOpen: boolean;
   receiptsConsoleOpen: boolean;
+  benchConsoleOpen: boolean;
+  logsConsoleOpen: boolean;
 }
 
 export function createInitialUiChromeState(): UiChromeState {
@@ -26,5 +28,7 @@ export function createInitialUiChromeState(): UiChromeState {
     sourceSnapshotArchiveName: "",
     filesConsoleOpen: false,
     receiptsConsoleOpen: false,
+    benchConsoleOpen: false,
+    logsConsoleOpen: false,
   };
 }

@@ -1,0 +1,106 @@
+/* The footer status strip. The bar above it navigates and is sized to hold a
+ * workflow graph; this one only reports, so it sets at a single line's height
+ * and never grows. */
+
+.bar {
+  position: relative;
+  z-index: 95;
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 0;
+  height: 28px;
+  border-top: 1px solid var(--chrome-border-strong);
+  background: var(--chrome-surface);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  max-width: 40%;
+  padding: 0 var(--space-3);
+  border: 0;
+  background: transparent;
+  color: var(--chrome-text-mid);
+  cursor: pointer;
+}
+
+.cell:hover,
+.cell[aria-pressed="true"] {
+  background: var(--chrome-surface-alt);
+  color: var(--chrome-text);
+}
+
+.cell:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.icon {
+  display: flex;
+  flex: none;
+  color: var(--chrome-accent);
+}
+
+.label {
+  flex: none;
+  font-size: var(--text-micro);
+  font-weight: var(--weight-semibold);
+}
+
+/* The volatile half of the cell: an image ref or a run status, so it is set in
+ * mono and is the first thing to be truncated. */
+.detail {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--chrome-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: var(--radius-round);
+  background: var(--dot-ink, var(--run-idle));
+}
+
+.dot[data-tone="active"] {
+  --dot-ink: var(--run-active);
+
+  box-shadow: 0 0 6px color-mix(in srgb, var(--run-active) 53%, transparent);
+}
+
+.dot[data-tone="succeeded"] {
+  --dot-ink: var(--run-succeeded);
+}
+
+.dot[data-tone="failed"] {
+  --dot-ink: var(--run-failed);
+}
+
+/* Narrow enough that the labels would crowd out the details they qualify; the
+ * icon and the dot still say which cell is which and how it is doing. */
+@media (max-width: 760px) {
+  .cell {
+    max-width: 50%;
+    padding: 0 var(--space-2);
+  }
+
+  .label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}

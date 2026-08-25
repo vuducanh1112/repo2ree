@@ -34,6 +34,22 @@ vi.mock("./components/WorkspaceStatusBar", () => ({
 }));
 vi.mock("./canvas/WorkbenchLab", () => ({ WorkbenchLab: () => <div>Workbench</div> }));
 vi.mock("./canvas/RunHud", () => ({ RunHud: () => <div>Run HUD</div> }));
+vi.mock("./components/WorkspaceFooterBar", () => ({
+  WorkspaceFooterBar: (props: {
+    logsOpen: boolean;
+    onBenchOpenChange: (open: boolean) => void;
+    onLogsOpenChange: (open: boolean) => void;
+  }) => (
+    <div>
+      <button type="button" onClick={() => props.onBenchOpenChange(true)}>
+        Footer workbench
+      </button>
+      <button type="button" onClick={() => props.onLogsOpenChange(!props.logsOpen)}>
+        Footer logs
+      </button>
+    </div>
+  ),
+}));
 vi.mock("./canvas/WorkspaceDrawer", () => ({
   WorkspaceDrawer: ({ children, onClose }: { children: React.ReactNode; onClose: () => void }) => (
     <div>
@@ -87,6 +103,8 @@ function controller(page: AppShellPage = PAGE.CANVAS, provisioned = true) {
     setFocusedField: vi.fn(),
     setFilesConsoleOpen: vi.fn(),
     setReceiptsConsoleOpen: vi.fn(),
+    setBenchConsoleOpen: vi.fn(),
+    setLogsConsoleOpen: vi.fn(),
     onDownloadRee: vi.fn(),
     onSeal: vi.fn(),
     clearToast: vi.fn(),
@@ -113,6 +131,8 @@ function controller(page: AppShellPage = PAGE.CANVAS, provisioned = true) {
       locked: false,
       filesConsoleOpen: false,
       receiptsConsoleOpen: false,
+      benchConsoleOpen: false,
+      logsConsoleOpen: false,
     },
     sync: {
       workspaceHydration: { status: "ready", error: null },
@@ -189,6 +209,8 @@ describe("AppShellView", () => {
       "Status build",
       "Status files",
       "Status receipts",
+      "Footer workbench",
+      "Footer logs",
     ]) {
       fireEvent.click(screen.getByRole("button", { name }));
     }
@@ -197,6 +219,9 @@ describe("AppShellView", () => {
     expect(commands.setPage).toHaveBeenCalledWith(PAGE.BUILD);
     expect(commands.setFilesConsoleOpen).toHaveBeenCalledWith(true);
     expect(commands.setReceiptsConsoleOpen).toHaveBeenCalledWith(true);
+    // The bar above opens the canvas's top consoles, the bar below its bottom ones.
+    expect(commands.setBenchConsoleOpen).toHaveBeenCalledWith(true);
+    expect(commands.setLogsConsoleOpen).toHaveBeenCalledWith(true);
   });
 
   it.each([

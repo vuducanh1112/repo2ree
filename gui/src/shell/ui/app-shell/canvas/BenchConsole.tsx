@@ -4,8 +4,7 @@ import type { LogEntry } from "@core/ree/ReeTypes";
 import { appShellPorts } from "@shell/app/bootstrap/appShellPorts";
 import { useReeRuntime } from "@shell/data/apiRuntime";
 import { useReeClient } from "@shell/data/ree/client";
-import { useReeQuery } from "@shell/data/ree/queries";
-import { defaultImageRef, useWorkbenchImageCatalog } from "@shell/data/workbench/images";
+import { useWorkbenchImageRef } from "@shell/data/workbench/images";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Ic } from "../../shared/components/Icon";
@@ -16,23 +15,28 @@ import hud from "./HudConsole.module.css";
 interface BenchConsoleProps {
   provisioned: boolean;
   reeName?: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** The persistent footer bar owns the closed-state trigger. */
+  externallyTriggered?: boolean;
 }
 
 // The workbench is the lab this whole hub lives in, so it reads as an ambient
-// console pinned to the bench corner rather than a node on the ring. Clicking
-// the header grows it open in place (and shrinks it back) — no separate panel —
-// to surface live bench status and the one action that matters here:
-// reprovision, with a terminal-style readout.
-export function BenchConsole({ provisioned, reeName }: BenchConsoleProps) {
+// console pinned to the bench corner rather than a node on the ring. The footer
+// bar carries its resting state and opens it here — no separate panel — to
+// surface live bench status and the one action that matters here: reprovision,
+// with a terminal-style readout.
+export function BenchConsole({
+  provisioned,
+  reeName,
+  open,
+  onOpenChange,
+  externallyTriggered = false,
+}: BenchConsoleProps) {
   const { reeId, reeApi } = useReeRuntime();
-  const { data: reeProject } = useReeQuery();
   const reeClient = useReeClient();
-  const { data: imageCatalog } = useWorkbenchImageCatalog();
-  // The REE's actual provisioned image, falling back to the catalog default
-  // until the REE detail has loaded.
-  const imageRef = reeProject?.workbenchImage ?? defaultImageRef(imageCatalog);
+  const imageRef = useWorkbenchImageRef();
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
   const [reprovisioning, setReprovisioning] = useState(false);
   const [releasing, setReleasing] = useState(false);
   const [log, setLog] = useState<LogEntry | null>(null);
@@ -90,10 +94,12 @@ export function BenchConsole({ provisioned, reeName }: BenchConsoleProps) {
     }
   }
 
+  if (externallyTriggered && !open) return null;
+
   return (
     <HudConsole
       open={open}
-      onToggle={() => setOpen((v) => !v)}
+      onToggle={() => onOpenChange(!open)}
       widthOpen={320}
       widthCollapsed={212}
       className={hud.benchPlacement}

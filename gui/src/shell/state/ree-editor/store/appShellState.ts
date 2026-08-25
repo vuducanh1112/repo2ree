@@ -29,6 +29,8 @@ interface AppShellState {
   sourceSnapshotArchiveName: string;
   filesConsoleOpen: boolean;
   receiptsConsoleOpen: boolean;
+  benchConsoleOpen: boolean;
+  logsConsoleOpen: boolean;
 }
 
 export interface SourceOutcomePayload {

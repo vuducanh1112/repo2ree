@@ -57,15 +57,15 @@ describe("RunHud", () => {
       next_cursor: null,
       has_more: false,
     });
-    renderWithShell(<RunHud />, {
+    renderWithShell(<RunHud open onOpenChange={vi.fn()} />, {
       reeId: "ree-1",
       services: fakeApiServices({ runs: { listRuns, getRun, listRunLogs } }),
     });
 
-    await user.click(screen.getByRole("button", { name: "Expand logs console" }));
-    expect(await screen.findByRole("tab", { name: "Build" })).toHaveAttribute(
-      "aria-selected",
-      "true",
+    // Auto-follow lands on the active run's tab once the run list resolves, so
+    // opening the console from the footer shows whatever ran last.
+    await waitFor(() =>
+      expect(screen.getByRole("tab", { name: "Build" })).toHaveAttribute("aria-selected", "true"),
     );
     expect(await screen.findByText("building")).toBeInTheDocument();
 
