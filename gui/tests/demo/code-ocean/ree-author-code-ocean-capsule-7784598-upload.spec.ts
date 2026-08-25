@@ -46,12 +46,6 @@ test("upload Code Ocean capsule 7784598", async ({ page }) => {
     await expect(
       page.getByRole("navigation").getByRole("button", { name: "Source", exact: true }),
     ).toBeVisible();
-    await clickDemo(
-      page,
-      page.getByRole("button", { name: "Decompose" }),
-      "Decompose so the source shell is visible on its own",
-    );
-    await expect(page.getByRole("button", { name: "Reassemble" })).toBeVisible();
     await openPort(page, "Source");
     await expect(sourcePanel).toBeVisible();
   });

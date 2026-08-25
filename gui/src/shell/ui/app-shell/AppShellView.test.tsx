@@ -47,10 +47,6 @@ vi.mock("./canvas/SealHubPanel", () => ({
 vi.mock("./canvas/CanvasHub", () => ({
   CanvasHub: (props: {
     onNavigate: (page: string, rect?: DOMRect) => void;
-    onAddExperiment: () => void;
-    onOpenExperimentsOverview: () => void;
-    onOpenExperiment: (index: number) => void;
-    onOpenRuntime: () => void;
     onFilesConsoleOpenChange: (open: boolean) => void;
   }) => (
     <div>
@@ -59,18 +55,6 @@ vi.mock("./canvas/CanvasHub", () => ({
       </button>
       <button type="button" onClick={() => props.onNavigate(PAGE.BUILD, new DOMRect(1, 2, 3, 4))}>
         Navigate from node
-      </button>
-      <button type="button" onClick={props.onAddExperiment}>
-        Add experiment
-      </button>
-      <button type="button" onClick={props.onOpenExperimentsOverview}>
-        Experiments overview
-      </button>
-      <button type="button" onClick={() => props.onOpenExperiment(2)}>
-        Open experiment
-      </button>
-      <button type="button" onClick={props.onOpenRuntime}>
-        Open runtime
       </button>
       <button type="button" onClick={() => props.onFilesConsoleOpenChange(true)}>
         Files
@@ -177,27 +161,15 @@ describe("AppShellView", () => {
     expect(retryWorkspaceHydration).toHaveBeenCalledOnce();
   });
 
-  it("wires every canvas navigation action", () => {
+  it("wires canvas navigation and console actions", () => {
     const commands = controller();
     render(<AppShellView onBack={vi.fn()} />);
 
-    for (const name of [
-      "Navigate plain",
-      "Navigate from node",
-      "Add experiment",
-      "Experiments overview",
-      "Open experiment",
-      "Open runtime",
-      "Files",
-    ]) {
+    for (const name of ["Navigate plain", "Navigate from node", "Files"]) {
       fireEvent.click(screen.getByRole("button", { name }));
     }
 
-    expect(commands.setReeSpec).toHaveBeenCalledOnce();
-    expect(commands.setFocusedField).toHaveBeenCalledWith(null);
-    expect(commands.setFocusedField).toHaveBeenCalledWith("experiments[2].name");
     expect(commands.setPage).toHaveBeenCalledWith(PAGE.METADATA);
-    expect(commands.setPage).toHaveBeenCalledWith(PAGE.EXPERIMENTS);
     expect(commands.setPage).toHaveBeenCalledWith(PAGE.BUILD);
     expect(commands.setFilesConsoleOpen).toHaveBeenCalledWith(true);
   });

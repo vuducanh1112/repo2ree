@@ -1,6 +1,5 @@
 import { PAGE } from "@core/app-shell/pages";
 import { activeNode } from "@core/canvas/canvasNodes";
-import { addExperiment as addExperimentToSpec } from "@core/ree/experimentOps";
 import { useWorkspaceNavigationGuard } from "@shell/state/ree-editor/workspace-sync/useWorkspaceNavigationGuard";
 import { useCallback, useState } from "react";
 import { WorkspaceLoadErrorView, WorkspaceLoadingView } from "../errors/WorkspaceLoadView";
@@ -80,22 +79,6 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
     },
     [commands],
   );
-  const addExperiment = useCallback(() => commands.setReeSpec(addExperimentToSpec), [commands]);
-  const openExperimentsOverview = useCallback(() => {
-    commands.setFocusedField(null);
-    openPage(PAGE.EXPERIMENTS);
-  }, [commands, openPage]);
-  const openExperiment = useCallback(
-    (index: number) => {
-      commands.setFocusedField(`experiments[${index}].name`);
-      openPage(PAGE.EXPERIMENTS);
-    },
-    [commands, openPage],
-  );
-  const openRuntime = useCallback(() => {
-    commands.setFocusedField(null);
-    openPage(PAGE.BUILD);
-  }, [commands, openPage]);
 
   if (provisioned && workspaceHydration.status === "loading") {
     return <WorkspaceLoadingView onBack={onBack} />;
@@ -162,10 +145,6 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
             provisioned={provisioned}
             dimmed={dockOpen}
             onNavigate={openPage}
-            onAddExperiment={addExperiment}
-            onOpenExperimentsOverview={openExperimentsOverview}
-            onOpenExperiment={openExperiment}
-            onOpenRuntime={openRuntime}
             workspaceFiles={workspaceRemote.workspaceFiles}
             reeFiles={currentReeFiles}
             sourceRepo={workspaceRemote.sourceRepo}

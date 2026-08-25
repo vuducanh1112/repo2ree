@@ -2,10 +2,8 @@ import { PAGE } from "@core/app-shell/pages";
 import {
   activeNode,
   CANVAS_NODES,
-  EXPLODE_LAYERS,
   isNodeActive,
   isNodeLocked,
-  nodeProjection,
   nodeSummary,
 } from "@core/canvas/canvasNodes";
 import {
@@ -60,41 +58,8 @@ describe("CANVAS_NODES", () => {
     }
   });
 
-  it("assigns every node to a shell that the exploded view has a column for", () => {
-    const columns = new Set(EXPLODE_LAYERS.map((layer) => layer.zone));
-    for (const node of CANVAS_NODES) expect(columns.has(node.zone)).toBe(true);
-  });
-});
-
-describe("nodeProjection", () => {
-  it("is the identity in the assembled view", () => {
-    for (const node of CANVAS_NODES) {
-      expect(nodeProjection(node, false)).toEqual({ dx: 0, dy: 0, scale: 1 });
-    }
-  });
-
-  it("shifts a node into its own shell's column when decomposed", () => {
-    const inner = EXPLODE_LAYERS.find((layer) => layer.zone === "inner");
-    const sbom = nodeFor(PAGE.SBOM);
-    expect(nodeProjection(sbom, true).dx).toBe(inner?.cx);
-  });
-
-  it("keeps every panel full size — only the pod shrinks per column", () => {
-    for (const node of CANVAS_NODES) {
-      expect(nodeProjection(node, true).scale).toBe(1);
-      expect(nodeProjection(node, true).dy).toBe(0);
-    }
-  });
-
-  it("honours xExploded, which moves Source and Build across the pod", () => {
-    const build = nodeFor(PAGE.BUILD);
-    const inner = EXPLODE_LAYERS.find((layer) => layer.zone === "inner");
-    // Build sits right of the pod assembled and left of it decomposed, so the
-    // shift is the column offset plus the swing across.
-    expect(build.xExploded).toBeDefined();
-    expect(nodeProjection(build, true).dx).toBe(
-      (inner?.cx ?? 0) + ((build.xExploded ?? 0) - build.x),
-    );
+  it("lifts every assembled panel above its floor anchor", () => {
+    for (const node of CANVAS_NODES) expect(node.standHeight).toBeGreaterThan(0);
   });
 });
 

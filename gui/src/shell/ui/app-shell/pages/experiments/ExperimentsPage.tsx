@@ -67,9 +67,9 @@ export function PageExperiments({
   // Backend-owned path conventions, needed to seed a suggestion's run script.
   const { data: templates } = useScriptTemplates();
 
-  // The canvas deep-links into a specific experiment by setting focusedField
-  // (e.g. when a satellite in the decompose view is clicked). Apply it only when
-  // it changes, so manual card selection on this page isn't clobbered.
+  // External navigation can deep-link into a specific experiment by setting
+  // focusedField. Apply it only when it changes, so manual card selection on
+  // this page isn't clobbered.
   const appliedField = useRef<string | null>(null);
   useEffect(() => {
     if (focusedField === appliedField.current) return;

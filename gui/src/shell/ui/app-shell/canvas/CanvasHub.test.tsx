@@ -2,7 +2,7 @@
 import { PAGE } from "@core/app-shell/pages";
 import { parseAuthorReceipts } from "@core/receipts/authorReceipts";
 import { createEmptyReeExperiment } from "@core/ree/ReeSpec";
-import { screen, waitFor } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { fakeApiServices } from "../../../../../tests/support/fakeApiServices";
@@ -50,7 +50,7 @@ describe("CanvasHub", () => {
     const user = userEvent.setup();
     const onNavigate = vi.fn();
     const onFilesConsoleOpenChange = vi.fn();
-    renderWithShell(
+    const { container } = renderWithShell(
       <CanvasHub
         page={PAGE.CANVAS}
         ree={{
@@ -71,10 +71,6 @@ describe("CanvasHub", () => {
         provisioned
         dimmed={false}
         onNavigate={onNavigate}
-        onAddExperiment={vi.fn()}
-        onOpenExperimentsOverview={vi.fn()}
-        onOpenExperiment={vi.fn()}
-        onOpenRuntime={vi.fn()}
         workspaceFiles={[{ id: "ws:main.py", name: "main.py", type: "file", content: "print()" }]}
         reeFiles={[
           { id: "readme", name: "README.md", type: "file", content: "hello" },
@@ -98,6 +94,22 @@ describe("CanvasHub", () => {
 
     await user.click(screen.getByRole("button", { name: "Build" }));
     expect(onNavigate).toHaveBeenCalledWith(PAGE.BUILD, expect.anything());
+    expect(screen.queryByRole("button", { name: "Decompose" })).not.toBeInTheDocument();
+
+    const zoomIn = screen.getByTitle("Zoom in");
+    const camera = container.querySelector<HTMLElement>('[style*="--world-z"]');
+    expect(camera).toHaveStyle("--world-z: 1");
+    await user.click(zoomIn);
+    expect(camera).toHaveStyle("--world-z: 1.2");
+    await user.click(screen.getByTitle("Zoom out"));
+    expect(camera).toHaveStyle("--world-z: 1");
+
+    const stage = zoomIn.closest("[data-canvas-hud]")?.parentElement;
+    vi.spyOn(stage as HTMLElement, "getBoundingClientRect").mockReturnValue(
+      DOMRect.fromRect({ width: 1200, height: 800 }),
+    );
+    await user.click(screen.getByRole("button", { name: "Fit canvas to viewport" }));
+    expect(camera).toHaveAttribute("data-animate");
 
     await user.click(screen.getByRole("button", { name: "README.md" }));
     expect(screen.getByRole("region", { name: "Open files" })).toBeInTheDocument();
@@ -121,53 +133,6 @@ describe("CanvasHub", () => {
     );
   });
 
-  it("decomposes the pod and exposes runtime and experiment affordances", async () => {
-    const user = userEvent.setup();
-    const onAddExperiment = vi.fn();
-    const onOpenExperiment = vi.fn();
-    const onOpenExperimentsOverview = vi.fn();
-    const onOpenRuntime = vi.fn();
-    renderWithShell(
-      <CanvasHub
-        page={PAGE.CANVAS}
-        ree={{
-          ...exampleEditorRee,
-          spec: {
-            ...exampleEditorRee.spec,
-            experiments: [{ ...createEmptyReeExperiment(), name: "hello" }],
-          },
-        }}
-        evaluation={{ dependencyLevel: 1, environmentLevel: 1, machineLevel: 1 }}
-        badges={{}}
-        provisioned
-        dimmed={false}
-        onNavigate={vi.fn()}
-        onAddExperiment={onAddExperiment}
-        onOpenExperimentsOverview={onOpenExperimentsOverview}
-        onOpenExperiment={onOpenExperiment}
-        onOpenRuntime={onOpenRuntime}
-        workspaceFiles={[]}
-        reeFiles={[]}
-        sourceRepo={undefined}
-        authorReceipts={[]}
-        filesConsoleOpen={false}
-        onFilesConsoleOpenChange={vi.fn()}
-      />,
-      { reeId: "ree-1", services: services() },
-    );
-    await user.click(screen.getByRole("button", { name: "Decompose" }));
-    await user.click(screen.getByRole("button", { name: "Open build runtime" }));
-    await user.click(screen.getByRole("button", { name: "Open experiments" }));
-    await user.click(screen.getByRole("button", { name: "hello" }));
-    await user.click(screen.getByRole("button", { name: "Add experiment" }));
-    expect(onOpenRuntime).toHaveBeenCalledOnce();
-    expect(onOpenExperimentsOverview).toHaveBeenCalledOnce();
-    expect(onOpenExperiment).toHaveBeenCalledWith(0);
-    expect(onAddExperiment).toHaveBeenCalledOnce();
-    await user.click(screen.getByRole("button", { name: "Reassemble" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "Decompose" })).toBeVisible());
-  });
-
   it("makes the background canvas inert while a focused page is open", () => {
     const { container } = renderWithShell(
       <CanvasHub
@@ -178,10 +143,6 @@ describe("CanvasHub", () => {
         provisioned
         dimmed
         onNavigate={vi.fn()}
-        onAddExperiment={vi.fn()}
-        onOpenExperimentsOverview={vi.fn()}
-        onOpenExperiment={vi.fn()}
-        onOpenRuntime={vi.fn()}
         workspaceFiles={[]}
         reeFiles={[]}
         sourceRepo={undefined}

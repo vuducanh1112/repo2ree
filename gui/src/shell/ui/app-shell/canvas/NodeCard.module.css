@@ -1,26 +1,191 @@
-/* A panel floating around the pod on the hub canvas. Its position is measured
- * from the live layout, so it rides custom properties; everything else — done,
- * locked, active, and which stage it belongs to — is an attribute. */
+/* A panel standing around the pod. The deck plate remains in the floor plane;
+ * the terminal counter-tilts so its controls stay readable. A shallow top face
+ * reconnects the upright terminal to the floor's perspective. */
+
+.anchor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+  pointer-events: none;
+  transform: translate3d(var(--node-x), var(--node-y), 0);
+}
+
+.billboard {
+  position: absolute;
+  width: 0;
+  height: 0;
+  transform-origin: 0 0;
+  transform-style: preserve-3d;
+  transform: scale(var(--node-scale));
+}
+
+.anchor[data-floor] .billboard {
+  transform: rotateX(var(--panel-counter-tilt)) scale(var(--node-scale));
+}
+
+.post {
+  display: none;
+  position: absolute;
+  left: -9px;
+  bottom: 0;
+  width: 18px;
+  height: var(--node-stand-height);
+  border: 1px solid color-mix(in srgb, var(--chrome-text) 30%, transparent);
+  border-radius: var(--radius-xs) var(--radius-xs) 0 0;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--chrome-text) 66%, transparent) 0 3px,
+    color-mix(in srgb, var(--chrome-surface) 78%, var(--node-tint)) 3px 7px,
+    color-mix(in srgb, var(--chrome-border-strong) 88%, var(--node-tint)) 7px 14px,
+    color-mix(in srgb, var(--chrome-text) 58%, transparent) 14px
+  );
+  box-shadow: var(--shadow-sm);
+}
+
+.post::after {
+  content: "";
+  position: absolute;
+  left: -5px;
+  right: -5px;
+  bottom: -1px;
+  height: 10px;
+  border: 1px solid color-mix(in srgb, var(--node-tint) 48%, var(--chrome-border-strong));
+  border-radius: var(--radius-xs);
+  background: repeating-linear-gradient(
+    45deg,
+    color-mix(in srgb, var(--node-tint) 68%, var(--chrome-surface)) 0 4px,
+    color-mix(in srgb, var(--chrome-text) 68%, var(--chrome-surface)) 4px 8px
+  );
+}
+
+.foot {
+  display: none;
+  position: absolute;
+  left: -11px;
+  top: -5px;
+  width: 22px;
+  height: 10px;
+  border-radius: var(--radius-round);
+  background: color-mix(in srgb, var(--chrome-text-muted) 42%, transparent);
+}
+
+.anchor[data-floor] .post,
+.anchor[data-floor] .foot {
+  display: block;
+}
+
+.floorShadow {
+  display: none;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 142px;
+  height: 92px;
+  border: 1px solid color-mix(in srgb, var(--chrome-text) 28%, transparent);
+  border-radius: var(--radius-xs);
+  transform: translate3d(var(--node-x), var(--node-y), 0) translate(-50%, -50%);
+  background:
+    radial-gradient(circle at 8px 8px, var(--chrome-border-strong) 0 2px, transparent 2.5px),
+    radial-gradient(
+      circle at calc(100% - 8px) 8px,
+      var(--chrome-border-strong) 0 2px,
+      transparent 2.5px
+    ),
+    radial-gradient(
+      circle at 8px calc(100% - 8px),
+      var(--chrome-border-strong) 0 2px,
+      transparent 2.5px
+    ),
+    radial-gradient(
+      circle at calc(100% - 8px) calc(100% - 8px),
+      var(--chrome-border-strong) 0 2px,
+      transparent 2.5px
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--chrome-surface) 86%, var(--node-tint)),
+      color-mix(in srgb, var(--chrome-border-strong) 72%, var(--node-tint))
+    );
+  box-shadow:
+    inset 0 0 0 5px color-mix(in srgb, var(--node-tint) 10%, transparent),
+    var(--shadow-lg);
+  pointer-events: none;
+}
+
+.floorShadow[data-visible] {
+  display: block;
+}
 
 .card {
   position: absolute;
-  left: var(--node-x);
-  top: var(--node-y);
-  transform: translate(-50%, -50%) translate(var(--node-dx), var(--node-dy))
-    scale(var(--node-scale));
+  left: 0;
+  bottom: 0;
+  transform: translate(-50%, 50%);
   width: 176px;
   padding: var(--space-3) var(--space-3);
   border-radius: var(--radius-panel);
   border: 1px solid var(--chrome-border);
   background: var(--chrome-surface);
   box-shadow: var(--shadow-md);
+  transform-style: preserve-3d;
   text-align: left;
   cursor: pointer;
+  pointer-events: auto;
   transition:
     transform var(--duration-slow) var(--ease-standard),
     box-shadow var(--duration-normal),
     border-color var(--duration-normal),
     opacity var(--duration-slow);
+}
+
+.anchor[data-floor] .card {
+  bottom: var(--node-stand-height);
+  transform: translateX(-50%);
+}
+
+.cap {
+  display: none;
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  bottom: 100%;
+  height: 22px;
+  transform-origin: 50% 100%;
+  transform: rotateX(var(--floor-tilt));
+  border: 1px solid color-mix(in srgb, var(--chrome-border-strong) 78%, var(--node-tint));
+  border-radius: var(--radius-panel) var(--radius-panel) 0 0;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--chrome-text) 9%, transparent) 0 2px,
+      transparent 2px 11px
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--chrome-border-strong) 74%, var(--node-tint)),
+      color-mix(in srgb, var(--chrome-surface) 88%, var(--node-tint))
+    );
+  box-shadow: var(--shadow-inset-highlight);
+  pointer-events: none;
+}
+
+.anchor[data-floor] .cap {
+  display: block;
+}
+
+.port {
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  width: 12px;
+  height: 10px;
+  transform: translateX(-50%);
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--chrome-border);
+  background: linear-gradient(180deg, var(--chrome-surface), var(--chrome-surface-alt));
 }
 
 /* The step behind this panel has a result. */
@@ -117,5 +282,23 @@
 @media (prefers-reduced-motion: reduce) {
   .card {
     transition: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .anchor[data-floor] .billboard {
+    transform: scale(var(--node-scale));
+  }
+
+  .anchor[data-floor] .card {
+    bottom: 0;
+    transform: translate(-50%, 50%);
+  }
+
+  .anchor[data-floor] .post,
+  .anchor[data-floor] .foot,
+  .anchor[data-floor] .cap,
+  .floorShadow[data-visible] {
+    display: none;
   }
 }

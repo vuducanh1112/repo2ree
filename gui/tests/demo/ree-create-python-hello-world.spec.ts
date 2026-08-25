@@ -71,8 +71,6 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
       page.getByRole("button", { name: /Provision workbench/i }),
       "Provision the workbench",
     );
-    // Provisioning lands on the canvas hub; decompose before source acquisition
-    // so the whole authoring walkthrough happens against the shell view.
     // Generous budget: the lean bench path pulls the image, starts the bench,
     // and runs the doctor probe (which waits for the in-bench dockerd) —
     // ~20s warm, longer on a cold registry pull.
@@ -80,13 +78,6 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
       page.getByRole("navigation").getByRole("button", { name: "Source", exact: true }),
     ).toBeVisible({ timeout: 120000 });
     await page.keyboard.press("Escape").catch(() => {});
-    await clickDemo(
-      page,
-      page.getByRole("button", { name: "Decompose" }),
-      "Decompose the pod before adding source, so each shell stays visible while authoring",
-    );
-    await expect(page.getByRole("button", { name: "Reassemble" })).toBeVisible();
-    await page.waitForTimeout(800);
     await page.getByRole("navigation").getByRole("button", { name: "Source", exact: true }).click();
     await expect(
       page.getByRole("region", { name: "Source Acquisition" }).getByText("Source Acquisition", {
@@ -235,14 +226,11 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
   });
 
   await demoStep(page, "Generate a build script from the repository", async () => {
-    // Decomposed, the inner shell itself is the build runtime — click it to open
-    // the Build Runtime page (there is no separate Build panel in this view).
     await page.keyboard.press("Escape").catch(() => {});
-    await expect(page.getByRole("button", { name: "Reassemble" })).toBeVisible();
     await clickDemo(
       page,
-      page.getByRole("button", { name: "Open build runtime" }),
-      "Open the inner shell: the build runtime the whole REE executes on",
+      page.getByRole("navigation").getByRole("button", { name: "Build", exact: true }),
+      "Open the build runtime terminal for the environment the whole REE executes on",
     );
     await expect(main.getByText("Build Runtime", { exact: true })).toBeVisible();
 
@@ -402,8 +390,8 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
     await page.keyboard.press("Escape").catch(() => {});
     await clickDemo(
       page,
-      page.getByRole("button", { name: "Open experiments" }),
-      "Open the core experiment catalog from the decomposed view",
+      page.getByRole("navigation").getByRole("button", { name: "Experiments", exact: true }),
+      "Open the experiment catalog from its bench terminal",
     );
     const experimentsDialog = page.getByRole("dialog", { name: "Experiments" });
     await expect(
@@ -468,27 +456,17 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
     await expect(runResultPanel.getByText(/declared validation passed/)).toBeVisible();
   });
 
-  await demoStep(page, "Review decomposed experiment view", async () => {
+  await demoStep(page, "Review experiment terminal", async () => {
     await page.keyboard.press("Escape").catch(() => {});
-    await expect(page.getByRole("button", { name: "Reassemble" })).toBeVisible();
     await showcasePanel(
       page,
-      // Exact: once the run records a receipt, the receipts console carries a
-      // card named after the same experiment ("Experiment run · python-hello").
-      page.getByRole("button", { name: "python-hello", exact: true }),
-      "The core shell now carries the experiment as its own cabled panel",
+      page.getByRole("navigation").getByRole("button", { name: "Experiments", exact: true }),
+      "The experiment terminal now reports the configured run script",
     );
     await page.waitForTimeout(1500);
   });
 
   await demoStep(page, "Seal and download", async () => {
-    await clickDemo(
-      page,
-      page.getByRole("button", { name: "Reassemble" }),
-      "Reassemble the pod before sealing",
-    );
-    await expect(page.getByRole("button", { name: "Decompose" })).toBeVisible();
-    await page.waitForTimeout(800);
     await clickDemo(
       page,
       page.getByRole("navigation").getByRole("button", { name: "Seal", exact: true }),

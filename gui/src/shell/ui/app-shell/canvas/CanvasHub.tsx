@@ -1,57 +1,36 @@
 import type { AppShellPage } from "@core/app-shell/pages";
-import { PAGE } from "@core/app-shell/pages";
 import {
   CANVAS_NODES,
-  EXPLODE_BASE_POD,
-  EXPLODE_CENTER,
-  EXPLODE_LAYERS,
-  EXPLODE_ZOOM,
   isNodeActive,
   isNodeDone,
   isNodeLocked,
-  nodeProjection,
   nodeSummary,
 } from "@core/canvas/canvasNodes";
-import { satellitePositions } from "@core/canvas/experimentRing";
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import type { ReceiptView } from "@core/receipts/authorReceipts";
 import type { Badges, ReeFile } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import type { FileTreeNode } from "@core/workspace/FileTree";
 import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useRef } from "react";
 import { cssVars } from "../../theme/styleVars";
 import { BenchConsole } from "./BenchConsole";
 import { CableOverlaySvg } from "./CableOverlay";
 import { CanvasControls } from "./CanvasControls";
 import styles from "./CanvasHub.module.css";
-import { CoreExperiments, experimentCableTargets } from "./CoreExperiments";
-import { ExplodeScaffold, ExplodeToggle, ProjectionPod } from "./ExplodeView";
 import { FileTreeConsole } from "./FileTreeConsole";
-import { InnerShellButton } from "./InnerShellButton";
 import { LabBackdrop } from "./LabBackdrop";
 import { NodeCard } from "./NodeCard";
 import { ReceiptsConsole } from "./ReceiptsConsole";
 import { ReviewConsole } from "./ReviewConsole";
+import { SpecimenPod } from "./SpecimenPod";
 import { useCableGeometry } from "./useCableGeometry";
-import { type Transform, useCanvasViewport } from "./useCanvasViewport";
-import { useExperimentCables } from "./useExperimentCables";
+import { useCanvasViewport } from "./useCanvasViewport";
 
-// The core column (rightmost decomposed shell) hosts the experiment satellites.
-const CORE_LAYER = EXPLODE_LAYERS[EXPLODE_LAYERS.length - 1];
-const CORE_CENTER = { x: CORE_LAYER.cx, y: 0 };
-const CORE_POD_DIAMETER = EXPLODE_BASE_POD * CORE_LAYER.scale;
-// The inner column (middle shell) is the runtime — its pod opens the Runtime page.
-const INNER_LAYER = EXPLODE_LAYERS[1];
-const INNER_CENTER = { x: INNER_LAYER.cx, y: 0 };
-const INNER_POD_DIAMETER = EXPLODE_BASE_POD * INNER_LAYER.scale;
-// Satellites render full-size: the exploded world is already scaled to
-// EXPLODE_ZOOM, so any extra shrink here makes the panels unreadable. The ring
-// radius (experimentRing) keeps them clear of the core pod.
-const CORE_SAT_SCALE = 1;
-// Includes the 760-unit pod and every assembled card, with room for shadows and
-// cable endpoints. The viewport fitter turns these world units into screen fit.
-const ASSEMBLED_BOUNDS = { left: -500, top: -400, width: 1150, height: 800 } as const;
+// Includes the 2.5D floor ring, pod, and lifted cards. These are intentionally
+// conservative unprojected bounds; the fixed floor tilt compresses their
+// screen-space height further.
+const ASSEMBLED_BOUNDS = { left: -930, top: -620, width: 1860, height: 1240 } as const;
 
 interface CanvasHubProps {
   page: AppShellPage;
@@ -61,13 +40,6 @@ interface CanvasHubProps {
   provisioned: boolean;
   dimmed: boolean;
   onNavigate: (page: AppShellPage, originRect?: DOMRect) => void;
-  onAddExperiment: () => void;
-  /** Core pod → the experiment catalog overview (clears any deep-link). */
-  onOpenExperimentsOverview: () => void;
-  /** Open one experiment's editor (satellite click in the decompose view). */
-  onOpenExperiment: (index: number) => void;
-  /** Inner-shell pod → the runtime environment page. */
-  onOpenRuntime: () => void;
   workspaceFiles: FileTreeNode[];
   reeFiles: ReeFile[];
   sourceRepo: SourceRepoMetadata | undefined;
@@ -86,10 +58,6 @@ export const CanvasHub = memo(function CanvasHub({
   provisioned,
   dimmed,
   onNavigate,
-  onAddExperiment,
-  onOpenExperimentsOverview,
-  onOpenExperiment,
-  onOpenRuntime,
   workspaceFiles,
   reeFiles,
   sourceRepo,
@@ -101,31 +69,13 @@ export const CanvasHub = memo(function CanvasHub({
   const stageRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<HTMLDivElement>(null);
   const podSvgRef = useRef<SVGSVGElement>(null);
-  const innerPodRef = useRef<SVGSVGElement>(null);
-  const corePodRef = useRef<SVGSVGElement>(null);
   const nodeEls = useRef<Record<string, HTMLButtonElement | null>>({});
-  const satEls = useRef<Record<string, HTMLElement | null>>({});
+  const nodePortEls = useRef<Record<string, HTMLSpanElement | null>>({});
 
-  const {
-    tf,
-    animate,
-    nodeOffsets,
-    wasNodeDragged,
-    isPanning,
-    startPan,
-    startNodeDrag,
-    fitView,
-    zoomBy,
-    focusView,
-  } = useCanvasViewport(stageRef, ASSEMBLED_BOUNDS);
-
-  const [exploded, setExploded] = useState(false);
-  // Hover over the core pod (the experiment-catalog affordance) makes it shine.
-  const [coreHovered, setCoreHovered] = useState(false);
-  // Same for the inner pod, which opens the runtime environment page.
-  const [innerHovered, setInnerHovered] = useState(false);
-  // The pan/zoom the user had before decomposing, restored when they reassemble.
-  const preExplodeTf = useRef<Transform | null>(null);
+  const { tf, animate, isPanning, startPan, fitView, zoomBy } = useCanvasViewport(
+    stageRef,
+    ASSEMBLED_BOUNDS,
+  );
 
   // A focused step page behaves as a modal over the constellation. `inert`
   // removes this background canvas from both keyboard navigation and the
@@ -135,58 +85,19 @@ export const CanvasHub = memo(function CanvasHub({
     stageRef.current?.toggleAttribute("inert", dimmed);
   }, [dimmed]);
 
-  // Pull the camera back and centre the spread when decomposing; on reassemble,
-  // return to wherever the user was framed before, not a hard reset.
-  const toggleExplode = () => {
-    const next = !exploded;
-    if (next) {
-      preExplodeTf.current = tf;
-      focusView({ x: -EXPLODE_CENTER * EXPLODE_ZOOM, y: 0, z: EXPLODE_ZOOM });
-    } else {
-      focusView(preExplodeTf.current ?? { x: 0, y: 0, z: 1 });
-    }
-    setExploded(next);
-  };
-
-  const projectionPods = useMemo(() => ({ inner: innerPodRef, core: corePodRef }), []);
-
   const geo = useCableGeometry({
     stageRef,
     podSvgRef,
     worldRef,
     nodeEls,
+    nodePortEls,
     ree,
     badges,
     tf,
-    nodeOffsets,
     animate,
-    exploded,
-    projectionPods,
   });
 
-  // Decomposed, the core column becomes the experiment space: one satellite per
-  // experiment cabled to the core pod, plus an add-ghost slot.
   const experiments = ree.spec.experiments ?? [];
-  // Once sealed the REE is frozen, so the ring drops its add-ghost slot.
-  const withAddSlot = !ree.artifact.sealedAt;
-  const satellitePos = useMemo(
-    () => satellitePositions(experiments.length, withAddSlot),
-    [experiments.length, withAddSlot],
-  );
-  const expTargets = useMemo(
-    () => (exploded ? experimentCableTargets(experiments, withAddSlot) : []),
-    [exploded, experiments, withAddSlot],
-  );
-  const expGeo = useExperimentCables({
-    stageRef,
-    coreSvgRef: corePodRef,
-    worldRef,
-    satEls,
-    targets: expTargets,
-    tf,
-    nodeOffsets,
-    animate,
-  });
 
   const levelMeta = {
     color: "var(--chrome-accent)",
@@ -206,108 +117,53 @@ export const CanvasHub = memo(function CanvasHub({
 
       {geo && <CableOverlaySvg geo={geo} levelMeta={levelMeta} />}
 
-      {exploded && expGeo && <CableOverlaySvg geo={expGeo} levelMeta={levelMeta} />}
-
       <div
         ref={worldRef}
-        className={styles.world}
+        className={styles.camera}
         data-animate={animate || undefined}
         style={cssVars({
           "--world-x": `${tf.x}px`,
           "--world-y": `${tf.y}px`,
           "--world-z": tf.z,
+          "--floor-tilt": "54deg",
+          "--panel-counter-tilt": "-54deg",
         })}
       >
-        {/* cradle socket: the pod is seated in the bench, not floating */}
-        <div aria-hidden className={styles.cradle} />
-        {/* projection axis + per-column captions for the decomposed view */}
-        <ExplodeScaffold exploded={exploded} />
+        <div className={styles.perspective}>
+          <div className={styles.floor}>
+            <div aria-hidden className={styles.floorGrid} />
+            <div aria-hidden className={styles.zoneRing} data-zone="outer" />
+            <div aria-hidden className={styles.zoneRing} data-zone="inner" />
+            <div aria-hidden className={styles.zoneRing} data-zone="core" />
+            {/* cradle socket: the pod is seated in the bench, not floating */}
+            <div aria-hidden className={styles.cradle} />
 
-        {/* the specimen, plus its shrinking projections to the right (real pod
-            entities the inner/core cables anchor to) */}
-        <ProjectionPod
-          evaluation={evaluation}
-          svgRef={podSvgRef}
-          layer={EXPLODE_LAYERS[0]}
-          exploded={exploded}
-        />
-        <ProjectionPod
-          evaluation={evaluation}
-          svgRef={innerPodRef}
-          layer={EXPLODE_LAYERS[1]}
-          exploded={exploded}
-          glow={exploded && innerHovered}
-        />
-        <ProjectionPod
-          evaluation={evaluation}
-          svgRef={corePodRef}
-          layer={EXPLODE_LAYERS[2]}
-          exploded={exploded}
-          glow={exploded && coreHovered}
-        />
+            <SpecimenPod evaluation={evaluation} svgRef={podSvgRef} />
 
-        {/* The inner pod opens the build runtime page. Rendered before the nav so
-            the inner-shell node cards keep painting (and clicking) on top of it. */}
-        {exploded && (
-          <InnerShellButton
-            center={INNER_CENTER}
-            podDiameter={INNER_POD_DIAMETER}
-            wasNodeDragged={wasNodeDragged}
-            onHoverChange={setInnerHovered}
-            onOpenRuntime={onOpenRuntime}
-          />
-        )}
-
-        <nav aria-label="Workspace pages">
-          {CANVAS_NODES.map((node) => {
-            // Decomposed, the core column is taken over by the experiment
-            // satellites, so the lone Experiments node steps aside.
-            if (exploded && node.key === PAGE.EXPERIMENTS) return null;
-            // Decomposed, the inner shell itself is the build-runtime entry
-            // point (it's clickable here), so the Build node steps aside.
-            if (exploded && node.key === PAGE.BUILD) return null;
-            const off = nodeOffsets[node.key] ?? { x: 0, y: 0 };
-            return (
-              <NodeCard
-                key={node.key}
-                node={node}
-                offsetX={off.x}
-                offsetY={off.y}
-                setRef={(el) => {
-                  nodeEls.current[node.key] = el;
-                }}
-                done={isNodeDone(node, ree, badges)}
-                stale={staleNodeKeys?.has(node.key) ?? false}
-                locked={isNodeLocked(node, provisioned)}
-                active={isNodeActive(node, page)}
-                rows={nodeSummary(node, ree, sourceRepo)}
-                projection={nodeProjection(node, exploded)}
-                onNavigate={onNavigate}
-                onStartDrag={startNodeDrag}
-                wasNodeDragged={wasNodeDragged}
-              />
-            );
-          })}
-        </nav>
-
-        {exploded && (
-          <CoreExperiments
-            experiments={experiments}
-            locked={!withAddSlot}
-            center={CORE_CENTER}
-            podDiameter={CORE_POD_DIAMETER}
-            positions={satellitePos}
-            scale={CORE_SAT_SCALE}
-            satEls={satEls}
-            nodeOffsets={nodeOffsets}
-            onStartDrag={startNodeDrag}
-            wasNodeDragged={wasNodeDragged}
-            onCoreHoverChange={setCoreHovered}
-            onOpenOverview={onOpenExperimentsOverview}
-            onOpenExperiment={onOpenExperiment}
-            onAddExperiment={onAddExperiment}
-          />
-        )}
+            <nav aria-label="Workspace pages">
+              {CANVAS_NODES.map((node) => {
+                return (
+                  <NodeCard
+                    key={node.key}
+                    node={node}
+                    setRef={(el) => {
+                      nodeEls.current[node.key] = el;
+                    }}
+                    setPortRef={(el) => {
+                      nodePortEls.current[node.key] = el;
+                    }}
+                    done={isNodeDone(node, ree, badges)}
+                    stale={staleNodeKeys?.has(node.key) ?? false}
+                    locked={isNodeLocked(node, provisioned)}
+                    active={isNodeActive(node, page)}
+                    rows={nodeSummary(node, ree, sourceRepo)}
+                    onNavigate={onNavigate}
+                  />
+                );
+              })}
+            </nav>
+          </div>
+        </div>
       </div>
 
       <FileTreeConsole
@@ -322,8 +178,6 @@ export const CanvasHub = memo(function CanvasHub({
       <BenchConsole provisioned={provisioned} reeName={ree.spec.name} />
 
       <ReviewConsole experiments={experiments} />
-
-      <ExplodeToggle exploded={exploded} onToggle={toggleExplode} />
 
       <CanvasControls
         onZoomIn={() => zoomBy(1.2)}

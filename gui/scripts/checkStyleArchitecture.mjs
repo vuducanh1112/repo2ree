@@ -33,7 +33,7 @@ const COLOR_VALUE_STYLESHEETS = new Set([
   "src/shell/ui/theme/tokens.css",
   "src/shell/ui/theme/light.css",
   "src/shell/ui/app-shell/canvas/PodWidget.module.css",
-  "src/shell/ui/app-shell/canvas/ExplodeView.module.css",
+  "src/shell/ui/app-shell/canvas/SpecimenPod.module.css",
   "src/shell/ui/app-shell/canvas/LabBackdrop.module.css",
   "src/shell/ui/app-shell/canvas/WorkbenchLab.module.css",
   "src/shell/ui/app-shell/canvas/CanvasHub.module.css",

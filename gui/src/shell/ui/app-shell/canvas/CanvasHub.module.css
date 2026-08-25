@@ -12,10 +12,6 @@
     radial-gradient(58% 48% at 18% 22%, rgb(56 189 248 / 12%) 0%, rgb(56 189 248 / 0%) 70%),
     radial-gradient(54% 44% at 83% 16%, rgb(129 140 248 / 12%) 0%, rgb(129 140 248 / 0%) 72%),
     radial-gradient(75% 60% at 50% 118%, rgb(13 148 136 / 10%) 0%, rgb(13 148 136 / 0%) 72%),
-    linear-gradient(rgb(221 227 236 / 80%) 1px, transparent 1px) 0 0 / 130px 130px,
-    linear-gradient(90deg, rgb(221 227 236 / 80%) 1px, transparent 1px) 0 0 / 130px 130px,
-    linear-gradient(rgb(221 227 236 / 33%) 1px, transparent 1px) 0 0 / 26px 26px,
-    linear-gradient(90deg, rgb(221 227 236 / 33%) 1px, transparent 1px) 0 0 / 26px 26px,
     radial-gradient(circle at 50% 44%, #f6fafe 0%, #f4f6f9 72%);
   box-shadow: inset 0 0 220px rgb(30 58 138 / 10%);
   transition: opacity var(--duration-moderate);
@@ -34,23 +30,93 @@
   opacity: var(--opacity-subtle);
 }
 
-.world {
+.camera {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 50%;
+  transform: translate(var(--world-x), var(--world-y)) scale(var(--world-z));
+}
+
+.perspective {
+  position: absolute;
+  inset: 0;
+  perspective: 1900px;
+  perspective-origin: 50% 48%;
+  transform-style: preserve-3d;
+  /* The perspective plane itself is only a scene container. Let controls
+   * inside it opt back into hit-testing instead of catching far-side clicks. */
+  pointer-events: none;
+}
+
+.floor {
   position: absolute;
   left: 50%;
   top: 50%;
-  transform-origin: 0 0;
-  transform: translate(var(--world-x), var(--world-y)) scale(var(--world-z));
+  width: 0;
+  height: 0;
+  transform: rotateX(var(--floor-tilt));
+  transform-style: preserve-3d;
+}
+
+/* The semantic navigation wrapper sits between the 3D floor and each terminal.
+ * Keep that wrapper from flattening the upright terminal faces into the deck. */
+.floor > nav {
+  transform-style: preserve-3d;
+  pointer-events: none;
+}
+
+.floorGrid {
+  position: absolute;
+  left: -1600px;
+  top: -1200px;
+  width: 3200px;
+  height: 2400px;
+  background:
+    linear-gradient(rgb(148 163 184 / 42%) 1px, transparent 1px) 0 0 / 130px 130px,
+    linear-gradient(90deg, rgb(148 163 184 / 42%) 1px, transparent 1px) 0 0 / 130px 130px,
+    linear-gradient(rgb(148 163 184 / 16%) 1px, transparent 1px) 0 0 / 26px 26px,
+    linear-gradient(90deg, rgb(148 163 184 / 16%) 1px, transparent 1px) 0 0 / 26px 26px;
+  mask-image: radial-gradient(closest-side, #000 40%, transparent 88%);
+  pointer-events: none;
+}
+
+.zoneRing {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 50%;
+  border: 1px dashed rgb(100 116 139 / 26%);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.zoneRing[data-zone="outer"] {
+  width: 1620px;
+  height: 1620px;
+}
+
+.zoneRing[data-zone="inner"] {
+  width: 1120px;
+  height: 1120px;
+  border-color: rgb(8 145 178 / 24%);
+  border-style: solid;
+}
+
+.zoneRing[data-zone="core"] {
+  width: 660px;
+  height: 660px;
+  border-color: rgb(79 70 229 / 28%);
 }
 
 /* Animated only when the camera is being moved for the user, not while they
  * are dragging it themselves. */
-.world[data-animate] {
+.camera[data-animate] {
   transition: transform var(--duration-slow) var(--ease-standard);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .stage,
-  .world[data-animate] {
+  .camera[data-animate] {
     transition: none;
   }
 }
@@ -59,11 +125,33 @@
 .cradle {
   position: absolute;
   left: 0;
-  top: 96px;
-  width: 320px;
-  height: 96px;
+  top: 0;
+  width: 500px;
+  height: 500px;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgb(100 116 139 / 16%) 0%, transparent 70%);
+  background: radial-gradient(
+    closest-side,
+    rgb(51 65 85 / 26%) 0%,
+    rgb(51 65 85 / 10%) 56%,
+    transparent 76%
+  );
   pointer-events: none;
+}
+
+@media (max-width: 760px) {
+  .floor {
+    transform: none;
+  }
+
+  .floorGrid,
+  .zoneRing {
+    display: none;
+  }
+
+  .cradle {
+    width: 320px;
+    height: 96px;
+    background: radial-gradient(ellipse at center, rgb(100 116 139 / 16%) 0%, transparent 70%);
+  }
 }

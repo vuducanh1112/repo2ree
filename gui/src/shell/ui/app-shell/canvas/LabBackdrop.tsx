@@ -2,8 +2,8 @@ import styles from "./LabBackdrop.module.css";
 
 /**
  * Decorative, non-interactive lab atmosphere behind the pod: drifting ambient
- * light pools, an overhead glass light bar, a slow scanning sheen, and a frosted
- * workbench surface the pod is seated on. Pure CSS, pointer-events disabled.
+ * light pools, an overhead glass light bar, and a slow scanning sheen over the
+ * projected bench. Pure CSS, pointer-events disabled.
  */
 export function LabBackdrop() {
   return (
@@ -13,7 +13,6 @@ export function LabBackdrop() {
       <div className={styles.bar} />
       <div className={styles.beam} />
       <div className={styles.scan} />
-      <div className={styles.bench} />
     </div>
   );
 }

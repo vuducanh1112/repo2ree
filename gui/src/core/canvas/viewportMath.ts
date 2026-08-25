@@ -7,15 +7,9 @@ export interface Transform {
   z: number;
 }
 
-export type NodeOffsets = Record<string, { x: number; y: number }>;
-
-// Small screens need to frame the complete assembled constellation. Keep this
-// below EXPLODE_ZOOM so both the fitted and decomposed cameras remain valid.
+// Small screens need to frame the complete 2.5D constellation.
 export const ZOOM_MIN = 0.28;
 export const ZOOM_MAX = 1.7;
-// Movement past this many screen px turns a node click into a drag. Private:
-// callers ask `exceedsDragThreshold` rather than comparing against it.
-const DRAG_THRESHOLD = 4;
 // One wheel notch. Zooming out is the exact inverse, so a notch each way
 // returns to where it started.
 const WHEEL_ZOOM_STEP = 1.1;
@@ -76,17 +70,4 @@ export function zoomToward(
   const z = clampZoom(prev.z * factor);
   const ratio = z / prev.z - 1;
   return { x: prev.x - ox * ratio, y: prev.y - oy * ratio, z };
-}
-
-/** Whether a pointer has moved far enough that a node press counts as a drag. */
-export function exceedsDragThreshold(dx: number, dy: number): boolean {
-  return Math.hypot(dx, dy) > DRAG_THRESHOLD;
-}
-
-/**
- * A dragged node's new offset. Screen deltas are divided by the live zoom so a
- * card tracks the cursor 1:1 at any scale.
- */
-export function dragOffset(origin: Point, dx: number, dy: number, zoom: number): Point {
-  return { x: origin.x + dx / zoom, y: origin.y + dy / zoom };
 }

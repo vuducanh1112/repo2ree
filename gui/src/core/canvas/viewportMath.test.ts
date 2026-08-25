@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   clampZoom,
-  dragOffset,
-  exceedsDragThreshold,
   fitBounds,
   type StageBox,
   type Transform,
@@ -110,31 +108,5 @@ describe("zoomToward", () => {
     expect(zoomToward(identity, offsetCentre, offsetStage, IN)).toEqual(
       zoomToward(identity, centre, stage, IN),
     );
-  });
-});
-
-describe("exceedsDragThreshold", () => {
-  it("ignores the jitter of a click", () => {
-    expect(exceedsDragThreshold(0, 0)).toBe(false);
-    expect(exceedsDragThreshold(3, 0)).toBe(false);
-  });
-
-  it("measures distance, not either axis alone", () => {
-    // 4 across and 4 down is ~5.7px of travel, past the threshold, even though
-    // neither axis is.
-    expect(exceedsDragThreshold(4, 4)).toBe(true);
-    expect(exceedsDragThreshold(-5, 0)).toBe(true);
-  });
-});
-
-describe("dragOffset", () => {
-  it("adds the travel to where the node started", () => {
-    expect(dragOffset({ x: 10, y: 20 }, 5, -5, 1)).toEqual({ x: 15, y: 15 });
-  });
-
-  it("divides by the zoom so a card tracks the cursor 1:1 at any scale", () => {
-    // Zoomed to 2x, 100 screen px is 50 world px.
-    expect(dragOffset({ x: 0, y: 0 }, 100, 40, 2)).toEqual({ x: 50, y: 20 });
-    expect(dragOffset({ x: 0, y: 0 }, 100, 40, 0.5)).toEqual({ x: 200, y: 80 });
   });
 });

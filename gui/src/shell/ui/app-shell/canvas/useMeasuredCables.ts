@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import type { NodeOffsets, Transform } from "./useCanvasViewport";
+import type { Transform } from "./useCanvasViewport";
 
 // Safety ceiling for the per-frame measure loop: `transitionend` is the real
 // stop signal, but a clamped zoom can leave the transform unchanged so no
@@ -11,10 +11,9 @@ interface MeasureLoopOptions {
   stageRef: React.RefObject<HTMLDivElement>;
   /** The pan/zoom layer whose `transform` transition ends the per-frame loop. */
   worldRef: React.RefObject<HTMLDivElement>;
-  // `tf` and `nodeOffsets` are re-measure triggers, not inputs: `measure` reads
+  // `tf` is a re-measure trigger, not an input: `measure` reads
   // the resulting DOM transform via getScreenCTM rather than these values.
   tf: Transform;
-  nodeOffsets: NodeOffsets;
   animate: boolean;
 }
 
@@ -29,9 +28,9 @@ interface MeasureLoopOptions {
  */
 export function useMeasuredCables(
   measure: () => void,
-  { stageRef, worldRef, tf, nodeOffsets, animate }: MeasureLoopOptions,
+  { stageRef, worldRef, tf, animate }: MeasureLoopOptions,
 ): void {
-  // biome-ignore lint/correctness/useExhaustiveDependencies: tf/nodeOffsets drive re-measurement
+  // biome-ignore lint/correctness/useExhaustiveDependencies: tf drives re-measurement
   useEffect(() => {
     let raf = requestAnimationFrame(measure);
     if (!animate) return () => cancelAnimationFrame(raf);
@@ -58,7 +57,7 @@ export function useMeasuredCables(
       world?.removeEventListener("transitionend", onEnd);
       clearTimeout(fallback);
     };
-  }, [measure, tf, nodeOffsets, animate, worldRef]);
+  }, [measure, tf, animate, worldRef]);
 
   useEffect(() => {
     const stage = stageRef.current;

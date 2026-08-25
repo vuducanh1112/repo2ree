@@ -133,12 +133,6 @@ test("author Code Ocean capsule 7784598 inputs", async ({ page }) => {
     await expect(
       page.getByRole("navigation").getByRole("button", { name: "Source", exact: true }),
     ).toBeVisible();
-    await clickDemo(
-      page,
-      page.getByRole("button", { name: "Decompose" }),
-      "Decompose so source, runtime, and experiments are visible as separate shells",
-    );
-    await expect(page.getByRole("button", { name: "Reassemble" })).toBeVisible();
     await openPort(page, "Source");
     await expect(sourcePanel).toBeVisible();
   });
@@ -258,7 +252,7 @@ test("author Code Ocean capsule 7784598 inputs", async ({ page }) => {
     await page.keyboard.press("Escape").catch(() => {});
     await clickDemo(
       page,
-      page.getByRole("button", { name: "Open experiments" }),
+      page.getByRole("navigation").getByRole("button", { name: "Experiments", exact: true }),
       "Open the experiment catalog",
     );
     await expect(
