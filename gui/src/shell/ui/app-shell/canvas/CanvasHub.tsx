@@ -64,6 +64,8 @@ interface CanvasHubProps {
   evaluation: EvaluationState;
   badges: Badges;
   provisioned: boolean;
+  /** The page the authoring graph says to do next; its panel is flagged. */
+  nextPage?: AppShellPage;
   onNavigate: (page: AppShellPage, originRect?: DOMRect) => void;
   workspaceFiles: FileTreeNode[];
   reeFiles: ReeFile[];
@@ -91,6 +93,7 @@ export const CanvasHub = memo(function CanvasHub({
   evaluation,
   badges,
   provisioned,
+  nextPage,
   onNavigate,
   workspaceFiles,
   reeFiles,
@@ -235,6 +238,7 @@ export const CanvasHub = memo(function CanvasHub({
                     stale={staleNodeKeys?.has(node.key) ?? false}
                     locked={isNodeLocked(node, provisioned)}
                     active={isNodeActive(node, page)}
+                    next={node.key === nextPage}
                     rows={nodeSummary(node, ree, sourceRepo)}
                     onNavigate={onNavigate}
                   />

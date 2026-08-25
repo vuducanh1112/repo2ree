@@ -6,6 +6,7 @@ import { Ic } from "../shared/components/Icon";
 import { Toast } from "../shared/components/Toast";
 import { AppShellContent } from "./AppShellContent";
 import styles from "./AppShellView.module.css";
+import { useAuthoringWorkflowModel } from "./canvas/AuthoringConsole";
 import { CanvasHub } from "./canvas/CanvasHub";
 import { RunHud } from "./canvas/RunHud";
 import { SealContent } from "./canvas/SealContent";
@@ -65,6 +66,9 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
   const { badges } = stepRuns;
   const { toast } = uiChrome;
   const page = uiChrome.page;
+  // Derived once here so the status-bar DAG and the canvas panels name the
+  // same next step; deriving it twice lets the two drift apart.
+  const authoring = useAuthoringWorkflowModel(ree, badges);
   useWorkspaceNavigationGuard({
     shouldBlock: isReeIntentDirty,
     flush: commands.flushReeIntent,
@@ -190,8 +194,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
       {provisioned && (
         <WorkspaceStatusBar
           page={page}
-          ree={ree}
-          badges={badges}
+          authoring={authoring}
           experiments={ree.spec.experiments ?? []}
           workspaceFiles={workspaceRemote.workspaceFiles}
           reeFiles={currentReeFiles}
@@ -215,6 +218,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
             ree={ree}
             evaluation={evaluation}
             badges={badges}
+            nextPage={authoring.nextPage}
             staleNodeKeys={NO_STALE_NODE_KEYS}
             provisioned={provisioned}
             openPages={uiChrome.openPages}

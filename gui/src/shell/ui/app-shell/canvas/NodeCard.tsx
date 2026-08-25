@@ -1,5 +1,6 @@
 import type { AppShellPage } from "@core/app-shell/pages";
 import type { CanvasNode, SummaryRow } from "@core/canvas/canvasNodes";
+import { useId } from "react";
 import { stageTone } from "../../theme/appearance";
 import { cssVars } from "../../theme/styleVars";
 import { canvasIcon } from "./canvasIcons";
@@ -15,6 +16,8 @@ interface NodeCardProps {
   stale?: boolean;
   locked: boolean;
   active: boolean;
+  /** The step the authoring graph says to do next. */
+  next?: boolean;
   rows: SummaryRow[];
   onNavigate: (page: AppShellPage, originRect?: DOMRect) => void;
 }
@@ -27,9 +30,14 @@ export function NodeCard({
   stale = false,
   locked,
   active,
+  next = false,
   rows,
   onNavigate,
 }: NodeCardProps) {
+  // "Next" is state, not identity: it rides on the description so the panel's
+  // accessible name stays the node's label, which is how every caller — and
+  // every navigation selector — addresses it.
+  const nextNoteId = useId();
   const position = {
     "--node-x": `${node.x}px`,
     "--node-y": `${node.y}px`,
@@ -49,6 +57,7 @@ export function NodeCard({
             type="button"
             data-canvas-node
             aria-label={node.label}
+            aria-describedby={next ? nextNoteId : undefined}
             ref={setRef}
             disabled={locked}
             onClick={(e) => {
@@ -56,9 +65,15 @@ export function NodeCard({
             }}
             className={styles.card}
             data-done={done || undefined}
+            data-next={next || undefined}
             data-active={active || undefined}
           >
             <span aria-hidden className={styles.cap} />
+            {next && (
+              <span id={nextNoteId} className={styles.nextNote}>
+                Next step
+              </span>
+            )}
             <div className={styles.head} data-with-rows={rows.length ? true : undefined}>
               <span aria-hidden className={styles.glyph}>
                 {canvasIcon(node.iconKey)(14)}

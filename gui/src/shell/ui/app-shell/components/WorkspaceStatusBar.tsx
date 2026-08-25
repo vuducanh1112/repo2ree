@@ -1,11 +1,10 @@
 import { type AppShellPage, PAGE } from "@core/app-shell/pages";
 import type { ReeExperiment } from "@core/ree/ReeSpec";
-import type { Badges, ReeFile } from "@core/ree/ReeTypes";
-import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
+import type { ReeFile } from "@core/ree/ReeTypes";
 import type { FileTreeNode } from "@core/workspace/FileTree";
 import { type ReactNode, useState } from "react";
 import { Ic } from "../../shared/components/Icon";
-import { AuthoringWorkflowPanel, useAuthoringWorkflowModel } from "../canvas/AuthoringConsole";
+import { type AuthoringWorkflowModel, AuthoringWorkflowPanel } from "../canvas/AuthoringConsole";
 import { type ReviewWorkflowHeader, ReviewWorkflowPanel } from "../canvas/ReviewConsole";
 import { useFileConsoleTrees } from "../pages/files/useFileConsoleTrees";
 import styles from "./WorkspaceStatusBar.module.css";
@@ -14,8 +13,8 @@ type WorkflowMode = "authoring" | "review";
 
 interface WorkspaceStatusBarProps {
   page: AppShellPage;
-  ree: ReeEditorViewModel;
-  badges: Badges;
+  /** Owned by the shell, so the canvas highlights the same next step this does. */
+  authoring: AuthoringWorkflowModel;
   experiments: readonly ReeExperiment[];
   workspaceFiles: FileTreeNode[];
   reeFiles: ReeFile[];
@@ -34,8 +33,7 @@ const INITIAL_REVIEW_HEADER: ReviewWorkflowHeader = {
 /** Persistent workflow and evidence navigation above the live canvas. */
 export function WorkspaceStatusBar({
   page,
-  ree,
-  badges,
+  authoring,
   experiments,
   workspaceFiles,
   reeFiles,
@@ -48,7 +46,6 @@ export function WorkspaceStatusBar({
 }: WorkspaceStatusBarProps) {
   const [mode, setMode] = useState<WorkflowMode>("authoring");
   const [reviewHeader, setReviewHeader] = useState(INITIAL_REVIEW_HEADER);
-  const authoring = useAuthoringWorkflowModel(ree, badges);
   const { workspaceFileCount, reeFileCount } = useFileConsoleTrees(workspaceFiles, reeFiles);
   const fileCount = workspaceFileCount + reeFileCount;
   const reviewing = mode === "review";

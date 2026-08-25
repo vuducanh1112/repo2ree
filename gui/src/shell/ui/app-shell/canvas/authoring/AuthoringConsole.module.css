@@ -68,6 +68,40 @@
   background: var(--tone-success-surface);
 }
 
+/* The one step the graph says to do next. The ring breathes so the eye finds
+ * it without reading the whole strip. */
+.step[data-next] {
+  /* Wider than its siblings: the tag has to fit beside the label, and the
+   * step you are being sent to may as well be the biggest thing on the strip. */
+  width: 152px;
+  border-color: var(--step-next-border);
+  background: var(--step-next-surface);
+  animation: authoring-next-pulse 2.4s var(--ease-standard) infinite;
+}
+
+.nextTag {
+  float: right;
+  margin-left: var(--space-1-5);
+  padding: 0 var(--space-1-5);
+  border-radius: var(--radius-round);
+  background: var(--step-next-ink);
+  color: var(--chrome-surface);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-bold);
+}
+
+@keyframes authoring-next-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--step-next-line) 45%, transparent);
+  }
+
+  50% {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--step-next-line) 30%, transparent);
+  }
+}
+
 .step[data-active] {
   border-color: var(--chrome-accent);
   background: var(--chrome-accent-bg);
@@ -96,6 +130,14 @@
   color: var(--status-ok);
 }
 
+.step[data-next] .number {
+  color: var(--step-next-line);
+}
+
+.step[data-next] .label {
+  color: var(--step-next-ink);
+}
+
 .error {
   padding: var(--space-3);
   color: var(--status-fault);
@@ -105,5 +147,11 @@
 @media (prefers-reduced-motion: reduce) {
   .step {
     transition: none;
+  }
+
+  /* The ring still reads as a ring, it just stops breathing. */
+  .step[data-next] {
+    animation: none;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--step-next-line) 40%, transparent);
   }
 }

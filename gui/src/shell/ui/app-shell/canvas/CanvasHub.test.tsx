@@ -81,6 +81,7 @@ describe("CanvasHub", () => {
         }}
         evaluation={{ dependencyLevel: 2, environmentLevel: 2, machineLevel: 1 }}
         badges={{ build: true, sbom: "succeeded" }}
+        nextPage={PAGE.SBOM}
         provisioned
         openPages={[]}
         renderPage={() => null}
@@ -116,6 +117,13 @@ describe("CanvasHub", () => {
 
     await user.click(screen.getByRole("button", { name: "Build" }));
     expect(onNavigate).toHaveBeenCalledWith(PAGE.BUILD, expect.anything());
+
+    // The panel the authoring graph is sending you to is flagged, and says so
+    // to a screen reader — but keeps its plain name, which is how the canvas
+    // navigation is addressed everywhere else.
+    const nextPanel = screen.getByRole("button", { name: "SBOM" });
+    expect(nextPanel).toHaveAttribute("data-next", "true");
+    expect(nextPanel).toHaveAccessibleDescription("Next step");
     expect(screen.queryByRole("button", { name: "Decompose" })).not.toBeInTheDocument();
 
     const zoomIn = screen.getByTitle("Zoom in");

@@ -1,11 +1,26 @@
 import { PAGE } from "@core/app-shell/pages";
+import type { Badges } from "@core/ree/ReeTypes";
+import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { fakeApiServices } from "../../../../../tests/support/fakeApiServices";
 import { renderWithShell } from "../../../../../tests/support/renderApp";
 import { exampleEditorRee } from "../../../../../tests/support/stepPageFixture";
+import { useAuthoringWorkflowModel } from "../canvas/AuthoringConsole";
 import { WorkspaceStatusBar } from "./WorkspaceStatusBar";
+
+/** The shell owns the authoring model; this stands in for it. */
+function StatusBarHarness({
+  ree,
+  badges,
+  ...props
+}: { ree: ReeEditorViewModel; badges: Badges } & Omit<
+  Parameters<typeof WorkspaceStatusBar>[0],
+  "authoring"
+>) {
+  return <WorkspaceStatusBar authoring={useAuthoringWorkflowModel(ree, badges)} {...props} />;
+}
 
 function services() {
   return fakeApiServices({
@@ -37,7 +52,7 @@ describe("WorkspaceStatusBar", () => {
     const onReceiptsOpenChange = vi.fn();
 
     renderWithShell(
-      <WorkspaceStatusBar
+      <StatusBarHarness
         page={PAGE.BUILD}
         ree={{
           ...exampleEditorRee,
@@ -79,9 +94,13 @@ describe("WorkspaceStatusBar", () => {
     expect(onReceiptsOpenChange).toHaveBeenCalledWith(true);
     expect(onNavigate).toHaveBeenCalledWith(PAGE.CANVAS);
 
+    // The graph's own next move: ready, lowest order, and flagged as such in
+    // the strip so the bar answers "what now" without being read end to end.
     const crossCheck = await screen.findByRole("button", {
-      name: /^Open Cross-check SBOM authoring step, ready/,
+      name: /^Open Cross-check SBOM authoring step, ready, next up/,
     });
+    expect(crossCheck).toHaveAttribute("data-next", "true");
+    expect(screen.getAllByText("next")).toHaveLength(1);
     await user.click(crossCheck);
     expect(onNavigate).toHaveBeenCalledWith(PAGE.SBOM);
     expect(

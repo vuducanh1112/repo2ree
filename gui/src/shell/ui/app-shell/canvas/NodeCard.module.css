@@ -193,6 +193,40 @@
   border-color: var(--tone-success-border);
 }
 
+/* Announced as the panel's description, so the ring has a spoken counterpart
+ * without "next" becoming part of the panel's name. */
+.nextNote {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The one step the authoring graph says to do next. The ring breathes so the
+ * panel to walk to is findable across a canvas of ten of them. */
+.card[data-next] {
+  border-color: var(--step-next-line);
+  animation: node-next-pulse 2.4s var(--ease-standard) infinite;
+}
+
+@keyframes node-next-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 color-mix(in srgb, var(--step-next-line) 55%, transparent),
+      var(--shadow-md);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 6px color-mix(in srgb, var(--step-next-line) 0%, transparent),
+      var(--shadow-md);
+  }
+}
+
 /* The page this panel opens is the one on screen. */
 .card[data-active] {
   border-color: var(--chrome-accent);
@@ -241,6 +275,12 @@
   color: var(--node-tint);
 }
 
+.card[data-next] .glyph {
+  border-color: var(--step-next-border);
+  background: var(--step-next-surface);
+  color: var(--step-next-line);
+}
+
 .titleBox {
   flex: 1;
   min-width: 0;
@@ -282,6 +322,14 @@
 @media (prefers-reduced-motion: reduce) {
   .card {
     transition: none;
+  }
+
+  /* The ring stays; it just stops breathing. */
+  .card[data-next] {
+    animation: none;
+    box-shadow:
+      0 0 0 3px color-mix(in srgb, var(--step-next-line) 35%, transparent),
+      var(--shadow-md);
   }
 }
 

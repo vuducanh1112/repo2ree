@@ -40,6 +40,24 @@ function isAuthoringStepComplete(key: string, ree: ReeEditorViewModel, badges: B
   return processStep ? resolveNavCompleted(processStep, ree, badges) : false;
 }
 
+/**
+ * The one step the graph says to do next: the lowest-order step whose
+ * requirements are all met but which has no result of its own yet. Parallel
+ * branches leave several steps `ready` at once, so the guidance names one
+ * rather than leaving the caller to depend on catalog array order.
+ */
+export function nextAuthoringStep(
+  steps: readonly AuthoringStep[],
+  statuses: Readonly<Record<string, AuthoringStepStatus>>,
+): AuthoringStep | undefined {
+  let next: AuthoringStep | undefined;
+  for (const step of steps) {
+    if (statuses[step.key] !== "ready") continue;
+    if (!next || step.order < next.order) next = step;
+  }
+  return next;
+}
+
 export function authoringStepStatuses(
   steps: readonly AuthoringStep[],
   ree: ReeEditorViewModel,

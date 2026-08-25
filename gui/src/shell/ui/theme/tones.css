@@ -12,6 +12,14 @@
   --status-fault: var(--palette-red-600);
   --status-idle: var(--palette-neutral-200);
 
+  /* The one authoring step the graph says to do next. Warm on purpose: green
+   * already means "has a result", the chrome accent means "on screen", and the
+   * canvas is lit by sky and indigo pools that swallow anything cool. */
+  --step-next-line: var(--palette-amber-600);
+  --step-next-ink: var(--palette-amber-800);
+  --step-next-surface: var(--palette-amber-050);
+  --step-next-border: var(--palette-amber-300);
+
   /* --- Stage tones -------------------------------------------------------
    * One family per pipeline stage, keyed by the page key the stage already
    * has (`PAGE.SOURCE` is `"source"`), so a component renders

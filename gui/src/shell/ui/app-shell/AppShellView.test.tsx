@@ -13,6 +13,19 @@ vi.mock("./providers/AppShellProvider", () => ({
   AppShellProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 vi.mock("./AppShellContent", () => ({ AppShellContent: () => <div>Dock content</div> }));
+// The shell derives the authoring graph for the status bar and the canvas
+// alike; both consumers are mocked out here, so the query behind it is too.
+vi.mock("./canvas/AuthoringConsole", () => ({
+  useAuthoringWorkflowModel: () => ({
+    steps: [],
+    statuses: {},
+    complete: 0,
+    nextKey: undefined,
+    nextPage: undefined,
+    active: false,
+    error: false,
+  }),
+}));
 vi.mock("./components/WorkspaceStatusBar", () => ({
   WorkspaceStatusBar: (props: {
     onNavigate: (page: AppShellPage) => void;

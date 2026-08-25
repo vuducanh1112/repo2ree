@@ -3,6 +3,7 @@ import {
   type AuthoringStepStatus,
   authoringPageForStep,
   authoringStepStatuses,
+  nextAuthoringStep,
 } from "@core/app-shell/authoringDag";
 import type { AppShellPage } from "@core/app-shell/pages";
 import type { Badges } from "@core/ree/ReeTypes";
@@ -16,10 +17,12 @@ interface AuthoringWorkflowPanelProps {
   onNavigate: (page: AppShellPage) => void;
 }
 
-interface AuthoringWorkflowModel {
+export interface AuthoringWorkflowModel {
   steps: readonly AuthoringStep[];
   statuses: Readonly<Record<string, AuthoringStepStatus>>;
   complete: number;
+  /** The step the graph says to do next, highlighted wherever the DAG shows. */
+  nextKey: string | undefined;
   nextPage: AppShellPage | undefined;
   active: boolean;
   error: boolean;
@@ -34,13 +37,14 @@ export function useAuthoringWorkflowModel(
   const steps = catalog.data ?? [];
   const statuses = authoringStepStatuses(steps, ree, badges);
   const complete = steps.filter((step) => statuses[step.key] === "complete").length;
-  const next = steps.find((step) => statuses[step.key] === "ready");
+  const next = nextAuthoringStep(steps, statuses);
   const nextPage = next ? authoringPageForStep(next.key) : undefined;
 
   return {
     steps,
     statuses,
     complete,
+    nextKey: next?.key,
     nextPage,
     active: complete > 0,
     error: catalog.isError,
@@ -59,6 +63,7 @@ export function AuthoringWorkflowPanel({ page, model, onNavigate }: AuthoringWor
         <AuthoringDag
           steps={model.steps}
           statuses={model.statuses}
+          nextKey={model.nextKey}
           page={page}
           onNavigate={onNavigate}
         />
@@ -70,11 +75,13 @@ export function AuthoringWorkflowPanel({ page, model, onNavigate }: AuthoringWor
 function AuthoringDag({
   steps,
   statuses,
+  nextKey,
   page,
   onNavigate,
 }: {
   steps: readonly AuthoringStep[];
   statuses: Readonly<Record<string, AuthoringStepStatus>>;
+  nextKey: string | undefined;
   page: AppShellPage;
   onNavigate: (page: AppShellPage) => void;
 }) {
@@ -87,6 +94,7 @@ function AuthoringDag({
           const target = authoringPageForStep(step.key);
           const status = statuses[step.key] ?? "blocked";
           const requirements = step.requires.map((key) => labelByKey.get(key) ?? key).join(" + ");
+          const next = step.key === nextKey;
           return (
             <li key={step.key} className={styles.item}>
               {step.order > 1 ? <span aria-hidden className={styles.edge} /> : null}
@@ -94,15 +102,19 @@ function AuthoringDag({
                 type="button"
                 className={styles.step}
                 data-status={status}
+                data-next={next || undefined}
                 data-active={target === page || undefined}
                 aria-current={target === page ? "step" : undefined}
-                aria-label={`Open ${step.label} authoring step, ${status}${requirements ? `, requires ${requirements}` : ""}`}
+                aria-label={`Open ${step.label} authoring step, ${status}${next ? ", next up" : ""}${requirements ? `, requires ${requirements}` : ""}`}
                 disabled={!target}
                 onClick={() => {
                   if (target) onNavigate(target);
                 }}
               >
                 <span className={styles.number}>{String(step.order).padStart(2, "0")}</span>
+                {/* Floated, so the label's own block box shrinks beside it
+                 * rather than running underneath. */}
+                {next ? <span className={styles.nextTag}>next</span> : null}
                 <span className={styles.label}>{step.label}</span>
               </button>
             </li>
