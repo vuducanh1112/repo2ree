@@ -47,6 +47,9 @@ export type ReeCreatePayload = Schema<"ReeCreatePayload">;
 
 export type WorkbenchImageCatalog = Schema<"WorkbenchImageCatalog">;
 
+/** Deployment-static authoring DAG published by GET /ree-steps. */
+export type ReeStepCatalog = Schema<"ReeStepCatalog">;
+
 /** One named starter-template variant for an REE-owned script; exactly one entry per list is the default. */
 export type ScriptTemplateEntry = Schema<"ScriptTemplateEntry">;
 

@@ -1,8 +1,8 @@
 /* Shared chrome for the pinned HUD consoles at the canvas edges — files, bench,
- * logs, review. The frosted card, its expand/collapse header, and the
+ * logs, authoring, and review. The frosted card, its expand/collapse header, and the
  * collapsible body.
  *
- * Each console's *placement* is its own module's business; what the card looks
+ * Each console's *placement* is this shared arrangement's business; what the card looks
  * like is decided once, here. The `outerStyle` prop this replaces let every
  * caller re-decide the border, radius and shadow. */
 
@@ -168,6 +168,14 @@
   max-width: calc(100% - 640px);
 }
 
+.authoringPlacement {
+  left: 50%;
+  top: 16px;
+  z-index: 36;
+  max-width: calc(100% - 640px);
+  transform: translateX(-50%);
+}
+
 /* --- Body shapes ---------------------------------------------------------- */
 
 .receiptsBody {
@@ -178,6 +186,10 @@
 .reviewBody {
   gap: var(--space-2-5);
   overflow-x: auto;
+}
+
+.authoringBody {
+  min-width: 0;
 }
 
 /* Bounded by the height the user dragged the logs console to. */
@@ -221,6 +233,13 @@
   .filesPlacement,
   .receiptsPlacement {
     top: 8px;
+  }
+
+  .authoringPlacement {
+    top: 8px;
+    left: 60px;
+    max-width: none;
+    transform: none;
   }
 
   .receiptsPlacement {

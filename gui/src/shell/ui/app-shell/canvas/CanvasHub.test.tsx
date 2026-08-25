@@ -35,6 +35,19 @@ const authorReceipts = parseAuthorReceipts({
 function services() {
   return fakeApiServices({
     ree: {
+      listReeSteps: vi.fn().mockResolvedValue({
+        steps: [
+          { key: "source", order: 1, label: "Source", requires: [], actions: [] },
+          { key: "build", order: 2, label: "Build Runtime", requires: ["source"], actions: [] },
+          {
+            key: "crosscheck",
+            order: 3,
+            label: "Cross-check SBOM",
+            requires: ["build"],
+            actions: [],
+          },
+        ],
+      }),
       getRee: vi.fn().mockResolvedValue(reeDocument),
       listWorkbenchImages: vi.fn().mockResolvedValue({
         images: [{ id: "python", ref: "bench:python", label: "Python", description: "" }],
@@ -110,6 +123,15 @@ describe("CanvasHub", () => {
     );
     await user.click(screen.getByRole("button", { name: "Fit canvas to viewport" }));
     expect(camera).toHaveAttribute("data-animate");
+
+    await user.click(screen.getByRole("button", { name: "Expand authoring navigation" }));
+    expect(await screen.findByText("2/3 complete · next Cross-check SBOM")).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", {
+        name: /^Open Cross-check SBOM authoring step, ready/,
+      }),
+    );
+    expect(onNavigate).toHaveBeenCalledWith(PAGE.SBOM);
 
     await user.click(screen.getByRole("button", { name: "README.md" }));
     expect(screen.getByRole("region", { name: "Open files" })).toBeInTheDocument();

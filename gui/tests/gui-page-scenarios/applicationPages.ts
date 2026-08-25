@@ -54,6 +54,16 @@ export const applicationPageScenarios: ApplicationPageScenario[] = [
     prepare: openVisualWorkspace,
   },
   {
+    name: "authoring navigation",
+    screenshot: "authoring-navigation.png",
+    prepare: async (page) => {
+      await openVisualWorkspace(page);
+      await page.getByRole("button", { name: "Expand authoring navigation" }).click();
+      await expect(page.getByRole("navigation", { name: "Authoring workflow" })).toBeVisible();
+      await settleVisualPage(page);
+    },
+  },
+  {
     name: "completed review",
     screenshot: "review-complete.png",
     contrastRoot: '[data-canvas-hud="true"]',

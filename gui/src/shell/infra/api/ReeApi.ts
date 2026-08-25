@@ -12,6 +12,7 @@ import type {
   ReeDefinitionPatchPayload,
   ReeDocument,
   ReeIndexList,
+  ReeStepCatalog,
   ReeSummary,
   ReproducibilityReportWire,
   ReprovisionResponse,
@@ -63,6 +64,11 @@ function parseContentDispositionFilename(contentDisposition: string | null): str
 
 export class ReeApi {
   constructor(private readonly client: ApiClient) {}
+
+  /** Ordered authoring steps and their prerequisite edges. */
+  async listReeSteps(): Promise<ReeStepCatalog> {
+    return this.client.request<ReeStepCatalog>(endpoints.reeSteps(), { method: "GET" });
+  }
 
   /** The base images the backend offers at provision time. */
   async listWorkbenchImages(): Promise<WorkbenchImageCatalog> {

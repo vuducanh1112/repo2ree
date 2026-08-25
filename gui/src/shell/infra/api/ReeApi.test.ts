@@ -18,6 +18,7 @@ function harness() {
 describe("ReeApi", () => {
   it("maps global catalogs and filtered listings", async () => {
     const { api, client } = harness();
+    await api.listReeSteps();
     await api.listWorkbenchImages();
     await api.listScriptTemplates();
     await api.listAgents();
@@ -25,13 +26,14 @@ describe("ReeApi", () => {
     await api.listRees({ cursor: "cursor", limit: 10, status: "sealed" });
 
     expect(client.request.mock.calls.map(([path]) => path)).toEqual([
+      "/api/v1/ree-steps",
       "/api/v1/workbench/images",
       "/api/v1/script-templates",
       "/api/v1/agents",
       "/api/v1/ree-index?cursor=next+page&limit=20&deposited_only=true",
       "/api/v1/rees",
     ]);
-    expect(client.request.mock.calls[4]?.[2].toString()).toBe(
+    expect(client.request.mock.calls[5]?.[2].toString()).toBe(
       "cursor=cursor&limit=10&status=sealed",
     );
   });

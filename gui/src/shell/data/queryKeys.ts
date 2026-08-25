@@ -1,4 +1,5 @@
 export const queryKeys = {
+  reeSteps: () => ["ree-steps"] as const,
   workbenchImages: () => ["workbench-images"] as const,
   scriptTemplates: () => ["script-templates"] as const,
   agents: () => ["agents"] as const,

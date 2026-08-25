@@ -14,6 +14,7 @@ import type { FileTreeNode } from "@core/workspace/FileTree";
 import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
 import { memo, useEffect, useRef } from "react";
 import { cssVars } from "../../theme/styleVars";
+import { AuthoringConsole } from "./AuthoringConsole";
 import { BenchConsole } from "./BenchConsole";
 import { CableOverlaySvg } from "./CableOverlay";
 import { CanvasControls } from "./CanvasControls";
@@ -178,6 +179,8 @@ export const CanvasHub = memo(function CanvasHub({
       <BenchConsole provisioned={provisioned} reeName={ree.spec.name} />
 
       <ReviewConsole experiments={experiments} />
+
+      <AuthoringConsole page={page} ree={ree} badges={badges} onNavigate={onNavigate} />
 
       <CanvasControls
         onZoomIn={() => zoomBy(1.2)}
