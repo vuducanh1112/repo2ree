@@ -18,13 +18,18 @@ export async function openVisualWorkspace(page: Page): Promise<void> {
   // positioned node buttons, so the wrapper itself is intentionally "hidden"
   // to Playwright even though its controls are painted and interactive.
   await expect(
-    page.getByRole("navigation").getByRole("button", { name: "Source", exact: true }),
+    page
+      .getByRole("navigation", { name: "Workspace pages" })
+      .getByRole("button", { name: "Source", exact: true }),
   ).toBeVisible();
   await settleVisualPage(page);
 }
 
 export async function openWorkspacePage(page: Page, label: string): Promise<void> {
   await openVisualWorkspace(page);
-  await page.getByRole("navigation").getByRole("button", { name: label, exact: true }).click();
+  await page
+    .getByRole("navigation", { name: "Workspace pages" })
+    .getByRole("button", { name: label, exact: true })
+    .click();
   await settleVisualPage(page);
 }

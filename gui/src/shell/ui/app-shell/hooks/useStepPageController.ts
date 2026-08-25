@@ -1,4 +1,4 @@
-import { appShellPageForField } from "@core/app-shell/pages";
+import { type AppShellPage, appShellPageForField } from "@core/app-shell/pages";
 import { isFailedStepOutcome } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { defaultParamsForReeStep, REE_STEPS } from "@core/ree-steps/stepCatalog";
@@ -9,24 +9,22 @@ import { useReeId } from "@shell/data/apiRuntime";
 import type { ReeEditorCommands } from "@shell/state/ree-editor/hooks/createReeEditorCommands";
 import { useStepRunLogEntry } from "@shell/state/ree-editor/step-runs/useStepRunLogEntry";
 import type { StepRunState } from "@shell/state/ree-editor/store/stepRunState";
-import type { UiChromeState } from "@shell/state/ree-editor/store/uiChrome";
 import { useCallback, useMemo } from "react";
 
 interface UseStepPageControllerArgs {
+  page: AppShellPage;
   ree: ReeEditorViewModel;
   stepRuns: StepRunState;
-  uiChrome: UiChromeState;
   commands: Pick<ReeEditorCommands, "setStepParams" | "setPage">;
 }
 
 export function useStepPageController({
+  page,
   ree,
   stepRuns,
-  uiChrome,
   commands,
 }: UseStepPageControllerArgs) {
   const reeId = useReeId();
-  const { page } = uiChrome;
   const { badges, stepParams, actionStates, timestamps, activeRunIds } = stepRuns;
   const step = useMemo(() => REE_STEPS.find((step) => step.key === page), [page]);
 

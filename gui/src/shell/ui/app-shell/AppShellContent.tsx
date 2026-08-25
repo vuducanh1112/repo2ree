@@ -1,4 +1,4 @@
-import { PAGE } from "@core/app-shell/pages";
+import { type AppShellPage, PAGE } from "@core/app-shell/pages";
 import { Suspense } from "react";
 import styles from "./AppShellContent.module.css";
 import { ArchivePageContainer } from "./pages/pageContainers/ArchivePageContainer";
@@ -10,7 +10,7 @@ import {
   StepPageContainer,
 } from "./pages/pageContainers/DockedPageContainers";
 
-export function AppShellContent(props: AppShellContentProps) {
+export function AppShellContent({ page, ...props }: AppShellContentProps) {
   return (
     <div className={styles.main}>
       <div aria-hidden className={styles.backdrop}>
@@ -27,16 +27,16 @@ export function AppShellContent(props: AppShellContentProps) {
             </div>
           }
         >
-          {activePageContent(props)}
+          {activePageContent(page, props)}
         </Suspense>
       </div>
     </div>
   );
 }
 
-function activePageContent(props: AppShellContentProps) {
+function activePageContent(page: AppShellPage, props: Omit<AppShellContentProps, "page">) {
   const { ree, reeIntent, workspaceRemote, stepRuns, uiChrome, currentReeFiles, commands } = props;
-  switch (uiChrome.page) {
+  switch (page) {
     case PAGE.METADATA:
       return (
         <MetadataPageContainer
@@ -80,6 +80,7 @@ function activePageContent(props: AppShellContentProps) {
     case PAGE.ACTIVATION:
       return (
         <StepPageContainer
+          page={page}
           ree={ree}
           workspaceRemote={workspaceRemote}
           stepRuns={stepRuns}

@@ -1,7 +1,6 @@
-import { PAGE } from "@core/app-shell/pages";
-import { activeNode } from "@core/canvas/canvasNodes";
+import { type AppShellPage, PAGE } from "@core/app-shell/pages";
 import { useWorkspaceNavigationGuard } from "@shell/state/ree-editor/workspace-sync/useWorkspaceNavigationGuard";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { WorkspaceLoadErrorView, WorkspaceLoadingView } from "../errors/WorkspaceLoadView";
 import { Ic } from "../shared/components/Icon";
 import { Toast } from "../shared/components/Toast";
@@ -12,7 +11,6 @@ import { RunHud } from "./canvas/RunHud";
 import { SealContent } from "./canvas/SealContent";
 import { SourceAcquisitionContent } from "./canvas/SourceAcquisitionContent";
 import { WorkbenchLab } from "./canvas/WorkbenchLab";
-import { WorkspaceDrawer } from "./canvas/WorkspaceDrawer";
 import { ReeSyncStatus } from "./components/ReeSyncStatus";
 import { WorkspaceFooterBar } from "./components/WorkspaceFooterBar";
 import { WorkspaceStatusBar } from "./components/WorkspaceStatusBar";
@@ -24,6 +22,14 @@ interface AppShellViewProps {
 }
 
 const NO_STALE_NODE_KEYS = new Set<string>();
+
+// Pages whose canvas node carries a compact label; the window says the longer
+// name. Everything else takes its node's own label.
+const WINDOW_TITLE: Partial<Record<AppShellPage, string>> = {
+  [PAGE.SOURCE]: "Source Acquisition",
+};
+
+const drawerTitle = (page: AppShellPage) => WINDOW_TITLE[page];
 
 export function AppShellView({ onBack }: AppShellViewProps) {
   return (
@@ -63,18 +69,75 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
     shouldBlock: isReeIntentDirty,
     flush: commands.flushReeIntent,
   });
-  // The constellation (pod hub) is the home view. Every workflow page opens in
-  // the same resizable drawer so moving between steps never changes navigation
-  // or spatial context.
-  const drawerOpen = page !== PAGE.CANVAS;
-  const sealOpen = page === PAGE.SEAL;
-  const sourceOpen = page === PAGE.SOURCE;
+  // The constellation (pod hub) is the home view and stays live: pages open as
+  // windows standing on it beside their own node, several at once, so moving
+  // between steps is panning rather than replacing what is on screen.
   const openPage = useCallback(
     (next: typeof page) => {
       commands.setPage(next);
       if (next !== PAGE.CANVAS) commands.setReceiptsConsoleOpen(false);
     },
     [commands],
+  );
+
+  // Each open window's body, memoised per page. CanvasHub re-renders on every
+  // frame of a pan to follow its node; a stable element per page is what keeps
+  // that from reconciling the page underneath it sixty times a second.
+  const pageBodies = useMemo(() => {
+    const body = (target: typeof page) => {
+      if (target === PAGE.SOURCE) {
+        return (
+          <SourceAcquisitionContent
+            ree={ree}
+            workspaceRemote={workspaceRemote}
+            stepRuns={stepRuns}
+            uiChrome={uiChrome}
+            commands={commands}
+          />
+        );
+      }
+      if (target === PAGE.SEAL) {
+        return (
+          <SealContent
+            ree={ree}
+            badges={badges}
+            locked={uiChrome.locked}
+            sealRunning={sealRunning}
+            sealLog={sealLog}
+            onSeal={commands.onSeal}
+          />
+        );
+      }
+      return (
+        <AppShellContent
+          page={target}
+          ree={ree}
+          reeIntent={reeIntent}
+          workspaceRemote={workspaceRemote}
+          stepRuns={stepRuns}
+          uiChrome={uiChrome}
+          currentReeFiles={currentReeFiles}
+          commands={commands}
+        />
+      );
+    };
+    return new Map(uiChrome.openPages.map(({ page: open }) => [open, body(open)] as const));
+  }, [
+    uiChrome,
+    ree,
+    reeIntent,
+    workspaceRemote,
+    stepRuns,
+    currentReeFiles,
+    commands,
+    badges,
+    sealRunning,
+    sealLog,
+  ]);
+
+  const renderPage = useCallback(
+    (target: typeof page) => pageBodies.get(target) ?? null,
+    [pageBodies],
   );
 
   if (provisioned && workspaceHydration.status === "loading") {
@@ -154,7 +217,12 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
             badges={badges}
             staleNodeKeys={NO_STALE_NODE_KEYS}
             provisioned={provisioned}
-            dimmed={false}
+            openPages={uiChrome.openPages}
+            renderPage={renderPage}
+            onClosePage={commands.closePage}
+            onPositionPage={commands.setPageWindowPosition}
+            onSizePage={commands.setPageWindowSize}
+            pageTitle={drawerTitle}
             onNavigate={openPage}
             workspaceFiles={workspaceRemote.workspaceFiles}
             reeFiles={currentReeFiles}
@@ -167,43 +235,6 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
             benchConsoleOpen={uiChrome.benchConsoleOpen}
             onBenchConsoleOpenChange={commands.setBenchConsoleOpen}
           />
-        )}
-
-        {provisioned && drawerOpen && (
-          <WorkspaceDrawer
-            node={activeNode(page)}
-            title={sourceOpen ? "Source Acquisition" : undefined}
-            onClose={() => commands.setPage(PAGE.CANVAS)}
-          >
-            {sourceOpen ? (
-              <SourceAcquisitionContent
-                ree={ree}
-                workspaceRemote={workspaceRemote}
-                stepRuns={stepRuns}
-                uiChrome={uiChrome}
-                commands={commands}
-              />
-            ) : sealOpen ? (
-              <SealContent
-                ree={ree}
-                badges={badges}
-                locked={uiChrome.locked}
-                sealRunning={sealRunning}
-                sealLog={sealLog}
-                onSeal={commands.onSeal}
-              />
-            ) : (
-              <AppShellContent
-                ree={ree}
-                reeIntent={reeIntent}
-                workspaceRemote={workspaceRemote}
-                stepRuns={stepRuns}
-                uiChrome={uiChrome}
-                currentReeFiles={currentReeFiles}
-                commands={commands}
-              />
-            )}
-          </WorkspaceDrawer>
         )}
 
         {/* Cross-page logs console: every run of this REE, split by step. */}

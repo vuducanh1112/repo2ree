@@ -1,4 +1,9 @@
-import { type KeyboardEventHandler, type ReactNode, useEffect } from "react";
+import {
+  type KeyboardEventHandler,
+  type PointerEventHandler,
+  type ReactNode,
+  useEffect,
+} from "react";
 import { Ic } from "../../shared/components/Icon";
 import { type CssVarValues, cssVars, cx } from "../../theme/styleVars";
 import styles from "./CanvasWindow.module.css";
@@ -14,6 +19,8 @@ interface CanvasWindowProps {
   /** Present the window as a modal dialog rather than an ambient canvas region. */
   modal?: boolean;
   onKeyDown?: KeyboardEventHandler<HTMLElement>;
+  /** Makes the title bar a drag handle, for windows the user can move. */
+  onBarPointerDown?: PointerEventHandler<HTMLDivElement>;
   /** Left side of the title bar (icon + title, tab strip, …). */
   header: ReactNode;
   /** Trailing title-bar slot rendered between the header and the X. */
@@ -46,6 +53,7 @@ export function CanvasWindow({
   escapeToClose = false,
   modal = false,
   onKeyDown,
+  onBarPointerDown,
   header,
   headerRight,
   className,
@@ -74,7 +82,11 @@ export function CanvasWindow({
       className={cx(styles.window, className)}
       style={cssVars(vars ?? {})}
     >
-      <div className={styles.bar}>
+      <div
+        className={styles.bar}
+        data-draggable={onBarPointerDown ? "" : undefined}
+        onPointerDown={onBarPointerDown}
+      >
         <div className={styles.barMain}>{header}</div>
         {headerRight}
         {closable && (

@@ -36,5 +36,10 @@ export function buildCables(scene: CableScene): CableGeo {
       connected: scene.doneKeys.has(node.key),
     });
   }
-  return { cables, w: scene.stage.width, h: scene.stage.height };
+  return {
+    cables,
+    w: scene.stage.width,
+    h: scene.stage.height,
+    nodeRects: scene.nodeRects,
+  };
 }

@@ -55,8 +55,8 @@ test.describe("Review lifecycle", () => {
       await provisionFromBundle(page, authoredRee());
     });
 
-    // Opened once: the HUD toggle flips to "collapse" when expanded, and every
-    // step below reads from the same panel.
+    // Switch the persistent status bar to Review once; every step below reads
+    // from the same review panel beneath it.
     const review = await openReviewConsole(page);
 
     await test.step("source: demanding an origin this REE never had fails", async () => {

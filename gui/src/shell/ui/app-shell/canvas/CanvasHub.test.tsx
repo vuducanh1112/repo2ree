@@ -2,7 +2,7 @@
 import { PAGE } from "@core/app-shell/pages";
 import { parseAuthorReceipts } from "@core/receipts/authorReceipts";
 import { createEmptyReeExperiment } from "@core/ree/ReeSpec";
-import { screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { fakeApiServices } from "../../../../../tests/support/fakeApiServices";
@@ -82,7 +82,12 @@ describe("CanvasHub", () => {
         evaluation={{ dependencyLevel: 2, environmentLevel: 2, machineLevel: 1 }}
         badges={{ build: true, sbom: "succeeded" }}
         provisioned
-        dimmed={false}
+        openPages={[]}
+        renderPage={() => null}
+        onClosePage={vi.fn()}
+        onPositionPage={vi.fn()}
+        onSizePage={vi.fn()}
+        pageTitle={() => undefined}
         onNavigate={onNavigate}
         workspaceFiles={[{ id: "ws:main.py", name: "main.py", type: "file", content: "print()" }]}
         reeFiles={[
@@ -145,15 +150,80 @@ describe("CanvasHub", () => {
     expect((await screen.findAllByText("bench:python")).length).toBeGreaterThan(0);
   });
 
-  it("makes the background canvas inert while a focused page is open", () => {
-    const { container } = renderWithShell(
+  it("stands every open page in its own window and focuses the one clicked", async () => {
+    const user = userEvent.setup();
+    const onNavigate = vi.fn();
+    const onClosePage = vi.fn();
+
+    renderWithShell(
       <CanvasHub
         page={PAGE.METADATA}
         ree={exampleEditorRee}
         evaluation={{ dependencyLevel: 1, environmentLevel: 1, machineLevel: 1 }}
         badges={{}}
         provisioned
-        dimmed
+        openPages={[
+          { page: PAGE.METADATA, position: { x: 300, y: 160 } },
+          { page: PAGE.HBOM, position: { x: 420, y: 320 } },
+        ]}
+        renderPage={(page) => <div>body of {page}</div>}
+        onClosePage={onClosePage}
+        onPositionPage={vi.fn()}
+        onSizePage={vi.fn()}
+        pageTitle={() => undefined}
+        onNavigate={onNavigate}
+        workspaceFiles={[]}
+        reeFiles={[]}
+        sourceRepo={undefined}
+        authorReceipts={[]}
+        filesConsoleOpen={false}
+        onFilesConsoleOpenChange={vi.fn()}
+        receiptsConsoleOpen={false}
+        onReceiptsConsoleOpenChange={vi.fn()}
+        benchConsoleOpen={false}
+        onBenchConsoleOpenChange={vi.fn()}
+      />,
+      { reeId: "ree-1", services: services() },
+    );
+
+    // Both windows are present at once — the point of the canvas.
+    const metadata = screen.getByRole("region", { name: "Metadata" });
+    const hardware = screen.getByRole("region", { name: "Hardware" });
+    expect(screen.getByText("body of metadata")).toBeVisible();
+    expect(screen.getByText("body of hbom")).toBeVisible();
+
+    // The focused one is the page prop; the other is open but behind.
+    expect(metadata.parentElement).toHaveAttribute("data-focused");
+    expect(hardware.parentElement).not.toHaveAttribute("data-focused");
+
+    // Where the windows land is `layOutWindows`, covered in core: jsdom gives
+    // the stage no layout, so every placement here clamps to the same corner.
+
+    await user.click(screen.getByText("body of hbom"));
+    expect(onNavigate).toHaveBeenCalledWith(PAGE.HBOM);
+
+    const [closeMetadata] = screen.getAllByRole("button", { name: "Close" });
+    await user.click(closeMetadata as HTMLElement);
+    expect(onClosePage).toHaveBeenCalledWith(PAGE.METADATA);
+  });
+
+  it("moves a window across the canvas when its title bar is dragged", () => {
+    const onPositionPage = vi.fn();
+    const onSizePage = vi.fn();
+
+    renderWithShell(
+      <CanvasHub
+        page={PAGE.METADATA}
+        ree={exampleEditorRee}
+        evaluation={{ dependencyLevel: 1, environmentLevel: 1, machineLevel: 1 }}
+        badges={{}}
+        provisioned
+        openPages={[{ page: PAGE.METADATA, position: { x: 300, y: 160 } }]}
+        renderPage={() => <div>body</div>}
+        onClosePage={vi.fn()}
+        onPositionPage={onPositionPage}
+        onSizePage={onSizePage}
+        pageTitle={() => undefined}
         onNavigate={vi.fn()}
         workspaceFiles={[]}
         reeFiles={[]}
@@ -169,6 +239,59 @@ describe("CanvasHub", () => {
       { reeId: "ree-1", services: services() },
     );
 
-    expect(container.querySelector("[data-dimmed]")).toHaveAttribute("inert");
+    const bar = screen.getByRole("region", { name: "Metadata" }).firstElementChild as HTMLElement;
+    // A press on the bare strip of the bar starts a drag; the window follows the
+    // pointer and the new place is stored on the canvas, not on the screen.
+    fireEvent.pointerDown(bar, { isPrimary: true, button: 0, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(window, { isPrimary: true, clientX: 160, clientY: 130 });
+
+    expect(onPositionPage).toHaveBeenCalledWith(PAGE.METADATA, { x: 360, y: 190 });
+
+    const resize = screen.getByRole("button", { name: "Resize Metadata" });
+    fireEvent.pointerDown(resize, { isPrimary: true, button: 0, clientX: 700, clientY: 540 });
+    fireEvent.pointerMove(window, { isPrimary: true, clientX: 760, clientY: 580 });
+
+    expect(onSizePage).toHaveBeenCalledWith(
+      PAGE.METADATA,
+      expect.objectContaining({ width: expect.any(Number), height: expect.any(Number) }),
+    );
+  });
+
+  it("does not start a drag from a control in the title bar", () => {
+    const onPositionPage = vi.fn();
+
+    renderWithShell(
+      <CanvasHub
+        page={PAGE.METADATA}
+        ree={exampleEditorRee}
+        evaluation={{ dependencyLevel: 1, environmentLevel: 1, machineLevel: 1 }}
+        badges={{}}
+        provisioned
+        openPages={[{ page: PAGE.METADATA, position: { x: 300, y: 160 } }]}
+        renderPage={() => <div>body</div>}
+        onClosePage={vi.fn()}
+        onPositionPage={onPositionPage}
+        onSizePage={vi.fn()}
+        pageTitle={() => undefined}
+        onNavigate={vi.fn()}
+        workspaceFiles={[]}
+        reeFiles={[]}
+        sourceRepo={undefined}
+        authorReceipts={[]}
+        filesConsoleOpen={false}
+        onFilesConsoleOpenChange={vi.fn()}
+        receiptsConsoleOpen={false}
+        onReceiptsConsoleOpenChange={vi.fn()}
+        benchConsoleOpen={false}
+        onBenchConsoleOpenChange={vi.fn()}
+      />,
+      { reeId: "ree-1", services: services() },
+    );
+
+    const close = screen.getByRole("button", { name: "Close" });
+    fireEvent.pointerDown(close, { isPrimary: true, button: 0, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(window, { isPrimary: true, clientX: 160, clientY: 130 });
+
+    expect(onPositionPage).not.toHaveBeenCalled();
   });
 });

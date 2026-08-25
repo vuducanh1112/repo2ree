@@ -114,7 +114,7 @@ export function main(page: Page) {
 export const GENERATE_STATUS = /Loaded a generated|could be inferred yet|Generation failed/;
 
 /**
- * Run read-only script inference from the generate control on the docked page,
+ * Run read-only script inference from the generate control in its canvas window,
  * then expand the decision graph it renders.
  *
  * Inference never writes: it loads a candidate into the editor (leaving it
@@ -193,17 +193,25 @@ function waitForFileWrite(page: Page) {
  * same-named main buttons.
  */
 function nav(page: Page) {
-  return page.getByRole("navigation");
+  return page.getByRole("navigation", { name: "Workspace pages" });
 }
 
 /**
- * Open a hub node by its exact label. When a page is already docked its scrim
- * covers the constellation, so fly back out (Escape) before picking the next
- * node — the same "close, then choose" motion a user performs.
+ * Open a canvas node by its exact label. Long single-page journeys close the
+ * focused window first to keep the stage readable; multi-window scenarios can
+ * click Workspace pages directly when they intentionally keep both open.
  */
 export async function openPort(page: Page, label: string) {
   await page.keyboard.press("Escape").catch(() => {});
   await nav(page).getByRole("button", { name: label, exact: true }).click();
+}
+
+/** Open the file console from the persistent workspace status bar. */
+export async function openFilesConsole(page: Page) {
+  const status = page.getByRole("region", { name: "Workspace status" });
+  const trigger = status.getByRole("button", { name: /^Files/ });
+  if ((await trigger.getAttribute("aria-pressed")) !== "true") await trigger.click();
+  await expect(page.getByRole("button", { name: "Collapse files" })).toBeVisible();
 }
 
 /**
@@ -250,7 +258,7 @@ export async function startReeCreation(page: Page, options?: { agentIndex?: numb
 /**
  * Provision the workbench container. Provisioning lands on the hub canvas
  * (the live lab), so this resolves there and then dives into the Source node so
- * the rest of the walkthrough continues from a docked page.
+ * the rest of the walkthrough continues from a canvas page window.
  */
 export async function provisionWorkbench(page: Page, options?: { imageRef?: string }) {
   await stepShot(page, "provision-workbench", "before");
@@ -491,7 +499,7 @@ export async function provideHbom(page: Page, cpuModel: string) {
 export const SBOM_ARTIFACT_PATH = "artifacts/sbom.json";
 
 /**
- * Generate the SBOM. Navigates to the SBOM canvas node (a docked page, like
+ * Generate the SBOM. Navigates to the SBOM canvas node (a page window, like
  * Build Runtime).
  */
 export async function generateSbom(page: Page) {
@@ -783,7 +791,7 @@ async function reproduceReviewStep(page: Page, label: string, timeout: number) {
  * complete the REE is — sealing is what makes the workbench release control
  * appear.
  */
-/** The seal panel pinned inside the constellation hub (not the docked main area). */
+/** The Seal page window opened from its constellation node. */
 function sealPanel(page: Page) {
   return page.getByRole("region", { name: "Seal" });
 }
@@ -805,16 +813,21 @@ export async function sealRee(page: Page) {
 /** Release (tear down) the workbench container; returns to the landing view. */
 export async function releaseWorkbench(page: Page) {
   await stepShot(page, "release-workbench", "before");
-  // The release button lives inside the bench console HUD (bottom-left). Open
-  // the console first, then click the button.
-  await page.keyboard.press("Escape").catch(() => {});
-  await page.getByRole("button", { name: /Expand workbench console/i }).click();
+  await openWorkbenchConsole(page);
   const releaseButton = page.getByRole("button", { name: /Release workbench/i }).first();
   await expect(releaseButton).toBeVisible();
   await releaseButton.click();
   await expect(page).toHaveURL("/");
   await expect(page.getByRole("button", { name: /Create REE/i })).toBeVisible();
   await stepShot(page, "release-workbench", "after");
+}
+
+/** Open the workbench console from the persistent footer status bar. */
+export async function openWorkbenchConsole(page: Page) {
+  const footer = page.getByRole("region", { name: "Workbench status" });
+  const trigger = footer.getByRole("button", { name: /^Workbench/ });
+  if ((await trigger.getAttribute("aria-pressed")) !== "true") await trigger.click();
+  await expect(page.getByRole("button", { name: "Collapse workbench console" })).toBeVisible();
 }
 
 /**

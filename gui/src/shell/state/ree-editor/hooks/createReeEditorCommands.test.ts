@@ -87,9 +87,41 @@ describe("createReeEditorCommands", () => {
     }));
     commands.setLocked((current) => !current);
     commands.setLocked((current) => !current);
+    commands.setStepParams(createInitialState().stepRuns.stepParams);
 
     expect(state.reeIntent.reeSpec.name).toBe("first update");
     expect(state.reeIntent.reeSpec.catalogMetadata.version).toBe("2");
     expect(state.uiChrome.locked).toBe(false);
+    expect(state.stepRuns.stepParams.build).toEqual({});
+  });
+
+  it("keeps each canvas window's position, size, and close behavior independent", () => {
+    let state = createInitialState();
+    const dispatch = (action: AppShellAction) => {
+      state = appShellReducer(state, action);
+    };
+    const commands = createReeEditorCommands({ dispatch, ...commandDelegates() });
+
+    commands.setPage(PAGE.METADATA);
+    commands.setPageWindowPosition(PAGE.METADATA, { x: 120, y: 80 });
+    commands.setPageWindowSize(PAGE.METADATA, { width: 820, height: 600 });
+    commands.setPage(PAGE.HBOM);
+
+    expect(state.uiChrome.openPages).toEqual([
+      {
+        page: PAGE.METADATA,
+        position: { x: 120, y: 80 },
+        size: { width: 820, height: 600 },
+      },
+      { page: PAGE.HBOM, position: null },
+    ]);
+
+    commands.closePage(PAGE.METADATA);
+    expect(state.uiChrome.page).toBe(PAGE.HBOM);
+    expect(state.uiChrome.openPages).toEqual([{ page: PAGE.HBOM, position: null }]);
+
+    commands.closePage(PAGE.HBOM);
+    expect(state.uiChrome.page).toBe(PAGE.CANVAS);
+    expect(state.uiChrome.openPages).toEqual([]);
   });
 });

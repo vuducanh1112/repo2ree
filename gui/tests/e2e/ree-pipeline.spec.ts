@@ -9,6 +9,7 @@ import {
   generateSbom,
   generateScript,
   main,
+  openFilesConsole,
   openPort,
   provideHbom,
   provideMetadata,
@@ -81,9 +82,7 @@ test.describe("REE pipeline", () => {
     });
 
     await test.step("browse uploaded files in the REE tree", async () => {
-      await page.keyboard.press("Escape");
-      await page.getByRole("button", { name: "Expand files" }).click();
-      await expect(page.getByRole("button", { name: "Collapse files" })).toBeVisible();
+      await openFilesConsole(page);
 
       const archiveNodeNames = [
         ...new Set(

@@ -1,6 +1,6 @@
 import path from "node:path";
 import { expect, test } from "@playwright/test";
-import { openPort } from "../../e2e/helpers/flow";
+import { openPort, openWorkbenchConsole } from "../../e2e/helpers/flow";
 import { createDemoKit } from "../helpers/demo";
 
 const { demoStep, clickDemo } = createDemoKit({
@@ -44,7 +44,9 @@ test("upload Code Ocean capsule 7784598", async ({ page }) => {
       "Provision the workbench",
     );
     await expect(
-      page.getByRole("navigation").getByRole("button", { name: "Source", exact: true }),
+      page
+        .getByRole("navigation", { name: "Workspace pages" })
+        .getByRole("button", { name: "Source", exact: true }),
     ).toBeVisible();
     await openPort(page, "Source");
     await expect(sourcePanel).toBeVisible();
@@ -68,15 +70,21 @@ test("upload Code Ocean capsule 7784598", async ({ page }) => {
     });
   });
 
-  // NOTE: intentionally no "Expand files" step here. The upload itself completes
+  // NOTE: intentionally no file-browser step here. The upload itself completes
   // fine server-side; what hangs for this capsule is rendering its extracted file
   // browser — a 128-node, depth-7 tree (mostly nested .vscode junk under code/) —
   // under always-on video recording. Keep this demo upload-only until that
   // file-browser render is made resilient to large/deep trees.
 
   await demoStep(page, "Release workbench", async () => {
-    await page.keyboard.press("Escape").catch(() => {});
-    await page.getByRole("button", { name: /Expand workbench console/i }).click();
+    await clickDemo(
+      page,
+      page
+        .getByRole("region", { name: "Workbench status" })
+        .getByRole("button", { name: /^Workbench/ }),
+      "Open the workbench console from the footer status bar",
+    );
+    await openWorkbenchConsole(page);
     const releaseButton = page.getByRole("button", { name: /Release workbench/i }).first();
     await expect(releaseButton).toBeVisible();
     await clickDemo(page, releaseButton, "Release the workbench container");

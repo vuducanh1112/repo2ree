@@ -110,6 +110,13 @@ export interface CableGeo {
   cables: Cable[];
   w: number;
   h: number;
+  /**
+   * Every node's measured box, forwarded from the scene. The measure loop
+   * already has these and the overlay does not need them, but the page windows
+   * anchored to each node do — and re-measuring them on a second loop would
+   * pay for the same `getBoundingClientRect` calls twice per frame.
+   */
+  nodeRects: Partial<Record<string, Rect>>;
 }
 
 export function cablePath(x1: number, y1: number, x2: number, y2: number): string {

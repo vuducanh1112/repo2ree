@@ -50,16 +50,6 @@ vi.mock("./components/WorkspaceFooterBar", () => ({
     </div>
   ),
 }));
-vi.mock("./canvas/WorkspaceDrawer", () => ({
-  WorkspaceDrawer: ({ children, onClose }: { children: React.ReactNode; onClose: () => void }) => (
-    <div>
-      {children}
-      <button type="button" onClick={onClose}>
-        Close drawer
-      </button>
-    </div>
-  ),
-}));
 vi.mock("./canvas/SourceAcquisitionContent", () => ({
   SourceAcquisitionContent: () => <div>Source acquisition</div>,
 }));
@@ -74,8 +64,19 @@ vi.mock("./canvas/CanvasHub", () => ({
   CanvasHub: (props: {
     onNavigate: (page: string, rect?: DOMRect) => void;
     onFilesConsoleOpenChange: (open: boolean) => void;
+    openPages: readonly { page: AppShellPage }[];
+    renderPage: (page: AppShellPage) => React.ReactNode;
+    onClosePage: (page: AppShellPage) => void;
   }) => (
     <div>
+      {props.openPages.map(({ page }) => (
+        <div key={page}>
+          {props.renderPage(page)}
+          <button type="button" onClick={() => props.onClosePage(page)}>
+            Close {page}
+          </button>
+        </div>
+      ))}
       <button type="button" onClick={() => props.onNavigate(PAGE.METADATA)}>
         Navigate plain
       </button>
@@ -96,9 +97,19 @@ vi.mock("../shared/components/Toast", () => ({
   ),
 }));
 
-function controller(page: AppShellPage = PAGE.CANVAS, provisioned = true) {
+function controller(
+  page: AppShellPage = PAGE.CANVAS,
+  provisioned = true,
+  openPages = (page === PAGE.CANVAS ? [] : [page]).map((open) => ({
+    page: open,
+    position: { x: 0, y: 0 },
+  })),
+) {
   const commands = {
     setPage: vi.fn(),
+    closePage: vi.fn(),
+    setPageWindowPosition: vi.fn(),
+    setPageWindowSize: vi.fn(),
     setReeSpec: vi.fn(),
     setFocusedField: vi.fn(),
     setFilesConsoleOpen: vi.fn(),
@@ -127,6 +138,7 @@ function controller(page: AppShellPage = PAGE.CANVAS, provisioned = true) {
     },
     chrome: {
       page,
+      openPages,
       toast: null,
       locked: false,
       filesConsoleOpen: false,
@@ -225,15 +237,29 @@ describe("AppShellView", () => {
   });
 
   it.each([
-    [PAGE.METADATA, "Close drawer"],
-    [PAGE.BUILD, "Close drawer"],
-    [PAGE.SOURCE, "Close drawer"],
-    [PAGE.SEAL, "Close drawer"],
-  ] as const)("closes the %s surface back to the canvas", (page, closeName) => {
+    PAGE.METADATA,
+    PAGE.BUILD,
+    PAGE.SOURCE,
+    PAGE.SEAL,
+  ] as const)("closes the %s window without disturbing the others", (page) => {
     const commands = controller(page);
     render(<AppShellView onBack={vi.fn()} />);
-    fireEvent.click(screen.getByRole("button", { name: closeName }));
-    expect(commands.setPage).toHaveBeenCalledWith(PAGE.CANVAS);
+    fireEvent.click(screen.getByRole("button", { name: `Close ${page}` }));
+    expect(commands.closePage).toHaveBeenCalledWith(page);
+    // Closing is not navigation: where focus lands is the store's decision.
+    expect(commands.setPage).not.toHaveBeenCalled();
+  });
+
+  it("stands several pages on the canvas at once", () => {
+    controller(PAGE.METADATA, true, [
+      { page: PAGE.METADATA, position: { x: 0, y: 0 } },
+      { page: PAGE.SOURCE, position: { x: 40, y: 40 } },
+    ]);
+    render(<AppShellView onBack={vi.fn()} />);
+
+    expect(screen.getByText("Source acquisition")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Close metadata" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Close source" })).toBeInTheDocument();
   });
 
   it("runs seal and enabled download actions and clears a toast", () => {
@@ -246,6 +272,7 @@ describe("AppShellView", () => {
       },
       chrome: {
         page: PAGE.SEAL,
+        openPages: [{ page: PAGE.SEAL, position: { x: 0, y: 0 } }],
         toast: { message: "Saved", type: "info" },
         locked: false,
         filesConsoleOpen: false,

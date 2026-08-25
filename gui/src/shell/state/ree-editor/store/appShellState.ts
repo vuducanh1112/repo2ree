@@ -1,3 +1,4 @@
+import type { OpenPageWindow } from "@core/app-shell/openPages";
 import type { AppShellPage } from "@core/app-shell/pages";
 import { normalizeAppShellPage } from "@core/app-shell/pages";
 import type { ReeSpec } from "@core/ree/ReeSpec";
@@ -25,6 +26,7 @@ interface AppShellState {
   activeRunIds: Record<string, string>;
   toast: ToastState | null;
   page: AppShellPage;
+  openPages: OpenPageWindow[];
   focusedField: string | null;
   sourceSnapshotArchiveName: string;
   filesConsoleOpen: boolean;

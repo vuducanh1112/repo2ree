@@ -71,3 +71,59 @@ export function zoomToward(
   const ratio = z / prev.z - 1;
   return { x: prev.x - ox * ratio, y: prev.y - oy * ratio, z };
 }
+
+/* --- Camera-local space ----------------------------------------------------
+ * Where something sits on the canvas itself, rather than where it happens to
+ * appear on screen right now. The world layer is `translate(x, y) scale(z)`
+ * about the stage's centre, so a point's screen position is
+ *
+ *   screen = C + z * (local - C) + (x, y)
+ *
+ * with C the stage centre. Anything that must keep its place on the canvas as
+ * the user pans stores the `local` point and is drawn through this; anything
+ * measured off the DOM comes back the other way.
+ */
+
+function stageCentre(stage: Pick<StageBox, "width" | "height">): Point {
+  return { x: stage.width / 2, y: stage.height / 2 };
+}
+
+/** A measured stage-space position, as a point on the canvas. */
+export function toCameraLocal(
+  screen: Point,
+  stage: Pick<StageBox, "width" | "height">,
+  tf: Transform,
+): Point {
+  const c = stageCentre(stage);
+  return {
+    x: c.x + (screen.x - c.x - tf.x) / tf.z,
+    y: c.y + (screen.y - c.y - tf.y) / tf.z,
+  };
+}
+
+/** A point on the canvas, as the stage-space position it currently appears at. */
+export function toStagePoint(
+  local: Point,
+  stage: Pick<StageBox, "width" | "height">,
+  tf: Transform,
+): Point {
+  const c = stageCentre(stage);
+  return {
+    x: c.x + (local.x - c.x) * tf.z + tf.x,
+    y: c.y + (local.y - c.y) * tf.z + tf.y,
+  };
+}
+
+/**
+ * Pan — without zooming — so a point on the canvas lands at the stage's centre.
+ * This is how a window that has been panned off screen is reached again:
+ * focusing it brings the camera to it rather than dragging it back to the user.
+ */
+export function centreOn(
+  local: Point,
+  stage: Pick<StageBox, "width" | "height">,
+  tf: Transform,
+): Transform {
+  const c = stageCentre(stage);
+  return { ...tf, x: -(local.x - c.x) * tf.z, y: -(local.y - c.y) * tf.z };
+}

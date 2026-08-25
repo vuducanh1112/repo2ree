@@ -1,3 +1,4 @@
+import type { AppShellPage } from "@core/app-shell/pages";
 import type { ReeFile } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import type { ReeEditorCommands } from "@shell/state/ree-editor/hooks/createReeEditorCommands";
@@ -57,6 +58,8 @@ export interface HardwareBomPageContainerProps {
 }
 
 export interface StepPageContainerProps {
+  /** The page owned by this window, independent of the globally focused page. */
+  page: AppShellPage;
   ree: ReeEditorViewModel;
   workspaceRemote: WorkspaceRemoteState;
   stepRuns: StepRunState;
@@ -73,6 +76,12 @@ export interface ArchivePageContainerProps {
 }
 
 export interface AppShellContentProps {
+  /**
+   * Which page to render. Several are open at once, each in its own canvas
+   * window, so this is not `uiChrome.page` — that one names only the focused
+   * window, and every open window renders through here.
+   */
+  page: AppShellPage;
   ree: ReeEditorViewModel;
   reeIntent: ReeIntentState;
   workspaceRemote: WorkspaceRemoteState;

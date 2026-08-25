@@ -64,6 +64,7 @@ function contentProps(page: AppShellPage): AppShellContentProps {
   };
 
   return {
+    page,
     ree: {
       ...exampleEditorRee,
       spec: { ...exampleEditorRee.spec, name: "Example REE" },
@@ -117,6 +118,16 @@ describe("AppShellContent", () => {
     });
 
     expect(await screen.findByText(title, { exact: true })).toBeInTheDocument();
+  });
+
+  it("renders the window-owned step rather than the globally focused step", async () => {
+    const props = contentProps(PAGE.BUILD);
+    props.uiChrome.page = PAGE.SBOM;
+
+    renderWithShell(<AppShellContent {...props} />, { reeId: "ree-1", services });
+
+    expect(await screen.findByText("Build Runtime", { exact: true })).toBeInTheDocument();
+    expect(screen.queryByText("Generate SBOM", { exact: true })).not.toBeInTheDocument();
   });
 
   it("renders no docked page on the canvas", () => {

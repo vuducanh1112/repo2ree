@@ -4,6 +4,8 @@ import { expect, test } from "@playwright/test";
 import {
   dockerRunScript,
   EXPERIMENT_OUTPUT_FILE,
+  openFilesConsole,
+  openWorkbenchConsole,
   stdoutContainsVerifyScript,
 } from "../e2e/helpers/flow";
 import { createDemoKit } from "./helpers/demo";
@@ -75,10 +77,15 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
     // and runs the doctor probe (which waits for the in-bench dockerd) —
     // ~20s warm, longer on a cold registry pull.
     await expect(
-      page.getByRole("navigation").getByRole("button", { name: "Source", exact: true }),
+      page
+        .getByRole("navigation", { name: "Workspace pages" })
+        .getByRole("button", { name: "Source", exact: true }),
     ).toBeVisible({ timeout: 120000 });
     await page.keyboard.press("Escape").catch(() => {});
-    await page.getByRole("navigation").getByRole("button", { name: "Source", exact: true }).click();
+    await page
+      .getByRole("navigation", { name: "Workspace pages" })
+      .getByRole("button", { name: "Source", exact: true })
+      .click();
     await expect(
       page.getByRole("region", { name: "Source Acquisition" }).getByText("Source Acquisition", {
         exact: true,
@@ -117,16 +124,16 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
   });
 
   await demoStep(page, "Browse extracted files", async () => {
-    // Files live in the file-tree HUD console docked on the canvas; leave the
-    // source dock and expand it.
-    await page.keyboard.press("Escape");
+    // Files open from the persistent status bar without closing the source
+    // window, so the canvas and current authoring context remain available.
     await clickDemo(
       page,
-      page.getByRole("button", { name: "Expand files" }),
-      "Browse the REE's files in the docked file console",
+      page
+        .getByRole("region", { name: "Workspace status" })
+        .getByRole("button", { name: /^Files/ }),
+      "Browse the REE's files from the workspace status bar",
     );
-
-    await expect(page.getByRole("button", { name: "Collapse files" })).toBeVisible();
+    await openFilesConsole(page);
     // The console browses both published inventories in a section each: the
     // materialized `workspace/`, and the REE tree that excludes it. An uploaded
     // archive lands in `upstream/`, the acquired source, so the filter below
@@ -150,7 +157,9 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
     await page.keyboard.press("Escape").catch(() => {});
     await clickDemo(
       page,
-      page.getByRole("navigation").getByRole("button", { name: "Metadata", exact: true }),
+      page
+        .getByRole("navigation", { name: "Workspace pages" })
+        .getByRole("button", { name: "Metadata", exact: true }),
       "Provide project metadata",
     );
     await expect(main.getByRole("heading", { name: "Metadata", exact: true })).toBeVisible();
@@ -180,7 +189,9 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
     await page.keyboard.press("Escape").catch(() => {});
     await clickDemo(
       page,
-      page.getByRole("navigation").getByRole("button", { name: "Hardware", exact: true }),
+      page
+        .getByRole("navigation", { name: "Workspace pages" })
+        .getByRole("button", { name: "Hardware", exact: true }),
       "Add a hardware bill of materials entry",
     );
     await expect(main.getByRole("heading", { name: "Hardware BOM", exact: true })).toBeVisible();
@@ -205,7 +216,7 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
     await clickDemo(
       page,
       page
-        .getByRole("navigation")
+        .getByRole("navigation", { name: "Workspace pages" })
         .getByRole("button", { name: "Reproducibility Readiness", exact: true }),
       "Evaluate the projects risks to reproducibility, by analyzing declared dependencies",
     );
@@ -229,7 +240,9 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
     await page.keyboard.press("Escape").catch(() => {});
     await clickDemo(
       page,
-      page.getByRole("navigation").getByRole("button", { name: "Build", exact: true }),
+      page
+        .getByRole("navigation", { name: "Workspace pages" })
+        .getByRole("button", { name: "Build", exact: true }),
       "Open the build runtime terminal for the environment the whole REE executes on",
     );
     await expect(main.getByRole("heading", { name: "Build Runtime", exact: true })).toBeVisible();
@@ -305,7 +318,9 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
     await page.keyboard.press("Escape").catch(() => {});
     await clickDemo(
       page,
-      page.getByRole("navigation").getByRole("button", { name: "SBOM", exact: true }),
+      page
+        .getByRole("navigation", { name: "Workspace pages" })
+        .getByRole("button", { name: "SBOM", exact: true }),
       "Open the SBOM page — a full step page like Build Runtime",
     );
     await clickDemo(page, main.getByRole("button", { name: /^Generate$/ }), "Run SBOM scan");
@@ -347,7 +362,9 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
     await page.keyboard.press("Escape").catch(() => {});
     await clickDemo(
       page,
-      page.getByRole("navigation").getByRole("button", { name: "Activation", exact: true }),
+      page
+        .getByRole("navigation", { name: "Workspace pages" })
+        .getByRole("button", { name: "Activation", exact: true }),
       "Open activation test",
     );
     await expect(main.getByText("Activation Run Script", { exact: true })).toBeVisible();
@@ -390,7 +407,9 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
     await page.keyboard.press("Escape").catch(() => {});
     await clickDemo(
       page,
-      page.getByRole("navigation").getByRole("button", { name: "Experiments", exact: true }),
+      page
+        .getByRole("navigation", { name: "Workspace pages" })
+        .getByRole("button", { name: "Experiments", exact: true }),
       "Open the experiment catalog from its bench terminal",
     );
     const experimentsPanel = page.getByRole("region", { name: "Experiments" });
@@ -460,7 +479,9 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
     await page.keyboard.press("Escape").catch(() => {});
     await showcasePanel(
       page,
-      page.getByRole("navigation").getByRole("button", { name: "Experiments", exact: true }),
+      page
+        .getByRole("navigation", { name: "Workspace pages" })
+        .getByRole("button", { name: "Experiments", exact: true }),
       "The experiment terminal now reports the configured run script",
     );
     await page.waitForTimeout(1500);
@@ -469,10 +490,12 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
   await demoStep(page, "Seal and download", async () => {
     await clickDemo(
       page,
-      page.getByRole("navigation").getByRole("button", { name: "Seal", exact: true }),
+      page
+        .getByRole("navigation", { name: "Workspace pages" })
+        .getByRole("button", { name: "Seal", exact: true }),
       "Seal the REE package",
     );
-    // The seal panel is pinned inside the constellation hub, not the docked main.
+    // Seal opens in its own canvas window like the other authoring pages.
     const sealPanel = page.getByRole("region", { name: "Seal" });
     // The seal panel shows source/runtime bundle toggles inline before sealing.
     await expect(sealPanel.getByText("Bundle contents", { exact: true })).toBeVisible();
@@ -525,9 +548,14 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
   });
 
   await demoStep(page, "Release workbench", async () => {
-    // The release button lives in the bench console HUD; open it first.
-    await page.keyboard.press("Escape").catch(() => {});
-    await page.getByRole("button", { name: /Expand workbench console/i }).click();
+    await clickDemo(
+      page,
+      page
+        .getByRole("region", { name: "Workbench status" })
+        .getByRole("button", { name: /^Workbench/ }),
+      "Open the workbench console from the footer status bar",
+    );
+    await openWorkbenchConsole(page);
     const releaseButton = page.getByRole("button", { name: /Release workbench/i }).first();
     await expect(releaseButton).toBeVisible();
     await clickDemo(page, releaseButton, "Release the workbench container");

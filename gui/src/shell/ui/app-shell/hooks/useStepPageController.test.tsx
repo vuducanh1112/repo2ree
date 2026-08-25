@@ -5,7 +5,6 @@ import {
   type ReeEditorViewModelPatch,
 } from "@core/ree-editor/reeEditorViewModel";
 import { createInitialStepRunState } from "@shell/state/ree-editor/store/stepRunState";
-import { createInitialUiChromeState } from "@shell/state/ree-editor/store/uiChrome";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useStepPageController } from "./useStepPageController";
@@ -33,7 +32,7 @@ type ControllerArgs = Parameters<typeof useStepPageController>[0];
 
 function controllerArgs(
   overrides: {
-    page?: ControllerArgs["uiChrome"]["page"];
+    page?: ControllerArgs["page"];
     ree?: ReeEditorViewModelPatch;
     stepRuns?: Partial<ControllerArgs["stepRuns"]>;
   } = {},
@@ -43,7 +42,7 @@ function controllerArgs(
   const args = {
     ree: patchReeEditorViewModel(createEmptyReeEditorViewModel(), overrides.ree ?? {}),
     stepRuns: { ...createInitialStepRunState(), ...overrides.stepRuns },
-    uiChrome: { ...createInitialUiChromeState(), page: overrides.page ?? PAGE.BUILD },
+    page: overrides.page ?? PAGE.BUILD,
     commands: { setStepParams, setPage },
   } as unknown as ControllerArgs;
   return { args, setStepParams, setPage };

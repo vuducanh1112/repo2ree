@@ -1,6 +1,6 @@
 import path from "node:path";
 import { expect, type Page, test } from "@playwright/test";
-import { openPort } from "../../e2e/helpers/flow";
+import { openFilesConsole, openPort, openWorkbenchConsole } from "../../e2e/helpers/flow";
 import { createDemoKit } from "../helpers/demo";
 
 const { demoStep, clickDemo, fillDemo, saveRunScript, showDemoFocus } = createDemoKit({
@@ -131,7 +131,9 @@ test("author Code Ocean capsule 7784598 inputs", async ({ page }) => {
       "Provision the workbench",
     );
     await expect(
-      page.getByRole("navigation").getByRole("button", { name: "Source", exact: true }),
+      page
+        .getByRole("navigation", { name: "Workspace pages" })
+        .getByRole("button", { name: "Source", exact: true }),
     ).toBeVisible();
     await openPort(page, "Source");
     await expect(sourcePanel).toBeVisible();
@@ -156,12 +158,14 @@ test("author Code Ocean capsule 7784598 inputs", async ({ page }) => {
   });
 
   await demoStep(page, "Review extracted capsule shape", async () => {
-    await page.keyboard.press("Escape").catch(() => {});
     await clickDemo(
       page,
-      page.getByRole("button", { name: "Expand files" }),
+      page
+        .getByRole("region", { name: "Workspace status" })
+        .getByRole("button", { name: /^Files/ }),
       "Confirm Code Ocean files were extracted at the upstream root",
     );
+    await openFilesConsole(page);
     await page.getByPlaceholder("Filter files…").fill("code");
     await expect(page.getByRole("button", { name: /run/i }).first()).toBeVisible();
     await page.getByPlaceholder("Filter files…").fill("Expdata_info");
@@ -252,7 +256,9 @@ test("author Code Ocean capsule 7784598 inputs", async ({ page }) => {
     await page.keyboard.press("Escape").catch(() => {});
     await clickDemo(
       page,
-      page.getByRole("navigation").getByRole("button", { name: "Experiments", exact: true }),
+      page
+        .getByRole("navigation", { name: "Workspace pages" })
+        .getByRole("button", { name: "Experiments", exact: true }),
       "Open the experiment catalog",
     );
     await expect(
@@ -283,8 +289,14 @@ test("author Code Ocean capsule 7784598 inputs", async ({ page }) => {
   });
 
   await demoStep(page, "Release workbench", async () => {
-    await page.keyboard.press("Escape").catch(() => {});
-    await page.getByRole("button", { name: /Expand workbench console/i }).click();
+    await clickDemo(
+      page,
+      page
+        .getByRole("region", { name: "Workbench status" })
+        .getByRole("button", { name: /^Workbench/ }),
+      "Open the workbench console from the footer status bar",
+    );
+    await openWorkbenchConsole(page);
     const releaseButton = page.getByRole("button", { name: /Release workbench/i }).first();
     await expect(releaseButton).toBeVisible();
     await clickDemo(page, releaseButton, "Release the workbench container");

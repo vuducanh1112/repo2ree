@@ -27,6 +27,17 @@
   background: var(--chrome-surface-alt);
 }
 
+/* A movable window's bar is its handle; the controls in it keep their own
+ * cursor, so only the bare strip reads as draggable. */
+.bar[data-draggable] {
+  cursor: grab;
+  touch-action: none;
+}
+
+.bar[data-draggable]:active {
+  cursor: grabbing;
+}
+
 .barMain {
   display: flex;
   align-items: center;

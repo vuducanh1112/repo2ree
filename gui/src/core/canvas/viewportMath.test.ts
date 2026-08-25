@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  centreOn,
   clampZoom,
   fitBounds,
   type StageBox,
   type Transform,
+  toCameraLocal,
+  toStagePoint,
   ZOOM_MAX,
   ZOOM_MIN,
   zoomToward,
@@ -108,5 +111,44 @@ describe("zoomToward", () => {
     expect(zoomToward(identity, offsetCentre, offsetStage, IN)).toEqual(
       zoomToward(identity, centre, stage, IN),
     );
+  });
+});
+
+describe("camera-local space", () => {
+  const stage = { width: 1600, height: 900 };
+
+  it("round-trips a point through the current transform", () => {
+    for (const tf of [
+      { x: 0, y: 0, z: 1 },
+      { x: -240, y: 80, z: 0.6 },
+      { x: 310, y: -150, z: 1.4 },
+    ]) {
+      const local = toCameraLocal({ x: 700, y: 380 }, stage, tf);
+      const back = toStagePoint(local, stage, tf);
+      expect(back.x).toBeCloseTo(700);
+      expect(back.y).toBeCloseTo(380);
+    }
+  });
+
+  it("keeps a point put while the camera moves around it", () => {
+    const resting = { x: 0, y: 0, z: 1 };
+    const local = toCameraLocal({ x: 500, y: 300 }, stage, resting);
+
+    // Panning right moves what is on the canvas left by the same amount, so a
+    // window can be panned off the stage entirely rather than sticking to it.
+    const panned = toStagePoint(local, stage, { x: -400, y: 0, z: 1 });
+    expect(panned.x).toBe(100);
+    expect(panned.y).toBe(300);
+  });
+
+  it("centres the camera on a point without changing the zoom", () => {
+    const tf = { x: 120, y: -60, z: 0.8 };
+    const local = toCameraLocal({ x: 1400, y: 120 }, stage, tf);
+
+    const centred = centreOn(local, stage, tf);
+    expect(centred.z).toBe(tf.z);
+    const landed = toStagePoint(local, stage, centred);
+    expect(landed.x).toBeCloseTo(stage.width / 2);
+    expect(landed.y).toBeCloseTo(stage.height / 2);
   });
 });

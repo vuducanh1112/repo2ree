@@ -114,6 +114,22 @@ export const applicationPageScenarios: ApplicationPageScenario[] = [
   workspaceScenario("seal readiness", "seal-ready.png", "Seal", async (page) => {
     await expect(page.getByRole("button", { name: "Seal anyway" })).toBeVisible();
   }),
+  {
+    // The claim the canvas windows make: opening a second page keeps the first
+    // one standing rather than replacing it.
+    name: "two pages open at once",
+    screenshot: "two-windows.png",
+    prepare: async (page) => {
+      await openWorkspacePage(page, "Metadata");
+      await page
+        .getByRole("navigation", { name: "Workspace pages" })
+        .getByRole("button", { name: "Hardware", exact: true })
+        .click();
+      await expect(page.getByRole("region", { name: "Metadata" })).toBeVisible();
+      await expect(page.getByRole("region", { name: "Hardware" })).toBeVisible();
+      await settleVisualPage(page);
+    },
+  },
 ];
 
 function workspaceScenario(
