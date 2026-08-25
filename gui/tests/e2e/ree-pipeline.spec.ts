@@ -133,7 +133,9 @@ test.describe("REE pipeline", () => {
       // published build DAG, and loads a candidate into the editor. Nothing is
       // written — the build step below authors the script it actually runs.
       await openPort(page, "Build");
-      await expect(main(page).getByText("Build Runtime", { exact: true })).toBeVisible();
+      await expect(
+        main(page).getByRole("heading", { name: "Build Runtime", exact: true }),
+      ).toBeVisible();
 
       const { message, graph } = await generateScript(page);
       expect(message).toMatch(/Loaded a generated build script/);

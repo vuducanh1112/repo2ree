@@ -398,7 +398,9 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
 export async function buildRuntime(page: Page, buildScript: string, producedRuntimePath: string) {
   await stepShot(page, "build-runtime", "before");
   await openPort(page, "Build");
-  await expect(main(page).getByText("Build Runtime", { exact: true })).toBeVisible();
+  await expect(
+    main(page).getByRole("heading", { name: "Build Runtime", exact: true }),
+  ).toBeVisible();
   // REE owns one reserved build script — author the whole build in it directly
   // (produce the runtime artifact and land it in the workspace).
   await page.getByLabel("Build script").fill(buildScript);
@@ -472,7 +474,9 @@ async function declareRuntimeArtifact(page: Page, producedRuntimePath: string) {
 export async function provideHbom(page: Page, cpuModel: string) {
   await stepShot(page, "provide-hbom", "before");
   await openPort(page, "Hardware");
-  await expect(main(page).getByText("Hardware BOM", { exact: true })).toBeVisible();
+  await expect(
+    main(page).getByRole("heading", { name: "Hardware BOM", exact: true }),
+  ).toBeVisible();
   await main(page).locator("button").filter({ hasText: "Add CPU" }).first().click();
   const deviceModel = main(page).getByPlaceholder("Intel Core i9-14900K").first();
   await deviceModel.fill(cpuModel);
@@ -579,22 +583,22 @@ export async function runExperiment(
 ) {
   await stepShot(page, "run-experiment", "before");
   await openPort(page, "Experiments");
-  const experimentsDialog = page.getByRole("dialog", { name: "Experiments" });
+  const experimentsPanel = page.getByRole("region", { name: "Experiments" });
   await expect(
-    experimentsDialog.getByRole("heading", { name: "Experiments", exact: true }),
+    experimentsPanel.getByRole("heading", { name: "Experiments", exact: true }),
   ).toBeVisible();
   // Adding the row autosaves an experiment that has no name yet, which the
   // backend cannot declare — settle that round-trip without demanding it
   // succeed, so the naming patch below is the one held to the standard.
   const experimentAdded = waitForDefinitionPatch(page, { expectOk: false });
-  await experimentsDialog
+  await experimentsPanel
     .getByRole("button", { name: /Add experiment/i })
     .first()
     .click();
   await experimentAdded;
 
   const nameSaved = waitForDefinitionPatch(page);
-  await experimentsDialog.getByPlaceholder("smoke-test").fill(experiment.name);
+  await experimentsPanel.getByPlaceholder("smoke-test").fill(experiment.name);
   await nameSaved;
 
   if (experiment.generateFirst) {

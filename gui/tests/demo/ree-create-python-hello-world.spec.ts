@@ -183,7 +183,7 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
       page.getByRole("navigation").getByRole("button", { name: "Hardware", exact: true }),
       "Add a hardware bill of materials entry",
     );
-    await expect(main.getByText("Hardware BOM", { exact: true })).toBeVisible();
+    await expect(main.getByRole("heading", { name: "Hardware BOM", exact: true })).toBeVisible();
     await clickDemo(
       page,
       main.locator("button").filter({ hasText: "Add CPU" }).first(),
@@ -232,7 +232,7 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
       page.getByRole("navigation").getByRole("button", { name: "Build", exact: true }),
       "Open the build runtime terminal for the environment the whole REE executes on",
     );
-    await expect(main.getByText("Build Runtime", { exact: true })).toBeVisible();
+    await expect(main.getByRole("heading", { name: "Build Runtime", exact: true })).toBeVisible();
 
     // Before authoring by hand: ask repo2ree what it can infer from the sources
     // alone. This reads the immutable upstream tree only — it never runs, never
@@ -393,18 +393,18 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
       page.getByRole("navigation").getByRole("button", { name: "Experiments", exact: true }),
       "Open the experiment catalog from its bench terminal",
     );
-    const experimentsDialog = page.getByRole("dialog", { name: "Experiments" });
+    const experimentsPanel = page.getByRole("region", { name: "Experiments" });
     await expect(
-      experimentsDialog.getByRole("heading", { name: "Experiments", exact: true }),
+      experimentsPanel.getByRole("heading", { name: "Experiments", exact: true }),
     ).toBeVisible();
     await clickDemo(
       page,
-      experimentsDialog.getByRole("button", { name: /Add experiment/i }).first(),
+      experimentsPanel.getByRole("button", { name: /Add experiment/i }).first(),
       "Add a new experiment",
     );
     await fillDemo(
       page,
-      experimentsDialog.getByPlaceholder("smoke-test"),
+      experimentsPanel.getByPlaceholder("smoke-test"),
       "python-hello",
       "Name the experiment — naming it declares it on the REE and settles its reserved script paths",
     );

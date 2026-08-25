@@ -4,7 +4,7 @@ import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithShell } from "../../../../../tests/support/renderApp";
 import { exampleEditorRee } from "../../../../../tests/support/stepPageFixture";
-import { SourceHubPanel } from "./SourceHubPanel";
+import { SourceAcquisitionContent } from "./SourceAcquisitionContent";
 
 function props(overrides: Record<string, unknown> = {}) {
   const commands = {
@@ -28,16 +28,15 @@ function props(overrides: Record<string, unknown> = {}) {
     },
     uiChrome: { focusedField: null, locked: false, repoMode: "url" },
     commands,
-    onClose: vi.fn(),
     ...overrides,
-  } as unknown as ComponentProps<typeof SourceHubPanel>;
+  } as unknown as ComponentProps<typeof SourceAcquisitionContent>;
 }
 
-describe("SourceHubPanel", () => {
+describe("SourceAcquisitionContent", () => {
   it("collects an origin and starts a pinned git acquisition", async () => {
     const user = userEvent.setup();
     const panelProps = props();
-    renderWithShell(<SourceHubPanel {...panelProps} />, { reeId: "ree-1" });
+    renderWithShell(<SourceAcquisitionContent {...panelProps} />, { reeId: "ree-1" });
 
     await user.type(screen.getByLabelText("Origin URL"), "https://example.test/repo.git");
     await user.selectOptions(screen.getByLabelText("Origin type"), "git");
@@ -48,8 +47,6 @@ describe("SourceHubPanel", () => {
       "https://example.test/repo.git",
       "v1.0.0",
     );
-    await user.click(screen.getByRole("button", { name: "Close" }));
-    expect(panelProps.onClose).toHaveBeenCalledOnce();
   });
 
   it("shows and clears an acquired uploaded source", async () => {
@@ -66,7 +63,7 @@ describe("SourceHubPanel", () => {
         sourceRepo: { name: "source.zip", acquiredBy: "upload", sourceType: "archive" },
       },
     });
-    renderWithShell(<SourceHubPanel {...panelProps} />, { reeId: "ree-1" });
+    renderWithShell(<SourceAcquisitionContent {...panelProps} />, { reeId: "ree-1" });
 
     expect(screen.getByText("Source arrived from an uploaded archive.")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Clear source" }));

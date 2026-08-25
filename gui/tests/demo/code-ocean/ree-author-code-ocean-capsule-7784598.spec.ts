@@ -78,11 +78,11 @@ async function addExperiment(
   page: Page,
   experiment: { name: string; command: string; output: string },
 ) {
-  const experimentsDialog = page.getByRole("dialog", { name: "Experiments" });
-  await clickDemo(page, experimentsDialog.getByRole("button", { name: /Add experiment/i }).first());
+  const experimentsPanel = page.getByRole("region", { name: "Experiments" });
+  await clickDemo(page, experimentsPanel.getByRole("button", { name: /Add experiment/i }).first());
   await fillDemo(
     page,
-    experimentsDialog.getByPlaceholder("smoke-test"),
+    experimentsPanel.getByPlaceholder("smoke-test"),
     experiment.name,
     "Name the experiment",
   );
@@ -94,12 +94,12 @@ async function addExperiment(
   );
   await fillDemo(
     page,
-    experimentsDialog.getByRole("textbox", { name: "Output files" }),
+    experimentsPanel.getByRole("textbox", { name: "Output files" }),
     experiment.output,
     "Declare the result file the run produces — captured after every run",
   );
-  await clickDemo(page, experimentsDialog.getByRole("button", { name: /Save & back to catalog/ }));
-  await expect(experimentsDialog.getByRole("button", { name: experiment.name })).toBeVisible();
+  await clickDemo(page, experimentsPanel.getByRole("button", { name: /Save & back to catalog/ }));
+  await expect(experimentsPanel.getByRole("button", { name: experiment.name })).toBeVisible();
 }
 
 test("author Code Ocean capsule 7784598 inputs", async ({ page }) => {
@@ -201,7 +201,7 @@ test("author Code Ocean capsule 7784598 inputs", async ({ page }) => {
 
   await demoStep(page, "Create the build script", async () => {
     await openPort(page, "Build");
-    await expect(main.getByText("Build Runtime", { exact: true })).toBeVisible();
+    await expect(main.getByRole("heading", { name: "Build Runtime", exact: true })).toBeVisible();
     await fillDemo(
       page,
       main.getByLabel("Build script"),
@@ -257,7 +257,7 @@ test("author Code Ocean capsule 7784598 inputs", async ({ page }) => {
     );
     await expect(
       page
-        .getByRole("dialog", { name: "Experiments" })
+        .getByRole("region", { name: "Experiments" })
         .getByRole("heading", { name: "Experiments", exact: true }),
     ).toBeVisible();
     await addExperiment(page, {

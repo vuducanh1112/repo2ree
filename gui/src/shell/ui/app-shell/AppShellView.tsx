@@ -1,18 +1,18 @@
 import { PAGE } from "@core/app-shell/pages";
 import { activeNode } from "@core/canvas/canvasNodes";
 import { useWorkspaceNavigationGuard } from "@shell/state/ree-editor/workspace-sync/useWorkspaceNavigationGuard";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { WorkspaceLoadErrorView, WorkspaceLoadingView } from "../errors/WorkspaceLoadView";
 import { Ic } from "../shared/components/Icon";
 import { Toast } from "../shared/components/Toast";
 import { AppShellContent } from "./AppShellContent";
 import styles from "./AppShellView.module.css";
 import { CanvasHub } from "./canvas/CanvasHub";
-import { FocusDock } from "./canvas/FocusDock";
 import { RunHud } from "./canvas/RunHud";
-import { SealHubPanel } from "./canvas/SealHubPanel";
-import { SourceHubPanel } from "./canvas/SourceHubPanel";
+import { SealContent } from "./canvas/SealContent";
+import { SourceAcquisitionContent } from "./canvas/SourceAcquisitionContent";
 import { WorkbenchLab } from "./canvas/WorkbenchLab";
+import { WorkspaceDrawer } from "./canvas/WorkspaceDrawer";
 import { CompactWorkflowNav } from "./components/CompactWorkflowNav";
 import { ReeSyncStatus } from "./components/ReeSyncStatus";
 import { useAppShell } from "./hooks/useAppShell";
@@ -62,23 +62,13 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
     shouldBlock: isReeIntentDirty,
     flush: commands.flushReeIntent,
   });
-  // The constellation (pod hub) is the home view. Seal and source acquisition
-  // live inside the hub as compact floating panels; every other page docks
-  // beside the pod.
+  // The constellation (pod hub) is the home view. Every workflow page opens in
+  // the same resizable drawer so moving between steps never changes navigation
+  // or spatial context.
+  const drawerOpen = page !== PAGE.CANVAS;
   const sealOpen = page === PAGE.SEAL;
   const sourceOpen = page === PAGE.SOURCE;
-  const dockOpen = page !== PAGE.CANVAS && !sealOpen && !sourceOpen;
-
-  // Screen rect of the canvas panel that opened the dock, so the edit view can
-  // grow out of the panel the user clicked instead of feeling like a new page.
-  const [originRect, setOriginRect] = useState<DOMRect | null>(null);
-  const openPage = useCallback(
-    (next: typeof page, rect?: DOMRect) => {
-      if (rect) setOriginRect(rect);
-      commands.setPage(next);
-    },
-    [commands],
-  );
+  const openPage = useCallback((next: typeof page) => commands.setPage(next), [commands]);
 
   if (provisioned && workspaceHydration.status === "loading") {
     return <WorkspaceLoadingView onBack={onBack} />;
@@ -143,7 +133,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
             badges={badges}
             staleNodeKeys={NO_STALE_NODE_KEYS}
             provisioned={provisioned}
-            dimmed={dockOpen}
+            dimmed={false}
             onNavigate={openPage}
             workspaceFiles={workspaceRemote.workspaceFiles}
             reeFiles={currentReeFiles}
@@ -154,50 +144,45 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
           />
         )}
 
-        {provisioned && dockOpen && (
-          <FocusDock
+        {provisioned && drawerOpen && (
+          <WorkspaceDrawer
             node={activeNode(page)}
-            originRect={originRect}
-            closable={provisioned}
+            title={sourceOpen ? "Source Acquisition" : undefined}
             onClose={() => commands.setPage(PAGE.CANVAS)}
           >
-            <AppShellContent
-              ree={ree}
-              reeIntent={reeIntent}
-              workspaceRemote={workspaceRemote}
-              stepRuns={stepRuns}
-              uiChrome={uiChrome}
-              currentReeFiles={currentReeFiles}
-              commands={commands}
-            />
-          </FocusDock>
-        )}
-
-        {sourceOpen && (
-          <SourceHubPanel
-            ree={ree}
-            workspaceRemote={workspaceRemote}
-            stepRuns={stepRuns}
-            uiChrome={uiChrome}
-            commands={commands}
-            onClose={() => commands.setPage(PAGE.CANVAS)}
-          />
+            {sourceOpen ? (
+              <SourceAcquisitionContent
+                ree={ree}
+                workspaceRemote={workspaceRemote}
+                stepRuns={stepRuns}
+                uiChrome={uiChrome}
+                commands={commands}
+              />
+            ) : sealOpen ? (
+              <SealContent
+                ree={ree}
+                badges={badges}
+                locked={uiChrome.locked}
+                sealRunning={sealRunning}
+                sealLog={sealLog}
+                onSeal={commands.onSeal}
+              />
+            ) : (
+              <AppShellContent
+                ree={ree}
+                reeIntent={reeIntent}
+                workspaceRemote={workspaceRemote}
+                stepRuns={stepRuns}
+                uiChrome={uiChrome}
+                currentReeFiles={currentReeFiles}
+                commands={commands}
+              />
+            )}
+          </WorkspaceDrawer>
         )}
 
         {/* Cross-page logs console: every run of this REE, split by step. */}
         {provisioned && <RunHud />}
-
-        {sealOpen && (
-          <SealHubPanel
-            ree={ree}
-            badges={badges}
-            locked={uiChrome.locked}
-            sealRunning={sealRunning}
-            sealLog={sealLog}
-            onSeal={commands.onSeal}
-            onClose={() => commands.setPage(PAGE.CANVAS)}
-          />
-        )}
       </main>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={commands.clearToast} />}

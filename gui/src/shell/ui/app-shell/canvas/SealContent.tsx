@@ -2,43 +2,31 @@ import type { InclusionOpts } from "@core/ree/InclusionOpts";
 import type { Badges, LogEntry } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { useRef } from "react";
-import { CanvasWindowTitle } from "./CanvasWindow";
 import { CenterSealStrip } from "./CenterSealStrip";
-import { HubPanel } from "./HubPanel";
+import styles from "./SealContent.module.css";
 
-interface SealHubPanelProps {
+interface SealContentProps {
   ree: ReeEditorViewModel;
   badges: Badges;
   locked: boolean;
   sealRunning: boolean;
   sealLog: LogEntry | null;
   onSeal: (inclusionOpts: InclusionOpts) => void;
-  onClose: () => void;
 }
 
-// The seal panel lives directly in the constellation hub — no docked window or
-// scrim — so the surrounding pod and nodes stay visible while sealing.
-export function SealHubPanel({
+/** The sealing workflow body, hosted by the shared workspace drawer. */
+export function SealContent({
   ree,
   badges,
   locked,
   sealRunning,
   sealLog,
   onSeal,
-  onClose,
-}: SealHubPanelProps) {
+}: SealContentProps) {
   const sealRef = useRef<HTMLDivElement>(null);
 
   return (
-    <HubPanel
-      ariaLabel="Seal"
-      onClose={onClose}
-      width={440}
-      align="center"
-      header={
-        <CanvasWindowTitle title="Seal" subtitle="freeze the specimen into an archivable REE" />
-      }
-    >
+    <div className={styles.page}>
       <CenterSealStrip
         ree={ree}
         locked={locked}
@@ -48,6 +36,6 @@ export function SealHubPanel({
         sealLog={sealLog}
         sealRef={sealRef}
       />
-    </HubPanel>
+    </div>
   );
 }

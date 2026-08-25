@@ -15,33 +15,24 @@ vi.mock("./providers/AppShellProvider", () => ({
 vi.mock("./AppShellContent", () => ({ AppShellContent: () => <div>Dock content</div> }));
 vi.mock("./canvas/WorkbenchLab", () => ({ WorkbenchLab: () => <div>Workbench</div> }));
 vi.mock("./canvas/RunHud", () => ({ RunHud: () => <div>Run HUD</div> }));
-vi.mock("./canvas/FocusDock", () => ({
-  FocusDock: ({ children, onClose }: { children: React.ReactNode; onClose: () => void }) => (
+vi.mock("./canvas/WorkspaceDrawer", () => ({
+  WorkspaceDrawer: ({ children, onClose }: { children: React.ReactNode; onClose: () => void }) => (
     <div>
       {children}
       <button type="button" onClick={onClose}>
-        Close dock
+        Close drawer
       </button>
     </div>
   ),
 }));
-vi.mock("./canvas/SourceHubPanel", () => ({
-  SourceHubPanel: ({ onClose }: { onClose: () => void }) => (
-    <button type="button" onClick={onClose}>
-      Close source
+vi.mock("./canvas/SourceAcquisitionContent", () => ({
+  SourceAcquisitionContent: () => <div>Source acquisition</div>,
+}));
+vi.mock("./canvas/SealContent", () => ({
+  SealContent: ({ onSeal }: { onSeal: () => void }) => (
+    <button type="button" onClick={onSeal}>
+      Seal
     </button>
-  ),
-}));
-vi.mock("./canvas/SealHubPanel", () => ({
-  SealHubPanel: ({ onSeal, onClose }: { onSeal: () => void; onClose: () => void }) => (
-    <div>
-      <button type="button" onClick={onSeal}>
-        Seal
-      </button>
-      <button type="button" onClick={onClose}>
-        Close seal
-      </button>
-    </div>
   ),
 }));
 vi.mock("./canvas/CanvasHub", () => ({
@@ -175,9 +166,10 @@ describe("AppShellView", () => {
   });
 
   it.each([
-    [PAGE.METADATA, "Close dock"],
-    [PAGE.SOURCE, "Close source"],
-    [PAGE.SEAL, "Close seal"],
+    [PAGE.METADATA, "Close drawer"],
+    [PAGE.BUILD, "Close drawer"],
+    [PAGE.SOURCE, "Close drawer"],
+    [PAGE.SEAL, "Close drawer"],
   ] as const)("closes the %s surface back to the canvas", (page, closeName) => {
     const commands = controller(page);
     render(<AppShellView onBack={vi.fn()} />);

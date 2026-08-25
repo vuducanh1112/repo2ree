@@ -1,4 +1,3 @@
-import { PAGE } from "@core/app-shell/pages";
 import type { SourceUploadCommit } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { useReeId } from "@shell/data/apiRuntime";
@@ -7,7 +6,6 @@ import type { WorkspaceRemoteState } from "@shell/state/ree-editor/hooks/useReeE
 import { useStepRunLogEntry } from "@shell/state/ree-editor/step-runs/useStepRunLogEntry";
 import type { StepRunState } from "@shell/state/ree-editor/store/stepRunState";
 import type { UiChromeState } from "@shell/state/ree-editor/store/uiChrome";
-import { stageTone } from "@shell/ui/theme/appearance";
 import { useEffect, useState } from "react";
 import { Badge } from "../../shared/components/Badge";
 import { Button } from "../../shared/components/Button";
@@ -18,11 +16,9 @@ import { isLikelySourceUrl } from "../components/sourceRuntime/SourceUrlField";
 import type { SourceTypeOption } from "../pages/source/SourceAcquisitionPageHelpers";
 import { SourceAcquisitionCard } from "../pages/source/SourceAcquisitionPageSections";
 import { SourceStep3Section } from "../pages/source/SourceAcquisitionPageStep3Section";
-import { CanvasWindowTitle } from "./CanvasWindow";
-import { HubPanel } from "./HubPanel";
-import styles from "./SourceHubPanel.module.css";
+import styles from "./SourceAcquisitionContent.module.css";
 
-interface SourceHubPanelProps {
+interface SourceAcquisitionContentProps {
   ree: ReeEditorViewModel;
   workspaceRemote: WorkspaceRemoteState;
   stepRuns: StepRunState;
@@ -36,20 +32,16 @@ interface SourceHubPanelProps {
     | "onCancelAction"
     | "onWorkspaceUpload"
   >;
-  onClose: () => void;
 }
 
-// Source acquisition is a short form (a URL + type, or a tarball upload), so it
-// opens as a compact floating hub panel — like SBOM and the seal — instead of a
-// full docked page.
-export function SourceHubPanel({
+/** The source workflow page body, hosted by the shared workspace drawer. */
+export function SourceAcquisitionContent({
   ree,
   workspaceRemote,
   stepRuns,
   uiChrome,
   commands,
-  onClose,
-}: SourceHubPanelProps) {
+}: SourceAcquisitionContentProps) {
   const reeId = useReeId();
   const { focusedField, locked, repoMode } = uiChrome;
   const { actionStates } = stepRuns;
@@ -120,19 +112,7 @@ export function SourceHubPanel({
   const statusLabel = running ? "Acquiring" : sourceInWorkspace ? "Ready" : "Empty";
 
   return (
-    <HubPanel
-      ariaLabel="Source Acquisition"
-      onClose={onClose}
-      width={520}
-      header={
-        <CanvasWindowTitle
-          icon={Ic.globe(16)}
-          iconTint={stageTone(PAGE.SOURCE)}
-          title="Source Acquisition"
-          subtitle="fetch or upload the source snapshot"
-        />
-      }
-    >
+    <div className={styles.page}>
       <div className={styles.statusBar}>
         <Badge tone={sourceInWorkspace ? "success" : "warning"}>{statusLabel}</Badge>
         <div className={styles.spacer} />
@@ -188,6 +168,6 @@ export function SourceHubPanel({
       />
 
       <CollapsibleLogCard log={sourceLog} running={running} title="Acquisition log" />
-    </HubPanel>
+    </div>
   );
 }
