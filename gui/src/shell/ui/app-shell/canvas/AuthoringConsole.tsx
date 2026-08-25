@@ -21,7 +21,6 @@ interface AuthoringWorkflowModel {
   statuses: Readonly<Record<string, AuthoringStepStatus>>;
   complete: number;
   nextPage: AppShellPage | undefined;
-  subtitle: string;
   active: boolean;
   error: boolean;
 }
@@ -38,18 +37,11 @@ export function useAuthoringWorkflowModel(
   const next = steps.find((step) => statuses[step.key] === "ready");
   const nextPage = next ? authoringPageForStep(next.key) : undefined;
 
-  const subtitle = catalog.isPending
-    ? "loading authoring graph…"
-    : catalog.isError
-      ? "authoring graph unavailable"
-      : `${complete}/${steps.length} complete${next ? ` · next ${next.label}` : ""}`;
-
   return {
     steps,
     statuses,
     complete,
     nextPage,
-    subtitle,
     active: complete > 0,
     error: catalog.isError,
   };
@@ -112,10 +104,6 @@ function AuthoringDag({
               >
                 <span className={styles.number}>{String(step.order).padStart(2, "0")}</span>
                 <span className={styles.label}>{step.label}</span>
-                <span className={styles.requires} title={requirements || "No prerequisites"}>
-                  {requirements ? `after ${step.requires.join(" + ")}` : "independent"}
-                </span>
-                <span className={styles.status}>{status}</span>
               </button>
             </li>
           );

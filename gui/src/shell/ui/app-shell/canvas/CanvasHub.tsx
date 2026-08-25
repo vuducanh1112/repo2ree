@@ -25,7 +25,6 @@ import { ReceiptsConsole } from "./ReceiptsConsole";
 import { SpecimenPod } from "./SpecimenPod";
 import { useCableGeometry } from "./useCableGeometry";
 import { useCanvasViewport } from "./useCanvasViewport";
-import { WorkflowConsole } from "./WorkflowConsole";
 
 // Includes the 2.5D floor ring, pod, and lifted cards. These are intentionally
 // conservative unprojected bounds; the fixed floor tilt compresses their
@@ -48,6 +47,8 @@ interface CanvasHubProps {
   staleNodeKeys?: ReadonlySet<string>;
   filesConsoleOpen: boolean;
   onFilesConsoleOpenChange: (open: boolean) => void;
+  receiptsConsoleOpen: boolean;
+  onReceiptsConsoleOpenChange: (open: boolean) => void;
 }
 
 export const CanvasHub = memo(function CanvasHub({
@@ -65,6 +66,8 @@ export const CanvasHub = memo(function CanvasHub({
   staleNodeKeys,
   filesConsoleOpen,
   onFilesConsoleOpenChange,
+  receiptsConsoleOpen,
+  onReceiptsConsoleOpenChange,
 }: CanvasHubProps) {
   const stageRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<HTMLDivElement>(null);
@@ -96,8 +99,6 @@ export const CanvasHub = memo(function CanvasHub({
     tf,
     animate,
   });
-
-  const experiments = ree.spec.experiments ?? [];
 
   const levelMeta = {
     color: "var(--chrome-accent)",
@@ -171,19 +172,18 @@ export const CanvasHub = memo(function CanvasHub({
         reeFiles={reeFiles}
         open={filesConsoleOpen}
         onOpenChange={onFilesConsoleOpenChange}
+        externallyTriggered
       />
 
-      <ReceiptsConsole provisioned={provisioned} receipts={authorReceipts} />
+      <ReceiptsConsole
+        provisioned={provisioned}
+        receipts={authorReceipts}
+        open={receiptsConsoleOpen}
+        onOpenChange={onReceiptsConsoleOpenChange}
+        externallyTriggered
+      />
 
       <BenchConsole provisioned={provisioned} reeName={ree.spec.name} />
-
-      <WorkflowConsole
-        page={page}
-        ree={ree}
-        badges={badges}
-        experiments={experiments}
-        onNavigate={onNavigate}
-      />
 
       <CanvasControls
         onZoomIn={() => zoomBy(1.2)}

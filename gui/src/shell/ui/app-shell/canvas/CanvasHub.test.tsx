@@ -101,6 +101,8 @@ describe("CanvasHub", () => {
         authorReceipts={authorReceipts}
         filesConsoleOpen
         onFilesConsoleOpenChange={onFilesConsoleOpenChange}
+        receiptsConsoleOpen
+        onReceiptsConsoleOpenChange={vi.fn()}
       />,
       { reeId: "ree-1", services: services() },
     );
@@ -124,15 +126,6 @@ describe("CanvasHub", () => {
     await user.click(screen.getByRole("button", { name: "Fit canvas to viewport" }));
     expect(camera).toHaveAttribute("data-animate");
 
-    await user.click(screen.getByRole("button", { name: "Expand workflow" }));
-    expect(await screen.findByText(/2\/3 complete · next Cross-check SBOM/)).toBeInTheDocument();
-    await user.click(
-      screen.getByRole("button", {
-        name: /^Open Cross-check SBOM authoring step, ready/,
-      }),
-    );
-    expect(onNavigate).toHaveBeenCalledWith(PAGE.SBOM);
-
     await user.click(screen.getByRole("button", { name: "README.md" }));
     expect(screen.getByRole("region", { name: "Open files" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Close README.md" }));
@@ -144,23 +137,9 @@ describe("CanvasHub", () => {
 
     await user.click(screen.getByRole("button", { name: "Collapse files" }));
     expect(onFilesConsoleOpenChange).toHaveBeenCalledWith(false);
-    await user.click(screen.getByRole("button", { name: "Expand receipts" }));
     expect(await screen.findByText("Source acquired")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Expand workbench console" }));
     expect((await screen.findAllByText("bench:python")).length).toBeGreaterThan(0);
-    await user.click(screen.getByRole("tab", { name: /Review/ }));
-    expect(await screen.findByRole("button", { name: "Strongest" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    await user.click(screen.getByRole("button", { name: "From bundle" }));
-    await user.click(screen.getByRole("tab", { name: /Authoring/ }));
-    expect(screen.getByRole("navigation", { name: "Authoring workflow" })).toBeVisible();
-    await user.click(screen.getByRole("tab", { name: /Review/ }));
-    expect(screen.getByRole("button", { name: "From bundle" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
   });
 
   it("makes the background canvas inert while a focused page is open", () => {
@@ -179,6 +158,8 @@ describe("CanvasHub", () => {
         authorReceipts={[]}
         filesConsoleOpen={false}
         onFilesConsoleOpenChange={vi.fn()}
+        receiptsConsoleOpen={false}
+        onReceiptsConsoleOpenChange={vi.fn()}
       />,
       { reeId: "ree-1", services: services() },
     );

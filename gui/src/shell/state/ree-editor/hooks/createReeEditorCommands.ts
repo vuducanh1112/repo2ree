@@ -59,6 +59,7 @@ export interface EditorChromeCommands {
   setRepoMode(value: Updater<"url" | "upload">): void;
   setFocusedField(value: Updater<string | null>): void;
   setFilesConsoleOpen(open: boolean): void;
+  setReceiptsConsoleOpen(open: boolean): void;
   clearToast(): void;
 }
 
@@ -122,6 +123,8 @@ export function createReeEditorCommands({
     setStepParams: (value: ReeStepParams | ((current: ReeStepParams) => ReeStepParams)) =>
       dispatch(setStepParams((current) => (typeof value === "function" ? value(current) : value))),
     setFilesConsoleOpen: (open: boolean) => dispatch(patch("uiChrome", { filesConsoleOpen: open })),
+    setReceiptsConsoleOpen: (open: boolean) =>
+      dispatch(patch("uiChrome", { receiptsConsoleOpen: open })),
     clearToast: () => dispatch(clearToast()),
     onSeal: handleSeal,
     onDownloadRee: handleDownloadRee,

@@ -659,21 +659,16 @@ export async function runExperiment(
   await stepShot(page, "run-experiment", "after");
 }
 
-/** The shared top-center workflow HUD, which contains the review controls. */
+/** The persistent top workflow status bar, which contains the review controls. */
 function reviewConsole(page: Page) {
-  return page
-    .locator("[data-canvas-hud]")
-    .filter({ has: page.getByRole("button", { name: /workflow/i }) });
+  return page.getByRole("region", { name: "Workspace status" });
 }
 
-/** Open the workflow HUD on Review and return it, ready for lifecycle controls. */
+/** Switch the persistent workflow bar to Review and return it, ready for lifecycle controls. */
 export async function openReviewConsole(page: Page) {
   await stepShot(page, "open-review-console", "before");
-  // The HUD lives on the canvas hub, behind any docked page.
-  await page.keyboard.press("Escape").catch(() => {});
-  await page.getByRole("button", { name: /Expand workflow/i }).click();
   const console = reviewConsole(page);
-  await console.getByRole("tab", { name: /Review/ }).click();
+  await console.getByRole("button", { name: "Switch to review workflow" }).click();
   await expect(console.getByRole("button", { name: "Reproduce Source" })).toBeVisible();
   await stepShot(page, "open-review-console", "after");
   return console;

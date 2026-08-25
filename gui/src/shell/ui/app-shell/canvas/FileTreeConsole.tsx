@@ -22,6 +22,8 @@ interface FileTreeConsoleProps {
   reeFiles: ReeFile[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** The persistent workspace bar owns the closed-state trigger. */
+  externallyTriggered?: boolean;
 }
 
 // The file tree is the workbench's filesystem — ambient lab context, not a
@@ -41,6 +43,7 @@ export function FileTreeConsole({
   reeFiles,
   open,
   onOpenChange,
+  externallyTriggered = false,
 }: FileTreeConsoleProps) {
   const [query, setQuery] = useState("");
   const [openTabs, setOpenTabs] = useState<string[]>([]);
@@ -118,55 +121,61 @@ export function FileTreeConsole({
 
   return (
     <>
-      <HudConsole
-        open={open}
-        onToggle={() => {
-          if (open) setActiveId(null);
-          onOpenChange(!open);
-        }}
-        widthOpen={HUD_WIDTH_OPEN}
-        widthCollapsed={HUD_WIDTH_COLLAPSED}
-        className={hud.filesPlacement}
-        icon={Ic.files(16)}
-        title="Files"
-        subtitle={
-          fileCount > 0 ? `${workspaceFileCount} workspace · ${reeFileCount} REE` : "REE filesystem"
-        }
-        on={fileCount > 0}
-        expandLabel="Expand files"
-        collapseLabel="Collapse files"
-      >
-        <FileFilterInput query={query} onChange={setQuery} />
-        <div className={styles.tree}>
-          <TreeSection
-            inventory="workspace"
-            title="Workspace"
-            nodes={filteredWorkspace}
-            empty={
-              filtering
-                ? "No matching workspace files"
-                : "Acquire source to materialize the workspace."
-            }
-            // A whole source checkout: opening its top level on expand would
-            // fill the section with folders before a single REE file shows.
-            defaultOpenDepth={0}
-            share={sharing}
-            selectedId={activeEntry?.node.id ?? null}
-            filtering={filtering}
-            onSelect={openFile}
-          />
-          <TreeSection
-            inventory="ree"
-            title="REE"
-            nodes={filteredRee}
-            empty={filtering ? "No matching REE files" : "Run lifecycle steps to populate the REE."}
-            share={sharing}
-            selectedId={activeEntry?.node.id ?? null}
-            filtering={filtering}
-            onSelect={openFile}
-          />
-        </div>
-      </HudConsole>
+      {(!externallyTriggered || open) && (
+        <HudConsole
+          open={open}
+          onToggle={() => {
+            if (open) setActiveId(null);
+            onOpenChange(!open);
+          }}
+          widthOpen={HUD_WIDTH_OPEN}
+          widthCollapsed={HUD_WIDTH_COLLAPSED}
+          className={hud.filesPlacement}
+          icon={Ic.files(16)}
+          title="Files"
+          subtitle={
+            fileCount > 0
+              ? `${workspaceFileCount} workspace · ${reeFileCount} REE`
+              : "REE filesystem"
+          }
+          on={fileCount > 0}
+          expandLabel="Expand files"
+          collapseLabel="Collapse files"
+        >
+          <FileFilterInput query={query} onChange={setQuery} />
+          <div className={styles.tree}>
+            <TreeSection
+              inventory="workspace"
+              title="Workspace"
+              nodes={filteredWorkspace}
+              empty={
+                filtering
+                  ? "No matching workspace files"
+                  : "Acquire source to materialize the workspace."
+              }
+              // A whole source checkout: opening its top level on expand would
+              // fill the section with folders before a single REE file shows.
+              defaultOpenDepth={0}
+              share={sharing}
+              selectedId={activeEntry?.node.id ?? null}
+              filtering={filtering}
+              onSelect={openFile}
+            />
+            <TreeSection
+              inventory="ree"
+              title="REE"
+              nodes={filteredRee}
+              empty={
+                filtering ? "No matching REE files" : "Run lifecycle steps to populate the REE."
+              }
+              share={sharing}
+              selectedId={activeEntry?.node.id ?? null}
+              filtering={filtering}
+              onSelect={openFile}
+            />
+          </div>
+        </HudConsole>
+      )}
 
       {open && !viewerDismissed && activeEntry && (
         <FileTabsPanel

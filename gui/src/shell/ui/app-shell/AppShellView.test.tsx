@@ -13,6 +13,25 @@ vi.mock("./providers/AppShellProvider", () => ({
   AppShellProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 vi.mock("./AppShellContent", () => ({ AppShellContent: () => <div>Dock content</div> }));
+vi.mock("./components/WorkspaceStatusBar", () => ({
+  WorkspaceStatusBar: (props: {
+    onNavigate: (page: AppShellPage) => void;
+    onFilesOpenChange: (open: boolean) => void;
+    onReceiptsOpenChange: (open: boolean) => void;
+  }) => (
+    <div>
+      <button type="button" onClick={() => props.onNavigate(PAGE.BUILD)}>
+        Status build
+      </button>
+      <button type="button" onClick={() => props.onFilesOpenChange(true)}>
+        Status files
+      </button>
+      <button type="button" onClick={() => props.onReceiptsOpenChange(true)}>
+        Status receipts
+      </button>
+    </div>
+  ),
+}));
 vi.mock("./canvas/WorkbenchLab", () => ({ WorkbenchLab: () => <div>Workbench</div> }));
 vi.mock("./canvas/RunHud", () => ({ RunHud: () => <div>Run HUD</div> }));
 vi.mock("./canvas/WorkspaceDrawer", () => ({
@@ -67,6 +86,7 @@ function controller(page: AppShellPage = PAGE.CANVAS, provisioned = true) {
     setReeSpec: vi.fn(),
     setFocusedField: vi.fn(),
     setFilesConsoleOpen: vi.fn(),
+    setReceiptsConsoleOpen: vi.fn(),
     onDownloadRee: vi.fn(),
     onSeal: vi.fn(),
     clearToast: vi.fn(),
@@ -87,7 +107,13 @@ function controller(page: AppShellPage = PAGE.CANVAS, provisioned = true) {
       currentReeFiles: [],
       authorReceipts: [],
     },
-    chrome: { page, toast: null, locked: false, filesConsoleOpen: false },
+    chrome: {
+      page,
+      toast: null,
+      locked: false,
+      filesConsoleOpen: false,
+      receiptsConsoleOpen: false,
+    },
     sync: {
       workspaceHydration: { status: "ready", error: null },
       retryWorkspaceHydration: vi.fn(),
@@ -156,13 +182,21 @@ describe("AppShellView", () => {
     const commands = controller();
     render(<AppShellView onBack={vi.fn()} />);
 
-    for (const name of ["Navigate plain", "Navigate from node", "Files"]) {
+    for (const name of [
+      "Navigate plain",
+      "Navigate from node",
+      "Files",
+      "Status build",
+      "Status files",
+      "Status receipts",
+    ]) {
       fireEvent.click(screen.getByRole("button", { name }));
     }
 
     expect(commands.setPage).toHaveBeenCalledWith(PAGE.METADATA);
     expect(commands.setPage).toHaveBeenCalledWith(PAGE.BUILD);
     expect(commands.setFilesConsoleOpen).toHaveBeenCalledWith(true);
+    expect(commands.setReceiptsConsoleOpen).toHaveBeenCalledWith(true);
   });
 
   it.each([
@@ -185,7 +219,13 @@ describe("AppShellView", () => {
         ...(shell.value.model as object),
         workspaceRemote: { artifactStatus: { sealedAt: "now" }, workspaceFiles: [] },
       },
-      chrome: { page: PAGE.SEAL, toast: { message: "Saved", type: "info" }, locked: false },
+      chrome: {
+        page: PAGE.SEAL,
+        toast: { message: "Saved", type: "info" },
+        locked: false,
+        filesConsoleOpen: false,
+        receiptsConsoleOpen: false,
+      },
     };
     render(<AppShellView onBack={vi.fn()} />);
 

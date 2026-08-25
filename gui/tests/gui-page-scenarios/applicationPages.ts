@@ -58,7 +58,6 @@ export const applicationPageScenarios: ApplicationPageScenario[] = [
     screenshot: "authoring-navigation.png",
     prepare: async (page) => {
       await openVisualWorkspace(page);
-      await page.getByRole("button", { name: "Expand workflow" }).click();
       await expect(page.getByRole("navigation", { name: "Authoring workflow" })).toBeVisible();
       await settleVisualPage(page);
     },
@@ -66,11 +65,10 @@ export const applicationPageScenarios: ApplicationPageScenario[] = [
   {
     name: "completed review",
     screenshot: "review-complete.png",
-    contrastRoot: '[data-canvas-hud="true"]',
+    contrastRoot: 'section[aria-label="Workspace status"]',
     prepare: async (page) => {
       await openVisualWorkspace(page);
-      await page.getByRole("button", { name: "Expand workflow" }).click();
-      await page.getByRole("tab", { name: /Review/ }).click();
+      await page.getByRole("button", { name: "Switch to review workflow" }).click();
       await expect(page.getByText("RESULTS · 1/1 REPRODUCED")).toBeVisible();
       await settleVisualPage(page);
     },

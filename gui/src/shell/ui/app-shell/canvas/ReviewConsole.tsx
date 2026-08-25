@@ -25,8 +25,6 @@ interface ReviewWorkflowPanelProps {
 }
 
 export interface ReviewWorkflowHeader {
-  subtitle: string;
-  running: boolean;
   complete: number;
 }
 
@@ -139,10 +137,9 @@ export function ReviewWorkflowPanel({ experiments, onHeaderChange }: ReviewWorkf
     startExperimentReview.error ??
     reviews.error;
 
-  const subtitle = attempt ? attemptSubtitle(attempt, statuses) : "ready for source review";
   useEffect(() => {
-    onHeaderChange({ subtitle, running, complete });
-  }, [subtitle, running, complete, onHeaderChange]);
+    onHeaderChange({ complete });
+  }, [complete, onHeaderChange]);
 
   return (
     <>
@@ -177,17 +174,6 @@ export function ReviewWorkflowPanel({ experiments, onHeaderChange }: ReviewWorkf
       ) : null}
     </>
   );
-}
-
-function attemptSubtitle(
-  attempt: ReviewAttempt,
-  statuses: Readonly<Record<ReviewStepKey, string>>,
-): string {
-  const build = attempt.buildComparison ? ` · build ${statuses.build}` : "";
-  const activation = attempt.activationOutcome ? ` · activation ${statuses.activation}` : "";
-  const experiments =
-    attempt.experimentComparisons.length > 0 ? ` · results ${statuses.experiments}` : "";
-  return `${attempt.reviewId} · source ${statuses.source}${build}${activation}${experiments}`;
 }
 
 const BASIS_OPTIONS: { value: ReviewBasisRequest; label: string; hint: string }[] = [

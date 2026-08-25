@@ -1,11 +1,10 @@
-import { type AppShellPage, PAGE } from "@core/app-shell/pages";
+import type { AppShellPage } from "@core/app-shell/pages";
 import type { ArtifactStatus } from "@core/artifact/ArtifactStatus";
 import type { ActionStates, Badges, ReeRunLogs } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { ARCHIVE_REPOSITORIES } from "@core/ree-steps/archiveRepositories";
 import type { GenericReeStepParams } from "@core/ree-steps/stepTypes";
 import { Badge } from "@shell/ui/shared/components/Badge";
-import { Button } from "@shell/ui/shared/components/Button";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { archiveTone } from "@shell/ui/theme/appearance";
 import { useState } from "react";
@@ -43,7 +42,6 @@ export function PageArchive({
   logs,
   actionStates,
   onRun,
-  onGo,
 }: PageArchiveProps) {
   const [activeRepo, setActiveRepo] = useState("swh");
   const repo =
@@ -130,13 +128,7 @@ export function PageArchive({
             <ArchiveParamsCard repo={repo} getParam={getParam} setParam={setParam} />
           </GlassSectionBody>
 
-          <GlassPanelFooter
-            action={
-              <Button variant="primary" onClick={() => onGo(PAGE.SEAL)}>
-                Next: Seal {Ic.chevR(15)}
-              </Button>
-            }
-          >
+          <GlassPanelFooter>
             {isSealed
               ? "REE is sealed — deposits are final."
               : "Deposit can proceed before sealing, but Seal is still required to finish."}

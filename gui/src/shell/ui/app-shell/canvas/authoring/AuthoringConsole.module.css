@@ -1,6 +1,6 @@
 .scroller {
   overflow-x: auto;
-  padding: var(--space-1) 0 var(--space-1-5);
+  padding: var(--space-1) 0;
 }
 
 .dag {
@@ -21,18 +21,16 @@
   flex: none;
   width: 20px;
   height: 1px;
-  margin-top: var(--space-8);
+  margin-top: var(--space-6);
   background: var(--chrome-border-strong);
 }
 
 .step {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  column-gap: var(--space-2);
-  align-items: start;
-  width: 105px;
-  min-height: 102px;
-  padding: var(--space-2) var(--space-2-5);
+  display: block;
+  overflow: hidden;
+  width: 108px;
+  height: 54px;
+  padding: var(--space-1-5) var(--space-2-5);
   border: 1px solid var(--chrome-border);
   border-radius: var(--radius-control);
   background: var(--chrome-surface);
@@ -59,14 +57,26 @@
   opacity: var(--opacity-muted);
 }
 
+.step[data-status="blocked"] {
+  border-color: var(--chrome-border);
+  background: var(--chrome-surface-alt);
+  color: var(--chrome-text-muted);
+}
+
+.step[data-status="complete"] {
+  border-color: var(--tone-success-border);
+  background: var(--tone-success-surface);
+}
+
 .step[data-active] {
   border-color: var(--chrome-accent);
   background: var(--chrome-accent-bg);
   box-shadow: var(--shadow-focus);
 }
 
-.number,
-.status {
+.number {
+  float: left;
+  margin-right: var(--space-2);
   font-family: var(--font-mono);
   font-size: var(--text-micro);
   font-weight: var(--weight-bold);
@@ -74,39 +84,16 @@
 }
 
 .label {
+  display: block;
   overflow: hidden;
   font-size: var(--text-caption);
   font-weight: var(--weight-bold);
-  line-height: var(--leading-snug);
+  line-height: var(--leading-tight);
   text-overflow: ellipsis;
 }
 
-.requires,
-.status {
-  grid-column: 1 / -1;
-  padding-top: var(--space-1);
-  font-family: var(--font-mono);
-  font-size: var(--text-micro);
-}
-
-.requires {
-  overflow: hidden;
-  color: var(--chrome-text-subtle);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.status {
-  text-transform: uppercase;
-}
-
-.step[data-status="complete"] .number,
-.step[data-status="complete"] .status {
+.step[data-status="complete"] .number {
   color: var(--status-ok);
-}
-
-.step[data-status="ready"] .status {
-  color: var(--chrome-accent);
 }
 
 .error {

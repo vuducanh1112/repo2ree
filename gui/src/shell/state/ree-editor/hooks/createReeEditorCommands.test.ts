@@ -39,6 +39,7 @@ describe("createReeEditorCommands", () => {
     commands.setFocusedField(() => "name");
     commands.setStepParams((current) => current);
     commands.setFilesConsoleOpen(true);
+    commands.setReceiptsConsoleOpen(true);
     commands.clearToast();
     commands.onSeal({ includeSource: true, includeRuntime: false, includeResults: true });
     commands.onDownloadRee();
@@ -62,6 +63,7 @@ describe("createReeEditorCommands", () => {
       "setRepoMode",
       "setFocusedField",
       "setStepParams",
+      "patch",
       "patch",
       "clearToast",
     ]);

@@ -13,8 +13,8 @@ import { SealContent } from "./canvas/SealContent";
 import { SourceAcquisitionContent } from "./canvas/SourceAcquisitionContent";
 import { WorkbenchLab } from "./canvas/WorkbenchLab";
 import { WorkspaceDrawer } from "./canvas/WorkspaceDrawer";
-import { CompactWorkflowNav } from "./components/CompactWorkflowNav";
 import { ReeSyncStatus } from "./components/ReeSyncStatus";
+import { WorkspaceStatusBar } from "./components/WorkspaceStatusBar";
 import { useAppShell } from "./hooks/useAppShell";
 import { AppShellProvider } from "./providers/AppShellProvider";
 
@@ -68,7 +68,13 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
   const drawerOpen = page !== PAGE.CANVAS;
   const sealOpen = page === PAGE.SEAL;
   const sourceOpen = page === PAGE.SOURCE;
-  const openPage = useCallback((next: typeof page) => commands.setPage(next), [commands]);
+  const openPage = useCallback(
+    (next: typeof page) => {
+      commands.setPage(next);
+      if (next !== PAGE.CANVAS) commands.setReceiptsConsoleOpen(false);
+    },
+    [commands],
+  );
 
   if (provisioned && workspaceHydration.status === "loading") {
     return <WorkspaceLoadingView onBack={onBack} />;
@@ -103,9 +109,6 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
         {provisioned && (
           <ReeSyncStatus state={reeIntentSyncState} onRetry={() => void retryReeIntentSync()} />
         )}
-        {provisioned && (
-          <CompactWorkflowNav page={page} ree={ree} badges={badges} onNavigate={openPage} />
-        )}
         <div className={styles.spacer} />
         <button
           type="button"
@@ -119,6 +122,23 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
           <span className={styles.downloadLabel}>Download REE</span>
         </button>
       </header>
+
+      {provisioned && (
+        <WorkspaceStatusBar
+          page={page}
+          ree={ree}
+          badges={badges}
+          experiments={ree.spec.experiments ?? []}
+          workspaceFiles={workspaceRemote.workspaceFiles}
+          reeFiles={currentReeFiles}
+          receiptCount={authorReceipts.length}
+          filesOpen={uiChrome.filesConsoleOpen}
+          receiptsOpen={uiChrome.receiptsConsoleOpen}
+          onNavigate={openPage}
+          onFilesOpenChange={commands.setFilesConsoleOpen}
+          onReceiptsOpenChange={commands.setReceiptsConsoleOpen}
+        />
+      )}
 
       <main className={styles.stage}>
         {!provisioned ? (
@@ -141,6 +161,8 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
             authorReceipts={authorReceipts}
             filesConsoleOpen={uiChrome.filesConsoleOpen}
             onFilesConsoleOpenChange={commands.setFilesConsoleOpen}
+            receiptsConsoleOpen={uiChrome.receiptsConsoleOpen}
+            onReceiptsConsoleOpenChange={commands.setReceiptsConsoleOpen}
           />
         )}
 

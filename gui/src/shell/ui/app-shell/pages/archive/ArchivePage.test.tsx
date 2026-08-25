@@ -1,4 +1,3 @@
-import { PAGE } from "@core/app-shell/pages";
 import {
   createEmptyReeEditorViewModel,
   patchReeEditorViewModel,
@@ -50,12 +49,11 @@ describe("PageArchive workflow", () => {
     });
   });
 
-  it("switches repository requirements and routes to sealing", async () => {
+  it("switches repository requirements without duplicating workflow navigation", async () => {
     const user = userEvent.setup();
-    const { onGo } = renderArchive({ spec: { name: "Demo", sbom: "sbom.json" } });
+    renderArchive({ spec: { name: "Demo", sbom: "sbom.json" } });
     await user.click(screen.getByRole("button", { name: "Zenodo" }));
     expect(screen.getByRole("button", { name: "Deposit to Zenodo" })).toBeEnabled();
-    await user.click(screen.getByRole("button", { name: /Next: Seal/ }));
-    expect(onGo).toHaveBeenCalledWith(PAGE.SEAL);
+    expect(screen.queryByRole("button", { name: /Next:/ })).not.toBeInTheDocument();
   });
 });

@@ -1,4 +1,3 @@
-import { PAGE } from "@core/app-shell/pages";
 import {
   addExperiment as coreAddExperiment,
   removeExperiment as coreRemoveExperiment,
@@ -56,7 +55,6 @@ export function PageExperiments({
   reeSpec,
   locked,
   onReeChange,
-  onGoPage,
   onFocusedFieldChange,
   onBeforeRun,
   focusedField,
@@ -311,9 +309,6 @@ export function PageExperiments({
                       Add experiment
                     </Button>
                   )}
-                  <Button variant="primary" onClick={() => onGoPage(PAGE.ARCHIVE)}>
-                    Next: Deposit &amp; Share {Ic.chevR(15)}
-                  </Button>
                 </div>
               }
             >

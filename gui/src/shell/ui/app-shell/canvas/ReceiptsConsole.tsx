@@ -1,5 +1,5 @@
 import type { ReceiptView } from "@core/receipts/authorReceipts";
-import { type ReactNode, useState } from "react";
+import type { ReactNode } from "react";
 import { Ic } from "../../shared/components/Icon";
 import { HudConsole } from "./HudConsole";
 import hud from "./HudConsole.module.css";
@@ -12,6 +12,9 @@ const HUD_WIDTH_COLLAPSED = 224;
 interface ReceiptsConsoleProps {
   provisioned: boolean;
   receipts: ReceiptView[];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  externallyTriggered?: boolean;
 }
 
 // The receipts console — the upper-right HUD, and the one place the REE's
@@ -19,19 +22,25 @@ interface ReceiptsConsoleProps {
 // the portable REE document; review receipts (and the diffs they carry)
 // become a second section of the same console, which is why the body is built
 // from titled sections rather than a single flat list.
-export function ReceiptsConsole({ provisioned, receipts }: ReceiptsConsoleProps) {
-  const [open, setOpen] = useState(false);
-
+export function ReceiptsConsole({
+  provisioned,
+  receipts,
+  open,
+  onOpenChange,
+  externallyTriggered = false,
+}: ReceiptsConsoleProps) {
   const subtitle = !provisioned
     ? "awaiting workbench"
     : receipts.length === 0
       ? "no evidence recorded"
       : `${receipts.length} receipt${receipts.length === 1 ? "" : "s"}`;
 
+  if (externallyTriggered && !open) return null;
+
   return (
     <HudConsole
       open={open}
-      onToggle={() => setOpen((value) => !value)}
+      onToggle={() => onOpenChange(!open)}
       widthOpen={HUD_WIDTH_OPEN}
       widthCollapsed={HUD_WIDTH_COLLAPSED}
       className={hud.receiptsPlacement}

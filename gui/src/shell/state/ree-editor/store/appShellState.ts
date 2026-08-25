@@ -28,6 +28,7 @@ interface AppShellState {
   focusedField: string | null;
   sourceSnapshotArchiveName: string;
   filesConsoleOpen: boolean;
+  receiptsConsoleOpen: boolean;
 }
 
 export interface SourceOutcomePayload {

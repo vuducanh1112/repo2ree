@@ -39,7 +39,7 @@
 }
 
 .status[data-tone="ok"] {
-  color: var(--tone-success-line);
+  color: var(--tone-success-ink);
 }
 
 .statusValue {
