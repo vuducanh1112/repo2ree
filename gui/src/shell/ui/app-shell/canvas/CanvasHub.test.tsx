@@ -124,8 +124,8 @@ describe("CanvasHub", () => {
     await user.click(screen.getByRole("button", { name: "Fit canvas to viewport" }));
     expect(camera).toHaveAttribute("data-animate");
 
-    await user.click(screen.getByRole("button", { name: "Expand authoring navigation" }));
-    expect(await screen.findByText("2/3 complete · next Cross-check SBOM")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Expand workflow" }));
+    expect(await screen.findByText(/2\/3 complete · next Cross-check SBOM/)).toBeInTheDocument();
     await user.click(
       screen.getByRole("button", {
         name: /^Open Cross-check SBOM authoring step, ready/,
@@ -148,8 +148,16 @@ describe("CanvasHub", () => {
     expect(await screen.findByText("Source acquired")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Expand workbench console" }));
     expect((await screen.findAllByText("bench:python")).length).toBeGreaterThan(0);
-    await user.click(screen.getByRole("button", { name: "Expand review controls" }));
+    await user.click(screen.getByRole("tab", { name: /Review/ }));
     expect(await screen.findByRole("button", { name: "Strongest" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await user.click(screen.getByRole("button", { name: "From bundle" }));
+    await user.click(screen.getByRole("tab", { name: /Authoring/ }));
+    expect(screen.getByRole("navigation", { name: "Authoring workflow" })).toBeVisible();
+    await user.click(screen.getByRole("tab", { name: /Review/ }));
+    expect(screen.getByRole("button", { name: "From bundle" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );

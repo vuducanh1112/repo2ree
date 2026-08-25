@@ -14,7 +14,6 @@ import type { FileTreeNode } from "@core/workspace/FileTree";
 import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
 import { memo, useEffect, useRef } from "react";
 import { cssVars } from "../../theme/styleVars";
-import { AuthoringConsole } from "./AuthoringConsole";
 import { BenchConsole } from "./BenchConsole";
 import { CableOverlaySvg } from "./CableOverlay";
 import { CanvasControls } from "./CanvasControls";
@@ -23,10 +22,10 @@ import { FileTreeConsole } from "./FileTreeConsole";
 import { LabBackdrop } from "./LabBackdrop";
 import { NodeCard } from "./NodeCard";
 import { ReceiptsConsole } from "./ReceiptsConsole";
-import { ReviewConsole } from "./ReviewConsole";
 import { SpecimenPod } from "./SpecimenPod";
 import { useCableGeometry } from "./useCableGeometry";
 import { useCanvasViewport } from "./useCanvasViewport";
+import { WorkflowConsole } from "./WorkflowConsole";
 
 // Includes the 2.5D floor ring, pod, and lifted cards. These are intentionally
 // conservative unprojected bounds; the fixed floor tilt compresses their
@@ -178,9 +177,13 @@ export const CanvasHub = memo(function CanvasHub({
 
       <BenchConsole provisioned={provisioned} reeName={ree.spec.name} />
 
-      <ReviewConsole experiments={experiments} />
-
-      <AuthoringConsole page={page} ree={ree} badges={badges} onNavigate={onNavigate} />
+      <WorkflowConsole
+        page={page}
+        ree={ree}
+        badges={badges}
+        experiments={experiments}
+        onNavigate={onNavigate}
+      />
 
       <CanvasControls
         onZoomIn={() => zoomBy(1.2)}

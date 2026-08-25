@@ -655,24 +655,21 @@ export async function runExperiment(
   await stepShot(page, "run-experiment", "after");
 }
 
-/**
- * The pinned review HUD (bottom-center of the canvas hub). Several HUD consoles
- * share the same chrome, so it is identified by its own toggle — whose label
- * names the console in both the expanded and collapsed state.
- */
+/** The shared top-center workflow HUD, which contains the review controls. */
 function reviewConsole(page: Page) {
   return page
     .locator("[data-canvas-hud]")
-    .filter({ has: page.getByRole("button", { name: /review controls/i }) });
+    .filter({ has: page.getByRole("button", { name: /workflow/i }) });
 }
 
-/** Open the review HUD and return it, ready for the lifecycle controls. */
+/** Open the workflow HUD on Review and return it, ready for lifecycle controls. */
 export async function openReviewConsole(page: Page) {
   await stepShot(page, "open-review-console", "before");
   // The HUD lives on the canvas hub, behind any docked page.
   await page.keyboard.press("Escape").catch(() => {});
-  await page.getByRole("button", { name: /Expand review controls/i }).click();
+  await page.getByRole("button", { name: /Expand workflow/i }).click();
   const console = reviewConsole(page);
+  await console.getByRole("tab", { name: /Review/ }).click();
   await expect(console.getByRole("button", { name: "Reproduce Source" })).toBeVisible();
   await stepShot(page, "open-review-console", "after");
   return console;

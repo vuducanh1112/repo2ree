@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { fakeApiServices } from "../../../../../tests/support/fakeApiServices";
 import { renderWithShell } from "../../../../../tests/support/renderApp";
-import { ReviewConsole } from "./ReviewConsole";
+import { ReviewWorkflowPanel } from "./ReviewConsole";
 
 const opened = {
   run_id: "run-review",
@@ -19,11 +19,11 @@ const opened = {
   failure: null,
 };
 
-describe("ReviewConsole", () => {
+describe("ReviewWorkflowPanel", () => {
   it("starts source reproduction with the explicitly selected evidence basis", async () => {
     const user = userEvent.setup();
     const startSourceReview = vi.fn().mockResolvedValue(opened);
-    renderWithShell(<ReviewConsole experiments={[]} />, {
+    renderWithShell(<ReviewWorkflowPanel experiments={[]} onHeaderChange={vi.fn()} />, {
       reeId: "ree-1",
       services: fakeApiServices({
         ree: {
@@ -32,7 +32,6 @@ describe("ReviewConsole", () => {
         },
       }),
     });
-    await user.click(screen.getByRole("button", { name: "Expand review controls" }));
     await user.click(screen.getByRole("button", { name: "From bundle" }));
     await user.click(screen.getByRole("button", { name: "Reproduce Source" }));
     await waitFor(() =>
@@ -41,7 +40,6 @@ describe("ReviewConsole", () => {
   });
 
   it("presents settled source, build, activation, and experiment evidence", async () => {
-    const user = userEvent.setup();
     const review = {
       review_id: "review-1",
       created_at: "2026-01-01T00:00:00Z",
@@ -101,7 +99,7 @@ describe("ReviewConsole", () => {
       failure: null,
     };
     renderWithShell(
-      <ReviewConsole
+      <ReviewWorkflowPanel
         experiments={[
           {
             ...createEmptyReeExperiment(),
@@ -110,6 +108,7 @@ describe("ReviewConsole", () => {
             verifyScript: "verify.sh",
           },
         ]}
+        onHeaderChange={vi.fn()}
       />,
       {
         reeId: "ree-1",
@@ -118,7 +117,6 @@ describe("ReviewConsole", () => {
         }),
       },
     );
-    await user.click(screen.getByRole("button", { name: "Expand review controls" }));
     expect(
       await screen.findByText(/source verified from the REE's own artifacts/i),
     ).toBeInTheDocument();
@@ -128,7 +126,6 @@ describe("ReviewConsole", () => {
   });
 
   it("qualifies bundled evidence and explains matching builds and failed activation", async () => {
-    const user = userEvent.setup();
     const review = {
       review_id: "review-bundled",
       created_at: "2026-01-01T00:00:00Z",
@@ -169,13 +166,12 @@ describe("ReviewConsole", () => {
       experiment_comparisons: [],
       failure: "activation failed",
     };
-    renderWithShell(<ReviewConsole experiments={[]} />, {
+    renderWithShell(<ReviewWorkflowPanel experiments={[]} onHeaderChange={vi.fn()} />, {
       reeId: "ree-1",
       services: fakeApiServices({
         ree: { listReviews: vi.fn().mockResolvedValue({ reviews: [review] }) },
       }),
     });
-    await user.click(screen.getByRole("button", { name: "Expand review controls" }));
     expect(await screen.findByText(/source and runtime verified from/)).toBeInTheDocument();
     expect(screen.getByText(/runtime digest: bit-identical/)).toBeInTheDocument();
     expect(screen.getByText(/2 advisory/)).toBeInTheDocument();
@@ -184,7 +180,6 @@ describe("ReviewConsole", () => {
   });
 
   it("shows the verify exit code for an activation failure", async () => {
-    const user = userEvent.setup();
     const review = {
       review_id: "review-verify-failed",
       created_at: "created",
@@ -207,13 +202,12 @@ describe("ReviewConsole", () => {
       experiment_comparisons: [],
       failure: "verify failed",
     };
-    renderWithShell(<ReviewConsole experiments={[]} />, {
+    renderWithShell(<ReviewWorkflowPanel experiments={[]} onHeaderChange={vi.fn()} />, {
       reeId: "ree-1",
       services: fakeApiServices({
         ree: { listReviews: vi.fn().mockResolvedValue({ reviews: [review] }) },
       }),
     });
-    await user.click(screen.getByRole("button", { name: "Expand review controls" }));
     expect(await screen.findByText(/verify exited 2/)).toBeInTheDocument();
     expect(screen.queryByText(/verified from the REE/)).not.toBeInTheDocument();
   });

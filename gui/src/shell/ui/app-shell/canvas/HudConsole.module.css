@@ -1,5 +1,5 @@
 /* Shared chrome for the pinned HUD consoles at the canvas edges — files, bench,
- * logs, authoring, and review. The frosted card, its expand/collapse header, and the
+ * logs and workflow. The frosted card, its expand/collapse header, and the
  * collapsible body.
  *
  * Each console's *placement* is this shared arrangement's business; what the card looks
@@ -160,15 +160,7 @@
   flex-direction: column;
 }
 
-.reviewPlacement {
-  left: 50%;
-  bottom: 16px;
-  transform: translateX(-50%);
-  z-index: 35;
-  max-width: calc(100% - 640px);
-}
-
-.authoringPlacement {
+.workflowPlacement {
   left: 50%;
   top: 16px;
   z-index: 36;
@@ -183,13 +175,10 @@
   overflow-y: auto;
 }
 
-.reviewBody {
-  gap: var(--space-2-5);
-  overflow-x: auto;
-}
-
-.authoringBody {
+.workflowBody {
+  gap: 0;
   min-width: 0;
+  padding: 0;
 }
 
 /* Bounded by the height the user dragged the logs console to. */
@@ -235,7 +224,7 @@
     top: 8px;
   }
 
-  .authoringPlacement {
+  .workflowPlacement {
     top: 8px;
     left: 60px;
     max-width: none;
@@ -247,18 +236,11 @@
   }
 
   .benchPlacement,
-  .logsPlacement,
-  .reviewPlacement {
+  .logsPlacement {
     bottom: 8px;
   }
 
   .logsPlacement {
     right: 52px;
-  }
-
-  .reviewPlacement {
-    left: 60px;
-    max-width: none;
-    transform: none;
   }
 }

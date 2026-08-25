@@ -1,4 +1,3 @@
-import { PAGE } from "@core/app-shell/pages";
 import type { ReeExperiment } from "@core/ree/ReeSpec";
 import type { ReviewAttempt, ReviewBasisRequest } from "@core/reviews/Review";
 import { type ReviewStepKey, settledReviewStepCount } from "@core/reviews/reviewDag";
@@ -16,21 +15,23 @@ import {
 } from "@shell/data/reviews/mutations";
 import { useReviewsQuery } from "@shell/data/reviews/queries";
 import { useEffect, useState } from "react";
-import { Ic } from "../../shared/components/Icon";
-import { stageTone } from "../../theme/appearance";
-import { HudConsole } from "./HudConsole";
-import hud from "./HudConsole.module.css";
 import { ExperimentReviewPanel } from "./review/ExperimentReviewPanel";
 import styles from "./review/ReviewConsole.module.css";
 import { ReviewDag } from "./review/ReviewDag";
 
-interface ReviewConsoleProps {
+interface ReviewWorkflowPanelProps {
   experiments: readonly ReeExperiment[];
+  onHeaderChange: (header: ReviewWorkflowHeader) => void;
+}
+
+export interface ReviewWorkflowHeader {
+  subtitle: string;
+  running: boolean;
+  complete: number;
 }
 
 /** Active controller for isolated reviewer evidence. */
-export function ReviewConsole({ experiments }: ReviewConsoleProps) {
-  const [open, setOpen] = useState(false);
+export function ReviewWorkflowPanel({ experiments, onHeaderChange }: ReviewWorkflowPanelProps) {
   // What the next step reproduces from. "auto" takes the strongest basis the
   // baseline supports; "bundled" is the deliberate choice to certify what the
   // REE already carries, which is the only path open for a bundle with no
@@ -138,23 +139,13 @@ export function ReviewConsole({ experiments }: ReviewConsoleProps) {
     startExperimentReview.error ??
     reviews.error;
 
+  const subtitle = attempt ? attemptSubtitle(attempt, statuses) : "ready for source review";
+  useEffect(() => {
+    onHeaderChange({ subtitle, running, complete });
+  }, [subtitle, running, complete, onHeaderChange]);
+
   return (
-    <HudConsole
-      open={open}
-      onToggle={() => setOpen((value) => !value)}
-      widthOpen={660}
-      widthCollapsed={270}
-      className={hud.reviewPlacement}
-      icon={Ic.refresh(16)}
-      iconTint={running ? "var(--chrome-accent)" : stageTone(PAGE.EVALUATE)}
-      title="Review"
-      subtitle={attempt ? attemptSubtitle(attempt, statuses) : "ready for source review"}
-      on={running || complete > 0}
-      expandLabel="Expand review controls"
-      collapseLabel="Collapse review controls"
-      bodyMaxHeight={360}
-      bodyClassName={hud.reviewBody}
-    >
+    <>
       <div className={styles.topSpacer} />
       <ReviewDag
         experimentCount={experiments.filter((experiment) => experiment.name.trim()).length}
@@ -184,7 +175,7 @@ export function ReviewConsole({ experiments }: ReviewConsoleProps) {
           {error instanceof Error ? error.message : "Review unavailable"}
         </div>
       ) : null}
-    </HudConsole>
+    </>
   );
 }
 

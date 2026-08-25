@@ -56,7 +56,7 @@ export function HudConsole({
 }: HudConsoleProps) {
   const body =
     bodyMaxHeight != null ? (
-      <div className={styles.collapse}>
+      <div className={styles.collapse} aria-hidden={!open}>
         <div className={cx(styles.collapseBody, bodyClassName)}>{children}</div>
       </div>
     ) : open ? (

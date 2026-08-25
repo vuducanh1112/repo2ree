@@ -8,23 +8,29 @@ import type { AppShellPage } from "@core/app-shell/pages";
 import type { Badges } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { useAuthoringStepsQuery } from "@shell/data/reeSteps/queries";
-import { useState } from "react";
-import { Ic } from "../../shared/components/Icon";
-import { stageTone } from "../../theme/appearance";
 import styles from "./authoring/AuthoringConsole.module.css";
-import { HudConsole } from "./HudConsole";
-import hud from "./HudConsole.module.css";
 
-interface AuthoringConsoleProps {
+interface AuthoringWorkflowPanelProps {
   page: AppShellPage;
-  ree: ReeEditorViewModel;
-  badges: Badges;
+  model: AuthoringWorkflowModel;
   onNavigate: (page: AppShellPage) => void;
 }
 
-/** API-driven authoring graph and the primary guided path through the workbench. */
-export function AuthoringConsole({ page, ree, badges, onNavigate }: AuthoringConsoleProps) {
-  const [open, setOpen] = useState(false);
+interface AuthoringWorkflowModel {
+  steps: readonly AuthoringStep[];
+  statuses: Readonly<Record<string, AuthoringStepStatus>>;
+  complete: number;
+  nextPage: AppShellPage | undefined;
+  subtitle: string;
+  active: boolean;
+  error: boolean;
+}
+
+/** API-driven authoring graph and per-REE progress projected onto it. */
+export function useAuthoringWorkflowModel(
+  ree: ReeEditorViewModel,
+  badges: Badges,
+): AuthoringWorkflowModel {
   const catalog = useAuthoringStepsQuery();
   const steps = catalog.data ?? [];
   const statuses = authoringStepStatuses(steps, ree, badges);
@@ -38,31 +44,34 @@ export function AuthoringConsole({ page, ree, badges, onNavigate }: AuthoringCon
       ? "authoring graph unavailable"
       : `${complete}/${steps.length} complete${next ? ` · next ${next.label}` : ""}`;
 
+  return {
+    steps,
+    statuses,
+    complete,
+    nextPage,
+    subtitle,
+    active: complete > 0,
+    error: catalog.isError,
+  };
+}
+
+/** Navigation panel rendered inside the shared workflow HUD. */
+export function AuthoringWorkflowPanel({ page, model, onNavigate }: AuthoringWorkflowPanelProps) {
   return (
-    <HudConsole
-      open={open}
-      onToggle={() => setOpen((value) => !value)}
-      widthOpen={1400}
-      widthCollapsed={320}
-      className={hud.authoringPlacement}
-      icon={Ic.layers(16)}
-      iconTint={nextPage ? stageTone(nextPage) : "var(--status-ok)"}
-      title="Authoring"
-      subtitle={subtitle}
-      on={complete > 0}
-      expandLabel="Expand authoring navigation"
-      collapseLabel="Collapse authoring navigation"
-      bodyMaxHeight={174}
-      bodyClassName={hud.authoringBody}
-    >
-      {catalog.isError ? (
+    <>
+      {model.error ? (
         <div role="alert" className={styles.error}>
           Authoring guidance is unavailable. You can still use the workbench terminals.
         </div>
       ) : (
-        <AuthoringDag steps={steps} statuses={statuses} page={page} onNavigate={onNavigate} />
+        <AuthoringDag
+          steps={model.steps}
+          statuses={model.statuses}
+          page={page}
+          onNavigate={onNavigate}
+        />
       )}
-    </HudConsole>
+    </>
   );
 }
 
