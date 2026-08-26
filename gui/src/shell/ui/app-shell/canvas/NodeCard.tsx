@@ -96,7 +96,6 @@ export function NodeCard({
             data-active={active || undefined}
             data-running={running || undefined}
           >
-            <span aria-hidden className={styles.cap} />
             <span aria-hidden className={styles.shell} />
             {(running || next) && (
               <span id={stateNoteId} className={styles.stateNote}>

@@ -1,12 +1,21 @@
 /* A panel standing around the pod. The deck plate remains in the floor plane;
- * the terminal counter-tilts so its controls stay readable. A shallow top face
- * reconnects the upright terminal to the floor's perspective.
+ * the terminal counter-tilts so its controls stay readable.
+ *
+ * The terminal carries no modelled top face. It is a billboard: it counter-
+ * rotates to face the camera wherever it stands, so an extruded lid can only
+ * contradict the scene — one drawn with a single rotateX shows the same face at
+ * the same angle to every panel, including the ones standing above the horizon,
+ * whose undersides the camera is actually looking at. Depth here comes from the
+ * housing instead: a rounded lip that takes the scene's overhead light along
+ * its top and loses it along the bottom, over glass lit from the same
+ * direction. Modelling by light rather than by geometry stays true wherever the
+ * panel stands, because the light is overhead everywhere on the deck.
  *
  * The housing is drawn as a separate `.shell` layer rather than as the button's
- * own border: a milled faceplate has cut corners, and only a clipped layer can
- * carry that silhouette through the rim, the shadow, and the state glow at
- * once. Content sits above it in its own padded strips, so nothing the panel
- * reports ever meets the chamfer. */
+ * own border: it has to carry the rim, the shadow, the state glow and the
+ * blurred backdrop at once, and a border carries none of those. Content sits
+ * above it in its own padded strips, each taking the corner radius of the
+ * housing edge it meets. */
 
 .anchor {
   position: absolute;
@@ -87,16 +96,7 @@
   width: 152px;
   height: 96px;
   transform: translate3d(var(--node-x), var(--node-y), 0) translate(-50%, -50%);
-  clip-path: polygon(
-    14px 0,
-    calc(100% - 14px) 0,
-    100% 14px,
-    100% calc(100% - 14px),
-    calc(100% - 14px) 100%,
-    14px 100%,
-    0 calc(100% - 14px),
-    0 14px
-  );
+  border-radius: var(--radius-round);
   background: var(--machine-channel);
   box-shadow: var(--shadow-lg);
   pointer-events: none;
@@ -106,16 +106,7 @@
   content: "";
   position: absolute;
   inset: 1px;
-  clip-path: polygon(
-    14px 0,
-    calc(100% - 14px) 0,
-    100% 14px,
-    100% calc(100% - 14px),
-    calc(100% - 14px) 100%,
-    14px 100%,
-    0 calc(100% - 14px),
-    0 14px
-  );
+  border-radius: var(--radius-round);
   background:
     radial-gradient(circle at 50% 50%, var(--machine-glass-blue) 0 40%, transparent 78%),
     linear-gradient(145deg, var(--machine-glass-bright), var(--machine-metal-mid));
@@ -130,18 +121,12 @@
   left: 0;
   bottom: 0;
   transform: translate(-50%, 50%);
-  /* The chamfer is the panel's signature; every clipped layer reads it. */
-  --chamfer: 11px;
-  --shell-clip: polygon(
-    var(--chamfer) 0,
-    calc(100% - var(--chamfer)) 0,
-    100% var(--chamfer),
-    100% calc(100% - var(--chamfer)),
-    calc(100% - var(--chamfer)) 100%,
-    var(--chamfer) 100%,
-    0 calc(100% - var(--chamfer)),
-    0 var(--chamfer)
-  );
+  /* How far the glass lip stands proud of the pane it holds. */
+  --rim: 3px;
+  /* The two shadows every housing carries, whatever state it is in: a tight
+   * contact shadow that keeps it from floating, under the wide ambient one that
+   * places it above the floor. */
+  --housing-shadow: 0 1px 1px var(--machine-channel), var(--machine-shadow);
   width: 248px;
   padding: 0;
   border: 0;
@@ -157,63 +142,78 @@
     opacity var(--duration-slow);
 }
 
-/* The housing: a milled rim, a glass face, and the shadow that lifts the whole
- * chamfered silhouette off the deck. It sits a hair behind the panel's own
- * content plane so the strips always read on top of it. */
+/* The housing: a rounded glass lip holding the pane, and the shadow that lifts
+ * the whole silhouette off the deck. It sits a hair behind the panel's own
+ * content plane so the strips always read on top of it.
+ *
+ * The rim is a band of even width, so its outer radius is the pane's plus the
+ * width it stands proud of it. Its gradient is the scene's light falling on a
+ * raised edge: white across the top, cool slate along the bottom, which is what
+ * gives the panel its thickness.
+ *
+ * Rounded corners are what make the glass real: with no cut corners to carry,
+ * the housing needs no `clip-path`, so it needs no `filter` to cast its shadow
+ * either — and without a filter isolating it, `backdrop-filter` finally has a
+ * backdrop to work on. The deck grid and the cables genuinely refract through
+ * the pane rather than being imitated by a pale fill.
+ *
+ * A state does not repaint the housing: it lights the rim from within, as a
+ * translucent ring laid over the gradient, so a lit panel still reads as the
+ * same glass rather than as a coloured card. */
 .shell {
   position: absolute;
-  inset: 0;
+  inset: calc(var(--rim) * -1);
   transform: translateZ(-1px);
-  clip-path: var(--shell-clip);
+  border-radius: calc(var(--radius-large) + var(--rim));
   background: linear-gradient(
-    180deg,
-    var(--machine-channel-strong),
-    var(--machine-metal-deep) 55%,
-    var(--machine-channel-strong)
+    172deg,
+    var(--machine-glass-bright) 0%,
+    color-mix(in srgb, var(--machine-metal-light) 76%, transparent) 12%,
+    color-mix(in srgb, var(--machine-glass-blue) 58%, transparent) 52%,
+    color-mix(in srgb, var(--machine-metal-mid) 72%, transparent) 78%,
+    var(--machine-metal-deep) 100%
   );
-  filter: drop-shadow(var(--machine-shadow));
+  box-shadow: var(--housing-shadow);
   pointer-events: none;
-  transition: filter var(--duration-normal);
+  transition: box-shadow var(--duration-normal);
 }
 
+/* The pane the rim holds: glass the deck shows through, lit from the same
+ * overhead source and cooling toward the bottom edge where the housing shades
+ * it. The blur is what separates it from the grid it is transparent to —
+ * without it the lines behind the panel would compete with the readout. */
 .shell::after {
   content: "";
   position: absolute;
-  inset: 1px;
-  clip-path: var(--shell-clip);
+  inset: var(--rim);
+  border-radius: var(--radius-large);
   background:
+    linear-gradient(180deg, var(--machine-glass-bright) 0, transparent 26%),
+    linear-gradient(
+      116deg,
+      transparent 30%,
+      color-mix(in srgb, var(--machine-glass-bright) 45%, transparent) 45%,
+      transparent 62%
+    ),
     linear-gradient(
       180deg,
-      var(--machine-glass-bright) 0,
-      var(--machine-glass) 42%,
-      var(--machine-glass-blue) 100%
+      transparent 40%,
+      color-mix(in srgb, var(--machine-ink-info) 8%, transparent) 100%
     ),
-    linear-gradient(155deg, var(--machine-metal-light), var(--machine-metal-mid));
+    linear-gradient(
+      155deg,
+      color-mix(in srgb, var(--machine-metal-light) 62%, transparent),
+      color-mix(in srgb, var(--machine-metal-mid) 66%, transparent)
+    );
+  backdrop-filter: blur(9px) saturate(1.4);
+  box-shadow:
+    inset 0 1px 0 var(--machine-glass-bright),
+    inset 0 -1px 0 color-mix(in srgb, var(--machine-channel) 60%, transparent);
 }
 
 .anchor[data-floor] .card {
   bottom: var(--node-stand-height);
   transform: translateX(-50%);
-}
-
-/* The shallow top face. Its width stops at the chamfer flats so the body reads
- * as one bevel-cut block rather than a card with a lid. */
-.cap {
-  display: none;
-  position: absolute;
-  left: var(--chamfer);
-  right: var(--chamfer);
-  bottom: 100%;
-  height: 13px;
-  transform-origin: 50% 100%;
-  transform: rotateX(var(--floor-tilt));
-  background: linear-gradient(180deg, var(--machine-metal-light), var(--machine-metal-mid));
-  box-shadow: inset 0 0 0 1px var(--machine-channel);
-  pointer-events: none;
-}
-
-.anchor[data-floor] .cap {
-  display: block;
 }
 
 /* Where the cable from the pod lands. */
@@ -224,22 +224,14 @@
   width: 10px;
   height: 8px;
   transform: translateX(-50%);
-  border-radius: 0 0 var(--radius-xs) var(--radius-xs);
+  border-radius: 0 0 var(--radius-round) var(--radius-round);
   background: linear-gradient(180deg, var(--machine-metal-mid), var(--machine-metal-deep));
 }
 
-/* The step behind this panel has a result. */
-.card[data-done] .shell {
-  background: linear-gradient(
-    180deg,
-    var(--machine-channel-strong),
-    var(--machine-metal-deep) 55%,
-    var(--machine-channel-strong)
-  );
-}
-
 .card[data-stale] .shell {
-  background: color-mix(in srgb, var(--status-stale) 45%, var(--machine-metal-deep));
+  box-shadow:
+    inset 0 0 0 var(--rim) color-mix(in srgb, var(--status-stale) 62%, transparent),
+    var(--housing-shadow);
 }
 
 /* Announced as the panel's description, so a state the panel shows as a lamp or
@@ -254,21 +246,30 @@
   white-space: nowrap;
 }
 
-/* The one step the authoring graph says to do next. The housing glows along its
- * own outline — a ring would square off the corners the chamfer just cut. */
+/* The one step the authoring graph says to do next: the housing glows along its
+ * own edge. */
 .card[data-next] .shell {
-  background: var(--step-next-line);
+  box-shadow:
+    inset 0 0 0 var(--rim) color-mix(in srgb, var(--step-next-line) 72%, transparent),
+    0 0 3px var(--step-next-line),
+    var(--housing-shadow);
   animation: node-next-pulse 2.4s var(--ease-standard) infinite;
 }
 
 @keyframes node-next-pulse {
   0%,
   100% {
-    filter: drop-shadow(0 0 1px var(--step-next-line)) drop-shadow(var(--machine-shadow));
+    box-shadow:
+      inset 0 0 0 var(--rim) color-mix(in srgb, var(--step-next-line) 72%, transparent),
+      0 0 3px var(--step-next-line),
+      var(--housing-shadow);
   }
 
   50% {
-    filter: drop-shadow(0 0 7px var(--step-next-line)) drop-shadow(var(--machine-shadow));
+    box-shadow:
+      inset 0 0 0 var(--rim) color-mix(in srgb, var(--step-next-line) 90%, transparent),
+      0 0 12px var(--step-next-line),
+      var(--housing-shadow);
   }
 }
 
@@ -277,25 +278,47 @@
  * glow is the run tone rather than a stage tint, and it breathes twice as fast
  * as the `next` hint it overrides. */
 .card[data-running] .shell {
-  background: var(--run-active);
+  box-shadow:
+    inset 0 0 0 var(--rim) color-mix(in srgb, var(--run-active) 72%, transparent),
+    0 0 4px var(--run-active),
+    var(--housing-shadow);
   animation: node-run-pulse 1.3s var(--ease-standard) infinite;
 }
 
 @keyframes node-run-pulse {
   0%,
   100% {
-    filter: drop-shadow(0 0 2px var(--run-active)) drop-shadow(var(--machine-shadow));
+    box-shadow:
+      inset 0 0 0 var(--rim) color-mix(in srgb, var(--run-active) 72%, transparent),
+      0 0 4px var(--run-active),
+      var(--housing-shadow);
   }
 
   50% {
-    filter: drop-shadow(0 0 10px var(--run-active)) drop-shadow(var(--machine-shadow));
+    box-shadow:
+      inset 0 0 0 var(--rim) var(--run-active),
+      0 0 16px var(--run-active),
+      var(--housing-shadow);
   }
 }
 
 /* The page this panel opens is the one on screen. */
 .card[data-active] .shell {
-  background: var(--chrome-accent);
-  filter: drop-shadow(0 0 4px var(--chrome-accent)) drop-shadow(var(--machine-shadow));
+  box-shadow:
+    inset 0 0 0 var(--rim) color-mix(in srgb, var(--chrome-accent) 78%, transparent),
+    0 0 7px var(--chrome-accent),
+    var(--housing-shadow);
+}
+
+/* Pointing at a panel lights its housing in the node's own tone — the tone its
+ * cable to the pod already carries. The panel itself does not move: the cables
+ * are measured geometry, and a card that shifted under the pointer would drag
+ * its port away from the cable already drawn to it. */
+.card:hover:not(:disabled) .shell {
+  box-shadow:
+    inset 0 0 0 var(--rim) color-mix(in srgb, var(--node-tint) 34%, transparent),
+    0 0 9px color-mix(in srgb, var(--node-tint) 45%, transparent),
+    var(--housing-shadow);
 }
 
 /* Nothing on the ring is reachable until the workbench is provisioned. */
@@ -318,16 +341,11 @@
   gap: var(--space-2);
   min-height: 30px;
   padding: var(--space-1-5) var(--space-3);
-  clip-path: polygon(
-    var(--chamfer) 0,
-    calc(100% - var(--chamfer)) 0,
-    100% var(--chamfer),
-    100% 100%,
-    0 100%,
-    0 var(--chamfer)
-  );
-  border-bottom: 1px solid var(--machine-channel);
-  background: linear-gradient(180deg, var(--machine-glass-bright), transparent);
+  border-radius: var(--radius-large) var(--radius-large) 0 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--node-tint) 28%, var(--machine-channel));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--node-tint) 9%, transparent), transparent 76%),
+    linear-gradient(180deg, var(--machine-glass-bright), transparent);
 }
 
 .glyph {
@@ -337,7 +355,7 @@
   flex-shrink: 0;
   width: 21px;
   height: 21px;
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-round);
   background: linear-gradient(160deg, var(--machine-glass-bright), var(--machine-metal-mid));
   color: color-mix(in srgb, var(--node-tint) 55%, var(--chrome-text-mid));
   box-shadow: inset 0 0 0 1px var(--machine-channel);
@@ -432,13 +450,15 @@
   position: relative;
   overflow: hidden;
   margin: var(--space-2) var(--space-2-5);
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-control);
   background:
     repeating-linear-gradient(0deg, var(--machine-screen-line) 0 1px, transparent 1px 4px),
     linear-gradient(160deg, var(--surface-control), var(--machine-glass-blue));
   box-shadow:
     inset 0 0 0 1px var(--machine-channel),
-    inset 0 2px 5px var(--machine-screen-glow),
+    inset 0 2px 6px var(--machine-screen-glow),
+    inset 0 -6px 12px -6px var(--machine-screen-glow),
+    0 0 7px color-mix(in srgb, var(--machine-ink-info) 12%, transparent),
     0 1px 0 var(--machine-glass-bright);
   color: var(--chrome-text-mid);
 }
@@ -586,14 +606,7 @@
   gap: var(--space-1-5);
   min-height: 22px;
   padding: var(--space-1) var(--space-3);
-  clip-path: polygon(
-    0 0,
-    100% 0,
-    100% calc(100% - var(--chamfer)),
-    calc(100% - var(--chamfer)) 100%,
-    var(--chamfer) 100%,
-    0 calc(100% - var(--chamfer))
-  );
+  border-radius: 0 0 var(--radius-large) var(--radius-large);
   border-top: 1px solid var(--machine-channel);
   background: linear-gradient(180deg, transparent, var(--machine-screen-glow));
   color: var(--chrome-text-mid);
@@ -629,14 +642,9 @@
   }
 
   /* The glow stays; it just stops breathing. */
-  .card[data-next] .shell {
-    animation: none;
-    filter: drop-shadow(0 0 4px var(--step-next-line)) drop-shadow(var(--machine-shadow));
-  }
-
+  .card[data-next] .shell,
   .card[data-running] .shell {
     animation: none;
-    filter: drop-shadow(0 0 6px var(--run-active)) drop-shadow(var(--machine-shadow));
   }
 
   .state[data-state="running"] .stateLamp {
@@ -661,7 +669,6 @@
 
   .anchor[data-floor] .post,
   .anchor[data-floor] .foot,
-  .anchor[data-floor] .cap,
   .floorShadow[data-visible] {
     display: none;
   }
