@@ -4,7 +4,8 @@ import {
   activeNode,
   CANVAS_NODES,
   isNodeActive,
-  isNodeLocked,
+  isNodeDone,
+  isNodeStale,
   nodeOverview,
   nodeSummary,
 } from "@core/canvas/canvasNodes";
@@ -68,13 +69,6 @@ describe("CANVAS_NODES", () => {
 });
 
 describe("node state", () => {
-  it("locks every node until the workbench is provisioned", () => {
-    for (const node of CANVAS_NODES) {
-      expect(isNodeLocked(node, false)).toBe(true);
-      expect(isNodeLocked(node, true)).toBe(false);
-    }
-  });
-
   it("marks exactly the node whose page is open", () => {
     const active = CANVAS_NODES.filter((node) => isNodeActive(node, PAGE.SBOM));
     expect(active).toHaveLength(1);
@@ -83,6 +77,30 @@ describe("node state", () => {
 
   it("has no active node while the hub canvas itself is showing", () => {
     expect(activeNode(PAGE.CANVAS)).toBeUndefined();
+  });
+
+  // Doneness travels with the REE, not with the session that produced it: no
+  // badge is set here, which is exactly the state a reloaded tab starts in.
+  it("reads an executed node as done from the REE's own audit", () => {
+    const ree = patchReeEditorViewModel(createEmptyReeEditorViewModel(), {
+      audit: { runtime: "current" },
+    });
+    expect(isNodeDone(nodeFor(PAGE.BUILD), ree, {})).toBe(true);
+    expect(isNodeStale(nodeFor(PAGE.BUILD), ree)).toBe(false);
+  });
+
+  it("reads a stale node as not done, and names it stale", () => {
+    const ree = patchReeEditorViewModel(createEmptyReeEditorViewModel(), {
+      audit: { runtime: "stale" },
+    });
+    expect(isNodeDone(nodeFor(PAGE.BUILD), ree, {})).toBe(false);
+    expect(isNodeStale(nodeFor(PAGE.BUILD), ree)).toBe(true);
+  });
+
+  it("has no staleness to report for a node with no receipt behind it", () => {
+    const ree = createEmptyReeEditorViewModel();
+    expect(isNodeStale(nodeFor(PAGE.METADATA), ree)).toBe(false);
+    expect(isNodeStale(nodeFor(PAGE.SEAL), ree)).toBe(false);
   });
 });
 
@@ -115,19 +133,17 @@ describe("nodeSummary", () => {
         spec: { originUrl: "https://github.com/example/hello" },
       });
       expect(summary.Origin).toBe("github.com");
-      expect(summary.Name).toBeNull();
       expect(summary.SWHID).toBeNull();
     });
 
     it("ignores backend metadata until the source is actually available", () => {
       // `sourceAvailable` is the gate: stale repo stats must not show through.
-      expect(summaryOf(PAGE.SOURCE, { source: { sourceAvailable: false } }, repo).Name).toBeNull();
+      expect(summaryOf(PAGE.SOURCE, { source: { sourceAvailable: false } }, repo).SWHID).toBeNull();
     });
 
     it("surfaces the backend-computed stats once the source lands", () => {
       const summary = summaryOf(PAGE.SOURCE, { source: { sourceAvailable: true } }, repo);
       expect(summary).toMatchObject({
-        Name: "python-hello-world.tar.gz",
         Size: "4.0 KB",
         Origin: "github.com",
         SWHID: "swh:1:dir:abc123",
@@ -166,7 +182,12 @@ describe("nodeSummary", () => {
 
   it("always shows all three reproducibility axes, scored or not", () => {
     const fresh = summaryOf(PAGE.EVALUATE);
-    expect(fresh).toEqual({ Dependencies: "None", Environment: "None", Machine: "None" });
+    expect(fresh).toEqual({
+      Dependencies: "None",
+      Environment: "None",
+      Machine: "None",
+      "Detected deps": null,
+    });
 
     const scored = summaryOf(PAGE.EVALUATE, {
       evaluation: { dependencyLevel: 3, environmentLevel: 1 },

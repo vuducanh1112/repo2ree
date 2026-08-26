@@ -195,6 +195,18 @@ describe("mapRawReeIntentToSlices", () => {
     });
   });
 
+  it("carries the audit's per-step standing into its own slice", () => {
+    const mapped = mapRawReeIntentToSlices({
+      reeIntent: {},
+      audit: {
+        runtime: { evidence: "current", payload: "present", reasons: [] },
+        sbom: { evidence: "stale", payload: "not_applicable", reasons: ["source re-pointed"] },
+      },
+      fallbackName: "demo",
+    });
+    expect(mapped.stepEvidence).toEqual({ runtime: "current", sbom: "stale" });
+  });
+
   it("uses fallbacks and defaults for null or malformed slices", () => {
     const mapped = mapRawReeIntentToSlices({
       reeIntent: null,
@@ -210,6 +222,7 @@ describe("mapRawReeIntentToSlices", () => {
       correspondingAuthorIdentifier: null,
     });
     expect(mapped.reeSpec.experiments).toEqual([]);
+    expect(mapped.stepEvidence).toEqual({});
     expect(mapped.workspaceSourceState).toEqual({
       sourceAvailable: false,
       sourceIncluded: false,

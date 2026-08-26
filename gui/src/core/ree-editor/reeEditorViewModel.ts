@@ -1,6 +1,7 @@
 import type { ArtifactStatus } from "../../core/artifact/ArtifactStatus";
 import type { EvaluationState } from "../../core/evaluate/EvaluationState";
 import { createEmptyReeSpec, type ReeSpec } from "../../core/ree/ReeSpec";
+import { createEmptyStepEvidence, type StepEvidence } from "../../core/ree/StepEvidence";
 import type { WorkspaceSourceState } from "../../core/workspace/WorkspaceSourceState";
 import type { ReeEditorState } from "./reeEditorState";
 
@@ -9,6 +10,12 @@ export interface ReeEditorViewModel {
   source: WorkspaceSourceState;
   artifact: ArtifactStatus;
   evaluation: EvaluationState;
+  /**
+   * Whether each executed step's receipt still speaks for this REE. Named for
+   * the backend's `ReeAudit` rather than "evidence" so it cannot be misread as
+   * a sibling of `evaluation`, which carries the readiness axes.
+   */
+  audit: StepEvidence;
 }
 
 export interface ReeEditorViewModelPatch {
@@ -16,6 +23,7 @@ export interface ReeEditorViewModelPatch {
   source?: Partial<WorkspaceSourceState>;
   artifact?: Partial<ArtifactStatus>;
   evaluation?: Partial<EvaluationState>;
+  audit?: Partial<StepEvidence>;
 }
 
 export function patchReeEditorViewModel(
@@ -27,6 +35,7 @@ export function patchReeEditorViewModel(
     source: { ...current.source, ...patch.source },
     artifact: { ...current.artifact, ...patch.artifact },
     evaluation: { ...current.evaluation, ...patch.evaluation },
+    audit: { ...current.audit, ...patch.audit },
   };
 }
 
@@ -40,13 +49,14 @@ export function createEmptyReeEditorViewModel(): ReeEditorViewModel {
       environmentLevel: 0,
       machineLevel: 0,
     },
+    audit: createEmptyStepEvidence(),
   };
 }
 
 export function createReeEditorViewModel(
   editorState: Pick<
     ReeEditorState,
-    "reeSpec" | "workspaceSourceState" | "artifactStatus" | "evaluationState"
+    "reeSpec" | "workspaceSourceState" | "artifactStatus" | "evaluationState" | "stepEvidence"
   >,
 ): ReeEditorViewModel {
   return {
@@ -54,5 +64,6 @@ export function createReeEditorViewModel(
     source: editorState.workspaceSourceState,
     artifact: editorState.artifactStatus,
     evaluation: editorState.evaluationState,
+    audit: editorState.stepEvidence,
   };
 }

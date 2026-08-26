@@ -1,8 +1,14 @@
 import { type AppShellPage, PAGE } from "@core/app-shell/pages";
-import { PROCESS_STEPS, resolveNavCompleted } from "@core/app-shell/processSteps";
+import {
+  EVIDENCE_STEP_BY_PAGE,
+  PROCESS_STEPS,
+  resolveNavCompleted,
+} from "@core/app-shell/processSteps";
 import { axisStandings, axisStepLabel } from "@core/evaluate/axes";
+import type { SbomCrossCheckSummary } from "@core/evaluate/Threat";
 import type { ReceiptView } from "@core/receipts/authorReceipts";
 import type { Badges } from "@core/ree/ReeTypes";
+import { isEvidenceStale } from "@core/ree/StepEvidence";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import type { FileTreeNode } from "@core/workspace/FileTree";
 import { findFileByWorkspacePath } from "@core/workspace/fileTreeTraversal";
@@ -167,10 +173,14 @@ export function isNodeDone(node: CanvasNode, ree: ReeEditorViewModel, badges: Ba
   return step ? resolveNavCompleted(step, ree, badges) : false;
 }
 
-// Every node lives inside the workbench, so nothing on the ring is reachable
-// until the workbench (the lab) is provisioned.
-export function isNodeLocked(_node: CanvasNode, provisioned: boolean): boolean {
-  return !provisioned;
+/**
+ * A node whose receipt no longer speaks for the REE — an edited build script,
+ * a re-pointed source. `isNodeDone` already reads false for these; this says
+ * *why*, so the card can show STALE rather than a plain "not run yet".
+ */
+export function isNodeStale(node: CanvasNode, ree: ReeEditorViewModel): boolean {
+  const step = EVIDENCE_STEP_BY_PAGE[node.key];
+  return step ? isEvidenceStale(ree.audit, step) : false;
 }
 
 export function isNodeActive(node: CanvasNode, page: AppShellPage): boolean {
@@ -218,6 +228,7 @@ interface CanvasNodeOverviewContext {
   receipts?: ReceiptView[];
   /** Backend-owned reserved path published by the script-template catalog. */
   buildScriptPath?: string;
+  crossCheck?: SbomCrossCheckSummary | null;
 }
 
 function hostOf(url: string): string {
@@ -228,11 +239,20 @@ function hostOf(url: string): string {
   }
 }
 
+function abbreviate(value: string): string {
+  return value.length > 20 ? `${value.slice(0, 16)}…` : value;
+}
+
+function basename(path: string): string {
+  return path.split("/").at(-1) || path;
+}
+
 // Per-node summary: the headline facts a node shows before the user dives in.
 export function nodeSummary(
   node: CanvasNode,
   ree: ReeEditorViewModel,
   sourceRepo?: SourceRepoMetadata,
+  context: CanvasNodeOverviewContext = {},
 ): SummaryRow[] {
   switch (node.key) {
     case PAGE.SOURCE: {
@@ -240,7 +260,6 @@ export function nodeSummary(
       // before that, fall back to the declared origin so the card isn't empty.
       const repo = ree.source.sourceAvailable ? sourceRepo : undefined;
       return [
-        { label: "Name", value: repo?.name ?? null },
         { label: "Size", value: repo?.sizeLabel ?? null },
         {
           label: "Origin",
@@ -256,12 +275,26 @@ export function nodeSummary(
     case PAGE.METADATA:
       return [
         { label: "Name", value: ree.spec.name || null },
+        { label: "Description", value: ree.spec.catalogMetadata?.description || null },
         { label: "Version", value: ree.spec.catalogMetadata?.version || null },
+        { label: "Website", value: ree.spec.catalogMetadata?.website || null },
+        {
+          label: "Keywords",
+          value: ree.spec.catalogMetadata?.keywords.length
+            ? ree.spec.catalogMetadata.keywords.join(", ")
+            : null,
+        },
         {
           label: "Contributors",
           value: ree.spec.catalogMetadata?.contributors.length
-            ? String(ree.spec.catalogMetadata.contributors.length)
+            ? ree.spec.catalogMetadata.contributors
+                .map((contributor) => contributor.name || contributor.identifier)
+                .join(", ")
             : null,
+        },
+        {
+          label: "Corresponding author",
+          value: ree.spec.catalogMetadata?.correspondingAuthorIdentifier || null,
         },
       ];
     case PAGE.HBOM: {
@@ -276,6 +309,14 @@ export function nodeSummary(
         0,
       );
       const gpus = Object.values(hbom.gpus).reduce((total, gpu) => total + gpu.quantity, 0);
+      const storage = Object.values(hbom.storage).reduce(
+        (total, item) => total + item.quantity * item.capacityGb,
+        0,
+      );
+      const network = Object.values(hbom.network).reduce(
+        (total, item) => total + item.quantity * item.bandwidthGbps,
+        0,
+      );
       return [
         {
           label: "Compute",
@@ -283,6 +324,8 @@ export function nodeSummary(
         },
         { label: "Memory", value: memory ? `${memory} GB` : null },
         { label: "GPU", value: gpus ? String(gpus) : null },
+        { label: "Storage", value: storage ? `${storage} GB` : null },
+        { label: "Network", value: network ? `${network} Gbps` : null },
       ];
     }
     case PAGE.EXPERIMENTS: {
@@ -298,10 +341,16 @@ export function nodeSummary(
     case PAGE.EVALUATE:
       // Always surface each axis's standing — level 0 reads as "None", so the
       // three axes are visible whether or not the REE has been scored yet.
-      return axisStandings(ree.evaluation).map(({ axis, level }) => ({
-        label: axis.label,
-        value: axisStepLabel(axis, level),
-      }));
+      return [
+        ...axisStandings(ree.evaluation).map(({ axis, level }) => ({
+          label: axis.label,
+          value: axisStepLabel(axis, level),
+        })),
+        {
+          label: "Detected deps",
+          value: ree.evaluation.detectedDependencies || null,
+        },
+      ];
     case PAGE.BUILD:
       return [
         {
@@ -309,8 +358,23 @@ export function nodeSummary(
           value: ree.spec.runtime && ree.spec.runtime !== "__skipped__" ? "image ready" : null,
         },
       ];
-    case PAGE.SBOM:
-      return [{ label: "SBOM", value: ree.spec.sbom ? "inventoried" : null }];
+    case PAGE.SBOM: {
+      const sbom = ree.spec.sbom || "";
+      const crossCheck = context.crossCheck;
+      return [
+        {
+          label: "SBOM",
+          value: sbom ? abbreviate(basename(sbom)) : null,
+          title: sbom || undefined,
+        },
+        {
+          label: "Cross-check",
+          value: crossCheck
+            ? `${crossCheck.observedMatched}/${crossCheck.observedTotal} matched`
+            : null,
+        },
+      ];
+    }
     case PAGE.ACTIVATION:
       return [
         {
@@ -327,8 +391,13 @@ export function nodeSummary(
         { label: "DOI", value: null },
         { label: "SWHID", value: ree.spec.swhid || null, title: ree.spec.swhid },
       ];
-    case PAGE.SEAL:
-      return [{ label: "State", value: ree.artifact.sealedAt ? "sealed" : "draft" }];
+    case PAGE.SEAL: {
+      const hash = ree.artifact.sealHash || "";
+      return [
+        { label: "State", value: ree.artifact.sealedAt ? "sealed" : "draft" },
+        { label: "Hash", value: hash ? abbreviate(hash) : null, title: hash || undefined },
+      ];
+    }
     default:
       return [];
   }
@@ -446,7 +515,7 @@ export function nodeOverview(
   }
 
   return {
-    facts: nodeSummary(node, ree, sourceRepo),
+    facts: nodeSummary(node, ree, sourceRepo, context),
     scripts,
     evidenceExpected: !!RECEIPT_OPERATIONS_BY_PAGE[node.key]?.length,
     receipt: receiptSummary(node, context.receipts ?? [], experiments.length),

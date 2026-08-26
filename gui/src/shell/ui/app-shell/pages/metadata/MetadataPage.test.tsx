@@ -76,17 +76,32 @@ describe("PageMetadataEntry", () => {
       });
     });
 
-    it("reads Draft until the REE is named, then Ready", async () => {
+    // Metadata is the one step with no receipt behind it, so this badge is the
+    // whole verdict on its doneness — the canvas node reads the same rule.
+    it("reads Draft until every required field is filled, then Ready", async () => {
       renderPage();
       expect(screen.getByText("Draft")).toBeInTheDocument();
 
       await userEvent.type(screen.getByPlaceholderText(NAME), "hello-world");
+      expect(screen.getByText("Draft")).toBeInTheDocument();
 
+      await userEvent.type(screen.getByPlaceholderText(VERSION), "1.0.0");
+      expect(screen.getByText("Draft")).toBeInTheDocument();
+
+      await userEvent.type(screen.getByPlaceholderText(DESCRIPTION), "A hello world REE");
       expect(screen.getByText("Ready")).toBeInTheDocument();
     });
 
-    it("does not count whitespace as a name", async () => {
-      renderPage();
+    it("does not count whitespace as a filled field", async () => {
+      renderPage({
+        spec: {
+          catalogMetadata: {
+            ...createEmptyReeSpec().catalogMetadata,
+            version: "1.0.0",
+            description: "A hello world REE",
+          },
+        },
+      });
       await userEvent.type(screen.getByPlaceholderText(NAME), "   ");
       expect(screen.getByText("Draft")).toBeInTheDocument();
     });

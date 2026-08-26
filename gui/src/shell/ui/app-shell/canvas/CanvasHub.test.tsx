@@ -229,4 +229,38 @@ describe("CanvasHub", () => {
     // the canvas already open rather than expanded from a collapsed card here.
     expect((await screen.findAllByText("bench:python")).length).toBeGreaterThan(0);
   });
+
+  // The reload case: this tab has run nothing, so every badge is empty and the
+  // panels must answer from the REE the backend handed back.
+  it("reads panel doneness from the REE rather than from this session's runs", () => {
+    renderWithShell(
+      <CanvasHub
+        page={PAGE.CANVAS}
+        ree={{ ...exampleEditorRee, audit: { source: "current", runtime: "current" } }}
+        evaluation={{ dependencyLevel: 2, environmentLevel: 2, machineLevel: 1 }}
+        badges={{}}
+        provisioned
+        staleNodeKeys={new Set([PAGE.SBOM])}
+        onNavigate={vi.fn()}
+        workspaceFiles={[]}
+        reeFiles={[]}
+        sourceRepo={undefined}
+        authorReceipts={authorReceipts}
+        filesConsoleOpen={false}
+        onFilesConsoleOpenChange={vi.fn()}
+        receiptsConsoleOpen={false}
+        onReceiptsConsoleOpenChange={vi.fn()}
+        benchConsoleOpen={false}
+        onBenchConsoleOpenChange={vi.fn()}
+      />,
+      { reeId: "ree-1", services: services() },
+    );
+
+    expect(screen.getByRole("button", { name: "Build" })).toHaveAttribute("data-done", "true");
+    // The SBOM receipt is still on the aggregate but no longer speaks for what
+    // the REE declares, so carrying a receipt is not doneness of its own.
+    const sbom = screen.getByRole("button", { name: "SBOM" });
+    expect(sbom).not.toHaveAttribute("data-done");
+    expect(sbom).toHaveAttribute("data-stale", "true");
+  });
 });

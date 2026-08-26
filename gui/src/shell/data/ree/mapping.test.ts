@@ -91,5 +91,16 @@ describe("shell/data/ree/mapping", () => {
 
     expect(mapped.workspaceSourceState.sourceAvailable).toBe(true);
     expect(mapped.workspaceSourceState.sourceIncluded).toBe(false);
+    // Every audited step's standing travels into the editor state, so step
+    // doneness survives a reload without being remembered per session.
+    expect(mapped.stepEvidence).toEqual({
+      source: "current",
+      evaluation: "missing",
+      hardware: "missing",
+      runtime: "missing",
+      sbom: "missing",
+      sbom_cross_check: "missing",
+      test_activation: "missing",
+    });
   });
 });

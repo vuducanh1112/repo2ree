@@ -1,6 +1,7 @@
 import {
   addCatalogContributor,
   addCatalogKeyword,
+  isCatalogMetadataComplete,
   patchCatalogMetadata,
   removeCatalogContributor,
   removeCatalogKeyword,
@@ -82,7 +83,9 @@ export function PageMetadataEntry({
 
   const { description, version, website, keywords, contributors } = metadata;
   const correspondingAuthor = metadata.correspondingAuthorIdentifier || "";
-  const identityFilled = reeSpec.name.trim().length > 0;
+  // Same rule the canvas node reads for this step's doneness — metadata has no
+  // receipt behind it, so "every required field filled" is the whole verdict.
+  const identityFilled = isCatalogMetadataComplete(reeSpec);
   const contributorFieldError = (
     context: ContributorError["context"],
     field: ContributorError["field"],

@@ -25,6 +25,11 @@ export const exampleEditorRee = {
   spec: {
     ...createEmptyReeEditorViewModel().spec,
     name: "Python hello world",
+    catalogMetadata: {
+      ...createEmptyReeEditorViewModel().spec.catalogMetadata,
+      version: "1.0.0",
+      description: "Prints hello world, reproducibly.",
+    },
     runtime: "runtime.tar",
     sbom: "artifacts/sbom.json",
     activation: {
@@ -35,6 +40,18 @@ export const exampleEditorRee = {
   },
   source: { sourceAvailable: true, sourceIncluded: true },
   artifact: { runtimeIncluded: true },
+  // A REE that has run its way through the pipeline: every receipt it carries
+  // still speaks for what it declares. The cross-check is deliberately absent —
+  // it is the one step this fixture has not run, so tests have a step that is
+  // ready rather than complete.
+  audit: {
+    source: "current" as const,
+    evaluation: "current" as const,
+    hardware: "current" as const,
+    runtime: "current" as const,
+    sbom: "current" as const,
+    test_activation: "current" as const,
+  },
 };
 
 export function createStepPageProps(

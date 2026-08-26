@@ -159,6 +159,19 @@ function setArtifactStatus(
   };
 }
 
+function setStepEvidence(
+  state: AppShellContextState,
+  updater: Extract<AppShellAction, { type: "setStepEvidence" }>["value"],
+): AppShellContextState {
+  return {
+    ...state,
+    reeSession: {
+      ...state.reeSession,
+      stepEvidence: resolveUpdater(state.reeSession.stepEvidence, updater),
+    },
+  };
+}
+
 function setEvaluationState(
   state: AppShellContextState,
   updater: Extract<AppShellAction, { type: "setEvaluationState" }>["value"],
@@ -342,6 +355,8 @@ export function appShellReducer(
       return setArtifactStatus(state, action.value);
     case "setEvaluationState":
       return setEvaluationState(state, action.value);
+    case "setStepEvidence":
+      return setStepEvidence(state, action.value);
     case "setStepParams":
       return setStepParams(state, action.value);
     case "setActiveRunId":

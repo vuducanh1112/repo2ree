@@ -57,8 +57,10 @@ describe("WorkspaceStatusBar", () => {
         ree={{
           ...exampleEditorRee,
           source: { ...exampleEditorRee.source, sourceAvailable: true },
+          // Source acquired and the runtime built; nothing downstream has run.
+          audit: { source: "current", runtime: "current" },
         }}
-        badges={{ build: true }}
+        badges={{}}
         experiments={[]}
         workspaceFiles={[
           {

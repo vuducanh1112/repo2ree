@@ -6,6 +6,7 @@ import {
   setArtifactStatus,
   setEvaluationState,
   setLocked,
+  setStepEvidence,
   setWorkspaceSourceState,
   updateReeSpec,
 } from "@shell/state/ree-editor/store/actions";
@@ -29,6 +30,9 @@ export function createHydrateReeWorkspace(dispatch: React.Dispatch<AppShellActio
     dispatch(setWorkspaceSourceState(() => ree.workspaceSourceState));
     dispatch(setArtifactStatus((prev) => preserveSeal(prev, ree.artifactStatus)));
     dispatch(setEvaluationState(() => ree.evaluationState));
+    // Step doneness is the REE's own verdict on its receipts, so it is restored
+    // with the rest of the document rather than remembered per browser session.
+    dispatch(setStepEvidence(() => ree.stepEvidence));
     // A sealed session is permanently read-only, so reflect it in the shared
     // lock flag every consumer reads (the source/metadata page containers
     // read `uiChrome.locked` directly, not the derived editor view-model). This

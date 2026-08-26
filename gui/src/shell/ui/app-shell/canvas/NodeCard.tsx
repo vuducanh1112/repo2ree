@@ -13,12 +13,13 @@ interface NodeCardProps {
   done: boolean;
   /** Done, but the recorded run's inputs no longer match the workspace. */
   stale?: boolean;
-  locked: boolean;
   active: boolean;
   /** A run for this step is in flight right now. */
   running: boolean;
   /** The step the authoring graph says to do next. */
   next?: boolean;
+  /** The step has unmet prerequisites in the authoring graph. */
+  blocked?: boolean;
   overview: CanvasNodeOverview;
   onNavigate: (page: AppShellPage, originRect?: DOMRect) => void;
 }
@@ -29,10 +30,10 @@ export function NodeCard({
   setPortRef,
   done,
   stale = false,
-  locked,
   active,
   running,
   next = false,
+  blocked = false,
   overview,
   onNavigate,
 }: NodeCardProps) {
@@ -58,16 +59,16 @@ export function NodeCard({
         ? "complete"
         : next
           ? "next"
-          : locked
-            ? "locked"
+          : blocked
+            ? "blocked"
             : "idle";
   const stateLabel = {
     running: "RUNNING",
     stale: "STALE",
-    complete: "PROVEN",
+    complete: "DONE",
     next: "NEXT",
-    locked: "OFFLINE",
-    idle: "STANDBY",
+    blocked: "BLOCKED",
+    idle: "READY",
   }[state];
   const visibleScripts = overview.scripts.slice(0, 2);
   const hiddenScriptCount = overview.scripts.length - visibleScripts.length;
@@ -85,7 +86,6 @@ export function NodeCard({
             aria-label={node.label}
             aria-describedby={running || next ? stateNoteId : undefined}
             ref={setRef}
-            disabled={locked}
             onClick={(e) => {
               onNavigate(node.key, e.currentTarget.getBoundingClientRect());
             }}

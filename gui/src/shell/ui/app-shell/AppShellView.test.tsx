@@ -127,7 +127,7 @@ function controller(page: AppShellPage = PAGE.CANVAS, provisioned = true) {
     model: {
       provisioned,
       reeIntent: {},
-      ree: { spec: { name: "Example" } },
+      ree: { spec: { name: "Example" }, audit: {} },
       workspaceRemote: {
         artifactStatus: { sealedAt: undefined },
         workspaceFiles: [],

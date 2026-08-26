@@ -14,6 +14,7 @@ import {
   type ReeRunnable,
   type ReeSpec,
 } from "./ReeSpec";
+import { mapRawStepEvidence, type StepEvidence } from "./StepEvidence";
 
 // ================================================
 // Types
@@ -22,6 +23,8 @@ import {
 interface MapRawReeIntentToReeOptions {
   reeIntent: Record<string, unknown> | null | undefined;
   reeSession?: Record<string, unknown> | null | undefined;
+  /** The REE document's audit, as shipped: `StepAudit` per step. */
+  audit?: unknown;
   fallbackName: string;
   fallbackOriginUrl?: string;
 }
@@ -31,6 +34,7 @@ export interface RawReeIntentSlices {
   workspaceSourceState: WorkspaceSourceState;
   artifactStatus: ArtifactStatus;
   evaluationState: EvaluationState;
+  stepEvidence: StepEvidence;
 }
 
 // ================================================
@@ -112,6 +116,7 @@ function mapRawActivation(value: unknown): ReeActivation {
 export function mapRawReeIntentToSlices({
   reeIntent,
   reeSession,
+  audit,
   fallbackName,
   fallbackOriginUrl = "",
 }: MapRawReeIntentToReeOptions): RawReeIntentSlices {
@@ -169,5 +174,6 @@ export function mapRawReeIntentToSlices({
         ? String(session.detected_dependencies)
         : undefined,
     },
+    stepEvidence: mapRawStepEvidence(audit),
   };
 }

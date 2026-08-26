@@ -13,6 +13,7 @@ describe("createHydrateReeWorkspace", () => {
         // biome-ignore lint/style/useNamingConvention: backend wire field
         seal_hash: "sha256:abc",
       },
+      audit: { runtime: { evidence: "current", payload: "present" } },
       fallbackName: "Fallback",
     });
 
@@ -23,13 +24,15 @@ describe("createHydrateReeWorkspace", () => {
       "setWorkspaceSourceState",
       "setArtifactStatus",
       "setEvaluationState",
+      "setStepEvidence",
       "setLocked",
     ]);
     expect(dispatch.mock.calls[0][0].value({})).toBe(ree.reeSpec);
     expect(dispatch.mock.calls[1][0].value({})).toBe(ree.workspaceSourceState);
     expect(dispatch.mock.calls[2][0].value({})).toBe(ree.artifactStatus);
     expect(dispatch.mock.calls[3][0].value({})).toBe(ree.evaluationState);
-    expect(dispatch.mock.calls[4][0]).toEqual({ type: "setLocked", value: true });
+    expect(dispatch.mock.calls[4][0].value({})).toEqual({ runtime: "current" });
+    expect(dispatch.mock.calls[5][0]).toEqual({ type: "setLocked", value: true });
   });
 
   it("ignores file-only snapshots and preserves an existing seal", () => {
@@ -43,6 +46,6 @@ describe("createHydrateReeWorkspace", () => {
     const artifactAction = dispatch.mock.calls[2][0];
     const sealed = { sealedAt: "2026-01-01", sealHash: "hash", runtimeIncluded: true };
     expect(artifactAction.value(sealed)).toBe(sealed);
-    expect(dispatch).toHaveBeenCalledTimes(4);
+    expect(dispatch).toHaveBeenCalledTimes(5);
   });
 });

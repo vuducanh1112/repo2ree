@@ -66,10 +66,12 @@ export function useReeEditor({
         workspaceSourceState: reeSession.workspaceSourceState,
         artifactStatus: reeSession.artifactStatus,
         evaluationState: stepRuns.evaluationState,
+        stepEvidence: reeSession.stepEvidence,
       }),
     [
       reeIntent.reeSpec,
       reeSession.artifactStatus,
+      reeSession.stepEvidence,
       reeSession.workspaceSourceState,
       stepRuns.evaluationState,
     ],
@@ -79,6 +81,7 @@ export function useReeEditor({
       dependencyLevel: ree.evaluation.dependencyLevel ?? 0,
       environmentLevel: ree.evaluation.environmentLevel ?? 0,
       machineLevel: ree.evaluation.machineLevel ?? 0,
+      detectedDependencies: ree.evaluation.detectedDependencies,
     }),
     [ree.evaluation],
   );

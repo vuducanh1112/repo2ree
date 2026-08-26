@@ -1,4 +1,5 @@
 import type { Badges } from "../ree/ReeTypes";
+import { isEvidenceCurrent } from "../ree/StepEvidence";
 import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 import { type AppShellPage, PAGE } from "./pages";
 import { PROCESS_STEPS, resolveNavCompleted } from "./processSteps";
@@ -34,7 +35,9 @@ export function authoringPageForStep(key: string): AppShellPage | undefined {
 }
 
 function isAuthoringStepComplete(key: string, ree: ReeEditorViewModel, badges: Badges): boolean {
-  if (key === "crosscheck") return badges.crosscheck === true || badges.crosscheck === "succeeded";
+  // The cross-check has its own receipt on the aggregate, so it answers from
+  // the audit like every other executed step.
+  if (key === "crosscheck") return isEvidenceCurrent(ree.audit, "sbom_cross_check");
   const page = authoringPageForStep(key);
   const processStep = page ? PROCESS_STEP_BY_KEY.get(page) : undefined;
   return processStep ? resolveNavCompleted(processStep, ree, badges) : false;

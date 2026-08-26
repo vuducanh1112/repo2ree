@@ -147,3 +147,19 @@ export function setCorrespondingCatalogContributor(spec: ReeSpec, identifier: st
     correspondingAuthorIdentifier: identifier,
   });
 }
+
+/**
+ * Metadata is the one authoring step with no receipt behind it — nothing is
+ * executed, so the aggregate audit has nothing to say about it. Its doneness is
+ * therefore a question about the declaration itself: are the fields the
+ * metadata page marks required actually filled in. One definition, so the
+ * page's own "Ready" badge and the canvas node cannot drift apart.
+ */
+export function isCatalogMetadataComplete(spec: ReeSpec): boolean {
+  const metadata = metadataOf(spec);
+  return (
+    spec.name.trim().length > 0 &&
+    metadata.version.trim().length > 0 &&
+    metadata.description.trim().length > 0
+  );
+}

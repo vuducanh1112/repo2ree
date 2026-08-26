@@ -1,12 +1,7 @@
 import { type AppShellPage, PAGE } from "@core/app-shell/pages";
 import { canvasActivity } from "@core/canvas/canvasActivity";
-import {
-  CANVAS_NODES,
-  isNodeActive,
-  isNodeDone,
-  isNodeLocked,
-  nodeOverview,
-} from "@core/canvas/canvasNodes";
+import { CANVAS_NODES, isNodeActive, isNodeDone, nodeOverview } from "@core/canvas/canvasNodes";
+import { latestCrossCheckSummary } from "@core/evaluate/crossCheckRun";
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import type { ReceiptView } from "@core/receipts/authorReceipts";
 import type { Badges, ReeFile } from "@core/ree/ReeTypes";
@@ -42,6 +37,8 @@ interface CanvasHubProps {
   provisioned: boolean;
   /** The page the authoring graph says to do next; its panel is flagged. */
   nextPage?: AppShellPage;
+  /** Canvas node keys whose authoring prerequisites are not yet met. */
+  blockedNodeKeys?: ReadonlySet<string>;
   /** Sealing runs on the client, so it has no entry in the run listing. */
   sealRunning?: boolean;
   onNavigate: (page: AppShellPage, originRect?: DOMRect) => void;
@@ -66,6 +63,7 @@ export const CanvasHub = memo(function CanvasHub({
   badges,
   provisioned,
   nextPage,
+  blockedNodeKeys,
   sealRunning = false,
   onNavigate,
   workspaceFiles,
@@ -157,6 +155,7 @@ export const CanvasHub = memo(function CanvasHub({
                   workspaceFiles: [...workspaceFiles, ...reeFiles],
                   receipts: authorReceipts,
                   buildScriptPath: scriptTemplates?.build.path,
+                  crossCheck: latestCrossCheckSummary(runs ?? []),
                 });
                 return (
                   <NodeCard
@@ -168,12 +167,12 @@ export const CanvasHub = memo(function CanvasHub({
                     setPortRef={(el) => {
                       nodePortEls.current[node.key] = el;
                     }}
-                    done={isNodeDone(node, ree, badges) || !!overview.receipt}
+                    done={isNodeDone(node, ree, badges)}
                     stale={staleNodeKeys?.has(node.key) ?? false}
-                    locked={isNodeLocked(node, provisioned)}
                     active={isNodeActive(node, page)}
                     running={activity.nodeKeys.has(node.key)}
                     next={node.key === nextPage}
+                    blocked={blockedNodeKeys?.has(node.key)}
                     overview={overview}
                     onNavigate={onNavigate}
                   />

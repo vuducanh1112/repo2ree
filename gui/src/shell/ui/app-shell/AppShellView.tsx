@@ -1,5 +1,5 @@
 import { type AppShellPage, PAGE } from "@core/app-shell/pages";
-import { activeNode } from "@core/canvas/canvasNodes";
+import { activeNode, CANVAS_NODES, isNodeStale } from "@core/canvas/canvasNodes";
 import { useWorkspaceNavigationGuard } from "@shell/state/ree-editor/workspace-sync/useWorkspaceNavigationGuard";
 import { useCallback, useMemo } from "react";
 import { WorkspaceLoadErrorView, WorkspaceLoadingView } from "../errors/WorkspaceLoadView";
@@ -23,8 +23,6 @@ import { AppShellProvider } from "./providers/AppShellProvider";
 interface AppShellViewProps {
   onBack: () => void;
 }
-
-const NO_STALE_NODE_KEYS = new Set<string>();
 
 // Pages whose canvas node carries a compact label; the window says the longer
 // name. Everything else takes its node's own label.
@@ -71,6 +69,13 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
   // Derived once here so the status-bar DAG and the canvas panels name the
   // same next step; deriving it twice lets the two drift apart.
   const authoring = useAuthoringWorkflowModel(ree, badges);
+  // Nodes the REE's own audit reports as stale: the receipt is still on the
+  // aggregate, but what it rests on has moved since. They read as not-done (see
+  // `hasProcessStepCompleted`); the marker says why.
+  const staleNodeKeys = useMemo(
+    () => new Set(CANVAS_NODES.filter((node) => isNodeStale(node, ree)).map((node) => node.key)),
+    [ree],
+  );
   useWorkspaceNavigationGuard({
     shouldBlock: isReeIntentDirty,
     flush: commands.flushReeIntent,
@@ -218,9 +223,16 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
                 evaluation={evaluation}
                 badges={badges}
                 nextPage={authoring.nextPage}
+                blockedNodeKeys={
+                  new Set(
+                    Object.entries(authoring.statuses)
+                      .filter(([, status]) => status === "blocked")
+                      .map(([key]) => key),
+                  )
+                }
                 sealRunning={sealRunning}
-                staleNodeKeys={NO_STALE_NODE_KEYS}
                 provisioned={provisioned}
+                staleNodeKeys={staleNodeKeys}
                 onNavigate={openPage}
                 workspaceFiles={workspaceRemote.workspaceFiles}
                 reeFiles={currentReeFiles}

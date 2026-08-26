@@ -16,9 +16,12 @@ const steps: AuthoringStep[] = [
 
 describe("authoring DAG", () => {
   it("derives readiness from catalog edges and current REE evidence", () => {
+    // A REE that has run nothing yet: no source in the workspace, and no
+    // receipt on the aggregate for anything downstream of it.
     const withoutSource = {
       ...exampleEditorRee,
       source: { ...exampleEditorRee.source, sourceAvailable: false },
+      audit: {},
     };
     expect(authoringStepStatuses(steps, withoutSource, {})).toEqual({
       source: "ready",
@@ -26,7 +29,9 @@ describe("authoring DAG", () => {
       crosscheck: "blocked",
     });
 
-    expect(authoringStepStatuses(steps, exampleEditorRee, { build: true })).toEqual({
+    // No badges: completion is the REE's own audit, so a reloaded tab reads the
+    // same statuses a mid-session one does.
+    expect(authoringStepStatuses(steps, exampleEditorRee, {})).toEqual({
       source: "complete",
       build: "complete",
       crosscheck: "ready",
@@ -40,7 +45,11 @@ describe("authoring DAG", () => {
       { key: "build", order: 2, label: "Build", requires: ["source"], actions: [] },
       { key: "source", order: 1, label: "Source", requires: [], actions: [] },
     ];
-    const statuses = authoringStepStatuses(branched, exampleEditorRee, {});
+    const statuses = authoringStepStatuses(
+      branched,
+      { ...exampleEditorRee, audit: { source: "current" as const } },
+      {},
+    );
     expect(statuses).toMatchObject({ build: "ready", crosscheck: "ready" });
     expect(nextAuthoringStep(branched, statuses)?.key).toBe("build");
 

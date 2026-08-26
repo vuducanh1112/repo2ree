@@ -2,6 +2,7 @@ import type { ArtifactStatus } from "@core/artifact/ArtifactStatus";
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import type { ReeSpec } from "@core/ree/ReeSpec";
 import type { ReeStepParams } from "@core/ree/ReeTypes";
+import type { StepEvidence } from "@core/ree/StepEvidence";
 import type { ToastState } from "@core/ree-steps/stepTypes";
 import type { WorkspaceSourceState } from "@core/workspace/WorkspaceSourceState";
 import type {
@@ -46,6 +47,11 @@ export const setArtifactStatus = (value: Updater<ArtifactStatus>): AppShellActio
 
 export const setEvaluationState = (value: Updater<EvaluationState>): AppShellAction => ({
   type: "setEvaluationState",
+  value,
+});
+
+export const setStepEvidence = (value: Updater<StepEvidence>): AppShellAction => ({
+  type: "setStepEvidence",
   value,
 });
 
