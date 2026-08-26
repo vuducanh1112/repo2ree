@@ -1,6 +1,7 @@
 import { DEPENDENCY_AXIS } from "@core/evaluate/axes";
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import { axisTone } from "../../../theme/appearance";
+import styles from "../PodWidget.module.css";
 import { PodDepGraph } from "./PodDepGraph";
 
 interface PodShellCoreProps {
@@ -8,11 +9,20 @@ interface PodShellCoreProps {
   CY: number;
   SR: number;
   evaluation: EvaluationState;
+  /** An experiment is executing — the core is the thing that runs it. */
+  active?: boolean;
   /** Unique suffix for SVG IDs when multiple pods are on the same page. */
   idSuffix?: string;
 }
 
-export function PodShellCore({ CX, CY, SR, evaluation, idSuffix = "" }: PodShellCoreProps) {
+export function PodShellCore({
+  CX,
+  CY,
+  SR,
+  evaluation,
+  active = false,
+  idSuffix = "",
+}: PodShellCoreProps) {
   const depLevel = Math.max(evaluation.dependencyLevel ?? 0, 2);
   const color = axisTone(DEPENDENCY_AXIS.key);
   // PodDepGraph largest node extent ≈ 50px from center at level 7
@@ -42,7 +52,9 @@ export function PodShellCore({ CX, CY, SR, evaluation, idSuffix = "" }: PodShell
       </defs>
 
       {/* ambient halo */}
-      <circle cx={CX} cy={CY} r={SR * 1.08} fill={color} opacity="0.06" />
+      <g className={active ? styles.breathe : undefined}>
+        <circle cx={CX} cy={CY} r={SR * 1.08} fill={color} opacity="0.06" />
+      </g>
 
       {/* deep dark sphere */}
       <circle
@@ -58,26 +70,31 @@ export function PodShellCore({ CX, CY, SR, evaluation, idSuffix = "" }: PodShell
       {/* nebula bloom */}
       <circle cx={CX} cy={CY} r={SR * 0.72} fill={`url(#${gId}Glow)`} filter={`url(#${gId}Blur)`} />
 
-      {/* neural graph scaled to fill the core */}
+      {/* neural graph scaled to fill the core. The spin rides its own wrapper:
+       * a CSS transform on the placed group would replace the placement. */}
       <g clipPath={`url(#${gId}Clip)`}>
-        <g transform={`translate(${CX},${CY}) scale(${graphScale})`}>
-          <PodDepGraph level={depLevel} color={color} />
+        <g className={active ? styles.coreSpin : undefined}>
+          <g transform={`translate(${CX},${CY}) scale(${graphScale})`}>
+            <PodDepGraph level={depLevel} color={color} />
+          </g>
         </g>
       </g>
 
       {/* rim ring */}
       <circle cx={CX} cy={CY} r={SR} fill="none" stroke={color} strokeWidth="1.5" opacity="0.35" />
 
-      {/* central spark */}
-      <circle cx={CX} cy={CY} r={Math.max(SR * 0.07, 3)} fill="white" opacity="0.9" />
-      <circle
-        cx={CX}
-        cy={CY}
-        r={Math.max(SR * 0.16, 6)}
-        fill={color}
-        opacity="0.3"
-        filter={`url(#${gId}Blur)`}
-      />
+      {/* central spark — it flares on every beat while an experiment runs */}
+      <g className={active ? styles.spark : undefined}>
+        <circle cx={CX} cy={CY} r={Math.max(SR * 0.07, 3)} fill="white" opacity="0.9" />
+        <circle
+          cx={CX}
+          cy={CY}
+          r={Math.max(SR * 0.16, 6)}
+          fill={color}
+          opacity="0.3"
+          filter={`url(#${gId}Blur)`}
+        />
+      </g>
     </g>
   );
 }

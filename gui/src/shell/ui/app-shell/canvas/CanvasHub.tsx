@@ -1,4 +1,5 @@
-import type { AppShellPage } from "@core/app-shell/pages";
+import { type AppShellPage, PAGE } from "@core/app-shell/pages";
+import { canvasActivity } from "@core/canvas/canvasActivity";
 import {
   CANVAS_NODES,
   isNodeActive,
@@ -12,8 +13,9 @@ import type { Badges, ReeFile } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import type { FileTreeNode } from "@core/workspace/FileTree";
 import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
+import { useReeRunsQuery } from "@shell/data/runs/queries";
 import { useScriptTemplates } from "@shell/data/scriptTemplates/catalog";
-import { memo, useRef } from "react";
+import { memo, useMemo, useRef } from "react";
 import { cssVars } from "../../theme/styleVars";
 import { BenchConsole } from "./BenchConsole";
 import { CableOverlaySvg } from "./CableOverlay";
@@ -40,6 +42,8 @@ interface CanvasHubProps {
   provisioned: boolean;
   /** The page the authoring graph says to do next; its panel is flagged. */
   nextPage?: AppShellPage;
+  /** Sealing runs on the client, so it has no entry in the run listing. */
+  sealRunning?: boolean;
   onNavigate: (page: AppShellPage, originRect?: DOMRect) => void;
   workspaceFiles: FileTreeNode[];
   reeFiles: ReeFile[];
@@ -62,6 +66,7 @@ export const CanvasHub = memo(function CanvasHub({
   badges,
   provisioned,
   nextPage,
+  sealRunning = false,
   onNavigate,
   workspaceFiles,
   reeFiles,
@@ -76,6 +81,13 @@ export const CanvasHub = memo(function CanvasHub({
   onBenchConsoleOpenChange,
 }: CanvasHubProps) {
   const { data: scriptTemplates } = useScriptTemplates();
+  // Read live work from the run listing rather than from what this tab started,
+  // so a step an agent (or another tab) is running lights up here too.
+  const { data: runs } = useReeRunsQuery();
+  const activity = useMemo(
+    () => canvasActivity(runs ?? [], sealRunning ? [PAGE.SEAL] : []),
+    [runs, sealRunning],
+  );
   const stageRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<HTMLDivElement>(null);
   const podSvgRef = useRef<SVGSVGElement>(null);
@@ -114,7 +126,7 @@ export const CanvasHub = memo(function CanvasHub({
     >
       <LabBackdrop />
 
-      {geo && <CableOverlaySvg geo={geo} levelMeta={levelMeta} />}
+      {geo && <CableOverlaySvg geo={geo} levelMeta={levelMeta} runningKeys={activity.nodeKeys} />}
 
       <div
         ref={worldRef}
@@ -137,7 +149,7 @@ export const CanvasHub = memo(function CanvasHub({
             {/* cradle socket: the pod is seated in the bench, not floating */}
             <div aria-hidden className={styles.cradle} />
 
-            <SpecimenPod evaluation={evaluation} svgRef={podSvgRef} />
+            <SpecimenPod evaluation={evaluation} svgRef={podSvgRef} activity={activity} />
 
             <nav aria-label="Workspace pages">
               {CANVAS_NODES.map((node) => {
@@ -160,6 +172,7 @@ export const CanvasHub = memo(function CanvasHub({
                     stale={staleNodeKeys?.has(node.key) ?? false}
                     locked={isNodeLocked(node, provisioned)}
                     active={isNodeActive(node, page)}
+                    running={activity.nodeKeys.has(node.key)}
                     next={node.key === nextPage}
                     overview={overview}
                     onNavigate={onNavigate}

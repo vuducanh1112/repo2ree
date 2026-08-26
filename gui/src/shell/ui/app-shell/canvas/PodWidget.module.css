@@ -27,3 +27,122 @@
   overflow: visible;
   filter: var(--pod-glow);
 }
+
+/* ── Live work ─────────────────────────────────────────────────────────────
+ * A step running somewhere on the hub makes the shell it belongs to move: the
+ * outer hull for source/archive/seal, the inner glass for the runtime, the core
+ * for an experiment. Every part turns about the sphere's own centre, which is a
+ * measured coordinate rather than a style, so it arrives as `--pod-pivot`.
+ *
+ * These groups modulate what is under them rather than setting it: an animated
+ * group opacity multiplies the child's own, so a 7%-opacity glow keeps its
+ * material weight while it breathes. */
+
+.breathe,
+.orbitForward,
+.orbitReverse,
+.sweep,
+.coreSpin,
+.spark {
+  transform-origin: var(--pod-pivot);
+  transform-box: view-box;
+}
+
+/* The interior glow swelling and settling — the pod is drawing power. */
+.breathe {
+  animation: pod-breathe 2.6s var(--ease-standard) infinite;
+}
+
+/* The gyroscope: two rings turning against each other while work is in flight. */
+.orbitForward {
+  animation: pod-orbit 8s linear infinite;
+}
+
+.orbitReverse {
+  animation: pod-orbit 13s linear infinite reverse;
+}
+
+/* The working light: a short bright arc chasing the rim. `pathLength="100"`
+ * on the circle makes this dash pattern read the same at any radius. */
+.sweep {
+  stroke-dasharray: 18 82;
+  animation: pod-sweep 1.9s linear infinite;
+}
+
+/* The dependency graph turning over as the experiment walks it. */
+.coreSpin {
+  animation: pod-orbit 26s linear infinite;
+}
+
+/* The core's heartbeat, faster than the shell's breath: something is executing. */
+.spark {
+  animation: pod-spark 1.4s var(--ease-standard) infinite;
+}
+
+@keyframes pod-breathe {
+  0%,
+  100% {
+    opacity: var(--opacity-muted);
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.07);
+  }
+}
+
+@keyframes pod-orbit {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pod-sweep {
+  from {
+    stroke-dashoffset: 100;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes pod-spark {
+  0%,
+  100% {
+    opacity: var(--opacity-muted);
+    transform: scale(1);
+  }
+
+  45% {
+    opacity: 1;
+    transform: scale(1.35);
+  }
+}
+
+/* Motion is the whole signal here, so with it suppressed the working shells
+ * hold their bright pose instead of going back to looking idle. */
+@media (prefers-reduced-motion: reduce) {
+  .breathe,
+  .orbitForward,
+  .orbitReverse,
+  .sweep,
+  .coreSpin,
+  .spark {
+    animation: none;
+  }
+
+  .breathe,
+  .spark {
+    opacity: 1;
+  }
+
+  .sweep {
+    stroke-dasharray: 44 56;
+  }
+}

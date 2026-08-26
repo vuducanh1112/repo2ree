@@ -242,9 +242,9 @@
   background: color-mix(in srgb, var(--status-stale) 45%, var(--machine-metal-deep));
 }
 
-/* Announced as the panel's description, so the ring has a spoken counterpart
- * without "next" becoming part of the panel's name. */
-.nextNote {
+/* Announced as the panel's description, so a state the panel shows as a lamp or
+ * a glow has a spoken counterpart without becoming part of the panel's name. */
+.stateNote {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -269,6 +269,26 @@
 
   50% {
     filter: drop-shadow(0 0 7px var(--step-next-line)) drop-shadow(var(--machine-shadow));
+  }
+}
+
+/* A run for this step is in flight. It outranks every other housing state:
+ * "working right now" is the one thing worth interrupting the eye for, so the
+ * glow is the run tone rather than a stage tint, and it breathes twice as fast
+ * as the `next` hint it overrides. */
+.card[data-running] .shell {
+  background: var(--run-active);
+  animation: node-run-pulse 1.3s var(--ease-standard) infinite;
+}
+
+@keyframes node-run-pulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 2px var(--run-active)) drop-shadow(var(--machine-shadow));
+  }
+
+  50% {
+    filter: drop-shadow(0 0 10px var(--run-active)) drop-shadow(var(--machine-shadow));
   }
 }
 
@@ -378,6 +398,28 @@
   box-shadow: 0 0 5px var(--status-stale-glow);
 }
 
+/* The lamp blinks while the step runs — a panel with something to say. */
+.state[data-state="running"] .stateLamp {
+  background: var(--run-active);
+  box-shadow: 0 0 6px var(--run-active);
+  animation: node-run-blink 1.3s var(--ease-standard) infinite;
+}
+
+.state[data-state="running"] {
+  color: var(--run-active);
+}
+
+@keyframes node-run-blink {
+  0%,
+  100% {
+    opacity: var(--opacity-subtle);
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
 .state[data-state="stale"] .stateLamp,
 .evidence[data-state="stale"] .evidenceLamp {
   background: var(--status-stale);
@@ -399,6 +441,32 @@
     inset 0 2px 5px var(--machine-screen-glow),
     0 1px 0 var(--machine-glass-bright);
   color: var(--chrome-text-mid);
+}
+
+/* The readout's own sign of life: a band sweeping the screen, the way an
+ * instrument shows it is sampling rather than resting. */
+.scan {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 40%;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in srgb, var(--run-active) 22%, transparent),
+    transparent
+  );
+  animation: node-run-scan 2.2s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes node-run-scan {
+  from {
+    transform: translateY(-100%);
+  }
+
+  to {
+    transform: translateY(250%);
+  }
 }
 
 .facts {
@@ -564,6 +632,20 @@
   .card[data-next] .shell {
     animation: none;
     filter: drop-shadow(0 0 4px var(--step-next-line)) drop-shadow(var(--machine-shadow));
+  }
+
+  .card[data-running] .shell {
+    animation: none;
+    filter: drop-shadow(0 0 6px var(--run-active)) drop-shadow(var(--machine-shadow));
+  }
+
+  .state[data-state="running"] .stateLamp {
+    animation: none;
+  }
+
+  /* A band frozen mid-screen would read as a defect, not a state. */
+  .scan {
+    display: none;
   }
 }
 

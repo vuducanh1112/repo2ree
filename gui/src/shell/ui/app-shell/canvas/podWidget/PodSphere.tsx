@@ -1,6 +1,8 @@
+import { type CanvasActivity, NO_CANVAS_ACTIVITY } from "@core/canvas/canvasActivity";
 import { axisFraction, axisStandings, bottleneckAxis } from "@core/evaluate/axes";
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import { axisTone } from "@shell/ui/theme/appearance";
+import styles from "../PodWidget.module.css";
 import { PodBolt } from "./PodBolt";
 import { PodBoltRing } from "./PodBoltRing";
 import { PodShellCore } from "./PodShellCore";
@@ -15,6 +17,8 @@ interface PodSphereProps {
   SR: number;
   evaluation: EvaluationState;
   shell?: PodShell;
+  /** The pod shells with work running inside them, from `canvasActivity`. */
+  activity?: CanvasActivity;
   /** Unique suffix for SVG IDs when multiple pods are on the same page. */
   idSuffix?: string;
 }
@@ -25,17 +29,37 @@ export function PodSphere({
   SR,
   evaluation,
   shell = "full",
+  activity = NO_CANVAS_ACTIVITY,
   idSuffix = "",
 }: PodSphereProps) {
+  const outerActive = activity.zones.has("outer");
+  const innerActive = activity.zones.has("inner");
+  const coreActive = activity.zones.has("core");
+
   // Standalone inner or core: skip the outer mechanics entirely.
   if (shell === "core") {
     return (
-      <PodShellCore CX={CX} CY={CY} SR={SR} evaluation={evaluation} idSuffix={`s${idSuffix}`} />
+      <PodShellCore
+        CX={CX}
+        CY={CY}
+        SR={SR}
+        evaluation={evaluation}
+        active={coreActive}
+        idSuffix={`s${idSuffix}`}
+      />
     );
   }
   if (shell === "inner") {
     return (
-      <PodShellInner CX={CX} CY={CY} SR={SR} evaluation={evaluation} idSuffix={`s${idSuffix}`} />
+      <PodShellInner
+        CX={CX}
+        CY={CY}
+        SR={SR}
+        evaluation={evaluation}
+        active={innerActive}
+        coreActive={coreActive}
+        idSuffix={`s${idSuffix}`}
+      />
     );
   }
 
@@ -175,6 +199,8 @@ export function PodSphere({
             SR={PR}
             evaluation={evaluation}
             showCore
+            active={innerActive}
+            coreActive={coreActive}
             idSuffix={`p${idSuffix}`}
           />
         </g>
@@ -259,6 +285,22 @@ export function PodSphere({
         strokeWidth="1.5"
         opacity="0.4"
       />
+
+      {/* The hull's own working light: a bright arc running the rim while a
+       * step on the outer shell — source, archive, seal — is in flight. */}
+      {outerActive && (
+        <circle
+          className={styles.sweep}
+          cx={CX}
+          cy={CY}
+          r={SR + 5}
+          fill="none"
+          stroke={axisTone(tint.key)}
+          strokeWidth="3"
+          strokeLinecap="round"
+          pathLength={100}
+        />
+      )}
 
       {/* outer gloss arc */}
       <path

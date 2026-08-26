@@ -1,3 +1,4 @@
+import { type CanvasActivity, NO_CANVAS_ACTIVITY } from "@core/canvas/canvasActivity";
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import type React from "react";
 import { cssVars } from "../../theme/styleVars";
@@ -10,9 +11,12 @@ const POD_BASE_HEIGHT = 44;
 export function SpecimenPod({
   evaluation,
   svgRef,
+  activity = NO_CANVAS_ACTIVITY,
 }: {
   evaluation: EvaluationState;
   svgRef: React.RefObject<SVGSVGElement>;
+  /** The shells with work running inside them, so the pod shows it working. */
+  activity?: CanvasActivity;
 }) {
   // PodWidget's visible sphere has radius 118 inside its 580-unit viewBox.
   // Add the plinth height so the sphere is raised above the bench surface.
@@ -36,6 +40,7 @@ export function SpecimenPod({
           <PodWidget
             evaluation={evaluation}
             svgRef={svgRef}
+            activity={activity}
             size={POD_SIZE}
             shell="full"
             idSuffix="outer"

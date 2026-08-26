@@ -2,7 +2,7 @@
 import { PAGE } from "@core/app-shell/pages";
 import { parseAuthorReceipts } from "@core/receipts/authorReceipts";
 import { createEmptyReeExperiment } from "@core/ree/ReeSpec";
-import { screen } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { fakeApiServices } from "../../../../../tests/support/fakeApiServices";
@@ -52,8 +52,24 @@ const authorReceipts = parseAuthorReceipts({
   },
 });
 
+// One run in flight, so the hub can be checked reporting live work.
+const liveBuildRun = {
+  run_id: "build-live",
+  ree_id: "ree-1",
+  operation: "build",
+  status: "running",
+  created_at: "2026-01-01T00:03:00Z",
+  started_at: "2026-01-01T00:03:01Z",
+  finished_at: null,
+  outputs: {},
+  failure: null,
+};
+
 function services() {
   return fakeApiServices({
+    runs: {
+      listRuns: vi.fn().mockResolvedValue({ runs: [liveBuildRun], next_cursor: null }),
+    },
     ree: {
       listReeSteps: vi.fn().mockResolvedValue({
         steps: [
@@ -172,6 +188,15 @@ describe("CanvasHub", () => {
     expect(screen.getByText("python main.py")).toBeInTheDocument();
     expect(screen.getAllByText("RECEIPT RECORDED").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("1/1 RECEIPTS")).toBeInTheDocument();
+
+    // A run in flight is reported on its own panel, whoever started it — the
+    // listing is the source, not what this tab happens to have kicked off.
+    const buildPanel = screen.getByRole("button", { name: "Build" });
+    await waitFor(() => expect(buildPanel).toHaveAttribute("data-running", "true"));
+    expect(within(buildPanel).getByText("RUNNING")).toBeInTheDocument();
+    expect(buildPanel).toHaveAccessibleDescription("Running");
+    // Nothing else is running, and a panel with a receipt still reports it.
+    expect(screen.getByRole("button", { name: "SBOM" })).not.toHaveAttribute("data-running");
 
     const zoomIn = screen.getByTitle("Zoom in");
     const camera = container.querySelector<HTMLElement>('[style*="--world-z"]');

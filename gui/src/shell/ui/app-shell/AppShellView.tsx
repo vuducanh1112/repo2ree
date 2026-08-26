@@ -218,6 +218,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
                 evaluation={evaluation}
                 badges={badges}
                 nextPage={authoring.nextPage}
+                sealRunning={sealRunning}
                 staleNodeKeys={NO_STALE_NODE_KEYS}
                 provisioned={provisioned}
                 onNavigate={openPage}

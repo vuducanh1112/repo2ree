@@ -15,6 +15,8 @@ interface NodeCardProps {
   stale?: boolean;
   locked: boolean;
   active: boolean;
+  /** A run for this step is in flight right now. */
+  running: boolean;
   /** The step the authoring graph says to do next. */
   next?: boolean;
   overview: CanvasNodeOverview;
@@ -29,14 +31,16 @@ export function NodeCard({
   stale = false,
   locked,
   active,
+  running,
   next = false,
   overview,
   onNavigate,
 }: NodeCardProps) {
-  // "Next" is state, not identity: it rides on the description so the panel's
-  // accessible name stays the node's label, which is how every caller — and
-  // every navigation selector — addresses it.
-  const nextNoteId = useId();
+  // A panel's state — running, or the step to do next — is state, not identity:
+  // it rides on the description so the panel's accessible name stays the node's
+  // label, which is how every caller — and every navigation selector —
+  // addresses it. One note at a time, by the same precedence the badge uses.
+  const stateNoteId = useId();
   const position = {
     "--node-x": `${node.x}px`,
     "--node-y": `${node.y}px`,
@@ -44,8 +48,21 @@ export function NodeCard({
     "--node-stand-height": `${node.standHeight}px`,
     "--node-tint": stageTone(node.key),
   };
-  const state = stale ? "stale" : done ? "complete" : next ? "next" : locked ? "locked" : "idle";
+  // What is happening now outranks what the panel has to report: a step that is
+  // running is running whether or not it also holds a stale result.
+  const state = running
+    ? "running"
+    : stale
+      ? "stale"
+      : done
+        ? "complete"
+        : next
+          ? "next"
+          : locked
+            ? "locked"
+            : "idle";
   const stateLabel = {
+    running: "RUNNING",
     stale: "STALE",
     complete: "PROVEN",
     next: "NEXT",
@@ -66,7 +83,7 @@ export function NodeCard({
             type="button"
             data-canvas-node
             aria-label={node.label}
-            aria-describedby={next ? nextNoteId : undefined}
+            aria-describedby={running || next ? stateNoteId : undefined}
             ref={setRef}
             disabled={locked}
             onClick={(e) => {
@@ -77,12 +94,13 @@ export function NodeCard({
             data-stale={stale || undefined}
             data-next={next || undefined}
             data-active={active || undefined}
+            data-running={running || undefined}
           >
             <span aria-hidden className={styles.cap} />
             <span aria-hidden className={styles.shell} />
-            {next && (
-              <span id={nextNoteId} className={styles.nextNote}>
-                Next step
+            {(running || next) && (
+              <span id={stateNoteId} className={styles.stateNote}>
+                {running ? "Running" : "Next step"}
               </span>
             )}
             <div className={styles.head}>
@@ -99,6 +117,7 @@ export function NodeCard({
             </div>
 
             <div className={styles.screen}>
+              {running && <span aria-hidden className={styles.scan} />}
               {overview.facts.length > 0 && (
                 <div className={styles.facts}>
                   {overview.facts.map((row) => (

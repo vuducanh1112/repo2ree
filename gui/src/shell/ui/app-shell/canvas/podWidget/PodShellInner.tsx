@@ -1,6 +1,7 @@
 import { axisFraction, axisStandings } from "@core/evaluate/axes";
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import { axisTone } from "../../../theme/appearance";
+import styles from "../PodWidget.module.css";
 import { PodShellCore } from "./PodShellCore";
 
 interface PodShellInnerProps {
@@ -10,6 +11,10 @@ interface PodShellInnerProps {
   evaluation: EvaluationState;
   /** When true (standalone view), renders the core nested inside. */
   showCore?: boolean;
+  /** Work is running on the inner shell — the runtime is being assembled. */
+  active?: boolean;
+  /** Work is running in the core, when the core is shown here. */
+  coreActive?: boolean;
   idSuffix?: string;
 }
 
@@ -19,6 +24,8 @@ export function PodShellInner({
   SR,
   evaluation,
   showCore = false,
+  active = false,
+  coreActive = false,
   idSuffix = "",
 }: PodShellInnerProps) {
   const standings = axisStandings(evaluation);
@@ -42,15 +49,17 @@ export function PodShellInner({
         </filter>
       </defs>
 
-      {/* outer ambient glow */}
-      <circle
-        cx={CX}
-        cy={CY}
-        r={SR * 1.1}
-        fill="var(--pod-glow-mid)"
-        opacity="0.07"
-        filter={`url(#${iId}Blur)`}
-      />
+      {/* outer ambient glow — breathes while the shell is working */}
+      <g className={active ? styles.breathe : undefined}>
+        <circle
+          cx={CX}
+          cy={CY}
+          r={SR * 1.1}
+          fill="var(--pod-glow-mid)"
+          opacity="0.07"
+          filter={`url(#${iId}Blur)`}
+        />
+      </g>
 
       {/* the glass sphere body */}
       <circle
@@ -64,16 +73,19 @@ export function PodShellInner({
       />
 
       {/* inner bloom */}
-      <circle
-        cx={CX}
-        cy={CY}
-        r={SR * 0.68}
-        fill={`url(#${iId}CenterGlow)`}
-        filter={`url(#${iId}Blur)`}
-      />
+      <g className={active ? styles.breathe : undefined}>
+        <circle
+          cx={CX}
+          cy={CY}
+          r={SR * 0.68}
+          fill={`url(#${iId}CenterGlow)`}
+          filter={`url(#${iId}Blur)`}
+        />
+      </g>
 
-      {/* orbital rings */}
+      {/* orbital rings — they turn, counter to each other, while work runs */}
       <ellipse
+        className={active ? styles.orbitForward : undefined}
         cx={CX}
         cy={CY}
         rx={SR}
@@ -84,6 +96,7 @@ export function PodShellInner({
         opacity="0.35"
       />
       <ellipse
+        className={active ? styles.orbitReverse : undefined}
         cx={CX}
         cy={CY}
         rx={SR * 0.22}
@@ -129,9 +142,32 @@ export function PodShellInner({
         );
       })}
 
+      {/* the sweep: a bright arc running the sphere's rim while work is in
+       * flight. It is the one cue that still reads at porthole size. */}
+      {active && (
+        <circle
+          className={styles.sweep}
+          cx={CX}
+          cy={CY}
+          r={SR * 0.94}
+          fill="none"
+          stroke="var(--pod-rim)"
+          strokeWidth={Math.max(SR * 0.05, 1.5)}
+          strokeLinecap="round"
+          pathLength={100}
+        />
+      )}
+
       {/* core visible inside the sphere */}
       {showCore && (
-        <PodShellCore CX={CX} CY={CY} SR={SR * 0.56} evaluation={evaluation} idSuffix={`${iId}c`} />
+        <PodShellCore
+          CX={CX}
+          CY={CY}
+          SR={SR * 0.56}
+          evaluation={evaluation}
+          active={coreActive}
+          idSuffix={`${iId}c`}
+        />
       )}
 
       {/* glass sheen highlights */}

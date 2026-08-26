@@ -24,3 +24,32 @@
 .cable[data-connected] {
   opacity: 1;
 }
+
+/* A cable feeding a step that is running. The strand is drawn a second time as
+ * a short bright dash travelling from the panel's connector to the pod, so the
+ * direction of the work is legible: the hub is being fed, not tapped.
+ * `pathLength="100"` normalises the dash pattern across cables of any length. */
+.cable[data-energized] {
+  opacity: 1;
+}
+
+.charge {
+  stroke-dasharray: 8 92;
+  animation: cable-charge 1.6s linear infinite;
+}
+
+@keyframes cable-charge {
+  from {
+    stroke-dashoffset: 100;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .charge {
+    display: none;
+  }
+}
