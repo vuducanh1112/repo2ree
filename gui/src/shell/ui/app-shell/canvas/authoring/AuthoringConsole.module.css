@@ -130,8 +130,11 @@
   color: var(--status-ok);
 }
 
+/* The deep shade, not the line colour: amber-600 on the amber (or, when the
+ * next step is also the active one, the accent) wash is only ~3:1, and an
+ * 11px numeral is small text — WCAG wants 4.5:1. */
 .step[data-next] .number {
-  color: var(--step-next-line);
+  color: var(--step-next-ink);
 }
 
 .step[data-next] .label {
