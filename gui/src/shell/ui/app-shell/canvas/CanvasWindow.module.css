@@ -27,23 +27,25 @@
   background: var(--chrome-surface-alt);
 }
 
-/* A movable window's bar is its handle; the controls in it keep their own
- * cursor, so only the bare strip reads as draggable. */
-.bar[data-draggable] {
-  cursor: grab;
-  touch-action: none;
-}
-
-.bar[data-draggable]:active {
-  cursor: grabbing;
-}
-
 .barMain {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   flex: 1;
   min-width: 0;
+}
+
+/* The complete title bar is the move handle, including its padding and flexible
+ * space. Interactive descendants keep their own cursors and are rejected by
+ * the pointer handler rather than shrinking the draggable hit area. */
+.bar[data-draggable] {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.bar[data-draggable]:active {
+  cursor: grabbing;
 }
 
 .close {

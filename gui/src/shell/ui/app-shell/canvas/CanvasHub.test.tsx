@@ -247,22 +247,123 @@ describe("CanvasHub", () => {
       { reeId: "ree-1", services: services() },
     );
 
-    const bar = screen.getByRole("region", { name: "Metadata" }).firstElementChild as HTMLElement;
-    // A press on the bare strip of the bar starts a drag; the window follows the
-    // pointer and the new place is stored on the canvas, not on the screen.
-    fireEvent.pointerDown(bar, { isPrimary: true, button: 0, clientX: 100, clientY: 100 });
-    fireEvent.pointerMove(window, { isPrimary: true, clientX: 160, clientY: 130 });
+    // The title content is the natural target users grab. It must move the
+    // window even though the pointer event originates on a child of the bar.
+    fireEvent.pointerDown(screen.getByText("Authoring", { exact: true }), {
+      isPrimary: true,
+      button: 0,
+      pointerId: 1,
+      clientX: 100,
+      clientY: 100,
+    });
+    fireEvent.pointerMove(window, {
+      isPrimary: true,
+      pointerId: 1,
+      clientX: 160,
+      clientY: 130,
+    });
 
     expect(onPositionPage).toHaveBeenCalledWith(PAGE.METADATA, { x: 360, y: 190 });
+    fireEvent.pointerUp(window, { pointerId: 1 });
+
+    const bar = screen.getByRole("region", { name: "Metadata" }).firstElementChild as HTMLElement;
+    fireEvent.pointerDown(bar, {
+      isPrimary: true,
+      button: 0,
+      pointerId: 4,
+      clientX: 100,
+      clientY: 100,
+    });
+    fireEvent.pointerMove(window, {
+      isPrimary: true,
+      pointerId: 4,
+      clientX: 120,
+      clientY: 120,
+    });
+    expect(onPositionPage).toHaveBeenCalledWith(PAGE.METADATA, { x: 320, y: 180 });
+    fireEvent.pointerUp(window, { pointerId: 4 });
 
     const resize = screen.getByRole("button", { name: "Resize Metadata" });
-    fireEvent.pointerDown(resize, { isPrimary: true, button: 0, clientX: 700, clientY: 540 });
-    fireEvent.pointerMove(window, { isPrimary: true, clientX: 760, clientY: 580 });
+    fireEvent.pointerDown(resize, {
+      isPrimary: true,
+      button: 0,
+      pointerId: 2,
+      clientX: 700,
+      clientY: 540,
+    });
+    fireEvent.pointerMove(window, {
+      isPrimary: true,
+      pointerId: 2,
+      clientX: 760,
+      clientY: 580,
+    });
 
     expect(onSizePage).toHaveBeenCalledWith(
       PAGE.METADATA,
       expect.objectContaining({ width: expect.any(Number), height: expect.any(Number) }),
     );
+
+    const resizeCalls = onSizePage.mock.calls.length;
+    fireEvent.keyDown(resize, { key: "ArrowRight" });
+    fireEvent.keyDown(resize, { key: "ArrowLeft" });
+    fireEvent.keyDown(resize, { key: "ArrowDown" });
+    fireEvent.keyDown(resize, { key: "ArrowUp" });
+    fireEvent.keyDown(resize, { key: "ArrowRight", shiftKey: true });
+    fireEvent.keyDown(resize, { key: "Enter" });
+    expect(onSizePage).toHaveBeenCalledTimes(resizeCalls + 5);
+  });
+
+  it("resizes from the west edge and moves the window origin", () => {
+    const onPositionPage = vi.fn();
+    const onSizePage = vi.fn();
+
+    renderWithShell(
+      <CanvasHub
+        page={PAGE.METADATA}
+        ree={exampleEditorRee}
+        evaluation={{ dependencyLevel: 1, environmentLevel: 1, machineLevel: 1 }}
+        badges={{}}
+        provisioned
+        openPages={[{ page: PAGE.METADATA, position: { x: 300, y: 160 } }]}
+        renderPage={() => <div>body</div>}
+        onClosePage={vi.fn()}
+        onPositionPage={onPositionPage}
+        onSizePage={onSizePage}
+        pageTitle={() => undefined}
+        onNavigate={vi.fn()}
+        workspaceFiles={[]}
+        reeFiles={[]}
+        sourceRepo={undefined}
+        authorReceipts={[]}
+        filesConsoleOpen={false}
+        onFilesConsoleOpenChange={vi.fn()}
+        receiptsConsoleOpen={false}
+        onReceiptsConsoleOpenChange={vi.fn()}
+        benchConsoleOpen={false}
+        onBenchConsoleOpenChange={vi.fn()}
+      />,
+      { reeId: "ree-1", services: services() },
+    );
+
+    const region = screen.getByRole("region", { name: "Metadata" });
+    const west = region.parentElement?.querySelector<HTMLElement>('[data-resize-edge="w"]');
+    expect(west).not.toBeNull();
+    fireEvent.pointerDown(west as HTMLElement, {
+      isPrimary: true,
+      button: 0,
+      pointerId: 3,
+      clientX: 300,
+      clientY: 400,
+    });
+    fireEvent.pointerMove(window, {
+      isPrimary: true,
+      pointerId: 3,
+      clientX: 340,
+      clientY: 400,
+    });
+
+    expect(onPositionPage).toHaveBeenCalledWith(PAGE.METADATA, { x: 340, y: 160 });
+    expect(onSizePage).toHaveBeenCalledWith(PAGE.METADATA, { width: 660, height: 540 });
   });
 
   it("does not start a drag from a control in the title bar", () => {

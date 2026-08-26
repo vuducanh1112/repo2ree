@@ -13,7 +13,7 @@ import {
   cascadeClear,
   DEFAULT_WINDOW_SIZE,
   placeNodeWindow,
-  resizeWindowBy,
+  resizeWindowFromEdge,
   type WindowSize,
 } from "@core/canvas/nodeWindowPlacement";
 import { toCameraLocal, toStagePoint } from "@core/canvas/viewportMath";
@@ -300,12 +300,25 @@ export const CanvasHub = memo(function CanvasHub({
                 y: (open.position?.y ?? 0) + delta.y / tf.z,
               })
             }
-            onResize={(delta) =>
-              onSizePage(
-                open.page,
-                resizeWindowBy(open.size ?? DEFAULT_WINDOW_SIZE, delta, stageBox),
-              )
-            }
+            onResize={(edge, delta) => {
+              const resized = resizeWindowFromEdge(
+                { position: spot, size: open.size ?? DEFAULT_WINDOW_SIZE },
+                edge,
+                delta,
+                stageBox,
+              );
+              const screenShift = {
+                x: resized.position.x - spot.x,
+                y: resized.position.y - spot.y,
+              };
+              if (screenShift.x !== 0 || screenShift.y !== 0) {
+                onPositionPage(open.page, {
+                  x: (open.position?.x ?? 0) + screenShift.x / tf.z,
+                  y: (open.position?.y ?? 0) + screenShift.y / tf.z,
+                });
+              }
+              onSizePage(open.page, resized.size);
+            }}
           >
             {renderPage(open.page)}
           </CanvasPageWindow>

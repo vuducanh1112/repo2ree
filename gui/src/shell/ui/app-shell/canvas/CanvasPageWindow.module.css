@@ -15,39 +15,98 @@
   transform: translate3d(var(--window-x), var(--window-y), 0);
 }
 
-.resizeHandle {
-  position: relative;
-  flex: none;
-  width: 28px;
-  height: 28px;
+.resizeZone {
+  position: absolute;
+  z-index: 2;
+  display: block;
   padding: 0;
   border: 0;
-  border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--chrome-text-muted);
-  cursor: nwse-resize;
   touch-action: none;
 }
 
-.resizeHandle::after {
+.resizeZone[data-resize-edge="n"],
+.resizeZone[data-resize-edge="s"] {
+  right: 12px;
+  left: 12px;
+  height: 10px;
+  cursor: ns-resize;
+}
+
+.resizeZone[data-resize-edge="n"] {
+  top: -5px;
+}
+
+.resizeZone[data-resize-edge="s"] {
+  bottom: -5px;
+}
+
+.resizeZone[data-resize-edge="e"],
+.resizeZone[data-resize-edge="w"] {
+  top: 12px;
+  bottom: 12px;
+  width: 10px;
+  cursor: ew-resize;
+}
+
+.resizeZone[data-resize-edge="e"] {
+  right: -5px;
+}
+
+.resizeZone[data-resize-edge="w"] {
+  left: -5px;
+}
+
+.resizeZone[data-resize-edge="ne"],
+.resizeZone[data-resize-edge="se"],
+.resizeZone[data-resize-edge="sw"],
+.resizeZone[data-resize-edge="nw"] {
+  width: 18px;
+  height: 18px;
+}
+
+.resizeZone[data-resize-edge="ne"] {
+  top: -5px;
+  right: -5px;
+  cursor: nesw-resize;
+}
+
+.resizeZone[data-resize-edge="se"] {
+  right: -5px;
+  bottom: -5px;
+  cursor: nwse-resize;
+}
+
+.resizeZone[data-resize-edge="sw"] {
+  bottom: -5px;
+  left: -5px;
+  cursor: nesw-resize;
+}
+
+.resizeZone[data-resize-edge="nw"] {
+  top: -5px;
+  left: -5px;
+  cursor: nwse-resize;
+}
+
+.resizeZone[data-resize-edge="se"]::after {
   position: absolute;
-  right: 3px;
-  bottom: 3px;
-  width: 8px;
-  height: 8px;
-  border-right: 2px solid currentcolor;
-  border-bottom: 2px solid currentcolor;
+  right: 5px;
+  bottom: 5px;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--chrome-text-muted);
+  border-bottom: 2px solid var(--chrome-text-muted);
   content: "";
 }
 
-.resizeHandle:hover {
-  background: var(--chrome-surface);
-  color: var(--chrome-text);
+.resizeZone[data-resize-edge="se"]:hover::after {
+  border-color: var(--chrome-text);
 }
 
-.resizeHandle:focus-visible {
+.resizeZone[data-resize-edge="se"]:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: -2px;
+  outline-offset: -4px;
 }
 
 /* The focused window comes forward of every other one, whatever order they
@@ -96,6 +155,10 @@
 
   .window {
     border-radius: 0;
+  }
+
+  .resizeZone {
+    display: none;
   }
 }
 

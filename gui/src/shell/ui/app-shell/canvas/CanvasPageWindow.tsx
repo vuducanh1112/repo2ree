@@ -1,6 +1,10 @@
 import type { Point } from "@core/canvas/cableGeometry";
 import type { CanvasNode } from "@core/canvas/canvasNodes";
-import { DEFAULT_WINDOW_SIZE, type WindowSize } from "@core/canvas/nodeWindowPlacement";
+import {
+  DEFAULT_WINDOW_SIZE,
+  type WindowResizeEdge,
+  type WindowSize,
+} from "@core/canvas/nodeWindowPlacement";
 import { type ReactNode, type PointerEvent as ReactPointerEvent, useEffect, useRef } from "react";
 import { stageTone } from "../../theme/appearance";
 import { cssVars } from "../../theme/styleVars";
@@ -34,8 +38,8 @@ interface CanvasPageWindowProps {
   onClose: () => void;
   /** Screen-space drag deltas from the title bar, for the caller to store. */
   onMove: (delta: Point) => void;
-  /** Screen-space resize deltas from the bottom-right handle. */
-  onResize: (delta: Point) => void;
+  /** Screen-space resize deltas from any window edge or corner. */
+  onResize: (edge: WindowResizeEdge, delta: Point) => void;
   children: ReactNode;
 }
 
@@ -55,6 +59,7 @@ export function CanvasPageWindow({
 }: CanvasPageWindowProps) {
   const drag = useRef<{
     kind: "move" | "resize";
+    edge?: WindowResizeEdge;
     pointerId: number;
     x: number;
     y: number;
@@ -72,7 +77,7 @@ export function CanvasPageWindow({
       if (!active || event.pointerId !== active.pointerId) return;
       const delta = { x: event.clientX - active.x, y: event.clientY - active.y };
       if (active.kind === "move") onMoveRef.current(delta);
-      else onResizeRef.current(delta);
+      else if (active.edge) onResizeRef.current(active.edge, delta);
       drag.current = { ...active, x: event.clientX, y: event.clientY };
     };
     const stop = (event: PointerEvent) => {
@@ -90,9 +95,13 @@ export function CanvasPageWindow({
 
   const startDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!event.isPrimary || event.button !== 0) return;
-    // The bar also carries the title and the close button; only its bare strip
-    // is the handle, so a press on a control is not a drag.
-    if (event.target !== event.currentTarget) return;
+    if (
+      event.target instanceof Element &&
+      event.target.closest(
+        'button, a, input, textarea, select, [role="button"], [data-window-no-drag]',
+      )
+    )
+      return;
     event.preventDefault();
     drag.current = {
       kind: "move",
@@ -102,16 +111,34 @@ export function CanvasPageWindow({
     };
   };
 
-  const startResize = (event: ReactPointerEvent<HTMLButtonElement>) => {
+  const startResize = (edge: WindowResizeEdge) => (event: ReactPointerEvent<HTMLElement>) => {
     if (!event.isPrimary || event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
     drag.current = {
       kind: "resize",
+      edge,
       pointerId: event.pointerId,
       x: event.clientX,
       y: event.clientY,
     };
+  };
+
+  const resizeFromKeyboard = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    const amount = event.shiftKey ? 32 : 8;
+    const delta =
+      event.key === "ArrowRight"
+        ? { x: amount, y: 0 }
+        : event.key === "ArrowLeft"
+          ? { x: -amount, y: 0 }
+          : event.key === "ArrowDown"
+            ? { x: 0, y: amount }
+            : event.key === "ArrowUp"
+              ? { x: 0, y: -amount }
+              : null;
+    if (!delta) return;
+    event.preventDefault();
+    onResizeRef.current("se", delta);
   };
 
   return (
@@ -137,14 +164,6 @@ export function CanvasPageWindow({
         escapeToClose={focused}
         onBarPointerDown={startDrag}
         className={styles.window}
-        headerRight={
-          <button
-            type="button"
-            aria-label={`Resize ${title ?? node?.label ?? "workspace page"}`}
-            className={styles.resizeHandle}
-            onPointerDown={startResize}
-          />
-        }
         header={
           <CanvasWindowTitle
             icon={node ? canvasIcon(node.iconKey)(13) : undefined}
@@ -156,6 +175,35 @@ export function CanvasPageWindow({
       >
         {children}
       </CanvasWindow>
+      {(["n", "ne", "e", "s", "sw", "w", "nw"] as const).map((edge) => (
+        <ResizeZone key={edge} edge={edge} onPointerDown={startResize(edge)} />
+      ))}
+      <button
+        type="button"
+        aria-label={`Resize ${title ?? node?.label ?? "workspace page"}`}
+        title="Drag to resize; use arrow keys for keyboard resizing"
+        data-resize-edge="se"
+        className={styles.resizeZone}
+        onPointerDown={startResize("se")}
+        onKeyDown={resizeFromKeyboard}
+      />
     </div>
+  );
+}
+
+function ResizeZone({
+  edge,
+  onPointerDown,
+}: {
+  edge: Exclude<WindowResizeEdge, "se">;
+  onPointerDown: React.PointerEventHandler<HTMLSpanElement>;
+}) {
+  return (
+    <span
+      aria-hidden
+      data-resize-edge={edge}
+      className={styles.resizeZone}
+      onPointerDown={onPointerDown}
+    />
   );
 }

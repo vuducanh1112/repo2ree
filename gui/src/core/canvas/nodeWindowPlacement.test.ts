@@ -4,7 +4,7 @@ import {
   cascadeClear,
   MIN_WINDOW_SIZE,
   placeNodeWindow,
-  resizeWindowBy,
+  resizeWindowFromEdge,
 } from "./nodeWindowPlacement";
 
 const STAGE = { width: 1600, height: 900 };
@@ -50,19 +50,41 @@ describe("placeNodeWindow", () => {
   });
 });
 
-describe("resizeWindowBy", () => {
-  it("applies pointer deltas without coupling sibling dimensions", () => {
-    expect(resizeWindowBy(SIZE, { x: 80, y: -40 }, STAGE)).toEqual({
-      width: 780,
-      height: 500,
+describe("resizeWindowFromEdge", () => {
+  const geometry = { position: { x: 300, y: 160 }, size: SIZE };
+
+  it("resizes from the southeast without moving the origin", () => {
+    expect(resizeWindowFromEdge(geometry, "se", { x: 80, y: 40 }, STAGE)).toEqual({
+      position: { x: 300, y: 160 },
+      size: { width: 780, height: 580 },
     });
   });
 
-  it("clamps windows to usable minimums and the available stage", () => {
-    expect(resizeWindowBy(SIZE, { x: -1000, y: -1000 }, STAGE)).toEqual(MIN_WINDOW_SIZE);
-    expect(resizeWindowBy(SIZE, { x: 2000, y: 2000 }, STAGE)).toEqual({
-      width: 1576,
-      height: 876,
+  it("resizes from the northwest and moves the origin", () => {
+    expect(resizeWindowFromEdge(geometry, "nw", { x: 50, y: 30 }, STAGE)).toEqual({
+      position: { x: 350, y: 190 },
+      size: { width: 650, height: 510 },
+    });
+  });
+
+  it("enforces the minimum size from the west edge", () => {
+    expect(resizeWindowFromEdge(geometry, "w", { x: 1000, y: 0 }, STAGE)).toEqual({
+      position: { x: 580, y: 160 },
+      size: { width: MIN_WINDOW_SIZE.width, height: SIZE.height },
+    });
+  });
+
+  it("keeps resized edges inside the stage", () => {
+    expect(resizeWindowFromEdge(geometry, "nw", { x: -1000, y: -1000 }, STAGE)).toEqual({
+      position: { x: 12, y: 12 },
+      size: { width: 988, height: 688 },
+    });
+  });
+
+  it("clamps southeast growth to the available stage", () => {
+    expect(resizeWindowFromEdge(geometry, "se", { x: 2000, y: 2000 }, STAGE)).toEqual({
+      position: geometry.position,
+      size: { width: 1288, height: 728 },
     });
   });
 });

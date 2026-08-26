@@ -9,6 +9,13 @@ export interface WindowSize {
   height: number;
 }
 
+export type WindowResizeEdge = "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw";
+
+interface WindowGeometry {
+  position: Point;
+  size: WindowSize;
+}
+
 interface StageBox {
   width: number;
   height: number;
@@ -27,13 +34,40 @@ function clamp(value: number, low: number, high: number): number {
   return high < low ? low : Math.min(high, Math.max(low, value));
 }
 
-/** Resize in screen space while keeping the page usable and its handle reachable. */
-export function resizeWindowBy(size: WindowSize, delta: Point, stage: StageBox): WindowSize {
-  const maxWidth = Math.max(MIN_WINDOW_SIZE.width, stage.width - STAGE_MARGIN * 2);
-  const maxHeight = Math.max(MIN_WINDOW_SIZE.height, stage.height - STAGE_MARGIN * 2);
+/**
+ * Resize one edge or corner in screen space. North and west edges move the
+ * window origin as they resize; every edge stays within the visible stage and
+ * preserves the minimum usable window size.
+ */
+export function resizeWindowFromEdge(
+  geometry: WindowGeometry,
+  edge: WindowResizeEdge,
+  delta: Point,
+  stage: StageBox,
+): WindowGeometry {
+  let left = geometry.position.x;
+  let top = geometry.position.y;
+  let right = left + geometry.size.width;
+  let bottom = top + geometry.size.height;
+  const stageRight = Math.max(left + MIN_WINDOW_SIZE.width, stage.width - STAGE_MARGIN);
+  const stageBottom = Math.max(top + MIN_WINDOW_SIZE.height, stage.height - STAGE_MARGIN);
+
+  if (edge.includes("e")) {
+    right = clamp(right + delta.x, left + MIN_WINDOW_SIZE.width, stageRight);
+  }
+  if (edge.includes("w")) {
+    left = clamp(left + delta.x, STAGE_MARGIN, right - MIN_WINDOW_SIZE.width);
+  }
+  if (edge.includes("s")) {
+    bottom = clamp(bottom + delta.y, top + MIN_WINDOW_SIZE.height, stageBottom);
+  }
+  if (edge.includes("n")) {
+    top = clamp(top + delta.y, STAGE_MARGIN, bottom - MIN_WINDOW_SIZE.height);
+  }
+
   return {
-    width: clamp(size.width + delta.x, MIN_WINDOW_SIZE.width, maxWidth),
-    height: clamp(size.height + delta.y, MIN_WINDOW_SIZE.height, maxHeight),
+    position: { x: left, y: top },
+    size: { width: right - left, height: bottom - top },
   };
 }
 
