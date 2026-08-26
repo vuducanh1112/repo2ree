@@ -7,7 +7,10 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { fakeApiServices } from "../../../../../tests/support/fakeApiServices";
 import { renderWithShell } from "../../../../../tests/support/renderApp";
-import { exampleEditorRee } from "../../../../../tests/support/stepPageFixture";
+import {
+  exampleEditorRee,
+  scriptTemplateCatalog,
+} from "../../../../../tests/support/stepPageFixture";
 import { CanvasHub } from "./CanvasHub";
 
 const reeDocument = {
@@ -29,6 +32,23 @@ const authorReceipts = parseAuthorReceipts({
     run_id: "run-source",
     duration_ms: 1000,
     recorded_at: "2026-01-01T00:00:01Z",
+  },
+  build: {
+    operation: "build_runtime",
+    run_id: "run-build",
+    duration_ms: 2400,
+    recorded_at: "2026-01-01T00:01:00Z",
+    build_runtime_script_digest: "sha256:build-script",
+  },
+  experiments: {
+    hello: {
+      operation: "run_experiment",
+      experiment_name: "hello",
+      run_id: "run-hello",
+      duration_ms: 800,
+      recorded_at: "2026-01-01T00:02:00Z",
+      run_script_digest: "sha256:hello-script",
+    },
   },
 });
 
@@ -53,6 +73,7 @@ function services() {
         images: [{ id: "python", ref: "bench:python", label: "Python", description: "" }],
         default_id: "python",
       }),
+      listScriptTemplates: vi.fn().mockResolvedValue(scriptTemplateCatalog),
       listReviews: vi.fn().mockResolvedValue({ reviews: [] }),
     },
   });
@@ -84,7 +105,35 @@ describe("CanvasHub", () => {
         nextPage={PAGE.SBOM}
         provisioned
         onNavigate={onNavigate}
-        workspaceFiles={[{ id: "ws:main.py", name: "main.py", type: "file", content: "print()" }]}
+        workspaceFiles={[
+          { id: "ws:main.py", name: "main.py", type: "file", content: "print()" },
+          {
+            id: "ws:overlay",
+            name: "overlay",
+            type: "folder",
+            children: [
+              {
+                id: "ws:build",
+                name: "build.sh",
+                type: "file",
+                content: "#!/bin/sh\nset -eu\ndocker build .",
+              },
+              {
+                id: "ws:experiments",
+                name: "experiments",
+                type: "folder",
+                children: [
+                  {
+                    id: "ws:hello",
+                    name: "hello.sh",
+                    type: "file",
+                    content: "python main.py",
+                  },
+                ],
+              },
+            ],
+          },
+        ]}
         reeFiles={[
           { id: "readme", name: "README.md", type: "file", content: "hello" },
           { id: "sbom", name: "artifacts/sbom.json", type: "file", content: "{}" },
@@ -119,6 +168,10 @@ describe("CanvasHub", () => {
     expect(nextPanel).toHaveAttribute("data-next", "true");
     expect(nextPanel).toHaveAccessibleDescription("Next step");
     expect(screen.queryByRole("button", { name: "Decompose" })).not.toBeInTheDocument();
+    expect(screen.getByText("docker build .")).toBeInTheDocument();
+    expect(screen.getByText("python main.py")).toBeInTheDocument();
+    expect(screen.getAllByText("RECEIPT RECORDED").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("1/1 RECEIPTS")).toBeInTheDocument();
 
     const zoomIn = screen.getByTitle("Zoom in");
     const camera = container.querySelector<HTMLElement>('[style*="--world-z"]');

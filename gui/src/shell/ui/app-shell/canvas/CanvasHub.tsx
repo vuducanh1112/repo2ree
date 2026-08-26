@@ -4,7 +4,7 @@ import {
   isNodeActive,
   isNodeDone,
   isNodeLocked,
-  nodeSummary,
+  nodeOverview,
 } from "@core/canvas/canvasNodes";
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import type { ReceiptView } from "@core/receipts/authorReceipts";
@@ -12,6 +12,7 @@ import type { Badges, ReeFile } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import type { FileTreeNode } from "@core/workspace/FileTree";
 import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
+import { useScriptTemplates } from "@shell/data/scriptTemplates/catalog";
 import { memo, useRef } from "react";
 import { cssVars } from "../../theme/styleVars";
 import { BenchConsole } from "./BenchConsole";
@@ -29,7 +30,7 @@ import { useCanvasViewport } from "./useCanvasViewport";
 // Includes the 2.5D floor ring, pod, and lifted cards. These are intentionally
 // conservative unprojected bounds; the fixed floor tilt compresses their
 // screen-space height further.
-const ASSEMBLED_BOUNDS = { left: -930, top: -620, width: 1860, height: 1240 } as const;
+const ASSEMBLED_BOUNDS = { left: -930, top: -620, width: 1960, height: 1240 } as const;
 
 interface CanvasHubProps {
   page: AppShellPage;
@@ -74,6 +75,7 @@ export const CanvasHub = memo(function CanvasHub({
   benchConsoleOpen,
   onBenchConsoleOpenChange,
 }: CanvasHubProps) {
+  const { data: scriptTemplates } = useScriptTemplates();
   const stageRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<HTMLDivElement>(null);
   const podSvgRef = useRef<SVGSVGElement>(null);
@@ -139,6 +141,11 @@ export const CanvasHub = memo(function CanvasHub({
 
             <nav aria-label="Workspace pages">
               {CANVAS_NODES.map((node) => {
+                const overview = nodeOverview(node, ree, sourceRepo, {
+                  workspaceFiles: [...workspaceFiles, ...reeFiles],
+                  receipts: authorReceipts,
+                  buildScriptPath: scriptTemplates?.build.path,
+                });
                 return (
                   <NodeCard
                     key={node.key}
@@ -149,12 +156,12 @@ export const CanvasHub = memo(function CanvasHub({
                     setPortRef={(el) => {
                       nodePortEls.current[node.key] = el;
                     }}
-                    done={isNodeDone(node, ree, badges)}
+                    done={isNodeDone(node, ree, badges) || !!overview.receipt}
                     stale={staleNodeKeys?.has(node.key) ?? false}
                     locked={isNodeLocked(node, provisioned)}
                     active={isNodeActive(node, page)}
                     next={node.key === nextPage}
-                    rows={nodeSummary(node, ree, sourceRepo)}
+                    overview={overview}
                     onNavigate={onNavigate}
                   />
                 );

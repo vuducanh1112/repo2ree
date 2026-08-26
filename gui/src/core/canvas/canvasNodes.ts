@@ -1,9 +1,11 @@
 import { type AppShellPage, PAGE } from "@core/app-shell/pages";
 import { PROCESS_STEPS, resolveNavCompleted } from "@core/app-shell/processSteps";
 import { axisStandings, axisStepLabel } from "@core/evaluate/axes";
-import { hbomHasAnyComponents } from "@core/hbom/HbomSummary";
+import type { ReceiptView } from "@core/receipts/authorReceipts";
 import type { Badges } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
+import type { FileTreeNode } from "@core/workspace/FileTree";
+import { findFileByWorkspacePath } from "@core/workspace/fileTreeTraversal";
 import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
 
 // A canvas node is a page floating around the pod in the hub. `kind` keeps the
@@ -120,8 +122,8 @@ export const CANVAS_NODES: CanvasNode[] = [
     label: "SBOM",
     kind: "evidence",
     zone: "inner",
-    x: 796,
-    y: -140,
+    x: 880,
+    y: -240,
     standHeight: 130,
     iconKey: "package",
   },
@@ -186,6 +188,38 @@ export interface SummaryRow {
   title?: string;
 }
 
+export interface CanvasScriptPreview {
+  key: string;
+  label: string;
+  path: string;
+  /** A deliberately short, exact preview of the saved workspace file. */
+  lines: readonly string[];
+  available: boolean;
+}
+
+export interface CanvasReceiptSummary {
+  count: number;
+  label: string;
+  duration: string;
+  recordedAt: string;
+  /** Script digest recorded by the operation, already abbreviated for display. */
+  scriptDigest: string;
+}
+
+export interface CanvasNodeOverview {
+  facts: SummaryRow[];
+  scripts: CanvasScriptPreview[];
+  evidenceExpected: boolean;
+  receipt: CanvasReceiptSummary | null;
+}
+
+interface CanvasNodeOverviewContext {
+  workspaceFiles?: FileTreeNode[];
+  receipts?: ReceiptView[];
+  /** Backend-owned reserved path published by the script-template catalog. */
+  buildScriptPath?: string;
+}
+
 function hostOf(url: string): string {
   try {
     return new URL(url).host || url;
@@ -223,19 +257,43 @@ export function nodeSummary(
       return [
         { label: "Name", value: ree.spec.name || null },
         { label: "Version", value: ree.spec.catalogMetadata?.version || null },
-      ];
-    case PAGE.HBOM:
-      return [
         {
-          label: "Components",
-          value: hbomHasAnyComponents(ree.spec.hardwareDescription) ? "described" : null,
+          label: "Contributors",
+          value: ree.spec.catalogMetadata?.contributors.length
+            ? String(ree.spec.catalogMetadata.contributors.length)
+            : null,
         },
       ];
+    case PAGE.HBOM: {
+      const hbom = ree.spec.hardwareDescription;
+      const cpus = Object.values(hbom.cpus).reduce((total, cpu) => total + cpu.quantity, 0);
+      const cores = Object.values(hbom.cpus).reduce(
+        (total, cpu) => total + cpu.quantity * cpu.coresPerCpu,
+        0,
+      );
+      const memory = Object.values(hbom.memory).reduce(
+        (total, item) => total + item.quantity * item.capacityGb,
+        0,
+      );
+      const gpus = Object.values(hbom.gpus).reduce((total, gpu) => total + gpu.quantity, 0);
+      return [
+        {
+          label: "Compute",
+          value: cpus ? `${cpus} CPU · ${cores} cores` : null,
+        },
+        { label: "Memory", value: memory ? `${memory} GB` : null },
+        { label: "GPU", value: gpus ? String(gpus) : null },
+      ];
+    }
     case PAGE.EXPERIMENTS: {
-      const count = (ree.spec.experiments ?? []).filter(
-        (entry) => entry.runScript.trim() !== "",
-      ).length;
-      return [{ label: "Run scripts", value: count > 0 ? `${count} defined` : null }];
+      const experiments = ree.spec.experiments ?? [];
+      const count = experiments.filter((entry) => entry.runScript?.trim()).length;
+      const verifyCount = experiments.filter((entry) => entry.verifyScript?.trim()).length;
+      return [
+        { label: "Experiments", value: experiments.length ? String(experiments.length) : null },
+        { label: "Run scripts", value: count > 0 ? `${count} defined` : null },
+        { label: "Verify", value: verifyCount > 0 ? `${verifyCount} defined` : null },
+      ];
     }
     case PAGE.EVALUATE:
       // Always surface each axis's standing — level 0 reads as "None", so the
@@ -256,8 +314,12 @@ export function nodeSummary(
     case PAGE.ACTIVATION:
       return [
         {
-          label: "Run script",
+          label: "Run",
           value: ree.spec.activation?.runScript?.trim() ? "configured" : null,
+        },
+        {
+          label: "Verify",
+          value: ree.spec.activation?.verifyScript?.trim() ? "configured" : null,
         },
       ];
     case PAGE.ARCHIVE:
@@ -270,4 +332,123 @@ export function nodeSummary(
     default:
       return [];
   }
+}
+
+const RECEIPT_OPERATIONS_BY_PAGE: Readonly<Partial<Record<AppShellPage, readonly string[]>>> = {
+  [PAGE.SOURCE]: ["acquire_source"],
+  [PAGE.HBOM]: ["observe_hardware"],
+  [PAGE.EVALUATE]: ["evaluate_reproducibility"],
+  [PAGE.BUILD]: ["build_runtime"],
+  [PAGE.SBOM]: ["generate_sbom", "cross_check_sbom"],
+  // Keep the old spelling readable for REEs written before the contract name settled.
+  [PAGE.ACTIVATION]: ["test_activation", "activation_test"],
+  [PAGE.EXPERIMENTS]: ["run_experiment"],
+};
+
+function receiptField(receipt: ReceiptView, key: string): string {
+  return receipt.fields.find((field) => field.key === key)?.value ?? "";
+}
+
+function scriptDigest(node: CanvasNode, receipt: ReceiptView): string {
+  if (node.key === PAGE.BUILD) return receiptField(receipt, "build_runtime_script_digest");
+  if (node.key === PAGE.ACTIVATION || node.key === PAGE.EXPERIMENTS) {
+    return receiptField(receipt, "run_script_digest");
+  }
+  return "";
+}
+
+function receiptSummary(
+  node: CanvasNode,
+  receipts: readonly ReceiptView[],
+  experimentCount: number,
+): CanvasReceiptSummary | null {
+  const operations = RECEIPT_OPERATIONS_BY_PAGE[node.key] ?? [];
+  const matching = receipts.filter((receipt) => operations.includes(receipt.operation));
+  if (!matching.length) return null;
+  const latest = [...matching].sort((left, right) =>
+    right.recordedAt.localeCompare(left.recordedAt),
+  )[0];
+  const label =
+    node.key === PAGE.EXPERIMENTS && experimentCount > 0
+      ? `${matching.length}/${experimentCount} receipts`
+      : matching.length === 1
+        ? "receipt recorded"
+        : `${matching.length} receipts`;
+  return {
+    count: matching.length,
+    label,
+    duration: latest.duration,
+    recordedAt: latest.recordedAt,
+    scriptDigest: scriptDigest(node, latest),
+  };
+}
+
+function previewLines(content: string | undefined, limit: number): readonly string[] {
+  if (!content?.trim()) return [];
+  return content.replace(/\r\n/g, "\n").trimEnd().split("\n").slice(0, limit);
+}
+
+function scriptPreview(
+  files: FileTreeNode[],
+  key: string,
+  label: string,
+  path: string | null | undefined,
+  lineLimit: number,
+): CanvasScriptPreview {
+  const settledPath = path?.trim() ?? "";
+  const file = settledPath ? findFileByWorkspacePath(files, settledPath) : null;
+  return {
+    key,
+    label,
+    path: settledPath,
+    lines: previewLines(file?.content, lineLimit),
+    available: !!file?.content?.trim(),
+  };
+}
+
+/**
+ * The canvas projection of a page: saved inputs plus the materialised evidence
+ * those exact inputs produced. It stays read-only; editing remains in the drawer.
+ */
+export function nodeOverview(
+  node: CanvasNode,
+  ree: ReeEditorViewModel,
+  sourceRepo?: SourceRepoMetadata,
+  context: CanvasNodeOverviewContext = {},
+): CanvasNodeOverview {
+  const files = context.workspaceFiles ?? [];
+  const experiments = ree.spec.experiments ?? [];
+  let scripts: CanvasScriptPreview[] = [];
+
+  if (node.key === PAGE.BUILD) {
+    scripts = [scriptPreview(files, "build", "BUILD SCRIPT", context.buildScriptPath, 3)];
+  } else if (node.key === PAGE.ACTIVATION) {
+    scripts = [
+      scriptPreview(files, "activation-run", "RUN SCRIPT", ree.spec.activation.runScript, 2),
+      scriptPreview(
+        files,
+        "activation-verify",
+        "VERIFY SCRIPT",
+        ree.spec.activation.verifyScript,
+        1,
+      ),
+    ];
+  } else if (node.key === PAGE.EXPERIMENTS) {
+    scripts = experiments.map((experiment, index) =>
+      scriptPreview(
+        files,
+        `experiment-${index}`,
+        experiment.name.trim() || `EXPERIMENT ${index + 1}`,
+        experiment.runScript,
+        1,
+      ),
+    );
+  }
+
+  return {
+    facts: nodeSummary(node, ree, sourceRepo),
+    scripts,
+    evidenceExpected: !!RECEIPT_OPERATIONS_BY_PAGE[node.key]?.length,
+    receipt: receiptSummary(node, context.receipts ?? [], experiments.length),
+  };
 }

@@ -1,6 +1,12 @@
 /* A panel standing around the pod. The deck plate remains in the floor plane;
  * the terminal counter-tilts so its controls stay readable. A shallow top face
- * reconnects the upright terminal to the floor's perspective. */
+ * reconnects the upright terminal to the floor's perspective.
+ *
+ * The housing is drawn as a separate `.shell` layer rather than as the button's
+ * own border: a milled faceplate has cut corners, and only a clipped layer can
+ * carry that silhouette through the rim, the shadow, and the state glow at
+ * once. Content sits above it in its own padded strips, so nothing the panel
+ * reports ever meets the chamfer. */
 
 .anchor {
   position: absolute;
@@ -29,47 +35,42 @@
 .post {
   display: none;
   position: absolute;
-  left: -9px;
+  left: -7px;
   bottom: 0;
-  width: 18px;
+  width: 14px;
   height: var(--node-stand-height);
-  border: 1px solid color-mix(in srgb, var(--chrome-text) 30%, transparent);
-  border-radius: var(--radius-xs) var(--radius-xs) 0 0;
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--chrome-text) 66%, transparent) 0 3px,
-    color-mix(in srgb, var(--chrome-surface) 78%, var(--node-tint)) 3px 7px,
-    color-mix(in srgb, var(--chrome-border-strong) 88%, var(--node-tint)) 7px 14px,
-    color-mix(in srgb, var(--chrome-text) 58%, transparent) 14px
+    var(--machine-channel-strong) 0 1px,
+    var(--machine-metal-light) 1px 5px,
+    var(--machine-metal-mid) 5px 10px,
+    var(--machine-channel-strong) 10px 14px
   );
   box-shadow: var(--shadow-sm);
 }
 
+/* The strut's base collar, where it lands on the deck plate. */
 .post::after {
   content: "";
   position: absolute;
-  left: -5px;
-  right: -5px;
-  bottom: -1px;
-  height: 10px;
-  border: 1px solid color-mix(in srgb, var(--node-tint) 48%, var(--chrome-border-strong));
+  left: -4px;
+  right: -4px;
+  bottom: 0;
+  height: 6px;
   border-radius: var(--radius-xs);
-  background: repeating-linear-gradient(
-    45deg,
-    color-mix(in srgb, var(--node-tint) 68%, var(--chrome-surface)) 0 4px,
-    color-mix(in srgb, var(--chrome-text) 68%, var(--chrome-surface)) 4px 8px
-  );
+  background: linear-gradient(180deg, var(--machine-metal-light), var(--machine-metal-mid));
+  box-shadow: inset 0 0 0 1px var(--machine-channel);
 }
 
 .foot {
   display: none;
   position: absolute;
-  left: -11px;
-  top: -5px;
-  width: 22px;
-  height: 10px;
+  left: -9px;
+  top: -4px;
+  width: 18px;
+  height: 8px;
   border-radius: var(--radius-round);
-  background: color-mix(in srgb, var(--chrome-text-muted) 42%, transparent);
+  background: color-mix(in srgb, var(--chrome-text-muted) 30%, transparent);
 }
 
 .anchor[data-floor] .post,
@@ -77,42 +78,47 @@
   display: block;
 }
 
+/* The deck plate the strut is bolted to, lying flat in the floor plane. */
 .floorShadow {
   display: none;
   position: absolute;
   left: 0;
   top: 0;
-  width: 142px;
-  height: 92px;
-  border: 1px solid color-mix(in srgb, var(--chrome-text) 28%, transparent);
-  border-radius: var(--radius-xs);
+  width: 152px;
+  height: 96px;
   transform: translate3d(var(--node-x), var(--node-y), 0) translate(-50%, -50%);
-  background:
-    radial-gradient(circle at 8px 8px, var(--chrome-border-strong) 0 2px, transparent 2.5px),
-    radial-gradient(
-      circle at calc(100% - 8px) 8px,
-      var(--chrome-border-strong) 0 2px,
-      transparent 2.5px
-    ),
-    radial-gradient(
-      circle at 8px calc(100% - 8px),
-      var(--chrome-border-strong) 0 2px,
-      transparent 2.5px
-    ),
-    radial-gradient(
-      circle at calc(100% - 8px) calc(100% - 8px),
-      var(--chrome-border-strong) 0 2px,
-      transparent 2.5px
-    ),
-    linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--chrome-surface) 86%, var(--node-tint)),
-      color-mix(in srgb, var(--chrome-border-strong) 72%, var(--node-tint))
-    );
-  box-shadow:
-    inset 0 0 0 5px color-mix(in srgb, var(--node-tint) 10%, transparent),
-    var(--shadow-lg);
+  clip-path: polygon(
+    14px 0,
+    calc(100% - 14px) 0,
+    100% 14px,
+    100% calc(100% - 14px),
+    calc(100% - 14px) 100%,
+    14px 100%,
+    0 calc(100% - 14px),
+    0 14px
+  );
+  background: var(--machine-channel);
+  box-shadow: var(--shadow-lg);
   pointer-events: none;
+}
+
+.floorShadow::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  clip-path: polygon(
+    14px 0,
+    calc(100% - 14px) 0,
+    100% 14px,
+    100% calc(100% - 14px),
+    calc(100% - 14px) 100%,
+    14px 100%,
+    0 calc(100% - 14px),
+    0 14px
+  );
+  background:
+    radial-gradient(circle at 50% 50%, var(--machine-glass-blue) 0 40%, transparent 78%),
+    linear-gradient(145deg, var(--machine-glass-bright), var(--machine-metal-mid));
 }
 
 .floorShadow[data-visible] {
@@ -124,21 +130,65 @@
   left: 0;
   bottom: 0;
   transform: translate(-50%, 50%);
-  width: 176px;
-  padding: var(--space-3) var(--space-3);
-  border-radius: var(--radius-panel);
-  border: 1px solid var(--chrome-border);
-  background: var(--chrome-surface);
-  box-shadow: var(--shadow-md);
+  /* The chamfer is the panel's signature; every clipped layer reads it. */
+  --chamfer: 11px;
+  --shell-clip: polygon(
+    var(--chamfer) 0,
+    calc(100% - var(--chamfer)) 0,
+    100% var(--chamfer),
+    100% calc(100% - var(--chamfer)),
+    calc(100% - var(--chamfer)) 100%,
+    var(--chamfer) 100%,
+    0 calc(100% - var(--chamfer)),
+    0 var(--chamfer)
+  );
+  width: 248px;
+  padding: 0;
+  border: 0;
+  background: none;
   transform-style: preserve-3d;
+  color: var(--chrome-text);
+  font-family: var(--font-sans);
   text-align: left;
   cursor: pointer;
   pointer-events: auto;
   transition:
     transform var(--duration-slow) var(--ease-standard),
-    box-shadow var(--duration-normal),
-    border-color var(--duration-normal),
     opacity var(--duration-slow);
+}
+
+/* The housing: a milled rim, a glass face, and the shadow that lifts the whole
+ * chamfered silhouette off the deck. It sits a hair behind the panel's own
+ * content plane so the strips always read on top of it. */
+.shell {
+  position: absolute;
+  inset: 0;
+  transform: translateZ(-1px);
+  clip-path: var(--shell-clip);
+  background: linear-gradient(
+    180deg,
+    var(--machine-channel-strong),
+    var(--machine-metal-deep) 55%,
+    var(--machine-channel-strong)
+  );
+  filter: drop-shadow(var(--machine-shadow));
+  pointer-events: none;
+  transition: filter var(--duration-normal);
+}
+
+.shell::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  clip-path: var(--shell-clip);
+  background:
+    linear-gradient(
+      180deg,
+      var(--machine-glass-bright) 0,
+      var(--machine-glass) 42%,
+      var(--machine-glass-blue) 100%
+    ),
+    linear-gradient(155deg, var(--machine-metal-light), var(--machine-metal-mid));
 }
 
 .anchor[data-floor] .card {
@@ -146,29 +196,19 @@
   transform: translateX(-50%);
 }
 
+/* The shallow top face. Its width stops at the chamfer flats so the body reads
+ * as one bevel-cut block rather than a card with a lid. */
 .cap {
   display: none;
   position: absolute;
-  left: -1px;
-  right: -1px;
+  left: var(--chamfer);
+  right: var(--chamfer);
   bottom: 100%;
-  height: 22px;
+  height: 13px;
   transform-origin: 50% 100%;
   transform: rotateX(var(--floor-tilt));
-  border: 1px solid color-mix(in srgb, var(--chrome-border-strong) 78%, var(--node-tint));
-  border-radius: var(--radius-panel) var(--radius-panel) 0 0;
-  background:
-    repeating-linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--chrome-text) 9%, transparent) 0 2px,
-      transparent 2px 11px
-    ),
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--chrome-border-strong) 74%, var(--node-tint)),
-      color-mix(in srgb, var(--chrome-surface) 88%, var(--node-tint))
-    );
-  box-shadow: var(--shadow-inset-highlight);
+  background: linear-gradient(180deg, var(--machine-metal-light), var(--machine-metal-mid));
+  box-shadow: inset 0 0 0 1px var(--machine-channel);
   pointer-events: none;
 }
 
@@ -176,21 +216,30 @@
   display: block;
 }
 
+/* Where the cable from the pod lands. */
 .port {
   position: absolute;
   left: 50%;
-  bottom: -5px;
-  width: 12px;
-  height: 10px;
+  bottom: -4px;
+  width: 10px;
+  height: 8px;
   transform: translateX(-50%);
-  border-radius: var(--radius-xs);
-  border: 1px solid var(--chrome-border);
-  background: linear-gradient(180deg, var(--chrome-surface), var(--chrome-surface-alt));
+  border-radius: 0 0 var(--radius-xs) var(--radius-xs);
+  background: linear-gradient(180deg, var(--machine-metal-mid), var(--machine-metal-deep));
 }
 
 /* The step behind this panel has a result. */
-.card[data-done] {
-  border-color: var(--tone-success-border);
+.card[data-done] .shell {
+  background: linear-gradient(
+    180deg,
+    var(--machine-channel-strong),
+    var(--machine-metal-deep) 55%,
+    var(--machine-channel-strong)
+  );
+}
+
+.card[data-stale] .shell {
+  background: color-mix(in srgb, var(--status-stale) 45%, var(--machine-metal-deep));
 }
 
 /* Announced as the panel's description, so the ring has a spoken counterpart
@@ -205,34 +254,28 @@
   white-space: nowrap;
 }
 
-/* The one step the authoring graph says to do next. The ring breathes so the
- * panel to walk to is findable across a canvas of ten of them. */
-.card[data-next] {
-  border-color: var(--step-next-line);
+/* The one step the authoring graph says to do next. The housing glows along its
+ * own outline — a ring would square off the corners the chamfer just cut. */
+.card[data-next] .shell {
+  background: var(--step-next-line);
   animation: node-next-pulse 2.4s var(--ease-standard) infinite;
 }
 
 @keyframes node-next-pulse {
   0%,
   100% {
-    box-shadow:
-      0 0 0 0 color-mix(in srgb, var(--step-next-line) 55%, transparent),
-      var(--shadow-md);
+    filter: drop-shadow(0 0 1px var(--step-next-line)) drop-shadow(var(--machine-shadow));
   }
 
   50% {
-    box-shadow:
-      0 0 0 6px color-mix(in srgb, var(--step-next-line) 0%, transparent),
-      var(--shadow-md);
+    filter: drop-shadow(0 0 7px var(--step-next-line)) drop-shadow(var(--machine-shadow));
   }
 }
 
 /* The page this panel opens is the one on screen. */
-.card[data-active] {
-  border-color: var(--chrome-accent);
-  box-shadow:
-    0 0 0 3px var(--chrome-accent-bg),
-    var(--shadow-accent-strong);
+.card[data-active] .shell {
+  background: var(--chrome-accent);
+  filter: drop-shadow(0 0 4px var(--chrome-accent)) drop-shadow(var(--machine-shadow));
 }
 
 /* Nothing on the ring is reachable until the workbench is provisioned. */
@@ -246,14 +289,25 @@
   outline-offset: var(--focus-ring-offset);
 }
 
+/* ── Bezel: identity and state, on its own machined strip ─────────────────── */
+
 .head {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-2);
-}
-
-.head[data-with-rows] {
-  margin-bottom: var(--space-2-5);
+  min-height: 30px;
+  padding: var(--space-1-5) var(--space-3);
+  clip-path: polygon(
+    var(--chamfer) 0,
+    calc(100% - var(--chamfer)) 0,
+    100% var(--chamfer),
+    100% 100%,
+    0 100%,
+    0 var(--chamfer)
+  );
+  border-bottom: 1px solid var(--machine-channel);
+  background: linear-gradient(180deg, var(--machine-glass-bright), transparent);
 }
 
 .glyph {
@@ -261,24 +315,17 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 26px;
-  height: 26px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--chrome-border);
-  background: var(--chrome-surface-alt);
-  color: var(--chrome-text-muted);
-}
-
-.card[data-done] .glyph {
-  border-color: var(--tone-success-border);
-  background: var(--tone-success-surface);
-  color: var(--node-tint);
+  width: 21px;
+  height: 21px;
+  border-radius: var(--radius-xs);
+  background: linear-gradient(160deg, var(--machine-glass-bright), var(--machine-metal-mid));
+  color: color-mix(in srgb, var(--node-tint) 55%, var(--chrome-text-mid));
+  box-shadow: inset 0 0 0 1px var(--machine-channel);
 }
 
 .card[data-next] .glyph {
-  border-color: var(--step-next-border);
-  background: var(--step-next-surface);
   color: var(--step-next-line);
+  box-shadow: inset 0 0 0 1px var(--step-next-border);
 }
 
 .titleBox {
@@ -287,36 +334,225 @@
 }
 
 .title {
-  font-size: var(--text-body);
-  font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-tight);
-  color: var(--chrome-text);
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-label);
+  color: var(--chrome-text-mid);
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.state {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: var(--space-1);
+  color: var(--chrome-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+}
+
+.stateLamp,
+.evidenceLamp {
+  width: 5px;
+  height: 5px;
+  flex: none;
+  border-radius: var(--radius-round);
+  background: var(--status-idle);
+  box-shadow: inset 0 0 0 1px var(--machine-channel);
+}
+
+.state[data-state="complete"] .stateLamp,
+.evidence[data-state="recorded"] .evidenceLamp {
+  background: var(--status-ok);
+  box-shadow: 0 0 5px var(--status-ok-glow);
+}
+
+.state[data-state="next"] .stateLamp {
+  background: var(--step-next-line);
+  box-shadow: 0 0 5px var(--status-stale-glow);
+}
+
+.state[data-state="stale"] .stateLamp,
+.evidence[data-state="stale"] .evidenceLamp {
+  background: var(--status-stale);
+  box-shadow: 0 0 5px var(--status-stale-glow);
+}
+
+/* ── Display: the recessed readout, inset from the housing on every side ──── */
+
+.screen {
+  position: relative;
+  overflow: hidden;
+  margin: var(--space-2) var(--space-2-5);
+  border-radius: var(--radius-xs);
+  background:
+    repeating-linear-gradient(0deg, var(--machine-screen-line) 0 1px, transparent 1px 4px),
+    linear-gradient(160deg, var(--surface-control), var(--machine-glass-blue));
+  box-shadow:
+    inset 0 0 0 1px var(--machine-channel),
+    inset 0 2px 5px var(--machine-screen-glow),
+    0 1px 0 var(--machine-glass-bright);
+  color: var(--chrome-text-mid);
+}
+
+.facts {
+  padding: var(--space-1-5) var(--space-2);
 }
 
 .row {
   display: flex;
   justify-content: space-between;
   gap: var(--space-2);
-  padding: var(--space-0-5) 0;
+  min-height: 13px;
   font-family: var(--font-mono);
-  font-size: var(--text-caption);
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
 }
 
 .rowLabel {
+  overflow: hidden;
   color: var(--chrome-text-muted);
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .rowValue {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 104px;
-  color: var(--chrome-text-mid);
+  max-width: 132px;
+  color: var(--machine-ink-success);
+  text-align: right;
 }
 
 /* Nothing known for this fact yet. */
 .rowValue[data-empty] {
-  color: var(--chrome-border-strong);
+  color: var(--chrome-text-muted);
+}
+
+.script {
+  border-top: 1px solid var(--machine-channel);
+}
+
+.scriptHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2) 0;
+  color: var(--machine-ink-info);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+}
+
+.scriptLabel {
+  flex: none;
+  white-space: nowrap;
+}
+
+.scriptPath {
+  overflow: hidden;
+  flex: 0 1 auto;
+  color: var(--chrome-text-muted);
+  font-weight: var(--weight-regular);
+  letter-spacing: var(--tracking-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scriptCode {
+  display: flex;
+  min-height: 22px;
+  flex-direction: column;
+  overflow: hidden;
+  padding: var(--space-0-5) var(--space-2) var(--space-1-5);
+  color: var(--machine-ink-success);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-style: normal;
+  line-height: var(--leading-normal);
+  white-space: pre;
+}
+
+.scriptCode > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.scriptCode i {
+  display: inline-block;
+  width: 15px;
+  margin-right: var(--space-1);
+  color: var(--machine-channel-strong);
+  font-style: normal;
+  user-select: none;
+}
+
+.script[data-missing] .scriptCode {
+  color: var(--machine-ink-warning);
+}
+
+.moreScripts {
+  padding: var(--space-0-5) var(--space-2) var(--space-1);
+  color: var(--machine-ink-info);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  text-align: right;
+}
+
+/* ── Ticket strip: what this panel's inputs actually produced ─────────────── */
+
+.evidence {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  min-height: 22px;
+  padding: var(--space-1) var(--space-3);
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% calc(100% - var(--chamfer)),
+    calc(100% - var(--chamfer)) 100%,
+    var(--chamfer) 100%,
+    0 calc(100% - var(--chamfer))
+  );
+  border-top: 1px solid var(--machine-channel);
+  background: linear-gradient(180deg, transparent, var(--machine-screen-glow));
+  color: var(--chrome-text-mid);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-label);
+}
+
+.evidenceLabel {
+  overflow: hidden;
+  flex: 1;
+  font-weight: var(--weight-bold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.evidenceMeta,
+.digest {
+  flex: none;
+  color: var(--chrome-text-muted);
+}
+
+.digest {
+  overflow: hidden;
+  max-width: 74px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -324,12 +560,10 @@
     transition: none;
   }
 
-  /* The ring stays; it just stops breathing. */
-  .card[data-next] {
+  /* The glow stays; it just stops breathing. */
+  .card[data-next] .shell {
     animation: none;
-    box-shadow:
-      0 0 0 3px color-mix(in srgb, var(--step-next-line) 35%, transparent),
-      var(--shadow-md);
+    filter: drop-shadow(0 0 4px var(--step-next-line)) drop-shadow(var(--machine-shadow));
   }
 }
 

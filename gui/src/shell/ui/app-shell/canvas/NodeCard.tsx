@@ -1,11 +1,10 @@
 import type { AppShellPage } from "@core/app-shell/pages";
-import type { CanvasNode, SummaryRow } from "@core/canvas/canvasNodes";
+import type { CanvasNode, CanvasNodeOverview } from "@core/canvas/canvasNodes";
 import { useId } from "react";
 import { stageTone } from "../../theme/appearance";
 import { cssVars } from "../../theme/styleVars";
 import { canvasIcon } from "./canvasIcons";
 import styles from "./NodeCard.module.css";
-import { StatusDot } from "./StatusDot";
 
 interface NodeCardProps {
   node: CanvasNode;
@@ -18,7 +17,7 @@ interface NodeCardProps {
   active: boolean;
   /** The step the authoring graph says to do next. */
   next?: boolean;
-  rows: SummaryRow[];
+  overview: CanvasNodeOverview;
   onNavigate: (page: AppShellPage, originRect?: DOMRect) => void;
 }
 
@@ -31,7 +30,7 @@ export function NodeCard({
   locked,
   active,
   next = false,
-  rows,
+  overview,
   onNavigate,
 }: NodeCardProps) {
   // "Next" is state, not identity: it rides on the description so the panel's
@@ -45,6 +44,16 @@ export function NodeCard({
     "--node-stand-height": `${node.standHeight}px`,
     "--node-tint": stageTone(node.key),
   };
+  const state = stale ? "stale" : done ? "complete" : next ? "next" : locked ? "locked" : "idle";
+  const stateLabel = {
+    stale: "STALE",
+    complete: "PROVEN",
+    next: "NEXT",
+    locked: "OFFLINE",
+    idle: "STANDBY",
+  }[state];
+  const visibleScripts = overview.scripts.slice(0, 2);
+  const hiddenScriptCount = overview.scripts.length - visibleScripts.length;
 
   return (
     <>
@@ -65,37 +74,100 @@ export function NodeCard({
             }}
             className={styles.card}
             data-done={done || undefined}
+            data-stale={stale || undefined}
             data-next={next || undefined}
             data-active={active || undefined}
           >
             <span aria-hidden className={styles.cap} />
+            <span aria-hidden className={styles.shell} />
             {next && (
               <span id={nextNoteId} className={styles.nextNote}>
                 Next step
               </span>
             )}
-            <div className={styles.head} data-with-rows={rows.length ? true : undefined}>
+            <div className={styles.head}>
               <span aria-hidden className={styles.glyph}>
                 {canvasIcon(node.iconKey)(14)}
               </span>
               <div className={styles.titleBox}>
                 <div className={styles.title}>{node.label}</div>
               </div>
-              <StatusDot on={done} stale={stale} />
+              <span className={styles.state} data-state={state}>
+                <span aria-hidden className={styles.stateLamp} />
+                {stateLabel}
+              </span>
             </div>
 
-            {rows.map((row) => (
-              <div key={row.label} className={styles.row}>
-                <span className={styles.rowLabel}>{row.label}</span>
-                <span
-                  title={row.title}
-                  className={styles.rowValue}
-                  data-empty={row.value ? undefined : true}
+            <div className={styles.screen}>
+              {overview.facts.length > 0 && (
+                <div className={styles.facts}>
+                  {overview.facts.map((row) => (
+                    <div key={row.label} className={styles.row}>
+                      <span className={styles.rowLabel}>{row.label}</span>
+                      <span
+                        title={row.title}
+                        className={styles.rowValue}
+                        data-empty={row.value ? undefined : true}
+                      >
+                        {row.value ?? "—"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {visibleScripts.map((script) => (
+                <div
+                  key={script.key}
+                  className={styles.script}
+                  data-missing={!script.available || undefined}
                 >
-                  {row.value ?? "—"}
+                  <div className={styles.scriptHead}>
+                    <span className={styles.scriptLabel}>{script.label}</span>
+                    <span title={script.path || undefined} className={styles.scriptPath}>
+                      {script.path ? script.path.split("/").at(-1) : "NOT CONFIGURED"}
+                    </span>
+                  </div>
+                  <code className={styles.scriptCode}>
+                    {script.lines.length > 0
+                      ? script.lines.map((line, index) => (
+                          // biome-ignore lint/suspicious/noArrayIndexKey: the saved source line's ordinal is its stable identity
+                          <span key={`${script.key}-${index}`}>
+                            <i aria-hidden>{String(index + 1).padStart(2, "0")}</i>
+                            {line || " "}
+                          </span>
+                        ))
+                      : `> ${script.path ? "FILE UNAVAILABLE" : "AWAITING SCRIPT"}`}
+                  </code>
+                </div>
+              ))}
+
+              {hiddenScriptCount > 0 && (
+                <div className={styles.moreScripts}>+{hiddenScriptCount} MORE SCRIPTS</div>
+              )}
+            </div>
+
+            {overview.evidenceExpected && (
+              <div
+                className={styles.evidence}
+                data-state={stale ? "stale" : overview.receipt ? "recorded" : "empty"}
+              >
+                <span aria-hidden className={styles.evidenceLamp} />
+                <span className={styles.evidenceLabel}>
+                  {stale
+                    ? "RECEIPT · INPUTS CHANGED"
+                    : (overview.receipt?.label.toUpperCase() ?? "NO RECEIPT")}
                 </span>
+                {overview.receipt?.duration && (
+                  <span className={styles.evidenceMeta}>{overview.receipt.duration}</span>
+                )}
+                {overview.receipt?.scriptDigest && (
+                  <span title={overview.receipt.scriptDigest} className={styles.digest}>
+                    {overview.receipt.scriptDigest}
+                  </span>
+                )}
               </div>
-            ))}
+            )}
             <span ref={setPortRef} aria-hidden className={styles.port} />
           </button>
         </div>

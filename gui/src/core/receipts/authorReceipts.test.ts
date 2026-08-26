@@ -66,4 +66,11 @@ describe("parseAuthorReceipts", () => {
     expect(parseAuthorReceipts(undefined)).toEqual([]);
     expect(parseAuthorReceipts({ source: {}, experiments: { bad: { run_id: "x" } } })).toEqual([]);
   });
+
+  it("uses the contract operation name for activation evidence", () => {
+    const [view] = parseAuthorReceipts({
+      test_activation: receipt("test_activation"),
+    });
+    expect(view.title).toBe("Activation tested");
+  });
 });

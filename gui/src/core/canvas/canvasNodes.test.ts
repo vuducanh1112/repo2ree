@@ -1,11 +1,15 @@
+/* biome-ignore-all lint/style/useNamingConvention: receipt fixtures intentionally use wire field names */
 import { PAGE } from "@core/app-shell/pages";
 import {
   activeNode,
   CANVAS_NODES,
   isNodeActive,
   isNodeLocked,
+  nodeOverview,
   nodeSummary,
 } from "@core/canvas/canvasNodes";
+import { parseAuthorReceipts } from "@core/receipts/authorReceipts";
+import { createEmptyReeExperiment } from "@core/ree/ReeSpec";
 import {
   createEmptyReeEditorViewModel,
   patchReeEditorViewModel,
@@ -168,5 +172,99 @@ describe("nodeSummary", () => {
       evaluation: { dependencyLevel: 3, environmentLevel: 1 },
     });
     expect(scored).toMatchObject({ Dependencies: "Locked", Environment: "Container" });
+  });
+});
+
+describe("nodeOverview", () => {
+  const files = [
+    {
+      id: "overlay",
+      name: "overlay",
+      type: "folder" as const,
+      children: [
+        {
+          id: "build",
+          name: "build.sh",
+          type: "file" as const,
+          content: "#!/bin/sh\nset -eu\ndocker build .\necho done",
+        },
+        {
+          id: "smoke",
+          name: "smoke.sh",
+          type: "file" as const,
+          content: "python smoke.py\necho ignored",
+        },
+      ],
+    },
+  ];
+
+  it("previews the saved build script and its receipt evidence", () => {
+    const [receipt] = parseAuthorReceipts({
+      build: {
+        operation: "build_runtime",
+        run_id: "run-build",
+        duration_ms: 12_400,
+        recorded_at: "2026-08-26T10:00:00Z",
+        build_runtime_script_digest: "sha256:0123456789abcdef0123456789abcdef",
+      },
+    });
+    const overview = nodeOverview(nodeFor(PAGE.BUILD), createEmptyReeEditorViewModel(), undefined, {
+      workspaceFiles: files,
+      receipts: [receipt],
+      buildScriptPath: "overlay/build.sh",
+    });
+
+    expect(overview.scripts[0]).toMatchObject({
+      label: "BUILD SCRIPT",
+      path: "overlay/build.sh",
+      available: true,
+      lines: ["#!/bin/sh", "set -eu", "docker build ."],
+    });
+    expect(overview.receipt).toMatchObject({
+      label: "receipt recorded",
+      duration: "12.400s",
+      scriptDigest: "sha256:012345678…",
+    });
+  });
+
+  it("builds a bounded-preview-ready experiment roster and reports receipt coverage", () => {
+    const experiments = [
+      {
+        ...createEmptyReeExperiment(),
+        name: "smoke",
+        runScript: "overlay/smoke.sh",
+      },
+      { ...createEmptyReeExperiment(), name: "benchmark", runScript: "overlay/missing.sh" },
+      { ...createEmptyReeExperiment(), name: "training" },
+    ];
+    const receipts = parseAuthorReceipts({
+      experiments: {
+        smoke: {
+          operation: "run_experiment",
+          experiment_name: "smoke",
+          run_id: "run-smoke",
+          duration_ms: 900,
+          recorded_at: "2026-08-26T10:00:00Z",
+          run_script_digest: "sha256:smoke",
+        },
+      },
+    });
+    const ree = patchReeEditorViewModel(createEmptyReeEditorViewModel(), {
+      spec: { experiments },
+    });
+    const overview = nodeOverview(nodeFor(PAGE.EXPERIMENTS), ree, undefined, {
+      workspaceFiles: files,
+      receipts,
+    });
+
+    expect(overview.scripts).toHaveLength(3);
+    expect(overview.scripts[0]).toMatchObject({
+      label: "smoke",
+      available: true,
+      lines: ["python smoke.py"],
+    });
+    expect(overview.scripts[1].available).toBe(false);
+    expect(overview.scripts[2].path).toBe("");
+    expect(overview.receipt?.label).toBe("1/3 receipts");
   });
 });

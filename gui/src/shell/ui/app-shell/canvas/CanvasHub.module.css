@@ -31,6 +31,25 @@
 }
 
 .camera {
+  /* The instrument palette for everything standing on the deck: cool milled
+   * metal, pale optical glass, and the two inks a readout is allowed to use.
+   * It lives with the canvas artwork rather than the theme because no chrome
+   * outside this scene is built from these materials. */
+  --machine-metal-light: rgb(248 250 252 / 92%);
+  --machine-metal-mid: rgb(206 217 230 / 80%);
+  --machine-metal-deep: rgb(100 116 139 / 52%);
+  --machine-channel: rgb(71 85 105 / 20%);
+  --machine-channel-strong: rgb(71 85 105 / 42%);
+  --machine-glass: rgb(255 255 255 / 55%);
+  --machine-glass-bright: rgb(255 255 255 / 92%);
+  --machine-glass-blue: rgb(226 243 250 / 62%);
+  --machine-screen-line: rgb(14 116 144 / 5%);
+  --machine-screen-glow: rgb(14 116 144 / 8%);
+  --machine-ink-info: rgb(14 116 144);
+  --machine-ink-success: rgb(15 118 110);
+  --machine-ink-warning: rgb(180 83 9);
+  --machine-shadow: 0 7px 14px rgb(30 64 80 / 16%);
+
   position: absolute;
   inset: 0;
   transform-origin: 50% 50%;

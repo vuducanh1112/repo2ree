@@ -19,6 +19,10 @@ const runQueries = vi.hoisted(() => ({
   logs: vi.fn(() => ({ data: undefined })),
 }));
 
+// Coverage instrumentation can make the first lazy page chunk take longer
+// than Testing Library's one-second default on a cold dependency cache.
+const LAZY_PAGE_TIMEOUT_MS = 5000;
+
 vi.mock("@shell/data/runs/queries", async (importOriginal) => {
   const original = await importOriginal<typeof import("@shell/data/runs/queries")>();
   return {
@@ -117,7 +121,9 @@ describe("AppShellContent", () => {
       services,
     });
 
-    expect(await screen.findByText(title, { exact: true })).toBeInTheDocument();
+    expect(
+      await screen.findByText(title, { exact: true }, { timeout: LAZY_PAGE_TIMEOUT_MS }),
+    ).toBeInTheDocument();
   });
 
   it("renders the window-owned step rather than the globally focused step", async () => {
@@ -126,7 +132,9 @@ describe("AppShellContent", () => {
 
     renderWithShell(<AppShellContent {...props} />, { reeId: "ree-1", services });
 
-    expect(await screen.findByText("Build Runtime", { exact: true })).toBeInTheDocument();
+    expect(
+      await screen.findByText("Build Runtime", { exact: true }, { timeout: LAZY_PAGE_TIMEOUT_MS }),
+    ).toBeInTheDocument();
     expect(screen.queryByText("Generate SBOM", { exact: true })).not.toBeInTheDocument();
   });
 
