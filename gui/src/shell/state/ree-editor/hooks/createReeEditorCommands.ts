@@ -1,13 +1,5 @@
-import {
-  closePageList,
-  nextFocusAfterClose,
-  positionPageWindow,
-  sizePageWindow,
-} from "@core/app-shell/openPages";
 import type { AppShellPage } from "@core/app-shell/pages";
 import type { ArtifactStatus } from "@core/artifact/ArtifactStatus";
-import type { Point } from "@core/canvas/cableGeometry";
-import type { WindowSize } from "@core/canvas/nodeWindowPlacement";
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import type { InclusionOpts } from "@core/ree/InclusionOpts";
 import type { ReeSpec } from "@core/ree/ReeSpec";
@@ -63,9 +55,6 @@ export interface EditorStateCommands {
 
 export interface EditorChromeCommands {
   setPage(nextPage: AppShellPage): void;
-  closePage(page: AppShellPage): void;
-  setPageWindowPosition(page: AppShellPage, position: Point): void;
-  setPageWindowSize(page: AppShellPage, size: WindowSize): void;
   setLocked(value: Updater<boolean>): void;
   setRepoMode(value: Updater<"url" | "upload">): void;
   setFocusedField(value: Updater<string | null>): void;
@@ -125,27 +114,6 @@ export function createReeEditorCommands({
   // (page/nav/focus/repo-mode); everything else goes through typed actions.
   return {
     setPage: (nextPage: AppShellPage) => dispatch(patch("uiChrome", { page: nextPage })),
-    setPageWindowPosition: (page: AppShellPage, position: Point) =>
-      dispatch(
-        patch("uiChrome", (previous) => ({
-          openPages: positionPageWindow(previous.openPages ?? [], page, position),
-        })),
-      ),
-    setPageWindowSize: (page: AppShellPage, size: WindowSize) =>
-      dispatch(
-        patch("uiChrome", (previous) => ({
-          openPages: sizePageWindow(previous.openPages ?? [], page, size),
-        })),
-      ),
-    closePage: (page: AppShellPage) =>
-      dispatch(
-        patch("uiChrome", (previous) => {
-          const openPages = closePageList(previous.openPages ?? [], page);
-          // Closing a window you were not looking at must not move focus.
-          if (previous.page !== page) return { openPages };
-          return { openPages, page: nextFocusAfterClose(previous.openPages ?? [], page) };
-        }),
-      ),
     setReeSpec: (value: Updater<ReeSpec>) => dispatch(updateReeSpec(value)),
     setWorkspaceSourceState: (value: Updater<WorkspaceSourceState>) =>
       dispatch(setWorkspaceSourceState(value)),

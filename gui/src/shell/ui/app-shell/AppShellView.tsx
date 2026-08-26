@@ -1,4 +1,5 @@
 import { type AppShellPage, PAGE } from "@core/app-shell/pages";
+import { activeNode } from "@core/canvas/canvasNodes";
 import { useWorkspaceNavigationGuard } from "@shell/state/ree-editor/workspace-sync/useWorkspaceNavigationGuard";
 import { useCallback, useMemo } from "react";
 import { WorkspaceLoadErrorView, WorkspaceLoadingView } from "../errors/WorkspaceLoadView";
@@ -12,6 +13,7 @@ import { RunHud } from "./canvas/RunHud";
 import { SealContent } from "./canvas/SealContent";
 import { SourceAcquisitionContent } from "./canvas/SourceAcquisitionContent";
 import { WorkbenchLab } from "./canvas/WorkbenchLab";
+import { WorkspaceDrawer } from "./canvas/WorkspaceDrawer";
 import { ReeSyncStatus } from "./components/ReeSyncStatus";
 import { WorkspaceFooterBar } from "./components/WorkspaceFooterBar";
 import { WorkspaceStatusBar } from "./components/WorkspaceStatusBar";
@@ -84,49 +86,49 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
     [commands],
   );
 
-  // Each open window's body, memoised per page. CanvasHub re-renders on every
-  // frame of a pan to follow its node; a stable element per page is what keeps
-  // that from reconciling the page underneath it sixty times a second.
-  const pageBodies = useMemo(() => {
-    const body = (target: typeof page) => {
-      if (target === PAGE.SOURCE) {
-        return (
-          <SourceAcquisitionContent
-            ree={ree}
-            workspaceRemote={workspaceRemote}
-            stepRuns={stepRuns}
-            uiChrome={uiChrome}
-            commands={commands}
-          />
-        );
-      }
-      if (target === PAGE.SEAL) {
-        return (
-          <SealContent
-            ree={ree}
-            badges={badges}
-            locked={uiChrome.locked}
-            sealRunning={sealRunning}
-            sealLog={sealLog}
-            onSeal={commands.onSeal}
-          />
-        );
-      }
+  const drawerOpen = provisioned && page !== PAGE.CANVAS;
+  // The selected workflow page is the one authoring surface. Keeping it beside
+  // the canvas preserves the overview without asking authors to arrange windows.
+  const drawerBody = useMemo(() => {
+    if (!drawerOpen) return null;
+    if (page === PAGE.SOURCE) {
       return (
-        <AppShellContent
-          page={target}
+        <SourceAcquisitionContent
           ree={ree}
-          reeIntent={reeIntent}
           workspaceRemote={workspaceRemote}
           stepRuns={stepRuns}
           uiChrome={uiChrome}
-          currentReeFiles={currentReeFiles}
           commands={commands}
         />
       );
-    };
-    return new Map(uiChrome.openPages.map(({ page: open }) => [open, body(open)] as const));
+    }
+    if (page === PAGE.SEAL) {
+      return (
+        <SealContent
+          ree={ree}
+          badges={badges}
+          locked={uiChrome.locked}
+          sealRunning={sealRunning}
+          sealLog={sealLog}
+          onSeal={commands.onSeal}
+        />
+      );
+    }
+    return (
+      <AppShellContent
+        page={page}
+        ree={ree}
+        reeIntent={reeIntent}
+        workspaceRemote={workspaceRemote}
+        stepRuns={stepRuns}
+        uiChrome={uiChrome}
+        currentReeFiles={currentReeFiles}
+        commands={commands}
+      />
+    );
   }, [
+    drawerOpen,
+    page,
     uiChrome,
     ree,
     reeIntent,
@@ -138,11 +140,6 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
     sealRunning,
     sealLog,
   ]);
-
-  const renderPage = useCallback(
-    (target: typeof page) => pageBodies.get(target) ?? null,
-    [pageBodies],
-  );
 
   if (provisioned && workspaceHydration.status === "loading") {
     return <WorkspaceLoadingView onBack={onBack} />;
@@ -213,41 +210,47 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
           // the dormant pod sits in. Configuring it powers the lab on.
           <WorkbenchLab evaluation={evaluation} />
         ) : (
-          <CanvasHub
-            page={page}
-            ree={ree}
-            evaluation={evaluation}
-            badges={badges}
-            nextPage={authoring.nextPage}
-            staleNodeKeys={NO_STALE_NODE_KEYS}
-            provisioned={provisioned}
-            openPages={uiChrome.openPages}
-            renderPage={renderPage}
-            onClosePage={commands.closePage}
-            onPositionPage={commands.setPageWindowPosition}
-            onSizePage={commands.setPageWindowSize}
-            pageTitle={drawerTitle}
-            onNavigate={openPage}
-            workspaceFiles={workspaceRemote.workspaceFiles}
-            reeFiles={currentReeFiles}
-            sourceRepo={workspaceRemote.sourceRepo}
-            authorReceipts={authorReceipts}
-            filesConsoleOpen={uiChrome.filesConsoleOpen}
-            onFilesConsoleOpenChange={commands.setFilesConsoleOpen}
-            receiptsConsoleOpen={uiChrome.receiptsConsoleOpen}
-            onReceiptsConsoleOpenChange={commands.setReceiptsConsoleOpen}
-            benchConsoleOpen={uiChrome.benchConsoleOpen}
-            onBenchConsoleOpenChange={commands.setBenchConsoleOpen}
-          />
-        )}
+          <>
+            <div className={styles.canvasPane}>
+              <CanvasHub
+                page={page}
+                ree={ree}
+                evaluation={evaluation}
+                badges={badges}
+                nextPage={authoring.nextPage}
+                staleNodeKeys={NO_STALE_NODE_KEYS}
+                provisioned={provisioned}
+                onNavigate={openPage}
+                workspaceFiles={workspaceRemote.workspaceFiles}
+                reeFiles={currentReeFiles}
+                sourceRepo={workspaceRemote.sourceRepo}
+                authorReceipts={authorReceipts}
+                filesConsoleOpen={uiChrome.filesConsoleOpen}
+                onFilesConsoleOpenChange={commands.setFilesConsoleOpen}
+                receiptsConsoleOpen={uiChrome.receiptsConsoleOpen}
+                onReceiptsConsoleOpenChange={commands.setReceiptsConsoleOpen}
+                benchConsoleOpen={uiChrome.benchConsoleOpen}
+                onBenchConsoleOpenChange={commands.setBenchConsoleOpen}
+              />
 
-        {/* Cross-page logs console: every run of this REE, split by step. */}
-        {provisioned && (
-          <RunHud
-            open={uiChrome.logsConsoleOpen}
-            onOpenChange={commands.setLogsConsoleOpen}
-            externallyTriggered
-          />
+              {/* Cross-page logs console: every run of this REE, split by step. */}
+              <RunHud
+                open={uiChrome.logsConsoleOpen}
+                onOpenChange={commands.setLogsConsoleOpen}
+                externallyTriggered
+              />
+            </div>
+
+            {drawerOpen && (
+              <WorkspaceDrawer
+                node={activeNode(page)}
+                title={drawerTitle(page)}
+                onClose={() => commands.setPage(PAGE.CANVAS)}
+              >
+                {drawerBody}
+              </WorkspaceDrawer>
+            )}
+          </>
         )}
       </main>
 

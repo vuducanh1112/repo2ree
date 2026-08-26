@@ -155,8 +155,16 @@
 .stage {
   flex: 1;
   position: relative;
+  display: flex;
   overflow: hidden;
   min-height: 0;
+}
+
+.canvasPane {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
 }
 
 @media (prefers-reduced-motion: reduce) {

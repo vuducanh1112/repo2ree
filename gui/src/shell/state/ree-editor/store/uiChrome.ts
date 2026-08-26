@@ -1,4 +1,3 @@
-import type { OpenPageWindow } from "@core/app-shell/openPages";
 import type { AppShellPage } from "@core/app-shell/pages";
 import { PAGE } from "@core/app-shell/pages";
 import type { ToastState } from "@core/ree-steps/stepTypes";
@@ -12,8 +11,6 @@ export interface UiChromeState {
    * authoring bar) keeps working.
    */
   page: AppShellPage;
-  /** Every page with a window on the canvas, oldest first, and where it stands. */
-  openPages: OpenPageWindow[];
   focusedField: string | null;
   locked: boolean;
   repoMode: "url" | "upload";
@@ -31,7 +28,6 @@ export function createInitialUiChromeState(): UiChromeState {
     // user picks a node to dive in. Pre-provision the WorkbenchLab is shown
     // regardless, so this only governs where the live editor opens.
     page: PAGE.CANVAS,
-    openPages: [],
     focusedField: null,
     locked: false,
     repoMode: "url",

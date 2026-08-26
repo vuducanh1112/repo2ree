@@ -95,7 +95,7 @@ describe("createReeEditorCommands", () => {
     expect(state.stepRuns.stepParams.build).toEqual({});
   });
 
-  it("keeps each canvas window's position, size, and close behavior independent", () => {
+  it("uses the selected page as the single drawer target", () => {
     let state = createInitialState();
     const dispatch = (action: AppShellAction) => {
       state = appShellReducer(state, action);
@@ -103,25 +103,12 @@ describe("createReeEditorCommands", () => {
     const commands = createReeEditorCommands({ dispatch, ...commandDelegates() });
 
     commands.setPage(PAGE.METADATA);
-    commands.setPageWindowPosition(PAGE.METADATA, { x: 120, y: 80 });
-    commands.setPageWindowSize(PAGE.METADATA, { width: 820, height: 600 });
+    expect(state.uiChrome.page).toBe(PAGE.METADATA);
+
     commands.setPage(PAGE.HBOM);
-
-    expect(state.uiChrome.openPages).toEqual([
-      {
-        page: PAGE.METADATA,
-        position: { x: 120, y: 80 },
-        size: { width: 820, height: 600 },
-      },
-      { page: PAGE.HBOM, position: null },
-    ]);
-
-    commands.closePage(PAGE.METADATA);
     expect(state.uiChrome.page).toBe(PAGE.HBOM);
-    expect(state.uiChrome.openPages).toEqual([{ page: PAGE.HBOM, position: null }]);
 
-    commands.closePage(PAGE.HBOM);
+    commands.setPage(PAGE.CANVAS);
     expect(state.uiChrome.page).toBe(PAGE.CANVAS);
-    expect(state.uiChrome.openPages).toEqual([]);
   });
 });

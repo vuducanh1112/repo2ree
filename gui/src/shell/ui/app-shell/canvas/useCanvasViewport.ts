@@ -1,6 +1,4 @@
-import type { Point } from "@core/canvas/cableGeometry";
 import {
-  centreOn,
   clampZoom,
   fitBounds,
   type Transform,
@@ -21,8 +19,6 @@ interface CanvasViewport {
   startPan: (event: React.PointerEvent) => void;
   fitView: () => void;
   zoomBy: (factor: number) => void;
-  /** Pan, without zooming, until a point on the canvas is at the stage's centre. */
-  bringIntoView: (local: Point) => void;
 }
 
 /** Owns pan and zoom for the assembled 2.5D canvas. */
@@ -125,12 +121,5 @@ export function useCanvasViewport(
     setTf((previous) => ({ ...previous, z: clampZoom(previous.z * factor) }));
   };
 
-  const bringIntoView = (local: Point) => {
-    const stage = stageRef.current?.getBoundingClientRect();
-    if (!stage || stage.width <= 0 || stage.height <= 0) return;
-    setAnimate(true);
-    setTf((previous) => centreOn(local, stage, previous));
-  };
-
-  return { tf, animate, isPanning, startPan, fitView, zoomBy, bringIntoView };
+  return { tf, animate, isPanning, startPan, fitView, zoomBy };
 }

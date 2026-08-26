@@ -1,4 +1,3 @@
-import { openPageList } from "@core/app-shell/openPages";
 import type { ArtifactStatus } from "@core/artifact/ArtifactStatus";
 import { enforceSourceOriginRules } from "@core/artifact/sourceOriginRules";
 import { type EvaluationState, emptyEvaluationState } from "@core/evaluate/EvaluationState";
@@ -28,14 +27,12 @@ interface InitialAppShellStateInput {
 const sliceNormalizers: {
   [K in SliceName]?: (patch: Partial<SliceShape[K]>, prev: SliceShape[K]) => Partial<SliceShape[K]>;
 } = {
-  // Focusing a page is what opens it. Enforcing that here rather than at each
-  // call site means every existing "go to this page" command — the authoring
-  // bar, a node card, a jump-to-field from inside another page — opens its
-  // window without knowing windows exist.
+  // Keep page navigation normalized at the store boundary so every caller can
+  // open the same right-hand workspace drawer with a plain setPage command.
   uiChrome: (patch, prev) => {
     if (patch.page === undefined) return patch;
     const page = normalizeUiChromePage(patch.page, prev.page);
-    return { ...patch, page, openPages: openPageList(patch.openPages ?? prev.openPages, page) };
+    return { ...patch, page };
   },
 };
 

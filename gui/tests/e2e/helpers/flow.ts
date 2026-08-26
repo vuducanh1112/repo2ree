@@ -114,7 +114,7 @@ export function main(page: Page) {
 export const GENERATE_STATUS = /Loaded a generated|could be inferred yet|Generation failed/;
 
 /**
- * Run read-only script inference from the generate control in its canvas window,
+ * Run read-only script inference from the generate control in its workspace drawer,
  * then expand the decision graph it renders.
  *
  * Inference never writes: it loads a candidate into the editor (leaving it
@@ -197,12 +197,10 @@ function nav(page: Page) {
 }
 
 /**
- * Open a canvas node by its exact label. Long single-page journeys close the
- * focused window first to keep the stage readable; multi-window scenarios can
- * click Workspace pages directly when they intentionally keep both open.
+ * Open a canvas node by its exact label. The selected page replaces the current
+ * drawer contents while the canvas remains mounted beside it.
  */
 export async function openPort(page: Page, label: string) {
-  await page.keyboard.press("Escape").catch(() => {});
   await nav(page).getByRole("button", { name: label, exact: true }).click();
 }
 
@@ -258,7 +256,7 @@ export async function startReeCreation(page: Page, options?: { agentIndex?: numb
 /**
  * Provision the workbench container. Provisioning lands on the hub canvas
  * (the live lab), so this resolves there and then dives into the Source node so
- * the rest of the walkthrough continues from a canvas page window.
+ * the rest of the walkthrough continues from the docked authoring drawer.
  */
 export async function provisionWorkbench(page: Page, options?: { imageRef?: string }) {
   await stepShot(page, "provision-workbench", "before");
@@ -499,7 +497,7 @@ export async function provideHbom(page: Page, cpuModel: string) {
 export const SBOM_ARTIFACT_PATH = "artifacts/sbom.json";
 
 /**
- * Generate the SBOM. Navigates to the SBOM canvas node (a page window, like
+ * Generate the SBOM. Navigates to the SBOM canvas node (a drawer page, like
  * Build Runtime).
  */
 export async function generateSbom(page: Page) {
@@ -791,7 +789,7 @@ async function reproduceReviewStep(page: Page, label: string, timeout: number) {
  * complete the REE is — sealing is what makes the workbench release control
  * appear.
  */
-/** The Seal page window opened from its constellation node. */
+/** The Seal page drawer opened from its constellation node. */
 function sealPanel(page: Page) {
   return page.getByRole("region", { name: "Seal" });
 }

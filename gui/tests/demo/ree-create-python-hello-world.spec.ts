@@ -47,8 +47,8 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
     ),
   ];
   const main = page.getByRole("main");
-  // Source acquisition is a floating hub panel (role=region), not a docked
-  // page; its Clear-source action lives in that panel's header.
+  // Source acquisition is the docked workflow region; its Clear-source action
+  // lives in that drawer's content.
   const sourcePanel = page.getByRole("region", { name: "Source Acquisition" });
   const clearSourceButton = sourcePanel.getByRole("button", { name: /Clear source/i });
   // Short seal digest of the REE this run produces, read off the seal card and
@@ -124,8 +124,8 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
   });
 
   await demoStep(page, "Browse extracted files", async () => {
-    // Files open from the persistent status bar without closing the source
-    // window, so the canvas and current authoring context remain available.
+    // Files open from the persistent status bar without replacing the source
+    // drawer, so the canvas and current authoring context remain available.
     await clickDemo(
       page,
       page
@@ -495,7 +495,7 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
         .getByRole("button", { name: "Seal", exact: true }),
       "Seal the REE package",
     );
-    // Seal opens in its own canvas window like the other authoring pages.
+    // Seal opens in the same docked drawer as the other authoring pages.
     const sealPanel = page.getByRole("region", { name: "Seal" });
     // The seal panel shows source/runtime bundle toggles inline before sealing.
     await expect(sealPanel.getByText("Bundle contents", { exact: true })).toBeVisible();
