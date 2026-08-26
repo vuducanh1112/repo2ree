@@ -37,8 +37,15 @@
 }
 
 /* The reset glyph is wider than the zoom signs, so it sets smaller. */
-.button[data-glyph="reset"] {
+.button[data-glyph="reset"],
+.button[data-glyph="layout"] {
   font-size: var(--text-label);
+}
+
+/* There is an arrangement to undo. The control stays enabled either way — this
+ * only says whether pressing it will change anything. */
+.button[data-glyph="layout"][data-arranged] {
+  color: var(--chrome-accent);
 }
 
 @media (max-width: 760px) {

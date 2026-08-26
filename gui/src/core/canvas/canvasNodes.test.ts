@@ -3,12 +3,19 @@ import { PAGE } from "@core/app-shell/pages";
 import {
   activeNode,
   CANVAS_NODES,
+  canvasWorldBounds,
   isNodeActive,
   isNodeDone,
   isNodeStale,
+  nodeCardBox,
   nodeOverview,
+  nodeScale,
+  nodeScreenBox,
   nodeSummary,
+  RING,
+  SCENE_DEPTH,
 } from "@core/canvas/canvasNodes";
+import { fitBounds } from "@core/canvas/viewportMath";
 import { parseAuthorReceipts } from "@core/receipts/authorReceipts";
 import { createEmptyReeExperiment } from "@core/ree/ReeSpec";
 import {
@@ -46,25 +53,139 @@ describe("CANVAS_NODES", () => {
       PAGE.SOURCE,
       PAGE.METADATA,
       PAGE.HBOM,
-      PAGE.EXPERIMENTS,
       PAGE.EVALUATE,
       PAGE.BUILD,
       PAGE.SBOM,
       PAGE.ACTIVATION,
-      PAGE.ARCHIVE,
+      PAGE.EXPERIMENTS,
       PAGE.SEAL,
+      PAGE.ARCHIVE,
     ]);
-  });
-
-  it("splits declarations left of the pod and evidence right of it", () => {
-    for (const node of CANVAS_NODES) {
-      if (node.kind === "declare") expect(node.x).toBeLessThan(0);
-      if (node.kind === "evidence") expect(node.x).toBeGreaterThan(0);
-    }
   });
 
   it("lifts every assembled panel above its floor anchor", () => {
     for (const node of CANVAS_NODES) expect(node.standHeight).toBeGreaterThan(0);
+  });
+});
+
+describe("ring placement", () => {
+  it("walks the authoring pipeline clockwise around the bench", () => {
+    // The ring reads as the sequence: every step stands further round than the
+    // one before it, so the canvas and the status bar cannot disagree about
+    // what follows what.
+    const authoring = CANVAS_NODES.filter((node) => node.key !== PAGE.ARCHIVE);
+    const angles = authoring.map((node) => node.angle);
+    const unwrapped = angles.map((angle) => (angle < angles[0] ? angle + 360 : angle));
+    expect(unwrapped).toEqual([...unwrapped].sort((a, b) => a - b));
+  });
+
+  it("finishes authoring at the seal, dead centre in front of the pod", () => {
+    const seal = nodeFor(PAGE.SEAL);
+    expect(seal.angle).toBe(180);
+    expect(seal.x).toBe(0);
+    // Positive y is the near side of the bench: closest to the viewer, and the
+    // largest a panel renders before the billboard correction evens it out.
+    expect(seal.y).toBe(RING.ry);
+  });
+
+  it("puts archive past the seal, off the authoring arc", () => {
+    expect(nodeFor(PAGE.ARCHIVE).angle).toBeGreaterThan(nodeFor(PAGE.SEAL).angle);
+  });
+
+  it("leaves a sector of the ring open", () => {
+    // The gap between the last node and the first is the canvas's breathing
+    // room — a horseshoe, not a closed ring.
+    const last = nodeFor(PAGE.ARCHIVE).angle;
+    const first = nodeFor(PAGE.SOURCE).angle;
+    expect(first - last).toBeGreaterThan(40);
+  });
+
+  it("places every node on the declared ellipse", () => {
+    for (const node of CANVAS_NODES) {
+      const onRing = (node.x / RING.rx) ** 2 + (node.y / RING.ry) ** 2;
+      expect(onRing).toBeCloseTo(1, 2);
+    }
+  });
+
+  it("stands no two panels on top of each other", () => {
+    // Card faces only: a strut crossing a neighbour's deck plate is fine, two
+    // readable faces overlapping is not. The conservative card box makes this a
+    // real guarantee rather than a near-miss.
+    for (const a of CANVAS_NODES) {
+      for (const b of CANVAS_NODES) {
+        if (a.key === b.key) continue;
+        const boxA = nodeCardBox(a);
+        const boxB = nodeCardBox(b);
+        const overlaps =
+          boxA.left < boxB.right &&
+          boxB.left < boxA.right &&
+          boxA.top < boxB.bottom &&
+          boxB.top < boxA.bottom;
+        expect(`${a.key}/${b.key}: ${overlaps}`).toBe(`${a.key}/${b.key}: false`);
+      }
+    }
+  });
+});
+
+describe("billboard correction", () => {
+  it("cancels perspective so every panel renders the same size", () => {
+    // Each node's own perspective factor times its correction must come to 1,
+    // whichever side of the bench it stands on.
+    for (const node of CANVAS_NODES) {
+      const perspective = SCENE_DEPTH / (SCENE_DEPTH - node.y * Math.sin((54 * Math.PI) / 180));
+      expect(perspective * nodeScale(node)).toBeCloseTo(1, 6);
+    }
+  });
+
+  it("shrinks near panels and enlarges far ones", () => {
+    expect(nodeScale(nodeFor(PAGE.SEAL))).toBeLessThan(1);
+    expect(nodeScale(nodeFor(PAGE.EVALUATE))).toBeGreaterThan(1);
+  });
+});
+
+describe("canvasWorldBounds", () => {
+  it("frames the scene the nodes actually occupy", () => {
+    const bounds = canvasWorldBounds();
+    // `left + width` reconstructs the right edge through one more float op than
+    // the box came from, so compare with a sub-pixel tolerance rather than
+    // asserting on the last bit.
+    const within = (value: number, limit: number) =>
+      expect(value).toBeLessThanOrEqual(limit + 1e-6);
+    for (const node of CANVAS_NODES) {
+      const box = nodeScreenBox(node);
+      within(bounds.left, box.left);
+      within(box.right, bounds.left + bounds.width);
+      within(bounds.top, box.top);
+      within(box.bottom, bounds.top + bounds.height);
+    }
+  });
+
+  it("frames a panel's foot, not just its face", () => {
+    // The bug this guards: bounds measured to the bottom of the card cut the
+    // strut and deck plate off the front-most panels, because their feet
+    // project *below* their anchors.
+    const bounds = canvasWorldBounds();
+    const frontmost = CANVAS_NODES.reduce((lowest, node) =>
+      nodeScreenBox(node).bottom > nodeScreenBox(lowest).bottom ? node : lowest,
+    );
+    const foot = nodeScreenBox(frontmost).bottom;
+    expect(foot).toBeGreaterThan(nodeCardBox(frontmost).bottom);
+    expect(bounds.top + bounds.height).toBeGreaterThanOrEqual(foot);
+  });
+
+  it("still fills most of a desktop stage", () => {
+    // The other regression: bounds that declare more room than the scene
+    // occupies make `fitView` zoom out, which is what shrank an 11px label to
+    // 7px. Framing the feet costs some of that back, so this is a floor rather
+    // than a target — it is the tall struts on the far arc that set it.
+    const bounds = canvasWorldBounds();
+    expect(fitBounds({ width: 1920, height: 938 }, bounds, 32).z).toBeGreaterThan(0.85);
+  });
+
+  it("keeps the pod inside the frame even though it stands at the origin", () => {
+    const bounds = canvasWorldBounds([]);
+    expect(bounds.width).toBeGreaterThan(0);
+    expect(bounds.height).toBeGreaterThan(0);
   });
 });
 

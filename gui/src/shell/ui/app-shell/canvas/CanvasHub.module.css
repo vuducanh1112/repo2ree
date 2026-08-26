@@ -59,7 +59,7 @@
 .perspective {
   position: absolute;
   inset: 0;
-  perspective: 1900px;
+  perspective: var(--scene-depth);
   perspective-origin: 50% 48%;
   transform-style: preserve-3d;
   /* The perspective plane itself is only a scene container. Let controls
@@ -99,6 +99,11 @@
   pointer-events: none;
 }
 
+/* The deck markings. `outer` is the ellipse the panels actually stand on —
+ * drawn from the same --ring-rx/--ring-ry the placement is computed from, so a
+ * change to the ring moves the marking with it. The two inner ellipses are
+ * concentric reductions of it: they mark the shells the pod reports work in,
+ * and they stay proportional rather than becoming circles the layout ignores. */
 .zoneRing {
   position: absolute;
   left: 0;
@@ -107,23 +112,24 @@
   border: 1px dashed rgb(100 116 139 / 26%);
   transform: translate(-50%, -50%);
   pointer-events: none;
+  width: calc(var(--ring-rx) * 2 * var(--ring-fraction));
+  height: calc(var(--ring-ry) * 2 * var(--ring-fraction));
 }
 
 .zoneRing[data-zone="outer"] {
-  width: 1620px;
-  height: 1620px;
+  --ring-fraction: 1;
 }
 
 .zoneRing[data-zone="inner"] {
-  width: 1120px;
-  height: 1120px;
+  --ring-fraction: 0.69;
+
   border-color: rgb(8 145 178 / 24%);
   border-style: solid;
 }
 
 .zoneRing[data-zone="core"] {
-  width: 660px;
-  height: 660px;
+  --ring-fraction: 0.41;
+
   border-color: rgb(79 70 229 / 28%);
 }
 

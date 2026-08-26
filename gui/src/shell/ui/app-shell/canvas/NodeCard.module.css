@@ -142,6 +142,15 @@
     opacity var(--duration-slow);
 }
 
+/* Being moved. The eased transform is dropped for the duration so the panel
+ * tracks the pointer instead of chasing it, and it lifts over its neighbours
+ * so the one being placed is the one on top. */
+.card[data-dragging] {
+  z-index: 1;
+  cursor: grabbing;
+  transition: none;
+}
+
 /* The housing: a rounded glass lip holding the pane, and the shadow that lifts
  * the whole silhouette off the deck. It sits a hair behind the panel's own
  * content plane so the strips always read on top of it.
@@ -303,6 +312,13 @@
 }
 
 /* The page this panel opens is the one on screen. */
+/* Lifted while it is being placed. */
+.card[data-dragging] .shell {
+  box-shadow:
+    0 1px 1px var(--machine-channel),
+    var(--shadow-lg);
+}
+
 .card[data-active] .shell {
   box-shadow:
     inset 0 0 0 var(--rim) color-mix(in srgb, var(--chrome-accent) 78%, transparent),

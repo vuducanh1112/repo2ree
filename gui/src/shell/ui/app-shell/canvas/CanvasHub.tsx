@@ -1,6 +1,16 @@
 import { type AppShellPage, PAGE } from "@core/app-shell/pages";
 import { canvasActivity } from "@core/canvas/canvasActivity";
-import { CANVAS_NODES, isNodeActive, isNodeDone, nodeOverview } from "@core/canvas/canvasNodes";
+import { offsetOf, placedNodes } from "@core/canvas/canvasLayout";
+import {
+  CANVAS_NODES,
+  canvasWorldBounds,
+  FLOOR_TILT_DEGREES,
+  isNodeActive,
+  isNodeDone,
+  nodeOverview,
+  RING,
+  SCENE_DEPTH,
+} from "@core/canvas/canvasNodes";
 import { latestCrossCheckSummary } from "@core/evaluate/crossCheckRun";
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import type { ReceiptView } from "@core/receipts/authorReceipts";
@@ -8,9 +18,10 @@ import type { Badges, ReeFile } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import type { FileTreeNode } from "@core/workspace/FileTree";
 import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
+import { useReeId } from "@shell/data/apiRuntime";
 import { useReeRunsQuery } from "@shell/data/runs/queries";
 import { useScriptTemplates } from "@shell/data/scriptTemplates/catalog";
-import { memo, useMemo, useRef } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { cssVars } from "../../theme/styleVars";
 import { BenchConsole } from "./BenchConsole";
 import { CableOverlaySvg } from "./CableOverlay";
@@ -22,12 +33,8 @@ import { NodeCard } from "./NodeCard";
 import { ReceiptsConsole } from "./ReceiptsConsole";
 import { SpecimenPod } from "./SpecimenPod";
 import { useCableGeometry } from "./useCableGeometry";
+import { useCanvasLayout } from "./useCanvasLayout";
 import { useCanvasViewport } from "./useCanvasViewport";
-
-// Includes the 2.5D floor ring, pod, and lifted cards. These are intentionally
-// conservative unprojected bounds; the fixed floor tilt compresses their
-// screen-space height further.
-const ASSEMBLED_BOUNDS = { left: -930, top: -620, width: 1960, height: 1240 } as const;
 
 interface CanvasHubProps {
   page: AppShellPage;
@@ -86,6 +93,19 @@ export const CanvasHub = memo(function CanvasHub({
     () => canvasActivity(runs ?? [], sealRunning ? [PAGE.SEAL] : []),
     [runs, sealRunning],
   );
+  // The arrangement is saved per REE, under the same scope the data hooks use.
+  const { layout, moveNode, resetLayout, isDefault } = useCanvasLayout(useReeId());
+  // A panel is only ever dragged one at a time, and this flips once at each end
+  // of the gesture rather than on every pointer move — it exists to keep the
+  // cable measure loop running while a panel is moving, not to place anything.
+  const [draggingKey, setDraggingKey] = useState<string | null>(null);
+  const onDraggingChange = useCallback((key: string, dragging: boolean) => {
+    setDraggingKey(dragging ? key : null);
+  }, []);
+  // Bounds follow the arrangement: `fitView` has to frame the bench as the user
+  // has it, or dragging a panel outward would put it beyond the fitted view.
+  const nodes = useMemo(() => placedNodes(layout, CANVAS_NODES), [layout]);
+  const assembledBounds = useMemo(() => canvasWorldBounds(nodes), [nodes]);
   const stageRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<HTMLDivElement>(null);
   const podSvgRef = useRef<SVGSVGElement>(null);
@@ -94,8 +114,13 @@ export const CanvasHub = memo(function CanvasHub({
 
   const { tf, animate, isPanning, startPan, fitView, zoomBy } = useCanvasViewport(
     stageRef,
-    ASSEMBLED_BOUNDS,
+    assembledBounds,
   );
+
+  const onResetLayout = useCallback(() => {
+    resetLayout();
+    fitView();
+  }, [resetLayout, fitView]);
 
   const geo = useCableGeometry({
     stageRef,
@@ -106,7 +131,9 @@ export const CanvasHub = memo(function CanvasHub({
     ree,
     badges,
     tf,
-    animate,
+    // Cables are measured from the DOM, so they follow a moved panel for free —
+    // but only if something keeps re-measuring while it moves.
+    animate: animate || draggingKey !== null,
   });
 
   const levelMeta = {
@@ -134,8 +161,16 @@ export const CanvasHub = memo(function CanvasHub({
           "--world-x": `${tf.x}px`,
           "--world-y": `${tf.y}px`,
           "--world-z": tf.z,
-          "--floor-tilt": "54deg",
-          "--panel-counter-tilt": "-54deg",
+          // The tilt and the scene depth come from core so the geometry the
+          // layout is computed against and the geometry the browser draws are
+          // the same two numbers.
+          "--floor-tilt": `${FLOOR_TILT_DEGREES}deg`,
+          "--panel-counter-tilt": `${-FLOOR_TILT_DEGREES}deg`,
+          "--scene-depth": `${SCENE_DEPTH}px`,
+          // The floor rings are drawn from the same ellipse the nodes stand on,
+          // so the deck markings describe the layout instead of decorating it.
+          "--ring-rx": `${RING.rx}px`,
+          "--ring-ry": `${RING.ry}px`,
         })}
       >
         <div className={styles.perspective}>
@@ -150,7 +185,7 @@ export const CanvasHub = memo(function CanvasHub({
             <SpecimenPod evaluation={evaluation} svgRef={podSvgRef} activity={activity} />
 
             <nav aria-label="Workspace pages">
-              {CANVAS_NODES.map((node) => {
+              {nodes.map((node) => {
                 const overview = nodeOverview(node, ree, sourceRepo, {
                   workspaceFiles: [...workspaceFiles, ...reeFiles],
                   receipts: authorReceipts,
@@ -175,6 +210,10 @@ export const CanvasHub = memo(function CanvasHub({
                     blocked={blockedNodeKeys?.has(node.key)}
                     overview={overview}
                     onNavigate={onNavigate}
+                    offset={offsetOf(layout, node.key)}
+                    zoom={tf.z}
+                    onMove={moveNode}
+                    onDraggingChange={onDraggingChange}
                   />
                 );
               })}
@@ -211,6 +250,8 @@ export const CanvasHub = memo(function CanvasHub({
         onZoomIn={() => zoomBy(1.2)}
         onZoomOut={() => zoomBy(1 / 1.2)}
         onFit={fitView}
+        onResetLayout={onResetLayout}
+        layoutIsDefault={isDefault}
       />
     </div>
   );

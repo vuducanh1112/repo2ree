@@ -44,8 +44,15 @@ describe("fitBounds", () => {
     expect(fitted.y).toBeCloseTo(0);
   });
 
-  it("does not enlarge a compact world past 100 percent", () => {
-    expect(fitBounds({ width: 1600, height: 1000 }, bounds).z).toBe(1);
+  it("enlarges a world smaller than its viewport rather than leaving space unused", () => {
+    const fitted = fitBounds({ width: 1600, height: 1000 }, bounds);
+    expect(fitted.z).toBeGreaterThan(1);
+    // The tighter axis is the one that binds: height here, at (1000 - 48) / 800.
+    expect(fitted.z).toBeCloseTo(952 / 800);
+  });
+
+  it("never enlarges past the zoom ceiling", () => {
+    expect(fitBounds({ width: 20000, height: 20000 }, bounds).z).toBe(ZOOM_MAX);
   });
 });
 

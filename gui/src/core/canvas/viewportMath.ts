@@ -34,7 +34,16 @@ export function clampZoom(z: number): number {
   return Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
 }
 
-/** Frame world-space bounds inside a viewport with an even screen-space inset. */
+/**
+ * Frame world-space bounds inside a viewport with an even screen-space inset.
+ *
+ * The fit is allowed to enlarge as well as shrink, up to {@link ZOOM_MAX}. It
+ * used to stop at 100%, which only made sense while the bounds were a hand-kept
+ * constant declaring far more room than the scene occupied — framing that box
+ * was already zooming out, so the cap never bound. Now that the bounds come
+ * from the nodes themselves, "fit" means fit: a scene smaller than its viewport
+ * should use the space rather than sit in the middle of it at 1:1.
+ */
 export function fitBounds(
   viewport: Pick<StageBox, "width" | "height">,
   bounds: WorldBounds,
@@ -42,7 +51,7 @@ export function fitBounds(
 ): Transform {
   const availableWidth = Math.max(1, viewport.width - padding * 2);
   const availableHeight = Math.max(1, viewport.height - padding * 2);
-  const z = clampZoom(Math.min(availableWidth / bounds.width, availableHeight / bounds.height, 1));
+  const z = clampZoom(Math.min(availableWidth / bounds.width, availableHeight / bounds.height));
   const centreX = bounds.left + bounds.width / 2;
   const centreY = bounds.top + bounds.height / 2;
   return { x: -centreX * z, y: -centreY * z, z };
