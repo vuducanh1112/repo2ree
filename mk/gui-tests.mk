@@ -9,7 +9,8 @@
 # for the tier scheme and the runtime-above-tier artifact layout lives in
 # docs/engineering/how-to/testing.md, not here.
 
-.PHONY: gui-tests gui-accessibility-tests gui-screenshot-tests
+.PHONY: gui-tests gui-accessibility-tests gui-screenshot-tests \
+	gui-screenshot-baselines
 
 # Always measured, like the backend tiers: this suite *is* the node tier. Vitest
 # writes its report inline (reportsDirectory in gui/vite.config.mjs), so there is
@@ -30,3 +31,11 @@ gui-accessibility-tests:
 
 gui-screenshot-tests:
 	cd gui && npm exec -- playwright test -c playwright.config.ts --project=gui-screenshot-tests
+
+# Redraw every baseline against the current renderer. Not a test target: it
+# makes the suite green by definition, so it is only ever correct when the
+# renderer moved (aa-renderer.spec.ts says so by name) or when a visual change
+# is intended and reviewed in the resulting PNG diff.
+gui-screenshot-baselines:
+	cd gui && npm exec -- playwright test -c playwright.config.ts \
+		--project=gui-screenshot-tests --update-snapshots
