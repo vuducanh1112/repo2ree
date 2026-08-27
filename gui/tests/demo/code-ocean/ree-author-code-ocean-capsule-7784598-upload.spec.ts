@@ -27,7 +27,11 @@ test("upload Code Ocean capsule 7784598", async ({ page }) => {
 
   await demoStep(page, "Open REE creation flow", async () => {
     await page.goto("/");
-    await clickDemo(page, page.getByRole("button", { name: "Create REE" }), "Start REE creation");
+    await clickDemo(
+      page,
+      page.getByRole("button", { name: "Create a new REE" }),
+      "Start REE creation",
+    );
     await expect(page.getByRole("heading", { name: "Choose a lab location" })).toBeVisible();
     await clickDemo(
       page,

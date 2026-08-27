@@ -14,7 +14,10 @@ export const applicationPageScenarios: ApplicationPageScenario[] = [
     screenshot: "landing.png",
     prepare: async (page) => {
       await page.goto("/");
-      await expect(page.getByRole("heading", { name: "REE Workspace" })).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: "Turn research code into evidence." }),
+      ).toBeVisible();
+      await expect(page.getByAltText(/The repo2ree workbench canvas/)).toBeVisible();
       await settleVisualPage(page);
     },
   },

@@ -220,7 +220,7 @@ export async function openFilesConsole(page: Page) {
  */
 export async function connectedAgentCount(page: Page): Promise<number> {
   await page.goto("/");
-  await page.getByRole("button", { name: "Create REE" }).click();
+  await page.getByRole("button", { name: "Create a new REE" }).click();
   await expect(page.getByRole("heading", { name: "Choose a lab location" })).toBeVisible();
   const cards = page.getByRole("button", { name: /connected/ });
   // The agent list loads async; a suite-worthy stack always has at least one
@@ -242,7 +242,7 @@ export async function connectedAgentCount(page: Page): Promise<number> {
 export async function startReeCreation(page: Page, options?: { agentIndex?: number }) {
   await page.goto("/");
   await stepShot(page, "start-ree-creation", "before");
-  await page.getByRole("button", { name: "Create REE" }).click();
+  await page.getByRole("button", { name: "Create a new REE" }).click();
   await expect(page.getByRole("heading", { name: "Choose a lab location" })).toBeVisible();
   await page
     .getByRole("button", { name: /connected/ })
@@ -816,7 +816,7 @@ export async function releaseWorkbench(page: Page) {
   await expect(releaseButton).toBeVisible();
   await releaseButton.click();
   await expect(page).toHaveURL("/");
-  await expect(page.getByRole("button", { name: /Create REE/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Create a new REE" })).toBeVisible();
   await stepShot(page, "release-workbench", "after");
 }
 

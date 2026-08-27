@@ -34,8 +34,6 @@ export const MACHINE_AXIS: AxisMeta = {
   steps: ["None", "Virtual machine"],
 };
 
-export const AXES: readonly AxisMeta[] = [DEPENDENCY_AXIS, ENVIRONMENT_AXIS, MACHINE_AXIS];
-
 function axisMaxLevel(axis: AxisMeta): number {
   return axis.steps.length - 1;
 }

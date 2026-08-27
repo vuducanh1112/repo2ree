@@ -57,7 +57,11 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
 
   await demoStep(page, "Open REE creation flow", async () => {
     await page.goto("/");
-    await clickDemo(page, page.getByRole("button", { name: "Create REE" }), "Start REE creation");
+    await clickDemo(
+      page,
+      page.getByRole("button", { name: "Create a new REE" }),
+      "Start REE creation",
+    );
     await expect(page.getByRole("heading", { name: "Choose a lab location" })).toBeVisible();
     await clickDemo(
       page,
@@ -560,7 +564,7 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
     await expect(releaseButton).toBeVisible();
     await clickDemo(page, releaseButton, "Release the workbench container");
     await expect(page).toHaveURL("/");
-    await expect(page.getByRole("button", { name: /Create REE/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Create a new REE" })).toBeVisible();
   });
 
   await demoStep(page, "Find the sealed REE in the index", async () => {
