@@ -802,7 +802,9 @@ export async function sealRee(page: Page) {
     .first();
   await expect(sealButton).toBeVisible();
   await sealButton.click();
-  await expect(sealPanel(page).getByText("REE SEALED", { exact: true })).toBeVisible({
+  // By role rather than by text: the badge carries an icon, whose <title>
+  // counts as text even though `aria-hidden` keeps it out of the name.
+  await expect(sealPanel(page).getByRole("status", { name: "REE sealed" })).toBeVisible({
     timeout: 30000,
   });
   await stepShot(page, "seal-ree", "after");

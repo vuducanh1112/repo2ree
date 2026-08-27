@@ -513,15 +513,18 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
     // bundle twice — a digest pre-pass plus the final stamped build — then
     // re-enumerates the workspace), so allow the same budget as the other
     // backend-bound steps rather than the tighter 20s that flaked under load.
-    await expect(sealPanel.getByText("REE SEALED", { exact: true })).toBeVisible({
+    // Addressed by role, like every other earned outcome in this demo: the
+    // badge carries an icon, and an icon's <title> joins the element's text
+    // even while `aria-hidden` keeps it out of the accessible name.
+    await expect(sealPanel.getByRole("status", { name: "REE sealed" })).toBeVisible({
       timeout: 60000,
     });
 
-    // Capture this run's content identity from the seal card. The REE index is
+    // Capture this run's content identity from the sealed record. The REE index is
     // host-side and outlives every workbench, so a host that has run this demo
     // before already holds other REEs named "ree-hello-world" — the digest is
-    // what tells this run's entry apart from them. First match is the seal
-    // card's hash row — the seal log sits below it.
+    // what tells this run's entry apart from them. First match is the sealed
+    // record's hash row — the seal log sits below it.
     const sealHash = (
       await sealPanel
         .getByText(/^sha256:[0-9a-f]{64}$/)
