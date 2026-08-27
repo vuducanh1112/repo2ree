@@ -1,21 +1,23 @@
+import { emptyEvaluationState } from "@core/evaluate/EvaluationState";
 import { DEFAULT_REE_ID } from "@core/ree/ReeId";
 import type { ReeFile } from "@core/ree/ReeTypes";
 import {
   createReeEditorViewModel,
   type ReeEditorViewModel,
 } from "@core/ree-editor/reeEditorViewModel";
+import { projectStepRuns } from "@core/runs/stepRunProjection";
 import type { FileTreeNode } from "@core/workspace/FileTree";
+import { projectCurrentSourceRun } from "@core/workspace/sourceRunProjection";
 import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
 import { useReeId } from "@shell/data/apiRuntime";
 import { useReeQuery } from "@shell/data/ree/queries";
+import { useReeRunsQuery } from "@shell/data/runs/queries";
 import { showToast as enqueueToast } from "@shell/state/ree-editor/store/actions";
 import type { ReeIntentState } from "@shell/state/ree-editor/store/reeIntent";
-import type { ReeSessionState } from "@shell/state/ree-editor/store/reeSession";
-import type { StepRunState } from "@shell/state/ree-editor/store/stepRunState";
+import type { StepRunFormState } from "@shell/state/ree-editor/store/stepRunState";
 import type { AppShellAction } from "@shell/state/ree-editor/store/types";
-import type { UiChromeState } from "@shell/state/ree-editor/store/uiChrome";
 import type React from "react";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useMemo } from "react";
 import { useReeDownloads } from "../downloads/useReeDownloads";
 import { useReeSeal } from "../seal/useReeSeal";
 import { useSourceAcquisition } from "../source-acquisition/useSourceAcquisition";
@@ -28,29 +30,19 @@ import { createReeEditorCommands } from "./createReeEditorCommands";
 
 interface UseReeEditorArgs {
   reeIntent: ReeIntentState;
-  reeSession: ReeSessionState;
-  stepRuns: StepRunState;
-  uiChrome: UiChromeState;
+  stepRuns: StepRunFormState;
   dispatch: React.Dispatch<AppShellAction>;
 }
 
 export interface WorkspaceRemoteState {
   workspaceFiles: FileTreeNode[];
   reeArtifactFiles: ReeFile[];
-  workspaceSourceState: ReeSessionState["workspaceSourceState"];
-  artifactStatus: ReeSessionState["artifactStatus"];
-  sourceSnapshotArchiveName: string;
-  sourceSnapshotFiles: FileTreeNode[];
+  workspaceSourceState: ReeEditorViewModel["source"];
+  artifactStatus: ReeEditorViewModel["artifact"];
   sourceRepo: SourceRepoMetadata | undefined;
 }
 
-export function useReeEditor({
-  reeIntent,
-  reeSession,
-  stepRuns,
-  uiChrome,
-  dispatch,
-}: UseReeEditorArgs) {
+export function useReeEditor({ reeIntent, stepRuns, dispatch }: UseReeEditorArgs) {
   const reeId = useReeId();
   const provisioned = reeId !== DEFAULT_REE_ID;
   const reeQuery = useReeQuery({ enabled: provisioned });
@@ -58,23 +50,36 @@ export function useReeEditor({
   const reeArtifactFiles = reeQuery.data?.reeFiles ?? [];
   const authorReceipts = reeQuery.data?.authorReceipts ?? [];
   const sourceRepo = reeQuery.data?.sourceRepo;
+  const remoteRee = reeQuery.data?.ree;
+  const runs = useReeRunsQuery(reeId).data ?? [];
+  const sourceRun = useMemo(
+    () => projectCurrentSourceRun(remoteRee?.audit ?? {}, runs),
+    [remoteRee?.audit, runs],
+  );
+  const workspaceSourceState = useMemo(
+    () => ({
+      ...(remoteRee?.workspaceSourceState ?? { sourceAvailable: false }),
+      ...sourceRun.sourceState,
+    }),
+    [remoteRee?.workspaceSourceState, sourceRun.sourceState],
+  );
+  const backendStepRuns = useMemo(() => projectStepRuns(runs), [runs]);
+  const effectiveStepRuns = useMemo(
+    () => ({ ...stepRuns, ...backendStepRuns }),
+    [stepRuns, backendStepRuns],
+  );
 
   const ree: ReeEditorViewModel = useMemo(
     () =>
       createReeEditorViewModel({
         reeSpec: reeIntent.reeSpec,
-        workspaceSourceState: reeSession.workspaceSourceState,
-        artifactStatus: reeSession.artifactStatus,
-        evaluationState: stepRuns.evaluationState,
-        stepEvidence: reeSession.stepEvidence,
+        workspaceSourceState,
+        artifactStatus: remoteRee?.artifactStatus ?? { runtimeIncluded: false },
+        evaluationState: remoteRee?.evaluationState ?? emptyEvaluationState(),
+        stepEvidence: remoteRee?.stepEvidence ?? {},
+        audit: remoteRee?.audit,
       }),
-    [
-      reeIntent.reeSpec,
-      reeSession.artifactStatus,
-      reeSession.stepEvidence,
-      reeSession.workspaceSourceState,
-      stepRuns.evaluationState,
-    ],
+    [reeIntent.reeSpec, remoteRee, workspaceSourceState],
   );
   const evaluation = useMemo(
     () => ({
@@ -112,14 +117,6 @@ export function useReeEditor({
     showToast,
   });
 
-  // Imperative shell adapter: mirror the reducer's active run ids into a ref so
-  // the cancel handler (an event callback) reads the current run id without a
-  // stale closure. The reducer stays the single source of truth; this is only a
-  // live read handle, matching the ref pattern used elsewhere in the shell.
-  const activeRunIdsRef = useRef(stepRuns.activeRunIds);
-  activeRunIdsRef.current = stepRuns.activeRunIds;
-  const getActiveRunId = useCallback((key: string) => activeRunIdsRef.current[key], []);
-
   const { runAction, runStep, cancelAction } = useReeStepRuns({
     dispatch,
     ree,
@@ -127,7 +124,6 @@ export function useReeEditor({
     persistWorkspaceFile,
     refreshWorkspace,
     showToast,
-    getActiveRunId,
   });
   const { handleDownloadSourceFiles, handleWorkspaceUpload, handleRemoveWorkspaceSource } =
     useSourceAcquisition({
@@ -154,11 +150,21 @@ export function useReeEditor({
       createWorkspaceRemoteState({
         workspaceFiles,
         reeArtifactFiles,
-        reeSession,
-        sourceSnapshotArchiveName: uiChrome.sourceSnapshotArchiveName,
-        sourceRepo,
+        remoteRee,
+        workspaceSourceState,
+        sourceRepo:
+          sourceRun.displayName && sourceRepo
+            ? { ...sourceRepo, name: sourceRun.displayName }
+            : sourceRepo,
       }),
-    [workspaceFiles, reeArtifactFiles, reeSession, uiChrome.sourceSnapshotArchiveName, sourceRepo],
+    [
+      workspaceFiles,
+      reeArtifactFiles,
+      remoteRee,
+      workspaceSourceState,
+      sourceRepo,
+      sourceRun.displayName,
+    ],
   );
   const commands = useMemo(
     () =>
@@ -196,10 +202,9 @@ export function useReeEditor({
     model: {
       provisioned,
       reeIntent,
-      reeSession,
       ree,
       workspaceRemote,
-      stepRuns,
+      stepRuns: effectiveStepRuns,
       evaluation,
       currentReeFiles: reeArtifactFiles,
       authorReceipts,
@@ -222,17 +227,17 @@ export function useReeEditor({
 function createWorkspaceRemoteState(args: {
   workspaceFiles: FileTreeNode[];
   reeArtifactFiles: ReeFile[];
-  reeSession: ReeSessionState;
-  sourceSnapshotArchiveName: string;
+  remoteRee?: {
+    artifactStatus: ReeEditorViewModel["artifact"];
+  };
+  workspaceSourceState: ReeEditorViewModel["source"];
   sourceRepo: SourceRepoMetadata | undefined;
 }): WorkspaceRemoteState {
   return {
     workspaceFiles: args.workspaceFiles,
     reeArtifactFiles: args.reeArtifactFiles,
-    workspaceSourceState: args.reeSession.workspaceSourceState,
-    artifactStatus: args.reeSession.artifactStatus,
-    sourceSnapshotArchiveName: args.sourceSnapshotArchiveName,
-    sourceSnapshotFiles: [] as FileTreeNode[],
+    workspaceSourceState: args.workspaceSourceState,
+    artifactStatus: args.remoteRee?.artifactStatus ?? { runtimeIncluded: false },
     sourceRepo: args.sourceRepo,
   };
 }

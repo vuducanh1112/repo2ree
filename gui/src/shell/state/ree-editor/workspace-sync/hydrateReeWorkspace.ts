@@ -1,15 +1,7 @@
-import { isSealed, preserveSeal } from "@core/artifact/ArtifactStatus";
 import type { RawReeIntentSlices } from "@core/ree/mapRawReeIntent";
 import type { ReeFile } from "@core/ree/ReeTypes";
 import type { FileTreeNode } from "@core/workspace/FileTree";
-import {
-  setArtifactStatus,
-  setEvaluationState,
-  setLocked,
-  setStepEvidence,
-  setWorkspaceSourceState,
-  updateReeSpec,
-} from "@shell/state/ree-editor/store/actions";
+import { updateReeSpec } from "@shell/state/ree-editor/store/actions";
 import type { AppShellAction } from "@shell/state/ree-editor/store/types";
 import type React from "react";
 
@@ -27,20 +19,5 @@ export function createHydrateReeWorkspace(dispatch: React.Dispatch<AppShellActio
     const ree = workspace.ree;
 
     dispatch(updateReeSpec(() => ree.reeSpec));
-    dispatch(setWorkspaceSourceState(() => ree.workspaceSourceState));
-    dispatch(setArtifactStatus((prev) => preserveSeal(prev, ree.artifactStatus)));
-    dispatch(setEvaluationState(() => ree.evaluationState));
-    // Step doneness is the REE's own verdict on its receipts, so it is restored
-    // with the rest of the document rather than remembered per browser session.
-    dispatch(setStepEvidence(() => ree.stepEvidence));
-    // A sealed session is permanently read-only, so reflect it in the shared
-    // lock flag every consumer reads (the source/metadata page containers
-    // read `uiChrome.locked` directly, not the derived editor view-model). This
-    // covers both a fresh load of an already-sealed REE and the post-seal
-    // re-hydration. Hydration never unlocks: the reversible "created" lock is
-    // owned elsewhere, so we only ever raise the lock here.
-    if (isSealed(ree.artifactStatus)) {
-      dispatch(setLocked(true));
-    }
   };
 }

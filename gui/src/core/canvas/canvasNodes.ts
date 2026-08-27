@@ -8,7 +8,7 @@ import { axisStandings, axisStepLabel } from "@core/evaluate/axes";
 import type { SbomCrossCheckSummary } from "@core/evaluate/Threat";
 import type { ReceiptView } from "@core/receipts/authorReceipts";
 import type { Badges } from "@core/ree/ReeTypes";
-import { isEvidenceStale } from "@core/ree/StepEvidence";
+import { isAuditStale } from "@core/ree/StepEvidence";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import type { FileTreeNode } from "@core/workspace/FileTree";
 import { findFileByWorkspacePath } from "@core/workspace/fileTreeTraversal";
@@ -361,7 +361,7 @@ export function isNodeDone(node: CanvasNode, ree: ReeEditorViewModel, badges: Ba
  */
 export function isNodeStale(node: CanvasNode, ree: ReeEditorViewModel): boolean {
   const step = EVIDENCE_STEP_BY_PAGE[node.key];
-  return step ? isEvidenceStale(ree.audit, step) : false;
+  return step ? isAuditStale(ree.audit, step) : false;
 }
 
 export function isNodeActive(node: CanvasNode, page: AppShellPage): boolean {

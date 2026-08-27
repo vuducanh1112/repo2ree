@@ -18,6 +18,34 @@ export type EvidenceStep =
 
 export type StepEvidence = Partial<Record<EvidenceStep, EvidenceStatus>>;
 
+/** Full backend verdict for one authoring operation. */
+export interface StepAudit {
+  evidence: EvidenceStatus;
+  payload: "missing" | "present" | "stale" | "not_applicable";
+  receiptRunId?: string;
+  reasons: string[];
+}
+
+export interface ExperimentAudit {
+  name: string;
+  run: StepAudit;
+}
+
+/**
+ * The complete audit returned with an REE. Unlike the legacy StepEvidence
+ * projection this retains the receipt/run binding and the backend's reasons.
+ */
+export interface ReeAudit {
+  source?: StepAudit | EvidenceStatus;
+  evaluation?: StepAudit | EvidenceStatus;
+  hardware?: StepAudit | EvidenceStatus;
+  runtime?: StepAudit | EvidenceStatus;
+  sbom?: StepAudit | EvidenceStatus;
+  sbom_cross_check?: StepAudit | EvidenceStatus;
+  test_activation?: StepAudit | EvidenceStatus;
+  experiments?: ExperimentAudit[];
+}
+
 const EVIDENCE_STEPS: readonly EvidenceStep[] = [
   "source",
   "evaluation",
@@ -72,4 +100,55 @@ export function mapRawStepEvidence(raw: unknown): StepEvidence {
     }
   }
   return evidence;
+}
+
+function mapRawStepAudit(raw: unknown): StepAudit {
+  const entry = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const evidence = EVIDENCE_STATUSES.includes(entry.evidence as EvidenceStatus)
+    ? (entry.evidence as EvidenceStatus)
+    : "missing";
+  const payloadStatuses = ["missing", "present", "stale", "not_applicable"] as const;
+  const payload = payloadStatuses.includes(entry.payload as (typeof payloadStatuses)[number])
+    ? (entry.payload as StepAudit["payload"])
+    : "missing";
+  return {
+    evidence,
+    payload,
+    receiptRunId: entry.receipt_run_id ? String(entry.receipt_run_id) : undefined,
+    reasons: Array.isArray(entry.reasons) ? entry.reasons.map(String) : [],
+  };
+}
+
+export function mapRawReeAudit(raw: unknown): ReeAudit {
+  const audit = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const mapped: ReeAudit = { experiments: [] };
+  for (const step of EVIDENCE_STEPS) {
+    mapped[step] = mapRawStepAudit(audit[step]);
+  }
+  mapped.experiments = Array.isArray(audit.experiments)
+    ? audit.experiments.map((value) => {
+        const experiment =
+          value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+        return { name: String(experiment.name ?? ""), run: mapRawStepAudit(experiment.run) };
+      })
+    : [];
+  return mapped;
+}
+
+function auditEvidence(audit: ReeAudit, step: EvidenceStep): EvidenceStatus {
+  const entry = audit[step];
+  return typeof entry === "string" ? entry : (entry?.evidence ?? "missing");
+}
+
+export function auditReceiptRunId(audit: ReeAudit, step: EvidenceStep): string | undefined {
+  const entry = audit[step];
+  return typeof entry === "string" ? undefined : entry?.receiptRunId;
+}
+
+export function isAuditCurrent(audit: ReeAudit, step: EvidenceStep): boolean {
+  return auditEvidence(audit, step) === "current";
+}
+
+export function isAuditStale(audit: ReeAudit, step: EvidenceStep): boolean {
+  return auditEvidence(audit, step) === "stale";
 }

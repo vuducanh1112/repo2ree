@@ -24,7 +24,6 @@ function renderPage({ locked = false, spec }: { locked?: boolean; spec?: Partial
         badges={{}}
         focusedField={null}
         onReeChange={setReeSpec}
-        onLockedChange={vi.fn()}
         onGoPage={vi.fn()}
         onFocusedFieldChange={vi.fn()}
       />

@@ -185,7 +185,6 @@ describe("major step page workflows", () => {
         runDone={false}
         focusedField={null}
         onReeSpecChange={onReeSpecChange}
-        onLockedChange={vi.fn()}
         onGoPage={vi.fn()}
         onFocusedFieldChange={vi.fn()}
         onRun={onRun}
@@ -295,7 +294,6 @@ describe("major step page workflows", () => {
           focusedField={null}
           badges={{}}
           onReeChange={setReeSpec}
-          onLockedChange={vi.fn()}
           onGoPage={vi.fn()}
           onFocusedFieldChange={onFocusedFieldChange}
         />

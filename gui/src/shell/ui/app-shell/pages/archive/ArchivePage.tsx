@@ -1,6 +1,12 @@
 import type { AppShellPage } from "@core/app-shell/pages";
 import type { ArtifactStatus } from "@core/artifact/ArtifactStatus";
-import type { ActionStates, Badges, ReeRunLogs } from "@core/ree/ReeTypes";
+import {
+  type ActionStates,
+  type Badges,
+  isSuccessfulStepOutcome,
+  type ReeRunLogs,
+} from "@core/ree/ReeTypes";
+import { isAuditCurrent } from "@core/ree/StepEvidence";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { ARCHIVE_REPOSITORIES } from "@core/ree-steps/archiveRepositories";
 import type { GenericReeStepParams } from "@core/ree-steps/stepTypes";
@@ -47,7 +53,7 @@ export function PageArchive({
   const repo =
     ARCHIVE_REPOSITORIES.find((archiveRepo) => archiveRepo.key === activeRepo) ||
     ARCHIVE_REPOSITORIES[0];
-  const earned = !!badges[activeRepo];
+  const earned = isSuccessfulStepOutcome(badges[activeRepo]);
   const running = actionStates[activeRepo] === "loading";
   const [params, setParams] = useState<Record<string, string | boolean>>(() =>
     Object.fromEntries(
@@ -72,12 +78,14 @@ export function PageArchive({
   // cards below already render their placeholder in that state.
   const assignedId: string | undefined = undefined;
 
-  const buildDone = !!badges.build;
-  const sbomDone = !!badges.sbom;
-  const activationDone = !!badges.activation;
+  const buildDone = isAuditCurrent(ree.audit, "runtime");
+  const sbomDone = isAuditCurrent(ree.audit, "sbom");
+  const activationDone = isAuditCurrent(ree.audit, "test_activation");
   const capstoneReady = buildDone && sbomDone && activationDone;
   const isSealed = !!artifactStatus.sealedAt;
-  const depositedAnywhere = !!badges.swh || !!badges.zenodo || !!badges.dataverse;
+  const depositedAnywhere = ["swh", "zenodo", "dataverse"].some((key) =>
+    isSuccessfulStepOutcome(badges[key]),
+  );
 
   return (
     <GlassPageShell>

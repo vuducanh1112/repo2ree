@@ -12,14 +12,15 @@ export interface UiChromeState {
    */
   page: AppShellPage;
   focusedField: string | null;
-  locked: boolean;
   repoMode: "url" | "upload";
-  sourceSnapshotArchiveName: string;
   filesConsoleOpen: boolean;
   receiptsConsoleOpen: boolean;
   benchConsoleOpen: boolean;
   logsConsoleOpen: boolean;
 }
+
+/** UI controls plus backend-derived immutability for rendered editor surfaces. */
+export type UiChromeViewState = UiChromeState & { locked: boolean };
 
 export function createInitialUiChromeState(): UiChromeState {
   return {
@@ -29,9 +30,7 @@ export function createInitialUiChromeState(): UiChromeState {
     // regardless, so this only governs where the live editor opens.
     page: PAGE.CANVAS,
     focusedField: null,
-    locked: false,
     repoMode: "url",
-    sourceSnapshotArchiveName: "",
     filesConsoleOpen: false,
     receiptsConsoleOpen: false,
     benchConsoleOpen: false,

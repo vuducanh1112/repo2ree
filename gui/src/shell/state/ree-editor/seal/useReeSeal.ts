@@ -1,8 +1,10 @@
 import type { InclusionOpts } from "@core/ree/InclusionOpts";
 import type { ReeId } from "@core/ree/ReeId";
 import type { LogEntry } from "@core/ree/ReeTypes";
+import { queryKeys } from "@shell/data/queryKeys";
 import { useReeClient } from "@shell/data/ree/client";
 import { mapReeDetailToReeProject } from "@shell/data/ree/reeMapping";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import type { ShowToast } from "../types";
 import type { HydratedWorkspaceSnapshot } from "../workspace-sync/hydrateReeWorkspace";
@@ -24,6 +26,7 @@ interface UseReeSealArgs {
  */
 export function useReeSeal({ reeId, showToast, hydrateWorkspace, flushReeIntent }: UseReeSealArgs) {
   const reeClient = useReeClient();
+  const queryClient = useQueryClient();
   const [sealRunning, setSealRunning] = useState(false);
   const [sealLog, setSealLog] = useState<LogEntry | null>(null);
 
@@ -44,6 +47,7 @@ export function useReeSeal({ reeId, showToast, hydrateWorkspace, flushReeIntent 
           includeResults: inclusionOpts.includeResults,
         });
         const project = mapReeDetailToReeProject(workspaceWire);
+        queryClient.setQueryData(queryKeys.ree(String(reeId)), project);
         hydrateWorkspace({
           workspaceFiles: project.files,
           reeArtifactFiles: project.reeFiles ?? [],
@@ -71,7 +75,7 @@ export function useReeSeal({ reeId, showToast, hydrateWorkspace, flushReeIntent 
         setSealRunning(false);
       }
     },
-    [flushReeIntent, hydrateWorkspace, reeClient, reeId, showToast],
+    [flushReeIntent, hydrateWorkspace, queryClient, reeClient, reeId, showToast],
   );
 
   return { handleSealRee, sealRunning, sealLog };

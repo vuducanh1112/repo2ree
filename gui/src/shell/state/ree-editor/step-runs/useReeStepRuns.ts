@@ -3,11 +3,13 @@ import { initialReeStepParams, mergeStepParams } from "@core/ree-steps/stepCatal
 import { createStepCommandPlanners } from "@core/ree-steps/stepCommands";
 import type { ReeStepKey, ReeStepRunParams } from "@core/ree-steps/stepRunParams";
 import type { GenericReeStepParams } from "@core/ree-steps/stepTypes";
+import { activeRunForOperation } from "@core/runs/stepRuns";
 import type { FileTreeNode } from "@core/workspace/FileTree";
 import { appShellPorts } from "@shell/app/bootstrap/appShellPorts";
 import { useReeId } from "@shell/data/apiRuntime";
 import { useReeRunsClient } from "@shell/data/runs/client";
 import { useCancelReeRunMutation, useStartReeRunMutation } from "@shell/data/runs/mutations";
+import { useReeRunsQuery } from "@shell/data/runs/queries";
 import { setStepParams } from "@shell/state/ree-editor/store/actions";
 import type { AppShellAction } from "@shell/state/ree-editor/store/types";
 import { useQueryClient } from "@tanstack/react-query";
@@ -28,7 +30,6 @@ interface UseReeStepRunsArgs {
   ) => Promise<void>;
   refreshWorkspace: () => Promise<HydratedWorkspaceSnapshot>;
   showToast: ShowToast;
-  getActiveRunId: (key: string) => string | undefined;
 }
 
 export function useReeStepRuns({
@@ -38,13 +39,18 @@ export function useReeStepRuns({
   persistWorkspaceFile,
   refreshWorkspace,
   showToast,
-  getActiveRunId,
 }: UseReeStepRunsArgs) {
   const reeId = useReeId();
   const queryClient = useQueryClient();
   const executionRunsClient = useReeRunsClient();
   const { mutateAsync: startReeRun } = useStartReeRunMutation(reeId);
   const { mutateAsync: cancelReeRun } = useCancelReeRunMutation(reeId);
+  const runsQuery = useReeRunsQuery(reeId);
+  const runs = runsQuery.data ?? [];
+  const getActiveRunId = useCallback(
+    (key: string) => activeRunForOperation(runs, key)?.runId,
+    [runs],
+  );
 
   const stepCommandPlanners = useMemo(
     () =>

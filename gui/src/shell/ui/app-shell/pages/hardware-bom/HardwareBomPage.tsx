@@ -94,7 +94,6 @@ export function PageHardwareBom({
   ts,
   focusedField,
   onReeSpecChange,
-  onLockedChange,
   onFocusedFieldChange,
   onRun,
   onCancel,
@@ -238,11 +237,6 @@ export function PageHardwareBom({
 
   const headerRight = (
     <div className={styles.headerActions}>
-      {locked && (
-        <Button size="small" icon={Ic.unlock(13)} onClick={() => onLockedChange(false)}>
-          Unlock fields
-        </Button>
-      )}
       {running && onCancel && (
         <Button
           variant="danger"

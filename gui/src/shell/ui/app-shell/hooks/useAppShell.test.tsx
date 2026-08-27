@@ -7,12 +7,11 @@ const mocks = vi.hoisted(() => ({
   useReeEditor: vi.fn(),
   state: {
     reeIntent: { reeSpec: { name: "test" } },
-    reeSession: { workspaceSourceState: {}, artifactStatus: {} },
     stepRuns: { badges: {} },
     uiChrome: { page: "canvas" },
   },
   editor: {
-    model: { provisioned: true },
+    model: { provisioned: true, ree: { artifact: {} } },
     sync: { isReeIntentDirty: false },
     commands: { setPage: vi.fn() },
     seal: { running: false, log: null },
@@ -36,11 +35,12 @@ describe("useAppShell", () => {
 
     expect(mocks.useReeEditor).toHaveBeenCalledWith({
       reeIntent: mocks.state.reeIntent,
-      reeSession: mocks.state.reeSession,
       stepRuns: mocks.state.stepRuns,
-      uiChrome: mocks.state.uiChrome,
       dispatch: mocks.dispatch,
     });
-    expect(result.current).toEqual({ ...mocks.editor, chrome: mocks.state.uiChrome });
+    expect(result.current).toEqual({
+      ...mocks.editor,
+      chrome: { ...mocks.state.uiChrome, locked: false },
+    });
   });
 });

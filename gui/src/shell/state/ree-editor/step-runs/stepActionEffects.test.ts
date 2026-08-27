@@ -45,17 +45,8 @@ describe("stepActionEffects", () => {
     executeStepCommands(commands, { dispatch, persistWorkspaceFile, showToast });
 
     expect(dispatch.mock.calls.map(([action]) => action.type)).toEqual([
-      "setStepRunLoading",
-      "setActiveRunId",
-      "completeStepRun",
       "updateReeSpec",
-      "setWorkspaceSourceState",
-      "setArtifactStatus",
-      "setEvaluationState",
       "updateReeSpec",
-      "setArtifactStatus",
-      "setEvaluationState",
-      "setLocked",
     ]);
     expect(persistWorkspaceFile).toHaveBeenCalledWith("result.txt", "ok");
     expect(showToast).toHaveBeenCalledWith("Done", "success");
@@ -87,13 +78,8 @@ describe("stepActionEffects", () => {
     executeSourceCommands(commands, { dispatch, showToast });
 
     expect(dispatch.mock.calls.map(([action]) => action.type)).toEqual([
-      "setStepRunLoading",
-      "setActiveRunId",
       "resetStepsAfterSourceChange",
       "updateReeSpec",
-      "setWorkspaceSourceState",
-      "setArtifactStatus",
-      "setEvaluationState",
       "applySourceOutcome",
     ]);
     expect(showToast).toHaveBeenCalledWith("Acquired", "success");

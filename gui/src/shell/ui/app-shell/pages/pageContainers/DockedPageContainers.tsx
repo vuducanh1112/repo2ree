@@ -1,3 +1,4 @@
+import { isSuccessfulStepOutcome } from "@core/ree/ReeTypes";
 import { useReeId } from "@shell/data/apiRuntime";
 import { useStepRunLogEntry } from "@shell/state/ree-editor/step-runs/useStepRunLogEntry";
 import { type ComponentType, type LazyExoticComponent, lazy } from "react";
@@ -58,7 +59,7 @@ export function MetadataPageContainer({
 }: MetadataPageContainerProps) {
   const { focusedField, locked } = uiChrome;
   const { reeSpec } = reeIntent;
-  const { badges } = stepRuns;
+  const badges = stepRuns.badges ?? {};
 
   return (
     <PageMetadataEntry
@@ -67,7 +68,6 @@ export function MetadataPageContainer({
       badges={badges}
       focusedField={focusedField}
       onReeChange={commands.setReeSpec}
-      onLockedChange={commands.setLocked}
       onGoPage={commands.setPage}
       onFocusedFieldChange={commands.setFocusedField}
     />
@@ -84,7 +84,7 @@ export function ExperimentsPageContainer({
   const reeId = useReeId();
   const { focusedField, locked } = uiChrome;
   const { reeSpec } = reeIntent;
-  const { badges } = stepRuns;
+  const badges = stepRuns.badges ?? {};
   const { workspaceFiles } = workspaceRemote;
 
   return (
@@ -112,10 +112,13 @@ export function HardwareBomPageContainer({
 }: HardwareBomPageContainerProps) {
   const reeId = useReeId();
   const { focusedField, locked } = uiChrome;
-  const { badges, actionStates, timestamps } = stepRuns;
+  const badges = stepRuns.badges ?? {};
+  const actionStates = stepRuns.actionStates ?? {};
+  const timestamps = stepRuns.timestamps ?? {};
+  const activeRunIds = stepRuns.activeRunIds ?? {};
   const hbomLog = useStepRunLogEntry({
     reeId,
-    runId: stepRuns.activeRunIds.hbom,
+    runId: activeRunIds.hbom,
     fallbackTimestamp: timestamps.hbom,
   });
 
@@ -126,11 +129,10 @@ export function HardwareBomPageContainer({
       badges={badges}
       log={hbomLog}
       running={actionStates.hbom === "loading"}
-      runDone={!!badges.hbom}
+      runDone={isSuccessfulStepOutcome(badges.hbom)}
       ts={timestamps.hbom}
       focusedField={focusedField}
       onReeSpecChange={commands.setReeSpec}
-      onLockedChange={commands.setLocked}
       onGoPage={commands.setPage}
       onFocusedFieldChange={commands.setFocusedField}
       onRun={commands.onRunStep}
@@ -141,7 +143,7 @@ export function HardwareBomPageContainer({
 
 export function StepPageContainer(props: StepPageContainerProps) {
   const { ree, workspaceRemote, stepRuns, commands, currentReeFiles } = props;
-  const { badges } = stepRuns;
+  const badges = stepRuns.badges ?? {};
   const { workspaceFiles, workspaceSourceState, artifactStatus } = workspaceRemote;
 
   const stepPageController = useStepPageController(props);
@@ -179,7 +181,7 @@ export function StepPageContainer(props: StepPageContainerProps) {
         reeFiles={currentReeFiles}
         workspaceSourceState={workspaceSourceState}
         artifactStatus={artifactStatus}
-        evaluationState={stepRuns.evaluationState}
+        evaluationState={ree.evaluation}
         log={log}
         running={running}
         runDone={runDone}
@@ -191,9 +193,6 @@ export function StepPageContainer(props: StepPageContainerProps) {
         onGo={commands.setPage}
         onGoFields={goToRequirements}
         onReeSpecChange={commands.setReeSpec}
-        onArtifactStatusChange={commands.setArtifactStatus}
-        onWorkspaceSourceStateChange={commands.setWorkspaceSourceState}
-        onEvaluationStateChange={commands.setEvaluationState}
         onPersistWorkspaceFile={commands.onPersistWorkspaceFile}
         missing={missing}
         params={params}

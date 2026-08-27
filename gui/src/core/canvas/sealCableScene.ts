@@ -1,6 +1,6 @@
 import { PAGE } from "../app-shell/pages";
 import { hbomHasAnyComponents } from "../hbom/HbomSummary";
-import type { Badges } from "../ree/ReeTypes";
+import { isAuditCurrent } from "../ree/StepEvidence";
 import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 
 interface SealCableItem {
@@ -9,7 +9,7 @@ interface SealCableItem {
   live: boolean;
 }
 
-export function buildSealCableItems(ree: ReeEditorViewModel, badges: Badges): SealCableItem[] {
+export function buildSealCableItems(ree: ReeEditorViewModel): SealCableItem[] {
   return [
     {
       key: PAGE.METADATA,
@@ -31,14 +31,18 @@ export function buildSealCableItems(ree: ReeEditorViewModel, badges: Badges): Se
     // from the acquired tree and asserts nothing about any archive holding it.
     { key: "swh", label: "Source identity", live: !!ree.spec.swhid },
     { key: "sbom", label: "SBOM", live: !!ree.spec.sbom },
-    { key: "evaluate", label: "Reproducibility Readiness", live: !!badges?.evaluate },
+    {
+      key: "evaluate",
+      label: "Reproducibility Readiness",
+      live: isAuditCurrent(ree.audit, "evaluation"),
+    },
     // Never live until deposits are read back from archive-binding attestations;
     // nothing on the spec can stand in for "an archive accepted this bundle".
     { key: "archive", label: "Archival & DOIs", live: false },
     {
       key: "activation",
       label: "Test Activation",
-      live: !!badges?.activation,
+      live: isAuditCurrent(ree.audit, "test_activation"),
     },
   ];
 }

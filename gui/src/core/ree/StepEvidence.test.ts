@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { isEvidenceCurrent, isEvidenceStale, mapRawStepEvidence } from "./StepEvidence";
+import {
+  auditReceiptRunId,
+  isEvidenceCurrent,
+  isEvidenceStale,
+  mapRawReeAudit,
+  mapRawStepEvidence,
+} from "./StepEvidence";
 
 describe("mapRawStepEvidence", () => {
   it("reads each audited step's standing off the wire audit", () => {
@@ -25,6 +31,37 @@ describe("mapRawStepEvidence", () => {
   it("reads an absent audit as an REE that has recorded nothing", () => {
     expect(mapRawStepEvidence(undefined)).toEqual({});
     expect(isEvidenceCurrent(mapRawStepEvidence(null), "runtime")).toBe(false);
+  });
+});
+
+describe("mapRawReeAudit", () => {
+  it("retains backend reasons, payload standing, receipt run ids, and experiments", () => {
+    const audit = mapRawReeAudit({
+      runtime: {
+        evidence: "stale",
+        payload: "present",
+        receipt_run_id: "run-build-1",
+        reasons: ["build script changed"],
+      },
+      experiments: [
+        {
+          name: "demo",
+          run: { evidence: "current", payload: "present", receipt_run_id: "run-exp-1" },
+        },
+      ],
+    });
+
+    expect(audit.runtime).toEqual({
+      evidence: "stale",
+      payload: "present",
+      receiptRunId: "run-build-1",
+      reasons: ["build script changed"],
+    });
+    expect(auditReceiptRunId(audit, "runtime")).toBe("run-build-1");
+    expect(audit.experiments?.[0]).toMatchObject({
+      name: "demo",
+      run: { evidence: "current", receiptRunId: "run-exp-1" },
+    });
   });
 });
 

@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
+import type { EvidenceStep } from "../ree/StepEvidence";
 import {
   createEmptyReeEditorViewModel,
   patchReeEditorViewModel,
 } from "../ree-editor/reeEditorViewModel";
 import { buildSealCableItems } from "./sealCableScene";
+
+const activationStep: EvidenceStep = "test_activation";
 
 describe("buildSealCableItems", () => {
   it("projects domain state into cable liveness", () => {
@@ -15,9 +18,10 @@ describe("buildSealCableItems", () => {
         sbom: "artifacts/sbom.json",
       },
       source: { sourceAvailable: true },
+      audit: { evaluation: "current", [activationStep]: "current" },
     });
 
-    const items = buildSealCableItems(ree, { evaluate: true, activation: true });
+    const items = buildSealCableItems(ree);
     const liveByKey = Object.fromEntries(items.map((item) => [item.key, item.live]));
 
     expect(liveByKey).toMatchObject({

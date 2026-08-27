@@ -1,22 +1,15 @@
 import type { AppShellPage } from "@core/app-shell/pages";
-import type { ArtifactStatus } from "@core/artifact/ArtifactStatus";
-import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import type { InclusionOpts } from "@core/ree/InclusionOpts";
 import type { ReeSpec } from "@core/ree/ReeSpec";
 import type { ReeStepParams, SourceUploadCommit } from "@core/ree/ReeTypes";
 import type { ReeStepKey, ReeStepRunParams } from "@core/ree-steps/stepRunParams";
 import type { GenericReeStepParams } from "@core/ree-steps/stepTypes";
-import type { WorkspaceSourceState } from "@core/workspace/WorkspaceSourceState";
 import {
   clearToast,
   patch,
-  setArtifactStatus,
-  setEvaluationState,
   setFocusedField,
-  setLocked,
   setRepoMode,
   setStepParams,
-  setWorkspaceSourceState,
   updateReeSpec,
 } from "@shell/state/ree-editor/store/actions";
 import type { AppShellAction, Updater } from "@shell/state/ree-editor/store/types";
@@ -47,15 +40,11 @@ interface CreateReeEditorCommandsArgs {
 
 export interface EditorStateCommands {
   setReeSpec(value: Updater<ReeSpec>): void;
-  setWorkspaceSourceState(value: Updater<WorkspaceSourceState>): void;
-  setArtifactStatus(value: Updater<ArtifactStatus>): void;
-  setEvaluationState(value: Updater<EvaluationState>): void;
   setStepParams(value: Updater<ReeStepParams>): void;
 }
 
 export interface EditorChromeCommands {
   setPage(nextPage: AppShellPage): void;
-  setLocked(value: Updater<boolean>): void;
   setRepoMode(value: Updater<"url" | "upload">): void;
   setFocusedField(value: Updater<string | null>): void;
   setFilesConsoleOpen(open: boolean): void;
@@ -115,11 +104,6 @@ export function createReeEditorCommands({
   return {
     setPage: (nextPage: AppShellPage) => dispatch(patch("uiChrome", { page: nextPage })),
     setReeSpec: (value: Updater<ReeSpec>) => dispatch(updateReeSpec(value)),
-    setWorkspaceSourceState: (value: Updater<WorkspaceSourceState>) =>
-      dispatch(setWorkspaceSourceState(value)),
-    setArtifactStatus: (value: Updater<ArtifactStatus>) => dispatch(setArtifactStatus(value)),
-    setEvaluationState: (value: Updater<EvaluationState>) => dispatch(setEvaluationState(value)),
-    setLocked: (value: Updater<boolean>) => dispatch(setLocked(value)),
     setRepoMode: (value: Updater<"url" | "upload">) => dispatch(setRepoMode(value)),
     setFocusedField: (value: Updater<string | null>) => dispatch(setFocusedField(value)),
     setStepParams: (value: ReeStepParams | ((current: ReeStepParams) => ReeStepParams)) =>

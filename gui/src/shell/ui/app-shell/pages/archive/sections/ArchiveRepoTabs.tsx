@@ -1,4 +1,4 @@
-import type { Badges } from "@core/ree/ReeTypes";
+import { type Badges, isSuccessfulStepOutcome } from "@core/ree/ReeTypes";
 import type { ArchiveRepo } from "@core/ree-steps/stepTypes";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { SegmentedControl } from "@shell/ui/shared/components/SegmentedControl";
@@ -26,7 +26,7 @@ export function ArchiveRepoTabs({
         segments={repositories.map((archiveRepo) => ({
           key: archiveRepo.key,
           label: archiveRepo.label,
-          icon: badges[archiveRepo.key] ? Ic.check(13) : undefined,
+          icon: isSuccessfulStepOutcome(badges[archiveRepo.key]) ? Ic.check(13) : undefined,
         }))}
         onChange={onSelect}
       />

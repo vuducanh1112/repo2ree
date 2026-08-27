@@ -1,23 +1,16 @@
-import { type EvaluationState, emptyEvaluationState } from "@core/evaluate/EvaluationState";
-import type { ActionStates, Badges, ReeStepParams, Timestamps } from "@core/ree/ReeTypes";
+import type { ReeStepParams } from "@core/ree/ReeTypes";
 import { initialReeStepParams } from "@core/ree-steps/stepCatalog";
+import type { StepRunProjection } from "@core/runs/stepRunProjection";
 
-export interface StepRunState {
-  actionStates: ActionStates;
-  badges: Badges;
-  timestamps: Timestamps;
+export interface StepRunFormState {
   stepParams: ReeStepParams;
-  evaluationState: EvaluationState;
-  activeRunIds: Record<string, string>;
 }
 
-export function createInitialStepRunState(): StepRunState {
+/** Backend-run projection plus the few local form values a step page owns. */
+export type StepRunState = StepRunFormState & StepRunProjection;
+
+export function createInitialStepRunState(): StepRunFormState {
   return {
-    actionStates: {},
-    badges: {},
-    timestamps: {},
     stepParams: initialReeStepParams(),
-    evaluationState: emptyEvaluationState(),
-    activeRunIds: {},
   };
 }

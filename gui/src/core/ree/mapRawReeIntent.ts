@@ -14,7 +14,12 @@ import {
   type ReeRunnable,
   type ReeSpec,
 } from "./ReeSpec";
-import { mapRawStepEvidence, type StepEvidence } from "./StepEvidence";
+import {
+  mapRawReeAudit,
+  mapRawStepEvidence,
+  type ReeAudit,
+  type StepEvidence,
+} from "./StepEvidence";
 
 // ================================================
 // Types
@@ -35,6 +40,7 @@ export interface RawReeIntentSlices {
   artifactStatus: ArtifactStatus;
   evaluationState: EvaluationState;
   stepEvidence: StepEvidence;
+  audit: ReeAudit;
 }
 
 // ================================================
@@ -175,5 +181,6 @@ export function mapRawReeIntentToSlices({
         : undefined,
     },
     stepEvidence: mapRawStepEvidence(audit),
+    audit: mapRawReeAudit(audit),
   };
 }

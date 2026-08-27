@@ -31,10 +31,6 @@ describe("createReeEditorCommands", () => {
 
     commands.setPage(PAGE.BUILD);
     commands.setReeSpec((current) => ({ ...current, name: "Updated" }));
-    commands.setWorkspaceSourceState({ sourceAvailable: true });
-    commands.setArtifactStatus({ runtimeIncluded: true });
-    commands.setEvaluationState({ dependencyLevel: 2 });
-    commands.setLocked((current) => !current);
     commands.setRepoMode((current) => (current === "url" ? "upload" : "url"));
     commands.setFocusedField(() => "name");
     commands.setStepParams((current) => current);
@@ -56,10 +52,6 @@ describe("createReeEditorCommands", () => {
     expect(dispatch.mock.calls.map(([action]) => action.type)).toEqual([
       "patch",
       "updateReeSpec",
-      "setWorkspaceSourceState",
-      "setArtifactStatus",
-      "setEvaluationState",
-      "setLocked",
       "setRepoMode",
       "setFocusedField",
       "setStepParams",
@@ -85,13 +77,10 @@ describe("createReeEditorCommands", () => {
       ...current,
       catalogMetadata: { ...current.catalogMetadata, version: "2" },
     }));
-    commands.setLocked((current) => !current);
-    commands.setLocked((current) => !current);
     commands.setStepParams(createInitialState().stepRuns.stepParams);
 
     expect(state.reeIntent.reeSpec.name).toBe("first update");
     expect(state.reeIntent.reeSpec.catalogMetadata.version).toBe("2");
-    expect(state.uiChrome.locked).toBe(false);
     expect(state.stepRuns.stepParams.build).toEqual({});
   });
 

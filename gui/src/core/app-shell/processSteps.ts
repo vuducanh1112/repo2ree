@@ -1,8 +1,8 @@
 import { type AppShellPage, PAGE } from "@core/app-shell/pages";
 import { hbomHasAnyComponents } from "@core/hbom/HbomSummary";
 import { isCatalogMetadataComplete } from "@core/ree/catalogMetadataOps";
-import type { Badges } from "@core/ree/ReeTypes";
-import { type EvidenceStep, isEvidenceCurrent } from "@core/ree/StepEvidence";
+import { type Badges, isSuccessfulStepOutcome } from "@core/ree/ReeTypes";
+import { type EvidenceStep, isAuditCurrent } from "@core/ree/StepEvidence";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { REE_STEPS } from "@core/ree-steps/stepCatalog";
 import type { ReeStepDefinition } from "@core/ree-steps/stepTypes";
@@ -122,11 +122,12 @@ function hasProcessStepCompleted(stepKey: AppShellPage, ree: ReeEditorViewModel,
     return (ree.spec.experiments || []).some((entry) => !!entry.name.trim());
   if (stepKey === PAGE.HBOM) return hbomHasAnyComponents(ree.spec.hardwareDescription);
   if (stepKey === PAGE.SEAL) return !!ree.artifact.sealedAt;
-  // Deposits are not audited on the aggregate, so they stay session-badged.
-  if (stepKey === PAGE.ARCHIVE) return !!badges?.swh || !!badges?.zenodo || !!badges?.dataverse;
+  // Deposits are not audited on the aggregate, so they come from durable run outcomes.
+  if (stepKey === PAGE.ARCHIVE)
+    return ["swh", "zenodo", "dataverse"].some((key) => isSuccessfulStepOutcome(badges?.[key]));
   const evidenceStep = EVIDENCE_STEP_BY_PAGE[stepKey];
-  if (evidenceStep) return isEvidenceCurrent(ree.audit, evidenceStep);
-  return !!badges?.[stepKey];
+  if (evidenceStep) return isAuditCurrent(ree.audit, evidenceStep);
+  return isSuccessfulStepOutcome(badges?.[stepKey]);
 }
 
 export function resolveNavCompleted(

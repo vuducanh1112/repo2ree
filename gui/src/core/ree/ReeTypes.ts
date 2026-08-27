@@ -1,18 +1,18 @@
 import type { ReeStepParams as ReeStepParamsShape } from "../ree-steps/ReeStepParams";
 
-// Terminal outcome of an step run, kept on the badge entry so the UI can
-// tell a failed run apart from a successful one. Values are truthy on purpose:
-// consumers that only care about "has this step run" keep using `!!badges[key]`.
+// Terminal outcome of a step run, kept on the badge entry so the UI can
+// tell a failed run apart from a successful one.
 export type StepRunOutcome = "succeeded" | "failed" | "canceled";
 
 // `boolean` remains for writers outside the step-run flow (source
 // acquisition, archive repos) that only track completion.
 export type Badges = Record<string, boolean | StepRunOutcome>;
 
-/** True when the entry records a run that finished without succeeding. */
-export function isFailedStepOutcome(value: Badges[string] | undefined): boolean {
-  return value === "failed" || value === "canceled";
+/** True only when an entry records successful completion. */
+export function isSuccessfulStepOutcome(value: Badges[string] | undefined): boolean {
+  return value === true || value === "succeeded";
 }
+
 export type Timestamps = Record<string, string>;
 export type ActionStates = Record<string, "loading" | "done">;
 export type ReeRunLogs = Record<string, LogEntry>;

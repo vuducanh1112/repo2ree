@@ -14,7 +14,6 @@ import type { ReeRun } from "@core/runs/ReeRun";
 import type { FileTreeNode } from "@core/workspace/FileTree";
 import type { AppShellRuntimePorts } from "@shell/app/bootstrap/ports";
 import type { ReeRunsClient } from "@shell/data/runs/client";
-import { cancelStepRun } from "@shell/state/ree-editor/store/actions";
 import type { QueryClient } from "@tanstack/react-query";
 import type { ShowToast } from "../types";
 import { executeStepRunAction } from "./executeStepRunAction";
@@ -102,7 +101,6 @@ export function createStepRunGateway({
     try {
       await cancelReeRun(plan.runId);
       showToast(cancelSuccessMessage(key), "info");
-      dispatch(cancelStepRun(key, plan.runId));
     } catch (error) {
       showToast(cancelFailureMessage(key, error), "error");
     }

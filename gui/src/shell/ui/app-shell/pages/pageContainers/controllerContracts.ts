@@ -5,12 +5,9 @@ import type { ReeEditorCommands } from "@shell/state/ree-editor/hooks/createReeE
 import type { WorkspaceRemoteState } from "@shell/state/ree-editor/hooks/useReeEditor";
 import type { ReeIntentState } from "@shell/state/ree-editor/store/reeIntent";
 import type { StepRunState } from "@shell/state/ree-editor/store/stepRunState";
-import type { UiChromeState } from "@shell/state/ree-editor/store/uiChrome";
+import type { UiChromeViewState } from "@shell/state/ree-editor/store/uiChrome";
 
-type MetadataCommands = Pick<
-  ReeEditorCommands,
-  "setReeSpec" | "setLocked" | "setPage" | "setFocusedField"
->;
+type MetadataCommands = Pick<ReeEditorCommands, "setReeSpec" | "setPage" | "setFocusedField">;
 
 type ExperimentCommands = Pick<
   ReeEditorCommands,
@@ -24,9 +21,6 @@ export type StepCommands = Pick<
   | "onRunStep"
   | "onCancelAction"
   | "setReeSpec"
-  | "setArtifactStatus"
-  | "setWorkspaceSourceState"
-  | "setEvaluationState"
   | "onPersistWorkspaceFile"
 >;
 
@@ -35,14 +29,14 @@ type ArchiveCommands = Pick<ReeEditorCommands, "onRunAction" | "setPage">;
 export interface MetadataPageContainerProps {
   reeIntent: ReeIntentState;
   stepRuns: StepRunState;
-  uiChrome: UiChromeState;
+  uiChrome: UiChromeViewState;
   commands: MetadataCommands;
 }
 
 export interface ExperimentsPageContainerProps {
   reeIntent: ReeIntentState;
   stepRuns: StepRunState;
-  uiChrome: UiChromeState;
+  uiChrome: UiChromeViewState;
   workspaceRemote: WorkspaceRemoteState;
   commands: ExperimentCommands;
 }
@@ -50,10 +44,10 @@ export interface ExperimentsPageContainerProps {
 export interface HardwareBomPageContainerProps {
   ree: ReeEditorViewModel;
   stepRuns: StepRunState;
-  uiChrome: UiChromeState;
+  uiChrome: UiChromeViewState;
   commands: Pick<
     ReeEditorCommands,
-    "setReeSpec" | "setLocked" | "setPage" | "setFocusedField" | "onRunStep" | "onCancelAction"
+    "setReeSpec" | "setPage" | "setFocusedField" | "onRunStep" | "onCancelAction"
   >;
 }
 
@@ -63,7 +57,7 @@ export interface StepPageContainerProps {
   ree: ReeEditorViewModel;
   workspaceRemote: WorkspaceRemoteState;
   stepRuns: StepRunState;
-  uiChrome: UiChromeState;
+  uiChrome: UiChromeViewState;
   currentReeFiles: ReeFile[];
   commands: StepCommands;
 }
@@ -86,7 +80,7 @@ export interface AppShellContentProps {
   reeIntent: ReeIntentState;
   workspaceRemote: WorkspaceRemoteState;
   stepRuns: StepRunState;
-  uiChrome: UiChromeState;
+  uiChrome: UiChromeViewState;
   currentReeFiles: ReeFile[];
   commands: ReeEditorCommands;
 }

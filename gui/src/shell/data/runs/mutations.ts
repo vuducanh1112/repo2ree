@@ -17,9 +17,10 @@ export function useStartReeRunMutation(reeId?: string) {
       executionRunsClient.startReeRun(resolvedReeId, scriptKey, params),
     onSuccess: async (run) => {
       queryClient.setQueryData(queryKeys.stepRuns(resolvedReeId, run.runId), run);
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.stepRuns(resolvedReeId, run.runId),
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.stepRuns(resolvedReeId, run.runId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.reeRuns(resolvedReeId) }),
+      ]);
     },
   });
 }
@@ -40,6 +41,7 @@ export function useStartExperimentRunMutation(reeId?: string) {
       executionRunsClient.startExperimentRun(resolvedReeId, experimentName),
     onSuccess: ({ reeId: startedReeId, run }) => {
       queryClient.setQueryData(queryKeys.stepRuns(startedReeId, run.runId), run);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.reeRuns(startedReeId) });
     },
   });
 }
@@ -56,9 +58,10 @@ export function useCancelReeRunMutation(reeId?: string) {
       return { runId, status };
     },
     onSuccess: async ({ runId }) => {
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.stepRuns(resolvedReeId, runId),
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.stepRuns(resolvedReeId, runId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.reeRuns(resolvedReeId) }),
+      ]);
     },
   });
 }

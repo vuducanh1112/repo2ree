@@ -102,6 +102,10 @@ export function createSourceActions({
         }),
       onRunStarted: (key, runId) => {
         runCommands([{ type: "setActiveRunId", key, runId }]);
+        void queryClient.invalidateQueries({ queryKey: queryKeys.reeRuns(reeId) });
+      },
+      onRunFinished: () => {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.reeRuns(reeId) });
       },
       onUpdateLogs: (update) => {
         runCommands([{ type: "setSourceLog", lines: update.lines, ts: update.ts }]);

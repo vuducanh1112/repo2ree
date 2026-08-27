@@ -10,6 +10,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useStepPageController } from "./useStepPageController";
 
 const runQueries = vi.hoisted(() => ({
+  runs: [] as Array<{
+    runId: string;
+    operation: "build";
+    status: "queued" | "running" | "succeeded" | "failed" | "canceled";
+    createdAt: string;
+    startedAt?: string;
+    finishedAt?: string;
+  }>,
   run: undefined as
     | {
         runId: string;
@@ -24,8 +32,24 @@ const runQueries = vi.hoisted(() => ({
 
 vi.mock("@shell/data/apiRuntime", () => ({ useReeId: () => "ree-1" }));
 vi.mock("@shell/data/runs/queries", () => ({
+  useReeRunsQuery: () => ({ data: runQueries.runs }),
   useReeRunQuery: () => ({ data: runQueries.run }),
   useReeRunLogsQuery: () => ({ data: runQueries.lines }),
+}));
+vi.mock("@shell/data/reeSteps/queries", () => ({
+  useAuthoringStepsQuery: () => ({
+    data: [
+      { key: "source", order: 1, label: "Source Acquisition", requires: [], actions: [] },
+      {
+        key: "evaluate",
+        order: 4,
+        label: "Reproducibility Readiness",
+        requires: ["source"],
+        actions: [],
+      },
+      { key: "build", order: 5, label: "Build Runtime", requires: ["source"], actions: [] },
+    ],
+  }),
 }));
 
 type ControllerArgs = Parameters<typeof useStepPageController>[0];
@@ -52,6 +76,7 @@ describe("useStepPageController", () => {
   beforeEach(() => {
     runQueries.run = undefined;
     runQueries.lines = undefined;
+    runQueries.runs = [];
   });
 
   it("returns no controller outside a step page", () => {
@@ -70,7 +95,7 @@ describe("useStepPageController", () => {
 
     expect(result.current?.params).toEqual({ strict: false });
     expect(result.current?.missing).toEqual([
-      { field: "sourceAvailable", label: "Source loaded in workspace" },
+      { field: "sourceAvailable", label: "Source Acquisition" },
     ]);
 
     act(() => result.current?.setParam("strict", true));
@@ -106,20 +131,25 @@ describe("useStepPageController", () => {
     ["failed", true, false],
     ["canceled", true, false],
   ] as const)("maps a %s outcome to failure and badge state", (outcome, failed, earned) => {
-    const { args } = controllerArgs({
-      stepRuns: {
-        badges: { build: outcome },
-        actionStates: { build: "loading" },
-        timestamps: { build: "fallback" },
+    runQueries.runs = [
+      {
+        runId: "run-1",
+        operation: "build",
+        status: outcome,
+        createdAt: "created",
+        finishedAt: "finished",
       },
+    ];
+    const { args } = controllerArgs({
+      ree: earned ? { audit: { runtime: "current" } } : undefined,
     });
     const { result } = renderHook(() => useStepPageController(args));
 
     expect(result.current).toMatchObject({
-      running: true,
+      running: false,
       runDone: true,
       runFailed: failed,
-      ts: "fallback",
+      ts: "finished",
     });
     expect(!!result.current?.badge).toBe(earned);
   });
@@ -131,6 +161,16 @@ describe("useStepPageController", () => {
     [{ createdAt: "" }, "fallback"],
   ])("uses the run timestamp fallback chain", (timestamps, expected) => {
     runQueries.run = { runId: "run-1", status: "succeeded", ...timestamps };
+    runQueries.runs = [
+      {
+        runId: "run-1",
+        operation: "build",
+        status: "succeeded",
+        createdAt: timestamps.createdAt,
+        startedAt: "startedAt" in timestamps ? timestamps.startedAt : undefined,
+        finishedAt: "finishedAt" in timestamps ? timestamps.finishedAt : undefined,
+      },
+    ];
     runQueries.lines = {
       lines: [{ type: "info", msg: "building" }],
       hasMore: false,
@@ -149,6 +189,14 @@ describe("useStepPageController", () => {
   });
 
   it("returns an empty log and generated timestamp when the run has no data", () => {
+    runQueries.runs = [
+      {
+        runId: "run-1",
+        operation: "build",
+        status: "running",
+        createdAt: "",
+      },
+    ];
     const { args } = controllerArgs({
       stepRuns: { activeRunIds: { build: "run-1" } },
     });

@@ -1,7 +1,7 @@
 import type { ArtifactStatus } from "../../core/artifact/ArtifactStatus";
 import type { EvaluationState } from "../../core/evaluate/EvaluationState";
 import { createEmptyReeSpec, type ReeSpec } from "../../core/ree/ReeSpec";
-import { createEmptyStepEvidence, type StepEvidence } from "../../core/ree/StepEvidence";
+import type { ReeAudit } from "../../core/ree/StepEvidence";
 import type { WorkspaceSourceState } from "../../core/workspace/WorkspaceSourceState";
 import type { ReeEditorState } from "./reeEditorState";
 
@@ -15,7 +15,7 @@ export interface ReeEditorViewModel {
    * the backend's `ReeAudit` rather than "evidence" so it cannot be misread as
    * a sibling of `evaluation`, which carries the readiness axes.
    */
-  audit: StepEvidence;
+  audit: ReeAudit;
 }
 
 export interface ReeEditorViewModelPatch {
@@ -23,7 +23,7 @@ export interface ReeEditorViewModelPatch {
   source?: Partial<WorkspaceSourceState>;
   artifact?: Partial<ArtifactStatus>;
   evaluation?: Partial<EvaluationState>;
-  audit?: Partial<StepEvidence>;
+  audit?: Partial<ReeAudit>;
 }
 
 export function patchReeEditorViewModel(
@@ -49,7 +49,7 @@ export function createEmptyReeEditorViewModel(): ReeEditorViewModel {
       environmentLevel: 0,
       machineLevel: 0,
     },
-    audit: createEmptyStepEvidence(),
+    audit: { experiments: [] },
   };
 }
 
@@ -57,13 +57,21 @@ export function createReeEditorViewModel(
   editorState: Pick<
     ReeEditorState,
     "reeSpec" | "workspaceSourceState" | "artifactStatus" | "evaluationState" | "stepEvidence"
-  >,
+  > & { audit?: ReeAudit },
 ): ReeEditorViewModel {
   return {
     spec: editorState.reeSpec,
     source: editorState.workspaceSourceState,
     artifact: editorState.artifactStatus,
     evaluation: editorState.evaluationState,
-    audit: editorState.stepEvidence,
+    audit: editorState.audit ?? {
+      ...Object.fromEntries(
+        Object.entries(editorState.stepEvidence).map(([key, evidence]) => [
+          key,
+          { evidence, payload: "missing", reasons: [] },
+        ]),
+      ),
+      experiments: [],
+    },
   };
 }

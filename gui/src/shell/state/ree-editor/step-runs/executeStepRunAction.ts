@@ -7,6 +7,7 @@ import type { GenericReeStepParams } from "@core/ree-steps/stepTypes";
 import type { ReeRun } from "@core/runs/ReeRun";
 import type { FileTreeNode } from "@core/workspace/FileTree";
 import type { AppShellRuntimePorts } from "@shell/app/bootstrap/ports";
+import { queryKeys } from "@shell/data/queryKeys";
 import type { ReeRunsClient } from "@shell/data/runs/client";
 import { observeReeRun } from "@shell/data/runs/queries";
 import type { QueryClient } from "@tanstack/react-query";
@@ -60,32 +61,39 @@ export async function executeStepRunAction({
   const runCommands = (commands: StepCommand[]) =>
     executeStepCommands(commands, { dispatch, persistWorkspaceFile, showToast });
 
-  return executeStepRun({
-    key,
-    params,
-    ree: ree.spec,
-    workspaceFiles,
-    executionRunner: {
-      startReeRun: (scriptKey, runParams) => startReeRun(scriptKey, runParams),
-      pollRun: (runId, onUpdateLogs) =>
-        observeReeRun(queryClient, executionRunsClient, {
-          reeId,
-          runId,
-          onUpdate: onUpdateLogs,
-          sleep: ports.sleep,
-        }),
-    },
-    stepCommandPlanners,
-    executeCommands: runCommands,
-    refreshWorkspace: async () => {
-      const workspace = await refreshWorkspace();
-      return {
-        files: workspace.workspaceFiles,
-        reeFiles: workspace.reeArtifactFiles,
-        ree: workspace.ree,
-      };
-    },
-    onRunStarted,
-    onRunFinished,
-  });
+  try {
+    return await executeStepRun({
+      key,
+      params,
+      ree: ree.spec,
+      workspaceFiles,
+      executionRunner: {
+        startReeRun: (scriptKey, runParams) => startReeRun(scriptKey, runParams),
+        pollRun: (runId, onUpdateLogs) =>
+          observeReeRun(queryClient, executionRunsClient, {
+            reeId,
+            runId,
+            onUpdate: onUpdateLogs,
+            sleep: ports.sleep,
+          }),
+      },
+      stepCommandPlanners,
+      executeCommands: runCommands,
+      refreshWorkspace: async () => {
+        const workspace = await refreshWorkspace();
+        return {
+          files: workspace.workspaceFiles,
+          reeFiles: workspace.reeArtifactFiles,
+          ree: workspace.ree,
+        };
+      },
+      onRunStarted,
+      onRunFinished,
+    });
+  } finally {
+    await Promise.allSettled([
+      queryClient.invalidateQueries({ queryKey: queryKeys.ree(reeId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.reeRuns(reeId) }),
+    ]);
+  }
 }

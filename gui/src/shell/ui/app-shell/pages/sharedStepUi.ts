@@ -52,7 +52,6 @@ export interface PageMetadataEntryProps {
   badges: Badges;
   focusedField: string | null;
   onReeChange: React.Dispatch<React.SetStateAction<ReeSpec>>;
-  onLockedChange: React.Dispatch<React.SetStateAction<boolean>>;
   onGoPage: (key: AppShellPage) => void;
   onFocusedFieldChange: React.Dispatch<React.SetStateAction<string | null>>;
 }
@@ -88,7 +87,6 @@ export interface PageHardwareBomProps {
   ts?: string;
   focusedField: string | null;
   onReeSpecChange: React.Dispatch<React.SetStateAction<ReeSpec>>;
-  onLockedChange: React.Dispatch<React.SetStateAction<boolean>>;
   onGoPage: (key: AppShellPage) => void;
   onFocusedFieldChange: React.Dispatch<React.SetStateAction<string | null>>;
   onRun: (key: ReeStepKey, params: ReeStepRunParams) => void;
@@ -117,9 +115,6 @@ export interface StepPageProps {
   onGo: (key: AppShellPage) => void;
   onGoFields: () => void;
   onReeSpecChange: React.Dispatch<React.SetStateAction<ReeSpec>>;
-  onArtifactStatusChange: React.Dispatch<React.SetStateAction<ArtifactStatus>>;
-  onWorkspaceSourceStateChange: React.Dispatch<React.SetStateAction<WorkspaceSourceState>>;
-  onEvaluationStateChange: React.Dispatch<React.SetStateAction<EvaluationState>>;
   onPersistWorkspaceFile: (
     previousPath: string | undefined,
     path: string,

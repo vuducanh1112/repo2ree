@@ -16,21 +16,24 @@ export function ArchivePageContainer({
   commands,
 }: ArchivePageContainerProps) {
   const reeId = useReeId();
-  const { badges, actionStates } = stepRuns;
+  const badges = stepRuns.badges ?? {};
+  const actionStates = stepRuns.actionStates ?? {};
+  const activeRunIds = stepRuns.activeRunIds ?? {};
+  const timestamps = stepRuns.timestamps ?? {};
   const swhLog = useStepRunLogEntry({
     reeId,
-    runId: stepRuns.activeRunIds.swh,
-    fallbackTimestamp: stepRuns.timestamps.swh,
+    runId: activeRunIds.swh,
+    fallbackTimestamp: timestamps.swh,
   });
   const zenodoLog = useStepRunLogEntry({
     reeId,
-    runId: stepRuns.activeRunIds.zenodo,
-    fallbackTimestamp: stepRuns.timestamps.zenodo,
+    runId: activeRunIds.zenodo,
+    fallbackTimestamp: timestamps.zenodo,
   });
   const dataverseLog = useStepRunLogEntry({
     reeId,
-    runId: stepRuns.activeRunIds.dataverse,
-    fallbackTimestamp: stepRuns.timestamps.dataverse,
+    runId: activeRunIds.dataverse,
+    fallbackTimestamp: timestamps.dataverse,
   });
   const logs: ReeRunLogs = {};
   if (swhLog) logs.swh = swhLog;

@@ -5,7 +5,7 @@ import type { ReeEditorCommands } from "@shell/state/ree-editor/hooks/createReeE
 import type { WorkspaceRemoteState } from "@shell/state/ree-editor/hooks/useReeEditor";
 import { useStepRunLogEntry } from "@shell/state/ree-editor/step-runs/useStepRunLogEntry";
 import type { StepRunState } from "@shell/state/ree-editor/store/stepRunState";
-import type { UiChromeState } from "@shell/state/ree-editor/store/uiChrome";
+import type { UiChromeViewState } from "@shell/state/ree-editor/store/uiChrome";
 import { useEffect, useState } from "react";
 import { Badge } from "../../shared/components/Badge";
 import { Button } from "../../shared/components/Button";
@@ -22,7 +22,7 @@ interface SourceAcquisitionContentProps {
   ree: ReeEditorViewModel;
   workspaceRemote: WorkspaceRemoteState;
   stepRuns: StepRunState;
-  uiChrome: UiChromeState;
+  uiChrome: UiChromeViewState;
   commands: Pick<
     ReeEditorCommands,
     | "setFocusedField"
@@ -44,13 +44,15 @@ export function SourceAcquisitionContent({
 }: SourceAcquisitionContentProps) {
   const reeId = useReeId();
   const { focusedField, locked, repoMode } = uiChrome;
-  const { actionStates } = stepRuns;
+  const actionStates = stepRuns.actionStates ?? {};
+  const activeRunIds = stepRuns.activeRunIds ?? {};
+  const timestamps = stepRuns.timestamps ?? {};
   const { workspaceSourceState, sourceRepo } = workspaceRemote;
 
   const sourceLog = useStepRunLogEntry({
     reeId,
-    runId: stepRuns.activeRunIds.source,
-    fallbackTimestamp: stepRuns.timestamps.source,
+    runId: activeRunIds.source,
+    fallbackTimestamp: timestamps.source,
   });
 
   const [originTypeDraft, setOriginTypeDraft] = useState<SourceTypeOption | "">(

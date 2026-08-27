@@ -131,7 +131,6 @@ describe("seal status surfaces", () => {
       <CenterSealStrip
         ree={ree}
         locked={false}
-        badges={{}}
         onSeal={onSeal}
         sealRef={createRef<HTMLDivElement>()}
       />,
@@ -152,7 +151,6 @@ describe("seal status surfaces", () => {
           spec: { runtime: "__skipped__", experiments: [] },
         })}
         locked={false}
-        badges={{}}
         onSeal={onSeal}
         sealRef={createRef<HTMLDivElement>()}
       />,
@@ -191,7 +189,6 @@ describe("seal status surfaces", () => {
           artifact: { sealedAt: "2026-01-01T00:00:00Z", sealHash: "hash" },
         })}
         locked
-        badges={{}}
         onSeal={vi.fn()}
         sealRef={createRef<HTMLDivElement>()}
       />,

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createHydrateReeWorkspace } from "./hydrateReeWorkspace";
 
 describe("createHydrateReeWorkspace", () => {
-  it("hydrates every editor slice and locks a sealed workspace", () => {
+  it("hydrates only the editable definition draft", () => {
     const dispatch = vi.fn();
     const ree = mapRawReeIntentToSlices({
       reeIntent: { name: "Hydrated REE" },
@@ -19,23 +19,11 @@ describe("createHydrateReeWorkspace", () => {
 
     createHydrateReeWorkspace(dispatch)({ workspaceFiles: [], reeArtifactFiles: [], ree });
 
-    expect(dispatch.mock.calls.map(([action]) => action.type)).toEqual([
-      "updateReeSpec",
-      "setWorkspaceSourceState",
-      "setArtifactStatus",
-      "setEvaluationState",
-      "setStepEvidence",
-      "setLocked",
-    ]);
+    expect(dispatch.mock.calls.map(([action]) => action.type)).toEqual(["updateReeSpec"]);
     expect(dispatch.mock.calls[0][0].value({})).toBe(ree.reeSpec);
-    expect(dispatch.mock.calls[1][0].value({})).toBe(ree.workspaceSourceState);
-    expect(dispatch.mock.calls[2][0].value({})).toBe(ree.artifactStatus);
-    expect(dispatch.mock.calls[3][0].value({})).toBe(ree.evaluationState);
-    expect(dispatch.mock.calls[4][0].value({})).toEqual({ runtime: "current" });
-    expect(dispatch.mock.calls[5][0]).toEqual({ type: "setLocked", value: true });
   });
 
-  it("ignores file-only snapshots and preserves an existing seal", () => {
+  it("ignores file-only snapshots", () => {
     const dispatch = vi.fn();
     const hydrate = createHydrateReeWorkspace(dispatch);
     hydrate({ workspaceFiles: [], reeArtifactFiles: [] });
@@ -43,9 +31,6 @@ describe("createHydrateReeWorkspace", () => {
 
     const ree = mapRawReeIntentToSlices({ reeIntent: {}, reeSession: {}, fallbackName: "REE" });
     hydrate({ workspaceFiles: [], reeArtifactFiles: [], ree });
-    const artifactAction = dispatch.mock.calls[2][0];
-    const sealed = { sealedAt: "2026-01-01", sealHash: "hash", runtimeIncluded: true };
-    expect(artifactAction.value(sealed)).toBe(sealed);
-    expect(dispatch).toHaveBeenCalledTimes(5);
+    expect(dispatch).toHaveBeenCalledTimes(1);
   });
 });

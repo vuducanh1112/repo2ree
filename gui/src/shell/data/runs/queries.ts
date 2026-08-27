@@ -4,6 +4,7 @@ import type { ReeRun, ReeRunLogChunk, ReeRunSummary } from "@core/runs/ReeRun";
 import type { ReeRunStatus } from "@core/runs/ReeRunStatus";
 import { isTerminalReeRunStatus } from "@core/runs/ReeRunStatus";
 import { type QueryClient, queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { useReeRuntime } from "../apiRuntime";
 import { resolveReeId } from "../client";
 import { queryKeys } from "../queryKeys";
@@ -125,8 +126,9 @@ export function useReeRunsQuery(reeId?: string) {
   const runtime = useReeRuntime();
   const executionRunsClient = useReeRunsClient();
   const resolvedReeId = resolveReeId(runtime, reeId);
+  const queryClient = useQueryClient();
 
-  return useQuery({
+  const query = useQuery({
     queryKey: queryKeys.reeRuns(resolvedReeId),
     queryFn: (): Promise<ReeRunSummary[]> => executionRunsClient.listReeRuns(resolvedReeId),
     // The sentinel id means "no REE yet"; passive listings stay disabled until
@@ -137,6 +139,16 @@ export function useReeRunsQuery(reeId?: string) {
       return anyActive ? RUNS_ACTIVE_POLL_MS : RUNS_IDLE_POLL_MS;
     },
   });
+  const terminalKey = query.data
+    ?.filter((run) => isTerminalReeRunStatus(run.status))
+    .map((run) => `${run.runId}:${run.status}`)
+    .join("|");
+  useEffect(() => {
+    if (terminalKey) {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.ree(resolvedReeId) });
+    }
+  }, [queryClient, resolvedReeId, terminalKey]);
+  return query;
 }
 
 export function useReeRunQuery(reeId: string | undefined, runId: string | undefined) {

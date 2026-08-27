@@ -5,13 +5,8 @@ import { createEmptyReeSpec } from "@core/ree/ReeSpec";
 import type { ReeStepParams } from "@core/ree/ReeTypes";
 import { computeSourceChangeConsequences } from "@core/workspace/sourceChangeConsequences";
 import type { WorkspaceSourceState } from "@core/workspace/WorkspaceSourceState";
-import {
-  normalizeUiChromePage,
-  type SourceOutcomePayload,
-  type StepRunCompletionPayload,
-} from "./appShellState";
+import { normalizeUiChromePage, type SourceOutcomePayload } from "./appShellState";
 import { createInitialReeIntentState } from "./reeIntent";
-import { createInitialReeSessionState } from "./reeSession";
 import { createInitialStepRunState } from "./stepRunState";
 import type { AppShellAction, AppShellContextState, SliceName, SliceShape } from "./types";
 import { resolveUpdater } from "./types";
@@ -47,11 +42,7 @@ export function createInitialState(
   });
   return {
     reeIntent: createInitialReeIntentState(normalized),
-    reeSession: createInitialReeSessionState(normalized),
-    stepRuns: {
-      ...createInitialStepRunState(),
-      evaluationState: normalized.evaluationState,
-    },
+    stepRuns: createInitialStepRunState(),
     uiChrome: createInitialUiChromeState(),
   };
 }
@@ -79,10 +70,7 @@ function applySourceOutcome(
   state: AppShellContextState,
   outcome: SourceOutcomePayload,
 ): AppShellContextState {
-  const { reeIntent, reeSession, stepRuns } = state;
-  if (outcome.runId && stepRuns.activeRunIds.source !== outcome.runId) {
-    return state;
-  }
+  const { reeIntent } = state;
   // Keep the active run id after a successful source outcome so the source log
   // panel keeps rendering this run's logs; it is cleared on cancel and replaced
   // when the next run starts.
@@ -93,29 +81,6 @@ function applySourceOutcome(
       reeSpec: outcome.reeSpecPatch
         ? { ...reeIntent.reeSpec, ...outcome.reeSpecPatch }
         : reeIntent.reeSpec,
-    },
-    reeSession: {
-      ...reeSession,
-      workspaceSourceState: outcome.workspaceSourceStatePatch
-        ? { ...reeSession.workspaceSourceState, ...outcome.workspaceSourceStatePatch }
-        : reeSession.workspaceSourceState,
-    },
-    uiChrome: {
-      ...state.uiChrome,
-      sourceSnapshotArchiveName: outcome.sourceSnapshotArchiveName,
-    },
-    stepRuns: {
-      ...stepRuns,
-      actionStates: outcome.actionState
-        ? { ...stepRuns.actionStates, source: outcome.actionState }
-        : stepRuns.actionStates,
-      badges:
-        typeof outcome.badge === "boolean"
-          ? { ...stepRuns.badges, source: outcome.badge }
-          : stepRuns.badges,
-      timestamps: outcome.timestamp
-        ? { ...stepRuns.timestamps, source: outcome.timestamp }
-        : stepRuns.timestamps,
     },
   };
 }
@@ -133,58 +98,6 @@ function updateReeSpec(
   };
 }
 
-function setWorkspaceSourceState(
-  state: AppShellContextState,
-  updater: Extract<AppShellAction, { type: "setWorkspaceSourceState" }>["value"],
-): AppShellContextState {
-  return {
-    ...state,
-    reeSession: {
-      ...state.reeSession,
-      workspaceSourceState: resolveUpdater(state.reeSession.workspaceSourceState, updater),
-    },
-  };
-}
-
-function setArtifactStatus(
-  state: AppShellContextState,
-  updater: Extract<AppShellAction, { type: "setArtifactStatus" }>["value"],
-): AppShellContextState {
-  return {
-    ...state,
-    reeSession: {
-      ...state.reeSession,
-      artifactStatus: resolveUpdater(state.reeSession.artifactStatus, updater),
-    },
-  };
-}
-
-function setStepEvidence(
-  state: AppShellContextState,
-  updater: Extract<AppShellAction, { type: "setStepEvidence" }>["value"],
-): AppShellContextState {
-  return {
-    ...state,
-    reeSession: {
-      ...state.reeSession,
-      stepEvidence: resolveUpdater(state.reeSession.stepEvidence, updater),
-    },
-  };
-}
-
-function setEvaluationState(
-  state: AppShellContextState,
-  updater: Extract<AppShellAction, { type: "setEvaluationState" }>["value"],
-): AppShellContextState {
-  return {
-    ...state,
-    stepRuns: {
-      ...state.stepRuns,
-      evaluationState: resolveUpdater(state.stepRuns.evaluationState, updater),
-    },
-  };
-}
-
 function setStepParams(
   state: AppShellContextState,
   updater: Extract<AppShellAction, { type: "setStepParams" }>["value"],
@@ -195,54 +108,6 @@ function setStepParams(
       ...state.stepRuns,
       stepParams: resolveUpdater(state.stepRuns.stepParams, updater),
     },
-  };
-}
-
-function setActiveRunId(
-  state: AppShellContextState,
-  action: Extract<AppShellAction, { type: "setActiveRunId" }>,
-): AppShellContextState {
-  return {
-    ...state,
-    stepRuns: {
-      ...state.stepRuns,
-      activeRunIds: {
-        ...state.stepRuns.activeRunIds,
-        [action.key]: action.runId,
-      },
-    },
-  };
-}
-
-function cancelStepRun(
-  state: AppShellContextState,
-  action: Extract<AppShellAction, { type: "cancelStepRun" }>,
-): AppShellContextState {
-  const activeRunId = state.stepRuns.activeRunIds[action.key];
-  if (action.runId && activeRunId && activeRunId !== action.runId) {
-    return state;
-  }
-  const actionStates = { ...state.stepRuns.actionStates };
-  const activeRunIds = { ...state.stepRuns.activeRunIds };
-  delete actionStates[action.key];
-  delete activeRunIds[action.key];
-  return {
-    ...state,
-    stepRuns: {
-      ...state.stepRuns,
-      actionStates,
-      activeRunIds,
-    },
-  };
-}
-
-function setLocked(
-  state: AppShellContextState,
-  value: Extract<AppShellAction, { type: "setLocked" }>["value"],
-): AppShellContextState {
-  return {
-    ...state,
-    uiChrome: { ...state.uiChrome, locked: resolveUpdater(state.uiChrome.locked, value) },
   };
 }
 
@@ -269,51 +134,18 @@ function setFocusedField(
   };
 }
 
-function setStepRunLoading(state: AppShellContextState, key: string): AppShellContextState {
-  return {
-    ...state,
-    stepRuns: {
-      ...state.stepRuns,
-      actionStates: { ...state.stepRuns.actionStates, [key]: "loading" },
-    },
-  };
-}
-
-function completeStepRun(
-  state: AppShellContextState,
-  completion: StepRunCompletionPayload,
-): AppShellContextState {
-  const { stepRuns } = state;
-  if (completion.runId && stepRuns.activeRunIds[completion.key] !== completion.runId) {
-    return state;
-  }
-  // Keep the active run id after a successful completion: the log panels read
-  // it to know which run's logs to render, and clearing it here empties the
-  // panel the moment the run finishes. It is cleared on cancel and replaced
-  // when the next run starts.
-  return {
-    ...state,
-    stepRuns: {
-      ...stepRuns,
-      actionStates: { ...stepRuns.actionStates, [completion.key]: completion.actionState },
-      badges: { ...stepRuns.badges, [completion.key]: completion.badge },
-      timestamps: { ...stepRuns.timestamps, [completion.key]: completion.timestamp },
-    },
-  };
-}
-
 function resetStepsAfterSourceChange(
   state: AppShellContextState,
   stepParams: ReeStepParams,
 ): AppShellContextState {
   const reset = computeSourceChangeConsequences({
     reeSpec: state.reeIntent.reeSpec,
-    workspaceSourceState: state.reeSession.workspaceSourceState,
-    artifactStatus: state.reeSession.artifactStatus,
-    evaluationState: state.stepRuns.evaluationState,
-    actionStates: state.stepRuns.actionStates,
-    badges: state.stepRuns.badges,
-    timestamps: state.stepRuns.timestamps,
+    workspaceSourceState: { sourceAvailable: false },
+    artifactStatus: { runtimeIncluded: false },
+    evaluationState: emptyEvaluationState(),
+    actionStates: {},
+    badges: {},
+    timestamps: {},
     stepParams,
   });
   return {
@@ -322,21 +154,8 @@ function resetStepsAfterSourceChange(
       ...state.reeIntent,
       reeSpec: reset.reeSpec,
     },
-    reeSession: {
-      ...state.reeSession,
-      workspaceSourceState: reset.workspaceSourceState,
-      artifactStatus: reset.artifactStatus,
-    },
-    uiChrome: {
-      ...state.uiChrome,
-      sourceSnapshotArchiveName: reset.sourceSnapshotArchiveName,
-    },
     stepRuns: {
       ...state.stepRuns,
-      evaluationState: reset.evaluationState,
-      actionStates: reset.actionStates,
-      badges: reset.badges,
-      timestamps: reset.timestamps,
       stepParams: reset.stepParams,
     },
   };
@@ -349,30 +168,12 @@ export function appShellReducer(
   switch (action.type) {
     case "updateReeSpec":
       return updateReeSpec(state, action.value);
-    case "setWorkspaceSourceState":
-      return setWorkspaceSourceState(state, action.value);
-    case "setArtifactStatus":
-      return setArtifactStatus(state, action.value);
-    case "setEvaluationState":
-      return setEvaluationState(state, action.value);
-    case "setStepEvidence":
-      return setStepEvidence(state, action.value);
     case "setStepParams":
       return setStepParams(state, action.value);
-    case "setActiveRunId":
-      return setActiveRunId(state, action);
-    case "cancelStepRun":
-      return cancelStepRun(state, action);
-    case "setLocked":
-      return setLocked(state, action.value);
     case "setRepoMode":
       return setRepoMode(state, action.value);
     case "setFocusedField":
       return setFocusedField(state, action.value);
-    case "setStepRunLoading":
-      return setStepRunLoading(state, action.key);
-    case "completeStepRun":
-      return completeStepRun(state, action.completion);
     case "resetStepsAfterSourceChange":
       return resetStepsAfterSourceChange(state, action.stepParams);
     case "showToast":
