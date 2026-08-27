@@ -88,7 +88,7 @@ export function PageArchive({
   );
 
   return (
-    <GlassPageShell>
+    <GlassPageShell variant="docked">
       <GlassPageHeader
         icon={Ic.globe(24)}
         tint={archiveTone(repo.key)}

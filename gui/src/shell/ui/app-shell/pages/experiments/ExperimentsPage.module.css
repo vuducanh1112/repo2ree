@@ -194,108 +194,19 @@
   }
 }
 
-/* --- Asides --------------------------------------------------------------- */
-
-.asideHead {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
-}
-
-.asideHead[data-tight] {
-  margin-bottom: var(--space-2);
-}
-
-.asideIcon {
-  display: flex;
-  color: var(--tone-info-line);
-}
-
-.asideTitle {
-  margin: 0;
-  font-size: var(--text-body-large);
-  color: var(--ink-default);
-}
-
-.asideCopy {
-  font-size: var(--text-label);
-  line-height: var(--leading-normal);
-  color: var(--ink-muted);
-}
-
-.asideHint {
-  margin-bottom: var(--space-2-5);
-  font-size: var(--text-caption);
-  color: var(--ink-subtle);
-}
-
-.coverage {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2-5);
-}
-
-.coverageRow {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.coverageHead {
-  display: flex;
-  justify-content: space-between;
-  font-size: var(--text-caption);
-  color: var(--ink-muted);
-}
-
-.coverageCount {
-  font-family: var(--font-mono);
-  font-weight: var(--weight-bold);
-  color: var(--ink-default);
-}
-
-.track {
-  height: var(--space-2);
-  overflow: hidden;
-  border-radius: var(--radius-round);
-  border: 1px solid var(--border-accent);
-  background: var(--surface-sunken);
-}
-
-.fill {
-  height: 100%;
-  width: var(--coverage-pct);
-  border-radius: var(--radius-round);
-  background: linear-gradient(90deg, var(--tone-info-line), var(--accent-secondary));
-  box-shadow: var(--glow-accent);
-  transition: width var(--duration-moderate) ease;
-}
-
 /* The tally at the foot: whether every experiment is fully specified. */
 .tally {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-  margin-top: var(--space-1);
-  padding: var(--space-2) var(--space-2-5);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--tally-edge);
-  background: var(--tally-bg);
-  color: var(--tally-ink);
+  gap: var(--space-1-5);
+  font-family: var(--font-sans);
   font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+  color: var(--tone-warning-ink);
 }
 
 .tally[data-complete] {
-  --tally-bg: var(--tone-success-surface);
-  --tally-edge: var(--tone-success-border);
-  --tally-ink: var(--tone-success-ink);
-}
-
-.tally:not([data-complete]) {
-  --tally-bg: var(--tone-warning-surface);
-  --tally-edge: var(--tone-warning-border);
-  --tally-ink: var(--tone-warning-ink);
+  color: var(--tone-success-ink);
 }
 
 .tallyIcon {
@@ -484,4 +395,34 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: var(--space-2-5);
+}
+
+/* --- Quick add ----------------------------------------------------------- */
+
+/* Prefilled starting points, sitting with the catalog's own Add control rather
+ * than in a column of their own. */
+.quickAdd {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.quickAddLabel {
+  font-family: var(--font-sans);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+}
+
+/* The page's single column, now that the aside is gone. */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
 }

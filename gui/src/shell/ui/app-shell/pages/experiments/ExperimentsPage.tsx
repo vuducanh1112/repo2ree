@@ -14,13 +14,7 @@ import { Button } from "@shell/ui/shared/components/Button";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { useEffect, useRef, useState } from "react";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
-import {
-  GlassAside,
-  GlassMainGrid,
-  GlassPageShell,
-  GlassPanel,
-  GlassSectionBody,
-} from "../../components/GlassPageShell";
+import { GlassPageShell, GlassPanel, GlassSectionBody } from "../../components/GlassPageShell";
 import { GlassPanelFooter } from "../../components/GlassPanelFooter";
 import { GlassSectionHeader } from "../../components/GlassSectionHeader";
 import type { PageExperimentsProps } from "../sharedStepUi";
@@ -29,10 +23,9 @@ import {
   ExperimentCardList,
   ExperimentDetail,
   ExperimentHeaderActions,
+  ExperimentQuickAdd,
   type ExperimentSuggestion,
-  ExperimentsAboutAside,
-  ExperimentsCoverageAside,
-  ExperimentsSuggestionsAside,
+  ExperimentsCoverageTally,
 } from "./ExperimentsPageSections";
 import { useExperimentRun } from "./useExperimentRun";
 
@@ -206,15 +199,13 @@ export function PageExperiments({
   // Coverage stats
   // ================================================
 
+  // The three fields an experiment needs to be runnable and checkable. The
+  // rest — description, runtime and resource estimates — are per-experiment
+  // detail, reported on the experiment's own card rather than tallied here.
   const total = experiments.length;
   const withName = experiments.filter((e) => e.name.trim() !== "").length;
   const withCommand = experiments.filter((e) => e.runScript.trim() !== "").length;
-  const withDescription = experiments.filter((e) => e.description.trim() !== "").length;
   const withVerify = experiments.filter((e) => e.verifyScript.trim() !== "").length;
-  const withRuntimeEstimate = experiments.filter((e) => e.runtimeEstimate.trim() !== "").length;
-  const withResourceEstimates = experiments.filter((e) =>
-    Object.values(e.resourceEstimates).some((value) => value.trim() !== ""),
-  ).length;
 
   // ================================================
   // Render
@@ -230,7 +221,7 @@ export function PageExperiments({
   );
 
   return (
-    <GlassPageShell>
+    <GlassPageShell variant="docked">
       <GlassPageHeader
         icon={Ic.terminal(24)}
         title="Experiments"
@@ -250,7 +241,7 @@ export function PageExperiments({
         }
       />
 
-      <GlassMainGrid>
+      <div className={styles.stack}>
         {selectedExperiment !== null && selectedIndex !== null ? (
           <ExperimentDetail
             experiment={selectedExperiment}
@@ -299,6 +290,8 @@ export function PageExperiments({
                 onAdd={addExperiment}
                 onRemove={removeExperiment}
               />
+
+              {!locked && <ExperimentQuickAdd locked={locked} onAdd={addFromSuggestion} />}
             </GlassSectionBody>
 
             <GlassPanelFooter
@@ -312,27 +305,23 @@ export function PageExperiments({
                 </div>
               }
             >
-              {total === 0
-                ? "Experiments are optional but raise the achievable reproducibility level."
-                : `${total} recorded — continue to deposit & share when ready.`}
+              {total === 0 ? (
+                "Experiments are optional but raise the achievable reproducibility level."
+              ) : (
+                <>
+                  {`${total} recorded. `}
+                  <ExperimentsCoverageTally
+                    total={total}
+                    withName={withName}
+                    withCommand={withCommand}
+                    withVerify={withVerify}
+                  />
+                </>
+              )}
             </GlassPanelFooter>
           </GlassPanel>
         )}
-
-        <GlassAside>
-          <ExperimentsCoverageAside
-            total={total}
-            withName={withName}
-            withCommand={withCommand}
-            withDescription={withDescription}
-            withVerify={withVerify}
-            withRuntimeEstimate={withRuntimeEstimate}
-            withResourceEstimates={withResourceEstimates}
-          />
-          <ExperimentsSuggestionsAside locked={locked} onAdd={addFromSuggestion} />
-          <ExperimentsAboutAside />
-        </GlassAside>
-      </GlassMainGrid>
+      </div>
     </GlassPageShell>
   );
 }

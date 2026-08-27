@@ -2,7 +2,7 @@ import { PAGE } from "@core/app-shell/pages";
 import { Toggle } from "@shell/ui/shared/components/Toggle";
 import { stageTone } from "@shell/ui/theme/appearance";
 import { cssVars } from "@shell/ui/theme/styleVars";
-import styles from "./CenterSealStrip.module.css";
+import styles from "../SealContent.module.css";
 
 interface InclusionRow {
   label: string;
@@ -13,7 +13,7 @@ interface InclusionRow {
   onToggle: () => void;
 }
 
-interface SealConfirmInclusionProps {
+interface SealBundleContentsProps {
   sourceAvailable: boolean;
   runtimeAvailable: boolean;
   resultsAvailable: boolean;
@@ -55,7 +55,9 @@ function Row({ label, available, included, tintLine, tintInk, onToggle }: Inclus
   );
 }
 
-export function SealConfirmInclusion({
+/** What the sealed archive carries. Each row is tinted by the step that
+ *  produced the content, so the choice reads back to where it came from. */
+export function SealBundleContents({
   sourceAvailable,
   runtimeAvailable,
   resultsAvailable,
@@ -65,10 +67,9 @@ export function SealConfirmInclusion({
   onToggleSource,
   onToggleRuntime,
   onToggleResults,
-}: SealConfirmInclusionProps) {
+}: SealBundleContentsProps) {
   return (
     <div className={styles.inclusion}>
-      <span className={styles.inclusionHeading}>Bundle contents</span>
       <Row
         label="Source"
         available={sourceAvailable}

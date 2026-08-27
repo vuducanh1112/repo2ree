@@ -56,9 +56,14 @@
   --stage-archive-line: var(--palette-red-600);
   --stage-archive-ink: var(--palette-red-900);
   --stage-archive-wash: var(--palette-red-050);
-  --stage-seal-line: var(--palette-red-700);
-  --stage-seal-ink: var(--palette-red-900);
-  --stage-seal-wash: var(--palette-red-050);
+  /* The seal is not a peer of the stages it freezes, so it takes no hue from
+   * their wheel: every hue there is a category marker, and the ones left over
+   * are the system accent and the danger tone. Ink instead — the one
+   * monochrome action in a product of coloured ones, and the colour a seal is
+   * pressed in. */
+  --stage-seal-line: var(--palette-neutral-950);
+  --stage-seal-ink: var(--palette-neutral-950);
+  --stage-seal-wash: var(--palette-neutral-075);
 
   /* --- Reproducibility axes --------------------------------------------- */
   --axis-dependency-line: var(--palette-blue-500);
@@ -111,10 +116,6 @@
   --archive-swh-line: var(--palette-red-600);
   --archive-zenodo-line: var(--palette-blue-700);
   --archive-dataverse-line: var(--palette-violet-600);
-
-  /* A seal currently freezes one evidence level. */
-  --seal-level-line: var(--palette-indigo-600);
-  --seal-level-wash: var(--palette-indigo-050);
 
   /* A finished experiment run's verdict. */
   --verdict-pass-ink: var(--tone-success-ink);

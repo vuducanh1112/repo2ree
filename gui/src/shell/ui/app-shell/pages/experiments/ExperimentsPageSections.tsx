@@ -32,10 +32,9 @@ import type { RunState } from "./useExperimentRun";
 // page keeps a single import surface.
 export { ExperimentCardList } from "./ExperimentCardList";
 export {
+  ExperimentQuickAdd,
   type ExperimentSuggestion,
-  ExperimentsAboutAside,
-  ExperimentsCoverageAside,
-  ExperimentsSuggestionsAside,
+  ExperimentsCoverageTally,
 } from "./ExperimentsAsides";
 
 // ================================================

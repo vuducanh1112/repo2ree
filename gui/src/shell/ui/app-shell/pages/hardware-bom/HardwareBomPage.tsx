@@ -260,7 +260,7 @@ export function PageHardwareBom({
   );
 
   return (
-    <GlassPageShell>
+    <GlassPageShell variant="docked">
       <GlassPageHeader
         icon={Ic.cpu(24)}
         tint={HBOM_ACCENT}

@@ -1,10 +1,125 @@
-.page {
+/* The Seal step: what the REE will be frozen with, and what the archive
+ * carries alongside it. The page frame, header, notice, and run button are the
+ * shared ones — only the two seal-specific bodies live here. */
+
+.stack {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  gap: var(--space-4);
+}
+
+/* --- Steps that are not done -------------------------------------------- */
+
+.notDone {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.notDoneStep {
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-round);
+  border: 1px solid var(--tone-danger-border);
+  background: var(--tone-danger-surface);
+  color: var(--tone-danger-ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-bold);
+  white-space: nowrap;
+}
+
+.notDoneNote {
+  margin-top: var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  color: var(--ink-subtle);
+}
+
+/* --- Bundle contents ----------------------------------------------------- */
+
+.inclusion {
+  display: flex;
+  flex-direction: column;
   gap: var(--space-3);
-  height: 100%;
-  min-height: 0;
-  overflow-y: auto;
-  padding: var(--space-5) var(--space-4);
+}
+
+.inclusionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.inclusionRow[data-unavailable] {
+  opacity: var(--opacity-subtle);
+}
+
+.inclusionLabels {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5);
+}
+
+.inclusionName {
+  font-family: var(--font-sans);
+  font-size: var(--text-label);
+  font-weight: var(--weight-bold);
+  color: var(--ink-default);
+}
+
+.inclusionState {
+  font-family: var(--font-sans);
+  font-size: var(--text-micro);
+  color: var(--ink-subtle);
+}
+
+.inclusionControl {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.inclusionVerb {
+  font-family: var(--font-sans);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-bold);
+  color: var(--ink-subtle);
+}
+
+.inclusionVerb[data-on] {
+  color: var(--seal-ink);
+}
+
+/* --- Sealed record ------------------------------------------------------- */
+
+.sealedMeta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.metaRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.metaKey {
+  flex-shrink: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-micro);
+  color: var(--chrome-text-muted);
+}
+
+.metaHash {
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-default);
+}
+
+.metaDate {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  color: var(--ink-muted);
 }

@@ -7,7 +7,7 @@ import {
   createEmptyReeEditorViewModel,
   patchReeEditorViewModel,
 } from "../ree-editor/reeEditorViewModel";
-import { buildSealCableItems, SEAL_CABLES } from "./sealCableScene";
+import { buildSealStepItems, SEAL_STEPS } from "./sealSteps";
 
 const activationStep: EvidenceStep = "test_activation";
 
@@ -25,45 +25,45 @@ function halfAuthoredRee() {
   });
 }
 
-describe("buildSealCableItems", () => {
-  // The invariant the seal panel exists to keep: a cable is a projection of an
-  // authoring step, never a second opinion about it.
-  it("agrees with the authoring rail on every step-backed cable", () => {
+describe("buildSealStepItems", () => {
+  // The invariant the seal page exists to keep: it projects the authoring
+  // steps, and never holds a second opinion about them.
+  it("agrees with the authoring rail on every step-backed entry", () => {
     const ree = halfAuthoredRee();
     const badges: Badges = {};
-    const liveByKey = Object.fromEntries(
-      buildSealCableItems(ree, badges).map((item) => [item.key, item.live]),
+    const doneByKey = Object.fromEntries(
+      buildSealStepItems(ree, badges).map((item) => [item.key, item.done]),
     );
 
-    for (const cable of SEAL_CABLES) {
-      if (!cable.page) continue;
-      const step = PROCESS_STEPS.find((candidate) => candidate.key === cable.page);
-      if (!step) throw new Error(`no process step for cable ${cable.key}`);
-      expect(liveByKey[cable.key]).toBe(resolveNavCompleted(step, ree, badges));
+    for (const entry of SEAL_STEPS) {
+      if (!entry.page) continue;
+      const step = PROCESS_STEPS.find((candidate) => candidate.key === entry.page);
+      if (!step) throw new Error(`no process step for ${entry.key}`);
+      expect(doneByKey[entry.key]).toBe(resolveNavCompleted(step, ree, badges));
     }
   });
 
-  it("reads the one non-step cable off the spec", () => {
+  it("reads the one non-step entry off the spec", () => {
     const ree = halfAuthoredRee();
-    const live = (model: typeof ree) =>
-      buildSealCableItems(model, {}).find((item) => item.key === "swh")?.live;
+    const done = (model: typeof ree) =>
+      buildSealStepItems(model, {}).find((item) => item.key === "swh")?.done;
 
-    expect(live(ree)).toBe(true);
-    expect(live(patchReeEditorViewModel(ree, { spec: { swhid: "" } }))).toBe(false);
+    expect(done(ree)).toBe(true);
+    expect(done(patchReeEditorViewModel(ree, { spec: { swhid: "" } }))).toBe(false);
   });
 
   // The drift this file used to pin: a declared path is not a built runtime.
   it.each([
     ["runtime", "artifacts/climate-runtime.tar"],
     ["sbom", "artifacts/sbom.json"],
-  ])("does not call %s connected on a declaration with no receipt", (key, declaration) => {
+  ])("does not call %s done on a declaration with no receipt", (key, declaration) => {
     const ree = patchReeEditorViewModel(createEmptyReeEditorViewModel(), {
       spec: { [key]: declaration },
       audit: {},
     });
 
-    const cable = buildSealCableItems(ree, {}).find((item) => item.key === key);
-    expect(cable?.live).toBe(false);
+    const item = buildSealStepItems(ree, {}).find((entry) => entry.key === key);
+    expect(item?.done).toBe(false);
   });
 
   it("requires the metadata the metadata page marks required", () => {
@@ -71,7 +71,7 @@ describe("buildSealCableItems", () => {
       spec: { name: "Named only" },
     });
     const metadata = (model: typeof named) =>
-      buildSealCableItems(model, {}).find((item) => item.key === "metadata")?.live;
+      buildSealStepItems(model, {}).find((item) => item.key === "metadata")?.done;
 
     expect(metadata(named)).toBe(false);
     expect(
@@ -86,10 +86,10 @@ describe("buildSealCableItems", () => {
     ).toBe(true);
   });
 
-  // Experiments are the REE's scientific payload; the preflight used to be
-  // silent about them while warning about a deposit it could never satisfy.
-  it("carries an experiments cable and no unachievable archive cable", () => {
-    const keys = buildSealCableItems(createEmptyReeEditorViewModel(), {}).map((item) => item.key);
+  // Experiments are the REE's scientific payload; the seal used to be silent
+  // about them while warning about a deposit it could never satisfy.
+  it("carries an experiments entry and no unachievable archive entry", () => {
+    const keys = buildSealStepItems(createEmptyReeEditorViewModel(), {}).map((item) => item.key);
 
     expect(keys).toContain("experiments");
     expect(keys).not.toContain("archive");

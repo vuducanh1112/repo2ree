@@ -52,7 +52,6 @@
   --shadow-accent-strong: 0 12px 28px rgb(37 99 235 / 22%);
   --shadow-inset-highlight: inset 0 1px 0 var(--surface-solid);
   --shadow-focus: 0 0 0 3px rgb(14 165 233 / 15%);
-  --glow-accent: 0 0 16px rgb(14 165 233 / 28%);
 
   /* Structural chrome */
   --chrome-bg: var(--palette-neutral-075);
@@ -74,9 +73,6 @@
   --scrollbar-size: 4px;
   --scrollbar-thumb: var(--palette-neutral-200);
   --scrollbar-thumb-hover: var(--palette-neutral-400);
-
-  --track-neutral: rgb(148 163 184 / 40%);
-  --track-neutral-strong: rgb(148 163 184 / 45%);
 
   /* The embedded terminal is deliberately dark inside the light interface. */
   --terminal-surface: #0d1117;
