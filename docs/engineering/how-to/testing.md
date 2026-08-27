@@ -12,7 +12,7 @@
 | `make gui-accessibility-tests` | WCAG 2.2 AA, axe best-practice, and focused contrast checks over deterministic, browser-rendered application pages. |
 | `make gui-screenshot-tests` | Page-level screenshot regression suite with a real GUI and deterministic mocked API. |
 | `make be-checks` | Ruff, Ruff format, and mypy across Python workspace packages. |
-| `make scripts-checks` | ShellCheck over `scripts/*.sh`. |
+| `make scripts-checks` | ShellCheck over every `scripts/**/*.sh`, plus Ruff and mypy over the Python tools. |
 | `make be-unit-tests` | The container-free backend `unit` tier, measured into its data directory. |
 | `make be-integration-tests` | The backend `integration` tier, measured. Builds the bundles first; Docker-gated tests skip when Docker is absent. |
 | `make be-tests` | Both backend tiers. |
@@ -25,7 +25,7 @@
 | `make e2e-gui-on-stack` / `e2e-gui-review-on-stack` / `demo-gui-on-stack` | Suite / review / demo against an already-running image-backed stack. |
 | `make e2e-gui-stack-local` / `e2e-gui-review-stack-local` / `demo-gui-stack-local` | One command: build local images, `stack-up`, run the project, `stack-clean`. |
 | `make e2e-gui-stack-published` / `e2e-gui-review-stack-published` / `demo-gui-stack-published` | The same flows against the pushed registry images (nothing built). |
-| `make stack-up` / `stack-down` | Start/stop the image-backed stack, keeping its volumes (`scripts/image-stack.sh`). |
+| `make stack-up` / `stack-down` | Start/stop the image-backed stack, keeping its volumes (`scripts/test-stack/image-stack.sh`). |
 | `make stack-clean` | Stop it and drop every volume it created, workbench leftovers included. |
 | `make workbench-clean` | Just the workbench leftovers; `STORE=1` also drops every bundle store volume. |
 | `make store-gc` | Evict bundle store caches unused for `STORE_GC_DAYS` (14), keeping the live one. |
@@ -421,7 +421,7 @@ Playwright. `E2E_BASE_URL` points Playwright to the Caddy-served GUI and skips
 the Vite server, exercising the GUI proxy and all three images.
 
 The host reaches the stack through `localhost`; the devcontainer uses Compose
-service DNS. `scripts/image-stack.sh` selects the correct address.
+service DNS. `scripts/test-stack/image-stack.sh` selects the correct address.
 
 One-command flows end with `stack-clean`, which removes Compose volumes,
 leftover workbenches, and per-REE volumes. For a manually started stack, use
@@ -489,7 +489,7 @@ different ruff than you have installed still produces a valid certificate. The
 pin in `pyproject.toml` is what keeps that honest.
 
 ```bash
-scripts/commit-gate-stamp.sh verify   # what the hook runs
+scripts/publish/commit-gate-stamp.sh verify   # what the hook runs
 ```
 
 `make push-gate` bundles the whole pre-publish sequence: it refuses a dirty

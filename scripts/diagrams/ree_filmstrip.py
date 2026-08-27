@@ -13,9 +13,9 @@ single act changed. Cells that differ from the frame before them are ticked, so
 the transitions — the part a table of verdicts buries — are what the eye lands
 on.
 
-    python scripts/ree_filmstrip.py                                # SVG on stdout
-    python scripts/ree_filmstrip.py -o dist/diagrams/domain/ree-filmstrip.svg
-    python scripts/ree_filmstrip.py --frames path/to/capture.ndjson
+    python scripts/diagrams/ree_filmstrip.py                                # SVG on stdout
+    python scripts/diagrams/ree_filmstrip.py -o dist/diagrams/domain/ree-filmstrip.svg
+    python scripts/diagrams/ree_filmstrip.py --frames path/to/capture.ndjson
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ from html import escape
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(__file__).resolve().parents[2]
 CAPTURE = REPO_ROOT / "test-artifacts/ree-snapshots/api-integration/test_full_authoring_pipeline.ndjson"
 
 # The audited steps, in the order ReeAudit declares them — which is also the

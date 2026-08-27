@@ -5,7 +5,7 @@
 # and live in mk/gui-tests.mk.
 #
 # Stack orchestration (backend + agent + playwright, readiness polling,
-# teardown, the coverage variant) lives in scripts/e2e-stack.sh.
+# teardown, the coverage variant) lives in scripts/test-stack/e2e-stack.sh.
 
 .PHONY: e2e-bundles \
 	e2e-gui e2e-gui-on-stack e2e-gui-stack-local e2e-gui-stack-published \
@@ -39,7 +39,7 @@ E2E_STACK = E2E_WORKBENCH_IMAGE='$(E2E_WORKBENCH_IMAGE)' \
 	E2E_WORKBENCH_DOCKER_MODE=$(E2E_WORKBENCH_DOCKER_MODE) \
 	E2E_EXEC_BUNDLE=$(E2E_EXEC_BUNDLE) \
 	E2E_TOOLS_BUNDLE=$(E2E_TOOLS_BUNDLE) \
-	scripts/e2e-stack.sh
+	scripts/test-stack/e2e-stack.sh
 
 # Workbench agents the stack connects. The multi-agent specs need >= 2 and
 # skip themselves on smaller stacks; raise it for stress runs
@@ -50,12 +50,12 @@ E2E_AGENTS ?= 2
 # demonstration; `-gui` is browser-driven through playwright, `-api` drives the
 # same stack over HTTP with no browser. The name is also the playwright project
 # and the coverage tier — one word for one thing, so a report cannot be labelled
-# with a suite that did not produce it (see scripts/e2e-stack.sh).
+# with a suite that did not produce it (see scripts/test-stack/e2e-stack.sh).
 #
 # Every source-run suite here is measured; there is no unmeasured variant and no
 # --coverage flag. What they measure is the *backend* —
 # test-artifacts/coverage/python/<suite>/. The browser is not measured by these
-# runs (see scripts/e2e-stack.sh); UI coverage comes from component tests in the
+# runs (see scripts/test-stack/e2e-stack.sh); UI coverage comes from component tests in the
 # `node` tier.
 #
 # The image-backed variants below (-on-stack, -stack-local, -stack-published) are
@@ -103,28 +103,28 @@ demo-gui-code-ocean: e2e-bundles
 
 # Image-backed demo stack: the compose control plane on :local tags plus the
 # agent container compose deliberately doesn't manage. Expects `make images`
-# to have run; lifecycle lives in scripts/image-stack.sh.
+# to have run; lifecycle lives in scripts/test-stack/image-stack.sh.
 stack-up:
-	STACK_AGENTS=$(E2E_AGENTS) scripts/image-stack.sh up
+	STACK_AGENTS=$(E2E_AGENTS) scripts/test-stack/image-stack.sh up
 
 # Stop the stack, keeping its volumes: a demo stack picks up where it left off,
 # and the agent keeps its identity.
 stack-down:
-	scripts/image-stack.sh down
+	scripts/test-stack/image-stack.sh down
 
 # Stop the stack and drop everything it stored: the compose volumes plus any
 # workbench containers/volumes the agent left behind. What the one-command test
 # flows below use — their REEs die with the backend volume, so keeping either
 # only leaks disk.
 stack-clean:
-	scripts/image-stack.sh down --volumes
+	scripts/test-stack/image-stack.sh down --volumes
 
 # Just the workbench leftovers (containers, per-REE volumes, and the anonymous
 # volumes the bench image declares), for cleaning up after a source-run stack or
 # an interrupted run. `STORE=1` additionally drops every bundle store volume —
 # the live one included, so the next provision re-copies the closure.
 workbench-clean:
-	scripts/workbench-cleanup.sh $(if $(STORE),--store,)
+	scripts/test-stack/workbench-cleanup.sh $(if $(STORE),--store,)
 
 # Evict the bundle store cache: ~450MB per volume, one orphaned every time the
 # executor or tools bundle is rebuilt, so it grows without bound on a dev
@@ -134,7 +134,7 @@ workbench-clean:
 # needs is exactly what a test target should not do behind your back.
 STORE_GC_DAYS ?= 14
 store-gc:
-	scripts/workbench-cleanup.sh --store-gc $(STORE_GC_DAYS)
+	scripts/test-stack/workbench-cleanup.sh --store-gc $(STORE_GC_DAYS)
 
 # Run a playwright project against the already-running image-backed stack:
 # the Caddy-served GUI (its /api reverse proxy included) instead of a
@@ -142,8 +142,8 @@ store-gc:
 # Nothing is started or stopped here — `make stack-up` first (or start
 # compose + agent by hand, see README).
 define playwright_against_stack  # $(1) = playwright --project name
-	@scripts/image-stack.sh check
-	cd gui && E2E_BASE_URL=$$(../scripts/image-stack.sh gui-url) \
+	@scripts/test-stack/image-stack.sh check
+	cd gui && E2E_BASE_URL=$$(../scripts/test-stack/image-stack.sh gui-url) \
 		npm exec -- playwright test -c playwright.config.ts --project=$(1)
 endef
 
@@ -160,8 +160,8 @@ demo-gui-on-stack:
 # pure-API analog of e2e-gui-on-stack. A validation run, not a demo run, so it
 # doesn't record; the .cast/transcript demo artifacts come from `demo-api`.
 demo-api-on-stack:
-	@scripts/image-stack.sh check
-	API_BASE_URL=$$(scripts/image-stack.sh api-url) \
+	@scripts/test-stack/image-stack.sh check
+	API_BASE_URL=$$(scripts/test-stack/image-stack.sh api-url) \
 		api/tests/e2e/api_agent_walkthrough.py
 
 # One-command flows: build the :local images (or pull the pushed ones),

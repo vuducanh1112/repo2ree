@@ -40,7 +40,7 @@ architecture-diagrams: be-graphs be-graph-all gui-graph gui-graph-core
 # before doing anything, and this list came out empty. Referenced once, in
 # be-graphs below; a second reference would re-run the script, so read it into a
 # shell variable rather than expanding it twice.
-BE_PACKAGES = $(shell python scripts/arch_graph.py --list-packages)
+BE_PACKAGES = $(shell python scripts/diagrams/arch_graph.py --list-packages)
 
 # One diagram per root package: the inside of that package, with its own layers
 # contract setting the vertical axis. PKG/ARGS still single out one package
@@ -49,7 +49,7 @@ BE_PACKAGES = $(shell python scripts/arch_graph.py --list-packages)
 PKG ?= repo2ree_core
 be-graph:
 	@mkdir -p $(ARCH_DIR)
-	python scripts/arch_graph.py $(PKG) $(ARGS) -f svg -o $(ARCH_DIR)/$(PKG).svg
+	python scripts/diagrams/arch_graph.py $(PKG) $(ARGS) -f svg -o $(ARCH_DIR)/$(PKG).svg
 
 # Refuses to draw nothing. An empty word list is legal shell — `for pkg in ; do
 # … done` loops zero times and exits 0 — so a derivation that came back empty
@@ -60,9 +60,9 @@ be-graphs:
 	@mkdir -p $(ARCH_DIR)
 	@set -e; packages="$(BE_PACKAGES)"; \
 	[ -n "$$packages" ] || { echo "no root packages resolved from pyproject.toml" \
-		"[tool.importlinter] — check 'python scripts/arch_graph.py --list-packages'" >&2; exit 1; }; \
+		"[tool.importlinter] — check 'python scripts/diagrams/arch_graph.py --list-packages'" >&2; exit 1; }; \
 	for pkg in $$packages; do \
-		python scripts/arch_graph.py $$pkg $(ARGS) -f svg -o $(ARCH_DIR)/$$pkg.svg; \
+		python scripts/diagrams/arch_graph.py $$pkg $(ARGS) -f svg -o $(ARCH_DIR)/$$pkg.svg; \
 	done
 
 # The two views across all six packages, which answer different questions.
@@ -81,8 +81,8 @@ be-graphs:
 # edge back to the modules underneath it, not for reading the shape.
 be-graph-all:
 	@mkdir -p $(ARCH_DIR)
-	python scripts/arch_graph.py --collapse $(ARGS) -f svg -o $(ARCH_DIR)/workspace.svg
-	python scripts/arch_graph.py --all $(ARGS) -f svg -o $(ARCH_DIR)/workspace-modules.svg
+	python scripts/diagrams/arch_graph.py --collapse $(ARGS) -f svg -o $(ARCH_DIR)/workspace.svg
+	python scripts/diagrams/arch_graph.py --all $(ARGS) -f svg -o $(ARCH_DIR)/workspace-modules.svg
 
 # GUI, via dependency-cruiser's own dot reporter — the same cruise
 # gui-checks runs, rendered instead of asserted, so rule violations show up

@@ -34,7 +34,11 @@
 # compose-owned, and `image-stack.sh down --volumes` removes them.
 set -euo pipefail
 
-root=$(cd "$(dirname "$0")/.." && pwd)
+# Anchored on this script's own location, not the cwd: every $root reference
+# below names an asset of *this* checkout (dist/bundles, sibling scripts), which
+# `git rev-parse` would get wrong when run from inside another repo. Two levels
+# up, because the script lives in scripts/test-stack/.
+root=$(cd "$(dirname "$0")/../.." && pwd)
 
 store_mode=none
 store_max_age_days=14

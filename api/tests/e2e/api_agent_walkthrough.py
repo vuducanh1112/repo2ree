@@ -19,7 +19,7 @@ orchestrator, which brings a live backend + workbench agent up, points
 ``API_BASE_URL`` at it, tears it down, and (with ``make e2e-api``) records the
 terminal:
 
-    scripts/e2e-stack.sh --script api/tests/e2e/api_agent_walkthrough.py
+    scripts/test-stack/e2e-stack.sh --script api/tests/e2e/api_agent_walkthrough.py
     make e2e-api            # the same, always recorded to a .cast
 
 Needs only ``curl`` (already required by the orchestrator) and the Python stdlib,

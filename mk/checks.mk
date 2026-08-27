@@ -7,9 +7,12 @@
 # Scripts — shell linting
 # ================================================
 
+# `scripts/*.sh` would not recurse into the topic directories, so shellcheck is
+# handed the files find turns up: a glob that silently stops matching is exactly
+# the failure a lint step must not have.
 scripts-checks:
 	@echo "Running shellcheck..."
-	shellcheck scripts/*.sh
+	find scripts -name '*.sh' -exec shellcheck {} +
 	@echo "Checking python scripts..."
 	ruff check scripts
 	ruff format scripts

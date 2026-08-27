@@ -12,10 +12,10 @@ its own, as the count of what its re-run invalidates.
 
 Nothing here is hand-maintained. Adding a comparison to a step adds an edge.
 
-    python scripts/evidence_graph.py                              # SVG on stdout
-    python scripts/evidence_graph.py -o dist/diagrams/domain/evidence.svg
-    python scripts/evidence_graph.py -f dot                       # to pipe into dot yourself
-    python scripts/evidence_graph.py -f blast                     # the closure, as text
+    python scripts/diagrams/evidence_graph.py                              # SVG on stdout
+    python scripts/diagrams/evidence_graph.py -o dist/diagrams/domain/evidence.svg
+    python scripts/diagrams/evidence_graph.py -f dot                       # to pipe into dot yourself
+    python scripts/diagrams/evidence_graph.py -f blast                     # the closure, as text
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(__file__).resolve().parents[2]
 AUDIT = REPO_ROOT / "core/src/repo2ree_core/domain/ree/audit.py"
 
 # The audited step each function answers for. Derived from the function name;

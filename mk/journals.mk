@@ -57,11 +57,11 @@ journals:
 		exit 1; \
 	}
 	@mkdir -p $(JOURNAL_DIR)
-	@python scripts/trace_journal.py $(JOURNAL_TRACE) 2>/dev/null \
+	@python scripts/diagrams/trace_journal.py $(JOURNAL_TRACE) 2>/dev/null \
 		| awk '$$4 ~ /^run\./ { name = substr($$4, 5); n = ++seen[name]; \
 			print $$1, (n == 1 ? name : name "-" n) }' \
 		| while read -r trace name; do \
-			python scripts/trace_journal.py $(JOURNAL_TRACE) -f graph --trace $$trace \
+			python scripts/diagrams/trace_journal.py $(JOURNAL_TRACE) -f graph --trace $$trace \
 				--exclude "docker." --exclude "process.exec" $(JOURNAL_ZONES) \
 				--title "$$name — across components" \
 				-o $(JOURNAL_DIR)/$$name.html; \

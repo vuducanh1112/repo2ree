@@ -16,7 +16,7 @@ services:
   agent:
     image: ${REPO2REE_AGENT_IMAGE:-docker.io/vuducanh1112/repo2ree-agent:edge}
     # Overridable so several agent instances can coexist on one host, each as
-    # its own compose project (see scripts/image-stack.sh, STACK_AGENTS).
+    # its own compose project (see scripts/test-stack/image-stack.sh, STACK_AGENTS).
     container_name: ${REPO2REE_AGENT_CONTAINER:-repo2ree-agent}
     extra_hosts:
       - "host.docker.internal:host-gateway"

@@ -178,10 +178,10 @@ agent's runtime at the supervisor's request, not inside `repo2ree-demo-data`.
 `docker compose down` keeps both volumes, which is what a stack you intend to
 restart wants. To stop a stack and reclaim everything it stored — the compose
 volumes plus any workbench containers and per-REE volumes left behind — use
-`scripts/image-stack.sh down --volumes` (`make stack-clean`), or
-`scripts/workbench-cleanup.sh` for the workbench leftovers alone — the latter
-also sweeps unreferenced anonymous volumes, which the bench image declares for
-itself and which nothing can address once their container is gone.
+`scripts/test-stack/image-stack.sh down --volumes` (`make stack-clean`), or
+`scripts/test-stack/workbench-cleanup.sh` for the workbench leftovers alone —
+the latter also sweeps unreferenced anonymous volumes, which the bench image
+declares for itself and which nothing can address once their container is gone.
 
 ## Runtime configuration
 

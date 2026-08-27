@@ -8,11 +8,11 @@ Every number is read from the file. Nothing is inferred, and nothing is styled
 into significance the capture does not support: a span with no recorded
 duration draws as no bar rather than as a guess.
 
-    python scripts/trace_journal.py TRACE.ndjson                      # list traces
-    python scripts/trace_journal.py TRACE.ndjson --trace d6edcd       # -> SVG on stdout
-    python scripts/trace_journal.py TRACE.ndjson --trace d6edcd -f html -o t.html
-    python scripts/trace_journal.py TRACE.ndjson --trace d6edcd --shapes none
-    python scripts/trace_journal.py TRACE.ndjson --trace d6edcd --all-spans
+    python scripts/diagrams/trace_journal.py TRACE.ndjson                      # list traces
+    python scripts/diagrams/trace_journal.py TRACE.ndjson --trace d6edcd       # -> SVG on stdout
+    python scripts/diagrams/trace_journal.py TRACE.ndjson --trace d6edcd -f html -o t.html
+    python scripts/diagrams/trace_journal.py TRACE.ndjson --trace d6edcd --shapes none
+    python scripts/diagrams/trace_journal.py TRACE.ndjson --trace d6edcd --all-spans
 
 Two emitters over one model, as ``arch_graph.py`` emits one import graph as dot
 or mermaid. ``svg`` is a file you can commit and embed; ``html`` hands the

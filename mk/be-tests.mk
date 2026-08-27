@@ -177,7 +177,7 @@ be-tests: be-unit-tests be-integration-tests
 # Reports
 # ================================================
 
-# Render a tier from data already on disk. scripts/e2e-stack.sh calls this after
+# Render a tier from data already on disk. scripts/test-stack/e2e-stack.sh calls this after
 # a measured stack run, so the stack tiers report identically to the pytest ones
 # instead of growing their own variant.
 be-coverage-report:

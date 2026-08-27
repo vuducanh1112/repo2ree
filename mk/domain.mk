@@ -25,9 +25,9 @@ EVIDENCE_GRAPH = $(DOMAIN_DIR)/evidence.svg
 
 evidence-graph: $(EVIDENCE_GRAPH)
 
-$(EVIDENCE_GRAPH): $(AUDIT_RULES) scripts/evidence_graph.py
+$(EVIDENCE_GRAPH): $(AUDIT_RULES) scripts/diagrams/evidence_graph.py
 	@mkdir -p $(DOMAIN_DIR)
-	python scripts/evidence_graph.py -o $@
+	python scripts/diagrams/evidence_graph.py -o $@
 
 # The same rules, run against a real REE: the api-integration tier snapshots the
 # state after each authoring act, and this draws what the audit said each time.
@@ -48,7 +48,7 @@ endef
 
 ree-filmstrip:
 	$(require_filmstrip_capture)
-	python scripts/ree_filmstrip.py --frames $(FILMSTRIP_CAPTURE) -o $(DOMAIN_DIR)/ree-filmstrip.svg
+	python scripts/diagrams/ree_filmstrip.py --frames $(FILMSTRIP_CAPTURE) -o $(DOMAIN_DIR)/ree-filmstrip.svg
 
 # The same frames at the other altitude: every field of the aggregate that each
 # act changed. HTML rather than SVG because it is text, and a browser measures
@@ -56,7 +56,7 @@ ree-filmstrip:
 # gives for its own html emitter.
 ree-timeline:
 	$(require_filmstrip_capture)
-	python scripts/ree_filmstrip.py -f timeline --frames $(FILMSTRIP_CAPTURE) -o $(DOMAIN_DIR)/ree-timeline.html
+	python scripts/diagrams/ree_filmstrip.py -f timeline --frames $(FILMSTRIP_CAPTURE) -o $(DOMAIN_DIR)/ree-timeline.html
 
 # The finished aggregate, browsable. Its one job beyond pretty-printing is
 # joining the digests up: a sealed REE holds fourteen distinct ones across
@@ -64,4 +64,4 @@ ree-timeline:
 # JSON viewer shows as thirty-one unrelated strings.
 ree-browser:
 	$(require_filmstrip_capture)
-	python scripts/ree_filmstrip.py -f browse --frames $(FILMSTRIP_CAPTURE) -o $(DOMAIN_DIR)/ree-browser.html
+	python scripts/diagrams/ree_filmstrip.py -f browse --frames $(FILMSTRIP_CAPTURE) -o $(DOMAIN_DIR)/ree-browser.html

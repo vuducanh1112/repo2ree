@@ -20,7 +20,7 @@ endef
 IMAGE_CANDIDATE_STATE_DIR ?= .validation-certificates/image-candidates
 IMAGE_CANDIDATE_RECEIPT = $(IMAGE_CANDIDATE_STATE_DIR)/$(IMAGE_CANDIDATE_REV).validated
 IMAGE_CANDIDATE_PENDING = $(IMAGE_CANDIDATE_RECEIPT).pending
-IMAGE_CANDIDATE_TOOL = scripts/image-candidate.sh
+IMAGE_CANDIDATE_TOOL = scripts/publish/image-candidate.sh
 IMAGE_VALIDATION_REGISTRY ?= $(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE)
 
 # The commit gate: fast and container-free by design — documentation and static
@@ -29,14 +29,14 @@ IMAGE_VALIDATION_REGISTRY ?= $(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE)
 # push-gate.
 #
 # The last step records the tree this run validated, which is what the
-# pre-commit hook checks (scripts/commit-gate-stamp.sh). It runs only after
-# everything above passed, because make stops the recipe at the first failure —
+# pre-commit hook checks (scripts/publish/commit-gate-stamp.sh). It runs only
+# after everything above passed, because make stops the recipe at the first failure —
 # a failed gate leaves the previous certificate in place, and a stale
 # certificate never matches new content anyway.
 commit-gate:
 	$(MAKE) docs-checks scripts-checks gui-checks be-checks
 	$(MAKE) gui-tests be-unit-tests core-integration-tests
-	scripts/commit-gate-stamp.sh write
+	scripts/publish/commit-gate-stamp.sh write
 	@echo ">> commit gate green — certificate written for the current tree"
 
 # The push gate: everything that must be green before publishing images, in

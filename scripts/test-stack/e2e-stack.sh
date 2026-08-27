@@ -103,7 +103,11 @@ if [ -n "$project" ]; then
 fi
 [ -n "$tier" ] || { echo "--script needs --tier <name> to say which tier it measures" >&2; exit 2; }
 
-root=$(cd "$(dirname "$0")/.." && pwd)
+# Anchored on this script's own location, not the cwd: every $root reference
+# below names an asset of *this* checkout (dist/bundles, sibling scripts), which
+# `git rev-parse` would get wrong when run from inside another repo. Two levels
+# up, because the script lives in scripts/test-stack/.
+root=$(cd "$(dirname "$0")/../.." && pwd)
 cd "$root"
 
 # Check the project resolves *before* building anything. Playwright is the only
@@ -169,7 +173,7 @@ stop_stack() {
     # specs did not delete is now unreachable — drop the containers and per-REE
     # volumes with it. (Assumes this stack owns the daemon's workbenches, which
     # holds: a run needs :8000, so no second stack is up alongside it.)
-    "$root/scripts/workbench-cleanup.sh"
+    "$root/scripts/test-stack/workbench-cleanup.sh"
 }
 trap stop_stack EXIT
 

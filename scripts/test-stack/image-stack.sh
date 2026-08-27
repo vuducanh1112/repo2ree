@@ -17,7 +17,7 @@
 # force-pulled on `up`, so moving tags like :edge always run fresh:
 #
 #   STACK_IMAGE_REPO=docker.io/vuducanh1112 STACK_IMAGE_TAG=edge \
-#     scripts/image-stack.sh up
+#     scripts/test-stack/image-stack.sh up
 #
 # (or override an individual image with STACK_GUI_IMAGE /
 # STACK_BACKEND_IMAGE / STACK_AGENT_IMAGE.)
@@ -41,7 +41,11 @@ usage() {
     exit 2
 }
 
-root=$(cd "$(dirname "$0")/.." && pwd)
+# Anchored on this script's own location, not the cwd: every $root reference
+# below names an asset of *this* checkout (dist/bundles, sibling scripts), which
+# `git rev-parse` would get wrong when run from inside another repo. Two levels
+# up, because the script lives in scripts/test-stack/.
+root=$(cd "$(dirname "$0")/../.." && pwd)
 cd "$root"
 
 agent_container=repo2ree-agent
@@ -193,7 +197,7 @@ down() {
     echo ">> stopping compose control plane"
     compose_stack down "${down_args[@]}"
 
-    [ "$with_volumes" = "--volumes" ] && "$root/scripts/workbench-cleanup.sh"
+    [ "$with_volumes" = "--volumes" ] && "$root/scripts/test-stack/workbench-cleanup.sh"
     return 0
 }
 
