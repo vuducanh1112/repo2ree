@@ -34,7 +34,7 @@
 # The tier selects its own data directory under
 # test-artifacts/coverage/python/data/<tier>/, so it never blends with the pytest
 # tiers or with another stack tier. `make be-coverage-combined` unions them. See
-# the tier map in mk/tests.mk.
+# the tier map in mk/be-tests.mk.
 #
 # Debugging without instrumentation: bring up a stack yourself (`make stack-up`)
 # and use the `-on-stack` targets, or point playwright at a single spec. Those
@@ -272,7 +272,7 @@ COVERAGE_FILE=$coverage_file coverage combine
 COVERAGE_FILE=$coverage_file coverage report
 # Report through the same make rule the pytest tiers use, so a stack tier
 # gets the identical total + per-package breakdown rather than a second,
-# drifting variant. All coverage layout lives in mk/tests.mk.
+# drifting variant. All coverage layout lives in mk/be-tests.mk.
 make -s be-coverage-report TIER="$tier"
 
 exit "$status"

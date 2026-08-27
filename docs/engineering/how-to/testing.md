@@ -296,7 +296,7 @@ Comparing one package across tiers is often the useful read: `agent` is 70% in
 `unit` and 87% in `combined`, because its docker runtime only runs under the
 stack tiers.
 
-All of this lives in `mk/tests.mk`: the tier definitions, the package list
+All of this lives in `mk/be-tests.mk`: the tier definitions, the package list
 (`COVERAGE_PACKAGES`), and the `coverage_render` rule every tier reports
 through. To re-render a tier from data already measured, without repeating its
 suite:

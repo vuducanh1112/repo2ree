@@ -8,8 +8,9 @@
 #   mk/domain.mk        generated domain-model diagrams
 #   mk/docs.mk          prose and documentation-link checks
 #   mk/contracts.mk contract generation (OpenAPI + GUI API types)
-#   mk/tests.mk    unit/integration suites and coverage variants
-#   mk/e2e.mk      e2e bundles, stacks, playwright runs
+#   mk/gui-tests.mk vitest plus the vite-only browser suites
+#   mk/be-tests.mk  backend suites and all python coverage plumbing
+#   mk/e2e.mk       e2e bundles, stacks, playwright runs against them
 #   mk/images.mk   image builds and the archive path
 #   mk/publish.mk  gates and the push → validate → promote publish flow
 
@@ -90,7 +91,8 @@ include mk/domain.mk
 include mk/journals.mk
 include mk/docs.mk
 include mk/contracts.mk
-include mk/tests.mk
+include mk/gui-tests.mk
+include mk/be-tests.mk
 include mk/e2e.mk
 include mk/images.mk
 include mk/publish.mk

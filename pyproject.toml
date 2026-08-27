@@ -65,7 +65,7 @@ branch = true
 # Fallback data file for an ad-hoc `pytest --cov` with no tier chosen. The
 # measured tiers (unit, integration, e2e, demo) each override this via
 # COVERAGE_FILE to write into their own directory under
-# test-artifacts/coverage/python/data/<tier>/ — see mk/tests.mk. One directory
+# test-artifacts/coverage/python/data/<tier>/ — see mk/be-tests.mk. One directory
 # per tier, rather than one suffixed file per tier, because `coverage combine`
 # treats sibling `.coverage.*` files as its own parallel-mode output and
 # consumes them: separate directories make a tier's data impossible to eat by

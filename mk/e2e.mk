@@ -1,9 +1,13 @@
 # End-to-end tests: bundles, source-run and image-backed stacks, playwright.
 #
+# Every suite here brings up a real stack — backend, agent, and a workbench
+# container. The browser suites that need only a vite dev server are GUI suites
+# and live in mk/gui-tests.mk.
+#
 # Stack orchestration (backend + agent + playwright, readiness polling,
 # teardown, the coverage variant) lives in scripts/e2e-stack.sh.
 
-.PHONY: e2e-bundles gui-accessibility-tests gui-screenshot-tests \
+.PHONY: e2e-bundles \
 	e2e-gui e2e-gui-on-stack e2e-gui-stack-local e2e-gui-stack-published \
 	e2e-gui-review e2e-gui-review-on-stack e2e-gui-review-stack-local e2e-gui-review-stack-published \
 	demo-gui demo-gui-on-stack demo-gui-stack-local demo-gui-stack-published \
@@ -59,15 +63,6 @@ E2E_AGENTS ?= 2
 # host's coverage cannot see them. That is the division of labour, not a gap —
 # the measured source-run path produces the numbers, and the image path proves
 # the un-instrumented topology works.
-
-# Page-level accessibility and screenshot regression with deterministic API fixtures.
-# These start only Vite: the browser renders the real routed application while
-# Playwright mocks the slow backend boundary.
-gui-accessibility-tests:
-	cd gui && npm exec -- playwright test -c playwright.config.ts --project=gui-accessibility-tests
-
-gui-screenshot-tests:
-	cd gui && npm exec -- playwright test -c playwright.config.ts --project=gui-screenshot-tests
 
 e2e-gui: e2e-bundles
 	$(E2E_STACK) --project e2e-gui --agents $(E2E_AGENTS)

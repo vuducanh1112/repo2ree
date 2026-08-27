@@ -1,11 +1,15 @@
-# Test suites and the coverage they produce. Running a tier *is* measuring it,
-# so there is one definition of each tier rather than a "run" target and a
-# "measure" target that can disagree. The e2e/demo tiers live in mk/e2e.mk; the
+# Backend test suites and the coverage they produce. Running a tier *is*
+# measuring it, so there is one definition of each tier rather than a "run"
+# target and a "measure" target that can disagree.
+#
+# The GUI suites live in mk/gui-tests.mk and the stack-backed e2e/demo tiers in
+# mk/e2e.mk — but the coverage plumbing below belongs here whatever drove the
+# run, because what those tiers measure is the *backend*: a browser suite
+# produces python coverage data and reports through `be-coverage-report`. The
 # rationale for the tier scheme and the runtime-above-tier artifact layout lives
 # in docs/engineering/how-to/testing.md, not here.
 
-.PHONY: gui-tests \
-	be-tests be-unit-tests be-integration-tests \
+.PHONY: be-tests be-unit-tests be-integration-tests \
 	protocol-tests core-tests core-unit-tests core-integration-tests \
 	supervisor-tests supervisor-unit-tests supervisor-integration-tests \
 	api-tests api-unit-tests api-integration-tests executor-tests agent-tests \
@@ -78,21 +82,6 @@ coverage_render = set -e; \
 	done; \
 	printf '   %-12s %s%%\n' TOTAL "$$($(call tier_coverage,$(1)) coverage report --format=total)"; \
 	echo ">> $(1) reports: $(COVERAGE_HTML)/$(1) (by module: .../by-module/<package>)"
-
-# ================================================
-# GUI
-# ================================================
-
-# Always measured, like the backend tiers: this suite *is* the node tier. Vitest
-# writes its report inline (reportsDirectory in gui/vite.config.mjs), so there is
-# no separate render step to match the python side's.
-# Component and pure-logic tests contribute to this report. The Playwright
-# suites deliberately record no JavaScript coverage; see
-# docs/engineering/testing.md.
-gui-tests:
-	@echo "Running GUI unit tests..."
-	cd gui && npx vitest run --coverage.enabled
-	@echo ">> node/unit report: test-artifacts/coverage/node/unit/index.html"
 
 # ================================================
 # Backend — per-package suites

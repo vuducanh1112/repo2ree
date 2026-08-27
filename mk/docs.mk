@@ -50,7 +50,7 @@ docs-site:
 
 docs-serve:
 	@echo "Serving the public documentation preview..."
-	zensical serve
+	zensical serve -a localhost:8001
 
 # Promotion is explicit: `make demo-gui` records the browser walkthrough under
 # disposable test-artifacts/, while this target selects the tutorial's video
