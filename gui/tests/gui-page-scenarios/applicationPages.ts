@@ -114,8 +114,10 @@ export const applicationPageScenarios: ApplicationPageScenario[] = [
   workspaceScenario("archive", "archive.png", "Archive", async (page) => {
     await expect(page.getByRole("heading", { name: "Deposit & Share" })).toBeVisible();
   }),
+  // The fixture REE carries every step-backed cable, so the preflight is clean
+  // and the seal is offered on its own terms rather than as an override.
   workspaceScenario("seal readiness", "seal-ready.png", "Seal", async (page) => {
-    await expect(page.getByRole("button", { name: "Seal anyway" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Seal REE" })).toBeVisible();
   }),
 ];
 

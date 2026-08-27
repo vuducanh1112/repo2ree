@@ -1,6 +1,6 @@
 import { buildSealCableItems } from "@core/canvas/sealCableScene";
 import type { InclusionOpts } from "@core/ree/InclusionOpts";
-import type { LogEntry } from "@core/ree/ReeTypes";
+import type { Badges, LogEntry } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { CollapsibleLogCard } from "@shell/ui/app-shell/components/CollapsibleLogCard";
 import React from "react";
@@ -10,6 +10,7 @@ import { SealStatusCard } from "./CenterSealStrip/SealStatusCard";
 
 interface CenterSealStripProps {
   ree: ReeEditorViewModel;
+  badges: Badges;
   locked: boolean;
   onSeal: (inclusionOpts: InclusionOpts) => void;
   sealRunning?: boolean;
@@ -19,6 +20,7 @@ interface CenterSealStripProps {
 
 export function CenterSealStrip({
   ree,
+  badges,
   locked,
   onSeal,
   sealRunning = false,
@@ -44,7 +46,7 @@ export function CenterSealStrip({
   }, [sourceAvailable, runtimeAvailable, resultsAvailable]);
 
   const sealed = locked && ree.artifact.sealedAt;
-  const cableItems = buildSealCableItems(ree);
+  const cableItems = buildSealCableItems(ree, badges);
   const liveCount = cableItems.filter((item) => item.live).length;
   const totalCables = cableItems.length;
   const allLive = liveCount === totalCables;

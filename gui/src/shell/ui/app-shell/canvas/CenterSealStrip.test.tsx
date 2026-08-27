@@ -130,6 +130,7 @@ describe("seal status surfaces", () => {
     const { rerender } = render(
       <CenterSealStrip
         ree={ree}
+        badges={{}}
         locked={false}
         onSeal={onSeal}
         sealRef={createRef<HTMLDivElement>()}
@@ -150,6 +151,7 @@ describe("seal status surfaces", () => {
           source: { sourceAvailable: false },
           spec: { runtime: "__skipped__", experiments: [] },
         })}
+        badges={{}}
         locked={false}
         onSeal={onSeal}
         sealRef={createRef<HTMLDivElement>()}
@@ -188,6 +190,7 @@ describe("seal status surfaces", () => {
         ree={patchReeEditorViewModel(createEmptyReeEditorViewModel(), {
           artifact: { sealedAt: "2026-01-01T00:00:00Z", sealHash: "hash" },
         })}
+        badges={{}}
         locked
         onSeal={vi.fn()}
         sealRef={createRef<HTMLDivElement>()}

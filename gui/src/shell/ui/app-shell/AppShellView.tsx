@@ -111,6 +111,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
       return (
         <SealContent
           ree={ree}
+          badges={badges}
           locked={uiChrome.locked}
           sealRunning={sealRunning}
           sealLog={sealLog}
@@ -142,6 +143,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
     commands,
     sealRunning,
     sealLog,
+    badges,
   ]);
 
   if (provisioned && workspaceHydration.status === "loading") {
