@@ -42,6 +42,12 @@ let
     pname = "repo2ree-gui";
     version = "0.1.0";
 
+    # Named rather than left to the `nodejs` default alias: the dev shell asks
+    # for a major explicitly, and when the two disagree the bundle you ship is
+    # built by a different Node than the one that tested it. They agreed only
+    # by luck before — devshell was on 25 while this defaulted to 24.
+    nodejs = pkgs.nodejs_24;
+
     src = guiSrc;
 
     # The hash of the fetched npm dependency set. It is not hand-maintained:

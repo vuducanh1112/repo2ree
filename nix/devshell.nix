@@ -21,7 +21,7 @@ pkgs.mkShell {
     ps
 
     # Project
-    nodejs_25
+    nodejs_24
     python313Packages.uv
     kubectl
 
@@ -73,7 +73,20 @@ pkgs.mkShell {
     fi
 
     export PLAYWRIGHT_BROWSERS_PATH=${pkgs.playwright-driver.browsers}
-    export PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH="${pkgs.playwright-driver.browsers}/chromium_headless_shell-1200/chrome-linux/headless_shell"
+
+    # The chromium revision directory is named for playwright's own build
+    # number, which moves whenever playwright-driver does — it went 1200 ->
+    # 1228 on the nixpkgs bump that brought otel 1.43, and a hardcoded number
+    # silently points at nothing. Resolve it instead, and say so loudly if the
+    # layout ever changes shape, because the alternative is every browser suite
+    # failing on a path that looks plausible.
+    __shell=(${pkgs.playwright-driver.browsers}/chromium_headless_shell-*/chrome-linux/headless_shell)
+    if [ -x "''${__shell[0]}" ]; then
+      export PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH="''${__shell[0]}"
+    else
+      echo "warning: no chromium_headless_shell under ${pkgs.playwright-driver.browsers}" >&2
+    fi
+    unset __shell
     export FONTCONFIG_FILE=${pkgs.makeFontsConf { fontDirectories = [ pkgs.dejavu_fonts ]; }}
   '';
 }

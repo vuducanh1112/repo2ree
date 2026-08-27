@@ -1,5 +1,5 @@
 {
-  description = "Fullstack Dev Environment with Node 25, UV, and Kubectl";
+  description = "Fullstack Dev Environment with Node 24, UV, and Kubectl";
 
   inputs = {
     # Nixpkgs unstable usually carries the latest Node versions

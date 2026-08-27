@@ -47,6 +47,18 @@ let
       opentelemetry-sdk
       opentelemetry-exporter-otlp-proto-common
       opentelemetry-exporter-otlp-proto-http
+      # protocol/pyproject.toml declares this too, and tracing.otlp_log_handler
+      # imports from it. It was missing here, which crashed every agent on
+      # startup; adding it only became a fix once the nixpkgs bump brought
+      # 0.64b0, since the 0.55b0 this pin used to carry has no `handler`
+      # submodule at all.
+      opentelemetry-instrumentation-logging
+      # A runtime import of opentelemetry-instrumentation's _semconv module
+      # that nixpkgs does not propagate, so withPackages leaves it out and the
+      # handler import above dies on `No module named 'packaging'` — the same
+      # startup crash, one layer down. Verified by running the import in this
+      # exact env, not inferred from the dependency metadata.
+      packaging
     ]
   );
 
