@@ -24,6 +24,11 @@ export const endpoints = {
   reeFileRaw: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/files/raw`,
   reeScriptInferences: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/script-inferences:generate`,
+  reeScriptLints: (reeId: string) =>
+    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/script-lints:run`,
+  // Not REE-scoped: a draft is checked before it is saved, and before a
+  // workbench necessarily exists.
+  scriptLintDraft: () => `${API_V1_BASE}/script-lints:draft`,
   reeSeal: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/ree:seal`,
   reeArchive: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/ree-archive`,
   reeWorkbenchReprovision: (reeId: string) =>

@@ -18,8 +18,6 @@ from repo2ree_core.author_recipes.inference.models import (
     DecisionTrace,
     InferenceEngineInfo,
     InferenceReport,
-    ScriptTarget,
-    ScriptTargetSelector,
     TargetInferenceResult,
 )
 from repo2ree_core.author_recipes.inference.policy import InferencePolicy, default_policy
@@ -32,37 +30,10 @@ from repo2ree_core.author_recipes.inference.registry import (
 )
 from repo2ree_core.author_recipes.inference.repository_facts import scan_repository
 from repo2ree_core.author_recipes.inference.runtime_inputs import RuntimeInputs
+from repo2ree_core.author_recipes.targets import ScriptTarget, ScriptTargetSelector, resolve_target
 from repo2ree_core.domain.ree.model import ReeDefinition
-from repo2ree_core.reserved_paths import (
-    RESERVED_ACTIVATION_SCRIPT,
-    RESERVED_ACTIVATION_VERIFY_SCRIPT,
-    RESERVED_BUILD_SCRIPT,
-    experiment_run_script_path,
-    experiment_verify_script_path,
-)
 
 ENGINE_VERSION = "1"
-
-
-def resolve_target(selector: ScriptTargetSelector) -> ScriptTarget:
-    """Resolve a selector's reserved path. Raises ``ValueError`` on a malformed
-    selector (experiment name present/absent for the wrong kind)."""
-    kind = selector.kind
-    name = selector.experiment_name
-    if kind in ("experiment_run", "experiment_verify"):
-        if not name:
-            raise ValueError(f"{kind} requires an experiment_name")
-        path = experiment_run_script_path(name) if kind == "experiment_run" else experiment_verify_script_path(name)
-        return ScriptTarget(kind=kind, experiment_name=name, path=path)
-
-    if name:
-        raise ValueError(f"{kind} must not carry an experiment_name")
-    path = {
-        "build": RESERVED_BUILD_SCRIPT,
-        "activation_run": RESERVED_ACTIVATION_SCRIPT,
-        "activation_verify": RESERVED_ACTIVATION_VERIFY_SCRIPT,
-    }[kind]
-    return ScriptTarget(kind=kind, path=path)
 
 
 def infer_scripts(

@@ -16,6 +16,7 @@ from repo2ree_api.authoring.definition import definition_router
 from repo2ree_api.authoring.evidence import receipts_router
 from repo2ree_api.authoring.files import files_router
 from repo2ree_api.authoring.inference import inference_router
+from repo2ree_api.authoring.lint import lint_router
 from repo2ree_api.authoring.seal import seal_router
 from repo2ree_api.authoring.source import source_router
 from repo2ree_api.authoring.stages import stages_router
@@ -147,6 +148,7 @@ ROUTERS = (
     definition_router,
     files_router,
     inference_router,
+    lint_router,
     stages_router,
     receipts_router,
     seal_router,

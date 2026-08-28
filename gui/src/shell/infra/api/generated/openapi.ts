@@ -373,6 +373,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rees/{ree_id}/script-lints:run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Lint Ree Scripts Route
+         * @description Statically check persisted scripts on every available tier.
+         */
+        post: operations["lintReeScripts"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/script-lints:draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check Script Draft Route
+         * @description Run process-free contract checks against unsaved source.
+         */
+        post: operations["checkScriptDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/rees/{ree_id}/generate-hbom": {
         parameters: {
             query?: never;
@@ -1973,6 +2013,36 @@ export interface components {
             /** Etag */
             etag?: string | null;
         };
+        /**
+         * Finding
+         * @description One observation about one script.
+         */
+        Finding: {
+            /** Code */
+            code: string;
+            /**
+             * Tier
+             * @enum {string}
+             */
+            tier: "syntax" | "shell" | "contract";
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "info" | "warning" | "error";
+            /** Blocking */
+            blocking: boolean;
+            /** Message */
+            message: string;
+            /** Path */
+            path: string;
+            /** Line */
+            line?: number | null;
+            /** Column */
+            column?: number | null;
+            /** Detail */
+            detail?: string | null;
+        };
         /** ForkNode */
         ForkNode: {
             /** Id */
@@ -2211,6 +2281,46 @@ export interface components {
             details?: {
                 [key: string]: unknown;
             } | null;
+        };
+        /**
+         * LintReport
+         * @description Everything one lint run observed about one script.
+         */
+        LintReport: {
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+            /** Engine Version */
+            engine_version: string;
+            target: components["schemas"]["ScriptTarget"];
+            /**
+             * Findings
+             * @default []
+             */
+            findings: components["schemas"]["Finding"][];
+            /**
+             * Tiers
+             * @default []
+             */
+            tiers: components["schemas"]["TierStatus"][];
+        };
+        /** LintScriptsPayload */
+        LintScriptsPayload: {
+            /** Targets */
+            targets: components["schemas"]["ScriptTargetSelectorPayload"][];
+        };
+        /**
+         * LintScriptsResponse
+         * @description Reports for existing scripts and paths for requested scripts that are absent.
+         */
+        LintScriptsResponse: {
+            /** Reports */
+            reports?: components["schemas"]["LintReport"][];
+            /** Missing Scripts */
+            missing_scripts?: string[];
         };
         /** LogicalRootObservation */
         LogicalRootObservation: {
@@ -3282,6 +3392,25 @@ export interface components {
             validation: components["schemas"]["ScriptValidation"];
         };
         /**
+         * ScriptDeclarations
+         * @description The narrow declaration view consumed by contract rules.
+         */
+        ScriptDeclarations: {
+            /** Runtime Path */
+            runtime_path?: string | null;
+        };
+        /**
+         * ScriptDraftPayload
+         * @description Unsaved source and the declarations against which to check it.
+         */
+        ScriptDraftPayload: {
+            target: components["schemas"]["ScriptTargetSelectorPayload"];
+            /** Source */
+            source: string;
+            /** @default {} */
+            declarations: components["schemas"]["ScriptDeclarations"];
+        };
+        /**
          * ScriptTarget
          * @description A resolved executable target. ``path`` is output-only.
          */
@@ -3681,6 +3810,28 @@ export interface components {
          * @enum {string}
          */
         ThreatCategory: "dependency" | "environment" | "machine";
+        /**
+         * TierStatus
+         * @description Whether an optional analysis tier ran.
+         */
+        TierStatus: {
+            /**
+             * Tier
+             * @enum {string}
+             */
+            tier: "syntax" | "shell" | "contract";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ran" | "unavailable";
+            /** Tool */
+            tool?: string | null;
+            /** Tool Version */
+            tool_version?: string | null;
+            /** Detail */
+            detail?: string | null;
+        };
         /** TraversedEdge */
         TraversedEdge: {
             /** Source */
@@ -6294,6 +6445,218 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InferenceReport"];
+                };
+            };
+            /** @description Invalid request or operation precondition */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description REE, run, file, or artifact not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Version or idempotency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload exceeds the configured size limit */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench returned an invalid upstream response */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench or runtime agent unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload staging capacity exhausted */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    lintReeScripts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ree_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LintScriptsPayload"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LintScriptsResponse"];
+                };
+            };
+            /** @description Invalid request or operation precondition */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description REE, run, file, or artifact not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Version or idempotency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload exceeds the configured size limit */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench returned an invalid upstream response */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench or runtime agent unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload staging capacity exhausted */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    checkScriptDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScriptDraftPayload"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LintReport"];
                 };
             };
             /** @description Invalid request or operation precondition */

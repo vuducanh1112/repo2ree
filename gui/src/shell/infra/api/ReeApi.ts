@@ -8,6 +8,8 @@ import type {
   DeleteReeResponse,
   FileMutationResponse,
   InferenceReport,
+  LintReport,
+  LintScriptsResponse,
   ReeCreatePayload,
   ReeDefinitionPatchPayload,
   ReeDocument,
@@ -18,6 +20,7 @@ import type {
   ReprovisionResponse,
   ReviewSetWire,
   RunSummary,
+  ScriptDeclarations,
   ScriptTargetSelector,
   ScriptTemplateCatalog,
   SourceAcquirePayload,
@@ -329,6 +332,39 @@ export class ReeApi {
     return this.client.request<InferenceReport>(endpoints.reeScriptInferences(reeId), {
       method: "POST",
       body: JSON.stringify({ targets }),
+    });
+  }
+
+  /**
+   * Static checks over the REE's written scripts, on every tier the bench can
+   * run. Read-only and always recomputed; a target with no script yet comes
+   * back under `missing_scripts` rather than as an empty report.
+   */
+  async lintReeScripts(
+    reeId: ReeId | string,
+    targets: ScriptTargetSelector[],
+  ): Promise<LintScriptsResponse> {
+    return this.client.request<LintScriptsResponse>(endpoints.reeScriptLints(reeId), {
+      method: "POST",
+      body: JSON.stringify({ targets }),
+    });
+  }
+
+  /**
+   * Static checks over a script that has not been saved — the bytes in an
+   * editor, with the declarations to grade them against. Stateless and not
+   * REE-scoped: it reads nothing, writes nothing, and needs no workbench, which
+   * is what lets an editor call it while the author types. Contract tier only;
+   * the syntax and shell tiers need a process and live on {@link lintReeScripts}.
+   */
+  async checkScriptDraft(
+    target: ScriptTargetSelector,
+    source: string,
+    declarations: ScriptDeclarations,
+  ): Promise<LintReport> {
+    return this.client.request<LintReport>(endpoints.scriptLintDraft(), {
+      method: "POST",
+      body: JSON.stringify({ target, source, declarations }),
     });
   }
 

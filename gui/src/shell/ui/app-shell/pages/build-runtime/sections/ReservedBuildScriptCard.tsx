@@ -1,5 +1,8 @@
 import type { ScriptTemplateEntry } from "@shell/data/scriptTemplates/catalog";
-import { RunScriptCard } from "@shell/ui/app-shell/components/RunScriptCard";
+import {
+  RunScriptCard,
+  type RunScriptCardProps,
+} from "@shell/ui/app-shell/components/RunScriptCard";
 import { Ic } from "@shell/ui/shared/components/Icon";
 
 interface ReservedBuildScriptCardProps {
@@ -12,6 +15,7 @@ interface ReservedBuildScriptCardProps {
   // A generated candidate to load into the editor (replaces the body, leaves it
   // dirty; the author still saves manually). Bump the nonce on each load.
   externalEdit?: { content: string; nonce: number };
+  renderAnalysis?: RunScriptCardProps["renderAnalysis"];
   onSave: (content: string) => void;
 }
 
@@ -22,6 +26,7 @@ export function ReservedBuildScriptCard({
   disabled = false,
   templates,
   externalEdit,
+  renderAnalysis,
   onSave,
 }: ReservedBuildScriptCardProps) {
   return (
@@ -30,6 +35,7 @@ export function ReservedBuildScriptCard({
       disabled={disabled}
       templates={templates}
       externalEdit={externalEdit}
+      renderAnalysis={renderAnalysis}
       onSave={onSave}
       icon={Ic.file(15)}
       label="Build script"

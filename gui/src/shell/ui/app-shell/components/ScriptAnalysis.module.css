@@ -1,0 +1,100 @@
+/* Static checks over the script above: a status line, what was found, and what
+ * was not looked at. */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2-5);
+  padding-top: var(--space-2-5);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.status {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  color: var(--ink-subtle);
+}
+
+.headline {
+  font-weight: var(--weight-bold);
+  color: var(--ink-default);
+}
+
+/* Which script was read: the saved one, or what is in the editor right now. */
+.scope {
+  color: var(--ink-subtle);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.finding {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: none;
+  text-align: left;
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  line-height: var(--leading-snug);
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+
+.finding:hover,
+.finding:focus-visible {
+  border-color: var(--border-accent);
+  background: var(--surface-sunken);
+}
+
+.line {
+  flex: none;
+  min-width: 3ch;
+  font-family: var(--font-mono);
+  color: var(--ink-subtle);
+}
+
+/* The severity is the reading, not a colour the caller picks. */
+.code {
+  flex: none;
+  font-family: var(--font-mono);
+}
+
+.finding[data-tone="error"] .code {
+  color: var(--tone-danger-ink);
+}
+
+.finding[data-tone="warn"] .code {
+  color: var(--tone-warning-ink);
+}
+
+.finding[data-tone="info"] .code {
+  color: var(--tone-info-ink);
+}
+
+.detail {
+  font-family: var(--font-mono);
+  color: var(--ink-subtle);
+}
+
+.unrun {
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  line-height: var(--leading-snug);
+  color: var(--tone-warning-ink);
+}

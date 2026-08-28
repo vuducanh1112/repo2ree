@@ -16,7 +16,6 @@ from repo2ree_core.author_recipes.inference.models import (
     InferenceEvidence,
     RenderedScript,
     RuntimeContractBinding,
-    ScriptTarget,
     VenvRuntimeContract,
 )
 from repo2ree_core.author_recipes.inference.renderers._scaffold import (
@@ -26,6 +25,7 @@ from repo2ree_core.author_recipes.inference.renderers._scaffold import (
     unconfigured_guard,
 )
 from repo2ree_core.author_recipes.inference.warnings import make_warning
+from repo2ree_core.author_recipes.targets import ScriptTarget
 
 
 def _bindings(context: DecisionContext) -> tuple[VenvRuntimeContract, str, ExperimentBinding]:

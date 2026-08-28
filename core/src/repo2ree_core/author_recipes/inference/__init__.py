@@ -8,18 +8,13 @@ control-flow authority (see ``engine`` and ``registry``). Design overview:
 
 from __future__ import annotations
 
-from repo2ree_core.author_recipes.inference.inference import (
-    ENGINE_VERSION,
-    infer_scripts,
-    resolve_target,
-)
+from repo2ree_core.author_recipes.inference.inference import ENGINE_VERSION, infer_scripts
 from repo2ree_core.author_recipes.inference.models import (
     InferenceReport,
     ScriptCandidate,
-    ScriptTarget,
-    ScriptTargetSelector,
     TargetInferenceResult,
 )
+from repo2ree_core.author_recipes.targets import ScriptTarget, ScriptTargetSelector, resolve_target
 
 __all__ = [
     "ENGINE_VERSION",

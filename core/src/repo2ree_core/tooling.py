@@ -6,6 +6,8 @@ bundles into, PATH knows nothing — the agent advertises each tool's absolute
 path through a ``REPO2REE_TOOL_<NAME>`` environment variable set on the bench
 container (see the tools manifest in nix/tools.nix). Handlers resolve through
 here so both worlds work without the handler knowing which one it is in.
+
+This dependency-free module is shared across core layers that invoke tools.
 """
 
 from __future__ import annotations

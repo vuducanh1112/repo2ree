@@ -126,6 +126,21 @@ export type ScriptTargetSelector = Schema<"ScriptTargetSelectorPayload">;
 /** Read-only script inference over the current source (POST .../script-inferences:generate). */
 export type InferenceReport = Schema<"InferenceReport">;
 
+/** Static checks over one script: the findings and which tiers produced them. */
+export type LintReport = Schema<"LintReport">;
+
+/** One observation about a script. `blocking` is set only by a syntax error. */
+export type LintFinding = Schema<"Finding">;
+
+/** Whether a tier ran, so "nothing found" is never read as "nothing looked". */
+export type LintTierStatus = Schema<"TierStatus">;
+
+/** Reports for the REE's written scripts, plus the targets with nothing written yet. */
+export type LintScriptsResponse = Schema<"LintScriptsResponse">;
+
+/** What the REE declares, as lint reads it — not the whole persisted definition. */
+export type ScriptDeclarations = Schema<"ScriptDeclarations">;
+
 /** The executed decision-DAG walk for one target: visited steps, traversed edges, result node. */
 export type DecisionTrace = Schema<"DecisionTrace">;
 

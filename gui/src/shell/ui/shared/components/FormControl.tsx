@@ -1,6 +1,7 @@
 import {
   type InputHTMLAttributes,
   type ReactNode,
+  type Ref,
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
   useId,
@@ -100,8 +101,9 @@ export function Select({ density, ...rest }: SelectProps) {
 interface TextareaProps
   extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "className" | "style"> {
   flavor?: ControlFlavor;
+  textareaRef?: Ref<HTMLTextAreaElement>;
 }
 
-export function Textarea({ flavor = "prose", ...rest }: TextareaProps) {
-  return <textarea className={styles.control} data-flavor={flavor} {...rest} />;
+export function Textarea({ flavor = "prose", textareaRef, ...rest }: TextareaProps) {
+  return <textarea ref={textareaRef} className={styles.control} data-flavor={flavor} {...rest} />;
 }

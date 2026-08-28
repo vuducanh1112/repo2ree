@@ -387,7 +387,7 @@ layers = [
     "persistence",
     "author_recipes",
     "domain",
-    "digests : failures : path_safety : reserved_paths : time_utils",
+    "digests : failures : path_safety : reserved_paths : time_utils : tooling",
 ]
 
 # The capabilities the spine calls into. They are deliberately *not* placed in
@@ -483,6 +483,8 @@ source_modules = [
     "repo2ree_core.reproduction.commands",
     "repo2ree_core.reserved_paths",
     "repo2ree_core.time_utils",
+    # Shared leaf for external-tool lookup across core layers.
+    "repo2ree_core.tooling",
 ]
 forbidden_modules = [
     "repo2ree_core.analysis",

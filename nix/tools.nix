@@ -54,6 +54,10 @@ let
       pkg = pkgs.gzip;
       bin = "gzip";
     };
+    shellcheck = {
+      pkg = pkgs.shellcheck;
+      bin = "shellcheck";
+    };
   };
 
   bins = pkgs.lib.mapAttrs (_name: t: "${t.pkg}/bin/${t.bin}") toolPkgs;

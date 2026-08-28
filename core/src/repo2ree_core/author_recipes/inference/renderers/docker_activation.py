@@ -17,7 +17,6 @@ from repo2ree_core.author_recipes.inference.models import (
     InferenceEvidence,
     RenderedScript,
     RuntimeContractBinding,
-    ScriptTarget,
 )
 from repo2ree_core.author_recipes.inference.renderers._scaffold import (
     candidate_examples_block,
@@ -25,6 +24,7 @@ from repo2ree_core.author_recipes.inference.renderers._scaffold import (
     unconfigured_guard,
 )
 from repo2ree_core.author_recipes.inference.warnings import make_warning
+from repo2ree_core.author_recipes.targets import ScriptTarget
 
 
 def _docker_contract(context: DecisionContext) -> tuple[DockerRuntimeContract, str]:

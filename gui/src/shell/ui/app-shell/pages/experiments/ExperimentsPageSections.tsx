@@ -25,6 +25,7 @@ import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
 import { GenerateScriptControl } from "../../components/GenerateScriptControl";
 import { RunActionButton } from "../../components/RunActionButton";
 import { RunScriptCard } from "../../components/RunScriptCard";
+import { ScriptAnalysis } from "../../components/ScriptAnalysis";
 import styles from "./ExperimentsPage.module.css";
 import type { RunState } from "./useExperimentRun";
 
@@ -46,6 +47,7 @@ export function ExperimentDetail({
   index,
   otherNames,
   locked,
+  runtimePath,
   scriptContent,
   verifyScriptContent,
   onUpdate,
@@ -58,6 +60,7 @@ export function ExperimentDetail({
   index: number;
   otherNames: string[];
   locked: boolean;
+  runtimePath: string | null;
   scriptContent: string;
   verifyScriptContent: string;
   onUpdate: (patch: Partial<ReeExperiment>) => void;
@@ -151,13 +154,23 @@ export function ExperimentDetail({
                 }
               />
             }
+            renderAnalysis={(content, dirty, focusLine) => (
+              <ScriptAnalysis
+                target={{ kind: "experiment_run", experimentName: experiment.name }}
+                source={content}
+                dirty={dirty}
+                runtimePath={runtimePath}
+                onFocusLine={focusLine}
+                disabled={locked || !scriptPath || !experiment.name}
+              />
+            )}
             onSave={(content) => onSaveScript(scriptPath, content)}
           />
         </DetailField>
 
         <DetailField
           label="Verify script"
-          help="Validates the run's results afterwards — a plain script run from the workspace root after the run script, whose exit code is the verdict (0 = the declared validation passed). It reads what it checks straight from the workspace; to check stdout, have the run script write it to a file (e.g. `… | tee results/run.log`). Start from a template for the standard cases."
+          help="Validates the run's results afterwards — a plain script run from the workspace root after the run script, whose exit code is the verdict (0 = the declared validation passed). It reads what it checks straight from the workspace; to check stdout, have the run script redirect it to a file (e.g. `… > results/run.log`) — a pipeline would report the last stage's exit status and hide a failing run. Start from a template for the standard cases."
         >
           <RunScriptCard
             scriptPath={verifyScriptPath}
@@ -169,6 +182,16 @@ export function ExperimentDetail({
             saveButtonContent="Save verify script"
             savedLabel="Saved verify script"
             unsavedLabel="Unsaved verify script"
+            renderAnalysis={(content, dirty, focusLine) => (
+              <ScriptAnalysis
+                target={{ kind: "experiment_verify", experimentName: experiment.name }}
+                source={content}
+                dirty={dirty}
+                runtimePath={runtimePath}
+                onFocusLine={focusLine}
+                disabled={locked || !verifyScriptPath || !experiment.name}
+              />
+            )}
             onSave={(content) => onSaveVerifyScript(verifyScriptPath, content)}
           />
         </DetailField>

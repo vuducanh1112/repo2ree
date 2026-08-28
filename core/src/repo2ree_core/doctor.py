@@ -22,11 +22,11 @@ import time
 from pathlib import Path
 from typing import Any
 
-from repo2ree_core.execution.tools import find_tool
+from repo2ree_core.tooling import find_tool
 
 # Tools core handlers and lifecycle scripts shell out to; each is reported as
 # its resolved path or null. Extend alongside nix/tools.nix.
-_PROBED_TOOLS = ("syft", "git", "curl", "unzip", "tar", "gzip")
+_PROBED_TOOLS = ("syft", "git", "curl", "unzip", "tar", "gzip", "shellcheck")
 
 # dockerd may still be starting when the probe runs (the agent probes right
 # after the container comes up, and dind daemons take a few seconds); poll

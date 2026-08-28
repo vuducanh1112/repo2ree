@@ -27,6 +27,7 @@ import { MissingInputsBanner } from "../../components/MissingInputsBanner";
 import { OutcomeBadge } from "../../components/OutcomeBadge";
 import { RunActionButton } from "../../components/RunActionButton";
 import { RunScriptCard } from "../../components/RunScriptCard";
+import { ScriptAnalysis } from "../../components/ScriptAnalysis";
 import type { StepPageProps } from "../sharedStepUi";
 import styles from "./ActivationTestPage.module.css";
 import { ActivationTargetCard } from "./sections";
@@ -215,6 +216,16 @@ export function PageTestActivation({
                   }
                 />
               }
+              renderAnalysis={(content, dirty, focusLine) => (
+                <ScriptAnalysis
+                  target={{ kind: "activation_run" }}
+                  source={content}
+                  dirty={dirty}
+                  runtimePath={runtimePath || null}
+                  onFocusLine={focusLine}
+                  disabled={!activationScriptPath}
+                />
+              )}
               onSave={handleSaveScript}
             />
           </div>
@@ -230,6 +241,16 @@ export function PageTestActivation({
               saveButtonContent="Save verify script"
               savedLabel="Saved verify script"
               unsavedLabel="Unsaved verify script"
+              renderAnalysis={(content, dirty, focusLine) => (
+                <ScriptAnalysis
+                  target={{ kind: "activation_verify" }}
+                  source={content}
+                  dirty={dirty}
+                  runtimePath={runtimePath || null}
+                  onFocusLine={focusLine}
+                  disabled={!activationVerifyScriptPath}
+                />
+              )}
               onSave={handleSaveVerifyScript}
             />
           </div>

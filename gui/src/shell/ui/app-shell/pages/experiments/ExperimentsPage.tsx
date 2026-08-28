@@ -248,6 +248,7 @@ export function PageExperiments({
             index={selectedIndex}
             otherNames={otherNames}
             locked={locked}
+            runtimePath={reeSpec.runtime || null}
             scriptContent={
               findFileByWorkspacePath(workspaceFiles, selectedExperiment.runScript)?.content ?? ""
             }

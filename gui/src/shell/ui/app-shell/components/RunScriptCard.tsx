@@ -1,3 +1,4 @@
+import { lineOffset } from "@shell/data/scriptLint/findings";
 import type { ScriptTemplateEntry } from "@shell/data/scriptTemplates/catalog";
 import { Button } from "@shell/ui/shared/components/Button";
 import { Textarea } from "@shell/ui/shared/components/FormControl";
@@ -5,7 +6,7 @@ import { Surface } from "@shell/ui/shared/components/Surface";
 import { useEffect, useRef, useState } from "react";
 import styles from "./RunScriptCard.module.css";
 
-interface RunScriptCardProps {
+export interface RunScriptCardProps {
   // Workspace-relative path the script is stored at. When set, it is shown as a
   // mono caption under the helper.
   scriptPath?: string;
@@ -30,6 +31,11 @@ interface RunScriptCardProps {
   // Optional control rendered above the editor (e.g. a "Generate from
   // repository" affordance that loads a candidate via `externalEdit`).
   generateSlot?: React.ReactNode;
+  renderAnalysis?: (
+    content: string,
+    dirty: boolean,
+    focusLine: (line: number) => void,
+  ) => React.ReactNode;
   // Button content and footer status text — overridable so callers (e.g. the
   // reserved build script) can speak in their own terms.
   saveButtonContent?: React.ReactNode;
@@ -54,6 +60,7 @@ export function RunScriptCard({
   externalEdit,
   icon,
   generateSlot,
+  renderAnalysis,
   saveButtonContent = "Save run script",
   savedLabel = "Saved run script",
   unsavedLabel = "Unsaved run script",
@@ -89,6 +96,15 @@ export function RunScriptCard({
   }, [externalEdit]);
 
   const dirty = content !== savedContent;
+
+  const editorRef = useRef<HTMLTextAreaElement | null>(null);
+  const focusLine = (line: number) => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const offset = lineOffset(content, line);
+    editor.focus();
+    editor.setSelectionRange(offset, offset);
+  };
 
   const header = (
     <div>
@@ -130,6 +146,7 @@ export function RunScriptCard({
       {!disabled && generateSlot}
 
       <Textarea
+        textareaRef={editorRef}
         flavor="code"
         aria-label={label}
         value={content}
@@ -138,6 +155,8 @@ export function RunScriptCard({
         disabled={disabled}
         rows={13}
       />
+      {renderAnalysis?.(content, dirty, focusLine)}
+
       <div className={styles.footer}>
         <span className={styles.state} data-dirty={dirty || undefined}>
           {dirty ? unsavedLabel : savedLabel}

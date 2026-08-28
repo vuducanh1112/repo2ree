@@ -27,7 +27,6 @@ from repo2ree_core.author_recipes.inference.models import (
     ProjectRootBinding,
     RenderedScript,
     RequirementsProjectBinding,
-    ScriptTarget,
 )
 from repo2ree_core.author_recipes.inference.renderers._common import (
     VENV_RUNTIME_ARTIFACT_SUFFIX,
@@ -36,6 +35,7 @@ from repo2ree_core.author_recipes.inference.renderers._common import (
     sh_quote,
 )
 from repo2ree_core.author_recipes.inference.warnings import make_warning
+from repo2ree_core.author_recipes.targets import ScriptTarget
 
 # Where the venv is built inside the bench — deliberately outside the workspace
 # (see module docstring). Shared with the run scaffolds via one constant so the

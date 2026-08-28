@@ -32,7 +32,6 @@ from repo2ree_core.author_recipes.inference.models import (
     Resolver,
     ResultNode,
     ScriptCandidate,
-    ScriptTarget,
     ScriptValidation,
     StrategyLeafNode,
     StrategyOutcome,
@@ -40,6 +39,7 @@ from repo2ree_core.author_recipes.inference.models import (
     TraversedEdge,
 )
 from repo2ree_core.author_recipes.inference.warnings import is_known_code, make_warning
+from repo2ree_core.author_recipes.targets import ScriptTarget
 from repo2ree_core.digests import digest_bytes, short_hash
 
 

@@ -17,39 +17,11 @@ from typing import Annotated, ClassVar, Literal, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from repo2ree_protocol.command import TargetKind
+from repo2ree_core.author_recipes.targets import ScriptTarget
 
 # ================================================
 # Targets
 # ================================================
-
-# TargetKind comes from the wire type, which owns the vocabulary so the command
-# crossing into the workbench and the models resolving it here cannot disagree.
-
-
-class ScriptTargetSelector(BaseModel):
-    """What a caller asks inference about: a kind, no path.
-
-    The server resolves the reserved path from the kind (and, for experiments,
-    the reserved slug convention); a caller cannot redirect inference at an
-    arbitrary workspace file.
-    """
-
-    model_config = ConfigDict(extra="forbid")
-
-    kind: TargetKind
-    experiment_name: str | None = None
-
-
-class ScriptTarget(BaseModel):
-    """A resolved executable target. ``path`` is output-only."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    kind: TargetKind
-    experiment_name: str | None = None
-    path: str
-
 
 # ================================================
 # Status / application policy

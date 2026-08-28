@@ -3210,6 +3210,261 @@
         }
       }
     },
+    "/api/v1/rees/{ree_id}/script-lints:run": {
+      "post": {
+        "tags": [
+          "files"
+        ],
+        "summary": "Lint Ree Scripts Route",
+        "description": "Statically check persisted scripts on every available tier.",
+        "operationId": "lintReeScripts",
+        "parameters": [
+          {
+            "name": "ree_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ree Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LintScriptsPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LintScriptsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or operation precondition",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "REE, run, file, or artifact not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Workbench returned an invalid upstream response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Workbench or runtime agent unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "507": {
+            "description": "Upload staging capacity exhausted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/script-lints:draft": {
+      "post": {
+        "tags": [
+          "files"
+        ],
+        "summary": "Check Script Draft Route",
+        "description": "Run process-free contract checks against unsaved source.",
+        "operationId": "checkScriptDraft",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScriptDraftPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LintReport"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or operation precondition",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "REE, run, file, or artifact not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Workbench returned an invalid upstream response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Workbench or runtime agent unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "507": {
+            "description": "Upload staging capacity exhausted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/rees/{ree_id}/generate-hbom": {
       "post": {
         "tags": [
@@ -8725,6 +8980,89 @@
         "type": "object",
         "title": "FileMutationResponse"
       },
+      "Finding": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "tier": {
+            "type": "string",
+            "enum": [
+              "syntax",
+              "shell",
+              "contract"
+            ],
+            "title": "Tier"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "info",
+              "warning",
+              "error"
+            ],
+            "title": "Severity"
+          },
+          "blocking": {
+            "type": "boolean",
+            "title": "Blocking"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line"
+          },
+          "column": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Column"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "tier",
+          "severity",
+          "blocking",
+          "message",
+          "path"
+        ],
+        "title": "Finding",
+        "description": "One observation about one script."
+      },
       "ForkNode": {
         "properties": {
           "id": {
@@ -9250,6 +9588,86 @@
           "message"
         ],
         "title": "InferenceWarning"
+      },
+      "LintReport": {
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Schema Version",
+            "default": 1
+          },
+          "engine_version": {
+            "type": "string",
+            "title": "Engine Version"
+          },
+          "target": {
+            "$ref": "#/components/schemas/ScriptTarget"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/Finding"
+            },
+            "type": "array",
+            "title": "Findings",
+            "default": []
+          },
+          "tiers": {
+            "items": {
+              "$ref": "#/components/schemas/TierStatus"
+            },
+            "type": "array",
+            "title": "Tiers",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "engine_version",
+          "target"
+        ],
+        "title": "LintReport",
+        "description": "Everything one lint run observed about one script."
+      },
+      "LintScriptsPayload": {
+        "properties": {
+          "targets": {
+            "items": {
+              "$ref": "#/components/schemas/ScriptTargetSelectorPayload"
+            },
+            "type": "array",
+            "title": "Targets"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "targets"
+        ],
+        "title": "LintScriptsPayload"
+      },
+      "LintScriptsResponse": {
+        "properties": {
+          "reports": {
+            "items": {
+              "$ref": "#/components/schemas/LintReport"
+            },
+            "type": "array",
+            "title": "Reports"
+          },
+          "missing_scripts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Missing Scripts"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "LintScriptsResponse",
+        "description": "Reports for existing scripts and paths for requested scripts that are absent."
       },
       "LogicalRootObservation": {
         "properties": {
@@ -11921,6 +12339,48 @@
         ],
         "title": "ScriptCandidate"
       },
+      "ScriptDeclarations": {
+        "properties": {
+          "runtime_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runtime Path"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ScriptDeclarations",
+        "description": "The narrow declaration view consumed by contract rules."
+      },
+      "ScriptDraftPayload": {
+        "properties": {
+          "target": {
+            "$ref": "#/components/schemas/ScriptTargetSelectorPayload"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "declarations": {
+            "$ref": "#/components/schemas/ScriptDeclarations",
+            "default": {}
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "target",
+          "source"
+        ],
+        "title": "ScriptDraftPayload",
+        "description": "Unsaved source and the declarations against which to check it."
+      },
       "ScriptTarget": {
         "properties": {
           "kind": {
@@ -12873,6 +13333,68 @@
           "machine"
         ],
         "title": "ThreatCategory"
+      },
+      "TierStatus": {
+        "properties": {
+          "tier": {
+            "type": "string",
+            "enum": [
+              "syntax",
+              "shell",
+              "contract"
+            ],
+            "title": "Tier"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ran",
+              "unavailable"
+            ],
+            "title": "Status"
+          },
+          "tool": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool"
+          },
+          "tool_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Version"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "tier",
+          "status"
+        ],
+        "title": "TierStatus",
+        "description": "Whether an optional analysis tier ran."
       },
       "TraversedEdge": {
         "properties": {

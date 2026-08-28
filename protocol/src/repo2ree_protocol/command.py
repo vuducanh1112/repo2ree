@@ -398,6 +398,21 @@ class GenerateScriptCandidatesCommand(BaseModel):
     args: GenerateScriptCandidatesArgs
 
 
+class LintScriptsArgs(BaseModel):
+    """Targets for read-only checks of persisted REE scripts."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    targets: list[ScriptTargetSelectorArg]
+
+
+class LintScriptsCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    operation: Literal["lint_scripts"] = "lint_scripts"
+    args: LintScriptsArgs
+
+
 class SealReeArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -434,6 +449,7 @@ Command = Annotated[
     | GenerateHbomCommand
     | ActivationTestCommand
     | GenerateScriptCandidatesCommand
+    | LintScriptsCommand
     | SealReeCommand,
     Field(discriminator="operation"),
 ]

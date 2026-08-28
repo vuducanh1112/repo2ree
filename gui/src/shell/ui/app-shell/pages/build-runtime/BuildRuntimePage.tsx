@@ -24,6 +24,7 @@ import { LastRunStamp } from "../../components/LastRunStamp";
 import { MissingInputsBanner } from "../../components/MissingInputsBanner";
 import { OutcomeBadge } from "../../components/OutcomeBadge";
 import { RunActionButton } from "../../components/RunActionButton";
+import { ScriptAnalysis } from "../../components/ScriptAnalysis";
 import type { StepPageProps } from "../sharedStepUi";
 import styles from "./BuildRuntimePage.module.css";
 import { ReservedBuildScriptCard, RuntimeArtifactCard } from "./sections";
@@ -226,6 +227,16 @@ export function PageBuildRuntime({
               disabled={!scriptPath}
               templates={templateCatalog?.build.templates}
               externalEdit={externalEdit}
+              renderAnalysis={(content, dirty, focusLine) => (
+                <ScriptAnalysis
+                  target={{ kind: "build" }}
+                  source={content}
+                  dirty={dirty}
+                  runtimePath={runtimePath || null}
+                  onFocusLine={focusLine}
+                  disabled={!scriptPath}
+                />
+              )}
               onSave={handleSaveReservedBuildScript}
             />
           </div>

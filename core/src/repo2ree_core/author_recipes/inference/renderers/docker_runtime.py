@@ -21,7 +21,6 @@ from repo2ree_core.author_recipes.inference.models import (
     InferenceEvidence,
     ProjectRootBinding,
     RenderedScript,
-    ScriptTarget,
 )
 from repo2ree_core.author_recipes.inference.renderers._common import (
     DOCKER_RUNTIME_ARTIFACT_SUFFIX,
@@ -31,6 +30,7 @@ from repo2ree_core.author_recipes.inference.renderers._common import (
     sh_quote,
 )
 from repo2ree_core.author_recipes.inference.warnings import make_warning
+from repo2ree_core.author_recipes.targets import ScriptTarget
 
 
 def _bindings(context: DecisionContext) -> tuple[ProjectRootBinding, DockerfileBinding]:

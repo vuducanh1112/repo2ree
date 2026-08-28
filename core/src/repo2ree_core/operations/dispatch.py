@@ -19,6 +19,7 @@ from repo2ree_core.operations.handlers.author.generate_sbom import handle_genera
 from repo2ree_core.operations.handlers.author.generate_script_candidates import (
     handle_generate_script_candidates,
 )
+from repo2ree_core.operations.handlers.author.lint_scripts import handle_lint_scripts
 from repo2ree_core.operations.handlers.author.load_ree_bundle import handle_load_ree_bundle
 from repo2ree_core.operations.handlers.author.materialize_workspace import (
     handle_materialize_workspace,
@@ -43,6 +44,7 @@ from repo2ree_protocol.command import (
     GenerateHbomCommand,
     GenerateSbomCommand,
     GenerateScriptCandidatesCommand,
+    LintScriptsCommand,
     LoadReeBundleCommand,
     MaterializeWorkspaceCommand,
     PatchReeDefinitionCommand,
@@ -173,6 +175,8 @@ def _dispatch(
         return handle_activation_test(run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, GenerateScriptCandidatesCommand):
         return handle_generate_script_candidates(cmd.args, log=log, is_canceled=cancel)
+    if isinstance(cmd, LintScriptsCommand):
+        return handle_lint_scripts(cmd.args, log=log, is_canceled=cancel)
     if isinstance(cmd, SealReeCommand):
         return handle_seal_ree(cmd.args, log=log, is_canceled=cancel)
     return _unhandled_command(cmd)

@@ -16,7 +16,7 @@ def test_writable_ree_is_ok(tmp_path: Path) -> None:
     assert report["ok"] is True
     assert report["ree_writable"] is True
     # Capability inventory is always present, whatever it found.
-    assert set(report["tools"]) == {"syft", "git", "curl", "unzip", "tar", "gzip"}
+    assert set(report["tools"]) == {"syft", "git", "curl", "unzip", "tar", "gzip", "shellcheck"}
     assert "available" in report["docker"]
 
 
