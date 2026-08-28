@@ -23,6 +23,11 @@ interface Props {
   // An extra sentence appended to the not-inferred message, e.g. the concrete
   // evidence a build target was looking for. Omitted for run scaffolds.
   notInferredHint?: string;
+  // Build only: the runtime path the generated script writes to. Fires once per
+  // generation, so a page can act on it without an effect that re-runs on every
+  // render. Whether to *use* it is the page's call — it knows its own
+  // declaration; this control does not.
+  onRuntimePath?: (path: string) => void;
   disabled?: boolean;
 }
 
@@ -35,6 +40,7 @@ export function GenerateScriptControl({
   onLoad,
   noun,
   notInferredHint,
+  onRuntimePath,
   disabled = false,
 }: Props) {
   const [status, setStatus] = useState<Status | null>(null);
@@ -64,6 +70,7 @@ export function GenerateScriptControl({
           return;
         }
         onLoad(generation.script.body);
+        if (generation.script.runtimePath) onRuntimePath?.(generation.script.runtimePath);
         const parts = [`Loaded a generated ${noun} (${generation.script.ruleId}).`];
         if (generation.script.alternativeCount > 1) {
           parts.push(
@@ -86,7 +93,7 @@ export function GenerateScriptControl({
         });
       },
     });
-  }, [generate, onLoad, noun, notInferredHint]);
+  }, [generate, onLoad, noun, notInferredHint, onRuntimePath]);
 
   return (
     <div className={styles.control}>

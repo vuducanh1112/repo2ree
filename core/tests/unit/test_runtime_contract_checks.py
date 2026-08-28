@@ -12,7 +12,10 @@ from pathlib import Path
 from scriptinfer_helpers import MemoryAccessor, docker_archive
 
 from repo2ree_core.author_recipes.inference import ScriptTargetSelector, infer_scripts
-from repo2ree_core.author_recipes.inference.build_regeneration import expected_build_for_runtime
+from repo2ree_core.author_recipes.inference.build_regeneration import (
+    ExpectedBuild,
+    expected_builds_for_runtime,
+)
 from repo2ree_core.author_recipes.inference.models import DecisionContext
 from repo2ree_core.author_recipes.inference.policy import default_policy
 from repo2ree_core.author_recipes.inference.repository_facts import scan_repository
@@ -32,10 +35,21 @@ def _tree(root: Path, files: dict[str, str]) -> None:
 
 
 def _generated_build_body(root: Path, runtime: str) -> str:
-    ctx = DecisionContext(facts=scan_repository(root), policy=default_policy(), ree_name="Demo")
-    expected = expected_build_for_runtime(ctx, runtime)
-    assert expected is not None
-    return expected.body
+    expected = _expected_builds(root, runtime)
+    assert expected
+    return expected[0].body
+
+
+def _expected_builds(root: Path, runtime: str) -> list[ExpectedBuild]:
+    ctx = DecisionContext(
+        facts=scan_repository(root),
+        policy=default_policy(),
+        ree_name="Demo",
+        # The renderers write to the declared path, so regeneration only matches
+        # the author's script when it regenerates against the same declaration.
+        runtime=RuntimeInputs(declared_runtime_path=runtime),
+    )
+    return expected_builds_for_runtime(ctx, runtime)
 
 
 def _provenances(result) -> set[str]:
@@ -114,3 +128,29 @@ def test_docker_entrypoint_and_cmd_combine_into_one_argv_example(tmp_path: Path)
     ).results[0]
     body = result.candidates[0].body or ""
     assert "#   set -- python main.py --fast" in body
+
+
+def test_two_viable_strategies_resolve_by_the_written_script_not_by_path(tmp_path: Path) -> None:
+    # A Dockerfile beside a requirements.txt makes the runtime kind a real
+    # decision, and both strategies now write to the same declared path — so the
+    # artifact path can no longer separate them. The venv build script the author
+    # saved must resolve a venv contract, never the alphabetically first docker
+    # one.
+    _tree(tmp_path, {"Dockerfile": "FROM python:3.11-slim\n", "requirements.txt": "flask\n", "main.py": "y"})
+    declared = "build/runtime-venv.tar.gz"
+    builds = _expected_builds(tmp_path, declared)
+    assert len(builds) == 2
+    assert {build.contract.kind for build in builds} == {"docker_archive", "venv_archive"}
+    venv_body = next(build.body for build in builds if build.contract.kind == "venv_archive")
+
+    result = infer_scripts(
+        tmp_path,
+        [ScriptTargetSelector(kind="activation_run")],
+        definition=ReeDefinition(name="Demo"),
+        runtime_inputs=RuntimeInputs(
+            declared_runtime_path=declared,
+            accessor=MemoryAccessor({RESERVED_BUILD_SCRIPT: venv_body.encode()}),
+        ),
+    ).results[0]
+    assert result.candidates[0].inference_rule == "venv-runtime-activation-v1"
+    assert "unchanged_generated_build" in _provenances(result)

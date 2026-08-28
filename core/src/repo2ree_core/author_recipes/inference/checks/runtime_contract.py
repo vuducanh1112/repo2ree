@@ -21,7 +21,7 @@ from repo2ree_core.author_recipes.inference.artifact_inspection import (
     VenvArchiveInspection,
     inspect_runtime_artifact,
 )
-from repo2ree_core.author_recipes.inference.build_regeneration import expected_build_for_runtime
+from repo2ree_core.author_recipes.inference.build_regeneration import expected_builds_for_runtime
 from repo2ree_core.author_recipes.inference.models import (
     DEFAULT_VENV_RESTORE_DIR,
     BindingKind,
@@ -220,8 +220,13 @@ class UnchangedGeneratedBuildCheck:
 
     def evaluate(self, context: DecisionContext) -> CheckResult:
         declaration = _require_declaration(context)
-        expected = expected_build_for_runtime(context, declaration.path)
-        if expected is not None and _written_build_matches(context, expected.body):
+        # Several strategies can be viable at once (a repo carrying both a
+        # Dockerfile and a requirements.txt), and they all write to the declared
+        # path now — so the written script's digest, not its artifact path, is
+        # what says which one the author settled on.
+        for expected in expected_builds_for_runtime(context, declaration.path):
+            if not _written_build_matches(context, expected.body):
+                continue
             return CheckResult(
                 branch="matched",
                 observed=RuntimeContractObservation(

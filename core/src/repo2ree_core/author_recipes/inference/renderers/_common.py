@@ -4,10 +4,11 @@ Runtime constants (the image reference, the runtime-artifact path) are derived
 the same way for every build strategy so downstream scripts stay consistent and
 the bytes stay deterministic — no timestamps, no per-call entropy.
 
-The runtime artifact always lands in a dedicated ``.repo2ree/`` control
-directory beneath the logical project root. Inference does not defer to
-``ReeDefinition.runtime``: that field usually names an *already-built* artifact the
-author supplied, which is not where a freshly generated build should write.
+A generated build writes to the runtime path the REE declares. Build refuses to
+start without one and fails when nothing lands there, so a recipe that wrote
+anywhere else would be a build that cannot pass. The per-strategy
+``.repo2ree/`` defaults below apply only before a declaration exists — a freshly
+seeded script on an REE whose runtime is not yet declared.
 """
 
 from __future__ import annotations
@@ -16,9 +17,10 @@ import re
 import shlex
 from pathlib import PurePosixPath
 
-# Default runtime-artifact names per strategy. Both live beneath the reserved
-# control directory under the logical project root. Docker packs an image tar;
-# pip packs the virtual environment as a gzipped tarball.
+# Per-strategy fallback artifact names, used only when the REE declares no
+# runtime path. Both live beneath the reserved control directory under the
+# logical project root. Docker packs an image tar; pip packs the virtual
+# environment as a gzipped tarball.
 DOCKER_RUNTIME_ARTIFACT_SUFFIX = ".repo2ree/artifacts/runtime.tar"
 VENV_RUNTIME_ARTIFACT_SUFFIX = ".repo2ree/artifacts/runtime-venv.tar.gz"
 
@@ -49,6 +51,26 @@ def runtime_artifact_path(project_root: str, suffix: str) -> str:
     if project_root == ".":
         return suffix
     return str(PurePosixPath(project_root) / suffix)
+
+
+def build_runtime_artifact_path(
+    declared_runtime_path: str | None,
+    project_root: str,
+    default_suffix: str,
+) -> str:
+    """Where a generated build script writes its runtime.
+
+    The declaration wins: ``BuildRuntimeDefinition.runtime_path`` is where the
+    build is expected to leave its artifact, and the build fails its
+    post-condition when nothing lands there. ``default_suffix`` is the
+    per-strategy fallback for an REE that has not declared one yet.
+
+    Taking primitives rather than a ``DecisionContext`` keeps this module a leaf,
+    and forces every caller to supply both inputs — the single reason the
+    renderers and ``build_regeneration`` cannot drift on this path.
+    """
+    declared = (declared_runtime_path or "").strip()
+    return declared or runtime_artifact_path(project_root, default_suffix)
 
 
 def runtime_image_ref(ree_name: str) -> str:

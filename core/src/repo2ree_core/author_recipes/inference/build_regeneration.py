@@ -12,9 +12,8 @@ the sole authority; there is no parallel build rule here) using the shared build
 wiring (``build_wiring``) — the same checks, resolver, and renderers the registry
 serves — so it never imports the registry (which imports this module's consumers)
 yet can never drift from the build inference the registry actually runs. It
-returns the expected build-script body and the runtime contract that body
-implies, only when a single build candidate's runtime-artifact path matches the
-declared runtime.
+returns one expected build-script body, with the runtime contract that body
+implies, per viable strategy; the caller settles which one the author meant.
 """
 
 from __future__ import annotations
@@ -35,12 +34,7 @@ from repo2ree_core.author_recipes.inference.models import (
     ScriptTarget,
     VenvRuntimeContract,
 )
-from repo2ree_core.author_recipes.inference.renderers._common import (
-    DOCKER_RUNTIME_ARTIFACT_SUFFIX,
-    VENV_RUNTIME_ARTIFACT_SUFFIX,
-    runtime_artifact_path,
-    runtime_image_ref,
-)
+from repo2ree_core.author_recipes.inference.renderers._common import runtime_image_ref
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 
 
@@ -51,21 +45,25 @@ class ExpectedBuild(BaseModel):
     contract: RuntimeContract
 
 
-def expected_build_for_runtime(context: DecisionContext, declared_runtime_path: str) -> ExpectedBuild | None:
-    """The build inference would generate now, if it produces the declared runtime.
+def expected_builds_for_runtime(context: DecisionContext, declared_runtime_path: str) -> list[ExpectedBuild]:
+    """Every build inference would generate now for the declared runtime.
 
-    Returns the expected build-script body and the implied runtime contract, or
-    ``None`` when nothing is inferred, when the sole build candidate does not
-    target the declared runtime path, or when the runtime is ambiguous.
+    One entry per viable strategy, in the engine's candidate order. More than one
+    is normal — a repository carrying both a Dockerfile and a requirements.txt
+    makes the runtime kind a genuine decision — and the artifact path no longer
+    separates them, since every strategy writes to the declared path. The caller
+    settles it by digest: only one candidate's body can match the build script
+    the author actually saved.
     """
-    root = context.facts.logical_project_root
     # A fresh context: the build DAG re-resolves the project root itself and must
-    # not collide with a project_root binding already accumulated upstream.
+    # not collide with a project_root binding already accumulated upstream. The
+    # validated declaration is pinned onto it so the renderers below emit the very
+    # path this regeneration is being asked about.
     base = DecisionContext(
         facts=context.facts,
         policy=context.policy,
         ree_name=context.ree_name,
-        runtime=context.runtime,
+        runtime=context.runtime.model_copy(update={"declared_runtime_path": declared_runtime_path}),
     )
     result = evaluate_target(
         BUILD_INFERENCE_DAG,
@@ -76,27 +74,22 @@ def expected_build_for_runtime(context: DecisionContext, declared_runtime_path: 
         renderers=BUILD_RENDERERS,
     )
 
+    expected: list[ExpectedBuild] = []
     for candidate in result.candidates:
-        contract = _contract_for(candidate.inference_rule, root, context.ree_name, declared_runtime_path)
+        contract = _contract_for(candidate.inference_rule, context.ree_name, declared_runtime_path)
         if contract is not None and candidate.body:
-            return ExpectedBuild(body=candidate.body, contract=contract)
-    return None
+            expected.append(ExpectedBuild(body=candidate.body, contract=contract))
+    return expected
 
 
-def _contract_for(
-    rule: str,
-    root: str,
-    ree_name: str,
-    declared_runtime_path: str,
-) -> RuntimeContract | None:
+def _contract_for(rule: str, ree_name: str, declared_runtime_path: str) -> RuntimeContract | None:
+    """The runtime contract a build rule's artifact implies.
+
+    The path is the declared one for every rule — that is where the generated
+    script writes — so the rule decides only the *kind* of runtime produced.
+    """
     if rule == DOCKER_BUILD_RULE:
-        artifact = runtime_artifact_path(root, DOCKER_RUNTIME_ARTIFACT_SUFFIX)
-        if artifact != declared_runtime_path:
-            return None
-        return DockerRuntimeContract(artifact_path=artifact, image_ref=runtime_image_ref(ree_name))
+        return DockerRuntimeContract(artifact_path=declared_runtime_path, image_ref=runtime_image_ref(ree_name))
     if rule == PIP_BUILD_RULE:
-        artifact = runtime_artifact_path(root, VENV_RUNTIME_ARTIFACT_SUFFIX)
-        if artifact != declared_runtime_path:
-            return None
-        return VenvRuntimeContract(artifact_path=artifact)
+        return VenvRuntimeContract(artifact_path=declared_runtime_path)
     return None

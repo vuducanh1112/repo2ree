@@ -60,6 +60,71 @@ describe("major step page workflows", () => {
     );
   });
 
+  // The generated build script writes to the path the REE declares, and falls
+  // back to its own default when there is none — so a generated candidate always
+  // reports where it writes. Filling an empty declaration from that is the rest
+  // of the one-click flow; overwriting a declared one would be the drift the
+  // whole arrangement exists to prevent.
+  it.each([
+    ["fills an empty runtime declaration from the generated script", "", 1],
+    ["never overwrites a runtime path the author declared", "runtime.tar", 0],
+  ] as const)("%s", async (_name, declared, expectedCalls) => {
+    const user = userEvent.setup();
+    const onReeSpecChange = vi.fn();
+    const generateScriptCandidates = vi.fn().mockResolvedValue({
+      results: [
+        {
+          target: { kind: "build" },
+          candidates: [
+            {
+              body: "#!/usr/bin/env sh\n",
+              inference_rule: "single-project-root-dockerfile-v1",
+              application: "automatic_allowed",
+              dependencies: [
+                {
+                  kind: "runtime_declaration",
+                  path: ".repo2ree/artifacts/runtime.tar",
+                  digest: "",
+                  role: "runtime",
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      dags: [],
+    });
+
+    renderWithShell(
+      <PageBuildRuntime
+        {...createStepPageProps("build", {
+          ree: {
+            ...exampleEditorRee,
+            spec: { ...exampleEditorRee.spec, runtime: declared },
+          },
+          onReeSpecChange,
+        })}
+      />,
+      {
+        reeId: "ree-1",
+        services: fakeApiServices({
+          ree: {
+            listScriptTemplates: vi.fn().mockResolvedValue(scriptTemplateCatalog),
+            generateScriptCandidates,
+          },
+        }),
+      },
+    );
+
+    await user.click(await screen.findByRole("button", { name: /Generate from repository/ }));
+    await waitFor(() => expect(generateScriptCandidates).toHaveBeenCalled());
+    await waitFor(() => expect(onReeSpecChange).toHaveBeenCalledTimes(expectedCalls));
+    if (expectedCalls > 0) {
+      const updater = onReeSpecChange.mock.calls[0][0];
+      expect(updater(createEmptyReeSpec()).runtime).toBe(".repo2ree/artifacts/runtime.tar");
+    }
+  });
+
   it("renders a complete SBOM target, submits generation, and gates cross-check on Evaluate", async () => {
     const user = userEvent.setup();
     const onRun = vi.fn();

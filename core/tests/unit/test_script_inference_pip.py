@@ -81,6 +81,17 @@ def test_wrapper_archive_uses_wrapper_paths(tmp_path: Path) -> None:
     assert "RUNTIME_ARTIFACT=proj-main/.repo2ree/artifacts/runtime-venv.tar.gz\n" in candidate.body
 
 
+def test_pip_candidate_records_the_runtime_path_it_writes_to(tmp_path: Path) -> None:
+    # The venv strategy reports its own default, not docker's — a client filling
+    # an empty declaration from this would otherwise declare the wrong extension.
+    _tree(tmp_path, {"proj-main/requirements.txt": "flask\n", "proj-main/main.py": "x"})
+    candidate = _pip_candidate(_build(tmp_path))
+    declaration = [dep for dep in candidate.dependencies if dep.kind == "runtime_declaration"]
+    assert len(declaration) == 1
+    assert declaration[0].path == "proj-main/.repo2ree/artifacts/runtime-venv.tar.gz"
+    assert declaration[0].role == "runtime"
+
+
 def test_dockerfile_and_requirements_is_a_decision(tmp_path: Path) -> None:
     _tree(tmp_path, {"requirements.txt": "flask\n", "Dockerfile": "FROM x\n"})
     result = _build(tmp_path)

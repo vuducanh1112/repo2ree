@@ -40,6 +40,13 @@ export function selectCandidate(
   if (!result || !candidate || typeof candidate.body !== "string") {
     return { status: "not_inferred", blockingMessages };
   }
+  // Where these bytes leave the runtime. The backend records it whether the REE
+  // declared the path or the renderer fell back to its default, so this says
+  // nothing about which — deciding that is the caller's, since only it knows
+  // what is currently declared.
+  const runtimePath = candidate.dependencies?.find(
+    (dep) => dep.kind === "runtime_declaration",
+  )?.path;
   return {
     status: "generated",
     script: {
@@ -48,6 +55,7 @@ export function selectCandidate(
       application: candidate.application,
       alternativeCount: candidates.length,
       blockingMessages,
+      runtimePath: runtimePath ?? undefined,
     },
   };
 }

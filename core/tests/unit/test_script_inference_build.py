@@ -8,12 +8,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from repo2ree_core.author_recipes.inference import (
     ScriptTargetSelector,
     TargetInferenceResult,
     infer_scripts,
 )
 from repo2ree_core.author_recipes.inference.models import LogicalRootObservation
+from repo2ree_core.author_recipes.inference.runtime_inputs import RuntimeInputs
 from repo2ree_core.digests import digest_bytes
 from repo2ree_core.domain.primitives import WorkspacePath
 from repo2ree_core.domain.ree.model import BuildRuntimeDefinition, ReeDefinition
@@ -43,7 +46,15 @@ def _build(root: Path, **intent_kwargs: object) -> TargetInferenceResult:
             else None
         ),
     )
-    report = infer_scripts(root, [ScriptTargetSelector(kind="build")], definition=definition)
+    report = infer_scripts(
+        root,
+        [ScriptTargetSelector(kind="build")],
+        definition=definition,
+        # The declared runtime path reaches inference on the runtime inputs, not
+        # on the definition — the handler builds it there. Passing only the
+        # definition would leave the declaration invisible to the renderer.
+        runtime_inputs=RuntimeInputs(declared_runtime_path=str(runtime) if runtime else None),
+    )
     return report.results[0]
 
 
@@ -110,13 +121,20 @@ def test_no_dockerfile_is_not_inferred_with_full_trace(tmp_path: Path) -> None:
     assert kinds[-1] == "result"
 
 
-def test_runtime_artifact_uses_repo2ree_dir_ignoring_declared_runtime(tmp_path: Path) -> None:
-    # ReeDefinition.runtime usually names an already-built artifact the author
-    # supplied, so a freshly generated build ignores it and writes to the
-    # dedicated .repo2ree/ control directory.
+def test_runtime_artifact_honors_the_declared_runtime(tmp_path: Path) -> None:
+    # runtime_path is where the build is expected to leave its artifact, and the
+    # build fails its post-condition when nothing lands there — so the generated
+    # recipe writes exactly where the REE declares.
     _tree(tmp_path, {"Dockerfile": "FROM x\n"})
     result = _build(tmp_path, runtime="ree-out/prebuilt.tar")
-    assert "RUNTIME_ARTIFACT=.repo2ree/artifacts/runtime.tar\n" in _body(result)
+    assert "RUNTIME_ARTIFACT=ree-out/prebuilt.tar\n" in _body(result)
+
+
+def test_runtime_artifact_falls_back_to_the_strategy_default_when_undeclared(tmp_path: Path) -> None:
+    # The fallback covers inference running before a declaration exists — a
+    # freshly seeded script on an REE whose runtime is not yet declared.
+    _tree(tmp_path, {"Dockerfile": "FROM x\n"})
+    assert "RUNTIME_ARTIFACT=.repo2ree/artifacts/runtime.tar\n" in _body(_build(tmp_path))
 
 
 def test_image_tag_is_derived_from_the_ree_name(tmp_path: Path) -> None:
@@ -142,10 +160,32 @@ def test_candidate_bytes_are_deterministic(tmp_path: Path, tmp_path_factory) -> 
 def test_candidate_records_dockerfile_dependency(tmp_path: Path) -> None:
     _tree(tmp_path, {"Dockerfile": "FROM x\n"})
     candidate = _build(tmp_path).candidates[0]
-    deps = candidate.dependencies
-    assert len(deps) == 1
-    assert deps[0].kind == "source"
-    assert deps[0].path == "Dockerfile"
-    assert deps[0].digest.startswith("sha256:")
+    source = [dep for dep in candidate.dependencies if dep.kind == "source"]
+    assert len(source) == 1
+    assert source[0].path == "Dockerfile"
+    assert source[0].digest.startswith("sha256:")
     assert candidate.validation.status == "not_run"
     assert candidate.validation.script_digest is not None
+
+
+@pytest.mark.parametrize(
+    ("declared", "expected"),
+    [
+        ("ree-out/prebuilt.tar", "ree-out/prebuilt.tar"),
+        (None, ".repo2ree/artifacts/runtime.tar"),
+    ],
+)
+def test_candidate_records_the_runtime_path_it_writes_to(tmp_path: Path, declared: str | None, expected: str) -> None:
+    # Declared or defaulted, the path is part of what justifies these bytes:
+    # move it and regeneration renders differently. The dependency does not say
+    # which of the two it was — a client compares it against its own declaration
+    # — so both cases record the same role.
+    _tree(tmp_path, {"Dockerfile": "FROM x\n"})
+    result = _build(tmp_path, runtime=declared) if declared else _build(tmp_path)
+    candidate = result.candidates[0]
+    declaration = [dep for dep in candidate.dependencies if dep.kind == "runtime_declaration"]
+    assert len(declaration) == 1
+    assert declaration[0].path == expected
+    assert declaration[0].role == "runtime"
+    # The reported path is worthless unless it is the one the script writes to.
+    assert f"RUNTIME_ARTIFACT={expected}\n" in _body(result)

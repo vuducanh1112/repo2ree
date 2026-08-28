@@ -31,6 +31,22 @@ describe("selectCandidate — build", () => {
     expect(result.script.alternativeCount).toBe(1);
   });
 
+  it.each([
+    ["reads the runtime path off the candidate's declaration dependency", "build/runtime.tar"],
+    ["leaves it undefined when the candidate records no runtime path", undefined],
+  ] as const)("%s", (_name, path) => {
+    const dependencies = path
+      ? [{ kind: "runtime_declaration", path, digest: "", role: "runtime" }]
+      : [{ kind: "source", path: "Dockerfile", digest: "sha256:x", role: "dockerfile" }];
+    const result = selectCandidate(
+      report([{ target: { kind: "build" }, candidates: [candidate({ dependencies })] }]),
+      "build",
+    );
+    expect(result.status).toBe("generated");
+    if (result.status !== "generated") return;
+    expect(result.script.runtimePath).toBe(path);
+  });
+
   it("reports not_inferred when the build target has no candidates", () => {
     const result = selectCandidate(
       report([{ target: { kind: "build" }, candidates: [] }]),

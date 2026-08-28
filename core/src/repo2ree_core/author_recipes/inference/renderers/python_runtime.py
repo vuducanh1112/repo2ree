@@ -31,7 +31,7 @@ from repo2ree_core.author_recipes.inference.models import (
 )
 from repo2ree_core.author_recipes.inference.renderers._common import (
     VENV_RUNTIME_ARTIFACT_SUFFIX,
-    runtime_artifact_path,
+    build_runtime_artifact_path,
     sh_comment,
     sh_quote,
 )
@@ -57,7 +57,8 @@ class PipVenvBuildRenderer:
 
     def render(self, context: DecisionContext, target: ScriptTarget) -> RenderedScript:
         root, requirements = _bindings(context)
-        runtime_artifact = runtime_artifact_path(root.path, VENV_RUNTIME_ARTIFACT_SUFFIX)
+        declared_runtime = context.runtime.declared_runtime_path
+        runtime_artifact = build_runtime_artifact_path(declared_runtime, root.path, VENV_RUNTIME_ARTIFACT_SUFFIX)
 
         body = _render_body(
             requirements_path=requirements.requirements_path,
@@ -73,6 +74,17 @@ class PipVenvBuildRenderer:
                 role="requirements",
             )
         ]
+        dependencies.append(
+            CandidateDependency(
+                kind="runtime_declaration",
+                path=runtime_artifact,
+                digest="",
+                # The path these bytes write to, declared or defaulted. It is part
+                # of what justifies them either way: move the declaration and
+                # regeneration produces different bytes, so the candidate is stale.
+                role="runtime",
+            )
+        )
         evidence = [
             InferenceEvidence(
                 code="single_root_requirements",

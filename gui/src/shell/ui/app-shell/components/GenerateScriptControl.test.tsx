@@ -57,6 +57,38 @@ describe("GenerateScriptControl", () => {
     expect(screen.queryByText("Decision graph")).not.toBeInTheDocument();
   });
 
+  it.each([
+    ["hands over the runtime path a candidate reports", ".repo2ree/artifacts/runtime.tar", 1],
+    ["stays silent when the candidate reports none", undefined, 0],
+  ] as const)("%s", (_name, runtimePath, calls) => {
+    const onRuntimePath = vi.fn();
+    render(
+      <GenerateScriptControl
+        noun="build script"
+        onLoad={vi.fn()}
+        onRuntimePath={onRuntimePath}
+        generate={mutation({
+          generation: {
+            status: "generated",
+            script: {
+              body: "echo build",
+              ruleId: "rule-one",
+              application: "automatic_allowed",
+              alternativeCount: 1,
+              blockingMessages: [],
+              runtimePath,
+            },
+          },
+          trace: null,
+          dag: null,
+        })}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Generate from repository/ }));
+    expect(onRuntimePath).toHaveBeenCalledTimes(calls);
+    if (runtimePath) expect(onRuntimePath).toHaveBeenCalledWith(runtimePath);
+  });
+
   it("shows alternatives, warnings, confirmation, and a decision trace", () => {
     render(
       <GenerateScriptControl

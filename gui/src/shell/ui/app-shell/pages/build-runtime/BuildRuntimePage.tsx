@@ -126,6 +126,19 @@ export function PageBuildRuntime({
     [onReeSpecChange],
   );
 
+  // The rest of the one-click flow: generation reports the path its script
+  // writes to, and an undeclared REE gets the renderer's fallback — so filling
+  // an empty field here lands the script and the declaration it will be checked
+  // against in one action. A path the author already typed always wins; the
+  // backend does not distinguish the two cases, this guard does.
+  const handleGeneratedRuntimePath = useCallback(
+    (path: string) => {
+      if (runtimePath) return;
+      handleRuntimeChange(path);
+    },
+    [handleRuntimeChange, runtimePath],
+  );
+
   // The reserved build script arrives seeded with the starter template, so
   // this gate only blocks running before the workspace files have loaded (or
   // if the author blanked the script).
@@ -202,6 +215,7 @@ export function PageBuildRuntime({
               onLoad={loadGenerated}
               noun="build script"
               notInferredHint="No clear Dockerfile or requirements.txt was found, or the layout is ambiguous."
+              onRuntimePath={handleGeneratedRuntimePath}
               disabled={!scriptPath}
             />
             <ReservedBuildScriptCard

@@ -262,6 +262,24 @@ def test_adversarial_runtime_path_cannot_break_the_scaffold(tmp_path: Path, suff
     assert _sh_parses(body), body
 
 
+@pytest.mark.parametrize("suffix", _NASTY)
+def test_adversarial_declared_runtime_cannot_break_the_build_script(tmp_path: Path, suffix: str) -> None:
+    # The build script now interpolates the author's declared runtime path, so it
+    # carries the same injection surface the run scaffolds do.
+    (tmp_path / "Dockerfile").write_text("FROM x\n")
+    runtime_path = f".repo2ree/{suffix}.tar"
+    report = infer_scripts(
+        tmp_path,
+        [ScriptTargetSelector(kind="build")],
+        definition=ReeDefinition(name="Demo"),
+        runtime_inputs=RuntimeInputs(declared_runtime_path=runtime_path),
+    )
+    body = report.results[0].candidates[0].body
+    assert body is not None
+    assert _sh_parses(body), body
+    assert "\nreboot\n" not in body
+
+
 @given(st.sampled_from(["activation_run", "experiment_run"]), st.booleans())
 def test_every_run_scaffold_is_fail_closed(kind: Literal["activation_run", "experiment_run"], docker: bool) -> None:
     root = Path(tempfile.mkdtemp())
