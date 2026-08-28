@@ -1,0 +1,33 @@
+/* The box around the CodeMirror view. It carries the same skin as the form
+ * controls in FormControl.module.css — a code editor is a control, and one that
+ * looked different from the field above it would read as a different kind of
+ * thing. CodeMirror styles the inside; this owns the frame, the height, and the
+ * focus ring, so the ring is drawn once rather than by both. */
+
+.editor {
+  width: 100%;
+  height: 320px;
+  min-height: 160px;
+  overflow: hidden;
+  resize: vertical;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--border-default);
+  background: var(--surface-control);
+  box-shadow: var(--shadow-inset-highlight);
+  transition:
+    border-color var(--duration-normal) var(--ease-standard),
+    box-shadow var(--duration-normal) var(--ease-standard);
+}
+
+/* :focus-within rather than :focus — the focusable node is CodeMirror's
+ * contenteditable, several levels down. */
+.editor:focus-within {
+  border-color: var(--border-accent-strong);
+  box-shadow: var(--shadow-focus), var(--shadow-inset-highlight);
+}
+
+.editor[data-disabled] {
+  background: var(--surface-sunken);
+  cursor: not-allowed;
+  resize: none;
+}

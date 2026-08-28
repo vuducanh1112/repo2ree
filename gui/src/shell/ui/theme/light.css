@@ -82,4 +82,15 @@
   --terminal-success: var(--palette-green-300);
   --terminal-warning: var(--palette-amber-300);
   --terminal-danger: var(--palette-red-300);
+
+  /* Syntax roles for the script editor. Named for what the token *is* rather
+   * than reusing a tone role, so "string" never has to be justified as
+   * "success". The editor sits on a light surface, unlike the terminal above. */
+  --code-comment: var(--palette-neutral-500);
+  --code-keyword: var(--palette-violet-600);
+  --code-string: var(--palette-green-700);
+  --code-number: var(--palette-amber-800);
+  --code-variable: var(--palette-cyan-700);
+  --code-builtin: var(--palette-indigo-600);
+  --code-operator: var(--palette-neutral-600);
 }

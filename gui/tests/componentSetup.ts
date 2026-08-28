@@ -26,6 +26,39 @@ Object.defineProperty(SVGElement.prototype, "getScreenCTM", {
   value: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }),
 });
 
+// jsdom implements Range but not its geometry, and CodeMirror measures the
+// document through `Range.getClientRects` — on every animation frame, and again
+// whenever a pointer lands in the editor and it has to turn coordinates back
+// into a document position. Without this the script editor still behaves
+// correctly — text, marks and selection are all asserted in the jsdom project —
+// but each measure pass throws an uncaught TypeError out of a
+// requestAnimationFrame or timer callback, where no test can catch it.
+//
+// One collapsed rect rather than none: CodeMirror binary-searches these rects,
+// and an empty list sends that search off the end of its own child array. A
+// zero-size rect is equally honest about a layout engine that laid nothing out,
+// and keeps the search on a defined path. Real geometry is the Chromium
+// project's to assert.
+function collapsedRects(): DOMRectList {
+  const rect = new DOMRect();
+  return {
+    length: 1,
+    0: rect,
+    item: (index: number) => (index === 0 ? rect : null),
+    [Symbol.iterator]: function* () {
+      yield rect;
+    },
+  } as unknown as DOMRectList;
+}
+
+// The interaction project runs this setup too, but Chromium already provides
+// real geometry. Only install the fallback where Range geometry is absent.
+if (typeof Range.prototype.getClientRects !== "function") {
+  Range.prototype.getClientRects = collapsedRects;
+  Range.prototype.getBoundingClientRect = () => new DOMRect();
+  Element.prototype.getClientRects = collapsedRects;
+}
+
 // React Testing Library auto-cleans only when Vitest's `globals` are on, and
 // they are deliberately off here — the suite imports `describe`/`it`/`expect`
 // explicitly. So unmount by hand, or a component's DOM outlives its test and

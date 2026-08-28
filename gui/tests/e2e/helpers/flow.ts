@@ -432,7 +432,7 @@ export async function buildRuntime(page: Page, buildScript: string, producedRunt
 }
 
 /**
- * Author a runnable's run script: fill the RunScriptCard textarea, then click
+ * Author a runnable's run script: fill the RunScriptCard editor, then click
  * its "Save run script" button (shared by the activation and experiment
  * editors).
  */

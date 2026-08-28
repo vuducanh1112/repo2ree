@@ -1,5 +1,9 @@
 import type { LintFinding, LintReport, LintTierStatus } from "@shell/infra/api/apiTypes";
 
+/** The finding shape, re-exported for the UI: components read server state
+ * through this layer rather than reaching into the API client themselves. */
+export type { LintFinding } from "@shell/infra/api/apiTypes";
+
 export type LintTargetKind =
   | "build"
   | "activation_run"
@@ -85,16 +89,4 @@ export function analysisState({
     summary: summarize(report.findings),
     unrun,
   };
-}
-
-/** Return the character offset at which a one-based line starts. */
-export function lineOffset(source: string, line: number): number {
-  if (line <= 1) return 0;
-  let offset = 0;
-  for (let current = 1; current < line; current += 1) {
-    const next = source.indexOf("\n", offset);
-    if (next === -1) return offset;
-    offset = next + 1;
-  }
-  return offset;
 }

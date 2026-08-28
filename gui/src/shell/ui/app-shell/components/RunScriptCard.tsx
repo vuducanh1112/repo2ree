@@ -1,10 +1,17 @@
-import { lineOffset } from "@shell/data/scriptLint/findings";
+import type { LintFinding } from "@shell/data/scriptLint/findings";
 import type { ScriptTemplateEntry } from "@shell/data/scriptTemplates/catalog";
 import { Button } from "@shell/ui/shared/components/Button";
-import { Textarea } from "@shell/ui/shared/components/FormControl";
+import {
+  CodeEditor,
+  type CodeEditorHandle,
+  type CodeEditorMark,
+} from "@shell/ui/shared/components/CodeEditor";
 import { Surface } from "@shell/ui/shared/components/Surface";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import styles from "./RunScriptCard.module.css";
+import { ScriptDiagnosticsBridge } from "./scriptDiagnostics";
+
+const NO_FINDINGS: readonly LintFinding[] = [];
 
 export interface RunScriptCardProps {
   // Workspace-relative path the script is stored at. When set, it is shown as a
@@ -97,14 +104,24 @@ export function RunScriptCard({
 
   const dirty = content !== savedContent;
 
-  const editorRef = useRef<HTMLTextAreaElement | null>(null);
-  const focusLine = (line: number) => {
-    const editor = editorRef.current;
-    if (!editor) return;
-    const offset = lineOffset(content, line);
-    editor.focus();
-    editor.setSelectionRange(offset, offset);
-  };
+  const editorRef = useRef<CodeEditorHandle | null>(null);
+  const focusLine = (line: number) => editorRef.current?.focusLine(line);
+
+  // What the analysis panel below found, on its way back into the editor as
+  // underlines and gutter markers. Identity-stable per report, so re-rendering
+  // never re-dispatches the same set into CodeMirror.
+  const [findings, setFindings] = useState<readonly LintFinding[]>(NO_FINDINGS);
+  const marks = useMemo<CodeEditorMark[]>(
+    () =>
+      findings.map((finding) => ({
+        line: finding.line,
+        column: finding.column,
+        severity: finding.severity,
+        message: finding.message,
+        source: finding.code,
+      })),
+    [findings],
+  );
 
   const header = (
     <div>
@@ -145,17 +162,17 @@ export function RunScriptCard({
 
       {!disabled && generateSlot}
 
-      <Textarea
-        textareaRef={editorRef}
-        flavor="code"
-        aria-label={label}
+      <CodeEditor
+        handleRef={editorRef}
+        ariaLabel={label}
         value={content}
-        onChange={(event) => setContent(event.target.value)}
-        spellCheck={false}
+        onChange={setContent}
         disabled={disabled}
-        rows={13}
+        marks={marks}
       />
-      {renderAnalysis?.(content, dirty, focusLine)}
+      <ScriptDiagnosticsBridge publish={setFindings}>
+        {renderAnalysis?.(content, dirty, focusLine)}
+      </ScriptDiagnosticsBridge>
 
       <div className={styles.footer}>
         <span className={styles.state} data-dirty={dirty || undefined}>

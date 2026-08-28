@@ -122,8 +122,8 @@ test.describe("REE pip pipeline", () => {
       expect(graph).toContain("root-pip-requirements-v1");
 
       // A venv build, not a container one — the pip renderer, not the docker one.
-      await expect(page.getByLabel("Build script")).toHaveValue(/python -m venv/);
-      await expect(page.getByLabel("Build script")).not.toHaveValue(/docker build/);
+      await expect(page.getByLabel("Build script")).toContainText(/python -m venv/);
+      await expect(page.getByLabel("Build script")).not.toContainText(/docker build/);
     });
 
     await test.step("build runtime via pip", async () => {

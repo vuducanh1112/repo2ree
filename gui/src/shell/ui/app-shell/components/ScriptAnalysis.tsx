@@ -1,9 +1,18 @@
-import { analysisState, findingTone, type LintTarget } from "@shell/data/scriptLint/findings";
+import {
+  analysisState,
+  findingTone,
+  type LintFinding,
+  type LintTarget,
+} from "@shell/data/scriptLint/findings";
 import { useSavedScriptLint, useScriptDraftLint } from "@shell/data/scriptLint/queries";
 import { useDebouncedValue } from "@shell/ui/shared/hooks/useDebouncedValue";
+import { useEffect } from "react";
 import styles from "./ScriptAnalysis.module.css";
+import { usePublishScriptDiagnostics } from "./scriptDiagnostics";
 
 const SETTLE_MS = 400;
+
+const NO_FINDINGS: readonly LintFinding[] = [];
 
 interface ScriptAnalysisProps {
   target: LintTarget;
@@ -36,6 +45,13 @@ export function ScriptAnalysis({
     error: active.error,
     enabled: !disabled,
   });
+
+  // The same findings the list below renders, sent back up to the editor to be
+  // drawn on the lines they name. `state.findings` is the report's own tuple, so
+  // this publishes once per report rather than once per render.
+  const findings = state.kind === "findings" ? state.findings : NO_FINDINGS;
+  const publish = usePublishScriptDiagnostics();
+  useEffect(() => publish(findings), [findings, publish]);
 
   if (state.kind === "idle") return null;
 

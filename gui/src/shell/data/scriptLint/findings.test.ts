@@ -1,6 +1,6 @@
 import type { LintFinding, LintReport, LintTierStatus } from "@shell/infra/api/apiTypes";
 import { describe, expect, it } from "vitest";
-import { analysisState, findingTone, lineOffset, summarize, unrunTiers } from "./findings";
+import { analysisState, findingTone, summarize, unrunTiers } from "./findings";
 
 function finding(overrides: Partial<LintFinding> = {}): LintFinding {
   return {
@@ -112,25 +112,5 @@ describe("analysisState", () => {
       isFetching: true,
     });
     expect(state.kind).toBe("findings");
-  });
-});
-
-describe("lineOffset", () => {
-  const source = "one\ntwo\nthree\n";
-
-  it.each([
-    [1, 0],
-    [2, 4],
-    [3, 8],
-  ])("locates line %i at offset %i", (line, offset) => {
-    expect(lineOffset(source, line)).toBe(offset);
-  });
-
-  it("treats a line before the first as the start", () => {
-    expect(lineOffset(source, 0)).toBe(0);
-  });
-
-  it("lands on the last line when the line no longer exists", () => {
-    expect(lineOffset("one\ntwo", 99)).toBe(4);
   });
 });
