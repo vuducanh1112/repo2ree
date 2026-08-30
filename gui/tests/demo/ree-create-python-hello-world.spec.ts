@@ -62,11 +62,16 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
       page.getByRole("button", { name: "Create a new REE" }),
       "Start REE creation",
     );
-    await expect(page.getByRole("heading", { name: "Choose a lab location" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Where should this REE run?" })).toBeVisible();
     await clickDemo(
       page,
       page.getByRole("button", { name: /connected/ }).first(),
-      "Choose the lab location — the agent that will host this REE's workbench",
+      "Pick the lab — the machine that will host this REE's workbench",
+    );
+    await clickDemo(
+      page,
+      page.getByRole("button", { name: "Continue" }),
+      "Confirm the lab — the REE stays pinned to it for its whole life",
     );
     await expect(page.getByRole("heading", { name: "Set up the workbench" })).toBeVisible();
   });

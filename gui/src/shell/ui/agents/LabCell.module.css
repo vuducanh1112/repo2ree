@@ -1,0 +1,176 @@
+/* One bay in the lab grid.
+ *
+ * This module is on the style guard's colour-value allowlist because the bay is
+ * an instrument, not chrome: the milled metal, optical glass and readout ink
+ * below are artwork values in the same family as the canvas panels, and there
+ * is nothing semantic for them to consume. Everything else on this screen —
+ * the rail, the pager, the detail panel — is built from chrome roles. */
+
+.cell {
+  --rim: 3px;
+  --machine-metal-light: rgb(248 250 252 / 92%);
+  --machine-metal-mid: rgb(206 217 230 / 80%);
+  --machine-metal-deep: rgb(100 116 139 / 52%);
+  --machine-channel: rgb(71 85 105 / 20%);
+  --machine-glass-bright: rgb(255 255 255 / 92%);
+  --machine-glass-blue: rgb(226 243 250 / 62%);
+  --machine-ink-info: rgb(14 116 144);
+  --machine-shadow: 0 7px 14px rgb(30 64 80 / 16%);
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 148px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-panel);
+  background: linear-gradient(
+    172deg,
+    var(--machine-glass-bright) 0%,
+    var(--machine-metal-light) 12%,
+    var(--machine-glass-blue) 52%,
+    var(--machine-metal-mid) 78%,
+    var(--machine-metal-deep) 100%
+  );
+  box-shadow:
+    inset 0 0 0 var(--rim) transparent,
+    0 1px 1px var(--machine-channel),
+    var(--machine-shadow);
+  color: var(--chrome-text);
+  font-family: var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+  transition: box-shadow var(--duration-normal) var(--ease-standard);
+}
+
+/* The optical glass over the milled housing. A pseudo-element rather than a
+ * span so the cell stays one node per bay. */
+.cell::before {
+  content: "";
+  position: absolute;
+  inset: var(--rim);
+  border-radius: var(--radius-control);
+  background:
+    linear-gradient(180deg, var(--machine-glass-bright) 0, transparent 26%),
+    linear-gradient(155deg, var(--machine-metal-light), var(--machine-metal-mid));
+  box-shadow: inset 0 1px 0 var(--machine-glass-bright);
+  pointer-events: none;
+}
+
+.cell:hover {
+  box-shadow:
+    inset 0 0 0 var(--rim) var(--machine-ink-info),
+    0 1px 1px var(--machine-channel),
+    var(--machine-shadow);
+}
+
+.cell[data-selected] {
+  box-shadow:
+    inset 0 0 0 var(--rim) var(--machine-ink-info),
+    var(--shadow-md),
+    var(--machine-shadow);
+}
+
+.cell:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* --- Bezel: identity and state ------------------------------------------ */
+
+.head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 28px;
+  padding: 0 var(--space-2-5);
+  border-bottom: 1px solid var(--machine-channel);
+}
+
+.glyph {
+  display: flex;
+  flex: none;
+  color: var(--machine-ink-info);
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lamp {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-round);
+  background: var(--status-ok);
+  box-shadow: 0 0 5px var(--status-ok-glow);
+}
+
+/* --- Readout ------------------------------------------------------------- */
+
+.body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  padding: var(--space-2) var(--space-2-5);
+}
+
+.what {
+  font-size: var(--text-micro);
+  line-height: var(--leading-snug);
+  color: var(--chrome-text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.meta {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  color: var(--chrome-text-mid);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- Foot ---------------------------------------------------------------- */
+
+.foot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 var(--space-2-5);
+  border-top: 1px solid var(--machine-channel);
+  border-radius: 0 0 var(--radius-panel) var(--radius-panel);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--chrome-text-muted);
+}
+
+.cell[data-selected] .foot {
+  color: var(--machine-ink-info);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cell {
+    transition: none;
+  }
+}

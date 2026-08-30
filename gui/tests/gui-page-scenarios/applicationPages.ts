@@ -26,7 +26,7 @@ export const applicationPageScenarios: ApplicationPageScenario[] = [
     screenshot: "lab-location.png",
     prepare: async (page) => {
       await page.goto("/lab-location");
-      await expect(page.getByRole("heading", { name: "Choose a lab location" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Where should this REE run?" })).toBeVisible();
       await expect(page.getByText("lab-oslo-01")).toBeVisible();
       await settleVisualPage(page);
     },

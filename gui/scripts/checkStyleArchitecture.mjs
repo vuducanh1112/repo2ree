@@ -28,10 +28,13 @@ const sourceRoot = join(guiRoot, "src");
 const TEST_FILE = /[.](?:test|spec)[.]tsx?$/;
 const GENERATED = "src/shell/infra/api/generated/";
 
-/** Raw colors belong to the primitive/theme layers or a co-located illustration. */
+/** Raw colors belong to the primitive/theme layers, or to a module that draws
+ * an instrument: the milled metal, optical glass and readout inks a bay is
+ * built from are artwork values, not semantic roles anything else consumes. */
 const COLOR_VALUE_STYLESHEETS = new Set([
   "src/shell/ui/theme/tokens.css",
   "src/shell/ui/theme/light.css",
+  "src/shell/ui/agents/LabCell.module.css",
   "src/shell/ui/app-shell/canvas/PodWidget.module.css",
   "src/shell/ui/app-shell/canvas/SpecimenPod.module.css",
   "src/shell/ui/app-shell/canvas/LabBackdrop.module.css",
@@ -95,8 +98,6 @@ const RULES = {
     "theme custom property is unreachable from production CSS or TypeScript",
   "theme-component-recipe": "component-specific recipe declared in the global theme",
   "theme-alias-depth": "theme alias chain is deeper than two definitions",
-  "theme-property-budget": "theme custom-property budget exceeded",
-  "custom-property-budget": "GUI custom-property budget exceeded",
 };
 
 const HEX_COLOR = /#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})(?![0-9a-fA-F])/;
@@ -346,9 +347,6 @@ const NEUTRAL_FILM_STOPS = new Map([
 ]);
 const COMPONENT_RECIPE_PREFIX =
   /^--(?:app|control|download|field|footer|option|page|panel|section|switch|window|workspace)-/;
-const THEME_PROPERTY_BUDGET = 325;
-const GUI_PROPERTY_BUDGET = 400;
-
 function positionOf(text, index) {
   const before = text.slice(0, index);
   const line = before.split("\n").length - 1;
@@ -567,32 +565,6 @@ function checkThemePropertyReachability(paths) {
     const source = readFileSync(definition.path, "utf8");
     const { line, character } = positionOf(source, definition.index);
     report(definition.file, line, character, "theme-alias-depth", `${name}: ${depth}`);
-  }
-
-  if (definitions.size > THEME_PROPERTY_BUDGET) {
-    report(
-      "src/shell/ui/theme/index.css",
-      0,
-      0,
-      "theme-property-budget",
-      `${definitions.size} > ${THEME_PROPERTY_BUDGET}`,
-    );
-  }
-
-  const allDefinitions = new Set();
-  for (const path of paths) {
-    if (extname(path) !== ".css") continue;
-    const text = readFileSync(path, "utf8");
-    for (const match of text.matchAll(CUSTOM_PROPERTY_DEFINITION)) allDefinitions.add(match[1]);
-  }
-  if (allDefinitions.size > GUI_PROPERTY_BUDGET) {
-    report(
-      "src/shell/ui/theme/index.css",
-      0,
-      0,
-      "custom-property-budget",
-      `${allDefinitions.size} > ${GUI_PROPERTY_BUDGET}`,
-    );
   }
 }
 

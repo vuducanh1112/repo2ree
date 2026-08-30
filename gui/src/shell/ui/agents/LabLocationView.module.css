@@ -1,25 +1,35 @@
 /* Step 1 of REE creation: choose the agent that will host the workbench.
  *
- * App chrome, not a glass page — this screen runs before any REE exists. */
+ * App chrome, not a glass page — this screen runs before any REE exists. The
+ * bays it lists are instruments and own their own materials (LabCell); the rail
+ * and the pager around them are built from chrome roles like every other
+ * pre-workspace screen. */
 
-.screen {
-  min-height: 100vh;
+.bench {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-6);
+  min-height: 0;
+  height: calc(100vh - 64px);
   padding: var(--space-6);
   background: var(--chrome-bg);
   font-family: var(--font-sans);
 }
 
-.column {
-  max-width: 620px;
-  margin: 0 auto;
-  animation: lab-location-fade-up var(--duration-slow) ease;
+/* --- Left rail: the question, the specimen, the confirmation ------------- */
+
+.rail {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 372px;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .backRow {
   display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin-bottom: var(--space-2);
 }
 
 .back {
@@ -41,13 +51,26 @@
 }
 
 .back:focus-visible,
-.choice:focus-visible {
+.pageBack:focus-visible,
+.pageNext:focus-visible,
+.whySummary:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: var(--focus-ring-offset);
 }
 
 .heading {
-  margin-bottom: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.step {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--ink-accent-strong);
 }
 
 .title {
@@ -59,107 +82,199 @@
 }
 
 .subtitle {
-  margin: var(--space-1) 0 0;
-  font-size: var(--text-body);
+  margin: 0;
+  font-size: var(--text-caption);
   line-height: var(--leading-relaxed);
   color: var(--chrome-text-muted);
 }
 
-.choices {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2-5);
-}
+/* --- "What is a lab?" ---------------------------------------------------- */
 
-/* --- One agent ------------------------------------------------------------ */
-
-.choice {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  width: 100%;
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-panel);
+.why {
+  border-radius: var(--radius-control);
   border: 1px solid var(--chrome-border);
   background: var(--chrome-surface);
-  box-shadow: var(--shadow-sm);
-  text-align: left;
-  cursor: pointer;
-  font-family: var(--font-sans);
-  transition: border-color var(--duration-fast) var(--ease-standard);
 }
 
-.choice:hover {
-  border-color: var(--chrome-accent-border);
-}
-
-.choiceIcon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 38px;
-  height: 38px;
-  border-radius: var(--radius-control);
-  border: 1px solid var(--chrome-accent-border);
-  background: var(--chrome-accent-bg);
-  color: var(--chrome-accent);
-}
-
-.choiceBody {
-  flex: 1;
-  min-width: 0;
-}
-
-.choiceName {
-  font-size: var(--text-body-large);
-  font-weight: var(--weight-semibold);
-  color: var(--chrome-text);
-}
-
-.choiceMeta {
-  margin-top: var(--space-0-5);
-  font-family: var(--font-mono);
-  font-size: var(--text-label);
-  color: var(--chrome-text-muted);
-}
-
-.connected {
+.whySummary {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  flex-shrink: 0;
-  font-size: var(--text-label);
-  color: var(--tone-success-ink);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-caption);
+  color: var(--chrome-text-mid);
+  cursor: pointer;
+  list-style: none;
 }
 
-.connectedDot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--status-ok);
+.whySummary::-webkit-details-marker {
+  display: none;
 }
 
-.chevron {
+.whyIcon {
   display: flex;
-  flex-shrink: 0;
+  color: var(--ink-accent);
+}
+
+.whyBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 0 var(--space-3) var(--space-3);
+  font-size: var(--text-caption);
+  line-height: var(--leading-relaxed);
   color: var(--chrome-text-muted);
 }
 
-@keyframes lab-location-fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.whyBody p {
+  margin: 0;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .choice {
-    transition: none;
-  }
+.whyBody b {
+  color: var(--chrome-text-mid);
+  font-weight: var(--weight-semibold);
+}
+
+/* Takes the rail's slack so the specimen centres between the question above it
+ * and the confirmation panel pinned below. */
+.podBay {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* The pod's box is wider than the rail. Alignment can't centre it: an
+ * overflowing grid or flex item is clamped to the start edge rather than
+ * hanging off both, which offsets it by half the overhang. A transform has no
+ * such rule, so the surplus padding is clipped evenly on both sides. */
+.podFrame {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: flex;
+  transform: translate(-50%, -50%);
+}
+
+/* --- Right: filter, grid, pager ------------------------------------------ */
+
+.fleet {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  overflow-y: auto;
+}
+
+.tools {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.tools > :first-child {
+  flex: 1;
+  min-width: 0;
+  max-width: 320px;
+}
+
+.count {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--chrome-text-muted);
+}
+
+.pager {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding-top: var(--space-1);
+}
+
+.pageBack,
+.pageNext {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--chrome-border-strong);
+  background: var(--chrome-surface);
+  color: var(--chrome-text-mid);
+  cursor: pointer;
+}
+
+/* No left chevron in the icon set; the right one, turned. */
+.pageBack {
+  transform: rotate(180deg);
+}
+
+.pageBack:disabled,
+.pageNext:disabled {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
+}
+
+.pageBack:not(:disabled):hover,
+.pageNext:not(:disabled):hover {
+  border-color: var(--chrome-accent-border);
+  color: var(--chrome-accent);
+}
+
+.pageLabel {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  color: var(--chrome-text-muted);
+}
+
+/* --- Action bar ---------------------------------------------------------- */
+
+.actionBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-6);
+  border-top: 1px solid var(--chrome-border);
+  background: var(--chrome-surface);
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+  min-width: 0;
+}
+
+.summaryLamp {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-round);
+  background: var(--status-idle);
+}
+
+.summary[data-ready] .summaryLamp {
+  background: var(--status-ok);
+  box-shadow: 0 0 6px var(--status-ok-glow);
+}
+
+.summaryText {
+  font-size: var(--text-body);
+  color: var(--chrome-text-muted);
+}
+
+.summaryText b {
+  color: var(--chrome-text);
+  font-weight: var(--weight-semibold);
+}
+
+.actionBar > :last-child {
+  margin-left: auto;
 }

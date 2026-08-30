@@ -1,0 +1,10 @@
+.grid {
+  display: grid;
+  /* Capped tracks, not `1fr`: with fractional columns a small fleet makes each
+   * bay *wider*, which is the opposite of what the column count is for. */
+  grid-template-columns: repeat(var(--lab-columns, 4), minmax(0, 280px));
+  grid-auto-rows: 148px;
+  align-content: start;
+  justify-content: start;
+  gap: var(--space-3);
+}

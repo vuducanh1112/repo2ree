@@ -221,7 +221,7 @@ export async function openFilesConsole(page: Page) {
 export async function connectedAgentCount(page: Page): Promise<number> {
   await page.goto("/");
   await page.getByRole("button", { name: "Create a new REE" }).click();
-  await expect(page.getByRole("heading", { name: "Choose a lab location" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Where should this REE run?" })).toBeVisible();
   const cards = page.getByRole("button", { name: /connected/ });
   // The agent list loads async; a suite-worthy stack always has at least one
   // agent, so waiting for the first card is enough for a settled count.
@@ -243,11 +243,14 @@ export async function startReeCreation(page: Page, options?: { agentIndex?: numb
   await page.goto("/");
   await stepShot(page, "start-ree-creation", "before");
   await page.getByRole("button", { name: "Create a new REE" }).click();
-  await expect(page.getByRole("heading", { name: "Choose a lab location" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Where should this REE run?" })).toBeVisible();
   await page
     .getByRole("button", { name: /connected/ })
     .nth(options?.agentIndex ?? 0)
     .click();
+  // Picking a bay arms it; the choice is committed from the action bar, so the
+  // lab is confirmed in the detail panel before the flow leaves this step.
+  await page.getByRole("button", { name: "Continue" }).click();
   await expect(page.getByRole("heading", { name: "Set up the workbench" })).toBeVisible();
   await stepShot(page, "start-ree-creation", "after");
   return new URL(page.url()).searchParams.get("agentId") ?? "";
