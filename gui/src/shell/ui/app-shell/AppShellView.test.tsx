@@ -45,7 +45,6 @@ vi.mock("./components/WorkspaceStatusBar", () => ({
     </div>
   ),
 }));
-vi.mock("./canvas/WorkbenchLab", () => ({ WorkbenchLab: () => <div>Workbench</div> }));
 vi.mock("./canvas/RunHud", () => ({ RunHud: () => <div>Run HUD</div> }));
 vi.mock("./canvas/WorkspaceDrawer", () => ({
   WorkspaceDrawer: ({ children, onClose }: { children: React.ReactNode; onClose: () => void }) => (
@@ -163,13 +162,12 @@ function controller(page: AppShellPage = PAGE.CANVAS, provisioned = true) {
 describe("AppShellView", () => {
   beforeEach(() => controller());
 
-  it("shows the unprovisioned workbench and handles back navigation", () => {
+  it("draws no stage until the REE is provisioned", () => {
     controller(PAGE.CANVAS, false);
     const onBack = vi.fn();
     render(<AppShellView onBack={onBack} />);
 
-    expect(screen.getByText("Workbench")).toBeInTheDocument();
-    expect(screen.getByRole("main")).toContainElement(screen.getByText("Workbench"));
+    expect(screen.getByRole("main")).toBeEmptyDOMElement();
     expect(screen.queryByText("Run HUD")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /back/ }));
     expect(onBack).toHaveBeenCalledOnce();

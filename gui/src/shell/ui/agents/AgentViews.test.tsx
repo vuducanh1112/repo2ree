@@ -9,6 +9,11 @@ import { LabLocationView } from "./LabLocationView";
 const useAgentsMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@shell/data/agents/agents", () => ({ useAgents: useAgentsMock }));
+vi.mock("./WorkbenchSetupDrawer", () => ({
+  WorkbenchSetupDrawer: ({ agent }: { agent: { hostname: string } }) => (
+    <div>Setup for {agent.hostname}</div>
+  ),
+}));
 
 function queryState(overrides: Record<string, unknown> = {}) {
   return {
@@ -127,20 +132,37 @@ describe("choosing a lab", () => {
     expect(screen.getByRole("button", { name: "lab-02 — connected" })).toBeInTheDocument();
   });
 
-  it("will not continue until a lab is chosen", async () => {
+  it("opens workbench setup for the lab that was chosen", async () => {
     useAgentsMock.mockReturnValue(queryState({ data: fleet(3) }));
     renderPicker();
 
-    expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
-    expect(screen.getByText("No lab selected")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Set up the workbench" })).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "lab-02 — connected" }));
 
-    expect(screen.getByRole("button", { name: "Continue" })).toBeEnabled();
+    const setup = screen.getByRole("region", { name: "Set up the workbench" });
+    expect(setup).toHaveTextContent("Setup for lab-02");
     expect(screen.getByRole("button", { name: "lab-02 — connected" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
+  });
+
+  it("keeps the choice when setup is dismissed", async () => {
+    useAgentsMock.mockReturnValue(queryState({ data: fleet(3) }));
+    renderPicker();
+
+    await userEvent.click(screen.getByRole("button", { name: "lab-02 — connected" }));
+    await userEvent.click(screen.getByRole("button", { name: "Close" }));
+
+    expect(screen.queryByRole("region", { name: "Set up the workbench" })).not.toBeInTheDocument();
+    // The lab stays chosen and confirmed in the rail — closing setup is not
+    // the same as unpicking the lab.
+    expect(screen.getByRole("button", { name: "lab-02 — connected" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByText("Specimen pod · assigned")).toBeInTheDocument();
   });
 
   it("confirms the choice in the detail panel rather than in the grid", async () => {
@@ -164,14 +186,17 @@ describe("choosing a lab", () => {
       "aria-pressed",
       "true",
     );
-    expect(screen.getByRole("button", { name: "Continue" })).toBeEnabled();
+    // Armed, but not committed: setup is opened by an explicit choice, so the
+    // single-lab install still gets to see the image options before it runs.
+    expect(screen.queryByRole("region", { name: "Set up the workbench" })).not.toBeInTheDocument();
   });
 
   it("does not arm anything when there is a choice to make", () => {
     useAgentsMock.mockReturnValue(queryState({ data: fleet(2) }));
     renderPicker();
 
-    expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+    expect(screen.getByText("No lab chosen")).toBeInTheDocument();
+    expect(screen.queryByText("Specimen pod · assigned")).not.toBeInTheDocument();
   });
 
   it("filters the fleet down and says what it is showing", async () => {

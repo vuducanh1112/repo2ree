@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { openFilesConsole, openPort, openWorkbenchConsole } from "../../e2e/helpers/flow";
 import { createDemoKit } from "../helpers/demo";
 
-const { demoStep, clickDemo } = createDemoKit({
+const { demoStep, clickDemo, showcasePanel } = createDemoKit({
   stepDelayMs: 250,
   narrationDelayMs: 650,
 });
@@ -25,7 +25,7 @@ test("upload Code Ocean capsule 4825344", async ({ page }) => {
   );
   const sourcePanel = page.getByRole("region", { name: "Source Acquisition" });
 
-  await demoStep(page, "Open REE creation flow", async () => {
+  await demoStep(page, "Choose a lab and bring the bench online", async () => {
     await page.goto("/");
     await clickDemo(
       page,
@@ -36,20 +36,18 @@ test("upload Code Ocean capsule 4825344", async ({ page }) => {
     await clickDemo(
       page,
       page.getByRole("button", { name: /connected/ }).first(),
-      "Pick the lab — the machine that will host this REE's workbench",
+      "Pick the lab — the machine that will host this REE's workbench, for its whole life",
+    );
+    const setup = page.getByRole("region", { name: "Set up the workbench" });
+    await expect(setup).toBeVisible();
+    await showcasePanel(
+      page,
+      setup,
+      "Choosing a lab opens its bench setup in place — the base image the REE runs on, and whether the bench starts blank or from a downloaded bundle",
     );
     await clickDemo(
       page,
-      page.getByRole("button", { name: "Continue" }),
-      "Confirm the lab — the REE stays pinned to it for its whole life",
-    );
-    await expect(page.getByRole("heading", { name: "Set up the workbench" })).toBeVisible();
-  });
-
-  await demoStep(page, "Provision workbench", async () => {
-    await clickDemo(
-      page,
-      page.getByRole("button", { name: /Provision workbench/i }),
+      setup.getByRole("button", { name: /Provision workbench/i }),
       "Provision the workbench",
     );
     await expect(

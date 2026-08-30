@@ -18,6 +18,11 @@ interface WorkspaceDrawerProps {
   node: CanvasNode | undefined;
   /** Optional longer page title when the canvas node uses a compact label. */
   title?: string;
+  /** What kind of surface this is. Authoring pages are the common case; the
+   * pre-workspace setup drawer is not one. */
+  subtitle?: string;
+  /** Glyph for a drawer with no canvas node behind it. */
+  icon?: ReactNode;
   onClose: () => void;
   children: ReactNode;
 }
@@ -36,7 +41,14 @@ function clampWidth(width: number) {
 }
 
 /** A persistent, non-modal authoring surface over the right side of the live canvas. */
-export function WorkspaceDrawer({ node, title, onClose, children }: WorkspaceDrawerProps) {
+export function WorkspaceDrawer({
+  node,
+  title,
+  subtitle = "Authoring",
+  icon,
+  onClose,
+  children,
+}: WorkspaceDrawerProps) {
   const [width, setWidth] = useState(() => clampWidth(DEFAULT_WIDTH));
   const [resizing, setResizing] = useState(false);
   const dragRef = useRef<{ startX: number; startWidth: number } | null>(null);
@@ -116,10 +128,10 @@ export function WorkspaceDrawer({ node, title, onClose, children }: WorkspaceDra
         className={styles.drawer}
         header={
           <CanvasWindowTitle
-            icon={node ? canvasIcon(node.iconKey)(13) : undefined}
+            icon={node ? canvasIcon(node.iconKey)(13) : icon}
             iconTint={node ? stageTone(node.key) : undefined}
             title={label}
-            subtitle="Authoring"
+            subtitle={subtitle}
           />
         }
       >

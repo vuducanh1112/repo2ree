@@ -52,8 +52,9 @@ test.describe("REE pipeline", () => {
 
     await test.step("provision workbench", async () => {
       await startReeCreation(page);
-      await expect(page.getByRole("heading", { name: "Set up the workbench" })).toBeVisible();
-      await expect(page.getByRole("button", { name: /Provision workbench/i })).toBeVisible();
+      const setup = page.getByRole("region", { name: "Set up the workbench" });
+      await expect(setup).toBeVisible();
+      await expect(setup.getByRole("button", { name: /Provision workbench/i })).toBeVisible();
 
       // Asserts the hub canvas appears and the Source page is reachable.
       await provisionWorkbench(page);

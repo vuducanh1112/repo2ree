@@ -1,0 +1,140 @@
+/* The workbench setup drawer's contents. Carried over from the standalone
+ * WorkbenchLab page this replaced; the bench frame, cradle and dormant pod it
+ * used to draw are gone, because the picker behind the drawer already shows the
+ * specimen. */
+
+.setup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+}
+
+.lede {
+  margin: 0;
+  font-size: var(--text-body);
+  line-height: var(--leading-relaxed);
+  color: var(--ink-muted);
+}
+
+.lede b {
+  color: var(--ink-default);
+  font-weight: var(--weight-semibold);
+}
+
+.sectionLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.sectionIcon {
+  display: flex;
+  color: var(--stage-build-line);
+}
+
+.sectionText {
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+  color: var(--ink-muted);
+}
+
+/* --- Contents ------------------------------------------------------------
+ * Blank vs. loaded: the REE either starts empty or *is* a downloaded bundle
+ * restored onto this workbench. */
+
+.bundle {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-control);
+  border: 1px solid var(--chrome-border);
+  background: var(--chrome-surface);
+}
+
+/* Loading was asked for, so a bundle is the one thing still missing. */
+.bundle[data-required] {
+  border-color: var(--chrome-accent-border);
+}
+
+.bundleCopy {
+  font-size: var(--text-body);
+  line-height: var(--leading-normal);
+  color: var(--ink-muted);
+}
+
+.bundleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+}
+
+.chooser {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  padding: var(--space-2) var(--space-2-5);
+  border-radius: var(--radius-control);
+  border: 1px solid var(--chrome-border);
+  background: transparent;
+  color: var(--ink-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-label);
+  cursor: pointer;
+}
+
+.chooser:has(input:disabled) {
+  cursor: not-allowed;
+}
+
+.chooser:focus-within {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.hiddenFileInput {
+  display: none;
+}
+
+.bundleName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  color: var(--ink-subtle);
+}
+
+.bundleName[data-chosen] {
+  color: var(--ink-default);
+}
+
+.clear {
+  flex-shrink: 0;
+  padding: var(--space-2) var(--space-2-5);
+  border-radius: var(--radius-control);
+  border: 1px solid var(--chrome-border);
+  background: transparent;
+  color: var(--ink-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-label);
+  cursor: pointer;
+}
+
+.clear:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.note {
+  text-align: center;
+  font-size: var(--text-label);
+  color: var(--ink-subtle);
+}

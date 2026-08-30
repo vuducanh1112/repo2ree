@@ -1,12 +1,12 @@
 import type { Agent } from "@core/agent/Agent";
 import { type LabPage, selectLabPage } from "@core/agent/labSelection";
-import { APP_ROUTE, LOAD_REE_PARAM } from "@core/app-shell/pages";
+import { LOAD_REE_PARAM } from "@core/app-shell/pages";
 import { emptyEvaluationState } from "@core/evaluate/EvaluationState";
 import { useAgents } from "@shell/data/agents/agents";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { useSearchParams } from "react-router";
 import { PodWidget } from "../app-shell/canvas/PodWidget";
-import { Button } from "../shared/components/Button";
+import { WorkspaceDrawer } from "../app-shell/canvas/WorkspaceDrawer";
 import { Input } from "../shared/components/FormControl";
 import { Ic } from "../shared/components/Icon";
 import { Notice } from "../shared/components/Notice";
@@ -16,6 +16,7 @@ import styles from "./LabLocationView.module.css";
 import { NoAgentsState } from "./NoAgentsState";
 import { SelectedLabDetail } from "./SelectedLabDetail";
 import { useAgentUptimeClock } from "./useAgentUptimeClock";
+import { WorkbenchSetupDrawer } from "./WorkbenchSetupDrawer";
 
 interface LabLocationViewProps {
   onBack: () => void;
@@ -31,13 +32,18 @@ const POD_SIZE = 460;
 // which pins the REE to that agent on provision. The commit is deliberately two
 // moves — the detail panel is where the choice is confirmed, not the grid.
 export function LabLocationView({ onBack }: LabLocationViewProps) {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { data: agents, isLoading, isError, error } = useAgents();
 
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Choosing a lab opens the setup drawer over the grid, the same way a canvas
+  // panel opens its authoring page. Closing it leaves the choice standing.
+  const [setupOpen, setSetupOpen] = useState(false);
+  // Arrived from "Load existing REE" on the landing screen: the bundle is asked
+  // for in the drawer, because the load runs on the bench it provisions.
+  const loadRequested = Boolean(searchParams.get(LOAD_REE_PARAM));
 
   const nowMs = useAgentUptimeClock(Boolean(agents?.length));
   const view = useMemo(() => selectLabPage(agents ?? [], { query, page }), [agents, query, page]);
@@ -50,13 +56,9 @@ export function LabLocationView({ onBack }: LabLocationViewProps) {
     setSelectedId(agents[0].id);
   }, [agents, selectedId]);
 
-  // "Load an existing REE" is chosen on the landing screen and asked for on the
-  // workbench step, so the intent rides along through this one.
-  function commit() {
-    if (!selected) return;
-    const params = new URLSearchParams({ agentId: selected.id });
-    if (searchParams.get(LOAD_REE_PARAM)) params.set(LOAD_REE_PARAM, "1");
-    navigate(`${APP_ROUTE.WORKSPACE}?${params.toString()}`);
+  function chooseLab(agentId: string) {
+    setSelectedId(agentId);
+    setSetupOpen(true);
   }
 
   return (
@@ -133,32 +135,24 @@ export function LabLocationView({ onBack }: LabLocationViewProps) {
                 setQuery(next);
                 setPage(0);
               }}
-              onSelect={setSelectedId}
+              onSelect={chooseLab}
               onPage={setPage}
             />
           )}
         </div>
-      </main>
 
-      <footer className={styles.actionBar}>
-        <div className={styles.summary} data-ready={selected ? true : undefined}>
-          <span aria-hidden className={styles.summaryLamp} />
-          <span className={styles.summaryText}>
-            {selected ? (
-              <>
-                This REE will run on <b>{selected.hostname || selected.id}</b>
-              </>
-            ) : agents?.length ? (
-              "No lab selected"
-            ) : (
-              "No lab is connected to this control plane."
-            )}
-          </span>
-        </div>
-        <Button variant="primary" disabled={!selected} onClick={commit} icon={Ic.chevR(15)}>
-          Continue
-        </Button>
-      </footer>
+        {setupOpen && selected && (
+          <WorkspaceDrawer
+            node={undefined}
+            title="Set up the workbench"
+            subtitle="Setup"
+            icon={Ic.package(13)}
+            onClose={() => setSetupOpen(false)}
+          >
+            <WorkbenchSetupDrawer agent={selected} loadRequested={loadRequested} />
+          </WorkspaceDrawer>
+        )}
+      </main>
     </>
   );
 }

@@ -12,7 +12,6 @@ import { CanvasHub } from "./canvas/CanvasHub";
 import { RunHud } from "./canvas/RunHud";
 import { SealContent } from "./canvas/SealContent";
 import { SourceAcquisitionContent } from "./canvas/SourceAcquisitionContent";
-import { WorkbenchLab } from "./canvas/WorkbenchLab";
 import { WorkspaceDrawer } from "./canvas/WorkspaceDrawer";
 import { ReeSyncStatus } from "./components/ReeSyncStatus";
 import { WorkspaceFooterBar } from "./components/WorkspaceFooterBar";
@@ -210,11 +209,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
       )}
 
       <main className={styles.stage}>
-        {!provisioned ? (
-          // First screen of REE creation: the workbench IS the canvas — the lab
-          // the dormant pod sits in. Configuring it powers the lab on.
-          <WorkbenchLab evaluation={evaluation} />
-        ) : (
+        {provisioned && (
           <>
             <div className={styles.canvasPane}>
               <CanvasHub

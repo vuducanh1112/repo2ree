@@ -238,8 +238,8 @@ export function canvasWorldBounds(nodes: readonly CanvasNode[] = CANVAS_NODES): 
 }
 
 // The Workbench is absent from the ring on purpose: it IS the canvas — the lab
-// the pod sits in. Its setup lives in WorkbenchLab (pre-provision) and the
-// bench nameplate on the hub (post-provision).
+// the pod sits in. Its setup happens before this canvas exists, in the lab
+// picker's drawer; afterwards it is the bench nameplate on the hub.
 //
 // The angles walk the authoring pipeline in order: Source enters stage left,
 // the sequence sweeps clockwise over the far side and down the near right, and

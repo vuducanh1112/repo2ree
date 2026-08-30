@@ -32,11 +32,14 @@ export const applicationPageScenarios: ApplicationPageScenario[] = [
     },
   },
   {
-    name: "workbench setup",
+    // Setup has no route of its own any more: it is the drawer choosing a lab
+    // opens, so the scenario has to choose one to reach it.
+    name: "workbench setup drawer",
     screenshot: "workbench-setup.png",
     prepare: async (page) => {
-      await page.goto("/workspace?agentId=agent-oslo");
-      await expect(page.getByRole("heading", { name: "Set up the workbench" })).toBeVisible();
+      await page.goto("/lab-location");
+      await page.getByRole("button", { name: "lab-oslo-01 — connected" }).click();
+      await expect(page.getByRole("region", { name: "Set up the workbench" })).toBeVisible();
       await expect(page.getByText("Python 3.12")).toBeVisible();
       await settleVisualPage(page);
     },

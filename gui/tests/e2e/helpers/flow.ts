@@ -248,12 +248,12 @@ export async function startReeCreation(page: Page, options?: { agentIndex?: numb
     .getByRole("button", { name: /connected/ })
     .nth(options?.agentIndex ?? 0)
     .click();
-  // Picking a bay arms it; the choice is committed from the action bar, so the
-  // lab is confirmed in the detail panel before the flow leaves this step.
-  await page.getByRole("button", { name: "Continue" }).click();
-  await expect(page.getByRole("heading", { name: "Set up the workbench" })).toBeVisible();
+  // Choosing a bay opens workbench setup over the picker: one screen, not two.
+  await expect(page.getByRole("region", { name: "Set up the workbench" })).toBeVisible();
   await stepShot(page, "start-ree-creation", "after");
-  return new URL(page.url()).searchParams.get("agentId") ?? "";
+  // The URL no longer carries the agent — nothing navigates until the bench is
+  // provisioned — so the armed bay is what records which lab was chosen.
+  return (await page.locator("[data-lab][aria-pressed='true']").getAttribute("data-lab")) ?? "";
 }
 
 /**
@@ -263,13 +263,16 @@ export async function startReeCreation(page: Page, options?: { agentIndex?: numb
  */
 export async function provisionWorkbench(page: Page, options?: { imageRef?: string }) {
   await stepShot(page, "provision-workbench", "before");
+  // Setup is the drawer the lab picker opens, so scope to it rather than to a
+  // page that no longer exists on its own.
+  const setup = page.getByRole("region", { name: "Set up the workbench" });
   if (options?.imageRef) {
     // Pick "Custom…" in the image selector and provide the reference — the
     // catalog default (docker:dind) stays untouched for every other test.
-    await page.getByRole("button", { name: /Custom…/ }).click();
-    await page.getByPlaceholder("e.g. docker.io/library/docker:29-dind").fill(options.imageRef);
+    await setup.getByRole("button", { name: /Custom…/ }).click();
+    await setup.getByPlaceholder("e.g. docker.io/library/docker:29-dind").fill(options.imageRef);
   }
-  await page.getByRole("button", { name: /Provision workbench/i }).click();
+  await setup.getByRole("button", { name: /Provision workbench/i }).click();
   // A real provision: bench container start, nested dockerd boot, doctor
   // probe. ~15-20s depending on the agent's environment — well past the
   // project's default expect timeout.

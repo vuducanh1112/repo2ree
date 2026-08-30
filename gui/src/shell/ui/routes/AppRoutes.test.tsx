@@ -67,18 +67,25 @@ function renderRoute(route: string) {
 
 describe("AppRoutes", () => {
   it.each([
-    ["/explorer", "/workspace"],
+    // /explorer is a legacy alias for the workspace, and a workspace with no
+    // REE now bounces on to the picker — so the alias resolves in two hops.
+    ["/explorer", "/lab-location"],
     ["/not-a-route", "/"],
-  ])("redirects %s to %s", (route, expected) => {
+  ])("redirects %s to %s", async (route, expected) => {
     renderRoute(route);
-    expect(screen.getByText(expected)).toBeInTheDocument();
+    expect(await screen.findByText(expected)).toBeInTheDocument();
   });
 
   it("announces a lazy route while its chunk loads", () => {
-    renderRoute("/lab-location");
+    renderRoute("/agents");
     const loadingView = screen.getByText("Loading view…").closest("main");
     expect(loadingView).toHaveAttribute("role", "status");
     expect(loadingView).toHaveAttribute("aria-live", "polite");
+  });
+
+  it("sends a workspace with no REE back to the lab picker", async () => {
+    renderRoute("/workspace");
+    expect(await screen.findByText("/lab-location")).toBeInTheDocument();
   });
 
   it.each([
@@ -86,7 +93,6 @@ describe("AppRoutes", () => {
     ["/agents", "Agents back"],
     ["/ree-index", "Index back"],
     ["/workspace?reeId=loaded", "Workspace back"],
-    ["/workspace", "Workspace back"],
   ])("returns from %s to landing", async (route, button) => {
     renderRoute(route);
     fireEvent.click(await screen.findByRole("button", { name: button }));

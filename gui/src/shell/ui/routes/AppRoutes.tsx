@@ -36,6 +36,14 @@ function DeferredRoute({ children }: { children: ReactNode }) {
   );
 }
 
+function LabLocationRoute({ onBack }: { onBack: () => void }) {
+  return (
+    <ReeScopeProvider reeId={DEFAULT_REE_ID}>
+      <LabLocationView onBack={onBack} />
+    </ReeScopeProvider>
+  );
+}
+
 function WorkspaceRoute({
   onBack,
   reportError,
@@ -46,6 +54,10 @@ function WorkspaceRoute({
   const [searchParams] = useSearchParams();
   const reeId = searchParams.get("reeId") || undefined;
   const workspaceKey = reeId ?? "new";
+
+  // A workspace without an REE has nothing to show: provisioning happens on the
+  // lab picker now, so this route is only ever reached with a provisioned REE.
+  if (!reeId) return <Navigate to={APP_ROUTE.LAB_LOCATION} replace />;
 
   return (
     <ErrorBoundary
@@ -81,7 +93,7 @@ export function AppRoutes({ reportError }: { reportError: UiErrorReporter }) {
         path={APP_ROUTE.LAB_LOCATION}
         element={
           <DeferredRoute>
-            <LabLocationView onBack={() => navigate(APP_ROUTE.ROOT)} />
+            <LabLocationRoute onBack={() => navigate(APP_ROUTE.ROOT)} />
           </DeferredRoute>
         }
       />
