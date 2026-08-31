@@ -138,18 +138,18 @@ test.describe("REE pip pipeline", () => {
       await openPort(page, "Activation");
       await expect(main(page).getByText("Activation Run Script", { exact: true })).toBeVisible();
 
-      const { message, graph } = await generateScript(page);
+      const { message, graph, script } = await generateScript(page);
       expect(message).toMatch(/Loaded a generated activation script/);
       expect(graph).toContain("activation-run-inference");
 
-      const editor = main(page).getByRole("textbox", {
-        name: "Activation run script",
-        exact: true,
-      });
-      await expect(editor).toHaveValue(/tar -xzf/);
-      await expect(editor).toHaveValue(new RegExp(`VENV_DIR=${VENV_DIR}`));
+      expect(script).toMatch(/tar -xzf/);
+      expect(script).toMatch(new RegExp(`VENV_DIR=${VENV_DIR}`));
       // Fail-closed like every Phase 1 run scaffold.
-      await expect(editor).toHaveValue(/exit 64/);
+      expect(script).toMatch(/exit 64/);
+      // And it landed in the editor; the generated body is asserted above.
+      await expect(
+        main(page).getByRole("textbox", { name: "Activation run script", exact: true }),
+      ).toContainText("tar -xzf");
     });
 
     await test.step("test activation", async () => {

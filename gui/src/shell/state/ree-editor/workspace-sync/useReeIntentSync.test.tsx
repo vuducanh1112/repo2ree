@@ -39,7 +39,13 @@ describe("useReeIntentSync", () => {
     const hydrateWorkspace = vi.fn();
     const ree = createEmptyReeEditorViewModel();
     const { result } = renderHook(() =>
-      useReeIntentSync({ ree, reeId: "ree-1", provisioned: false, hydrateWorkspace }),
+      useReeIntentSync({
+        ree,
+        reeId: "ree-1",
+        provisioned: false,
+        sealed: false,
+        hydrateWorkspace,
+      }),
     );
 
     await act(() => result.current.flush());
@@ -53,7 +59,7 @@ describe("useReeIntentSync", () => {
     const initial = createEmptyReeEditorViewModel();
     const { result, rerender } = renderHook(
       ({ ree, provisioned }) =>
-        useReeIntentSync({ ree, reeId: "ree-1", provisioned, hydrateWorkspace }),
+        useReeIntentSync({ ree, reeId: "ree-1", provisioned, sealed: false, hydrateWorkspace }),
       { initialProps: { ree: initial, provisioned: false } },
     );
 
@@ -89,6 +95,7 @@ describe("useReeIntentSync", () => {
         useReeIntentSync({
           ree,
           reeId: "ree-1",
+          sealed: false,
           provisioned: true,
           hydrateWorkspace,
         }),
@@ -120,6 +127,7 @@ describe("useReeIntentSync", () => {
         useReeIntentSync({
           ree,
           reeId: "ree-1",
+          sealed: false,
           provisioned: true,
           hydrateWorkspace,
         }),
@@ -148,6 +156,7 @@ describe("useReeIntentSync", () => {
       useReeIntentSync({
         ree: createEmptyReeEditorViewModel(),
         reeId: "ree-1",
+        sealed: false,
         provisioned: true,
         hydrateWorkspace,
       }),
@@ -173,6 +182,7 @@ describe("useReeIntentSync", () => {
       useReeIntentSync({
         ree: createEmptyReeEditorViewModel(),
         reeId: "ree-1",
+        sealed: false,
         provisioned: true,
         hydrateWorkspace,
       }),
@@ -189,5 +199,40 @@ describe("useReeIntentSync", () => {
       ree: remoteRee,
     });
     expect(mocks.updateReeIntent).not.toHaveBeenCalled();
+  });
+
+  // The regression that made a sealed workspace impossible to leave: sealing
+  // hydrates the store with the backend's copy of the REE, whose spec need not
+  // round-trip to the patch the local draft produced. Read as an unsaved edit,
+  // that difference autosaved against a document the backend refuses to author
+  // ("a sealed REE cannot be authored"), so the draft stayed dirty forever and
+  // the navigation guard cancelled every attempt to navigate away.
+  it("never authors a sealed REE, however far its spec has drifted from the draft", async () => {
+    const hydrateWorkspace = vi.fn();
+    const initial = createEmptyReeEditorViewModel();
+    const { result, rerender } = renderHook(
+      ({ ree }) =>
+        useReeIntentSync({
+          ree,
+          reeId: "ree-1",
+          sealed: true,
+          provisioned: true,
+          hydrateWorkspace,
+        }),
+      { initialProps: { ree: initial } },
+    );
+
+    await waitFor(() => expect(result.current.hydration.status).toBe("ready"));
+    rerender({
+      ree: patchReeEditorViewModel(initial, {
+        spec: { name: "sealed-and-renamed-by-the-backend" },
+      }),
+    });
+
+    // Not merely un-PATCHed: reported clean, because the flag the navigation
+    // guard blocks on is this one.
+    await act(() => result.current.flush());
+    expect(mocks.updateReeIntent).not.toHaveBeenCalled();
+    expect(result.current.isDirty).toBe(false);
   });
 });

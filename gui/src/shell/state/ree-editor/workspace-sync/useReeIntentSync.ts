@@ -31,6 +31,18 @@ interface UseReeIntentSyncArgs {
   ree: ReeEditorViewModel;
   reeId: string;
   provisioned: boolean;
+  /**
+   * The REE is sealed, and therefore read-only.
+   *
+   * Not a save that might fail — a request the domain forbids: the backend
+   * refuses to author a sealed REE at all. Sealing hydrates the store with the
+   * backend's own copy of the REE, whose spec need not round-trip to the same
+   * patch the local draft produced, and without this that difference reads as
+   * an unsaved edit. The autosave then PATCHes a document that can never accept
+   * it, the draft stays dirty forever, and the navigation guard below turns
+   * that into a workspace nobody can leave.
+   */
+  sealed: boolean;
   hydrateWorkspace: (workspace: HydratedWorkspaceSnapshot) => void;
 }
 
@@ -38,6 +50,7 @@ export function useReeIntentSync({
   ree,
   reeId,
   provisioned,
+  sealed,
   hydrateWorkspace,
 }: UseReeIntentSyncArgs) {
   const initialPatchKey = JSON.stringify(toReePatchFromSlices(toPatchSlices(ree)));
@@ -162,6 +175,11 @@ export function useReeIntentSync({
   // experiment, which the backend validates against the saved draft) await
   // this first so they never race the 300ms autosave timer below.
   const flush = useCallback(async () => {
+    // A sealed REE has nothing to save and nothing that could be saved, so this
+    // resolves rather than rejecting: callers — the autosave timer, the
+    // navigation guard, the seal operation itself — all read a rejection as
+    // "the draft is at risk", which a frozen REE never is.
+    if (sealed) return;
     if (provisioned && hydration.status !== "ready") {
       throw hydration.status === "error"
         ? hydration.error
@@ -188,7 +206,7 @@ export function useReeIntentSync({
       syncTimerRef.current = null;
     }
     await runReeIntentSync(patch, patchKey);
-  }, [provisioned, hydration, buildReePatch, runReeIntentSync]);
+  }, [provisioned, sealed, hydration, buildReePatch, runReeIntentSync]);
 
   useEffect(() => {
     const patchKey = JSON.stringify(buildReePatch());
@@ -198,6 +216,7 @@ export function useReeIntentSync({
     if (
       changed &&
       provisioned &&
+      !sealed &&
       hydration.status === "ready" &&
       patchKey !== lastSyncedReeRef.current
     ) {
@@ -205,7 +224,7 @@ export function useReeIntentSync({
         current.phase === "saving" || current.phase === "error" ? current : { phase: "dirty" },
       );
     }
-  }, [buildReePatch, hydration.status, provisioned]);
+  }, [buildReePatch, hydration.status, provisioned, sealed]);
 
   const loadInitialWorkspace = useCallback(async () => {
     if (!provisioned) {
@@ -240,7 +259,7 @@ export function useReeIntentSync({
     const patch = buildReePatch();
     const patchKey = JSON.stringify(patch);
     const shouldScheduleSync = shouldScheduleReeIntentSync({
-      canUpdateReeIntent: provisioned && hydration.status === "ready",
+      canUpdateReeIntent: provisioned && !sealed && hydration.status === "ready",
       patchKey,
       lastSyncedPatchKey: lastSyncedReeRef.current,
     });
@@ -268,7 +287,7 @@ export function useReeIntentSync({
         syncTimerRef.current = null;
       }
     };
-  }, [buildReePatch, provisioned, hydration.status, flush]);
+  }, [buildReePatch, provisioned, sealed, hydration.status, flush]);
 
   const retryHydration = useCallback(() => {
     void loadInitialWorkspace();
@@ -282,7 +301,9 @@ export function useReeIntentSync({
     refreshWorkspaceFiles,
     flush,
     syncState,
-    isDirty: syncState.phase !== "clean",
+    // A frozen REE is never dirty: there is no edit to protect, so nothing
+    // here may hold a navigation back.
+    isDirty: !sealed && syncState.phase !== "clean",
     retrySync: flush,
   };
 }

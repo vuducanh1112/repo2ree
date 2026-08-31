@@ -122,13 +122,32 @@ export const GENERATE_STATUS = /Loaded a generated|could be inferred yet|Generat
  * rendered whether or not a candidate was produced, so callers can assert on it
  * either way. Returns the status message and the graph text.
  */
-export async function generateScript(page: Page): Promise<{ message: string; graph: string }> {
+export async function generateScript(
+  page: Page,
+): Promise<{ message: string; graph: string; script: string }> {
   await stepShot(page, "generate-script", "before");
   const content = main(page);
-  await content
-    .getByRole("button", { name: /Generate from repository/ })
-    .first()
-    .click();
+  // The generated body is read from the response rather than the editor. The
+  // editor is a fixed-height CodeMirror viewport that virtualizes past what it
+  // can show, so the tail of a scaffold — the `exit 64` that makes it
+  // fail-closed — is legitimately absent from the DOM, and what these callers
+  // are asserting about is the generator's output anyway.
+  const [response] = await Promise.all([
+    page.waitForResponse(
+      (candidate) =>
+        candidate.url().includes("script-inferences:generate") &&
+        candidate.request().method() === "POST",
+      { timeout: 30000 },
+    ),
+    content
+      .getByRole("button", { name: /Generate from repository/ })
+      .first()
+      .click(),
+  ]);
+  const report = (await response.json()) as {
+    results?: { candidates?: { body?: string | null }[] }[];
+  };
+  const script = report.results?.[0]?.candidates?.[0]?.body ?? "";
 
   const status = content.getByText(GENERATE_STATUS).first();
   // A real backend round-trip: rescan + DAG walk (and, before the artifact
@@ -149,7 +168,7 @@ export async function generateScript(page: Page): Promise<{ message: string; gra
   const graph = (await graphBlock.textContent()) ?? "";
 
   await stepShot(page, "generate-script", "after");
-  return { message, graph };
+  return { message, graph, script };
 }
 
 /**
@@ -617,12 +636,10 @@ export async function runExperiment(
     // The experiment is declared now, so inference can resolve it and the
     // already-built runtime. Phase 1 never picks the scientific command, so the
     // scaffold arrives fail-closed — the author writes the command below.
-    const { message, graph } = await generateScript(page);
+    const { message, graph, script } = await generateScript(page);
     expect(message).toMatch(/Loaded a generated experiment run script/);
     expect(graph).toContain("experiment-run-inference");
-    await expect(
-      main(page).getByRole("textbox", { name: "Experiment run script", exact: true }),
-    ).toHaveValue(/exit 64/);
+    expect(script).toMatch(/exit 64/);
   }
 
   // Naming the experiment already settled its reserved run-script path on the

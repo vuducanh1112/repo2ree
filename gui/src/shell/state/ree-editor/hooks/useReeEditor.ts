@@ -110,6 +110,7 @@ export function useReeEditor({ reeIntent, stepRuns, dispatch }: UseReeEditorArgs
     ree,
     reeId,
     provisioned,
+    sealed: !!ree.artifact.sealedAt,
     hydrateWorkspace,
   });
   const { persistWorkspaceFile } = useWorkspaceFilePersistence({

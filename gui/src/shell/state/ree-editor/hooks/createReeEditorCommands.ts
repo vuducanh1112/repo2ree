@@ -3,9 +3,10 @@ import type { InclusionOpts } from "@core/ree/InclusionOpts";
 import type { ReeSpec } from "@core/ree/ReeSpec";
 import type { ReeStepParams, SourceUploadCommit } from "@core/ree/ReeTypes";
 import type { ReeStepKey, ReeStepRunParams } from "@core/ree-steps/stepRunParams";
-import type { GenericReeStepParams } from "@core/ree-steps/stepTypes";
+import type { GenericReeStepParams, ToastState } from "@core/ree-steps/stepTypes";
 import {
   clearToast,
+  showToast as enqueueToast,
   patch,
   setFocusedField,
   setRepoMode,
@@ -51,6 +52,7 @@ export interface EditorChromeCommands {
   setReceiptsConsoleOpen(open: boolean): void;
   setBenchConsoleOpen(open: boolean): void;
   setLogsConsoleOpen(open: boolean): void;
+  showToast(message: string, type?: ToastState["type"]): void;
   clearToast(): void;
 }
 
@@ -113,6 +115,8 @@ export function createReeEditorCommands({
       dispatch(patch("uiChrome", { receiptsConsoleOpen: open })),
     setBenchConsoleOpen: (open: boolean) => dispatch(patch("uiChrome", { benchConsoleOpen: open })),
     setLogsConsoleOpen: (open: boolean) => dispatch(patch("uiChrome", { logsConsoleOpen: open })),
+    showToast: (message: string, type: ToastState["type"] = "info") =>
+      dispatch(enqueueToast({ message, type })),
     clearToast: () => dispatch(clearToast()),
     onSeal: handleSeal,
     onDownloadRee: handleDownloadRee,

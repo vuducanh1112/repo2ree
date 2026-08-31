@@ -183,20 +183,21 @@ test.describe("REE pipeline", () => {
       await openPort(page, "Activation");
       await expect(main(page).getByText("Activation Run Script", { exact: true })).toBeVisible();
 
-      const { message, graph } = await generateScript(page);
+      const { message, graph, script } = await generateScript(page);
       expect(message).toMatch(/Loaded a generated activation script/);
       // Phase 1 never auto-selects a run command; the blocking warning says so.
       expect(message).toMatch(/No activation command was selected/);
       expect(graph).toContain("activation-run-inference");
 
-      const editor = main(page).getByRole("textbox", {
-        name: "Activation run script",
-        exact: true,
-      });
       // The scaffold: real docker plumbing around an empty `set --` guarded by
       // exit 64, so it cannot silently run an unconfigured activation.
-      await expect(editor).toHaveValue(/docker load --input/);
-      await expect(editor).toHaveValue(/exit 64/);
+      expect(script).toMatch(/docker load --input/);
+      expect(script).toMatch(/exit 64/);
+      // And it landed in the editor. Only the opening lines are asserted here:
+      // what was generated is checked above, against the response itself.
+      await expect(
+        main(page).getByRole("textbox", { name: "Activation run script", exact: true }),
+      ).toContainText("docker load");
     });
 
     await test.step("test activation", async () => {

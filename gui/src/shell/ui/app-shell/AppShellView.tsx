@@ -91,6 +91,8 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
   useWorkspaceNavigationGuard({
     shouldBlock: isReeIntentDirty,
     flush: commands.flushReeIntent,
+    onFlushFailed: () =>
+      commands.showToast("Left with unsaved changes — the last save did not go through", "error"),
   });
   // The constellation (pod hub) is the home view and stays live: pages open as
   // windows standing on it beside their own node, several at once, so moving
