@@ -33,7 +33,10 @@ export function ArchiveRepoSummaryCard({ repo, assignedId }: ArchiveRepoSummaryC
         <span className={styles.identifierKind}>{repo.idLabel}</span>
         <span className={styles.identifierValue}>{assignedId || repo.idPlaceholder}</span>
         {assignedId && (
-          <Badge tint={{ line: tone, wash: "var(--surface-control)" }} icon={Ic.check(10)}>
+          <Badge
+            tint={{ ink: archiveTone(repo.key, "ink"), line: tone, wash: "var(--surface-control)" }}
+            icon={Ic.check(10)}
+          >
             assigned
           </Badge>
         )}

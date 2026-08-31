@@ -483,7 +483,7 @@ const THEME_ROOT = "src/shell/ui/theme/";
 const CUSTOM_PROPERTY_DEFINITION = /^\s*(--[a-zA-Z0-9_-]+)\s*:\s*([\s\S]*?);/gm;
 const CUSTOM_PROPERTY_REFERENCE = /var\((--[a-zA-Z0-9_-]+)/g;
 const DYNAMIC_TONE_REFERENCE =
-  /^(?:--stage-.+-(?:line|ink|wash)|--axis-.+-(?:line|ink)|--eco-.+-(?:line|wash)|--dependency-.+-(?:line|wash|edge)|--archive-.+-line|--failure-.+-line)$/;
+  /^(?:--stage-.+-(?:line|ink|wash)|--axis-.+-(?:line|ink)|--eco-.+-(?:line|wash)|--dependency-.+-(?:line|wash|edge)|--archive-.+-(?:line|ink)|--failure-.+-line)$/;
 
 /**
  * A theme property is live when production CSS/TS references it, or when a

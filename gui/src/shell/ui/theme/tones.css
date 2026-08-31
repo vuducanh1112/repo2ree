@@ -114,8 +114,11 @@
 
   /* --- Archive repositories ---------------------------------------------- */
   --archive-swh-line: var(--palette-red-600);
+  --archive-swh-ink: var(--palette-red-900);
   --archive-zenodo-line: var(--palette-blue-700);
+  --archive-zenodo-ink: var(--palette-blue-900);
   --archive-dataverse-line: var(--palette-violet-600);
+  --archive-dataverse-ink: var(--palette-violet-950);
 
   /* A finished experiment run's verdict. */
   --verdict-pass-ink: var(--tone-success-ink);

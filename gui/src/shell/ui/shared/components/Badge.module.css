@@ -1,7 +1,11 @@
 /* A badge states a fact — a status, an earned outcome, a verdict. Its colours
- * come from `--badge-line` / `--badge-wash`, which `data-tone` sets for the
- * semantic tones and a caller may set directly (via `cssVars`) when the tone is
- * a domain identity, such as the stage a step outcome belongs to. */
+ * come from `--badge-ink` (the words), `--badge-line` (what the edge is derived
+ * from) and `--badge-wash`, which `data-tone` sets for the semantic tones and a
+ * caller may set directly (via `cssVars`) when the tone is a domain identity,
+ * such as the stage a step outcome belongs to.
+ *
+ * Ink and line are two properties rather than one because the text carries the
+ * 4.5:1 obligation and the edge does not. */
 
 .badge {
   display: inline-flex;
@@ -11,7 +15,7 @@
   border-radius: var(--radius-round);
   border: 1px solid var(--badge-edge, color-mix(in srgb, var(--badge-line) 25%, transparent));
   background: var(--badge-wash);
-  color: var(--badge-line);
+  color: var(--badge-ink);
   font-family: var(--font-sans);
   font-size: var(--text-caption);
   font-weight: var(--weight-bold);
@@ -24,25 +28,25 @@
 }
 
 .badge[data-tone="success"] {
-  --badge-line: var(--tone-success-ink);
+  --badge-ink: var(--tone-success-ink);
   --badge-wash: var(--tone-success-surface);
   --badge-edge: var(--tone-success-border);
 }
 
 .badge[data-tone="warning"] {
-  --badge-line: var(--tone-warning-ink);
+  --badge-ink: var(--tone-warning-ink);
   --badge-wash: var(--tone-warning-surface);
   --badge-edge: var(--tone-warning-border);
 }
 
 .badge[data-tone="info"] {
-  --badge-line: var(--tone-info-ink);
+  --badge-ink: var(--tone-info-ink);
   --badge-wash: var(--tone-info-surface);
   --badge-edge: var(--tone-info-border);
 }
 
 .badge[data-tone="neutral"] {
-  --badge-line: var(--tone-neutral-ink);
+  --badge-ink: var(--tone-neutral-ink);
   --badge-wash: var(--tone-neutral-surface);
   --badge-edge: var(--tone-neutral-border);
 }

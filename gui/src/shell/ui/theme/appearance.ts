@@ -20,6 +20,7 @@ import type { ReeRunFailureTone } from "@core/runs/runFailurePresentation";
 
 type StageToneRole = "line" | "ink" | "wash";
 type AxisToneRole = "line" | "ink";
+type ArchiveToneRole = "line" | "ink";
 type EcosystemToneRole = "line" | "wash";
 type DependencyToneRole = "line" | "wash" | "edge";
 type ToneRole = StageToneRole | DependencyToneRole;
@@ -48,7 +49,8 @@ export const dependencyStatusTone = (
 ): string => reference("dependency", status, role);
 
 /** A deposit target — Software Heritage, Zenodo, Dataverse. */
-export const archiveTone = (repo: ArchiveRepoKey): string => reference("archive", repo, "line");
+export const archiveTone = (repo: ArchiveRepoKey, role: ArchiveToneRole = "line"): string =>
+  reference("archive", repo, role);
 
 /** A failed run's class: transient, rejected, or fault. */
 export const failureTone = (tone: ReeRunFailureTone): string => reference("failure", tone, "line");

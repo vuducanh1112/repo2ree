@@ -24,7 +24,14 @@ export function OutcomeBadge({ outcome }: { outcome: StepOutcome }) {
       role="status"
       aria-label={outcome.label}
       icon={Ic.check(11)}
-      tint={{ line: stageTone(outcome.step), wash: stageTone(outcome.step, "wash") }}
+      tint={{
+        // The deep shade for the words: a stage's `line` is a mid tone for
+        // rules and glyphs, and 12px bold text of it on the stage's own wash
+        // lands as low as 3.1:1 where WCAG asks for 4.5:1.
+        ink: stageTone(outcome.step, "ink"),
+        line: stageTone(outcome.step),
+        wash: stageTone(outcome.step, "wash"),
+      }}
     >
       {outcome.label}
     </Badge>

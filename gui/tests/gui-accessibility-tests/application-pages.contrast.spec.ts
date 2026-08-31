@@ -24,6 +24,21 @@ test("semantic text roles", async ({ page }, testInfo) => {
       ["--tone-success-ink", "--tone-success-surface"],
       ["--tone-warning-ink", "--tone-warning-surface"],
       ["--threat-medium-line", "--threat-medium-wash"],
+      // Every stage's badge text on its own wash. Scanned here rather than only
+      // where a page happens to render one: five stages carry an outcome badge
+      // today, and the pairing was wrong for two of them before anyone looked.
+      ...[
+        "source",
+        "metadata",
+        "hbom",
+        "experiments",
+        "evaluate",
+        "build",
+        "sbom",
+        "activation",
+        "archive",
+        "seal",
+      ].map((stage) => [`--stage-${stage}-ink`, `--stage-${stage}-wash`]),
     ];
     const matrix = document.createElement("div");
     matrix.id = "contrast-token-matrix";
