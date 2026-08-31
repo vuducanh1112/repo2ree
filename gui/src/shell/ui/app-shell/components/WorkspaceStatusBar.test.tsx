@@ -1,25 +1,46 @@
 import { PAGE } from "@core/app-shell/pages";
+import type { ReeExperiment } from "@core/ree/ReeSpec";
 import type { Badges } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
+import type { ReviewStepKey } from "@core/reviews/reviewDag";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { fakeApiServices } from "../../../../../tests/support/fakeApiServices";
 import { renderWithShell } from "../../../../../tests/support/renderApp";
 import { exampleEditorRee } from "../../../../../tests/support/stepPageFixture";
 import { useAuthoringWorkflowModel } from "../canvas/AuthoringConsole";
-import { WorkspaceStatusBar } from "./WorkspaceStatusBar";
+import { useReviewWorkflowModel } from "../canvas/review/useReviewWorkflowModel";
+import { type WorkflowMode, WorkspaceStatusBar } from "./WorkspaceStatusBar";
 
-/** The shell owns the authoring model; this stands in for it. */
+/** The shell owns both workflow models and the mode; this stands in for it. */
 function StatusBarHarness({
   ree,
   badges,
+  experiments = [],
   ...props
-}: { ree: ReeEditorViewModel; badges: Badges } & Omit<
+}: {
+  ree: ReeEditorViewModel;
+  badges: Badges;
+  experiments?: readonly ReeExperiment[];
+} & Omit<
   Parameters<typeof WorkspaceStatusBar>[0],
-  "authoring"
+  "authoring" | "review" | "mode" | "onModeChange" | "openReviewStep" | "onOpenReviewStep"
 >) {
-  return <WorkspaceStatusBar authoring={useAuthoringWorkflowModel(ree, badges)} {...props} />;
+  const [mode, setMode] = useState<WorkflowMode>("authoring");
+  const [openReviewStep, setOpenReviewStep] = useState<ReviewStepKey | null>(null);
+  return (
+    <WorkspaceStatusBar
+      authoring={useAuthoringWorkflowModel(ree, badges)}
+      review={useReviewWorkflowModel({ experiments, active: mode === "review" })}
+      mode={mode}
+      onModeChange={setMode}
+      openReviewStep={openReviewStep}
+      onOpenReviewStep={setOpenReviewStep}
+      {...props}
+    />
+  );
 }
 
 function services() {
@@ -61,7 +82,6 @@ describe("WorkspaceStatusBar", () => {
           audit: { source: "current", runtime: "current" },
         }}
         badges={{}}
-        experiments={[]}
         workspaceFiles={[
           {
             id: "workspace:src",
@@ -116,10 +136,9 @@ describe("WorkspaceStatusBar", () => {
     const modeToggle = screen.getByRole("button", { name: "Switch to review workflow" });
     expect(modeToggle).toHaveAttribute("aria-pressed", "false");
     await user.click(modeToggle);
-    expect(await screen.findByRole("button", { name: "Strongest" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    // Review's own graph now stands on the same strip, basis first.
+    expect(await screen.findByRole("radio", { name: "Strongest" })).toBeChecked();
+    expect(screen.getByRole("navigation", { name: "Review workflow" })).toBeVisible();
     const reviewToggle = screen.getByRole("button", { name: "Switch to authoring workflow" });
     expect(reviewToggle).toHaveAttribute("aria-pressed", "true");
     await user.click(reviewToggle);

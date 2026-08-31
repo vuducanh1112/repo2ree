@@ -23,15 +23,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 205px;
   padding: var(--space-2) var(--space-3);
 }
 
+/* Stacked rather than side by side: the strip is height-rich and
+ * width-poor, so the toggle pays for itself in the 72px it isn't using. */
 .modeToggle {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  align-items: center;
-  min-height: 28px;
+  grid-template-rows: 1fr 1fr;
+  gap: var(--space-0-5);
   padding: var(--space-0-5);
   border: 1px solid var(--chrome-border-strong);
   border-radius: var(--radius-control);
@@ -44,8 +44,13 @@
 }
 
 .modeToggle > span {
-  padding: var(--space-1) var(--space-2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-1-5);
   border-radius: var(--radius-xs);
+  line-height: var(--leading-tight);
   white-space: nowrap;
 }
 
@@ -60,24 +65,12 @@
   font-size: var(--text-micro);
 }
 
-.authoringBody {
+/* Both workflows render their strip here. Review used to drop a panel over the
+ * canvas from `top: 100%`; its evidence lives in the drawer now, so the bar has
+ * one body and one height. */
+.body {
   min-width: 0;
   padding: 0 var(--space-3) 0 0;
-}
-
-.reviewBody {
-  position: absolute;
-  z-index: 96;
-  top: 100%;
-  right: 0;
-  left: 0;
-  max-height: 320px;
-  overflow: auto;
-  padding: var(--space-2) var(--space-3) var(--space-3);
-  border: 1px solid var(--chrome-border-strong);
-  border-top: 0;
-  background: var(--chrome-surface);
-  box-shadow: var(--shadow-lg);
 }
 
 .utility {
@@ -159,7 +152,7 @@
   }
 
   .workflowHeader {
-    min-width: auto;
+    padding: var(--space-2);
   }
 }
 
@@ -168,8 +161,7 @@
     height: 48px;
   }
 
-  .authoringBody,
-  .reviewBody {
+  .body {
     display: none;
   }
 
@@ -177,5 +169,9 @@
     justify-content: center;
     min-height: 48px;
     padding: 0 var(--space-2);
+  }
+
+  .modeToggle > span {
+    padding: 0 var(--space-1-5);
   }
 }

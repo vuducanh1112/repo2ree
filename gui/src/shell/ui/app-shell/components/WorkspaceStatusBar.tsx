@@ -1,21 +1,28 @@
 import { type AppShellPage, PAGE } from "@core/app-shell/pages";
-import type { ReeExperiment } from "@core/ree/ReeSpec";
 import type { ReeFile } from "@core/ree/ReeTypes";
+import type { ReviewStepKey } from "@core/reviews/reviewDag";
 import type { FileTreeNode } from "@core/workspace/FileTree";
-import { type ReactNode, useState } from "react";
+import type { ReactNode } from "react";
 import { Ic } from "../../shared/components/Icon";
 import { type AuthoringWorkflowModel, AuthoringWorkflowPanel } from "../canvas/AuthoringConsole";
-import { type ReviewWorkflowHeader, ReviewWorkflowPanel } from "../canvas/ReviewConsole";
+import { ReviewStrip } from "../canvas/review/ReviewStrip";
+import type { ReviewWorkflowModel } from "../canvas/review/useReviewWorkflowModel";
 import { useFileConsoleTrees } from "../pages/files/useFileConsoleTrees";
 import styles from "./WorkspaceStatusBar.module.css";
 
-type WorkflowMode = "authoring" | "review";
+export type WorkflowMode = "authoring" | "review";
 
 interface WorkspaceStatusBarProps {
   page: AppShellPage;
   /** Owned by the shell, so the canvas highlights the same next step this does. */
   authoring: AuthoringWorkflowModel;
-  experiments: readonly ReeExperiment[];
+  /** Owned by the shell too: the strip and the evidence drawer are one attempt. */
+  review: ReviewWorkflowModel;
+  mode: WorkflowMode;
+  onModeChange: (mode: WorkflowMode) => void;
+  /** The review step whose evidence the drawer is showing, if any. */
+  openReviewStep: ReviewStepKey | null;
+  onOpenReviewStep: (step: ReviewStepKey) => void;
   workspaceFiles: FileTreeNode[];
   reeFiles: ReeFile[];
   receiptCount: number;
@@ -26,15 +33,15 @@ interface WorkspaceStatusBarProps {
   onReceiptsOpenChange: (open: boolean) => void;
 }
 
-const INITIAL_REVIEW_HEADER: ReviewWorkflowHeader = {
-  complete: 0,
-};
-
 /** Persistent workflow and evidence navigation above the live canvas. */
 export function WorkspaceStatusBar({
   page,
   authoring,
-  experiments,
+  review,
+  mode,
+  onModeChange,
+  openReviewStep,
+  onOpenReviewStep,
   workspaceFiles,
   reeFiles,
   receiptCount,
@@ -44,8 +51,6 @@ export function WorkspaceStatusBar({
   onFilesOpenChange,
   onReceiptsOpenChange,
 }: WorkspaceStatusBarProps) {
-  const [mode, setMode] = useState<WorkflowMode>("authoring");
-  const [reviewHeader, setReviewHeader] = useState(INITIAL_REVIEW_HEADER);
   const { workspaceFileCount, reeFileCount } = useFileConsoleTrees(workspaceFiles, reeFiles);
   const fileCount = workspaceFileCount + reeFileCount;
   const reviewing = mode === "review";
@@ -67,7 +72,7 @@ export function WorkspaceStatusBar({
             aria-label={`Switch to ${reviewing ? "authoring" : "review"} workflow`}
             aria-pressed={reviewing}
             className={styles.modeToggle}
-            onClick={() => setMode(reviewing ? "authoring" : "review")}
+            onClick={() => onModeChange(reviewing ? "authoring" : "review")}
           >
             <span data-active={!reviewing || undefined}>
               Authoring{" "}
@@ -76,14 +81,16 @@ export function WorkspaceStatusBar({
               </small>
             </span>
             <span data-active={reviewing || undefined}>
-              Review <small>{reviewHeader.complete}/4</small>
+              Review <small>{review.complete}/4</small>
             </span>
           </button>
         </div>
 
-        <div className={reviewing ? styles.reviewBody : styles.authoringBody}>
+        {/* Both workflows stand on the same strip: the bar's height and layout
+         * are the same whichever one is showing. */}
+        <div className={styles.body}>
           {reviewing ? (
-            <ReviewWorkflowPanel experiments={experiments} onHeaderChange={setReviewHeader} />
+            <ReviewStrip model={review} openStep={openReviewStep} onOpenStep={onOpenReviewStep} />
           ) : (
             <AuthoringWorkflowPanel page={page} model={authoring} onNavigate={onNavigate} />
           )}

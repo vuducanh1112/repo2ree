@@ -671,17 +671,35 @@ export async function runExperiment(
   await stepShot(page, "run-experiment", "after");
 }
 
-/** The persistent top workflow status bar, which contains the review controls. */
+/**
+ * The review console: the graph strip in the status bar, plus the evidence
+ * drawer that strip opens beside the canvas.
+ *
+ * Two regions rather than one because the console is two surfaces now — the
+ * strip carries the steps and their verdicts, the drawer carries what each
+ * verdict rests on — and a reviewer's assertions should not have to know which
+ * half a given line lives in.
+ */
 function reviewConsole(page: Page) {
-  return page.getByRole("region", { name: "Workspace status" });
+  return page
+    .getByRole("region", { name: "Workspace status" })
+    .or(page.getByRole("region", { name: "Review evidence" }));
 }
 
-/** Switch the persistent workflow bar to Review and return it, ready for lifecycle controls. */
+/**
+ * Switch the persistent workflow bar to Review and open the evidence drawer.
+ *
+ * The drawer is opened here, once, because every lifecycle step below reads the
+ * detail behind its verdict from it — and it holds the whole attempt, so it
+ * fills in as the steps settle rather than needing to be reopened per step.
+ */
 export async function openReviewConsole(page: Page) {
   await stepShot(page, "open-review-console", "before");
   const console = reviewConsole(page);
   await console.getByRole("button", { name: "Switch to review workflow" }).click();
   await expect(console.getByRole("button", { name: "Reproduce Source" })).toBeVisible();
+  await console.getByRole("button", { name: /^Open Source review evidence/ }).click();
+  await expect(page.getByRole("region", { name: "Review evidence" })).toBeVisible();
   await stepShot(page, "open-review-console", "after");
   return console;
 }
@@ -697,7 +715,7 @@ export async function selectReviewBasis(
   page: Page,
   label: "Strongest" | "Independent" | "From bundle",
 ) {
-  await reviewConsole(page).getByRole("button", { name: label, exact: true }).click();
+  await reviewConsole(page).getByRole("radio", { name: label, exact: true }).check();
 }
 
 /**
@@ -776,9 +794,14 @@ async function reproduceReviewStep(page: Page, label: string, timeout: number) {
   const step = console.getByRole("button", { name: `Reproduce ${label}` });
   await expect(step).toBeEnabled();
   await step.click();
-  const verdict = step.getByText(
-    /^(IDENTICAL|EQUIVALENT|REPRODUCED|DIFFERENT|INCONCLUSIVE|COMPLETE|DID NOT ACTIVATE|FAILED)$/,
-  );
+  // The run key and the verdict are separate controls on one card — reading a
+  // verdict and dispatching a rebuild do not share a hitbox — so the verdict is
+  // read from the card the run key sits on.
+  const verdict = step
+    .locator("xpath=..")
+    .getByText(
+      /^(IDENTICAL|EQUIVALENT|REPRODUCED|DIFFERENT|INCONCLUSIVE|COMPLETE|DID NOT ACTIVATE|FAILED)$/,
+    );
   // A re-run starts from the badge the previous attempt left on the step, and
   // that stale verdict would satisfy the wait below immediately. Clicking marks
   // the step queued in the same render, so the badge clears client-side before

@@ -6,19 +6,15 @@
  * properties rather than one colour computed in TypeScript. */
 
 .step {
-  display: grid;
-  grid-template-columns: 22px 1fr;
-  column-gap: var(--space-2);
-  align-items: start;
-  width: 116px;
-  min-height: 66px;
-  padding: var(--space-2) var(--space-2-5);
+  position: relative;
+  /* Wide enough that "Test Activation" is spelled out beside a run key that
+   * meets the 24px minimum touch target. */
+  width: 164px;
+  height: 54px;
   border-radius: var(--radius-control);
   border: 1px solid var(--chrome-border);
   background: var(--chrome-surface);
   color: var(--chrome-text);
-  text-align: left;
-  cursor: pointer;
   transition: border-color var(--duration-fast) var(--ease-standard);
 }
 
@@ -29,27 +25,74 @@
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--step-tint) 8.6%, transparent);
 }
 
-.step:focus-visible {
+/* The step whose evidence the drawer is showing. */
+.step[data-open] {
+  border-color: var(--chrome-accent);
+  background: var(--chrome-accent-bg);
+  box-shadow: var(--shadow-focus);
+}
+
+/* The face reads the step; the run key beside it starts the work. */
+.stepFace {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  column-gap: var(--space-1-5);
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  padding: var(--space-1-5) var(--space-8) var(--space-1-5) var(--space-2-5);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.stepFace:hover {
+  background: var(--chrome-surface-alt);
+}
+
+/* 24px square: the WCAG 2.2 minimum for a touch target, and the reason the
+ * card is as wide as it is. */
+.stepRun {
+  position: absolute;
+  top: 50%;
+  right: var(--space-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  transform: translateY(-50%);
+  padding: 0;
+  border: 1px solid var(--chrome-border);
+  border-radius: var(--radius-xs);
+  background: var(--chrome-surface-alt);
+  color: var(--chrome-text-mid);
+  cursor: pointer;
+}
+
+.stepRun:hover:not(:disabled) {
+  border-color: var(--chrome-accent);
+  color: var(--chrome-accent);
+}
+
+.stepFace:focus-visible,
+.stepRun:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: var(--focus-ring-offset);
 }
 
-.step:disabled {
+.stepRun:disabled {
   cursor: not-allowed;
   opacity: var(--opacity-muted);
 }
 
 .stepIcon {
   display: flex;
-  padding-top: var(--space-0-5);
+  grid-row: span 2;
   color: var(--step-tint);
-}
-
-.stepBody {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-width: 0;
 }
 
 .stepLabel {
@@ -58,15 +101,7 @@
   white-space: nowrap;
   font-size: var(--text-caption);
   font-weight: var(--weight-bold);
-}
-
-.stepDetail {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--font-mono);
-  font-size: var(--text-micro);
-  color: var(--chrome-text-muted);
+  line-height: var(--leading-tight);
 }
 
 /* --- The status line ------------------------------------------------------
@@ -105,18 +140,41 @@
   --status-ink: var(--status-fault);
 }
 
-.connector {
-  flex-shrink: 0;
-  width: 18px;
-  height: 1px;
-  margin-top: var(--space-8);
-  background: var(--chrome-border-strong);
+/* --- The strip -------------------------------------------------------------
+ * Geometry borrowed from the authoring strip on purpose: the two workflows
+ * stand in the same place and scroll the same way, so switching between them
+ * changes what the bar is about rather than how it behaves. */
+
+.scroller {
+  overflow-x: auto;
+  padding: var(--space-1) 0;
+}
+
+.strip {
+  display: flex;
+  align-items: center;
+  width: max-content;
+  gap: var(--space-3);
 }
 
 .dag {
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+}
+
+.edge {
+  flex: none;
+  width: 20px;
+  height: 1px;
+  background: var(--chrome-border-strong);
 }
 
 /* --- Per-experiment results ---------------------------------------------- */
@@ -247,21 +305,43 @@
   }
 }
 
-/* --- Console body --------------------------------------------------------- */
+/* --- Evidence basis --------------------------------------------------------
+ * Which artifacts a review attempt is allowed to trust as its starting point.
+ * It stands ahead of the Source step because that is what it governs, and the
+ * hint is spelled out rather than hidden in a tooltip: the difference between
+ * these options is the difference between an integrity check and a
+ * reproduction. */
 
-.topSpacer {
-  height: 4px;
-}
-
-/* Which artifacts a review attempt is allowed to trust as its starting point. */
 .basis {
   display: flex;
-  gap: var(--space-1-5);
+  flex-direction: column;
+  gap: var(--space-1);
+  max-width: 240px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* Names the group for a screen reader; the chips say the rest. */
+.basisLegend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.basisChips {
+  display: flex;
+  gap: var(--space-1);
 }
 
 .basisOption {
-  flex: 1;
-  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 var(--space-1-5);
   border: 1px solid var(--chrome-border);
   border-radius: var(--radius-sm);
   background: var(--chrome-surface-alt);
@@ -269,23 +349,121 @@
   font-family: var(--font-mono);
   font-size: var(--text-micro);
   font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+  white-space: nowrap;
   cursor: pointer;
 }
 
-.basisOption[aria-pressed="true"] {
+/* The control is the radio; the chip around it is what anyone can see, so the
+ * checked and focused readings are drawn there. */
+.basisInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.basisOption:has(.basisInput:checked) {
   border-color: var(--chrome-accent);
   background: var(--chrome-surface);
   color: var(--chrome-text);
   font-weight: var(--weight-bold);
 }
 
-.basisOption:focus-visible {
+.basisOption:has(.basisInput:focus-visible) {
   outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: var(--focus-ring-offset);
 }
 
-.basisOption:disabled {
+.basisOption:has(.basisInput:disabled) {
   cursor: not-allowed;
+}
+
+.basisHint {
+  overflow: hidden;
+  color: var(--chrome-text-subtle);
+  font-size: var(--text-micro);
+  line-height: var(--leading-tight);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- The evidence drawer ---------------------------------------------------
+ * What the attempt has settled, in graph order. The strip decides which
+ * section is current; every step keeps its heading either way, because a
+ * missing section would read as evidence nobody looked for. */
+
+.evidence {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2-5);
+  border: 1px solid var(--chrome-border);
+  border-radius: var(--radius-sm);
+  background: var(--chrome-surface);
+}
+
+.section[data-current] {
+  border-color: var(--chrome-accent);
+  box-shadow: var(--shadow-focus);
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.sectionLabel {
+  font-size: var(--text-label);
+  font-weight: var(--weight-bold);
+  color: var(--chrome-text);
+}
+
+.sectionStatus {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-extrabold);
+  color: var(--status-ink, var(--chrome-text-muted));
+}
+
+.sectionStatus[data-status="queued"],
+.sectionStatus[data-status="different"] {
+  --status-ink: var(--tone-warning-line);
+}
+
+.sectionStatus[data-status="running"] {
+  --status-ink: var(--chrome-accent);
+}
+
+.sectionStatus[data-status="succeeded"],
+.sectionStatus[data-status="identical"],
+.sectionStatus[data-status="reproduced"] {
+  --status-ink: var(--status-ok);
+}
+
+.sectionStatus[data-status="equivalent"] {
+  --status-ink: var(--tone-info-line);
+}
+
+.sectionStatus[data-status="uninhabitable"],
+.sectionStatus[data-status="failed"] {
+  --status-ink: var(--status-fault);
+}
+
+.sectionEmpty {
+  margin: 0;
+  color: var(--chrome-text-muted);
+  font-size: var(--text-caption);
 }
 
 /* A qualification of a verdict, or a detail behind one. Same shape; the tone

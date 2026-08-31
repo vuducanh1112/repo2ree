@@ -143,10 +143,20 @@ test.describe("Review lifecycle", () => {
     });
 
     await test.step("the whole chain is stated with what each part is worth", async () => {
+      // Every step's verdict stands on its own card in the strip, so the chain
+      // reads end to end without opening anything. (The attempt's own id is not
+      // surfaced anywhere since the console header was removed; the drawer
+      // below is what carries the detail now.)
       await expect(
-        review.getByText(
-          /review-[0-9a-f]+ · source identical · build (identical|equivalent|different) · activation succeeded · results (identical|reproduced)/,
-        ),
+        review.getByRole("button", { name: /^Open Source review evidence, identical/ }),
+      ).toBeVisible();
+      await expect(
+        review.getByRole("button", {
+          name: /^Open Build review evidence, (identical|equivalent|different)/,
+        }),
+      ).toBeVisible();
+      await expect(
+        review.getByRole("button", { name: /^Open Test Activation review evidence, complete/ }),
       ).toBeVisible();
       // The source rested on the REE's own bytes and says so; the rebuild did
       // not, and the notice must not claim otherwise for it.

@@ -26,15 +26,41 @@ vi.mock("./canvas/AuthoringConsole", () => ({
     error: false,
   }),
 }));
+// The review attempt is derived here too, and shared by the strip in the bar
+// and the evidence drawer; the query behind it is mocked out with it.
+vi.mock("./canvas/review/useReviewWorkflowModel", () => ({
+  useReviewWorkflowModel: () => ({
+    attempt: undefined,
+    statuses: {},
+    enabledSteps: new Set(),
+    complete: 0,
+    running: false,
+    basis: "auto",
+    setBasis: vi.fn(),
+    invokeStep: vi.fn(),
+    runExperiment: vi.fn(),
+    runAllExperiments: vi.fn(),
+    sweeping: false,
+    experimentNames: [],
+    error: undefined,
+  }),
+}));
+vi.mock("./canvas/review/ReviewEvidence", () => ({
+  ReviewEvidence: () => <div>Review evidence</div>,
+}));
 vi.mock("./components/WorkspaceStatusBar", () => ({
   WorkspaceStatusBar: (props: {
     onNavigate: (page: AppShellPage) => void;
     onFilesOpenChange: (open: boolean) => void;
     onReceiptsOpenChange: (open: boolean) => void;
+    onOpenReviewStep: (step: string) => void;
   }) => (
     <div>
       <button type="button" onClick={() => props.onNavigate(PAGE.BUILD)}>
         Status build
+      </button>
+      <button type="button" onClick={() => props.onOpenReviewStep("build")}>
+        Status review build
       </button>
       <button type="button" onClick={() => props.onFilesOpenChange(true)}>
         Status files
@@ -245,6 +271,29 @@ describe("AppShellView", () => {
     render(<AppShellView onBack={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Close drawer" }));
     expect(commands.setPage).toHaveBeenCalledWith(PAGE.CANVAS);
+  });
+
+  // One drawer at a time: an authoring page and a review attempt want the same
+  // strip of screen, so opening review evidence returns the canvas to the hub.
+  it("opens review evidence in place of the authoring drawer", () => {
+    const commands = controller(PAGE.METADATA);
+    render(<AppShellView onBack={vi.fn()} />);
+    expect(screen.getByText("Dock content")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Status review build" }));
+    expect(commands.setPage).toHaveBeenCalledWith(PAGE.CANVAS);
+  });
+
+  it("shows the review evidence drawer once the canvas is the page", () => {
+    controller(PAGE.CANVAS);
+    render(<AppShellView onBack={vi.fn()} />);
+    expect(screen.queryByText("Review evidence")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Status review build" }));
+    expect(screen.getByText("Review evidence")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Close drawer" }));
+    expect(screen.queryByText("Review evidence")).not.toBeInTheDocument();
   });
 
   it("shows only the selected page in the drawer", () => {

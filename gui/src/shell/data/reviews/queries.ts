@@ -5,7 +5,14 @@ import { resolveReeId } from "../client";
 import { queryKeys } from "../queryKeys";
 import { mapReviewRecord } from "./mapping";
 
-export function useReviewsQuery() {
+/**
+ * Review attempts for this REE.
+ *
+ * `enabled` is the caller's switch, not a convenience: this listing polls, and
+ * the model that owns it now lives above the review surfaces rather than inside
+ * them, so a workspace nobody is reviewing would otherwise poll forever.
+ */
+export function useReviewsQuery({ enabled = true }: { enabled?: boolean } = {}) {
   const runtime = useReeRuntime();
   const reeId = resolveReeId(runtime);
 
@@ -15,7 +22,7 @@ export function useReviewsQuery() {
       const result = await runtime.reeApi.listReviews(reeId);
       return (result.reviews ?? []).map(mapReviewRecord);
     },
-    enabled: !!runtime.reeId,
+    enabled: enabled && !!runtime.reeId,
     refetchInterval: (query) =>
       query.state.data?.some((review) => review.status === "running") ? 1500 : 5000,
   });

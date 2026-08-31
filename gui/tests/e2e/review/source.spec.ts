@@ -39,13 +39,19 @@ test.describe("Review source", () => {
     ).toBeVisible({ timeout: 20000 });
 
     const review = await openReviewConsole(page);
-    await expect(review.getByText("ready for source review")).toBeVisible();
+    // Nothing reproduced yet: source is the only runnable step, and its
+    // evidence section says so rather than standing empty.
+    await expect(review.getByText("Not reproduced yet.").first()).toBeVisible();
     await expect(review.getByRole("button", { name: "Reproduce Build" })).toBeDisabled();
 
     expect(await reproduceSource(page)).toBe("IDENTICAL");
 
-    // The attempt is persisted evidence, identified in the console header.
-    await expect(review.getByText(/review-[0-9a-f]+ · source identical/)).toBeVisible();
+    // The verdict is on the step's own card in the strip. The attempt id it
+    // belongs to is not surfaced anywhere — the console header that carried it
+    // was removed with the floating HUD.
+    await expect(
+      review.getByRole("button", { name: /^Open Source review evidence, identical/ }),
+    ).toBeVisible();
     // A settled source unlocks build and nothing beyond it: each later step
     // waits on the one before, so a certified runtime is still owed before
     // anything can be run inside it.

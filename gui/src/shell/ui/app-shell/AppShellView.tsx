@@ -1,7 +1,8 @@
 import { type AppShellPage, PAGE } from "@core/app-shell/pages";
 import { activeNode, CANVAS_NODES, isNodeStale } from "@core/canvas/canvasNodes";
+import type { ReviewStepKey } from "@core/reviews/reviewDag";
 import { useWorkspaceNavigationGuard } from "@shell/state/ree-editor/workspace-sync/useWorkspaceNavigationGuard";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { WorkspaceLoadErrorView, WorkspaceLoadingView } from "../errors/WorkspaceLoadView";
 import { Ic } from "../shared/components/Icon";
 import { Toast } from "../shared/components/Toast";
@@ -10,12 +11,14 @@ import styles from "./AppShellView.module.css";
 import { useAuthoringWorkflowModel } from "./canvas/AuthoringConsole";
 import { CanvasHub } from "./canvas/CanvasHub";
 import { RunHud } from "./canvas/RunHud";
+import { ReviewEvidence } from "./canvas/review/ReviewEvidence";
+import { useReviewWorkflowModel } from "./canvas/review/useReviewWorkflowModel";
 import { SealContent } from "./canvas/SealContent";
 import { SourceAcquisitionContent } from "./canvas/SourceAcquisitionContent";
 import { WorkspaceDrawer } from "./canvas/WorkspaceDrawer";
 import { ReeSyncStatus } from "./components/ReeSyncStatus";
 import { WorkspaceFooterBar } from "./components/WorkspaceFooterBar";
-import { WorkspaceStatusBar } from "./components/WorkspaceStatusBar";
+import { type WorkflowMode, WorkspaceStatusBar } from "./components/WorkspaceStatusBar";
 import { useAppShell } from "./hooks/useAppShell";
 import { AppShellProvider } from "./providers/AppShellProvider";
 
@@ -68,6 +71,16 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
   // Derived once here so the status-bar DAG and the canvas panels name the
   // same next step; deriving it twice lets the two drift apart.
   const authoring = useAuthoringWorkflowModel(ree, badges);
+  // Which workflow the bar is showing, and the review step whose evidence the
+  // drawer is on. Both live here because the review strip and the evidence
+  // drawer are two views of one attempt, and the attempt cannot belong to
+  // either of them.
+  const [workflowMode, setWorkflowMode] = useState<WorkflowMode>("authoring");
+  const [reviewStep, setReviewStep] = useState<ReviewStepKey | null>(null);
+  const review = useReviewWorkflowModel({
+    experiments: ree.spec.experiments ?? [],
+    active: provisioned && workflowMode === "review",
+  });
   // Nodes the REE's own audit reports as stale: the receipt is still on the
   // aggregate, but what it rests on has moved since. They read as not-done (see
   // `hasProcessStepCompleted`); the marker says why.
@@ -86,9 +99,25 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
     (next: typeof page) => {
       commands.setPage(next);
       if (next !== PAGE.CANVAS) commands.setReceiptsConsoleOpen(false);
+      // One drawer at a time: an authoring page and a review attempt want the
+      // same strip of screen, and neither is readable stacked on the other.
+      setReviewStep(null);
     },
     [commands],
   );
+
+  const openReviewStep = useCallback(
+    (step: ReviewStepKey) => {
+      setReviewStep(step);
+      commands.setPage(PAGE.CANVAS);
+    },
+    [commands],
+  );
+
+  const changeWorkflowMode = useCallback((next: WorkflowMode) => {
+    setWorkflowMode(next);
+    if (next === "authoring") setReviewStep(null);
+  }, []);
 
   const drawerOpen = provisioned && page !== PAGE.CANVAS;
   // The selected workflow page is the one authoring surface. Keeping it beside
@@ -196,7 +225,11 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
         <WorkspaceStatusBar
           page={page}
           authoring={authoring}
-          experiments={ree.spec.experiments ?? []}
+          review={review}
+          mode={workflowMode}
+          onModeChange={changeWorkflowMode}
+          openReviewStep={reviewStep}
+          onOpenReviewStep={openReviewStep}
           workspaceFiles={workspaceRemote.workspaceFiles}
           reeFiles={currentReeFiles}
           receiptCount={authorReceipts.length}
@@ -256,6 +289,18 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
                 onClose={() => commands.setPage(PAGE.CANVAS)}
               >
                 {drawerBody}
+              </WorkspaceDrawer>
+            )}
+
+            {!drawerOpen && reviewStep && (
+              <WorkspaceDrawer
+                node={undefined}
+                title="Review evidence"
+                subtitle="Review"
+                icon={Ic.shield(13)}
+                onClose={() => setReviewStep(null)}
+              >
+                <ReviewEvidence model={review} focusStep={reviewStep} />
               </WorkspaceDrawer>
             )}
           </>

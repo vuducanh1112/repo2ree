@@ -62,98 +62,92 @@ export function LabLocationView({ onBack }: LabLocationViewProps) {
   }
 
   return (
-    <>
-      <main className={styles.bench}>
-        <div className={styles.rail}>
-          <div className={styles.backRow}>
-            <button type="button" onClick={onBack} className={styles.back}>
-              {Ic.arrowLeft(15)} Back
-            </button>
-          </div>
+    <main className={styles.bench}>
+      <div className={styles.rail}>
+        <div className={styles.backRow}>
+          <button type="button" onClick={onBack} className={styles.back}>
+            {Ic.arrowLeft(15)} Back
+          </button>
+        </div>
 
-          <div className={styles.heading}>
-            <div className={styles.step}>01 · Lab location</div>
-            <h1 className={styles.title}>Where should this REE run?</h1>
-            <p className={styles.subtitle}>
-              repo2ree coordinates the work but doesn't run containers itself. Pick the machine that
-              will host this REE's isolated workbench — every build, run, and result happens there.
+        <div className={styles.heading}>
+          <div className={styles.step}>01 · Lab location</div>
+          <h1 className={styles.title}>Where should this REE run?</h1>
+          <p className={styles.subtitle}>
+            repo2ree coordinates the work but doesn't run containers itself. Pick the machine that
+            will host this REE's isolated workbench — every build, run, and result happens there.
+          </p>
+        </div>
+
+        <details className={styles.why}>
+          <summary className={styles.whySummary}>
+            <span aria-hidden className={styles.whyIcon}>
+              {Ic.info(13)}
+            </span>
+            What is a lab?
+          </summary>
+          <div className={styles.whyBody}>
+            <p>
+              This service records what you intend to build. A separately running <b>agent</b>{" "}
+              carries that intent to real execution infrastructure and owns Docker on its host.
+            </p>
+            <p>
+              Choosing a lab picks which connected agent does the work. The REE stays with that lab
+              for its whole life — its workbench, builds, and runs all live there.
             </p>
           </div>
+        </details>
 
-          <details className={styles.why}>
-            <summary className={styles.whySummary}>
-              <span aria-hidden className={styles.whyIcon}>
-                {Ic.info(13)}
-              </span>
-              What is a lab?
-            </summary>
-            <div className={styles.whyBody}>
-              <p>
-                This service records what you intend to build. A separately running <b>agent</b>{" "}
-                carries that intent to real execution infrastructure and owns Docker on its host.
-              </p>
-              <p>
-                Choosing a lab picks which connected agent does the work. The REE stays with that
-                lab for its whole life — its workbench, builds, and runs all live there.
-              </p>
-            </div>
-          </details>
-
-          <div className={styles.podBay}>
-            <div className={styles.podFrame}>
-              <PodWidget
-                evaluation={emptyEvaluationState()}
-                size={POD_SIZE}
-                idSuffix="lab-picker"
-              />
-            </div>
+        <div className={styles.podBay}>
+          <div className={styles.podFrame}>
+            <PodWidget evaluation={emptyEvaluationState()} size={POD_SIZE} idSuffix="lab-picker" />
           </div>
-
-          <SelectedLabDetail agent={selected} nowMs={nowMs} />
         </div>
 
-        <div className={styles.fleet}>
-          {isLoading ? (
-            <div role="status">
-              <Notice>Loading agents…</Notice>
-            </div>
-          ) : isError ? (
-            <Notice tone="danger">{agentLoadErrorMessage(error)}</Notice>
-          ) : !agents || agents.length === 0 ? (
-            <NoAgentsState
-              standalone
-              description="A workbench needs an agent to host it. Start one pointing at this control plane:"
-            />
-          ) : (
-            <FleetBrowser
-              agents={agents}
-              view={view}
-              nowMs={nowMs}
-              query={query}
-              selectedId={selectedId}
-              onQueryChange={(next) => {
-                setQuery(next);
-                setPage(0);
-              }}
-              onSelect={chooseLab}
-              onPage={setPage}
-            />
-          )}
-        </div>
+        <SelectedLabDetail agent={selected} nowMs={nowMs} />
+      </div>
 
-        {setupOpen && selected && (
-          <WorkspaceDrawer
-            node={undefined}
-            title="Set up the workbench"
-            subtitle="Setup"
-            icon={Ic.package(13)}
-            onClose={() => setSetupOpen(false)}
-          >
-            <WorkbenchSetupDrawer agent={selected} loadRequested={loadRequested} />
-          </WorkspaceDrawer>
+      <div className={styles.fleet}>
+        {isLoading ? (
+          <div role="status">
+            <Notice>Loading agents…</Notice>
+          </div>
+        ) : isError ? (
+          <Notice tone="danger">{agentLoadErrorMessage(error)}</Notice>
+        ) : !agents || agents.length === 0 ? (
+          <NoAgentsState
+            standalone
+            description="A workbench needs an agent to host it. Start one pointing at this control plane:"
+          />
+        ) : (
+          <FleetBrowser
+            agents={agents}
+            view={view}
+            nowMs={nowMs}
+            query={query}
+            selectedId={selectedId}
+            onQueryChange={(next) => {
+              setQuery(next);
+              setPage(0);
+            }}
+            onSelect={chooseLab}
+            onPage={setPage}
+          />
         )}
-      </main>
-    </>
+      </div>
+
+      {setupOpen && selected && (
+        <WorkspaceDrawer
+          node={undefined}
+          title="Set up the workbench"
+          subtitle="Setup"
+          icon={Ic.package(13)}
+          onClose={() => setSetupOpen(false)}
+        >
+          <WorkbenchSetupDrawer agent={selected} loadRequested={loadRequested} />
+        </WorkspaceDrawer>
+      )}
+    </main>
   );
 }
 

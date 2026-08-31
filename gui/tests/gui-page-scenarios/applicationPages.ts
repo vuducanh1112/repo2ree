@@ -75,6 +75,10 @@ export const applicationPageScenarios: ApplicationPageScenario[] = [
     prepare: async (page) => {
       await openVisualWorkspace(page);
       await page.getByRole("button", { name: "Switch to review workflow" }).click();
+      // The strip carries the graph; its evidence opens in the drawer beside
+      // the canvas, so the shot needs both surfaces.
+      await expect(page.getByRole("navigation", { name: "Review workflow" })).toBeVisible();
+      await page.getByRole("button", { name: /^Open Build review evidence/ }).click();
       await expect(page.getByText("RESULTS · 1/1 REPRODUCED")).toBeVisible();
       await settleVisualPage(page);
     },
