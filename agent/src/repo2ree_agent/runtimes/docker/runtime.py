@@ -86,6 +86,8 @@ _workbench_gone_counter = _meter.create_counter(
 
 _WORKBENCH_DOCKER_MODES = frozenset({"dind", "host-socket"})
 _HOST_DOCKER_SOCK_MOUNT = "/var/run/docker.sock:/var/run/docker.sock"
+_RESOURCE_OWNER_ENV = "REPO2REE_RESOURCE_OWNER"
+_RESOURCE_OWNER_LABEL = "repo2ree.resource-owner"
 
 # Where the injected closure appears inside a bench. The bundle's paths are
 # absolute into /nix/store, so this is not a choice — it is the mount point
@@ -114,6 +116,10 @@ class DockerRuntime:
             modes = ", ".join(sorted(_WORKBENCH_DOCKER_MODES))
             raise ValueError(f"unknown workbench docker mode {docker_mode!r}; expected one of: {modes}")
         self._docker_mode = docker_mode
+        # Test stacks set this to a unique run token. Labels let their teardown
+        # select only resources that run created, while ordinary deployments
+        # leave resources unlabelled and retain their existing lifecycle.
+        self._resource_owner = os.environ.get(_RESOURCE_OWNER_ENV, "").strip()
         self._bundle = load_injection_bundle(
             exec_bundle_dir if exec_bundle_dir is not None else os.environ.get("REPO2REE_EXEC_BUNDLE") or None,
             tools_bundle_dir if tools_bundle_dir is not None else os.environ.get("REPO2REE_TOOLS_BUNDLE") or None,
@@ -145,6 +151,14 @@ class DockerRuntime:
         """
         return f"repo2ree-dind-{ree_id}"
 
+    def _resource_label_args(self) -> list[str]:
+        if not self._resource_owner:
+            return []
+        return ["--label", f"{_RESOURCE_OWNER_LABEL}={self._resource_owner}"]
+
+    def _create_workbench_volume(self, name: str) -> None:
+        _docker("volume", "create", *self._resource_label_args(), name)
+
     # ------------------------------------------------
     # Lifecycle (streaming)
     # ------------------------------------------------
@@ -155,9 +169,9 @@ class DockerRuntime:
         image = spec.base_image
         with _docker_op("provision") as op:
             try:
-                _docker("volume", "create", volume_name)
+                self._create_workbench_volume(volume_name)
                 if self._docker_mode == "dind":
-                    _docker("volume", "create", self._dind_volume_name(ree_id))
+                    self._create_workbench_volume(self._dind_volume_name(ree_id))
                 exec_path = yield from self._run_workbench_container(container_name, ree_id, volume_name, image)
             except RuntimeError as exc:
                 op.status = "failed"
@@ -263,6 +277,7 @@ class DockerRuntime:
         run_args = [
             *self._docker_backend_args(ree_id),
             *injection_args,
+            *self._resource_label_args(),
             "--name",
             container_name,
             # tini as PID 1: whatever keeps the bench alive, docker exec'd

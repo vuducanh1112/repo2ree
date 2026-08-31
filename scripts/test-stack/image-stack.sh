@@ -29,11 +29,11 @@
 # `up` recreates a leftover repo2ree-agent container but reuses the pinned
 # repo2ree-agent-state volume, so the agent id stays stable across runs.
 #
-# The stack is addressed via the host-published ports (localhost:8000/:3000).
-# From inside a container on the compose network (the devcontainer), those
-# ports aren't on localhost, so when the compose service name `backend`
-# resolves, the service DNS names are used instead. Override with
-# STACK_API_URL / STACK_GUI_URL if neither fits.
+# The stack is addressed via its published ports on a normal host. From inside
+# a container, localhost is that container rather than the Docker host: use
+# service DNS when the caller shares the control-plane network, otherwise use
+# the current container's Docker gateway. Override with STACK_API_URL /
+# STACK_GUI_URL for a remote daemon or another topology.
 set -euo pipefail
 
 usage() {
@@ -47,6 +47,7 @@ usage() {
 # up, because the script lives in scripts/test-stack/.
 root=$(cd "$(dirname "$0")/../.." && pwd)
 cd "$root"
+caller_attachment_file=$root/test-artifacts/state/image-stack-caller-network
 
 agent_container=repo2ree-agent
 # Agent instances to run (default 1). Instance i > 1 becomes its own compose
@@ -62,13 +63,38 @@ backend_image=${STACK_BACKEND_IMAGE:-${image_prefix}repo2ree-backend:$image_tag}
 agent_image=${STACK_AGENT_IMAGE:-${image_prefix}repo2ree-agent:$image_tag}
 
 resolve_urls() {
-    if getent hosts backend >/dev/null 2>&1; then
-        api_url=${STACK_API_URL:-http://backend:8000}
-        gui_url=${STACK_GUI_URL:-http://gui:3000}
+    local default_api_url default_gui_url docker_host
+    if getent hosts backend >/dev/null 2>&1 \
+            && getent hosts gui >/dev/null 2>&1; then
+        default_api_url=http://backend:8000
+        default_gui_url=http://gui:3000
+    elif [ -f /.dockerenv ]; then
+        # Docker Desktop provides this name. Plain Docker Engine does not
+        # unless the container was created with host-gateway, so fall back to
+        # the gateway of any network attached to the calling container. Host
+        # published ports listen there as well as on localhost.
+        if getent hosts host.docker.internal >/dev/null 2>&1; then
+            docker_host=host.docker.internal
+        else
+            # single quotes: these are Go-template fields, not shell vars.
+            # shellcheck disable=SC2016
+            docker_host=$(docker inspect -f \
+                '{{range .NetworkSettings.Networks}}{{println .Gateway}}{{end}}' \
+                "${HOSTNAME:-}" 2>/dev/null | awk 'NF {print; exit}')
+        fi
+        if [ -n "$docker_host" ]; then
+            default_api_url=http://$docker_host:8000
+            default_gui_url=http://$docker_host:3000
+        else
+            default_api_url=http://localhost:8000
+            default_gui_url=http://localhost:3000
+        fi
     else
-        api_url=${STACK_API_URL:-http://localhost:8000}
-        gui_url=${STACK_GUI_URL:-http://localhost:3000}
+        default_api_url=http://localhost:8000
+        default_gui_url=http://localhost:3000
     fi
+    api_url=${STACK_API_URL:-$default_api_url}
+    gui_url=${STACK_GUI_URL:-$default_gui_url}
 }
 
 compose_stack() {
@@ -107,6 +133,44 @@ control_plane_network() {
         | awk '{print $1}'
 }
 
+# Attach the calling devcontainer to the local control-plane network. Merely
+# sharing its Docker socket does not put it in the same network namespace, and
+# a published port on the Docker host is not guaranteed to hairpin through
+# host.docker.internal. Record only attachments made here so down() never
+# disconnects a network the user attached themselves.
+attach_caller_to_control_plane() {
+    [ -f /.dockerenv ] || return 0
+    [ -n "${HOSTNAME:-}" ] || return 0
+    docker inspect "$HOSTNAME" >/dev/null 2>&1 || return 0
+
+    local network networks
+    network=$(control_plane_network)
+    [ -n "$network" ] || return 0
+    # single quotes: this is a Go-template field, not a shell variable.
+    # shellcheck disable=SC2016
+    networks=$(docker inspect -f '{{json .NetworkSettings.Networks}}' "$HOSTNAME")
+    if printf '%s\n' "$networks" | grep -Fq "\"$network\""; then
+        return 0
+    fi
+
+    docker network connect "$network" "$HOSTNAME"
+    mkdir -p "$(dirname "$caller_attachment_file")"
+    printf '%s %s\n' "$HOSTNAME" "$network" >"$caller_attachment_file"
+    # stderr keeps gui-url/api-url stdout machine-readable when either command
+    # performs the first attachment.
+    echo ">> attached calling container to $network" >&2
+}
+
+detach_owned_caller_network() {
+    [ -f "$caller_attachment_file" ] || return 0
+    local container network
+    read -r container network <"$caller_attachment_file" || true
+    if [ -n "${container:-}" ] && [ -n "${network:-}" ]; then
+        docker network disconnect "$network" "$container" >/dev/null 2>&1 || true
+    fi
+    rm -f "$caller_attachment_file"
+}
+
 # wait_until <description> <command...>: poll for up to 30s.
 wait_until() {
     local what=$1
@@ -117,6 +181,8 @@ wait_until() {
         sleep 1
     done
     echo "$what did not become ready" >&2
+    echo "failed probe: $*" >&2
+    "$@" >&2 || true
     return 1
 }
 
@@ -125,7 +191,8 @@ agents_connected() {
     # Parse the JSON structurally rather than grepping a field name, so the
     # probe cannot silently drift from the wire format.
     local count
-    count=$(curl -sf "$api_url/api/v1/agents" \
+    count=$(curl -fsS --connect-timeout 1 --max-time 1 \
+        "$api_url/api/v1/agents" \
         | python3 -c 'import json,sys; print(len(json.load(sys.stdin).get("agents", [])))' \
         2>/dev/null) || count=0
     [ "${count:-0}" -ge "$want" ]
@@ -168,11 +235,14 @@ up() {
     done
 
     # The compose network may not have existed before `compose up`, so the
-    # service names only resolve from here on — re-check.
+    # service names only resolve from here on. A devcontainer on the same
+    # daemon joins it before resolving the endpoints.
+    attach_caller_to_control_plane
     resolve_urls
-    wait_until "backend" curl -sf "$api_url/"
+    echo ">> probing stack endpoints — API $api_url, GUI $gui_url"
+    wait_until "backend at $api_url" curl -fsS --connect-timeout 1 --max-time 1 "$api_url/"
     wait_until "$stack_agents workbench agent(s)" agents_connected "$stack_agents"
-    wait_until "gui" curl -sf "$gui_url/"
+    wait_until "gui at $gui_url" curl -fsS --connect-timeout 1 --max-time 1 "$gui_url/"
     echo ">> stack up — GUI at $gui_url"
 }
 
@@ -185,6 +255,10 @@ down() {
     local with_volumes=${1:-}
     local down_args=()
     [ "$with_volumes" = "--volumes" ] && down_args=(-v)
+
+    # The control-plane network cannot be removed while the calling
+    # devcontainer remains attached to it.
+    detach_owned_caller_network
 
     # Tear down every agent instance found on the daemon, not just
     # $stack_agents of them — a previous `up` may have started more.
@@ -202,12 +276,13 @@ down() {
 }
 
 check() {
+    attach_caller_to_control_plane
     resolve_urls
-    curl -sf "$api_url/" >/dev/null \
+    curl -fsS --connect-timeout 1 --max-time 1 "$api_url/" >/dev/null \
         || { echo "backend not reachable at $api_url — start the image stack first (make stack-up)" >&2; exit 1; }
     agents_connected 1 \
         || { echo "no workbench agent connected — start the agent container (make stack-up)" >&2; exit 1; }
-    curl -sf "$gui_url/" >/dev/null \
+    curl -fsS --connect-timeout 1 --max-time 1 "$gui_url/" >/dev/null \
         || { echo "GUI not reachable at $gui_url — start the image stack first (make stack-up)" >&2; exit 1; }
 }
 
@@ -215,7 +290,7 @@ case "${1:-}" in
     up) up ;;
     down) down "${2:-}" ;;
     check) check ;;
-    gui-url) resolve_urls; echo "$gui_url" ;;
-    api-url) resolve_urls; echo "$api_url" ;;
+    gui-url) attach_caller_to_control_plane; resolve_urls; echo "$gui_url" ;;
+    api-url) attach_caller_to_control_plane; resolve_urls; echo "$api_url" ;;
     *) usage ;;
 esac

@@ -35,6 +35,7 @@ def _no_ambient_bundle(monkeypatch: pytest.MonkeyPatch) -> None:
     """Keep the host's agent-image env vars from leaking into the tests."""
     monkeypatch.delenv("REPO2REE_EXEC_BUNDLE", raising=False)
     monkeypatch.delenv("REPO2REE_TOOLS_BUNDLE", raising=False)
+    monkeypatch.delenv("REPO2REE_RESOURCE_OWNER", raising=False)
 
 
 @pytest.fixture(autouse=True)
@@ -89,6 +90,21 @@ def test_host_socket_mode_reuses_host_daemon_without_dind_volume(monkeypatch: py
     assert _has_option_value(run_call, "-v", "/var/run/docker.sock:/var/run/docker.sock")
     assert _has_option_value(run_call, "-e", "DOCKER_HOST=unix:///var/run/docker.sock")
     assert _has_option_value(run_call, "-e", "WORKBENCH_DOCKER_MODE=host-socket")
+
+
+def test_resource_owner_labels_workbench_container_and_volumes(monkeypatch: pytest.MonkeyPatch) -> None:
+    docker_calls: list[tuple[str, ...]] = []
+    monkeypatch.setenv("REPO2REE_RESOURCE_OWNER", "e2e-demo-123")
+    monkeypatch.setattr(rt_mod, "_docker", lambda *args, timeout=60: docker_calls.append(args))
+    monkeypatch.setattr(rt_mod, "_image_present", lambda image: False)
+    monkeypatch.setattr(rt_mod, "_docker_stream_lines", lambda *args, timeout=600: iter(()))
+
+    list(DockerRuntime().provision("ree-owned", _spec("repo2ree-workbench:test")))
+
+    label = "repo2ree.resource-owner=e2e-demo-123"
+    assert ("volume", "create", "--label", label, "repo2ree-ree-ree-owned") in docker_calls
+    assert ("volume", "create", "--label", label, "repo2ree-dind-ree-owned") in docker_calls
+    assert _has_option_value(_only_run_call(docker_calls), "--label", label)
 
 
 def test_teardown_removes_dind_volume_only_in_dind_mode(monkeypatch: pytest.MonkeyPatch) -> None:

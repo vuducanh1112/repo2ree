@@ -4,6 +4,10 @@ import { defineConfig } from "@playwright/test";
 // GUI (e.g. the compose image stack on :3000) and no vite dev server is
 // started. Default: playwright starts its own dev server on :4173.
 const externalBaseURL = process.env.E2E_BASE_URL;
+// Source-run stacks reserve a fresh API port for every invocation and pass it
+// here. Vite proxies the browser to that exact process; browser-only suites and
+// direct local Playwright runs retain the conventional :8000 fallback.
+const apiBaseURL = process.env.E2E_API_BASE_URL ?? "http://localhost:8000";
 
 const baseUse = {
   baseURL: externalBaseURL ?? "http://127.0.0.1:4173",
@@ -37,7 +41,7 @@ export default defineConfig({
         reuseExistingServer: true,
         timeout: 10 * 1000,
         env: {
-          VITE_API_BASE_URL: "http://localhost:8000",
+          VITE_API_BASE_URL: apiBaseURL,
         },
       },
   projects: [

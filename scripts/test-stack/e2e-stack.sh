@@ -146,7 +146,11 @@ agent_log_dir=$log_dir
 coverage_data_dir=$root/test-artifacts/coverage/python/data/$tier
 coverage_file=$coverage_data_dir/.coverage
 backend_log=$log_dir/backend-$tier.log
-mkdir -p "$log_dir" "$state_dir" "$coverage_data_dir"
+run_token="e2e-$tier-$(python3 -c 'import uuid; print(uuid.uuid4().hex)')"
+port_file=$(mktemp)
+api_base_url=
+control_state_dir=${E2E_CONTROL_STATE_DIR:-$root/test-artifacts/state/control/$run_token}
+mkdir -p "$log_dir" "$state_dir" "$coverage_data_dir" "$control_state_dir"
 # Start the tier's data fresh: --parallel-mode leaves one suffixed file per
 # process, so a previous run's files would otherwise be combined in as well
 # and report a union of two runs as one.
@@ -159,8 +163,14 @@ fi
 
 api_pid=
 agent_pids=()
+client_pid=
 stop_stack() {
     local pid
+    if [ -n "$client_pid" ]; then
+        kill -TERM "$client_pid" 2>/dev/null || true
+        wait "$client_pid" 2>/dev/null || true
+        client_pid=
+    fi
     for pid in "${agent_pids[@]}"; do
         kill -TERM "$pid" 2>/dev/null || true
         wait "$pid" 2>/dev/null || true
@@ -169,11 +179,11 @@ stop_stack() {
         kill -TERM "$api_pid" 2>/dev/null || true
         wait "$api_pid" 2>/dev/null || true
     fi
-    # The backend state this stack ran on is throwaway, so any workbench the
-    # specs did not delete is now unreachable — drop the containers and per-REE
-    # volumes with it. (Assumes this stack owns the daemon's workbenches, which
-    # holds: a run needs :8000, so no second stack is up alongside it.)
-    "$root/scripts/test-stack/workbench-cleanup.sh"
+    # The backend state this stack ran on is throwaway, so workbenches the specs
+    # did not delete are unreachable. The agent labels every per-run resource;
+    # select that label so parallel stacks and developers' benches survive.
+    "$root/scripts/test-stack/workbench-cleanup.sh" --owner "$run_token"
+    rm -f "$port_file"
 }
 trap stop_stack EXIT
 
@@ -196,18 +206,51 @@ agents_connected() {
     # Parse the JSON structurally rather than grepping a field name, so the
     # probe cannot silently drift from the wire format.
     local count
-    count=$(curl -sf http://127.0.0.1:8000/api/v1/agents \
+    count=$(curl -sf "$api_base_url/api/v1/agents" \
         | python3 -c 'import json,sys; print(len(json.load(sys.stdin).get("agents", [])))' \
         2>/dev/null) || count=0
     [ "${count:-0}" -ge "$want" ]
 }
 
-echo ">> starting backend on :8000 under coverage (log: $backend_log)"
+# The launcher binds port 0 before publishing its number, so no other process
+# can take the chosen port between discovery and Uvicorn startup. Readiness also
+# checks the child PID: an unrelated healthy API can never satisfy this probe.
+wait_for_backend() {
+    local port
+    for i in $(seq 1 30); do
+        if ! kill -0 "$api_pid" 2>/dev/null; then
+            echo "backend process exited before readiness" >&2
+            tail -n 50 "$backend_log" >&2 || true
+            return 1
+        fi
+        if [ -s "$port_file" ]; then
+            port=$(cat "$port_file")
+            case "$port" in
+                *[!0-9]*|"") ;;
+                *)
+                    api_base_url="http://127.0.0.1:$port"
+                    if curl -sf "$api_base_url/" >/dev/null 2>&1; then return 0; fi
+                    ;;
+            esac
+        fi
+        echo "  waiting for owned backend... ($i/30)"
+        sleep 1
+    done
+    echo "owned backend did not become ready" >&2
+    return 1
+}
+
+echo ">> starting backend on an isolated port under coverage (log: $backend_log)"
+UPLOAD_STAGING_DIR=$control_state_dir/upload-staging \
+WORKBENCH_REGISTRY_FILE=$control_state_dir/workbench-registry.json \
+REE_INDEX_FILE=$control_state_dir/ree-index.json \
+RUN_REGISTRY_DIR=$control_state_dir/runs \
 COVERAGE_FILE=$coverage_file coverage run --parallel-mode \
-    -m uvicorn repo2ree_api.main:app --host 127.0.0.1 --port 8000 \
+    "$root/scripts/test-stack/serve-e2e-api.py" "$port_file" \
     >"$backend_log" 2>&1 &
 api_pid=$!
-wait_until "backend" curl -sf http://127.0.0.1:8000/
+wait_for_backend
+echo ">> backend ready at $api_base_url (pid $api_pid)"
 
 # start_agent <state-dir> <log>: one workbench agent process, backgrounded.
 # It runs through `coverage run --parallel-mode` sharing the tier's COVERAGE_FILE
@@ -215,11 +258,12 @@ wait_until "backend" curl -sf http://127.0.0.1:8000/
 # combine at the end picks all of them up. `sigterm = true` (pyproject.toml) is
 # what makes the flush happen when stop_stack signals them.
 start_agent() {
-    WORKBENCH_API_WS_URL=ws://127.0.0.1:8000/agent/connect \
+    WORKBENCH_API_WS_URL="${api_base_url/http:/ws:}/agent/connect" \
     WORKBENCH_DOCKER_MODE=$docker_mode \
     WORKBENCH_AGENT_STATE_DIR=$1 \
     REPO2REE_EXEC_BUNDLE=$exec_bundle \
     REPO2REE_TOOLS_BUNDLE=$tools_bundle \
+    REPO2REE_RESOURCE_OWNER=$run_token \
     COVERAGE_FILE=$coverage_file \
     uv run --package repo2ree-agent coverage run --parallel-mode \
         -m repo2ree_agent >"$2" 2>&1 &
@@ -234,7 +278,9 @@ for i in $(seq 1 "$agents"); do
 done
 wait_until "$agents workbench agent(s)" agents_connected "$agents"
 
-status=0
+# Start the client as a separately waitable process. `wait -n` below watches it
+# alongside the exact backend and agent PIDs; infrastructure death aborts the
+# client immediately instead of degrading into a late browser timeout.
 if [ -n "$script" ]; then
     echo ">> stack ready — running script=$script"
     # The script drives the live backend over HTTP; hand it the base URL the
@@ -248,18 +294,45 @@ if [ -n "$script" ]; then
         # run would record cleanly and still report success, defeating the CI
         # check. Env exported before asciinema is inherited by the command.
         rc_file=$(mktemp)
-        API_BASE_URL=http://127.0.0.1:8000 \
-            asciinema rec --overwrite -c "'$script'; echo \$? > '$rc_file'" "$record" || true
-        status=$(cat "$rc_file" 2>/dev/null || echo 1)
-        rm -f "$rc_file"
-        echo ">> recorded terminal session: $record (walkthrough exit $status)"
+        (
+            API_BASE_URL=$api_base_url \
+                asciinema rec --overwrite -c "'$script'; echo \$? > '$rc_file'" "$record" || true
+            recorded_status=$(cat "$rc_file" 2>/dev/null || echo 1)
+            rm -f "$rc_file"
+            echo ">> recorded terminal session: $record (walkthrough exit $recorded_status)"
+            exit "$recorded_status"
+        ) &
+        client_pid=$!
     else
-        API_BASE_URL=http://127.0.0.1:8000 "$script" || status=$?
+        API_BASE_URL=$api_base_url "$script" &
+        client_pid=$!
     fi
 else
     echo ">> stack ready — running playwright project=$project"
-    (cd gui && npm exec -- playwright test \
-        -c playwright.config.ts --project="$project") || status=$?
+    (
+        cd gui
+        exec env E2E_API_BASE_URL="$api_base_url" npm exec -- playwright test \
+            -c playwright.config.ts --project="$project"
+    ) &
+    client_pid=$!
+fi
+
+watched_pids=("$client_pid" "$api_pid" "${agent_pids[@]}")
+finished_pid=
+if wait -n -p finished_pid "${watched_pids[@]}"; then
+    finished_status=0
+else
+    finished_status=$?
+fi
+if [ "$finished_pid" = "$client_pid" ]; then
+    status=$finished_status
+    client_pid=
+else
+    echo "stack process $finished_pid exited during the client run (status $finished_status)" >&2
+    status=1
+    kill -TERM "$client_pid" 2>/dev/null || true
+    wait "$client_pid" 2>/dev/null || true
+    client_pid=
 fi
 
 echo ">> stopping workbench agent and backend (SIGTERM so coverage can flush)"

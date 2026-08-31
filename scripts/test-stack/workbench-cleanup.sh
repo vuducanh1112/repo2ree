@@ -2,6 +2,7 @@
 # Remove the Docker state a workbench run leaves behind on this daemon.
 #
 #   workbench-cleanup.sh                workbench containers + their per-REE volumes
+#   workbench-cleanup.sh --owner <token> only resources labelled for one test run
 #   workbench-cleanup.sh --store-gc [d] also bundle store volumes unused for d days
 #   workbench-cleanup.sh --store        also every bundle store volume
 #
@@ -42,12 +43,39 @@ root=$(cd "$(dirname "$0")/../.." && pwd)
 
 store_mode=none
 store_max_age_days=14
-case "${1:-}" in
-    "") ;;
-    --store) store_mode=all ;;
-    --store-gc) store_mode=gc; [ $# -lt 2 ] || store_max_age_days=$2 ;;
-    *) echo "usage: $0 [--store | --store-gc [days]]" >&2; exit 2 ;;
-esac
+owner=
+usage() {
+    echo "usage: $0 [--owner <token> | --store | --store-gc [days]]" >&2
+    exit 2
+}
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --owner)
+            [ $# -ge 2 ] || usage
+            [ -z "$owner" ] || usage
+            [ -n "$2" ] || usage
+            [ "${2#--}" = "$2" ] || usage
+            owner=$2
+            shift 2
+            ;;
+        --store)
+            [ "$store_mode" = none ] || usage
+            store_mode=all
+            shift
+            ;;
+        --store-gc)
+            [ "$store_mode" = none ] || usage
+            store_mode=gc
+            shift
+            if [ $# -gt 0 ] && [ "${1#--}" = "$1" ]; then
+                store_max_age_days=$1
+                shift
+            fi
+            ;;
+        *) usage ;;
+    esac
+done
+[ -z "$owner" ] || [ "$store_mode" = none ] || usage
 
 # The store volume this checkout's bundles hash to — protected from --store-gc.
 # Resolved through the agent's own loader rather than a copy of its digest
@@ -87,31 +115,42 @@ for line in sys.stdin:
 ' "$max_age_days"
 }
 
-containers=$(docker ps -aq --filter 'name=^repo2ree-wb-' 2>/dev/null || true)
+if [ -n "$owner" ]; then
+    containers=$(docker ps -aq --filter "label=repo2ree.resource-owner=$owner" 2>/dev/null || true)
+else
+    containers=$(docker ps -aq --filter 'name=^repo2ree-wb-' 2>/dev/null || true)
+fi
 if [ -n "$containers" ]; then
-    echo ">> removing leftover workbench containers"
+    echo ">> removing leftover workbench containers${owner:+ for $owner}"
     # -v so the container's anonymous volumes go with it; word splitting is the
     # point below: one id per arg.
     # shellcheck disable=SC2086
     docker rm -f -v $containers >/dev/null || true
 fi
 
-volume_patterns=(repo2ree-ree- repo2ree-dind-)
-[ "$store_mode" = all ] && volume_patterns+=(repo2ree-store-)
+if [ -n "$owner" ]; then
+    # Per-run named volumes carry the same owner label as their workbench. The
+    # container removal above uses -v, which already reclaims that run's
+    # anonymous volumes; a global anonymous-volume sweep would cross the scope.
+    volumes=$(docker volume ls -q --filter "label=repo2ree.resource-owner=$owner" 2>/dev/null || true)
+else
+    volume_patterns=(repo2ree-ree- repo2ree-dind-)
+    [ "$store_mode" = all ] && volume_patterns+=(repo2ree-store-)
 
-volumes=""
-for pattern in "${volume_patterns[@]}"; do
-    found=$(docker volume ls -q --filter "name=^$pattern" 2>/dev/null || true)
-    volumes="$volumes${found:+$found$'\n'}"
-done
-# Anonymous leftovers: 64 hex chars, referenced by nothing. Filtered after the
-# container sweep above, so volumes freed by it are included.
-anonymous=$(docker volume ls -q --filter dangling=true 2>/dev/null \
-    | grep -E '^[0-9a-f]{64}$' || true)
-volumes="$volumes${anonymous:+$anonymous$'\n'}"
-volumes=$(echo "$volumes" | grep -v '^$' || true)
+    volumes=""
+    for pattern in "${volume_patterns[@]}"; do
+        found=$(docker volume ls -q --filter "name=^$pattern" 2>/dev/null || true)
+        volumes="$volumes${found:+$found$'\n'}"
+    done
+    # Anonymous leftovers: 64 hex chars, referenced by nothing. Filtered after
+    # the container sweep above, so volumes freed by it are included.
+    anonymous=$(docker volume ls -q --filter dangling=true 2>/dev/null \
+        | grep -E '^[0-9a-f]{64}$' || true)
+    volumes="$volumes${anonymous:+$anonymous$'\n'}"
+    volumes=$(echo "$volumes" | grep -v '^$' || true)
+fi
 if [ -n "$volumes" ]; then
-    echo ">> removing leftover workbench volumes"
+    echo ">> removing leftover workbench volumes${owner:+ for $owner}"
     # shellcheck disable=SC2086
     docker volume rm $volumes >/dev/null || true
 fi
