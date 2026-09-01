@@ -8,7 +8,7 @@ design.
 | Doc | What it covers |
 |---|---|
 | [Development setup](how-to/development.md) | Toolchain, initial setup, running the app locally, devcontainer, configuration, package layout, common commands. |
-| [Testing](how-to/testing.md) | The test tiers (`make` targets), Docker-gated suites, e2e projects, coverage, the commit and push gates. |
+| [Testing](how-to/testing.md) | The test tiers (Just recipes), Docker-gated suites, e2e projects, coverage, the commit and push gates. |
 | [Deployment](how-to/deployment.md) | Images and registries, the compose stacks, the agent deployment, environment configuration. |
 
 ## Explanation

@@ -98,7 +98,7 @@ in
 pkgs.dockerTools.buildLayeredImage {
   name = "repo2ree-agent";
   # "local" marks never-pushed workbench builds; published channels (edge,
-  # commit shas) are minted at push time in the Makefile.
+  # commit shas) are minted at push time by the publishing recipes.
   tag = "local";
 
   contents = [

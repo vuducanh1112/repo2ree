@@ -28,7 +28,7 @@ result-*
 .repo2ree/
 
 # Test artifacts — all coverage reports/data and observability traces live
-# under one gitignored root (see test-artifacts/ layout in the Makefile).
+# under one gitignored root (see the test-artifacts layout in just/be-tests.just).
 /test-artifacts/
 
 # Coverage data files, in case a run lands one at the repo root rather than the

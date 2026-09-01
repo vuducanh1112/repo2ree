@@ -1,3 +1,10 @@
+# Generated views of the same import graphs enforced by the architecture
+# checks. The backend package list comes from pyproject.toml's import-linter
+# contracts so adding a governed package cannot silently omit its diagram.
+# The two workspace views answer different questions: workspace.svg collapses
+# packages to show cross-package layering, while workspace-modules.svg retains
+# modules so an individual dependency edge can be traced.
+
 # Generate every backend and GUI architecture diagram.
 [group('Diagrams')]
 architecture-diagrams: be-graphs be-graph-all gui-graph gui-graph-core
@@ -44,6 +51,8 @@ be-graph-all ARGS=env("ARGS", ""):
     python scripts/diagrams/arch_graph.py --all "${args[@]}" -f svg -o {{ quote(ARCH_DIR + "/workspace-modules.svg") }}
 
 # Generate the collapsed GUI dependency graph.
+# dependency-cruiser writes DOT before Graphviz runs so a failed cruise cannot
+# be hidden by a successful final pipeline command that emits an empty SVG.
 [group('Diagrams')]
 gui-graph GUI_COLLAPSE=env("GUI_COLLAPSE", "^src/(core|shell/[^/]+)/") GUI_ARGS=env("GUI_ARGS", ""):
     #!/usr/bin/env bash

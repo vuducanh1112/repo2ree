@@ -720,7 +720,7 @@ def main() -> int:
 
     if not args.frames.is_file():
         raise SystemExit(
-            f"no capture at {args.frames} — run the api integration tier first (make api-integration-tests)"
+            f"no capture at {args.frames} — run the api integration tier first (just api-integration-tests)"
         )
     frames = load_frames(args.frames)
     if args.format == "matrix":

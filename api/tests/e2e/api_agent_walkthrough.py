@@ -16,11 +16,11 @@ The Python is pure orchestration: control flow, the observeRun poll loop, JSON
 parsing, and assertions. It doubles as a CI check — every response is asserted, so
 a broken contract fails the run (and thus the recording). Run it through the stack
 orchestrator, which brings a live backend + workbench agent up, points
-``API_BASE_URL`` at it, tears it down, and (with ``make e2e-api``) records the
+``API_BASE_URL`` at it, tears it down, and (with ``just demo-api``) records the
 terminal:
 
     scripts/test-stack/e2e-stack.sh --script api/tests/e2e/api_agent_walkthrough.py
-    make e2e-api            # the same, always recorded to a .cast
+    just demo-api           # the same, always recorded to a .cast
 
 Needs only ``curl`` (already required by the orchestrator) and the Python stdlib,
 so it runs under a bare ``python3`` shebang regardless of what execs it. It is

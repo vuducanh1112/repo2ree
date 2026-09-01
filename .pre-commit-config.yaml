@@ -1,5 +1,5 @@
 # The hooks here are cheap by design. The expensive checking lives in
-# `make commit-gate`, which you run in your own terminal where its output
+# `just commit-gate`, which you run in your own terminal where its output
 # streams; the hook only confirms that it ran against the content you are
 # committing.
 #
@@ -11,7 +11,7 @@
 repos:
   - repo: local
     hooks:
-      # Compares the tree recorded by the last passing `make commit-gate` with
+      # Compares the tree recorded by the last passing `just commit-gate` with
       # the tree you are about to commit — a hash comparison, ~10ms. Content
       # equality is the whole check: any edit to any staged file changes the
       # tree hash, so a certificate can be stale but never wrong.
@@ -38,6 +38,6 @@ repos:
       - id: gui-npm-hash
         name: GUI npm-deps hash in sync with lockfile
         language: system
-        entry: make gui-npm-hash
+        entry: just gui-npm-hash
         files: ^gui/package-lock\.json$
         pass_filenames: false

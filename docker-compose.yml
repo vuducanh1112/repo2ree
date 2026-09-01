@@ -12,7 +12,7 @@ services:
       - "host.docker.internal:host-gateway"
     environment:
       # Optional OTLP collector for traces/metrics/logs — pass through from
-      # the host so e.g. `OTLP_ENDPOINT=http://host.docker.internal:4318 make
+      # the host so e.g. `OTLP_ENDPOINT=http://host.docker.internal:4318 just
       # e2e-demo-stack` lights up tracing. Unset means no collector.
       # Collectors that authenticate ingest (e.g. ClickStack's ingestion API
       # key) take their headers via the standard OTLP env var, e.g.

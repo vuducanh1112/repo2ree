@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Certificate that `make commit-gate` ran against exactly the content being
+# Certificate that `just commit-gate` ran against exactly the content being
 # committed.
 #
 # Running the gate itself from the hook was the obvious design and the wrong
@@ -65,12 +65,12 @@ verify)
 	# index rather than the working tree, so it does not depend on that.
 	staged=$(git write-tree)
 	if [ ! -f "$stamp" ]; then
-		echo "no commit-gate certificate for this clone — run: make commit-gate" >&2
+		echo "no commit-gate certificate for this clone — run: just commit-gate" >&2
 		exit 1
 	fi
 	if [ "$(cat "$stamp")" != "$staged" ]; then
 		echo "the commit-gate certificate covers different content than you are committing." >&2
-		echo "stage everything you mean to commit, then re-run: make commit-gate" >&2
+		echo "stage everything you mean to commit, then re-run: just commit-gate" >&2
 		exit 1
 	fi
 	;;

@@ -52,7 +52,7 @@ let
 
     # The hash of the fetched npm dependency set. It is not hand-maintained:
     # it lives in ./gui-npm-deps.hash and is regenerated from
-    # gui/package-lock.json by `make gui-npm-hash` (run after any
+    # gui/package-lock.json by `just gui-npm-hash` (run after any
     # lockfile change). That target uses prefetch-npm-deps — the same tool
     # buildNpmPackage uses internally — so the file can never disagree with
     # what the build expects.
@@ -132,7 +132,7 @@ in
 pkgs.dockerTools.buildLayeredImage {
   name = "repo2ree-gui";
   # "local" marks never-pushed workbench builds; published channels (edge,
-  # commit shas) are minted at push time in the Makefile.
+  # commit shas) are minted at push time by the publishing recipes.
   tag = "local";
 
   contents = [

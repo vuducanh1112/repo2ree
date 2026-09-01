@@ -1,5 +1,9 @@
 FILMSTRIP_CAPTURE := env("FILMSTRIP_CAPTURE", "test-artifacts/ree-snapshots/api-integration/test_full_authoring_pipeline.ndjson")
 
+# These views consume the real API integration capture rather than fixtures, so
+# a missing capture fails with the producing tier instead of drawing an empty or
+# stale model.
+
 # Generate every domain-model view.
 [group('Diagrams')]
 domain-diagrams: evidence-graph ree-filmstrip ree-timeline ree-browser

@@ -2,6 +2,11 @@ IMAGE_CANDIDATE_STATE_DIR := env("IMAGE_CANDIDATE_STATE_DIR", ".validation-certi
 IMAGE_CANDIDATE_TOOL := "scripts/publish/image-candidate.sh"
 IMAGE_VALIDATION_REGISTRY := env("IMAGE_VALIDATION_REGISTRY", DOCKERHUB_REGISTRY + "/" + DOCKERHUB_NAMESPACE)
 
+# Images are published as one protocol-compatible set. A candidate is pushed
+# under a clean Git revision, resolved to exact digests in every registry, and
+# exercised through those digests before its receipt may promote edge. Direct
+# pushes intentionally reject edge so validation cannot be bypassed.
+
 [private]
 _require-current-image-candidate IMAGE_CANDIDATE_REV:
     #!/usr/bin/env bash
@@ -12,12 +17,16 @@ _require-current-image-candidate IMAGE_CANDIDATE_REV:
     [[ "$candidate" == "$git_rev" ]] || { echo "IMAGE_CANDIDATE_REV must name the clean tree being built ($git_rev)"; exit 1; }
 
 # Run the fast, container-free pre-commit gate and certify the tree.
+# The certificate records the exact tree only after every prerequisite passes;
+# the pre-commit hook performs the cheap content comparison later.
 [group('Release gates')]
 commit-gate: docs-checks scripts-checks gui-checks be-checks gui-tests be-unit-tests core-integration-tests
     scripts/publish/commit-gate-stamp.sh write
     @echo ">> commit gate green — certificate written for the current tree"
 
 # Run every check required before publishing the local image set.
+# This intentionally exercises both measured source runs and the uninstrumented
+# local-image topology before any candidate is pushed.
 [group('Release gates')]
 push-gate: require-clean-tree scripts-checks gui-checks be-checks e2e-bundles gui-tests be-tests gui-accessibility-tests gui-screenshot-tests e2e-gui e2e-gui-review e2e-gui-stack-local
     @echo ">> push gate green — publish with: just push-image-candidate"

@@ -61,7 +61,7 @@ The backend image catalog defines the available per-REE workbench images
 Build and load the GUI image:
 
 ```bash
-make gui-image
+just gui-image
 ```
 
 This builds `.#gui-image` with Nix, serves the static bundle with Caddy,
@@ -70,7 +70,7 @@ and tags the result as `repo2ree-gui:local`.
 Build the backend image:
 
 ```bash
-make backend-image
+just backend-image
 ```
 
 This runs the Dockerfile build for `docker/demo/backend.Dockerfile` and tags the
@@ -80,7 +80,7 @@ Build and load the agent image (agent process + embedded executor/tools
 bundles):
 
 ```bash
-make agent-image
+just agent-image
 ```
 
 ## Publishing images
@@ -90,10 +90,10 @@ candidate is pushed under a Git revision, validated by manifest digest, then
 promoted as one set:
 
 ```bash
-make push-gate                       # source + local-image validation
-make push-image-candidate            # push the three images as :<git-rev>
-make validate-image-candidate        # test their exact registry digests
-make promote-image-candidate-to-edge # move edge to the validated digests
+just push-gate                       # source + local-image validation
+just push-image-candidate            # push the three images as :<git-rev>
+just validate-image-candidate        # test their exact registry digests
+just promote-image-candidate-to-edge # move edge to the validated digests
 ```
 
 `push-image-candidate` refuses a dirty tree and requires
@@ -116,16 +116,16 @@ validated digest.
 The candidate defaults to the current Git revision. Name another explicitly:
 
 ```bash
-make validate-image-candidate IMAGE_CANDIDATE_REV=<rev>
-make verify-image-candidate IMAGE_CANDIDATE_REV=<rev>
-make promote-image-candidate-to-edge IMAGE_CANDIDATE_REV=<rev>
+just validate-image-candidate <rev>
+just verify-image-candidate <rev>
+just promote-image-candidate-to-edge <rev>
 ```
 
 When builds and registry credentials live on different machines (e.g. nix
 only in the dev container, docker login only on the host), replace
-`push-image-candidate` with the archive pair: run `make image-archives` in the
+`push-image-candidate` with the archive pair: run `just image-archives` in the
 dev container, copy `dist/images/` to the host, then run
-`make push-image-archives`. The archive directory carries an
+`just push-image-archives`. The archive directory carries an
 `IMAGE_CANDIDATE_REV` stamp, so the host cannot accidentally push the tarballs
 under a different tag. Continue with validation and promotion using
 `IMAGE_CANDIDATE_REV=$(cat dist/images/IMAGE_CANDIDATE_REV)`.
@@ -178,7 +178,7 @@ agent's runtime at the supervisor's request, not inside `repo2ree-demo-data`.
 `docker compose down` keeps both volumes, which is what a stack you intend to
 restart wants. To stop a stack and reclaim everything it stored — the compose
 volumes plus any workbench containers and per-REE volumes left behind — use
-`scripts/test-stack/image-stack.sh down --volumes` (`make stack-clean`), or
+`scripts/test-stack/image-stack.sh down --volumes` (`just stack-clean`), or
 `scripts/test-stack/workbench-cleanup.sh` for the workbench leftovers alone —
 the latter also sweeps unreferenced anonymous volumes, which the bench image
 declares for itself and which nothing can address once their container is gone.

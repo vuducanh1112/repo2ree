@@ -6,7 +6,7 @@
 
 repo2ree is a Python workspace with a React/Vite GUI. Most integration and
 browser flows need Docker because the agent provisions the default
-`docker:dind` workbench. Run `make e2e-bundles` first to build the executor and
+`docker:dind` workbench. Run `just e2e-bundles` first to build the executor and
 tools that the agent injects.
 
 ## Recommended toolchain
@@ -69,7 +69,7 @@ Build the executor and tools closures that a source-run agent injects into each
 workbench:
 
 ```bash
-make e2e-bundles
+just e2e-bundles
 ```
 
 Start the agent in another shell. It dials the API and owns the Docker runtime;
@@ -105,7 +105,7 @@ executor/tools bundles injected by the agent. Build the bundles before running
 Docker-gated integration or e2e flows:
 
 ```bash
-make e2e-bundles
+just e2e-bundles
 ```
 
 The current workbench is privileged Docker-in-Docker. It does not receive the
@@ -190,13 +190,13 @@ uv sync --all-packages
 npm --prefix gui ci
 
 # GUI checks
-make gui-checks
+just gui-checks
 
 # Backend checks
-make be-checks
+just be-checks
 
 # Executor/tools bundles for Docker-gated tiers
-make e2e-bundles
+just e2e-bundles
 ```
 
 For the full test map, see [testing.md](testing.md).

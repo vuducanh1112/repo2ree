@@ -1,5 +1,5 @@
-# Native task-runner interface. The Make implementation remains available in
-# parallel while this interface settles; recipes here never delegate to Make.
+# Repository task-runner interface. Topic imports keep the command surface in
+# one place while the implementation stays close to the concern it serves.
 
 set shell := ["bash", "-euo", "pipefail", "-c"]
 set default-list

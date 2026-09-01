@@ -21,13 +21,13 @@ def _operations(schema: dict[str, Any]):
 def test_generated_document_matches_committed_contract() -> None:
     """The committed api/openapi.json is the frozen contract; the app is one
     implementation of it. On intentional API changes regenerate with
-    `make api-openapi` so the contract change is a reviewable diff."""
+    `just api-openapi` so the contract change is a reviewable diff."""
     committed = CONTRACT_PATH.read_text()
 
     # Compare parsed documents first for a readable pytest diff, then the exact
     # serialization so formatting drift can't creep into the committed file.
-    assert json.loads(committed) == app.openapi(), "regenerate with `make api-openapi`"
-    assert committed == openapi_document(), "regenerate with `make api-openapi`"
+    assert json.loads(committed) == app.openapi(), "regenerate with `just api-openapi`"
+    assert committed == openapi_document(), "regenerate with `just api-openapi`"
 
 
 def test_public_operations_have_stable_unique_ids_and_tags() -> None:

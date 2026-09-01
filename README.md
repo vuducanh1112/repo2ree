@@ -59,9 +59,9 @@ command.
 To build the images locally from this repository:
 
 ```bash
-make gui-image
-make backend-image
-make agent-image
+just gui-image
+just backend-image
+just agent-image
 ```
 
 Then run compose with the local image tags, and start the agent stack
@@ -108,7 +108,7 @@ uv run --package repo2ree-api uvicorn repo2ree_api.main:app --reload --host 0.0.
    keep running the old executor:
 
 ```bash
-make e2e-bundles   # builds dist/bundles/{exec,tools} via nix
+just e2e-bundles   # builds dist/bundles/{exec,tools} via nix
 ```
 
 3. Start the workbench agent, which dials the API and owns the container
@@ -152,5 +152,5 @@ For the full test map, see
 [docs/engineering/how-to/testing.md](docs/engineering/how-to/testing.md).
 
 ```bash
-make e2e-gui
+just e2e-gui
 ```

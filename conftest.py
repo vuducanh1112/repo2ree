@@ -3,7 +3,7 @@
 Hypothesis defaults its home directory to ``Path.cwd() / ".hypothesis"``, so the
 example database and the generator caches land wherever pytest happened to be
 invoked from — this tree had accumulated both ``./.hypothesis`` and
-``./core/.hypothesis``, meaning a failing example found by ``make core-tests``
+``./core/.hypothesis``, meaning a failing example found by ``just core-tests``
 was invisible to a run started from ``core/``. Anchoring the home directory to
 the repo root makes the location a property of the repo rather than of the
 shell, and puts it under the gitignored artifact root the rest of the suite

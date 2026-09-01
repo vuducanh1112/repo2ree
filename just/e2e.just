@@ -4,6 +4,12 @@ E2E_TOOLS_BUNDLE := E2E_BUNDLE_DIR + "/tools"
 API_DEMO_CAST := env("API_DEMO_CAST", ROOT + "/test-artifacts/casts/api-agent-walkthrough.cast")
 API_DEMO_TRANSCRIPT := env("API_DEMO_TRANSCRIPT", replace_regex(API_DEMO_CAST, "[.]cast$", ".md"))
 
+# Source-run suites are measured because the host can collect coverage from
+# their backend and agent processes. Image-backed variants deliberately are
+# not: they validate the deployed topology, whose container processes are
+# outside host instrumentation. The -on-stack recipes attach without owning
+# lifecycle; the -stack-* recipes own startup and always tear down volumes.
+
 # Build the executor and tools bundles injected into workbenches.
 [group('E2E tests')]
 e2e-bundles: stage-nix-sources
@@ -13,7 +19,7 @@ e2e-bundles: stage-nix-sources
 
 [private]
 _source-stack-playwright PROJECT AGENTS:
-    REPO2REE_TASK_RUNNER=just E2E_WORKBENCH_IMAGE={{ quote(E2E_WORKBENCH_IMAGE) }} E2E_WORKBENCH_DOCKER_MODE={{ quote(E2E_WORKBENCH_DOCKER_MODE) }} E2E_EXEC_BUNDLE={{ quote(E2E_EXEC_BUNDLE) }} E2E_TOOLS_BUNDLE={{ quote(E2E_TOOLS_BUNDLE) }} scripts/test-stack/e2e-stack.sh --project {{ quote(PROJECT) }} --agents {{ quote(AGENTS) }}
+    E2E_WORKBENCH_IMAGE={{ quote(E2E_WORKBENCH_IMAGE) }} E2E_WORKBENCH_DOCKER_MODE={{ quote(E2E_WORKBENCH_DOCKER_MODE) }} E2E_EXEC_BUNDLE={{ quote(E2E_EXEC_BUNDLE) }} E2E_TOOLS_BUNDLE={{ quote(E2E_TOOLS_BUNDLE) }} scripts/test-stack/e2e-stack.sh --project {{ quote(PROJECT) }} --agents {{ quote(AGENTS) }}
 
 # Run the measured author-side browser E2E tier.
 [group('E2E tests')]
@@ -35,7 +41,7 @@ demo-gui-code-ocean: e2e-bundles (_source-stack-playwright "demo-gui-code-ocean"
 [group('Demos')]
 demo-api API_DEMO_CAST=API_DEMO_CAST API_DEMO_TRANSCRIPT=API_DEMO_TRANSCRIPT: e2e-bundles
     @mkdir -p "$(dirname {{ quote(API_DEMO_CAST) }})"
-    REPO2REE_TASK_RUNNER=just E2E_WORKBENCH_IMAGE={{ quote(E2E_WORKBENCH_IMAGE) }} E2E_WORKBENCH_DOCKER_MODE={{ quote(E2E_WORKBENCH_DOCKER_MODE) }} E2E_EXEC_BUNDLE={{ quote(E2E_EXEC_BUNDLE) }} E2E_TOOLS_BUNDLE={{ quote(E2E_TOOLS_BUNDLE) }} scripts/test-stack/e2e-stack.sh --script {{ quote(ROOT + "/api/tests/e2e/api_agent_walkthrough.py") }} --tier demo-api --record {{ quote(API_DEMO_CAST) }}
+    E2E_WORKBENCH_IMAGE={{ quote(E2E_WORKBENCH_IMAGE) }} E2E_WORKBENCH_DOCKER_MODE={{ quote(E2E_WORKBENCH_DOCKER_MODE) }} E2E_EXEC_BUNDLE={{ quote(E2E_EXEC_BUNDLE) }} E2E_TOOLS_BUNDLE={{ quote(E2E_TOOLS_BUNDLE) }} scripts/test-stack/e2e-stack.sh --script {{ quote(ROOT + "/api/tests/e2e/api_agent_walkthrough.py") }} --tier demo-api --record {{ quote(API_DEMO_CAST) }}
     python3 {{ quote(ROOT + "/api/tests/e2e/render_cast_transcript.py") }} {{ quote(API_DEMO_CAST) }} {{ quote(API_DEMO_TRANSCRIPT) }}
 
 # Start the local image-backed stack.

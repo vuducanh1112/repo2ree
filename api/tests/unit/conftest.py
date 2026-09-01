@@ -41,7 +41,7 @@ os.environ["RUN_REGISTRY_DIR"] = str(_state_dir / "runs")
 
 # OpenTelemetry's set_tracer_provider is honored once per process, so two API
 # tiers in one pytest run share a single provider baked to whichever tier booted
-# first — the other's spans silently flow to the wrong file. make runs the tiers
+# first — the other's spans silently flow to the wrong file. Just runs the tiers
 # as separate processes; this turns the unsafe `pytest api/tests` path into a
 # loud, explained failure instead of wrong traces.
 _claimed = os.environ.get("_REPO2REE_TRACE_TIER")
@@ -49,7 +49,7 @@ if _claimed and _claimed != "api-unit":
     raise RuntimeError(
         f"Both {_claimed} and api-unit tiers loaded in one pytest process; their spans "
         "collide on OpenTelemetry's set-once global provider. Run them separately: "
-        "`make api-unit-tests` / `make api-integration-tests`, or `pytest api/tests/unit` "
+        "`just api-unit-tests` / `just api-integration-tests`, or `pytest api/tests/unit` "
         "and `pytest api/tests/integration`."
     )
 os.environ["_REPO2REE_TRACE_TIER"] = "api-unit"

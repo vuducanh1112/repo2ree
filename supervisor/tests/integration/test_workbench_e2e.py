@@ -12,7 +12,7 @@ container, real core handlers on a real ``/ree`` volume, the real
 
 Nothing is mocked or redirected. The cost is that it needs Docker and the
 bundles, so the whole module is skipped (never faked) when either is absent.
-Build the bundles with ``make e2e-bundles``.
+Build the bundles with ``just e2e-bundles``.
 
 Flow exercised over the real agent:
     provision -> get-ree -> acquire_source (staged upload, no network)
@@ -118,7 +118,7 @@ def _bundles_present() -> bool:
 
 pytestmark = pytest.mark.skipif(
     not _docker_available() or not _bundles_present(),
-    reason="real workbench e2e needs docker + the executor/tools bundles (run: make e2e-bundles)",
+    reason="real workbench e2e needs docker + the executor/tools bundles (run: just e2e-bundles)",
 )
 
 

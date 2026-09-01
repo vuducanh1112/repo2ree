@@ -64,7 +64,7 @@ def _docker_available() -> bool:
 
 pytestmark = pytest.mark.skipif(
     not _docker_available() or not bundles_present(),
-    reason="real-server tier needs docker + the executor/tools bundles (run: make e2e-bundles)",
+    reason="real-server tier needs docker + the executor/tools bundles (run: just e2e-bundles)",
 )
 
 

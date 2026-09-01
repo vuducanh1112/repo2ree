@@ -10,7 +10,7 @@ app's generated document drifts from the committed file, so every contract
 change shows up as a diff of ``contracts/openapi.json`` in review. After an
 intentional API change, regenerate:
 
-    make api-openapi        # or: python -m repo2ree_api.export_openapi
+    just api-openapi        # or: python -m repo2ree_api.export_openapi
 """
 
 from __future__ import annotations

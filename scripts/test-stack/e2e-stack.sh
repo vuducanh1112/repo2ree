@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run the e2e stack: backend + workbench agent(s) + a playwright project,
-# with readiness polling and teardown. Invoked by the Makefile e2e targets.
+# with readiness polling and teardown. Invoked by the Just E2E recipes.
 # `--agents <n>` sets how many agents connect (default 1). Specs that need
 # more than the stack offers (e.g. the multi-agent spec, which needs 2) skip
 # themselves, so any project runs against any agent count.
@@ -33,10 +33,10 @@
 #
 # The tier selects its own data directory under
 # test-artifacts/coverage/python/data/<tier>/, so it never blends with the pytest
-# tiers or with another stack tier. `make be-coverage-combined` unions them. See
-# the tier map in mk/be-tests.mk.
+# tiers or with another stack tier. `just be-coverage-combined` unions them. See
+# the tier map in just/be-tests.just.
 #
-# Debugging without instrumentation: bring up a stack yourself (`make stack-up`)
+# Debugging without instrumentation: bring up a stack yourself (`just stack-up`)
 # and use the `-on-stack` targets, or point playwright at a single spec. Those
 # paths are unmeasured because the processes are in containers, which is also
 # what keeps an un-instrumented topology on the push gate.
@@ -347,12 +347,8 @@ echo ">> backend coverage ($tier tier: server + $agents agent(s))"
 # cross-tier combine.
 COVERAGE_FILE=$coverage_file coverage combine
 COVERAGE_FILE=$coverage_file coverage report
-# Report through the selected task-runner rule so Make and Just share this
-# stack driver without either implementation delegating to the other.
-case "${REPO2REE_TASK_RUNNER:-make}" in
-    make) make -s be-coverage-report TIER="$tier" ;;
-    just) just --quiet be-coverage-report "$tier" ;;
-    *) echo "unknown REPO2REE_TASK_RUNNER: $REPO2REE_TASK_RUNNER" >&2; exit 2 ;;
-esac
+# Keep report layout centralized in the task recipe until the coverage shell is
+# extracted into its own lintable script.
+just --quiet be-coverage-report "$tier"
 
 exit "$status"

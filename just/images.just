@@ -1,9 +1,17 @@
+# Normal image recipes build and load :local images. Archive recipes are an
+# explicit credential-free handoff: build tarballs in the development
+# container, then load and publish them on a host with registry credentials.
+# The archive set is stamped with its clean Git revision so the host cannot
+# accidentally publish it under a different candidate name.
+
 # Create archive output directory.
 [group('Images')]
 image-archive-dir IMAGE_ARCHIVE_DIR=IMAGE_ARCHIVE_DIR:
     @mkdir -p {{ quote(IMAGE_ARCHIVE_DIR) }}
 
 # Make untracked Python sources visible to Nix source filtering.
+# Nix only includes Git-visible sources, so intent-to-add lets local builds see
+# new Python files without staging their contents or changing the index state.
 [group('Images')]
 stage-nix-sources:
     @git add -N protocol/src core/src/repo2ree_core/ executor/src/repo2ree_executor agent/src 2>/dev/null || true

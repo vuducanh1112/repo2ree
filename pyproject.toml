@@ -13,7 +13,7 @@ members = ["protocol", "core", "supervisor", "api", "executor", "agent"]
 [dependency-groups]
 dev = [
     "httpx~=0.28.1",
-    # Architecture contracts (`make arch-checks`): the backend counterpart of the
+    # Architecture contracts (`just arch-checks`): the backend counterpart of the
     # GUI's dependency-cruiser rules. Neither ruff nor mypy sees the import
     # graph, so layering is only enforced here.
     "import-linter~=2.13.0",
@@ -28,7 +28,7 @@ dev = [
     # The single ruff version for this tree: the gate, the commit hook and a
     # local `ruff` invocation all resolve to this one. It replaced a pinned
     # ruff-pre-commit hook that drifted to a newer ruff than this pin, which is
-    # how an RUF043 finding reached a commit `make be-checks` had just passed.
+    # how an RUF043 finding reached a commit `just be-checks` had just passed.
     "ruff~=0.14.5",
     "syrupy~=5.0.0",
 ]
@@ -57,7 +57,7 @@ markers = [
 ]
 
 # Coverage measures the six workspace src trees. Listing them here lets the
-# Makefile pass a bare `--cov` (no per-package paths) and keeps the same
+# Just recipes pass a bare `--cov` (no per-package paths) and keep the same
 # config for a direct `pytest --cov` run. Branch coverage is on because a lot
 # of the value is in the error/cancel branches the container-free tier added.
 [tool.coverage.run]
@@ -65,7 +65,7 @@ branch = true
 # Fallback data file for an ad-hoc `pytest --cov` with no tier chosen. The
 # measured tiers (unit, integration, e2e, demo) each override this via
 # COVERAGE_FILE to write into their own directory under
-# test-artifacts/coverage/python/data/<tier>/ — see mk/be-tests.mk. One directory
+# test-artifacts/coverage/python/data/<tier>/ — see just/be-tests.just. One directory
 # per tier, rather than one suffixed file per tier, because `coverage combine`
 # treats sibling `.coverage.*` files as its own parallel-mode output and
 # consumes them: separate directories make a tier's data impossible to eat by
@@ -205,13 +205,13 @@ extend-ignore = [
 # whole protocol package depend on packages the workbench need not install.
 "*/repo2ree_protocol/tracing.py" = ["PLC0415"]
 # `scripts/` holds developer tools invoked as `python scripts/x.py`, not an
-# importable package (`make scripts-checks` lints it separately from the six
+# importable package (`just scripts-checks` lints it separately from the six
 # workspace packages). A command-line tool with no stdout is useless, and the
 # directory has no `__init__.py` for the same reason the test dirs do not.
 "scripts/*" = ["T201", "INP001"]
 
 # ================================================
-# Architecture contracts (`make arch-checks`)
+# Architecture contracts (`just arch-checks`)
 # ================================================
 #
 # The backend counterpart of the GUI's dependency-cruiser rules

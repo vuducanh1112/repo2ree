@@ -147,7 +147,7 @@ export default defineConfig({
       },
     },
     {
-      // Long-running, external-image demos. Kept out of `make demo-gui` so the
+      // Long-running, external-image demos. Kept out of `just demo-gui` so the
       // ordinary narrated demo remains quick and self-contained.
       name: "demo-gui-code-ocean",
       testDir: "./tests/demo/code-ocean",

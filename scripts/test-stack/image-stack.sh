@@ -12,7 +12,7 @@
 #   image-stack.sh api-url       print the backend base URL for this context
 #
 # Images default to the :local workbench builds (`up` expects them to exist —
-# build with `make images`). To run the same flow against pushed images,
+# build with `just images`). To run the same flow against pushed images,
 # point STACK_IMAGE_REPO/STACK_IMAGE_TAG at a registry — registry refs are
 # force-pulled on `up`, so moving tags like :edge always run fresh:
 #
@@ -207,7 +207,7 @@ up() {
             # is "missing"), so the run wouldn't test what the registry holds.
             */*) echo ">> pulling $img"; docker pull "$img" ;;
             *) docker image inspect "$img" >/dev/null 2>&1 \
-                || { echo "$img not found — build the local images first: make images" >&2; exit 1; } ;;
+                || { echo "$img not found — build the local images first: just images" >&2; exit 1; } ;;
         esac
     done
 
@@ -279,11 +279,11 @@ check() {
     attach_caller_to_control_plane
     resolve_urls
     curl -fsS --connect-timeout 1 --max-time 1 "$api_url/" >/dev/null \
-        || { echo "backend not reachable at $api_url — start the image stack first (make stack-up)" >&2; exit 1; }
+        || { echo "backend not reachable at $api_url — start the image stack first (just stack-up)" >&2; exit 1; }
     agents_connected 1 \
-        || { echo "no workbench agent connected — start the agent container (make stack-up)" >&2; exit 1; }
+        || { echo "no workbench agent connected — start the agent container (just stack-up)" >&2; exit 1; }
     curl -fsS --connect-timeout 1 --max-time 1 "$gui_url/" >/dev/null \
-        || { echo "GUI not reachable at $gui_url — start the image stack first (make stack-up)" >&2; exit 1; }
+        || { echo "GUI not reachable at $gui_url — start the image stack first (just stack-up)" >&2; exit 1; }
 }
 
 case "${1:-}" in

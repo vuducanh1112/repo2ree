@@ -1,5 +1,8 @@
 JOURNAL_TRACE := env("JOURNAL_TRACE", "test-artifacts/traces/api-integration/by-test/api_tests_integration_test_api_full_pipeline.py_test_full_authoring_pipeline.ndjson")
 
+# Journals derive one cross-component page per captured run trace. The trace is
+# an integration-test artifact; absence is an error, never an empty success.
+
 # Generate one cross-component journal page per captured workflow.
 [group('Diagrams')]
 journals JOURNAL_TRACE=JOURNAL_TRACE:

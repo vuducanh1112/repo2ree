@@ -4,7 +4,7 @@ Everything here is imported *by name* from the tier's test modules, which is
 why it is not in ``conftest.py``. Two suites in this run own a file called
 ``conftest.py`` — this tier's and the supervisor's — and pytest imports both
 under the bare module name ``conftest``, so the last one imported is the one a
-``from conftest import ...`` finds. Running the tiers together (``make
+``from conftest import ...`` finds. Running the tiers together (``just
 be-integration-tests`` does) then fails at collection with names that exist in
 neither file. A uniquely named module cannot collide, the same reason
 ``core/tests/unit/scriptinfer_helpers.py`` is its own file.
@@ -33,7 +33,7 @@ SNAPSHOT_DIR = _REPO_ROOT / "test-artifacts" / "ree-snapshots" / "api-integratio
 # The bench this whole tier provisions from: upstream dind pinned by digest
 # (keep in sync with the catalog default in api/src/repo2ree_api/settings.py).
 # The in-test agent injects the executor/tools bundles (built by
-# `make e2e-bundles`), so the tier drives the exact provisioning path
+# `just e2e-bundles`), so the tier drives the exact provisioning path
 # production uses. Passed per-request like a real client; change here to point
 # the tier at a different image. First run pulls the image.
 WORKBENCH_IMAGE = (

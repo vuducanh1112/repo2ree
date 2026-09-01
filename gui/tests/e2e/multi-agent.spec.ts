@@ -10,7 +10,7 @@ import { test } from "./helpers/fixtures";
  *
  * The suite runs against whatever stack it is pointed at, so this spec
  * checks the connected-agent count itself and skips on single-agent stacks;
- * `make e2e-gui` / `stack-up` connect E2E_AGENTS (default 2) agents so it
+ * `just e2e-gui` / `just stack-up` connect E2E_AGENTS (default 2) agents so it
  * normally runs.
  */
 

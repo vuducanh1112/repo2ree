@@ -5,6 +5,13 @@ COVERAGE_PACKAGES := "protocol core supervisor api executor agent"
 UNIT_SUITES := "protocol/tests core/tests/unit api/tests/unit supervisor/tests/unit executor/tests agent/tests"
 INTEGRATION_SUITES := "core/tests/integration api/tests/integration supervisor/tests/integration"
 
+# Running a measured tier is the only operation that writes that tier's data.
+# Per-package recipes stay unmeasured so a partial debugging run cannot make a
+# tier report look complete. Stack tiers use parallel coverage files (server
+# plus agents); the stack driver folds those into the same single-file shape as
+# pytest tiers before rendering. Combined reports use --keep so their inputs
+# remain available for regenerating individual tier reports.
+
 # Run protocol tests without recording tier coverage.
 [group('Backend tests')]
 protocol-tests:
@@ -101,6 +108,9 @@ be-coverage-report TIER=env("TIER", ""):
     echo ">> $tier reports: {{ COVERAGE_HTML }}/$tier (by module: .../by-module/<package>)"
 
 # Generate per-test coverage attribution over both pytest tiers.
+# This is a separate view, not another tier: contexts make the database larger,
+# and API unit and integration tests remain separate processes because their
+# OpenTelemetry providers cannot safely share one interpreter.
 [group('Coverage')]
 be-coverage-context: e2e-bundles
     COVERAGE_FILE={{ quote(ROOT + "/" + COVERAGE_DATA + "/context/.coverage") }} pytest {{ UNIT_SUITES }} --cov --cov-context=test --cov-report=

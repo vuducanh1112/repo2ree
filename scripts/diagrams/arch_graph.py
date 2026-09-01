@@ -338,7 +338,7 @@ def main() -> int:
     parser.add_argument(
         "--list-packages",
         action="store_true",
-        help="print the declared root packages and exit (the Makefile builds its diagram list from this)",
+        help="print the declared root packages and exit (the Just recipe builds its diagram list from this)",
     )
     parser.add_argument(
         "--collapse",

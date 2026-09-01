@@ -30,7 +30,7 @@ manuscript work. They are a research corpus, not a Diátaxis section.
 
 ## Website publication boundary
 
-`make docs-site` publishes only `docs/public/` and assets stored below it. The
+`just docs-site` publishes only `docs/public/` and assets stored below it. The
 generated static site is disposable and lives under `sites/docs/`.
 
 Engineering docs, research notes, and unpublished diagrams stay in the

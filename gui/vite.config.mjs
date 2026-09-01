@@ -24,7 +24,7 @@ export default defineConfig({
     //
     // Projects split the *run*, not the measurement: `coverage` stays here, at
     // the root, and both projects report into the one scope below. So this stays
-    // a single tier with a single number, which is what `make gui-tests` means.
+    // a single tier with a single number, which is what `just gui-tests` means.
     projects: [
       {
         extends: true,
@@ -57,7 +57,7 @@ export default defineConfig({
         },
       },
     ],
-    // Coverage for `make gui-tests`, which always measures. This is the whole of
+    // Coverage for `just gui-tests`, which always measures. This is the whole of
     // the GUI's coverage — the `node` runtime under the shared artifact root,
     // sibling to the python reports. The Playwright suites record none.
     // reportsDirectory resolves against this config's directory, not the cwd,
