@@ -347,9 +347,12 @@ echo ">> backend coverage ($tier tier: server + $agents agent(s))"
 # cross-tier combine.
 COVERAGE_FILE=$coverage_file coverage combine
 COVERAGE_FILE=$coverage_file coverage report
-# Report through the same make rule the pytest tiers use, so a stack tier
-# gets the identical total + per-package breakdown rather than a second,
-# drifting variant. All coverage layout lives in mk/be-tests.mk.
-make -s be-coverage-report TIER="$tier"
+# Report through the selected task-runner rule so Make and Just share this
+# stack driver without either implementation delegating to the other.
+case "${REPO2REE_TASK_RUNNER:-make}" in
+    make) make -s be-coverage-report TIER="$tier" ;;
+    just) just --quiet be-coverage-report "$tier" ;;
+    *) echo "unknown REPO2REE_TASK_RUNNER: $REPO2REE_TASK_RUNNER" >&2; exit 2 ;;
+esac
 
 exit "$status"

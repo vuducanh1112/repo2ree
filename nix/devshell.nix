@@ -24,6 +24,7 @@ pkgs.mkShell {
     nodejs_24
     python313Packages.uv
     kubectl
+    just
 
     # graphviz for generating graphs with dependency cruiser
     graphviz
