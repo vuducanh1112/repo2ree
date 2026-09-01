@@ -5,15 +5,15 @@
 # accidentally publish it under a different candidate name.
 
 # Create archive output directory.
-[group('Images')]
-image-archive-dir IMAGE_ARCHIVE_DIR=IMAGE_ARCHIVE_DIR:
+[private]
+_image-archive-dir:
     @mkdir -p {{ quote(IMAGE_ARCHIVE_DIR) }}
 
 # Make untracked Python sources visible to Nix source filtering.
 # Nix only includes Git-visible sources, so intent-to-add lets local builds see
 # new Python files without staging their contents or changing the index state.
-[group('Images')]
-stage-nix-sources:
+[private]
+_stage-nix-sources:
     @git add -N protocol/src core/src/repo2ree_core/ executor/src/repo2ree_executor agent/src 2>/dev/null || true
 
 # Build and load the GUI image.
@@ -34,7 +34,7 @@ backend-image:
 
 # Build and load the self-contained agent image.
 [group('Images')]
-agent-image: stage-nix-sources
+agent-image: _stage-nix-sources
     @echo "Building agent image..."
     nix build .#agent-image
     @echo "Loading into docker..."
@@ -54,7 +54,7 @@ gui-npm-hash:
 
 # Build a loadable GUI image archive.
 [group('Image archives')]
-gui-image-archive IMAGE_ARCHIVE_DIR=IMAGE_ARCHIVE_DIR: (image-archive-dir IMAGE_ARCHIVE_DIR)
+gui-image-archive: _image-archive-dir
     @echo "Building GUI image archive..."
     nix build .#gui-image
     cp -fL result {{ quote(IMAGE_ARCHIVE_DIR + "/repo2ree-gui-local.tar") }}
@@ -62,13 +62,13 @@ gui-image-archive IMAGE_ARCHIVE_DIR=IMAGE_ARCHIVE_DIR: (image-archive-dir IMAGE_
 
 # Save the loaded backend image as an archive.
 [group('Image archives')]
-backend-image-archive IMAGE_ARCHIVE_DIR=IMAGE_ARCHIVE_DIR: backend-image (image-archive-dir IMAGE_ARCHIVE_DIR)
+backend-image-archive: backend-image _image-archive-dir
     docker save repo2ree-backend:local -o {{ quote(IMAGE_ARCHIVE_DIR + "/repo2ree-backend-local.tar") }}
     @printf 'Wrote %s\n' {{ quote(IMAGE_ARCHIVE_DIR + "/repo2ree-backend-local.tar") }}
 
 # Build a loadable agent image archive.
 [group('Image archives')]
-agent-image-archive IMAGE_ARCHIVE_DIR=IMAGE_ARCHIVE_DIR: stage-nix-sources (image-archive-dir IMAGE_ARCHIVE_DIR)
+agent-image-archive: _stage-nix-sources _image-archive-dir
     @echo "Building agent image archive..."
     nix build .#agent-image
     cp -fL result {{ quote(IMAGE_ARCHIVE_DIR + "/repo2ree-agent-local.tar") }}
@@ -76,13 +76,13 @@ agent-image-archive IMAGE_ARCHIVE_DIR=IMAGE_ARCHIVE_DIR: stage-nix-sources (imag
 
 # Build and stamp the complete clean-tree image archive set.
 [group('Image archives')]
-image-archives IMAGE_ARCHIVE_DIR=IMAGE_ARCHIVE_DIR: require-clean-tree (gui-image-archive IMAGE_ARCHIVE_DIR) (backend-image-archive IMAGE_ARCHIVE_DIR) (agent-image-archive IMAGE_ARCHIVE_DIR)
+image-archives: _require-clean-tree gui-image-archive backend-image-archive agent-image-archive
     @git describe --always > {{ quote(IMAGE_ARCHIVE_DIR + "/IMAGE_CANDIDATE_REV") }}
     @echo ">> stamped candidate: $(cat {{ quote(IMAGE_ARCHIVE_DIR + "/IMAGE_CANDIDATE_REV") }})"
 
 # Load every image from an archive set.
 [group('Image archives')]
-load-image-archives IMAGE_ARCHIVE_DIR=IMAGE_ARCHIVE_DIR:
+load-image-archives:
     #!/usr/bin/env bash
     set -euo pipefail
     for image in repo2ree-gui repo2ree-backend repo2ree-agent; do

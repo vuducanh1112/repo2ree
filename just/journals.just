@@ -5,7 +5,7 @@ JOURNAL_TRACE := env("JOURNAL_TRACE", "test-artifacts/traces/api-integration/by-
 
 # Generate one cross-component journal page per captured workflow.
 [group('Diagrams')]
-journals JOURNAL_TRACE=JOURNAL_TRACE:
+journals:
     #!/usr/bin/env bash
     set -euo pipefail
     journal_trace={{ quote(JOURNAL_TRACE) }}

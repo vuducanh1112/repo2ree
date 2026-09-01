@@ -4,10 +4,6 @@ DOCS_DEMO_ASSET_DIR := "docs/public/tutorials/assets/create-first-ree"
 [group('Documentation')]
 docs-checks: docs-style docs-links-local docs-site
 
-# Compatibility alias for the former documentation lint target.
-[group('Documentation')]
-docs-lint: docs-style
-
 # Lint documentation prose.
 [group('Documentation')]
 docs-style:

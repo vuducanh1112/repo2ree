@@ -22,21 +22,21 @@ evidence-graph:
     fi
 
 [private]
-_require-filmstrip-capture capture=FILMSTRIP_CAPTURE:
-    @test -f {{ quote(capture) }} || { printf 'no capture at %s\n' {{ quote(capture) }} >&2; echo "run: just e2e-bundles && pytest api/tests/integration" >&2; exit 1; }
+_require-filmstrip-capture:
+    @test -f {{ quote(FILMSTRIP_CAPTURE) }} || { printf 'no capture at %s\n' {{ quote(FILMSTRIP_CAPTURE) }} >&2; echo "run: just e2e-bundles && pytest api/tests/integration" >&2; exit 1; }
     @mkdir -p {{ quote(DOMAIN_DIR) }}
 
 # Render audit state across every captured authoring stage.
 [group('Diagrams')]
-ree-filmstrip FILMSTRIP_CAPTURE=FILMSTRIP_CAPTURE: (_require-filmstrip-capture FILMSTRIP_CAPTURE)
+ree-filmstrip: _require-filmstrip-capture
     python scripts/diagrams/ree_filmstrip.py --frames {{ quote(FILMSTRIP_CAPTURE) }} -o {{ quote(DOMAIN_DIR + "/ree-filmstrip.svg") }}
 
 # Render every aggregate field changed by each authoring stage.
 [group('Diagrams')]
-ree-timeline FILMSTRIP_CAPTURE=FILMSTRIP_CAPTURE: (_require-filmstrip-capture FILMSTRIP_CAPTURE)
+ree-timeline: _require-filmstrip-capture
     python scripts/diagrams/ree_filmstrip.py -f timeline --frames {{ quote(FILMSTRIP_CAPTURE) }} -o {{ quote(DOMAIN_DIR + "/ree-timeline.html") }}
 
 # Render the finished aggregate as browsable HTML.
 [group('Diagrams')]
-ree-browser FILMSTRIP_CAPTURE=FILMSTRIP_CAPTURE: (_require-filmstrip-capture FILMSTRIP_CAPTURE)
+ree-browser: _require-filmstrip-capture
     python scripts/diagrams/ree_filmstrip.py -f browse --frames {{ quote(FILMSTRIP_CAPTURE) }} -o {{ quote(DOMAIN_DIR + "/ree-browser.html") }}

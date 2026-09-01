@@ -347,8 +347,8 @@ echo ">> backend coverage ($tier tier: server + $agents agent(s))"
 # cross-tier combine.
 COVERAGE_FILE=$coverage_file coverage combine
 COVERAGE_FILE=$coverage_file coverage report
-# Keep report layout centralized in the task recipe until the coverage shell is
-# extracted into its own lintable script.
-just --quiet be-coverage-report "$tier"
+# The standalone renderer is also used by the Just recipe, so report shape has
+# one implementation without making this stack driver invoke a task runner.
+scripts/coverage/python-coverage.sh render "$tier"
 
 exit "$status"

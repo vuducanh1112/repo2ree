@@ -296,9 +296,9 @@ Comparing one package across tiers is often the useful read: `agent` is 70% in
 `unit` and 87% in `combined`, because its docker runtime only runs under the
 stack tiers.
 
-All of this lives in `just/be-tests.just`: the tier definitions, the package
-list (`COVERAGE_PACKAGES`), and the report implementation every tier shares.
-To re-render a tier from data already measured, without repeating its suite:
+Tier definitions live in `just/be-tests.just`; package breakdown and shared
+report rendering live in `scripts/coverage/python-coverage.sh`. To re-render a
+tier from data already measured, without repeating its suite:
 
 ```bash
 just be-coverage-report unit

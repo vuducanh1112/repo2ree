@@ -16,6 +16,8 @@ REGISTRIES := env("REGISTRIES", GHCR_REGISTRY + "/" + GHCR_NAMESPACE + " " + DOC
 E2E_WORKBENCH_IMAGE := env("E2E_WORKBENCH_IMAGE", "")
 E2E_WORKBENCH_DOCKER_MODE := env("E2E_WORKBENCH_DOCKER_MODE", "dind")
 E2E_AGENTS := env("E2E_AGENTS", "2")
+STACK_IMAGE_REPO := env("STACK_IMAGE_REPO", DOCKERHUB_REGISTRY + "/" + DOCKERHUB_NAMESPACE)
+STACK_IMAGE_TAG := env("STACK_IMAGE_TAG", IMAGE_TAG)
 
 DIAGRAM_DIR := env("DIAGRAM_DIR", "dist/diagrams")
 ARCH_DIR := env("ARCH_DIR", DIAGRAM_DIR + "/architecture")
@@ -37,8 +39,8 @@ import 'just/images.just'
 import 'just/publish.just'
 
 # Refuse workflows whose outputs must correspond to a committed tree.
-[group('Maintenance')]
-require-clean-tree:
+[private]
+_require-clean-tree:
     @test -z "$(git status --porcelain)" || { echo "working tree dirty — commit first, so published images match a commit"; exit 1; }
 
 # Generate every architecture, domain, and run-journal diagram.
