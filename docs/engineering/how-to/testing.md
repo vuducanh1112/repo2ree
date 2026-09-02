@@ -38,7 +38,7 @@
 
 ## Before Docker-Gated Tests
 
-Build the executor/tools bundles the agent injects into benches:
+Build the executor/tools bundles the provider injects into each workbench:
 
 ```bash
 just e2e-bundles
@@ -46,7 +46,7 @@ just e2e-bundles
 
 The Docker-gated tiers skip when Docker or the bundles are absent. They do
 not fake the workbench path; the first run pulls the pinned `docker:dind`
-bench image.
+image.
 
 ## Backend Checks
 
@@ -64,7 +64,9 @@ just core-checks
 just supervisor-checks
 just api-checks
 just executor-checks
-just agent-checks
+just docker-support-checks
+just provider-checks
+just workbench-checks
 ```
 
 These targets run `ruff check`, `ruff format`, and `mypy` for their package.
@@ -172,7 +174,7 @@ Three details matter when reading coverage:
   prerequisite is why `just be-integration-tests` triggers a nix build: the tier
   must not run against bundles from an older tree.)
 - **The image-backed variants are unmeasured, permanently.** `-on-stack`,
-  `-stack-local` and `-stack-published` run the backend and agents *inside
+  `-stack-local` and `-stack-published` run the backend and workbenches *inside
   containers*, beyond the host coverage process. Source-run suites produce the
   numbers; image-backed suites prove the production topology works without
   coverage instrumentation.
@@ -213,14 +215,14 @@ The Playwright suites drive a real browser but record no JavaScript coverage.
 They used to: a fixture captured V8 per test and monocart merged it into
 `coverage/browser/<tier>/`. That was removed, because the numbers were wrong.
 
-Vite's dev-server sourcemaps identify a source by **basename alone** — `Agent.ts`,
-not `src/core/agent/Agent.ts`. The GUI has 7 ambiguous basenames covering 18
+Vite's dev-server sourcemaps identify a source by **basename alone** — `Workbench.ts`,
+not `src/core/workbench/Workbench.ts`. The GUI has 7 ambiguous basenames covering 18
 files, and a single e2e test loads all five distinct `index.ts` modules; their
 coverage was being merged into one entry with line numbers from different files
 landing on top of each other. Nothing reported a problem.
 
 UI coverage belongs in the `node` tier instead, where Vitest transforms the files
-itself and records their real paths (`SF:src/core/agent/Agent.ts`). That is also
+itself and records their real paths (`SF:src/core/workbench/Workbench.ts`). That is also
 the better instrument for the question: coverage asks "does this code have a test
 exercising it", and a component test answers that directly, in seconds, where an
 e2e run only shows a line executed while a workbench was being provisioned.
@@ -283,7 +285,7 @@ per-package totals:
    supervisor   82%
    api          86%
    executor     81%
-   agent        70%
+   workbench        70%
    TOTAL        88%
 ```
 
@@ -292,7 +294,7 @@ extra test time and exist for every tier, including the stack tiers, which are
 a single stack run and could never be decomposed by suite. They answer "how
 well covered is this package", with every suite in the tier contributing.
 
-Comparing one package across tiers is often the useful read: `agent` is 70% in
+Comparing one package across tiers is often the useful read: `workbench` is 70% in
 `unit` and 87% in `combined`, because its docker runtime only runs under the
 stack tiers.
 
@@ -334,7 +336,7 @@ just be-coverage-context
 Two things to know when reading a report:
 
 - **The `unit` tier is a floor, not the truth.** The docker-gated transport
-  (supervisor manager, hbom profilers, the agent's docker runtime) is not
+  (supervisor manager, hbom profilers, the provider's docker lifecycle) is not
   exercised there, so it reads as uncovered. That is what the `integration`
   tier lifts.
 - **The executor reads 0% outside the `unit` tier.** `repo2ree-exec` runs
@@ -424,13 +426,13 @@ service DNS. `scripts/test-stack/image-stack.sh` selects the correct address.
 
 One-command flows end with `stack-clean`, which removes Compose volumes,
 leftover workbenches, and per-REE volumes. For a manually started stack, use
-`stack-down` to preserve backend state and agent identity, or `stack-clean` to
+`stack-down` to preserve backend state and workbench identity, or `stack-clean` to
 remove them. Source-run `e2e-*` targets also prune unreachable workbenches.
 After an interrupted run, invoke `just workbench-clean` directly.
 
 The prune also sweeps unreferenced anonymous volumes — the hex-named ones the
 bench image declares for itself (`docker:dind` declares `/var/lib/docker` and
-`/certs`), which no name can address once their container is gone. The agent
+`/certs`), which no name can address once their container is gone. The workbench
 now removes containers with `docker rm -v` so they no longer accumulate; the
 sweep is what reclaims the ones from earlier runs.
 
@@ -499,10 +501,10 @@ finally `e2e-gui-stack-local`. When it passes, the `:local` images it built are
 exactly what the push targets will publish.
 
 Every source-run stack suite is measured — `just e2e-gui` is the coverage run.
-This starts the backend *and* every agent under coverage — an e2e run is the
-heaviest exercise the agent package gets (docker runtime, control link,
-injection, chunked transfers), so measuring only the server reported that work
-as uncovered.
+This starts the backend *and* every compute-side process under coverage — an
+e2e run is the heaviest exercise those packages get (docker lifecycle, control
+link, injection, chunked transfers), so measuring only the server reported that
+work as uncovered.
 
 End-to-end tests provision real workbenches. Starting a workbench, booting its
 nested daemon, and building against a cold cache dominate test time. The golden
@@ -533,11 +535,11 @@ Useful locations:
 | `test-artifacts/playwright/<suite>/` | Playwright traces, screenshots, and videos. |
 | `test-artifacts/traces/<suite>/` | OpenTelemetry spans and workbench log snapshots. Keyed by *suite*, not by coverage tier: `api-unit/`, `api-integration/`, `api-real-server/`, `supervisor-e2e/`. |
 | `test-artifacts/property-based-tests/` | Hypothesis home: `<package>/` example databases plus its own caches. |
-| `test-artifacts/logs/` | `api-server.log` for plain runs, `backend-<tier>.log` and `agent-<tier>.log` for measured ones. |
+| `test-artifacts/logs/` | `api-server.log` for plain runs, `backend-<tier>.log` and `workbench-<tier>.log` for measured ones. |
 | `test-artifacts/casts/` | The API walkthrough `.cast` recording and its markdown transcript. |
 | `test-artifacts/fixtures/` | Archives the suites pack on demand from `examples/`; repacked every run. |
-| `test-artifacts/state/agents/` | Throwaway e2e agent identities; with `--agents N`, agent *i* > 1 uses `agents-<i>/`. State, not output — but still safe to delete. |
-| `dist/bundles/{exec,tools}` | Executor/tools bundles the agent injects — a build input, not an artifact. |
+| `test-artifacts/state/workbenches/` | Throwaway e2e workbench identities; with `--workbenches N`, workbench *i* > 1 uses `workbenches-<i>/`. State, not output — but still safe to delete. |
+| `dist/bundles/{exec,tools}` | Executor/tools bundles the workbench injects — a build input, not an artifact. |
 
 When a Docker-gated test fails, inspect both the workbench entrypoint log and
 the nested daemon log:

@@ -34,7 +34,7 @@ const GENERATED = "src/shell/infra/api/generated/";
 const COLOR_VALUE_STYLESHEETS = new Set([
   "src/shell/ui/theme/tokens.css",
   "src/shell/ui/theme/light.css",
-  "src/shell/ui/agents/LabCell.module.css",
+  "src/shell/ui/labs/LabCell.module.css",
   "src/shell/ui/app-shell/canvas/PodWidget.module.css",
   "src/shell/ui/app-shell/canvas/SpecimenPod.module.css",
   "src/shell/ui/app-shell/canvas/LabBackdrop.module.css",

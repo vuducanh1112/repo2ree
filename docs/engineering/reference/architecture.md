@@ -19,7 +19,7 @@ For product evolution, see
 The canonical system maps and their descriptions are published together in the
 [system architecture reference](../../public/reference/architecture/README.md).
 That section covers the ecosystem, runtime services and stores, control plane,
-workbench agent, pipeline-stage execution, and independent reproduction.
+workbench, pipeline-stage execution, and independent reproduction.
 
 This document begins where those maps stop: it specifies the cross-cutting
 implementation and target design for isolation, the durable `/ree` tree,
@@ -39,20 +39,20 @@ sources.
 The main REE path now has the intended package seam:
 
 - `api` calls `repo2ree_supervisor.WorkbenchManager`.
-- `supervisor` requests one persistent workbench per REE through the selected
-  agent and retains its opaque reference.
+- `supervisor` requests one persistent workbench per REE from a connected
+  provider and retains the opaque reference that provider mints.
 - Commands cross the host/workbench boundary as typed `repo2ree_protocol`
-  commands.
-- The workbench invokes `repo2ree-exec`, which calls `core` handlers inside the
-  container.
+  commands, over the workbench's own outbound connection.
+- The workbench service starts `repo2ree-exec`, which calls `core` handlers
+  inside the container.
 
 Current isolation is **Docker-in-Docker inside a privileged workbench**. The
-backend never touches a container runtime: workbenches are launched by the
-*agent* (its own deployable, holding the docker socket —
-[docker-compose.agent.yml](../../../docker-compose.agent.yml)) over the outbound WebSocket. The
-workbench does not receive the host socket. It runs its own daemon and stores
-`/var/lib/docker` in a per-REE volume
-([runtime.py](../../../agent/src/repo2ree_agent/runtimes/docker/runtime.py)).
+backend never touches a container runtime: workbenches are created by the
+*Docker provider* (its own deployable, holding the docker socket —
+[docker-compose.workbench.yml](../../../docker-compose.workbench.yml)) in response to
+capacity calls. The workbench does not receive the host socket. It runs its own
+daemon and stores `/var/lib/docker` in a per-REE volume
+([lifecycle.py](../../../provider/src/repo2ree_provider_docker/lifecycle.py)).
 
 The risk has moved: untrusted repo code no longer holds the host Docker socket
 on the main path, but the workbench is still privileged and not VM-backed.
@@ -88,14 +88,15 @@ hosts the fixed `/ree` layout and the tools that act on it:
 ┌─ CONTROL PLANE ───────────────────────────────────────────────────────┐
 │ API + supervisor: control metadata, workbench references, runs,      │
 │ and typed command dispatch. No container-runtime socket.              │
-└──────────────────────────────┬─────────────────────────────────────────┘
-                               │ agent-dialed WebSocket
-                               ▼
-┌─ RUNTIME HOST ────────────────────────────────────────────────────────┐
-│ Agent: owns the Docker socket, creates volumes and benches, injects   │
-│ repo2ree-exec + tools, and ferries typed frames.                      │
-│                               │                                      │
-│                               ▼                                      │
+└───────────┬──────────────────────────────────────┬────────────────────┘
+            │ provider-dialed WebSocket            │ workbench-dialed
+            │ (capacity only)                      │ WebSocket (commands)
+            ▼                                      │
+┌─ RUNTIME HOST ───────────────────────────────────┼────────────────────┐
+│ Docker provider: owns the Docker socket, creates volumes and benches, │
+│ injects repo2ree-exec + tools, and starts the workbench service.      │
+│                               │                  │                    │
+│                               ▼                  ▼                    │
 │  ┌─ WORKBENCH (today: privileged dind; target: VM-backed) ─────────┐ │
 │  │ /ree                                                           │ │
 │  │ ├── upstream/          extracted source                         │ │
@@ -106,8 +107,9 @@ hosts the fixed `/ree` layout and the tools that act on it:
 │  │ ├── runs/<id>/         logs and operation history               │ │
 │  │ └── reviews/<id>/      isolated reviewer attempt tree           │ │
 │  │                                                                  │ │
-│  │ repo2ree-exec/core read the workspace and write receipts and     │ │
-│  │ artifacts. Nested Docker activity uses the workbench daemon.     │ │
+│  │ The workbench service starts repo2ree-exec per command; core     │ │
+│  │ reads the workspace and writes receipts and artifacts. Nested     │ │
+│  │ Docker activity uses the workbench daemon.                        │ │
 │  └──────────────────────────────────────────────────────────────────┘ │
 └────────────────────────────────────────────────────────────────────────┘
 ```
@@ -164,25 +166,25 @@ The working environment boots from a substrate-only *environment image*. The
 default is upstream `docker:dind`, pinned by manifest-list digest in the
 backend image catalog (`api/src/repo2ree_api/settings.py`).
 
-At provision time, the agent injects two versioned bundles:
+At provision time, the provider injects two versioned bundles:
 
 - The `repo2ree-exec` Nix closure, mounted read-only at `/nix/store` from a
   content-addressed volume.
 - Tools such as `syft`, `git`, `curl`, and `tar`, plus TLS roots.
 
-The agent then verifies the workbench contract with `repo2ree-exec doctor`.
-Executor and tools versions follow the agent, not the environment image. Any
+The provider then verifies the workbench contract with `repo2ree-exec doctor`.
+Executor and tools versions follow the provider, not the environment image. Any
 image that keeps a process alive and provides a writable `/ree` can serve as a
 workbench.
 
 Images that ship their own `/nix` (nix-built env images) can't take the
-`/nix/store` mount; the agent detects them, skips injection, and expects
+`/nix/store` mount; the provider detects them, skips injection, and expects
 `repo2ree-exec` on their PATH — the escape hatch for benches that bake their
 own executor.
 
 ## Control plane / execution plane split
 
-Orchestration and execution are separate planes — the "thin client, fat agent"
+Orchestration and execution are separate planes — the "thin client, fat workbench"
 pattern (cf. kubectl→kubelet, CI orchestrator→runner):
 
 ```
@@ -277,7 +279,7 @@ isolated workbench -> repo2ree-exec -> core
 The runner is the trust and policy boundary for a non-local execution plane. It
 is needed for five reasons:
 
-- **Credentials stay local.** Cloud credentials, SSH agents, kubeconfigs,
+- **Credentials stay local.** Cloud credentials, SSH keys, kubeconfigs,
   private package tokens, and institutional storage credentials stay where the
   user or institution already manages them.
 - **Networks stay closed.** Many clusters and university machines cannot accept
@@ -352,7 +354,7 @@ Likely provider implementations:
 
 | Provider | Target | Notes |
 |---|---|---|
-| `docker-local` | A Docker daemon on the runner machine | Matches today's agent-side `DockerRuntime`. |
+| `docker-local` | A Docker daemon on the runner machine | Matches today's provider-side `DockerIsolation`. |
 | `docker-context` | A Docker context or SSH-backed daemon chosen by the user | Single-user CLI/offload path; the hosted service still never sees SSH material. |
 | `kubernetes` | A namespace with scoped RBAC | Creates Pods/Jobs/PVCs and uses cluster policy for isolation and quota. |
 | `cloud-vm` | A VM or node pool created by limited cloud IAM | Useful when repo2ree is allowed to provision compute but not hold login secrets. |
@@ -362,7 +364,7 @@ This gives three supported delivery modes:
 
 | Environment | Delivery | Credential boundary |
 |---|---|---|
-| Existing user server | `repo2ree runner install user@host` from a local CLI, using the user's own SSH agent | The local CLI sees SSH; the hosted service does not. |
+| Existing user server | `repo2ree runner install user@host` from a local CLI, using the user's own SSH access | The local CLI sees SSH; the hosted service does not. |
 | Cloud VM | Golden image with the runner preinstalled, or cloud-init that downloads a pinned/signed runner and starts systemd | User-data carries only a short-lived join token, never a private key. |
 | University Kubernetes | Helm install of a runner/controller into an approved namespace | The cluster service account and kubeconfig stay inside the institution. |
 
@@ -738,7 +740,7 @@ explicit SWH save/deposit request.
   ([control/run_orchestration.py](../../../api/src/repo2ree_api/control/run_orchestration.py)).
   Operations dispatch to `repo2ree-exec` through
   `WorkbenchManager.dispatch_action` with logs streamed back, and cancellation
-  crosses the boundary as a remote signal to the agent
+  crosses the boundary as a remote signal to the workbench
   ([manager.py:287](../../../supervisor/src/repo2ree_supervisor/manager.py#L287))
   rather than a local flag check.
 - **Keep Docker image construction inside the workbench.** The author and review
@@ -748,7 +750,7 @@ explicit SWH save/deposit request.
   workbench `image`, and `resources` (CPU/mem) — the latter fed by the existing
   experiment resource-estimate fields, which now double as **workbench sizing**.
 - **Harden workbench provisioning.** Today `WorkbenchManager.provision()` asks
-  the selected agent, whose `DockerRuntime` launches a privileged
+  a connected provider, whose `DockerIsolation` launches a privileged
   Docker-in-Docker workbench. The target is the same `/ree` volume and command
   envelope under a Kata/Sysbox-backed runtime, without relying on a privileged
   shared-kernel container.

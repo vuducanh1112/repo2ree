@@ -32,7 +32,7 @@ SNAPSHOT_DIR = _REPO_ROOT / "test-artifacts" / "ree-snapshots" / "api-integratio
 
 # The bench this whole tier provisions from: upstream dind pinned by digest
 # (keep in sync with the catalog default in api/src/repo2ree_api/settings.py).
-# The in-test agent injects the executor/tools bundles (built by
+# The in-test workbench injects the executor/tools bundles (built by
 # `just e2e-bundles`), so the tier drives the exact provisioning path
 # production uses. Passed per-request like a real client; change here to point
 # the tier at a different image. First run pulls the image.

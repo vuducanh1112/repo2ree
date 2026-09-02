@@ -34,7 +34,7 @@ function mapBinding(
   };
 }
 
-// Unlike the agent fleet, the index does not drift on its own: an entry appears
+// Unlike the lab fleet, the index does not drift on its own: an entry appears
 // when someone seals or deposits, both of which are deliberate acts taken from
 // this UI. So no polling — refetching on focus is enough to pick up a seal made
 // in another tab.

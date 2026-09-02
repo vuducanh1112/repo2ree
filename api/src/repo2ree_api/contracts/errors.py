@@ -36,6 +36,6 @@ ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
     422: {"model": ErrorEnvelope, "description": "Request validation failed"},
     502: {"model": ErrorEnvelope, "description": "Workbench returned an invalid upstream response"},
     500: {"model": ErrorEnvelope, "description": "Internal server error"},
-    503: {"model": ErrorEnvelope, "description": "Workbench or runtime agent unavailable"},
+    503: {"model": ErrorEnvelope, "description": "Compute provider or workbench unavailable"},
     507: {"model": ErrorEnvelope, "description": "Upload staging capacity exhausted"},
 }

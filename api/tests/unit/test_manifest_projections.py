@@ -29,7 +29,8 @@ from repo2ree_core.domain.ree.model import (
     canonical_subject_digest,
 )
 from repo2ree_core.time_utils import utc_now_instant
-from repo2ree_protocol.agent import DockerWorkbenchSpec, WorkbenchRef
+from repo2ree_protocol.frames import WorkbenchRef
+from repo2ree_protocol.provider import DockerWorkbenchSpec
 from repo2ree_supervisor import WorkbenchHandle
 
 

@@ -22,7 +22,7 @@ read -r -a registries <<<"$registries_text"
     exit 2
 }
 
-images=(repo2ree-gui repo2ree-backend repo2ree-agent)
+images=(repo2ree-gui repo2ree-backend repo2ree-provider-docker)
 for registry in "${registries[@]}"; do
     for image in "${images[@]}"; do
         docker tag "$image:local" "$registry/$image:$tag"

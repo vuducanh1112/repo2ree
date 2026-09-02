@@ -6,15 +6,15 @@ import { AppRoutes } from "./AppRoutes";
 vi.mock("../landing/LandingView", () => ({
   LandingView: (props: {
     onLoad: (path: string) => void;
-    onViewAgents: () => void;
+    onViewLabs: () => void;
     onViewReeIndex: () => void;
   }) => (
     <div>
       <button type="button" onClick={() => props.onLoad("/workspace?reeId=loaded")}>
         Load
       </button>
-      <button type="button" onClick={props.onViewAgents}>
-        Agents
+      <button type="button" onClick={props.onViewLabs}>
+        Labs
       </button>
       <button type="button" onClick={props.onViewReeIndex}>
         Index
@@ -22,17 +22,17 @@ vi.mock("../landing/LandingView", () => ({
     </div>
   ),
 }));
-vi.mock("../agents/LabLocationView", () => ({
+vi.mock("../labs/LabLocationView", () => ({
   LabLocationView: ({ onBack }: { onBack: () => void }) => (
     <button type="button" onClick={onBack}>
       Lab back
     </button>
   ),
 }));
-vi.mock("../agents/AgentsView", () => ({
-  AgentsView: ({ onBack }: { onBack: () => void }) => (
+vi.mock("../labs/LabsView", () => ({
+  LabsView: ({ onBack }: { onBack: () => void }) => (
     <button type="button" onClick={onBack}>
-      Agents back
+      Labs back
     </button>
   ),
 }));
@@ -77,7 +77,7 @@ describe("AppRoutes", () => {
   });
 
   it("announces a lazy route while its chunk loads", () => {
-    renderRoute("/agents");
+    renderRoute("/labs");
     const loadingView = screen.getByText("Loading view…").closest("main");
     expect(loadingView).toHaveAttribute("role", "status");
     expect(loadingView).toHaveAttribute("aria-live", "polite");
@@ -90,7 +90,7 @@ describe("AppRoutes", () => {
 
   it.each([
     ["/lab-location", "Lab back"],
-    ["/agents", "Agents back"],
+    ["/labs", "Labs back"],
     ["/ree-index", "Index back"],
     ["/workspace?reeId=loaded", "Workspace back"],
   ])("returns from %s to landing", async (route, button) => {
@@ -101,7 +101,7 @@ describe("AppRoutes", () => {
 
   it.each([
     ["Load", "/workspace?reeId=loaded"],
-    ["Agents", "/agents"],
+    ["Labs", "/labs"],
     ["Index", "/ree-index"],
   ])("navigates from landing through %s", (button, expected) => {
     renderRoute("/");

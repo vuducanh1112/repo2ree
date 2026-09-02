@@ -6,7 +6,7 @@
 #   workbench-cleanup.sh --store-gc [d] also bundle store volumes unused for d days
 #   workbench-cleanup.sh --store        also every bundle store volume
 #
-# The agent names everything it creates deterministically (docker_runtime.py):
+# The workbench names everything it creates deterministically (docker_runtime.py):
 # a `repo2ree-wb-{ree_id}` container, a `repo2ree-ree-{ree_id}` state volume and
 # a `repo2ree-dind-{ree_id}` volume for the nested daemon. Those are torn down
 # when a REE is deleted, so anything still here belongs to a run that ended
@@ -31,7 +31,7 @@
 # the reclaim-everything hammer, at the cost of one full store copy per bundle
 # on the next provision.
 #
-# Nothing here touches the control-plane or agent-identity volumes — those are
+# Nothing here touches the control-plane or workbench-identity volumes — those are
 # compose-owned, and `image-stack.sh down --volumes` removes them.
 set -euo pipefail
 
@@ -78,7 +78,7 @@ done
 [ -z "$owner" ] || [ "$store_mode" = none ] || usage
 
 # The store volume this checkout's bundles hash to — protected from --store-gc.
-# Resolved through the agent's own loader rather than a copy of its digest
+# Resolved through the workbench's own loader rather than a copy of its digest
 # rule, which would drift. Best effort: unbuilt bundles or no uv just means
 # nothing is protected, and at worst one bundle gets copied again.
 live_store_volume() {
@@ -86,9 +86,9 @@ live_store_volume() {
     local tools_bundle=${REPO2REE_TOOLS_BUNDLE:-$root/dist/bundles/tools}
     [ -d "$exec_bundle" ] || return 0
     [ -d "$tools_bundle" ] || tools_bundle=""
-    (cd "$root" && uv run --package repo2ree-agent python -c '
+    (cd "$root" && uv run --package repo2ree-provider-docker python -c '
 import sys
-from repo2ree_agent.runtimes.docker.injection import load_injection_bundle
+from repo2ree_provider_docker.injection import load_injection_bundle
 bundle = load_injection_bundle(sys.argv[1], sys.argv[2] or None)
 print(bundle.volume_name if bundle else "")
 ' "$exec_bundle" "$tools_bundle" 2>/dev/null) || true

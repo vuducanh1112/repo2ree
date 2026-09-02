@@ -5,7 +5,7 @@
 # Its existence means validate-image-candidate completed both e2e suites.
 set -euo pipefail
 
-images=(repo2ree-agent repo2ree-backend repo2ree-gui)
+images=(repo2ree-provider-docker repo2ree-backend repo2ree-gui)
 
 usage() {
 	echo "usage: ${0##*/} {resolve <rev> <receipt> <registry>...|environment <receipt> <registry>|verify <rev> <receipt>|promote <rev> <receipt>}" >&2
@@ -106,7 +106,7 @@ print_environment() {
 		digest=$(receipt_digest "$receipt" "$registry" "$image")
 		[[ -n $digest ]] || { echo "$registry/$image is not in $receipt" >&2; exit 1; }
 		case "$image" in
-		repo2ree-agent) variable=STACK_AGENT_IMAGE ;;
+		repo2ree-provider-docker) variable=STACK_PROVIDER_IMAGE ;;
 		repo2ree-backend) variable=STACK_BACKEND_IMAGE ;;
 		repo2ree-gui) variable=STACK_GUI_IMAGE ;;
 		esac

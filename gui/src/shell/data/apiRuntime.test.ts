@@ -6,17 +6,17 @@ describe("createApiServices", () => {
 
   it("configures every service with the application API base URL", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ agents: [] }), {
+      new Response(JSON.stringify({ providers: [] }), {
         status: 200,
         headers: { "content-type": "application/json" },
       }),
     );
 
     const services = createApiServices({ baseUrl: "https://api.example.test" });
-    await services.reeApi.listAgents();
+    await services.reeApi.listProviders();
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.example.test/api/v1/agents",
+      "https://api.example.test/api/v1/providers",
       expect.any(Object),
     );
   });

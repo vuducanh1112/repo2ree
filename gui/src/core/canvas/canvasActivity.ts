@@ -47,7 +47,7 @@ export const NO_CANVAS_ACTIVITY: CanvasActivity = {
 
 /**
  * Reads the hub's live activity off the REE's run listing, so a run started
- * anywhere — this tab, another tab, an agent — lights the same panel.
+ * anywhere — this tab, another tab, a workbench service — lights the same panel.
  *
  * `alsoRunning` carries the work that is not a backend run: sealing is driven
  * from the client and has no entry in the listing, but it is a panel on the

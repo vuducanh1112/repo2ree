@@ -17,17 +17,24 @@ from dataclasses import dataclass
 from pathlib import Path
 from threading import RLock
 
-from repo2ree_protocol.agent import DockerWorkbenchSpec, WorkbenchRef, WorkbenchSpec
+from repo2ree_protocol.frames import WorkbenchRef
+from repo2ree_protocol.provider import DockerWorkbenchSpec, WorkbenchSpec
 
 
 @dataclass(frozen=True)
 class WorkbenchEntry:
     ree_id: str
     ref: WorkbenchRef
-    spec: WorkbenchSpec
-    # The agent this REE's workbench is pinned to (placement affinity): every
-    # later op must reach the same agent that holds the workbench.
-    agent_id: str
+    spec: WorkbenchSpec | None
+    # The workbench this REE's workbench is pinned to (placement affinity): every
+    # later op must reach the same workbench that holds the workbench.
+    workbench_id: str
+    provider_id: str = ""
+    # The capacity request identity is distinct from both the REE and the
+    # connected workbench. Empty is accepted only for in-memory legacy callers.
+    allocation_id: str = ""
+    mode: str = "provider_managed"
+    state: str = "ready"
 
 
 class WorkbenchRegistry:
@@ -40,25 +47,67 @@ class WorkbenchRegistry:
             data = self._read_unlocked()
             data[entry.ree_id] = {
                 "ref": entry.ref.model_dump(),
-                "spec": entry.spec.model_dump(),
-                "agent_id": entry.agent_id,
+                "spec": entry.spec.model_dump() if entry.spec is not None else None,
+                "workbench_id": entry.workbench_id,
+                "provider_id": entry.provider_id,
+                "allocation_id": entry.allocation_id or entry.ree_id,
+                "mode": entry.mode,
+                "state": "ready",
             }
             self._write_unlocked(data)
+
+    def begin(
+        self,
+        *,
+        ree_id: str,
+        allocation_id: str,
+        workbench_id: str,
+        provider_id: str,
+        mode: str,
+        spec: WorkbenchSpec | None,
+    ) -> None:
+        """Persist intent before any external provisioning or binding occurs."""
+        with self._lock:
+            data = self._read_unlocked()
+            data[ree_id] = {
+                "spec": spec.model_dump() if spec is not None else None,
+                "workbench_id": workbench_id,
+                "provider_id": provider_id,
+                "allocation_id": allocation_id,
+                "mode": mode,
+                "state": "provisioning",
+            }
+            self._write_unlocked(data)
+
+    def mark_failed(self, ree_id: str, detail: str) -> None:
+        with self._lock:
+            data = self._read_unlocked()
+            if record := data.get(ree_id):
+                record["state"] = "failed"
+                record["detail"] = detail
+                self._write_unlocked(data)
 
     def lookup(self, ree_id: str) -> WorkbenchEntry | None:
         with self._lock:
             record = self._read_unlocked().get(ree_id)
         if record is None:
             return None
+        if record.get("state", "ready") != "ready":
+            return None
         return self._entry_from_record(ree_id, record)
 
     def list_all(self) -> list[WorkbenchEntry]:
         with self._lock:
             data = self._read_unlocked()
-        return [self._entry_from_record(ree_id, record) for ree_id, record in data.items()]
+        return [
+            self._entry_from_record(ree_id, record)
+            for ree_id, record in data.items()
+            if record.get("state", "ready") == "ready"
+        ]
 
     @staticmethod
     def _entry_from_record(ree_id: str, record: dict[str, object]) -> WorkbenchEntry:
+        spec: WorkbenchSpec | None
         if "ref" not in record:
             # One-time compatibility with registries written before references
             # became opaque. This mirrors the v1 Docker token solely while
@@ -75,12 +124,20 @@ class WorkbenchRegistry:
             spec = DockerWorkbenchSpec(base_image=str(record["image"]))
         else:
             ref = WorkbenchRef.model_validate(record["ref"])
-            spec = DockerWorkbenchSpec.model_validate(record["spec"])
+            raw_spec = record.get("spec")
+            spec = DockerWorkbenchSpec.model_validate(raw_spec) if raw_spec is not None else None
+        workbench_id = record.get("workbench_id")
+        if not isinstance(workbench_id, str) or not workbench_id.strip():
+            raise ValueError(f"registry entry {ree_id!r} has no workbench placement")
         return WorkbenchEntry(
             ree_id=ree_id,
             ref=ref,
             spec=spec,
-            agent_id=str(record["agent_id"]),
+            workbench_id=workbench_id,
+            provider_id=str(record.get("provider_id") or workbench_id),
+            allocation_id=str(record.get("allocation_id") or ree_id),
+            mode=str(record.get("mode") or "provider_managed"),
+            state=str(record.get("state") or "ready"),
         )
 
     def unregister(self, ree_id: str) -> None:

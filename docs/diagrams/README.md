@@ -7,8 +7,8 @@ live beside their published descriptions:
 - [The repo2ree ecosystem](../public/reference/architecture/ecosystem.md)
 - [Services, workbenches, and data stores](../public/reference/architecture/services-and-storage.md)
 - [How the control plane is organized](../public/reference/architecture/control-plane.md)
-- [How the workbench agent is organized](../public/reference/architecture/workbench-agent.md)
-- [Federated compute through connected agents](../public/reference/architecture/federated-compute.md)
+- [How workbenches are provisioned and driven](../public/reference/architecture/workbench.md)
+- [Federated compute through connected providers](../public/reference/architecture/federated-compute.md)
 - [How a pipeline stage runs](../public/reference/architecture/pipeline-stage-execution.md)
 - [How independent reproduction works](../public/reference/architecture/independent-reproduction.md)
 - [`workflows/authoring-lifecycle.svg`](workflows/authoring-lifecycle.svg) is a

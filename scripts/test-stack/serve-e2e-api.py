@@ -1,4 +1,4 @@
-"""Run the E2E API on an OS-assigned, already-reserved loopback port."""
+"""Run the E2E API on an OS-assigned, already-reserved host port."""
 
 from __future__ import annotations
 
@@ -17,7 +17,12 @@ def main() -> None:
     port_file = Path(sys.argv[1])
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
         listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        listener.bind(("127.0.0.1", 0))
+        # Provider-managed workbenches connect through host.docker.internal;
+        # external workbenches and clients still use 127.0.0.1. Binding every
+        # interface is what makes the container-side name resolvable at all, and
+        # this is an ephemeral test-stack API on an OS-assigned port, never a
+        # deployment surface.
+        listener.bind(("0.0.0.0", 0))  # noqa: S104 - test stack; reachable from workbench containers by design
         listener.listen()
         listener.set_inheritable(True)
 

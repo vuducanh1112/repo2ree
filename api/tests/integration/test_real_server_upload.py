@@ -2,24 +2,23 @@
 
 The TestClient tier next door (``test_api_workbench_flow``) drives the same
 flow, but TestClient executes async routes on a different event loop than the
-one pumping the agent's WebSocket — so it is structurally incapable of catching
-the class of bug where a blocking agent call inside an async route starves the
-very loop that must deliver its reply (a frozen API, agent keepalive death).
+one pumping the workbench's WebSocket — so it is structurally incapable of catching
+the class of bug where a blocking workbench call inside an async route starves the
+very loop that must deliver its reply (a frozen API, workbench keepalive death).
 This tier closes that gap: uvicorn runs as a real subprocess with its one
-production event loop, and the real agent dials the real ``/agent/connect``
+production event loop, and the real workbench dials the real ``/workbench/connect``
 route — which the fake in-test WS bridge in ``conftest`` bypasses.
 
 The regression canary is timing: every request carries a hard client-side
 deadline, so a loop-freeze fails the test quickly instead of hanging it.
 
-Like the neighbouring tiers, this needs Docker and the workbench image and
-skips (never fakes) when either is absent.
+This case deliberately uses an externally managed workbench process: it tests
+the provider-free install-and-connect path over the real API socket.
 """
 
 from __future__ import annotations
 
 import os
-import shutil
 import socket
 import subprocess
 import sys
@@ -31,10 +30,6 @@ from pathlib import Path
 
 import httpx
 import pytest
-
-# The tier's workbench image lives in conftest so the skip gate and the
-# provisioning request stay in lockstep.
-from api_integration_bench import WORKBENCH_IMAGE, bundles_present
 
 # ================================================
 # Constants
@@ -52,30 +47,13 @@ REQUEST_TIMEOUT = httpx.Timeout(30.0)
 
 
 # ================================================
-# Skip gate
-# ================================================
-
-
-def _docker_available() -> bool:
-    if shutil.which("docker") is None:
-        return False
-    return subprocess.run(["docker", "version"], capture_output=True).returncode == 0
-
-
-pytestmark = pytest.mark.skipif(
-    not _docker_available() or not bundles_present(),
-    reason="real-server tier needs docker + the executor/tools bundles (run: just e2e-bundles)",
-)
-
-
-# ================================================
-# Fixtures — uvicorn + agent as real subprocesses
+# Fixtures — uvicorn + workbench as real subprocesses
 # ================================================
 
 
 @pytest.fixture
-def server(tmp_path: Path, request: pytest.FixtureRequest) -> Iterator[str]:
-    """Run uvicorn and the workbench agent as subprocesses; yield the base URL.
+def server(tmp_path: Path, request: pytest.FixtureRequest) -> Iterator[tuple[str, str]]:
+    """Run uvicorn and the workbench service as subprocesses; yield the base URL.
 
     Both use throwaway state under ``tmp_path`` so a developer's registry or
     staging dir can't leak in. Their stdout/stderr land in ``test-artifacts``
@@ -91,33 +69,40 @@ def server(tmp_path: Path, request: pytest.FixtureRequest) -> Iterator[str]:
         "WORKBENCH_REGISTRY_FILE": str(tmp_path / "registry.json"),
         "UPLOAD_STAGING_DIR": str(tmp_path / "upload-staging"),
         "TRACE_FILE": str(out_dir / "traces.ndjson"),
+        "EXTERNAL_WORKBENCH_TOKEN": "real-server-integration",
     }
-    agent_env = {
+    workbench_env = {
         **os.environ,
-        "WORKBENCH_API_WS_URL": f"ws://127.0.0.1:{port}/agent/connect",
-        "WORKBENCH_DOCKER_MODE": "dind",
-        "WORKBENCH_AGENT_STATE_DIR": str(tmp_path / "agent-state"),
+        "WORKBENCH_API_WS_URL": f"ws://127.0.0.1:{port}/workbench/connect",
+        "WORKBENCH_MODE": "external",
+        "WORKBENCH_AUTH_TOKEN": "real-server-integration",
+        "WORKBENCH_ROOT": str(tmp_path / "external-root"),
+        "WORKBENCH_STATE_DIR": str(tmp_path / "workbench-state"),
     }
 
-    with (out_dir / "server.log").open("w") as server_log, (out_dir / "agent.log").open("w") as agent_log:
+    with (
+        (out_dir / "server.log").open("w") as server_log,
+        (out_dir / "workbench.log").open("w") as workbench_log,
+    ):
         server_proc = subprocess.Popen(
             [sys.executable, "-m", "uvicorn", "repo2ree_api.main:app", "--host", "127.0.0.1", "--port", str(port)],
             env=server_env,
             stdout=server_log,
             stderr=subprocess.STDOUT,
         )
-        agent_proc = subprocess.Popen(
-            [sys.executable, "-m", "repo2ree_agent"],
-            env=agent_env,
-            stdout=agent_log,
+        workbench_proc = subprocess.Popen(
+            [sys.executable, "-m", "repo2ree_workbench"],
+            env=workbench_env,
+            stdout=workbench_log,
             stderr=subprocess.STDOUT,
         )
         try:
-            _wait_until_agent_connected(base_url)
-            yield base_url
+            workbench_id = _wait_until_workbench_connected(base_url)
+            yield base_url, workbench_id
         finally:
-            agent_proc.terminate()
-            agent_proc.wait(timeout=10)
+            if workbench_proc.poll() is None:
+                workbench_proc.terminate()
+                workbench_proc.wait(timeout=10)
             server_proc.terminate()
             server_proc.wait(timeout=10)
 
@@ -128,18 +113,18 @@ def _free_port() -> int:
         return int(sock.getsockname()[1])
 
 
-def _wait_until_agent_connected(base_url: str) -> None:
-    """Block until the server answers and lists a dialed-in agent."""
+def _wait_until_workbench_connected(base_url: str) -> str:
+    """Block until the server answers and lists a dialed-in workbench."""
     deadline = time.monotonic() + STARTUP_TIMEOUT_SECONDS
     while time.monotonic() < deadline:
         try:
-            resp = httpx.get(f"{base_url}/api/v1/agents", timeout=2.0)
-            if resp.status_code == 200 and resp.json()["agents"]:
-                return
+            resp = httpx.get(f"{base_url}/api/v1/workbenches", timeout=2.0)
+            if resp.status_code == 200 and resp.json()["workbenches"]:
+                return str(resp.json()["workbenches"][0]["workbench_id"])
         except httpx.HTTPError:
             pass
         time.sleep(0.5)
-    pytest.fail(f"server + agent did not come up within {STARTUP_TIMEOUT_SECONDS}s")
+    pytest.fail(f"server + workbench did not come up within {STARTUP_TIMEOUT_SECONDS}s")
 
 
 # ================================================
@@ -149,7 +134,7 @@ def _wait_until_agent_connected(base_url: str) -> None:
 
 # Big enough that the sealed archive (and its ~4/3 base64 encoding) far exceeds
 # uvicorn's 16 MiB WebSocket receive cap — the regression where one oversized
-# frame killed the whole agent connection and broke every download.
+# frame killed the whole workbench connection and broke every download.
 LARGE_BLOB_BYTES = 20 * 1024 * 1024
 
 
@@ -180,14 +165,13 @@ def _wait_for_run(client: httpx.Client, ree_id: str, run_id: str) -> str:
 # ================================================
 
 
-def test_upload_over_real_server(server: str) -> None:
-    with httpx.Client(base_url=server, timeout=REQUEST_TIMEOUT) as client:
-        # --- provision a workbench through the real stack ---------------
-        # Drive the locally-built image this tier gates on, passed per-request
-        # like a real client — never pull the published edge default.
+def test_upload_over_real_server(server: tuple[str, str]) -> None:
+    base_url, workbench_id = server
+    with httpx.Client(base_url=base_url, timeout=REQUEST_TIMEOUT) as client:
+        # --- reserve the externally managed workbench -------------------
         resp = client.post(
             "/api/v1/rees",
-            json={"name": "real-server-itest", "workbench_image": WORKBENCH_IMAGE},
+            json={"name": "real-server-itest", "workbench_id": workbench_id},
         )
         assert resp.status_code == 200, resp.text
         run = resp.json()
@@ -205,7 +189,7 @@ def test_upload_over_real_server(server: str) -> None:
             upload = resp.json()
 
             # The PUT is the async route that once blocked the event loop
-            # against its own agent reply. On the loop it must answer fast;
+            # against its own workbench reply. On the loop it must answer fast;
             # a regression trips REQUEST_TIMEOUT instead of hanging the suite.
             t0 = time.monotonic()
             resp = client.put(upload["upload_url"], content=data)
@@ -215,7 +199,7 @@ def test_upload_over_real_server(server: str) -> None:
 
             # While the PUT ran, the loop stayed live: an unrelated endpoint
             # still answers within a tight bound.
-            assert httpx.get(f"{server}/api/v1/agents", timeout=5.0).status_code == 200
+            assert httpx.get(f"{base_url}/api/v1/workbenches", timeout=5.0).status_code == 200
 
             resp = client.post(
                 f"/api/v1/rees/{ree_id}/source:upload-complete",
@@ -248,10 +232,10 @@ def test_upload_over_real_server(server: str) -> None:
             with zipfile.ZipFile(BytesIO(resp.content)) as zf:
                 assert zf.namelist()
 
-            # The agent connection survived the whole flow (no keepalive death,
+            # The workbench connection survived the whole flow (no keepalive death,
             # no frame-cap kill).
-            resp = client.get("/api/v1/agents")
+            resp = client.get("/api/v1/workbenches")
             assert resp.status_code == 200
-            assert resp.json()["agents"]
+            assert resp.json()["workbenches"]
         finally:
             client.delete(f"/api/v1/rees/{ree_id}")

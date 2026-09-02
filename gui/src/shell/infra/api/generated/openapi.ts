@@ -60,26 +60,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/rees/{ree_id}/workbench/reprovision": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Reprovision Workbench Route
-         * @description Replace the workbench container from the current image, keeping REE volume data.
-         */
-        post: operations["reprovisionWorkbench"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/rees/{ree_id}/runs": {
         parameters: {
             query?: never;
@@ -852,7 +832,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/agents": {
+    "/api/v1/workbenches": {
         parameters: {
             query?: never;
             header?: never;
@@ -860,10 +840,30 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Agents
-         * @description Every workbench agent currently connected to this control plane.
+         * List Workbenches
+         * @description Every workbench service currently connected to this control plane.
          */
-        get: operations["listAgents"];
+        get: operations["listWorkbenches"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Providers
+         * @description Docker capacity providers currently connected to this control plane.
+         */
+        get: operations["listProviders"];
         put?: never;
         post?: never;
         delete?: never;
@@ -994,29 +994,6 @@ export interface components {
             verify_script_path: string;
             /** Templates */
             templates: components["schemas"]["ScriptTemplateEntry"][];
-        };
-        /** AgentList */
-        AgentList: {
-            /** Agents */
-            agents: components["schemas"]["AgentSummary"][];
-        };
-        /** AgentSummary */
-        AgentSummary: {
-            /** Agent Id */
-            agent_id: string;
-            /** Hostname */
-            hostname: string;
-            /** Version */
-            version: string;
-            /** Docker Mode */
-            docker_mode: string;
-            /** Connected At */
-            connected_at: string;
-            /**
-             * Status
-             * @default connected
-             */
-            status: string;
         };
         /**
          * ArchiveBindingAttestation
@@ -1998,7 +1975,7 @@ export interface components {
              * Origin
              * @enum {string}
              */
-            origin: "api" | "supervisor" | "agent" | "executor" | "core";
+            origin: "api" | "supervisor" | "workbench" | "executor" | "core";
             /** Details */
             details?: {
                 [key: string]: unknown;
@@ -2490,6 +2467,29 @@ export interface components {
              */
             source: "root" | "wrapper";
         };
+        /** ProviderList */
+        ProviderList: {
+            /** Providers */
+            providers: components["schemas"]["ProviderSummary"][];
+        };
+        /** ProviderSummary */
+        ProviderSummary: {
+            /** Provider Id */
+            provider_id: string;
+            /** Hostname */
+            hostname: string;
+            /** Version */
+            version: string;
+            /** Docker Mode */
+            docker_mode: string;
+            /** Connected At */
+            connected_at: string;
+            /**
+             * Status
+             * @default connected
+             */
+            status: string;
+        };
         /** Ree */
         Ree: {
             subject?: components["schemas"]["ReeSubject"];
@@ -2564,8 +2564,10 @@ export interface components {
             name?: string | null;
             /** Workbench Image */
             workbench_image?: string | null;
-            /** Agent Id */
-            agent_id?: string | null;
+            /** Provider Id */
+            provider_id?: string | null;
+            /** Workbench Id */
+            workbench_id?: string | null;
         };
         /** ReeDefinition */
         "ReeDefinition-Input": {
@@ -2824,16 +2826,6 @@ export interface components {
             readonly machine_level_label: string;
             /** Detected Dependencies */
             readonly detected_dependencies: string;
-        };
-        /** ReprovisionResponse */
-        ReprovisionResponse: {
-            /**
-             * Status
-             * @constant
-             */
-            status: "reprovisioned";
-            /** Ree Id */
-            ree_id: string;
         };
         /**
          * RequirementsProjectBinding
@@ -3948,14 +3940,41 @@ export interface components {
             /** Default Id */
             default_id: string;
         };
+        /** WorkbenchList */
+        WorkbenchList: {
+            /** Workbenches */
+            workbenches: components["schemas"]["WorkbenchSummary"][];
+        };
         /** WorkbenchStatus */
         WorkbenchStatus: {
             /** Status */
             status: string;
-            /** Agent Id */
-            agent_id?: string | null;
+            /** Workbench Id */
+            workbench_id?: string | null;
             /** Image */
             image?: string | null;
+        };
+        /** WorkbenchSummary */
+        WorkbenchSummary: {
+            /** Workbench Id */
+            workbench_id: string;
+            /** Mode */
+            mode: string;
+            /** Available */
+            available: boolean;
+            /** Hostname */
+            hostname: string;
+            /** Version */
+            version: string;
+            /** Docker Mode */
+            docker_mode: string;
+            /** Connected At */
+            connected_at: string;
+            /**
+             * Status
+             * @default connected
+             */
+            status: string;
         };
         /** WorkspaceDrift */
         WorkspaceDrift: {
@@ -4095,7 +4114,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -4200,7 +4219,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -4303,7 +4322,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -4406,7 +4425,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -4509,110 +4528,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Upload staging capacity exhausted */
-            507: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
-    reprovisionWorkbench: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                ree_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ReprovisionResponse"];
-                };
-            };
-            /** @description Invalid request or operation precondition */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description REE, run, file, or artifact not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Version or idempotency conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Upload exceeds the configured size limit */
-            413: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Request validation failed */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Workbench returned an invalid upstream response */
-            502: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -4718,7 +4634,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -4822,7 +4738,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -4929,7 +4845,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -5037,7 +4953,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -5141,7 +5057,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -5242,7 +5158,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -5343,7 +5259,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -5450,7 +5366,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -5557,7 +5473,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -5661,7 +5577,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -5768,7 +5684,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -5871,7 +5787,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -5978,7 +5894,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -6085,7 +6001,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -6190,7 +6106,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -6297,7 +6213,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -6403,7 +6319,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -6510,7 +6426,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -6617,7 +6533,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -6722,7 +6638,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -6829,7 +6745,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -6936,7 +6852,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -7039,7 +6955,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -7146,7 +7062,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -7253,7 +7169,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -7360,7 +7276,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -7467,7 +7383,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -7575,7 +7491,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -7678,7 +7594,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -7785,7 +7701,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -7889,7 +7805,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -7996,7 +7912,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -8103,7 +8019,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -8206,7 +8122,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -8311,7 +8227,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -8414,7 +8330,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -8518,7 +8434,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -8625,7 +8541,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -8733,7 +8649,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -8841,7 +8757,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -8950,7 +8866,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -9051,7 +8967,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -9071,7 +8987,7 @@ export interface operations {
             };
         };
     };
-    listAgents: {
+    listWorkbenches: {
         parameters: {
             query?: never;
             header?: never;
@@ -9086,7 +9002,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AgentList"];
+                    "application/json": components["schemas"]["WorkbenchList"];
                 };
             };
             /** @description Invalid request or operation precondition */
@@ -9152,7 +9068,108 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Workbench or runtime agent unavailable */
+            /** @description Compute provider or workbench unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload staging capacity exhausted */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listProviders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderList"];
+                };
+            };
+            /** @description Invalid request or operation precondition */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description REE, run, file, or artifact not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Version or idempotency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload exceeds the configured size limit */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench returned an invalid upstream response */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Compute provider or workbench unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;

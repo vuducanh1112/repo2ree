@@ -4,7 +4,8 @@ export const endpoints = {
   workbenchImages: () => `${API_V1_BASE}/workbench/images`,
   reeSteps: () => `${API_V1_BASE}/ree-steps`,
   scriptTemplates: () => `${API_V1_BASE}/script-templates`,
-  agents: () => `${API_V1_BASE}/agents`,
+  labs: () => `${API_V1_BASE}/providers`,
+  workbenches: () => `${API_V1_BASE}/workbenches`,
   reeIndex: () => `${API_V1_BASE}/ree-index`,
   rees: () => `${API_V1_BASE}/rees`,
   ree: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}`,
@@ -31,8 +32,6 @@ export const endpoints = {
   scriptLintDraft: () => `${API_V1_BASE}/script-lints:draft`,
   reeSeal: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/ree:seal`,
   reeArchive: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/ree-archive`,
-  reeWorkbenchReprovision: (reeId: string) =>
-    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/workbench/reprovision`,
   reeBuildRuntime: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/build-runtime`,
   reeGenerateHbom: (reeId: string) =>

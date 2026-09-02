@@ -44,7 +44,7 @@ interface RunHudProps {
 /**
  * The logs HUD: the console collecting every run of the open REE, split into
  * one tab per pipeline step, opened from the footer bar. Auto-follows new runs
- * (also ones started outside this tab, e.g. by an agent) until the user picks a
+ * (also ones started outside this tab, e.g. by a workbench service) until the user picks a
  * tab, so opening it lands on whatever ran last.
  */
 export const RunHud = memo(function RunHud({

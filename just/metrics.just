@@ -10,7 +10,7 @@ metrics-complexity:
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p {{ quote(COMPLEXITY_DIR) }}
-    python_sources=(protocol/src core/src supervisor/src api/src executor/src agent/src)
+    python_sources=(protocol/src core/src supervisor/src api/src executor/src workbench/src)
     ts_excludes=(-x '*/shell/infra/api/generated/*' -x '*.test.ts' -x '*.test.tsx' -x '*.spec.ts' -x '*.spec.tsx')
     lizard -l python -i -1 -o {{ quote(COMPLEXITY_DIR + "/python.html") }} "${python_sources[@]}"
     lizard -l python -i -1 --csv "${python_sources[@]}" > {{ quote(COMPLEXITY_DIR + "/python.csv") }}

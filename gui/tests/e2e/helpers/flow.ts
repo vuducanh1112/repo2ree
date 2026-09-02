@@ -232,45 +232,45 @@ export async function openFilesConsole(page: Page) {
 }
 
 /**
- * How many connected agents the lab-location picker offers. Specs that need
- * more than one agent (multi-agent, stress) call this first and skip when the
+ * How many connected labs the lab-location picker offers. Specs that need
+ * more than one lab (multi-lab, stress) call this first and skip when the
  * stack is smaller — the count is a property of whatever stack the suite runs
  * against (source, image, or published), not something the tests control.
  */
-export async function connectedAgentCount(page: Page): Promise<number> {
+export async function connectedLabCount(page: Page): Promise<number> {
   await page.goto("/");
   await page.getByRole("button", { name: "Create a new REE" }).click();
   await expect(page.getByRole("heading", { name: "Where should this REE run?" })).toBeVisible();
   const cards = page.getByRole("button", { name: /connected/ });
-  // The agent list loads async; a suite-worthy stack always has at least one
-  // agent, so waiting for the first card is enough for a settled count.
+  // The lab list loads async; a suite-worthy stack always has at least one
+  // lab, so waiting for the first card is enough for a settled count.
   await cards.first().waitFor({ state: "visible" });
   return cards.count();
 }
 
 /**
  * Land on the workbench lab from the landing view. REE creation opens with
- * the lab-location step: pick the (connected) agent that will host the
+ * the lab-location step: pick the (connected) lab that will host the
  * workbench, which carries its id into the workbench/image page.
  *
- * `agentIndex` picks the nth connected agent (default: the first) — the
- * multi-agent spec uses it to pin each session to a different agent. Returns
- * the chosen agent's id, read back from the workspace URL the picker
+ * `labIndex` picks the nth connected lab (default: the first) — the
+ * multi-lab spec uses it to pin each session to a different lab. Returns
+ * the chosen lab's id, read back from the workspace URL the picker
  * navigates to.
  */
-export async function startReeCreation(page: Page, options?: { agentIndex?: number }) {
+export async function startReeCreation(page: Page, options?: { labIndex?: number }) {
   await page.goto("/");
   await stepShot(page, "start-ree-creation", "before");
   await page.getByRole("button", { name: "Create a new REE" }).click();
   await expect(page.getByRole("heading", { name: "Where should this REE run?" })).toBeVisible();
   await page
     .getByRole("button", { name: /connected/ })
-    .nth(options?.agentIndex ?? 0)
+    .nth(options?.labIndex ?? 0)
     .click();
   // Choosing a bay opens workbench setup over the picker: one screen, not two.
   await expect(page.getByRole("region", { name: "Set up the workbench" })).toBeVisible();
   await stepShot(page, "start-ree-creation", "after");
-  // The URL no longer carries the agent — nothing navigates until the bench is
+  // The URL no longer carries the lab — nothing navigates until the bench is
   // provisioned — so the armed bay is what records which lab was chosen.
   return (await page.locator("[data-lab][aria-pressed='true']").getAttribute("data-lab")) ?? "";
 }
@@ -293,7 +293,7 @@ export async function provisionWorkbench(page: Page, options?: { imageRef?: stri
   }
   await setup.getByRole("button", { name: /Provision workbench/i }).click();
   // A real provision: bench container start, nested dockerd boot, doctor
-  // probe. ~15-20s depending on the agent's environment — well past the
+  // probe. ~15-20s depending on the lab's environment — well past the
   // project's default expect timeout.
   await expect(nav(page).getByRole("button", { name: "Source", exact: true })).toBeVisible({
     timeout: 90000,

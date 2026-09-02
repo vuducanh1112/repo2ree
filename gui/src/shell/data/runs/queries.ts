@@ -119,7 +119,7 @@ async function fetchReeRunLogs(
 // place instead of five.
 const RUNS_ACTIVE_POLL_MS = 1500;
 // Nothing in flight: still often enough to notice runs started outside this tab,
-// e.g. by an agent.
+// e.g. by a workbench service.
 const RUNS_IDLE_POLL_MS = 5000;
 
 export function useReeRunsQuery(reeId?: string) {

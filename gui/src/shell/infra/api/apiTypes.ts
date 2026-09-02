@@ -56,10 +56,14 @@ export type ScriptTemplateEntry = Schema<"ScriptTemplateEntry">;
 /** Backend-owned starter templates for the REE-owned scripts (GET /script-templates). */
 export type ScriptTemplateCatalog = Schema<"ScriptTemplateCatalog">;
 
-/** A workbench agent connected to the control plane (GET /agents). */
-export type AgentSummary = Schema<"AgentSummary">;
+/** A connected capacity provider exposed as a lab location. */
+export type ProviderSummary = Schema<"ProviderSummary">;
 
-export type AgentList = Schema<"AgentList">;
+export type ProviderList = Schema<"ProviderList">;
+
+export type WorkbenchSummary = Schema<"WorkbenchSummary">;
+
+export type WorkbenchList = Schema<"WorkbenchList">;
 
 /** One sealed REE as the index stores it, with its archive bindings (GET /ree-index). */
 export type ReeIndexEntryWire = Schema<"ReeIndexEntry">;
@@ -151,5 +155,3 @@ export type DecisionStep = Schema<"DecisionStep">;
 export type DecisionDag = Schema<"DecisionDag">;
 
 export type DeleteReeResponse = Schema<"DeleteReeResponse">;
-
-export type ReprovisionResponse = Schema<"ReprovisionResponse">;

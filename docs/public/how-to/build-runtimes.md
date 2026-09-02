@@ -18,7 +18,7 @@ only the innermost one is the runtime.
 
 | | What it is | Who provides it | Does it ship? |
 |---|---|---|---|
-| **Workbench** | An isolated container, one per REE, where every repo2ree operation runs — acquiring source, evaluating, building, scanning, sealing. | repo2ree, from a base image; the agent injects the executor and its tools at provision time. | No. |
+| **Workbench** | An isolated container, one per REE, where every repo2ree operation runs — acquiring source, evaluating, building, scanning, sealing. | repo2ree, from a base image; the provider injects the executor and its tools at provision time. | No. |
 | **Workspace** | A directory inside that workbench (`workspace/`), materialized from the frozen source plus the REE overlay. Scripts run from its root. | repo2ree, derived from `upstream/` + `overlay/`. | Its declared contents do; the directory is derived and resettable. |
 | **Runtime** | The artifact your build script produces — an image tar or equivalent — that experiments run *inside*. | **You**, via the repository's own build recipe. | Optionally. Its recipe and SBOM always do. |
 

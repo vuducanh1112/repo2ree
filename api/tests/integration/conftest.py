@@ -15,6 +15,7 @@ and with it the workbench-manager singleton — is imported, so a developer's
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import shutil
 import socket
@@ -43,7 +44,7 @@ from api_integration_bench import (
 )
 from websockets.asyncio.server import ServerConnection, serve
 
-# Must be set before the in-test agent constructs its DockerRuntime.
+# Must be set before the in-test workbench constructs its DockerIsolation.
 os.environ.setdefault("REPO2REE_EXEC_BUNDLE", str(EXEC_BUNDLE))
 os.environ.setdefault("REPO2REE_TOOLS_BUNDLE", str(TOOLS_BUNDLE))
 
@@ -83,13 +84,17 @@ if "TRACE_FILE" not in os.environ:
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from repo2ree_agent.control.connection import run_agent  # noqa: E402
-from repo2ree_agent.runtimes.docker import DockerRuntime  # noqa: E402
-from repo2ree_agent.service import WorkbenchService  # noqa: E402
-from repo2ree_api.deps import agent_registry  # noqa: E402
+from repo2ree_api.deps import provider_connections, workbench_connections  # noqa: E402
 from repo2ree_api.main import app  # noqa: E402
-from repo2ree_protocol.agent import ws_hello_adapter  # noqa: E402
-from repo2ree_supervisor import AgentConnection, WorkbenchUnavailableError  # noqa: E402
+from repo2ree_protocol.workbench import workbench_hello_adapter  # noqa: E402
+from repo2ree_provider_docker.connection import run_provider  # noqa: E402
+from repo2ree_provider_docker.lifecycle import DockerIsolation  # noqa: E402
+from repo2ree_provider_docker.provisioner import ProvisionerService  # noqa: E402
+from repo2ree_supervisor import (  # noqa: E402
+    ProviderConnection,
+    WorkbenchConnection,
+    WorkbenchUnavailableError,
+)
 
 # ================================================
 # Fixtures
@@ -106,7 +111,7 @@ def client() -> Iterator[TestClient]:
     TRACE_FILE set above (or to OTLP_ENDPOINT when configured), so every run
     leaves an inspectable trace record.
     """
-    with TestClient(app) as client, _connected_agent():
+    with TestClient(app) as client, _connected_workbench():
         yield client
 
 
@@ -164,16 +169,17 @@ def _wait_for_provision(client: TestClient, ree_id: str, run_id: str, timeout_se
 
 
 @contextmanager
-def _connected_agent() -> Iterator[None]:
-    """Run the real outbound agent against the app's module-level registry.
+def _connected_workbench() -> Iterator[None]:
+    """Run the real outbound workbench against the app's module-level registry.
 
     TestClient does not expose a TCP WebSocket endpoint, so this fixture mirrors
-    the production /agent/connect bridge with a tiny in-test socket server: the
-    real agent dials out, the server registers an AgentConnection into the same
+    the production /workbench/connect bridge with a tiny in-test socket server: the
+    real workbench dials out, the server registers a WorkbenchConnection into the same
     registry the API's WorkbenchManager uses, and HTTP requests exercise the
     normal manager/client path.
     """
     port = _free_port()
+    control_host, workbench_network = _container_control_endpoint()
     loop = asyncio.new_event_loop()
     task_holder: list[asyncio.Task[None]] = []
 
@@ -182,23 +188,40 @@ def _connected_agent() -> Iterator[None]:
             asyncio.run_coroutine_threadsafe(ws.send(text), loop)
 
         raw_hello = await ws.recv()
-        hello = ws_hello_adapter.validate_json(raw_hello if isinstance(raw_hello, str) else raw_hello.decode())
-        connection = AgentConnection(send_text=send_text, hello=hello)
-        agent_registry.register(hello.agent_id, connection)
+        text = raw_hello if isinstance(raw_hello, str) else raw_hello.decode()
+        hello_data = json.loads(text)
+        provider_id = hello_data.get("provider_id")
+        connection: ProviderConnection | WorkbenchConnection
+        if provider_id:
+            connection = ProviderConnection(send_text=send_text)
+            provider_connections.register(provider_id, connection)
+        else:
+            hello = workbench_hello_adapter.validate_json(text)
+            connection = WorkbenchConnection(send_text=send_text, hello=hello)
+            workbench_connections.register(hello.workbench_id, connection)
         try:
             async for message in ws:
                 connection.on_message(message if isinstance(message, str) else message.decode())
         finally:
             connection.close()
-            agent_registry.unregister(hello.agent_id, connection)
+            if provider_id:
+                assert isinstance(connection, ProviderConnection)
+                provider_connections.unregister(provider_id, connection)
+            else:
+                assert isinstance(connection, WorkbenchConnection)
+                workbench_connections.unregister(hello.workbench_id, connection)
 
     async def serve_and_dial() -> None:
-        async with serve(handler, "127.0.0.1", port):
-            runtime = DockerRuntime("dind")
-            await run_agent(
-                f"ws://127.0.0.1:{port}/agent/connect",
-                WorkbenchService({runtime.runtime_name: runtime}),
-                "api-itest-agent",
+        async with serve(handler, "0.0.0.0", port):  # noqa: S104 -- sibling test containers must connect
+            isolation = DockerIsolation(
+                "dind",
+                workbench_api_ws_url=f"ws://{control_host}:{port}/workbench/connect",
+                workbench_network=workbench_network,
+            )
+            await run_provider(
+                f"ws://127.0.0.1:{port}/provider/connect",
+                ProvisionerService({isolation.runtime_name: isolation}),
+                "api-itest-provider",
                 docker_mode="dind",
             )
 
@@ -212,7 +235,7 @@ def _connected_agent() -> Iterator[None]:
 
     thread = threading.Thread(target=run_loop, daemon=True)
     thread.start()
-    _wait_until_agent_connected("api-itest-agent")
+    _wait_until_provider_connected("api-itest-provider")
     try:
         yield
     finally:
@@ -227,15 +250,38 @@ def _free_port() -> int:
         return int(sock.getsockname()[1])
 
 
-def _wait_until_agent_connected(agent_id: str, timeout: float = 10.0) -> None:
+def _container_control_endpoint() -> tuple[str, str]:
+    """Return a host/network pair reachable by sibling Docker containers."""
+    hostname = os.environ.get("HOSTNAME", "")
+    if Path("/.dockerenv").is_file() and hostname:
+        result = subprocess.run(["docker", "inspect", hostname], check=False, capture_output=True, text=True)
+        if result.returncode == 0:
+            networks = json.loads(result.stdout)[0]["NetworkSettings"]["Networks"]
+            if networks:
+                return hostname, str(next(iter(networks)))
+    return "host.docker.internal", ""
+
+
+def _wait_until_workbench_connected(workbench_id: str, timeout: float = 10.0) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         try:
-            agent_registry.pick(agent_id)
+            workbench_connections.pick(workbench_id)
             return
         except WorkbenchUnavailableError:
             time.sleep(0.05)
-    raise RuntimeError(f"agent {agent_id!r} did not dial in within {timeout}s")
+    raise RuntimeError(f"workbench {workbench_id!r} did not dial in within {timeout}s")
+
+
+def _wait_until_provider_connected(provider_id: str, timeout: float = 10.0) -> None:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            provider_connections.pick(provider_id)
+            return
+        except WorkbenchUnavailableError:
+            time.sleep(0.05)
+    raise RuntimeError(f"provider {provider_id!r} did not dial in within {timeout}s")
 
 
 def _dump_workbench_logs(ree_id: str, test_name: str) -> None:

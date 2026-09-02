@@ -1,7 +1,7 @@
 """Transient host-side staging for HTTP uploads.
 
 Uploaded bytes must land on control-plane disk before they are streamed to the
-selected agent. The agent assembles the transfer and copies it into the
+selected workbench. The workbench assembles the transfer and copies it into the
 workbench, where ``extract_upload`` consumes it. This is the only host
 persistence in the REE flow; it is keyed solely by upload token and holds no
 per-REE durable state.

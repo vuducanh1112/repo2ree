@@ -10,7 +10,7 @@ what each handler *does* is already pinned by the unit and core suites. What is
 not pinned anywhere else is that the stages compose over the real transport.
 
 Deliberately not a recording. The demo walkthrough
-(``api/tests/e2e/api_agent_walkthrough.py``) drives the same surface for a human
+(``api/tests/e2e/api_walkthrough.py``) drives the same surface for a human
 audience, with narration and asciinema; it needs a live stack and a person to
 read it. This runs in CI and leaves a span record behind
 (``test-artifacts/traces/api-integration/``), which is what the trace journal

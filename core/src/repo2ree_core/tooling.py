@@ -1,8 +1,8 @@
 """Resolving the external tools core handlers shell out to.
 
 On benches whose image carries the tools itself (e.g. a nix-built image the
-agent left un-injected) they live on PATH. On benches the agent injected its
-bundles into, PATH knows nothing — the agent advertises each tool's absolute
+workbench left un-injected) they live on PATH. On benches the workbench injected its
+bundles into, PATH knows nothing — the workbench advertises each tool's absolute
 path through a ``REPO2REE_TOOL_<NAME>`` environment variable set on the bench
 container (see the tools manifest in nix/tools.nix). Handlers resolve through
 here so both worlds work without the handler knowing which one it is in.
@@ -22,7 +22,7 @@ def tool_env_var(name: str) -> str:
 
 def resolve_tool(name: str) -> str:
     """The argv[0] to invoke ``name`` with: the advertised absolute path if the
-    agent injected one, otherwise the bare name for PATH lookup."""
+    workbench injected one, otherwise the bare name for PATH lookup."""
     return os.environ.get(tool_env_var(name)) or name
 
 

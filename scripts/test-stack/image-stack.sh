@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Bring the image-backed demo stack up or down: the compose control plane
-# (GUI + backend, :local tags) plus the workbench agent, which the
+# (GUI + backend, :local tags) plus the workbench service, which the
 # control-plane compose deliberately doesn't manage — it runs from its own
-# docker-compose.agent.yml (see docker-compose.yml).
+# docker-compose.workbench.yml (see docker-compose.yml).
 #
-#   image-stack.sh up            start compose + agent, wait until ready
-#   image-stack.sh down          remove the agent container and the compose stack
+#   image-stack.sh up            start compose + workbench, wait until ready
+#   image-stack.sh down          remove the workbench container and the compose stack
 #   image-stack.sh down --volumes  ... and every volume the run created
-#   image-stack.sh check         verify backend, connected agent, and GUI
+#   image-stack.sh check         verify backend, connected workbench, and GUI
 #   image-stack.sh gui-url  print the GUI base URL for this context
 #   image-stack.sh api-url       print the backend base URL for this context
 #
@@ -20,14 +20,14 @@
 #     scripts/test-stack/image-stack.sh up
 #
 # (or override an individual image with STACK_GUI_IMAGE /
-# STACK_BACKEND_IMAGE / STACK_AGENT_IMAGE.)
+# STACK_BACKEND_IMAGE / STACK_WORKBENCH_IMAGE.)
 #
-# STACK_AGENTS=<n> runs n agent instances (default 1) — instance i > 1 gets
+# STACK_WORKBENCHES=<n> runs n workbench instances (default 1) — instance i > 1 gets
 # its own compose project, container name, and state volume
-# (repo2ree-agent-<i>), so each keeps a distinct persistent identity.
+# (repo2ree-workbench-<i>), so each keeps a distinct persistent identity.
 #
-# `up` recreates a leftover repo2ree-agent container but reuses the pinned
-# repo2ree-agent-state volume, so the agent id stays stable across runs.
+# `up` recreates a leftover repo2ree-workbench container but reuses the pinned
+# repo2ree-workbench-state volume, so the workbench id stays stable across runs.
 #
 # The stack is addressed via its published ports on a normal host. From inside
 # a container, localhost is that container rather than the Docker host: use
@@ -49,18 +49,16 @@ root=$(cd "$(dirname "$0")/../.." && pwd)
 cd "$root"
 caller_attachment_file=$root/test-artifacts/state/image-stack-caller-network
 
-agent_container=repo2ree-agent
-# Agent instances to run (default 1). Instance i > 1 becomes its own compose
-# project repo2ree-agent-<i> with its own state volume, so each keeps a
-# distinct persistent identity — the multi-agent e2e specs need >= 2, and a
-# stress run can push it higher.
-stack_agents=${STACK_AGENTS:-1}
+provider_container=repo2ree-provider-docker
+# Provider instances to run. Keep the existing STACK_WORKBENCHES knob while
+# image-suite callers transition; each provider can create many workbenches.
+stack_providers=${STACK_PROVIDERS:-${STACK_WORKBENCHES:-1}}
 
 image_prefix=${STACK_IMAGE_REPO:+${STACK_IMAGE_REPO}/}
 image_tag=${STACK_IMAGE_TAG:-local}
 gui_image=${STACK_GUI_IMAGE:-${image_prefix}repo2ree-gui:$image_tag}
 backend_image=${STACK_BACKEND_IMAGE:-${image_prefix}repo2ree-backend:$image_tag}
-agent_image=${STACK_AGENT_IMAGE:-${image_prefix}repo2ree-agent:$image_tag}
+provider_service_image=${STACK_PROVIDER_IMAGE:-${image_prefix}repo2ree-provider-docker:$image_tag}
 
 resolve_urls() {
     local default_api_url default_gui_url docker_host
@@ -103,24 +101,24 @@ compose_stack() {
         docker compose "$@"
 }
 
-# agent_name <i>: container/project name of the i-th agent instance. Instance
-# 1 keeps the bare historical name so single-agent flows stay unchanged.
-agent_name() {
+# workbench_name <i>: container/project name of the i-th workbench instance. Instance
+# 1 keeps the bare historical name so single-workbench flows stay unchanged.
+provider_name() {
     local suffix=""
     [ "$1" -gt 1 ] && suffix="-$1"
-    echo "$agent_container$suffix"
+    echo "$provider_container$suffix"
 }
 
-# The agents run from their own compose file, so their lifecycle stays
+# The workbenches run from their own compose file, so their lifecycle stays
 # independent of the control-plane stack. Each instance is its own compose
 # project (-p) with its own container name and state volume.
-agent_compose() {
+provider_compose() {
     local name=$1
     shift
-    REPO2REE_AGENT_IMAGE=$agent_image \
-    REPO2REE_AGENT_CONTAINER=$name \
-    REPO2REE_AGENT_STATE_VOLUME=$name-state \
-        docker compose -p "$name" -f docker-compose.agent.yml "$@"
+    REPO2REE_PROVIDER_IMAGE=$provider_service_image \
+    REPO2REE_PROVIDER_CONTAINER=$name \
+    REPO2REE_PROVIDER_STATE_VOLUME=$name-state \
+        docker compose -p "$name" -f docker-compose.workbench.yml "$@"
 }
 
 # The docker network the control-plane backend is attached to, or empty when
@@ -186,21 +184,21 @@ wait_until() {
     return 1
 }
 
-agents_connected() {
+providers_connected() {
     local want=$1
     # Parse the JSON structurally rather than grepping a field name, so the
     # probe cannot silently drift from the wire format.
     local count
     count=$(curl -fsS --connect-timeout 1 --max-time 1 \
-        "$api_url/api/v1/agents" \
-        | python3 -c 'import json,sys; print(len(json.load(sys.stdin).get("agents", [])))' \
+        "$api_url/api/v1/providers" \
+        | python3 -c 'import json,sys; print(len(json.load(sys.stdin).get("providers", [])))' \
         2>/dev/null) || count=0
     [ "${count:-0}" -ge "$want" ]
 }
 
 up() {
     resolve_urls
-    for img in "$gui_image" "$backend_image" "$agent_image"; do
+    for img in "$gui_image" "$backend_image" "$provider_service_image"; do
         case "$img" in
             # Registry ref: always pull. Compose alone would reuse a stale
             # local copy of a moving tag like :edge (its default pull policy
@@ -214,8 +212,8 @@ up() {
     echo ">> starting compose control plane ($gui_image, $backend_image)"
     compose_stack up -d
 
-    echo ">> starting $stack_agents workbench agent(s) ($agent_image)"
-    # Reaching the backend: when the agent shares this daemon with the control
+    echo ">> starting $stack_providers Docker provider service(s) ($provider_service_image)"
+    # Reaching the backend: when the workbench shares this daemon with the control
     # plane (the usual case, including nested/DinD CI), host-published ports
     # aren't reliably reachable via the compose file's host.docker.internal
     # default, so join the control-plane network and dial the backend by
@@ -223,14 +221,15 @@ up() {
     # back to the file's default.
     local control_plane_net i name
     control_plane_net=$(control_plane_network)
-    for i in $(seq 1 "$stack_agents"); do
-        name=$(agent_name "$i")
+    for i in $(seq 1 "$stack_providers"); do
+        name=$(provider_name "$i")
         if [ -n "$control_plane_net" ]; then
-            WORKBENCH_API_WS_URL=ws://backend:8000/agent/connect \
-                agent_compose "$name" up -d >/dev/null
+            PROVIDER_API_WS_URL=ws://backend:8000/provider/connect \
+            PROVIDER_WORKBENCH_API_WS_URL=ws://backend:8000/workbench/connect \
+                provider_compose "$name" up -d >/dev/null
             docker network connect "$control_plane_net" "$name" >/dev/null 2>&1 || true
         else
-            agent_compose "$name" up -d >/dev/null
+            provider_compose "$name" up -d >/dev/null
         fi
     done
 
@@ -241,14 +240,14 @@ up() {
     resolve_urls
     echo ">> probing stack endpoints — API $api_url, GUI $gui_url"
     wait_until "backend at $api_url" curl -fsS --connect-timeout 1 --max-time 1 "$api_url/"
-    wait_until "$stack_agents workbench agent(s)" agents_connected "$stack_agents"
+    wait_until "$stack_providers provider service(s)" providers_connected "$stack_providers"
     wait_until "gui at $gui_url" curl -fsS --connect-timeout 1 --max-time 1 "$gui_url/"
     echo ">> stack up — GUI at $gui_url"
 }
 
 # down [--volumes]: stop the stack. With --volumes, also drop every volume the
-# run created — the compose ones (backend data, agent identity) and whatever
-# workbench state the agent left on the daemon. That is the right default for a
+# run created — the compose ones (backend data, workbench identity) and whatever
+# workbench state the workbench left on the daemon. That is the right default for a
 # test stack, where a surviving backend volume outlives the REEs it describes;
 # the plain `down` keeps the volumes so a demo stack resumes where it left off.
 down() {
@@ -260,13 +259,13 @@ down() {
     # devcontainer remains attached to it.
     detach_owned_caller_network
 
-    # Tear down every agent instance found on the daemon, not just
-    # $stack_agents of them — a previous `up` may have started more.
-    echo ">> stopping workbench agent stack(s)"
+    # Tear down every workbench instance found on the daemon, not just
+    # $stack_workbenches of them — a previous `up` may have started more.
+    echo ">> stopping workbench service stack(s)"
     local name
     for name in $(docker ps -a --format '{{.Names}}' \
-        | grep -E "^${agent_container}(-[0-9]+)?$" || true); do
-        agent_compose "$name" down "${down_args[@]}" >/dev/null 2>&1 || true
+        | grep -E "^${provider_container}(-[0-9]+)?$" || true); do
+        provider_compose "$name" down "${down_args[@]}" >/dev/null 2>&1 || true
     done
     echo ">> stopping compose control plane"
     compose_stack down "${down_args[@]}"
@@ -280,8 +279,8 @@ check() {
     resolve_urls
     curl -fsS --connect-timeout 1 --max-time 1 "$api_url/" >/dev/null \
         || { echo "backend not reachable at $api_url — start the image stack first (just stack-up)" >&2; exit 1; }
-    agents_connected 1 \
-        || { echo "no workbench agent connected — start the agent container (just stack-up)" >&2; exit 1; }
+    providers_connected 1 \
+        || { echo "no provider service connected — start the provider container (just stack-up)" >&2; exit 1; }
     curl -fsS --connect-timeout 1 --max-time 1 "$gui_url/" >/dev/null \
         || { echo "GUI not reachable at $gui_url — start the image stack first (just stack-up)" >&2; exit 1; }
 }

@@ -6,39 +6,45 @@
 
 repo2ree has three deployed surfaces today:
 
-- `backend`: the FastAPI API — pure control plane. It never touches Docker;
-  workbench operations go to whichever agents have dialed in.
-- `agent`: the workbench agent. It holds the docker socket, dials the backend
-  over an outbound WebSocket, provisions benches, and injects its embedded
-  executor and tools. It has its own compose file
-  (`docker-compose.agent.yml`) and lifecycle, so it can run wherever benches
-  should live. The control-plane stack contains only the GUI and backend.
+- `backend`: the FastAPI API — pure control plane. It never touches Docker.
+  Capacity requests go to a connected provider; REE commands go to the
+  workbench that provider created.
+- `provider`: the Docker provider. It holds the docker socket, dials the
+  backend over an outbound WebSocket, creates workbenches, and injects its
+  embedded executor and tools. It has its own compose file
+  (`docker-compose.workbench.yml`) and lifecycle, so it can run wherever
+  workbenches should live. The control-plane stack contains only the GUI and
+  backend.
 - `gui`: a static Vite bundle served by Caddy. Caddy also reverse-proxies
   `/api/*` to the backend so the browser uses one origin.
 
 Each REE gets a separate workbench container named `repo2ree-wb-{ree_id}` plus
-Docker volumes for `/ree` state and the nested Docker daemon.
+Docker volumes for `/ree` state and the nested Docker daemon. Inside it the
+provider starts `repo2ree-workbench`, which dials the backend on its own
+connection and runs the executor for each command.
 
 ## Run with published images
 
 The public demo path uses Docker Hub images and does not require Nix. Compose
-brings up the control plane; a second compose file brings up the agent, which
-dials the host-published backend port:
+brings up the control plane; a second compose file brings up the provider,
+which dials the host-published backend port:
 
 ```bash
 docker compose up -d
-docker compose -f docker-compose.agent.yml up -d
+docker compose -f docker-compose.workbench.yml up -d
 ```
 
 Then open `http://localhost:3000`.
 
-The agent compose file defaults `WORKBENCH_API_WS_URL` to
-`ws://host.docker.internal:8000/agent/connect` (the control plane on the same
-host). Override it to dial a backend elsewhere:
+The provider compose file defaults `PROVIDER_API_WS_URL` to
+`ws://host.docker.internal:8000/provider/connect` (the control plane on the same
+host). Override it, along with the address it hands each workbench, to dial a
+backend elsewhere:
 
 ```bash
-WORKBENCH_API_WS_URL=ws://backend.example:8000/agent/connect \
-  docker compose -f docker-compose.agent.yml up -d
+PROVIDER_API_WS_URL=ws://backend.example:8000/provider/connect \
+PROVIDER_WORKBENCH_API_WS_URL=ws://backend.example:8000/workbench/connect \
+  docker compose -f docker-compose.workbench.yml up -d
 ```
 
 `docker-compose.yml` defaults to the current Docker Hub demo images:
@@ -48,12 +54,12 @@ WORKBENCH_API_WS_URL=ws://backend.example:8000/agent/connect \
 | `REPO2REE_GUI_IMAGE` | `docker.io/vuducanh1112/repo2ree-gui:edge` | GUI image served by Caddy. |
 | `REPO2REE_BACKEND_IMAGE` | `docker.io/vuducanh1112/repo2ree-backend:edge` | FastAPI backend image. |
 
-Set the agent image with `REPO2REE_AGENT_IMAGE` in its compose file. It defaults
-to `docker.io/vuducanh1112/repo2ree-agent:edge`.
+Set the provider image with `REPO2REE_PROVIDER_IMAGE` in its compose file. It
+defaults to `docker.io/vuducanh1112/repo2ree-provider-docker:edge`.
 
 The backend image catalog defines the available per-REE workbench images
 (`api/src/repo2ree_api/settings.py`). Its default is a pinned upstream
-`docker:dind` digest; the agent injects the executor and tools. Override
+`docker:dind` digest; the provider injects the executor and tools. Override
 `WORKBENCH_IMAGE_CATALOG` to publish a different catalog.
 
 ## Build images locally
@@ -76,16 +82,16 @@ just backend-image
 This runs the Dockerfile build for `docker/demo/backend.Dockerfile` and tags the
 result as `repo2ree-backend:local`.
 
-Build and load the agent image (agent process + embedded executor/tools
-bundles):
+Build and load the provider image (provider process plus the embedded
+workbench, executor, and tools bundles):
 
 ```bash
-just agent-image
+just provider-image
 ```
 
 ## Publishing images
 
-Publishing treats the GUI, backend, and agent as one image candidate. The
+Publishing treats the GUI, backend, and provider as one image candidate. The
 candidate is pushed under a Git revision, validated by manifest digest, then
 promoted as one set:
 
@@ -130,8 +136,8 @@ dev container, copy `dist/images/` to the host, then run
 under a different tag. Continue with validation and promotion using
 `IMAGE_CANDIDATE_REV=$(cat dist/images/IMAGE_CANDIDATE_REV)`.
 
-All images always move together because the agent↔control-plane protocol
-requires matching versions. Registries default to GHCR and Docker Hub under
+All images always move together because the compute-side↔control-plane
+protocols require matching versions. Registries default to GHCR and Docker Hub under
 `vuducanh1112`; override `REGISTRIES`, `GHCR_NAMESPACE`, or
 `DOCKERHUB_NAMESPACE` for another deployment set.
 
@@ -143,12 +149,12 @@ REPO2REE_BACKEND_IMAGE=repo2ree-backend:local \
 docker compose up
 ```
 
-Start the agent stack pointed at the local image, then open
+Start the provider stack pointed at the local image, then open
 `http://localhost:3000`:
 
 ```bash
-REPO2REE_AGENT_IMAGE=repo2ree-agent:local \
-  docker compose -f docker-compose.agent.yml up -d
+REPO2REE_PROVIDER_IMAGE=repo2ree-provider-docker:local \
+  docker compose -f docker-compose.workbench.yml up -d
 ```
 
 The compose stack publishes:
@@ -156,9 +162,9 @@ The compose stack publishes:
 | Service | Port | Notes |
 |---|---:|---|
 | `gui` | `3000` | Caddy serves the Vite bundle and proxies `/api/*`. |
-| `backend` | `8000` | FastAPI API. Exposed directly for debugging; also the endpoint agents dial. |
+| `backend` | `8000` | FastAPI API. Exposed directly for debugging; also the endpoint the provider and its workbenches dial. |
 
-The agent container mounts `/var/run/docker.sock` and launches workbench
+The provider container mounts `/var/run/docker.sock` and launches workbench
 containers; the backend has no Docker access at all. The workbench containers
 do not receive the host socket either; they run privileged Docker-in-Docker
 with their own daemon.
@@ -170,10 +176,10 @@ Each compose file creates one named volume:
 | Volume | Mounted at | Purpose |
 |---|---|---|
 | `repo2ree-demo-data` | `/app/.repo2ree` in the backend | Backend-local metadata such as upload staging and workbench registry. |
-| `repo2ree-agent-state` | `/var/lib/repo2ree-agent` in the agent | The agent's stable identity across container replacements (created by `docker-compose.agent.yml`, with a pinned volume name so it survives recreation). |
+| `repo2ree-provider-state` | `/var/lib/repo2ree-provider` in the provider | The provider's stable identity across container replacements (created by `docker-compose.workbench.yml`, with a pinned volume name so it survives recreation). |
 
-REE execution state lives in per-REE Docker volumes created by the selected
-agent's runtime at the supervisor's request, not inside `repo2ree-demo-data`.
+REE execution state lives in per-REE Docker volumes the provider creates at the
+supervisor's request, not inside `repo2ree-demo-data`.
 
 `docker compose down` keeps both volumes, which is what a stack you intend to
 restart wants. To stop a stack and reclaim everything it stored — the compose
@@ -193,14 +199,14 @@ Backend variables:
 | `UPLOAD_MAX_BYTES` | 2 GiB | Per-upload staging limit. |
 | `UPLOAD_STAGING_MAX_BYTES` | 8 GiB | Aggregate staging budget. |
 | `UPLOAD_TTL_SECONDS` | `3600` | Abandoned-upload and token lifetime. |
-| `WORKBENCH_REGISTRY_FILE` | `.repo2ree/workbench-registry.json` | Registry mapping REE ids to agents, opaque workbench references, and workbench specifications. |
+| `WORKBENCH_REGISTRY_FILE` | `.repo2ree/workbench-registry.json` | Registry mapping REE ids to workbenches, opaque workbench references, and workbench specifications. |
 | `REE_INDEX_FILE` | `.repo2ree/ree-index.json` | Durable index of sealed REEs and archive attestations. |
 | `RUN_REGISTRY_DIR` | `.repo2ree/runs` | Durable background-run state. |
 | `RUN_MAX_WORKERS` | `4` | Concurrent workbench-command and worker-thread limit. |
-| `OTLP_ENDPOINT` | unset | OTLP collector base URL for API and agent traces/metrics/logs (see `observability/`). |
+| `OTLP_ENDPOINT` | unset | OTLP collector base URL for API traces/metrics/logs (see `observability/`). The provider and each workbench take their own. |
 | `OTEL_EXPORTER_OTLP_HEADERS` | unset | Headers for authenticated OTLP ingest (e.g. ClickStack's `authorization=<key>`). |
-| `TRACE_FILE` | unset | Local NDJSON trace sink for API/agent spans when no collector is configured. |
-| `LOG_LEVEL` | `INFO` | Python log level for API, agent, and executor processes. |
+| `TRACE_FILE` | unset | Local NDJSON trace sink for API and workbench spans when no collector is configured. |
+| `LOG_LEVEL` | `INFO` | Python log level for API, provider, workbench, and executor processes. |
 
 GUI variables:
 
@@ -219,13 +225,12 @@ Container socket access:
 
 Current state:
 
-- The agent (not the backend) can reach the host Docker daemon.
-- The main workbench path does not pass the host Docker socket into REE
-  execution.
+- The provider (not the backend) can reach the host Docker daemon.
+- The main path does not pass the host Docker socket into REE execution.
 - Each workbench is a privileged Docker-in-Docker container with its own nested
   Docker daemon.
-- Workbench containers are restarted unless stopped and can be torn down by the
-  supervisor/API.
+- Workbench containers are restarted unless stopped and can be torn down through
+  the supervisor/API.
 
 Target hardening, described in the architecture docs, is VM-backed workbenches
 and stronger content-addressed/cache semantics. Do not describe the current
@@ -244,13 +249,15 @@ docker volume ls --filter 'name=repo2ree'
 
 If workbench provisioning fails, check:
 
-- The agent container is running, can access `/var/run/docker.sock`, and shows
-  as connected under `GET /api/v1/agents` (the backend itself never touches
-  docker).
+- The provider container is running, can access `/var/run/docker.sock`, and
+  shows as connected under `GET /api/v1/providers` (the backend itself never
+  touches docker).
+- The new workbench appears under `GET /api/v1/workbenches`; if the provider
+  created a container that never dials in, the fault is inside the bench.
 - The configured workbench env image can be pulled by the Docker daemon the
-  agent uses.
+  provider uses.
 - The host supports privileged containers.
-- The provisioning run's log: the agent streams the pull, the bundle-volume
+- The provisioning run's log: the provider streams the pull, the bundle-volume
   populate, and the `repo2ree-exec doctor` capability probe into it — a bench
   that violates the contract fails there with a specific message.
 - Workbench logs with `docker logs repo2ree-wb-{ree_id}`.
@@ -261,12 +268,13 @@ If workbench provisioning fails, check:
 For a non-compose deployment, keep the same boundaries:
 
 - Run the backend anywhere; it needs no Docker access.
-- Run an agent wherever benches should live, with `WORKBENCH_API_WS_URL`
-  pointing at the backend (outbound only — no inbound port on the agent), the
-  docker socket mounted, and its state dir persisted.
+- Run a provider wherever workbenches should live, with `PROVIDER_API_WS_URL`
+  and `PROVIDER_WORKBENCH_API_WS_URL` pointing at the backend (outbound only —
+  no inbound port on either side), the docker socket mounted, and its state dir
+  persisted.
 - Run the GUI image with `BACKEND_UPSTREAM` set to the backend host and
   port reachable from the Caddy container.
-- Persist backend `.repo2ree` state and do not treat workbench Docker volumes as
+- Persist backend `.repo2ree` state and do not treat per-REE Docker volumes as
   disposable while REEs are active.
 
 The API is the hosted long-running process today. The supervisor is a library,

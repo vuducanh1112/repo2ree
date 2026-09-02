@@ -129,4 +129,4 @@ decides how a halt is reported.
 ## See also
 
 - [Concept reference](../reference/concepts.md) — Run Receipt, REE assessment, lifecycle states.
-- [Component reference](../reference/components.md) — where `core` sits relative to the executor and the agent.
+- [Component reference](../reference/components.md) — where `core` sits relative to the executor and the workbench.

@@ -169,7 +169,7 @@ describe("experiment detail states", () => {
           category: "unavailable",
           message: "worker offline",
           retryable: true,
-          origin: "agent",
+          origin: "workbench",
         },
         logLines: [{ type: "err", msg: "lost worker" }],
       }),

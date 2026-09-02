@@ -24,7 +24,7 @@ interface BenchConsoleProps {
 // The workbench is the lab this whole hub lives in, so it reads as an ambient
 // console pinned to the bench corner rather than a node on the ring. The footer
 // bar carries its resting state and opens it here — no separate panel — to
-// surface live bench status and the one action that matters here: reprovision,
+// surface live bench status and the one action that matters here: release,
 // with a terminal-style readout.
 export function BenchConsole({
   provisioned,
@@ -33,11 +33,10 @@ export function BenchConsole({
   onOpenChange,
   externallyTriggered = false,
 }: BenchConsoleProps) {
-  const { reeId, reeApi } = useReeRuntime();
+  const { reeId } = useReeRuntime();
   const reeClient = useReeClient();
   const imageRef = useWorkbenchImageRef();
   const navigate = useNavigate();
-  const [reprovisioning, setReprovisioning] = useState(false);
   const [releasing, setReleasing] = useState(false);
   const [log, setLog] = useState<LogEntry | null>(null);
 
@@ -60,38 +59,6 @@ export function BenchConsole({
       return;
     }
     navigate(APP_ROUTE.ROOT);
-  }
-
-  async function handleReprovision() {
-    setReprovisioning(true);
-    setLog(appendLine(null, "info", "Reprovisioning workbench…", appShellPorts.clock.nowIso()));
-    setLog((l) =>
-      appendLine(
-        l,
-        "out",
-        `Replacing container from ${imageRef ?? "the current image"}`,
-        appShellPorts.clock.nowIso(),
-      ),
-    );
-    setLog((l) =>
-      appendLine(l, "out", "Preserving /ree workspace volume", appShellPorts.clock.nowIso()),
-    );
-    try {
-      await reeApi.reprovisionWorkbench(reeId);
-      setLog((l) =>
-        appendLine(
-          l,
-          "ok",
-          "Workbench reprovisioned — lab back online",
-          appShellPorts.clock.nowIso(),
-        ),
-      );
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Reprovision failed";
-      setLog((l) => appendLine(l, "err", msg, appShellPorts.clock.nowIso()));
-    } finally {
-      setReprovisioning(false);
-    }
   }
 
   if (externallyTriggered && !open) return null;
@@ -117,20 +84,8 @@ export function BenchConsole({
       <StatRow label="Location" value="Local" />
       <StatRow label="Isolation" value="Docker-in-docker sandbox" />
 
-      <Terminal log={log} running={reprovisioning} />
+      <Terminal log={log} running={releasing} />
 
-      <button
-        type="button"
-        onClick={handleReprovision}
-        disabled={reprovisioning}
-        className={styles.action}
-        data-kind="reprovision"
-      >
-        {reprovisioning ? Ic.loader(14) : Ic.refresh(14)}
-        <span>{reprovisioning ? "Reprovisioning…" : "Reprovision workbench"}</span>
-      </button>
-      <span className={styles.actionNote}>Replaces the container, keeping the /ree volume.</span>
-      <div className={styles.divider} />
       <button
         type="button"
         onClick={handleReleaseWorkbench}

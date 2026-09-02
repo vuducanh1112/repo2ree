@@ -1,7 +1,7 @@
 /* The durable record of what this control plane has sealed, and where each one
  * was deposited. Outlives the workbench that authored it.
  *
- * Shares the agent table's chrome shape but not its module: the two are
+ * Shares the lab table's chrome shape but not its module: the two are
  * different tables of different things, and folding them together would mean a
  * variant per column set. */
 

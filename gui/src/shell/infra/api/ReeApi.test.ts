@@ -21,7 +21,8 @@ describe("ReeApi", () => {
     await api.listReeSteps();
     await api.listWorkbenchImages();
     await api.listScriptTemplates();
-    await api.listAgents();
+    await api.listProviders();
+    await api.listWorkbenches();
     await api.listReeIndex({ cursor: "next page", limit: 20, depositedOnly: true });
     await api.listRees({ cursor: "cursor", limit: 10, status: "sealed" });
 
@@ -29,11 +30,12 @@ describe("ReeApi", () => {
       "/api/v1/ree-steps",
       "/api/v1/workbench/images",
       "/api/v1/script-templates",
-      "/api/v1/agents",
+      "/api/v1/providers",
+      "/api/v1/workbenches",
       "/api/v1/ree-index?cursor=next+page&limit=20&deposited_only=true",
       "/api/v1/rees",
     ]);
-    expect(client.request.mock.calls[5]?.[2].toString()).toBe(
+    expect(client.request.mock.calls[6]?.[2].toString()).toBe(
       "cursor=cursor&limit=10&status=sealed",
     );
   });
@@ -108,7 +110,7 @@ describe("ReeApi", () => {
     });
   });
 
-  it("maps reports, reviews and reprovisioning", async () => {
+  it("maps reports and reviews", async () => {
     const { api, client } = harness();
     const reeId = asReeId("ree-1");
     await api.getEvaluateReport(reeId);
@@ -117,7 +119,6 @@ describe("ReeApi", () => {
     await api.startBuildReview(reeId, "review/1", { basis: "auto", prune_workspace: false });
     await api.startActivationReview(reeId, "review/1");
     await api.startExperimentReview(reeId, "review/1", "hello world");
-    await api.reprovisionWorkbench(reeId);
 
     expect(client.request.mock.calls.map(([path]) => path)).toEqual([
       "/api/v1/rees/ree-1/evaluate/report",
@@ -126,7 +127,6 @@ describe("ReeApi", () => {
       "/api/v1/rees/ree-1/reviews/review%2F1/build:reproduce",
       "/api/v1/rees/ree-1/reviews/review%2F1/activation:reproduce",
       "/api/v1/rees/ree-1/reviews/review%2F1/experiments/hello%20world:reproduce",
-      "/api/v1/rees/ree-1/workbench/reprovision",
     ]);
   });
 

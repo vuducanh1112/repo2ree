@@ -108,7 +108,7 @@ def main() -> None:
     # Plain (unstructured) root logs: the executor's meaningful logs ride the
     # LogSink NDJSON relay, and it has no path to a collector anyway.
     _configure_logging()
-    # On injected benches the agent advertises a symlink farm of handler/
+    # On injected benches the workbench advertises a symlink farm of handler/
     # lifecycle tools (git, curl, tar, …). Prepending it here — rather than to
     # the container env — scopes it to the executor and its subprocesses: user
     # scripts get pinned nix tools (deterministic over whatever the image
@@ -363,10 +363,10 @@ def init_ree_cmd(name: str) -> None:
 def doctor_cmd() -> None:
     """Probe this bench's capabilities and emit the report as JSON.
 
-    The agent runs this right after provisioning a bench: ``ok`` covers the
+    The workbench runs this right after provisioning a bench: ``ok`` covers the
     hard bench contract (writable /ree), the rest is capability inventory
     (docker substrate, handler tools). Exits non-zero only when the probe
-    itself cannot run — a not-ok report is the agent's call to make.
+    itself cannot run — a not-ok report is the workbench's call to make.
     """
     click.echo(json.dumps(run_doctor()))
 

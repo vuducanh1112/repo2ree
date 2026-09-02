@@ -12,7 +12,7 @@ safety mechanism, not an artifact of Zenodo's data model.
 
 Adapters run in the control plane — the API service — and nowhere else. They hold user
 credentials, and the workbench executes the author's own code — a deposit token
-must never be reachable from there. The agent is likewise out of scope: it
+must never be reachable from there. The workbench is likewise out of scope: it
 already holds the Docker socket, and widening it to carry user archive
 credentials would compound that.
 """

@@ -120,7 +120,7 @@ class Span:
         that gap is the one thing a nested waterfall hides unless it is named.
 
         Children are merged as intervals rather than summed, because siblings
-        here genuinely overlap: the agent request that carries a command and
+        here genuinely overlap: the workbench request that carries a command and
         the command span relayed back out of the container describe the same
         stretch of time from two sides. Summing them double-counts it, which
         drives the parent's self time to a floor of zero and reports the
@@ -267,12 +267,12 @@ def flatten(roots: list[Span]) -> list[Span]:
     """Depth-first pre-order, stamping depth and a re-run-stable anchor.
 
     The anchor never uses the span id, which is minted fresh on every
-    execution. A document that cites ``agent.request(copy_open)`` still points
+    execution. A document that cites ``workbench.request(copy_open)`` still points
     at the same step after the next capture; one that cites a span id points at
     nothing.
 
     Same-named siblings are told apart by their ``repo2ree.operation`` where
-    they carry one — three spans called ``agent.request`` are a copy_open, a
+    they carry one — three spans called ``workbench.request`` are a copy_open, a
     copy_chunk and an exec_action, and saying so beats numbering them. An
     ordinal is the fallback, and a worse anchor: inserting a call renumbers
     every sibling after it, so references drift silently.
@@ -649,8 +649,8 @@ def zone_of(span: Span, rules: list[tuple[str, list[str]]]) -> str:
     instrumentation scope names the module that opened the span, and its top
     package names the component. That is the authority: service name is too
     coarse (the supervisor shares a process with the API, core with the
-    executor) and span *names* are not authority at all — ``agent.request`` is
-    opened by the agent, not by the supervisor that will consume it, and only
+    executor) and span *names* are not authority at all — ``workbench.request`` is
+    opened by the workbench, not by the supervisor that will consume it, and only
     the scope says so.
 
     ``--zone`` remains as an override for spans whose scope is uninformative,

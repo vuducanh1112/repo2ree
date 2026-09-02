@@ -1,11 +1,11 @@
 E2E_BUNDLE_DIR := ROOT + "/dist/bundles"
 E2E_EXEC_BUNDLE := E2E_BUNDLE_DIR + "/exec"
 E2E_TOOLS_BUNDLE := E2E_BUNDLE_DIR + "/tools"
-API_DEMO_CAST := env("API_DEMO_CAST", ROOT + "/test-artifacts/casts/api-agent-walkthrough.cast")
+API_DEMO_CAST := env("API_DEMO_CAST", ROOT + "/test-artifacts/casts/api-walkthrough.cast")
 API_DEMO_TRANSCRIPT := env("API_DEMO_TRANSCRIPT", replace_regex(API_DEMO_CAST, "[.]cast$", ".md"))
 
 # Source-run suites are measured because the host can collect coverage from
-# their backend and agent processes. Image-backed variants deliberately are
+# their backend and workbench processes. Image-backed variants deliberately are
 # not: they validate the deployed topology, whose container processes are
 # outside host instrumentation. The -on-stack recipes attach without owning
 # lifecycle; the -stack-* recipes own startup and always tear down volumes.
@@ -18,12 +18,12 @@ e2e-bundles: _stage-nix-sources
     nix build .#tools-bundle -o {{ quote(E2E_TOOLS_BUNDLE) }}
 
 [private]
-_source-stack-playwright project agents:
-    E2E_WORKBENCH_IMAGE={{ quote(E2E_WORKBENCH_IMAGE) }} E2E_WORKBENCH_DOCKER_MODE={{ quote(E2E_WORKBENCH_DOCKER_MODE) }} E2E_EXEC_BUNDLE={{ quote(E2E_EXEC_BUNDLE) }} E2E_TOOLS_BUNDLE={{ quote(E2E_TOOLS_BUNDLE) }} scripts/test-stack/e2e-stack.sh --project {{ quote(project) }} --agents {{ quote(agents) }}
+_source-stack-playwright project capacity:
+    E2E_WORKBENCH_IMAGE={{ quote(E2E_WORKBENCH_IMAGE) }} E2E_PROVIDER_DOCKER_MODE={{ quote(E2E_PROVIDER_DOCKER_MODE) }} E2E_EXEC_BUNDLE={{ quote(E2E_EXEC_BUNDLE) }} E2E_TOOLS_BUNDLE={{ quote(E2E_TOOLS_BUNDLE) }} scripts/test-stack/e2e-stack.sh --project {{ quote(project) }} --mode {{ quote(E2E_CAPACITY_MODE) }} --capacity {{ quote(capacity) }}
 
 # Run the measured author-side browser E2E tier.
 [group('E2E tests')]
-e2e-gui agents=E2E_AGENTS: e2e-bundles (_source-stack-playwright "e2e-gui" agents)
+e2e-gui capacity=E2E_CAPACITY: e2e-bundles (_source-stack-playwright "e2e-gui" capacity)
 
 # Run the measured reviewer-side browser E2E tier.
 [group('E2E tests')]
@@ -41,13 +41,13 @@ demo-gui-code-ocean: e2e-bundles (_source-stack-playwright "demo-gui-code-ocean"
 [group('Demos')]
 demo-api: e2e-bundles
     @mkdir -p "$(dirname {{ quote(API_DEMO_CAST) }})"
-    E2E_WORKBENCH_IMAGE={{ quote(E2E_WORKBENCH_IMAGE) }} E2E_WORKBENCH_DOCKER_MODE={{ quote(E2E_WORKBENCH_DOCKER_MODE) }} E2E_EXEC_BUNDLE={{ quote(E2E_EXEC_BUNDLE) }} E2E_TOOLS_BUNDLE={{ quote(E2E_TOOLS_BUNDLE) }} scripts/test-stack/e2e-stack.sh --script {{ quote(ROOT + "/api/tests/e2e/api_agent_walkthrough.py") }} --tier demo-api --record {{ quote(API_DEMO_CAST) }}
+    E2E_WORKBENCH_IMAGE={{ quote(E2E_WORKBENCH_IMAGE) }} E2E_PROVIDER_DOCKER_MODE={{ quote(E2E_PROVIDER_DOCKER_MODE) }} E2E_EXEC_BUNDLE={{ quote(E2E_EXEC_BUNDLE) }} E2E_TOOLS_BUNDLE={{ quote(E2E_TOOLS_BUNDLE) }} scripts/test-stack/e2e-stack.sh --script {{ quote(ROOT + "/api/tests/e2e/api_walkthrough.py") }} --tier demo-api --mode {{ quote(E2E_CAPACITY_MODE) }} --capacity 1 --record {{ quote(API_DEMO_CAST) }}
     python3 {{ quote(ROOT + "/api/tests/e2e/render_cast_transcript.py") }} {{ quote(API_DEMO_CAST) }} {{ quote(API_DEMO_TRANSCRIPT) }}
 
 # Start the local image-backed stack.
 [group('Stack management')]
-stack-up agents=E2E_AGENTS:
-    STACK_AGENTS={{ quote(agents) }} scripts/test-stack/image-stack.sh up
+stack-up workbenches=E2E_WORKBENCHES:
+    STACK_WORKBENCHES={{ quote(workbenches) }} scripts/test-stack/image-stack.sh up
 
 # Stop the image-backed stack while retaining volumes.
 [group('Stack management')]
@@ -91,17 +91,17 @@ demo-gui-on-stack: _check-image-stack
 # Run the API walkthrough against an already-running image stack.
 [group('Stack tests')]
 demo-api-on-stack: _check-image-stack
-    API_BASE_URL="$(scripts/test-stack/image-stack.sh api-url)" api/tests/e2e/api_agent_walkthrough.py
+    API_BASE_URL="$(scripts/test-stack/image-stack.sh api-url)" api/tests/e2e/api_walkthrough.py
 
 # Build local images and run the author-side browser suite against them.
 [group('Stack tests')]
-e2e-gui-stack-local agents=E2E_AGENTS: images
-    scripts/test-stack/run-image-suite.sh e2e-gui {{ quote(agents) }}
+e2e-gui-stack-local workbenches=E2E_WORKBENCHES: images
+    scripts/test-stack/run-image-suite.sh e2e-gui {{ quote(workbenches) }}
 
 # Run the author-side browser suite against published images.
 [group('Stack tests')]
-e2e-gui-stack-published agents=E2E_AGENTS:
-    scripts/test-stack/run-image-suite.sh e2e-gui {{ quote(agents) }} {{ quote(STACK_IMAGE_REPO) }} {{ quote(STACK_IMAGE_TAG) }}
+e2e-gui-stack-published workbenches=E2E_WORKBENCHES:
+    scripts/test-stack/run-image-suite.sh e2e-gui {{ quote(workbenches) }} {{ quote(STACK_IMAGE_REPO) }} {{ quote(STACK_IMAGE_TAG) }}
 
 # Build local images and run the reviewer-side browser suite against them.
 [group('Stack tests')]

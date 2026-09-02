@@ -29,7 +29,7 @@ Unlike the others, open-source ClickStack rejects OTLP requests without an
 `authorization` header. Copy the **Ingestion API Key** from the HyperDX UI
 (Team Settings → API Keys) and pass it via the standard OTLP env var, which
 the SDK exporters and the executor span relay both honor, and which the
-control-plane/agent compose files pass through:
+control-plane/provider compose files pass through:
 
 ```sh
 OTLP_ENDPOINT=http://host.docker.internal:4318 \
@@ -43,11 +43,11 @@ just demo-gui-stack-local
   relayed from inside the workbench container — the executor's `command.*` /
   `process.exec` spans, wide-event attributes included (args, receipts,
   exit codes, output tails on failure).
-- **Logs**: host process logs (API, agent) plus the full workbench run
+- **Logs**: host process logs (API, provider, workbench) plus the full run
   stream (`repo2ree.run` logger), each line trace-correlated and tagged with
   `repo2ree.ree_id` / `repo2ree.run_id` / `repo2ree.stream` — durable past
   container teardown, unlike `docker logs`.
-- **Metrics**: the `workbench.*` / `agent.*` counters and duration
+- **Metrics**: the `workbench.*` / `ree.*` counters and duration
   histograms.
 
 Without a collector, spans fall back to `TRACE_FILE` (NDJSON) or stdout; logs

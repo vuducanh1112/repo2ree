@@ -83,7 +83,7 @@ describe("createReeRunsClient", () => {
   it("provisions a named workspace and trims optional placement inputs", async () => {
     const { client, reeApi } = harness();
     await expect(
-      client.createWorkspace("Demo", " image:latest ", " agent-1 "),
+      client.createWorkspace("Demo", " image:latest ", " lab-1 "),
     ).resolves.toMatchObject({
       reeId: "ree-1",
       run: { runId: "run-1", status: "succeeded" },
@@ -91,7 +91,7 @@ describe("createReeRunsClient", () => {
     expect(reeApi.createRee).toHaveBeenCalledWith({
       name: "Demo",
       workbench_image: "image:latest",
-      agent_id: "agent-1",
+      provider_id: "lab-1",
     });
   });
 

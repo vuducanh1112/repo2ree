@@ -9,7 +9,8 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_protocol.agent import DockerWorkbenchSpec, WorkbenchRef
+from repo2ree_protocol.frames import WorkbenchRef
+from repo2ree_protocol.provider import DockerWorkbenchSpec
 from repo2ree_supervisor.registry import WorkbenchEntry, WorkbenchRegistry
 
 
@@ -18,7 +19,7 @@ def _entry(ree_id: str) -> WorkbenchEntry:
         ree_id=ree_id,
         ref=WorkbenchRef(runtime="docker", token=f"workbench-{ree_id}"),
         spec=DockerWorkbenchSpec(base_image="image:test"),
-        agent_id="agent-1",
+        workbench_id="workbench-1",
     )
 
 
@@ -80,7 +81,7 @@ def test_registry_reads_legacy_docker_record_as_opaque_reference(tmp_path: Path)
                     "container_name": "repo2ree-wb-ree-old",
                     "volume_name": "repo2ree-ree-ree-old",
                     "image": "ubuntu:24.04",
-                    "agent_id": "agent-1",
+                    "workbench_id": "workbench-1",
                     "exec_path": "repo2ree-exec",
                 }
             }
@@ -92,3 +93,22 @@ def test_registry_reads_legacy_docker_record_as_opaque_reference(tmp_path: Path)
     assert entry is not None
     assert entry.ref.runtime == "docker"
     assert entry.spec == DockerWorkbenchSpec(base_image="ubuntu:24.04")
+
+
+@pytest.mark.parametrize("placement", [{}, {"workbench_id": ""}])
+def test_registry_rejects_missing_workbench_placement(tmp_path: Path, placement: dict[str, str]) -> None:
+    path = tmp_path / "registry.json"
+    path.write_text(
+        json.dumps(
+            {
+                "ree-broken": {
+                    "ref": {"runtime": "docker", "token": "opaque"},
+                    "spec": {"runtime": "docker", "base_image": "ubuntu:24.04"},
+                    **placement,
+                }
+            }
+        )
+    )
+
+    with pytest.raises(ValueError, match="no workbench placement"):
+        WorkbenchRegistry(path).lookup("ree-broken")

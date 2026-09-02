@@ -1,4 +1,4 @@
-# Control plane only: GUI + backend. Workbench agents run separately
+# Control plane only: GUI + backend. Workbench services run separately
 # (anywhere with a container runtime) and dial the backend over an outbound
 # WebSocket — see docs/engineering/how-to/deployment.md for how to start one.
 services:
@@ -20,7 +20,7 @@ services:
       OTLP_ENDPOINT: ${OTLP_ENDPOINT:-}
       OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
     # No docker.sock here: the backend is pure control plane — every touch of
-    # a container runtime goes through a connected agent over its outbound
+    # a container runtime goes through a connected workbench over its outbound
     # WebSocket.
 
   gui:

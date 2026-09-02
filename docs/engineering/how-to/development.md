@@ -5,9 +5,9 @@
 > `docs/engineering/`.
 
 repo2ree is a Python workspace with a React/Vite GUI. Most integration and
-browser flows need Docker because the agent provisions the default
-`docker:dind` workbench. Run `just e2e-bundles` first to build the executor and
-tools that the agent injects.
+browser flows need Docker because the Docker provider creates workbenches from
+the default `docker:dind` image. Run `just e2e-bundles` first to build the
+executor and tools that the provider injects.
 
 ## Recommended toolchain
 
@@ -65,23 +65,26 @@ Start the API:
 uv run --package repo2ree-api uvicorn repo2ree_api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Build the executor and tools closures that a source-run agent injects into each
-workbench:
+Build the executor and tools closures that a source-run provider injects into
+each workbench:
 
 ```bash
 just e2e-bundles
 ```
 
-Start the agent in another shell. It dials the API and owns the Docker runtime;
-without a connected agent, REE provisioning cannot complete:
+Start the Docker provider in another shell. It dials the API and owns the
+Docker runtime; without a connected provider, REE provisioning cannot complete:
 
 ```bash
 REPO2REE_EXEC_BUNDLE=$PWD/dist/bundles/exec \
 REPO2REE_TOOLS_BUNDLE=$PWD/dist/bundles/tools \
-uv run --package repo2ree-agent python -m repo2ree_agent
+uv run --package repo2ree-provider-docker python -m repo2ree_provider_docker
 ```
 
-For trusted local iteration, add `WORKBENCH_DOCKER_MODE=host-socket` to share
+The provider starts `repo2ree-workbench` inside each workbench it creates, so
+there is no second process to launch by hand.
+
+For trusted local iteration, add `PROVIDER_DOCKER_MODE=host-socket` to share
 the host daemon's image cache. The default `dind` mode gives each workbench its
 own nested daemon and stronger separation.
 
@@ -100,9 +103,9 @@ point it at the API. In the Docker demo image, the GUI uses same-origin
 ## Workbenches
 
 The implemented execution path provisions one persistent Docker-in-Docker
-workbench per REE from the pinned upstream `docker:dind` bench, with the
-executor/tools bundles injected by the agent. Build the bundles before running
-Docker-gated integration or e2e flows:
+workbench per REE from the pinned upstream `docker:dind` image, with the
+executor/tools bundles injected by the provider. Build the bundles before
+running Docker-gated integration or e2e flows:
 
 ```bash
 just e2e-bundles
@@ -139,24 +142,36 @@ The API reads `.env` through `pydantic-settings`. Useful local variables:
 | `UPLOAD_MAX_BYTES` | 2 GiB | Maximum size of one staged upload. |
 | `UPLOAD_STAGING_MAX_BYTES` | 8 GiB | Aggregate budget for concurrent staged uploads. |
 | `UPLOAD_TTL_SECONDS` | `3600` | Lifetime of an abandoned staged upload and its token. |
-| `WORKBENCH_REGISTRY_FILE` | `.repo2ree/workbench-registry.json` | Control-plane map from REE id to agent, opaque workbench reference, and workbench specification. |
+| `WORKBENCH_REGISTRY_FILE` | `.repo2ree/workbench-registry.json` | Control-plane map from REE id to workbench, opaque workbench reference, and workbench specification. |
 | `REE_INDEX_FILE` | `.repo2ree/ree-index.json` | Durable index of sealed REEs and archive attestations. |
 | `RUN_REGISTRY_DIR` | `.repo2ree/runs` | Durable background-run records. |
 | `RUN_MAX_WORKERS` | `4` | Maximum concurrent workbench commands and API worker threads. |
-| `OTLP_ENDPOINT` | unset | OTLP collector base URL for API and agent traces/metrics/logs (see `observability/`). |
+| `OTLP_ENDPOINT` | unset | OTLP collector base URL for API traces/metrics/logs (see `observability/`). The provider and each workbench read their own. |
 | `OTEL_EXPORTER_OTLP_HEADERS` | unset | Headers for authenticated OTLP ingest (e.g. ClickStack's `authorization=<key>`). |
-| `TRACE_FILE` | unset | Local NDJSON trace sink for API/agent spans when no collector is used. |
-| `LOG_LEVEL` | `INFO` | Python log level for API, agent, and executor processes. |
+| `TRACE_FILE` | unset | Local NDJSON trace sink for API and workbench spans when no collector is used. |
+| `LOG_LEVEL` | `INFO` | Python log level for API, provider, workbench, and executor processes. |
 | `VITE_API_BASE_URL` | unset | GUI API origin for local Vite builds/dev server. |
 
-Agent variables:
+Provider variables:
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `WORKBENCH_API_WS_URL` | `ws://localhost:8000/agent/connect` | Control-plane WebSocket dialed by the agent. |
-| `WORKBENCH_AGENT_ID` | generated | Explicit stable agent identity override. |
-| `WORKBENCH_AGENT_STATE_DIR` | `~/.repo2ree` | Storage used to persist a generated agent identity. |
-| `WORKBENCH_DOCKER_MODE` | `dind` | `dind` for a nested daemon or `host-socket` for trusted local iteration. |
+| `PROVIDER_API_WS_URL` | `ws://localhost:8000/provider/connect` | Capacity WebSocket dialed by the provider. |
+| `PROVIDER_WORKBENCH_API_WS_URL` | `ws://localhost:8000/workbench/connect` | Control-plane address the provider hands to each workbench it creates. |
+| `PROVIDER_ID` | generated | Explicit stable provider identity override. |
+| `PROVIDER_STATE_DIR` | `~/.repo2ree-provider` | Storage used to persist a generated provider identity. |
+| `PROVIDER_DOCKER_MODE` | `dind` | `dind` for a nested daemon or `host-socket` for trusted local iteration. |
+
+Workbench variables, normally set by the provider rather than by hand:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `WORKBENCH_API_WS_URL` | `ws://localhost:8000/workbench/connect` | Control-plane WebSocket dialed by the workbench service. |
+| `WORKBENCH_ID` | generated | Explicit stable workbench identity override. |
+| `WORKBENCH_ALLOCATION_ID` | empty | The capacity request this workbench enrolls against. |
+| `WORKBENCH_ENROLLMENT_TOKEN` | empty | Single-use credential scoped to that allocation. |
+| `WORKBENCH_ROOT` | `/ree` | The REE tree this workbench is bound to. |
+| `WORKBENCH_SUBSTRATE` | empty | Substrate the workbench reports, e.g. `docker-nested`. |
 
 Containerized dev/demo runs may also need `DOCKER_GID`, the numeric group id of
 the host Docker socket:
@@ -172,10 +187,11 @@ The Python workspace members are:
 | Package | Role |
 |---|---|
 | `protocol` | Typed command/result/log/tracing contract shared across host and workbench. |
-| `core` | Execution handlers and REE filesystem/domain logic. Runs inside the bench (injected by the agent). |
-| `executor` | `repo2ree-exec`, the one-shot in-bench command surface over `core`. |
-| `supervisor` | Host-side workbench lifecycle and command dispatch. |
-| `agent` | The deployable that owns the container runtime and injects the executor/tools bundles. |
+| `core` | Execution handlers and REE filesystem/domain logic. Runs inside the workbench (injected by the provider). |
+| `executor` | `repo2ree-exec`, the one-shot in-workbench command surface over `core`. |
+| `supervisor` | Control-plane capacity requests, placement, and command dispatch. |
+| `provider` | The deployable that owns the container runtime, creates workbenches, and injects the executor/tools bundles. |
+| `workbench` | The service resident in each workbench; runs one executor per command. |
 | `api` | FastAPI surface over the supervisor and service storage. |
 
 The GUI lives under `gui/` and is a Vite/React app.

@@ -1,7 +1,7 @@
 """The durable record of sealed REEs and the archive bindings claimed for them.
 
 A sibling of :mod:`repo2ree_api.control` rather than part of it, because the
-collections in there are all liveness projections: connected agents, active REEs
+collections in there are all liveness projections: connected workbenches, active REEs
 and active runs are derived from current infrastructure — presence in those
 lists *is* liveness, and nothing is ever written to them (see
 ``control/fleet.py``). An index entry is the opposite: it is

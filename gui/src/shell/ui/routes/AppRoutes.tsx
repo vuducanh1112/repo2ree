@@ -9,10 +9,10 @@ import { LandingView } from "../landing/LandingView";
 import styles from "./AppRoutes.module.css";
 
 const LabLocationView = lazy(() =>
-  import("../agents/LabLocationView").then(({ LabLocationView: View }) => ({ default: View })),
+  import("../labs/LabLocationView").then(({ LabLocationView: View }) => ({ default: View })),
 );
-const AgentsView = lazy(() =>
-  import("../agents/AgentsView").then(({ AgentsView: View }) => ({ default: View })),
+const LabsView = lazy(() =>
+  import("../labs/LabsView").then(({ LabsView: View }) => ({ default: View })),
 );
 const ReeIndexView = lazy(() =>
   import("../ree-index/ReeIndexView").then(({ ReeIndexView: View }) => ({ default: View })),
@@ -83,7 +83,7 @@ export function AppRoutes({ reportError }: { reportError: UiErrorReporter }) {
         element={
           <LandingView
             onLoad={(path) => navigate(path)}
-            onViewAgents={() => navigate(APP_ROUTE.AGENTS)}
+            onViewLabs={() => navigate(APP_ROUTE.LABS)}
             onViewReeIndex={() => navigate(APP_ROUTE.REE_INDEX)}
           />
         }
@@ -106,10 +106,10 @@ export function AppRoutes({ reportError }: { reportError: UiErrorReporter }) {
         }
       />
       <Route
-        path={APP_ROUTE.AGENTS}
+        path={APP_ROUTE.LABS}
         element={
           <DeferredRoute>
-            <AgentsView onBack={() => navigate(APP_ROUTE.ROOT)} />
+            <LabsView onBack={() => navigate(APP_ROUTE.ROOT)} />
           </DeferredRoute>
         }
       />

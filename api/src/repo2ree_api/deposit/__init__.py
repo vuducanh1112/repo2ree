@@ -1,11 +1,11 @@
 """Depositing a sealed REE into an external archive, and recording what came back.
 
-Runs in the control plane — the API service, never the workbench or the agent —
+Runs in the control plane — the API service, never the workbench or the workbench —
 for three reasons, each sufficient on its own:
 
 * **Credentials.** Deposit needs a user's archive token. The workbench runs the
   author's own build and experiment scripts, so a token there is exfiltrable by
-  design; the agent already holds the Docker socket and should not also hold
+  design; the workbench already holds the Docker socket and should not also hold
   user credentials.
 * **Payload.** The thing deposited is the sealed bundle, which the control plane
   already stores. Depositing from anywhere else means pushing those bytes out

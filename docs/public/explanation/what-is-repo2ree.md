@@ -102,11 +102,11 @@ stale. Neither proves a reproduction; that takes a review.
 
 repo2ree separates coordination from execution. The API and GUI form a control
 plane that decides what should run; the actual work happens inside a workbench
-provisioned by an **agent** that the resource owner installs inside their own
+provisioned by a **provider** that the resource owner installs inside their own
 boundary. A private machine, a laboratory, a university cluster, a facility, or
-a cloud account each runs its own agent.
+a cloud account each runs its own provider.
 
-The agent is a gateway, not the compute. It translates repo2ree operations into
+The provider is a gateway, not the compute. It translates repo2ree operations into
 calls to whatever runtime or scheduler exists locally, and advertises only the
 capabilities its owner chooses to expose. It connects outward, so no institution
 has to open an inbound endpoint. Infrastructure credentials stay on the owner's
@@ -181,15 +181,15 @@ Code Ocean and Whole Tale do not offer even that: computation happens in their
 cloud, on their terms.
 
 repo2ree splits the control plane from the execution plane. One coordinating
-service can dispatch work to agents run by many different owners, each keeping
+service can dispatch work to workbenches run by many different owners, each keeping
 its own credentials, quotas, and hardware, and each connecting outward rather
 than exposing an endpoint. A university does not have to run a whole platform to
-contribute compute; it runs an agent. A dataset that cannot legally leave the
-building is still usable, because the workbench comes to it.
+contribute compute; it runs a provider. A dataset that cannot legally leave the
+building is still usable, because the compute comes to it.
 
 That is a different shape of problem than "can I self-host this?", and it is
-the one an institutional consortium actually has. Today the agent drives Docker
-and provisions a workbench per REE on its host; scheduler, cluster, and cloud
+the one an institutional consortium actually has. Today the provider drives Docker
+and creates one workbench per REE on its host; scheduler, cluster, and cloud
 adapters are designed extension points rather than shipped features. See
 [Federated compute](../reference/architecture/federated-compute.md) for the
 design.

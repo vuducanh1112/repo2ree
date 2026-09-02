@@ -33,7 +33,7 @@ def test_find_tool_verifies_advertised_path(monkeypatch: pytest.MonkeyPatch, tmp
     assert find_tool("syft") == str(tool)
 
     # An advertised path that doesn't exist is unavailable, not a PATH retry:
-    # the agent said where the tool lives, and it lied.
+    # the workbench said where the tool lives, and it lied.
     monkeypatch.setenv("REPO2REE_TOOL_SYFT", str(tmp_path / "missing"))
     assert find_tool("syft") is None
 

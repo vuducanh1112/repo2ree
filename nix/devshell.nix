@@ -38,8 +38,8 @@ pkgs.mkShell {
     # static analyser for shell scripts
     shellcheck
 
-    # asciinema records the pure-API agent walkthrough (api/tests/e2e/
-    # api_agent_walkthrough.py) as a terminal .cast; agg renders that .cast to an
+    # asciinema records the pure-API workbench walkthrough (api/tests/e2e/
+    # api_walkthrough.py) as a terminal .cast; agg renders that .cast to an
     # SVG/GIF artifact. The walkthrough itself is stdlib-only python — no client
     # dependency to add here.
     asciinema

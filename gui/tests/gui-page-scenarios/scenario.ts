@@ -258,17 +258,17 @@ const visualRee = {
   ],
 };
 
-const agents = {
-  agents: [
+const labs = {
+  labs: [
     {
-      agent_id: "agent-oslo",
+      workbench_id: "lab-oslo",
       hostname: "lab-oslo-01",
       version: "0.8.0",
       docker_mode: "dind",
       connected_at: "2026-04-12T08:00:00Z",
     },
     {
-      agent_id: "agent-zurich",
+      workbench_id: "lab-zurich",
       hostname: "lab-zurich-02",
       version: "0.8.0",
       docker_mode: "host",
@@ -511,7 +511,7 @@ function responseFor(request: Request): unknown {
   const path = url.pathname;
   if (request.method() !== "GET")
     throw new Error(`Unexpected visual API mutation: ${request.method()} ${path}`);
-  if (path === "/api/v1/agents") return agents;
+  if (path === "/api/v1/workbenches") return labs;
   if (path === "/api/v1/workbench/images") return images;
   if (path === "/api/v1/ree-steps") return authoringSteps;
   if (path === "/api/v1/script-templates") return scriptTemplates;

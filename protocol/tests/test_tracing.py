@@ -215,7 +215,7 @@ def test_typed_carriers_own_the_key_vocabulary() -> None:
     WorkbenchSpanAttrs(
         container="wb-1",
         image="repo2ree:dev",
-        agent_id="agent-1",
+        workbench_id="workbench-1",
         runtime="docker",
         reference_hash="a1b2c3",
     ).apply(protocol_span)
@@ -227,7 +227,7 @@ def test_typed_carriers_own_the_key_vocabulary() -> None:
         "repo2ree.script.path": "build.sh",
         "repo2ree.workbench.container": "wb-1",
         "repo2ree.workbench.image": "repo2ree:dev",
-        "repo2ree.agent_id": "agent-1",
+        "repo2ree.workbench_id": "workbench-1",
         "repo2ree.workbench.runtime": "docker",
         "repo2ree.workbench.reference_hash": "a1b2c3",
         "repo2ree.exit_code": 0,
@@ -235,11 +235,11 @@ def test_typed_carriers_own_the_key_vocabulary() -> None:
 
 
 def test_build_resource_records_instance_id_only_when_given() -> None:
-    plain = _build_resource("repo2ree-agent")
-    assert plain.attributes["service.name"] == "repo2ree-agent"
+    plain = _build_resource("repo2ree-workbench")
+    assert plain.attributes["service.name"] == "repo2ree-workbench"
     assert "service.instance.id" not in plain.attributes
 
-    instanced = _build_resource("repo2ree-agent", "host-a1b2c3")
+    instanced = _build_resource("repo2ree-workbench", "host-a1b2c3")
     assert instanced.attributes["service.instance.id"] == "host-a1b2c3"
 
 
@@ -542,10 +542,10 @@ def test_setup_metrics_is_a_noop_without_an_endpoint() -> None:
 
 @pytest.mark.usefixtures("_no_global_providers", "_stub_otlp_exporters")
 def test_setup_metrics_builds_a_provider_carrying_the_service_identity() -> None:
-    provider = setup_metrics("repo2ree-agent", endpoint="http://collector:4318", instance_id="agent-a1")
+    provider = setup_metrics("repo2ree-workbench", endpoint="http://collector:4318", instance_id="workbench-a1")
 
     assert provider is not None
-    assert provider._sdk_config.resource.attributes["service.instance.id"] == "agent-a1"
+    assert provider._sdk_config.resource.attributes["service.instance.id"] == "workbench-a1"
     provider.shutdown()
 
 

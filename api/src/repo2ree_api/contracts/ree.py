@@ -54,7 +54,7 @@ class WorkbenchStatus(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     status: str
-    agent_id: str | None = None
+    workbench_id: str | None = None
     image: str | None = None
 
 
@@ -101,13 +101,6 @@ class FileMutationResponse(BaseModel):
     updated_at: str | None = None
     deleted_at: str | None = None
     etag: str | None = None
-
-
-class ReprovisionResponse(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    status: Literal["reprovisioned"]
-    ree_id: str
 
 
 class HealthResponse(BaseModel):

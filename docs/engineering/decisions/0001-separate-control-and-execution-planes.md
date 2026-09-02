@@ -19,11 +19,11 @@ future substrates without changing the authoring and review workflows.
 
 Separate repo2ree into a control plane and an execution plane.
 
-The API and supervisor own intent, REE-to-workbench registration, lifecycle
-requests, and result presentation. A runtime-owning agent provisions and drives
-isolated workbenches. Inside a workbench, the executor invokes core operations
-against that REE's tree. The control plane does not execute core operations and
-does not hold a container-runtime socket.
+The API and supervisor own intent, REE-to-workbench registration, capacity
+requests, and result presentation. A runtime-owning provider creates and removes
+isolated workbenches. Inside a workbench, a resident service starts the executor,
+which invokes core operations against that REE's tree. The control plane does not
+execute core operations and does not hold a container-runtime socket.
 
 ## Alternatives considered
 
@@ -38,13 +38,14 @@ does not hold a container-runtime socket.
 
 ## Consequences
 
-- Runtime credentials and substrate-specific code remain on the agent host.
+- Runtime credentials and substrate-specific code remain on the provider's host.
 - The same control-plane workflows can address different execution locations.
-- Workbench locations are opaque agent-owned values; the control plane must
+- Workbench locations are opaque provider-owned values; the control plane must
   persist its registry instead of reconstructing state with `docker inspect`.
 - Commands, logs, results, cancellation, transfers, and health need explicit
   boundary protocols.
-- Local development requires both the control plane and a reachable agent.
+- Local development requires the control plane, a connected provider, and the
+  workbench it creates.
 
 ## Revisit when
 
@@ -56,5 +57,6 @@ the supervisor library and preserve the execution boundary.
 
 - [Component architecture](../reference/components.md#mental-model)
 - [Control plane and execution plane](../reference/architecture.md#control-plane--execution-plane-split)
-- [`repo2ree_agent.app`](../../../agent/src/repo2ree_agent/app.py)
+- [`repo2ree_workbench.app`](../../../workbench/src/repo2ree_workbench/app.py)
+- [`repo2ree_provider_docker.app`](../../../provider/src/repo2ree_provider_docker/app.py)
 - [`repo2ree_supervisor`](../../../supervisor/src/repo2ree_supervisor/)

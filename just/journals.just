@@ -22,7 +22,7 @@ journals:
             --exclude 'docker.' --exclude 'process.exec' \
             --zone 'api=ree.,run.,POST ,GET ,PUT ,DELETE ' \
             --zone 'supervisor=workbench.' \
-            --zone 'agent=agent.' \
+            --zone 'workbench=workbench.connection,workbench.request' \
             --zone 'executor cli=executor.' \
             --zone 'core=command.,script.,runnable.' \
             --title "$name — across components" \

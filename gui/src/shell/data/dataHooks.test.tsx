@@ -3,8 +3,8 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { fakeApiServices } from "../../../tests/support/fakeApiServices";
 import { createShellWrapper } from "../../../tests/support/renderApp";
-import { useAgents } from "./agents/agents";
 import { useEvaluateReportQuery } from "./evaluate/queries";
+import { useLabs } from "./labs/labs";
 import { useUpdateReeIntentMutation } from "./ree/mutations";
 import { useReeQuery } from "./ree/queries";
 import { useReeIndex } from "./ree-index/reeIndex";
@@ -15,21 +15,48 @@ import { defaultImageRef, useWorkbenchImageCatalog } from "./workbench/images";
 
 describe("shell data hooks", () => {
   it("maps and caches global catalogs", async () => {
-    const listAgents = vi.fn().mockResolvedValue({
-      agents: [
+    const listProviders = vi.fn().mockResolvedValue({
+      providers: [
         {
-          agent_id: "b",
+          provider_id: "b",
           hostname: "z-host",
           version: "1",
           docker_mode: "host",
           connected_at: "2026-01-02T00:00:00Z",
         },
         {
-          agent_id: "a",
+          provider_id: "a",
           hostname: "a-host",
           version: "1",
           docker_mode: "dind",
           connected_at: "2026-01-01T00:00:00Z",
+        },
+      ],
+    });
+    // The fleet view unions two endpoints. Only external workbenches are labs of
+    // their own; a provider-managed one is an allocation *inside* a provider lab
+    // and must not surface twice.
+    const listWorkbenches = vi.fn().mockResolvedValue({
+      workbenches: [
+        {
+          workbench_id: "wb-external",
+          mode: "external",
+          available: true,
+          hostname: "m-host",
+          version: "1",
+          docker_mode: "dind",
+          connected_at: "2026-01-03T00:00:00Z",
+          status: "connected",
+        },
+        {
+          workbench_id: "wb-managed",
+          mode: "managed",
+          available: false,
+          hostname: "b-host",
+          version: "1",
+          docker_mode: "dind",
+          connected_at: "2026-01-04T00:00:00Z",
+          status: "connected",
         },
       ],
     });
@@ -52,11 +79,13 @@ describe("shell data hooks", () => {
       verify: [],
     });
     const { Wrapper } = createShellWrapper({
-      services: fakeApiServices({ ree: { listAgents, listWorkbenchImages, listScriptTemplates } }),
+      services: fakeApiServices({
+        ree: { listProviders, listWorkbenches, listWorkbenchImages, listScriptTemplates },
+      }),
     });
     const { result } = renderHook(
       () => ({
-        agents: useAgents(),
+        labs: useLabs(),
         images: useWorkbenchImageCatalog(),
         templates: useScriptTemplates(),
       }),
@@ -64,9 +93,15 @@ describe("shell data hooks", () => {
     );
 
     await waitFor(() => expect(result.current.templates.isSuccess).toBe(true));
-    expect(result.current.agents.data?.map((agent) => agent.hostname)).toEqual([
+    expect(result.current.labs.data?.map((lab) => lab.hostname)).toEqual([
       "a-host",
+      "m-host",
       "z-host",
+    ]);
+    expect(result.current.labs.data?.map((lab) => lab.kind)).toEqual([
+      "provider",
+      "external",
+      "provider",
     ]);
     expect(defaultImageRef(result.current.images.data)).toBe("bench:python");
     expect(defaultImageRef({ images: [], defaultId: "missing" })).toBeUndefined();

@@ -508,9 +508,9 @@ main path uses a privileged Docker-in-Docker workbench; the target hardening
 model is a VM-backed workbench, such as Kata Containers, where Docker activity
 happens against a daemon inside the workbench rather than the host daemon.
 
-In the current implementation, a separately deployed agent owns Docker and
-launches the workbench; the API and supervisor do not hold the Docker socket.
-Future agents may use another container or VM runtime. Build scripts and
+In the current implementation, a separately deployed provider owns Docker and
+creates the workbench; the API and supervisor do not hold the Docker socket.
+Future providers may use another container or VM runtime. Build scripts and
 experiment commands still run inside the isolated execution plane.
 
 ### REAPI alignment
@@ -576,7 +576,7 @@ equivalence for the declared claim.
 
 ### Component model
 
-The implemented package shape has three libraries plus the agent runtime host,
+The implemented package shape has three libraries plus the workbench runtime host,
 the executor, and the API. The user-facing host CLI remains target work:
 
 | Type | Name | Role | Deployed |
@@ -584,13 +584,14 @@ the executor, and the API. The user-facing host CLI remains target work:
 | Library | protocol | Typed command, result, and log-event contract. | Host and workbench |
 | Library | core | Execution logic and `/ree` operations. | Workbench |
 | Library | supervisor | Workbench lifecycle, registry, dispatch, transport. | Host |
-| Runtime host | repo2ree-agent | Owns the runtime, provisions workbenches, injects the executor, and ferries protocol frames. | Agent host |
+| Runtime host | repo2ree-provider-docker | Owns the runtime, creates workbenches, and injects the executor. | Provider host |
+| Execution host | repo2ree-workbench | Resident in each workbench; runs one executor per command and ferries protocol frames. | Workbench |
 | Entry point | repo2ree-exec | Injected in-bench executor that reads commands and runs core. | Workbench |
 | Entry point | repo2ree | User-facing host CLI that drives workbenches. | Host, planned |
 | Entry point | api | Hosted HTTP API over service/supervisor logic. | Host |
 
 The dependency rule is simple: host-side code speaks the protocol and manages
-workbench intent through the agent; effectful execution logic lives inside the
+workbench intent through the provider; effectful execution logic lives inside the
 workbench.
 
 ### Archive bundle

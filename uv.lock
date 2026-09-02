@@ -5,12 +5,14 @@ requires-python = "==3.13.*"
 [manifest]
 members = [
     "repo2ree",
-    "repo2ree-agent",
     "repo2ree-api",
     "repo2ree-core",
+    "repo2ree-docker-support",
     "repo2ree-executor",
     "repo2ree-protocol",
+    "repo2ree-provider-docker",
     "repo2ree-supervisor",
+    "repo2ree-workbench",
 ]
 
 [[package]]
@@ -1913,23 +1915,6 @@ notebooks = [
 ]
 
 [[package]]
-name = "repo2ree-agent"
-version = "0.1.0"
-source = { editable = "agent" }
-dependencies = [
-    { name = "anyio" },
-    { name = "repo2ree-protocol" },
-    { name = "websockets" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "anyio", specifier = "~=4.12" },
-    { name = "repo2ree-protocol", editable = "protocol" },
-    { name = "websockets", specifier = "~=15.0" },
-]
-
-[[package]]
 name = "repo2ree-api"
 version = "0.1.0"
 source = { editable = "api" }
@@ -1992,6 +1977,17 @@ dev = [
 ]
 
 [[package]]
+name = "repo2ree-docker-support"
+version = "0.1.0"
+source = { editable = "docker-support" }
+dependencies = [
+    { name = "repo2ree-protocol" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "repo2ree-protocol", editable = "protocol" }]
+
+[[package]]
 name = "repo2ree-executor"
 version = "0.1.0"
 source = { editable = "executor" }
@@ -2036,6 +2032,25 @@ requires-dist = [
 dev = [{ name = "types-requests", specifier = "~=2.32.0" }]
 
 [[package]]
+name = "repo2ree-provider-docker"
+version = "0.1.0"
+source = { editable = "provider" }
+dependencies = [
+    { name = "anyio" },
+    { name = "repo2ree-docker-support" },
+    { name = "repo2ree-protocol" },
+    { name = "websockets" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "anyio", specifier = "~=4.12" },
+    { name = "repo2ree-docker-support", editable = "docker-support" },
+    { name = "repo2ree-protocol", editable = "protocol" },
+    { name = "websockets", specifier = "~=15.0" },
+]
+
+[[package]]
 name = "repo2ree-supervisor"
 version = "0.1.0"
 source = { editable = "supervisor" }
@@ -2048,6 +2063,21 @@ dependencies = [
 requires-dist = [
     { name = "httpx", specifier = "~=0.28.1" },
     { name = "repo2ree-protocol", editable = "protocol" },
+]
+
+[[package]]
+name = "repo2ree-workbench"
+version = "0.1.0"
+source = { editable = "workbench" }
+dependencies = [
+    { name = "repo2ree-protocol" },
+    { name = "websockets" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "repo2ree-protocol", editable = "protocol" },
+    { name = "websockets", specifier = "~=15.0" },
 ]
 
 [[package]]

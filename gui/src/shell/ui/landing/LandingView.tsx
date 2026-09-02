@@ -1,12 +1,12 @@
 import { APP_ROUTE, type AppLoadRoutePath, LOAD_REE_PARAM } from "@core/app-shell/pages";
-import { useAgents } from "@shell/data/agents/agents";
+import { useLabs } from "@shell/data/labs/labs";
 import type { ReactNode } from "react";
 import { Ic } from "../shared/components/Icon";
 import styles from "./LandingView.module.css";
 
 interface LandingViewProps {
   onLoad: (path: AppLoadRoutePath) => void;
-  onViewAgents: () => void;
+  onViewLabs: () => void;
   onViewReeIndex: () => void;
 }
 
@@ -36,22 +36,22 @@ function LandingAction({
   );
 }
 
-function AgentReadiness({ onViewAgents }: { onViewAgents: () => void }) {
-  const { data: agents, isLoading, isError } = useAgents();
+function LabReadiness({ onViewLabs }: { onViewLabs: () => void }) {
+  const { data: labs, isLoading, isError } = useLabs();
 
   if (isLoading) {
     return (
       <div className={styles.readiness} role="status">
         <span aria-hidden className={styles.readinessDot} data-state="checking" />
-        Checking for a connected workbench agent…
+        Checking for a connected lab…
       </div>
     );
   }
 
-  if (!isError && agents?.length) {
+  if (!isError && labs?.length) {
     return (
       <div className={styles.readiness} role="status">
-        <span aria-hidden className={styles.readinessDot} data-state="ready" />A connected agent is
+        <span aria-hidden className={styles.readinessDot} data-state="ready" />A connected lab is
         ready to provision your workbench.
       </div>
     );
@@ -60,9 +60,9 @@ function AgentReadiness({ onViewAgents }: { onViewAgents: () => void }) {
   return (
     <div className={styles.readiness} role="status">
       <span aria-hidden className={styles.readinessDot} data-state="missing" />
-      <span>{isError ? "Agent status is unavailable." : "No workbench agent is connected."}</span>
-      <button type="button" className={styles.readinessLink} onClick={onViewAgents}>
-        View agents
+      <span>{isError ? "Lab status is unavailable." : "No lab is connected."}</span>
+      <button type="button" className={styles.readinessLink} onClick={onViewLabs}>
+        View labs
       </button>
     </div>
   );
@@ -92,7 +92,7 @@ function GithubDestination() {
   );
 }
 
-export function LandingView({ onLoad, onViewAgents, onViewReeIndex }: LandingViewProps) {
+export function LandingView({ onLoad, onViewLabs, onViewReeIndex }: LandingViewProps) {
   const createRee = () => onLoad(APP_ROUTE.LAB_LOCATION);
   const loadRee = () => onLoad(`${APP_ROUTE.LAB_LOCATION}?${LOAD_REE_PARAM}=1`);
 
@@ -137,7 +137,7 @@ export function LandingView({ onLoad, onViewAgents, onViewReeIndex }: LandingVie
               <LandingAction icon={Ic.upload(17)} label="Load existing REE" onClick={loadRee} />
             </div>
 
-            <AgentReadiness onViewAgents={onViewAgents} />
+            <LabReadiness onViewLabs={onViewLabs} />
           </div>
 
           <figure className={styles.preview}>
@@ -180,7 +180,7 @@ export function LandingView({ onLoad, onViewAgents, onViewReeIndex }: LandingVie
               <span className={styles.stepNumber}>01</span>
               <div>
                 <h3>Choose a lab</h3>
-                <p>Select a connected agent to host an isolated workbench.</p>
+                <p>Select a connected lab to host an isolated workbench.</p>
               </div>
             </article>
             <article className={styles.step}>

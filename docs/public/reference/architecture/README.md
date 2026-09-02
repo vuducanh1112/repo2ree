@@ -1,9 +1,10 @@
 # System architecture
 
 repo2ree separates coordination from isolated execution. The control plane
-accepts requests and tracks progress, while a workbench agent runs the requested
-operations inside a dedicated environment. This section describes that system
-from its outer boundary down to two important execution flows.
+accepts requests and tracks progress, while each REE gets its own workbench: an
+isolated environment where the requested operations actually run. This section
+describes that system from its outer boundary down to two important execution
+flows.
 
 ## Architecture maps
 
@@ -13,10 +14,11 @@ from its outer boundary down to two important execution flows.
    running applications and where they keep state.
 3. [How the control plane is organized](control-plane.md) describes request
    handling, orchestration, workbench routing, and run tracking.
-4. [How the workbench agent is organized](workbench-agent.md) describes the
-   boundary that owns runtime operations.
-5. [Federated compute through connected agents](federated-compute.md) shows how
-   private, university, institutional, and cloud resources can participate
+4. [How workbenches are provisioned and driven](workbench.md) describes the two
+   compute-side deployables: the provider that creates a workbench and the
+   service that executes inside one.
+5. [Federated compute through connected providers](federated-compute.md) shows
+   how private, university, institutional, and cloud resources can participate
    without giving the control plane their infrastructure credentials.
 
 ## Execution flows

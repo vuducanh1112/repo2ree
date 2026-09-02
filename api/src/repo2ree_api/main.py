@@ -21,7 +21,12 @@ from repo2ree_api.authoring.seal import seal_router
 from repo2ree_api.authoring.source import source_router
 from repo2ree_api.authoring.stages import stages_router
 from repo2ree_api.contracts import ErrorEnvelope, HealthResponse
-from repo2ree_api.control.fleet import agent_ws_router, agents_router, workbench_images_router
+from repo2ree_api.control.fleet import (
+    provider_ws_router,
+    workbench_images_router,
+    workbench_ws_router,
+    workbenches_router,
+)
 from repo2ree_api.control.rees import rees_router
 from repo2ree_api.control.run_orchestration import shutdown_runs, startup_runs
 from repo2ree_api.control.runs import runs_router
@@ -72,7 +77,7 @@ _log = logging.getLogger(__name__)
 # per-endpoint payload details stay in the operation schemas.
 _DESCRIPTION = """\
 Author and execute reusable execution environments (REEs) through connected
-runtime agents.
+workbench services.
 
 ## Authoring lifecycle
 
@@ -97,7 +102,7 @@ in this order:
 7. `deleteRee` — tear the workbench down.
 
 A complete, CI-asserted walkthrough of this sequence as real `curl` calls lives
-in `api/tests/e2e/api_agent_walkthrough.py` (see the external documentation
+in `api/tests/e2e/api_walkthrough.py` (see the external documentation
 link).
 """
 
@@ -107,7 +112,7 @@ _OPENAPI_TAGS = [
     {"name": "receipts", "description": "Inspect selected, typed author evidence."},
     {"name": "sources", "description": "Acquire, upload, and remove source snapshots."},
     {"name": "files", "description": "Read and mutate files in an REE workspace."},
-    {"name": "fleet", "description": "Discover connected runtime agents and workbench images."},
+    {"name": "fleet", "description": "Discover connected workbench services and workbench images."},
     {"name": "ree-index", "description": "Read the REE index: what was sealed here, and where it was deposited."},
     {"name": "system", "description": "Service health and metadata."},
 ]
@@ -159,8 +164,9 @@ ROUTERS = (
     review_stages_router,
     # The fleet the whole thing runs on.
     workbench_images_router,
-    agent_ws_router,
-    agents_router,
+    provider_ws_router,
+    workbench_ws_router,
+    workbenches_router,
 )
 
 for router in ROUTERS:

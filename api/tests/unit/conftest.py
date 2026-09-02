@@ -70,7 +70,8 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from repo2ree_api.deps import workbench_manager  # noqa: E402
 from repo2ree_api.main import app  # noqa: E402
-from repo2ree_protocol.agent import DockerWorkbenchSpec, WorkbenchRef  # noqa: E402
+from repo2ree_protocol.frames import WorkbenchRef  # noqa: E402
+from repo2ree_protocol.provider import DockerWorkbenchSpec  # noqa: E402
 from repo2ree_supervisor import WorkbenchHandle  # noqa: E402
 
 # ================================================

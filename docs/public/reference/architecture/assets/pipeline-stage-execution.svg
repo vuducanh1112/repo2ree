@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="980" viewBox="0 0 1600 980" role="img" aria-labelledby="title description">
   <title id="title">How a pipeline stage runs</title>
-  <desc id="description">A client starts a pipeline stage through the API and receives a run identifier. Background orchestration sends a typed command through the supervisor and agent to the executor and core inside a workbench. Core writes evidence to the durable REE tree. Log frames and the action result return through the agent, settle the run record, and become visible when the client polls.</desc>
+  <desc id="description">A client starts a pipeline stage through the API and receives a run identifier. Background orchestration sends a typed command through the supervisor to the workbench, whose service starts an executor to run core inside it. Core writes evidence to the durable REE tree. Log frames and the action result return over the same connection, settle the run record, and become visible when the client polls.</desc>
   <defs>
     <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 10 5 0 10z" fill="#334155"/></marker>
     <marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 10 5 0 10z" fill="#0f766e"/></marker>
@@ -14,7 +14,7 @@
   <g><rect class="p" x="250" y="115" width="170" height="75" rx="9"/><text class="pn" x="335" y="145">HTTP routes</text><text class="pt" x="335" y="168">[COMPONENT]</text></g>
   <g><rect class="p" x="470" y="115" width="180" height="75" rx="9"/><text class="pn" x="560" y="145">Run orchestration</text><text class="pt" x="560" y="168">[COMPONENT]</text></g>
   <g><rect class="p" x="700" y="115" width="170" height="75" rx="9"/><text class="pn" x="785" y="145">Supervisor</text><text class="pt" x="785" y="168">[COMPONENT]</text></g>
-  <g><rect class="exec" x="920" y="115" width="170" height="75" rx="9"/><text class="pn" x="1005" y="145">Agent</text><text class="pt" x="1005" y="168">[CONTAINER]</text></g>
+  <g><rect class="exec" x="920" y="115" width="170" height="75" rx="9"/><text class="pn" x="1005" y="145">Workbench</text><text class="pt" x="1005" y="168">[CONTAINER]</text></g>
   <g><rect class="exec" x="1140" y="115" width="190" height="75" rx="9"/><text class="pn" x="1235" y="145">Executor + core</text><text class="pt" x="1235" y="168">[PROCESS + LIBRARY]</text></g>
   <g><rect class="store" x="1380" y="115" width="180" height="75" rx="9"/><text class="dn" x="1470" y="145">Durable REE tree</text><text class="dt" x="1470" y="168">[DATA STORE]</text></g>
 
@@ -27,7 +27,7 @@
   <line class="call" x1="335" y1="330" x2="560" y2="330"/><circle class="num" cx="355" cy="348" r="14"/><text class="nt" x="355" y="348">2</text><text class="msg" x="447" y="315">Create background run</text>
   <line class="reply" x1="335" y1="390" x2="115" y2="390"/><circle class="numreply" cx="315" cy="408" r="14"/><text class="nt" x="315" y="408">3</text><text class="replymsg" x="225" y="375">202 + run identifier</text>
   <line class="call" x1="560" y1="490" x2="785" y2="490"/><circle class="num" cx="580" cy="508" r="14"/><text class="nt" x="580" y="508">4</text><text class="msg" x="672" y="475">Dispatch typed Command</text>
-  <line class="call" x1="785" y1="550" x2="1005" y2="550"/><circle class="num" cx="805" cy="568" r="14"/><text class="nt" x="805" y="568">5</text><text class="msg" x="895" y="535">AgentRequest over WebSocket</text>
+  <line class="call" x1="785" y1="550" x2="1005" y2="550"/><circle class="num" cx="805" cy="568" r="14"/><text class="nt" x="805" y="568">5</text><text class="msg" x="895" y="535">WireRequest over WebSocket</text>
   <line class="call" x1="1005" y1="610" x2="1235" y2="610"/><circle class="num" cx="1025" cy="628" r="14"/><text class="nt" x="1025" y="628">6</text><text class="msg" x="1120" y="595">docker exec; Command on stdin</text>
   <line class="call" x1="1235" y1="670" x2="1470" y2="670"/><circle class="num" cx="1255" cy="688" r="14"/><text class="nt" x="1255" y="688">7</text><text class="msg" x="1352" y="655">Read workspace; write receipt/artifact</text>
   <line class="reply" x1="1235" y1="755" x2="1005" y2="755"/><circle class="numreply" cx="1215" cy="773" r="14"/><text class="nt" x="1215" y="773">8</text><text class="replymsg" x="1120" y="740">LogFrames + ActionResult</text>

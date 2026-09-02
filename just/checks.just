@@ -42,10 +42,19 @@ gui-checks: api-types-check
     echo "Running dependency-cruiser..."
     npx depcruise src tests
 
-# Regenerate GUI API types and require a clean generated diff.
+# Regenerate GUI API types and require the checked-in file to be current. Compare
+# before/after content rather than against HEAD so this also works while an API
+# migration is intentionally uncommitted.
 [group('Checks')]
-api-types-check: api-types
-    git diff --exit-code -- gui/src/shell/infra/api/generated/openapi.ts
+api-types-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    generated={{ quote(ROOT + "/gui/src/shell/infra/api/generated/openapi.ts") }}
+    before=$(mktemp)
+    trap 'rm -f "$before"' EXIT
+    cp "$generated" "$before"
+    just api-types
+    diff -u "$before" "$generated"
 
 [private]
 _python-package-checks package:
@@ -79,9 +88,17 @@ api-checks: (_python-package-checks "api")
 [group('Checks')]
 executor-checks: (_python-package-checks "executor")
 
-# Run static checks for the agent package.
+# Run static checks for the workbench package.
 [group('Checks')]
-agent-checks: (_python-package-checks "agent")
+workbench-checks: (_python-package-checks "workbench")
+
+# Run static checks for shared Docker mechanics.
+[group('Checks')]
+docker-support-checks: (_python-package-checks "docker-support")
+
+# Run static checks for the Docker provider package.
+[group('Checks')]
+provider-checks: (_python-package-checks "provider")
 
 # Check backend import-layer contracts.
 [group('Checks')]
@@ -91,4 +108,4 @@ arch-checks:
 
 # Run static checks for every Python workspace package.
 [group('Checks')]
-be-checks: protocol-checks core-checks supervisor-checks api-checks executor-checks agent-checks arch-checks
+be-checks: protocol-checks core-checks supervisor-checks api-checks executor-checks docker-support-checks provider-checks workbench-checks arch-checks

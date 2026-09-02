@@ -13,7 +13,7 @@
   #   - tools.nix           handler-tools closure, e.g. syft (shared, not a package)
   #   - exec-bundle.nix     the executor closure as a mountable tree + manifest
   #   - tools-bundle.nix    the tools closure, same standalone form
-  #   - agent-image.nix     the workbench agent + embedded exec/tools bundles
+  #   - workbench-image.nix     the workbench service + embedded exec/tools bundles
   #                         (the reproducibility surface: every bench executes
   #                         through what it injects)
   #   - gui-image.nix       the deployed web bundle behind caddy
@@ -50,9 +50,12 @@
         packages = rec {
           exec-bundle = import ./nix/exec-bundle.nix { inherit pkgs; };
           tools-bundle = import ./nix/tools-bundle.nix { inherit pkgs; };
-          agent-image = import ./nix/agent-image.nix { inherit pkgs; };
+          provider-image = import ./nix/workbench-image.nix { inherit pkgs; };
+          # Transitional build alias for callers that have not renamed the
+          # artifact yet. Both attributes produce the provider image.
+          workbench-image = provider-image;
           gui-image = guiImage;
-          default = agent-image;
+          default = provider-image;
         };
       }
     );

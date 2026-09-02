@@ -47,7 +47,7 @@ PALETTE = {
     "repo2ree_protocol": "#15803d",
     "repo2ree_supervisor": "#7c3aed",
     "repo2ree_executor": "#0891b2",
-    "repo2ree_agent": "#b45309",
+    "repo2ree_workbench": "#b45309",
 }
 FALLBACK_COLOR = "#64748b"
 
@@ -230,7 +230,7 @@ def render_dot(
     # workspace layers contract is what the vertical axis between clusters
     # means, so chain them in its order rather than letting dot place the
     # packages by whatever the edge weights happen to imply. Packages sharing a
-    # tier (the agent and the executor) are not chained to each other.
+    # tier (the workbench and the executor) are not chained to each other.
     if package_ranks:
         drawn = [r for r in roots if any(_root_of(n, roots) == r for n in nodes)]
         tiers_by_rank: dict[int, list[str]] = {}
@@ -272,7 +272,7 @@ def render_dot_collapsed(
     This is the only view where the three workspace-level contracts are visible
     rather than merely asserted — every arrow points down the page exactly when
     "Workspace layers" holds, ``repo2ree_protocol`` is a sink exactly when
-    "Protocol imports no workspace package" holds, and the agent and the
+    "Protocol imports no workspace package" holds, and the workbench and the
     supervisor touch nothing but it when the third does.
     """
     lines = [

@@ -3,12 +3,12 @@
 Each REE has exactly one always-on workbench with its volume mounted at /ree.
 The manager provisions new workbenches, dispatches typed Commands, and issues
 cheap queries/mutations — but it does none of the runtime I/O itself. Every
-touch of the underlying runtime goes through an ``AgentClient``, so the
+touch of the underlying runtime goes through the split client seams, so the
 manager's responsibilities are purely control-plane: the registry of
 REE→reference, per-REE locking, tracing, metrics, and the semantic query
 wrappers.
 
-Streaming: dispatch_action consumes the agent's ``AgentFrame`` stream, forwards
+Streaming: dispatch_action consumes the workbench's ``Frame`` stream, forwards
 log/span frames as they arrive, and returns the terminal result frame's
 ``ActionResult``.
 """
@@ -17,27 +17,28 @@ from __future__ import annotations
 
 import json
 import logging
+import secrets
 import threading
 import time
 from collections.abc import Iterator
 from contextlib import suppress
 from dataclasses import dataclass
 from typing import Any
+from uuid import uuid4
 
-from repo2ree_protocol.agent import (
-    AgentFrame,
-    DockerWorkbenchSpec,
+from repo2ree_protocol.command import Command
+from repo2ree_protocol.frames import (
     ErrorFrame,
+    Frame,
     LogFrame,
     ResultFrame,
     SpanFrame,
     UnavailableFrame,
     WorkbenchRef,
     WorkbenchRefFrame,
-    WorkbenchSpec,
 )
-from repo2ree_protocol.command import Command
 from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.provider import DockerWorkbenchSpec, WorkbenchSpec
 from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.tracing import (
     CommandSpanAttrs,
@@ -52,7 +53,13 @@ from repo2ree_protocol.tracing import (
     record_ree_id,
     record_span_facts,
 )
-from repo2ree_supervisor.client import AgentClient, WorkbenchUnavailableError, raise_for_terminal_error
+from repo2ree_supervisor.client import (
+    ProviderClient,
+    WorkbenchClient,
+    WorkbenchUnavailableError,
+    raise_for_terminal_error,
+)
+from repo2ree_supervisor.enrollment import EnrollmentRegistry
 from repo2ree_supervisor.registry import WorkbenchEntry, WorkbenchRegistry
 
 __all__ = [
@@ -72,10 +79,6 @@ _meter = get_meter(__name__)
 _container_gone_counter = _meter.create_counter(
     "workbench.container_gone",
     description="Number of docker exec failures due to container gone or stopping.",
-)
-_reprovision_counter = _meter.create_counter(
-    "workbench.reprovision",
-    description="Number of workbench container reprovisioning operations.",
 )
 _exec_duration = _meter.create_histogram(
     "workbench.execute_duration_seconds",
@@ -98,9 +101,12 @@ _lock_wait_duration = _meter.create_histogram(
 class WorkbenchHandle:
     ree_id: str
     ref: WorkbenchRef
-    spec: WorkbenchSpec
-    # The agent this REE is pinned to; every op on this handle routes to it.
-    agent_id: str = ""
+    spec: WorkbenchSpec | None
+    # The workbench this REE is pinned to; every op on this handle routes to it.
+    workbench_id: str = ""
+    allocation_id: str = ""
+    provider_id: str = ""
+    mode: str = "provider_managed"
 
     @classmethod
     def from_entry(cls, entry: WorkbenchEntry) -> WorkbenchHandle:
@@ -108,12 +114,15 @@ class WorkbenchHandle:
             ree_id=entry.ree_id,
             ref=entry.ref,
             spec=entry.spec,
-            agent_id=entry.agent_id,
+            workbench_id=entry.workbench_id,
+            allocation_id=entry.allocation_id,
+            provider_id=entry.provider_id,
+            mode=entry.mode,
         )
 
     @property
     def image(self) -> str:
-        return self.spec.base_image
+        return self.spec.base_image if self.spec is not None else ""
 
 
 # ================================================
@@ -126,13 +135,22 @@ class WorkbenchManager:
         self,
         registry: WorkbenchRegistry,
         workbench_image: str,
-        agent: AgentClient,
+        provider: ProviderClient,
+        workbench: WorkbenchClient,
+        enrollment: EnrollmentRegistry | None = None,
         span_sink: SpanSink | None = None,
     ):
         self._registry = registry
         self._image = workbench_image
         self._span_sink = span_sink
-        self._agent = agent
+        # The manager's two roles, spoken to through separate seams: the
+        # provider obtains and releases environments, the workbench executes
+        # inside one. Today's composition passes the same combined-workbench client
+        # for both; the split constructor is what lets that change without
+        # touching any method below.
+        self._provider = provider
+        self._workbench = workbench
+        self._enrollment = enrollment or EnrollmentRegistry()
         self._ree_locks: dict[str, threading.Lock] = {}
         self._ree_locks_lock = threading.Lock()
 
@@ -152,30 +170,51 @@ class WorkbenchManager:
         name: str,
         log: LogSink | None = None,
         image: str | None = None,
-        agent_id: str = "",
+        provider_id: str = "",
     ) -> WorkbenchHandle:
         """Create backing storage + workbench, initialise the REE, register handle.
 
         ``image`` overrides the manager's default workbench image for this REE.
-        ``agent_id`` places the workbench on a specific agent; empty means "any
-        connected agent", resolved up front to a concrete id and pinned (see
-        ``AgentClient.resolve_agent``).
+        ``provider_id`` chooses the capacity provider; empty means any connected
+        provider. The resident workbench receives a separate generated identity.
         """
         with self._ree_lock(ree_id), tracer.start_as_current_span("workbench.provision") as span:
             record_ree_id(span, ree_id)
             resolved_image = image or self._image
-            resolved_agent_id = self._agent.resolve_agent(agent_id)
-            WorkbenchSpanAttrs(image=resolved_image, agent_id=resolved_agent_id).apply(span)
+            provider_id = self._provider.resolve_provider(provider_id)
 
             spec = DockerWorkbenchSpec(base_image=resolved_image)
+            allocation_id = f"alloc-{uuid4().hex}"
+            resolved_workbench_id = f"wb-{uuid4().hex}"
+            enrollment_token = secrets.token_urlsafe(32)
+            self._enrollment.expect(allocation_id, resolved_workbench_id, enrollment_token)
+            self._registry.begin(
+                ree_id=ree_id,
+                allocation_id=allocation_id,
+                workbench_id=resolved_workbench_id,
+                provider_id=provider_id,
+                mode="provider_managed",
+                spec=spec,
+            )
+            WorkbenchSpanAttrs(image=resolved_image, workbench_id=resolved_workbench_id).apply(span)
             ref: WorkbenchRef | None = None
             try:
-                ref = self._consume_lifecycle(self._agent.provision(resolved_agent_id, ree_id, spec), log)
+                ref = self._consume_lifecycle(
+                    self._provider.provision(
+                        provider_id,
+                        allocation_id,
+                        resolved_workbench_id,
+                        enrollment_token,
+                        ree_id,
+                        spec,
+                    ),
+                    log,
+                )
                 if ref is None:
-                    raise RuntimeError(f"agent provision for {ree_id} ended without a workbench reference")
-                self._agent.exec_simple(
-                    resolved_agent_id,
-                    ref,
+                    raise RuntimeError(f"workbench provision for {ree_id} ended without a workbench reference")
+                self._workbench.wait_for_workbench(resolved_workbench_id)
+                self._workbench.exec_simple(
+                    resolved_workbench_id,
                     ["init-ree", "--name", name],
                 )
 
@@ -183,55 +222,73 @@ class WorkbenchManager:
                     ree_id=ree_id,
                     ref=ref,
                     spec=spec,
-                    agent_id=resolved_agent_id,
+                    workbench_id=resolved_workbench_id,
+                    allocation_id=allocation_id,
+                    provider_id=provider_id,
+                    mode="provider_managed",
                 )
                 self._registry.register(entry)
                 return WorkbenchHandle.from_entry(entry)
-            except BaseException:
+            except BaseException as exc:
+                self._enrollment.discard(allocation_id)
+                self._registry.mark_failed(ree_id, str(exc))
                 if ref is not None:
-                    self._agent.remove_best_effort(resolved_agent_id, ref)
+                    self._provider.remove_best_effort(provider_id, ref)
                 raise
 
-    def reprovision(self, ree_id: str, log: LogSink | None = None) -> WorkbenchHandle:
-        """Replace the container with a fresh one from the same image, keeping backing storage."""
-        _reprovision_counter.add(1)
-        with self._ree_lock(ree_id), tracer.start_as_current_span("workbench.reprovision") as span:
-            record_ree_id(span, ree_id)
-            entry = self._registry.lookup(ree_id)
-            if entry is None:
-                raise KeyError(f"no workbench registered for {ree_id}")
-            # Reprovision from the REE's own image, not the manager default.
-            handle = WorkbenchHandle.from_entry(entry)
-            WorkbenchSpanAttrs(
-                image=entry.spec.base_image,
-                agent_id=handle.agent_id,
-            ).apply(span)
-            ref = self._consume_lifecycle(self._agent.reprovision(handle.agent_id, handle.ref, entry.spec), log)
-            if ref is not None and ref != handle.ref:
+    def reserve_external(self, ree_id: str, name: str, workbench_id: str = "") -> WorkbenchHandle:
+        """Reserve one authenticated idle external workbench and initialise it."""
+        with self._ree_lock(ree_id), tracer.start_as_current_span("workbench.reserve_external"):
+            allocation_id = f"alloc-{uuid4().hex}"
+            resolved_workbench_id = self._workbench.reserve_external(allocation_id, workbench_id or None)
+            self._registry.begin(
+                ree_id=ree_id,
+                allocation_id=allocation_id,
+                workbench_id=resolved_workbench_id,
+                provider_id="",
+                mode="external",
+                spec=None,
+            )
+            try:
+                self._workbench.bind(resolved_workbench_id, allocation_id, ree_id)
+                self._workbench.exec_simple(resolved_workbench_id, ["init-ree", "--name", name])
                 entry = WorkbenchEntry(
                     ree_id=ree_id,
-                    ref=ref,
-                    spec=entry.spec,
-                    agent_id=entry.agent_id,
+                    ref=WorkbenchRef(runtime="external", token=allocation_id),
+                    spec=None,
+                    workbench_id=resolved_workbench_id,
+                    allocation_id=allocation_id,
+                    mode="external",
                 )
                 self._registry.register(entry)
-                handle = WorkbenchHandle.from_entry(entry)
-            return handle
+                return WorkbenchHandle.from_entry(entry)
+            except BaseException as exc:
+                self._workbench.release_reservation(resolved_workbench_id, allocation_id)
+                self._registry.mark_failed(ree_id, str(exc))
+                raise
 
     def teardown(self, handle: WorkbenchHandle) -> None:
         """Stop + remove the container and its backing storage, unregister."""
         with self._ree_lock(handle.ree_id), tracer.start_as_current_span("workbench.teardown") as span:
             record_ree_id(span, handle.ree_id)
-            WorkbenchSpanAttrs(agent_id=handle.agent_id).apply(span)
-            self._agent.remove(handle.agent_id, handle.ref)
+            WorkbenchSpanAttrs(workbench_id=handle.workbench_id).apply(span)
+            # Let the resident process finish in-flight executors and exit before
+            # the provider destroys the environment. Removal remains the final
+            # authority and still runs if the execution connection is already gone.
+            with suppress(WorkbenchUnavailableError):
+                self._workbench.drain(handle.workbench_id)
+            if handle.mode == "provider_managed":
+                self._provider.remove(handle.provider_id, handle.ref)
+                self._enrollment.discard(handle.allocation_id)
+            else:
+                self._workbench.release_reservation(handle.workbench_id, handle.allocation_id)
             self._registry.unregister(handle.ree_id)
 
-    def _consume_lifecycle(self, frames: Iterator[AgentFrame], log: LogSink | None) -> WorkbenchRef | None:
-        """Drain a provision/reprovision stream and return its reference.
+    def _consume_lifecycle(self, frames: Iterator[Frame], log: LogSink | None) -> WorkbenchRef | None:
+        """Drain a provision stream and return its reference.
 
-        Raises on a terminal error/unavailable frame. Both provision and
-        reprovision end with a ``workbench_ref`` frame; None only if the stream ended
-        without one (an older agent's reprovision, which ends with ``done``).
+        Raises on a terminal error/unavailable frame. Provision ends with a
+        ``workbench_ref`` frame; None only if the stream ended without one.
         """
         ref: WorkbenchRef | None = None
         for frame in frames:
@@ -254,7 +311,12 @@ class WorkbenchManager:
         if entry is None:
             return None
         handle = WorkbenchHandle.from_entry(entry)
-        if not self._agent.is_running(handle.agent_id, handle.ref):
+        running = (
+            self._provider.is_running(handle.provider_id, handle.ref)
+            if handle.mode == "provider_managed"
+            else self._workbench.is_connected(handle.workbench_id)
+        )
+        if not running:
             logger.warning(
                 "workbench on runtime %s not running for %s — returning None",
                 handle.ref.runtime,
@@ -279,7 +341,7 @@ class WorkbenchManager:
             CommandSpanAttrs(operation=str(cmd.operation), run_id=run_id, ree_id=handle.ree_id).apply(span)
             WorkbenchSpanAttrs(
                 image=self.image_for(handle),
-                agent_id=handle.agent_id,
+                workbench_id=handle.workbench_id,
             ).apply(span)
             # The whole command as dispatched — envelope and args — recorded
             # before it runs, for the reason core's own dispatch records its
@@ -322,7 +384,7 @@ class WorkbenchManager:
         This deliberately does not take the per-REE dispatch lock: the command we
         are canceling is usually the one holding that lock.
         """
-        self._agent.cancel_run(handle.agent_id, handle.ref, run_id)
+        self._workbench.cancel_run(handle.workbench_id, run_id)
 
     def _dispatch_action_locked(
         self,
@@ -333,7 +395,7 @@ class WorkbenchManager:
     ) -> ActionResult:
         cmd_json = cmd.model_dump_json()
 
-        # No TRACEPARENT here on purpose. The agent injects it at the hop that
+        # No TRACEPARENT here on purpose. The workbench injects it at the hop that
         # actually spawns the executor, so a context set from this span would be
         # overwritten one layer down — two propagation points with the later
         # silently winning. What this span does own is asking for the relay:
@@ -343,14 +405,14 @@ class WorkbenchManager:
         if self._span_sink is not None:
             env["TRACE_RELAY"] = "1"
 
-        # Consume the agent's frame stream live: forward log frames to the sink
+        # Consume the workbench's frame stream live: forward log frames to the sink
         # and relayed span frames to the span_sink as they arrive (not buffered to
         # the end) so a command that hangs or gets killed still ships what it
         # emitted before stalling — the case a trace is most useful. The span_sink
         # is non-blocking (it enqueues for a background forwarder), so export never
         # sits on this loop, the per-REE lock, or the measured execute window.
         result: ActionResult | None = None
-        for frame in self._agent.exec_action(handle.agent_id, handle.ref, cmd_json, run_id, env):
+        for frame in self._workbench.exec_action(handle.workbench_id, cmd_json, run_id, env):
             if isinstance(frame, LogFrame):
                 log(frame.stream, frame.level, frame.message)
             elif isinstance(frame, SpanFrame):
@@ -382,8 +444,9 @@ class WorkbenchManager:
     def dispatch_query(self, handle: WorkbenchHandle, *argv: str, locked: bool = False, timeout: int = 30) -> bytes:
         """Run a read-only CLI subcommand and return its stdout bytes.
 
-        ``argv`` is a ``repo2ree-exec`` subcommand (e.g. ``get-ree-manifest``); the agent's
-        runtime prepends the bench's executor entry point. Set ``locked`` for
+        ``argv`` is a ``repo2ree-exec`` subcommand (e.g. ``get-ree-manifest``);
+        the workbench service prepends the bench's executor entry point. Set
+        ``locked`` for
         queries that must observe a consistent snapshot — they take the per-REE
         lock so no mutating action runs concurrently. Plain reads leave it off
         and run unsynchronised. ``timeout`` bounds the exec itself; raise it for
@@ -392,8 +455,8 @@ class WorkbenchManager:
         exec_argv = list(argv)
         if locked:
             with self._ree_lock(handle.ree_id):
-                return self._agent.exec_query(handle.agent_id, handle.ref, exec_argv, timeout=timeout)
-        return self._agent.exec_query(handle.agent_id, handle.ref, exec_argv, timeout=timeout)
+                return self._workbench.exec_query(handle.workbench_id, exec_argv, timeout=timeout)
+        return self._workbench.exec_query(handle.workbench_id, exec_argv, timeout=timeout)
 
     def dispatch_query_stream(
         self, handle: WorkbenchHandle, *argv: str, locked: bool = False, timeout: int = 30
@@ -401,12 +464,15 @@ class WorkbenchManager:
         """Run a read-only CLI subcommand and stream stdout bytes."""
         exec_argv = list(argv)
 
+        def query() -> Iterator[bytes]:
+            return self._workbench.exec_query_stream(handle.workbench_id, exec_argv, timeout=timeout)
+
         def stream() -> Iterator[bytes]:
             if locked:
                 with self._ree_lock(handle.ree_id):
-                    yield from self._agent.exec_query_stream(handle.agent_id, handle.ref, exec_argv, timeout=timeout)
+                    yield from query()
                 return
-            yield from self._agent.exec_query_stream(handle.agent_id, handle.ref, exec_argv, timeout=timeout)
+            yield from query()
 
         return stream()
 
@@ -464,12 +530,9 @@ class WorkbenchManager:
     def list_all_manifests(self) -> list[tuple[WorkbenchHandle, dict[str, Any]]]:
         """Every reachable workbench, paired with its REE document as it arrived.
 
-        The document stays unparsed on purpose. This package relays REE state
-        and never reads it (the "Agent and supervisor speak only protocol"
-        contract), so projecting a summary here meant hand-navigating the domain
-        shape by string key — ``ree["subject"]["definition"]["name"]`` — in the
-        one package forbidden from knowing that shape. The control plane, which
-        ships with core, parses it instead.
+        The document stays unparsed on purpose: the "Supervisor speaks only
+        protocol" contract forbids this package from knowing the domain shape,
+        so the control plane, which ships with core, parses it instead.
 
         Unreachable or unreadable workbenches are skipped rather than raised:
         this backs a listing, and one sick bench must not empty it.
@@ -477,7 +540,12 @@ class WorkbenchManager:
         manifests: list[tuple[WorkbenchHandle, dict[str, Any]]] = []
         for entry in self._registry.list_all():
             handle = WorkbenchHandle.from_entry(entry)
-            if not self._agent.is_running(handle.agent_id, handle.ref):
+            running = (
+                self._provider.is_running(handle.provider_id, handle.ref)
+                if handle.mode == "provider_managed"
+                else self._workbench.is_connected(handle.workbench_id)
+            )
+            if not running:
                 continue
             with suppress(Exception):
                 manifests.append((handle, self.get_ree_manifest(handle)))
@@ -486,6 +554,6 @@ class WorkbenchManager:
     def copy_to_workbench(self, handle: WorkbenchHandle, host_path: str, workbench_path: str) -> None:
         """Copy a control-plane-local file into the workbench.
 
-        ``host_path`` need only exist here; the agent may share no filesystem
-        with us (see ``AgentClient.copy_in``)."""
-        self._agent.copy_in(handle.agent_id, handle.ref, host_path, workbench_path)
+        ``host_path`` need only exist here; the workbench may share no filesystem
+        with us (see ``WorkbenchClient.copy_in``)."""
+        self._workbench.copy_in(handle.workbench_id, host_path, workbench_path)

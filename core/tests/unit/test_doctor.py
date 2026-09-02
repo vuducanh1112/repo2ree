@@ -41,7 +41,7 @@ def test_unwritable_ree_fails_the_contract(tmp_path: Path) -> None:
 def test_docker_probe_survives_a_hanging_daemon(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """A `docker info` that blocks past its timeout is a still-starting daemon,
     not a crash. The probe must report docker unavailable and let the hard
-    contract stand — never let the timeout escape, which the agent reads as a
+    contract stand — never let the timeout escape, which the workbench reads as a
     failed bench contract and fails provisioning on a merely-slow substrate."""
     monkeypatch.setattr(doctor_mod, "find_tool", lambda name: "/usr/bin/docker" if name == "docker" else None)
 

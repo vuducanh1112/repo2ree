@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="820" viewBox="0 0 1500 820" role="img" aria-labelledby="title description">
+  <title id="title">How workbenches are provisioned and driven</title>
+  <desc id="description">The Docker provider holds a capacity connection to the control plane, drives workbench lifecycle, and injects executor and tools closures through the Docker engine, which creates the workbench. Inside the workbench, the workbench service dials the control plane on a separate execution connection, dispatches typed commands, and supervises a short-lived executor per command. Capacity and execution never share a connection.</desc>
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#334155"/></marker><style>.bg{fill:#f8fafc}.bound{fill:#f0fdfa;fill-opacity:.55;stroke:#0f766e;stroke-width:2;stroke-dasharray:9 6}.head{font:700 29px system-ui,sans-serif;fill:#0f172a}.sub{font:15px system-ui,sans-serif;fill:#475569}.bl{font:700 15px system-ui,sans-serif;fill:#0f766e}.comp{fill:#0f766e;stroke:#115e59;stroke-width:2.3}.ext{fill:#e2e8f0;stroke:#64748b;stroke-width:2}.n{font:700 17px system-ui,sans-serif;fill:#fff;text-anchor:middle}.t{font:600 11px system-ui,sans-serif;fill:#ccfbf1;text-anchor:middle;letter-spacing:.8px}.c{font:13px system-ui,sans-serif;fill:#f0fdfa;text-anchor:middle}.dn{font:700 17px system-ui,sans-serif;fill:#0f172a;text-anchor:middle}.dt{font:600 11px system-ui,sans-serif;fill:#475569;text-anchor:middle;letter-spacing:.8px}.dc{font:13px system-ui,sans-serif;fill:#334155;text-anchor:middle}.line{fill:none;stroke:#334155;stroke-width:2;marker-end:url(#a)}.both{fill:none;stroke:#334155;stroke-width:2;marker-start:url(#a);marker-end:url(#a)}.label{font:600 12px system-ui,sans-serif;fill:#334155;text-anchor:middle}</style></defs>
+  <rect class="bg" width="1500" height="820" rx="16"/>
+  <text class="head" x="42" y="46">How workbenches are provisioned and driven</text>
+  <text class="sub" x="42" y="73">The provider creates environments but runs nothing; the workbench service runs commands but creates nothing</text>
+
+  <!-- boundaries -->
+  <rect class="bound" x="280" y="96" width="760" height="200" rx="14"/><text class="bl" x="304" y="124">Docker provider [CONTAINER]</text>
+  <rect class="bound" x="280" y="496" width="760" height="200" rx="14"/><text class="bl" x="304" y="524">Workbench [CONTAINER]</text>
+
+  <!-- edges -->
+  <path class="both" d="M130 330 L130 207 L310 207"/><text class="label" x="224" y="192">Capacity WebSocket</text>
+  <path class="both" d="M130 480 L130 607 L310 607"/><text class="label" x="224" y="592">Execution WebSocket</text>
+  <path class="line" d="M510 207 L570 207"/><text class="label" x="540" y="192">Drives</text>
+  <path class="line" d="M770 207 L830 207"/><text class="label" x="800" y="192">Stages</text>
+  <path class="line" d="M1010 207 L1090 207"/><text class="label" x="1050" y="192">Docker CLI</text>
+  <path class="line" d="M1175 280 L1175 545 L1040 545"/><text class="label" x="1268" y="404">Creates and starts</text><text class="label" x="1268" y="421">the workbench</text>
+  <path class="line" d="M510 607 L570 607"/><text class="label" x="540" y="592">Commands</text>
+  <path class="line" d="M770 607 L830 607"/><text class="label" x="800" y="592">Spawns</text>
+  <path class="line" d="M1010 607 L1090 607"/><text class="label" x="1050" y="592">Runs</text>
+
+  <!-- external -->
+  <g><rect class="ext" x="40" y="330" width="180" height="150" rx="9"/><text class="dn" x="130" y="372">Control plane</text><text class="dt" x="130" y="395">[CONTAINER]</text><text class="dc" x="130" y="424">Accepts both outbound</text><text class="dc" x="130" y="444">dials on separate</text><text class="dc" x="130" y="464">connections</text></g>
+  <g><rect class="ext" x="1090" y="135" width="170" height="145" rx="9"/><text class="dn" x="1175" y="182">Docker engine</text><text class="dt" x="1175" y="205">[EXTERNAL RUNTIME]</text><text class="dc" x="1175" y="234">Owns containers,</text><text class="dc" x="1175" y="254">volumes, and images</text></g>
+  <g><rect class="ext" x="1090" y="535" width="170" height="145" rx="9"/><text class="dn" x="1175" y="576">repo2ree-exec</text><text class="dt" x="1175" y="599">[SHORT-LIVED PROCESS]</text><text class="dc" x="1175" y="628">One per command;</text><text class="dc" x="1175" y="648">performs the REE</text><text class="dc" x="1175" y="668">operation</text></g>
+
+  <!-- provider components -->
+  <g><rect class="comp" x="310" y="135" width="200" height="145" rx="10"/><text class="n" x="410" y="180">Capacity connection</text><text class="t" x="410" y="203">[COMPONENT]</text><text class="c" x="410" y="231">Dials outbound and</text><text class="c" x="410" y="252">accepts capacity calls</text></g>
+  <g><rect class="comp" x="570" y="135" width="200" height="145" rx="10"/><text class="n" x="670" y="180">Workbench lifecycle</text><text class="t" x="670" y="203">[COMPONENT]</text><text class="c" x="670" y="231">Creates storage, starts</text><text class="c" x="670" y="252">and probes, removes</text></g>
+  <g><rect class="comp" x="830" y="135" width="180" height="145" rx="10"/><text class="n" x="920" y="180">Bundle injector</text><text class="t" x="920" y="203">[COMPONENT]</text><text class="c" x="920" y="231">Places executor and</text><text class="c" x="920" y="252">tools closures</text></g>
+
+  <!-- workbench components -->
+  <g><rect class="comp" x="310" y="535" width="200" height="145" rx="10"/><text class="n" x="410" y="580">Execution connection</text><text class="t" x="410" y="603">[COMPONENT]</text><text class="c" x="410" y="631">Dials outbound and</text><text class="c" x="410" y="652">enrolls its allocation</text></g>
+  <g><rect class="comp" x="570" y="535" width="200" height="145" rx="10"/><text class="n" x="670" y="580">Request dispatcher</text><text class="t" x="670" y="603">[COMPONENT]</text><text class="c" x="670" y="631">Decodes commands and</text><text class="c" x="670" y="652">streams ordered frames</text></g>
+  <g><rect class="comp" x="830" y="535" width="180" height="145" rx="10"/><text class="n" x="920" y="580">Executor</text><text class="n" x="920" y="601">supervision</text><text class="t" x="920" y="623">[COMPONENT]</text><text class="c" x="920" y="651">Starts and cancels</text><text class="c" x="920" y="671">process groups</text></g>
+</svg>

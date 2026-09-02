@@ -172,7 +172,7 @@ def download_ree_archive_route(ree_id: str) -> StreamingResponse:
     handle = require_handle(ree_id)
     archive_filename = archive_download_filename(handle)
     # Spool the archive to a control-plane temp file before responding. The
-    # per-REE lock (and the agent's exec) is held only while the workbench
+    # per-REE lock (and the workbench's exec) is held only while the workbench
     # streams to us — never for as long as the client takes to download — so a
     # slow client cannot block other operations on the REE.
     spool = tempfile.TemporaryFile()  # noqa: SIM115 — the spool outlives this frame — it is closed by the streaming response below

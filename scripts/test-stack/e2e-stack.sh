@@ -1,19 +1,21 @@
 #!/usr/bin/env bash
-# Run the e2e stack: backend + workbench agent(s) + a playwright project,
+# Run the e2e stack: backend + workbench service(s) + a playwright project,
 # with readiness polling and teardown. Invoked by the Just E2E recipes.
-# `--agents <n>` sets how many agents connect (default 1). Specs that need
-# more than the stack offers (e.g. the multi-agent spec, which needs 2) skip
-# themselves, so any project runs against any agent count.
+# `--mode provider|external` selects on-demand Docker provisioning or directly
+# installed workbenches. `--capacity <n>` sets the number of providers/external
+# workbenches (default 1).
+# more than the stack offers (e.g. the multi-workbench spec, which needs 2) skip
+# themselves, so any project runs against any workbench count.
 #
-#   e2e-stack.sh --project <playwright-project> [--agents <n>]
-#   e2e-stack.sh --script <path> --tier <name> [--agents <n>] [--record <cast>]
+#   e2e-stack.sh --project <playwright-project> [--mode provider|external] [--capacity <n>]
+#   e2e-stack.sh --script <path> --tier <name> [--mode ...] [--capacity <n>] [--record <cast>]
 #
 # The --script mode runs an arbitrary client against the same live stack instead
-# of a playwright project — used by the pure-API agent walkthrough. With
+# of a playwright project — used by the pure-API workbench walkthrough. With
 # --record the run is captured via asciinema into a .cast terminal recording.
 #
 # Every run is measured; there is no flag to turn it off. The backend *and* every
-# agent start under coverage (you cannot measure an already-running process), and
+# workbench start under coverage (you cannot measure an already-running process), and
 # every process gets a graceful SIGTERM at the end so coverage flushes on
 # shutdown. One report comes out: test-artifacts/coverage/python/<tier>/.
 #
@@ -41,10 +43,10 @@
 # paths are unmeasured because the processes are in containers, which is also
 # what keeps an un-instrumented topology on the push gate.
 #
-# The agents are measured, not just the backend: an e2e run is the heaviest
-# exercise the agent package gets (docker runtime, control link, injection,
+# The workbenches are measured, not just the backend: an e2e run is the heaviest
+# exercise the workbench package gets (docker runtime, control link, injection,
 # chunked transfers), and leaving them out reported that work as uncovered.
-# Server and agents therefore share one COVERAGE_FILE under --parallel-mode,
+# Server and workbenches therefore share one COVERAGE_FILE under --parallel-mode,
 # each writing its own suffixed data file, combined at the end.
 #
 # Environment knobs (all optional):
@@ -53,31 +55,32 @@
 #                              docker:dind digest in api settings — which
 #                              every browser tier runs on
 #   E2E_WORKBENCH_DOCKER_MODE  dind (default) or host-socket
-#   E2E_AGENT_STATE_DIR        agent identity dir (default: test-artifacts/state/agents);
-#                              with --agents N, agent i > 1 uses <dir>-<i> so
+#   E2E_WORKBENCH_STATE_DIR        workbench identity dir (default: test-artifacts/state/workbenches);
+#                              with --workbenches N, workbench i > 1 uses <dir>-<i> so
 #                              each keeps a distinct persistent identity
 #   E2E_EXEC_BUNDLE            executor bundle path (default: dist/bundles/exec)
 #   E2E_TOOLS_BUNDLE           tools bundle path (default: dist/bundles/tools)
 #
-# The agent always gets the executor/tools bundles: lean env images (the dind
+# The workbench always gets the executor/tools bundles: lean env images (the dind
 # default, custom benches) need the injection, and images that ship their own
 # /nix (the full workbench) skip it — so this is safe for every tier.
 set -euo pipefail
 
 usage() {
     echo "usage: $0 (--project <playwright-project> | --script <path> --tier <name>)" \
-        "[--agents <n>] [--record <cast>]" >&2
+        "[--mode provider|external] [--capacity <n>] [--record <cast>]" >&2
     exit 2
 }
 
 # The stack can drive either a playwright project (browser e2e/demo) or an
-# arbitrary --script against the same live backend+agent — that second mode is
-# how the pure-API agent walkthrough runs. --record wraps a --script run in
+# arbitrary --script against the same live backend+workbench — that second mode is
+# how the pure-API workbench walkthrough runs. --record wraps a --script run in
 # asciinema so the terminal session becomes a .cast artifact.
 project=
 script=
 record=
-agents=1
+capacity=1
+mode=${E2E_CAPACITY_MODE:-provider}
 tier=
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -85,14 +88,16 @@ while [ $# -gt 0 ]; do
         --script) [ $# -ge 2 ] || usage; script=$2; shift 2 ;;
         --tier) [ $# -ge 2 ] || usage; tier=$2; shift 2 ;;
         --record) [ $# -ge 2 ] || usage; record=$2; shift 2 ;;
-        --agents) [ $# -ge 2 ] || usage; agents=$2; shift 2 ;;
+        --capacity) [ $# -ge 2 ] || usage; capacity=$2; shift 2 ;;
+        --mode) [ $# -ge 2 ] || usage; mode=$2; shift 2 ;;
         *) usage ;;
     esac
 done
 # Exactly one runner: a playwright project or a script.
 if { [ -n "$project" ] && [ -n "$script" ]; } || { [ -z "$project" ] && [ -z "$script" ]; }; then usage; fi
 [ -z "$record" ] || [ -n "$script" ] || usage  # --record only applies to --script
-[ "$agents" -ge 1 ] 2>/dev/null || usage
+[ "$capacity" -ge 1 ] 2>/dev/null || usage
+case "$mode" in provider|external) ;; *) usage ;; esac
 # The tier is the project — one name, so the report can never be labelled with a
 # suite that did not produce it. --script has no project and must say which tier
 # its run belongs to; --tier alongside --project would be a second name for the
@@ -112,7 +117,7 @@ cd "$root"
 
 # Check the project resolves *before* building anything. Playwright is the only
 # thing that knows which projects exist, and it is not consulted until the very
-# end of a run — so a name it rejects used to cost a full backend + agent
+# end of a run — so a name it rejects used to cost a full backend + workbench
 # startup first, and then failed with the stack already up. `--list` answers in
 # well under a second. Playwright's own message is passed through because it
 # enumerates the available projects, which is exactly what you need to see.
@@ -125,24 +130,25 @@ if [ -n "$project" ]; then
     fi
 fi
 
-docker_mode=${E2E_WORKBENCH_DOCKER_MODE:-dind}
-state_dir=${E2E_AGENT_STATE_DIR:-$root/test-artifacts/state/agents}
+docker_mode=${E2E_PROVIDER_DOCKER_MODE:-${E2E_WORKBENCH_DOCKER_MODE:-dind}}
+state_dir=${E2E_WORKBENCH_STATE_DIR:-$root/test-artifacts/state/workbenches}
+provider_state_dir=${E2E_PROVIDER_STATE_DIR:-$root/test-artifacts/state/providers}
 exec_bundle=${E2E_EXEC_BUNDLE:-$root/dist/bundles/exec}
 tools_bundle=${E2E_TOOLS_BUNDLE:-$root/dist/bundles/tools}
 
-# agent_log <i>: log path for the i-th agent (agent-<tier>.log, agent-<tier>-2.log,
+# workbench_log <i>: log path for the i-th workbench (workbench-<tier>.log, workbench-<tier>-2.log,
 # ...). Every log shares one logs/ directory, so without the tier a demo run would
-# clobber an e2e run's agent log.
-agent_log() {
+# clobber an e2e run's workbench log.
+workbench_log() {
     local suffix=""
     [ "$1" -gt 1 ] && suffix="-$1"
-    echo "$agent_log_dir/agent-$tier$suffix.log"
+    echo "$workbench_log_dir/workbench-$tier$suffix.log"
 }
 
 # Logs live under test-artifacts/logs/, not inside a coverage report directory:
 # a directory `coverage html` owns should hold only the report it generates.
 log_dir=$root/test-artifacts/logs
-agent_log_dir=$log_dir
+workbench_log_dir=$log_dir
 coverage_data_dir=$root/test-artifacts/coverage/python/data/$tier
 coverage_file=$coverage_data_dir/.coverage
 backend_log=$log_dir/backend-$tier.log
@@ -150,19 +156,19 @@ run_token="e2e-$tier-$(python3 -c 'import uuid; print(uuid.uuid4().hex)')"
 port_file=$(mktemp)
 api_base_url=
 control_state_dir=${E2E_CONTROL_STATE_DIR:-$root/test-artifacts/state/control/$run_token}
-mkdir -p "$log_dir" "$state_dir" "$coverage_data_dir" "$control_state_dir"
+mkdir -p "$log_dir" "$state_dir" "$provider_state_dir" "$coverage_data_dir" "$control_state_dir"
 # Start the tier's data fresh: --parallel-mode leaves one suffixed file per
 # process, so a previous run's files would otherwise be combined in as well
 # and report a union of two runs as one.
 rm -f "$coverage_file" "$coverage_file".*
-for i in $(seq 1 "$agents"); do rm -f "$(agent_log "$i")"; done
+for i in $(seq 1 "$capacity"); do rm -f "$(workbench_log "$i")"; done
 
 if [ -n "${E2E_WORKBENCH_IMAGE:-}" ]; then
     export WORKBENCH_IMAGE_CATALOG='[{"id":"pinned","ref":"'"$E2E_WORKBENCH_IMAGE"'","label":"Pinned bench","description":"Bench image pinned for this e2e run."}]'
 fi
 
 api_pid=
-agent_pids=()
+capacity_pids=()
 client_pid=
 stop_stack() {
     local pid
@@ -171,7 +177,7 @@ stop_stack() {
         wait "$client_pid" 2>/dev/null || true
         client_pid=
     fi
-    for pid in "${agent_pids[@]}"; do
+    for pid in "${capacity_pids[@]}"; do
         kill -TERM "$pid" 2>/dev/null || true
         wait "$pid" 2>/dev/null || true
     done
@@ -180,7 +186,7 @@ stop_stack() {
         wait "$api_pid" 2>/dev/null || true
     fi
     # The backend state this stack ran on is throwaway, so workbenches the specs
-    # did not delete are unreachable. The agent labels every per-run resource;
+    # did not delete are unreachable. The workbench labels every per-run resource;
     # select that label so parallel stacks and developers' benches survive.
     "$root/scripts/test-stack/workbench-cleanup.sh" --owner "$run_token"
     rm -f "$port_file"
@@ -201,13 +207,22 @@ wait_until() {
 }
 
 # shellcheck disable=SC2329  # invoked indirectly, via wait_until
-agents_connected() {
+workbenches_connected() {
     local want=$1
     # Parse the JSON structurally rather than grepping a field name, so the
     # probe cannot silently drift from the wire format.
     local count
-    count=$(curl -sf "$api_base_url/api/v1/agents" \
-        | python3 -c 'import json,sys; print(len(json.load(sys.stdin).get("agents", [])))' \
+    count=$(curl -sf "$api_base_url/api/v1/workbenches" \
+        | python3 -c 'import json,sys; print(len(json.load(sys.stdin).get("workbenches", [])))' \
+        2>/dev/null) || count=0
+    [ "${count:-0}" -ge "$want" ]
+}
+
+# shellcheck disable=SC2329  # invoked indirectly, via wait_until
+providers_connected() {
+    local want=$1 count
+    count=$(curl -sf "$api_base_url/api/v1/providers" \
+        | python3 -c 'import json,sys; print(len(json.load(sys.stdin).get("providers", [])))' \
         2>/dev/null) || count=0
     [ "${count:-0}" -ge "$want" ]
 }
@@ -245,6 +260,7 @@ UPLOAD_STAGING_DIR=$control_state_dir/upload-staging \
 WORKBENCH_REGISTRY_FILE=$control_state_dir/workbench-registry.json \
 REE_INDEX_FILE=$control_state_dir/ree-index.json \
 RUN_REGISTRY_DIR=$control_state_dir/runs \
+EXTERNAL_WORKBENCH_TOKEN=$run_token \
 COVERAGE_FILE=$coverage_file coverage run --parallel-mode \
     "$root/scripts/test-stack/serve-e2e-api.py" "$port_file" \
     >"$backend_log" 2>&1 &
@@ -252,34 +268,78 @@ api_pid=$!
 wait_for_backend
 echo ">> backend ready at $api_base_url (pid $api_pid)"
 
-# start_agent <state-dir> <log>: one workbench agent process, backgrounded.
-# It runs through `coverage run --parallel-mode` sharing the tier's COVERAGE_FILE
-# with the backend, so each process writes its own suffixed data file and the
-# combine at the end picks all of them up. `sigterm = true` (pyproject.toml) is
-# what makes the flush happen when stop_stack signals them.
-start_agent() {
-    WORKBENCH_API_WS_URL="${api_base_url/http:/ws:}/agent/connect" \
-    WORKBENCH_DOCKER_MODE=$docker_mode \
-    WORKBENCH_AGENT_STATE_DIR=$1 \
+# A source stack may itself run inside a devcontainer while controlling a
+# sibling Docker daemon. In that topology host.docker.internal points at the
+# daemon host, not this container, so place managed workbenches on the caller's
+# Docker network and let them dial the caller by its Docker DNS name.
+provider_workbench_host=host.docker.internal
+provider_workbench_network=
+if [ -f /.dockerenv ] && [ -n "${HOSTNAME:-}" ] \
+        && docker inspect "$HOSTNAME" >/dev/null 2>&1; then
+    # shellcheck disable=SC2016
+    provider_workbench_network=$(docker inspect -f \
+        '{{range $name,$_ := .NetworkSettings.Networks}}{{println $name}}{{end}}' \
+        "$HOSTNAME" | awk 'NF {print; exit}')
+    if [ -n "$provider_workbench_network" ]; then
+        provider_workbench_host=$HOSTNAME
+    fi
+fi
+
+start_external_workbench() {
+    WORKBENCH_API_WS_URL="${api_base_url/http:/ws:}/workbench/connect" \
+    WORKBENCH_MODE=external \
+    WORKBENCH_AUTH_TOKEN=$run_token \
+    WORKBENCH_ROOT=$1/root \
+    WORKBENCH_STATE_DIR=$1 \
+    REPO2REE_EXEC_PATH=${E2E_EXEC_PATH:-repo2ree-exec} \
+    COVERAGE_FILE=$coverage_file \
+    uv run --package repo2ree-workbench coverage run --parallel-mode \
+        -m repo2ree_workbench >"$2" 2>&1 &
+    capacity_pids+=($!)
+}
+
+start_provider() {
+    PROVIDER_API_WS_URL="${api_base_url/http:/ws:}/provider/connect" \
+    PROVIDER_WORKBENCH_API_WS_URL="ws://${provider_workbench_host}:${api_base_url##*:}/workbench/connect" \
+    PROVIDER_WORKBENCH_DOCKER_NETWORK=$provider_workbench_network \
+    PROVIDER_DOCKER_MODE=$docker_mode \
+    PROVIDER_STATE_DIR=$1 \
     REPO2REE_EXEC_BUNDLE=$exec_bundle \
     REPO2REE_TOOLS_BUNDLE=$tools_bundle \
     REPO2REE_RESOURCE_OWNER=$run_token \
     COVERAGE_FILE=$coverage_file \
-    uv run --package repo2ree-agent coverage run --parallel-mode \
-        -m repo2ree_agent >"$2" 2>&1 &
-    agent_pids+=($!)
+    uv run --package repo2ree-provider-docker coverage run --parallel-mode \
+        -m repo2ree_provider_docker >"$2" 2>&1 &
+    capacity_pids+=($!)
 }
 
-for i in $(seq 1 "$agents"); do
-    dir=$state_dir
-    [ "$i" -gt 1 ] && dir="${state_dir}-$i"
-    echo ">> starting workbench agent $i/$agents (log: $(agent_log "$i"))"
-    start_agent "$dir" "$(agent_log "$i")"
+# The external mode starts installed workbenches directly; provider mode starts
+# capacity adapters and lets allocations create resident workbenches on demand.
+# It runs through `coverage run --parallel-mode` sharing the tier's COVERAGE_FILE
+# with the backend, so each process writes its own suffixed data file and the
+# combine at the end picks all of them up. `sigterm = true` (pyproject.toml) is
+# what makes the flush happen when stop_stack signals them.
+for i in $(seq 1 "$capacity"); do
+    if [ "$mode" = provider ]; then
+        dir=$provider_state_dir
+        [ "$i" -gt 1 ] && dir="${provider_state_dir}-$i"
+        echo ">> starting Docker provider $i/$capacity (log: $(workbench_log "$i"))"
+        start_provider "$dir" "$(workbench_log "$i")"
+    else
+        dir=$state_dir
+        [ "$i" -gt 1 ] && dir="${state_dir}-$i"
+        echo ">> starting external workbench $i/$capacity (log: $(workbench_log "$i"))"
+        start_external_workbench "$dir" "$(workbench_log "$i")"
+    fi
 done
-wait_until "$agents workbench agent(s)" agents_connected "$agents"
+if [ "$mode" = provider ]; then
+    wait_until "$capacity provider service(s)" providers_connected "$capacity"
+else
+    wait_until "$capacity external workbench service(s)" workbenches_connected "$capacity"
+fi
 
 # Start the client as a separately waitable process. `wait -n` below watches it
-# alongside the exact backend and agent PIDs; infrastructure death aborts the
+# alongside the exact backend and workbench PIDs; infrastructure death aborts the
 # client immediately instead of degrading into a late browser timeout.
 if [ -n "$script" ]; then
     echo ">> stack ready — running script=$script"
@@ -317,7 +377,7 @@ else
     client_pid=$!
 fi
 
-watched_pids=("$client_pid" "$api_pid" "${agent_pids[@]}")
+watched_pids=("$client_pid" "$api_pid" "${capacity_pids[@]}")
 finished_pid=
 if wait -n -p finished_pid "${watched_pids[@]}"; then
     finished_status=0
@@ -335,13 +395,13 @@ else
     client_pid=
 fi
 
-echo ">> stopping workbench agent and backend (SIGTERM so coverage can flush)"
+echo ">> stopping workbench service and backend (SIGTERM so coverage can flush)"
 stop_stack
 trap - EXIT
 
-echo ">> backend coverage ($tier tier: server + $agents agent(s))"
+echo ">> backend coverage ($tier tier: server + $capacity $mode capacity process(es))"
 # Fold this tier's per-process files (one per --parallel-mode process:
-# the server and each agent) into the tier's single .coverage. No --keep —
+# the server and each workbench) into the tier's single .coverage. No --keep —
 # the suffixed files have no reader once merged, and collapsing them leaves
 # the tier looking exactly like a single-process pytest tier for the
 # cross-tier combine.

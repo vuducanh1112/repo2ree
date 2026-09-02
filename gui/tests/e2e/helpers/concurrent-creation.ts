@@ -2,7 +2,7 @@ import type { Browser, Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import {
   cleanupWorkbench,
-  connectedAgentCount,
+  connectedLabCount,
   main,
   provideMetadata,
   provisionWorkbench,
@@ -16,7 +16,7 @@ import {
 
 /**
  * The shared body of the concurrent-creation specs: two sessions run REE
- * creation at the same time, pinned to the agents named by `agentIndexes`.
+ * creation at the same time, pinned to the labs named by `labIndexes`.
  * Both drive the same lean pipeline — provision, source, metadata, evaluate,
  * seal, release — while the other session stays live, so every command lands
  * on a backend that is simultaneously holding a second provisioned bench.
@@ -37,15 +37,15 @@ import {
 export async function twoConcurrentCreations(
   page: Page,
   browser: Browser,
-  options: { agentIndexes: [number, number]; sameAgent: boolean },
+  options: { labIndexes: [number, number]; sameLab: boolean },
 ) {
   // Two provisions (~20-90s each) plus two evaluates and two seals.
   test.setTimeout(10 * 60 * 1000);
 
-  if (!options.sameAgent) {
+  if (!options.sameLab) {
     test.skip(
-      (await connectedAgentCount(page)) < 2,
-      "needs a stack with at least 2 connected agents (E2E_AGENTS=2)",
+      (await connectedLabCount(page)) < 2,
+      "needs a stack with at least 2 connected labs (E2E_CAPACITY=2)",
     );
   }
 
@@ -53,15 +53,15 @@ export async function twoConcurrentCreations(
   const pageB = await contextB.newPage();
 
   try {
-    await test.step("pin each session to its agent", async () => {
-      const agentA = await startReeCreation(page, { agentIndex: options.agentIndexes[0] });
-      const agentB = await startReeCreation(pageB, { agentIndex: options.agentIndexes[1] });
-      expect(agentA).toBeTruthy();
-      expect(agentB).toBeTruthy();
-      if (options.sameAgent) {
-        expect(agentB).toBe(agentA);
+    await test.step("pin each session to its lab", async () => {
+      const labA = await startReeCreation(page, { labIndex: options.labIndexes[0] });
+      const labB = await startReeCreation(pageB, { labIndex: options.labIndexes[1] });
+      expect(labA).toBeTruthy();
+      expect(labB).toBeTruthy();
+      if (options.sameLab) {
+        expect(labB).toBe(labA);
       } else {
-        expect(agentB).not.toBe(agentA);
+        expect(labB).not.toBe(labA);
       }
     });
 
@@ -88,8 +88,8 @@ export async function twoConcurrentCreations(
       });
 
       // Isolation: each session holds its own name, not the other's — the
-      // sessions share one backend (and in the same-agent variant one
-      // agent) but must not share intent state.
+      // sessions share one backend (and in the same-lab variant one
+      // lab) but must not share intent state.
       const nameField = (p: Page) => p.getByPlaceholder("deepfold-protein-structure-prediction");
       await expect(nameField(page)).toHaveValue("ree-session-a");
       await expect(nameField(pageB)).toHaveValue("ree-session-b");

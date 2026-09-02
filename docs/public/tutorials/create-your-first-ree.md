@@ -38,14 +38,14 @@ checks used to judge those results. You need this combined record because
 sharing any one part alone leaves a future reader to guess how the parts fit
 together.
 
-### Control plane, agent, and lab location
+### Control plane, provider, and lab location
 
-**The control plane records intent, while an agent carries that intent to the execution infrastructure identified in the GUI as a lab location.**
+**The control plane records intent, while a provider carries that intent to the execution infrastructure identified in the GUI as a lab location.**
 
 The GUI and API belong to the control plane: they coordinate work but do not
-hold a container-runtime socket. A separately running agent connects outbound
+hold a container-runtime socket. A separately running provider connects outbound
 to the API and owns Docker on its host. Choosing a lab location therefore
-chooses which connected agent will host the work. This separation lets
+chooses which connected provider will host the work. This separation lets
 repo2ree coordinate execution without requiring the hosted service to own
 credentials or direct access to a user's infrastructure.
 
@@ -225,7 +225,7 @@ Select **Create REE**, choose the connected lab location, and keep the
 
 ![The workbench setup screen with a connected lab location and the standard Docker image selected](assets/create-first-ree/01-provision.png)
 
-The lab location is the agent that owns the execution infrastructure. The
+The lab location names the provider that owns the execution infrastructure. The
 workbench is the isolated, disposable place where repo2ree assembles this REE;
 it is not the final artifact.
 

@@ -102,9 +102,6 @@
   font-size: var(--text-body);
   font-weight: var(--weight-semibold);
   cursor: pointer;
-}
-
-.action[data-kind="reprovision"] {
   margin-top: var(--space-0-5);
 }
 
@@ -131,11 +128,4 @@
   line-height: var(--leading-snug);
   font-size: var(--text-caption);
   color: var(--chrome-text-muted);
-}
-
-.divider {
-  height: 2px;
-  margin: var(--space-1) 0;
-  border-radius: var(--radius-round);
-  background: var(--chrome-border);
 }

@@ -26,6 +26,7 @@ derived and may be rebuilt at any time.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
@@ -93,7 +94,7 @@ COMPARISONS_DIRNAME = "comparisons"
 # layers can share them without an import cycle.
 
 # Fixed mount point inside every REE workbench container.
-WORKBENCH_ROOT = Path("/ree")
+WORKBENCH_ROOT = Path(os.environ.get("REPO2REE_WORKBENCH_ROOT", "/ree"))
 
 
 # ================================================

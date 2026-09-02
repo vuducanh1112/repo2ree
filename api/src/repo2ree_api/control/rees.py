@@ -22,7 +22,6 @@ from repo2ree_api.contracts import (
     ReeList,
     ReeState,
     ReeSummary,
-    ReprovisionResponse,
     RunSummary,
     WorkbenchStatus,
 )
@@ -59,8 +58,9 @@ def create_ree_route(payload: ReeCreatePayload) -> RunSummary:
     name = payload.name or ree_id[:8]
     # Blank/omitted image falls back to the server default in the manager.
     image = (payload.workbench_image or "").strip() or None
-    # Blank/omitted agent means "any connected agent" (single-agent path).
-    agent_id = (payload.agent_id or "").strip()
+    # Blank/omitted workbench means "any connected workbench" (single-workbench path).
+    provider_id = (payload.provider_id or "").strip()
+    external_workbench_id = (payload.workbench_id or "").strip()
 
     # Provision in the background so the cold-machine image pull streams its
     # progress live into the run's log stream (GET .../runs/{run_id}/logs)
@@ -78,8 +78,11 @@ def create_ree_route(payload: ReeCreatePayload) -> RunSummary:
         # pull and container start inside provision() run to completion once
         # begun, so a cancel mid-pull only takes effect afterwards.
         try:
-            handle = workbench_manager.provision(rid, name, log=_log_run, image=image, agent_id=agent_id)
-        except Exception as exc:  # noqa: BLE001 — provisioning is the agent's, so any failure is reported as an unavailable run
+            if external_workbench_id:
+                handle = workbench_manager.reserve_external(rid, name, external_workbench_id)
+            else:
+                handle = workbench_manager.provision(rid, name, log=_log_run, image=image, provider_id=provider_id)
+        except Exception as exc:  # noqa: BLE001 — provisioning is the workbench's, so any failure is reported as an unavailable run
             _log_run("system", "error", f"Workbench provisioning failed: {exc}")
             return ActionResult.failed(
                 "unavailable",
@@ -199,7 +202,7 @@ def get_ree_state_route(ree_id: str) -> ReeState:
         audit=document.audit,
         workbench=WorkbenchStatus(
             status="available",
-            agent_id=handle.agent_id,
+            workbench_id=handle.workbench_id,
             image=workbench_manager.image_for(handle),
         ),
         workspace_files=document.workspace_files,
@@ -228,30 +231,3 @@ def delete_ree_route(ree_id: str) -> DeleteReeResponse:
                 "state": "deleted",
             }
         )
-
-
-@rees_router.post(
-    "/api/v1/rees/{ree_id}/workbench/reprovision",
-    operation_id="reprovisionWorkbench",
-    response_model=ReprovisionResponse,
-    responses=ERROR_RESPONSES,
-)
-def reprovision_workbench_route(ree_id: str) -> ReprovisionResponse:
-    """Replace the workbench container from the current image, keeping REE volume data."""
-    try:
-        workbench_manager.reprovision(ree_id)
-    except KeyError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "code": "reprovision_failed",
-                "message": f"Workbench reprovision failed: {exc}",
-                "details": None,
-                # A fresh container start can fail transiently (image pull,
-                # agent hiccup); retrying the reprovision is safe.
-                "retryable": True,
-            },
-        ) from exc
-    return ReprovisionResponse.model_validate({"status": "reprovisioned", "ree_id": ree_id})

@@ -93,8 +93,8 @@ def _build_resource(service_name: str, instance_id: str | None = None) -> Resour
 
     ``instance_id`` becomes ``service.instance.id`` (the semconv instance
     attribute) for services that run as several identical processes — the
-    workbench agent passes its persistent agent id so every span, metric, and
-    log it emits is attributable to one agent without per-callsite plumbing.
+    workbench passes its persistent workbench id so every span, metric, and
+    log it emits is attributable to one workbench without per-callsite plumbing.
     """
     attrs: dict[str, str] = {"service.name": service_name}
     if instance_id:
@@ -480,7 +480,7 @@ class WorkbenchSpanAttrs(_SpanFactCarrier):
 
     container: str | None = None
     image: str | None = None
-    agent_id: str | None = None
+    workbench_id: str | None = None
     runtime: str | None = None
     reference_hash: str | None = None
 
@@ -488,7 +488,7 @@ class WorkbenchSpanAttrs(_SpanFactCarrier):
         return {
             "workbench.container": self.container,
             "workbench.image": self.image,
-            "agent_id": self.agent_id,
+            "workbench_id": self.workbench_id,
             "workbench.runtime": self.runtime,
             "workbench.reference_hash": self.reference_hash,
         }

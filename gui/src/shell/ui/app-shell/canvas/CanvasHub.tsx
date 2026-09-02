@@ -87,7 +87,7 @@ export const CanvasHub = memo(function CanvasHub({
 }: CanvasHubProps) {
   const { data: scriptTemplates } = useScriptTemplates();
   // Read live work from the run listing rather than from what this tab started,
-  // so a step an agent (or another tab) is running lights up here too.
+  // so a step a workbench service (or another tab) is running lights up here too.
   const { data: runs } = useReeRunsQuery();
   const activity = useMemo(
     () => canvasActivity(runs ?? [], sealRunning ? [PAGE.SEAL] : []),

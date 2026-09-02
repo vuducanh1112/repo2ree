@@ -18,7 +18,7 @@ export type ReeRunFailureCategory =
   | "internal";
 
 /** The component that first observed the failure, as recorded on the run. */
-export type ReeRunFailureOrigin = "api" | "supervisor" | "agent" | "executor" | "core";
+export type ReeRunFailureOrigin = "api" | "supervisor" | "workbench" | "executor" | "core";
 
 /** The typed reason a run reached a ``failed`` status. */
 export interface ReeRunFailure {

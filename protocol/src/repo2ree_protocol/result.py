@@ -5,7 +5,7 @@ from typing import Any, Literal, Self
 from pydantic import BaseModel, ConfigDict, model_validator
 
 # The terminal status of any executed action, shared by every layer that
-# produces or relays one (executor handlers, agent, manager, run registry).
+# produces or relays one (executor handlers, workbench, manager, run registry).
 ActionStatus = Literal["succeeded", "failed", "canceled"]
 
 # Coarse machine-readable class of a failure, so a client can act on *why*
@@ -17,13 +17,13 @@ FailureCategory = Literal[
     "conflict",  # optimistic-concurrency / idempotency clash
     "execution",  # the author's script or an underlying process failed
     "timeout",  # an operation exceeded its deadline
-    "unavailable",  # a dependency (workbench, agent, collector) was unreachable
+    "unavailable",  # a dependency (workbench, collector) was unreachable
     "internal",  # an unexpected fault inside repo2ree itself
 ]
 
 # The component that first observed the failure. Later layers relay the same
 # Failure rather than re-minting one, so this stays the true origin.
-FailureOrigin = Literal["api", "supervisor", "agent", "executor", "core"]
+FailureOrigin = Literal["api", "supervisor", "workbench", "executor", "core"]
 
 
 class Failure(BaseModel):

@@ -22,12 +22,12 @@ export const PAGE = {
 export const APP_ROUTE = {
   ROOT: "/",
   WORKSPACE: "/workspace",
-  AGENTS: "/agents",
+  LABS: "/labs",
   // The durable record of what this control plane has sealed. Not REE-scoped:
   // an entry outlives the workbench it was authored in.
   REE_INDEX: "/ree-index",
   // Lab-location picker: the first step of REE creation, where the user chooses
-  // which agent hosts the workbench before the workbench/image page.
+  // which lab hosts the workbench before the workbench/image page.
   LAB_LOCATION: "/lab-location",
 } as const;
 

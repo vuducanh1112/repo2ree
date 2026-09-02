@@ -3,7 +3,7 @@
 #
 # A definition module, not a flake package — it answers "what is the
 # executor" once, and each consumer packages a slice of it:
-# nix/agent-image.nix references closure+manifest from the image's own
+# nix/workbench-image.nix references closure+manifest from the image's own
 # /nix/store, and nix/exec-bundle.nix copies the closure into a
 # standalone mountable tree. Sharing one definition is the point: every
 # delivery form of the executor is the same derivation.
@@ -76,7 +76,7 @@ let
     ];
   };
 
-  # The agent-facing manifest: absolute in-container paths, so
+  # The workbench-facing manifest: absolute in-container paths, so
   # provisioning never assumes anything about the env image's PATH.
   manifest = pkgs.runCommand "repo2ree-exec-manifest.json" { nativeBuildInputs = [ pkgs.jq ]; } ''
     jq -n \

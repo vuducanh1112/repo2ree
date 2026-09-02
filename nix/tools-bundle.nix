@@ -1,9 +1,9 @@
 # ----------------------------------------------------------------
 # The handler-tools closure as a standalone mountable tree — the tools
 # counterpart of ./exec-bundle.nix, same layout (`store/` copy +
-# `manifest.json`), for hosts without a nix store. The agent image
+# `manifest.json`), for hosts without a nix store. The workbench image
 # instead ships the manifest + store-paths referencing its own
-# /nix/store (see agent-image.nix).
+# /nix/store (see workbench-image.nix).
 #
 # Build with:   nix build .#tools-bundle
 # ----------------------------------------------------------------

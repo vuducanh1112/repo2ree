@@ -1,5 +1,5 @@
 # ----------------------------------------------------------------
-# Handler tools the agent ships into benches.
+# Handler tools the workbench ships into benches.
 #
 # A definition module like ./ree-executor.nix, but for the tools core
 # handlers and lifecycle scripts shell out to rather than the executor
@@ -17,14 +17,14 @@
 #     image's own PATH), so lifecycle scripts calling bare ``git`` /
 #     ``curl`` / ``tar`` work on images that ship none of them.
 #
-# A bench where the agent shipped no tools closure simply reports these
+# A bench where the workbench shipped no tools closure simply reports these
 # capabilities as absent; nothing here is required to execute an REE.
 # ----------------------------------------------------------------
 { pkgs }:
 
 let
   # Tool name -> package + advertised binary. The name keys become the
-  # REPO2REE_TOOL_<NAME> env vars the agent sets on injected benches.
+  # REPO2REE_TOOL_<NAME> env vars the workbench sets on injected benches.
   toolPkgs = {
     # generate-sbom scans the workspace/runtime image natively.
     syft = {

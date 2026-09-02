@@ -48,7 +48,7 @@ as unknown; it must not invent a historical date from a later commit or document
 ## Accepted decisions
 
 - [0001 — Separate control and execution planes](0001-separate-control-and-execution-planes.md)
-- [0002 — Have runtime-owning agents dial the control plane](0002-have-agents-dial-the-control-plane.md)
+- [0002 — Have compute-side services dial the control plane](0002-have-workbenches-dial-the-control-plane.md)
 - [0003 — Cross execution boundaries with typed commands](0003-use-typed-commands-across-execution-boundaries.md)
 - [0004 — Persist an REE as upstream, overlay, and derived workspace](0004-persist-ree-as-upstream-overlay-and-derived-workspace.md)
 - [0005 — Ship a POSIX shell reproducer in every bundle](0005-ship-a-posix-shell-reproducer-in-every-bundle.md)

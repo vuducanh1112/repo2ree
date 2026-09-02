@@ -35,7 +35,7 @@ class WorkbenchImage(BaseModel):
 # WORKBENCH_IMAGE_CATALOG below replaces this wholesale.
 #
 # The sole default entry is upstream docker:dind, pinned by manifest-list
-# digest (multi-arch: agents resolve their own platform) — the agent injects
+# digest (multi-arch: workbenches resolve their own platform) — the workbench injects
 # the executor and base tools at provision time, so the bench image carries
 # zero repo2ree content. The tag beside the digest is human context only; the
 # digest wins. Bump deliberately.
@@ -44,7 +44,7 @@ _DEFAULT_WORKBENCH_IMAGE_CATALOG: tuple[WorkbenchImage, ...] = (
         id="standard",
         ref="docker.io/library/docker:29-dind@sha256:66d292e5c26bd33a6f6f61cacb880de2186339a524ecba1ce098dbbaceed6515",
         label="Standard (docker)",
-        description="Lean docker-in-docker bench; the agent injects the repo2ree executor and base tools.",
+        description="Lean docker-in-docker bench; the workbench injects the repo2ree executor and base tools.",
     ),
 )
 
@@ -67,6 +67,9 @@ class Settings(BaseSettings):
     # upload-complete) and are swept; also the advertised token lifetime.
     UPLOAD_TTL_SECONDS: int = 3600
     WORKBENCH_REGISTRY_FILE: Path = Path(".repo2ree/workbench-registry.json")
+    # Operator credential for directly installed, externally managed workbenches.
+    # Empty disables external registration.
+    EXTERNAL_WORKBENCH_TOKEN: str = ""
     # The durable record of sealed REEs and their archive bindings. Unlike the
     # workbench registry beside it, nothing here is reconstructible from live
     # infrastructure: an REE's workbench is torn down long before its deposit
@@ -77,9 +80,9 @@ class Settings(BaseSettings):
     RUN_REGISTRY_DIR: Path = Path(".repo2ree/runs")
     # Bounds both concurrent workbench commands and the API's worker threads.
     RUN_MAX_WORKERS: int = 4
-    # The workbench agent owns the container runtime (WORKBENCH_DOCKER_MODE is its
+    # The workbench service owns the container runtime (WORKBENCH_DOCKER_MODE is its
     # concern, not consumed here). It dials this API outbound and holds a WebSocket
-    # at /agent/connect — there is no inbound agent endpoint to configure.
+    # at /workbench/connect — there is no inbound workbench endpoint to configure.
     OTLP_ENDPOINT: str | None = None
 
     @field_validator("OTLP_ENDPOINT", mode="before")

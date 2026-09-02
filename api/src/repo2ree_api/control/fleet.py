@@ -1,16 +1,16 @@
-"""The fleet: where agents dial in, who is connected, and what they can run.
+"""The fleet: where workbenches dial in, who is connected, and what they can run.
 
-``/agent/connect`` is the WebSocket endpoint a workbench agent dials and holds
+``/workbench/connect`` is the WebSocket endpoint a workbench service dials and holds
 open; the control plane pushes ``WsRequest`` commands down it and receives
 ``WsMessage`` response frames. The route owns the async I/O and bridges it to
-the synchronous ``AgentConnection`` that ``WsAgentClient`` drives: ``send_text``
+the synchronous ``WorkbenchConnection`` that ``WsWorkbenchClient`` drives: ``send_text``
 schedules a send on the loop, and each inbound message is handed to
 ``on_message``.
 
-``/api/v1/agents`` is the read-only fleet view. An agent appears there for
+``/api/v1/workbenches`` is the read-only fleet view. A workbench appears there for
 exactly as long as it holds its socket; the registry drops it on disconnect, so
 presence in the list *is* liveness. This is the control-plane surface behind
-the GUI's agent-management pane.
+the GUI's workbench-management pane.
 
 ``/api/v1/workbench/images`` publishes the base images provisioning may pick
 from. Which images those are is configured on ``Settings.WORKBENCH_IMAGE_CATALOG``
@@ -22,6 +22,7 @@ pass it as ``workbench_image`` on the provision request instead.
 from __future__ import annotations
 
 import asyncio
+import hmac
 import logging
 from concurrent.futures import Future
 from datetime import UTC, datetime
@@ -30,28 +31,69 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
 from repo2ree_api.contracts import ERROR_RESPONSES
-from repo2ree_api.deps import agent_registry
-from repo2ree_api.settings import WORKBENCH_IMAGE_CATALOG, WorkbenchImage, default_workbench_image
+from repo2ree_api.deps import provider_connections, workbench_connections, workbench_enrollments
+from repo2ree_api.settings import WORKBENCH_IMAGE_CATALOG, WorkbenchImage, default_workbench_image, service_settings
 from repo2ree_core.time_utils import iso_utc
-from repo2ree_protocol.agent import ws_hello_adapter
-from repo2ree_supervisor import AgentConnection
+from repo2ree_protocol.provider import provider_hello_adapter
+from repo2ree_protocol.workbench import WorkbenchHello, workbench_hello_adapter
+from repo2ree_supervisor import ProviderConnection, WorkbenchConnection
 
 logger = logging.getLogger(__name__)
 
 
 # ================================================
-# Agent dial-in socket
+# Workbench dial-in socket
 # ================================================
 
 
-agent_ws_router = APIRouter(tags=["fleet"])
+workbench_ws_router = APIRouter(tags=["fleet"])
+provider_ws_router = APIRouter(tags=["fleet"])
 
 
-@agent_ws_router.websocket("/agent/connect", name="connectRuntimeAgent")
-async def agent_connect(websocket: WebSocket) -> None:
+def _external_refusal(hello: WorkbenchHello, expected: str) -> str | None:
+    """Why this directly installed workbench may not register, or None to admit it."""
+    if hello.allocation_id:
+        return "it presented an allocation id, which only a provider-managed workbench has"
+    if not expected:
+        return "EXTERNAL_WORKBENCH_TOKEN is unset on this control plane, which disables external workbenches"
+    if not hmac.compare_digest(hello.enrollment_token, expected):
+        return "its token does not match EXTERNAL_WORKBENCH_TOKEN"
+    return None
+
+
+@provider_ws_router.websocket("/provider/connect", name="connectProvider")
+async def provider_connect(websocket: WebSocket) -> None:
+    """Accept the Docker provider's capacity-only outbound connection."""
     await websocket.accept()
     loop = asyncio.get_running_loop()
-    connection: AgentConnection | None = None
+    connection: ProviderConnection | None = None
+
+    def on_send_done(fut: Future[None]) -> None:
+        if not fut.cancelled() and fut.exception() is not None and connection is not None:
+            connection.close()
+
+    def send_text(text: str) -> None:
+        future = asyncio.run_coroutine_threadsafe(websocket.send_text(text), loop)
+        future.add_done_callback(on_send_done)
+
+    hello = provider_hello_adapter.validate_json(await websocket.receive_text())
+    connection = ProviderConnection(send_text=send_text, hello=hello)
+    provider_connections.register(hello.provider_id, connection)
+    try:
+        while True:
+            connection.on_message(await websocket.receive_text())
+    except WebSocketDisconnect:
+        pass
+    finally:
+        connection.close()
+        provider_connections.unregister(hello.provider_id, connection)
+
+
+@workbench_ws_router.websocket("/workbench/connect", name="connectWorkbench")
+async def workbench_connect(websocket: WebSocket) -> None:
+    await websocket.accept()
+    loop = asyncio.get_running_loop()
+    connection: WorkbenchConnection | None = None
 
     def on_send_done(fut: Future[None]) -> None:
         if fut.cancelled() or fut.exception() is None:
@@ -59,7 +101,7 @@ async def agent_connect(websocket: WebSocket) -> None:
         # A failed write means the socket is dying. Close the bridge now so
         # blocked callers get an unavailable error immediately, rather than
         # silently losing their request and waiting out the frame-gap timeout.
-        logger.warning("send to workbench agent failed; closing its connection: %s", fut.exception())
+        logger.warning("send to workbench service failed; closing its connection: %s", fut.exception())
         if connection is not None:
             connection.close()
 
@@ -69,10 +111,33 @@ async def agent_connect(websocket: WebSocket) -> None:
         future = asyncio.run_coroutine_threadsafe(websocket.send_text(text), loop)
         future.add_done_callback(on_send_done)
 
-    # First message is the agent's hello: identity + self-reported capabilities.
-    hello = ws_hello_adapter.validate_json(await websocket.receive_text())
-    connection = AgentConnection(send_text=send_text, hello=hello)
-    agent_registry.register(hello.agent_id, connection)
+    # First message is the workbench's hello: identity + self-reported capabilities.
+    hello = workbench_hello_adapter.validate_json(await websocket.receive_text())
+    if hello.mode == "managed":
+        if not hello.allocation_id:
+            logger.warning("refused managed workbench %r: it presented no allocation", hello.workbench_id)
+            await websocket.close(code=1008, reason="managed workbench has no allocation")
+            return
+        try:
+            workbench_enrollments.authenticate(hello)
+        except ValueError as exc:
+            logger.warning("refused managed workbench %r: %s", hello.workbench_id, exc)
+            await websocket.close(code=1008, reason="invalid workbench enrollment")
+            return
+        # Do not retain a consumed credential on the live connection object.
+    elif refusal := _external_refusal(hello, service_settings.EXTERNAL_WORKBENCH_TOKEN):
+        # The close reason stays generic — the peer is unauthenticated and has no
+        # claim on which check it failed — but an operator reading the server log
+        # gets the specific cause. Without this the three failures below are one
+        # opaque 1008 with nothing on this side at all, which is a long way to
+        # debug an unset environment variable.
+        logger.warning("refused external workbench %r: %s", hello.workbench_id, refusal)
+        await websocket.close(code=1008, reason="invalid external workbench registration")
+        return
+    # Do not retain credentials on live connection objects.
+    hello = hello.model_copy(update={"enrollment_token": ""})
+    connection = WorkbenchConnection(send_text=send_text, hello=hello)
+    workbench_connections.register(hello.workbench_id, connection)
     try:
         while True:
             connection.on_message(await websocket.receive_text())
@@ -80,7 +145,7 @@ async def agent_connect(websocket: WebSocket) -> None:
         pass
     finally:
         connection.close()
-        agent_registry.unregister(hello.agent_id, connection)
+        workbench_connections.unregister(hello.workbench_id, connection)
 
 
 # ================================================
@@ -88,42 +153,81 @@ async def agent_connect(websocket: WebSocket) -> None:
 # ================================================
 
 
-agents_router = APIRouter(tags=["fleet"])
+workbenches_router = APIRouter(tags=["fleet"])
 
 
-class AgentSummary(BaseModel):
-    agent_id: str
+class WorkbenchSummary(BaseModel):
+    workbench_id: str
+    mode: str
+    available: bool
     hostname: str
     version: str
     docker_mode: str
-    # ISO 8601 UTC; when the agent dialed in.
+    # ISO 8601 UTC; when the workbench dialed in.
     connected_at: str
     status: str = "connected"
 
 
-class AgentList(BaseModel):
-    agents: list[AgentSummary]
+class WorkbenchList(BaseModel):
+    workbenches: list[WorkbenchSummary]
 
 
-@agents_router.get(
-    "/api/v1/agents",
-    operation_id="listAgents",
-    response_model=AgentList,
+class ProviderSummary(BaseModel):
+    provider_id: str
+    hostname: str
+    version: str
+    docker_mode: str
+    connected_at: str
+    status: str = "connected"
+
+
+class ProviderList(BaseModel):
+    providers: list[ProviderSummary]
+
+
+@workbenches_router.get(
+    "/api/v1/workbenches",
+    operation_id="listWorkbenches",
+    response_model=WorkbenchList,
     responses=ERROR_RESPONSES,
 )
-def list_agents() -> AgentList:
-    """Every workbench agent currently connected to this control plane."""
-    agents = [
-        AgentSummary(
-            agent_id=info.agent_id,
+def list_workbenches() -> WorkbenchList:
+    """Every workbench service currently connected to this control plane."""
+    workbenches = [
+        WorkbenchSummary(
+            workbench_id=info.workbench_id,
+            mode=info.mode,
+            available=info.available,
             hostname=info.hostname,
             version=info.version,
             docker_mode=info.docker_mode,
             connected_at=iso_utc(datetime.fromtimestamp(info.connected_at, tz=UTC)),
         )
-        for info in agent_registry.list_agents()
+        for info in workbench_connections.list_workbenches()
     ]
-    return AgentList(agents=agents)
+    return WorkbenchList(workbenches=workbenches)
+
+
+@workbenches_router.get(
+    "/api/v1/providers",
+    operation_id="listProviders",
+    response_model=ProviderList,
+    responses=ERROR_RESPONSES,
+)
+def list_providers() -> ProviderList:
+    """Docker capacity providers currently connected to this control plane."""
+    return ProviderList(
+        providers=[
+            ProviderSummary(
+                provider_id=info.provider_id,
+                hostname=info.hostname,
+                version=info.version,
+                docker_mode=info.docker_mode,
+                connected_at=iso_utc(datetime.fromtimestamp(info.connected_at, tz=UTC)),
+            )
+            for info in provider_connections.list_providers()
+        ]
+    )
 
 
 # ================================================

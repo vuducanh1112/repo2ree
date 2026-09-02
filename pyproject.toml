@@ -8,7 +8,7 @@ requires-python = "~=3.13.0"
 dependencies = []
 
 [tool.uv.workspace]
-members = ["protocol", "core", "supervisor", "api", "executor", "agent"]
+members = ["protocol", "core", "supervisor", "api", "executor", "docker-support", "provider", "workbench"]
 
 [dependency-groups]
 dev = [
@@ -75,17 +75,19 @@ branch = true
 # one measuring tool's subtree, sibling to the browser V8 reports, because
 # unioning tiers is a coverage.py operation with no cross-runtime form.
 data_file = "test-artifacts/coverage/python/data/adhoc/.coverage"
-# The e2e/demo tiers run the API server and agents under coverage and stop them
+# The e2e/demo tiers run the API server and workbench services under coverage and stop them
 # with SIGTERM; without this, coverage's atexit save never fires and the run
 # records nothing. Inert for the pytest targets, which exit normally.
 sigterm = true
 source = [
+    "docker-support/src/repo2ree_docker",
     "protocol/src/repo2ree_protocol",
     "core/src/repo2ree_core",
     "supervisor/src/repo2ree_supervisor",
     "api/src/repo2ree_api",
     "executor/src/repo2ree_executor",
-    "agent/src/repo2ree_agent",
+    "provider/src/repo2ree_provider_docker",
+    "workbench/src/repo2ree_workbench",
 ]
 omit = [
     "*/__main__.py",  # trivial `python -m` entrypoints
@@ -97,7 +99,16 @@ show_missing = true
 skip_covered = false
 
 [tool.ruff]
-src = ["protocol/src", "core/src", "supervisor/src", "api/src", "executor/src", "agent/src"]
+src = [
+    "protocol/src",
+    "core/src",
+    "supervisor/src",
+    "api/src",
+    "executor/src",
+    "docker-support/src",
+    "provider/src",
+    "workbench/src",
+]
 line-length = 120
 
 [tool.ruff.lint]
@@ -222,12 +233,14 @@ extend-ignore = [
 #
 [tool.importlinter]
 root_packages = [
-    "repo2ree_agent",
     "repo2ree_api",
     "repo2ree_core",
+    "repo2ree_docker",
     "repo2ree_executor",
+    "repo2ree_provider_docker",
     "repo2ree_protocol",
     "repo2ree_supervisor",
+    "repo2ree_workbench",
 ]
 
 # ---- The workspace itself -----------------------------------------------
@@ -242,7 +255,8 @@ type = "layers"
 layers = [
     "repo2ree_api",
     "repo2ree_supervisor",
-    "repo2ree_agent : repo2ree_executor",
+    "repo2ree_provider_docker : repo2ree_workbench : repo2ree_executor",
+    "repo2ree_docker",
     "repo2ree_core",
     "repo2ree_protocol",
 ]
@@ -257,30 +271,104 @@ name = "Protocol imports no workspace package"
 type = "forbidden"
 source_modules = ["repo2ree_protocol"]
 forbidden_modules = [
-    "repo2ree_agent",
     "repo2ree_api",
     "repo2ree_core",
+    "repo2ree_docker",
     "repo2ree_executor",
+    "repo2ree_provider_docker",
     "repo2ree_supervisor",
+    "repo2ree_workbench",
 ]
 
-# The agent and the supervisor are the two ends of one wire, and neither knows
-# what the wire is carrying: they move frames, they do not perform operations.
-# Today both import `repo2ree_protocol` and nothing else in the workspace —
-# notably not core. That is what lets the same agent run a workbench whose core
-# it was never built against, so it is worth stating rather than leaving as an
-# accident of the current import list.
+# The two protocol vocabularies with different authority must stay disjoint:
+# a process holding only capacity vocabulary cannot form an execution request,
+# and vice versa. `frames` (shared streaming frames + WorkbenchRef) is the one
+# module both may import; an edge between the vocabularies themselves would
+# quietly re-merge what the split exists to separate.
 [[tool.importlinter.contracts]]
-name = "Agent and supervisor speak only protocol"
-type = "forbidden"
-source_modules = [
-    "repo2ree_agent",
-    "repo2ree_supervisor",
+name = "Capacity and execution vocabularies are independent"
+type = "independence"
+modules = [
+    "repo2ree_protocol.provider",
+    "repo2ree_protocol.workbench",
 ]
+
+# The workbench and the supervisor move frames; neither performs operations,
+# so neither may import core or the executor. That is what lets the same
+# workbench run against a core it was never built with. The supervisor
+# additionally never imports the workbench package — it is the far end of its
+# wire, not a caller of its code.
+[[tool.importlinter.contracts]]
+name = "Workbench speaks only protocol"
+type = "forbidden"
+source_modules = ["repo2ree_workbench"]
 forbidden_modules = [
     "repo2ree_api",
     "repo2ree_core",
     "repo2ree_executor",
+    "repo2ree_provider_docker",
+    "repo2ree_supervisor",
+]
+
+[[tool.importlinter.contracts]]
+name = "Supervisor speaks only protocol"
+type = "forbidden"
+source_modules = ["repo2ree_supervisor"]
+forbidden_modules = [
+    "repo2ree_api",
+    "repo2ree_core",
+    "repo2ree_docker",
+    "repo2ree_executor",
+    "repo2ree_provider_docker",
+    "repo2ree_workbench",
+]
+
+[[tool.importlinter.contracts]]
+name = "Workbench never provisions"
+type = "forbidden"
+source_modules = ["repo2ree_workbench"]
+forbidden_modules = [
+    "repo2ree_protocol.provider",
+    "repo2ree_provider_docker",
+]
+
+[[tool.importlinter.contracts]]
+name = "Provider never executes"
+type = "forbidden"
+source_modules = ["repo2ree_provider_docker"]
+forbidden_modules = [
+    "repo2ree_protocol.workbench",
+    "repo2ree_workbench",
+]
+
+[[tool.importlinter.contracts]]
+name = "Docker support has no process authority"
+type = "forbidden"
+source_modules = ["repo2ree_docker"]
+forbidden_modules = [
+    "repo2ree_api",
+    "repo2ree_core",
+    "repo2ree_executor",
+    "repo2ree_provider_docker",
+    "repo2ree_supervisor",
+    "repo2ree_workbench",
+]
+
+# The resident workbench executes locally inside the boundary supplied by its
+# provider.  It has no backend-selection or substrate implementation layer.
+[[tool.importlinter.contracts]]
+name = "The execution service is substrate-free"
+type = "forbidden"
+source_modules = [
+    "repo2ree_workbench.dispatcher",
+    "repo2ree_workbench.executor_frames",
+    "repo2ree_workbench.executor_process",
+    "repo2ree_workbench.service",
+    "repo2ree_workbench.transfers",
+]
+forbidden_modules = [
+    "repo2ree_docker",
+    "repo2ree_provider_docker",
 ]
 
 # ---- Inside the API ------------------------------------------------------
@@ -509,14 +597,23 @@ name = "Core imports no application tier"
 type = "forbidden"
 source_modules = ["repo2ree_core"]
 forbidden_modules = [
-    "repo2ree_agent",
     "repo2ree_api",
     "repo2ree_executor",
     "repo2ree_supervisor",
+    "repo2ree_workbench",
 ]
 
 [tool.mypy]
-mypy_path = ["protocol/src", "core/src", "supervisor/src", "api/src", "executor/src", "agent/src"]
+mypy_path = [
+    "protocol/src",
+    "core/src",
+    "supervisor/src",
+    "api/src",
+    "executor/src",
+    "docker-support/src",
+    "provider/src",
+    "workbench/src",
+]
 # Test dirs ship no __init__.py, so module names must come from file paths —
 # otherwise the per-tier conftest.py files (unit/ and integration/) collide.
 explicit_package_bases = true

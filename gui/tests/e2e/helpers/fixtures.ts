@@ -16,7 +16,7 @@ import { cleanupWorkbench } from "./flow";
  * (and 18 files in total) collapsed into one entry — a report that was wrong
  * without saying so. UI coverage belongs to component tests in the `node` tier,
  * where Vitest transforms the files itself and knows their real paths. What these
- * specs still measure is the backend: the stack runs server and agents under
+ * specs still measure is the backend: the stack runs server and labs under
  * coverage.py, which is unaffected.
  */
 export const test = base.extend<{

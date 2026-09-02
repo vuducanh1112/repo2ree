@@ -79,7 +79,7 @@ validate-image-candidate revision="": _require-clean-tree
     read -r -a registries <<< "$registries_text"
     "$candidate_tool" resolve "$candidate" "$pending" "${registries[@]}"
     eval "$("$candidate_tool" environment "$pending" "$validation_registry")"
-    export STACK_GUI_IMAGE STACK_BACKEND_IMAGE STACK_AGENT_IMAGE
+    export STACK_GUI_IMAGE STACK_BACKEND_IMAGE STACK_PROVIDER_IMAGE
     scripts/test-stack/run-image-suite.sh e2e-gui 2 "$validation_registry" "$candidate"
     scripts/test-stack/run-image-suite.sh e2e-gui-review 1 "$validation_registry" "$candidate"
     mv "$pending" "$receipt"

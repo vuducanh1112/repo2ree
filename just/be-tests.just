@@ -1,13 +1,13 @@
 COVERAGE_HTML := "test-artifacts/coverage/python"
 COVERAGE_DATA := COVERAGE_HTML + "/data"
-UNIT_SUITES := "protocol/tests core/tests/unit api/tests/unit supervisor/tests/unit executor/tests agent/tests"
+UNIT_SUITES := "protocol/tests core/tests/unit api/tests/unit supervisor/tests/unit executor/tests docker-support/tests provider/tests workbench/tests"
 INTEGRATION_SUITES := "core/tests/integration api/tests/integration supervisor/tests/integration"
 COV_REPORT := env("COV_REPORT", "")
 
 # Running a measured tier is the only operation that writes that tier's data.
 # Per-package recipes stay unmeasured so a partial debugging run cannot make a
 # tier report look complete. Stack tiers use parallel coverage files (server
-# plus agents); the stack driver folds those into the same single-file shape as
+# plus workbenches); the stack driver folds those into the same single-file shape as
 # pytest tiers before rendering. Combined reports use --keep so their inputs
 # remain available for regenerating individual tier reports.
 
@@ -31,10 +31,20 @@ api-unit-tests:
 executor-tests:
     pytest executor/tests
 
-# Run agent tests without recording tier coverage.
+# Run workbench tests without recording tier coverage.
 [group('Backend tests')]
-agent-tests:
-    pytest agent/tests
+workbench-tests:
+    pytest workbench/tests
+
+# Run Docker support tests without recording tier coverage.
+[group('Backend tests')]
+docker-support-tests:
+    pytest docker-support/tests
+
+# Run Docker provider tests without recording tier coverage.
+[group('Backend tests')]
+provider-tests:
+    pytest provider/tests
 
 # Run supervisor unit tests without recording tier coverage.
 [group('Backend tests')]

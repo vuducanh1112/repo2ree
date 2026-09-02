@@ -14,7 +14,7 @@ _image-archive-dir:
 # new Python files without staging their contents or changing the index state.
 [private]
 _stage-nix-sources:
-    @git add -N protocol/src core/src/repo2ree_core/ executor/src/repo2ree_executor agent/src 2>/dev/null || true
+    @git add -N protocol/src core/src/repo2ree_core/ executor/src/repo2ree_executor provider/src workbench/src nix/workbench-image.nix nix/workbench-service.nix docker-support/src 2>/dev/null || true
 
 # Build and load the GUI image.
 [group('Images')]
@@ -32,18 +32,18 @@ backend-image:
     docker build --provenance=false -f docker/demo/backend.Dockerfile -t repo2ree-backend:local .
     @echo "Done: repo2ree-backend:local"
 
-# Build and load the self-contained agent image.
+# Build and load the self-contained Docker provider image.
 [group('Images')]
-agent-image: _stage-nix-sources
-    @echo "Building agent image..."
-    nix build .#agent-image
+provider-image: _stage-nix-sources
+    @echo "Building Docker provider image..."
+    nix build .#provider-image
     @echo "Loading into docker..."
     docker load < result
-    @echo "Done: repo2ree-agent:local"
+    @echo "Done: repo2ree-provider-docker:local"
 
 # Build and load all deployable images.
 [group('Images')]
-images: gui-image backend-image agent-image
+images: gui-image backend-image provider-image
 
 # Regenerate the pinned GUI npm dependency hash.
 [group('Images')]
@@ -66,17 +66,17 @@ backend-image-archive: backend-image _image-archive-dir
     docker save repo2ree-backend:local -o {{ quote(IMAGE_ARCHIVE_DIR + "/repo2ree-backend-local.tar") }}
     @printf 'Wrote %s\n' {{ quote(IMAGE_ARCHIVE_DIR + "/repo2ree-backend-local.tar") }}
 
-# Build a loadable agent image archive.
+# Build a loadable provider image archive.
 [group('Image archives')]
-agent-image-archive: _stage-nix-sources _image-archive-dir
-    @echo "Building agent image archive..."
-    nix build .#agent-image
-    cp -fL result {{ quote(IMAGE_ARCHIVE_DIR + "/repo2ree-agent-local.tar") }}
-    @printf 'Wrote %s\n' {{ quote(IMAGE_ARCHIVE_DIR + "/repo2ree-agent-local.tar") }}
+provider-image-archive: _stage-nix-sources _image-archive-dir
+    @echo "Building provider image archive..."
+    nix build .#provider-image
+    cp -fL result {{ quote(IMAGE_ARCHIVE_DIR + "/repo2ree-provider-docker-local.tar") }}
+    @printf 'Wrote %s\n' {{ quote(IMAGE_ARCHIVE_DIR + "/repo2ree-provider-docker-local.tar") }}
 
 # Build and stamp the complete clean-tree image archive set.
 [group('Image archives')]
-image-archives: _require-clean-tree gui-image-archive backend-image-archive agent-image-archive
+image-archives: _require-clean-tree gui-image-archive backend-image-archive provider-image-archive
     @git describe --always > {{ quote(IMAGE_ARCHIVE_DIR + "/IMAGE_CANDIDATE_REV") }}
     @echo ">> stamped candidate: $(cat {{ quote(IMAGE_ARCHIVE_DIR + "/IMAGE_CANDIDATE_REV") }})"
 
@@ -85,6 +85,6 @@ image-archives: _require-clean-tree gui-image-archive backend-image-archive agen
 load-image-archives:
     #!/usr/bin/env bash
     set -euo pipefail
-    for image in repo2ree-gui repo2ree-backend repo2ree-agent; do
+    for image in repo2ree-gui repo2ree-backend repo2ree-provider-docker; do
       docker load -i {{ quote(IMAGE_ARCHIVE_DIR) }}/"$image"-local.tar
     done

@@ -1,13 +1,14 @@
-"""The control plane's client for a workbench agent.
+"""The control plane's separate provider and workbench clients.
 
-``AgentClient`` is the seam the manager depends on. The sole production
-implementation is ``WsAgentClient`` (see ``agent_link.py``), which drives an agent that
-dialed the control plane and holds one outbound WebSocket — the agent never
+The manager depends on two seams with deliberately different authority:
+``ProviderClient`` creates, probes, and destroys environments;
+``WorkbenchClient`` executes REE commands in one. Their production implementations
+use separate outbound WebSockets and credentials.
+
+The workbench dials the control plane and holds one outbound socket — it never
 listens, so it works from inside clusters and NATed networks that only permit
-egress. The manager is transport-agnostic behind this Protocol.
-
-Streaming calls yield typed ``AgentFrame`` records; request/response calls
-return plain values and raise ``WorkbenchUnavailableError`` when the agent
+egress. Streaming calls yield typed ``Frame`` records; request/response calls
+return plain values and raise ``WorkbenchUnavailableError`` when the workbench
 reports the backend is gone.
 """
 
@@ -16,76 +17,99 @@ from __future__ import annotations
 from collections.abc import Iterator
 from typing import Protocol
 
-from repo2ree_protocol.agent import AgentFrame, ErrorFrame, UnavailableFrame, WorkbenchRef, WorkbenchSpec
+from repo2ree_protocol.frames import ErrorFrame, Frame, UnavailableFrame, WorkbenchRef
+from repo2ree_protocol.provider import WorkbenchSpec
 
 
 class WorkbenchUnavailableError(RuntimeError):
-    """Raised when the agent reports the workbench backend is gone or stopping."""
+    """Raised when the workbench reports the workbench backend is gone or stopping."""
 
 
-def raise_for_terminal_error(frame: AgentFrame) -> None:
+def raise_for_terminal_error(frame: Frame) -> None:
     """Translate a terminal error frame into the caller-facing exception.
 
     The two failure frames mean different things to the control plane: an
     ``UnavailableFrame`` is the backend being gone (a 503-shaped, retryable
     condition) while an ``ErrorFrame`` is an operation failure. Both the manager
-    and ``WsAgentClient`` map them the same way, so the mapping lives here."""
+    and ``WsWorkbenchClient`` map them the same way, so the mapping lives here."""
     if isinstance(frame, UnavailableFrame):
         raise WorkbenchUnavailableError(frame.detail)
     if isinstance(frame, ErrorFrame):
         raise RuntimeError(frame.detail)
 
 
-class AgentClient(Protocol):
-    """The verbs the control plane needs to place and drive a workbench.
+class ProviderClient(Protocol):
+    """The verbs the control plane needs to obtain and release a workbench.
 
-    Every verb takes an ``agent_id`` to target a specific agent (placement
-    affinity): a workbench is pinned to the agent that provisioned it, so all
-    later ops must reach that same agent. An empty ``agent_id`` means "any
-    connected agent" — only valid at provision time, before the REE is pinned.
+    Placement affinity runs through the ids: ``provider_id`` picks the provider
+    that will create the environment (empty means any connected one, valid only
+    before the REE is pinned), and every later verb takes the ``workbench_id``
+    that provisioning returned, so it reaches the provider holding that bench.
     """
 
-    def resolve_agent(self, agent_id: str) -> str:
-        """Resolve a placement request to the concrete agent that will serve it.
+    def resolve_provider(self, provider_id: str) -> str:
+        """Resolve a placement request to the concrete provider that will serve it.
 
-        Provision calls this to pin the REE to the agent it actually lands on,
-        rather than to an empty "any agent" token that later ops can't honour once
-        more than one agent is connected. Raises ``WorkbenchUnavailableError`` when
-        no matching agent is connected."""
+        Provision calls this to pin the REE to the provider it actually lands on,
+        rather than to an empty "any provider" token that later ops can't honour
+        once more than one is connected. Raises ``WorkbenchUnavailableError``
+        when no matching provider is connected."""
         ...
 
-    def provision(self, agent_id: str, ree_id: str, spec: WorkbenchSpec) -> Iterator[AgentFrame]: ...
+    def provision(
+        self,
+        provider_id: str,
+        allocation_id: str,
+        workbench_id: str,
+        enrollment_token: str,
+        ree_id: str,
+        spec: WorkbenchSpec,
+    ) -> Iterator[Frame]: ...
 
-    def reprovision(self, agent_id: str, ref: WorkbenchRef, spec: WorkbenchSpec) -> Iterator[AgentFrame]: ...
+    def remove(self, provider_id: str, ref: WorkbenchRef) -> None: ...
 
-    def remove(self, agent_id: str, ref: WorkbenchRef) -> None: ...
+    def remove_best_effort(self, provider_id: str, ref: WorkbenchRef) -> bool: ...
 
-    def remove_best_effort(self, agent_id: str, ref: WorkbenchRef) -> bool: ...
+    def is_running(self, provider_id: str, ref: WorkbenchRef) -> bool: ...
 
-    def is_running(self, agent_id: str, ref: WorkbenchRef) -> bool: ...
 
-    def exec_simple(self, agent_id: str, ref: WorkbenchRef, argv: list[str], timeout: int = 60) -> None:
+class WorkbenchClient(Protocol):
+    """The verbs the control plane needs to drive REE commands in a workbench.
+
+    The ``workbench_id`` routes directly to the resident process. Provider-private
+    references never cross this boundary.
+    """
+
+    def exec_simple(self, workbench_id: str, argv: list[str], timeout: int = 60) -> None:
         """Run an executor subcommand in the bench, discarding output.
 
         ``argv`` is the ``repo2ree-exec`` subcommand argv *without* the executor
-        binary — the agent's runtime prepends the bench's entry point."""
+        binary — the serving backend prepends the bench's entry point."""
         ...
 
-    def exec_query(self, agent_id: str, ref: WorkbenchRef, argv: list[str], timeout: int = 30) -> bytes: ...
+    def exec_query(self, workbench_id: str, argv: list[str], timeout: int = 30) -> bytes: ...
 
-    def exec_query_stream(
-        self, agent_id: str, ref: WorkbenchRef, argv: list[str], timeout: int = 30
-    ) -> Iterator[bytes]: ...
+    def exec_query_stream(self, workbench_id: str, argv: list[str], timeout: int = 30) -> Iterator[bytes]: ...
 
-    def exec_action(
-        self, agent_id: str, ref: WorkbenchRef, cmd_json: str, run_id: str, env: dict[str, str]
-    ) -> Iterator[AgentFrame]: ...
+    def exec_action(self, workbench_id: str, cmd_json: str, run_id: str, env: dict[str, str]) -> Iterator[Frame]: ...
 
-    def cancel_run(self, agent_id: str, ref: WorkbenchRef, run_id: str) -> None: ...
+    def cancel_run(self, workbench_id: str, run_id: str) -> None: ...
 
-    def copy_in(self, agent_id: str, ref: WorkbenchRef, source_path: str, workbench_path: str) -> None:
+    def copy_in(self, workbench_id: str, source_path: str, workbench_path: str) -> None:
         """Stream a control-plane-local file into the bench at ``workbench_path``.
 
         ``source_path`` need only exist on the control plane; the bytes travel
-        as a chunked transfer (see ``repo2ree_protocol.agent``)."""
+        as a chunked transfer (see ``repo2ree_protocol.workbench``)."""
         ...
+
+    def drain(self, workbench_id: str) -> None: ...
+
+    def wait_for_workbench(self, workbench_id: str, timeout: float = 60.0) -> None: ...
+
+    def reserve_external(self, allocation_id: str, workbench_id: str | None = None) -> str: ...
+
+    def release_reservation(self, workbench_id: str, allocation_id: str) -> None: ...
+
+    def bind(self, workbench_id: str, allocation_id: str, ree_id: str) -> None: ...
+
+    def is_connected(self, workbench_id: str) -> bool: ...

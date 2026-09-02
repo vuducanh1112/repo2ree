@@ -7,7 +7,7 @@
 ## Context
 
 The control plane cannot call execution code in-process. Operations cross both
-the supervisor-to-agent network boundary and the agent-to-workbench process
+the supervisor-to-workbench network boundary and the service-to-executor process
 boundary. Shell command strings would make quoting, validation, compatibility,
 auditing, and later replay depend on ad hoc interpolation.
 
@@ -21,8 +21,8 @@ Represent execution requests as typed `Command` values in
 input, invokes the corresponding core handler, streams typed `LogFrame` values,
 emits an `ActionResult`, and exits.
 
-The agent transports frames and invokes the executor but does not interpret or
-perform the domain operation. Public surfaces assemble commands through the
+The workbench service transports frames and starts the executor but does not
+interpret or perform the domain operation. Public surfaces assemble commands through the
 same protocol instead of creating parallel execution paths.
 
 ## Alternatives considered
@@ -32,14 +32,14 @@ same protocol instead of creating parallel execution paths.
 - **Expose core through a server inside every workbench.** This adds a
   long-running network service, port lifecycle, and another API without removing
   the need for versioned messages.
-- **Import core into the agent.** This collapses the workbench boundary and lets
-  the runtime host perform operations outside the isolated environment.
+- **Import core into the workbench service.** This collapses the executor
+  boundary and lets the resident service perform domain operations itself.
 
 ## Consequences
 
 - Boundary inputs and outputs can be validated, tested, recorded, and evolved.
 - Protocol compatibility becomes a deliberate concern across independently
-  deployed control plane, agent, and injected executor versions.
+  deployed control plane, workbench service, and injected executor versions.
 - Streaming and cancellation need typed frame protocols in addition to the
   command and final result.
 - New operations require protocol models and dispatch wiring rather than an

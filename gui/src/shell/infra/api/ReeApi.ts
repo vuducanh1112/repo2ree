@@ -1,7 +1,6 @@
 import type { ReeId } from "@core/ree/ReeId";
 import type { ApiClient } from "./ApiClient";
 import type {
-  AgentList,
   ApiListResponse,
   CreateBuildReviewPayload,
   CreateSourceReviewPayload,
@@ -10,6 +9,7 @@ import type {
   InferenceReport,
   LintReport,
   LintScriptsResponse,
+  ProviderList,
   ReeCreatePayload,
   ReeDefinitionPatchPayload,
   ReeDocument,
@@ -17,7 +17,6 @@ import type {
   ReeStepCatalog,
   ReeSummary,
   ReproducibilityReportWire,
-  ReprovisionResponse,
   ReviewSetWire,
   RunSummary,
   ScriptDeclarations,
@@ -27,6 +26,7 @@ import type {
   UploadInitPayload,
   UploadInitResponse,
   WorkbenchImageCatalog,
+  WorkbenchList,
 } from "./apiTypes";
 import { endpoints } from "./endpoints";
 
@@ -87,9 +87,13 @@ export class ReeApi {
     });
   }
 
-  /** Workbench agents currently dialed into the control plane. */
-  async listAgents(): Promise<AgentList> {
-    return this.client.request<AgentList>(endpoints.agents(), { method: "GET" });
+  /** Capacity providers currently dialed into the control plane. */
+  async listProviders(): Promise<ProviderList> {
+    return this.client.request<ProviderList>(endpoints.labs(), { method: "GET" });
+  }
+
+  async listWorkbenches(): Promise<WorkbenchList> {
+    return this.client.request<WorkbenchList>(endpoints.workbenches(), { method: "GET" });
   }
 
   /**
@@ -365,12 +369,6 @@ export class ReeApi {
     return this.client.request<LintReport>(endpoints.scriptLintDraft(), {
       method: "POST",
       body: JSON.stringify({ target, source, declarations }),
-    });
-  }
-
-  async reprovisionWorkbench(reeId: ReeId | string): Promise<ReprovisionResponse> {
-    return this.client.request<ReprovisionResponse>(endpoints.reeWorkbenchReprovision(reeId), {
-      method: "POST",
     });
   }
 

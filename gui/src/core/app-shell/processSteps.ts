@@ -112,7 +112,7 @@ export const EVIDENCE_STEP_BY_PAGE: Readonly<Partial<Record<AppShellPage, Eviden
 
 // Doneness is a property of the REE, not of this browser session: every step
 // that produces evidence answers from the aggregate's audit, so a reload (or a
-// second tab, or an agent's run) sees the same thing. `badges` remains the live
+// second tab, or a workbench service's run) sees the same thing. `badges` remains the live
 // outcome of runs started here — including the failures the audit never records,
 // since a failed step commits no receipt.
 function hasProcessStepCompleted(stepKey: AppShellPage, ree: ReeEditorViewModel, badges: Badges) {

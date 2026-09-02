@@ -19,14 +19,14 @@ import {
 /**
  * The docker-less branch of the pipeline: the workbench base image *is* the
  * runtime environment. A plain python:slim bench (picked via the "Custom…"
- * image option) has no nested dockerd — the agent injects the executor and
+ * image option) has no nested dockerd — the lab injects the executor and
  * base tools, warns about the missing docker substrate, and provisions anyway.
  * The build step is then just `pip install` into a venv, packed as the runtime
  * artifact, and every runnable restores that venv instead of `docker load`-ing
  * an image.
  *
  * python:slim's default command (an interactive `python3`) exits immediately
- * when detached, so this also exercises the agent's pause-command fallback
+ * when detached, so this also exercises the lab's pause-command fallback
  * that keeps such benches alive.
  *
  * Kept lean on purpose: metadata/HBOM/SBOM pages are covered by the golden
