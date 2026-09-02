@@ -19,9 +19,8 @@ export interface ReeRunsClient {
    */
   createWorkspace(
     name?: string,
-    image?: string,
-    labId?: string,
-    labKind?: "provider" | "external",
+    locationId?: string,
+    profileId?: string,
   ): Promise<{ reeId: string; run: ReeRun }>;
   /**
    * Make an REE be a downloaded REE bundle — the counterpart of the ree-archive
@@ -55,12 +54,11 @@ export interface ReeRunsClient {
 
 export function createReeRunsClient(runtime: ReeRuntimeValue): ReeRunsClient {
   return {
-    async createWorkspace(name = "REE", image, labId, labKind = "provider") {
+    async createWorkspace(name = "REE", locationId = "", profileId = "") {
       const run = await runtime.reeApi.createRee({
         name,
-        workbench_image: labKind === "provider" ? image?.trim() || undefined : undefined,
-        provider_id: labKind === "provider" ? labId?.trim() || undefined : undefined,
-        workbench_id: labKind === "external" ? labId?.trim() || undefined : undefined,
+        location_id: locationId.trim(),
+        profile_id: profileId.trim(),
       });
       return { reeId: run.ree_id, run: mapRun(run) };
     },

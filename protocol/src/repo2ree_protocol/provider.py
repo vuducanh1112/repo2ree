@@ -14,7 +14,8 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
-from repo2ree_protocol.frames import Frame, WorkbenchRef
+from repo2ree_protocol.allocation import AllocationRequest, WorkbenchProfile
+from repo2ree_protocol.frames import Frame
 
 # ================================================
 # Identity
@@ -27,34 +28,13 @@ class ProviderHello(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     provider_id: str = Field(min_length=1)
+    location_id: str = Field(min_length=1)
+    location_label: str = Field(min_length=1)
     provider_kind: Literal["docker"] = "docker"
     hostname: str = ""
     version: str = ""
-    docker_mode: str = ""
+    profiles: tuple[WorkbenchProfile, ...] = ()
     nonce: str = ""
-
-
-# ================================================
-# Specifications
-# ================================================
-
-
-class DockerWorkbenchSpec(BaseModel):
-    """Inputs for provisioning a Docker-backed workbench."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    runtime: Literal["docker"] = "docker"
-    # Fully resolved by the control plane: a caller-provided base image or the
-    # configured default. The provisioning side deliberately applies no image
-    # default.
-    base_image: str = Field(min_length=1)
-
-
-# There is one runtime today. Make the request carry a distinct spec now so a
-# future discriminated union can grow here without overloading WorkbenchRef or
-# adding backend-specific fields to ProvisionRequest.
-WorkbenchSpec = DockerWorkbenchSpec
 
 
 # ================================================
@@ -62,29 +42,27 @@ WorkbenchSpec = DockerWorkbenchSpec
 # ================================================
 
 
-class ProvisionRequest(BaseModel):
+class EnsureAllocationRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    op: Literal["provision"] = "provision"
-    allocation_id: str = Field(min_length=1)
+    op: Literal["ensure_allocation"] = "ensure_allocation"
+    allocation: AllocationRequest
     workbench_id: str = Field(min_length=1)
     enrollment_token: str = Field(min_length=1)
-    ree_id: str
-    spec: WorkbenchSpec
 
 
-class RemoveRequest(BaseModel):
+class ReleaseAllocationRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    op: Literal["remove"] = "remove"
-    ref: WorkbenchRef
+    op: Literal["release_allocation"] = "release_allocation"
+    allocation_id: str = Field(min_length=1)
 
 
-class IsRunningRequest(BaseModel):
+class InspectAllocationRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    op: Literal["is_running"] = "is_running"
-    ref: WorkbenchRef
+    op: Literal["inspect_allocation"] = "inspect_allocation"
+    allocation_id: str = Field(min_length=1)
 
 
 class ProviderCancelRequest(BaseModel):
@@ -98,7 +76,7 @@ class ProviderCancelRequest(BaseModel):
 
 # Tagged union discriminated on 'op': every capacity call.
 ProviderRequest = Annotated[
-    ProvisionRequest | RemoveRequest | IsRunningRequest | ProviderCancelRequest,
+    EnsureAllocationRequest | ReleaseAllocationRequest | InspectAllocationRequest | ProviderCancelRequest,
     Field(discriminator="op"),
 ]
 

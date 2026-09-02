@@ -1,7 +1,9 @@
 const API_V1_BASE = "/api/v1";
 
 export const endpoints = {
-  workbenchImages: () => `${API_V1_BASE}/workbench/images`,
+  computeLocations: () => `${API_V1_BASE}/compute-locations`,
+  workbenchProfiles: () => `${API_V1_BASE}/workbench-profiles`,
+  allocations: () => `${API_V1_BASE}/allocations`,
   reeSteps: () => `${API_V1_BASE}/ree-steps`,
   scriptTemplates: () => `${API_V1_BASE}/script-templates`,
   labs: () => `${API_V1_BASE}/providers`,

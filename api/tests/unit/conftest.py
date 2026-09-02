@@ -70,8 +70,6 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from repo2ree_api.deps import workbench_manager  # noqa: E402
 from repo2ree_api.main import app  # noqa: E402
-from repo2ree_protocol.frames import WorkbenchRef  # noqa: E402
-from repo2ree_protocol.provider import DockerWorkbenchSpec  # noqa: E402
 from repo2ree_supervisor import WorkbenchHandle  # noqa: E402
 
 # ================================================
@@ -104,8 +102,12 @@ def online_ree(monkeypatch: pytest.MonkeyPatch) -> WorkbenchHandle:
     ree_id = uuid4().hex
     handle = WorkbenchHandle(
         ree_id=ree_id,
-        ref=WorkbenchRef(runtime="docker", token=ree_id),
-        spec=DockerWorkbenchSpec(base_image="repo2ree:test"),
+        allocation_id=f"alloc-{ree_id}",
+        workbench_id=f"wb-{ree_id}",
+        provider_id="provider-test",
+        location_id="lab-test",
+        profile_id="standard",
+        profile_revision="1",
     )
     real_lookup = workbench_manager.lookup
     real_is_registered = workbench_manager.is_registered

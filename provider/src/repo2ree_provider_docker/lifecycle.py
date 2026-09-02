@@ -41,13 +41,8 @@ from repo2ree_docker.ops import (
     run_docker_remove,
     run_docker_silent,
 )
-from repo2ree_docker.reference import (
-    DockerWorkbenchHandle,
-    decode_reference,
-    encode_reference,
-)
-from repo2ree_protocol.frames import ErrorFrame, Frame, LogFrame, WorkbenchRef, WorkbenchRefFrame
-from repo2ree_protocol.provider import DockerWorkbenchSpec
+from repo2ree_protocol.allocation import AllocationRequest, AllocationState
+from repo2ree_protocol.frames import AllocationStatusFrame, ErrorFrame, Frame, LogFrame
 from repo2ree_provider_docker.injection import InjectionBundle, load_injection_bundle
 
 __all__ = ["DockerIsolation"]
@@ -62,6 +57,9 @@ _HOST_GATEWAY_NAME = "host.docker.internal"
 _LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 _RESOURCE_OWNER_ENV = "REPO2REE_RESOURCE_OWNER"
 _RESOURCE_OWNER_LABEL = "repo2ree.resource-owner"
+_ALLOCATION_ID_LABEL = "repo2ree.allocation-id"
+_PROFILE_ID_LABEL = "repo2ree.profile-id"
+_PROFILE_REVISION_LABEL = "repo2ree.profile-revision"
 
 # Where the injected closure appears inside a bench. The bundle's paths are
 # absolute into /nix/store, so this is not a choice — it is the mount point
@@ -114,25 +112,25 @@ class DockerIsolation:
         self._populated_volumes: set[str] = set()
 
     # ------------------------------------------------
-    # Naming — deterministic from ree_id, a local-docker convention.
+    # Naming — deterministic from allocation_id, never from REE identity.
     # ------------------------------------------------
 
     @staticmethod
-    def _container_name(ree_id: str) -> str:
-        return f"repo2ree-wb-{ree_id}"
+    def _container_name(allocation_id: str) -> str:
+        return f"repo2ree-wb-{allocation_id}"
 
     @staticmethod
-    def _volume_name(ree_id: str) -> str:
-        return f"repo2ree-ree-{ree_id}"
+    def _volume_name(allocation_id: str) -> str:
+        return f"repo2ree-ree-{allocation_id}"
 
     @staticmethod
-    def _dind_volume_name(ree_id: str) -> str:
+    def _dind_volume_name(allocation_id: str) -> str:
         """Volume backing the workbench's in-container ``/var/lib/docker``.
 
         Kept off the container's overlayfs rootfs so the nested daemon can use the
         overlay2 storage driver (copy-on-write) instead of falling back to vfs.
         """
-        return f"repo2ree-dind-{ree_id}"
+        return f"repo2ree-dind-{allocation_id}"
 
     def _resource_label_args(self) -> list[str]:
         if not self._resource_owner:
@@ -146,28 +144,42 @@ class DockerIsolation:
     # Lifecycle (streaming)
     # ------------------------------------------------
 
-    def provision(
+    def ensure(
         self,
-        allocation_id: str,
+        allocation: AllocationRequest,
         workbench_id: str,
         enrollment_token: str,
-        ree_id: str,
-        spec: DockerWorkbenchSpec,
+        image: str,
     ) -> Iterator[Frame]:
-        container_name = self._container_name(ree_id)
-        volume_name = self._volume_name(ree_id)
-        image = spec.base_image
+        allocation_id = allocation.allocation_id
+        container_name = self._container_name(allocation_id)
+        volume_name = self._volume_name(allocation_id)
+        existing_profile = _allocation_profile(container_name)
+        if existing_profile is not None:
+            expected_profile = (allocation.profile_id, allocation.profile_revision)
+            if existing_profile != expected_profile:
+                raise RuntimeError(
+                    f"allocation {allocation_id!r} already exists for profile "
+                    f"{existing_profile[0]!r} revision {existing_profile[1]!r}"
+                )
+            if not self.inspect(allocation_id):
+                raise RuntimeError(f"allocation {allocation_id!r} exists but its workbench is not running")
+            yield AllocationStatusFrame(
+                allocation_id=allocation_id,
+                state=AllocationState.WAITING_FOR_WORKBENCH,
+                workbench_id=workbench_id,
+            )
+            return
         with docker_op("provision") as op:
             try:
                 self._create_workbench_volume(volume_name)
                 if self._docker_mode == "dind":
-                    self._create_workbench_volume(self._dind_volume_name(ree_id))
-                exec_path = yield from self._run_workbench_container(
+                    self._create_workbench_volume(self._dind_volume_name(allocation_id))
+                yield from self._run_workbench_container(
                     container_name,
-                    ree_id,
+                    allocation,
                     volume_name,
                     image,
-                    allocation_id=allocation_id,
                     workbench_id=workbench_id,
                     enrollment_token=enrollment_token,
                 )
@@ -179,36 +191,30 @@ class DockerIsolation:
                 run_docker_silent("rm", "-f", "-v", container_name)
                 run_docker_silent("volume", "rm", volume_name)
                 if self._docker_mode == "dind":
-                    run_docker_silent("volume", "rm", self._dind_volume_name(ree_id))
+                    run_docker_silent("volume", "rm", self._dind_volume_name(allocation_id))
                 yield ErrorFrame(detail=str(exc))
                 return
-            yield WorkbenchRefFrame(
-                ref=encode_reference(
-                    DockerWorkbenchHandle(
-                        ree_id=ree_id,
-                        container_name=container_name,
-                        volume_name=volume_name,
-                        exec_path=exec_path,
-                    )
-                )
+            yield AllocationStatusFrame(
+                allocation_id=allocation_id,
+                state=AllocationState.WAITING_FOR_WORKBENCH,
+                workbench_id=workbench_id,
             )
 
-    def remove(self, ref: WorkbenchRef) -> None:
-        handle = decode_reference(ref)
+    def release(self, allocation_id: str) -> None:
         with docker_op("remove"):
             # -v drops the anonymous volumes the image declared (docker:dind
             # declares /var/lib/docker and /certs, so every bench would leave
             # unreclaimable hex-named volumes behind). Named volumes — ours,
             # below — are never touched by it, which is why every `rm` here
             # carries it.
-            run_docker_remove("rm", "-f", "-v", handle.container_name)
-            run_docker_remove("volume", "rm", handle.volume_name)
+            run_docker_remove("rm", "-f", "-v", self._container_name(allocation_id))
+            run_docker_remove("volume", "rm", self._volume_name(allocation_id))
             if self._docker_mode == "dind":
-                run_docker_remove("volume", "rm", self._dind_volume_name(handle.ree_id))
+                run_docker_remove("volume", "rm", self._dind_volume_name(allocation_id))
             # The injected store volume is shared across benches and content-
             # addressed — never removed per REE.
 
-    def is_running(self, ref: WorkbenchRef) -> bool:
+    def inspect(self, allocation_id: str) -> bool:
         """Liveness gate for the control plane's availability check.
 
         A *confirmed* verdict (running, or a genuinely absent container) is
@@ -218,11 +224,10 @@ class DockerIsolation:
         session's next action with a spurious "workbench unavailable", whereas a
         bench that really is gone surfaces a truthful error at the actual op.
         """
-        handle = decode_reference(ref)
         with docker_op("is_running") as op:
             for attempt in range(2):
                 try:
-                    return container_running(handle.container_name)
+                    return container_running(self._container_name(allocation_id))
                 except ContainerStateUnknownError as exc:
                     if attempt == 0:
                         time.sleep(0.5)
@@ -230,7 +235,7 @@ class DockerIsolation:
                     op.status = "unknown"
                     logger.warning(
                         "liveness probe indeterminate for %s (%s); assuming running",
-                        handle.container_name,
+                        self._container_name(allocation_id),
                         exc,
                     )
                     return True
@@ -239,11 +244,10 @@ class DockerIsolation:
     def _run_workbench_container(
         self,
         container_name: str,
-        ree_id: str,
+        allocation: AllocationRequest,
         volume_name: str,
         image: str,
         *,
-        allocation_id: str = "",
         workbench_id: str = "",
         enrollment_token: str = "",
     ) -> Generator[Frame, None, str]:
@@ -293,9 +297,15 @@ class DockerIsolation:
             exec_path = bundle.exec_path
 
         run_args = [
-            *self._docker_backend_args(ree_id),
+            *self._docker_backend_args(allocation.allocation_id),
             *injection_args,
             *self._resource_label_args(),
+            "--label",
+            f"{_ALLOCATION_ID_LABEL}={allocation.allocation_id}",
+            "--label",
+            f"{_PROFILE_ID_LABEL}={allocation.profile_id}",
+            "--label",
+            f"{_PROFILE_REVISION_LABEL}={allocation.profile_revision}",
             # Source-run providers commonly hand the resident workbench a
             # host.docker.internal control-plane URL. Docker Engine on Linux
             # does not create that name unless explicitly requested; Docker
@@ -340,22 +350,21 @@ class DockerIsolation:
                     "(its default command and the pause command both exited)"
                 )
         yield from _probe_bench(container_name, exec_path, image)
-        if allocation_id:
-            self._start_resident_workbench(
-                container_name,
-                allocation_id=allocation_id,
-                workbench_id=workbench_id,
-                enrollment_token=enrollment_token,
-                exec_path=exec_path,
-                tool_env=bundle.tool_env if bundle is not None else {},
-            )
+        self._start_resident_workbench(
+            container_name,
+            allocation=allocation,
+            workbench_id=workbench_id,
+            enrollment_token=enrollment_token,
+            exec_path=exec_path,
+            tool_env=bundle.tool_env if bundle is not None else {},
+        )
         return exec_path
 
     def _start_resident_workbench(
         self,
         container_name: str,
         *,
-        allocation_id: str,
+        allocation: AllocationRequest,
         workbench_id: str,
         enrollment_token: str,
         exec_path: str,
@@ -365,10 +374,12 @@ class DockerIsolation:
             "WORKBENCH_API_WS_URL": self._workbench_api_ws_url,
             "WORKBENCH_ID": workbench_id,
             "WORKBENCH_MODE": "managed",
-            "WORKBENCH_ALLOCATION_ID": allocation_id,
+            "WORKBENCH_ALLOCATION_ID": allocation.allocation_id,
             "WORKBENCH_AUTH_TOKEN": enrollment_token,
             "WORKBENCH_ROOT": "/ree",
-            "WORKBENCH_SUBSTRATE": "docker-nested" if self._docker_mode == "dind" else "docker-host-socket",
+            "WORKBENCH_LOCATION_ID": allocation.location_id,
+            "WORKBENCH_PROFILE_ID": allocation.profile_id,
+            "WORKBENCH_PROFILE_REVISION": allocation.profile_revision,
             "REPO2REE_EXEC_PATH": exec_path,
             **tool_env,
         }
@@ -436,7 +447,7 @@ class DockerIsolation:
             finally:
                 run_docker_silent("rm", "-f", "-v", scratch)
 
-    def _docker_backend_args(self, ree_id: str) -> list[str]:
+    def _docker_backend_args(self, allocation_id: str) -> list[str]:
         if self._docker_mode == "dind":
             # No host docker.sock mount: the workbench runs its own in-container
             # daemon for per-REE isolation. /var/lib/docker is volume-backed so
@@ -451,7 +462,7 @@ class DockerIsolation:
                 "-e",
                 "DOCKER_TLS_CERTDIR=",
                 "-v",
-                f"{self._dind_volume_name(ree_id)}:/var/lib/docker",
+                f"{self._dind_volume_name(allocation_id)}:/var/lib/docker",
             ]
         return [
             "-v",
@@ -500,6 +511,27 @@ def _image_present(image: str) -> bool:
     """True if the image already exists locally (no registry round-trip)."""
     with docker_op("docker.image_inspect"):
         return docker_cli.image_present(image)
+
+
+def _allocation_profile(container_name: str) -> tuple[str, str] | None:
+    """Read provider-owned allocation metadata from Docker's durable state."""
+    try:
+        output = run_docker_out(
+            "inspect",
+            "--format",
+            f'{{{{index .Config.Labels "{_PROFILE_ID_LABEL}"}}}} '
+            f'{{{{index .Config.Labels "{_PROFILE_REVISION_LABEL}"}}}}',
+            container_name,
+            timeout=30,
+        )
+    except RuntimeError as exc:
+        if "no such" in str(exc).lower():
+            return None
+        raise
+    profile_id, separator, revision = output.partition(" ")
+    if not separator or not profile_id or not revision:
+        raise RuntimeError(f"container {container_name!r} is missing allocation profile labels")
+    return profile_id, revision
 
 
 def _probe_bench(container_name: str, exec_path: str, image: str) -> Iterator[Frame]:

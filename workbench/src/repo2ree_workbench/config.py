@@ -20,7 +20,9 @@ class WorkbenchConfig:
     enrollment_token: str
     root: Path
     exec_path: str
-    substrate: str
+    location_id: str
+    profile_id: str
+    profile_revision: str
     mode: Literal["managed", "external"] = "managed"
     otlp_endpoint: str | None = None
 
@@ -54,6 +56,8 @@ def load_config(argv: Sequence[str] = ()) -> WorkbenchConfig:
         enrollment_token=args.token,
         root=Path(args.root),
         exec_path=os.environ.get("REPO2REE_EXEC_PATH", "repo2ree-exec"),
-        substrate=os.environ.get("WORKBENCH_SUBSTRATE", ""),
+        location_id=os.environ.get("WORKBENCH_LOCATION_ID", ""),
+        profile_id=os.environ.get("WORKBENCH_PROFILE_ID", ""),
+        profile_revision=os.environ.get("WORKBENCH_PROFILE_REVISION", ""),
         otlp_endpoint=os.environ.get("OTLP_ENDPOINT") or None,
     )

@@ -8,7 +8,6 @@ interface LabGridProps {
   /** The labs on the current page, already sliced. */
   labs: Lab[];
   columns: number;
-  nowMs: number;
   selectedId: string | null;
   onSelect: (labId: string) => void;
 }
@@ -18,7 +17,7 @@ interface LabGridProps {
  * focus, which is the expected behaviour for a single-choice group and saves
  * the user a second keystroke on every bay they look at.
  */
-export function LabGrid({ labs, columns, nowMs, selectedId, onSelect }: LabGridProps) {
+export function LabGrid({ labs, columns, selectedId, onSelect }: LabGridProps) {
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     const step: Record<string, number> = {
       ArrowRight: 1,
@@ -55,7 +54,6 @@ export function LabGrid({ labs, columns, nowMs, selectedId, onSelect }: LabGridP
         <LabCell
           key={lab.id}
           lab={lab}
-          nowMs={nowMs}
           selected={lab.id === selectedId}
           onSelect={() => onSelect(lab.id)}
         />

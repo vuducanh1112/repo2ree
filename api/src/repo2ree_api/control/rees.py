@@ -33,7 +33,7 @@ from repo2ree_api.control.run_orchestration import (
     start_provisioning_run,
 )
 from repo2ree_api.control.run_registry import ACTIVE_STATUSES
-from repo2ree_api.deps import workbench_manager
+from repo2ree_api.deps import provider_connections, workbench_manager
 from repo2ree_api.pagination import keyset_paginate
 from repo2ree_api.workbench.commands import ree_command_span, require_handle
 from repo2ree_core.domain.ree.model import Ree, ree_status
@@ -56,11 +56,8 @@ rees_router = APIRouter(tags=["rees"])
 def create_ree_route(payload: ReeCreatePayload) -> RunSummary:
     ree_id = uuid.uuid4().hex
     name = payload.name or ree_id[:8]
-    # Blank/omitted image falls back to the server default in the manager.
-    image = (payload.workbench_image or "").strip() or None
-    # Blank/omitted workbench means "any connected workbench" (single-workbench path).
-    provider_id = (payload.provider_id or "").strip()
-    external_workbench_id = (payload.workbench_id or "").strip()
+    location_id = payload.location_id.strip()
+    profile_id = payload.profile_id.strip()
 
     # Provision in the background so the cold-machine image pull streams its
     # progress live into the run's log stream (GET .../runs/{run_id}/logs)
@@ -78,10 +75,15 @@ def create_ree_route(payload: ReeCreatePayload) -> RunSummary:
         # pull and container start inside provision() run to completion once
         # begun, so a cancel mid-pull only takes effect afterwards.
         try:
-            if external_workbench_id:
-                handle = workbench_manager.reserve_external(rid, name, external_workbench_id)
+            provider_managed = any(
+                provider.location_id == location_id for provider in provider_connections.list_providers()
+            )
+            if provider_managed:
+                handle = workbench_manager.provision(
+                    rid, name, log=_log_run, location_id=location_id, profile_id=profile_id
+                )
             else:
-                handle = workbench_manager.provision(rid, name, log=_log_run, image=image, provider_id=provider_id)
+                handle = workbench_manager.reserve_external(rid, name, location_id, profile_id)
         except Exception as exc:  # noqa: BLE001 — provisioning is the workbench's, so any failure is reported as an unavailable run
             _log_run("system", "error", f"Workbench provisioning failed: {exc}")
             return ActionResult.failed(
@@ -151,7 +153,9 @@ def _summarize(handle: WorkbenchHandle, manifest: dict[str, Any]) -> ReeSummary 
         ree_id=handle.ree_id,
         name=ree.subject.definition.name,
         status=ree_status(ree),
-        workbench_image=workbench_manager.image_for(handle),
+        allocation_id=handle.allocation_id,
+        location_id=handle.location_id,
+        profile_id=handle.profile_id,
     )
 
 
@@ -168,9 +172,9 @@ def _ree_page_key(summary: ReeSummary) -> tuple[str, str]:
 def get_ree_route(ree_id: str) -> ReeDocument:
     handle = require_handle(ree_id)
     document = workbench_manager.get_ree_document(handle)
-    # get-ree-document runs inside the container and can't know the image, so the
-    # manager (which owns the registry) supplies it.
-    document["workbench_image"] = workbench_manager.image_for(handle)
+    document["allocation_id"] = handle.allocation_id
+    document["location_id"] = handle.location_id
+    document["profile_id"] = handle.profile_id
     return ReeDocument.model_validate(document)
 
 
@@ -203,7 +207,10 @@ def get_ree_state_route(ree_id: str) -> ReeState:
         workbench=WorkbenchStatus(
             status="available",
             workbench_id=handle.workbench_id,
-            image=workbench_manager.image_for(handle),
+            allocation_id=handle.allocation_id,
+            location_id=handle.location_id,
+            profile_id=handle.profile_id,
+            substrate=handle.observation.substrate if handle.observation else None,
         ),
         workspace_files=document.workspace_files,
         ree_files=document.ree_files,

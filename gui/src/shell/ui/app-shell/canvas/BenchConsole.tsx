@@ -3,8 +3,10 @@ import { appendLine } from "@core/ree/logEntry";
 import type { LogEntry } from "@core/ree/ReeTypes";
 import { appShellPorts } from "@shell/app/bootstrap/appShellPorts";
 import { useReeRuntime } from "@shell/data/apiRuntime";
+import { useAllocation } from "@shell/data/compute/allocation";
 import { useReeClient } from "@shell/data/ree/client";
-import { useWorkbenchImageRef } from "@shell/data/workbench/images";
+import { useReeQuery } from "@shell/data/ree/queries";
+import { allocationStateCopy, placementReadout } from "@shell/ui/labs/labPresentation";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Ic } from "../../shared/components/Icon";
@@ -35,7 +37,13 @@ export function BenchConsole({
 }: BenchConsoleProps) {
   const { reeId } = useReeRuntime();
   const reeClient = useReeClient();
-  const imageRef = useWorkbenchImageRef();
+  const reeQuery = useReeQuery();
+  const placement = placementReadout(
+    reeQuery.data?.workbenchLocation,
+    reeQuery.data?.workbenchProfile,
+  );
+  const allocationId = reeQuery.data?.allocationId;
+  const allocation = useAllocation(allocationId);
   const navigate = useNavigate();
   const [releasing, setReleasing] = useState(false);
   const [log, setLog] = useState<LogEntry | null>(null);
@@ -73,16 +81,20 @@ export function BenchConsole({
       icon={Ic.package(16)}
       iconTint="var(--chrome-text-muted)"
       title="Workbench"
-      subtitle={open ? `The lab hosting ${reeName || "this REE"}` : (imageRef ?? "Workbench")}
+      subtitle={open ? `The lab hosting ${reeName || "this REE"}` : placement}
       on={provisioned}
       expandLabel="Expand workbench console"
       collapseLabel="Collapse workbench console"
       bodyMaxHeight={420}
     >
       <div className={styles.spacer} />
-      <StatRow label="Image" value={imageRef ?? "—"} mono />
-      <StatRow label="Location" value="Local" />
-      <StatRow label="Isolation" value="Docker-in-docker sandbox" />
+      <StatRow label="Placement" value={placement} mono />
+      {allocationId ? (
+        <>
+          <StatRow label="Allocation" value={allocationId} mono />
+          <StatRow label="Progress" value={allocationStateCopy(allocation.data?.state)} />
+        </>
+      ) : null}
 
       <Terminal log={log} running={releasing} />
 

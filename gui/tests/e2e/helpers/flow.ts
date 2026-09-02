@@ -232,7 +232,14 @@ export async function openFilesConsole(page: Page) {
 }
 
 /**
- * How many connected labs the lab-location picker offers. Specs that need
+ * Matches an available lab bay by its accessible name. Anchored on purpose: an
+ * unavailable bay is named "… — unavailable" and is a disabled button, so a
+ * loose /available/ would select one and then wait forever for a click.
+ */
+export const AVAILABLE_LAB = /— available$/;
+
+/**
+ * How many available labs the lab-location picker offers. Specs that need
  * more than one lab (multi-lab, stress) call this first and skip when the
  * stack is smaller — the count is a property of whatever stack the suite runs
  * against (source, image, or published), not something the tests control.
@@ -241,7 +248,7 @@ export async function connectedLabCount(page: Page): Promise<number> {
   await page.goto("/");
   await page.getByRole("button", { name: "Create a new REE" }).click();
   await expect(page.getByRole("heading", { name: "Where should this REE run?" })).toBeVisible();
-  const cards = page.getByRole("button", { name: /connected/ });
+  const cards = page.getByRole("button", { name: AVAILABLE_LAB });
   // The lab list loads async; a suite-worthy stack always has at least one
   // lab, so waiting for the first card is enough for a settled count.
   await cards.first().waitFor({ state: "visible" });
@@ -250,10 +257,10 @@ export async function connectedLabCount(page: Page): Promise<number> {
 
 /**
  * Land on the workbench lab from the landing view. REE creation opens with
- * the lab-location step: pick the (connected) lab that will host the
- * workbench, which carries its id into the workbench/image page.
+ * the lab-location step: pick the (available) lab that will host the
+ * workbench, which carries its id into the profile setup drawer.
  *
- * `labIndex` picks the nth connected lab (default: the first) — the
+ * `labIndex` picks the nth available lab (default: the first) — the
  * multi-lab spec uses it to pin each session to a different lab. Returns
  * the chosen lab's id, read back from the workspace URL the picker
  * navigates to.
@@ -264,7 +271,7 @@ export async function startReeCreation(page: Page, options?: { labIndex?: number
   await page.getByRole("button", { name: "Create a new REE" }).click();
   await expect(page.getByRole("heading", { name: "Where should this REE run?" })).toBeVisible();
   await page
-    .getByRole("button", { name: /connected/ })
+    .getByRole("button", { name: AVAILABLE_LAB })
     .nth(options?.labIndex ?? 0)
     .click();
   // Choosing a bay opens workbench setup over the picker: one screen, not two.
@@ -280,16 +287,16 @@ export async function startReeCreation(page: Page, options?: { labIndex?: number
  * (the live lab), so this resolves there and then dives into the Source node so
  * the rest of the walkthrough continues from the docked authoring drawer.
  */
-export async function provisionWorkbench(page: Page, options?: { imageRef?: string }) {
+export async function provisionWorkbench(page: Page, options?: { profileId?: string }) {
   await stepShot(page, "provision-workbench", "before");
   // Setup is the drawer the lab picker opens, so scope to it rather than to a
   // page that no longer exists on its own.
   const setup = page.getByRole("region", { name: "Set up the workbench" });
-  if (options?.imageRef) {
-    // Pick "Custom…" in the image selector and provide the reference — the
-    // catalog default (docker:dind) stays untouched for every other test.
-    await setup.getByRole("button", { name: /Custom…/ }).click();
-    await setup.getByPlaceholder("e.g. docker.io/library/docker:29-dind").fill(options.imageRef);
+  if (options?.profileId) {
+    // Pick one of the location's fixed profiles. There is deliberately no image
+    // field to fill: the provider alone knows what a profile launches, so a
+    // different environment means a different profile in its catalog.
+    await setup.getByLabel("Workbench profile").selectOption(options.profileId);
   }
   await setup.getByRole("button", { name: /Provision workbench/i }).click();
   // A real provision: bench container start, nested dockerd boot, doctor

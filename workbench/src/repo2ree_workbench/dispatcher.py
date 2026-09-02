@@ -12,7 +12,7 @@ from collections.abc import Awaitable, Callable, Iterator
 
 from repo2ree_protocol.frames import DoneFrame, ErrorFrame, Frame, TransferFrame
 from repo2ree_protocol.workbench import (
-    BindAllocationRequest,
+    AssignAllocationRequest,
     CancelRunRequest,
     CopyAbortRequest,
     CopyChunkRequest,
@@ -42,8 +42,8 @@ async def dispatch_workbench_request(
     record_received: Callable[[int], None],
 ) -> None:
     """Run one execution request after transport parsing and correlation."""
-    if isinstance(req, BindAllocationRequest):
-        service.bind(req.allocation_id, req.ree_id)
+    if isinstance(req, AssignAllocationRequest):
+        service.assign(req.allocation)
         await send(DoneFrame())
     elif isinstance(req, ExecActionRequest):
         await pump(lambda: service.exec_action(req.cmd_json, req.run_id, req.env))

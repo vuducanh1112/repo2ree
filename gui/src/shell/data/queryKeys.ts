@@ -1,8 +1,8 @@
 export const queryKeys = {
   reeSteps: () => ["ree-steps"] as const,
-  workbenchImages: () => ["workbench-images"] as const,
   scriptTemplates: () => ["script-templates"] as const,
   labs: () => ["labs"] as const,
+  allocation: (allocationId: string) => ["allocation", allocationId] as const,
   reeIndex: (depositedOnly: boolean) => ["ree-index", depositedOnly] as const,
   ree: (id: string) => ["ree", id] as const,
   evaluateReport: (reeId: string) => ["evaluate-report", reeId] as const,

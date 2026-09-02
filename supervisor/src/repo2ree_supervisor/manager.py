@@ -26,20 +26,20 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import uuid4
 
+from repo2ree_protocol.allocation import AllocationRecord, AllocationRequest, AllocationState, WorkbenchProfile
 from repo2ree_protocol.command import Command
 from repo2ree_protocol.frames import (
+    AllocationStatusFrame,
     ErrorFrame,
     Frame,
     LogFrame,
     ResultFrame,
     SpanFrame,
     UnavailableFrame,
-    WorkbenchRef,
-    WorkbenchRefFrame,
 )
 from repo2ree_protocol.log import LogSink
-from repo2ree_protocol.provider import DockerWorkbenchSpec, WorkbenchSpec
 from repo2ree_protocol.result import ActionResult
+from repo2ree_protocol.substrate import ObservedCapabilities
 from repo2ree_protocol.tracing import (
     CommandSpanAttrs,
     SpanSink,
@@ -53,6 +53,7 @@ from repo2ree_protocol.tracing import (
     record_ree_id,
     record_span_facts,
 )
+from repo2ree_supervisor.allocation_store import AllocationStore
 from repo2ree_supervisor.client import (
     ProviderClient,
     WorkbenchClient,
@@ -60,7 +61,7 @@ from repo2ree_supervisor.client import (
     raise_for_terminal_error,
 )
 from repo2ree_supervisor.enrollment import EnrollmentRegistry
-from repo2ree_supervisor.registry import WorkbenchEntry, WorkbenchRegistry
+from repo2ree_supervisor.matching import check_compatibility, describe_issues
 
 __all__ = [
     "WorkbenchHandle",
@@ -100,29 +101,30 @@ _lock_wait_duration = _meter.create_histogram(
 @dataclass(frozen=True)
 class WorkbenchHandle:
     ree_id: str
-    ref: WorkbenchRef
-    spec: WorkbenchSpec | None
     # The workbench this REE is pinned to; every op on this handle routes to it.
     workbench_id: str = ""
     allocation_id: str = ""
     provider_id: str = ""
     mode: str = "provider_managed"
+    location_id: str = ""
+    profile_id: str = ""
+    profile_revision: str = ""
+    observation: ObservedCapabilities | None = None
 
     @classmethod
-    def from_entry(cls, entry: WorkbenchEntry) -> WorkbenchHandle:
+    def from_record(cls, record: AllocationRecord) -> WorkbenchHandle:
+        request = record.request
         return cls(
-            ree_id=entry.ree_id,
-            ref=entry.ref,
-            spec=entry.spec,
-            workbench_id=entry.workbench_id,
-            allocation_id=entry.allocation_id,
-            provider_id=entry.provider_id,
-            mode=entry.mode,
+            ree_id=request.ree_id,
+            workbench_id=record.workbench_id or "",
+            allocation_id=request.allocation_id,
+            provider_id=record.provider_id or "",
+            mode="provider_managed" if record.provider_id else "external",
+            location_id=request.location_id,
+            profile_id=request.profile_id,
+            profile_revision=request.profile_revision,
+            observation=record.observation,
         )
-
-    @property
-    def image(self) -> str:
-        return self.spec.base_image if self.spec is not None else ""
 
 
 # ================================================
@@ -133,15 +135,13 @@ class WorkbenchHandle:
 class WorkbenchManager:
     def __init__(
         self,
-        registry: WorkbenchRegistry,
-        workbench_image: str,
+        registry: AllocationStore,
         provider: ProviderClient,
         workbench: WorkbenchClient,
         enrollment: EnrollmentRegistry | None = None,
         span_sink: SpanSink | None = None,
     ):
         self._registry = registry
-        self._image = workbench_image
         self._span_sink = span_sink
         # The manager's two roles, spoken to through separate seams: the
         # provider obtains and releases environments, the workbench executes
@@ -169,103 +169,89 @@ class WorkbenchManager:
         ree_id: str,
         name: str,
         log: LogSink | None = None,
-        image: str | None = None,
-        provider_id: str = "",
+        location_id: str = "",
+        profile_id: str = "standard",
     ) -> WorkbenchHandle:
-        """Create backing storage + workbench, initialise the REE, register handle.
-
-        ``image`` overrides the manager's default workbench image for this REE.
-        ``provider_id`` chooses the capacity provider; empty means any connected
-        provider. The resident workbench receives a separate generated identity.
-        """
+        """Allocate exactly the selected profile, validate it, and initialise the REE."""
         with self._ree_lock(ree_id), tracer.start_as_current_span("workbench.provision") as span:
             record_ree_id(span, ree_id)
-            resolved_image = image or self._image
-            provider_id = self._provider.resolve_provider(provider_id)
-
-            spec = DockerWorkbenchSpec(base_image=resolved_image)
             allocation_id = f"alloc-{uuid4().hex}"
-            resolved_workbench_id = f"wb-{uuid4().hex}"
-            enrollment_token = secrets.token_urlsafe(32)
-            self._enrollment.expect(allocation_id, resolved_workbench_id, enrollment_token)
-            self._registry.begin(
-                ree_id=ree_id,
+            provider_id, profile = self._provider.resolve_profile(location_id, profile_id)
+            workbench_id = f"wb-{uuid4().hex}"
+            request = AllocationRequest(
                 allocation_id=allocation_id,
-                workbench_id=resolved_workbench_id,
-                provider_id=provider_id,
-                mode="provider_managed",
-                spec=spec,
+                ree_id=ree_id,
+                location_id=profile.location_id,
+                profile_id=profile.id,
+                profile_revision=profile.revision,
             )
-            WorkbenchSpanAttrs(image=resolved_image, workbench_id=resolved_workbench_id).apply(span)
-            ref: WorkbenchRef | None = None
+            self._registry.create(request, provider_id=provider_id, workbench_id=workbench_id)
+            self._registry.update(allocation_id, AllocationState.PROVISIONING)
+            enrollment_token = secrets.token_urlsafe(32)
+            self._enrollment.expect(allocation_id, workbench_id, enrollment_token)
+            WorkbenchSpanAttrs(workbench_id=workbench_id).apply(span)
             try:
-                ref = self._consume_lifecycle(
-                    self._provider.provision(
+                self._consume_lifecycle(
+                    self._provider.ensure(
                         provider_id,
-                        allocation_id,
-                        resolved_workbench_id,
+                        request,
+                        workbench_id,
                         enrollment_token,
-                        ree_id,
-                        spec,
                     ),
                     log,
                 )
-                if ref is None:
-                    raise RuntimeError(f"workbench provision for {ree_id} ended without a workbench reference")
-                self._workbench.wait_for_workbench(resolved_workbench_id)
-                self._workbench.exec_simple(
-                    resolved_workbench_id,
-                    ["init-ree", "--name", name],
-                )
-
-                entry = WorkbenchEntry(
-                    ree_id=ree_id,
-                    ref=ref,
-                    spec=spec,
-                    workbench_id=resolved_workbench_id,
-                    allocation_id=allocation_id,
-                    provider_id=provider_id,
-                    mode="provider_managed",
-                )
-                self._registry.register(entry)
-                return WorkbenchHandle.from_entry(entry)
+                self._registry.update(allocation_id, AllocationState.WAITING_FOR_WORKBENCH)
+                self._workbench.wait_for_workbench(workbench_id)
+                return self._validate_assign_initialise(request, profile, workbench_id, name)
             except BaseException as exc:
                 self._enrollment.discard(allocation_id)
-                self._registry.mark_failed(ree_id, str(exc))
-                if ref is not None:
-                    self._provider.remove_best_effort(provider_id, ref)
+                record = self._registry.get(allocation_id)
+                if record and record.state not in {AllocationState.INCOMPATIBLE, AllocationState.FAILED}:
+                    self._registry.update(allocation_id, AllocationState.FAILED, detail=str(exc))
+                self._provider.release_best_effort(provider_id, allocation_id)
                 raise
 
-    def reserve_external(self, ree_id: str, name: str, workbench_id: str = "") -> WorkbenchHandle:
-        """Reserve one authenticated idle external workbench and initialise it."""
+    def reserve_external(self, ree_id: str, name: str, location_id: str, profile_id: str) -> WorkbenchHandle:
+        """Assign the exact externally managed location/profile selected by the user."""
         with self._ree_lock(ree_id), tracer.start_as_current_span("workbench.reserve_external"):
             allocation_id = f"alloc-{uuid4().hex}"
-            resolved_workbench_id = self._workbench.reserve_external(allocation_id, workbench_id or None)
-            self._registry.begin(
-                ree_id=ree_id,
+            workbench_id, profile = self._workbench.reserve_external(allocation_id, location_id, profile_id)
+            request = AllocationRequest(
                 allocation_id=allocation_id,
-                workbench_id=resolved_workbench_id,
-                provider_id="",
-                mode="external",
-                spec=None,
+                ree_id=ree_id,
+                location_id=profile.location_id,
+                profile_id=profile.id,
+                profile_revision=profile.revision,
             )
+            self._registry.create(request, provider_id=None, workbench_id=workbench_id)
+            self._registry.update(allocation_id, AllocationState.WAITING_FOR_WORKBENCH)
             try:
-                self._workbench.bind(resolved_workbench_id, allocation_id, ree_id)
-                self._workbench.exec_simple(resolved_workbench_id, ["init-ree", "--name", name])
-                entry = WorkbenchEntry(
-                    ree_id=ree_id,
-                    ref=WorkbenchRef(runtime="external", token=allocation_id),
-                    spec=None,
-                    workbench_id=resolved_workbench_id,
-                    allocation_id=allocation_id,
-                    mode="external",
-                )
-                self._registry.register(entry)
-                return WorkbenchHandle.from_entry(entry)
+                return self._validate_assign_initialise(request, profile, workbench_id, name)
             except BaseException as exc:
-                self._workbench.release_reservation(resolved_workbench_id, allocation_id)
-                self._registry.mark_failed(ree_id, str(exc))
+                record = self._registry.get(allocation_id)
+                if record and record.state not in {AllocationState.INCOMPATIBLE, AllocationState.FAILED}:
+                    self._registry.update(allocation_id, AllocationState.FAILED, detail=str(exc))
                 raise
+
+    def _validate_assign_initialise(
+        self, request: AllocationRequest, profile: WorkbenchProfile, workbench_id: str, name: str
+    ) -> WorkbenchHandle:
+        observation = self._workbench.observation(workbench_id)
+        issues = check_compatibility(profile, observation)
+        if issues:
+            self._registry.update(
+                request.allocation_id,
+                AllocationState.INCOMPATIBLE,
+                observation=observation,
+                incompatibilities=issues,
+                detail="workbench does not satisfy the selected profile",
+            )
+            raise RuntimeError("workbench is incompatible: " + describe_issues(issues))
+        self._registry.update(request.allocation_id, AllocationState.READY, observation=observation)
+        self._workbench.assign(workbench_id, request)
+        self._workbench.exec_simple(workbench_id, ["init-ree", "--name", name])
+        record = self._registry.update(request.allocation_id, AllocationState.ASSIGNED)
+        return WorkbenchHandle.from_record(record)
 
     def teardown(self, handle: WorkbenchHandle) -> None:
         """Stop + remove the container and its backing storage, unregister."""
@@ -277,49 +263,47 @@ class WorkbenchManager:
             # authority and still runs if the execution connection is already gone.
             with suppress(WorkbenchUnavailableError):
                 self._workbench.drain(handle.workbench_id)
+            self._registry.update(handle.allocation_id, AllocationState.DRAINING)
             if handle.mode == "provider_managed":
-                self._provider.remove(handle.provider_id, handle.ref)
+                self._provider.release(handle.provider_id, handle.allocation_id)
                 self._enrollment.discard(handle.allocation_id)
-            else:
-                self._workbench.release_reservation(handle.workbench_id, handle.allocation_id)
-            self._registry.unregister(handle.ree_id)
+            self._registry.update(handle.allocation_id, AllocationState.RELEASED)
+            self._registry.remove_placement(handle.ree_id)
 
-    def _consume_lifecycle(self, frames: Iterator[Frame], log: LogSink | None) -> WorkbenchRef | None:
-        """Drain a provision stream and return its reference.
-
-        Raises on a terminal error/unavailable frame. Provision ends with a
-        ``workbench_ref`` frame; None only if the stream ended without one.
-        """
-        ref: WorkbenchRef | None = None
+    def _consume_lifecycle(self, frames: Iterator[Frame], log: LogSink | None) -> AllocationStatusFrame:
+        status: AllocationStatusFrame | None = None
         for frame in frames:
             if isinstance(frame, LogFrame):
                 if log is not None:
                     log(frame.stream, frame.level, frame.message)
-            elif isinstance(frame, WorkbenchRefFrame):
-                ref = frame.ref
+            elif isinstance(frame, AllocationStatusFrame):
+                status = frame
             else:
                 raise_for_terminal_error(frame)
-        return ref
+        if status is None:
+            raise RuntimeError("provider ensure ended without allocation status")
+        return status
 
     def is_registered(self, ree_id: str) -> bool:
         """True if a workbench is registered for ree_id (regardless of run state)."""
-        return self._registry.lookup(ree_id) is not None
+        record = self._registry.for_ree(ree_id)
+        return record is not None and record.state == AllocationState.ASSIGNED
 
     def lookup(self, ree_id: str) -> WorkbenchHandle | None:
         """Return the handle for ree_id, or None if not registered or not running."""
-        entry = self._registry.lookup(ree_id)
-        if entry is None:
+        record = self._registry.for_ree(ree_id)
+        if record is None or record.state != AllocationState.ASSIGNED:
             return None
-        handle = WorkbenchHandle.from_entry(entry)
+        handle = WorkbenchHandle.from_record(record)
         running = (
-            self._provider.is_running(handle.provider_id, handle.ref)
+            self._provider.is_running(handle.provider_id, handle.allocation_id)
             if handle.mode == "provider_managed"
             else self._workbench.is_connected(handle.workbench_id)
         )
         if not running:
             logger.warning(
-                "workbench on runtime %s not running for %s — returning None",
-                handle.ref.runtime,
+                "workbench allocation %s not running for %s — returning None",
+                handle.allocation_id,
                 ree_id,
             )
             return None
@@ -340,7 +324,6 @@ class WorkbenchManager:
         with tracer.start_as_current_span("workbench.dispatch_action") as span:
             CommandSpanAttrs(operation=str(cmd.operation), run_id=run_id, ree_id=handle.ree_id).apply(span)
             WorkbenchSpanAttrs(
-                image=self.image_for(handle),
                 workbench_id=handle.workbench_id,
             ).apply(span)
             # The whole command as dispatched — envelope and args — recorded
@@ -511,10 +494,6 @@ class WorkbenchManager:
     def get_reviews(self, handle: WorkbenchHandle) -> dict[str, Any]:
         return self._query_json(handle, "get-reviews")
 
-    def image_for(self, handle: WorkbenchHandle) -> str:
-        """The image this REE's workbench runs, falling back to the manager default."""
-        return handle.image or self._image
-
     def read_ree_file_bytes(self, handle: WorkbenchHandle, path: str) -> bytes:
         # REE files can include large runtime and result artifacts.
         return self.dispatch_query(handle, "read-ree-file", "--path", path, timeout=120)
@@ -538,10 +517,12 @@ class WorkbenchManager:
         this backs a listing, and one sick bench must not empty it.
         """
         manifests: list[tuple[WorkbenchHandle, dict[str, Any]]] = []
-        for entry in self._registry.list_all():
-            handle = WorkbenchHandle.from_entry(entry)
+        for record in self._registry.list():
+            if record.state != AllocationState.ASSIGNED:
+                continue
+            handle = WorkbenchHandle.from_record(record)
             running = (
-                self._provider.is_running(handle.provider_id, handle.ref)
+                self._provider.is_running(handle.provider_id, handle.allocation_id)
                 if handle.mode == "provider_managed"
                 else self._workbench.is_connected(handle.workbench_id)
             )

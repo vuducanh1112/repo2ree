@@ -17,7 +17,9 @@ def test_main_composes_telemetry_runtime_and_control_connection(monkeypatch: pyt
         enrollment_token=opaque_enrollment,
         root=Path("/ree"),
         exec_path="/bin/repo2ree-exec",
-        substrate="docker-nested",
+        location_id="lab-1",
+        profile_id="standard",
+        profile_revision="1",
         otlp_endpoint="http://collector:4318",
     )
     shutdowns: list[str] = []
@@ -52,5 +54,7 @@ def test_main_composes_telemetry_runtime_and_control_connection(monkeypatch: pyt
     assert kwargs["mode"] == "managed"
     assert kwargs["allocation_id"] == "alloc-1"
     assert kwargs["enrollment_token"] == opaque_enrollment
-    assert kwargs["substrate"] == "docker-nested"
+    assert kwargs["location_id"] == "lab-1"
+    assert kwargs["profile_id"] == "standard"
+    assert kwargs["profile_revision"] == "1"
     assert shutdowns == ["traces", "metrics", "logs"]

@@ -1,13 +1,10 @@
 import type { Lab } from "@core/lab/Lab";
-import { connectedDurationMs, formatDuration } from "@core/lab/Lab";
 import { Ic } from "../shared/components/Icon";
 import styles from "./LabCell.module.css";
 import { dockerModeCopy } from "./labPresentation";
 
 interface LabCellProps {
   lab: Lab;
-  /** Shared wall clock, so every bay's uptime ticks together. */
-  nowMs: number;
   selected: boolean;
   onSelect: () => void;
 }
@@ -17,17 +14,19 @@ interface LabCellProps {
  * control is named by `aria-label` instead: the state is shown by a lamp that
  * carries no text, so the accessible name has to say it.
  */
-export function LabCell({ lab, nowMs, selected, onSelect }: LabCellProps) {
-  const mode = dockerModeCopy(lab.dockerMode);
-  const uptime = formatDuration(connectedDurationMs(lab, nowMs));
-  const name = lab.hostname || lab.id;
+export function LabCell({ lab, selected, onSelect }: LabCellProps) {
+  const profile = lab.profiles[0];
+  const mode = dockerModeCopy(profile?.substrate ?? "");
+  const name = lab.label;
+  const available = lab.available && lab.profiles.length > 0;
 
   return (
     <button
       type="button"
       onClick={onSelect}
+      disabled={!available}
       aria-pressed={selected}
-      aria-label={`${name} — connected`}
+      aria-label={`${name} — ${available ? "available" : "unavailable"}`}
       data-lab={lab.id}
       data-selected={selected || undefined}
       className={styles.cell}
@@ -39,10 +38,12 @@ export function LabCell({ lab, nowMs, selected, onSelect }: LabCellProps) {
       </span>
       <span aria-hidden className={styles.body}>
         <span className={styles.what}>{mode.line}</span>
-        <span className={styles.meta}>{`${mode.readout} · up ${uptime}`}</span>
+        <span
+          className={styles.meta}
+        >{`${mode.readout} · ${lab.profiles.length} profile${lab.profiles.length === 1 ? "" : "s"}`}</span>
       </span>
       <span aria-hidden className={styles.foot}>
-        {selected ? "selected" : "select"}
+        {selected ? "selected" : available ? "select" : "busy"}
       </span>
     </button>
   );

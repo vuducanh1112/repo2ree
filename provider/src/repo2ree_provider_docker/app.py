@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import asyncio
 
+from repo2ree_protocol.allocation import StoragePolicy, WorkbenchProfile
 from repo2ree_protocol.log import configure_logging
+from repo2ree_protocol.substrate import FixedResources, RequiredCapabilities, SubstrateKind
 from repo2ree_protocol.tracing import otlp_log_handler, setup_logs, setup_metrics, setup_tracing
 from repo2ree_provider_docker.config import load_config
 from repo2ree_provider_docker.connection import run_provider
@@ -35,14 +37,37 @@ def main() -> None:
         workbench_api_ws_url=config.workbench_api_ws_url,
         workbench_network=config.workbench_network,
     )
-    provisioner = ProvisionerService({isolation.runtime_name: isolation})
+    provisioner = ProvisionerService(
+        isolation,
+        {(profile.id, profile.revision): profile.image for profile in config.profiles},
+    )
+    default_substrate = (
+        SubstrateKind.DOCKER_NESTED if config.docker_mode == "dind" else SubstrateKind.DOCKER_HOST_SOCKET
+    )
+    public_profiles = tuple(
+        WorkbenchProfile(
+            id=profile.id,
+            revision=profile.revision,
+            location_id=config.location_id,
+            label=profile.label,
+            description=profile.description,
+            required=RequiredCapabilities(
+                substrate=SubstrateKind(profile.substrate) if profile.substrate else default_substrate,
+                resources=FixedResources(),
+            ),
+            storage_policy=StoragePolicy.EPHEMERAL,
+        )
+        for profile in config.profiles
+    )
     try:
         asyncio.run(
             run_provider(
                 config.api_ws_url,
                 provisioner,
                 config.provider_id,
-                docker_mode=config.docker_mode,
+                location_id=config.location_id,
+                location_label=config.location_label,
+                profiles=public_profiles,
             )
         )
     finally:

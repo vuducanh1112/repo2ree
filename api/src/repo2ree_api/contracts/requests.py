@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 from repo2ree_core.domain.ree.model import ReeDefinition
 
@@ -44,25 +44,8 @@ class ReeCreatePayload(StrictRequestModel):
     """
 
     name: str | None = None
-    # Image to provision the workbench from. Omitted (or blank) falls back to the
-    # server default (the workbench image catalog default; see settings.py).
-    workbench_image: str | None = None
-    # Docker provider to place the allocation on (from GET /api/v1/providers).
-    # Omitted/blank means any connected provider.
-    provider_id: str | None = None
-    # Exact authenticated idle external workbench to reserve. Mutually exclusive
-    # with provider_id; externally provisioned environments do not accept an image.
-    workbench_id: str | None = None
-
-    @model_validator(mode="after")
-    def _one_capacity_source(self) -> ReeCreatePayload:
-        provider = (self.provider_id or "").strip()
-        workbench = (self.workbench_id or "").strip()
-        if provider and workbench:
-            raise ValueError("provider_id and workbench_id are mutually exclusive")
-        if workbench and (self.workbench_image or "").strip():
-            raise ValueError("workbench_image cannot be selected for an external workbench")
-        return self
+    location_id: str = Field(min_length=1)
+    profile_id: str = Field(min_length=1)
 
 
 class ReeDefinitionPatchPayload(StrictRequestModel):

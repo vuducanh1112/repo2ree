@@ -1,7 +1,9 @@
 import type { ReeId } from "@core/ree/ReeId";
 import type { ApiClient } from "./ApiClient";
 import type {
+  AllocationRecord,
   ApiListResponse,
+  ComputeLocationList,
   CreateBuildReviewPayload,
   CreateSourceReviewPayload,
   DeleteReeResponse,
@@ -25,8 +27,8 @@ import type {
   SourceAcquirePayload,
   UploadInitPayload,
   UploadInitResponse,
-  WorkbenchImageCatalog,
   WorkbenchList,
+  WorkbenchProfileList,
 } from "./apiTypes";
 import { endpoints } from "./endpoints";
 
@@ -73,11 +75,27 @@ export class ReeApi {
     return this.client.request<ReeStepCatalog>(endpoints.reeSteps(), { method: "GET" });
   }
 
-  /** The base images the backend offers at provision time. */
-  async listWorkbenchImages(): Promise<WorkbenchImageCatalog> {
-    return this.client.request<WorkbenchImageCatalog>(endpoints.workbenchImages(), {
+  /** User-visible compute locations; deployment systems own their capacity. */
+  async listComputeLocations(): Promise<ComputeLocationList> {
+    return this.client.request<ComputeLocationList>(endpoints.computeLocations(), {
       method: "GET",
     });
+  }
+
+  /** Fixed owner-approved profiles, optionally narrowed to one location. */
+  async listWorkbenchProfiles(locationId?: string): Promise<WorkbenchProfileList> {
+    const query = locationId ? `?location_id=${encodeURIComponent(locationId)}` : "";
+    return this.client.request<WorkbenchProfileList>(`${endpoints.workbenchProfiles()}${query}`, {
+      method: "GET",
+    });
+  }
+
+  /** One allocation's lifecycle record — how far obtaining its workbench got. */
+  async getAllocation(allocationId: string): Promise<AllocationRecord> {
+    return this.client.request<AllocationRecord>(
+      `${endpoints.allocations()}/${encodeURIComponent(allocationId)}`,
+      { method: "GET" },
+    );
   }
 
   /** Backend-owned starter templates for the REE-owned scripts. */

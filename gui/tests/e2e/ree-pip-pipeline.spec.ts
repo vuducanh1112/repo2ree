@@ -18,9 +18,10 @@ import {
 
 /**
  * The docker-less branch of the pipeline: the workbench base image *is* the
- * runtime environment. A plain python:slim bench (picked via the "Custom…"
- * image option) has no nested dockerd — the lab injects the executor and
- * base tools, warns about the missing docker substrate, and provisions anyway.
+ * runtime environment. The stack's provider offers a second fixed profile,
+ * "bare-python", whose image is a plain python:slim with no nested dockerd —
+ * the lab injects the executor and base tools and provisions against it. The
+ * image itself is provider-private; the browser only ever names the profile.
  * The build step is then just `pip install` into a venv, packed as the runtime
  * artifact, and every runnable restores that venv instead of `docker load`-ing
  * an image.
@@ -33,7 +34,7 @@ import {
  * path; this spec only walks the stages the pip flow actually changes.
  */
 
-const WORKBENCH_IMAGE = "docker.io/library/python:3.11-slim";
+const BARE_PYTHON_PROFILE = "bare-python";
 const PROJECT_DIR = "python_pip_hello_world";
 // Packed inside the project dir, not at the workspace root: the declared runtime
 // must live within the logical project root, or script inference refuses to
@@ -92,7 +93,7 @@ test.describe("REE pip pipeline", () => {
 
     await test.step("provision a python:slim workbench", async () => {
       await startReeCreation(page);
-      await provisionWorkbench(page, { imageRef: WORKBENCH_IMAGE });
+      await provisionWorkbench(page, { profileId: BARE_PYTHON_PROFILE });
     });
 
     await test.step("upload source tarball", async () => {

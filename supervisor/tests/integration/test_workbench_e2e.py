@@ -46,7 +46,7 @@ from uuid import uuid4
 import pytest
 from websockets.asyncio.server import ServerConnection, serve
 
-from repo2ree_docker.reference import decode_reference
+from repo2ree_protocol import FixedResources, ProviderHello, RequiredCapabilities, SubstrateKind, WorkbenchProfile
 from repo2ree_protocol.command import (
     AcquireSourceArgs,
     AcquireSourceCommand,
@@ -62,13 +62,13 @@ from repo2ree_provider_docker.connection import run_provider
 from repo2ree_provider_docker.lifecycle import DockerIsolation
 from repo2ree_provider_docker.provisioner import ProvisionerService
 from repo2ree_supervisor import (
+    AllocationStore,
     ProviderConnection,
     ProviderConnectionRegistry,
     WorkbenchConnection,
     WorkbenchConnectionRegistry,
     WorkbenchHandle,
     WorkbenchManager,
-    WorkbenchRegistry,
     WorkbenchUnavailableError,
     WsProviderClient,
     WsWorkbenchClient,
@@ -156,7 +156,7 @@ def service_connections() -> Iterator[tuple[ProviderConnectionRegistry, Workbenc
         workbench_id = hello.get("workbench_id", "default")
         connection: ProviderConnection | WorkbenchConnection
         if provider_id:
-            connection = ProviderConnection(send_text=send_text)
+            connection = ProviderConnection(send_text=send_text, hello=ProviderHello.model_validate(hello))
             provider_registry.register(provider_id, connection)
         else:
             connection = WorkbenchConnection(send_text=send_text)
@@ -182,9 +182,22 @@ def service_connections() -> Iterator[tuple[ProviderConnectionRegistry, Workbenc
             )
             await run_provider(
                 f"ws://127.0.0.1:{port}/provider/connect",
-                ProvisionerService({isolation.runtime_name: isolation}),
+                ProvisionerService(isolation, {("standard", "1"): WORKBENCH_IMAGE}),
                 "e2e-provider",
-                docker_mode="dind",
+                location_id="e2e-lab",
+                location_label="E2E lab",
+                profiles=(
+                    WorkbenchProfile(
+                        id="standard",
+                        revision="1",
+                        location_id="e2e-lab",
+                        label="Standard",
+                        required=RequiredCapabilities(
+                            substrate=SubstrateKind.DOCKER_NESTED,
+                            resources=FixedResources(),
+                        ),
+                    ),
+                ),
             )
 
     task_holder: list[asyncio.Task[None]] = []
@@ -221,7 +234,7 @@ def workbench(
     ``test-results/supervisor-e2e/<test>/workbench.log`` so a failed run can
     still be inspected after the container is gone.
     """
-    registry = WorkbenchRegistry(tmp_path / "registry.json")
+    registry = AllocationStore(tmp_path / "allocations.json")
     # With a span sink the manager asks the executor to relay its spans back
     # over stderr; without one it never sets TRACE_RELAY and the workbench's own
     # tracer stays a no-op — so the half of the flow that runs inside the
@@ -229,17 +242,16 @@ def workbench(
     provider_connections, workbench_connections = service_connections
     manager = WorkbenchManager(
         registry=registry,
-        workbench_image=WORKBENCH_IMAGE,
         provider=WsProviderClient(provider_connections),
         workbench=WsWorkbenchClient(workbench_connections),
         span_sink=build_span_sink(None, console_fallback=True),
     )
     ree_id = uuid4().hex[:12]
-    handle = manager.provision(ree_id, name="e2e-test")
+    handle = manager.provision(ree_id, name="e2e-test", location_id="e2e-lab", profile_id="standard")
     try:
         yield manager, handle
     finally:
-        _dump_workbench_logs(decode_reference(handle.ref).container_name, request.node.name)
+        _dump_workbench_logs(f"repo2ree-wb-{handle.allocation_id}", request.node.name)
         manager.teardown(handle)
 
 

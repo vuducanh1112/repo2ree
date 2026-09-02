@@ -1,11 +1,9 @@
 import type { Lab } from "@core/lab/Lab";
-import { connectedDurationMs, formatDuration } from "@core/lab/Lab";
 import { useLabs } from "@shell/data/labs/labs";
 import { Ic } from "../shared/components/Icon";
 import styles from "./LabsView.module.css";
 import { labLoadErrorMessage } from "./labPresentation";
 import { NoLabsState } from "./NoLabsState";
-import { useLabUptimeClock } from "./useLabUptimeClock";
 
 interface LabsViewProps {
   onBack: () => void;
@@ -13,8 +11,6 @@ interface LabsViewProps {
 
 export function LabsView({ onBack }: LabsViewProps) {
   const { data: labs, isLoading, isError, error, refetch, isFetching } = useLabs();
-
-  const nowMs = useLabUptimeClock(Boolean(labs?.length));
 
   return (
     <div className={styles.screen}>
@@ -30,7 +26,7 @@ export function LabsView({ onBack }: LabsViewProps) {
           ) : !labs || labs.length === 0 ? (
             <NoLabsState description="Start one pointing at this control plane:" />
           ) : (
-            labs.map((lab) => <LabRow key={lab.id} lab={lab} nowMs={nowMs} />)
+            labs.map((lab) => <LabRow key={lab.id} lab={lab} />)
           )}
         </div>
       </div>
@@ -74,35 +70,34 @@ function Header({
 function HeaderRow() {
   return (
     <div className={styles.row} data-kind="head">
-      <div className={styles.headCell}>Host</div>
-      <div className={styles.headCell}>Lab ID</div>
-      <div className={styles.headCell}>Runtime</div>
-      <div className={styles.headCell}>Version</div>
-      <div className={styles.headCell}>Connected</div>
+      <div className={styles.headCell}>Location</div>
+      <div className={styles.headCell}>Location ID</div>
+      <div className={styles.headCell}>Lifecycle</div>
+      <div className={styles.headCell}>Profiles</div>
+      <div className={styles.headCell}>Availability</div>
     </div>
   );
 }
 
-function LabRow({ lab, nowMs }: { lab: Lab; nowMs: number }) {
-  const uptime = formatDuration(connectedDurationMs(lab, nowMs));
+function LabRow({ lab }: { lab: Lab }) {
   return (
     <div className={styles.row}>
       <div className={styles.host}>
         <span className={styles.hostIcon} title="Connected">
           {Ic.cpu(15)}
         </span>
-        <span className={styles.hostName}>{lab.hostname || "—"}</span>
+        <span className={styles.hostName}>{lab.label}</span>
       </div>
       <div className={styles.cell} data-flavor="code">
         {lab.id}
       </div>
-      <div className={styles.cell}>{lab.dockerMode || "—"}</div>
-      <div className={styles.cell} data-flavor="code">
-        {lab.version || "—"}
+      <div className={styles.cell}>
+        {lab.lifecycleMode === "provider_managed" ? "on demand" : "pre-provisioned"}
       </div>
+      <div className={styles.cell}>{lab.profiles.length}</div>
       <div className={styles.uptime}>
         <span aria-hidden className={styles.uptimeDot} />
-        <span className={styles.cell}>{uptime}</span>
+        <span className={styles.cell}>{lab.available ? "available" : "busy"}</span>
       </div>
     </div>
   );

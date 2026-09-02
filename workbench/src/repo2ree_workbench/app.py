@@ -25,8 +25,8 @@ def main(argv: Sequence[str] = ()) -> None:
         "repo2ree-workbench", endpoint=config.otlp_endpoint, console_fallback=True, instance_id=config.workbench_id
     )
     meter_provider = setup_metrics("repo2ree-workbench", endpoint=config.otlp_endpoint, instance_id=config.workbench_id)
-    service = WorkbenchService(LocalExecutor(config.root, config.exec_path), bound=config.mode == "managed")
-    capabilities = observe_capabilities(config.root, config.exec_path, config.substrate)
+    service = WorkbenchService(LocalExecutor(config.root, config.exec_path))
+    capabilities = observe_capabilities(config.root, config.exec_path)
     try:
         asyncio.run(
             run_workbench(
@@ -36,7 +36,9 @@ def main(argv: Sequence[str] = ()) -> None:
                 mode=config.mode,
                 allocation_id=config.allocation_id,
                 enrollment_token=config.enrollment_token,
-                substrate=config.substrate,
+                location_id=config.location_id,
+                profile_id=config.profile_id,
+                profile_revision=config.profile_revision,
                 capabilities=capabilities,
             )
         )

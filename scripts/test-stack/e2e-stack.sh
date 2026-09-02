@@ -50,10 +50,14 @@
 # each writing its own suffixed data file, combined at the end.
 #
 # Environment knobs (all optional):
-#   E2E_WORKBENCH_IMAGE        bench the backend's catalog offers; empty means
-#                              the backend's own catalog default — the pinned
-#                              docker:dind digest in api settings — which
-#                              every browser tier runs on
+#   E2E_WORKBENCH_IMAGE        image behind the provider's "standard" profile;
+#                              empty means the provider's own default — the
+#                              pinned docker:dind digest — which every browser
+#                              tier runs on. Images are provider-private: the
+#                              API and the browser only ever name a profile.
+#   E2E_PIP_WORKBENCH_IMAGE    image behind the extra docker-less "bare-python"
+#                              profile the pip tier selects (default:
+#                              docker.io/library/python:3.11-slim)
 #   E2E_WORKBENCH_DOCKER_MODE  dind (default) or host-socket
 #   E2E_WORKBENCH_STATE_DIR        workbench identity dir (default: test-artifacts/state/workbenches);
 #                              with --workbenches N, workbench i > 1 uses <dir>-<i> so
@@ -163,9 +167,36 @@ mkdir -p "$log_dir" "$state_dir" "$provider_state_dir" "$coverage_data_dir" "$co
 rm -f "$coverage_file" "$coverage_file".*
 for i in $(seq 1 "$capacity"); do rm -f "$(workbench_log "$i")"; done
 
-if [ -n "${E2E_WORKBENCH_IMAGE:-}" ]; then
-    export WORKBENCH_IMAGE_CATALOG='[{"id":"pinned","ref":"'"$E2E_WORKBENCH_IMAGE"'","label":"Pinned bench","description":"Bench image pinned for this e2e run."}]'
-fi
+# The profile catalog is the provider's private business: it maps a
+# (profile_id, revision) the control plane may select onto the image and
+# substrate that satisfy it. Nothing above the provider ever sees these refs.
+standard_image=${E2E_WORKBENCH_IMAGE:-docker.io/library/docker:29-dind}
+pip_image=${E2E_PIP_WORKBENCH_IMAGE:-docker.io/library/python:3.11-slim}
+standard_substrate=docker-nested
+[ "$docker_mode" = host-socket ] && standard_substrate=docker-host-socket
+export PROVIDER_PROFILE_CATALOG
+PROVIDER_PROFILE_CATALOG=$(python3 -c '
+import json, sys
+standard_image, pip_image, standard_substrate = sys.argv[1:4]
+print(json.dumps([
+    {
+        "id": "standard",
+        "revision": "1",
+        "image": standard_image,
+        "label": "Standard bench",
+        "description": "Docker workbench pinned for this e2e run.",
+        "substrate": standard_substrate,
+    },
+    {
+        "id": "bare-python",
+        "revision": "1",
+        "image": pip_image,
+        "label": "Bare Python bench",
+        "description": "Docker-less workbench: the base image is the runtime.",
+        "substrate": "bare",
+    },
+]))
+' "$standard_image" "$pip_image" "$standard_substrate")
 
 api_pid=
 capacity_pids=()
@@ -285,10 +316,17 @@ if [ -f /.dockerenv ] && [ -n "${HOSTNAME:-}" ] \
     fi
 fi
 
+# start_external_workbench <state-dir> <log-file> <index>: an externally managed
+# bench declares the location and profile it *is*, the way a real installed
+# workbench would; without them it would publish itself under its own generated
+# id and the picker would show a hex blob.
 start_external_workbench() {
     WORKBENCH_API_WS_URL="${api_base_url/http:/ws:}/workbench/connect" \
     WORKBENCH_MODE=external \
     WORKBENCH_AUTH_TOKEN=$run_token \
+    WORKBENCH_LOCATION_ID="lab-$3" \
+    WORKBENCH_PROFILE_ID=external \
+    WORKBENCH_PROFILE_REVISION=1 \
     WORKBENCH_ROOT=$1/root \
     WORKBENCH_STATE_DIR=$1 \
     REPO2REE_EXEC_PATH=${E2E_EXEC_PATH:-repo2ree-exec} \
@@ -298,11 +336,17 @@ start_external_workbench() {
     capacity_pids+=($!)
 }
 
+# start_provider <state-dir> <log-file> <index>: the index names the location.
+# Without it a location is named after the provider's generated id, which reads
+# as a hex blob in the picker and on the recorded demo videos. Each provider is
+# still its own location, so the multi-lab specs keep distinct bays to pick.
 start_provider() {
     PROVIDER_API_WS_URL="${api_base_url/http:/ws:}/provider/connect" \
     PROVIDER_WORKBENCH_API_WS_URL="ws://${provider_workbench_host}:${api_base_url##*:}/workbench/connect" \
     PROVIDER_WORKBENCH_DOCKER_NETWORK=$provider_workbench_network \
     PROVIDER_DOCKER_MODE=$docker_mode \
+    PROVIDER_LOCATION_ID="lab-$3" \
+    PROVIDER_LOCATION_LABEL="Lab $3" \
     PROVIDER_STATE_DIR=$1 \
     REPO2REE_EXEC_BUNDLE=$exec_bundle \
     REPO2REE_TOOLS_BUNDLE=$tools_bundle \
@@ -324,12 +368,12 @@ for i in $(seq 1 "$capacity"); do
         dir=$provider_state_dir
         [ "$i" -gt 1 ] && dir="${provider_state_dir}-$i"
         echo ">> starting Docker provider $i/$capacity (log: $(workbench_log "$i"))"
-        start_provider "$dir" "$(workbench_log "$i")"
+        start_provider "$dir" "$(workbench_log "$i")" "$i"
     else
         dir=$state_dir
         [ "$i" -gt 1 ] && dir="${state_dir}-$i"
         echo ">> starting external workbench $i/$capacity (log: $(workbench_log "$i"))"
-        start_external_workbench "$dir" "$(workbench_log "$i")"
+        start_external_workbench "$dir" "$(workbench_log "$i")" "$i"
     fi
 done
 if [ "$mode" = provider ]; then

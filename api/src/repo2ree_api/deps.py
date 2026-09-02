@@ -13,9 +13,10 @@ anything running.
 from __future__ import annotations
 
 from repo2ree_api.ree_index import ReeIndex
-from repo2ree_api.settings import default_workbench_image, service_settings
+from repo2ree_api.settings import service_settings
 from repo2ree_protocol.tracing import build_span_sink
 from repo2ree_supervisor import (
+    AllocationStore,
     ProviderConnectionRegistry,
     WorkbenchConnectionRegistry,
     WorkbenchManager,
@@ -23,13 +24,20 @@ from repo2ree_supervisor import (
     WsWorkbenchClient,
 )
 from repo2ree_supervisor.enrollment import EnrollmentRegistry
-from repo2ree_supervisor.registry import WorkbenchRegistry
 
-_registry = WorkbenchRegistry(service_settings.WORKBENCH_REGISTRY_FILE)
+allocation_store = AllocationStore(service_settings.ALLOCATION_STORE_FILE)
+
 
 # The registry of workbenches that have dialed in. The WebSocket route (/workbench/connect)
 # populates it; WsWorkbenchClient reads from it to drive whichever workbench is connected.
-workbench_connections = WorkbenchConnectionRegistry()
+def _workbench_allocated(workbench_id: str) -> bool:
+    return any(
+        record.workbench_id == workbench_id and record.state.value not in {"released", "failed", "incompatible", "lost"}
+        for record in allocation_store.list()
+    )
+
+
+workbench_connections = WorkbenchConnectionRegistry(is_allocated=_workbench_allocated)
 provider_connections = ProviderConnectionRegistry()
 workbench_enrollments = EnrollmentRegistry()
 
@@ -40,9 +48,7 @@ _workbench_client = WsWorkbenchClient(workbench_connections)
 _provider_client = WsProviderClient(provider_connections)
 
 workbench_manager = WorkbenchManager(
-    registry=_registry,
-    # The catalog default; per-REE overrides come in on the provision request.
-    workbench_image=default_workbench_image().ref,
+    registry=allocation_store,
     provider=_provider_client,
     workbench=_workbench_client,
     enrollment=workbench_enrollments,

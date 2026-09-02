@@ -10,9 +10,7 @@ const useLabsMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@shell/data/labs/labs", () => ({ useLabs: useLabsMock }));
 vi.mock("./WorkbenchSetupDrawer", () => ({
-  WorkbenchSetupDrawer: ({ lab }: { lab: { hostname: string } }) => (
-    <div>Setup for {lab.hostname}</div>
-  ),
+  WorkbenchSetupDrawer: ({ lab }: { lab: { label: string } }) => <div>Setup for {lab.label}</div>,
 }));
 
 function queryState(overrides: Record<string, unknown> = {}) {
@@ -95,11 +93,19 @@ describe("lab query states", () => {
 function lab(overrides: Partial<Lab> = {}): Lab {
   return {
     id: "lab-oslo",
-    kind: "provider",
-    hostname: "lab-oslo-01",
-    version: "0.8.0",
-    dockerMode: "dind",
-    connectedAt: "2026-07-01T00:00:00Z",
+    label: "lab-oslo-01",
+    description: "",
+    lifecycleMode: "provider_managed",
+    profiles: [
+      {
+        id: "standard",
+        revision: "1",
+        label: "Standard",
+        description: "",
+        substrate: "docker-nested",
+        storagePolicy: "ephemeral",
+      },
+    ],
     status: "connected",
     available: true,
     ...overrides,
@@ -109,7 +115,7 @@ function lab(overrides: Partial<Lab> = {}): Lab {
 function fleet(count: number): Lab[] {
   return Array.from({ length: count }, (_, index) => {
     const n = String(index + 1).padStart(2, "0");
-    return lab({ id: `lab-${n}`, hostname: `lab-${n}` });
+    return lab({ id: `lab-${n}`, label: `lab-${n}` });
   });
 }
 
@@ -130,8 +136,8 @@ describe("choosing a lab", () => {
 
     // The bay shows "connected" as an unlabelled lamp; the accessible name is
     // what carries it, and what the e2e selectors match on.
-    expect(screen.getAllByRole("button", { name: /connected/ })).toHaveLength(3);
-    expect(screen.getByRole("button", { name: "lab-02 — connected" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /available/ })).toHaveLength(3);
+    expect(screen.getByRole("button", { name: "lab-02 — available" })).toBeInTheDocument();
   });
 
   it("opens workbench setup for the lab that was chosen", async () => {
@@ -140,11 +146,11 @@ describe("choosing a lab", () => {
 
     expect(screen.queryByRole("region", { name: "Set up the workbench" })).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "lab-02 — connected" }));
+    await userEvent.click(screen.getByRole("button", { name: "lab-02 — available" }));
 
     const setup = screen.getByRole("region", { name: "Set up the workbench" });
     expect(setup).toHaveTextContent("Setup for lab-02");
-    expect(screen.getByRole("button", { name: "lab-02 — connected" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "lab-02 — available" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
@@ -154,13 +160,13 @@ describe("choosing a lab", () => {
     useLabsMock.mockReturnValue(queryState({ data: fleet(3) }));
     renderPicker();
 
-    await userEvent.click(screen.getByRole("button", { name: "lab-02 — connected" }));
+    await userEvent.click(screen.getByRole("button", { name: "lab-02 — available" }));
     await userEvent.click(screen.getByRole("button", { name: "Close" }));
 
     expect(screen.queryByRole("region", { name: "Set up the workbench" })).not.toBeInTheDocument();
     // The lab stays chosen and confirmed in the rail — closing setup is not
     // the same as unpicking the lab.
-    expect(screen.getByRole("button", { name: "lab-02 — connected" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "lab-02 — available" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
@@ -168,12 +174,30 @@ describe("choosing a lab", () => {
   });
 
   it("confirms the choice in the detail panel rather than in the grid", async () => {
-    useLabsMock.mockReturnValue(queryState({ data: [lab({ dockerMode: "host" }), ...fleet(2)] }));
+    useLabsMock.mockReturnValue(
+      queryState({
+        data: [
+          lab({
+            profiles: [
+              {
+                id: "shared",
+                revision: "1",
+                label: "Shared",
+                description: "",
+                substrate: "docker-host-socket",
+                storagePolicy: "ephemeral",
+              },
+            ],
+          }),
+          ...fleet(2),
+        ],
+      }),
+    );
     renderPicker();
 
     expect(screen.getByText("No lab chosen")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "lab-oslo-01 — connected" }));
+    await userEvent.click(screen.getByRole("button", { name: "lab-oslo-01 — available" }));
 
     expect(screen.getByText("Specimen pod · assigned")).toBeInTheDocument();
     // The wire's docker_mode is rendered as what it costs the author.
@@ -184,7 +208,7 @@ describe("choosing a lab", () => {
     useLabsMock.mockReturnValue(queryState({ data: [lab()] }));
     renderPicker();
 
-    expect(screen.getByRole("button", { name: "lab-oslo-01 — connected" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "lab-oslo-01 — available" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
@@ -210,7 +234,7 @@ describe("choosing a lab", () => {
     await userEvent.type(screen.getByRole("searchbox", { name: "Filter labs" }), "lab-07");
 
     expect(screen.getByText("1 of 12 labs")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /connected/ })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: /available/ })).toHaveLength(1);
   });
 
   it("reports a filter that matches nothing instead of showing an empty grid", async () => {
@@ -220,7 +244,7 @@ describe("choosing a lab", () => {
     await userEvent.type(screen.getByRole("searchbox", { name: "Filter labs" }), "nothing");
 
     expect(screen.getByText(/No lab matches/)).toBeInTheDocument();
-    expect(screen.queryAllByRole("button", { name: /connected/ })).toHaveLength(0);
+    expect(screen.queryAllByRole("button", { name: /available/ })).toHaveLength(0);
   });
 
   it("pages a fleet too large for one grid", async () => {
@@ -228,13 +252,13 @@ describe("choosing a lab", () => {
     renderPicker();
 
     expect(screen.getByText("page 1 / 2")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /connected/ })).toHaveLength(8);
+    expect(screen.getAllByRole("button", { name: /available/ })).toHaveLength(8);
     expect(screen.getByRole("button", { name: "Previous page" })).toBeDisabled();
 
     await userEvent.click(screen.getByRole("button", { name: "Next page" }));
 
     expect(screen.getByText("page 2 / 2")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /connected/ })).toHaveLength(4);
+    expect(screen.getAllByRole("button", { name: /available/ })).toHaveLength(4);
     expect(screen.getByRole("button", { name: "Next page" })).toBeDisabled();
   });
 

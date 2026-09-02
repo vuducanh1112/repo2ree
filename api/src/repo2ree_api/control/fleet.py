@@ -12,11 +12,8 @@ exactly as long as it holds its socket; the registry drops it on disconnect, so
 presence in the list *is* liveness. This is the control-plane surface behind
 the GUI's workbench-management pane.
 
-``/api/v1/workbench/images`` publishes the base images provisioning may pick
-from. Which images those are is configured on ``Settings.WORKBENCH_IMAGE_CATALOG``
-(see settings.py), so a deployment can serve a different set — e.g. a
-locally-built image — via env without touching code. To drive a one-off image,
-pass it as ``workbench_image`` on the provision request instead.
+Compute locations and fixed profiles are exposed separately by
+``control.compute``. Provider-private images never cross this API boundary.
 """
 
 from __future__ import annotations
@@ -32,7 +29,7 @@ from pydantic import BaseModel
 
 from repo2ree_api.contracts import ERROR_RESPONSES
 from repo2ree_api.deps import provider_connections, workbench_connections, workbench_enrollments
-from repo2ree_api.settings import WORKBENCH_IMAGE_CATALOG, WorkbenchImage, default_workbench_image, service_settings
+from repo2ree_api.settings import service_settings
 from repo2ree_core.time_utils import iso_utc
 from repo2ree_protocol.provider import provider_hello_adapter
 from repo2ree_protocol.workbench import WorkbenchHello, workbench_hello_adapter
@@ -176,7 +173,7 @@ class ProviderSummary(BaseModel):
     provider_id: str
     hostname: str
     version: str
-    docker_mode: str
+    location_id: str
     connected_at: str
     status: str = "connected"
 
@@ -222,36 +219,9 @@ def list_providers() -> ProviderList:
                 provider_id=info.provider_id,
                 hostname=info.hostname,
                 version=info.version,
-                docker_mode=info.docker_mode,
+                location_id=info.location_id,
                 connected_at=iso_utc(datetime.fromtimestamp(info.connected_at, tz=UTC)),
             )
             for info in provider_connections.list_providers()
         ]
-    )
-
-
-# ================================================
-# Workbench image catalog
-# ================================================
-
-
-workbench_images_router = APIRouter(tags=["fleet"])
-
-
-class WorkbenchImageCatalog(BaseModel):
-    images: list[WorkbenchImage]
-    default_id: str
-
-
-@workbench_images_router.get(
-    "/api/v1/workbench/images",
-    operation_id="listWorkbenchImages",
-    response_model=WorkbenchImageCatalog,
-    responses=ERROR_RESPONSES,
-)
-def list_workbench_images() -> WorkbenchImageCatalog:
-    """The base images the GUI offers at provision time."""
-    return WorkbenchImageCatalog(
-        images=list(WORKBENCH_IMAGE_CATALOG),
-        default_id=default_workbench_image().id,
     )

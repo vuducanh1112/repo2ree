@@ -21,23 +21,30 @@ const wireRun = (runId: string) => ({
 
 const lab: Lab = {
   id: "lab-1",
-  kind: "provider",
-  hostname: "lab-host",
-  version: "1",
-  dockerMode: "dind",
-  connectedAt: "2026-01-01T00:00:00Z",
+  label: "lab-host",
+  description: "",
+  lifecycleMode: "provider_managed",
+  profiles: [
+    {
+      id: "standard",
+      revision: "1",
+      label: "Standard",
+      description: "",
+      substrate: "docker-nested",
+      storagePolicy: "ephemeral",
+    },
+    {
+      id: "shared",
+      revision: "2",
+      label: "Shared Docker",
+      description: "",
+      substrate: "docker-host-socket",
+      storagePolicy: "ephemeral",
+    },
+  ],
   status: "connected",
   available: true,
 };
-
-function catalogs() {
-  return {
-    listWorkbenchImages: vi.fn().mockResolvedValue({
-      images: [{ id: "python", ref: "bench:python", label: "Python", description: "Python tools" }],
-      default_id: "python",
-    }),
-  };
-}
 
 describe("WorkbenchSetupDrawer", () => {
   it("provisions a workbench on the chosen lab and shows its streamed log", async () => {
@@ -62,7 +69,7 @@ describe("WorkbenchSetupDrawer", () => {
       route: "/lab-location",
       reeId: "active",
       services: fakeApiServices({
-        ree: { ...catalogs(), createRee },
+        ree: { createRee },
         runs: { getRun, listRunLogs },
       }),
     });
@@ -76,15 +83,15 @@ describe("WorkbenchSetupDrawer", () => {
     await waitFor(() =>
       expect(createRee).toHaveBeenCalledWith({
         name: "REE",
-        workbench_image: undefined,
-        provider_id: "lab-1",
+        location_id: "lab-1",
+        profile_id: "standard",
       }),
     );
     expect(await screen.findByText("image ready")).toBeInTheDocument();
     expect(await screen.findByText("Lab online — seating the specimen")).toBeInTheDocument();
   });
 
-  it("sends the chosen base image rather than the catalog default", async () => {
+  it("sends the chosen fixed profile", async () => {
     const user = userEvent.setup();
     const createRee = vi.fn().mockResolvedValue(wireRun("provision-1"));
     const getRun = vi.fn().mockResolvedValue(wireRun("provision-1"));
@@ -96,17 +103,17 @@ describe("WorkbenchSetupDrawer", () => {
       route: "/lab-location",
       reeId: "active",
       services: fakeApiServices({
-        ree: { ...catalogs(), createRee },
+        ree: { createRee },
         runs: { getRun, listRunLogs },
       }),
     });
 
-    await user.click(await screen.findByRole("button", { name: /Python/ }));
+    await user.selectOptions(screen.getByRole("combobox", { name: "Workbench profile" }), "shared");
     await user.click(screen.getByRole("button", { name: "Provision workbench" }));
 
     await waitFor(() =>
       expect(createRee).toHaveBeenCalledWith(
-        expect.objectContaining({ workbench_image: "bench:python" }),
+        expect.objectContaining({ location_id: "lab-1", profile_id: "shared" }),
       ),
     );
   });
@@ -130,7 +137,7 @@ describe("WorkbenchSetupDrawer", () => {
       route: "/lab-location",
       reeId: "active",
       services: fakeApiServices({
-        ree: { ...catalogs(), createRee, initBundleUpload, uploadStagedBytes, loadReeBundle },
+        ree: { createRee, initBundleUpload, uploadStagedBytes, loadReeBundle },
         runs: { getRun, listRunLogs },
       }),
     });
@@ -168,7 +175,7 @@ describe("WorkbenchSetupDrawer", () => {
       route: "/lab-location",
       reeId: "active",
       services: fakeApiServices({
-        ree: { ...catalogs(), createRee },
+        ree: { createRee },
         runs: { getRun, listRunLogs },
       }),
     });

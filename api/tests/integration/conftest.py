@@ -53,7 +53,7 @@ os.environ.setdefault("REPO2REE_TOOLS_BUNDLE", str(TOOLS_BUNDLE))
 # this must run before any repo2ree_api import below.
 _state_dir = Path(tempfile.mkdtemp(prefix="repo2ree-api-itest-"))
 os.environ["UPLOAD_STAGING_DIR"] = str(_state_dir / "upload-staging")
-os.environ["WORKBENCH_REGISTRY_FILE"] = str(_state_dir / "workbench-registry.json")
+os.environ["ALLOCATION_STORE_FILE"] = str(_state_dir / "allocations.json")
 os.environ["REE_INDEX_FILE"] = str(_state_dir / "ree-index.json")
 os.environ["RUN_REGISTRY_DIR"] = str(_state_dir / "runs")
 # OpenTelemetry's set_tracer_provider is honored once per process, so two API
@@ -86,6 +86,13 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from repo2ree_api.deps import provider_connections, workbench_connections  # noqa: E402
 from repo2ree_api.main import app  # noqa: E402
+from repo2ree_protocol import (  # noqa: E402
+    FixedResources,
+    ProviderHello,
+    RequiredCapabilities,
+    SubstrateKind,
+    WorkbenchProfile,
+)
 from repo2ree_protocol.workbench import workbench_hello_adapter  # noqa: E402
 from repo2ree_provider_docker.connection import run_provider  # noqa: E402
 from repo2ree_provider_docker.lifecycle import DockerIsolation  # noqa: E402
@@ -193,7 +200,7 @@ def _connected_workbench() -> Iterator[None]:
         provider_id = hello_data.get("provider_id")
         connection: ProviderConnection | WorkbenchConnection
         if provider_id:
-            connection = ProviderConnection(send_text=send_text)
+            connection = ProviderConnection(send_text=send_text, hello=ProviderHello.model_validate(hello_data))
             provider_connections.register(provider_id, connection)
         else:
             hello = workbench_hello_adapter.validate_json(text)
@@ -220,9 +227,22 @@ def _connected_workbench() -> Iterator[None]:
             )
             await run_provider(
                 f"ws://127.0.0.1:{port}/provider/connect",
-                ProvisionerService({isolation.runtime_name: isolation}),
+                ProvisionerService(isolation, {("standard", "1"): WORKBENCH_IMAGE}),
                 "api-itest-provider",
-                docker_mode="dind",
+                location_id="api-itest-lab",
+                location_label="API integration lab",
+                profiles=(
+                    WorkbenchProfile(
+                        id="standard",
+                        revision="1",
+                        location_id="api-itest-lab",
+                        label="Standard",
+                        required=RequiredCapabilities(
+                            substrate=SubstrateKind.DOCKER_NESTED,
+                            resources=FixedResources(),
+                        ),
+                    ),
+                ),
             )
 
     def run_loop() -> None:

@@ -9,19 +9,24 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import tempfile
 import threading
+from pathlib import Path
 from typing import Any, ClassVar
 
 import pytest
 
 import repo2ree_workbench.connection as connection
+from repo2ree_protocol.allocation import AllocationRequest
 from repo2ree_protocol.frames import COPY_CHUNK_BYTES, ResultFrame
 from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.workbench import (
+    AssignAllocationRequest,
     CancelRequest,
     CancelRunRequest,
     ExecActionRequest,
     ExecQueryRequest,
+    ExecSimpleRequest,
     WorkbenchWsRequest,
     workbench_hello_adapter,
     workbench_ws_message_adapter,
@@ -53,16 +58,42 @@ class FakeExec:
     query_result: bytes = b""
     canceled_runs: ClassVar[list[str]] = []
 
+    def __init__(self) -> None:
+        # Assignment refuses a workbench whose root already holds an REE, so
+        # every fake backend gets its own empty root.
+        self._root = tempfile.TemporaryDirectory()
+        self.root = Path(self._root.name)
+
     def exec_query_stream(self, argv: list[str], timeout: int = 30):
         for offset in range(0, len(self.query_result), COPY_CHUNK_BYTES):
             yield self.query_result[offset : offset + COPY_CHUNK_BYTES]
+
+    def exec_simple(self, argv: list[str], timeout: int = 60) -> None:
+        return None
 
     def cancel_run(self, run_id: str) -> None:
         self.canceled_runs.append(run_id)
 
 
+def _allocation() -> AllocationRequest:
+    return AllocationRequest(
+        allocation_id="alloc-1",
+        ree_id="ree-1",
+        location_id="lab-1",
+        profile_id="standard",
+        profile_revision="1",
+    )
+
+
 def _service(exec_backend: object | None = None) -> WorkbenchService:
-    return WorkbenchService(exec_backend or FakeExec())  # type: ignore[arg-type]
+    """A workbench already bound to its allocation, as the control plane leaves it."""
+    service = WorkbenchService(exec_backend or FakeExec())  # type: ignore[arg-type]
+    service.assign(_allocation())
+    return service
+
+
+def _unassigned_service() -> WorkbenchService:
+    return WorkbenchService(FakeExec())  # type: ignore[arg-type]
 
 
 async def _serve_and_settle(ws: FakeSocket) -> None:
@@ -250,7 +281,9 @@ def test_connection_hello_and_connected_gauge_are_balanced(monkeypatch: pytest.M
                 "workbench-1",
                 allocation_id="alloc-1",
                 enrollment_token=opaque_enrollment,
-                substrate="docker-nested",
+                location_id="lab-1",
+                profile_id="standard",
+                profile_revision="1",
             )
         )
 
@@ -258,6 +291,42 @@ def test_connection_hello_and_connected_gauge_are_balanced(monkeypatch: pytest.M
     assert hello.workbench_id == "workbench-1"
     assert hello.allocation_id == "alloc-1"
     assert hello.enrollment_token == opaque_enrollment
-    assert hello.substrate == "docker-nested"
+    assert (hello.location_id, hello.profile_id, hello.profile_revision) == ("lab-1", "standard", "1")
     assert hello.nonce
     assert connected_values == [1, -1]
+
+
+def test_execution_before_assignment_answers_an_error_frame() -> None:
+    # The bind is the workbench's own gate: an unassigned bench answers the
+    # control plane rather than running anything against an unclaimed root.
+    ws = FakeSocket([WorkbenchWsRequest(id="r1", request=ExecSimpleRequest(argv=["doctor"])).model_dump_json()])
+    asyncio.run(asyncio.wait_for(_serve(ws, _unassigned_service()), timeout=2.0))  # type: ignore[arg-type]
+
+    message = _frames(ws)[-1]
+    assert message.frame.type == "error"
+    assert "assigned" in message.frame.detail
+
+
+def test_assignment_binds_the_workbench_and_is_idempotent() -> None:
+    # ``ensure`` may be retried, so the same allocation may be assigned twice;
+    # only a *different* allocation is a mismatched bind worth refusing.
+    ws = FakeSocket(
+        [
+            WorkbenchWsRequest(id="a1", request=AssignAllocationRequest(allocation=_allocation())).model_dump_json(),
+            WorkbenchWsRequest(id="a2", request=AssignAllocationRequest(allocation=_allocation())).model_dump_json(),
+            WorkbenchWsRequest(id="r1", request=ExecSimpleRequest(argv=["doctor"])).model_dump_json(),
+        ]
+    )
+    asyncio.run(asyncio.wait_for(_serve(ws, _unassigned_service()), timeout=2.0))  # type: ignore[arg-type]
+
+    assert [(m.id, m.frame.type) for m in _frames(ws)] == [("a1", "done"), ("a2", "done"), ("r1", "done")]
+
+
+def test_a_second_allocation_cannot_rebind_a_bound_workbench() -> None:
+    other = _allocation().model_copy(update={"allocation_id": "alloc-2", "ree_id": "ree-2"})
+    ws = FakeSocket([WorkbenchWsRequest(id="a1", request=AssignAllocationRequest(allocation=other)).model_dump_json()])
+    asyncio.run(asyncio.wait_for(_serve(ws, _service()), timeout=2.0))  # type: ignore[arg-type]
+
+    message = _frames(ws)[-1]
+    assert message.frame.type == "error"
+    assert "already assigned" in message.frame.detail

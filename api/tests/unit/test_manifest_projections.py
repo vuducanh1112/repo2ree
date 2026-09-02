@@ -29,8 +29,6 @@ from repo2ree_core.domain.ree.model import (
     canonical_subject_digest,
 )
 from repo2ree_core.time_utils import utc_now_instant
-from repo2ree_protocol.frames import WorkbenchRef
-from repo2ree_protocol.provider import DockerWorkbenchSpec
 from repo2ree_supervisor import WorkbenchHandle
 
 
@@ -75,15 +73,18 @@ def _staged(monkeypatch: pytest.MonkeyPatch, entries: list[tuple[str, dict[str, 
         (
             WorkbenchHandle(
                 ree_id=rid,
-                ref=WorkbenchRef(runtime="docker", token=rid),
-                spec=DockerWorkbenchSpec(base_image="bench:test"),
+                allocation_id=f"alloc-{rid}",
+                workbench_id=f"wb-{rid}",
+                provider_id="provider-test",
+                location_id="lab-test",
+                profile_id="standard",
+                profile_revision="1",
             ),
             manifest,
         )
         for rid, manifest in entries
     ]
     monkeypatch.setattr(workbench_manager, "list_all_manifests", lambda: manifests)
-    monkeypatch.setattr(workbench_manager, "image_for", lambda handle: "bench:test")
 
 
 def test_listing_projects_name_and_status_from_the_parsed_document(

@@ -1,6 +1,6 @@
 import path from "node:path";
 import { expect, test } from "@playwright/test";
-import { openPort, openWorkbenchConsole } from "../../e2e/helpers/flow";
+import { AVAILABLE_LAB, openPort, openWorkbenchConsole } from "../../e2e/helpers/flow";
 import { createDemoKit } from "../helpers/demo";
 
 const { demoStep, clickDemo, showcasePanel } = createDemoKit({
@@ -35,7 +35,7 @@ test("upload Code Ocean capsule 7784598", async ({ page }) => {
     await expect(page.getByRole("heading", { name: "Where should this REE run?" })).toBeVisible();
     await clickDemo(
       page,
-      page.getByRole("button", { name: /connected/ }).first(),
+      page.getByRole("button", { name: AVAILABLE_LAB }).first(),
       "Pick the lab — the machine that will host this REE's workbench, for its whole life",
     );
     const setup = page.getByRole("region", { name: "Set up the workbench" });
@@ -43,7 +43,7 @@ test("upload Code Ocean capsule 7784598", async ({ page }) => {
     await showcasePanel(
       page,
       setup,
-      "Choosing a lab opens its bench setup in place — the base image the REE runs on, and whether the bench starts blank or from a downloaded bundle",
+      "Choosing a lab opens its bench setup in place — which of the lab's fixed workbench profiles to run on, and whether the bench starts blank or from a downloaded bundle",
     );
     await clickDemo(
       page,

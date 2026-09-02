@@ -11,58 +11,39 @@ import { useReeIndex } from "./ree-index/reeIndex";
 import { useReviewsQuery } from "./reviews/queries";
 import { useGenerateBuildScript } from "./scriptInference/mutations";
 import { useScriptTemplates } from "./scriptTemplates/catalog";
-import { defaultImageRef, useWorkbenchImageCatalog } from "./workbench/images";
 
 describe("shell data hooks", () => {
   it("maps and caches global catalogs", async () => {
-    const listProviders = vi.fn().mockResolvedValue({
-      providers: [
+    const listComputeLocations = vi.fn().mockResolvedValue({
+      locations: [
         {
-          provider_id: "b",
-          hostname: "z-host",
-          version: "1",
-          docker_mode: "host",
-          connected_at: "2026-01-02T00:00:00Z",
-        },
-        {
-          provider_id: "a",
-          hostname: "a-host",
-          version: "1",
-          docker_mode: "dind",
-          connected_at: "2026-01-01T00:00:00Z",
-        },
-      ],
-    });
-    // The fleet view unions two endpoints. Only external workbenches are labs of
-    // their own; a provider-managed one is an allocation *inside* a provider lab
-    // and must not surface twice.
-    const listWorkbenches = vi.fn().mockResolvedValue({
-      workbenches: [
-        {
-          workbench_id: "wb-external",
-          mode: "external",
+          id: "b",
+          label: "z-host",
+          description: "",
+          lifecycle_mode: "provider_managed",
           available: true,
-          hostname: "m-host",
-          version: "1",
-          docker_mode: "dind",
-          connected_at: "2026-01-03T00:00:00Z",
-          status: "connected",
         },
         {
-          workbench_id: "wb-managed",
-          mode: "managed",
+          id: "a",
+          label: "a-host",
+          description: "",
+          lifecycle_mode: "externally_managed",
           available: false,
-          hostname: "b-host",
-          version: "1",
-          docker_mode: "dind",
-          connected_at: "2026-01-04T00:00:00Z",
-          status: "connected",
         },
       ],
     });
-    const listWorkbenchImages = vi.fn().mockResolvedValue({
-      images: [{ id: "python", ref: "bench:python", label: "Python", description: "Python tools" }],
-      default_id: "python",
+    const listWorkbenchProfiles = vi.fn().mockResolvedValue({
+      profiles: [
+        {
+          id: "standard",
+          revision: "1",
+          location_id: "b",
+          label: "Docker",
+          description: "",
+          required: { substrate: "docker-nested", resources: {} },
+          storage_policy: "ephemeral",
+        },
+      ],
     });
     const listScriptTemplates = vi.fn().mockResolvedValue({
       build: { path: "overlay/build.sh", templates: [] },
@@ -80,32 +61,21 @@ describe("shell data hooks", () => {
     });
     const { Wrapper } = createShellWrapper({
       services: fakeApiServices({
-        ree: { listProviders, listWorkbenches, listWorkbenchImages, listScriptTemplates },
+        ree: { listComputeLocations, listWorkbenchProfiles, listScriptTemplates },
       }),
     });
     const { result } = renderHook(
       () => ({
         labs: useLabs(),
-        images: useWorkbenchImageCatalog(),
         templates: useScriptTemplates(),
       }),
       { wrapper: Wrapper },
     );
 
     await waitFor(() => expect(result.current.templates.isSuccess).toBe(true));
-    expect(result.current.labs.data?.map((lab) => lab.hostname)).toEqual([
-      "a-host",
-      "m-host",
-      "z-host",
-    ]);
-    expect(result.current.labs.data?.map((lab) => lab.kind)).toEqual([
-      "provider",
-      "external",
-      "provider",
-    ]);
-    expect(defaultImageRef(result.current.images.data)).toBe("bench:python");
-    expect(defaultImageRef({ images: [], defaultId: "missing" })).toBeUndefined();
-    expect(defaultImageRef(undefined)).toBeUndefined();
+    expect(result.current.labs.data?.map((lab) => lab.label)).toEqual(["a-host", "z-host"]);
+    expect(result.current.labs.data?.map((lab) => lab.available)).toEqual([false, true]);
+    expect(result.current.labs.data?.[1]?.profiles[0]?.substrate).toBe("docker-nested");
   });
 
   it("loads scoped REE resources and transforms index entries", async () => {

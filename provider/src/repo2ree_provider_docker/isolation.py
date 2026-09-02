@@ -15,8 +15,8 @@ from __future__ import annotations
 from collections.abc import Iterator
 from typing import Protocol
 
-from repo2ree_protocol.frames import Frame, WorkbenchRef
-from repo2ree_protocol.provider import WorkbenchSpec
+from repo2ree_protocol.allocation import AllocationRequest
+from repo2ree_protocol.frames import Frame
 
 
 class IsolationBackend(Protocol):
@@ -26,21 +26,18 @@ class IsolationBackend(Protocol):
     request/response verbs return plain values.
     """
 
-    runtime_name: str
-
-    def provision(
+    def ensure(
         self,
-        allocation_id: str,
+        allocation: AllocationRequest,
         workbench_id: str,
         enrollment_token: str,
-        ree_id: str,
-        spec: WorkbenchSpec,
+        image: str,
     ) -> Iterator[Frame]:
         """Create a bench for ``ree_id``; ends with a workbench-ref frame."""
         ...
 
-    def remove(self, ref: WorkbenchRef) -> None:
+    def release(self, allocation_id: str) -> None:
         """Tear down the bench and its backing storage (best-effort)."""
         ...
 
-    def is_running(self, ref: WorkbenchRef) -> bool: ...
+    def inspect(self, allocation_id: str) -> bool: ...

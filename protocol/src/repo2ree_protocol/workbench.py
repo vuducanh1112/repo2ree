@@ -21,22 +21,16 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
+from repo2ree_protocol.allocation import AllocationRequest
 from repo2ree_protocol.frames import Frame
+from repo2ree_protocol.substrate import ObservedCapabilities
 
 # ================================================
 # Identity
 # ================================================
 
 
-class WorkbenchCapabilities(BaseModel):
-    """Facts observed inside the environment hosting the workbench."""
-
-    model_config = ConfigDict(extra="ignore")
-
-    root_writable: bool = False
-    executor_available: bool = False
-    docker_mode: Literal["nested", "host-socket", "unknown"] | None = None
-    docker_version: str = ""
+WorkbenchCapabilities = ObservedCapabilities
 
 
 class WorkbenchHello(BaseModel):
@@ -55,8 +49,10 @@ class WorkbenchHello(BaseModel):
     enrollment_token: str = ""
     hostname: str = ""
     version: str = ""
-    substrate: str = ""
-    capabilities: WorkbenchCapabilities = Field(default_factory=WorkbenchCapabilities)
+    location_id: str = ""
+    profile_id: str = ""
+    profile_revision: str = ""
+    capabilities: ObservedCapabilities = Field(default_factory=ObservedCapabilities)
     # Random per-process token: the same workbench_id arriving with a different
     # nonce is a distinct workbench *instance* (a duplicate or takeover), not a
     # reconnect of the one already known.
@@ -178,14 +174,13 @@ class DrainWorkbenchRequest(BaseModel):
     op: Literal["drain"] = "drain"
 
 
-class BindAllocationRequest(BaseModel):
-    """Bind one authenticated idle external workbench to one REE allocation."""
+class AssignAllocationRequest(BaseModel):
+    """Assign a validated allocation to this otherwise idle workbench."""
 
     model_config = ConfigDict(extra="forbid")
 
-    op: Literal["bind_allocation"] = "bind_allocation"
-    allocation_id: str = Field(min_length=1)
-    ree_id: str = Field(min_length=1)
+    op: Literal["assign_allocation"] = "assign_allocation"
+    allocation: AllocationRequest
 
 
 # Tagged union discriminated on 'op': every execution call. The op literal
@@ -202,7 +197,7 @@ WorkbenchRequest = Annotated[
     | CopyAbortRequest
     | CancelRequest
     | DrainWorkbenchRequest
-    | BindAllocationRequest,
+    | AssignAllocationRequest,
     Field(discriminator="op"),
 ]
 

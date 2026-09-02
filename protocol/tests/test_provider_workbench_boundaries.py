@@ -3,10 +3,10 @@
 import pytest
 from pydantic import ValidationError
 
+from repo2ree_protocol.allocation import AllocationRequest
 from repo2ree_protocol.provider import (
-    DockerWorkbenchSpec,
+    EnsureAllocationRequest,
     ProviderWsRequest,
-    ProvisionRequest,
     provider_ws_request_adapter,
 )
 from repo2ree_protocol.workbench import (
@@ -30,12 +30,16 @@ def test_workbench_socket_rejects_capacity_request() -> None:
     opaque_enrollment = "test-enrollment-value"
     capacity = ProviderWsRequest(
         id="request-1",
-        request=ProvisionRequest(
-            allocation_id="allocation-1",
+        request=EnsureAllocationRequest(
+            allocation=AllocationRequest(
+                allocation_id="allocation-1",
+                ree_id="ree-1",
+                location_id="lab-1",
+                profile_id="standard",
+                profile_revision="1",
+            ),
             workbench_id="workbench-1",
             enrollment_token=opaque_enrollment,
-            ree_id="ree-1",
-            spec=DockerWorkbenchSpec(base_image="ubuntu:24.04"),
         ),
     )
 

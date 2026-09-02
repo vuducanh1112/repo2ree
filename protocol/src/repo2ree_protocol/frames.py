@@ -23,6 +23,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
+from repo2ree_protocol.allocation import AllocationState
 from repo2ree_protocol.result import ActionResult
 
 # ================================================
@@ -119,6 +120,18 @@ class RunningFrame(BaseModel):
     running: bool
 
 
+class AllocationStatusFrame(BaseModel):
+    """Terminal provider report for ensure/inspect operations."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal["allocation_status"] = "allocation_status"
+    allocation_id: str = Field(min_length=1)
+    state: AllocationState
+    workbench_id: str | None = None
+    detail: str = ""
+
+
 # Raw bytes per streamed chunk, in both directions (bytes_chunk frames out,
 # copy_chunk requests in). Base64 inflates the payload ~4/3, so a chunk frame
 # stays well under the transport's default receive cap (websockets: 1 MiB)
@@ -157,6 +170,7 @@ Frame = Annotated[
     | UnavailableFrame
     | ErrorFrame
     | RunningFrame
+    | AllocationStatusFrame
     | BytesChunkFrame
     | TransferFrame,
     Field(discriminator="type"),
@@ -166,4 +180,6 @@ frame_adapter: TypeAdapter[Frame] = TypeAdapter(Frame)
 
 # Frame types that terminate a request's response stream. Everything else
 # (log, span, bytes_chunk) is incremental and more frames follow.
-TERMINAL_FRAME_TYPES = frozenset({"workbench_ref", "result", "done", "unavailable", "error", "running", "transfer"})
+TERMINAL_FRAME_TYPES = frozenset(
+    {"workbench_ref", "result", "done", "unavailable", "error", "running", "allocation_status", "transfer"}
+)

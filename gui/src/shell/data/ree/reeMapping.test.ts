@@ -182,7 +182,9 @@ describe("shell/data/ree/reeMapping", () => {
     };
     const project = mapReeDetailToReeProject({
       ...withReceipt,
-      workbench_image: "image:tag",
+      allocation_id: "alloc-1",
+      location_id: "lab-1",
+      profile_id: "standard",
       ree_files: [
         {
           path: "artifact",
@@ -199,7 +201,9 @@ describe("shell/data/ree/reeMapping", () => {
       sourceType: "git",
       swhid: "swh:1:dir:value",
     });
-    expect(project.workbenchImage).toBe("image:tag");
+    expect(project.allocationId).toBe("alloc-1");
+    expect(project.workbenchLocation).toBe("lab-1");
+    expect(project.workbenchProfile).toBe("standard");
     expect(project.reeFiles?.[0]).toMatchObject({
       tag: "REE",
       content: undefined,
@@ -223,11 +227,11 @@ describe("shell/data/ree/reeMapping", () => {
 
   it("defaults absent optional inventories and source metadata", () => {
     const project = mapReeDetailToReeProject(
-      baseRee({ workspace_files: undefined, ree_files: undefined, workbench_image: null }),
+      baseRee({ workspace_files: undefined, ree_files: undefined, allocation_id: null }),
     );
     expect(project.files).toEqual([]);
     expect(project.reeFiles).toEqual([]);
     expect(project.sourceRepo).toBeUndefined();
-    expect(project.workbenchImage).toBeUndefined();
+    expect(project.allocationId).toBeUndefined();
   });
 });

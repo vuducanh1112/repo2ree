@@ -37,6 +37,7 @@ from repo2ree_protocol.frames import (
     UnavailableFrame,
 )
 from repo2ree_protocol.result import Failure
+from repo2ree_protocol.substrate import ObservedCapabilities
 from repo2ree_protocol.tracing import (
     CommandSpanAttrs,
     WorkbenchSpanAttrs,
@@ -53,7 +54,6 @@ from repo2ree_protocol.workbench import (
     CancelRunRequest,
     DrainWorkbenchRequest,
     ExecActionRequest,
-    WorkbenchCapabilities,
     WorkbenchHello,
     WorkbenchRequest,
     WorkbenchWsMessage,
@@ -140,8 +140,10 @@ async def run_workbench(
     mode: Literal["managed", "external"] = "managed",
     allocation_id: str = "",
     enrollment_token: str = "",
-    substrate: str = "",
-    capabilities: WorkbenchCapabilities | None = None,
+    location_id: str = "",
+    profile_id: str = "",
+    profile_revision: str = "",
+    capabilities: ObservedCapabilities | None = None,
     reconnect_delay: float = 3.0,
 ) -> None:
     """Dial the control plane and serve requests, reconnecting on drop."""
@@ -152,8 +154,10 @@ async def run_workbench(
         enrollment_token=enrollment_token,
         hostname=socket.gethostname(),
         version=_workbench_version(),
-        substrate=substrate,
-        capabilities=capabilities or WorkbenchCapabilities(),
+        location_id=location_id,
+        profile_id=profile_id,
+        profile_revision=profile_revision,
+        capabilities=capabilities or ObservedCapabilities(),
         # Minted once per process: reconnects reuse it, so the control plane can
         # tell this instance reconnecting from another instance claiming its id.
         nonce=uuid4().hex,
@@ -161,13 +165,13 @@ async def run_workbench(
     while True:
         connection_attrs = {
             "repo2ree.workbench_id": workbench_id,
-            "repo2ree.workbench.substrate": substrate,
+            "repo2ree.workbench.substrate": str(hello.capabilities.substrate),
         }
         _connection_attempt_counter.add(1, connection_attrs)
         try:
             with tracer.start_as_current_span("workbench.connection") as span:
                 span.set_attribute("repo2ree.workbench_id", workbench_id)
-                span.set_attribute("repo2ree.workbench.substrate", substrate)
+                span.set_attribute("repo2ree.workbench.substrate", str(hello.capabilities.substrate))
                 async with connect(api_ws_url) as ws:
                     logger.info("workbench %s connected to %s", workbench_id, api_ws_url)
                     _connection_connected_counter.add(1, connection_attrs)

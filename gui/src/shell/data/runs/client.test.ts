@@ -82,16 +82,14 @@ describe("nextRunLogCursor", () => {
 describe("createReeRunsClient", () => {
   it("provisions a named workspace and trims optional placement inputs", async () => {
     const { client, reeApi } = harness();
-    await expect(
-      client.createWorkspace("Demo", " image:latest ", " lab-1 "),
-    ).resolves.toMatchObject({
+    await expect(client.createWorkspace("Demo", " lab-1 ", " standard ")).resolves.toMatchObject({
       reeId: "ree-1",
       run: { runId: "run-1", status: "succeeded" },
     });
     expect(reeApi.createRee).toHaveBeenCalledWith({
       name: "Demo",
-      workbench_image: "image:latest",
-      provider_id: "lab-1",
+      location_id: "lab-1",
+      profile_id: "standard",
     });
   });
 

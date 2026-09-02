@@ -17,8 +17,9 @@ from __future__ import annotations
 from collections.abc import Iterator
 from typing import Protocol
 
-from repo2ree_protocol.frames import ErrorFrame, Frame, UnavailableFrame, WorkbenchRef
-from repo2ree_protocol.provider import WorkbenchSpec
+from repo2ree_protocol.allocation import AllocationRequest, WorkbenchProfile
+from repo2ree_protocol.frames import ErrorFrame, Frame, UnavailableFrame
+from repo2ree_protocol.substrate import ObservedCapabilities
 
 
 class WorkbenchUnavailableError(RuntimeError):
@@ -47,30 +48,21 @@ class ProviderClient(Protocol):
     that provisioning returned, so it reaches the provider holding that bench.
     """
 
-    def resolve_provider(self, provider_id: str) -> str:
-        """Resolve a placement request to the concrete provider that will serve it.
+    def resolve_profile(self, location_id: str, profile_id: str) -> tuple[str, WorkbenchProfile]: ...
 
-        Provision calls this to pin the REE to the provider it actually lands on,
-        rather than to an empty "any provider" token that later ops can't honour
-        once more than one is connected. Raises ``WorkbenchUnavailableError``
-        when no matching provider is connected."""
-        ...
-
-    def provision(
+    def ensure(
         self,
         provider_id: str,
-        allocation_id: str,
+        allocation: AllocationRequest,
         workbench_id: str,
         enrollment_token: str,
-        ree_id: str,
-        spec: WorkbenchSpec,
     ) -> Iterator[Frame]: ...
 
-    def remove(self, provider_id: str, ref: WorkbenchRef) -> None: ...
+    def release(self, provider_id: str, allocation_id: str) -> None: ...
 
-    def remove_best_effort(self, provider_id: str, ref: WorkbenchRef) -> bool: ...
+    def release_best_effort(self, provider_id: str, allocation_id: str) -> bool: ...
 
-    def is_running(self, provider_id: str, ref: WorkbenchRef) -> bool: ...
+    def is_running(self, provider_id: str, allocation_id: str) -> bool: ...
 
 
 class WorkbenchClient(Protocol):
@@ -106,10 +98,14 @@ class WorkbenchClient(Protocol):
 
     def wait_for_workbench(self, workbench_id: str, timeout: float = 60.0) -> None: ...
 
-    def reserve_external(self, allocation_id: str, workbench_id: str | None = None) -> str: ...
+    def reserve_external(
+        self, allocation_id: str, location_id: str, profile_id: str
+    ) -> tuple[str, WorkbenchProfile]: ...
 
     def release_reservation(self, workbench_id: str, allocation_id: str) -> None: ...
 
-    def bind(self, workbench_id: str, allocation_id: str, ree_id: str) -> None: ...
+    def assign(self, workbench_id: str, allocation: AllocationRequest) -> None: ...
+
+    def observation(self, workbench_id: str) -> ObservedCapabilities: ...
 
     def is_connected(self, workbench_id: str) -> bool: ...

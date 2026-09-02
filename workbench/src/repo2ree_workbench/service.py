@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
+from repo2ree_protocol.allocation import AllocationRequest
 from repo2ree_protocol.frames import Frame
 from repo2ree_workbench.executor_process import LocalExecutor
 
@@ -11,22 +12,22 @@ from repo2ree_workbench.executor_process import LocalExecutor
 class WorkbenchService:
     """The backend-neutral execution service for connected workbenches."""
 
-    def __init__(self, executor: LocalExecutor, *, bound: bool = True):
+    def __init__(self, executor: LocalExecutor):
         self._executor = executor
-        self._bound = bound
-        self._allocation_id = ""
+        self._assignment: AllocationRequest | None = None
 
-    def bind(self, allocation_id: str, ree_id: str) -> None:
-        if self._bound:
-            raise RuntimeError("workbench is already assigned")
+    def assign(self, allocation: AllocationRequest) -> None:
+        if self._assignment is not None:
+            if self._assignment == allocation:
+                return
+            raise RuntimeError("workbench is already assigned to a different allocation")
         if any(self._executor.root.iterdir()):
-            raise RuntimeError("external workbench root is not empty")
-        self._allocation_id = allocation_id
-        self._bound = True
+            raise RuntimeError("unassigned workbench root is not empty")
+        self._assignment = allocation
 
     def _require_bound(self) -> None:
-        if not self._bound:
-            raise RuntimeError("external workbench has not been assigned")
+        if self._assignment is None:
+            raise RuntimeError("workbench has not been assigned")
 
     def exec_action(self, cmd_json: str, run_id: str, env: dict[str, str]) -> Iterator[Frame]:
         self._require_bound()

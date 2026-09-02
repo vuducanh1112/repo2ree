@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import pytest
 
+from repo2ree_protocol import ObservedCapabilities, SubstrateKind
 from repo2ree_protocol.workbench import ExecSimpleRequest, WorkbenchHello
 from repo2ree_supervisor import WorkbenchConnection, WorkbenchConnectionRegistry, WorkbenchUnavailableError
 
@@ -21,14 +22,22 @@ def test_list_workbenches_reports_hello_fields_sorted() -> None:
     registry.register(
         "z-workbench",
         _connection(
-            WorkbenchHello(workbench_id="z-workbench", hostname="worker-b", version="0.1.0", substrate="docker-nested")
+            WorkbenchHello(
+                workbench_id="z-workbench",
+                hostname="worker-b",
+                version="0.1.0",
+                capabilities=ObservedCapabilities(substrate=SubstrateKind.DOCKER_NESTED),
+            )
         ),
     )
     registry.register(
         "a-workbench",
         _connection(
             WorkbenchHello(
-                workbench_id="a-workbench", hostname="worker-a", version="0.2.0", substrate="docker-host-socket"
+                workbench_id="a-workbench",
+                hostname="worker-a",
+                version="0.2.0",
+                capabilities=ObservedCapabilities(substrate=SubstrateKind.DOCKER_HOST_SOCKET),
             )
         ),
     )

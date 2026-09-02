@@ -106,6 +106,8 @@ export function mapReeDetailToReeProject(
     ree: reeState,
     authorReceipts: parseAuthorReceipts(ree.ree.subject?.receipts),
     sourceRepo: mapSourceRepo(ree),
-    workbenchImage: ree.workbench_image ?? undefined,
+    allocationId: ree.allocation_id ?? undefined,
+    workbenchLocation: ree.location_id ?? undefined,
+    workbenchProfile: ree.profile_id ?? undefined,
   };
 }

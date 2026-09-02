@@ -28,5 +28,7 @@ export interface ReeProject<TFile = unknown, TRee = unknown> {
   authorReceipts?: ReceiptView[];
   sourceRepo?: SourceRepoMetadata;
   /** The image this REE's workbench was provisioned from. */
-  workbenchImage?: string;
+  allocationId?: string;
+  workbenchLocation?: string;
+  workbenchProfile?: string;
 }

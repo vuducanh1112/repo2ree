@@ -4,58 +4,62 @@ from collections.abc import Iterator
 
 import pytest
 
-from repo2ree_protocol.frames import DoneFrame, Frame, WorkbenchRef
-from repo2ree_protocol.provider import DockerWorkbenchSpec
+from repo2ree_protocol import AllocationRequest, DoneFrame, Frame
 from repo2ree_provider_docker.provisioner import ProvisionerService
 
 
 class _Backend:
-    runtime_name = "docker"
-
     def __init__(self) -> None:
-        self.calls: list[str] = []
+        self.calls: list[tuple[str, object]] = []
 
-    def provision(
+    def ensure(
         self,
-        allocation_id: str,
+        allocation: AllocationRequest,
         workbench_id: str,
         enrollment_token: str,
-        ree_id: str,
-        spec: DockerWorkbenchSpec,
+        image: str,
     ) -> Iterator[Frame]:
-        self.calls.append("provision")
+        self.calls.append(("ensure", image))
         yield DoneFrame()
 
-    def remove(self, ref: WorkbenchRef) -> None:
-        self.calls.append("remove")
+    def release(self, allocation_id: str) -> None:
+        self.calls.append(("release", allocation_id))
 
-    def is_running(self, ref: WorkbenchRef) -> bool:
-        self.calls.append("is_running")
+    def inspect(self, allocation_id: str) -> bool:
+        self.calls.append(("inspect", allocation_id))
         return True
 
 
-def test_provisioner_routes_provision_by_spec_runtime() -> None:
+def _allocation(profile_id: str = "standard") -> AllocationRequest:
+    return AllocationRequest(
+        allocation_id="alloc-1",
+        ree_id="ree-1",
+        location_id="lab-1",
+        profile_id=profile_id,
+        profile_revision="1",
+    )
+
+
+def test_provider_resolves_profile_to_private_image() -> None:
     backend = _Backend()
-    provisioner = ProvisionerService({backend.runtime_name: backend})
+    provisioner = ProvisionerService(backend, {("standard", "1"): "private/image@sha256:123"})
 
-    assert list(
-        provisioner.provision("alloc-1", "wb-1", "token", "ree-1", DockerWorkbenchSpec(base_image="ubuntu:24.04"))
-    ) == [DoneFrame()]
+    assert list(provisioner.ensure(_allocation(), "wb-1", "token")) == [DoneFrame()]
+    assert backend.calls == [("ensure", "private/image@sha256:123")]
 
 
-def test_provisioner_routes_every_reference_operation() -> None:
+def test_provider_rejects_unknown_profile_without_fallback() -> None:
+    provisioner = ProvisionerService(_Backend(), {("standard", "1"): "private/image@sha256:123"})
+
+    with pytest.raises(ValueError, match="unsupported workbench profile"):
+        list(provisioner.ensure(_allocation("unknown"), "wb-1", "token"))
+
+
+def test_inspect_and_release_are_keyed_by_allocation_id() -> None:
     backend = _Backend()
-    provisioner = ProvisionerService({backend.runtime_name: backend})
-    ref = WorkbenchRef(runtime="docker", token="opaque")  # noqa: S106
+    provisioner = ProvisionerService(backend, {})
 
-    provisioner.remove(ref)
-    assert provisioner.is_running(ref) is True
+    assert provisioner.inspect("alloc-1") is True
+    provisioner.release("alloc-1")
 
-    assert backend.calls == ["remove", "is_running"]
-
-
-def test_provisioner_rejects_unknown_reference_runtime() -> None:
-    provisioner = ProvisionerService({})
-
-    with pytest.raises(ValueError, match="unsupported workbench runtime"):
-        provisioner.is_running(WorkbenchRef(runtime="slurm", token="opaque"))  # noqa: S106
+    assert backend.calls == [("inspect", "alloc-1"), ("release", "alloc-1")]

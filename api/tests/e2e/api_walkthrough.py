@@ -373,7 +373,23 @@ def run() -> None:
     chapter("1. Provision a workbench")
     health = call("GET", "/")
     check(health.get("status") == "online", "service not online")
-    created = call("POST", "/api/v1/rees", {"name": "workbench-authored-ree"})
+
+    # Creation picks a deployment-defined place to run, never an image or a
+    # resource request: one compute location, and one fixed profile offered
+    # there. What that profile launches is the provider's private business.
+    locations = call("GET", "/api/v1/compute-locations")["locations"]
+    check(locations, "no compute location is connected")
+    location_id = locations[0]["id"]
+    note(f"compute location {location_id!r} is {locations[0]['lifecycle_mode']}")
+    profiles = call("GET", f"/api/v1/workbench-profiles?location_id={location_id}")["profiles"]
+    check(profiles, f"location {location_id!r} offers no workbench profile")
+    profile = profiles[0]
+    note(f"profile {profile['id']}@{profile['revision']} requires substrate {profile['required']['substrate']}")
+    created = call(
+        "POST",
+        "/api/v1/rees",
+        {"name": "workbench-authored-ree", "location_id": location_id, "profile_id": profile["id"]},
+    )
     ree_id = created["ree_id"]
     check(ree_id, "no ree_id in create response")
     note(f"provisioning runs in the background as {created['run_id']}")

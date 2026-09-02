@@ -21,9 +21,9 @@ from repo2ree_api.authoring.seal import seal_router
 from repo2ree_api.authoring.source import source_router
 from repo2ree_api.authoring.stages import stages_router
 from repo2ree_api.contracts import ErrorEnvelope, HealthResponse
+from repo2ree_api.control.compute import compute_router
 from repo2ree_api.control.fleet import (
     provider_ws_router,
-    workbench_images_router,
     workbench_ws_router,
     workbenches_router,
 )
@@ -163,7 +163,7 @@ ROUTERS = (
     review_records_router,
     review_stages_router,
     # The fleet the whole thing runs on.
-    workbench_images_router,
+    compute_router,
     provider_ws_router,
     workbench_ws_router,
     workbenches_router,

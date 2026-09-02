@@ -1,33 +1,30 @@
 import type { Lab } from "@core/lab/Lab";
 import { sortLabs } from "@core/lab/Lab";
-import type { ProviderSummary, WorkbenchSummary } from "@shell/infra/api/apiTypes";
+import type { ComputeLocation, WorkbenchProfile } from "@shell/infra/api/apiTypes";
 import { useQuery } from "@tanstack/react-query";
 import { useApiServices } from "../apiRuntime";
 import { queryKeys } from "../queryKeys";
 
 // Pure wire shape → domain map. Status is narrowed to the domain's single connected
 // state; the endpoint only lists connected labs.
-function mapLab(wire: ProviderSummary): Lab {
+function mapLab(wire: ComputeLocation, profiles: readonly WorkbenchProfile[]): Lab {
   return {
-    id: wire.provider_id,
-    kind: "provider",
-    hostname: wire.hostname,
-    version: wire.version,
-    dockerMode: wire.docker_mode,
-    connectedAt: wire.connected_at,
-    status: "connected",
-    available: true,
-  };
-}
-
-function mapExternalLab(wire: WorkbenchSummary): Lab {
-  return {
-    id: wire.workbench_id,
-    kind: "external",
-    hostname: wire.hostname,
-    version: wire.version,
-    dockerMode: wire.docker_mode,
-    connectedAt: wire.connected_at,
+    id: wire.id,
+    label: wire.label,
+    description: wire.description,
+    lifecycleMode: wire.lifecycle_mode,
+    profiles: profiles
+      .filter((profile) => profile.location_id === wire.id)
+      .map((profile) => ({
+        id: profile.id,
+        revision: profile.revision,
+        label: profile.label,
+        description: profile.description,
+        substrate: profile.required.substrate,
+        cpuCount: profile.required.resources?.cpu_count ?? undefined,
+        memoryBytes: profile.required.resources?.memory_bytes ?? undefined,
+        storagePolicy: profile.storage_policy,
+      })),
     status: "connected",
     available: wire.available,
   };
@@ -44,14 +41,11 @@ export function useLabs() {
   return useQuery({
     queryKey: queryKeys.labs(),
     queryFn: async (): Promise<Lab[]> => {
-      const [providers, workbenches] = await Promise.all([
-        reeApi.listProviders(),
-        reeApi.listWorkbenches(),
+      const [locations, profiles] = await Promise.all([
+        reeApi.listComputeLocations(),
+        reeApi.listWorkbenchProfiles(),
       ]);
-      return sortLabs([
-        ...providers.providers.map(mapLab),
-        ...workbenches.workbenches.filter((bench) => bench.mode === "external").map(mapExternalLab),
-      ]);
+      return sortLabs(locations.locations.map((location) => mapLab(location, profiles.profiles)));
     },
     refetchInterval: LABS_REFETCH_MS,
   });

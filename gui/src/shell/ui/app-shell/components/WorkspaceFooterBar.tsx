@@ -1,6 +1,7 @@
 import { type RunTickerTone, runTicker } from "@core/runs/runHud";
+import { useReeQuery } from "@shell/data/ree/queries";
 import { useReeRunsQuery } from "@shell/data/runs/queries";
-import { useWorkbenchImageRef } from "@shell/data/workbench/images";
+import { placementReadout } from "@shell/ui/labs/labPresentation";
 import type { ReactNode } from "react";
 import { Ic } from "../../shared/components/Icon";
 import styles from "./WorkspaceFooterBar.module.css";
@@ -14,7 +15,7 @@ interface WorkspaceFooterBarProps {
 }
 
 /**
- * The ambient state strip under the canvas: what lab this REE runs in, and what
+ * The ambient state strip under the canvas: the placement this REE runs on, and what
  * its runs are doing. Deliberately thinner and quieter than the WorkspaceStatusBar
  * above — that bar navigates, this one only reports. Each cell owns the resting
  * state of a console that opens at the canvas edge just above it, so the corners
@@ -27,15 +28,19 @@ export function WorkspaceFooterBar({
   onBenchOpenChange,
   onLogsOpenChange,
 }: WorkspaceFooterBarProps) {
-  const imageRef = useWorkbenchImageRef();
   const runsQuery = useReeRunsQuery();
   const ticker = runTicker(runsQuery.data ?? []);
+  const reeQuery = useReeQuery();
+  const placement = placementReadout(
+    reeQuery.data?.workbenchLocation,
+    reeQuery.data?.workbenchProfile,
+  );
 
   return (
     <section aria-label="Workbench status" className={styles.bar}>
       <FooterCell
         label="Workbench"
-        detail={provisioned ? (imageRef ?? "Workbench") : "Awaiting workbench"}
+        detail={provisioned ? placement : "Awaiting workbench"}
         icon={Ic.package(13)}
         tone={provisioned ? "succeeded" : "idle"}
         open={benchOpen}

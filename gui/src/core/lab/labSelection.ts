@@ -11,11 +11,11 @@ function columnsFor(total: number): number {
   return 4;
 }
 
-// Hostname or lab id, case-insensitively, on a trimmed query. Pure.
+// Location label or id, case-insensitively, on a trimmed query. Pure.
 function matches(lab: Lab, query: string): boolean {
   const needle = query.trim().toLowerCase();
   if (!needle) return true;
-  return lab.hostname.toLowerCase().includes(needle) || lab.id.toLowerCase().includes(needle);
+  return lab.label.toLowerCase().includes(needle) || lab.id.toLowerCase().includes(needle);
 }
 
 export interface LabPage {

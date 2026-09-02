@@ -5,8 +5,10 @@ import base64
 from pathlib import Path
 from typing import Any, cast
 
+from repo2ree_protocol.allocation import AllocationRequest
 from repo2ree_protocol.frames import DoneFrame, Frame, TransferFrame
 from repo2ree_protocol.workbench import (
+    AssignAllocationRequest,
     CancelRunRequest,
     CopyAbortRequest,
     CopyChunkRequest,
@@ -25,6 +27,9 @@ class _Service:
     def __init__(self) -> None:
         self.calls: list[tuple[Any, ...]] = []
         self.copied = b""
+
+    def assign(self, allocation: AllocationRequest) -> None:
+        self.calls.append(("assign", allocation.allocation_id))
 
     def exec_action(self, cmd_json: str, run_id: str, env: dict[str, str]):
         self.calls.append(("exec_action", cmd_json, run_id, env))
@@ -122,3 +127,21 @@ def test_dispatcher_reassembles_close_and_aborts_copy_transfers() -> None:
     assert harness.service.copied == b"transferred"
     assert harness.received == [len(b"transferred")]
     assert [frame.type for frame in harness.frames] == ["done", "done", "done"]
+
+
+def test_dispatcher_routes_assignment_before_any_execution() -> None:
+    # Assignment is an ordinary request on the execution connection: it reaches
+    # the service and is acknowledged like any other terminal operation.
+    harness = _Harness()
+    allocation = AllocationRequest(
+        allocation_id="alloc-1",
+        ree_id="ree-1",
+        location_id="lab-1",
+        profile_id="standard",
+        profile_revision="1",
+    )
+
+    asyncio.run(harness.dispatch(AssignAllocationRequest(allocation=allocation)))
+
+    assert harness.service.calls == [("assign", "alloc-1")]
+    assert [frame.type for frame in harness.frames] == ["done"]

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Iterator, Mapping
 
-from repo2ree_protocol.frames import Frame, WorkbenchRef
-from repo2ree_protocol.provider import WorkbenchSpec
+from repo2ree_protocol.allocation import AllocationRequest
+from repo2ree_protocol.frames import Frame
 from repo2ree_provider_docker.isolation import IsolationBackend
 
 
@@ -15,27 +15,25 @@ class ProvisionerService:
     It contains no execution vocabulary or workbench-service dependency.
     """
 
-    def __init__(self, backends: Mapping[str, IsolationBackend]):
-        self._backends = dict(backends)
+    def __init__(self, backend: IsolationBackend, profiles: Mapping[tuple[str, str], str]):
+        self._backend = backend
+        self._profiles = dict(profiles)
 
-    def _backend(self, name: str) -> IsolationBackend:
-        try:
-            return self._backends[name]
-        except KeyError as exc:
-            raise ValueError(f"unsupported workbench runtime {name!r}") from exc
-
-    def provision(
+    def ensure(
         self,
-        allocation_id: str,
+        allocation: AllocationRequest,
         workbench_id: str,
         enrollment_token: str,
-        ree_id: str,
-        spec: WorkbenchSpec,
     ) -> Iterator[Frame]:
-        return self._backend(spec.runtime).provision(allocation_id, workbench_id, enrollment_token, ree_id, spec)
+        key = (allocation.profile_id, allocation.profile_revision)
+        try:
+            image = self._profiles[key]
+        except KeyError as exc:
+            raise ValueError(f"unsupported workbench profile {key[0]!r} revision {key[1]!r}") from exc
+        return self._backend.ensure(allocation, workbench_id, enrollment_token, image)
 
-    def remove(self, ref: WorkbenchRef) -> None:
-        self._backend(ref.runtime).remove(ref)
+    def release(self, allocation_id: str) -> None:
+        self._backend.release(allocation_id)
 
-    def is_running(self, ref: WorkbenchRef) -> bool:
-        return self._backend(ref.runtime).is_running(ref)
+    def inspect(self, allocation_id: str) -> bool:
+        return self._backend.inspect(allocation_id)

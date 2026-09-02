@@ -19,7 +19,9 @@ describe("ReeApi", () => {
   it("maps global catalogs and filtered listings", async () => {
     const { api, client } = harness();
     await api.listReeSteps();
-    await api.listWorkbenchImages();
+    await api.listComputeLocations();
+    await api.listWorkbenchProfiles("lab-1");
+    await api.getAllocation("alloc/1");
     await api.listScriptTemplates();
     await api.listProviders();
     await api.listWorkbenches();
@@ -28,14 +30,16 @@ describe("ReeApi", () => {
 
     expect(client.request.mock.calls.map(([path]) => path)).toEqual([
       "/api/v1/ree-steps",
-      "/api/v1/workbench/images",
+      "/api/v1/compute-locations",
+      "/api/v1/workbench-profiles?location_id=lab-1",
+      "/api/v1/allocations/alloc%2F1",
       "/api/v1/script-templates",
       "/api/v1/providers",
       "/api/v1/workbenches",
       "/api/v1/ree-index?cursor=next+page&limit=20&deposited_only=true",
       "/api/v1/rees",
     ]);
-    expect(client.request.mock.calls[6]?.[2].toString()).toBe(
+    expect(client.request.mock.calls[8]?.[2].toString()).toBe(
       "cursor=cursor&limit=10&status=sealed",
     );
   });
@@ -43,7 +47,7 @@ describe("ReeApi", () => {
   it("maps workspace definitions, source, files, inference and sealing", async () => {
     const { api, client } = harness();
     const reeId = asReeId("ree/1");
-    await api.createRee({ name: "REE" });
+    await api.createRee({ name: "REE", location_id: "lab-1", profile_id: "standard" });
     await api.getRee(reeId);
     await api.patchReeDefinition(reeId, { definition_patch: { name: "Renamed" } });
     await api.acquireSource(reeId, {

@@ -19,7 +19,9 @@ function services(runs: unknown[] = []) {
         },
         workspace_files: [],
         ree_files: [],
-        workbench_image: "ghcr.io/repo2ree/bench:python",
+        allocation_id: "alloc-1",
+        location_id: "lab-1",
+        profile_id: "standard",
       }),
     },
     runs: { listRuns: vi.fn().mockResolvedValue({ runs, next_cursor: null }) },
@@ -41,7 +43,7 @@ function render(props: Partial<Parameters<typeof WorkspaceFooterBar>[0]> = {}, r
 }
 
 describe("WorkspaceFooterBar", () => {
-  it("reports the workbench image and the newest run, and toggles both consoles", async () => {
+  it("reports the assigned placement and the newest run, and toggles both consoles", async () => {
     const user = userEvent.setup();
     const onBenchOpenChange = vi.fn();
     const onLogsOpenChange = vi.fn();
@@ -61,7 +63,7 @@ describe("WorkspaceFooterBar", () => {
     ]);
 
     expect(screen.getByRole("region", { name: "Workbench status" })).toBeVisible();
-    expect(await screen.findByText("ghcr.io/repo2ree/bench:python")).toBeVisible();
+    expect(await screen.findByText("standard @ lab-1")).toBeVisible();
     expect(await screen.findByText("Build · succeeded")).toBeVisible();
 
     // Each cell shows whether the console it owns is open.

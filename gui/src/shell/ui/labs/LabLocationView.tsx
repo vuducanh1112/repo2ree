@@ -15,7 +15,6 @@ import styles from "./LabLocationView.module.css";
 import { labLoadErrorMessage } from "./labPresentation";
 import { NoLabsState } from "./NoLabsState";
 import { SelectedLabDetail } from "./SelectedLabDetail";
-import { useLabUptimeClock } from "./useLabUptimeClock";
 import { WorkbenchSetupDrawer } from "./WorkbenchSetupDrawer";
 
 interface LabLocationViewProps {
@@ -45,7 +44,6 @@ export function LabLocationView({ onBack }: LabLocationViewProps) {
   // for in the drawer, because the load runs on the bench it provisions.
   const loadRequested = Boolean(searchParams.get(LOAD_REE_PARAM));
 
-  const nowMs = useLabUptimeClock(Boolean(labs?.length));
   const view = useMemo(() => selectLabPage(labs ?? [], { query, page }), [labs, query, page]);
   const selected = labs?.find((one) => one.id === selectedId) ?? null;
 
@@ -104,7 +102,7 @@ export function LabLocationView({ onBack }: LabLocationViewProps) {
           </div>
         </div>
 
-        <SelectedLabDetail lab={selected} nowMs={nowMs} />
+        <SelectedLabDetail lab={selected} />
       </div>
 
       <div className={styles.fleet}>
@@ -123,7 +121,6 @@ export function LabLocationView({ onBack }: LabLocationViewProps) {
           <FleetBrowser
             labs={labs}
             view={view}
-            nowMs={nowMs}
             query={query}
             selectedId={selectedId}
             onQueryChange={(next) => {
@@ -154,7 +151,6 @@ export function LabLocationView({ onBack }: LabLocationViewProps) {
 function FleetBrowser({
   labs,
   view,
-  nowMs,
   query,
   selectedId,
   onQueryChange,
@@ -163,7 +159,6 @@ function FleetBrowser({
 }: {
   labs: Lab[];
   view: LabPage;
-  nowMs: number;
   query: string;
   selectedId: string | null;
   onQueryChange: (next: string) => void;
@@ -195,7 +190,6 @@ function FleetBrowser({
         <LabGrid
           labs={view.visible}
           columns={view.columns}
-          nowMs={nowMs}
           selectedId={selectedId}
           onSelect={onSelect}
         />

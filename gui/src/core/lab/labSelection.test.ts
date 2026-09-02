@@ -5,11 +5,10 @@ import { selectLabPage } from "./labSelection";
 function lab(overrides: Partial<Lab> = {}): Lab {
   return {
     id: "a1",
-    kind: "provider",
-    hostname: "worker",
-    version: "0.1.0",
-    dockerMode: "dind",
-    connectedAt: "2026-07-01T00:00:00Z",
+    label: "worker",
+    description: "",
+    lifecycleMode: "provider_managed",
+    profiles: [],
     status: "connected",
     available: true,
     ...overrides,
@@ -20,7 +19,7 @@ function lab(overrides: Partial<Lab> = {}): Lab {
 function fleet(count: number): Lab[] {
   return Array.from({ length: count }, (_, index) => {
     const n = String(index + 1).padStart(2, "0");
-    return lab({ id: `lab-${n}`, hostname: `lab-${n}` });
+    return lab({ id: `lab-${n}`, label: `lab-${n}` });
   });
 }
 
@@ -49,18 +48,18 @@ describe("selectLabPage", () => {
     expect(view.columns).toBe(4);
     expect(view.visible).toHaveLength(8);
     expect(view.pageCount).toBe(2);
-    expect(view.visible[0].hostname).toBe("lab-01");
+    expect(view.visible[0].label).toBe("lab-01");
   });
 
   it("slices the requested page", () => {
     const view = selectLabPage(fleet(12), at("", 1));
     expect(view.page).toBe(1);
     expect(view.visible).toHaveLength(4);
-    expect(view.visible[0].hostname).toBe("lab-09");
+    expect(view.visible[0].label).toBe("lab-09");
   });
 
-  it("matches hostname and lab id, case-insensitively and trimmed", () => {
-    const labs = [lab({ id: "lab-oslo", hostname: "lab-oslo-01" }), ...fleet(3)];
+  it("matches location label and id, case-insensitively and trimmed", () => {
+    const labs = [lab({ id: "lab-oslo", label: "lab-oslo-01" }), ...fleet(3)];
     expect(selectLabPage(labs, at("  OSLO ")).matches).toHaveLength(1);
     expect(selectLabPage(labs, at("LAB-OSLO")).matches).toHaveLength(1);
     expect(selectLabPage(labs, at("nothing")).matches).toEqual([]);
@@ -80,7 +79,7 @@ describe("selectLabPage", () => {
   });
 
   it("leaves the given order alone", () => {
-    const labs = [lab({ id: "b", hostname: "zeta" }), lab({ id: "a", hostname: "alpha" })];
-    expect(selectLabPage(labs, at()).visible.map((one) => one.hostname)).toEqual(["zeta", "alpha"]);
+    const labs = [lab({ id: "b", label: "zeta" }), lab({ id: "a", label: "alpha" })];
+    expect(selectLabPage(labs, at()).visible.map((one) => one.label)).toEqual(["zeta", "alpha"]);
   });
 });

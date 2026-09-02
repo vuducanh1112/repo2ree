@@ -17,15 +17,16 @@ import websockets
 from pydantic import BaseModel, ConfigDict, ValidationError
 from websockets.asyncio.client import ClientConnection, connect
 
-from repo2ree_protocol.frames import DoneFrame, ErrorFrame, Frame, RunningFrame
+from repo2ree_protocol.allocation import AllocationState, WorkbenchProfile
+from repo2ree_protocol.frames import AllocationStatusFrame, DoneFrame, ErrorFrame, Frame
 from repo2ree_protocol.provider import (
-    IsRunningRequest,
+    EnsureAllocationRequest,
+    InspectAllocationRequest,
     ProviderCancelRequest,
     ProviderHello,
     ProviderRequest,
     ProviderWsMessage,
-    ProvisionRequest,
-    RemoveRequest,
+    ReleaseAllocationRequest,
     provider_ws_request_adapter,
 )
 from repo2ree_provider_docker.provisioner import ProvisionerService
@@ -51,14 +52,18 @@ async def run_provider(
     provisioner: ProvisionerService,
     provider_id: str,
     *,
-    docker_mode: str = "",
+    location_id: str,
+    location_label: str,
+    profiles: tuple[WorkbenchProfile, ...],
     reconnect_delay: float = 3.0,
 ) -> None:
     hello = ProviderHello(
         provider_id=provider_id,
+        location_id=location_id,
+        location_label=location_label,
         hostname=socket.gethostname(),
         version=_provider_version(),
-        docker_mode=docker_mode,
+        profiles=profiles,
         nonce=uuid4().hex,
     )
     while True:
@@ -115,22 +120,25 @@ async def _handle(
         await _send(ws, req_id, frame)
 
     try:
-        if isinstance(request, ProvisionRequest):
+        if isinstance(request, EnsureAllocationRequest):
             await _pump(
                 send,
-                lambda: provisioner.provision(
-                    request.allocation_id,
+                lambda: provisioner.ensure(
+                    request.allocation,
                     request.workbench_id,
                     request.enrollment_token,
-                    request.ree_id,
-                    request.spec,
                 ),
             )
-        elif isinstance(request, IsRunningRequest):
-            running = await asyncio.to_thread(provisioner.is_running, request.ref)
-            await send(RunningFrame(running=running))
-        elif isinstance(request, RemoveRequest):
-            await asyncio.to_thread(provisioner.remove, request.ref)
+        elif isinstance(request, InspectAllocationRequest):
+            running = await asyncio.to_thread(provisioner.inspect, request.allocation_id)
+            await send(
+                AllocationStatusFrame(
+                    allocation_id=request.allocation_id,
+                    state=AllocationState.READY if running else AllocationState.LOST,
+                )
+            )
+        elif isinstance(request, ReleaseAllocationRequest):
+            await asyncio.to_thread(provisioner.release, request.allocation_id)
             await send(DoneFrame())
         else:
             raise ValueError("provider cancellation is handled by the transport")

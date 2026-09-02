@@ -9,16 +9,16 @@ from contextlib import suppress
 from dataclasses import dataclass
 from uuid import uuid4
 
-from repo2ree_protocol.frames import ErrorFrame, Frame, RunningFrame, UnavailableFrame, WorkbenchRef
+from repo2ree_protocol.allocation import AllocationRequest, WorkbenchProfile
+from repo2ree_protocol.frames import AllocationStatusFrame, ErrorFrame, Frame, UnavailableFrame
 from repo2ree_protocol.provider import (
-    IsRunningRequest,
+    EnsureAllocationRequest,
+    InspectAllocationRequest,
     ProviderCancelRequest,
     ProviderHello,
     ProviderRequest,
     ProviderWsRequest,
-    ProvisionRequest,
-    RemoveRequest,
-    WorkbenchSpec,
+    ReleaseAllocationRequest,
     provider_ws_message_adapter,
 )
 from repo2ree_protocol.tracing import current_traceparent
@@ -39,7 +39,9 @@ class ProviderInfo:
     provider_id: str
     hostname: str
     version: str
-    docker_mode: str
+    location_id: str
+    location_label: str
+    profiles: tuple[WorkbenchProfile, ...]
     connected_at: float
 
 
@@ -126,7 +128,9 @@ class ProviderConnectionRegistry(WorkbenchConnectionRegistry):
                     provider_id=provider_id,
                     hostname=connection.provider_hello.hostname if connection.provider_hello else "",
                     version=connection.provider_hello.version if connection.provider_hello else "",
-                    docker_mode=connection.provider_hello.docker_mode if connection.provider_hello else "",
+                    location_id=connection.provider_hello.location_id if connection.provider_hello else "",
+                    location_label=connection.provider_hello.location_label if connection.provider_hello else "",
+                    profiles=connection.provider_hello.profiles if connection.provider_hello else (),
                     connected_at=self._connected_at.get(provider_id, 0.0),
                 )
                 for provider_id, candidate in self._workbenches.items()
@@ -143,50 +147,59 @@ class WsProviderClient:
     def __init__(self, registry: ProviderConnectionRegistry):
         self._registry = registry
 
-    def resolve_provider(self, provider_id: str) -> str:
-        return self._registry.resolve_provider(provider_id)
+    def resolve_profile(self, location_id: str, profile_id: str) -> tuple[str, WorkbenchProfile]:
+        matches = [
+            (info.provider_id, profile)
+            for info in self._registry.list_providers()
+            if info.location_id == location_id
+            for profile in info.profiles
+            if profile.id == profile_id
+        ]
+        if len(matches) != 1:
+            raise WorkbenchUnavailableError(
+                f"compute profile {profile_id!r} at location {location_id!r} is not available"
+            )
+        return matches[0]
 
-    def provision(
+    def ensure(
         self,
         provider_id: str,
-        allocation_id: str,
+        allocation: AllocationRequest,
         workbench_id: str,
         enrollment_token: str,
-        ree_id: str,
-        spec: WorkbenchSpec,
     ) -> Iterator[Frame]:
         return self._registry.pick(provider_id).request(
-            ProvisionRequest(
-                allocation_id=allocation_id,
+            EnsureAllocationRequest(
+                allocation=allocation,
                 workbench_id=workbench_id,
                 enrollment_token=enrollment_token,
-                ree_id=ree_id,
-                spec=spec,
             ),
             frame_gap_timeout=DEFAULT_FRAME_GAP_TIMEOUT,
         )
 
-    def remove(self, provider_id: str, ref: WorkbenchRef) -> None:
+    def release(self, provider_id: str, allocation_id: str) -> None:
         self._drain_void(
-            self._registry.pick(provider_id).request(RemoveRequest(ref=ref), frame_gap_timeout=QUICK_OP_TIMEOUT)
+            self._registry.pick(provider_id).request(
+                ReleaseAllocationRequest(allocation_id=allocation_id), frame_gap_timeout=QUICK_OP_TIMEOUT
+            )
         )
 
-    def remove_best_effort(self, provider_id: str, ref: WorkbenchRef) -> bool:
+    def release_best_effort(self, provider_id: str, allocation_id: str) -> bool:
         try:
-            self.remove(provider_id, ref)
+            self.release(provider_id, allocation_id)
         except (WorkbenchUnavailableError, RuntimeError):
-            logger.warning("best-effort provider removal failed for %s", ref.runtime, exc_info=True)
+            logger.warning("best-effort provider release failed for %s", allocation_id, exc_info=True)
             return False
         return True
 
-    def is_running(self, provider_id: str, ref: WorkbenchRef) -> bool:
+    def is_running(self, provider_id: str, allocation_id: str) -> bool:
         try:
             frames = self._registry.pick(provider_id).request(
-                IsRunningRequest(ref=ref), frame_gap_timeout=QUICK_OP_TIMEOUT
+                InspectAllocationRequest(allocation_id=allocation_id), frame_gap_timeout=QUICK_OP_TIMEOUT
             )
             for frame in frames:
-                if isinstance(frame, RunningFrame):
-                    return frame.running
+                if isinstance(frame, AllocationStatusFrame):
+                    return frame.state not in {"lost", "released", "failed"}
                 if isinstance(frame, ErrorFrame | UnavailableFrame):
                     return False
         except WorkbenchUnavailableError:

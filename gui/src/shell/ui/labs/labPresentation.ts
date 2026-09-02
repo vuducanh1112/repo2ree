@@ -16,13 +16,13 @@ interface DockerModeCopy {
  * needs to know what it costs them.
  */
 export function dockerModeCopy(mode: string): DockerModeCopy {
-  if (mode === "dind") {
+  if (mode === "docker-nested") {
     return {
       readout: "per-workbench",
       line: "Isolated Docker per workbench — nothing shared with other work on this machine.",
     };
   }
-  if (mode === "host") {
+  if (mode === "docker-host-socket") {
     return {
       readout: "shared daemon",
       line: "Shares this machine's Docker — starts faster, sits alongside other work.",
@@ -30,5 +30,43 @@ export function dockerModeCopy(mode: string): DockerModeCopy {
   }
   // Never invent a description for a mode we don't recognise: show the raw
   // value and say only what is true of every lab.
-  return { readout: mode || "—", line: "Hosts this REE's workbench." };
+  if (mode === "bare") {
+    return { readout: "bare", line: "Provides command execution without a container daemon." };
+  }
+  return { readout: mode || "—", line: "Provides this REE's declared execution capabilities." };
+}
+
+/**
+ * Names where a REE actually runs, for the ambient bench readouts. The
+ * placement is a location and the fixed profile chosen there — never an image,
+ * which is the provider's private business and is deliberately unreachable
+ * from the browser.
+ */
+export function placementReadout(location?: string, profile?: string): string {
+  if (location && profile) return `${profile} @ ${location}`;
+  return profile || location || "Assigned profile";
+}
+
+// Keyed by the wire's own state names, so a Map rather than an object literal.
+const ALLOCATION_STATE_COPY = new Map<string, string>([
+  ["requested", "Requested"],
+  ["provisioning", "Provisioning"],
+  ["waiting_for_workbench", "Waiting for workbench"],
+  ["ready", "Ready"],
+  ["assigned", "Assigned"],
+  ["draining", "Draining"],
+  ["released", "Released"],
+  ["incompatible", "Incompatible"],
+  ["failed", "Failed"],
+  ["lost", "Lost"],
+]);
+
+/**
+ * How far obtaining this workbench has got. Unknown states are shown verbatim
+ * rather than smoothed over: a control plane ahead of this build should read as
+ * itself, not as "Ready".
+ */
+export function allocationStateCopy(state?: string): string {
+  if (!state) return "—";
+  return ALLOCATION_STATE_COPY.get(state) ?? state;
 }

@@ -6,20 +6,14 @@ import { runFailurePresentation } from "@core/runs/runFailurePresentation";
 import { appShellPorts } from "@shell/app/bootstrap/appShellPorts";
 import { useReeRunsClient } from "@shell/data/runs/client";
 import { observeReeRun } from "@shell/data/runs/queries";
-import { useWorkbenchImageCatalog } from "@shell/data/workbench/images";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { CollapsibleLogCard } from "../app-shell/components/CollapsibleLogCard";
-import {
-  DEFAULT_WORKBENCH_IMAGE_SELECTION,
-  resolveWorkbenchImage,
-  type WorkbenchImageSelection,
-  WorkbenchImageSelector,
-} from "../app-shell/pages/workbench/WorkbenchPageSections";
 import { Button } from "../shared/components/Button";
 import { Ic } from "../shared/components/Icon";
 import { Notice } from "../shared/components/Notice";
+import { dockerModeCopy } from "./labPresentation";
 import styles from "./WorkbenchSetupDrawer.module.css";
 
 interface WorkbenchSetupDrawerProps {
@@ -39,24 +33,18 @@ export function WorkbenchSetupDrawer({ lab, loadRequested }: WorkbenchSetupDrawe
   const navigate = useNavigate();
   const runsClient = useReeRunsClient();
   const queryClient = useQueryClient();
-  const { data: imageCatalog } = useWorkbenchImageCatalog();
-  const images = imageCatalog?.images ?? [];
-  const defaultImageId = imageCatalog?.defaultId ?? "";
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [log, setLog] = useState<LogEntry | null>(null);
-  const [imageSelection, setImageSelection] = useState<WorkbenchImageSelection>(
-    DEFAULT_WORKBENCH_IMAGE_SELECTION,
-  );
+  const [profileId, setProfileId] = useState(lab.profiles[0]?.id ?? "");
   // An REE can start blank or be a downloaded bundle restored onto the bench.
   // The bundle is chosen here rather than on the landing screen because the
   // load runs on the workbench this step provisions.
   const [bundle, setBundle] = useState<File | null>(null);
 
   async function handleProvision() {
-    const image =
-      lab.kind === "provider" ? resolveWorkbenchImage(imageSelection, images) : undefined;
+    const profile = lab.profiles.find((candidate) => candidate.id === profileId);
+    if (!profile) return;
     setLoading(true);
     setError(null);
     const startedTs = appShellPorts.clock.nowIso();
@@ -66,13 +54,10 @@ export function WorkbenchSetupDrawer({ lab, loadRequested }: WorkbenchSetupDrawe
       { type: "info", msg: "Powering up the workbench…", ts: startedTs },
       {
         type: "out",
-        msg:
-          lab.kind === "provider"
-            ? `Image: ${image ?? "server default"}`
-            : "Environment: operator managed",
+        msg: `Profile: ${profile.label} (${profile.revision})`,
         ts: startedTs,
       },
-      { type: "out", msg: `Location: ${lab.hostname || lab.id}`, ts: startedTs },
+      { type: "out", msg: `Location: ${lab.label}`, ts: startedTs },
     ];
     setLog({ lines: preamble, ts: startedTs });
     try {
@@ -80,7 +65,7 @@ export function WorkbenchSetupDrawer({ lab, loadRequested }: WorkbenchSetupDrawe
       // neutral default and let the user rename it there. Provisioning runs in
       // the background so the image pull streams live — observeReeRun tails the
       // run's log feed into this drawer until it finishes.
-      const { reeId, run } = await runsClient.createWorkspace("REE", image, lab.id, lab.kind);
+      const { reeId, run } = await runsClient.createWorkspace("REE", lab.id, profile.id);
       const result = await observeReeRun(queryClient, runsClient, {
         reeId,
         runId: run.runId,
@@ -138,22 +123,22 @@ export function WorkbenchSetupDrawer({ lab, loadRequested }: WorkbenchSetupDrawe
   return (
     <div className={styles.setup}>
       <p className={styles.lede}>
-        The bench is built on <b>{lab.hostname || lab.id}</b> and stays there for this REE's whole
-        life.
+        The bench is built at <b>{lab.label}</b> and stays there for this REE's whole life.
       </p>
 
-      {lab.kind === "provider" && (
-        <>
-          <SectionLabel icon={Ic.layers(14)}>Base image</SectionLabel>
-          <WorkbenchImageSelector
-            images={images}
-            defaultId={defaultImageId}
-            selection={imageSelection}
-            onChange={setImageSelection}
-            disabled={loading}
-          />
-        </>
-      )}
+      <SectionLabel icon={Ic.layers(14)}>Workbench profile</SectionLabel>
+      <select
+        value={profileId}
+        onChange={(event) => setProfileId(event.target.value)}
+        disabled={loading}
+        aria-label="Workbench profile"
+      >
+        {lab.profiles.map((profile) => (
+          <option key={`${profile.id}@${profile.revision}`} value={profile.id}>
+            {profile.label} · {dockerModeCopy(profile.substrate).readout}
+          </option>
+        ))}
+      </select>
 
       <SectionLabel icon={Ic.package(14)}>Contents</SectionLabel>
       <BundleChoice
@@ -177,7 +162,7 @@ export function WorkbenchSetupDrawer({ lab, loadRequested }: WorkbenchSetupDrawe
         busy={loading}
         icon={loading ? Ic.loader(15) : Ic.package(15)}
         onClick={handleProvision}
-        disabled={loading || (loadRequested && !bundle)}
+        disabled={loading || !profileId || !lab.available || (loadRequested && !bundle)}
       >
         {loading ? "Powering up…" : bundle ? "Provision and load REE" : "Provision workbench"}
       </Button>

@@ -195,7 +195,9 @@ const visualRee = {
     test_activation: auditStep,
     experiments: [{ name: "regional-forecast", ...auditStep }],
   },
-  workbench_image: "ghcr.io/repo2ree/workbench:python-3.12",
+  allocation_id: "alloc-7f31c9",
+  location_id: "lab-oslo",
+  profile_id: "python",
   workspace_files: [
     { path: "upstream/README.md", kind: "source", size: 1840, content: "# Climate model\n" },
     {
@@ -258,41 +260,57 @@ const visualRee = {
   ],
 };
 
-const labs = {
-  labs: [
+// Where work may run, and the fixed profiles offered there. Neither shape can
+// carry an image or a resource request: the provider resolves a profile to
+// launch details privately, and the browser never learns what it picked.
+const computeLocations = {
+  locations: [
     {
-      workbench_id: "lab-oslo",
-      hostname: "lab-oslo-01",
-      version: "0.8.0",
-      docker_mode: "dind",
-      connected_at: "2026-04-12T08:00:00Z",
+      id: "lab-oslo",
+      label: "Oslo lab",
+      description: "Provider-managed Docker capacity",
+      lifecycle_mode: "provider_managed",
+      available: true,
     },
     {
-      workbench_id: "lab-zurich",
-      hostname: "lab-zurich-02",
-      version: "0.8.0",
-      docker_mode: "host",
-      connected_at: "2026-04-12T08:15:00Z",
+      id: "lab-zurich",
+      label: "Zurich lab",
+      description: "Provider-managed Docker capacity",
+      lifecycle_mode: "provider_managed",
+      available: true,
     },
   ],
 };
 
-const images = {
-  images: [
+const workbenchProfiles = {
+  profiles: [
     {
       id: "python",
-      ref: "ghcr.io/repo2ree/workbench:python-3.12",
+      revision: "3",
+      location_id: "lab-oslo",
       label: "Python 3.12",
       description: "Python, pip, uv, and common build tooling",
+      required: {
+        substrate: "docker-nested",
+        minimum_docker_version: null,
+        resources: { cpu_count: 4, memory_bytes: 8589934592 },
+      },
+      storage_policy: "ephemeral",
     },
     {
       id: "base",
-      ref: "ghcr.io/repo2ree/workbench:base",
+      revision: "2",
+      location_id: "lab-zurich",
       label: "Base",
       description: "Minimal reproducibility workbench",
+      required: {
+        substrate: "docker-host-socket",
+        minimum_docker_version: null,
+        resources: { cpu_count: 2, memory_bytes: 4294967296 },
+      },
+      storage_policy: "ephemeral",
     },
   ],
-  default_id: "python",
 };
 
 const index = {
@@ -511,8 +529,8 @@ function responseFor(request: Request): unknown {
   const path = url.pathname;
   if (request.method() !== "GET")
     throw new Error(`Unexpected visual API mutation: ${request.method()} ${path}`);
-  if (path === "/api/v1/workbenches") return labs;
-  if (path === "/api/v1/workbench/images") return images;
+  if (path === "/api/v1/compute-locations") return computeLocations;
+  if (path === "/api/v1/workbench-profiles") return workbenchProfiles;
   if (path === "/api/v1/ree-steps") return authoringSteps;
   if (path === "/api/v1/script-templates") return scriptTemplates;
   if (path === "/api/v1/ree-index") return index;

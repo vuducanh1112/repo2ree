@@ -6151,21 +6151,382 @@
         }
       }
     },
-    "/api/v1/workbench/images": {
+    "/api/v1/compute-locations": {
       "get": {
         "tags": [
-          "fleet"
+          "compute"
         ],
-        "summary": "List Workbench Images",
-        "description": "The base images the GUI offers at provision time.",
-        "operationId": "listWorkbenchImages",
+        "summary": "List Compute Locations",
+        "operationId": "listComputeLocations",
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkbenchImageCatalog"
+                  "$ref": "#/components/schemas/ComputeLocationList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or operation precondition",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "REE, run, file, or artifact not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Workbench returned an invalid upstream response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Compute provider or workbench unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "507": {
+            "description": "Upload staging capacity exhausted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workbench-profiles": {
+      "get": {
+        "tags": [
+          "compute"
+        ],
+        "summary": "List Workbench Profiles",
+        "operationId": "listWorkbenchProfiles",
+        "parameters": [
+          {
+            "name": "location_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Location Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkbenchProfileList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or operation precondition",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "REE, run, file, or artifact not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Workbench returned an invalid upstream response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Compute provider or workbench unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "507": {
+            "description": "Upload staging capacity exhausted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/allocations": {
+      "get": {
+        "tags": [
+          "compute"
+        ],
+        "summary": "List Allocations",
+        "operationId": "listAllocations",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AllocationList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or operation precondition",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "REE, run, file, or artifact not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Workbench returned an invalid upstream response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Compute provider or workbench unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "507": {
+            "description": "Upload staging capacity exhausted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/allocations/{allocation_id}": {
+      "get": {
+        "tags": [
+          "compute"
+        ],
+        "summary": "Get Allocation",
+        "operationId": "getAllocation",
+        "parameters": [
+          {
+            "name": "allocation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Allocation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AllocationRecord"
                 }
               }
             }
@@ -6725,6 +7086,151 @@
         ],
         "title": "ActivationScriptTemplates",
         "description": "The activation run-script templates and both reserved activation paths.\n\nThe default template (``is_default``) is the content a fresh REE's\nactivation script is seeded with. ``verify_script_path`` is where an\nactivation verify script belongs when the author writes one; declaring it\non the intent is an explicit act (a declared verify script must exist and\npass)."
+      },
+      "AllocationList": {
+        "properties": {
+          "allocations": {
+            "items": {
+              "$ref": "#/components/schemas/AllocationRecord"
+            },
+            "type": "array",
+            "title": "Allocations"
+          }
+        },
+        "type": "object",
+        "required": [
+          "allocations"
+        ],
+        "title": "AllocationList"
+      },
+      "AllocationRecord": {
+        "properties": {
+          "request": {
+            "$ref": "#/components/schemas/AllocationRequest"
+          },
+          "state": {
+            "$ref": "#/components/schemas/AllocationState",
+            "default": "requested"
+          },
+          "workbench_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workbench Id"
+          },
+          "provider_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Id"
+          },
+          "observation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ObservedCapabilities"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "incompatibilities": {
+            "items": {
+              "$ref": "#/components/schemas/CompatibilityIssue"
+            },
+            "type": "array",
+            "title": "Incompatibilities",
+            "default": []
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "default": ""
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "request",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "AllocationRecord"
+      },
+      "AllocationRequest": {
+        "properties": {
+          "allocation_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Allocation Id"
+          },
+          "ree_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Ree Id"
+          },
+          "location_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Location Id"
+          },
+          "profile_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Profile Id"
+          },
+          "profile_revision": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Profile Revision"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "allocation_id",
+          "ree_id",
+          "location_id",
+          "profile_id",
+          "profile_revision"
+        ],
+        "title": "AllocationRequest"
+      },
+      "AllocationState": {
+        "type": "string",
+        "enum": [
+          "requested",
+          "provisioning",
+          "waiting_for_workbench",
+          "ready",
+          "assigned",
+          "draining",
+          "released",
+          "incompatible",
+          "failed",
+          "lost"
+        ],
+        "title": "AllocationState"
       },
       "ArchiveBindingAttestation": {
         "properties": {
@@ -7389,6 +7895,100 @@
           "count"
         ],
         "title": "CommandCandidatesObservation"
+      },
+      "CompatibilityIssue": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Code"
+          },
+          "detail": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Detail"
+          },
+          "expected": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected"
+          },
+          "observed": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "detail"
+        ],
+        "title": "CompatibilityIssue"
+      },
+      "ComputeLocation": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Label"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          },
+          "lifecycle_mode": {
+            "$ref": "#/components/schemas/LifecycleMode"
+          },
+          "available": {
+            "type": "boolean",
+            "title": "Available",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "lifecycle_mode"
+        ],
+        "title": "ComputeLocation"
+      },
+      "ComputeLocationList": {
+        "properties": {
+          "locations": {
+            "items": {
+              "$ref": "#/components/schemas/ComputeLocation"
+            },
+            "type": "array",
+            "title": "Locations"
+          }
+        },
+        "type": "object",
+        "required": [
+          "locations"
+        ],
+        "title": "ComputeLocationList"
       },
       "Contributor": {
         "properties": {
@@ -8998,6 +9598,38 @@
         "title": "Finding",
         "description": "One observation about one script."
       },
+      "FixedResources": {
+        "properties": {
+          "cpu_count": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cpu Count"
+          },
+          "memory_bytes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Bytes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "FixedResources",
+        "description": "Informational limits attached to a fixed deployment profile."
+      },
       "ForkNode": {
         "properties": {
           "id": {
@@ -9524,6 +10156,14 @@
         ],
         "title": "InferenceWarning"
       },
+      "LifecycleMode": {
+        "type": "string",
+        "enum": [
+          "provider_managed",
+          "externally_managed"
+        ],
+        "title": "LifecycleMode"
+      },
       "LintReport": {
         "properties": {
           "schema_version": {
@@ -9801,6 +10441,46 @@
         ],
         "title": "ObserveHardwareReceipt"
       },
+      "ObservedCapabilities": {
+        "properties": {
+          "root_writable": {
+            "type": "boolean",
+            "title": "Root Writable",
+            "default": false
+          },
+          "executor_available": {
+            "type": "boolean",
+            "title": "Executor Available",
+            "default": false
+          },
+          "substrate": {
+            "$ref": "#/components/schemas/SubstrateKind",
+            "default": "bare"
+          },
+          "docker_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Docker Version"
+          },
+          "docker_socket_mounted": {
+            "type": "boolean",
+            "title": "Docker Socket Mounted",
+            "default": false
+          },
+          "resources": {
+            "$ref": "#/components/schemas/FixedResources"
+          }
+        },
+        "type": "object",
+        "title": "ObservedCapabilities",
+        "description": "Facts measured by the workbench from inside its environment."
+      },
       "PackageDeltaRecord": {
         "properties": {
           "ecosystem": {
@@ -9930,9 +10610,9 @@
             "type": "string",
             "title": "Version"
           },
-          "docker_mode": {
+          "location_id": {
             "type": "string",
-            "title": "Docker Mode"
+            "title": "Location Id"
           },
           "connected_at": {
             "type": "string",
@@ -9949,7 +10629,7 @@
           "provider_id",
           "hostname",
           "version",
-          "docker_mode",
+          "location_id",
           "connected_at"
         ],
         "title": "ProviderSummary"
@@ -10112,42 +10792,23 @@
             ],
             "title": "Name"
           },
-          "workbench_image": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Workbench Image"
+          "location_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Location Id"
           },
-          "provider_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Provider Id"
-          },
-          "workbench_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Workbench Id"
+          "profile_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Profile Id"
           }
         },
         "additionalProperties": false,
         "type": "object",
+        "required": [
+          "location_id",
+          "profile_id"
+        ],
         "title": "ReeCreatePayload",
         "description": "Provision a new empty REE workbench.\n\nSource acquisition is intentionally a separate lifecycle operation through\n``source:acquire`` or the upload-init/upload/complete sequence."
       },
@@ -10345,7 +11006,7 @@
           "audit": {
             "$ref": "#/components/schemas/ReeAudit"
           },
-          "workbench_image": {
+          "allocation_id": {
             "anyOf": [
               {
                 "type": "string"
@@ -10354,7 +11015,29 @@
                 "type": "null"
               }
             ],
-            "title": "Workbench Image"
+            "title": "Allocation Id"
+          },
+          "location_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Id"
+          },
+          "profile_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Id"
           },
           "workspace_files": {
             "items": {
@@ -10805,16 +11488,17 @@
             ],
             "title": "Status"
           },
-          "workbench_image": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Workbench Image"
+          "allocation_id": {
+            "type": "string",
+            "title": "Allocation Id"
+          },
+          "location_id": {
+            "type": "string",
+            "title": "Location Id"
+          },
+          "profile_id": {
+            "type": "string",
+            "title": "Profile Id"
           }
         },
         "additionalProperties": false,
@@ -10822,7 +11506,10 @@
         "required": [
           "ree_id",
           "name",
-          "status"
+          "status",
+          "allocation_id",
+          "location_id",
+          "profile_id"
         ],
         "title": "ReeSummary"
       },
@@ -10898,6 +11585,34 @@
           "detected_dependencies"
         ],
         "title": "ReproducibilityReport"
+      },
+      "RequiredCapabilities": {
+        "properties": {
+          "substrate": {
+            "$ref": "#/components/schemas/SubstrateKind"
+          },
+          "minimum_docker_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum Docker Version"
+          },
+          "resources": {
+            "$ref": "#/components/schemas/FixedResources"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "substrate"
+        ],
+        "title": "RequiredCapabilities",
+        "description": "The exact capability gate for a profile, never a placement query."
       },
       "RequirementsProjectBinding": {
         "properties": {
@@ -12911,6 +13626,15 @@
         "type": "object",
         "title": "StorageDefinition"
       },
+      "StoragePolicy": {
+        "type": "string",
+        "enum": [
+          "ephemeral",
+          "retained",
+          "external"
+        ],
+        "title": "StoragePolicy"
+      },
       "StrategyLeafNode": {
         "properties": {
           "id": {
@@ -13038,6 +13762,15 @@
           "outcomes"
         ],
         "title": "StrategyOutcomesObservation"
+      },
+      "SubstrateKind": {
+        "type": "string",
+        "enum": [
+          "bare",
+          "docker-nested",
+          "docker-host-socket"
+        ],
+        "title": "SubstrateKind"
       },
       "TargetInferenceResult": {
         "properties": {
@@ -13529,56 +14262,6 @@
         "title": "VenvRuntimeContract",
         "description": "A packed Python virtual environment as the runtime substrate.\n\nThe build packs the venv as a gzipped tarball at ``artifact_path``; a\nrunnable restores it to ``venv_restore_dir`` (an absolute path, because a\nvenv bakes absolute paths and must be restored where it was built) and runs\nthe command with that venv's ``bin`` on ``PATH``. There is no image ref: the\nworkbench base image is the environment. ``venv_restore_dir`` defaults to the\npath a repo2ree build packs; an inspected artifact overrides it with the path\nrecovered from the venv's own ``pyvenv.cfg``."
       },
-      "WorkbenchImage": {
-        "properties": {
-          "ref": {
-            "type": "string",
-            "title": "Ref"
-          },
-          "id": {
-            "type": "string",
-            "title": "Id",
-            "default": ""
-          },
-          "label": {
-            "type": "string",
-            "title": "Label",
-            "default": ""
-          },
-          "description": {
-            "type": "string",
-            "title": "Description",
-            "default": ""
-          }
-        },
-        "type": "object",
-        "required": [
-          "ref"
-        ],
-        "title": "WorkbenchImage",
-        "description": "A base image offered for workbench provisioning.\n\nConfig schema, so it lives with the settings that carry the catalog. The\n``/api/v1/workbench/images`` route (control/fleet.py) serves these to the\nUI's image picker.\n\nOnly ``ref`` is required \u2014 it's the sole backend-meaningful field (the image\nthat gets provisioned). ``id``/``label``/``description`` are UI-facing (the\npicker's identity, title, subtitle) and default off the ref when omitted, so a\ncatalog entry can be as terse as ``{\"ref\": \"docker:29-dind\"}``."
-      },
-      "WorkbenchImageCatalog": {
-        "properties": {
-          "images": {
-            "items": {
-              "$ref": "#/components/schemas/WorkbenchImage"
-            },
-            "type": "array",
-            "title": "Images"
-          },
-          "default_id": {
-            "type": "string",
-            "title": "Default Id"
-          }
-        },
-        "type": "object",
-        "required": [
-          "images",
-          "default_id"
-        ],
-        "title": "WorkbenchImageCatalog"
-      },
       "WorkbenchList": {
         "properties": {
           "workbenches": {
@@ -13594,6 +14277,68 @@
           "workbenches"
         ],
         "title": "WorkbenchList"
+      },
+      "WorkbenchProfile": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Id"
+          },
+          "revision": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Revision"
+          },
+          "location_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Location Id"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Label"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          },
+          "required": {
+            "$ref": "#/components/schemas/RequiredCapabilities"
+          },
+          "storage_policy": {
+            "$ref": "#/components/schemas/StoragePolicy",
+            "default": "ephemeral"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "revision",
+          "location_id",
+          "label",
+          "required"
+        ],
+        "title": "WorkbenchProfile"
+      },
+      "WorkbenchProfileList": {
+        "properties": {
+          "profiles": {
+            "items": {
+              "$ref": "#/components/schemas/WorkbenchProfile"
+            },
+            "type": "array",
+            "title": "Profiles"
+          }
+        },
+        "type": "object",
+        "required": [
+          "profiles"
+        ],
+        "title": "WorkbenchProfileList"
       },
       "WorkbenchStatus": {
         "properties": {
@@ -13612,7 +14357,7 @@
             ],
             "title": "Workbench Id"
           },
-          "image": {
+          "allocation_id": {
             "anyOf": [
               {
                 "type": "string"
@@ -13621,7 +14366,40 @@
                 "type": "null"
               }
             ],
-            "title": "Image"
+            "title": "Allocation Id"
+          },
+          "location_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Id"
+          },
+          "profile_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Id"
+          },
+          "substrate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Substrate"
           }
         },
         "additionalProperties": false,

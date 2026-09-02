@@ -27,7 +27,7 @@ export const applicationPageScenarios: ApplicationPageScenario[] = [
     prepare: async (page) => {
       await page.goto("/lab-location");
       await expect(page.getByRole("heading", { name: "Where should this REE run?" })).toBeVisible();
-      await expect(page.getByText("lab-oslo-01")).toBeVisible();
+      await expect(page.getByText("Oslo lab")).toBeVisible();
       await settleVisualPage(page);
     },
   },
@@ -38,9 +38,11 @@ export const applicationPageScenarios: ApplicationPageScenario[] = [
     screenshot: "workbench-setup.png",
     prepare: async (page) => {
       await page.goto("/lab-location");
-      await page.getByRole("button", { name: "lab-oslo-01 — connected" }).click();
+      await page.getByRole("button", { name: "Oslo lab — available" }).click();
       await expect(page.getByRole("region", { name: "Set up the workbench" })).toBeVisible();
-      await expect(page.getByText("Python 3.12")).toBeVisible();
+      // The profile select, not its options: an <option> in a closed <select>
+      // has no box, so asserting its text would never resolve.
+      await expect(page.getByLabel("Workbench profile")).toHaveValue("python");
       await settleVisualPage(page);
     },
   },
