@@ -43,7 +43,6 @@ class FakeBackend:
         allocation: AllocationRequest,
         workbench_id: str,
         enrollment_token: str,
-        image: str,
     ) -> Iterator[Frame]:
         yield AllocationStatusFrame(
             allocation_id=allocation.allocation_id,
@@ -63,8 +62,7 @@ def _allocation() -> AllocationRequest:
         allocation_id="alloc-1",
         ree_id="ree-1",
         location_id="lab-1",
-        profile_id="standard",
-        profile_revision="1",
+        image="docker.io/library/docker:29-dind",
     )
 
 
@@ -91,7 +89,7 @@ def test_capacity_connection_serves_ensure_inspect_and_release() -> None:
             ).model_dump_json(),
         ]
     )
-    provisioner = ProvisionerService(FakeBackend(), {("standard", "1"): "private:image"})
+    provisioner = ProvisionerService(FakeBackend(), catalog={"curated:image"}, accepts_custom_image=True)
 
     asyncio.run(_serve(socket, provisioner))  # type: ignore[arg-type]
 
@@ -105,6 +103,7 @@ def test_capacity_connection_serves_ensure_inspect_and_release() -> None:
 def test_unknown_operation_returns_a_terminal_error() -> None:
     socket = FakeSocket(['{"id":"bad","request":{"op":"schedule_best_machine"}}'])
 
-    asyncio.run(_serve(socket, ProvisionerService(FakeBackend(), {})))  # type: ignore[arg-type]
+    provisioner = ProvisionerService(FakeBackend(), catalog=set(), accepts_custom_image=True)
+    asyncio.run(_serve(socket, provisioner))  # type: ignore[arg-type]
 
     assert _messages(socket)[0].frame.type == "error"

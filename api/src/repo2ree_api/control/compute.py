@@ -2,29 +2,18 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from repo2ree_api.contracts import ERROR_RESPONSES
 from repo2ree_api.deps import allocation_store, provider_connections, workbench_connections
-from repo2ree_protocol import (
-    AllocationRecord,
-    ComputeLocation,
-    LifecycleMode,
-    RequiredCapabilities,
-    StoragePolicy,
-    WorkbenchProfile,
-)
+from repo2ree_protocol import AllocationRecord, ComputeLocation, LifecycleMode
 
 compute_router = APIRouter(tags=["compute"])
 
 
 class ComputeLocationList(BaseModel):
     locations: list[ComputeLocation]
-
-
-class WorkbenchProfileList(BaseModel):
-    profiles: list[WorkbenchProfile]
 
 
 class AllocationList(BaseModel):
@@ -44,9 +33,13 @@ def list_compute_locations() -> ComputeLocationList:
             label=provider.location_label,
             lifecycle_mode=LifecycleMode.PROVIDER_MANAGED,
             available=True,
+            images=provider.images,
+            accepts_custom_image=provider.accepts_custom_image,
         )
         for provider in provider_connections.list_providers()
     ]
+    # An externally managed bench was provisioned outside this control plane, so
+    # it publishes no catalog and takes no image: there is nothing left to pick.
     locations.extend(
         ComputeLocation(
             id=bench.location_id,
@@ -58,34 +51,6 @@ def list_compute_locations() -> ComputeLocationList:
         if bench.mode == "external"
     )
     return ComputeLocationList(locations=sorted(locations, key=lambda location: (location.label, location.id)))
-
-
-@compute_router.get(
-    "/api/v1/workbench-profiles",
-    response_model=WorkbenchProfileList,
-    responses=ERROR_RESPONSES,
-    operation_id="listWorkbenchProfiles",
-)
-def list_workbench_profiles(location_id: str | None = Query(None)) -> WorkbenchProfileList:
-    profiles = [profile for provider in provider_connections.list_providers() for profile in provider.profiles]
-    profiles.extend(
-        WorkbenchProfile(
-            id=bench.profile_id,
-            revision=bench.profile_revision,
-            location_id=bench.location_id,
-            label=bench.profile_id,
-            required=RequiredCapabilities(
-                substrate=bench.capabilities.substrate,
-                resources=bench.capabilities.resources,
-            ),
-            storage_policy=StoragePolicy.EXTERNAL,
-        )
-        for bench in workbench_connections.list_workbenches()
-        if bench.mode == "external" and bench.capabilities is not None
-    )
-    if location_id is not None:
-        profiles = [profile for profile in profiles if profile.location_id == location_id]
-    return WorkbenchProfileList(profiles=profiles)
 
 
 @compute_router.get(

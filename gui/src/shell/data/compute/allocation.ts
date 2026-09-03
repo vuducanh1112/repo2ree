@@ -3,18 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useApiServices } from "../apiRuntime";
 import { queryKeys } from "../queryKeys";
 
-// Obtaining a workbench runs through provisioning and a capability check before
-// it is assigned, so an unsettled allocation is polled: the bench readout should
+// Obtaining a workbench runs through provisioning and bench start-up before it
+// is assigned, so an unsettled allocation is polled: the bench readout should
 // reach its terminal state on its own, without a reload.
 const ALLOCATION_REFETCH_MS = 2000;
 
-const SETTLED: ReadonlySet<string> = new Set([
-  "assigned",
-  "released",
-  "incompatible",
-  "failed",
-  "lost",
-]);
+const SETTLED: ReadonlySet<string> = new Set(["assigned", "released", "failed", "lost"]);
 
 /** The lifecycle record behind one REE's workbench, or idle until it has one. */
 export function useAllocation(allocationId?: string) {

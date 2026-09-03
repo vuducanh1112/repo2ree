@@ -96,16 +96,15 @@ function lab(overrides: Partial<Lab> = {}): Lab {
     label: "lab-oslo-01",
     description: "",
     lifecycleMode: "provider_managed",
-    profiles: [
+    images: [
       {
         id: "standard",
-        revision: "1",
-        label: "Standard",
+        ref: "docker.io/library/docker:29-dind",
+        label: "Standard (docker)",
         description: "",
-        substrate: "docker-nested",
-        storagePolicy: "ephemeral",
       },
     ],
+    acceptsCustomImage: false,
     status: "connected",
     available: true,
     ...overrides,
@@ -177,18 +176,7 @@ describe("choosing a lab", () => {
     useLabsMock.mockReturnValue(
       queryState({
         data: [
-          lab({
-            profiles: [
-              {
-                id: "shared",
-                revision: "1",
-                label: "Shared",
-                description: "",
-                substrate: "docker-host-socket",
-                storagePolicy: "ephemeral",
-              },
-            ],
-          }),
+          lab({ description: "Bench pool for the Oslo cluster.", acceptsCustomImage: true }),
           ...fleet(2),
         ],
       }),
@@ -200,8 +188,12 @@ describe("choosing a lab", () => {
     await userEvent.click(screen.getByRole("button", { name: "lab-oslo-01 — available" }));
 
     expect(screen.getByText("Specimen pod · assigned")).toBeInTheDocument();
-    // The wire's docker_mode is rendered as what it costs the author.
-    expect(screen.getByText("shared daemon")).toBeInTheDocument();
+    // The operator facts a cell has no room for. Whether a ref the lab did not
+    // publish is accepted is one of them; nothing here claims what its images
+    // supply, because nothing knows.
+    expect(screen.getByText("CUSTOM IMAGE")).toBeInTheDocument();
+    expect(screen.getByText("accepted")).toBeInTheDocument();
+    expect(screen.getByText("IMAGES")).toBeInTheDocument();
   });
 
   it("arms the only connected lab, so a single-lab install is one click", () => {

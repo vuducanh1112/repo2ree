@@ -31,9 +31,13 @@ class IsolationBackend(Protocol):
         allocation: AllocationRequest,
         workbench_id: str,
         enrollment_token: str,
-        image: str,
     ) -> Iterator[Frame]:
-        """Create a bench for ``ree_id``; ends with a workbench-ref frame."""
+        """Create the bench ``allocation`` names; ends with a status frame.
+
+        The image is read off the allocation rather than passed beside it: the
+        container is started from one and labelled from the other, so two
+        arguments for one fact is a way for them to disagree.
+        """
         ...
 
     def release(self, allocation_id: str) -> None:

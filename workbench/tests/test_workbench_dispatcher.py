@@ -137,8 +137,7 @@ def test_dispatcher_routes_assignment_before_any_execution() -> None:
         allocation_id="alloc-1",
         ree_id="ree-1",
         location_id="lab-1",
-        profile_id="standard",
-        profile_revision="1",
+        image="docker.io/library/docker:29-dind",
     )
 
     asyncio.run(harness.dispatch(AssignAllocationRequest(allocation=allocation)))

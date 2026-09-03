@@ -74,7 +74,7 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
     await showcasePanel(
       page,
       setup,
-      "Choosing a lab opens its bench setup in place — which of the lab's fixed workbench profiles to run on, and whether the bench starts blank or from a downloaded bundle",
+      "Choosing a lab opens its bench setup in place — which of the lab's curated base images to build the bench from, and whether it starts blank or from a downloaded bundle",
     );
     await clickDemo(
       page,
@@ -292,7 +292,7 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
 
     // The runtime the build produces is declared before it runs — the build
     // refuses to start without it and fails if nothing lands at that path. The
-    // declaration names the substrate the whole REE runs on, shared by
+    // declaration names the runtime the whole REE runs on, shared by
     // activation and every experiment.
     await fillDemo(
       page,

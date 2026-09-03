@@ -16,8 +16,7 @@ def test_load_config_prefers_explicit_workbench_identity(monkeypatch: pytest.Mon
     monkeypatch.setenv("WORKBENCH_ROOT", "/custom-ree")
     monkeypatch.setenv("REPO2REE_EXEC_PATH", "/bin/repo2ree-exec")
     monkeypatch.setenv("WORKBENCH_LOCATION_ID", "lab-1")
-    monkeypatch.setenv("WORKBENCH_PROFILE_ID", "standard")
-    monkeypatch.setenv("WORKBENCH_PROFILE_REVISION", "1")
+    monkeypatch.setenv("WORKBENCH_IMAGE", "docker.io/library/docker:29-dind")
     monkeypatch.setenv("OTLP_ENDPOINT", "http://collector:4318")
 
     config = config_module.load_config()
@@ -28,7 +27,7 @@ def test_load_config_prefers_explicit_workbench_identity(monkeypatch: pytest.Mon
     assert config.enrollment_token == opaque_enrollment
     assert config.root == Path("/custom-ree")
     assert config.exec_path == "/bin/repo2ree-exec"
-    assert (config.location_id, config.profile_id, config.profile_revision) == ("lab-1", "standard", "1")
+    assert (config.location_id, config.image) == ("lab-1", "docker.io/library/docker:29-dind")
     assert config.otlp_endpoint == "http://collector:4318"
 
 

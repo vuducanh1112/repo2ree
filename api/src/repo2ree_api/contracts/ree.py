@@ -24,7 +24,7 @@ class ReeDocument(BaseModel):
     audit: ReeAudit
     allocation_id: str | None = None
     location_id: str | None = None
-    profile_id: str | None = None
+    image: str | None = None
     workspace_files: list[WorkspaceFile] = Field(default_factory=list)
     ree_files: list[ReeFile] = Field(default_factory=list)
 
@@ -37,7 +37,7 @@ class ReeSummary(BaseModel):
     status: ReeStatus
     allocation_id: str
     location_id: str
-    profile_id: str
+    image: str
 
 
 class ReeList(BaseModel):
@@ -61,8 +61,7 @@ class WorkbenchStatus(BaseModel):
     workbench_id: str | None = None
     allocation_id: str | None = None
     location_id: str | None = None
-    profile_id: str | None = None
-    substrate: str | None = None
+    image: str | None = None
 
 
 class ReeState(BaseModel):

@@ -258,7 +258,7 @@ export async function connectedLabCount(page: Page): Promise<number> {
 /**
  * Land on the workbench lab from the landing view. REE creation opens with
  * the lab-location step: pick the (available) lab that will host the
- * workbench, which carries its id into the profile setup drawer.
+ * workbench, which carries its id into the bench setup drawer.
  *
  * `labIndex` picks the nth available lab (default: the first) — the
  * multi-lab spec uses it to pin each session to a different lab. Returns
@@ -287,16 +287,19 @@ export async function startReeCreation(page: Page, options?: { labIndex?: number
  * (the live lab), so this resolves there and then dives into the Source node so
  * the rest of the walkthrough continues from the docked authoring drawer.
  */
-export async function provisionWorkbench(page: Page, options?: { profileId?: string }) {
+export async function provisionWorkbench(page: Page, options?: { imageLabel?: string }) {
   await stepShot(page, "provision-workbench", "before");
   // Setup is the drawer the lab picker opens, so scope to it rather than to a
   // page that no longer exists on its own.
   const setup = page.getByRole("region", { name: "Set up the workbench" });
-  if (options?.profileId) {
-    // Pick one of the location's fixed profiles. There is deliberately no image
-    // field to fill: the provider alone knows what a profile launches, so a
-    // different environment means a different profile in its catalog.
-    await setup.getByLabel("Workbench profile").selectOption(options.profileId);
+  if (options?.imageLabel) {
+    // Pick one of the lab's curated images by its label rather than its ref:
+    // the stack pins the actual refs per environment, so the label is the
+    // stable half of a catalog entry.
+    // Playwright's default name matching is substring and case-insensitive, so
+    // the label alone reaches the card without a regex that a label containing
+    // a metacharacter would break.
+    await setup.getByRole("button", { name: options.imageLabel }).click();
   }
   await setup.getByRole("button", { name: /Provision workbench/i }).click();
   // A real provision: bench container start, nested dockerd boot, doctor

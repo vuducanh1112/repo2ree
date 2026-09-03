@@ -374,21 +374,22 @@ def run() -> None:
     health = call("GET", "/")
     check(health.get("status") == "online", "service not online")
 
-    # Creation picks a deployment-defined place to run, never an image or a
-    # resource request: one compute location, and one fixed profile offered
-    # there. What that profile launches is the provider's private business.
+    # Creation picks a place to run and a base image to run there. The catalog
+    # is the location's own, published on the location record; a location that
+    # accepts a ref it did not publish says so, and that is the whole contract.
     locations = call("GET", "/api/v1/compute-locations")["locations"]
     check(locations, "no compute location is connected")
-    location_id = locations[0]["id"]
-    note(f"compute location {location_id!r} is {locations[0]['lifecycle_mode']}")
-    profiles = call("GET", f"/api/v1/workbench-profiles?location_id={location_id}")["profiles"]
-    check(profiles, f"location {location_id!r} offers no workbench profile")
-    profile = profiles[0]
-    note(f"profile {profile['id']}@{profile['revision']} requires substrate {profile['required']['substrate']}")
+    location = locations[0]
+    location_id = location["id"]
+    note(f"compute location {location_id!r} is {location['lifecycle_mode']}")
+    check(location["images"], f"location {location_id!r} offers no image")
+    image = location["images"][0]
+    custom = "accepted" if location["accepts_custom_image"] else "refused"
+    note(f"image {image['id']!r} is {image['ref']}; custom images are {custom} here")
     created = call(
         "POST",
         "/api/v1/rees",
-        {"name": "workbench-authored-ree", "location_id": location_id, "profile_id": profile["id"]},
+        {"name": "workbench-authored-ree", "location_id": location_id, "image": image["ref"]},
     )
     ree_id = created["ree_id"]
     check(ree_id, "no ree_id in create response")

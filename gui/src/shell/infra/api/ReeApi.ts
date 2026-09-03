@@ -28,7 +28,6 @@ import type {
   UploadInitPayload,
   UploadInitResponse,
   WorkbenchList,
-  WorkbenchProfileList,
 } from "./apiTypes";
 import { endpoints } from "./endpoints";
 
@@ -75,17 +74,9 @@ export class ReeApi {
     return this.client.request<ReeStepCatalog>(endpoints.reeSteps(), { method: "GET" });
   }
 
-  /** User-visible compute locations; deployment systems own their capacity. */
+  /** User-visible compute locations, each carrying the image catalog it offers. */
   async listComputeLocations(): Promise<ComputeLocationList> {
     return this.client.request<ComputeLocationList>(endpoints.computeLocations(), {
-      method: "GET",
-    });
-  }
-
-  /** Fixed owner-approved profiles, optionally narrowed to one location. */
-  async listWorkbenchProfiles(locationId?: string): Promise<WorkbenchProfileList> {
-    const query = locationId ? `?location_id=${encodeURIComponent(locationId)}` : "";
-    return this.client.request<WorkbenchProfileList>(`${endpoints.workbenchProfiles()}${query}`, {
       method: "GET",
     });
   }

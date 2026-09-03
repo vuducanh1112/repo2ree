@@ -32,7 +32,7 @@ allocation_store = AllocationStore(service_settings.ALLOCATION_STORE_FILE)
 # populates it; WsWorkbenchClient reads from it to drive whichever workbench is connected.
 def _workbench_allocated(workbench_id: str) -> bool:
     return any(
-        record.workbench_id == workbench_id and record.state.value not in {"released", "failed", "incompatible", "lost"}
+        record.workbench_id == workbench_id and record.state.value not in {"released", "failed", "lost"}
         for record in allocation_store.list()
     )
 

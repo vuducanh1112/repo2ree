@@ -20,7 +20,6 @@ _TRANSITIONS: dict[AllocationState, frozenset[AllocationState]] = {
         {
             AllocationState.READY,
             AllocationState.DRAINING,
-            AllocationState.INCOMPATIBLE,
             AllocationState.FAILED,
             AllocationState.LOST,
         }
@@ -31,7 +30,6 @@ _TRANSITIONS: dict[AllocationState, frozenset[AllocationState]] = {
     AllocationState.ASSIGNED: frozenset({AllocationState.DRAINING, AllocationState.FAILED, AllocationState.LOST}),
     AllocationState.DRAINING: frozenset({AllocationState.RELEASED, AllocationState.FAILED}),
     AllocationState.RELEASED: frozenset(),
-    AllocationState.INCOMPATIBLE: frozenset({AllocationState.DRAINING}),
     AllocationState.FAILED: frozenset({AllocationState.DRAINING}),
     AllocationState.LOST: frozenset({AllocationState.DRAINING}),
 }

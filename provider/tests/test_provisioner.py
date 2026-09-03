@@ -17,9 +17,8 @@ class _Backend:
         allocation: AllocationRequest,
         workbench_id: str,
         enrollment_token: str,
-        image: str,
     ) -> Iterator[Frame]:
-        self.calls.append(("ensure", image))
+        self.calls.append(("ensure", allocation.image))
         yield DoneFrame()
 
     def release(self, allocation_id: str) -> None:
@@ -30,34 +29,52 @@ class _Backend:
         return True
 
 
-def _allocation(profile_id: str = "standard") -> AllocationRequest:
+_CATALOG_IMAGE = "curated/image@sha256:123"
+
+
+def _allocation(image: str = _CATALOG_IMAGE) -> AllocationRequest:
     return AllocationRequest(
         allocation_id="alloc-1",
         ree_id="ree-1",
         location_id="lab-1",
-        profile_id=profile_id,
-        profile_revision="1",
+        image=image,
     )
 
 
-def test_provider_resolves_profile_to_private_image() -> None:
+def test_the_requested_image_is_what_the_backend_runs() -> None:
     backend = _Backend()
-    provisioner = ProvisionerService(backend, {("standard", "1"): "private/image@sha256:123"})
+    provisioner = ProvisionerService(backend, catalog={_CATALOG_IMAGE}, accepts_custom_image=False)
 
     assert list(provisioner.ensure(_allocation(), "wb-1", "token")) == [DoneFrame()]
-    assert backend.calls == [("ensure", "private/image@sha256:123")]
+    assert backend.calls == [("ensure", _CATALOG_IMAGE)]
 
 
-def test_provider_rejects_unknown_profile_without_fallback() -> None:
-    provisioner = ProvisionerService(_Backend(), {("standard", "1"): "private/image@sha256:123"})
+def test_an_off_catalog_ref_is_refused_when_the_provider_curates_strictly() -> None:
+    """The control plane checks too, but a stale catalog there must not get past this."""
+    provisioner = ProvisionerService(_Backend(), catalog={_CATALOG_IMAGE}, accepts_custom_image=False)
 
-    with pytest.raises(ValueError, match="unsupported workbench profile"):
-        list(provisioner.ensure(_allocation("unknown"), "wb-1", "token"))
+    with pytest.raises(ValueError, match="not in this provider's catalog"):
+        list(provisioner.ensure(_allocation("ghcr.io/me/bench:v3"), "wb-1", "token"))
+
+
+def test_an_off_catalog_ref_runs_where_the_provider_accepts_one() -> None:
+    backend = _Backend()
+    provisioner = ProvisionerService(backend, catalog={_CATALOG_IMAGE}, accepts_custom_image=True)
+
+    assert list(provisioner.ensure(_allocation("ghcr.io/me/bench:v3"), "wb-1", "token")) == [DoneFrame()]
+    assert backend.calls == [("ensure", "ghcr.io/me/bench:v3")]
+
+
+def test_an_allocation_with_no_image_is_a_bug_not_a_default() -> None:
+    provisioner = ProvisionerService(_Backend(), catalog={_CATALOG_IMAGE}, accepts_custom_image=True)
+
+    with pytest.raises(ValueError, match="must name an image"):
+        list(provisioner.ensure(_allocation(""), "wb-1", "token"))
 
 
 def test_inspect_and_release_are_keyed_by_allocation_id() -> None:
     backend = _Backend()
-    provisioner = ProvisionerService(backend, {})
+    provisioner = ProvisionerService(backend, catalog=set(), accepts_custom_image=True)
 
     assert provisioner.inspect("alloc-1") is True
     provisioner.release("alloc-1")

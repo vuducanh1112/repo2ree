@@ -48,7 +48,7 @@ test("upload Code Ocean capsule 4825344", async ({ page }) => {
     await showcasePanel(
       page,
       setup,
-      "Choosing a lab opens its bench setup in place — which of the lab's fixed workbench profiles to run on, and whether the bench starts blank or from a downloaded bundle",
+      "Choosing a lab opens its bench setup in place — which of the lab's curated base images to build the bench from, and whether it starts blank or from a downloaded bundle",
     );
     await clickDemo(
       page,

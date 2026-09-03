@@ -37,7 +37,6 @@ from repo2ree_protocol.frames import (
     UnavailableFrame,
 )
 from repo2ree_protocol.result import Failure
-from repo2ree_protocol.substrate import ObservedCapabilities
 from repo2ree_protocol.tracing import (
     CommandSpanAttrs,
     WorkbenchSpanAttrs,
@@ -141,9 +140,7 @@ async def run_workbench(
     allocation_id: str = "",
     enrollment_token: str = "",
     location_id: str = "",
-    profile_id: str = "",
-    profile_revision: str = "",
-    capabilities: ObservedCapabilities | None = None,
+    image: str = "",
     reconnect_delay: float = 3.0,
 ) -> None:
     """Dial the control plane and serve requests, reconnecting on drop."""
@@ -155,9 +152,7 @@ async def run_workbench(
         hostname=socket.gethostname(),
         version=_workbench_version(),
         location_id=location_id,
-        profile_id=profile_id,
-        profile_revision=profile_revision,
-        capabilities=capabilities or ObservedCapabilities(),
+        image=image,
         # Minted once per process: reconnects reuse it, so the control plane can
         # tell this instance reconnecting from another instance claiming its id.
         nonce=uuid4().hex,
@@ -165,13 +160,13 @@ async def run_workbench(
     while True:
         connection_attrs = {
             "repo2ree.workbench_id": workbench_id,
-            "repo2ree.workbench.substrate": str(hello.capabilities.substrate),
+            "repo2ree.workbench.image": hello.image,
         }
         _connection_attempt_counter.add(1, connection_attrs)
         try:
             with tracer.start_as_current_span("workbench.connection") as span:
                 span.set_attribute("repo2ree.workbench_id", workbench_id)
-                span.set_attribute("repo2ree.workbench.substrate", str(hello.capabilities.substrate))
+                span.set_attribute("repo2ree.workbench.image", hello.image)
                 async with connect(api_ws_url) as ws:
                     logger.info("workbench %s connected to %s", workbench_id, api_ws_url)
                     _connection_connected_counter.add(1, connection_attrs)

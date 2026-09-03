@@ -3,15 +3,35 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 from threading import RLock
 
+from pydantic import ValidationError
+
 from repo2ree_protocol.allocation import AllocationRecord, AllocationRequest, AllocationState
-from repo2ree_protocol.substrate import CompatibilityIssue, ObservedCapabilities
 from repo2ree_supervisor.allocation_state import require_transition
+
+logger = logging.getLogger(__name__)
+
+
+def _parse(raw: object) -> AllocationRecord | None:
+    """One stored record, or None if this build cannot read it.
+
+    The file outlives the schema that wrote it, so a record left by an older
+    build is dropped rather than made to fail every read around it — the same
+    rule the REE listing already applies to a manifest it cannot parse. The
+    allocation it describes is unusable either way; refusing to answer *any*
+    query because of it would take the whole control plane down with it.
+    """
+    try:
+        return AllocationRecord.model_validate(raw)
+    except ValidationError:
+        logger.warning("dropping an allocation record this build cannot parse", exc_info=True)
+        return None
 
 
 class AllocationStore:
@@ -48,8 +68,7 @@ class AllocationStore:
         state: AllocationState,
         *,
         workbench_id: str | None = None,
-        observation: ObservedCapabilities | None = None,
-        incompatibilities: tuple[CompatibilityIssue, ...] | None = None,
+        resolved_image: str | None = None,
         detail: str | None = None,
     ) -> AllocationRecord:
         with self._lock:
@@ -59,10 +78,8 @@ class AllocationStore:
             record.state = state
             if workbench_id is not None:
                 record.workbench_id = workbench_id
-            if observation is not None:
-                record.observation = observation
-            if incompatibilities is not None:
-                record.incompatibilities = incompatibilities
+            if resolved_image is not None:
+                record.resolved_image = resolved_image
             if detail is not None:
                 record.detail = detail
             record.updated_at = datetime.now(UTC)
@@ -73,19 +90,19 @@ class AllocationStore:
     def get(self, allocation_id: str) -> AllocationRecord | None:
         with self._lock:
             raw = self._read()["allocations"].get(allocation_id)
-        return AllocationRecord.model_validate(raw) if raw is not None else None
+        return _parse(raw) if raw is not None else None
 
     def for_ree(self, ree_id: str) -> AllocationRecord | None:
         with self._lock:
             data = self._read()
             allocation_id = data["placements"].get(ree_id)
             raw = data["allocations"].get(allocation_id) if isinstance(allocation_id, str) else None
-        return AllocationRecord.model_validate(raw) if raw is not None else None
+        return _parse(raw) if raw is not None else None
 
     def list(self) -> list[AllocationRecord]:
         with self._lock:
             values = list(self._read()["allocations"].values())
-        return [AllocationRecord.model_validate(value) for value in values]
+        return [record for record in map(_parse, values) if record is not None]
 
     def remove_placement(self, ree_id: str) -> None:
         with self._lock:

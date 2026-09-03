@@ -3,48 +3,27 @@ export function labLoadErrorMessage(error: unknown): string {
   return `Failed to load labs: ${detail}`;
 }
 
-interface DockerModeCopy {
-  /** The readout value — two words at most, so it fits a cell's meta line. */
-  readout: string;
-  /** What picking this lab means for the author, in one sentence. */
-  line: string;
+/**
+ * Shortens an image ref to something that fits a cell without lying about it:
+ * the implicit Docker Hub prefix goes, and a digest is truncated to its first
+ * bytes. The tag is always kept — it is the half an author recognises.
+ */
+export function imageReadout(ref: string): string {
+  if (!ref) return "—";
+  const short = ref.replace(/^docker\.io\/library\//, "").replace(/^docker\.io\//, "");
+  const at = short.indexOf("@sha256:");
+  return at === -1 ? short : `${short.slice(0, at)}@${short.slice(at + 8, at + 20)}…`;
 }
 
 /**
- * Turns the lab's `docker_mode` into something an author can decide on. The
- * wire value names an implementation; a person choosing where their work runs
- * needs to know what it costs them.
+ * Names where a REE actually runs, for the ambient bench readouts: the image it
+ * was built from, and the lab it was built at. The image is shown on purpose —
+ * it is the base of everything the REE will claim to reproduce.
  */
-export function dockerModeCopy(mode: string): DockerModeCopy {
-  if (mode === "docker-nested") {
-    return {
-      readout: "per-workbench",
-      line: "Isolated Docker per workbench — nothing shared with other work on this machine.",
-    };
-  }
-  if (mode === "docker-host-socket") {
-    return {
-      readout: "shared daemon",
-      line: "Shares this machine's Docker — starts faster, sits alongside other work.",
-    };
-  }
-  // Never invent a description for a mode we don't recognise: show the raw
-  // value and say only what is true of every lab.
-  if (mode === "bare") {
-    return { readout: "bare", line: "Provides command execution without a container daemon." };
-  }
-  return { readout: mode || "—", line: "Provides this REE's declared execution capabilities." };
-}
-
-/**
- * Names where a REE actually runs, for the ambient bench readouts. The
- * placement is a location and the fixed profile chosen there — never an image,
- * which is the provider's private business and is deliberately unreachable
- * from the browser.
- */
-export function placementReadout(location?: string, profile?: string): string {
-  if (location && profile) return `${profile} @ ${location}`;
-  return profile || location || "Assigned profile";
+export function placementReadout(location?: string, image?: string): string {
+  const shown = image ? imageReadout(image) : "";
+  if (location && shown) return `${shown} @ ${location}`;
+  return shown || location || "Unassigned bench";
 }
 
 // Keyed by the wire's own state names, so a Map rather than an object literal.
@@ -56,7 +35,6 @@ const ALLOCATION_STATE_COPY = new Map<string, string>([
   ["assigned", "Assigned"],
   ["draining", "Draining"],
   ["released", "Released"],
-  ["incompatible", "Incompatible"],
   ["failed", "Failed"],
   ["lost", "Lost"],
 ]);

@@ -33,7 +33,7 @@ export function WorkspaceFooterBar({
   const reeQuery = useReeQuery();
   const placement = placementReadout(
     reeQuery.data?.workbenchLocation,
-    reeQuery.data?.workbenchProfile,
+    reeQuery.data?.workbenchImage,
   );
 
   return (

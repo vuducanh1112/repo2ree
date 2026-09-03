@@ -40,9 +40,13 @@ export const applicationPageScenarios: ApplicationPageScenario[] = [
       await page.goto("/lab-location");
       await page.getByRole("button", { name: "Oslo lab — available" }).click();
       await expect(page.getByRole("region", { name: "Set up the workbench" })).toBeVisible();
-      // The profile select, not its options: an <option> in a closed <select>
-      // has no box, so asserting its text would never resolve.
-      await expect(page.getByLabel("Workbench profile")).toHaveValue("python");
+      // The whole catalog is on screen at once, each entry with its ref under
+      // it, and the lab's first entry already reading as chosen.
+      await expect(page.getByText("docker.io/library/python:3.12-slim")).toBeVisible();
+      await expect(page.getByRole("button", { name: /Python 3\.12/ })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
       await settleVisualPage(page);
     },
   },

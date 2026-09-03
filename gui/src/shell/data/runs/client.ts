@@ -13,14 +13,14 @@ export interface ReeRunsClient {
    * background provisioning run, whose log feed streams the image pull live —
    * poll {@link getReeRunLogs} / {@link getReeRun} until terminal.
    *
-   * ``image`` overrides the workbench base image; omitted/blank uses the server
-   * default. ``labId`` selects a connected provider; omitted/blank means any
-   * connected provider.
+   * ``locationId`` names the lab the bench is built at. ``image`` is the base
+   * image ref to build it from — a ref from that lab's catalog, or any ref the
+   * lab accepts; blank falls back to the lab's first catalog entry.
    */
   createWorkspace(
     name?: string,
     locationId?: string,
-    profileId?: string,
+    image?: string,
   ): Promise<{ reeId: string; run: ReeRun }>;
   /**
    * Make an REE be a downloaded REE bundle — the counterpart of the ree-archive
@@ -54,11 +54,11 @@ export interface ReeRunsClient {
 
 export function createReeRunsClient(runtime: ReeRuntimeValue): ReeRunsClient {
   return {
-    async createWorkspace(name = "REE", locationId = "", profileId = "") {
+    async createWorkspace(name = "REE", locationId = "", image = "") {
       const run = await runtime.reeApi.createRee({
         name,
         location_id: locationId.trim(),
-        profile_id: profileId.trim(),
+        image: image.trim(),
       });
       return { reeId: run.ree_id, run: mapRun(run) };
     },

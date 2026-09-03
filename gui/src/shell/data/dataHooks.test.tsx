@@ -22,6 +22,15 @@ describe("shell data hooks", () => {
           description: "",
           lifecycle_mode: "provider_managed",
           available: true,
+          images: [
+            {
+              id: "standard",
+              ref: "docker.io/library/docker:29-dind",
+              label: "Docker",
+              description: "",
+            },
+          ],
+          accepts_custom_image: true,
         },
         {
           id: "a",
@@ -29,19 +38,8 @@ describe("shell data hooks", () => {
           description: "",
           lifecycle_mode: "externally_managed",
           available: false,
-        },
-      ],
-    });
-    const listWorkbenchProfiles = vi.fn().mockResolvedValue({
-      profiles: [
-        {
-          id: "standard",
-          revision: "1",
-          location_id: "b",
-          label: "Docker",
-          description: "",
-          required: { substrate: "docker-nested", resources: {} },
-          storage_policy: "ephemeral",
+          images: [],
+          accepts_custom_image: false,
         },
       ],
     });
@@ -61,7 +59,7 @@ describe("shell data hooks", () => {
     });
     const { Wrapper } = createShellWrapper({
       services: fakeApiServices({
-        ree: { listComputeLocations, listWorkbenchProfiles, listScriptTemplates },
+        ree: { listComputeLocations, listScriptTemplates },
       }),
     });
     const { result } = renderHook(
@@ -75,7 +73,8 @@ describe("shell data hooks", () => {
     await waitFor(() => expect(result.current.templates.isSuccess).toBe(true));
     expect(result.current.labs.data?.map((lab) => lab.label)).toEqual(["a-host", "z-host"]);
     expect(result.current.labs.data?.map((lab) => lab.available)).toEqual([false, true]);
-    expect(result.current.labs.data?.[1]?.profiles[0]?.substrate).toBe("docker-nested");
+    expect(result.current.labs.data?.[1]?.images[0]?.ref).toBe("docker.io/library/docker:29-dind");
+    expect(result.current.labs.data?.[1]?.acceptsCustomImage).toBe(true);
   });
 
   it("loads scoped REE resources and transforms index entries", async () => {

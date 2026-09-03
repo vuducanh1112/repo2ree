@@ -33,7 +33,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from uuid import uuid4
 
-from repo2ree_protocol.allocation import AllocationRequest, StoragePolicy, WorkbenchProfile
+from repo2ree_protocol.allocation import AllocationRequest
 from repo2ree_protocol.frames import (
     COPY_CHUNK_BYTES,
     TERMINAL_FRAME_TYPES,
@@ -43,7 +43,6 @@ from repo2ree_protocol.frames import (
     TransferFrame,
     UnavailableFrame,
 )
-from repo2ree_protocol.substrate import ObservedCapabilities, RequiredCapabilities
 from repo2ree_protocol.tracing import current_traceparent
 from repo2ree_protocol.workbench import (
     AssignAllocationRequest,
@@ -103,11 +102,8 @@ class WorkbenchInfo:
     available: bool
     hostname: str
     version: str
-    docker_mode: str
     location_id: str
-    profile_id: str
-    profile_revision: str
-    capabilities: ObservedCapabilities | None
+    image: str
     connected_at: float  # epoch seconds (UTC)
 
 
@@ -365,11 +361,8 @@ class WorkbenchConnectionRegistry:
                     else False,
                     hostname=conn.hello.hostname if conn.hello else "",
                     version=conn.hello.version if conn.hello else "",
-                    docker_mode=str(conn.hello.capabilities.substrate) if conn.hello else "",
                     location_id=(conn.hello.location_id or workbench_id) if conn.hello else workbench_id,
-                    profile_id=(conn.hello.profile_id or "external") if conn.hello else "external",
-                    profile_revision=(conn.hello.profile_revision or "1") if conn.hello else "1",
-                    capabilities=conn.hello.capabilities if conn.hello else None,
+                    image=conn.hello.image if conn.hello else "",
                     connected_at=self._connected_at.get(workbench_id, 0.0),
                 )
                 for workbench_id, conn in self._workbenches.items()
@@ -395,27 +388,14 @@ class WsWorkbenchClient:
     def wait_for_workbench(self, workbench_id: str, timeout: float = 60.0) -> None:
         self._registry.wait(workbench_id, timeout)
 
-    def reserve_external(self, allocation_id: str, location_id: str, profile_id: str) -> tuple[str, WorkbenchProfile]:
+    def reserve_external(self, allocation_id: str, location_id: str) -> str:
         workbench_id = self._registry.reserve_external(allocation_id, location_id)
         connection = self._registry.pick(workbench_id)
-        if connection.hello is None:
-            raise WorkbenchUnavailableError(f"workbench {workbench_id!r} has no capability observation")
-        observed = connection.hello.capabilities
-        actual_location = connection.hello.location_id or workbench_id
-        if actual_location != location_id or profile_id != (connection.hello.profile_id or "external"):
+        actual_location = connection.hello.location_id or workbench_id if connection.hello else workbench_id
+        if actual_location != location_id:
             self._registry.release_reservation(workbench_id, allocation_id)
-            raise WorkbenchUnavailableError(
-                f"compute profile {profile_id!r} at location {location_id!r} is unavailable"
-            )
-        profile = WorkbenchProfile(
-            id=profile_id,
-            revision=connection.hello.profile_revision or "1",
-            location_id=location_id,
-            label=profile_id,
-            required=RequiredCapabilities(substrate=observed.substrate, resources=observed.resources),
-            storage_policy=StoragePolicy.EXTERNAL,
-        )
-        return workbench_id, profile
+            raise WorkbenchUnavailableError(f"compute location {location_id!r} is unavailable")
+        return workbench_id
 
     def release_reservation(self, workbench_id: str, allocation_id: str) -> None:
         self._registry.release_reservation(workbench_id, allocation_id)
@@ -427,12 +407,6 @@ class WsWorkbenchClient:
                 frame_gap_timeout=QUICK_OP_TIMEOUT,
             )
         )
-
-    def observation(self, workbench_id: str) -> ObservedCapabilities:
-        hello = self._registry.pick(workbench_id).hello
-        if hello is None:
-            raise WorkbenchUnavailableError(f"workbench {workbench_id!r} has no capability observation")
-        return hello.capabilities
 
     def is_connected(self, workbench_id: str) -> bool:
         try:

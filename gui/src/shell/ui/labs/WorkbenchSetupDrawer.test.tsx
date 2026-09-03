@@ -24,24 +24,21 @@ const lab: Lab = {
   label: "lab-host",
   description: "",
   lifecycleMode: "provider_managed",
-  profiles: [
+  images: [
     {
       id: "standard",
-      revision: "1",
-      label: "Standard",
-      description: "",
-      substrate: "docker-nested",
-      storagePolicy: "ephemeral",
+      ref: "docker.io/library/docker:29-dind",
+      label: "Standard (docker)",
+      description: "Lean docker-in-docker bench.",
     },
     {
-      id: "shared",
-      revision: "2",
-      label: "Shared Docker",
+      id: "python",
+      ref: "docker.io/library/python:3.11-slim",
+      label: "Python 3.11",
       description: "",
-      substrate: "docker-host-socket",
-      storagePolicy: "ephemeral",
     },
   ],
+  acceptsCustomImage: true,
   status: "connected",
   available: true,
 };
@@ -80,18 +77,18 @@ describe("WorkbenchSetupDrawer", () => {
 
     await user.click(screen.getByRole("button", { name: "Provision workbench" }));
 
+    // Nothing was picked, so nothing is asserted: a blank image lets the lab
+    // resolve its own default, which is the entry the selector already shows
+    // as chosen. Sending its ref instead would pin whatever the catalog held
+    // when this drawer happened to load.
     await waitFor(() =>
-      expect(createRee).toHaveBeenCalledWith({
-        name: "REE",
-        location_id: "lab-1",
-        profile_id: "standard",
-      }),
+      expect(createRee).toHaveBeenCalledWith({ name: "REE", location_id: "lab-1", image: "" }),
     );
     expect(await screen.findByText("image ready")).toBeInTheDocument();
     expect(await screen.findByText("Lab online — seating the specimen")).toBeInTheDocument();
   });
 
-  it("sends the chosen fixed profile", async () => {
+  it("shows every entry's ref, and sends the one the author picks", async () => {
     const user = userEvent.setup();
     const createRee = vi.fn().mockResolvedValue(wireRun("provision-1"));
     const getRun = vi.fn().mockResolvedValue(wireRun("provision-1"));
@@ -108,13 +105,102 @@ describe("WorkbenchSetupDrawer", () => {
       }),
     });
 
-    await user.selectOptions(screen.getByRole("combobox", { name: "Workbench profile" }), "shared");
+    // Every ref is on screen before anything is committed — the whole catalog
+    // at once, not one entry at a time behind a closed control. It is the base
+    // of everything this REE will later claim to reproduce.
+    expect(screen.getByText("docker.io/library/docker:29-dind")).toBeInTheDocument();
+    expect(screen.getByText("docker.io/library/python:3.11-slim")).toBeInTheDocument();
+
+    // The lab's first entry reads as chosen before the author picks anything,
+    // because that is what a blank image resolves to server-side.
+    expect(screen.getByRole("button", { name: /Standard \(docker\)/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+
+    await user.click(screen.getByRole("button", { name: /Python 3\.11/ }));
     await user.click(screen.getByRole("button", { name: "Provision workbench" }));
 
     await waitFor(() =>
       expect(createRee).toHaveBeenCalledWith(
-        expect.objectContaining({ location_id: "lab-1", profile_id: "shared" }),
+        expect.objectContaining({
+          location_id: "lab-1",
+          image: "docker.io/library/python:3.11-slim",
+        }),
       ),
+    );
+  });
+
+  it("provisions from a custom ref when the lab accepts one", async () => {
+    const user = userEvent.setup();
+    const createRee = vi.fn().mockResolvedValue(wireRun("provision-1"));
+    const getRun = vi.fn().mockResolvedValue(wireRun("provision-1"));
+    const listRunLogs = vi
+      .fn()
+      .mockResolvedValue({ entries: [], next_cursor: null, has_more: false });
+
+    renderWithShell(<WorkbenchSetupDrawer lab={lab} loadRequested={false} />, {
+      route: "/lab-location",
+      reeId: "active",
+      services: fakeApiServices({
+        ree: { createRee },
+        runs: { getRun, listRunLogs },
+      }),
+    });
+
+    await user.click(screen.getByRole("button", { name: /Custom…/ }));
+    // Custom picked but still blank would silently provision the lab default,
+    // so the button waits for the ref rather than guessing.
+    expect(screen.getByRole("button", { name: "Provision workbench" })).toBeDisabled();
+
+    await user.type(
+      screen.getByRole("textbox", { name: "Custom image reference" }),
+      "ghcr.io/me/bench:v3",
+    );
+    await user.click(screen.getByRole("button", { name: "Provision workbench" }));
+
+    await waitFor(() =>
+      expect(createRee).toHaveBeenCalledWith(
+        expect.objectContaining({ image: "ghcr.io/me/bench:v3" }),
+      ),
+    );
+  });
+
+  it("offers no custom-image path at a lab that refuses one", () => {
+    renderWithShell(
+      <WorkbenchSetupDrawer lab={{ ...lab, acceptsCustomImage: false }} loadRequested={false} />,
+      { route: "/lab-location", reeId: "active", services: fakeApiServices({}) },
+    );
+
+    expect(screen.queryByRole("button", { name: /Custom…/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Standard \(docker\)/ })).toBeInTheDocument();
+  });
+
+  it("asks for no image at a pre-provisioned lab, whose bench already exists", async () => {
+    const user = userEvent.setup();
+    const createRee = vi.fn().mockResolvedValue(wireRun("provision-1"));
+    const getRun = vi.fn().mockResolvedValue(wireRun("provision-1"));
+    const listRunLogs = vi
+      .fn()
+      .mockResolvedValue({ entries: [], next_cursor: null, has_more: false });
+
+    renderWithShell(
+      <WorkbenchSetupDrawer
+        lab={{ ...lab, lifecycleMode: "externally_managed", images: [], acceptsCustomImage: false }}
+        loadRequested={false}
+      />,
+      {
+        route: "/lab-location",
+        reeId: "active",
+        services: fakeApiServices({ ree: { createRee }, runs: { getRun, listRunLogs } }),
+      },
+    );
+
+    expect(screen.queryByText("Base image")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Provision workbench" }));
+
+    await waitFor(() =>
+      expect(createRee).toHaveBeenCalledWith({ name: "REE", location_id: "lab-1", image: "" }),
     );
   });
 

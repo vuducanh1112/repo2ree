@@ -73,7 +73,7 @@ function HeaderRow() {
       <div className={styles.headCell}>Location</div>
       <div className={styles.headCell}>Location ID</div>
       <div className={styles.headCell}>Lifecycle</div>
-      <div className={styles.headCell}>Profiles</div>
+      <div className={styles.headCell}>Images</div>
       <div className={styles.headCell}>Availability</div>
     </div>
   );
@@ -94,7 +94,9 @@ function LabRow({ lab }: { lab: Lab }) {
       <div className={styles.cell}>
         {lab.lifecycleMode === "provider_managed" ? "on demand" : "pre-provisioned"}
       </div>
-      <div className={styles.cell}>{lab.profiles.length}</div>
+      <div className={styles.cell}>
+        {lab.lifecycleMode === "provider_managed" ? lab.images.length : "—"}
+      </div>
       <div className={styles.uptime}>
         <span aria-hidden className={styles.uptimeDot} />
         <span className={styles.cell}>{lab.available ? "available" : "busy"}</span>

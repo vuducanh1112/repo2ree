@@ -106,8 +106,7 @@ def online_ree(monkeypatch: pytest.MonkeyPatch) -> WorkbenchHandle:
         workbench_id=f"wb-{ree_id}",
         provider_id="provider-test",
         location_id="lab-test",
-        profile_id="standard",
-        profile_revision="1",
+        image="docker.io/library/docker:29-dind",
     )
     real_lookup = workbench_manager.lookup
     real_is_registered = workbench_manager.is_registered

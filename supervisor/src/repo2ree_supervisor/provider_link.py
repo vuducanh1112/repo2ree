@@ -9,7 +9,7 @@ from contextlib import suppress
 from dataclasses import dataclass
 from uuid import uuid4
 
-from repo2ree_protocol.allocation import AllocationRequest, WorkbenchProfile
+from repo2ree_protocol.allocation import AllocationRequest, WorkbenchImage
 from repo2ree_protocol.frames import AllocationStatusFrame, ErrorFrame, Frame, UnavailableFrame
 from repo2ree_protocol.provider import (
     EnsureAllocationRequest,
@@ -41,7 +41,8 @@ class ProviderInfo:
     version: str
     location_id: str
     location_label: str
-    profiles: tuple[WorkbenchProfile, ...]
+    images: tuple[WorkbenchImage, ...]
+    accepts_custom_image: bool
     connected_at: float
 
 
@@ -130,7 +131,10 @@ class ProviderConnectionRegistry(WorkbenchConnectionRegistry):
                     version=connection.provider_hello.version if connection.provider_hello else "",
                     location_id=connection.provider_hello.location_id if connection.provider_hello else "",
                     location_label=connection.provider_hello.location_label if connection.provider_hello else "",
-                    profiles=connection.provider_hello.profiles if connection.provider_hello else (),
+                    images=connection.provider_hello.images if connection.provider_hello else (),
+                    accepts_custom_image=(
+                        connection.provider_hello.accepts_custom_image if connection.provider_hello else False
+                    ),
                     connected_at=self._connected_at.get(provider_id, 0.0),
                 )
                 for provider_id, candidate in self._workbenches.items()
@@ -147,19 +151,28 @@ class WsProviderClient:
     def __init__(self, registry: ProviderConnectionRegistry):
         self._registry = registry
 
-    def resolve_profile(self, location_id: str, profile_id: str) -> tuple[str, WorkbenchProfile]:
-        matches = [
-            (info.provider_id, profile)
-            for info in self._registry.list_providers()
-            if info.location_id == location_id
-            for profile in info.profiles
-            if profile.id == profile_id
-        ]
-        if len(matches) != 1:
+    def resolve_location(self, location_id: str, image: str) -> tuple[str, str]:
+        """Pick the provider for ``location_id`` and settle which ref it runs.
+
+        The catalog is the provider's, published on its hello, so this reads it
+        rather than holding one. Validating here buys a legible refusal before
+        anything is provisioned; the provider re-checks, since a control plane
+        is not what makes a provider's policy true.
+        """
+        providers = [info for info in self._registry.list_providers() if info.location_id == location_id]
+        if len(providers) != 1:
+            raise WorkbenchUnavailableError(f"compute location {location_id!r} is not available")
+        info = providers[0]
+        wanted = image.strip()
+        if not wanted:
+            if not info.images:
+                raise WorkbenchUnavailableError(f"compute location {location_id!r} offers no images")
+            return info.provider_id, info.images[0].ref
+        if wanted not in {entry.ref for entry in info.images} and not info.accepts_custom_image:
             raise WorkbenchUnavailableError(
-                f"compute profile {profile_id!r} at location {location_id!r} is not available"
+                f"compute location {location_id!r} does not offer image {wanted!r} and refuses custom images"
             )
-        return matches[0]
+        return info.provider_id, wanted
 
     def ensure(
         self,

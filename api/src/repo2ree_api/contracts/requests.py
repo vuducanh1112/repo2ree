@@ -45,7 +45,11 @@ class ReeCreatePayload(StrictRequestModel):
 
     name: str | None = None
     location_id: str = Field(min_length=1)
-    profile_id: str = Field(min_length=1)
+    # Base image to provision the workbench from: a ref from the location's
+    # published catalog, or any ref the location accepts. Blank falls back to
+    # that location's first catalog entry, and is the only valid value for an
+    # externally managed location, whose bench already exists.
+    image: str = ""
 
 
 class ReeDefinitionPatchPayload(StrictRequestModel):

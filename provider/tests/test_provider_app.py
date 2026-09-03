@@ -11,8 +11,7 @@ from __future__ import annotations
 import pytest
 
 import repo2ree_provider_docker.app as app_module
-from repo2ree_protocol.substrate import SubstrateKind
-from repo2ree_provider_docker.config import PrivateProfile, ProviderConfig
+from repo2ree_provider_docker.config import CuratedImage, ProviderConfig
 
 
 class _Provider:
@@ -24,10 +23,9 @@ class _Provider:
         self._shutdowns.append(self.name)
 
 
-_PRIVATE_PROFILE = PrivateProfile(
+_CURATED = CuratedImage(
     id="standard",
-    revision="7",
-    image="registry.example/bench@sha256:" + "0" * 64,
+    ref="registry.example/bench@sha256:" + "0" * 64,
     label="Standard Docker workbench",
     description="A fixed deployment-managed Docker workbench.",
 )
@@ -40,7 +38,8 @@ def _config(**overrides: object) -> ProviderConfig:
         "provider_id": "docker-provider-1",
         "location_id": "lab-1",
         "location_label": "Lab 1",
-        "profiles": (_PRIVATE_PROFILE,),
+        "images": (_CURATED,),
+        "accepts_custom_image": False,
         "docker_mode": "host-socket",
         "workbench_network": "repo2ree-lab",
         "otlp_endpoint": "http://collector:4318",
@@ -89,17 +88,15 @@ def test_main_composes_telemetry_isolation_and_capacity_connection(monkeypatch: 
     assert provider_args[0] == config.api_ws_url
     assert provider_args[2] == config.provider_id
 
-    # The provider announces its location and the *public* face of each private
-    # profile: the substrate it will supply, never the image behind it.
+    # The provider announces its location and its catalog, ref included: the
+    # author is committing an REE to that image and should be able to read it.
     announced = provider_args[3]
     assert isinstance(announced, dict)
     assert announced["location_id"] == "lab-1"
     assert announced["location_label"] == "Lab 1"
-    (published,) = announced["profiles"]
-    assert (published.id, published.revision) == (_PRIVATE_PROFILE.id, _PRIVATE_PROFILE.revision)
-    assert published.location_id == "lab-1"
-    assert published.required.substrate is SubstrateKind.DOCKER_HOST_SOCKET
-    assert _PRIVATE_PROFILE.image not in published.model_dump_json()
+    assert announced["accepts_custom_image"] is False
+    (published,) = announced["images"]
+    assert (published.id, published.ref, published.label) == (_CURATED.id, _CURATED.ref, _CURATED.label)
     assert shutdowns == ["traces", "metrics", "logs"]
 
 

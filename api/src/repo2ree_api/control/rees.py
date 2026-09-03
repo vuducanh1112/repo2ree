@@ -57,7 +57,7 @@ def create_ree_route(payload: ReeCreatePayload) -> RunSummary:
     ree_id = uuid.uuid4().hex
     name = payload.name or ree_id[:8]
     location_id = payload.location_id.strip()
-    profile_id = payload.profile_id.strip()
+    image = payload.image.strip()
 
     # Provision in the background so the cold-machine image pull streams its
     # progress live into the run's log stream (GET .../runs/{run_id}/logs)
@@ -79,11 +79,9 @@ def create_ree_route(payload: ReeCreatePayload) -> RunSummary:
                 provider.location_id == location_id for provider in provider_connections.list_providers()
             )
             if provider_managed:
-                handle = workbench_manager.provision(
-                    rid, name, log=_log_run, location_id=location_id, profile_id=profile_id
-                )
+                handle = workbench_manager.provision(rid, name, log=_log_run, location_id=location_id, image=image)
             else:
-                handle = workbench_manager.reserve_external(rid, name, location_id, profile_id)
+                handle = workbench_manager.reserve_external(rid, name, location_id)
         except Exception as exc:  # noqa: BLE001 — provisioning is the workbench's, so any failure is reported as an unavailable run
             _log_run("system", "error", f"Workbench provisioning failed: {exc}")
             return ActionResult.failed(
@@ -155,7 +153,7 @@ def _summarize(handle: WorkbenchHandle, manifest: dict[str, Any]) -> ReeSummary 
         status=ree_status(ree),
         allocation_id=handle.allocation_id,
         location_id=handle.location_id,
-        profile_id=handle.profile_id,
+        image=handle.image,
     )
 
 
@@ -174,7 +172,7 @@ def get_ree_route(ree_id: str) -> ReeDocument:
     document = workbench_manager.get_ree_document(handle)
     document["allocation_id"] = handle.allocation_id
     document["location_id"] = handle.location_id
-    document["profile_id"] = handle.profile_id
+    document["image"] = handle.image
     return ReeDocument.model_validate(document)
 
 
@@ -209,8 +207,7 @@ def get_ree_state_route(ree_id: str) -> ReeState:
             workbench_id=handle.workbench_id,
             allocation_id=handle.allocation_id,
             location_id=handle.location_id,
-            profile_id=handle.profile_id,
-            substrate=handle.observation.substrate if handle.observation else None,
+            image=handle.image,
         ),
         workspace_files=document.workspace_files,
         ree_files=document.ree_files,

@@ -108,6 +108,6 @@ export function mapReeDetailToReeProject(
     sourceRepo: mapSourceRepo(ree),
     allocationId: ree.allocation_id ?? undefined,
     workbenchLocation: ree.location_id ?? undefined,
-    workbenchProfile: ree.profile_id ?? undefined,
+    workbenchImage: ree.image ?? undefined,
   };
 }

@@ -170,10 +170,11 @@ def test_upload_over_real_server(server: tuple[str, str]) -> None:
     with httpx.Client(base_url=base_url, timeout=REQUEST_TIMEOUT) as client:
         # --- reserve the externally managed workbench -------------------
         # An external bench with no configured placement publishes itself as a
-        # location named after its own id, offering the "external" profile.
+        # location named after its own id. It offers no image and takes none:
+        # the bench already exists, so there is nothing left to choose.
         resp = client.post(
             "/api/v1/rees",
-            json={"name": "real-server-itest", "location_id": workbench_id, "profile_id": "external"},
+            json={"name": "real-server-itest", "location_id": workbench_id},
         )
         assert resp.status_code == 200, resp.text
         run = resp.json()

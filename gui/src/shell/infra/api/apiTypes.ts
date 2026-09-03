@@ -47,8 +47,6 @@ export type ReeCreatePayload = Schema<"ReeCreatePayload">;
 
 export type ComputeLocation = Schema<"ComputeLocation">;
 export type ComputeLocationList = Schema<"ComputeLocationList">;
-export type WorkbenchProfile = Schema<"WorkbenchProfile">;
-export type WorkbenchProfileList = Schema<"WorkbenchProfileList">;
 export type AllocationRecord = Schema<"AllocationRecord">;
 
 /** Deployment-static authoring DAG published by GET /ree-steps. */

@@ -2,7 +2,6 @@ const API_V1_BASE = "/api/v1";
 
 export const endpoints = {
   computeLocations: () => `${API_V1_BASE}/compute-locations`,
-  workbenchProfiles: () => `${API_V1_BASE}/workbench-profiles`,
   allocations: () => `${API_V1_BASE}/allocations`,
   reeSteps: () => `${API_V1_BASE}/ree-steps`,
   scriptTemplates: () => `${API_V1_BASE}/script-templates`,

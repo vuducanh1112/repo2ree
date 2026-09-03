@@ -86,13 +86,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from repo2ree_api.deps import provider_connections, workbench_connections  # noqa: E402
 from repo2ree_api.main import app  # noqa: E402
-from repo2ree_protocol import (  # noqa: E402
-    FixedResources,
-    ProviderHello,
-    RequiredCapabilities,
-    SubstrateKind,
-    WorkbenchProfile,
-)
+from repo2ree_protocol import ProviderHello, WorkbenchImage  # noqa: E402
 from repo2ree_protocol.workbench import workbench_hello_adapter  # noqa: E402
 from repo2ree_provider_docker.connection import run_provider  # noqa: E402
 from repo2ree_provider_docker.lifecycle import DockerIsolation  # noqa: E402
@@ -227,22 +221,11 @@ def _connected_workbench() -> Iterator[None]:
             )
             await run_provider(
                 f"ws://127.0.0.1:{port}/provider/connect",
-                ProvisionerService(isolation, {("standard", "1"): WORKBENCH_IMAGE}),
+                ProvisionerService(isolation, catalog={WORKBENCH_IMAGE}, accepts_custom_image=False),
                 "api-itest-provider",
                 location_id="api-itest-lab",
                 location_label="API integration lab",
-                profiles=(
-                    WorkbenchProfile(
-                        id="standard",
-                        revision="1",
-                        location_id="api-itest-lab",
-                        label="Standard",
-                        required=RequiredCapabilities(
-                            substrate=SubstrateKind.DOCKER_NESTED,
-                            resources=FixedResources(),
-                        ),
-                    ),
-                ),
+                images=(WorkbenchImage(ref=WORKBENCH_IMAGE, id="standard", label="Standard"),),
             )
 
     def run_loop() -> None:

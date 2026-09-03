@@ -71,6 +71,5 @@ def _allocation(allocation_id: str = "alloc-1", ree_id: str = "ree-1") -> Alloca
         allocation_id=allocation_id,
         ree_id=ree_id,
         location_id="lab-1",
-        profile_id="standard",
-        profile_revision="1",
+        image="docker.io/library/docker:29-dind",
     )

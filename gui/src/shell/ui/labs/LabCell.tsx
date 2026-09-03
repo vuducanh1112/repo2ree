@@ -1,7 +1,6 @@
 import type { Lab } from "@core/lab/Lab";
 import { Ic } from "../shared/components/Icon";
 import styles from "./LabCell.module.css";
-import { dockerModeCopy } from "./labPresentation";
 
 interface LabCellProps {
   lab: Lab;
@@ -15,10 +14,17 @@ interface LabCellProps {
  * carries no text, so the accessible name has to say it.
  */
 export function LabCell({ lab, selected, onSelect }: LabCellProps) {
-  const profile = lab.profiles[0];
-  const mode = dockerModeCopy(profile?.substrate ?? "");
   const name = lab.label;
-  const available = lab.available && lab.profiles.length > 0;
+  const preProvisioned = lab.lifecycleMode === "externally_managed";
+  // A pre-provisioned lab offers no images because its bench already exists, so
+  // an empty catalog only makes a provider-managed lab unusable.
+  const available = lab.available && (preProvisioned || lab.images.length > 0);
+  const what =
+    lab.description ||
+    (preProvisioned ? "A bench already running here." : "Builds a fresh bench for this REE.");
+  const meta = preProvisioned
+    ? "pre-provisioned"
+    : `${lab.images.length} image${lab.images.length === 1 ? "" : "s"}`;
 
   return (
     <button
@@ -37,10 +43,8 @@ export function LabCell({ lab, selected, onSelect }: LabCellProps) {
         <span className={styles.lamp} />
       </span>
       <span aria-hidden className={styles.body}>
-        <span className={styles.what}>{mode.line}</span>
-        <span
-          className={styles.meta}
-        >{`${mode.readout} · ${lab.profiles.length} profile${lab.profiles.length === 1 ? "" : "s"}`}</span>
+        <span className={styles.what}>{what}</span>
+        <span className={styles.meta}>{meta}</span>
       </span>
       <span aria-hidden className={styles.foot}>
         {selected ? "selected" : available ? "select" : "busy"}

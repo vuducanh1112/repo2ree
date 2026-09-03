@@ -71,9 +71,10 @@ def test_creation_and_source_acquisition_are_separate_contracts() -> None:
     create_ref = create_operation["requestBody"]["content"]["application/json"]["schema"]["$ref"]
     create_schema = schema["components"]["schemas"][create_ref.rsplit("/", 1)[-1]]
 
-    # Creation selects one deployment-defined placement and nothing else: no
-    # image, package, command, or arbitrary resource request may enter here.
-    assert set(create_schema["properties"]) == {"name", "location_id", "profile_id"}
+    # Creation names a place and a base image, and nothing else: no package,
+    # command, resource request, or claim about what the image supplies may
+    # enter here.
+    assert set(create_schema["properties"]) == {"name", "location_id", "image"}
 
     acquire_operation = schema["paths"]["/api/v1/rees/{ree_id}/source:acquire"]["post"]
     acquire_ref = acquire_operation["requestBody"]["content"]["application/json"]["schema"]["$ref"]

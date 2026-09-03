@@ -17,7 +17,7 @@ import websockets
 from pydantic import BaseModel, ConfigDict, ValidationError
 from websockets.asyncio.client import ClientConnection, connect
 
-from repo2ree_protocol.allocation import AllocationState, WorkbenchProfile
+from repo2ree_protocol.allocation import AllocationState, WorkbenchImage
 from repo2ree_protocol.frames import AllocationStatusFrame, DoneFrame, ErrorFrame, Frame
 from repo2ree_protocol.provider import (
     EnsureAllocationRequest,
@@ -54,7 +54,8 @@ async def run_provider(
     *,
     location_id: str,
     location_label: str,
-    profiles: tuple[WorkbenchProfile, ...],
+    images: tuple[WorkbenchImage, ...],
+    accepts_custom_image: bool = True,
     reconnect_delay: float = 3.0,
 ) -> None:
     hello = ProviderHello(
@@ -63,7 +64,8 @@ async def run_provider(
         location_label=location_label,
         hostname=socket.gethostname(),
         version=_provider_version(),
-        profiles=profiles,
+        images=images,
+        accepts_custom_image=accepts_custom_image,
         nonce=uuid4().hex,
     )
     while True:

@@ -4,8 +4,7 @@ from repo2ree_protocol.allocation import (
     AllocationState,
     ComputeLocation,
     LifecycleMode,
-    StoragePolicy,
-    WorkbenchProfile,
+    WorkbenchImage,
 )
 from repo2ree_protocol.command import (
     AcquireSourceCommand,
@@ -60,13 +59,6 @@ from repo2ree_protocol.provider import (
     provider_ws_request_adapter,
 )
 from repo2ree_protocol.result import ActionResult, Failure
-from repo2ree_protocol.substrate import (
-    CompatibilityIssue,
-    FixedResources,
-    ObservedCapabilities,
-    RequiredCapabilities,
-    SubstrateKind,
-)
 from repo2ree_protocol.workbench import (
     AssignAllocationRequest,
     CancelRequest,
@@ -79,7 +71,6 @@ from repo2ree_protocol.workbench import (
     ExecActionRequest,
     ExecQueryRequest,
     ExecSimpleRequest,
-    WorkbenchCapabilities,
     WorkbenchHello,
     WorkbenchRequest,
     WorkbenchWsMessage,
@@ -105,7 +96,6 @@ __all__ = [
     "CancelRequest",
     "CancelRunRequest",
     "Command",
-    "CompatibilityIssue",
     "ComputeLocation",
     "CopyAbortRequest",
     "CopyChunkRequest",
@@ -121,7 +111,6 @@ __all__ = [
     "ExecQueryRequest",
     "ExecSimpleRequest",
     "Failure",
-    "FixedResources",
     "Frame",
     "GenerateHbomCommand",
     "GenerateSbomCommand",
@@ -131,7 +120,6 @@ __all__ = [
     "LogFrame",
     "LogSink",
     "MaterializeWorkspaceCommand",
-    "ObservedCapabilities",
     "PatchReeDefinitionCommand",
     "ProviderCancelRequest",
     "ProviderHello",
@@ -140,7 +128,6 @@ __all__ = [
     "ProviderWsRequest",
     "ReleaseAllocationRequest",
     "RemoveSourceCommand",
-    "RequiredCapabilities",
     "ResultFrame",
     "ReviewAcquireSourceCommand",
     "ReviewBuildRuntimeCommand",
@@ -148,13 +135,10 @@ __all__ = [
     "RunningFrame",
     "SealReeCommand",
     "SpanFrame",
-    "StoragePolicy",
-    "SubstrateKind",
     "TransferFrame",
     "UnavailableFrame",
-    "WorkbenchCapabilities",
     "WorkbenchHello",
-    "WorkbenchProfile",
+    "WorkbenchImage",
     "WorkbenchRef",
     "WorkbenchRefFrame",
     "WorkbenchRequest",

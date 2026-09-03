@@ -29,6 +29,7 @@ import tempfile
 import threading
 import time
 from collections.abc import Generator, Iterator
+from contextlib import suppress
 from urllib.parse import urlsplit, urlunsplit
 
 from repo2ree_docker import cli as docker_cli
@@ -58,8 +59,7 @@ _LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 _RESOURCE_OWNER_ENV = "REPO2REE_RESOURCE_OWNER"
 _RESOURCE_OWNER_LABEL = "repo2ree.resource-owner"
 _ALLOCATION_ID_LABEL = "repo2ree.allocation-id"
-_PROFILE_ID_LABEL = "repo2ree.profile-id"
-_PROFILE_REVISION_LABEL = "repo2ree.profile-revision"
+_IMAGE_LABEL = "repo2ree.image"
 
 # Where the injected closure appears inside a bench. The bundle's paths are
 # absolute into /nix/store, so this is not a choice — it is the mount point
@@ -149,25 +149,22 @@ class DockerIsolation:
         allocation: AllocationRequest,
         workbench_id: str,
         enrollment_token: str,
-        image: str,
     ) -> Iterator[Frame]:
         allocation_id = allocation.allocation_id
+        image = allocation.image
         container_name = self._container_name(allocation_id)
         volume_name = self._volume_name(allocation_id)
-        existing_profile = _allocation_profile(container_name)
-        if existing_profile is not None:
-            expected_profile = (allocation.profile_id, allocation.profile_revision)
-            if existing_profile != expected_profile:
-                raise RuntimeError(
-                    f"allocation {allocation_id!r} already exists for profile "
-                    f"{existing_profile[0]!r} revision {existing_profile[1]!r}"
-                )
+        existing_image = _allocation_image(container_name)
+        if existing_image is not None:
+            if existing_image != image:
+                raise RuntimeError(f"allocation {allocation_id!r} already exists on image {existing_image!r}")
             if not self.inspect(allocation_id):
                 raise RuntimeError(f"allocation {allocation_id!r} exists but its workbench is not running")
             yield AllocationStatusFrame(
                 allocation_id=allocation_id,
                 state=AllocationState.WAITING_FOR_WORKBENCH,
                 workbench_id=workbench_id,
+                resolved_image=_resolved_image(existing_image),
             )
             return
         with docker_op("provision") as op:
@@ -198,6 +195,7 @@ class DockerIsolation:
                 allocation_id=allocation_id,
                 state=AllocationState.WAITING_FOR_WORKBENCH,
                 workbench_id=workbench_id,
+                resolved_image=_resolved_image(image),
             )
 
     def release(self, allocation_id: str) -> None:
@@ -303,9 +301,7 @@ class DockerIsolation:
             "--label",
             f"{_ALLOCATION_ID_LABEL}={allocation.allocation_id}",
             "--label",
-            f"{_PROFILE_ID_LABEL}={allocation.profile_id}",
-            "--label",
-            f"{_PROFILE_REVISION_LABEL}={allocation.profile_revision}",
+            f"{_IMAGE_LABEL}={allocation.image}",
             # Source-run providers commonly hand the resident workbench a
             # host.docker.internal control-plane URL. Docker Engine on Linux
             # does not create that name unless explicitly requested; Docker
@@ -324,7 +320,7 @@ class DockerIsolation:
         # The image's own default process is the bench's main process — the env
         # image defines the environment, including its daemons (docker:dind's
         # entrypoint only starts dockerd when dockerd *is* the command, so
-        # forcing a keep-alive command of our own would boot it substrate-dead).
+        # forcing a keep-alive command of our own would boot it daemon-dead).
         # A pause command is strictly the rescue for images whose default exits
         # immediately (alpine's detached /bin/sh, distroless with no CMD).
         if not self._start_bench(container_name, run_args, image, command=[]):
@@ -336,11 +332,11 @@ class DockerIsolation:
             pause = [bundle.pause_path, "infinity"] if bundle is not None else ["sleep", "infinity"]
             # A dind image in host-socket mode lands here by construction: its
             # default command is dockerd, which cannot start unprivileged, and
-            # host-socket deliberately withholds --privileged. The substrate it
-            # needs is the mounted host socket, not that daemon, so a bench held
-            # open by the pause command is the *correct* bench — but say so, since
-            # in dind mode the same fallback means the nested daemon died and the
-            # probe below is about to report a bench with no docker substrate.
+            # host-socket deliberately withholds --privileged. What it needs is
+            # the mounted host socket, not that daemon, so a bench held open by
+            # the pause command is the *correct* bench — but say so, since in
+            # dind mode the same fallback means the nested daemon died and the
+            # probe below is about to report a bench with no reachable docker.
             message = f"image {image} default command did not stay running; holding the bench open with {pause[0]}"
             logger.warning(message)
             yield LogFrame(stream="system", level="warn", message=message)
@@ -378,8 +374,7 @@ class DockerIsolation:
             "WORKBENCH_AUTH_TOKEN": enrollment_token,
             "WORKBENCH_ROOT": "/ree",
             "WORKBENCH_LOCATION_ID": allocation.location_id,
-            "WORKBENCH_PROFILE_ID": allocation.profile_id,
-            "WORKBENCH_PROFILE_REVISION": allocation.profile_revision,
+            "WORKBENCH_IMAGE": allocation.image,
             "REPO2REE_EXEC_PATH": exec_path,
             **tool_env,
         }
@@ -513,14 +508,18 @@ def _image_present(image: str) -> bool:
         return docker_cli.image_present(image)
 
 
-def _allocation_profile(container_name: str) -> tuple[str, str] | None:
-    """Read provider-owned allocation metadata from Docker's durable state."""
+def _allocation_image(container_name: str) -> str | None:
+    """The image ref this existing bench was built from, from Docker's own state.
+
+    The ref *is* the bench's identity, so a container found under an allocation
+    id can be checked against what the allocation now asks for without a
+    separate revision the deployer has to remember to bump.
+    """
     try:
         output = run_docker_out(
             "inspect",
             "--format",
-            f'{{{{index .Config.Labels "{_PROFILE_ID_LABEL}"}}}} '
-            f'{{{{index .Config.Labels "{_PROFILE_REVISION_LABEL}"}}}}',
+            f'{{{{index .Config.Labels "{_IMAGE_LABEL}"}}}}',
             container_name,
             timeout=30,
         )
@@ -528,20 +527,47 @@ def _allocation_profile(container_name: str) -> tuple[str, str] | None:
         if "no such" in str(exc).lower():
             return None
         raise
-    profile_id, separator, revision = output.partition(" ")
-    if not separator or not profile_id or not revision:
-        raise RuntimeError(f"container {container_name!r} is missing allocation profile labels")
-    return profile_id, revision
+    if not output:
+        raise RuntimeError(f"container {container_name!r} is missing its {_IMAGE_LABEL} label")
+    return output
+
+
+def _resolved_image(image: str) -> str:
+    """``image`` pinned by digest, or the ref itself when it carries none.
+
+    The bench is already running by the time this is asked, so the image is
+    local and the lookup is a metadata read. It is still best-effort: an image
+    built locally has no ``RepoDigests`` at all, and a digest that will not read
+    is not worth failing a provision that has otherwise succeeded. Degrading to
+    the requested ref keeps the record honest — it says what was asked for
+    rather than claiming a pin that was never resolved.
+    """
+    with suppress(RuntimeError, OSError):
+        digest = run_docker_out(
+            "image",
+            "inspect",
+            "--format",
+            "{{if .RepoDigests}}{{index .RepoDigests 0}}{{end}}",
+            image,
+            timeout=30,
+        )
+        if digest:
+            return digest
+    return image
 
 
 def _probe_bench(container_name: str, exec_path: str, image: str) -> Iterator[Frame]:
     """Run ``repo2ree-exec doctor`` in the fresh bench and enforce the contract.
 
-    Fail-fast is the point: a bench that can't run the executor at all, or
-    whose ``/ree`` isn't writable, dies here with a specific message instead of
-    hanging on its first build. Missing *capabilities* (docker substrate,
-    handler tools) are reported as logs — whether a docker-less bench is
-    acceptable is the control plane's call, not the provider's.
+    This is the only check made on a bench, and it checks the two things that
+    make it a workbench at all: the executor runs, and ``/ree`` is writable. A
+    bench failing either dies here with a specific message instead of hanging on
+    its first build.
+
+    Everything else the doctor finds — a reachable docker daemon, which handler
+    tools are on PATH — is *reported*, never enforced. Whether an image suits
+    the REE about to be authored on it is settled by that REE's own build
+    failing, not by a model of what an image is supposed to supply.
     """
     # The doctor itself polls up to ~15s for a still-starting dockerd; the exec
     # timeout just needs to comfortably exceed that.
@@ -572,7 +598,7 @@ def _probe_bench(container_name: str, exec_path: str, image: str) -> Iterator[Fr
         if docker_info.get("available"):
             docker_summary = f"docker {docker_info.get('server_version', '?')}"
         else:
-            docker_summary = f"no docker substrate ({docker_info.get('detail', 'unknown')})"
+            docker_summary = f"no reachable docker ({docker_info.get('detail', 'unknown')})"
         tools = report.get("tools", {})
         present = sorted(name for name, path in tools.items() if path)
         missing = sorted(name for name, path in tools.items() if not path)

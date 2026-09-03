@@ -21,7 +21,7 @@ function services(runs: unknown[] = []) {
         ree_files: [],
         allocation_id: "alloc-1",
         location_id: "lab-1",
-        profile_id: "standard",
+        image: "docker.io/library/docker:29-dind",
       }),
     },
     runs: { listRuns: vi.fn().mockResolvedValue({ runs, next_cursor: null }) },
@@ -63,7 +63,7 @@ describe("WorkspaceFooterBar", () => {
     ]);
 
     expect(screen.getByRole("region", { name: "Workbench status" })).toBeVisible();
-    expect(await screen.findByText("standard @ lab-1")).toBeVisible();
+    expect(await screen.findByText("docker:29-dind @ lab-1")).toBeVisible();
     expect(await screen.findByText("Build · succeeded")).toBeVisible();
 
     // Each cell shows whether the console it owns is open.

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   allocationStateCopy,
-  dockerModeCopy,
+  imageReadout,
   labLoadErrorMessage,
   placementReadout,
 } from "./labPresentation";
@@ -18,39 +18,38 @@ describe("labLoadErrorMessage", () => {
   });
 });
 
-describe("dockerModeCopy", () => {
-  it("describes what per-workbench isolation buys", () => {
-    const copy = dockerModeCopy("docker-nested");
-    expect(copy.readout).toBe("per-workbench");
-    expect(copy.line).toContain("nothing shared");
+describe("imageReadout", () => {
+  it("drops the implicit Docker Hub prefix but keeps the tag", () => {
+    expect(imageReadout("docker.io/library/docker:29-dind")).toBe("docker:29-dind");
+    expect(imageReadout("docker.io/vuducanh1112/bench:edge")).toBe("vuducanh1112/bench:edge");
   });
 
-  it("describes what a shared daemon costs", () => {
-    const copy = dockerModeCopy("docker-host-socket");
-    expect(copy.readout).toBe("shared daemon");
-    expect(copy.line).toContain("alongside other work");
+  it("leaves a ref from another registry alone", () => {
+    expect(imageReadout("ghcr.io/me/bench:v3")).toBe("ghcr.io/me/bench:v3");
   });
 
-  it("shows an unknown mode verbatim rather than inventing a description", () => {
-    const copy = dockerModeCopy("podman");
-    expect(copy.readout).toBe("podman");
-    expect(copy.line).toBe("Provides this REE's declared execution capabilities.");
+  it("truncates a digest rather than hiding that one is pinned", () => {
+    expect(imageReadout("docker.io/library/docker:29-dind@sha256:66d292e5c26bd33a6f6")).toBe(
+      "docker:29-dind@66d292e5c26b…",
+    );
   });
 
-  it("falls back to a dash when the lab reports no mode", () => {
-    expect(dockerModeCopy("").readout).toBe("—");
+  it("falls back to a dash when nothing has been reported", () => {
+    expect(imageReadout("")).toBe("—");
   });
 });
 
 describe("placementReadout", () => {
-  it("names the profile at its location", () => {
-    expect(placementReadout("lab-1", "standard")).toBe("standard @ lab-1");
+  it("names the image at its location", () => {
+    expect(placementReadout("lab-1", "docker.io/library/docker:29-dind")).toBe(
+      "docker:29-dind @ lab-1",
+    );
   });
 
   it("falls back to whichever half the control plane has reported", () => {
-    expect(placementReadout(undefined, "standard")).toBe("standard");
+    expect(placementReadout(undefined, "ghcr.io/me/bench:v3")).toBe("ghcr.io/me/bench:v3");
     expect(placementReadout("lab-1", undefined)).toBe("lab-1");
-    expect(placementReadout(undefined, undefined)).toBe("Assigned profile");
+    expect(placementReadout(undefined, undefined)).toBe("Unassigned bench");
   });
 });
 

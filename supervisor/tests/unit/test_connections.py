@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import pytest
 
-from repo2ree_protocol import ObservedCapabilities, SubstrateKind
 from repo2ree_protocol.workbench import ExecSimpleRequest, WorkbenchHello
 from repo2ree_supervisor import WorkbenchConnection, WorkbenchConnectionRegistry, WorkbenchUnavailableError
 
@@ -26,7 +25,7 @@ def test_list_workbenches_reports_hello_fields_sorted() -> None:
                 workbench_id="z-workbench",
                 hostname="worker-b",
                 version="0.1.0",
-                capabilities=ObservedCapabilities(substrate=SubstrateKind.DOCKER_NESTED),
+                image="docker.io/library/docker:29-dind",
             )
         ),
     )
@@ -37,7 +36,7 @@ def test_list_workbenches_reports_hello_fields_sorted() -> None:
                 workbench_id="a-workbench",
                 hostname="worker-a",
                 version="0.2.0",
-                capabilities=ObservedCapabilities(substrate=SubstrateKind.DOCKER_HOST_SOCKET),
+                image="docker.io/library/python:3.11-slim",
             )
         ),
     )
@@ -47,7 +46,11 @@ def test_list_workbenches_reports_hello_fields_sorted() -> None:
     # Sorted by (hostname, workbench_id): worker-a before worker-b.
     assert [i.workbench_id for i in infos] == ["a-workbench", "z-workbench"]
     first = infos[0]
-    assert (first.hostname, first.version, first.docker_mode) == ("worker-a", "0.2.0", "docker-host-socket")
+    assert (first.hostname, first.version, first.image) == (
+        "worker-a",
+        "0.2.0",
+        "docker.io/library/python:3.11-slim",
+    )
     assert first.connected_at > 0
 
 
@@ -58,7 +61,7 @@ def test_list_workbenches_tolerates_missing_hello() -> None:
     (info,) = registry.list_workbenches()
 
     assert info.workbench_id == "legacy"
-    assert (info.hostname, info.version, info.docker_mode) == ("", "", "")
+    assert (info.hostname, info.version, info.image) == ("", "", "")
 
 
 def test_unregister_drops_from_list() -> None:

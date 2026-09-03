@@ -184,7 +184,7 @@ describe("shell/data/ree/reeMapping", () => {
       ...withReceipt,
       allocation_id: "alloc-1",
       location_id: "lab-1",
-      profile_id: "standard",
+      image: "docker.io/library/docker:29-dind",
       ree_files: [
         {
           path: "artifact",
@@ -203,7 +203,7 @@ describe("shell/data/ree/reeMapping", () => {
     });
     expect(project.allocationId).toBe("alloc-1");
     expect(project.workbenchLocation).toBe("lab-1");
-    expect(project.workbenchProfile).toBe("standard");
+    expect(project.workbenchImage).toBe("docker.io/library/docker:29-dind");
     expect(project.reeFiles?.[0]).toMatchObject({
       tag: "REE",
       content: undefined,

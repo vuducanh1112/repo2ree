@@ -23,14 +23,10 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
 from repo2ree_protocol.allocation import AllocationRequest
 from repo2ree_protocol.frames import Frame
-from repo2ree_protocol.substrate import ObservedCapabilities
 
 # ================================================
 # Identity
 # ================================================
-
-
-WorkbenchCapabilities = ObservedCapabilities
 
 
 class WorkbenchHello(BaseModel):
@@ -50,9 +46,9 @@ class WorkbenchHello(BaseModel):
     hostname: str = ""
     version: str = ""
     location_id: str = ""
-    profile_id: str = ""
-    profile_revision: str = ""
-    capabilities: ObservedCapabilities = Field(default_factory=ObservedCapabilities)
+    # The base image this bench was provisioned from; blank for an externally
+    # managed bench, which this control plane did not build.
+    image: str = ""
     # Random per-process token: the same workbench_id arriving with a different
     # nonce is a distinct workbench *instance* (a duplicate or takeover), not a
     # reconnect of the one already known.

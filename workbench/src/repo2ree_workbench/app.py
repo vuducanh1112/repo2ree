@@ -7,7 +7,6 @@ from collections.abc import Sequence
 
 from repo2ree_protocol.log import configure_logging
 from repo2ree_protocol.tracing import otlp_log_handler, setup_logs, setup_metrics, setup_tracing
-from repo2ree_workbench.capabilities import observe_capabilities
 from repo2ree_workbench.config import load_config
 from repo2ree_workbench.connection import run_workbench
 from repo2ree_workbench.executor_process import LocalExecutor
@@ -26,7 +25,6 @@ def main(argv: Sequence[str] = ()) -> None:
     )
     meter_provider = setup_metrics("repo2ree-workbench", endpoint=config.otlp_endpoint, instance_id=config.workbench_id)
     service = WorkbenchService(LocalExecutor(config.root, config.exec_path))
-    capabilities = observe_capabilities(config.root, config.exec_path)
     try:
         asyncio.run(
             run_workbench(
@@ -37,9 +35,7 @@ def main(argv: Sequence[str] = ()) -> None:
                 allocation_id=config.allocation_id,
                 enrollment_token=config.enrollment_token,
                 location_id=config.location_id,
-                profile_id=config.profile_id,
-                profile_revision=config.profile_revision,
-                capabilities=capabilities,
+                image=config.image,
             )
         )
     finally:

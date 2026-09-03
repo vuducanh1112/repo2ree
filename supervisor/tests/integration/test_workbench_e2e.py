@@ -46,7 +46,7 @@ from uuid import uuid4
 import pytest
 from websockets.asyncio.server import ServerConnection, serve
 
-from repo2ree_protocol import FixedResources, ProviderHello, RequiredCapabilities, SubstrateKind, WorkbenchProfile
+from repo2ree_protocol import ProviderHello, WorkbenchImage
 from repo2ree_protocol.command import (
     AcquireSourceArgs,
     AcquireSourceCommand,
@@ -182,22 +182,11 @@ def service_connections() -> Iterator[tuple[ProviderConnectionRegistry, Workbenc
             )
             await run_provider(
                 f"ws://127.0.0.1:{port}/provider/connect",
-                ProvisionerService(isolation, {("standard", "1"): WORKBENCH_IMAGE}),
+                ProvisionerService(isolation, catalog={WORKBENCH_IMAGE}, accepts_custom_image=False),
                 "e2e-provider",
                 location_id="e2e-lab",
                 location_label="E2E lab",
-                profiles=(
-                    WorkbenchProfile(
-                        id="standard",
-                        revision="1",
-                        location_id="e2e-lab",
-                        label="Standard",
-                        required=RequiredCapabilities(
-                            substrate=SubstrateKind.DOCKER_NESTED,
-                            resources=FixedResources(),
-                        ),
-                    ),
-                ),
+                images=(WorkbenchImage(ref=WORKBENCH_IMAGE, id="standard", label="Standard"),),
             )
 
     task_holder: list[asyncio.Task[None]] = []
@@ -247,7 +236,7 @@ def workbench(
         span_sink=build_span_sink(None, console_fallback=True),
     )
     ree_id = uuid4().hex[:12]
-    handle = manager.provision(ree_id, name="e2e-test", location_id="e2e-lab", profile_id="standard")
+    handle = manager.provision(ree_id, name="e2e-test", location_id="e2e-lab", image=WORKBENCH_IMAGE)
     try:
         yield manager, handle
     finally:

@@ -17,9 +17,8 @@ from __future__ import annotations
 from collections.abc import Iterator
 from typing import Protocol
 
-from repo2ree_protocol.allocation import AllocationRequest, WorkbenchProfile
+from repo2ree_protocol.allocation import AllocationRequest
 from repo2ree_protocol.frames import ErrorFrame, Frame, UnavailableFrame
-from repo2ree_protocol.substrate import ObservedCapabilities
 
 
 class WorkbenchUnavailableError(RuntimeError):
@@ -48,7 +47,14 @@ class ProviderClient(Protocol):
     that provisioning returned, so it reaches the provider holding that bench.
     """
 
-    def resolve_profile(self, location_id: str, profile_id: str) -> tuple[str, WorkbenchProfile]: ...
+    def resolve_location(self, location_id: str, image: str) -> tuple[str, str]:
+        """The provider serving ``location_id``, and the image ref to run there.
+
+        Blank ``image`` resolves to the location's first catalog entry. A ref
+        the location did not publish is refused unless the location accepts
+        custom images — the only check made here, and not a check on what the
+        image contains."""
+        ...
 
     def ensure(
         self,
@@ -98,14 +104,10 @@ class WorkbenchClient(Protocol):
 
     def wait_for_workbench(self, workbench_id: str, timeout: float = 60.0) -> None: ...
 
-    def reserve_external(
-        self, allocation_id: str, location_id: str, profile_id: str
-    ) -> tuple[str, WorkbenchProfile]: ...
+    def reserve_external(self, allocation_id: str, location_id: str) -> str: ...
 
     def release_reservation(self, workbench_id: str, allocation_id: str) -> None: ...
 
     def assign(self, workbench_id: str, allocation: AllocationRequest) -> None: ...
-
-    def observation(self, workbench_id: str) -> ObservedCapabilities: ...
 
     def is_connected(self, workbench_id: str) -> bool: ...

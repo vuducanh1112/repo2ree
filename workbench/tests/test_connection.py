@@ -80,8 +80,7 @@ def _allocation() -> AllocationRequest:
         allocation_id="alloc-1",
         ree_id="ree-1",
         location_id="lab-1",
-        profile_id="standard",
-        profile_revision="1",
+        image="docker.io/library/docker:29-dind",
     )
 
 
@@ -282,8 +281,7 @@ def test_connection_hello_and_connected_gauge_are_balanced(monkeypatch: pytest.M
                 allocation_id="alloc-1",
                 enrollment_token=opaque_enrollment,
                 location_id="lab-1",
-                profile_id="standard",
-                profile_revision="1",
+                image="docker.io/library/docker:29-dind",
             )
         )
 
@@ -291,7 +289,7 @@ def test_connection_hello_and_connected_gauge_are_balanced(monkeypatch: pytest.M
     assert hello.workbench_id == "workbench-1"
     assert hello.allocation_id == "alloc-1"
     assert hello.enrollment_token == opaque_enrollment
-    assert (hello.location_id, hello.profile_id, hello.profile_revision) == ("lab-1", "standard", "1")
+    assert (hello.location_id, hello.image) == ("lab-1", "docker.io/library/docker:29-dind")
     assert hello.nonce
     assert connected_values == [1, -1]
 

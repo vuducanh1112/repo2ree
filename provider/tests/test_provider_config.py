@@ -8,6 +8,7 @@ starts against a local control plane.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -21,6 +22,8 @@ _PROVIDER_ENV = (
     "PROVIDER_WORKBENCH_API_WS_URL",
     "PROVIDER_DOCKER_MODE",
     "PROVIDER_WORKBENCH_DOCKER_NETWORK",
+    "PROVIDER_ACCEPTS_CUSTOM_IMAGE",
+    "WORKBENCH_IMAGE_CATALOG",
     "OTLP_ENDPOINT",
 )
 
@@ -84,3 +87,84 @@ def test_blank_otlp_endpoint_reads_as_no_collector(monkeypatch: pytest.MonkeyPat
     monkeypatch.setenv("OTLP_ENDPOINT", "")
 
     assert config_module.load_config().otlp_endpoint is None
+
+
+# ------------------------------------------------
+# The curated catalog
+# ------------------------------------------------
+
+
+def test_a_catalog_entry_needs_only_a_ref(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PROVIDER_ID", "docker-provider-explicit")
+    monkeypatch.setenv("WORKBENCH_IMAGE_CATALOG", json.dumps([{"ref": "docker:29-dind"}]))
+
+    (image,) = config_module.load_config().images
+
+    # The ref identifies the entry, so it doubles as the id and the label; a
+    # deployment publishing one image should not have to name it three times.
+    assert (image.ref, image.id, image.label) == ("docker:29-dind", "docker:29-dind", "docker:29-dind")
+    assert image.description == ""
+
+
+def test_the_catalog_replaces_the_default_wholesale(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PROVIDER_ID", "docker-provider-explicit")
+    monkeypatch.setenv(
+        "WORKBENCH_IMAGE_CATALOG",
+        json.dumps(
+            [
+                {"id": "standard", "ref": "registry.example/bench:1", "label": "Standard", "description": "Docker."},
+                {"id": "python", "ref": "docker.io/library/python:3.11-slim", "label": "Python"},
+            ]
+        ),
+    )
+
+    images = config_module.load_config().images
+
+    assert [image.id for image in images] == ["standard", "python"]
+    assert config_module._DEFAULT_IMAGE not in {image.ref for image in images}
+
+
+def test_an_unset_catalog_still_offers_one_image(monkeypatch: pytest.MonkeyPatch) -> None:
+    # A bare `repo2ree-provider-docker` has to be usable, so the default is a
+    # catalog of one rather than an empty picker.
+    monkeypatch.setenv("PROVIDER_ID", "docker-provider-explicit")
+
+    config = config_module.load_config()
+
+    assert [image.ref for image in config.images] == [config_module._DEFAULT_IMAGE]
+
+
+def test_duplicate_ids_are_a_startup_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Two entries under one id makes the picker ambiguous; failing here beats
+    # resolving it arbitrarily at provision time.
+    monkeypatch.setenv("PROVIDER_ID", "docker-provider-explicit")
+    monkeypatch.setenv(
+        "WORKBENCH_IMAGE_CATALOG",
+        json.dumps([{"id": "standard", "ref": "a:1"}, {"id": "standard", "ref": "b:2"}]),
+    )
+
+    with pytest.raises(ValueError, match="unique"):
+        config_module.load_config()
+
+
+def test_an_entry_without_a_ref_is_a_startup_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PROVIDER_ID", "docker-provider-explicit")
+    monkeypatch.setenv("WORKBENCH_IMAGE_CATALOG", json.dumps([{"id": "standard", "ref": ""}]))
+
+    with pytest.raises(ValueError, match="needs a ref"):
+        config_module.load_config()
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [("", True), ("false", False), ("0", False), ("no", False), ("true", True), ("1", True)],
+)
+def test_custom_images_are_accepted_unless_the_deployment_says_otherwise(
+    monkeypatch: pytest.MonkeyPatch, value: str, expected: bool
+) -> None:
+    # The curated set is a recommendation by default; a deployment that wants it
+    # to be a jail has to say so.
+    monkeypatch.setenv("PROVIDER_ID", "docker-provider-explicit")
+    monkeypatch.setenv("PROVIDER_ACCEPTS_CUSTOM_IMAGE", value)
+
+    assert config_module.load_config().accepts_custom_image is expected

@@ -15,17 +15,26 @@ _DEFAULT_IMAGE = (
 
 
 @dataclass(frozen=True)
-class PrivateProfile:
-    id: str
-    revision: str
-    image: str
-    label: str
+class CuratedImage:
+    """One entry of this provider's published catalog.
+
+    Only ``ref`` is meaningful to provisioning; the rest names the entry for the
+    author's picker. Nothing here says what the image *supplies* — that is the
+    image's business and the build's problem, not a fact this provider asserts.
+    """
+
+    ref: str
+    id: str = ""
+    label: str = ""
     description: str = ""
-    # What this image actually supplies. A provider may offer both a Docker
-    # workbench and a plain one, so the substrate belongs to the profile rather
-    # than to the daemon mode the provider itself runs in; unset means "whatever
-    # this provider's docker_mode implies".
-    substrate: str | None = None
+
+    def __post_init__(self) -> None:
+        if not self.ref:
+            raise ValueError("a catalog entry needs a ref")
+        # A ref uniquely identifies an entry, so it doubles as a stable id and a
+        # fallback label; that is what lets an entry be just {"ref": ...}.
+        object.__setattr__(self, "id", self.id or self.ref)
+        object.__setattr__(self, "label", self.label or self.ref)
 
 
 @dataclass(frozen=True)
@@ -35,10 +44,21 @@ class ProviderConfig:
     provider_id: str
     location_id: str
     location_label: str
-    profiles: tuple[PrivateProfile, ...]
+    images: tuple[CuratedImage, ...]
+    # Whether this provider will run a ref that is not in its catalog. The
+    # curated set is a recommendation, not a jail: a deployment that wants one
+    # sets this false.
+    accepts_custom_image: bool = True
     docker_mode: str = "dind"
     workbench_network: str = ""
     otlp_endpoint: str | None = None
+
+
+def _env_flag(name: str, default: bool) -> bool:
+    raw = os.environ.get(name, "").strip().lower()
+    if not raw:
+        return default
+    return raw in {"1", "true", "yes", "on"}
 
 
 def load_config() -> ProviderConfig:
@@ -46,36 +66,31 @@ def load_config() -> ProviderConfig:
     provider_id = explicit_id or load_or_create_provider_id(
         Path(os.environ.get("PROVIDER_STATE_DIR", "~/.repo2ree-provider")).expanduser()
     )
-    raw_catalog = os.environ.get("PROVIDER_PROFILE_CATALOG")
+    raw_catalog = os.environ.get("WORKBENCH_IMAGE_CATALOG")
     if raw_catalog:
-        profiles = tuple(PrivateProfile(**item) for item in json.loads(raw_catalog))
+        images = tuple(CuratedImage(**item) for item in json.loads(raw_catalog))
     else:
-        # Temporary deployment-config compatibility: old stacks may still set
-        # the image catalog globally. It is interpreted only here, on the
-        # provider side, and never accepted in an allocation request.
-        legacy = json.loads(os.environ.get("WORKBENCH_IMAGE_CATALOG", "[]"))
-        image = str(legacy[0]["ref"]) if legacy else _DEFAULT_IMAGE
-        profiles = (
-            PrivateProfile(
+        images = (
+            CuratedImage(
                 id="standard",
-                revision="1",
-                image=image,
-                label="Standard Docker workbench",
-                description="A fixed deployment-managed Docker workbench.",
+                ref=_DEFAULT_IMAGE,
+                label="Standard (docker)",
+                description="Lean docker-in-docker bench; the provider injects the executor and base tools.",
             ),
         )
-    if not profiles:
-        raise ValueError("PROVIDER_PROFILE_CATALOG must contain at least one profile")
-    keys = [(profile.id, profile.revision) for profile in profiles]
-    if len(keys) != len(set(keys)):
-        raise ValueError("provider profile id/revision pairs must be unique")
+    if not images:
+        raise ValueError("WORKBENCH_IMAGE_CATALOG must contain at least one image")
+    ids = [image.id for image in images]
+    if len(ids) != len(set(ids)):
+        raise ValueError("catalog image ids must be unique")
     return ProviderConfig(
         api_ws_url=os.environ.get("PROVIDER_API_WS_URL", "ws://localhost:8000/provider/connect"),
         workbench_api_ws_url=os.environ.get("PROVIDER_WORKBENCH_API_WS_URL", "ws://localhost:8000/workbench/connect"),
         provider_id=provider_id,
         location_id=os.environ.get("PROVIDER_LOCATION_ID", provider_id),
         location_label=os.environ.get("PROVIDER_LOCATION_LABEL", provider_id),
-        profiles=profiles,
+        images=images,
+        accepts_custom_image=_env_flag("PROVIDER_ACCEPTS_CUSTOM_IMAGE", True),
         docker_mode=os.environ.get("PROVIDER_DOCKER_MODE", "dind"),
         workbench_network=os.environ.get("PROVIDER_WORKBENCH_DOCKER_NETWORK", ""),
         otlp_endpoint=os.environ.get("OTLP_ENDPOINT") or None,

@@ -9,20 +9,21 @@ export interface Lab {
   label: string;
   description: string;
   lifecycleMode: "provider_managed" | "externally_managed";
-  profiles: ComputeProfile[];
+  /** The curated base images this lab offers. Empty for a pre-provisioned lab. */
+  images: WorkbenchImage[];
+  /** Whether this lab will run a ref it did not publish. */
+  acceptsCustomImage: boolean;
   status: LabStatus;
   available: boolean;
 }
 
-export interface ComputeProfile {
+// One base image a lab offers. `ref` is the only field provisioning uses; the
+// rest names the entry in the picker.
+export interface WorkbenchImage {
   id: string;
-  revision: string;
+  ref: string;
   label: string;
   description: string;
-  substrate: "bare" | "docker-nested" | "docker-host-socket";
-  cpuCount?: number;
-  memoryBytes?: number;
-  storagePolicy: "ephemeral" | "retained" | "external";
 }
 
 // Stable display order: by label, then id. Pure; returns a new array.

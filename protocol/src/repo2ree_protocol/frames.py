@@ -129,6 +129,10 @@ class AllocationStatusFrame(BaseModel):
     allocation_id: str = Field(min_length=1)
     state: AllocationState
     workbench_id: str | None = None
+    # What the provider actually ran, pinned by digest where the runtime could
+    # resolve one. The request names the image that was asked for; this names
+    # the one that arrived, and the two differ whenever a tag has moved.
+    resolved_image: str = ""
     detail: str = ""
 
 

@@ -17,7 +17,7 @@ const reeDocument = {
   ree_files: [],
   allocation_id: "alloc-1",
   location_id: "lab-1",
-  profile_id: "standard",
+  image: "docker.io/library/docker:29-dind",
 };
 
 function services(state: string) {
@@ -29,11 +29,10 @@ function services(state: string) {
           allocation_id: "alloc-1",
           ree_id: "ree-1",
           location_id: "lab-1",
-          profile_id: "standard",
-          profile_revision: "1",
+          image: "docker.io/library/docker:29-dind",
         },
         state,
-        incompatibilities: [],
+        resolved_image: "docker.io/library/docker:29-dind",
         detail: "",
         created_at: "2026-01-01T10:00:00Z",
         updated_at: "2026-01-01T10:00:05Z",
@@ -50,10 +49,10 @@ function render(state: string) {
 }
 
 describe("BenchConsole", () => {
-  it("names the placement and its allocation, never the image behind it", async () => {
+  it("names the image it runs and the allocation that obtained it", async () => {
     render("assigned");
 
-    expect(await screen.findByText("standard @ lab-1")).toBeVisible();
+    expect(await screen.findByText("docker:29-dind @ lab-1")).toBeVisible();
     expect(await screen.findByText("alloc-1")).toBeVisible();
     expect(await screen.findByText("Assigned")).toBeVisible();
   });

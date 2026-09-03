@@ -38,9 +38,10 @@ def _instant_viable_bench(monkeypatch: pytest.MonkeyPatch) -> None:
     ``container_running`` themselves.
     """
     monkeypatch.setattr(lc_mod, "_STARTUP_GRACE_SECONDS", 0.0)
-    monkeypatch.setattr(lc_mod, "_allocation_profile", lambda name: None)
+    monkeypatch.setattr(lc_mod, "_allocation_image", lambda name: None)
     monkeypatch.setattr(lc_mod, "container_running", lambda name: True)
     monkeypatch.setattr(lc_mod, "_probe_bench", lambda name, exec_path, image: iter(()))
+    monkeypatch.setattr(lc_mod, "_resolved_image", lambda image: image)
 
 
 def test_dind_mode_uses_per_ree_docker_daemon(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -168,10 +169,9 @@ def _provision(isolation: DockerIsolation, allocation_id: str, image: str):
         allocation_id=allocation_id,
         ree_id=f"ree-{allocation_id}",
         location_id="lab-1",
-        profile_id="standard",
-        profile_revision="1",
+        image=image,
     )
-    return isolation.ensure(allocation, "wb-1", "token", image)
+    return isolation.ensure(allocation, "wb-1", "token")
 
 
 def _only_status(frames: list[Frame]) -> AllocationStatusFrame:
@@ -360,6 +360,7 @@ def test_bench_that_cannot_stay_up_is_an_error_frame(monkeypatch: pytest.MonkeyP
 # Bound before the autouse fixture replaces the module attribute, so the
 # probe's own tests exercise the real implementation.
 _real_probe_bench = lc_mod._probe_bench
+_real_resolved_image = lc_mod._resolved_image
 
 
 class _FakeCompleted:
@@ -386,7 +387,7 @@ def test_probe_reports_capabilities(monkeypatch: pytest.MonkeyPatch) -> None:
     assert not any(f.level == "warn" for f in logs)
 
 
-def test_probe_warns_without_docker_substrate(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_probe_warns_without_a_reachable_docker_daemon(monkeypatch: pytest.MonkeyPatch) -> None:
     report = {"ok": True, "docker": {"available": False, "detail": "no daemon"}, "tools": {}}
     _patch_doctor_exec(monkeypatch, _FakeCompleted(0, stdout=json.dumps(report)))
 
@@ -493,8 +494,8 @@ def test_a_dead_default_command_falls_back_to_the_injected_pause_binary(
 ) -> None:
     # A dind image in host-socket mode lands here by construction: its default
     # command is dockerd, which cannot start without --privileged, and
-    # host-socket withholds it deliberately. The substrate that mode needs is
-    # the mounted host socket, so a paused bench is the correct bench.
+    # host-socket withholds it deliberately. What that mode needs is the
+    # mounted host socket, so a paused bench is the correct bench.
     docker_calls = _exits_immediately(monkeypatch, viable_after=2)
 
     isolation = DockerIsolation(docker_mode="host-socket", exec_bundle_dir=exec_bundle_dir)
@@ -509,7 +510,7 @@ def test_a_dead_default_command_falls_back_to_the_injected_pause_binary(
     # The dead attempt is removed so the retry can reuse the container name.
     assert ("rm", "-f", "-v", "repo2ree-wb-ree-dead-cmd") in docker_calls
     # Falling back is reported: in dind mode the same path means the nested
-    # daemon died, and a silent substrate-dead bench is the failure this
+    # daemon died, and a silently daemon-dead bench is the failure this
     # provisioner exists to make falsifiable.
     assert any(isinstance(f, LogFrame) and "holding the bench open with" in f.message for f in frames)
     assert _only_status(frames)
@@ -596,3 +597,57 @@ def test_the_rewritten_url_is_what_the_resident_workbench_receives(monkeypatch: 
     # The bench is given the name that URL depends on.
     run_call = _only_run_call(docker_calls)
     assert _has_option_value(run_call, "--add-host", "host.docker.internal:host-gateway")
+
+
+# ------------------------------------------------
+# What the bench actually came up on
+# ------------------------------------------------
+
+
+def test_a_registry_image_resolves_to_its_digest(monkeypatch: pytest.MonkeyPatch) -> None:
+    pinned = "docker.io/library/docker@sha256:" + "a" * 64
+    monkeypatch.setattr(lc_mod, "run_docker_out", lambda *args, timeout=60: pinned)
+
+    assert _real_resolved_image("docker:29-dind") == pinned
+
+
+def test_an_image_with_no_digest_resolves_to_the_ref_asked_for(monkeypatch: pytest.MonkeyPatch) -> None:
+    # A locally built image has no RepoDigests, so the format yields "". The
+    # record must say what was asked for rather than claim an empty pin.
+    monkeypatch.setattr(lc_mod, "run_docker_out", lambda *args, timeout=60: "")
+
+    assert _real_resolved_image("repo2ree-workbench:local") == "repo2ree-workbench:local"
+
+
+def test_an_unreadable_digest_does_not_fail_a_provision_that_worked(monkeypatch: pytest.MonkeyPatch) -> None:
+    def explode(*args: str, timeout: int = 60) -> str:
+        raise RuntimeError("docker inspect failed")
+
+    monkeypatch.setattr(lc_mod, "run_docker_out", explode)
+
+    assert _real_resolved_image("docker:29-dind") == "docker:29-dind"
+
+
+def test_the_terminal_status_frame_reports_the_resolved_image(monkeypatch: pytest.MonkeyPatch) -> None:
+    pinned = "docker.io/library/docker@sha256:" + "b" * 64
+    monkeypatch.setattr(lc_mod, "run_docker", lambda *args, timeout=60: None)
+    monkeypatch.setattr(lc_mod, "_image_present", lambda image: True)
+    monkeypatch.setattr(lc_mod, "_docker_stream_lines", lambda *args, timeout=600: iter(()))
+    monkeypatch.setattr(lc_mod, "_resolved_image", lambda image: pinned)
+
+    frames = list(_provision(DockerIsolation(), "ree-pinned", _spec("docker:29-dind")))
+
+    assert _only_status(frames).resolved_image == pinned
+
+
+def test_a_reconnected_allocation_still_reports_its_image(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The early return for an allocation whose bench already exists is the other
+    # way out of ensure(); a frame missing the field there would blank a record
+    # that had one.
+    monkeypatch.setattr(lc_mod, "_allocation_image", lambda name: "docker:29-dind")
+    monkeypatch.setattr(lc_mod, "container_running", lambda name: True)
+    monkeypatch.setattr(lc_mod, "_resolved_image", lambda image: f"pinned::{image}")
+
+    frames = list(_provision(DockerIsolation(), "ree-existing", _spec("docker:29-dind")))
+
+    assert _only_status(frames).resolved_image == "pinned::docker:29-dind"

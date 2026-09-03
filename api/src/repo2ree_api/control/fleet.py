@@ -159,7 +159,8 @@ class WorkbenchSummary(BaseModel):
     available: bool
     hostname: str
     version: str
-    docker_mode: str
+    # The base image the bench runs; blank for an externally managed one.
+    image: str
     # ISO 8601 UTC; when the workbench dialed in.
     connected_at: str
     status: str = "connected"
@@ -197,7 +198,7 @@ def list_workbenches() -> WorkbenchList:
             available=info.available,
             hostname=info.hostname,
             version=info.version,
-            docker_mode=info.docker_mode,
+            image=info.image,
             connected_at=iso_utc(datetime.fromtimestamp(info.connected_at, tz=UTC)),
         )
         for info in workbench_connections.list_workbenches()

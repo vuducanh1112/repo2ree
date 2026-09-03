@@ -6262,135 +6262,6 @@
         }
       }
     },
-    "/api/v1/workbench-profiles": {
-      "get": {
-        "tags": [
-          "compute"
-        ],
-        "summary": "List Workbench Profiles",
-        "operationId": "listWorkbenchProfiles",
-        "parameters": [
-          {
-            "name": "location_id",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Location Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WorkbenchProfileList"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request or operation precondition",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "REE, run, file, or artifact not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Version or idempotency conflict",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Upload exceeds the configured size limit",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Request validation failed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "Workbench returned an invalid upstream response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Compute provider or workbench unavailable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "507": {
-            "description": "Upload staging capacity exhausted",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/allocations": {
       "get": {
         "tags": [
@@ -7134,23 +7005,10 @@
             ],
             "title": "Provider Id"
           },
-          "observation": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ObservedCapabilities"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "incompatibilities": {
-            "items": {
-              "$ref": "#/components/schemas/CompatibilityIssue"
-            },
-            "type": "array",
-            "title": "Incompatibilities",
-            "default": []
+          "resolved_image": {
+            "type": "string",
+            "title": "Resolved Image",
+            "default": ""
           },
           "detail": {
             "type": "string",
@@ -7194,15 +7052,10 @@
             "minLength": 1,
             "title": "Location Id"
           },
-          "profile_id": {
+          "image": {
             "type": "string",
-            "minLength": 1,
-            "title": "Profile Id"
-          },
-          "profile_revision": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Profile Revision"
+            "title": "Image",
+            "default": ""
           }
         },
         "additionalProperties": false,
@@ -7210,9 +7063,7 @@
         "required": [
           "allocation_id",
           "ree_id",
-          "location_id",
-          "profile_id",
-          "profile_revision"
+          "location_id"
         ],
         "title": "AllocationRequest"
       },
@@ -7226,7 +7077,6 @@
           "assigned",
           "draining",
           "released",
-          "incompatible",
           "failed",
           "lost"
         ],
@@ -7896,49 +7746,6 @@
         ],
         "title": "CommandCandidatesObservation"
       },
-      "CompatibilityIssue": {
-        "properties": {
-          "code": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Code"
-          },
-          "detail": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Detail"
-          },
-          "expected": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Expected"
-          },
-          "observed": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Observed"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "code",
-          "detail"
-        ],
-        "title": "CompatibilityIssue"
-      },
       "ComputeLocation": {
         "properties": {
           "id": {
@@ -7963,6 +7770,19 @@
             "type": "boolean",
             "title": "Available",
             "default": true
+          },
+          "images": {
+            "items": {
+              "$ref": "#/components/schemas/WorkbenchImage"
+            },
+            "type": "array",
+            "title": "Images",
+            "default": []
+          },
+          "accepts_custom_image": {
+            "type": "boolean",
+            "title": "Accepts Custom Image",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -7972,7 +7792,8 @@
           "label",
           "lifecycle_mode"
         ],
-        "title": "ComputeLocation"
+        "title": "ComputeLocation",
+        "description": "A place workbenches can be obtained, and the images it offers there.\n\nThe catalog is published *outward*: the author picks from it, and the\nresolved ref is recorded on the allocation. A location that accepts a ref it\ndid not publish says so with ``accepts_custom_image``; nothing else about\nthe image is negotiated."
       },
       "ComputeLocationList": {
         "properties": {
@@ -9598,38 +9419,6 @@
         "title": "Finding",
         "description": "One observation about one script."
       },
-      "FixedResources": {
-        "properties": {
-          "cpu_count": {
-            "anyOf": [
-              {
-                "type": "number",
-                "exclusiveMinimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cpu Count"
-          },
-          "memory_bytes": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "exclusiveMinimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Memory Bytes"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "title": "FixedResources",
-        "description": "Informational limits attached to a fixed deployment profile."
-      },
       "ForkNode": {
         "properties": {
           "id": {
@@ -10441,46 +10230,6 @@
         ],
         "title": "ObserveHardwareReceipt"
       },
-      "ObservedCapabilities": {
-        "properties": {
-          "root_writable": {
-            "type": "boolean",
-            "title": "Root Writable",
-            "default": false
-          },
-          "executor_available": {
-            "type": "boolean",
-            "title": "Executor Available",
-            "default": false
-          },
-          "substrate": {
-            "$ref": "#/components/schemas/SubstrateKind",
-            "default": "bare"
-          },
-          "docker_version": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Docker Version"
-          },
-          "docker_socket_mounted": {
-            "type": "boolean",
-            "title": "Docker Socket Mounted",
-            "default": false
-          },
-          "resources": {
-            "$ref": "#/components/schemas/FixedResources"
-          }
-        },
-        "type": "object",
-        "title": "ObservedCapabilities",
-        "description": "Facts measured by the workbench from inside its environment."
-      },
       "PackageDeltaRecord": {
         "properties": {
           "ecosystem": {
@@ -10797,17 +10546,16 @@
             "minLength": 1,
             "title": "Location Id"
           },
-          "profile_id": {
+          "image": {
             "type": "string",
-            "minLength": 1,
-            "title": "Profile Id"
+            "title": "Image",
+            "default": ""
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "location_id",
-          "profile_id"
+          "location_id"
         ],
         "title": "ReeCreatePayload",
         "description": "Provision a new empty REE workbench.\n\nSource acquisition is intentionally a separate lifecycle operation through\n``source:acquire`` or the upload-init/upload/complete sequence."
@@ -11028,7 +10776,7 @@
             ],
             "title": "Location Id"
           },
-          "profile_id": {
+          "image": {
             "anyOf": [
               {
                 "type": "string"
@@ -11037,7 +10785,7 @@
                 "type": "null"
               }
             ],
-            "title": "Profile Id"
+            "title": "Image"
           },
           "workspace_files": {
             "items": {
@@ -11496,9 +11244,9 @@
             "type": "string",
             "title": "Location Id"
           },
-          "profile_id": {
+          "image": {
             "type": "string",
-            "title": "Profile Id"
+            "title": "Image"
           }
         },
         "additionalProperties": false,
@@ -11509,7 +11257,7 @@
           "status",
           "allocation_id",
           "location_id",
-          "profile_id"
+          "image"
         ],
         "title": "ReeSummary"
       },
@@ -11585,34 +11333,6 @@
           "detected_dependencies"
         ],
         "title": "ReproducibilityReport"
-      },
-      "RequiredCapabilities": {
-        "properties": {
-          "substrate": {
-            "$ref": "#/components/schemas/SubstrateKind"
-          },
-          "minimum_docker_version": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Minimum Docker Version"
-          },
-          "resources": {
-            "$ref": "#/components/schemas/FixedResources"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "substrate"
-        ],
-        "title": "RequiredCapabilities",
-        "description": "The exact capability gate for a profile, never a placement query."
       },
       "RequirementsProjectBinding": {
         "properties": {
@@ -13626,15 +13346,6 @@
         "type": "object",
         "title": "StorageDefinition"
       },
-      "StoragePolicy": {
-        "type": "string",
-        "enum": [
-          "ephemeral",
-          "retained",
-          "external"
-        ],
-        "title": "StoragePolicy"
-      },
       "StrategyLeafNode": {
         "properties": {
           "id": {
@@ -13762,15 +13473,6 @@
           "outcomes"
         ],
         "title": "StrategyOutcomesObservation"
-      },
-      "SubstrateKind": {
-        "type": "string",
-        "enum": [
-          "bare",
-          "docker-nested",
-          "docker-host-socket"
-        ],
-        "title": "SubstrateKind"
       },
       "TargetInferenceResult": {
         "properties": {
@@ -14262,6 +13964,37 @@
         "title": "VenvRuntimeContract",
         "description": "A packed Python virtual environment as the runtime substrate.\n\nThe build packs the venv as a gzipped tarball at ``artifact_path``; a\nrunnable restores it to ``venv_restore_dir`` (an absolute path, because a\nvenv bakes absolute paths and must be restored where it was built) and runs\nthe command with that venv's ``bin`` on ``PATH``. There is no image ref: the\nworkbench base image is the environment. ``venv_restore_dir`` defaults to the\npath a repo2ree build packs; an inspected artifact overrides it with the path\nrecovered from the venv's own ``pyvenv.cfg``."
       },
+      "WorkbenchImage": {
+        "properties": {
+          "ref": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Ref"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "default": ""
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "default": ""
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "ref"
+        ],
+        "title": "WorkbenchImage",
+        "description": "One base image a location offers to provision workbenches from.\n\nOnly ``ref`` is meaningful to the backend \u2014 it is the image that gets run.\n``id``/``label``/``description`` are picker-facing and default off the ref,\nso a catalog entry can be as terse as ``{\"ref\": \"docker:29-dind\"}``."
+      },
       "WorkbenchList": {
         "properties": {
           "workbenches": {
@@ -14277,68 +14010,6 @@
           "workbenches"
         ],
         "title": "WorkbenchList"
-      },
-      "WorkbenchProfile": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Id"
-          },
-          "revision": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Revision"
-          },
-          "location_id": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Location Id"
-          },
-          "label": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Label"
-          },
-          "description": {
-            "type": "string",
-            "title": "Description",
-            "default": ""
-          },
-          "required": {
-            "$ref": "#/components/schemas/RequiredCapabilities"
-          },
-          "storage_policy": {
-            "$ref": "#/components/schemas/StoragePolicy",
-            "default": "ephemeral"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "id",
-          "revision",
-          "location_id",
-          "label",
-          "required"
-        ],
-        "title": "WorkbenchProfile"
-      },
-      "WorkbenchProfileList": {
-        "properties": {
-          "profiles": {
-            "items": {
-              "$ref": "#/components/schemas/WorkbenchProfile"
-            },
-            "type": "array",
-            "title": "Profiles"
-          }
-        },
-        "type": "object",
-        "required": [
-          "profiles"
-        ],
-        "title": "WorkbenchProfileList"
       },
       "WorkbenchStatus": {
         "properties": {
@@ -14379,7 +14050,7 @@
             ],
             "title": "Location Id"
           },
-          "profile_id": {
+          "image": {
             "anyOf": [
               {
                 "type": "string"
@@ -14388,18 +14059,7 @@
                 "type": "null"
               }
             ],
-            "title": "Profile Id"
-          },
-          "substrate": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Substrate"
+            "title": "Image"
           }
         },
         "additionalProperties": false,
@@ -14431,9 +14091,9 @@
             "type": "string",
             "title": "Version"
           },
-          "docker_mode": {
+          "image": {
             "type": "string",
-            "title": "Docker Mode"
+            "title": "Image"
           },
           "connected_at": {
             "type": "string",
@@ -14452,7 +14112,7 @@
           "available",
           "hostname",
           "version",
-          "docker_mode",
+          "image",
           "connected_at"
         ],
         "title": "WorkbenchSummary"

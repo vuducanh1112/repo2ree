@@ -829,23 +829,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/workbench-profiles": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Workbench Profiles */
-        get: operations["listWorkbenchProfiles"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/allocations": {
         parameters: {
             query?: never;
@@ -1057,12 +1040,11 @@ export interface components {
             workbench_id?: string | null;
             /** Provider Id */
             provider_id?: string | null;
-            observation?: components["schemas"]["ObservedCapabilities"] | null;
             /**
-             * Incompatibilities
-             * @default []
+             * Resolved Image
+             * @default
              */
-            incompatibilities: components["schemas"]["CompatibilityIssue"][];
+            resolved_image: string;
             /**
              * Detail
              * @default
@@ -1087,16 +1069,17 @@ export interface components {
             ree_id: string;
             /** Location Id */
             location_id: string;
-            /** Profile Id */
-            profile_id: string;
-            /** Profile Revision */
-            profile_revision: string;
+            /**
+             * Image
+             * @default
+             */
+            image: string;
         };
         /**
          * AllocationState
          * @enum {string}
          */
-        AllocationState: "requested" | "provisioning" | "waiting_for_workbench" | "ready" | "assigned" | "draining" | "released" | "incompatible" | "failed" | "lost";
+        AllocationState: "requested" | "provisioning" | "waiting_for_workbench" | "ready" | "assigned" | "draining" | "released" | "failed" | "lost";
         /**
          * ArchiveBindingAttestation
          * @description One claim: an archive's deposit holds the REE with this content digest.
@@ -1460,18 +1443,15 @@ export interface components {
             /** Sources */
             sources?: string[];
         };
-        /** CompatibilityIssue */
-        CompatibilityIssue: {
-            /** Code */
-            code: string;
-            /** Detail */
-            detail: string;
-            /** Expected */
-            expected?: string | null;
-            /** Observed */
-            observed?: string | null;
-        };
-        /** ComputeLocation */
+        /**
+         * ComputeLocation
+         * @description A place workbenches can be obtained, and the images it offers there.
+         *
+         *     The catalog is published *outward*: the author picks from it, and the
+         *     resolved ref is recorded on the allocation. A location that accepts a ref it
+         *     did not publish says so with ``accepts_custom_image``; nothing else about
+         *     the image is negotiated.
+         */
         ComputeLocation: {
             /** Id */
             id: string;
@@ -1488,6 +1468,16 @@ export interface components {
              * @default true
              */
             available: boolean;
+            /**
+             * Images
+             * @default []
+             */
+            images: components["schemas"]["WorkbenchImage"][];
+            /**
+             * Accepts Custom Image
+             * @default false
+             */
+            accepts_custom_image: boolean;
         };
         /** ComputeLocationList */
         ComputeLocationList: {
@@ -2156,16 +2146,6 @@ export interface components {
             /** Detail */
             detail?: string | null;
         };
-        /**
-         * FixedResources
-         * @description Informational limits attached to a fixed deployment profile.
-         */
-        FixedResources: {
-            /** Cpu Count */
-            cpu_count?: number | null;
-            /** Memory Bytes */
-            memory_bytes?: number | null;
-        };
         /** ForkNode */
         ForkNode: {
             /** Id */
@@ -2578,32 +2558,6 @@ export interface components {
             observer_version: string;
         };
         /**
-         * ObservedCapabilities
-         * @description Facts measured by the workbench from inside its environment.
-         */
-        ObservedCapabilities: {
-            /**
-             * Root Writable
-             * @default false
-             */
-            root_writable: boolean;
-            /**
-             * Executor Available
-             * @default false
-             */
-            executor_available: boolean;
-            /** @default bare */
-            substrate: components["schemas"]["SubstrateKind"];
-            /** Docker Version */
-            docker_version?: string | null;
-            /**
-             * Docker Socket Mounted
-             * @default false
-             */
-            docker_socket_mounted: boolean;
-            resources?: components["schemas"]["FixedResources"];
-        };
-        /**
          * PackageDeltaRecord
          * @description One package the author's and the reviewer's runtimes disagree about.
          */
@@ -2741,8 +2695,11 @@ export interface components {
             name?: string | null;
             /** Location Id */
             location_id: string;
-            /** Profile Id */
-            profile_id: string;
+            /**
+             * Image
+             * @default
+             */
+            image: string;
         };
         /** ReeDefinition */
         "ReeDefinition-Input": {
@@ -2816,8 +2773,8 @@ export interface components {
             allocation_id?: string | null;
             /** Location Id */
             location_id?: string | null;
-            /** Profile Id */
-            profile_id?: string | null;
+            /** Image */
+            image?: string | null;
             /** Workspace Files */
             workspace_files?: components["schemas"]["WorkspaceFile"][];
             /** Ree Files */
@@ -2987,8 +2944,8 @@ export interface components {
             allocation_id: string;
             /** Location Id */
             location_id: string;
-            /** Profile Id */
-            profile_id: string;
+            /** Image */
+            image: string;
         };
         /** ReproducibilityReport */
         ReproducibilityReport: {
@@ -3009,16 +2966,6 @@ export interface components {
             readonly machine_level_label: string;
             /** Detected Dependencies */
             readonly detected_dependencies: string;
-        };
-        /**
-         * RequiredCapabilities
-         * @description The exact capability gate for a profile, never a placement query.
-         */
-        RequiredCapabilities: {
-            substrate: components["schemas"]["SubstrateKind"];
-            /** Minimum Docker Version */
-            minimum_docker_version?: string | null;
-            resources?: components["schemas"]["FixedResources"];
         };
         /**
          * RequirementsProjectBinding
@@ -3838,11 +3785,6 @@ export interface components {
                 [key: string]: unknown;
             };
         };
-        /**
-         * StoragePolicy
-         * @enum {string}
-         */
-        StoragePolicy: "ephemeral" | "retained" | "external";
         /** StrategyLeafNode */
         StrategyLeafNode: {
             /** Id */
@@ -3895,11 +3837,6 @@ export interface components {
             /** Outcomes */
             outcomes: components["schemas"]["StrategyOutcomeObservation"][];
         };
-        /**
-         * SubstrateKind
-         * @enum {string}
-         */
-        SubstrateKind: "bare" | "docker-nested" | "docker-host-socket";
         /** TargetInferenceResult */
         TargetInferenceResult: {
             target: components["schemas"]["ScriptTarget"];
@@ -4104,34 +4041,37 @@ export interface components {
              */
             interpreter: string;
         };
-        /** WorkbenchList */
-        WorkbenchList: {
-            /** Workbenches */
-            workbenches: components["schemas"]["WorkbenchSummary"][];
-        };
-        /** WorkbenchProfile */
-        WorkbenchProfile: {
-            /** Id */
+        /**
+         * WorkbenchImage
+         * @description One base image a location offers to provision workbenches from.
+         *
+         *     Only ``ref`` is meaningful to the backend — it is the image that gets run.
+         *     ``id``/``label``/``description`` are picker-facing and default off the ref,
+         *     so a catalog entry can be as terse as ``{"ref": "docker:29-dind"}``.
+         */
+        WorkbenchImage: {
+            /** Ref */
+            ref: string;
+            /**
+             * Id
+             * @default
+             */
             id: string;
-            /** Revision */
-            revision: string;
-            /** Location Id */
-            location_id: string;
-            /** Label */
+            /**
+             * Label
+             * @default
+             */
             label: string;
             /**
              * Description
              * @default
              */
             description: string;
-            required: components["schemas"]["RequiredCapabilities"];
-            /** @default ephemeral */
-            storage_policy: components["schemas"]["StoragePolicy"];
         };
-        /** WorkbenchProfileList */
-        WorkbenchProfileList: {
-            /** Profiles */
-            profiles: components["schemas"]["WorkbenchProfile"][];
+        /** WorkbenchList */
+        WorkbenchList: {
+            /** Workbenches */
+            workbenches: components["schemas"]["WorkbenchSummary"][];
         };
         /** WorkbenchStatus */
         WorkbenchStatus: {
@@ -4143,10 +4083,8 @@ export interface components {
             allocation_id?: string | null;
             /** Location Id */
             location_id?: string | null;
-            /** Profile Id */
-            profile_id?: string | null;
-            /** Substrate */
-            substrate?: string | null;
+            /** Image */
+            image?: string | null;
         };
         /** WorkbenchSummary */
         WorkbenchSummary: {
@@ -4160,8 +4098,8 @@ export interface components {
             hostname: string;
             /** Version */
             version: string;
-            /** Docker Mode */
-            docker_mode: string;
+            /** Image */
+            image: string;
             /** Connected At */
             connected_at: string;
             /**
@@ -9096,109 +9034,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ComputeLocationList"];
-                };
-            };
-            /** @description Invalid request or operation precondition */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description REE, run, file, or artifact not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Version or idempotency conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Upload exceeds the configured size limit */
-            413: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Request validation failed */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Workbench returned an invalid upstream response */
-            502: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Compute provider or workbench unavailable */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Upload staging capacity exhausted */
-            507: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
-    listWorkbenchProfiles: {
-        parameters: {
-            query?: {
-                location_id?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WorkbenchProfileList"];
                 };
             };
             /** @description Invalid request or operation precondition */

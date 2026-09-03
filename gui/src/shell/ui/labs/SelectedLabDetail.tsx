@@ -1,5 +1,4 @@
 import type { Lab } from "@core/lab/Lab";
-import { dockerModeCopy } from "./labPresentation";
 import styles from "./SelectedLabDetail.module.css";
 
 interface SelectedLabDetailProps {
@@ -22,20 +21,21 @@ export function SelectedLabDetail({ lab }: SelectedLabDetailProps) {
     );
   }
 
-  const profile = lab.profiles[0];
-  const mode = dockerModeCopy(profile?.substrate ?? "");
+  const preProvisioned = lab.lifecycleMode === "externally_managed";
   const facts: [string, string][] = [
-    ["SUBSTRATE", mode.readout],
     ["LOCATION", lab.id],
-    ["LIFECYCLE", lab.lifecycleMode === "provider_managed" ? "on demand" : "pre-provisioned"],
-    ["PROFILES", String(lab.profiles.length)],
+    ["LIFECYCLE", preProvisioned ? "pre-provisioned" : "on demand"],
+    ["IMAGES", preProvisioned ? "—" : String(lab.images.length)],
+    ["CUSTOM IMAGE", lab.acceptsCustomImage ? "accepted" : "no"],
   ];
 
   return (
     <div className={styles.detail}>
       <div className={styles.kind}>Specimen pod · assigned</div>
       <div className={styles.name}>{lab.label}</div>
-      <div className={styles.what}>{mode.line}</div>
+      <div className={styles.what}>
+        {lab.description || "Hosts this REE's workbench for its whole life."}
+      </div>
       <dl className={styles.facts}>
         {facts.map(([key, value]) => (
           <div key={key} className={styles.row}>

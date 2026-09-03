@@ -197,7 +197,7 @@ const visualRee = {
   },
   allocation_id: "alloc-7f31c9",
   location_id: "lab-oslo",
-  profile_id: "python",
+  image: "docker.io/library/python:3.12-slim",
   workspace_files: [
     { path: "upstream/README.md", kind: "source", size: 1840, content: "# Climate model\n" },
     {
@@ -260,9 +260,9 @@ const visualRee = {
   ],
 };
 
-// Where work may run, and the fixed profiles offered there. Neither shape can
-// carry an image or a resource request: the provider resolves a profile to
-// launch details privately, and the browser never learns what it picked.
+// Where work may run, and the base images curated there. A location publishes
+// its catalog outward — the ref is what the author commits their REE to — and
+// says whether it will also run one they bring themselves.
 const computeLocations = {
   locations: [
     {
@@ -271,6 +271,15 @@ const computeLocations = {
       description: "Provider-managed Docker capacity",
       lifecycle_mode: "provider_managed",
       available: true,
+      images: [
+        {
+          id: "python",
+          ref: "docker.io/library/python:3.12-slim",
+          label: "Python 3.12",
+          description: "Python, pip, uv, and common build tooling",
+        },
+      ],
+      accepts_custom_image: true,
     },
     {
       id: "lab-zurich",
@@ -278,39 +287,36 @@ const computeLocations = {
       description: "Provider-managed Docker capacity",
       lifecycle_mode: "provider_managed",
       available: true,
+      images: [
+        {
+          id: "base",
+          ref: "docker.io/library/docker:29-dind",
+          label: "Base",
+          description: "Minimal reproducibility workbench",
+        },
+      ],
+      accepts_custom_image: false,
     },
   ],
 };
 
-const workbenchProfiles = {
-  profiles: [
-    {
-      id: "python",
-      revision: "3",
-      location_id: "lab-oslo",
-      label: "Python 3.12",
-      description: "Python, pip, uv, and common build tooling",
-      required: {
-        substrate: "docker-nested",
-        minimum_docker_version: null,
-        resources: { cpu_count: 4, memory_bytes: 8589934592 },
-      },
-      storage_policy: "ephemeral",
-    },
-    {
-      id: "base",
-      revision: "2",
-      location_id: "lab-zurich",
-      label: "Base",
-      description: "Minimal reproducibility workbench",
-      required: {
-        substrate: "docker-host-socket",
-        minimum_docker_version: null,
-        resources: { cpu_count: 2, memory_bytes: 4294967296 },
-      },
-      storage_policy: "ephemeral",
-    },
-  ],
+// The lifecycle record behind the bench, as the bench console reads it. Settled
+// (assigned), so the console shows a terminal state and stops polling — a
+// scenario that kept refetching would never settle for a screenshot.
+const allocation = {
+  request: {
+    allocation_id: "alloc-7f31c9",
+    ree_id: VISUAL_REE_ID,
+    location_id: "lab-oslo",
+    image: "docker.io/library/python:3.12-slim",
+  },
+  state: "assigned",
+  workbench_id: "wb-3c1f90",
+  provider_id: "provider-oslo",
+  resolved_image: `docker.io/library/python@sha256:${"3".repeat(64)}`,
+  detail: "",
+  created_at: TS,
+  updated_at: TS,
 };
 
 const index = {
@@ -530,10 +536,10 @@ function responseFor(request: Request): unknown {
   if (request.method() !== "GET")
     throw new Error(`Unexpected visual API mutation: ${request.method()} ${path}`);
   if (path === "/api/v1/compute-locations") return computeLocations;
-  if (path === "/api/v1/workbench-profiles") return workbenchProfiles;
   if (path === "/api/v1/ree-steps") return authoringSteps;
   if (path === "/api/v1/script-templates") return scriptTemplates;
   if (path === "/api/v1/ree-index") return index;
+  if (path === `/api/v1/allocations/${allocation.request.allocation_id}`) return allocation;
   if (path === `/api/v1/rees/${VISUAL_REE_ID}`) return visualRee;
   if (path === `/api/v1/rees/${VISUAL_REE_ID}/runs`) return runs;
   if (path === `/api/v1/rees/${VISUAL_REE_ID}/evaluate/report`) return evaluateReport;

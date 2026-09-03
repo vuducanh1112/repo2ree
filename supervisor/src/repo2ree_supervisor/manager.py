@@ -26,7 +26,7 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import uuid4
 
-from repo2ree_protocol.allocation import AllocationRecord, AllocationRequest, AllocationState, WorkbenchProfile
+from repo2ree_protocol.allocation import AllocationRecord, AllocationRequest, AllocationState
 from repo2ree_protocol.command import Command
 from repo2ree_protocol.frames import (
     AllocationStatusFrame,
@@ -39,7 +39,6 @@ from repo2ree_protocol.frames import (
 )
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
-from repo2ree_protocol.substrate import ObservedCapabilities
 from repo2ree_protocol.tracing import (
     CommandSpanAttrs,
     SpanSink,
@@ -61,7 +60,6 @@ from repo2ree_supervisor.client import (
     raise_for_terminal_error,
 )
 from repo2ree_supervisor.enrollment import EnrollmentRegistry
-from repo2ree_supervisor.matching import check_compatibility, describe_issues
 
 __all__ = [
     "WorkbenchHandle",
@@ -107,9 +105,7 @@ class WorkbenchHandle:
     provider_id: str = ""
     mode: str = "provider_managed"
     location_id: str = ""
-    profile_id: str = ""
-    profile_revision: str = ""
-    observation: ObservedCapabilities | None = None
+    image: str = ""
 
     @classmethod
     def from_record(cls, record: AllocationRecord) -> WorkbenchHandle:
@@ -121,9 +117,7 @@ class WorkbenchHandle:
             provider_id=record.provider_id or "",
             mode="provider_managed" if record.provider_id else "external",
             location_id=request.location_id,
-            profile_id=request.profile_id,
-            profile_revision=request.profile_revision,
-            observation=record.observation,
+            image=record.resolved_image or request.image,
         )
 
 
@@ -170,20 +164,19 @@ class WorkbenchManager:
         name: str,
         log: LogSink | None = None,
         location_id: str = "",
-        profile_id: str = "standard",
+        image: str = "",
     ) -> WorkbenchHandle:
-        """Allocate exactly the selected profile, validate it, and initialise the REE."""
+        """Allocate a bench from the selected location and image, and initialise the REE."""
         with self._ree_lock(ree_id), tracer.start_as_current_span("workbench.provision") as span:
             record_ree_id(span, ree_id)
             allocation_id = f"alloc-{uuid4().hex}"
-            provider_id, profile = self._provider.resolve_profile(location_id, profile_id)
+            provider_id, image_ref = self._provider.resolve_location(location_id, image)
             workbench_id = f"wb-{uuid4().hex}"
             request = AllocationRequest(
                 allocation_id=allocation_id,
                 ree_id=ree_id,
-                location_id=profile.location_id,
-                profile_id=profile.id,
-                profile_revision=profile.revision,
+                location_id=location_id,
+                image=image_ref,
             )
             self._registry.create(request, provider_id=provider_id, workbench_id=workbench_id)
             self._registry.update(allocation_id, AllocationState.PROVISIONING)
@@ -191,7 +184,7 @@ class WorkbenchManager:
             self._enrollment.expect(allocation_id, workbench_id, enrollment_token)
             WorkbenchSpanAttrs(workbench_id=workbench_id).apply(span)
             try:
-                self._consume_lifecycle(
+                status = self._consume_lifecycle(
                     self._provider.ensure(
                         provider_id,
                         request,
@@ -200,54 +193,55 @@ class WorkbenchManager:
                     ),
                     log,
                 )
-                self._registry.update(allocation_id, AllocationState.WAITING_FOR_WORKBENCH)
+                # The provider is the only one that can say which image the
+                # bench actually came up on: the request named a ref, and a tag
+                # moves. Recording it here is what lets the bench readout — and
+                # anything later reading this REE's provenance — cite a digest.
+                self._registry.update(
+                    allocation_id,
+                    AllocationState.WAITING_FOR_WORKBENCH,
+                    resolved_image=status.resolved_image or None,
+                )
                 self._workbench.wait_for_workbench(workbench_id)
-                return self._validate_assign_initialise(request, profile, workbench_id, name)
+                return self._assign_and_initialise(request, workbench_id, name)
             except BaseException as exc:
                 self._enrollment.discard(allocation_id)
                 record = self._registry.get(allocation_id)
-                if record and record.state not in {AllocationState.INCOMPATIBLE, AllocationState.FAILED}:
+                if record and record.state != AllocationState.FAILED:
                     self._registry.update(allocation_id, AllocationState.FAILED, detail=str(exc))
                 self._provider.release_best_effort(provider_id, allocation_id)
                 raise
 
-    def reserve_external(self, ree_id: str, name: str, location_id: str, profile_id: str) -> WorkbenchHandle:
-        """Assign the exact externally managed location/profile selected by the user."""
+    def reserve_external(self, ree_id: str, name: str, location_id: str) -> WorkbenchHandle:
+        """Assign the externally managed bench the user selected by location.
+
+        There is no image to choose: the bench was provisioned outside this
+        control plane, so the request records the place and nothing else.
+        """
         with self._ree_lock(ree_id), tracer.start_as_current_span("workbench.reserve_external"):
             allocation_id = f"alloc-{uuid4().hex}"
-            workbench_id, profile = self._workbench.reserve_external(allocation_id, location_id, profile_id)
-            request = AllocationRequest(
-                allocation_id=allocation_id,
-                ree_id=ree_id,
-                location_id=profile.location_id,
-                profile_id=profile.id,
-                profile_revision=profile.revision,
-            )
+            workbench_id = self._workbench.reserve_external(allocation_id, location_id)
+            request = AllocationRequest(allocation_id=allocation_id, ree_id=ree_id, location_id=location_id)
             self._registry.create(request, provider_id=None, workbench_id=workbench_id)
             self._registry.update(allocation_id, AllocationState.WAITING_FOR_WORKBENCH)
             try:
-                return self._validate_assign_initialise(request, profile, workbench_id, name)
+                return self._assign_and_initialise(request, workbench_id, name)
             except BaseException as exc:
                 record = self._registry.get(allocation_id)
-                if record and record.state not in {AllocationState.INCOMPATIBLE, AllocationState.FAILED}:
+                if record and record.state != AllocationState.FAILED:
                     self._registry.update(allocation_id, AllocationState.FAILED, detail=str(exc))
                 raise
 
-    def _validate_assign_initialise(
-        self, request: AllocationRequest, profile: WorkbenchProfile, workbench_id: str, name: str
-    ) -> WorkbenchHandle:
-        observation = self._workbench.observation(workbench_id)
-        issues = check_compatibility(profile, observation)
-        if issues:
-            self._registry.update(
-                request.allocation_id,
-                AllocationState.INCOMPATIBLE,
-                observation=observation,
-                incompatibilities=issues,
-                detail="workbench does not satisfy the selected profile",
-            )
-            raise RuntimeError("workbench is incompatible: " + describe_issues(issues))
-        self._registry.update(request.allocation_id, AllocationState.READY, observation=observation)
+    def _assign_and_initialise(self, request: AllocationRequest, workbench_id: str, name: str) -> WorkbenchHandle:
+        """Bind the bench to the allocation and put an empty REE on it.
+
+        Nothing is inspected first. The provider already failed the provision if
+        the bench could not run the executor or write /ree (its doctor probe),
+        and ``init-ree`` below is the check for everything else — an externally
+        managed bench that cannot take an REE fails here, on the operation that
+        needed it, rather than against a separate model of what a bench is.
+        """
+        self._registry.update(request.allocation_id, AllocationState.READY)
         self._workbench.assign(workbench_id, request)
         self._workbench.exec_simple(workbench_id, ["init-ree", "--name", name])
         record = self._registry.update(request.allocation_id, AllocationState.ASSIGNED)

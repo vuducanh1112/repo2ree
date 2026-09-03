@@ -21,8 +21,7 @@ class WorkbenchConfig:
     root: Path
     exec_path: str
     location_id: str
-    profile_id: str
-    profile_revision: str
+    image: str
     mode: Literal["managed", "external"] = "managed"
     otlp_endpoint: str | None = None
 
@@ -57,7 +56,6 @@ def load_config(argv: Sequence[str] = ()) -> WorkbenchConfig:
         root=Path(args.root),
         exec_path=os.environ.get("REPO2REE_EXEC_PATH", "repo2ree-exec"),
         location_id=os.environ.get("WORKBENCH_LOCATION_ID", ""),
-        profile_id=os.environ.get("WORKBENCH_PROFILE_ID", ""),
-        profile_revision=os.environ.get("WORKBENCH_PROFILE_REVISION", ""),
+        image=os.environ.get("WORKBENCH_IMAGE", ""),
         otlp_endpoint=os.environ.get("OTLP_ENDPOINT") or None,
     )

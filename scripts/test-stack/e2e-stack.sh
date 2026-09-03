@@ -167,36 +167,30 @@ mkdir -p "$log_dir" "$state_dir" "$provider_state_dir" "$coverage_data_dir" "$co
 rm -f "$coverage_file" "$coverage_file".*
 for i in $(seq 1 "$capacity"); do rm -f "$(workbench_log "$i")"; done
 
-# The profile catalog is the provider's private business: it maps a
-# (profile_id, revision) the control plane may select onto the image and
-# substrate that satisfy it. Nothing above the provider ever sees these refs.
+# The provider owns its curated catalog: these are the base images this stack
+# offers, published outward so a run can pick one by label. Nothing here says
+# what an image supplies — a mismatch surfaces when the REE's build fails.
 standard_image=${E2E_WORKBENCH_IMAGE:-docker.io/library/docker:29-dind}
 pip_image=${E2E_PIP_WORKBENCH_IMAGE:-docker.io/library/python:3.11-slim}
-standard_substrate=docker-nested
-[ "$docker_mode" = host-socket ] && standard_substrate=docker-host-socket
-export PROVIDER_PROFILE_CATALOG
-PROVIDER_PROFILE_CATALOG=$(python3 -c '
+export WORKBENCH_IMAGE_CATALOG
+WORKBENCH_IMAGE_CATALOG=$(python3 -c '
 import json, sys
-standard_image, pip_image, standard_substrate = sys.argv[1:4]
+standard_image, pip_image = sys.argv[1:3]
 print(json.dumps([
     {
         "id": "standard",
-        "revision": "1",
-        "image": standard_image,
+        "ref": standard_image,
         "label": "Standard bench",
         "description": "Docker workbench pinned for this e2e run.",
-        "substrate": standard_substrate,
     },
     {
-        "id": "bare-python",
-        "revision": "1",
-        "image": pip_image,
-        "label": "Bare Python bench",
+        "id": "python",
+        "ref": pip_image,
+        "label": "Python bench",
         "description": "Docker-less workbench: the base image is the runtime.",
-        "substrate": "bare",
     },
 ]))
-' "$standard_image" "$pip_image" "$standard_substrate")
+' "$standard_image" "$pip_image")
 
 api_pid=
 capacity_pids=()
