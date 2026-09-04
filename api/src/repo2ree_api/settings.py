@@ -35,8 +35,8 @@ class Settings(BaseSettings):
     RUN_REGISTRY_DIR: Path = Path(".repo2ree/runs")
     # Bounds both concurrent workbench commands and the API's worker threads.
     RUN_MAX_WORKERS: int = 4
-    # The workbench service owns the container runtime (WORKBENCH_DOCKER_MODE is its
-    # concern, not consumed here). It dials this API outbound and holds a WebSocket
+    # The provider owns the container runtime (PROVIDER_DOCKER_MODE is its concern,
+    # not consumed here). Workbenches dial this API outbound and hold a WebSocket
     # at /workbench/connect — there is no inbound workbench endpoint to configure.
     OTLP_ENDPOINT: str | None = None
 

@@ -12,7 +12,7 @@ def test_load_config_prefers_explicit_workbench_identity(monkeypatch: pytest.Mon
     monkeypatch.setenv("WORKBENCH_ID", "workbench-explicit")
     monkeypatch.setenv("WORKBENCH_API_WS_URL", "wss://api.example/workbench/connect")
     monkeypatch.setenv("WORKBENCH_ALLOCATION_ID", "alloc-1")
-    monkeypatch.setenv("WORKBENCH_ENROLLMENT_TOKEN", opaque_enrollment)
+    monkeypatch.setenv("WORKBENCH_AUTH_TOKEN", opaque_enrollment)
     monkeypatch.setenv("WORKBENCH_ROOT", "/custom-ree")
     monkeypatch.setenv("REPO2REE_EXEC_PATH", "/bin/repo2ree-exec")
     monkeypatch.setenv("WORKBENCH_LOCATION_ID", "lab-1")

@@ -464,8 +464,6 @@ class DockerIsolation:
             _HOST_DOCKER_SOCK_MOUNT,
             "-e",
             "DOCKER_HOST=unix:///var/run/docker.sock",
-            "-e",
-            "WORKBENCH_DOCKER_MODE=host-socket",
         ]
 
 

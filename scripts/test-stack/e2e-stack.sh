@@ -58,7 +58,6 @@
 #   E2E_PIP_WORKBENCH_IMAGE    image behind the extra docker-less "bare-python"
 #                              profile the pip tier selects (default:
 #                              docker.io/library/python:3.11-slim)
-#   E2E_WORKBENCH_DOCKER_MODE  dind (default) or host-socket
 #   E2E_WORKBENCH_STATE_DIR        workbench identity dir (default: test-artifacts/state/workbenches);
 #                              with --workbenches N, workbench i > 1 uses <dir>-<i> so
 #                              each keeps a distinct persistent identity
@@ -134,7 +133,7 @@ if [ -n "$project" ]; then
     fi
 fi
 
-docker_mode=${E2E_PROVIDER_DOCKER_MODE:-${E2E_WORKBENCH_DOCKER_MODE:-dind}}
+docker_mode=${E2E_PROVIDER_DOCKER_MODE:-dind}
 state_dir=${E2E_WORKBENCH_STATE_DIR:-$root/test-artifacts/state/workbenches}
 provider_state_dir=${E2E_PROVIDER_STATE_DIR:-$root/test-artifacts/state/providers}
 exec_bundle=${E2E_EXEC_BUNDLE:-$root/dist/bundles/exec}
@@ -311,16 +310,14 @@ if [ -f /.dockerenv ] && [ -n "${HOSTNAME:-}" ] \
 fi
 
 # start_external_workbench <state-dir> <log-file> <index>: an externally managed
-# bench declares the location and profile it *is*, the way a real installed
-# workbench would; without them it would publish itself under its own generated
-# id and the picker would show a hex blob.
+# bench declares the location it *is*, the way a real installed workbench would;
+# without it the bench would publish itself under its own generated id and the
+# picker would show a hex blob.
 start_external_workbench() {
     WORKBENCH_API_WS_URL="${api_base_url/http:/ws:}/workbench/connect" \
     WORKBENCH_MODE=external \
     WORKBENCH_AUTH_TOKEN=$run_token \
     WORKBENCH_LOCATION_ID="lab-$3" \
-    WORKBENCH_PROFILE_ID=external \
-    WORKBENCH_PROFILE_REVISION=1 \
     WORKBENCH_ROOT=$1/root \
     WORKBENCH_STATE_DIR=$1 \
     REPO2REE_EXEC_PATH=${E2E_EXEC_PATH:-repo2ree-exec} \

@@ -81,7 +81,6 @@ def test_host_socket_mode_reuses_host_daemon_without_dind_volume(monkeypatch: py
     assert "--privileged" not in run_call
     assert _has_option_value(run_call, "-v", "/var/run/docker.sock:/var/run/docker.sock")
     assert _has_option_value(run_call, "-e", "DOCKER_HOST=unix:///var/run/docker.sock")
-    assert _has_option_value(run_call, "-e", "WORKBENCH_DOCKER_MODE=host-socket")
 
 
 def test_resource_owner_labels_workbench_container_and_volumes(monkeypatch: pytest.MonkeyPatch) -> None:

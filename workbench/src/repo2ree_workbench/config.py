@@ -32,8 +32,7 @@ def load_config(argv: Sequence[str] = ()) -> WorkbenchConfig:
     parser.add_argument(
         "--connect", default=os.environ.get("WORKBENCH_API_WS_URL", "ws://localhost:8000/workbench/connect")
     )
-    default_token = os.environ.get("WORKBENCH_AUTH_TOKEN") or os.environ.get("WORKBENCH_ENROLLMENT_TOKEN", "")
-    parser.add_argument("--token", default=default_token)
+    parser.add_argument("--token", default=os.environ.get("WORKBENCH_AUTH_TOKEN", ""))
     parser.add_argument("--name", default=os.environ.get("WORKBENCH_ID", ""))
     default_mode = os.environ.get(
         "WORKBENCH_MODE",
