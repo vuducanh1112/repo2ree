@@ -89,6 +89,8 @@ class DockerIsolation:
         workbench_api_ws_url: str = "ws://localhost:8000/workbench/connect",
         workbench_path: str | None = None,
         workbench_network: str = "",
+        workbench_telemetry: str = "relay",
+        workbench_otlp_endpoint: str | None = None,
     ):
         if docker_mode not in _WORKBENCH_DOCKER_MODES:
             modes = ", ".join(sorted(_WORKBENCH_DOCKER_MODES))
@@ -97,6 +99,8 @@ class DockerIsolation:
         self._workbench_network = workbench_network
         self._workbench_api_ws_url = _bench_reachable_url(workbench_api_ws_url, workbench_network)
         self._workbench_path = workbench_path or os.environ.get("REPO2REE_WORKBENCH_PATH")
+        self._workbench_telemetry = workbench_telemetry
+        self._workbench_otlp_endpoint = workbench_otlp_endpoint
         # Test stacks set this to a unique run token. Labels let their teardown
         # select only resources that run created, while ordinary deployments
         # leave resources unlabelled and retain their existing lifecycle.
@@ -376,6 +380,17 @@ class DockerIsolation:
             "WORKBENCH_LOCATION_ID": allocation.location_id,
             "WORKBENCH_IMAGE": allocation.image,
             "REPO2REE_EXEC_PATH": exec_path,
+            # Told explicitly, never inherited: this provider's own OTLP_ENDPOINT
+            # is reachable from *here*, and a bench on an isolated network that
+            # took it would retry an address it cannot route to. Under the
+            # default (relay) the bench gets no endpoint at all, so its logs and
+            # metrics stay no-ops and only its spans leave, over its own socket.
+            "WORKBENCH_TELEMETRY": self._workbench_telemetry,
+            **(
+                {"OTLP_ENDPOINT": self._workbench_otlp_endpoint}
+                if self._workbench_telemetry == "direct" and self._workbench_otlp_endpoint
+                else {}
+            ),
             **tool_env,
         }
         env_args = [part for key, value in sorted(environment.items()) for part in ("-e", f"{key}={value}")]

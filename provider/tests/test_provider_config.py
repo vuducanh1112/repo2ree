@@ -25,6 +25,8 @@ _PROVIDER_ENV = (
     "PROVIDER_ACCEPTS_CUSTOM_IMAGE",
     "WORKBENCH_IMAGE_CATALOG",
     "OTLP_ENDPOINT",
+    "PROVIDER_WORKBENCH_TELEMETRY",
+    "PROVIDER_WORKBENCH_OTLP_ENDPOINT",
 )
 
 
@@ -168,3 +170,22 @@ def test_custom_images_are_accepted_unless_the_deployment_says_otherwise(
     monkeypatch.setenv("PROVIDER_ACCEPTS_CUSTOM_IMAGE", value)
 
     assert config_module.load_config().accepts_custom_image is expected
+
+
+def test_benches_relay_their_own_spans_unless_told_otherwise() -> None:
+    config = config_module.load_config()
+
+    # The provider's own OTLP_ENDPOINT says nothing about what a bench can
+    # reach, so the default never assumes a bench shares its egress.
+    assert config.workbench_telemetry == "relay"
+    assert config.workbench_otlp_endpoint is None
+
+
+def test_bench_telemetry_is_configured_on_the_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PROVIDER_WORKBENCH_TELEMETRY", "Direct")
+    monkeypatch.setenv("PROVIDER_WORKBENCH_OTLP_ENDPOINT", "http://collector.internal:4318")
+
+    config = config_module.load_config()
+
+    assert config.workbench_telemetry == "direct"
+    assert config.workbench_otlp_endpoint == "http://collector.internal:4318"

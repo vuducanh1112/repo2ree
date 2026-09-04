@@ -209,11 +209,16 @@ class WorkbenchWsRequest(BaseModel):
 
 
 class WorkbenchWsMessage(BaseModel):
-    """A workbench response frame correlated to an execution request."""
+    """A frame from the workbench, correlated to an execution request or not.
+
+    ``id`` names the in-flight request this answers. It is None for a frame the
+    workbench originated itself — self-telemetry, which answers no request and
+    correlates to nothing the control plane asked for.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
-    id: str
+    id: str | None = None
     frame: Frame
 
 

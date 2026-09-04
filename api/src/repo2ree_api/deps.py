@@ -47,12 +47,18 @@ workbench_enrollments = EnrollmentRegistry()
 _workbench_client = WsWorkbenchClient(workbench_connections)
 _provider_client = WsProviderClient(provider_connections)
 
+# Where relayed spans go. Two sources feed it: executor spans, which the manager
+# forwards off the command path, and a workbench's own spans, which arrive
+# uncorrelated on its socket (see WorkbenchConnection.on_message). Both are
+# base64 OTLP payloads this side never decodes.
+span_sink = build_span_sink(service_settings.OTLP_ENDPOINT, console_fallback=True)
+
 workbench_manager = WorkbenchManager(
     registry=allocation_store,
     provider=_provider_client,
     workbench=_workbench_client,
     enrollment=workbench_enrollments,
-    span_sink=build_span_sink(service_settings.OTLP_ENDPOINT, console_fallback=True),
+    span_sink=span_sink,
 )
 
 # The durable record of what has been sealed here and where it was deposited.

@@ -18,7 +18,7 @@ import pytest
 
 import repo2ree_workbench.connection as connection
 from repo2ree_protocol.allocation import AllocationRequest
-from repo2ree_protocol.frames import COPY_CHUNK_BYTES, ResultFrame
+from repo2ree_protocol.frames import COPY_CHUNK_BYTES, ResultFrame, SpanFrame
 from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.workbench import (
     AssignAllocationRequest,
@@ -328,3 +328,102 @@ def test_a_second_allocation_cannot_rebind_a_bound_workbench() -> None:
     message = _frames(ws)[-1]
     assert message.frame.type == "error"
     assert "already assigned" in message.frame.detail
+
+
+# ================================================
+# Relaying the workbench's own spans
+# ================================================
+
+
+def test_the_span_relay_binds_only_after_the_hello(monkeypatch: pytest.MonkeyPatch) -> None:
+    ws = FakeSocket([])
+    relay = connection.SpanRelay()
+    connects = 0
+    bound_when: list[int] = []
+
+    class ConnectionContext:
+        async def __aenter__(self) -> FakeSocket:
+            return ws
+
+        async def __aexit__(self, *args: object) -> None:
+            return None
+
+    def connect_once(url: str) -> ConnectionContext:
+        nonlocal connects
+        connects += 1
+        if connects > 1:
+            raise asyncio.CancelledError
+        return ConnectionContext()
+
+    real_bind = relay.bind
+
+    def record_bind(loop, socket) -> None:
+        bound_when.append(len(ws.sent))
+        real_bind(loop, socket)
+
+    monkeypatch.setattr(connection, "connect", connect_once)
+    monkeypatch.setattr(relay, "bind", record_bind)
+
+    with pytest.raises(asyncio.CancelledError):
+        asyncio.run(
+            run_workbench(
+                "ws://control/workbench/connect",
+                _service(),
+                "workbench-1",
+                allocation_id="alloc-1",
+                span_relay=relay,
+            )
+        )
+
+    # The control plane parses the first message on the socket as the hello, so
+    # a span winning that race would be read as a malformed one and the
+    # connection refused. Exactly one message — the hello — precedes the bind.
+    assert bound_when == [1]
+    assert workbench_hello_adapter.validate_json(ws.sent[0]).workbench_id == "workbench-1"
+
+
+def test_the_span_relay_unbinds_when_the_connection_drops(monkeypatch: pytest.MonkeyPatch) -> None:
+    ws = FakeSocket([])
+    relay = connection.SpanRelay()
+
+    class ConnectionContext:
+        async def __aenter__(self) -> FakeSocket:
+            return ws
+
+        async def __aexit__(self, *args: object) -> None:
+            return None
+
+    connects = 0
+
+    def connect_once(url: str) -> ConnectionContext:
+        nonlocal connects
+        connects += 1
+        if connects > 1:
+            raise asyncio.CancelledError
+        return ConnectionContext()
+
+    monkeypatch.setattr(connection, "connect", connect_once)
+
+    with pytest.raises(asyncio.CancelledError):
+        asyncio.run(run_workbench("ws://control/workbench/connect", _service(), "workbench-1", span_relay=relay))
+
+    # Unbound, so the exporter buffers for the next connection instead of
+    # scheduling writes onto a dead socket.
+    assert relay.send("c3Bhbg==") is False
+
+
+def test_a_relayed_span_is_sent_uncorrelated() -> None:
+    ws = FakeSocket([])
+    relay = connection.SpanRelay()
+
+    async def relay_one() -> None:
+        relay.bind(asyncio.get_running_loop(), ws)  # type: ignore[arg-type]
+        assert relay.send("c3Bhbg==") is True
+        # Fire-and-forget onto the loop: yield so the scheduled send runs.
+        await asyncio.sleep(0)
+
+    asyncio.run(relay_one())
+
+    message = workbench_ws_message_adapter.validate_json(ws.sent[0])
+    assert message.id is None
+    assert message.frame == SpanFrame(payload="c3Bhbg==")

@@ -56,3 +56,72 @@ def test_load_config_persists_identity_when_not_explicit(monkeypatch: pytest.Mon
     assert config.root == Path("/ree")
     assert config.otlp_endpoint is None
     assert paths == [tmp_path]
+
+
+# ================================================
+# Telemetry destination
+# ================================================
+
+
+def _clear_telemetry_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    for name in ("WORKBENCH_TELEMETRY", "OTLP_ENDPOINT", "TRACE_FILE", "WORKBENCH_ID"):
+        monkeypatch.delenv(name, raising=False)
+
+
+def test_a_reachable_collector_wins_over_relaying(monkeypatch: pytest.MonkeyPatch) -> None:
+    _clear_telemetry_env(monkeypatch)
+    monkeypatch.setenv("WORKBENCH_ID", "workbench-1")
+    monkeypatch.setenv("WORKBENCH_ALLOCATION_ID", "alloc-1")
+    monkeypatch.setenv("OTLP_ENDPOINT", "http://collector:4318")
+
+    assert config_module.load_config().telemetry == "direct"
+
+
+def test_a_trace_file_keeps_spans_on_the_machine(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    _clear_telemetry_env(monkeypatch)
+    monkeypatch.setenv("WORKBENCH_ID", "workbench-1")
+    monkeypatch.setenv("WORKBENCH_ALLOCATION_ID", "alloc-1")
+    monkeypatch.setenv("TRACE_FILE", str(tmp_path / "spans.jsonl"))
+
+    assert config_module.load_config().telemetry == "local"
+
+
+def test_a_managed_bench_relays_when_it_has_no_collector(monkeypatch: pytest.MonkeyPatch) -> None:
+    _clear_telemetry_env(monkeypatch)
+    monkeypatch.setenv("WORKBENCH_ID", "workbench-1")
+    monkeypatch.setenv("WORKBENCH_ALLOCATION_ID", "alloc-1")
+
+    # Provisioned by the fleet running this control plane, which already sees
+    # its every command: relaying discloses nothing new.
+    assert config_module.load_config().telemetry == "relay"
+
+
+def test_an_external_bench_stays_silent_rather_than_relaying(monkeypatch: pytest.MonkeyPatch) -> None:
+    _clear_telemetry_env(monkeypatch)
+    monkeypatch.setenv("WORKBENCH_ID", "workbench-1")
+    monkeypatch.delenv("WORKBENCH_ALLOCATION_ID", raising=False)
+
+    # Someone else's machine. It does not start shipping its own telemetry
+    # across that boundary merely because nobody configured a collector.
+    assert config_module.load_config().telemetry == "off"
+
+
+def test_an_explicit_setting_overrides_every_inference(monkeypatch: pytest.MonkeyPatch) -> None:
+    _clear_telemetry_env(monkeypatch)
+    monkeypatch.setenv("WORKBENCH_ID", "workbench-1")
+    monkeypatch.setenv("WORKBENCH_ALLOCATION_ID", "alloc-1")
+    monkeypatch.setenv("OTLP_ENDPOINT", "http://collector:4318")
+    monkeypatch.setenv("WORKBENCH_TELEMETRY", "off")
+
+    # The operator's escape hatch: a managed bench with a reachable collector
+    # still emits nothing when told not to.
+    assert config_module.load_config().telemetry == "off"
+
+
+def test_an_unknown_setting_names_the_modes_it_accepts(monkeypatch: pytest.MonkeyPatch) -> None:
+    _clear_telemetry_env(monkeypatch)
+    monkeypatch.setenv("WORKBENCH_ID", "workbench-1")
+    monkeypatch.setenv("WORKBENCH_TELEMETRY", "collector")
+
+    with pytest.raises(ValueError, match="direct, relay, local, off"):
+        config_module.load_config()

@@ -28,7 +28,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
 from repo2ree_api.contracts import ERROR_RESPONSES
-from repo2ree_api.deps import provider_connections, workbench_connections, workbench_enrollments
+from repo2ree_api.deps import provider_connections, span_sink, workbench_connections, workbench_enrollments
 from repo2ree_api.settings import service_settings
 from repo2ree_core.time_utils import iso_utc
 from repo2ree_protocol.provider import provider_hello_adapter
@@ -133,7 +133,7 @@ async def workbench_connect(websocket: WebSocket) -> None:
         return
     # Do not retain credentials on live connection objects.
     hello = hello.model_copy(update={"enrollment_token": ""})
-    connection = WorkbenchConnection(send_text=send_text, hello=hello)
+    connection = WorkbenchConnection(send_text=send_text, hello=hello, span_sink=span_sink)
     workbench_connections.register(hello.workbench_id, connection)
     try:
         while True:

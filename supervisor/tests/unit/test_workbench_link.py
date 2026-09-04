@@ -22,12 +22,14 @@ from repo2ree_protocol.frames import (
     ErrorFrame,
     LogFrame,
     ResultFrame,
+    SpanFrame,
     TransferFrame,
     UnavailableFrame,
 )
 from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.workbench import (
     CopyChunkRequest,
+    ExecSimpleRequest,
     WorkbenchWsMessage,
     WorkbenchWsRequest,
     workbench_ws_request_adapter,
@@ -339,3 +341,40 @@ def test_exec_query_reassembles_multiple_chunks() -> None:
     socket.respond(DoneFrame())
 
     assert join() == b"part-one-part-two"
+
+
+# ================================================
+# Unsolicited frames (a workbench's own telemetry)
+# ================================================
+
+
+def test_unsolicited_span_frame_reaches_the_span_sink() -> None:
+    relayed: list[list[str]] = []
+    connection = WorkbenchConnection(send_text=lambda _text: None, span_sink=relayed.append)
+
+    connection.on_message(WorkbenchWsMessage(frame=SpanFrame(payload="c3Bhbg==")).model_dump_json())
+
+    # No id: the workbench's own span answers no request, so the pending lookup
+    # that routes every other frame would have dropped it.
+    assert relayed == [["c3Bhbg=="]]
+
+
+def test_unsolicited_frame_without_a_sink_is_dropped_quietly() -> None:
+    connection = WorkbenchConnection(send_text=lambda _text: None)
+
+    # A control plane with no collector configured still has workbenches
+    # relaying to it; that must not fault the socket's read loop.
+    connection.on_message(WorkbenchWsMessage(frame=SpanFrame(payload="c3Bhbg==")).model_dump_json())
+
+
+def test_correlated_frames_still_reach_their_caller_when_a_sink_is_set() -> None:
+    relayed: list[list[str]] = []
+    socket = FakeSocket()
+    socket.connection = WorkbenchConnection(send_text=socket._capture, span_sink=relayed.append)
+
+    pending = socket.connection.start(ExecSimpleRequest(argv=["doctor"]))
+    socket.wait_for_request()
+    socket.connection.on_message(WorkbenchWsMessage(id=socket.sent[-1].id, frame=DoneFrame()).model_dump_json())
+
+    assert [frame.type for frame in pending.frames()] == ["done"]
+    assert relayed == []

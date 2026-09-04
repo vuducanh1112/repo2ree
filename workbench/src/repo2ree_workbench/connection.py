@@ -19,6 +19,7 @@ import socket
 import threading
 import time
 from collections.abc import Awaitable, Callable, Iterator
+from contextlib import AsyncExitStack
 from dataclasses import dataclass
 from functools import partial
 from typing import Literal
@@ -34,6 +35,7 @@ from repo2ree_protocol.frames import (
     ErrorFrame,
     Frame,
     ResultFrame,
+    SpanFrame,
     UnavailableFrame,
 )
 from repo2ree_protocol.result import Failure
@@ -131,6 +133,44 @@ def _workbench_version() -> str:
         return ""
 
 
+class SpanRelay:
+    """Late-bound socket sink for this workbench's own spans.
+
+    The tracer provider is built in ``main()``, before any connection exists, so
+    the exporter holds this and the connect loop points it at the live socket
+    once there is one. ``send`` reports False while unbound, which is the
+    exporter's cue to keep buffering rather than drop — that is what lets the
+    dial span for a connection travel over the connection it measured.
+
+    Sends are fire-and-forget onto the event loop: the exporter runs on the
+    ``BatchSpanProcessor`` worker thread and the websocket is not thread-safe,
+    so the write is scheduled rather than awaited. A batch lost to a socket
+    dying mid-write is lost, exactly as executor spans are when stderr breaks.
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._target: tuple[asyncio.AbstractEventLoop, ClientConnection] | None = None
+
+    def bind(self, loop: asyncio.AbstractEventLoop, ws: ClientConnection) -> None:
+        with self._lock:
+            self._target = (loop, ws)
+
+    def unbind(self) -> None:
+        with self._lock:
+            self._target = None
+
+    def send(self, payload: str) -> bool:
+        with self._lock:
+            target = self._target
+        if target is None:
+            return False
+        loop, ws = target
+        message = WorkbenchWsMessage(id=None, frame=SpanFrame(payload=payload)).model_dump_json()
+        asyncio.run_coroutine_threadsafe(ws.send(message), loop)
+        return True
+
+
 async def run_workbench(
     api_ws_url: str,
     service: WorkbenchService,
@@ -142,8 +182,13 @@ async def run_workbench(
     location_id: str = "",
     image: str = "",
     reconnect_delay: float = 3.0,
+    span_relay: SpanRelay | None = None,
 ) -> None:
-    """Dial the control plane and serve requests, reconnecting on drop."""
+    """Dial the control plane and serve requests, reconnecting on drop.
+
+    ``span_relay``, when given, is pointed at each live socket so this
+    workbench's own spans leave over the connection it already holds.
+    """
     hello = WorkbenchHello(
         workbench_id=workbench_id,
         mode=mode,
@@ -164,21 +209,33 @@ async def run_workbench(
         }
         _connection_attempt_counter.add(1, connection_attrs)
         try:
-            with tracer.start_as_current_span("workbench.connection") as span:
-                span.set_attribute("repo2ree.workbench_id", workbench_id)
-                span.set_attribute("repo2ree.workbench.image", hello.image)
-                async with connect(api_ws_url) as ws:
+            async with AsyncExitStack() as stack:
+                # This span ends once the workbench is connected and announced,
+                # not when the session finally drops. Its duration is then the
+                # cost of dialing rather than the length of the session, and —
+                # the reason it had to change — a span outliving the socket
+                # could never be relayed over the socket it describes.
+                with tracer.start_as_current_span("workbench.dial") as span:
+                    span.set_attribute("repo2ree.workbench_id", workbench_id)
+                    span.set_attribute("repo2ree.workbench.image", hello.image)
+                    ws = await stack.enter_async_context(connect(api_ws_url))
                     logger.info("workbench %s connected to %s", workbench_id, api_ws_url)
                     _connection_connected_counter.add(1, connection_attrs)
                     _connected_gauge.add(1, connection_attrs)
-                    try:
-                        await ws.send(hello.model_dump_json())
-                        drained = await _serve(ws, service)
-                    finally:
-                        _connected_gauge.add(-1, connection_attrs)
-                    if drained:
-                        return
-                span.set_attribute("repo2ree.status", "closed")
+                    await ws.send(hello.model_dump_json())
+                # Only now: the hello must be the first message on this socket
+                # (the control plane parses it positionally), so a relayed span
+                # winning that race would be read as a malformed hello.
+                if span_relay is not None:
+                    span_relay.bind(asyncio.get_running_loop(), ws)
+                try:
+                    drained = await _serve(ws, service)
+                finally:
+                    if span_relay is not None:
+                        span_relay.unbind()
+                    _connected_gauge.add(-1, connection_attrs)
+                if drained:
+                    return
         except (OSError, websockets.WebSocketException) as exc:
             _connection_lost_counter.add(1, {**connection_attrs, "repo2ree.status": "lost"})
             logger.warning("workbench connection to %s lost (%s); retrying", api_ws_url, exc)

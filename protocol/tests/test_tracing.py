@@ -67,6 +67,7 @@ from repo2ree_protocol.tracing import (
     setup_logs,
     setup_metrics,
     setup_relay_tracing,
+    setup_relayed_span_export,
     setup_tracing,
 )
 
@@ -837,3 +838,96 @@ def test_a_relayed_span_lands_in_the_trace_file_in_the_host_exporter_s_own_shape
     assert relayed["resource"]["attributes"]["service.name"] == "repo2ree-exec"
     assert relayed["start_time"]
     assert relayed["end_time"]
+
+
+# ================================================
+# Service span relay (egress over a control-plane socket)
+# ================================================
+
+
+def _finished_spans(span_name: str) -> list[ReadableSpan]:
+    """One genuinely ended span, as a batch the exporter can encode."""
+    captured = InMemorySpanExporter()
+    provider = TracerProvider()
+    provider.add_span_processor(SimpleSpanProcessor(captured))
+    with provider.get_tracer(__name__).start_as_current_span(span_name):
+        pass
+    provider.shutdown()
+    return list(captured.get_finished_spans())
+
+
+def _span_names(payload: str) -> list[str]:
+    return [span.name for _resource, span in tracing._decode_relayed_spans([payload])]
+
+
+class _Wire:
+    """A send callback that can be disconnected, as a real socket can."""
+
+    def __init__(self, connected: bool = True) -> None:
+        self.connected = connected
+        self.sent: list[str] = []
+
+    def send(self, payload: str) -> bool:
+        if not self.connected:
+            return False
+        self.sent.append(payload)
+        return True
+
+
+def test_callback_exporter_buffers_until_there_is_a_connection() -> None:
+    wire = _Wire(connected=False)
+    exporter = tracing._CallbackSpanExporter(wire.send)
+
+    assert exporter.export(_finished_spans("workbench.dial")) is SpanExportResult.SUCCESS
+    # Nothing is lost while unbound: this is the dial span, and the connection it
+    # describes is what will eventually carry it.
+    assert wire.sent == []
+
+    wire.connected = True
+    exporter.export(_finished_spans("workbench.request"))
+
+    assert len(wire.sent) == 2
+    assert all(base64.b64decode(payload) for payload in wire.sent)
+
+
+def test_callback_exporter_drains_oldest_first() -> None:
+    wire = _Wire(connected=False)
+    exporter = tracing._CallbackSpanExporter(wire.send)
+    for name in ("first", "second"):
+        exporter.export(_finished_spans(name))
+
+    wire.connected = True
+    exporter.export(_finished_spans("third"))
+
+    names = [_span_names(payload) for payload in wire.sent]
+    assert names == [["first"], ["second"], ["third"]]
+
+
+def test_callback_exporter_sheds_the_oldest_when_it_never_connects() -> None:
+    wire = _Wire(connected=False)
+    exporter = tracing._CallbackSpanExporter(wire.send, max_buffer=2)
+    for name in ("first", "second", "third"):
+        exporter.export(_finished_spans(name))
+
+    wire.connected = True
+    exporter.force_flush()
+
+    # Bounded: a service that never reaches a control plane must not grow a
+    # backlog without limit, so the earliest spans go rather than the newest.
+    assert [_span_names(payload) for payload in wire.sent] == [["second"], ["third"]]
+
+
+def test_setup_relayed_span_export_hands_spans_to_the_callback(monkeypatch: pytest.MonkeyPatch) -> None:
+    registered: list[TracerProvider] = []
+    monkeypatch.setattr(trace_api, "set_tracer_provider", registered.append)
+    wire = _Wire()
+
+    provider = setup_relayed_span_export("repo2ree-workbench", wire.send, instance_id="workbench-1")
+
+    with provider.get_tracer(__name__).start_as_current_span("workbench.request"):
+        pass
+    # Batched, unlike the executor's per-span relay: shutdown is what flushes.
+    provider.shutdown()
+
+    assert registered == [provider]
+    assert [_span_names(payload) for payload in wire.sent] == [["workbench.request"]]

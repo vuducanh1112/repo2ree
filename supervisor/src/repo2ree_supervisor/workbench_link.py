@@ -40,10 +40,11 @@ from repo2ree_protocol.frames import (
     BytesChunkFrame,
     DoneFrame,
     Frame,
+    SpanFrame,
     TransferFrame,
     UnavailableFrame,
 )
-from repo2ree_protocol.tracing import current_traceparent
+from repo2ree_protocol.tracing import SpanSink, current_traceparent
 from repo2ree_protocol.workbench import (
     AssignAllocationRequest,
     CancelRequest,
@@ -115,18 +116,34 @@ class WorkbenchInfo:
 class WorkbenchConnection:
     """One workbench's socket, bridged from async I/O to synchronous callers."""
 
-    def __init__(self, send_text: Callable[[str], None], hello: WorkbenchHello | None = None):
+    def __init__(
+        self,
+        send_text: Callable[[str], None],
+        hello: WorkbenchHello | None = None,
+        *,
+        span_sink: SpanSink | None = None,
+    ):
         # ``send_text`` schedules a send on the event loop and returns at once.
         # ``hello`` is the workbench's self-description, surfaced by the fleet view.
+        # ``span_sink`` receives the workbench's *own* spans, which arrive
+        # uncorrelated because they answer no request; None discards them.
         self._send_text = send_text
         self.hello = hello
+        self._span_sink = span_sink
         self._pending: dict[str, queue.Queue[Frame]] = {}
         self._lock = threading.Lock()
         self._closed = False
 
     def on_message(self, text: str) -> None:
-        """Route an inbound response frame to its waiting caller (async side)."""
+        """Route an inbound frame to its waiting caller, or to the span sink."""
         message = workbench_ws_message_adapter.validate_json(text)
+        if message.id is None:
+            # Unsolicited: the workbench relaying its own telemetry, which
+            # correlates to no in-flight request. Checked before the pending
+            # lookup, which would otherwise drop it as an unknown id.
+            if isinstance(message.frame, SpanFrame) and self._span_sink is not None:
+                self._span_sink([message.frame.payload])
+            return
         with self._lock:
             q = self._pending.get(message.id)
         if q is not None:

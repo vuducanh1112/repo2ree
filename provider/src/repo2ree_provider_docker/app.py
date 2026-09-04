@@ -35,6 +35,8 @@ def main() -> None:
         config.docker_mode,
         workbench_api_ws_url=config.workbench_api_ws_url,
         workbench_network=config.workbench_network,
+        workbench_telemetry=config.workbench_telemetry,
+        workbench_otlp_endpoint=config.workbench_otlp_endpoint,
     )
     provisioner = ProvisionerService(
         isolation,

@@ -19,6 +19,7 @@ import os
 import queue
 import sys
 import threading
+from collections import deque
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -36,7 +37,11 @@ from opentelemetry.exporter.otlp.proto.common.trace_encoder import encode_spans
 from opentelemetry.metrics import Meter
 from opentelemetry.propagate import extract, inject
 from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
+from opentelemetry.sdk.trace import ReadableSpan
+
+# Re-exported: setup_tracing and setup_relayed_span_export hand this type back
+# to their callers, who must not have to reach past this module for its name.
+from opentelemetry.sdk.trace import TracerProvider as TracerProvider
 from opentelemetry.sdk.trace.export import (
     SimpleSpanProcessor,
     SpanExporter,
@@ -114,7 +119,7 @@ def _build_resource(service_name: str, instance_id: str | None = None) -> Resour
 # When set, spans produced without a collector append to this path as one
 # JSON object per line instead of printing to stdout — a durable, greppable
 # record of what a dev server run or an integration test did.
-_TRACE_FILE_ENV = "TRACE_FILE"
+TRACE_FILE_ENV = "TRACE_FILE"
 
 
 def _append_trace_lines(path: Path, lines: list[str]) -> None:
@@ -171,7 +176,7 @@ def setup_tracing(
         from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 
         provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=f"{endpoint}/v1/traces")))
-    elif trace_file := os.environ.get(_TRACE_FILE_ENV):
+    elif trace_file := os.environ.get(TRACE_FILE_ENV):
         provider.add_span_processor(SimpleSpanProcessor(_FileSpanExporter(Path(trace_file))))
     else:
         provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter(out=sys.stdout)))
@@ -645,6 +650,81 @@ def setup_relay_tracing(service_name: str, stream: TextIO) -> None:
     trace.set_tracer_provider(provider)
 
 
+# ================================================
+# Service relay (egress over a control-plane socket)
+# ================================================
+
+
+class _CallbackSpanExporter(SpanExporter):
+    """Hand each finished batch to ``send`` as one base64 OTLP payload.
+
+    The same encoding as ``_RelaySpanExporter``, a different egress. The
+    executor writes to a stream it owns and that is open for its whole short
+    life; a resident service hands bytes to a socket that may not be connected
+    yet — including the dial span describing the very connection the payload
+    will travel on. So this one buffers rather than drops: ``send`` returns
+    False while there is no connection and the payload waits for one.
+
+    Always reports SUCCESS. ``BatchSpanProcessor`` discards a FAILURE instead of
+    retrying it, so the retry has to live here or not at all. The buffer is
+    bounded and oldest-first: a service that never connects sheds its earliest
+    spans rather than growing without limit.
+    """
+
+    def __init__(self, send: Callable[[str], bool], *, max_buffer: int = 256):
+        self._send = send
+        self._buffer: deque[str] = deque(maxlen=max_buffer)
+        self._lock = threading.Lock()
+
+    def export(self, spans: list[ReadableSpan]) -> SpanExportResult:  # type: ignore[override]
+        payload = base64.b64encode(encode_spans(spans).SerializeToString()).decode("ascii")
+        with self._lock:
+            dropped = len(self._buffer) == self._buffer.maxlen
+            self._buffer.append(payload)
+            if dropped:
+                _relay_drop_counter.add(1, {"reason": "buffer_full"})
+            # Oldest first, stopping at the first refusal: ordering holds, and a
+            # disconnected socket costs one check per batch rather than a walk
+            # of the whole buffer.
+            while self._buffer and self._send(self._buffer[0]):
+                self._buffer.popleft()
+        return SpanExportResult.SUCCESS
+
+    def force_flush(self, timeout_millis: int = 30_000) -> bool:
+        with self._lock:
+            while self._buffer and self._send(self._buffer[0]):
+                self._buffer.popleft()
+            return not self._buffer
+
+    def shutdown(self) -> None:
+        pass
+
+
+def setup_relayed_span_export(
+    service_name: str,
+    send: Callable[[str], bool],
+    *,
+    instance_id: str | None = None,
+) -> TracerProvider:
+    """Bootstrap tracing for a service that relays its own spans over its socket.
+
+    The counterpart of ``setup_tracing`` for a process that holds a control-plane
+    connection but no path to a collector. Spans ride the socket the service
+    already dials, as executor spans ride the stderr the executor already writes
+    — see ``setup_relay_tracing``.
+
+    ``BatchSpanProcessor``, not the executor's ``SimpleSpanProcessor``: this
+    process is long-lived, so batching is worth it, and ``shutdown()`` flushes
+    what is queued. Buffering across a disconnect is the exporter's job.
+    """
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+    provider = TracerProvider(resource=_build_resource(service_name, instance_id))
+    provider.add_span_processor(BatchSpanProcessor(_CallbackSpanExporter(send)))
+    trace.set_tracer_provider(provider)
+    return provider
+
+
 _relay_drop_counter = get_meter(__name__).create_counter(
     "workbench.span_relay_drop",
     description="Number of executor spans dropped instead of forwarded to the collector.",
@@ -760,7 +840,7 @@ def build_span_sink(endpoint: str | None, *, console_fallback: bool = False) -> 
         return _BackgroundSpanForwarder(_forward).submit
     if not console_fallback:
         return None
-    if trace_file := os.environ.get(_TRACE_FILE_ENV):
+    if trace_file := os.environ.get(TRACE_FILE_ENV):
         return _BackgroundSpanForwarder(_relayed_file_sink(Path(trace_file))).submit
     return _BackgroundSpanForwarder(_relayed_console_sink).submit
 

@@ -650,3 +650,50 @@ def test_a_reconnected_allocation_still_reports_its_image(monkeypatch: pytest.Mo
     frames = list(_provision(DockerIsolation(), "ree-existing", _spec("docker:29-dind")))
 
     assert _only_status(frames).resolved_image == "pinned::docker:29-dind"
+
+
+# ------------------------------------------------
+# What the bench is told to do with its own telemetry
+# ------------------------------------------------
+
+
+def _bench_env(monkeypatch: pytest.MonkeyPatch, **kwargs: object) -> tuple[str, ...]:
+    docker_calls: list[tuple[str, ...]] = []
+    monkeypatch.setattr(lc_mod, "run_docker", lambda *args, timeout=60: docker_calls.append(args))
+    monkeypatch.setattr(lc_mod, "_image_present", lambda image: False)
+    monkeypatch.setattr(lc_mod, "_docker_stream_lines", lambda *args, timeout=600: iter(()))
+
+    isolation = DockerIsolation(**kwargs)  # type: ignore[arg-type]
+    list(_provision(isolation, "ree-telemetry", _spec("repo2ree-workbench:test")))
+
+    return next(call for call in docker_calls if call[:2] == ("exec", "-d"))
+
+
+def test_a_bench_relays_its_own_spans_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    exec_call = _bench_env(monkeypatch)
+
+    assert _has_option_value(exec_call, "-e", "WORKBENCH_TELEMETRY=relay")
+    # Never inherited: this provider's endpoint is reachable from *here*, and a
+    # bench on an isolated network that took it would retry an unroutable
+    # address. Without one its logs and metrics are no-ops.
+    assert not any(value.startswith("OTLP_ENDPOINT=") for value in exec_call)
+
+
+def test_a_bench_told_to_export_directly_is_given_its_own_collector(monkeypatch: pytest.MonkeyPatch) -> None:
+    exec_call = _bench_env(
+        monkeypatch,
+        workbench_telemetry="direct",
+        workbench_otlp_endpoint="http://collector.internal:4318",
+    )
+
+    assert _has_option_value(exec_call, "-e", "WORKBENCH_TELEMETRY=direct")
+    assert _has_option_value(exec_call, "-e", "OTLP_ENDPOINT=http://collector.internal:4318")
+
+
+def test_telemetry_can_be_turned_off_for_every_bench_this_provider_starts(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The off switch lives here because an operator configures the provider,
+    # never the bench containers it starts.
+    exec_call = _bench_env(monkeypatch, workbench_telemetry="off")
+
+    assert _has_option_value(exec_call, "-e", "WORKBENCH_TELEMETRY=off")
+    assert not any(value.startswith("OTLP_ENDPOINT=") for value in exec_call)

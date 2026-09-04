@@ -23,13 +23,20 @@ services:
       PROVIDER_API_WS_URL: ${PROVIDER_API_WS_URL:-ws://host.docker.internal:8000/provider/connect}
       PROVIDER_WORKBENCH_API_WS_URL: ${PROVIDER_WORKBENCH_API_WS_URL:-ws://host.docker.internal:8000/workbench/connect}
       PROVIDER_DOCKER_MODE: ${PROVIDER_DOCKER_MODE:-dind}
-      # Optional OTLP collector for the workbench's own traces/metrics/logs.
-      # Executor spans don't need this — they relay to the backend over the
-      # WebSocket — but the workbench.connection/workbench.request spans export from
-      # here. Headers (e.g. ClickStack's ingestion API key) ride the standard
-      # OTLP env var alongside it.
+      # Optional OTLP collector for *this provider's* own logs. Headers (e.g.
+      # ClickStack's ingestion API key) ride the standard OTLP env var alongside
+      # it. This endpoint is never handed to the benches this provider starts:
+      # it is reachable from here, and a bench on an isolated network would
+      # retry an address it cannot route to.
       OTLP_ENDPOINT: ${OTLP_ENDPOINT:-}
       OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
+      # What benches do with their own spans: relay (default) sends them over
+      # the control-plane socket each bench already holds, as executor spans
+      # travel; direct posts to PROVIDER_WORKBENCH_OTLP_ENDPOINT, a collector
+      # the benches themselves can reach; local writes TRACE_FILE or stdout
+      # inside the bench; off disables bench tracing entirely.
+      PROVIDER_WORKBENCH_TELEMETRY: ${PROVIDER_WORKBENCH_TELEMETRY:-}
+      PROVIDER_WORKBENCH_OTLP_ENDPOINT: ${PROVIDER_WORKBENCH_OTLP_ENDPOINT:-}
 
 volumes:
   repo2ree-provider-state:

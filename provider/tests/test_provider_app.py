@@ -43,6 +43,8 @@ def _config(**overrides: object) -> ProviderConfig:
         "docker_mode": "host-socket",
         "workbench_network": "repo2ree-lab",
         "otlp_endpoint": "http://collector:4318",
+        "workbench_telemetry": "relay",
+        "workbench_otlp_endpoint": None,
     }
     return ProviderConfig(**{**base, **overrides})  # type: ignore[arg-type]
 
@@ -84,6 +86,10 @@ def test_main_composes_telemetry_isolation_and_capacity_connection(monkeypatch: 
     assert isolation_args[1] == {
         "workbench_api_ws_url": config.workbench_api_ws_url,
         "workbench_network": "repo2ree-lab",
+        # A bench is told what to do with its own telemetry. It is never handed
+        # this process's collector, which it may have no route to.
+        "workbench_telemetry": "relay",
+        "workbench_otlp_endpoint": None,
     }
     assert provider_args[0] == config.api_ws_url
     assert provider_args[2] == config.provider_id

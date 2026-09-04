@@ -52,6 +52,13 @@ class ProviderConfig:
     docker_mode: str = "dind"
     workbench_network: str = ""
     otlp_endpoint: str | None = None
+    # What the benches this provider starts do with their own spans. They inherit
+    # neither this process's OTLP_ENDPOINT nor its reachability: a bench may sit
+    # on an isolated network where the collector this provider posts to does not
+    # resolve. ``relay`` sends spans over the socket each bench already holds.
+    # ``direct`` needs workbench_otlp_endpoint to name a collector *they* reach.
+    workbench_telemetry: str = "relay"
+    workbench_otlp_endpoint: str | None = None
 
 
 def _env_flag(name: str, default: bool) -> bool:
@@ -94,4 +101,6 @@ def load_config() -> ProviderConfig:
         docker_mode=os.environ.get("PROVIDER_DOCKER_MODE", "dind"),
         workbench_network=os.environ.get("PROVIDER_WORKBENCH_DOCKER_NETWORK", ""),
         otlp_endpoint=os.environ.get("OTLP_ENDPOINT") or None,
+        workbench_telemetry=os.environ.get("PROVIDER_WORKBENCH_TELEMETRY", "").strip().lower() or "relay",
+        workbench_otlp_endpoint=os.environ.get("PROVIDER_WORKBENCH_OTLP_ENDPOINT") or None,
     )
