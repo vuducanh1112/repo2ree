@@ -20,7 +20,7 @@
 #     scripts/test-stack/image-stack.sh up
 #
 # (or override an individual image with STACK_GUI_IMAGE /
-# STACK_BACKEND_IMAGE / STACK_WORKBENCH_IMAGE.)
+# STACK_BACKEND_IMAGE / STACK_PROVIDER_IMAGE.)
 #
 # STACK_WORKBENCHES=<n> runs n workbench instances (default 1) — instance i > 1 gets
 # its own compose project, container name, and state volume

@@ -1,22 +1,35 @@
 # ----------------------------------------------------------------
-# Docker provider image
+# Workbench image — a transport for the closure, not a runnable bench.
 #
-# The provider service as a self-carrying OCI image. It owns the host Docker
-# socket and carries the workbench, executor, and handler-tool closures it
-# injects into each allocated environment. The resident workbench itself has
-# no Docker provisioning dependency.
+# The provider pulls this and populates the shared store volume from its
+# /nix/store, then mounts that volume into a bench built from the *user's*
+# base image:
 #
-# The workbench is outbound-only (dials WORKBENCH_API_WS_URL) and drives
-# the host container runtime, so run it with the host docker socket:
+#   docker run --rm -v repo2ree-store-<digest>:/bundle-store \
+#     repo2ree-workbench@sha256:… cp -a /nix/store/. /bundle-store/
 #
-#   docker run -d \
-#     -v /var/run/docker.sock:/var/run/docker.sock \
-#     -v repo2ree-provider-state:/var/lib/repo2ree-provider \
-#     -e PROVIDER_API_WS_URL=wss://…/provider/connect \
-#     -e PROVIDER_WORKBENCH_API_WS_URL=wss://…/workbench/connect \
-#     repo2ree-provider-docker
+# Publishing the closure this way lets a provider fetch the runtime by digest
+# instead of carrying it inside its own image, and makes the digest recorded
+# in the audit trail the digest that actually executed.
 #
-# The state volume keeps the provider identity stable across replacements.
+# Do NOT treat this as a bench you can run on its own. A workbench is an
+# *addition* to an environment, never an environment: build scripts run as
+# native subprocesses in the bench (see repo2ree_core.execution.process), so
+# the bench must carry the project's toolchain. This image carries `sh` and
+# the handler tools and nothing else — no docker, no compiler, no language
+# runtime — which is why the base image is the user's choice and this is only
+# ever injected into it. `doctor` on a bench with just this reports docker
+# unavailable, and any REE that builds a container fails.
+#
+# `Cmd` still names the listener so the image is usable as a base to derive
+# from (`FROM repo2ree-workbench`, add your toolchain) — and, being Cmd rather
+# than Entrypoint, so the copy above stays a plain `docker run` with no
+# --entrypoint flag to lose. `cp` is the static busybox already in the closure
+# as the keep-alive `sleep`, so it costs this image nothing.
+#
+# For a self-managed install on a host that already has its toolchain, use
+# .#workbench (nix hosts) or .#workbench-bundle (everything else) — both add
+# the workbench to an environment instead of pretending to be one.
 #
 # Build with:   nix build .#workbench-image
 # Load with:    docker load < result
@@ -24,121 +37,43 @@
 { pkgs }:
 
 let
-  executor = import ./ree-executor.nix { inherit pkgs; };
-  tools = import ./tools.nix { inherit pkgs; };
-  workbench = import ./workbench-service.nix { inherit pkgs; };
-
-  # Shared Python runtime for the provider and injected workbench.
-  # pydantic for the repo2ree_protocol frame models, and the otel trio
-  # that repo2ree_protocol.tracing reaches at import time (the package
-  # __init__ pulls it in via .log). The OTLP HTTP exporter backs the
-  # workbench's own trace/metric export when OTLP_ENDPOINT is set (executor
-  # spans still relay through the backend without it). The workbench
-  # deliberately depends only on repo2ree_protocol — it is a frame
-  # ferry, not an executor — so core's import graph stays out of this
-  # image.
-  providerPython = pkgs.python313.withPackages (
-    ps: with ps; [
-      anyio
-      pydantic
-      websockets
-      opentelemetry-api
-      opentelemetry-sdk
-      opentelemetry-exporter-otlp-proto-common
-      opentelemetry-exporter-otlp-proto-http
-      # protocol/pyproject.toml declares this too, and tracing.otlp_log_handler
-      # imports from it. It was missing here, which crashed every workbench on
-      # startup; adding it only became a fix once the nixpkgs bump brought
-      # 0.64b0, since the 0.55b0 this pin used to carry has no `handler`
-      # submodule at all.
-      opentelemetry-instrumentation-logging
-      # A runtime import of opentelemetry-instrumentation's _semconv module
-      # that nixpkgs does not propagate, so withPackages leaves it out and the
-      # handler import above dies on `No module named 'packaging'` — the same
-      # startup crash, one layer down. Verified by running the import in this
-      # exact env, not inferred from the dependency metadata.
-      packaging
-    ]
-  );
-
-  srcs = {
-    inherit (executor.srcs) protocol;
-    dockerSupport = pkgs.lib.cleanSource ../docker-support/src;
-    provider = pkgs.lib.cleanSource ../provider/src;
-  };
-
-  providerBin = pkgs.writeShellScriptBin "repo2ree-provider-docker" ''
-    export PYTHONPATH="${srcs.protocol}:${srcs.dockerSupport}:${srcs.provider}''${PYTHONPATH:+:$PYTHONPATH}"
-    exec ${providerPython}/bin/python -m repo2ree_provider_docker "$@"
-  '';
-
-  # The provider copies this complete closure into a content-addressed Docker
-  # volume. That is what makes the same workbench executable available inside
-  # arbitrary selected environment images without assuming it is preinstalled.
-  injectedClosure = pkgs.closureInfo {
-    rootPaths = [
-      executor.bin
-      executor.pause
-      workbench.bin
-    ];
-  };
-
-  # The executor bundle at a fixed path the workbench code can find. Unlike
-  # the standalone .#exec-bundle (which carries a `store/` copy of the
-  # closure for hosts without one), the image already ships the closure
-  # in its own /nix/store — the string references in manifest.json and
-  # store-paths are what pull it into the layers — so the bundle dir here
-  # is just those two files, not a second copy of the closure.
-  execManifest = pkgs.runCommand "repo2ree-provider-exec-manifest.json" { nativeBuildInputs = [ pkgs.jq ]; } ''
-    jq \
-      --arg workbenchPath "${workbench.bin}/bin/repo2ree-workbench" \
-      '. + {workbench_path: $workbenchPath}' \
-      ${executor.manifest} > $out
-  '';
-
-  bundleDir = pkgs.runCommand "repo2ree-bundles-ref" { } ''
-    mkdir -p $out/opt/repo2ree/exec-bundle $out/opt/repo2ree/tools-bundle
-    cp ${execManifest} $out/opt/repo2ree/exec-bundle/manifest.json
-    cp ${injectedClosure}/store-paths $out/opt/repo2ree/exec-bundle/store-paths
-    cp ${tools.manifest} $out/opt/repo2ree/tools-bundle/manifest.json
-    cp ${tools.closure}/store-paths $out/opt/repo2ree/tools-bundle/store-paths
-  '';
+  workbench = import ./workbench.nix { inherit pkgs; };
 in
 pkgs.dockerTools.buildLayeredImage {
-  name = "repo2ree-provider-docker";
-  # "local" marks never-pushed workbench builds; published channels (edge,
-  # commit shas) are minted at push time by the publishing recipes.
+  name = "repo2ree-workbench";
+  # "local" marks never-pushed local builds; published channels (edge, commit
+  # shas) are minted at push time by the publishing recipes.
   tag = "local";
 
   contents = [
-    providerBin
-    workbench.bin
-    bundleDir
-
-    # The docker runtime shells out to the docker CLI against the
-    # mounted host socket; the daemon itself stays on the host, so the
-    # client alone suffices.
-    pkgs.docker-client
-
-    # Minimal userland for debugging a running workbench container.
-    pkgs.coreutils
-    pkgs.bash
+    workbench.service.bin
+    workbench.executor.bin
+    # Both the bench keep-alive `sleep` and the `cp` the copy use above; it is
+    # static, so it runs in this image and in any bench the closure lands in.
+    workbench.executor.pause
+    workbench.tools.binDir
+    workbench.bundleRefDir
 
     # TLS roots for the outbound wss:// control link.
     pkgs.cacert
   ];
 
+  # The default root the listener binds. It must exist and be empty: an
+  # external workbench refuses to bind onto a non-empty root, which is what
+  # stops two allocations from sharing one tree.
+  extraCommands = "mkdir -p ree";
+
   config = {
-    Entrypoint = [ "${providerBin}/bin/repo2ree-provider-docker" ];
+    Cmd = [ "${workbench.service.bin}/bin/repo2ree-workbench" ];
     Env = [
       "PATH=/bin"
-      "PROVIDER_STATE_DIR=/var/lib/repo2ree-provider"
-      "REPO2REE_EXEC_BUNDLE=/opt/repo2ree/exec-bundle"
-      "REPO2REE_TOOLS_BUNDLE=/opt/repo2ree/tools-bundle"
-      "REPO2REE_WORKBENCH_PATH=${workbench.bin}/bin/repo2ree-workbench"
-      "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+      "WORKBENCH_ROOT=/ree"
+      "WORKBENCH_MODE=external"
       "PYTHONDONTWRITEBYTECODE=1"
       "PYTHONUNBUFFERED=1"
-    ];
+      "REPO2REE_EXEC_BUNDLE=/opt/repo2ree/exec-bundle"
+      "REPO2REE_TOOLS_BUNDLE=/opt/repo2ree/tools-bundle"
+    ]
+    ++ pkgs.lib.mapAttrsToList (name: value: "${name}=${value}") workbench.toolEnv;
   };
 }

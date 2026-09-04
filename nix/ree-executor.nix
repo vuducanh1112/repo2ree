@@ -3,7 +3,7 @@
 #
 # A definition module, not a flake package — it answers "what is the
 # executor" once, and each consumer packages a slice of it:
-# nix/workbench-image.nix references closure+manifest from the image's own
+# nix/provider-image.nix references closure+manifest from the image's own
 # /nix/store, and nix/exec-bundle.nix copies the closure into a
 # standalone mountable tree. Sharing one definition is the point: every
 # delivery form of the executor is the same derivation.
@@ -37,18 +37,7 @@ let
 
   # Filter to just the Python sources so unrelated repo files don't
   # invalidate the closure hash on every edit.
-  cleanPySrc =
-    src:
-    pkgs.lib.cleanSourceWith {
-      inherit src;
-      filter =
-        path: type:
-        let
-          base = baseNameOf path;
-        in
-        !(type == "directory" && (base == "__pycache__" || base == ".pytest_cache"))
-        && !(pkgs.lib.hasSuffix ".pyc" base);
-    };
+  cleanPySrc = import ./clean-py-src.nix { inherit pkgs; };
 
   srcs = {
     protocol = cleanPySrc ../protocol/src;
@@ -76,7 +65,7 @@ let
     ];
   };
 
-  # The workbench-facing manifest: absolute in-container paths, so
+  # The provider-facing manifest: absolute in-container paths, so
   # provisioning never assumes anything about the env image's PATH.
   manifest = pkgs.runCommand "repo2ree-exec-manifest.json" { nativeBuildInputs = [ pkgs.jq ]; } ''
     jq -n \

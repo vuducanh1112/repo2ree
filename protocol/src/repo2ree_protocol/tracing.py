@@ -48,7 +48,8 @@ from repo2ree_protocol.result import Failure
 
 # ``requests`` and the OTLP/HTTP exporter live behind the host-side functions
 # (setup_tracing, forward_relayed_spans) so the executor — which only streams
-# spans for relay — doesn't drag them into the minimal workbench image.
+# spans for relay — doesn't drag them into its minimal closure, which really
+# does ship without them (see nix/ree-executor.nix).
 
 logger = logging.getLogger(__name__)
 
@@ -781,9 +782,10 @@ def _decode_relayed_spans(payloads: list[str]) -> list[tuple[_PbResource, _PbSpa
 
     The relay carries executor spans as base64 OTLP protobuf so the supervisor
     can forward bytes to a collector without understanding them. With no
-    collector we decode here instead. Host-side only — relies on
-    ``opentelemetry-proto``, which the minimal workbench image deliberately
-    lacks. Never raises: span egress must not break command flow.
+    collector we decode here instead. Host-side only: nothing on the executor
+    or workbench side ever calls it, which is why ``opentelemetry-proto`` is
+    imported here rather than at module scope. Never raises: span egress must
+    not break command flow.
 
     Spans are paired with their resource because ``service.name`` lives there,
     one level up from the span, and a span that cannot say which service emitted

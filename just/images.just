@@ -14,7 +14,7 @@ _image-archive-dir:
 # new Python files without staging their contents or changing the index state.
 [private]
 _stage-nix-sources:
-    @git add -N protocol/src core/src/repo2ree_core/ executor/src/repo2ree_executor provider/src workbench/src nix/workbench-image.nix nix/workbench-service.nix docker-support/src 2>/dev/null || true
+    @git add -N protocol/src core/src/repo2ree_core/ executor/src/repo2ree_executor provider/src workbench/src nix/provider-image.nix nix/workbench-service.nix nix/clean-py-src.nix docker-support/src 2>/dev/null || true
 
 # Build and load the GUI image.
 [group('Images')]

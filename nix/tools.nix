@@ -1,5 +1,5 @@
 # ----------------------------------------------------------------
-# Handler tools the workbench ships into benches.
+# Handler tools the provider ships into benches.
 #
 # A definition module like ./ree-executor.nix, but for the tools core
 # handlers and lifecycle scripts shell out to rather than the executor
@@ -17,7 +17,7 @@
 #     image's own PATH), so lifecycle scripts calling bare ``git`` /
 #     ``curl`` / ``tar`` work on images that ship none of them.
 #
-# A bench where the workbench shipped no tools closure simply reports these
+# A bench where the provider shipped no tools closure simply reports these
 # capabilities as absent; nothing here is required to execute an REE.
 # ----------------------------------------------------------------
 { pkgs }:
@@ -99,6 +99,7 @@ in
     bins
     binDir
     closure
+    extraEnv
     manifest
     ;
 }

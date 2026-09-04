@@ -6,7 +6,7 @@
 # static `dist/` behind caddy. No Node in the runtime image.
 #
 # Toolchain provenance comes from the pinned nixpkgs in flake.lock — the
-# same revision the dev shell and workbench image use — so the deployed
+# same revision the dev shell and the shipped closures use — so the deployed
 # bundle can't drift onto a different Node/npm than we develop against.
 #
 # Build with:   nix build .#gui-image

@@ -1,22 +1,26 @@
 # ----------------------------------------------------------------
 # The executor bundle: the `repo2ree-exec` closure as a mountable tree.
 #
-# The workbench copies `store/` into a content-addressed docker volume and
+# The provider copies `store/` into a content-addressed docker volume and
 # mounts it read-only at /nix/store inside any bench container. Every
 # path the wrapper script touches is absolute into that mount, so the
 # executor runs in any userland — musl, distroless, whatever the env
 # image provides — without relocation or an install step.
 #
-# `manifest.json` tells the workbench the absolute in-container paths, so
+# `manifest.json` tells the provider the absolute in-container paths, so
 # provisioning never assumes anything about the env image's PATH:
 #   exec_path  — the repo2ree-exec entrypoint to `docker exec`
 #   pause_path — a static `sleep` for the bench keep-alive command,
 #                so the env image needs no coreutils of its own
 #
+# `workbench_path` rides along on the same manifest: the bundle carries
+# the resident `repo2ree-workbench` too, so a hand-provisioned bench has
+# everything a provider-allocated one gets.
+#
 # This standalone form carries the closure as a `store/` copy for hosts
-# without a nix store. The workbench image instead ships manifest.json plus
+# without a nix store. The provider image instead ships manifest.json plus
 # a `store-paths` list referencing its own /nix/store (see
-# workbench-image.nix) — same manifest, no duplicated closure.
+# provider-image.nix) — same manifest, no duplicated closure.
 #
 # Build with:   nix build .#exec-bundle
 # Smoke-test:   docker run --rm -v "$(readlink -f result)/store:/nix/store:ro" \
@@ -25,27 +29,13 @@
 { pkgs }:
 
 let
-  executor = import ./ree-executor.nix { inherit pkgs; };
-  workbench = import ./workbench-service.nix { inherit pkgs; };
-  closure = pkgs.closureInfo {
-    rootPaths = [
-      executor.bin
-      executor.pause
-      workbench.bin
-    ];
-  };
-  manifest = pkgs.runCommand "repo2ree-exec-workbench-manifest.json" { nativeBuildInputs = [ pkgs.jq ]; } ''
-    jq \
-      --arg workbenchPath "${workbench.bin}/bin/repo2ree-workbench" \
-      '. + {workbench_path: $workbenchPath}' \
-      ${executor.manifest} > $out
-  '';
+  workbench = import ./workbench.nix { inherit pkgs; };
 in
 pkgs.runCommand "repo2ree-exec-bundle" { } ''
   mkdir -p $out/store
   while IFS= read -r path; do
     cp -a "$path" $out/store/
-  done < ${closure}/store-paths
+  done < ${workbench.execClosure}/store-paths
 
-  cp ${manifest} $out/manifest.json
+  cp ${workbench.execManifest} $out/manifest.json
 ''

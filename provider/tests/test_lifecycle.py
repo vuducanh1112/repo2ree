@@ -24,7 +24,7 @@ from repo2ree_provider_docker.lifecycle import DockerIsolation
 
 @pytest.fixture(autouse=True)
 def _no_ambient_bundle(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Keep the host's workbench-image env vars from leaking into the tests."""
+    """Keep the host's provider-image env vars from leaking into the tests."""
     monkeypatch.delenv("REPO2REE_EXEC_BUNDLE", raising=False)
     monkeypatch.delenv("REPO2REE_TOOLS_BUNDLE", raising=False)
     monkeypatch.delenv("REPO2REE_RESOURCE_OWNER", raising=False)
