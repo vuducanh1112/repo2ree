@@ -11,10 +11,9 @@ repo2ree has three deployed surfaces today:
   workbench that provider created.
 - `provider`: the Docker provider. It holds the docker socket, dials the
   backend over an outbound WebSocket, creates workbenches, and injects its
-  embedded executor and tools. It has its own compose file
-  (`docker-compose.workbench.yml`) and lifecycle, so it can run wherever
-  workbenches should live. The control-plane stack contains only the GUI and
-  backend.
+  embedded executor and tools. The local demo includes it in
+  `docker-compose.yml`; `docker-compose.workbench.yml` remains available when
+  compute should run separately from the control plane.
 - `gui`: a static Vite bundle served by Caddy. Caddy also reverse-proxies
   `/api/*` to the backend so the browser uses one origin.
 
@@ -25,21 +24,18 @@ connection and runs the executor for each command.
 
 ## Run with published images
 
-The public demo path uses Docker Hub images and does not require Nix. Compose
-brings up the control plane; a second compose file brings up the provider,
-which dials the host-published backend port:
+The public demo path uses Docker Hub images and does not require Nix. One
+Compose command brings up the control plane and provider:
 
 ```bash
 docker compose up -d
-docker compose -f docker-compose.workbench.yml up -d
 ```
 
 Then open `http://localhost:3000`.
 
-The provider compose file defaults `PROVIDER_API_WS_URL` to
-`ws://host.docker.internal:8000/provider/connect` (the control plane on the same
-host). Override it, along with the address it hands each workbench, to dial a
-backend elsewhere:
+For a provider on another machine, start the standalone provider Compose file.
+It defaults to `host.docker.internal:8000`; override both endpoints to dial a
+different backend:
 
 ```bash
 PROVIDER_API_WS_URL=ws://backend.example:8000/provider/connect \
@@ -54,8 +50,8 @@ PROVIDER_WORKBENCH_API_WS_URL=ws://backend.example:8000/workbench/connect \
 | `REPO2REE_GUI_IMAGE` | `docker.io/vuducanh1112/repo2ree-gui:edge` | GUI image served by Caddy. |
 | `REPO2REE_BACKEND_IMAGE` | `docker.io/vuducanh1112/repo2ree-backend:edge` | FastAPI backend image. |
 
-Set the provider image with `REPO2REE_PROVIDER_IMAGE` in its compose file. It
-defaults to `docker.io/vuducanh1112/repo2ree-provider-docker:edge`.
+Set the provider image with `REPO2REE_PROVIDER_IMAGE`. It defaults to
+`docker.io/vuducanh1112/repo2ree-provider-docker:edge` in both compose files.
 
 The backend image catalog defines the available per-REE workbench images
 (`api/src/repo2ree_api/settings.py`). Its default is a pinned upstream
@@ -146,15 +142,8 @@ protocols require matching versions. Registries default to GHCR and Docker Hub u
 ```bash
 REPO2REE_GUI_IMAGE=repo2ree-gui:local \
 REPO2REE_BACKEND_IMAGE=repo2ree-backend:local \
-docker compose up
-```
-
-Start the provider stack pointed at the local image, then open
-`http://localhost:3000`:
-
-```bash
 REPO2REE_PROVIDER_IMAGE=repo2ree-provider-docker:local \
-  docker compose -f docker-compose.workbench.yml up -d
+docker compose up
 ```
 
 The compose stack publishes:
@@ -176,7 +165,7 @@ Each compose file creates one named volume:
 | Volume | Mounted at | Purpose |
 |---|---|---|
 | `repo2ree-demo-data` | `/app/.repo2ree` in the backend | Backend-local metadata such as upload staging and workbench registry. |
-| `repo2ree-provider-state` | `/var/lib/repo2ree-provider` in the provider | The provider's stable identity across container replacements (created by `docker-compose.workbench.yml`, with a pinned volume name so it survives recreation). |
+| `repo2ree-provider-state` | `/var/lib/repo2ree-provider` in the provider | The provider's stable identity across container replacements. |
 
 REE execution state lives in per-REE Docker volumes the provider creates at the
 supervisor's request, not inside `repo2ree-demo-data`.

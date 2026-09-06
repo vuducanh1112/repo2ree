@@ -48,10 +48,11 @@ The main REE path now has the intended package seam:
 
 Current isolation is **Docker-in-Docker inside a privileged workbench**. The
 backend never touches a container runtime: workbenches are created by the
-*Docker provider* (its own deployable, holding the docker socket —
-[docker-compose.workbench.yml](../../../docker-compose.workbench.yml)) in response to
-capacity calls. The workbench does not receive the host socket. It runs its own
-daemon and stores `/var/lib/docker` in a per-REE volume
+*Docker provider* (a separate deployable holding the docker socket, included in
+the local [docker-compose.yml](../../../docker-compose.yml) demo and independently
+deployable with [docker-compose.workbench.yml](../../../docker-compose.workbench.yml))
+in response to capacity calls. The workbench does not receive the host socket.
+It runs its own daemon and stores `/var/lib/docker` in a per-REE volume
 ([lifecycle.py](../../../provider/src/repo2ree_provider_docker/lifecycle.py)).
 
 The risk has moved: untrusted repo code no longer holds the host Docker socket

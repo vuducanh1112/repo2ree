@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Bring the image-backed demo stack up or down: the compose control plane
-# (GUI + backend, :local tags) plus the workbench service, which the
-# control-plane compose deliberately doesn't manage — it runs from its own
-# docker-compose.workbench.yml (see docker-compose.yml).
+# (GUI + backend, :local tags) plus independently managed provider instances.
+# The root Compose demo includes one provider, but this harness starts only its
+# backend and GUI services so it can still vary provider count and lifecycle.
 #
 #   image-stack.sh up            start compose + workbench, wait until ready
 #   image-stack.sh down          remove the workbench container and the compose stack
@@ -210,15 +210,14 @@ up() {
     done
 
     echo ">> starting compose control plane ($gui_image, $backend_image)"
-    compose_stack up -d
+    compose_stack up -d backend gui
 
     echo ">> starting $stack_providers Docker provider service(s) ($provider_service_image)"
-    # Reaching the backend: when the workbench shares this daemon with the control
-    # plane (the usual case, including nested/DinD CI), host-published ports
-    # aren't reliably reachable via the compose file's host.docker.internal
-    # default, so join the control-plane network and dial the backend by
-    # service name. Only a non-local backend (a remote control plane) falls
-    # back to the file's default.
+    # Reaching the backend: both the provider and every child workbench join the
+    # control-plane network and dial by service name. Joining only the provider
+    # is insufficient: its child containers otherwise cannot resolve `backend`.
+    # Only a non-local backend (a remote control plane) falls back to the
+    # standalone provider Compose file's host-gateway defaults.
     local control_plane_net i name
     control_plane_net=$(control_plane_network)
     for i in $(seq 1 "$stack_providers"); do
@@ -226,6 +225,7 @@ up() {
         if [ -n "$control_plane_net" ]; then
             PROVIDER_API_WS_URL=ws://backend:8000/provider/connect \
             PROVIDER_WORKBENCH_API_WS_URL=ws://backend:8000/workbench/connect \
+            PROVIDER_WORKBENCH_DOCKER_NETWORK="$control_plane_net" \
                 provider_compose "$name" up -d >/dev/null
             docker network connect "$control_plane_net" "$name" >/dev/null 2>&1 || true
         else

@@ -22,6 +22,9 @@ services:
     environment:
       PROVIDER_API_WS_URL: ${PROVIDER_API_WS_URL:-ws://host.docker.internal:8000/provider/connect}
       PROVIDER_WORKBENCH_API_WS_URL: ${PROVIDER_WORKBENCH_API_WS_URL:-ws://host.docker.internal:8000/workbench/connect}
+      # Optional network for provider-created workbenches. Set this when the
+      # control plane is reachable by service DNS on a shared Docker network.
+      PROVIDER_WORKBENCH_DOCKER_NETWORK: ${PROVIDER_WORKBENCH_DOCKER_NETWORK:-}
       PROVIDER_DOCKER_MODE: ${PROVIDER_DOCKER_MODE:-dind}
       # Optional OTLP collector for *this provider's* own logs. Headers (e.g.
       # ClickStack's ingestion API key) ride the standard OTLP env var alongside

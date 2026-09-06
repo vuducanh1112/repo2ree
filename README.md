@@ -10,45 +10,39 @@ Research and paper-facing notes live under
 ## Quick demo
 
 To try the app locally with Docker, use the published Docker Hub images. The
-compose stack is control plane only (GUI + API); workbenches are
-provisioned by a Docker provider that runs separately and dials the API:
+demo stack includes the GUI, API, and Docker provider; the provider creates
+workbenches on demand when you start an REE:
 
 ```bash
 docker compose up -d
-docker compose -f docker-compose.workbench.yml up -d
 ```
 
-The provider stack is a separate compose file on purpose — the provider dials
-the control plane over an outbound WebSocket and can run anywhere a container
-runtime lives, so its lifecycle stays independent. Then open
-`http://localhost:3000`.
+Then open `http://localhost:3000`. The provider still dials the control plane
+over outbound WebSockets; the all-in-one demo places it and the workbenches it
+creates on the same Docker network as the backend. Deployments that put compute
+on another host can use the standalone `docker-compose.workbench.yml` instead.
 
 ### Run without cloning the repository
 
-Fetch each compose file straight from the repository and start it from stdin —
-no clone needed. The first line brings up the control plane under the
-`-p repo2ree` project (stable container/volume names, clean teardown later);
-the second brings up the provider, which carries its own `repo2ree-provider`
-project name inside the file, so no `-p` is needed for it:
+Fetch the compose file straight from the repository and start it from stdin —
+no clone needed. The explicit project name gives the containers and volumes a
+stable owner for clean teardown later:
 
 ```bash
 curl -fsSL https://codeberg.org/vuducanh1112/repo2ree/raw/branch/main/docker-compose.yml \
   | docker compose -p repo2ree -f - up -d
-curl -fsSL https://codeberg.org/vuducanh1112/repo2ree/raw/branch/main/docker-compose.workbench.yml \
-  | docker compose -f - up -d
 ```
 
-The provider dials `host.docker.internal:8000` by default, which resolves to the
-control plane you just started on the same host. Then open
-`http://localhost:3000`.
+Then open `http://localhost:3000`.
 
-To stop it — no compose file needed, the project name is enough. The provider
-container lives outside the stack, so stop it separately:
+To stop it without keeping a local copy, pipe the same Compose file into the
+`down` command:
 
 ```bash
-docker compose -p repo2ree-provider down   # stop the separate provider stack
-docker compose -p repo2ree down         # stop control plane: containers + network
-docker compose -p repo2ree down -v      # also delete the demo-data volume
+curl -fsSL https://codeberg.org/vuducanh1112/repo2ree/raw/branch/main/docker-compose.yml \
+  | docker compose -p repo2ree -f - down
+curl -fsSL https://codeberg.org/vuducanh1112/repo2ree/raw/branch/main/docker-compose.yml \
+  | docker compose -p repo2ree -f - down -v  # also delete demo/provider-state volumes
 ```
 
 To refresh to the latest published images, append `--pull always` to the `up`
@@ -64,26 +58,22 @@ just backend-image
 just provider-image
 ```
 
-Then run compose with the local image tags, and start the provider stack
-pointed at its local tag:
+Then run the complete demo stack with the local image tags:
 
 ```bash
 REPO2REE_GUI_IMAGE=repo2ree-gui:local \
 REPO2REE_BACKEND_IMAGE=repo2ree-backend:local \
-docker compose up -d
-
 REPO2REE_PROVIDER_IMAGE=repo2ree-provider-docker:local \
-docker compose -f docker-compose.workbench.yml up -d
+docker compose up -d
 ```
 
 The per-REE workbench env image isn't a compose variable: benches provision
 from the backend's image catalog (a pinned upstream `docker:dind` by
 default), with the executor injected by the provider at provision time.
 
-Compose starts the GUI on port `3000` and the API on port `8000`; the
-API container stores its persistent data under `/app/.repo2ree`. The provider
-container runs outside the stack and mounts `/var/run/docker.sock` because it
-owns workbench container lifecycle.
+Compose starts the GUI on port `3000` and the API on port `8000`; the API
+container stores its persistent data under `/app/.repo2ree`. The provider
+mounts `/var/run/docker.sock` because it owns workbench container lifecycle.
 
 For more detail, see
 [docs/engineering/how-to/deployment.md](docs/engineering/how-to/deployment.md).

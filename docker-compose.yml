@@ -1,6 +1,6 @@
-# Control plane only: GUI + backend. Workbench services run separately
-# (anywhere with a container runtime) and dial the backend over an outbound
-# WebSocket — see docs/engineering/how-to/deployment.md for how to start one.
+# Self-contained local demo: GUI + backend + a Docker provider. The provider
+# owns the Docker socket and creates one isolated workbench container per REE;
+# the backend remains a pure control plane with no Docker access.
 services:
   backend:
     image: ${REPO2REE_BACKEND_IMAGE:-docker.io/vuducanh1112/repo2ree-backend:edge}
@@ -32,5 +32,33 @@ services:
     environment:
       BACKEND_UPSTREAM: backend:8000
 
+  provider:
+    image: ${REPO2REE_PROVIDER_IMAGE:-docker.io/vuducanh1112/repo2ree-provider-docker:edge}
+    depends_on:
+      - backend
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - repo2ree-provider-state:/var/lib/repo2ree-provider
+    environment:
+      PROVIDER_API_WS_URL: ws://backend:8000/provider/connect
+      PROVIDER_WORKBENCH_API_WS_URL: ws://backend:8000/workbench/connect
+      # Provider-created containers are not Compose services, so explicitly
+      # join them to the demo network where the `backend` service name resolves.
+      PROVIDER_WORKBENCH_DOCKER_NETWORK: ${REPO2REE_NETWORK:-repo2ree-demo}
+      PROVIDER_DOCKER_MODE: ${PROVIDER_DOCKER_MODE:-dind}
+      OTLP_ENDPOINT: ${OTLP_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
+      PROVIDER_WORKBENCH_TELEMETRY: ${PROVIDER_WORKBENCH_TELEMETRY:-}
+      PROVIDER_WORKBENCH_OTLP_ENDPOINT: ${PROVIDER_WORKBENCH_OTLP_ENDPOINT:-}
+
 volumes:
   repo2ree-demo-data:
+  repo2ree-provider-state:
+
+networks:
+  default:
+    # A predictable name is part of the demo contract: child workbenches are
+    # launched through the Docker API rather than by Compose and must name it.
+    name: ${REPO2REE_NETWORK:-repo2ree-demo}
