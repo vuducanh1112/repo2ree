@@ -29,11 +29,12 @@ import time
 from collections import deque
 from collections.abc import Callable, Iterator
 from contextlib import suppress
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from uuid import uuid4
 
 from repo2ree_protocol.allocation import AllocationRequest
+from repo2ree_protocol.build import BuildInfo
 from repo2ree_protocol.frames import (
     COPY_CHUNK_BYTES,
     TERMINAL_FRAME_TYPES,
@@ -106,6 +107,8 @@ class WorkbenchInfo:
     location_id: str
     image: str
     connected_at: float  # epoch seconds (UTC)
+    build: BuildInfo = field(default_factory=BuildInfo)
+    executor_build: BuildInfo = field(default_factory=BuildInfo)
 
 
 # ================================================
@@ -378,6 +381,8 @@ class WorkbenchConnectionRegistry:
                     else False,
                     hostname=conn.hello.hostname if conn.hello else "",
                     version=conn.hello.version if conn.hello else "",
+                    build=conn.hello.build if conn.hello else BuildInfo(),
+                    executor_build=conn.hello.executor_build if conn.hello else BuildInfo(),
                     location_id=(conn.hello.location_id or workbench_id) if conn.hello else workbench_id,
                     image=conn.hello.image if conn.hello else "",
                     connected_at=self._connected_at.get(workbench_id, 0.0),

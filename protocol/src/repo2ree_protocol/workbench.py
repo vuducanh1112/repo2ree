@@ -22,6 +22,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
 from repo2ree_protocol.allocation import AllocationRequest
+from repo2ree_protocol.build import BuildInfo
 from repo2ree_protocol.frames import Frame
 
 # ================================================
@@ -45,6 +46,8 @@ class WorkbenchHello(BaseModel):
     enrollment_token: str = ""
     hostname: str = ""
     version: str = ""
+    build: BuildInfo = Field(default_factory=BuildInfo)
+    executor_build: BuildInfo = Field(default_factory=BuildInfo)
     location_id: str = ""
     # The base image this bench was provisioned from; blank for an externally
     # managed bench, which this control plane did not build.

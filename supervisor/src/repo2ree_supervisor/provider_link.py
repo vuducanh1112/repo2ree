@@ -6,10 +6,11 @@ import logging
 import queue
 from collections.abc import Callable, Iterator
 from contextlib import suppress
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from uuid import uuid4
 
 from repo2ree_protocol.allocation import AllocationRequest, WorkbenchImage
+from repo2ree_protocol.build import BuildInfo
 from repo2ree_protocol.frames import AllocationStatusFrame, ErrorFrame, Frame, UnavailableFrame
 from repo2ree_protocol.provider import (
     EnsureAllocationRequest,
@@ -44,6 +45,7 @@ class ProviderInfo:
     images: tuple[WorkbenchImage, ...]
     accepts_custom_image: bool
     connected_at: float
+    build: BuildInfo = field(default_factory=BuildInfo)
 
 
 class ProviderConnection(WorkbenchConnection):
@@ -129,6 +131,7 @@ class ProviderConnectionRegistry(WorkbenchConnectionRegistry):
                     provider_id=provider_id,
                     hostname=connection.provider_hello.hostname if connection.provider_hello else "",
                     version=connection.provider_hello.version if connection.provider_hello else "",
+                    build=connection.provider_hello.build if connection.provider_hello else BuildInfo(),
                     location_id=connection.provider_hello.location_id if connection.provider_hello else "",
                     location_label=connection.provider_hello.location_label if connection.provider_hello else "",
                     images=connection.provider_hello.images if connection.provider_hello else (),

@@ -62,7 +62,7 @@ Important local paths:
 Start the API:
 
 ```bash
-uv run --package repo2ree-api uvicorn repo2ree_api.main:app --reload --host 0.0.0.0 --port 8000
+scripts/with-build-revision uv run --package repo2ree-api uvicorn repo2ree_api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 Build the executor and tools closures that a source-run provider injects into
@@ -78,7 +78,7 @@ Docker runtime; without a connected provider, REE provisioning cannot complete:
 ```bash
 REPO2REE_EXEC_BUNDLE=$PWD/dist/bundles/exec \
 REPO2REE_TOOLS_BUNDLE=$PWD/dist/bundles/tools \
-uv run --package repo2ree-provider-docker python -m repo2ree_provider_docker
+scripts/with-build-revision uv run --package repo2ree-provider-docker python -m repo2ree_provider_docker
 ```
 
 The provider starts `repo2ree-workbench` inside each workbench it creates, so
@@ -91,7 +91,7 @@ own nested daemon and stronger separation.
 Start the GUI in another shell:
 
 ```bash
-VITE_API_BASE_URL=http://localhost:8000 npm --prefix gui run dev -- --host
+VITE_API_BASE_URL=http://localhost:8000 scripts/with-build-revision npm --prefix gui run dev -- --host
 ```
 
 Then open the URL printed by Vite, usually `http://localhost:5173`.

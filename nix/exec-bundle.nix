@@ -26,10 +26,13 @@
 # Smoke-test:   docker run --rm -v "$(readlink -f result)/store:/nix/store:ro" \
 #                 alpine "$(jq -r .exec_path result/manifest.json)" --help
 # ----------------------------------------------------------------
-{ pkgs }:
+{
+  pkgs,
+  buildRevision ? "development",
+}:
 
 let
-  workbench = import ./workbench.nix { inherit pkgs; };
+  workbench = import ./workbench.nix { inherit pkgs buildRevision; };
 in
 pkgs.runCommand "repo2ree-exec-bundle" { } ''
   mkdir -p $out/store

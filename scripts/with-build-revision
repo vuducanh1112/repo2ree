@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+export REPO2REE_BUILD_REVISION=${REPO2REE_BUILD_REVISION:-$("$script_dir/build-revision.sh")}
+export VITE_BUILD_REVISION=${VITE_BUILD_REVISION:-$REPO2REE_BUILD_REVISION}
+exec "$@"

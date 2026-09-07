@@ -11,6 +11,7 @@ from repo2ree_api.ree_index import ReeIndexEntry
 from repo2ree_core.domain.ree.audit import ReeAudit
 from repo2ree_core.domain.ree.model import Ree, ReeStatus
 from repo2ree_core.operations.read_models.files import ReeFile, WorkspaceFile
+from repo2ree_protocol.build import BuildInfo
 
 
 class ReeDocument(BaseModel):
@@ -62,6 +63,8 @@ class WorkbenchStatus(BaseModel):
     allocation_id: str | None = None
     location_id: str | None = None
     image: str | None = None
+    build: BuildInfo = Field(default_factory=BuildInfo)
+    executor_build: BuildInfo = Field(default_factory=BuildInfo)
 
 
 class ReeState(BaseModel):

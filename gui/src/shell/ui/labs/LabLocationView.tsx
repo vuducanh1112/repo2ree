@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { PodWidget } from "../app-shell/canvas/PodWidget";
 import { WorkspaceDrawer } from "../app-shell/canvas/WorkspaceDrawer";
+import { BuildBadge } from "../shared/components/BuildBadge";
 import { Input } from "../shared/components/FormControl";
 import { Ic } from "../shared/components/Icon";
 import { Notice } from "../shared/components/Notice";
@@ -66,6 +67,7 @@ export function LabLocationView({ onBack }: LabLocationViewProps) {
           <button type="button" onClick={onBack} className={styles.back}>
             {Ic.arrowLeft(15)} Back
           </button>
+          <BuildBadge />
         </div>
 
         <div className={styles.heading}>

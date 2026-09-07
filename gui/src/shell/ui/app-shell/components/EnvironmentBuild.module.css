@@ -1,0 +1,46 @@
+.environment {
+  position: relative;
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+}
+.environment summary {
+  padding: var(--space-1-5) var(--space-3);
+  border: 1px solid var(--chrome-border);
+  border-radius: var(--radius-sm);
+  color: var(--chrome-text-mid);
+  background: var(--chrome-surface);
+  cursor: pointer;
+  list-style: none;
+  white-space: nowrap;
+}
+.environment summary::-webkit-details-marker {
+  display: none;
+}
+.panel {
+  position: absolute;
+  z-index: 300;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  width: 270px;
+  padding: var(--space-2);
+  border: 1px solid var(--chrome-border);
+  border-radius: var(--radius-panel);
+  background: var(--chrome-surface);
+  box-shadow: var(--shadow-lg);
+}
+.panel div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+}
+.panel span {
+  color: var(--chrome-text-muted);
+}
+.panel code {
+  color: var(--chrome-text);
+  overflow-wrap: anywhere;
+  text-align: right;
+}

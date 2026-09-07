@@ -9,7 +9,9 @@ export const endpoints = {
   workbenches: () => `${API_V1_BASE}/workbenches`,
   reeIndex: () => `${API_V1_BASE}/ree-index`,
   rees: () => `${API_V1_BASE}/rees`,
+  buildInfo: () => `${API_V1_BASE}/system/build-info`,
   ree: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}`,
+  reeState: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/state`,
   reeDefinition: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/definition`,
   reeSourceAcquire: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/source:acquire`,

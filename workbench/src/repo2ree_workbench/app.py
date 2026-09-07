@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Sequence
 
+from repo2ree_protocol.build import current_build
 from repo2ree_protocol.log import configure_logging
 from repo2ree_protocol.tracing import (
     TracerProvider,
@@ -45,7 +46,8 @@ def main(argv: Sequence[str] = ()) -> None:
             instance_id=config.workbench_id,
         )
     meter_provider = setup_metrics("repo2ree-workbench", endpoint=config.otlp_endpoint, instance_id=config.workbench_id)
-    service = WorkbenchService(LocalExecutor(config.root, config.exec_path))
+    executor = LocalExecutor(config.root, config.exec_path)
+    service = WorkbenchService(executor)
     try:
         asyncio.run(
             run_workbench(
@@ -58,6 +60,8 @@ def main(argv: Sequence[str] = ()) -> None:
                 location_id=config.location_id,
                 image=config.image,
                 span_relay=span_relay,
+                build=current_build("repo2ree-workbench"),
+                executor_build=executor.build_info(),
             )
         )
     finally:

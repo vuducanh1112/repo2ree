@@ -33,12 +33,12 @@ from repo2ree_api.control.run_orchestration import (
     start_provisioning_run,
 )
 from repo2ree_api.control.run_registry import ACTIVE_STATUSES
-from repo2ree_api.deps import provider_connections, workbench_manager
+from repo2ree_api.deps import provider_connections, workbench_connections, workbench_manager
 from repo2ree_api.pagination import keyset_paginate
 from repo2ree_api.workbench.commands import ree_command_span, require_handle
 from repo2ree_core.domain.ree.model import Ree, ree_status
 from repo2ree_core.time_utils import utc_now
-from repo2ree_protocol import ActionResult
+from repo2ree_protocol import ActionResult, BuildInfo
 from repo2ree_supervisor import WorkbenchHandle
 
 _log = logging.getLogger(__name__)
@@ -197,6 +197,14 @@ def get_ree_state_route(ree_id: str) -> ReeState:
     # strictly: a summary that will not validate is a bug here rather than a peer
     # speaking a version we do not know, and it should say so loudly.
     runs = [RunSummary.model_validate(run) for run in list_runs(ree_id)]
+    bench = next(
+        (
+            candidate
+            for candidate in workbench_connections.list_workbenches()
+            if candidate.workbench_id == handle.workbench_id
+        ),
+        None,
+    )
     return ReeState(
         ree_id=document.ree_id,
         ree=document.ree,
@@ -208,6 +216,8 @@ def get_ree_state_route(ree_id: str) -> ReeState:
             allocation_id=handle.allocation_id,
             location_id=handle.location_id,
             image=handle.image,
+            build=bench.build if bench else BuildInfo(),
+            executor_build=bench.executor_build if bench else BuildInfo(),
         ),
         workspace_files=document.workspace_files,
         ree_files=document.ree_files,

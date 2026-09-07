@@ -19,7 +19,7 @@ e2e-bundles: _stage-nix-sources
 
 [private]
 _source-stack-playwright project capacity:
-    E2E_WORKBENCH_IMAGE={{ quote(E2E_WORKBENCH_IMAGE) }} E2E_PROVIDER_DOCKER_MODE={{ quote(E2E_PROVIDER_DOCKER_MODE) }} E2E_EXEC_BUNDLE={{ quote(E2E_EXEC_BUNDLE) }} E2E_TOOLS_BUNDLE={{ quote(E2E_TOOLS_BUNDLE) }} scripts/test-stack/e2e-stack.sh --project {{ quote(project) }} --mode {{ quote(E2E_CAPACITY_MODE) }} --capacity {{ quote(capacity) }}
+    E2E_PROVIDER_DOCKER_MODE={{ quote(E2E_PROVIDER_DOCKER_MODE) }} E2E_EXEC_BUNDLE={{ quote(E2E_EXEC_BUNDLE) }} E2E_TOOLS_BUNDLE={{ quote(E2E_TOOLS_BUNDLE) }} scripts/test-stack/e2e-stack.sh --project {{ quote(project) }} --mode {{ quote(E2E_CAPACITY_MODE) }} --capacity {{ quote(capacity) }}
 
 # Run the measured author-side browser E2E tier.
 [group('E2E tests')]
@@ -41,7 +41,7 @@ demo-gui-code-ocean: e2e-bundles (_source-stack-playwright "demo-gui-code-ocean"
 [group('Demos')]
 demo-api: e2e-bundles
     @mkdir -p "$(dirname {{ quote(API_DEMO_CAST) }})"
-    E2E_WORKBENCH_IMAGE={{ quote(E2E_WORKBENCH_IMAGE) }} E2E_PROVIDER_DOCKER_MODE={{ quote(E2E_PROVIDER_DOCKER_MODE) }} E2E_EXEC_BUNDLE={{ quote(E2E_EXEC_BUNDLE) }} E2E_TOOLS_BUNDLE={{ quote(E2E_TOOLS_BUNDLE) }} scripts/test-stack/e2e-stack.sh --script {{ quote(ROOT + "/api/tests/e2e/api_walkthrough.py") }} --tier demo-api --mode {{ quote(E2E_CAPACITY_MODE) }} --capacity 1 --record {{ quote(API_DEMO_CAST) }}
+    E2E_PROVIDER_DOCKER_MODE={{ quote(E2E_PROVIDER_DOCKER_MODE) }} E2E_EXEC_BUNDLE={{ quote(E2E_EXEC_BUNDLE) }} E2E_TOOLS_BUNDLE={{ quote(E2E_TOOLS_BUNDLE) }} scripts/test-stack/e2e-stack.sh --script {{ quote(ROOT + "/api/tests/e2e/api_walkthrough.py") }} --tier demo-api --mode {{ quote(E2E_CAPACITY_MODE) }} --capacity 1 --record {{ quote(API_DEMO_CAST) }}
     python3 {{ quote(ROOT + "/api/tests/e2e/render_cast_transcript.py") }} {{ quote(API_DEMO_CAST) }} {{ quote(API_DEMO_TRANSCRIPT) }}
 
 # Start the local image-backed stack.

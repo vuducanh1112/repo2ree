@@ -10,8 +10,11 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from repo2ree_protocol.build import BuildInfo
 
 
 class LifecycleMode(StrEnum):
@@ -55,6 +58,13 @@ class WorkbenchImage(BaseModel):
         return self
 
 
+class ConnectedComponent(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    kind: Literal["provider", "workbench"]
+    build: BuildInfo = Field(default_factory=BuildInfo)
+
+
 class ComputeLocation(BaseModel):
     """A place workbenches can be obtained, and the images it offers there.
 
@@ -75,6 +85,7 @@ class ComputeLocation(BaseModel):
     # there is no image left to choose.
     images: tuple[WorkbenchImage, ...] = ()
     accepts_custom_image: bool = False
+    connected_component: ConnectedComponent | None = None
 
 
 class AllocationRequest(BaseModel):

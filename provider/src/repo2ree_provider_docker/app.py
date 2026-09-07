@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 
 from repo2ree_protocol.allocation import WorkbenchImage
+from repo2ree_protocol.build import current_build
 from repo2ree_protocol.log import configure_logging
 from repo2ree_protocol.tracing import otlp_log_handler, setup_logs, setup_metrics, setup_tracing
 from repo2ree_provider_docker.config import load_config
@@ -57,6 +58,7 @@ def main() -> None:
                 location_label=config.location_label,
                 images=public_images,
                 accepts_custom_image=config.accepts_custom_image,
+                build=current_build("repo2ree-provider-docker"),
             )
         )
     finally:

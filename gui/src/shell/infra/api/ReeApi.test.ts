@@ -19,6 +19,7 @@ describe("ReeApi", () => {
   it("maps global catalogs and filtered listings", async () => {
     const { api, client } = harness();
     await api.listReeSteps();
+    await api.getBuildInfo();
     await api.listComputeLocations();
     await api.getAllocation("alloc/1");
     await api.listScriptTemplates();
@@ -29,6 +30,7 @@ describe("ReeApi", () => {
 
     expect(client.request.mock.calls.map(([path]) => path)).toEqual([
       "/api/v1/ree-steps",
+      "/api/v1/system/build-info",
       "/api/v1/compute-locations",
       "/api/v1/allocations/alloc%2F1",
       "/api/v1/script-templates",
@@ -37,7 +39,7 @@ describe("ReeApi", () => {
       "/api/v1/ree-index?cursor=next+page&limit=20&deposited_only=true",
       "/api/v1/rees",
     ]);
-    expect(client.request.mock.calls[7]?.[2].toString()).toBe(
+    expect(client.request.mock.calls[8]?.[2].toString()).toBe(
       "cursor=cursor&limit=10&status=sealed",
     );
   });
@@ -47,6 +49,7 @@ describe("ReeApi", () => {
     const reeId = asReeId("ree/1");
     await api.createRee({ name: "REE", location_id: "lab-1", image: "docker:29-dind" });
     await api.getRee(reeId);
+    await api.getReeState(reeId);
     await api.patchReeDefinition(reeId, { definition_patch: { name: "Renamed" } });
     await api.acquireSource(reeId, {
       origin_url: "https://example.test/repo.git",
@@ -68,6 +71,7 @@ describe("ReeApi", () => {
     expect(client.request.mock.calls.map(([path, init]) => [path, init.method])).toEqual([
       ["/api/v1/rees", "POST"],
       ["/api/v1/rees/ree%2F1", "GET"],
+      ["/api/v1/rees/ree%2F1/state", "GET"],
       ["/api/v1/rees/ree%2F1/definition", "PATCH"],
       ["/api/v1/rees/ree%2F1/source:acquire", "POST"],
       ["/api/v1/rees/ree%2F1/source", "DELETE"],
@@ -79,13 +83,13 @@ describe("ReeApi", () => {
       ["/api/v1/rees/ree%2F1/ree:seal", "POST"],
       ["/api/v1/rees/ree%2F1", "DELETE"],
     ]);
-    expect(client.request.mock.calls[6]?.[2].toString()).toBe("path=dir%2Fa+b.txt");
+    expect(client.request.mock.calls[7]?.[2].toString()).toBe("path=dir%2Fa+b.txt");
     // The draft carries only the declarations lint reads — no digest, no
     // size: an editor holds neither, and the route no longer asks.
-    expect(client.request.mock.calls[9]?.[1].body).toBe(
+    expect(client.request.mock.calls[10]?.[1].body).toBe(
       '{"target":{"kind":"build"},"source":"set -eu\\n","declarations":{"runtime_path":"runtime.tar"}}',
     );
-    expect(client.request.mock.calls[10]?.[1].body).toBe(
+    expect(client.request.mock.calls[11]?.[1].body).toBe(
       '{"include_source":true,"include_runtime":false,"include_results":true}',
     );
   });

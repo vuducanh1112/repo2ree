@@ -4,6 +4,7 @@ import type { ReviewStepKey } from "@core/reviews/reviewDag";
 import { useWorkspaceNavigationGuard } from "@shell/state/ree-editor/workspace-sync/useWorkspaceNavigationGuard";
 import { useCallback, useMemo, useState } from "react";
 import { WorkspaceLoadErrorView, WorkspaceLoadingView } from "../errors/WorkspaceLoadView";
+import { BuildBadge } from "../shared/components/BuildBadge";
 import { Ic } from "../shared/components/Icon";
 import { Toast } from "../shared/components/Toast";
 import { AppShellContent } from "./AppShellContent";
@@ -16,6 +17,7 @@ import { useReviewWorkflowModel } from "./canvas/review/useReviewWorkflowModel";
 import { SealContent } from "./canvas/SealContent";
 import { SourceAcquisitionContent } from "./canvas/SourceAcquisitionContent";
 import { WorkspaceDrawer } from "./canvas/WorkspaceDrawer";
+import { EnvironmentBuild } from "./components/EnvironmentBuild";
 import { ReeSyncStatus } from "./components/ReeSyncStatus";
 import { WorkspaceFooterBar } from "./components/WorkspaceFooterBar";
 import { type WorkflowMode, WorkspaceStatusBar } from "./components/WorkspaceStatusBar";
@@ -202,6 +204,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
           {Ic.layers()}
         </span>
         <span className={styles.product}>REE Editor</span>
+        <BuildBadge />
         <span aria-hidden className={styles.separator}>
           /
         </span>
@@ -210,6 +213,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
           <ReeSyncStatus state={reeIntentSyncState} onRetry={() => void retryReeIntentSync()} />
         )}
         <div className={styles.spacer} />
+        {provisioned && <EnvironmentBuild />}
         <button
           type="button"
           onClick={commands.onDownloadRee}

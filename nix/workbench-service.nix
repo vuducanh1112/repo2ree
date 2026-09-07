@@ -10,7 +10,10 @@
 # no docker, no core, no executor — which is what lets the same binary run
 # inside an arbitrary selected environment image.
 # ----------------------------------------------------------------
-{ pkgs }:
+{
+  pkgs,
+  buildRevision ? "development",
+}:
 
 let
   cleanPySrc = import ./clean-py-src.nix { inherit pkgs; };
@@ -53,6 +56,7 @@ let
   workbenchSource = cleanPySrc ../workbench/src;
 
   bin = pkgs.writeShellScriptBin "repo2ree-workbench" ''
+    export REPO2REE_BUILD_REVISION=${pkgs.lib.escapeShellArg buildRevision}
     export PYTHONPATH="${protocolSource}:${workbenchSource}''${PYTHONPATH:+:$PYTHONPATH}"
     exec ${python}/bin/python -m repo2ree_workbench "$@"
   '';

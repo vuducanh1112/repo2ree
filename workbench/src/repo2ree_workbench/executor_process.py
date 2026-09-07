@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import signal
@@ -12,6 +13,7 @@ from collections.abc import Iterator
 from contextlib import suppress
 from pathlib import Path, PurePosixPath
 
+from repo2ree_protocol.build import BuildInfo
 from repo2ree_protocol.frames import Frame, ResultFrame
 from repo2ree_protocol.tracing import current_traceparent
 from repo2ree_workbench import executor_frames
@@ -33,6 +35,23 @@ class LocalExecutor:
         if traceparent := current_traceparent():
             environment["TRACEPARENT"] = traceparent
         return environment
+
+    def build_info(self) -> BuildInfo:
+        """Ask the configured executor to identify itself, tolerating older binaries."""
+        try:
+            result = subprocess.run(
+                [self.exec_path, "build-info"],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=10,
+                env=self._environment(),
+            )
+            if result.returncode == 0:
+                return BuildInfo.model_validate(json.loads(result.stdout))
+        except (OSError, subprocess.SubprocessError, ValueError):
+            pass
+        return BuildInfo()
 
     def exec_simple(self, argv: list[str], timeout: int = 60) -> None:
         result = subprocess.run(

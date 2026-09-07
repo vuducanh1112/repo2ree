@@ -20,6 +20,7 @@ def fake_executor(tmp_path: Path) -> Path:
         '  execute) cat >/dev/null; printf \'%s\\n\' \'{"status":"succeeded","outputs":{}}\' ;;\n'
         "  query) printf query-result ;;\n"
         "  fail) echo failed >&2; exit 7 ;;\n"
+        '  build-info) printf \'%s\\n\' \'{"version":"0.1.0","revision":"executor-revision"}\' ;;\n'
         "  *) exit 0 ;;\n"
         "esac\n"
     )
@@ -38,6 +39,12 @@ def test_local_executor_reports_simple_failure(fake_executor: Path, tmp_path: Pa
     executor = LocalExecutor(tmp_path / "ree", str(fake_executor))
     with pytest.raises(RuntimeError, match="exit 7"):
         executor.exec_simple(["fail"])
+
+
+def test_local_executor_reads_executor_build(fake_executor: Path, tmp_path: Path) -> None:
+    build = LocalExecutor(tmp_path / "ree", str(fake_executor)).build_info()
+
+    assert build.revision == "executor-revision"
 
 
 def test_copy_in_is_atomic_and_confined(fake_executor: Path, tmp_path: Path) -> None:

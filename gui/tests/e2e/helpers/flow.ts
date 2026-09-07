@@ -29,7 +29,7 @@ const EXAMPLES_DIR = path.resolve(__dirname, "../../../../examples");
  * The provider injects the executor and source-handling tools into this image.
  */
 export const LIGHTWEIGHT_WORKBENCH_IMAGE =
-  process.env.E2E_LIGHTWEIGHT_WORKBENCH_IMAGE ?? "docker.io/library/python:3.11-slim";
+  process.env.PYTHON_SLIM_IMAGE ?? "docker.io/library/python:3.11-slim";
 
 /** Absolute path to the bundled Python hello-world source archive. */
 export function pythonHelloWorld(): string {

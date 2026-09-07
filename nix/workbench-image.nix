@@ -34,10 +34,13 @@
 # Build with:   nix build .#workbench-image
 # Load with:    docker load < result
 # ----------------------------------------------------------------
-{ pkgs }:
+{
+  pkgs,
+  buildRevision ? "development",
+}:
 
 let
-  workbench = import ./workbench.nix { inherit pkgs; };
+  workbench = import ./workbench.nix { inherit pkgs buildRevision; };
 in
 pkgs.dockerTools.buildLayeredImage {
   name = "repo2ree-workbench";
@@ -64,6 +67,9 @@ pkgs.dockerTools.buildLayeredImage {
   extraCommands = "mkdir -p ree";
 
   config = {
+    Labels = {
+      "org.opencontainers.image.revision" = buildRevision;
+    };
     Cmd = [ "${workbench.service.bin}/bin/repo2ree-workbench" ];
     Env = [
       "PATH=/bin"

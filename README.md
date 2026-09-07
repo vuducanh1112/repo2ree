@@ -87,7 +87,7 @@ Full contributor setup lives in
 1. Start the backend from the repository root:
 
 ```bash
-uv run --package repo2ree-api uvicorn repo2ree_api.main:app --reload --host 0.0.0.0 --port 8000
+scripts/with-build-revision uv run --package repo2ree-api uvicorn repo2ree_api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 2. Build the executor and tools bundles the provider injects into each
@@ -109,7 +109,7 @@ just e2e-bundles   # builds dist/bundles/{exec,tools} via nix
 ```bash
 REPO2REE_EXEC_BUNDLE=$PWD/dist/bundles/exec \
 REPO2REE_TOOLS_BUNDLE=$PWD/dist/bundles/tools \
-uv run --package repo2ree-provider-docker python -m repo2ree_provider_docker
+scripts/with-build-revision uv run --package repo2ree-provider-docker python -m repo2ree_provider_docker
 ```
 
 The provider dials the control plane on `localhost`, but the workbench it
@@ -126,7 +126,7 @@ workbenches:
 REPO2REE_EXEC_BUNDLE=$PWD/dist/bundles/exec \
 REPO2REE_TOOLS_BUNDLE=$PWD/dist/bundles/tools \
 PROVIDER_DOCKER_MODE=host-socket \
-uv run --package repo2ree-provider-docker python -m repo2ree_provider_docker
+scripts/with-build-revision uv run --package repo2ree-provider-docker python -m repo2ree_provider_docker
 ```
 
 This reuses the host Docker image cache, but it weakens workbench isolation and
@@ -154,7 +154,7 @@ with one:
 
 ```bash
 EXTERNAL_WORKBENCH_TOKEN=local-dev \
-uv run --package repo2ree-api uvicorn repo2ree_api.main:app --reload --host 0.0.0.0 --port 8000
+scripts/with-build-revision uv run --package repo2ree-api uvicorn repo2ree_api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 Then start the workbench itself. `--root` is the directory the REE lives in —
@@ -194,7 +194,7 @@ npm --prefix gui ci
 5. Start the GUI dev server:
 
 ```bash
-VITE_API_BASE_URL=http://localhost:8000 npm --prefix gui run dev -- --host
+VITE_API_BASE_URL=http://localhost:8000 scripts/with-build-revision npm --prefix gui run dev -- --host
 ```
 
 ## E2E test

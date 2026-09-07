@@ -28,9 +28,12 @@ gui-image:
 # Build and load the backend image.
 [group('Images')]
 backend-image:
-    @echo "Building backend image..."
-    docker build --provenance=false -f docker/demo/backend.Dockerfile -t repo2ree-backend:local .
-    @echo "Done: repo2ree-backend:local"
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Building backend image..."
+    revision=$(scripts/build-revision.sh)
+    docker build --provenance=false --build-arg REPO2REE_BUILD_REVISION="$revision" -f docker/demo/backend.Dockerfile -t repo2ree-backend:local .
+    echo "Done: repo2ree-backend:local"
 
 # Build and load the self-contained Docker provider image.
 [group('Images')]

@@ -22,6 +22,12 @@ function mapLab(wire: ComputeLocation): Lab {
     acceptsCustomImage: wire.accepts_custom_image ?? false,
     status: "connected",
     available: wire.available,
+    connectedComponent: wire.connected_component
+      ? {
+          kind: wire.connected_component.kind,
+          build: wire.connected_component.build ?? {},
+        }
+      : undefined,
   };
 }
 

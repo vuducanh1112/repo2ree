@@ -27,10 +27,13 @@
 # Run with:     /nix/store must hold store/, then
 #                 ./activate --connect wss://…/workbench/connect --token "$TOKEN"
 # ----------------------------------------------------------------
-{ pkgs }:
+{
+  pkgs,
+  buildRevision ? "development",
+}:
 
 let
-  workbench = import ./workbench.nix { inherit pkgs; };
+  workbench = import ./workbench.nix { inherit pkgs buildRevision; };
 
   workbenchPath = "${workbench.service.bin}/bin/repo2ree-workbench";
 

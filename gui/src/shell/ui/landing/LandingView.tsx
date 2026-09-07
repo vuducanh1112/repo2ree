@@ -1,6 +1,7 @@
 import { APP_ROUTE, type AppLoadRoutePath, LOAD_REE_PARAM } from "@core/app-shell/pages";
 import { useLabs } from "@shell/data/labs/labs";
 import type { ReactNode } from "react";
+import { BuildBadge } from "../shared/components/BuildBadge";
 import { Ic } from "../shared/components/Icon";
 import styles from "./LandingView.module.css";
 
@@ -112,6 +113,7 @@ export function LandingView({ onLoad, onViewLabs, onViewReeIndex }: LandingViewP
             <span>REE index</span>
           </button>
           <GithubDestination />
+          <BuildBadge />
         </nav>
       </header>
 

@@ -50,13 +50,9 @@
 # each writing its own suffixed data file, combined at the end.
 #
 # Environment knobs (all optional):
-#   E2E_WORKBENCH_IMAGE        image behind the provider's "standard" profile;
-#                              empty means the provider's own default — the
-#                              pinned docker:dind digest — which every browser
-#                              tier runs on. Images are provider-private: the
-#                              API and the browser only ever name a profile.
-#   E2E_PIP_WORKBENCH_IMAGE    image behind the extra docker-less "bare-python"
-#                              profile the pip tier selects (default:
+#   PYTHON_SLIM_IMAGE          docker-less Python image published in the catalog
+#                              and selected through the custom-image UI by the
+#                              lightweight E2E flows (default:
 #                              docker.io/library/python:3.11-slim)
 #   E2E_WORKBENCH_STATE_DIR        workbench identity dir (default: test-artifacts/state/workbenches);
 #                              with --workbenches N, workbench i > 1 uses <dir>-<i> so
@@ -68,6 +64,10 @@
 # default, custom benches) need the injection, and images that ship their own
 # /nix (the full workbench) skip it — so this is safe for every tier.
 set -euo pipefail
+
+repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+export REPO2REE_BUILD_REVISION=${REPO2REE_BUILD_REVISION:-$("$repo_root/scripts/build-revision.sh")}
+export VITE_BUILD_REVISION=${VITE_BUILD_REVISION:-$REPO2REE_BUILD_REVISION}
 
 usage() {
     echo "usage: $0 (--project <playwright-project> | --script <path> --tier <name>)" \
@@ -169,12 +169,12 @@ for i in $(seq 1 "$capacity"); do rm -f "$(workbench_log "$i")"; done
 # The provider owns its curated catalog: these are the base images this stack
 # offers, published outward so a run can pick one by label. Nothing here says
 # what an image supplies — a mismatch surfaces when the REE's build fails.
-standard_image=${E2E_WORKBENCH_IMAGE:-docker.io/library/docker:29-dind}
-pip_image=${E2E_PIP_WORKBENCH_IMAGE:-docker.io/library/python:3.11-slim}
+standard_image=docker.io/library/docker:29-dind
+python_slim_image=${PYTHON_SLIM_IMAGE:-docker.io/library/python:3.11-slim}
 export WORKBENCH_IMAGE_CATALOG
 WORKBENCH_IMAGE_CATALOG=$(python3 -c '
 import json, sys
-standard_image, pip_image = sys.argv[1:3]
+standard_image, python_slim_image = sys.argv[1:3]
 print(json.dumps([
     {
         "id": "standard",
@@ -184,12 +184,12 @@ print(json.dumps([
     },
     {
         "id": "python",
-        "ref": pip_image,
+        "ref": python_slim_image,
         "label": "Python bench",
         "description": "Docker-less workbench: the base image is the runtime.",
     },
 ]))
-' "$standard_image" "$pip_image")
+' "$standard_image" "$python_slim_image")
 
 api_pid=
 capacity_pids=()

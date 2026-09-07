@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from repo2ree_api.contracts import ERROR_RESPONSES
 from repo2ree_api.deps import allocation_store, provider_connections, workbench_connections
-from repo2ree_protocol import AllocationRecord, ComputeLocation, LifecycleMode
+from repo2ree_protocol import AllocationRecord, ComputeLocation, ConnectedComponent, LifecycleMode
 
 compute_router = APIRouter(tags=["compute"])
 
@@ -35,6 +35,7 @@ def list_compute_locations() -> ComputeLocationList:
             available=True,
             images=provider.images,
             accepts_custom_image=provider.accepts_custom_image,
+            connected_component=ConnectedComponent(kind="provider", build=provider.build),
         )
         for provider in provider_connections.list_providers()
     ]
@@ -46,6 +47,7 @@ def list_compute_locations() -> ComputeLocationList:
             label=bench.hostname or bench.location_id,
             lifecycle_mode=LifecycleMode.EXTERNALLY_MANAGED,
             available=bench.available,
+            connected_component=ConnectedComponent(kind="workbench", build=bench.build),
         )
         for bench in workbench_connections.list_workbenches()
         if bench.mode == "external"

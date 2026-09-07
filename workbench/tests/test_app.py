@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 import repo2ree_workbench.app as app_module
+from repo2ree_protocol import BuildInfo
 from repo2ree_workbench.config import WorkbenchConfig
 
 
@@ -37,7 +38,12 @@ def test_main_composes_telemetry_runtime_and_control_connection(monkeypatch: pyt
     monkeypatch.setattr(app_module, "setup_metrics", lambda *args, **kwargs: Provider("metrics"))
     monkeypatch.setattr(app_module, "otlp_log_handler", lambda provider: object())
     monkeypatch.setattr(app_module, "configure_logging", lambda **kwargs: None)
-    monkeypatch.setattr(app_module, "LocalExecutor", lambda *args: object())
+
+    class Executor:
+        def build_info(self) -> BuildInfo:
+            return BuildInfo(revision="executor-test-revision")
+
+    monkeypatch.setattr(app_module, "LocalExecutor", lambda *args: Executor())
 
     async def run_workbench(*args: object, **kwargs: object) -> None:
         workbench_args.extend([*args, kwargs])
@@ -55,4 +61,5 @@ def test_main_composes_telemetry_runtime_and_control_connection(monkeypatch: pyt
     assert kwargs["enrollment_token"] == opaque_enrollment
     assert kwargs["location_id"] == "lab-1"
     assert kwargs["image"] == "docker.io/library/docker:29-dind"
+    assert kwargs["executor_build"].revision == "executor-test-revision"
     assert shutdowns == ["traces", "metrics", "logs"]

@@ -40,6 +40,8 @@ export type CreateSourceReviewPayload = Schema<"CreateSourceReviewPayload">;
 export type CreateBuildReviewPayload = Schema<"CreateBuildReviewPayload">;
 
 export type ReeDocument = Schema<"ReeDocument">;
+export type ReeState = Schema<"ReeState">;
+export type BuildInfo = Schema<"BuildInfo">;
 
 export type ReproducibilityReportWire = Schema<"ReproducibilityReport">;
 

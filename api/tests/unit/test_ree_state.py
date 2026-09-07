@@ -35,6 +35,8 @@ def test_ree_state_omits_inline_content_and_exposes_placement(
     state = resp.json()
     assert state["ree_id"] == online_ree.ree_id
     assert state["workbench"]["status"] == "available"
+    assert "build" in state["workbench"]
+    assert "executor_build" in state["workbench"]
     # Typed file entries serialize every field; content stays null — never inlined.
     assert state["workspace_files"] == [
         {"path": "ree-scripts/build_script.sh", "kind": "generated", "size": 12, "content": None}

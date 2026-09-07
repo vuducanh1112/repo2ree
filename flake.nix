@@ -30,6 +30,7 @@
   # the dev env can never drift onto different package revisions.
   outputs =
     {
+      self,
       nixpkgs,
       flake-utils,
       ...
@@ -37,6 +38,7 @@
     flake-utils.lib.eachDefaultSystem (
       system:
       let
+        buildRevision = self.rev or self.dirtyRev or "development";
         pkgs = import nixpkgs {
           inherit system;
           #config.allowUnfree = true; # Needed for some kubectl plugins/drivers
@@ -48,6 +50,7 @@
         # For a non-same-origin backend, set viteApiBaseUrl here.
         guiImage = import ./nix/gui-image.nix {
           inherit pkgs;
+          inherit buildRevision;
           viteApiBaseUrl = "";
         };
       in
@@ -59,16 +62,16 @@
         packages = rec {
           # The listener on its own, for a host that already has nix and
           # supplies its own isolation: `nix run .#workbench -- --connect …`.
-          workbench = (import ./nix/workbench.nix { inherit pkgs; }).service.bin;
+          workbench = (import ./nix/workbench.nix { inherit pkgs buildRevision; }).service.bin;
           # The self-managed install for a host with no nix: closure, both
           # manifests, and a generated `activate`. Tar it to distribute.
-          workbench-bundle = import ./nix/workbench-bundle.nix { inherit pkgs; };
-          exec-bundle = import ./nix/exec-bundle.nix { inherit pkgs; };
+          workbench-bundle = import ./nix/workbench-bundle.nix { inherit pkgs buildRevision; };
+          exec-bundle = import ./nix/exec-bundle.nix { inherit pkgs buildRevision; };
           tools-bundle = import ./nix/tools-bundle.nix { inherit pkgs; };
           # Transport for the closure the provider copies into its shared
           # store volume — not a bench you can run: it carries no toolchain.
-          workbench-image = import ./nix/workbench-image.nix { inherit pkgs; };
-          provider-image = import ./nix/provider-image.nix { inherit pkgs; };
+          workbench-image = import ./nix/workbench-image.nix { inherit pkgs buildRevision; };
+          provider-image = import ./nix/provider-image.nix { inherit pkgs buildRevision; };
           gui-image = guiImage;
           default = provider-image;
         };

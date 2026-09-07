@@ -31,7 +31,7 @@ from repo2ree_core.reproduction.commands import (
     TEST_ACTIVATION,
 )
 from repo2ree_core.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BUILD_SCRIPT
-from repo2ree_protocol import ActionResult, command_adapter
+from repo2ree_protocol import ActionResult, command_adapter, current_build
 from repo2ree_protocol.command import (
     ActivationTestArgs,
     ActivationTestCommand,
@@ -357,6 +357,12 @@ def init_ree_cmd(name: str) -> None:
 # ================================================
 # Inspection commands
 # ================================================
+
+
+@cli.command("build-info")
+def build_info_cmd() -> None:
+    """Print this executor's build identity as JSON."""
+    click.echo(current_build("repo2ree-executor").model_dump_json())
 
 
 @cli.command("doctor")

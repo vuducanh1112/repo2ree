@@ -3,6 +3,7 @@ import type { ApiClient } from "./ApiClient";
 import type {
   AllocationRecord,
   ApiListResponse,
+  BuildInfo,
   ComputeLocationList,
   CreateBuildReviewPayload,
   CreateSourceReviewPayload,
@@ -16,6 +17,7 @@ import type {
   ReeDefinitionPatchPayload,
   ReeDocument,
   ReeIndexList,
+  ReeState,
   ReeStepCatalog,
   ReeSummary,
   ReproducibilityReportWire,
@@ -68,6 +70,10 @@ function parseContentDispositionFilename(contentDisposition: string | null): str
 
 export class ReeApi {
   constructor(private readonly client: ApiClient) {}
+
+  async getBuildInfo(): Promise<BuildInfo> {
+    return this.client.request<BuildInfo>(endpoints.buildInfo(), { method: "GET" });
+  }
 
   /** Ordered authoring steps and their prerequisite edges. */
   async listReeSteps(): Promise<ReeStepCatalog> {
@@ -167,6 +173,10 @@ export class ReeApi {
     return this.client.request<ReeDocument>(endpoints.ree(reeId), {
       method: "GET",
     });
+  }
+
+  async getReeState(reeId: ReeId): Promise<ReeState> {
+    return this.client.request<ReeState>(endpoints.reeState(reeId), { method: "GET" });
   }
 
   async getEvaluateReport(reeId: ReeId): Promise<ReproducibilityReportWire> {

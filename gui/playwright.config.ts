@@ -42,6 +42,7 @@ export default defineConfig({
         timeout: 10 * 1000,
         env: {
           VITE_API_BASE_URL: apiBaseURL,
+          VITE_BUILD_REVISION: process.env.VITE_BUILD_REVISION ?? "development",
         },
       },
   projects: [

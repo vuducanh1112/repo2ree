@@ -15,6 +15,10 @@ export interface Lab {
   acceptsCustomImage: boolean;
   status: LabStatus;
   available: boolean;
+  connectedComponent?: {
+    kind: "provider" | "workbench";
+    build: { version?: string; revision?: string };
+  };
 }
 
 // One base image a lab offers. `ref` is the only field provisioning uses; the

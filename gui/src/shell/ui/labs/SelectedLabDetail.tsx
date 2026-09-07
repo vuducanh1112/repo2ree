@@ -1,3 +1,4 @@
+import { revisionLabel } from "@core/build/buildInfo";
 import type { Lab } from "@core/lab/Lab";
 import styles from "./SelectedLabDetail.module.css";
 
@@ -27,6 +28,10 @@ export function SelectedLabDetail({ lab }: SelectedLabDetailProps) {
     ["LIFECYCLE", preProvisioned ? "pre-provisioned" : "on demand"],
     ["IMAGES", preProvisioned ? "—" : String(lab.images.length)],
     ["CUSTOM IMAGE", lab.acceptsCustomImage ? "accepted" : "no"],
+    [
+      lab.connectedComponent?.kind === "provider" ? "PROVIDER REV" : "WORKBENCH REV",
+      revisionLabel(lab.connectedComponent?.build.revision),
+    ],
   ];
 
   return (

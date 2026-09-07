@@ -903,6 +903,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/build-info": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Build Info */
+        get: operations["getBuildInfo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -1242,6 +1259,25 @@ export interface components {
             advisory?: components["schemas"]["PackageDeltaRecord"][];
         };
         /**
+         * BuildInfo
+         * @description A component's package version and exact source revision.
+         *
+         *     Both fields are optional on the wire so independently deployed third-party
+         *     providers and workbenches remain compatible.
+         */
+        BuildInfo: {
+            /**
+             * Version
+             * @default
+             */
+            version: string;
+            /**
+             * Revision
+             * @default
+             */
+            revision: string;
+        };
+        /**
          * BuildRuntimeDefinition
          * @description The build recipe: the script that runs, and what running it must leave.
          *
@@ -1478,11 +1514,21 @@ export interface components {
              * @default false
              */
             accepts_custom_image: boolean;
+            connected_component?: components["schemas"]["ConnectedComponent"] | null;
         };
         /** ComputeLocationList */
         ComputeLocationList: {
             /** Locations */
             locations: components["schemas"]["ComputeLocation"][];
+        };
+        /** ConnectedComponent */
+        ConnectedComponent: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "provider" | "workbench";
+            build?: components["schemas"]["BuildInfo"];
         };
         /** Contributor */
         Contributor: {
@@ -4085,6 +4131,8 @@ export interface components {
             location_id?: string | null;
             /** Image */
             image?: string | null;
+            build?: components["schemas"]["BuildInfo"];
+            executor_build?: components["schemas"]["BuildInfo"];
         };
         /** WorkbenchSummary */
         WorkbenchSummary: {
@@ -9521,6 +9569,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getBuildInfo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BuildInfo"];
                 };
             };
         };

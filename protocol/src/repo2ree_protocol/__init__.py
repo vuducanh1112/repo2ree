@@ -3,9 +3,11 @@ from repo2ree_protocol.allocation import (
     AllocationRequest,
     AllocationState,
     ComputeLocation,
+    ConnectedComponent,
     LifecycleMode,
     WorkbenchImage,
 )
+from repo2ree_protocol.build import BUILD_REVISION_ENV, BuildInfo, current_build
 from repo2ree_protocol.command import (
     AcquireSourceCommand,
     ActivationTestCommand,
@@ -81,6 +83,7 @@ from repo2ree_protocol.workbench import (
 )
 
 __all__ = [
+    "BUILD_REVISION_ENV",
     "COPY_CHUNK_BYTES",
     "TERMINAL_FRAME_TYPES",
     "AcquireSourceCommand",
@@ -91,12 +94,14 @@ __all__ = [
     "AllocationState",
     "AllocationStatusFrame",
     "AssignAllocationRequest",
+    "BuildInfo",
     "BuildRuntimeCommand",
     "BytesChunkFrame",
     "CancelRequest",
     "CancelRunRequest",
     "Command",
     "ComputeLocation",
+    "ConnectedComponent",
     "CopyAbortRequest",
     "CopyChunkRequest",
     "CopyCloseRequest",
@@ -146,6 +151,7 @@ __all__ = [
     "WorkbenchWsRequest",
     "WriteFileCommand",
     "command_adapter",
+    "current_build",
     "frame_adapter",
     "provider_hello_adapter",
     "provider_ws_message_adapter",

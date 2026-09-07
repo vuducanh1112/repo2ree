@@ -26,11 +26,14 @@
 # Build with:   nix build .#provider-image
 # Load with:    docker load < result
 # ----------------------------------------------------------------
-{ pkgs }:
+{
+  pkgs,
+  buildRevision ? "development",
+}:
 
 let
   cleanPySrc = import ./clean-py-src.nix { inherit pkgs; };
-  workbench = import ./workbench.nix { inherit pkgs; };
+  workbench = import ./workbench.nix { inherit pkgs buildRevision; };
 
   # The provider's own interpreter: the workbench listener's runtime — the two
   # speak the same repo2ree_protocol frames, so they need the same imports —
@@ -53,6 +56,7 @@ let
   };
 
   providerBin = pkgs.writeShellScriptBin "repo2ree-provider-docker" ''
+    export REPO2REE_BUILD_REVISION=${pkgs.lib.escapeShellArg buildRevision}
     export PYTHONPATH="${srcs.protocol}:${srcs.dockerSupport}:${srcs.provider}''${PYTHONPATH:+:$PYTHONPATH}"
     exec ${providerPython}/bin/python -m repo2ree_provider_docker "$@"
   '';
@@ -83,6 +87,9 @@ pkgs.dockerTools.buildLayeredImage {
   ];
 
   config = {
+    Labels = {
+      "org.opencontainers.image.revision" = buildRevision;
+    };
     Entrypoint = [ "${providerBin}/bin/repo2ree-provider-docker" ];
     Env = [
       "PATH=/bin"

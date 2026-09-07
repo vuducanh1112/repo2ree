@@ -6719,6 +6719,27 @@
         }
       }
     },
+    "/api/v1/system/build-info": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Get Build Info",
+        "operationId": "getBuildInfo",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildInfo"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/": {
       "get": {
         "tags": [
@@ -7362,6 +7383,23 @@
         "title": "BuildComparison",
         "description": "How a reviewer's rebuilt runtime compares to the author's.\n\nCarries both tiers of evidence: the runtime digests (which settle\n``identical`` when a build happens to be bit-reproducible) and the SBOM\nclosure delta (which settles the rest). The listed deltas are capped\nsamples \u2014 the ``*_count`` fields are the whole truth."
       },
+      "BuildInfo": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "default": ""
+          },
+          "revision": {
+            "type": "string",
+            "title": "Revision",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "BuildInfo",
+        "description": "A component's package version and exact source revision.\n\nBoth fields are optional on the wire so independently deployed third-party\nproviders and workbenches remain compatible."
+      },
       "BuildRuntimeDefinition": {
         "properties": {
           "build_runtime_script_path": {
@@ -7783,6 +7821,16 @@
             "type": "boolean",
             "title": "Accepts Custom Image",
             "default": false
+          },
+          "connected_component": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConnectedComponent"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -7810,6 +7858,27 @@
           "locations"
         ],
         "title": "ComputeLocationList"
+      },
+      "ConnectedComponent": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "provider",
+              "workbench"
+            ],
+            "title": "Kind"
+          },
+          "build": {
+            "$ref": "#/components/schemas/BuildInfo"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "title": "ConnectedComponent"
       },
       "Contributor": {
         "properties": {
@@ -14060,6 +14129,12 @@
               }
             ],
             "title": "Image"
+          },
+          "build": {
+            "$ref": "#/components/schemas/BuildInfo"
+          },
+          "executor_build": {
+            "$ref": "#/components/schemas/BuildInfo"
           }
         },
         "additionalProperties": false,

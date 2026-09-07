@@ -20,6 +20,7 @@
 {
   pkgs,
   viteApiBaseUrl ? "",
+  buildRevision ? "development",
 }:
 
 let
@@ -63,6 +64,7 @@ let
 
     # Baked into the bundle at build time.
     VITE_API_BASE_URL = viteApiBaseUrl;
+    VITE_BUILD_REVISION = buildRevision;
 
     # The default install phase expects a CLI-style package; for a static
     # site we just copy the Vite output to $out.
@@ -149,6 +151,9 @@ pkgs.dockerTools.buildLayeredImage {
   '';
 
   config = {
+    Labels = {
+      "org.opencontainers.image.revision" = buildRevision;
+    };
     Entrypoint = [
       "${pkgs.caddy}/bin/caddy"
       "run"

@@ -52,12 +52,23 @@ export function useApiServices(): ApiServicesValue {
   return value;
 }
 
+/** Optional read for chrome that must also render in isolated previews/tests. */
+export function useOptionalApiServices(): ApiServicesValue | null {
+  return useContext(ApiServicesContext);
+}
+
 export function useReeId(): ReeId {
   const reeId = useContext(ReeScopeContext);
   if (!reeId) {
     throw new Error("useReeId must be used within ReeScopeProvider");
   }
   return reeId;
+}
+
+export function useOptionalReeRuntime(): ReeRuntimeValue | null {
+  const services = useContext(ApiServicesContext);
+  const reeId = useContext(ReeScopeContext);
+  return useMemo(() => (services && reeId ? { ...services, reeId } : null), [services, reeId]);
 }
 
 /** Convenience adapter for code that needs both independent contexts. */

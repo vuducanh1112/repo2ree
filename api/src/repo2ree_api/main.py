@@ -35,6 +35,7 @@ from repo2ree_api.review.records import review_records_router
 from repo2ree_api.review.stages import review_stages_router
 from repo2ree_api.settings import service_settings
 from repo2ree_api.storage.init_storage import create_upload_staging_if_not_exists
+from repo2ree_protocol.build import BuildInfo, current_build
 from repo2ree_protocol.log import configure_logging, configure_run_log_export
 from repo2ree_protocol.tracing import otlp_log_handler, setup_logs, setup_metrics, setup_tracing
 from repo2ree_supervisor import WorkbenchUnavailableError
@@ -171,6 +172,16 @@ ROUTERS = (
 
 for router in ROUTERS:
     app.include_router(router)
+
+
+@app.get(
+    "/api/v1/system/build-info",
+    response_model=BuildInfo,
+    operation_id="getBuildInfo",
+    tags=["system"],
+)
+def get_build_info() -> BuildInfo:
+    return current_build("repo2ree-api")
 
 
 # ================================================

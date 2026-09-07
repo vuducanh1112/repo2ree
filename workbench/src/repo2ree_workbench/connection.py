@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import asyncio
 import base64
-import importlib.metadata
 import logging
 import queue
 import socket
@@ -29,6 +28,7 @@ import websockets
 from pydantic import BaseModel, ConfigDict, ValidationError
 from websockets.asyncio.client import ClientConnection, connect
 
+from repo2ree_protocol.build import BuildInfo, current_build
 from repo2ree_protocol.frames import (
     BytesChunkFrame,
     DoneFrame,
@@ -126,13 +126,6 @@ _bytes_received_counter = _meter.create_counter(
 # ================================================
 
 
-def _workbench_version() -> str:
-    try:
-        return importlib.metadata.version("repo2ree-workbench")
-    except importlib.metadata.PackageNotFoundError:
-        return ""
-
-
 class SpanRelay:
     """Late-bound socket sink for this workbench's own spans.
 
@@ -183,19 +176,24 @@ async def run_workbench(
     image: str = "",
     reconnect_delay: float = 3.0,
     span_relay: SpanRelay | None = None,
+    build: BuildInfo | None = None,
+    executor_build: BuildInfo | None = None,
 ) -> None:
     """Dial the control plane and serve requests, reconnecting on drop.
 
     ``span_relay``, when given, is pointed at each live socket so this
     workbench's own spans leave over the connection it already holds.
     """
+    component_build = build or current_build("repo2ree-workbench")
     hello = WorkbenchHello(
         workbench_id=workbench_id,
         mode=mode,
         allocation_id=allocation_id,
         enrollment_token=enrollment_token,
         hostname=socket.gethostname(),
-        version=_workbench_version(),
+        version=component_build.version,
+        build=component_build,
+        executor_build=executor_build or BuildInfo(),
         location_id=location_id,
         image=image,
         # Minted once per process: reconnects reuse it, so the control plane can

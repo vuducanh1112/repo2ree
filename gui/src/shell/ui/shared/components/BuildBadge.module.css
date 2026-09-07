@@ -1,0 +1,48 @@
+.badge {
+  position: relative;
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  color: var(--chrome-text-muted);
+}
+.badge summary {
+  padding: var(--space-1-5) var(--space-2);
+  border: 1px solid var(--chrome-border);
+  border-radius: var(--radius-sm);
+  background: var(--chrome-surface);
+  cursor: pointer;
+  list-style: none;
+  white-space: nowrap;
+}
+.badge summary::-webkit-details-marker {
+  display: none;
+}
+.badge[open] summary {
+  color: var(--chrome-text);
+  border-color: var(--chrome-border-strong);
+}
+.panel {
+  position: absolute;
+  z-index: 300;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  width: 250px;
+  padding: var(--space-2);
+  border: 1px solid var(--chrome-border);
+  border-radius: var(--radius-panel);
+  background: var(--chrome-surface);
+  box-shadow: var(--shadow-lg);
+}
+.panel div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-1);
+}
+.panel span {
+  color: var(--chrome-text-muted);
+}
+.panel code {
+  color: var(--chrome-text);
+  overflow-wrap: anywhere;
+  text-align: right;
+}

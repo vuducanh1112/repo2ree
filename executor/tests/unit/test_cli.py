@@ -57,6 +57,15 @@ def _stderr_events(result) -> list[dict]:  # type: ignore[type-arg]
 # ================================================
 
 
+def test_build_info_reports_injected_revision(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("REPO2REE_BUILD_REVISION", "executor-revision")
+
+    result = runner.invoke(cli, ["build-info"])
+
+    assert result.exit_code == 0
+    assert json.loads(result.output)["revision"] == "executor-revision"
+
+
 def test_init_ree_bootstraps_tree_and_metadata(ree_root: Path) -> None:
     result = runner.invoke(cli, ["init-ree", "--name", "demo"])
     assert result.exit_code == 0

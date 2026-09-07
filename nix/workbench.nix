@@ -25,11 +25,14 @@
 # own cadence. One delivery artifact does not have to mean one manifest, so
 # both are exposed side by side rather than fused.
 # ----------------------------------------------------------------
-{ pkgs }:
+{
+  pkgs,
+  buildRevision ? "development",
+}:
 
 let
-  executor = import ./ree-executor.nix { inherit pkgs; };
-  service = import ./workbench-service.nix { inherit pkgs; };
+  executor = import ./ree-executor.nix { inherit pkgs buildRevision; };
+  service = import ./workbench-service.nix { inherit pkgs buildRevision; };
   tools = import ./tools.nix { inherit pkgs; };
 
   # The executor manifest with the resident listener's path folded in. Every

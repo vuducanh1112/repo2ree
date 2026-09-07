@@ -15,6 +15,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
 from repo2ree_protocol.allocation import AllocationRequest, WorkbenchImage
+from repo2ree_protocol.build import BuildInfo
 from repo2ree_protocol.frames import Frame
 
 # ================================================
@@ -33,6 +34,7 @@ class ProviderHello(BaseModel):
     provider_kind: Literal["docker"] = "docker"
     hostname: str = ""
     version: str = ""
+    build: BuildInfo = Field(default_factory=BuildInfo)
     # The curated catalog this provider offers at its location, published
     # outward for the author's picker.
     images: tuple[WorkbenchImage, ...] = ()

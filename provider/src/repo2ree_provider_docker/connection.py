@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import importlib.metadata
 import logging
 import socket
 from collections.abc import Awaitable, Callable, Iterator
@@ -18,6 +17,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 from websockets.asyncio.client import ClientConnection, connect
 
 from repo2ree_protocol.allocation import AllocationState, WorkbenchImage
+from repo2ree_protocol.build import BuildInfo, current_build
 from repo2ree_protocol.frames import AllocationStatusFrame, DoneFrame, ErrorFrame, Frame
 from repo2ree_protocol.provider import (
     EnsureAllocationRequest,
@@ -40,13 +40,6 @@ class _RequestId(BaseModel):
     id: str
 
 
-def _provider_version() -> str:
-    try:
-        return importlib.metadata.version("repo2ree-provider-docker")
-    except importlib.metadata.PackageNotFoundError:
-        return ""
-
-
 async def run_provider(
     api_ws_url: str,
     provisioner: ProvisionerService,
@@ -56,14 +49,17 @@ async def run_provider(
     location_label: str,
     images: tuple[WorkbenchImage, ...],
     accepts_custom_image: bool = True,
+    build: BuildInfo | None = None,
     reconnect_delay: float = 3.0,
 ) -> None:
+    component_build = build or current_build("repo2ree-provider-docker")
     hello = ProviderHello(
         provider_id=provider_id,
         location_id=location_id,
         location_label=location_label,
         hostname=socket.gethostname(),
-        version=_provider_version(),
+        version=component_build.version,
+        build=component_build,
         images=images,
         accepts_custom_image=accepts_custom_image,
         nonce=uuid4().hex,
