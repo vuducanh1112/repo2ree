@@ -5,6 +5,7 @@ from scripts.config.check import (
     _declared,
     docker_environment_references,
     embedded_shell_environment_references,
+    forbidden_workflow_environment,
     nix_environment_references,
     python_environment_references,
     typescript_environment_references,
@@ -65,3 +66,14 @@ def test_declared_environment_patterns_cover_generated_tool_names() -> None:
 
     assert _declared("REPO2REE_TOOL_GIT_LFS", set(), patterns)
     assert not _declared("REPO2REE_UNKNOWN", set(), patterns)
+
+
+def test_workflow_environment_is_rejected() -> None:
+    contract = {
+        "variables": {
+            "RUNTIME_SETTING": {"kind": "runtime"},
+            "WORKFLOW_SWITCH": {"kind": "workflow"},
+        }
+    }
+
+    assert forbidden_workflow_environment(contract) == ["WORKFLOW_SWITCH"]

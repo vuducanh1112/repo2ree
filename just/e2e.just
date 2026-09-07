@@ -19,41 +19,41 @@ e2e-bundles: _stage-nix-sources
     nix build .#tools-bundle -o {{ quote(E2E_TOOLS_BUNDLE) }}
 
 [private]
-_source-stack-playwright project capacity mode docker_mode python_image git_origin:
-    scripts/test-stack/e2e-stack.sh --project {{ quote(project) }} --mode {{ quote(mode) }} --capacity {{ quote(capacity) }} --docker-mode {{ quote(docker_mode) }} --python-image {{ quote(python_image) }} --git-origin {{ quote(git_origin) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
+_source-stack-playwright project compute_locations mode docker_mode python_image git_origin:
+    scripts/test-stack/e2e-stack.sh --project {{ quote(project) }} --mode {{ quote(mode) }} --compute-locations {{ quote(compute_locations) }} --docker-mode {{ quote(docker_mode) }} --python-image {{ quote(python_image) }} --git-origin {{ quote(git_origin) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
 
 # Run the measured author-side browser E2E tier.
 [group('E2E tests')]
-e2e-gui capacity=DEFAULT_E2E_CAPACITY mode=DEFAULT_E2E_CAPACITY_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE python_image=DEFAULT_E2E_PYTHON_IMAGE git_origin=DEFAULT_E2E_GIT_ORIGIN: e2e-bundles (_source-stack-playwright "e2e-gui" capacity mode docker_mode python_image git_origin)
+e2e-gui compute_locations=DEFAULT_E2E_COMPUTE_LOCATIONS mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE python_image=DEFAULT_E2E_PYTHON_IMAGE git_origin=DEFAULT_E2E_GIT_ORIGIN: e2e-bundles (_source-stack-playwright "e2e-gui" compute_locations mode docker_mode python_image git_origin)
 
 # Run the measured reviewer-side browser E2E tier.
 [group('E2E tests')]
-e2e-gui-review mode=DEFAULT_E2E_CAPACITY_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE python_image=DEFAULT_E2E_PYTHON_IMAGE git_origin=DEFAULT_E2E_GIT_ORIGIN: e2e-bundles (_source-stack-playwright "e2e-gui-review" "1" mode docker_mode python_image git_origin)
+e2e-gui-review mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE python_image=DEFAULT_E2E_PYTHON_IMAGE git_origin=DEFAULT_E2E_GIT_ORIGIN: e2e-bundles (_source-stack-playwright "e2e-gui-review" "1" mode docker_mode python_image git_origin)
 
 # Record the measured narrated browser demo.
 [group('Demos')]
-demo-gui mode=DEFAULT_E2E_CAPACITY_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE python_image=DEFAULT_E2E_PYTHON_IMAGE git_origin=DEFAULT_E2E_GIT_ORIGIN: e2e-bundles (_source-stack-playwright "demo-gui" "1" mode docker_mode python_image git_origin)
+demo-gui mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE python_image=DEFAULT_E2E_PYTHON_IMAGE git_origin=DEFAULT_E2E_GIT_ORIGIN: e2e-bundles (_source-stack-playwright "demo-gui" "1" mode docker_mode python_image git_origin)
 
 # Record the measured external-capsule browser demo.
 [group('Demos')]
-demo-gui-code-ocean mode=DEFAULT_E2E_CAPACITY_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE python_image=DEFAULT_E2E_PYTHON_IMAGE git_origin=DEFAULT_E2E_GIT_ORIGIN: e2e-bundles (_source-stack-playwright "demo-gui-code-ocean" "1" mode docker_mode python_image git_origin)
+demo-gui-code-ocean mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE python_image=DEFAULT_E2E_PYTHON_IMAGE git_origin=DEFAULT_E2E_GIT_ORIGIN: e2e-bundles (_source-stack-playwright "demo-gui-code-ocean" "1" mode docker_mode python_image git_origin)
 
 # Record the measured pure-API walkthrough and render its transcript.
 [group('Demos')]
-demo-api mode=DEFAULT_E2E_CAPACITY_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE cast=DEFAULT_API_DEMO_CAST transcript="": e2e-bundles
+demo-api mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE cast=DEFAULT_API_DEMO_CAST transcript="": e2e-bundles
     #!/usr/bin/env bash
     set -euo pipefail
     cast={{ quote(cast) }}
     transcript={{ quote(transcript) }}
     transcript=${transcript:-${cast%.cast}.md}
     mkdir -p "$(dirname "$cast")"
-    scripts/test-stack/e2e-stack.sh --script {{ quote(ROOT + "/api/tests/e2e/api_walkthrough.py") }} --tier demo-api --mode {{ quote(mode) }} --capacity 1 --docker-mode {{ quote(docker_mode) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} --record "$cast"
+    scripts/test-stack/e2e-stack.sh --script {{ quote(ROOT + "/api/tests/e2e/api_walkthrough.py") }} --tier demo-api --mode {{ quote(mode) }} --compute-locations 1 --docker-mode {{ quote(docker_mode) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} --record "$cast"
     python3 {{ quote(ROOT + "/api/tests/e2e/render_cast_transcript.py") }} "$cast" "$transcript"
 
 # Start the local image-backed stack.
 [group('Stack management')]
-stack-up providers=DEFAULT_STACK_PROVIDERS:
-    scripts/test-stack/image-stack.sh up --providers {{ quote(providers) }}
+stack-up compute_locations=DEFAULT_STACK_COMPUTE_LOCATIONS:
+    scripts/test-stack/image-stack.sh up --compute-locations {{ quote(compute_locations) }}
 
 # Stop the image-backed stack while retaining volumes.
 [group('Stack management')]
@@ -72,8 +72,8 @@ workbench-clean store="":
 
 # Run any browser or API suite against an owned image-backed stack.
 [group('Stack tests')]
-stack-test suite providers="1" images="local" repository="" tag="":
-    scripts/test-stack/run-image-suite.sh --suite {{ quote(suite) }} --workbenches {{ quote(providers) }} --images {{ quote(images) }} --repository {{ quote(repository) }} --tag {{ quote(tag) }}
+stack-test suite compute_locations="1" images="local" repository="" tag="":
+    scripts/test-stack/run-image-suite.sh --suite {{ quote(suite) }} --compute-locations {{ quote(compute_locations) }} --images {{ quote(images) }} --repository {{ quote(repository) }} --tag {{ quote(tag) }}
 
 # Evict unreferenced bundle-store caches older than the requested days.
 [group('Stack management')]
@@ -102,17 +102,17 @@ demo-gui-on-stack: _check-image-stack
 # Run the API walkthrough against an already-running image stack.
 [group('Stack tests')]
 demo-api-on-stack: _check-image-stack
-    API_BASE_URL="$(scripts/test-stack/image-stack.sh api-url)" api/tests/e2e/api_walkthrough.py
+    api/tests/e2e/api_walkthrough.py --base-url "$(scripts/test-stack/image-stack.sh api-url)"
 
 # Build local images and run the author-side browser suite against them.
 [group('Stack tests')]
-e2e-gui-stack-local providers=DEFAULT_STACK_PROVIDERS: images
-    just stack-test e2e-gui {{ quote(providers) }} local
+e2e-gui-stack-local compute_locations=DEFAULT_STACK_COMPUTE_LOCATIONS: images
+    just stack-test e2e-gui {{ quote(compute_locations) }} local
 
 # Run the author-side browser suite against published images.
 [group('Stack tests')]
-e2e-gui-stack-published providers=DEFAULT_STACK_PROVIDERS repository=DEFAULT_STACK_IMAGE_REPO tag=DEFAULT_STACK_IMAGE_TAG:
-    just stack-test e2e-gui {{ quote(providers) }} published {{ quote(repository) }} {{ quote(tag) }}
+e2e-gui-stack-published compute_locations=DEFAULT_STACK_COMPUTE_LOCATIONS repository=DEFAULT_STACK_IMAGE_REPO tag=DEFAULT_STACK_IMAGE_TAG:
+    just stack-test e2e-gui {{ quote(compute_locations) }} published {{ quote(repository) }} {{ quote(tag) }}
 
 # Build local images and run the reviewer-side browser suite against them.
 [group('Stack tests')]

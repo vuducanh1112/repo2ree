@@ -325,13 +325,6 @@
         "type": "string"
       }
     },
-    "API_BASE_URL": {
-      "kind": "workflow",
-      "owner": "test-client",
-      "schema": {
-        "type": "string"
-      }
-    },
     "BASH_SOURCE": {
       "kind": "external",
       "owner": "bash",

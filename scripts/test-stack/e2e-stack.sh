@@ -2,17 +2,17 @@
 # Run the e2e stack: backend + workbench service(s) + a playwright project,
 # with readiness polling and teardown. Invoked by the Just E2E recipes.
 # `--mode provider|external` selects on-demand Docker provisioning or directly
-# installed workbenches. `--capacity <n>` sets the number of providers/external
-# workbenches (default 1).
+# installed workbenches. `--compute-locations <n>` sets the number of independent
+# locations exposed by provider/external processes (default 1). Tests that need
 # more than the stack offers (e.g. the multi-workbench spec, which needs 2) skip
 # themselves, so any project runs against any workbench count.
 #
-#   e2e-stack.sh --project <playwright-project> [--mode provider|external] [--capacity <n>]
-#   e2e-stack.sh --script <path> --tier <name> [--mode ...] [--capacity <n>] [--record <cast>]
+#   e2e-stack.sh --project <playwright-project> [--mode provider|external] [--compute-locations <n>]
+#   e2e-stack.sh --script <path> --tier <name> [--mode ...] [--compute-locations <n>] [--record <cast>]
 #
-# The --script mode runs an arbitrary client against the same live stack instead
-# of a playwright project — used by the pure-API workbench walkthrough. With
-# --record the run is captured via asciinema into a .cast terminal recording.
+# The --script mode runs a client that accepts `--base-url` against the same live
+# stack instead of a playwright project — used by the pure-API workbench
+# walkthrough. With --record the run is captured as an asciinema .cast.
 #
 # Every run is measured; there is no flag to turn it off. The backend *and* every
 # workbench start under coverage (you cannot measure an already-running process), and
@@ -63,7 +63,7 @@ export VITE_BUILD_REVISION=${VITE_BUILD_REVISION:-$REPO2REE_BUILD_REVISION}
 
 usage() {
     echo "usage: $0 (--project <playwright-project> | --script <path> --tier <name>)" \
-        "[--mode provider|external] [--capacity <n>] [--docker-mode dind|host-socket]" \
+        "[--mode provider|external] [--compute-locations <n>] [--docker-mode dind|host-socket]" \
         "[--state-root <path>] [--exec-bundle <path>] [--tools-bundle <path>]" \
         "[--python-image <ref>] [--git-origin <url>] [--record <cast>]" >&2
     exit 2
@@ -76,7 +76,7 @@ usage() {
 project=
 script=
 record=
-capacity=1
+compute_location_count=1
 mode=provider
 docker_mode=dind
 state_root=
@@ -91,7 +91,7 @@ while [ $# -gt 0 ]; do
         --script) [ $# -ge 2 ] || usage; script=$2; shift 2 ;;
         --tier) [ $# -ge 2 ] || usage; tier=$2; shift 2 ;;
         --record) [ $# -ge 2 ] || usage; record=$2; shift 2 ;;
-        --capacity) [ $# -ge 2 ] || usage; capacity=$2; shift 2 ;;
+        --compute-locations) [ $# -ge 2 ] || usage; compute_location_count=$2; shift 2 ;;
         --mode) [ $# -ge 2 ] || usage; mode=$2; shift 2 ;;
         --docker-mode) [ $# -ge 2 ] || usage; docker_mode=$2; shift 2 ;;
         --state-root) [ $# -ge 2 ] || usage; state_root=$2; shift 2 ;;
@@ -105,7 +105,7 @@ done
 # Exactly one runner: a playwright project or a script.
 if { [ -n "$project" ] && [ -n "$script" ]; } || { [ -z "$project" ] && [ -z "$script" ]; }; then usage; fi
 [ -z "$record" ] || [ -n "$script" ] || usage  # --record only applies to --script
-[ "$capacity" -ge 1 ] 2>/dev/null || usage
+[ "$compute_location_count" -ge 1 ] 2>/dev/null || usage
 case "$mode" in provider|external) ;; *) usage ;; esac
 case "$docker_mode" in dind|host-socket) ;; *) usage ;; esac
 # The tier is the project — one name, so the report can never be labelled with a
@@ -171,7 +171,7 @@ mkdir -p "$log_dir" "$state_dir" "$provider_state_dir" "$coverage_data_dir" "$co
 # process, so a previous run's files would otherwise be combined in as well
 # and report a union of two runs as one.
 rm -f "$coverage_file" "$coverage_file".*
-for i in $(seq 1 "$capacity"); do rm -f "$(workbench_log "$i")"; done
+for i in $(seq 1 "$compute_location_count"); do rm -f "$(workbench_log "$i")"; done
 
 # The provider owns its curated catalog: these are the base images this stack
 # offers, published outward so a run can pick one by label. Nothing here says
@@ -198,7 +198,7 @@ print(json.dumps([
 ' "$standard_image" "$python_slim_image")
 
 api_pid=
-capacity_pids=()
+compute_location_pids=()
 client_pid=
 stop_stack() {
     local pid
@@ -207,7 +207,7 @@ stop_stack() {
         wait "$client_pid" 2>/dev/null || true
         client_pid=
     fi
-    for pid in "${capacity_pids[@]}"; do
+    for pid in "${compute_location_pids[@]}"; do
         kill -TERM "$pid" 2>/dev/null || true
         wait "$pid" 2>/dev/null || true
     done
@@ -330,7 +330,7 @@ start_external_workbench() {
     COVERAGE_FILE=$coverage_file \
     uv run --package repo2ree-workbench coverage run --parallel-mode \
         -m repo2ree_workbench >"$2" 2>&1 &
-    capacity_pids+=($!)
+    compute_location_pids+=($!)
 }
 
 # start_provider <state-dir> <log-file> <index>: the index names the location.
@@ -351,32 +351,32 @@ start_provider() {
     COVERAGE_FILE=$coverage_file \
     uv run --package repo2ree-provider-docker coverage run --parallel-mode \
         -m repo2ree_provider_docker >"$2" 2>&1 &
-    capacity_pids+=($!)
+    compute_location_pids+=($!)
 }
 
 # The external mode starts installed workbenches directly; provider mode starts
-# capacity adapters and lets allocations create resident workbenches on demand.
+# provider processes and lets allocations create resident workbenches on demand.
 # It runs through `coverage run --parallel-mode` sharing the tier's COVERAGE_FILE
 # with the backend, so each process writes its own suffixed data file and the
 # combine at the end picks all of them up. `sigterm = true` (pyproject.toml) is
 # what makes the flush happen when stop_stack signals them.
-for i in $(seq 1 "$capacity"); do
+for i in $(seq 1 "$compute_location_count"); do
     if [ "$mode" = provider ]; then
         dir=$provider_state_dir
         [ "$i" -gt 1 ] && dir="${provider_state_dir}-$i"
-        echo ">> starting Docker provider $i/$capacity (log: $(workbench_log "$i"))"
+        echo ">> starting Docker provider $i/$compute_location_count (log: $(workbench_log "$i"))"
         start_provider "$dir" "$(workbench_log "$i")" "$i"
     else
         dir=$state_dir
         [ "$i" -gt 1 ] && dir="${state_dir}-$i"
-        echo ">> starting external workbench $i/$capacity (log: $(workbench_log "$i"))"
+        echo ">> starting external workbench $i/$compute_location_count (log: $(workbench_log "$i"))"
         start_external_workbench "$dir" "$(workbench_log "$i")" "$i"
     fi
 done
 if [ "$mode" = provider ]; then
-    wait_until "$capacity provider service(s)" providers_connected "$capacity"
+    wait_until "$compute_location_count provider service(s)" providers_connected "$compute_location_count"
 else
-    wait_until "$capacity external workbench service(s)" workbenches_connected "$capacity"
+    wait_until "$compute_location_count external workbench service(s)" workbenches_connected "$compute_location_count"
 fi
 
 # Start the client as a separately waitable process. `wait -n` below watches it
@@ -393,11 +393,13 @@ if [ -n "$script" ]; then
         # returns 0 even when the command fails. So the walkthrough writes its
         # real status to a sentinel file that we read back; otherwise a failing
         # run would record cleanly and still report success, defeating the CI
-        # check. Env exported before asciinema is inherited by the command.
+        # check. The API URL is an explicit client argument, including inside
+        # asciinema's recorded shell.
         rc_file=$(mktemp)
         (
-            API_BASE_URL=$api_base_url \
-                asciinema rec --overwrite -c "'$script'; echo \$? > '$rc_file'" "$record" || true
+            printf -v recorded_command '%q --base-url %q; printf "%%s\\n" $? > %q' \
+                "$script" "$api_base_url" "$rc_file"
+            asciinema rec --overwrite -c "$recorded_command" "$record" || true
             recorded_status=$(cat "$rc_file" 2>/dev/null || echo 1)
             rm -f "$rc_file"
             echo ">> recorded terminal session: $record (walkthrough exit $recorded_status)"
@@ -405,7 +407,7 @@ if [ -n "$script" ]; then
         ) &
         client_pid=$!
     else
-        API_BASE_URL=$api_base_url "$script" &
+        "$script" --base-url "$api_base_url" &
         client_pid=$!
     fi
 else
@@ -420,7 +422,7 @@ else
     client_pid=$!
 fi
 
-watched_pids=("$client_pid" "$api_pid" "${capacity_pids[@]}")
+watched_pids=("$client_pid" "$api_pid" "${compute_location_pids[@]}")
 finished_pid=
 if wait -n -p finished_pid "${watched_pids[@]}"; then
     finished_status=0
@@ -442,7 +444,7 @@ echo ">> stopping workbench service and backend (SIGTERM so coverage can flush)"
 stop_stack
 trap - EXIT
 
-echo ">> backend coverage ($tier tier: server + $capacity $mode capacity process(es))"
+echo ">> backend coverage ($tier tier: server + $compute_location_count $mode compute-location process(es))"
 # Fold this tier's per-process files (one per --parallel-mode process:
 # the server and each workbench) into the tier's single .coverage. No --keep —
 # the suffixed files have no reader once merged, and collapsing them leaves

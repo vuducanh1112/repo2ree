@@ -4,7 +4,7 @@
 # The root Compose demo includes one provider, but this harness starts only its
 # backend and GUI services so it can still vary provider count and lifecycle.
 #
-#   image-stack.sh up [options]  start compose + providers, wait until ready
+#   image-stack.sh up [options]  start compose + compute locations, wait until ready
 #   image-stack.sh down          remove the workbench container and the compose stack
 #   image-stack.sh down --volumes  ... and every volume the run created
 #   image-stack.sh check         verify backend, connected workbench, and GUI
@@ -22,7 +22,8 @@
 # Or override an individual image with --gui-image, --backend-image, or
 # --provider-image.
 #
-# --providers <n> runs n provider instances (default 1) — instance i > 1 gets
+# --compute-locations <n> exposes n compute locations by running one provider
+# instance per location (default 1) — instance i > 1 gets
 # its own compose project, container name, and state volume
 # (repo2ree-workbench-<i>), so each keeps a distinct persistent identity.
 #
@@ -37,7 +38,7 @@
 set -euo pipefail
 
 usage() {
-    echo "usage: $0 up [--providers N] [--image-repository REPO] [--image-tag TAG]" >&2
+    echo "usage: $0 up [--compute-locations N] [--image-repository REPO] [--image-tag TAG]" >&2
     echo "          [--gui-image REF] [--backend-image REF] [--provider-image REF]" >&2
     echo "          [--api-url URL] [--gui-url URL]" >&2
     echo "       $0 down [--volumes]" >&2
@@ -54,7 +55,7 @@ cd "$root"
 caller_attachment_file=$root/test-artifacts/state/image-stack-caller-network
 
 provider_container=repo2ree-provider-docker
-stack_providers=1
+compute_location_count=1
 image_repository=
 image_tag=local
 gui_image=${STACK_GUI_IMAGE:-}
@@ -68,7 +69,7 @@ command=${1:-}
 if [ "$command" = up ]; then
     while [ $# -gt 0 ]; do
         case "$1" in
-            --providers) [ $# -ge 2 ] || usage; stack_providers=$2; shift 2 ;;
+            --compute-locations) [ $# -ge 2 ] || usage; compute_location_count=$2; shift 2 ;;
             --image-repository) [ $# -ge 2 ] || usage; image_repository=$2; shift 2 ;;
             --image-tag) [ $# -ge 2 ] || usage; image_tag=$2; shift 2 ;;
             --gui-image) [ $# -ge 2 ] || usage; gui_image=$2; shift 2 ;;
@@ -79,7 +80,7 @@ if [ "$command" = up ]; then
             *) usage ;;
         esac
     done
-    case "$stack_providers" in *[!0-9]*|""|0) usage ;; esac
+    case "$compute_location_count" in *[!0-9]*|""|0) usage ;; esac
 elif [ "$command" = down ]; then
     [ $# -le 1 ] || usage
     [ $# -eq 0 ] || [ "$1" = --volumes ] || usage
@@ -252,7 +253,7 @@ up() {
     echo ">> starting compose control plane ($gui_image, $backend_image)"
     compose_stack up -d backend gui
 
-    echo ">> starting $stack_providers Docker provider service(s) ($provider_service_image)"
+    echo ">> starting $compute_location_count Docker provider service(s) ($provider_service_image)"
     # Reaching the backend: both the provider and every child workbench join the
     # control-plane network and dial by service name. Joining only the provider
     # is insufficient: its child containers otherwise cannot resolve `backend`.
@@ -260,7 +261,7 @@ up() {
     # standalone provider Compose file's host-gateway defaults.
     local control_plane_net i name
     control_plane_net=$(control_plane_network)
-    for i in $(seq 1 "$stack_providers"); do
+    for i in $(seq 1 "$compute_location_count"); do
         name=$(provider_name "$i")
         if [ -n "$control_plane_net" ]; then
             PROVIDER_API_WS_URL=ws://backend:8000/provider/connect \
@@ -280,7 +281,7 @@ up() {
     resolve_urls
     echo ">> probing stack endpoints — API $api_url, GUI $gui_url"
     wait_until "backend at $api_url" curl -fsS --connect-timeout 1 --max-time 1 "$api_url/"
-    wait_until "$stack_providers provider service(s)" providers_connected "$stack_providers"
+    wait_until "$compute_location_count provider service(s)" providers_connected "$compute_location_count"
     wait_until "gui at $gui_url" curl -fsS --connect-timeout 1 --max-time 1 "$gui_url/"
     echo ">> stack up — GUI at $gui_url"
 }

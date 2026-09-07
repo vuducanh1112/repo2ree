@@ -19,7 +19,6 @@ CONTRACT = ROOT / "contracts/config/environment.json"
 # not belong to one service settings model. They are declared here so they are
 # still part of the checked contract rather than an invisible exception list.
 NON_SERVICE_ENVIRONMENT: dict[str, tuple[str, str]] = {
-    "API_BASE_URL": ("test-client", "workflow"),
     "BASH_SOURCE": ("bash", "external"),
     "COVERAGE_FILE": ("coverage", "external"),
     "DEPLOY_ENV": ("protocol", "runtime"),

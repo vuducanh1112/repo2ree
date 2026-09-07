@@ -15,11 +15,10 @@ automation-ready API through its whole authoring lifecycle. It is deliberately a
 The Python is pure orchestration: control flow, the observeRun poll loop, JSON
 parsing, and assertions. It doubles as a CI check — every response is asserted, so
 a broken contract fails the run (and thus the recording). Run it through the stack
-orchestrator, which brings a live backend + workbench service up, points
-``API_BASE_URL`` at it, tears it down, and (with ``just demo-api``) records the
-terminal:
+orchestrator, which brings a live backend + workbench service up, passes its URL
+explicitly, tears it down, and (with ``just demo-api``) records the terminal:
 
-    scripts/test-stack/e2e-stack.sh --script api/tests/e2e/api_walkthrough.py
+    api/tests/e2e/api_walkthrough.py --base-url http://127.0.0.1:8000
     just demo-api           # the same, always recorded to a .cast
 
 Needs only ``curl`` (already required by the orchestrator) and the Python stdlib,
@@ -59,9 +58,9 @@ environment, not a stub.
 
 from __future__ import annotations
 
+import argparse
 import io
 import json
-import os
 import shlex
 import subprocess
 import sys
@@ -72,7 +71,8 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
-BASE_URL = os.environ.get("API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+DEFAULT_BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = DEFAULT_BASE_URL
 
 # Terminal statuses a background run settles into (mirrors run_registry).
 TERMINAL = {"succeeded", "failed", "canceled"}
@@ -687,7 +687,12 @@ def run() -> None:
     print("\n\033[1;32m✓ REE authored, sealed, and torn down — entirely over the HTTP API.\033[0m")
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--base-url", default=DEFAULT_BASE_URL, help="repo2ree API base URL")
+    args = parser.parse_args(argv)
+    global BASE_URL
+    BASE_URL = args.base_url.rstrip("/")
     try:
         run()
     except WalkthroughError as exc:

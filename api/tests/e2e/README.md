@@ -13,13 +13,13 @@ inner monologue.
 
 It is **not** a pytest. It drives a *live* backend + workbench stack over
 the network, asserts every response, and its stdout is the artifact. Run it
-through the stack orchestrator, which brings the stack up, points `API_BASE_URL`
-at it, tears it down, and (with `just demo-api`) records the terminal session:
+through the stack orchestrator, which brings the stack up, passes its API URL
+explicitly, tears it down, and (with `just demo-api`) records the terminal session:
 
 ```sh
 just demo-api        # bring up the stack, run this, record to a .cast, tear down
 # or against an already-running stack:
-API_BASE_URL=http://127.0.0.1:8000 api/tests/e2e/api_walkthrough.py
+api/tests/e2e/api_walkthrough.py --base-url http://127.0.0.1:8000
 ```
 
 `just demo-api` writes `test-artifacts/casts/api-walkthrough.cast` and, because a

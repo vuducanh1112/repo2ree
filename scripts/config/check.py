@@ -7,7 +7,7 @@ import ast
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from scripts.config.export import CONTRACT, ROOT, build_contract, rendered_contract
 
@@ -51,6 +51,10 @@ DOCKER_INPUTS = tuple(sorted((ROOT / "docker").rglob("Dockerfile"))) + tuple(
 )
 
 VITE_BUILTINS = frozenset({"BASE_URL", "DEV", "MODE", "PROD", "SSR"})
+# Workflow choices belong in command arguments. Keep this explicit escape hatch
+# for third-party tools only when their interface genuinely requires an
+# environment variable rather than a CLI option.
+ALLOWED_WORKFLOW_ENVIRONMENT: frozenset[str] = frozenset()
 Access = Literal["read", "write", "pass-through", "generated"]
 
 
@@ -198,8 +202,21 @@ def _declared(name: str, exact: set[str], patterns: tuple[re.Pattern[str], ...])
     return name in exact or any(pattern.fullmatch(name) for pattern in patterns)
 
 
+def forbidden_workflow_environment(contract: dict[str, Any]) -> list[str]:
+    return sorted(
+        name
+        for name, detail in contract["variables"].items()
+        if detail["kind"] == "workflow" and name not in ALLOWED_WORKFLOW_ENVIRONMENT
+    )
+
+
 def main() -> int:
     contract = build_contract()
+    forbidden_workflow = forbidden_workflow_environment(contract)
+    if forbidden_workflow:
+        for name in forbidden_workflow:
+            print(f"workflow configuration must be a command argument, not environment variable: {name}")
+        return 1
     declared = set(contract["variables"])
     declared_patterns = tuple(re.compile(pattern) for pattern in contract["patterns"])
     references = referenced_environment()
