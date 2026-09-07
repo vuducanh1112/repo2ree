@@ -4,6 +4,10 @@ import type { Page, Request, Route } from "@playwright/test";
 
 export const VISUAL_REE_ID = "visual-ree";
 const TS = "2026-04-12T09:30:00Z";
+const apiBuild = { version: "0.1.0", revision: "visual-api-revision" };
+const providerBuild = { version: "0.1.0", revision: "visual-provider-revision" };
+const workbenchBuild = { version: "0.1.0", revision: "visual-workbench-revision" };
+const executorBuild = { version: "0.1.0", revision: "visual-executor-revision" };
 
 const auditStep = {
   evidence: "current",
@@ -271,6 +275,7 @@ const computeLocations = {
       description: "Provider-managed Docker capacity",
       lifecycle_mode: "provider_managed",
       available: true,
+      connected_component: { kind: "provider", build: providerBuild },
       images: [
         {
           id: "python",
@@ -287,6 +292,7 @@ const computeLocations = {
       description: "Provider-managed Docker capacity",
       lifecycle_mode: "provider_managed",
       available: true,
+      connected_component: { kind: "provider", build: providerBuild },
       images: [
         {
           id: "base",
@@ -317,6 +323,25 @@ const allocation = {
   detail: "",
   created_at: TS,
   updated_at: TS,
+};
+
+const reeState = {
+  ree_id: visualRee.ree_id,
+  ree: visualRee.ree,
+  status: visualRee.status,
+  audit: visualRee.audit,
+  workbench: {
+    status: "available",
+    workbench_id: allocation.workbench_id,
+    allocation_id: allocation.request.allocation_id,
+    location_id: allocation.request.location_id,
+    image: allocation.request.image,
+    build: workbenchBuild,
+    executor_build: executorBuild,
+  },
+  workspace_files: visualRee.workspace_files,
+  ree_files: visualRee.ree_files,
+  active_runs: [],
 };
 
 const index = {
@@ -535,12 +560,14 @@ function responseFor(request: Request): unknown {
   const path = url.pathname;
   if (request.method() !== "GET")
     throw new Error(`Unexpected visual API mutation: ${request.method()} ${path}`);
+  if (path === "/api/v1/system/build-info") return apiBuild;
   if (path === "/api/v1/compute-locations") return computeLocations;
   if (path === "/api/v1/ree-steps") return authoringSteps;
   if (path === "/api/v1/script-templates") return scriptTemplates;
   if (path === "/api/v1/ree-index") return index;
   if (path === `/api/v1/allocations/${allocation.request.allocation_id}`) return allocation;
   if (path === `/api/v1/rees/${VISUAL_REE_ID}`) return visualRee;
+  if (path === `/api/v1/rees/${VISUAL_REE_ID}/state`) return reeState;
   if (path === `/api/v1/rees/${VISUAL_REE_ID}/runs`) return runs;
   if (path === `/api/v1/rees/${VISUAL_REE_ID}/evaluate/report`) return evaluateReport;
   if (path === `/api/v1/rees/${VISUAL_REE_ID}/reviews`) return reviews;
