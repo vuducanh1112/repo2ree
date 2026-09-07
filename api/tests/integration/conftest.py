@@ -97,6 +97,13 @@ from repo2ree_supervisor import (  # noqa: E402
     WorkbenchUnavailableError,
 )
 
+# The in-test provider and the compute location it publishes. Every REE this
+# tier creates is placed there, so a test picks a location the same way a real
+# client does — from what is actually connected.
+PROVIDER_ID = "api-itest-provider"
+PROVIDER_LOCATION_ID = "api-itest-lab"
+
+
 # ================================================
 # Fixtures
 # ================================================
@@ -131,10 +138,12 @@ def ree(client: TestClient, request: pytest.FixtureRequest) -> Iterator[dict[str
     the API. The delete is idempotent here: a test that already deleted its
     REE just gets a 404 back.
     """
-    # Drive the image this tier gates on, passed per-request like a real client.
+    # Pick this tier's location and the image it gates on, the way a real
+    # client does: a location published by the connected provider, and a ref
+    # from that location's catalog.
     resp = client.post(
         "/api/v1/rees",
-        json={"name": "api-itest", "workbench_image": WORKBENCH_IMAGE},
+        json={"name": "api-itest", "location_id": PROVIDER_LOCATION_ID, "image": WORKBENCH_IMAGE},
     )
     assert resp.status_code == 200, resp.text
     run = resp.json()
@@ -222,8 +231,8 @@ def _connected_workbench() -> Iterator[None]:
             await run_provider(
                 f"ws://127.0.0.1:{port}/provider/connect",
                 ProvisionerService(isolation, catalog={WORKBENCH_IMAGE}, accepts_custom_image=False),
-                "api-itest-provider",
-                location_id="api-itest-lab",
+                PROVIDER_ID,
+                location_id=PROVIDER_LOCATION_ID,
                 location_label="API integration lab",
                 images=(WorkbenchImage(ref=WORKBENCH_IMAGE, id="standard", label="Standard"),),
             )
@@ -238,7 +247,7 @@ def _connected_workbench() -> Iterator[None]:
 
     thread = threading.Thread(target=run_loop, daemon=True)
     thread.start()
-    _wait_until_provider_connected("api-itest-provider")
+    _wait_until_provider_connected(PROVIDER_ID)
     try:
         yield
     finally:

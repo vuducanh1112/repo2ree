@@ -21,7 +21,12 @@ class WorkbenchService:
             if self._assignment == allocation:
                 return
             raise RuntimeError("workbench is already assigned to a different allocation")
-        if any(self._executor.root.iterdir()):
+        # The guard is against inheriting another allocation's tree, so a root
+        # that does not exist yet passes it: an externally managed bench is
+        # pointed at a path its operator chose, and ``init-ree`` creates the
+        # tree there. Only an existing, populated root is a refusal.
+        root = self._executor.root
+        if root.exists() and any(root.iterdir()):
             raise RuntimeError("unassigned workbench root is not empty")
         self._assignment = allocation
 

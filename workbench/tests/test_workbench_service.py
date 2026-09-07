@@ -66,6 +66,22 @@ def test_service_refuses_execution_until_assigned(tmp_path: Path) -> None:
         service.assign(_allocation("alloc-2", "ree-2"))
 
 
+def test_service_refuses_a_root_left_populated_by_another_allocation(tmp_path: Path) -> None:
+    (tmp_path / "ree.json").write_text("{}")
+    service = WorkbenchService(_Backend(tmp_path))  # type: ignore[arg-type]
+
+    with pytest.raises(RuntimeError, match="not empty"):
+        service.assign(_allocation())
+
+
+def test_service_assigns_a_root_that_does_not_exist_yet(tmp_path: Path) -> None:
+    """An external bench is pointed at a path; ``init-ree`` is what creates it."""
+    service = WorkbenchService(_Backend(tmp_path / "external-root"))  # type: ignore[arg-type]
+
+    service.assign(_allocation())
+    service.exec_simple(["init-ree", "--name", "demo"])
+
+
 def _allocation(allocation_id: str = "alloc-1", ree_id: str = "ree-1") -> AllocationRequest:
     return AllocationRequest(
         allocation_id=allocation_id,
