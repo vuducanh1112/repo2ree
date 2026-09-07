@@ -18,36 +18,36 @@ e2e-bundles: _stage-nix-sources
     nix build .#tools-bundle -o {{ quote(E2E_TOOLS_BUNDLE) }}
 
 [private]
-_source-stack-playwright project capacity:
-    E2E_PROVIDER_DOCKER_MODE={{ quote(E2E_PROVIDER_DOCKER_MODE) }} E2E_EXEC_BUNDLE={{ quote(E2E_EXEC_BUNDLE) }} E2E_TOOLS_BUNDLE={{ quote(E2E_TOOLS_BUNDLE) }} scripts/test-stack/e2e-stack.sh --project {{ quote(project) }} --mode {{ quote(E2E_CAPACITY_MODE) }} --capacity {{ quote(capacity) }}
+_source-stack-playwright project capacity mode docker_mode:
+    scripts/test-stack/e2e-stack.sh --project {{ quote(project) }} --mode {{ quote(mode) }} --capacity {{ quote(capacity) }} --docker-mode {{ quote(docker_mode) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
 
 # Run the measured author-side browser E2E tier.
 [group('E2E tests')]
-e2e-gui capacity=E2E_CAPACITY: e2e-bundles (_source-stack-playwright "e2e-gui" capacity)
+e2e-gui capacity=DEFAULT_E2E_CAPACITY mode=DEFAULT_E2E_CAPACITY_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE: e2e-bundles (_source-stack-playwright "e2e-gui" capacity mode docker_mode)
 
 # Run the measured reviewer-side browser E2E tier.
 [group('E2E tests')]
-e2e-gui-review: e2e-bundles (_source-stack-playwright "e2e-gui-review" "1")
+e2e-gui-review mode=DEFAULT_E2E_CAPACITY_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE: e2e-bundles (_source-stack-playwright "e2e-gui-review" "1" mode docker_mode)
 
 # Record the measured narrated browser demo.
 [group('Demos')]
-demo-gui: e2e-bundles (_source-stack-playwright "demo-gui" "1")
+demo-gui mode=DEFAULT_E2E_CAPACITY_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE: e2e-bundles (_source-stack-playwright "demo-gui" "1" mode docker_mode)
 
 # Record the measured external-capsule browser demo.
 [group('Demos')]
-demo-gui-code-ocean: e2e-bundles (_source-stack-playwright "demo-gui-code-ocean" "1")
+demo-gui-code-ocean mode=DEFAULT_E2E_CAPACITY_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE: e2e-bundles (_source-stack-playwright "demo-gui-code-ocean" "1" mode docker_mode)
 
 # Record the measured pure-API walkthrough and render its transcript.
 [group('Demos')]
-demo-api: e2e-bundles
+demo-api mode=DEFAULT_E2E_CAPACITY_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE: e2e-bundles
     @mkdir -p "$(dirname {{ quote(API_DEMO_CAST) }})"
-    E2E_PROVIDER_DOCKER_MODE={{ quote(E2E_PROVIDER_DOCKER_MODE) }} E2E_EXEC_BUNDLE={{ quote(E2E_EXEC_BUNDLE) }} E2E_TOOLS_BUNDLE={{ quote(E2E_TOOLS_BUNDLE) }} scripts/test-stack/e2e-stack.sh --script {{ quote(ROOT + "/api/tests/e2e/api_walkthrough.py") }} --tier demo-api --mode {{ quote(E2E_CAPACITY_MODE) }} --capacity 1 --record {{ quote(API_DEMO_CAST) }}
+    scripts/test-stack/e2e-stack.sh --script {{ quote(ROOT + "/api/tests/e2e/api_walkthrough.py") }} --tier demo-api --mode {{ quote(mode) }} --capacity 1 --docker-mode {{ quote(docker_mode) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} --record {{ quote(API_DEMO_CAST) }}
     python3 {{ quote(ROOT + "/api/tests/e2e/render_cast_transcript.py") }} {{ quote(API_DEMO_CAST) }} {{ quote(API_DEMO_TRANSCRIPT) }}
 
 # Start the local image-backed stack.
 [group('Stack management')]
-stack-up workbenches=E2E_WORKBENCHES:
-    STACK_WORKBENCHES={{ quote(workbenches) }} scripts/test-stack/image-stack.sh up
+stack-up providers=DEFAULT_STACK_PROVIDERS:
+    scripts/test-stack/image-stack.sh up --providers {{ quote(providers) }}
 
 # Stop the image-backed stack while retaining volumes.
 [group('Stack management')]
@@ -61,13 +61,13 @@ stack-clean:
 
 # Remove leftover workbenches; pass STORE=1 to include bundle stores.
 [group('Stack management')]
-workbench-clean:
-    scripts/test-stack/workbench-cleanup.sh {{ if env("STORE", "") != "" { "--store" } else { "" } }}
+workbench-clean store="":
+    scripts/test-stack/workbench-cleanup.sh {{ if store != "" { "--store" } else { "" } }}
 
 # Evict unreferenced bundle-store caches older than the requested days.
 [group('Stack management')]
-store-gc:
-    scripts/test-stack/workbench-cleanup.sh --store-gc {{ quote(env("STORE_GC_DAYS", "14")) }}
+store-gc days="14":
+    scripts/test-stack/workbench-cleanup.sh --store-gc {{ quote(days) }}
 
 [private]
 _check-image-stack:
@@ -95,13 +95,13 @@ demo-api-on-stack: _check-image-stack
 
 # Build local images and run the author-side browser suite against them.
 [group('Stack tests')]
-e2e-gui-stack-local workbenches=E2E_WORKBENCHES: images
-    scripts/test-stack/run-image-suite.sh e2e-gui {{ quote(workbenches) }}
+e2e-gui-stack-local providers=DEFAULT_STACK_PROVIDERS: images
+    scripts/test-stack/run-image-suite.sh e2e-gui {{ quote(providers) }}
 
 # Run the author-side browser suite against published images.
 [group('Stack tests')]
-e2e-gui-stack-published workbenches=E2E_WORKBENCHES:
-    scripts/test-stack/run-image-suite.sh e2e-gui {{ quote(workbenches) }} {{ quote(STACK_IMAGE_REPO) }} {{ quote(STACK_IMAGE_TAG) }}
+e2e-gui-stack-published providers=DEFAULT_STACK_PROVIDERS repository=DEFAULT_STACK_IMAGE_REPO tag=DEFAULT_STACK_IMAGE_TAG:
+    scripts/test-stack/run-image-suite.sh e2e-gui {{ quote(providers) }} {{ quote(repository) }} {{ quote(tag) }}
 
 # Build local images and run the reviewer-side browser suite against them.
 [group('Stack tests')]
@@ -110,8 +110,8 @@ e2e-gui-review-stack-local: images
 
 # Run the reviewer-side browser suite against published images.
 [group('Stack tests')]
-e2e-gui-review-stack-published:
-    scripts/test-stack/run-image-suite.sh e2e-gui-review 1 {{ quote(STACK_IMAGE_REPO) }} {{ quote(STACK_IMAGE_TAG) }}
+e2e-gui-review-stack-published repository=DEFAULT_STACK_IMAGE_REPO tag=DEFAULT_STACK_IMAGE_TAG:
+    scripts/test-stack/run-image-suite.sh e2e-gui-review 1 {{ quote(repository) }} {{ quote(tag) }}
 
 # Build local images and run the narrated GUI demo against them.
 [group('Stack tests')]
@@ -120,8 +120,8 @@ demo-gui-stack-local: images
 
 # Run the narrated GUI demo against published images.
 [group('Stack tests')]
-demo-gui-stack-published:
-    scripts/test-stack/run-image-suite.sh demo-gui 1 {{ quote(STACK_IMAGE_REPO) }} {{ quote(STACK_IMAGE_TAG) }}
+demo-gui-stack-published repository=DEFAULT_STACK_IMAGE_REPO tag=DEFAULT_STACK_IMAGE_TAG:
+    scripts/test-stack/run-image-suite.sh demo-gui 1 {{ quote(repository) }} {{ quote(tag) }}
 
 # Build local images and run the API walkthrough against them.
 [group('Stack tests')]
@@ -130,5 +130,5 @@ demo-api-stack-local: images
 
 # Run the API walkthrough against published images.
 [group('Stack tests')]
-demo-api-stack-published:
-    scripts/test-stack/run-image-suite.sh demo-api 1 {{ quote(STACK_IMAGE_REPO) }} {{ quote(STACK_IMAGE_TAG) }}
+demo-api-stack-published repository=DEFAULT_STACK_IMAGE_REPO tag=DEFAULT_STACK_IMAGE_TAG:
+    scripts/test-stack/run-image-suite.sh demo-api 1 {{ quote(repository) }} {{ quote(tag) }}

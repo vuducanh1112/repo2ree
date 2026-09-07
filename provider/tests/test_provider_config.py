@@ -172,6 +172,14 @@ def test_custom_images_are_accepted_unless_the_deployment_says_otherwise(
     assert config_module.load_config().accepts_custom_image is expected
 
 
+def test_a_misspelled_boolean_is_a_startup_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PROVIDER_ID", "docker-provider-explicit")
+    monkeypatch.setenv("PROVIDER_ACCEPTS_CUSTOM_IMAGE", "ture")
+
+    with pytest.raises(ValueError, match="boolean"):
+        config_module.load_config()
+
+
 def test_benches_relay_their_own_spans_unless_told_otherwise() -> None:
     config = config_module.load_config()
 
@@ -189,3 +197,11 @@ def test_bench_telemetry_is_configured_on_the_provider(monkeypatch: pytest.Monke
 
     assert config.workbench_telemetry == "direct"
     assert config.workbench_otlp_endpoint == "http://collector.internal:4318"
+
+
+def test_direct_bench_telemetry_requires_a_reachable_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PROVIDER_ID", "docker-provider-explicit")
+    monkeypatch.setenv("PROVIDER_WORKBENCH_TELEMETRY", "direct")
+
+    with pytest.raises(ValueError, match="PROVIDER_WORKBENCH_OTLP_ENDPOINT is required"):
+        config_module.load_config()

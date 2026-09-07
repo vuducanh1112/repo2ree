@@ -4,7 +4,7 @@
 # The root Compose demo includes one provider, but this harness starts only its
 # backend and GUI services so it can still vary provider count and lifecycle.
 #
-#   image-stack.sh up            start compose + workbench, wait until ready
+#   image-stack.sh up [options]  start compose + providers, wait until ready
 #   image-stack.sh down          remove the workbench container and the compose stack
 #   image-stack.sh down --volumes  ... and every volume the run created
 #   image-stack.sh check         verify backend, connected workbench, and GUI
@@ -13,16 +13,16 @@
 #
 # Images default to the :local workbench builds (`up` expects them to exist —
 # build with `just images`). To run the same flow against pushed images,
-# point STACK_IMAGE_REPO/STACK_IMAGE_TAG at a registry — registry refs are
+# pass --image-repository/--image-tag — registry refs are
 # force-pulled on `up`, so moving tags like :edge always run fresh:
 #
-#   STACK_IMAGE_REPO=docker.io/vuducanh1112 STACK_IMAGE_TAG=edge \
-#     scripts/test-stack/image-stack.sh up
+#   scripts/test-stack/image-stack.sh up \
+#     --image-repository docker.io/vuducanh1112 --image-tag edge
 #
-# (or override an individual image with STACK_GUI_IMAGE /
-# STACK_BACKEND_IMAGE / STACK_PROVIDER_IMAGE.)
+# Or override an individual image with --gui-image, --backend-image, or
+# --provider-image.
 #
-# STACK_WORKBENCHES=<n> runs n workbench instances (default 1) — instance i > 1 gets
+# --providers <n> runs n provider instances (default 1) — instance i > 1 gets
 # its own compose project, container name, and state volume
 # (repo2ree-workbench-<i>), so each keeps a distinct persistent identity.
 #
@@ -32,12 +32,16 @@
 # The stack is addressed via its published ports on a normal host. From inside
 # a container, localhost is that container rather than the Docker host: use
 # service DNS when the caller shares the control-plane network, otherwise use
-# the current container's Docker gateway. Override with STACK_API_URL /
-# STACK_GUI_URL for a remote daemon or another topology.
+# the current container's Docker gateway. Use --api-url/--gui-url for a remote
+# daemon or another topology.
 set -euo pipefail
 
 usage() {
-    echo "usage: $0 up|down [--volumes]|check|gui-url|api-url" >&2
+    echo "usage: $0 up [--providers N] [--image-repository REPO] [--image-tag TAG]" >&2
+    echo "          [--gui-image REF] [--backend-image REF] [--provider-image REF]" >&2
+    echo "          [--api-url URL] [--gui-url URL]" >&2
+    echo "       $0 down [--volumes]" >&2
+    echo "       $0 check|gui-url|api-url [--api-url URL] [--gui-url URL]" >&2
     exit 2
 }
 
@@ -50,15 +54,51 @@ cd "$root"
 caller_attachment_file=$root/test-artifacts/state/image-stack-caller-network
 
 provider_container=repo2ree-provider-docker
-# Provider instances to run. Keep the existing STACK_WORKBENCHES knob while
-# image-suite callers transition; each provider can create many workbenches.
-stack_providers=${STACK_PROVIDERS:-${STACK_WORKBENCHES:-1}}
+stack_providers=1
+image_repository=
+image_tag=local
+gui_image=${STACK_GUI_IMAGE:-}
+backend_image=${STACK_BACKEND_IMAGE:-}
+provider_service_image=${STACK_PROVIDER_IMAGE:-}
+configured_api_url=
+configured_gui_url=
 
-image_prefix=${STACK_IMAGE_REPO:+${STACK_IMAGE_REPO}/}
-image_tag=${STACK_IMAGE_TAG:-local}
-gui_image=${STACK_GUI_IMAGE:-${image_prefix}repo2ree-gui:$image_tag}
-backend_image=${STACK_BACKEND_IMAGE:-${image_prefix}repo2ree-backend:$image_tag}
-provider_service_image=${STACK_PROVIDER_IMAGE:-${image_prefix}repo2ree-provider-docker:$image_tag}
+command=${1:-}
+[ $# -gt 0 ] && shift
+if [ "$command" = up ]; then
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --providers) [ $# -ge 2 ] || usage; stack_providers=$2; shift 2 ;;
+            --image-repository) [ $# -ge 2 ] || usage; image_repository=$2; shift 2 ;;
+            --image-tag) [ $# -ge 2 ] || usage; image_tag=$2; shift 2 ;;
+            --gui-image) [ $# -ge 2 ] || usage; gui_image=$2; shift 2 ;;
+            --backend-image) [ $# -ge 2 ] || usage; backend_image=$2; shift 2 ;;
+            --provider-image) [ $# -ge 2 ] || usage; provider_service_image=$2; shift 2 ;;
+            --api-url) [ $# -ge 2 ] || usage; configured_api_url=$2; shift 2 ;;
+            --gui-url) [ $# -ge 2 ] || usage; configured_gui_url=$2; shift 2 ;;
+            *) usage ;;
+        esac
+    done
+    case "$stack_providers" in *[!0-9]*|""|0) usage ;; esac
+elif [ "$command" = down ]; then
+    [ $# -le 1 ] || usage
+    [ $# -eq 0 ] || [ "$1" = --volumes ] || usage
+elif [ "$command" = check ] || [ "$command" = gui-url ] || [ "$command" = api-url ]; then
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --api-url) [ $# -ge 2 ] || usage; configured_api_url=$2; shift 2 ;;
+            --gui-url) [ $# -ge 2 ] || usage; configured_gui_url=$2; shift 2 ;;
+            *) usage ;;
+        esac
+    done
+elif [ $# -ne 0 ]; then
+    usage
+fi
+
+image_prefix=${image_repository:+${image_repository}/}
+gui_image=${gui_image:-${image_prefix}repo2ree-gui:$image_tag}
+backend_image=${backend_image:-${image_prefix}repo2ree-backend:$image_tag}
+provider_service_image=${provider_service_image:-${image_prefix}repo2ree-provider-docker:$image_tag}
 
 resolve_urls() {
     local default_api_url default_gui_url docker_host
@@ -91,8 +131,8 @@ resolve_urls() {
         default_api_url=http://localhost:8000
         default_gui_url=http://localhost:3000
     fi
-    api_url=${STACK_API_URL:-$default_api_url}
-    gui_url=${STACK_GUI_URL:-$default_gui_url}
+    api_url=${configured_api_url:-$default_api_url}
+    gui_url=${configured_gui_url:-$default_gui_url}
 }
 
 compose_stack() {
@@ -260,7 +300,7 @@ down() {
     detach_owned_caller_network
 
     # Tear down every workbench instance found on the daemon, not just
-    # $stack_workbenches of them — a previous `up` may have started more.
+    # the requested number — a previous `up` may have started more.
     echo ">> stopping workbench service stack(s)"
     local name
     for name in $(docker ps -a --format '{{.Names}}' \
@@ -285,9 +325,9 @@ check() {
         || { echo "GUI not reachable at $gui_url — start the image stack first (just stack-up)" >&2; exit 1; }
 }
 
-case "${1:-}" in
+case "$command" in
     up) up ;;
-    down) down "${2:-}" ;;
+    down) down "${1:-}" ;;
     check) check ;;
     gui-url) attach_caller_to_control_plane; resolve_urls; echo "$gui_url" ;;
     api-url) attach_caller_to_control_plane; resolve_urls; echo "$api_url" ;;

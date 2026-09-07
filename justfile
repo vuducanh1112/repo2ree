@@ -13,20 +13,21 @@ GHCR_NAMESPACE := env("GHCR_NAMESPACE", "vuducanh1112")
 DOCKERHUB_REGISTRY := env("DOCKERHUB_REGISTRY", "docker.io")
 DOCKERHUB_NAMESPACE := env("DOCKERHUB_NAMESPACE", "vuducanh1112")
 REGISTRIES := env("REGISTRIES", GHCR_REGISTRY + "/" + GHCR_NAMESPACE + " " + DOCKERHUB_REGISTRY + "/" + DOCKERHUB_NAMESPACE)
-E2E_PROVIDER_DOCKER_MODE := env("E2E_PROVIDER_DOCKER_MODE", "dind")
-E2E_CAPACITY_MODE := env("E2E_CAPACITY_MODE", "provider")
-E2E_CAPACITY := env("E2E_CAPACITY", "2")
-E2E_WORKBENCHES := env("E2E_WORKBENCHES", "2")
-STACK_IMAGE_REPO := env("STACK_IMAGE_REPO", DOCKERHUB_REGISTRY + "/" + DOCKERHUB_NAMESPACE)
-STACK_IMAGE_TAG := env("STACK_IMAGE_TAG", IMAGE_TAG)
+DEFAULT_E2E_PROVIDER_DOCKER_MODE := "dind"
+DEFAULT_E2E_CAPACITY_MODE := "provider"
+DEFAULT_E2E_CAPACITY := "2"
+DEFAULT_STACK_PROVIDERS := "2"
+DEFAULT_STACK_IMAGE_REPO := DOCKERHUB_REGISTRY + "/" + DOCKERHUB_NAMESPACE
+DEFAULT_STACK_IMAGE_TAG := IMAGE_TAG
 
-DIAGRAM_DIR := env("DIAGRAM_DIR", "dist/diagrams")
-ARCH_DIR := env("ARCH_DIR", DIAGRAM_DIR + "/architecture")
-DOMAIN_DIR := env("DOMAIN_DIR", DIAGRAM_DIR + "/domain")
-JOURNAL_DIR := env("JOURNAL_DIR", DIAGRAM_DIR + "/journals")
-METRICS_DIR := env("METRICS_DIR", "test-artifacts/metrics")
+DIAGRAM_DIR := "dist/diagrams"
+ARCH_DIR := DIAGRAM_DIR + "/architecture"
+DOMAIN_DIR := DIAGRAM_DIR + "/domain"
+JOURNAL_DIR := DIAGRAM_DIR + "/journals"
+METRICS_DIR := "test-artifacts/metrics"
 
 import 'just/checks.just'
+import 'just/config.just'
 import 'just/metrics.just'
 import 'just/architecture.just'
 import 'just/domain.just'

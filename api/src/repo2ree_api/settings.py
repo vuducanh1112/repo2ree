@@ -5,7 +5,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    # Loading dotenv files belongs to the launcher (Compose, CI, or a developer's
+    # shell). A service must not silently change configuration with its cwd.
+    model_config = SettingsConfigDict(env_file=None, extra="ignore", case_sensitive=True, validate_default=True)
 
     # Transient landing zone for HTTP uploads before they are copied into a
     # workbench container. The workbench volume — not the host — is the source

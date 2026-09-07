@@ -2,7 +2,7 @@
 
 # Check shell and Python scripts.
 [group('Checks')]
-scripts-checks:
+scripts-checks: config-check
     @echo "Running shellcheck..."
     find scripts -name '*.sh' -exec shellcheck {} +
     @echo "Checking python scripts..."

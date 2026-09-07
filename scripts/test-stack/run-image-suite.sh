@@ -28,11 +28,11 @@ cleanup() { "$stack" down --volumes; }
 trap cleanup EXIT
 cd "$root"
 
+up_args=(--providers "$workbenches")
 if [[ -n $image_repository ]]; then
-    STACK_IMAGE_REPO=$image_repository STACK_IMAGE_TAG=$image_tag STACK_WORKBENCHES=$workbenches "$stack" up
-else
-    STACK_WORKBENCHES=$workbenches "$stack" up
+    up_args+=(--image-repository "$image_repository" --image-tag "$image_tag")
 fi
+"$stack" up "${up_args[@]}"
 "$stack" check
 
 if [[ $suite == demo-api ]]; then

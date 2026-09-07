@@ -19,11 +19,11 @@ let
   cleanPySrc = import ./clean-py-src.nix { inherit pkgs; };
 
   # Everything `repo2ree_workbench` reaches at import time: pydantic for the
-  # repo2ree_protocol frame models, websockets for the outbound control link,
-  # and the otel set that repo2ree_protocol.tracing pulls in via .log. The
-  # OTLP HTTP exporter backs the workbench's own trace/metric export when
-  # OTLP_ENDPOINT is set (executor spans still relay through the backend
-  # without it).
+  # repo2ree_protocol frame models, pydantic-settings for its typed process
+  # environment, websockets for the outbound control link, and the otel set
+  # that repo2ree_protocol.tracing pulls in via .log. The OTLP HTTP exporter
+  # backs the workbench's own trace/metric export when OTLP_ENDPOINT is set
+  # (executor spans still relay through the backend without it).
   #
   # Two entries are load-bearing in a way the dependency metadata does not
   # show, each found by a startup crash rather than by reading it:
@@ -41,6 +41,7 @@ let
   pythonPackages =
     ps: with ps; [
       pydantic
+      pydantic-settings
       websockets
       opentelemetry-api
       opentelemetry-sdk

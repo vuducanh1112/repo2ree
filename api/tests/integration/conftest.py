@@ -48,9 +48,9 @@ from websockets.asyncio.server import ServerConnection, serve
 os.environ.setdefault("REPO2REE_EXEC_BUNDLE", str(EXEC_BUNDLE))
 os.environ.setdefault("REPO2REE_TOOLS_BUNDLE", str(TOOLS_BUNDLE))
 
-# Env vars take precedence over .env in pydantic-settings, and the settings
-# (plus the registry singleton built from them) are read at import time — so
-# this must run before any repo2ree_api import below.
+# Settings and the registry singleton built from them are read at import time,
+# so the isolated test paths must be in the process environment before any
+# repo2ree_api import below.
 _state_dir = Path(tempfile.mkdtemp(prefix="repo2ree-api-itest-"))
 os.environ["UPLOAD_STAGING_DIR"] = str(_state_dir / "upload-staging")
 os.environ["ALLOCATION_STORE_FILE"] = str(_state_dir / "allocations.json")

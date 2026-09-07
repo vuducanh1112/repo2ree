@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
-import os
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
+
+from pydantic import field_validator, model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from repo2ree_provider_docker.identity import load_or_create_provider_id
 
@@ -61,19 +64,56 @@ class ProviderConfig:
     workbench_otlp_endpoint: str | None = None
 
 
-def _env_flag(name: str, default: bool) -> bool:
-    raw = os.environ.get(name, "").strip().lower()
-    if not raw:
-        return default
-    return raw in {"1", "true", "yes", "on"}
+class ProviderEnvironment(BaseSettings):
+    """Validated environment accepted by the provider process.
+
+    Uppercase fields intentionally match the external contract. The application
+    converts this transport model into the domain-oriented ``ProviderConfig``.
+    """
+
+    model_config = SettingsConfigDict(env_file=None, extra="ignore", case_sensitive=True, validate_default=True)
+
+    PROVIDER_ID: str | None = None
+    PROVIDER_STATE_DIR: Path = Path("~/.repo2ree-provider")
+    PROVIDER_API_WS_URL: str = "ws://localhost:8000/provider/connect"
+    PROVIDER_WORKBENCH_API_WS_URL: str = "ws://localhost:8000/workbench/connect"
+    PROVIDER_LOCATION_ID: str | None = None
+    PROVIDER_LOCATION_LABEL: str | None = None
+    PROVIDER_ACCEPTS_CUSTOM_IMAGE: bool = True
+    PROVIDER_DOCKER_MODE: Literal["dind", "host-socket"] = "dind"
+    PROVIDER_WORKBENCH_DOCKER_NETWORK: str = ""
+    PROVIDER_WORKBENCH_TELEMETRY: Literal["relay", "direct", "local", "off"] = "relay"
+    PROVIDER_WORKBENCH_OTLP_ENDPOINT: str | None = None
+    WORKBENCH_IMAGE_CATALOG: str | None = None
+    OTLP_ENDPOINT: str | None = None
+
+    @field_validator("PROVIDER_ACCEPTS_CUSTOM_IMAGE", mode="before")
+    @classmethod
+    def _blank_boolean_uses_default(cls, value: object) -> object:
+        return True if value == "" else value
+
+    @field_validator("PROVIDER_WORKBENCH_TELEMETRY", mode="before")
+    @classmethod
+    def _normalize_telemetry(cls, value: object) -> object:
+        return value.strip().lower() if isinstance(value, str) and value.strip() else "relay"
+
+    @field_validator("OTLP_ENDPOINT", "PROVIDER_WORKBENCH_OTLP_ENDPOINT", mode="before")
+    @classmethod
+    def _blank_endpoint_is_unset(cls, value: object) -> object:
+        return None if isinstance(value, str) and not value.strip() else value
+
+    @model_validator(mode="after")
+    def _direct_telemetry_has_endpoint(self) -> ProviderEnvironment:
+        if self.PROVIDER_WORKBENCH_TELEMETRY == "direct" and not self.PROVIDER_WORKBENCH_OTLP_ENDPOINT:
+            raise ValueError("PROVIDER_WORKBENCH_OTLP_ENDPOINT is required when PROVIDER_WORKBENCH_TELEMETRY=direct")
+        return self
 
 
 def load_config() -> ProviderConfig:
-    explicit_id = os.environ.get("PROVIDER_ID")
-    provider_id = explicit_id or load_or_create_provider_id(
-        Path(os.environ.get("PROVIDER_STATE_DIR", "~/.repo2ree-provider")).expanduser()
-    )
-    raw_catalog = os.environ.get("WORKBENCH_IMAGE_CATALOG")
+    environment = ProviderEnvironment()
+    explicit_id = environment.PROVIDER_ID
+    provider_id = explicit_id or load_or_create_provider_id(environment.PROVIDER_STATE_DIR.expanduser())
+    raw_catalog = environment.WORKBENCH_IMAGE_CATALOG
     if raw_catalog:
         images = tuple(CuratedImage(**item) for item in json.loads(raw_catalog))
     else:
@@ -91,16 +131,16 @@ def load_config() -> ProviderConfig:
     if len(ids) != len(set(ids)):
         raise ValueError("catalog image ids must be unique")
     return ProviderConfig(
-        api_ws_url=os.environ.get("PROVIDER_API_WS_URL", "ws://localhost:8000/provider/connect"),
-        workbench_api_ws_url=os.environ.get("PROVIDER_WORKBENCH_API_WS_URL", "ws://localhost:8000/workbench/connect"),
+        api_ws_url=environment.PROVIDER_API_WS_URL,
+        workbench_api_ws_url=environment.PROVIDER_WORKBENCH_API_WS_URL,
         provider_id=provider_id,
-        location_id=os.environ.get("PROVIDER_LOCATION_ID", provider_id),
-        location_label=os.environ.get("PROVIDER_LOCATION_LABEL", provider_id),
+        location_id=environment.PROVIDER_LOCATION_ID or provider_id,
+        location_label=environment.PROVIDER_LOCATION_LABEL or provider_id,
         images=images,
-        accepts_custom_image=_env_flag("PROVIDER_ACCEPTS_CUSTOM_IMAGE", True),
-        docker_mode=os.environ.get("PROVIDER_DOCKER_MODE", "dind"),
-        workbench_network=os.environ.get("PROVIDER_WORKBENCH_DOCKER_NETWORK", ""),
-        otlp_endpoint=os.environ.get("OTLP_ENDPOINT") or None,
-        workbench_telemetry=os.environ.get("PROVIDER_WORKBENCH_TELEMETRY", "").strip().lower() or "relay",
-        workbench_otlp_endpoint=os.environ.get("PROVIDER_WORKBENCH_OTLP_ENDPOINT") or None,
+        accepts_custom_image=environment.PROVIDER_ACCEPTS_CUSTOM_IMAGE,
+        docker_mode=environment.PROVIDER_DOCKER_MODE,
+        workbench_network=environment.PROVIDER_WORKBENCH_DOCKER_NETWORK,
+        otlp_endpoint=environment.OTLP_ENDPOINT,
+        workbench_telemetry=environment.PROVIDER_WORKBENCH_TELEMETRY,
+        workbench_otlp_endpoint=environment.PROVIDER_WORKBENCH_OTLP_ENDPOINT,
     )

@@ -1,0 +1,1078 @@
+{
+  "serviceSchemas": {
+    "api": {
+      "properties": {
+        "ALLOCATION_STORE_FILE": {
+          "default": ".repo2ree/allocations.json",
+          "format": "path",
+          "title": "Allocation Store File",
+          "type": "string"
+        },
+        "EXTERNAL_WORKBENCH_TOKEN": {
+          "default": "",
+          "title": "External Workbench Token",
+          "type": "string"
+        },
+        "OTLP_ENDPOINT": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Otlp Endpoint"
+        },
+        "REE_INDEX_FILE": {
+          "default": ".repo2ree/ree-index.json",
+          "format": "path",
+          "title": "Ree Index File",
+          "type": "string"
+        },
+        "RUN_MAX_WORKERS": {
+          "default": 4,
+          "title": "Run Max Workers",
+          "type": "integer"
+        },
+        "RUN_REGISTRY_DIR": {
+          "default": ".repo2ree/runs",
+          "format": "path",
+          "title": "Run Registry Dir",
+          "type": "string"
+        },
+        "UPLOAD_MAX_BYTES": {
+          "default": 2147483648,
+          "title": "Upload Max Bytes",
+          "type": "integer"
+        },
+        "UPLOAD_STAGING_DIR": {
+          "default": ".repo2ree/upload-staging",
+          "format": "path",
+          "title": "Upload Staging Dir",
+          "type": "string"
+        },
+        "UPLOAD_STAGING_MAX_BYTES": {
+          "default": 8589934592,
+          "title": "Upload Staging Max Bytes",
+          "type": "integer"
+        },
+        "UPLOAD_TTL_SECONDS": {
+          "default": 3600,
+          "title": "Upload Ttl Seconds",
+          "type": "integer"
+        }
+      },
+      "title": "Settings",
+      "type": "object"
+    },
+    "provider": {
+      "description": "Validated environment accepted by the provider process.\n\nUppercase fields intentionally match the external contract. The application\nconverts this transport model into the domain-oriented ``ProviderConfig``.",
+      "properties": {
+        "OTLP_ENDPOINT": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Otlp Endpoint"
+        },
+        "PROVIDER_ACCEPTS_CUSTOM_IMAGE": {
+          "default": true,
+          "title": "Provider Accepts Custom Image",
+          "type": "boolean"
+        },
+        "PROVIDER_API_WS_URL": {
+          "default": "ws://localhost:8000/provider/connect",
+          "title": "Provider Api Ws Url",
+          "type": "string"
+        },
+        "PROVIDER_DOCKER_MODE": {
+          "default": "dind",
+          "enum": [
+            "dind",
+            "host-socket"
+          ],
+          "title": "Provider Docker Mode",
+          "type": "string"
+        },
+        "PROVIDER_ID": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provider Id"
+        },
+        "PROVIDER_LOCATION_ID": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provider Location Id"
+        },
+        "PROVIDER_LOCATION_LABEL": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provider Location Label"
+        },
+        "PROVIDER_STATE_DIR": {
+          "default": "~/.repo2ree-provider",
+          "format": "path",
+          "title": "Provider State Dir",
+          "type": "string"
+        },
+        "PROVIDER_WORKBENCH_API_WS_URL": {
+          "default": "ws://localhost:8000/workbench/connect",
+          "title": "Provider Workbench Api Ws Url",
+          "type": "string"
+        },
+        "PROVIDER_WORKBENCH_DOCKER_NETWORK": {
+          "default": "",
+          "title": "Provider Workbench Docker Network",
+          "type": "string"
+        },
+        "PROVIDER_WORKBENCH_OTLP_ENDPOINT": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provider Workbench Otlp Endpoint"
+        },
+        "PROVIDER_WORKBENCH_TELEMETRY": {
+          "default": "relay",
+          "enum": [
+            "relay",
+            "direct",
+            "local",
+            "off"
+          ],
+          "title": "Provider Workbench Telemetry",
+          "type": "string"
+        },
+        "WORKBENCH_IMAGE_CATALOG": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Workbench Image Catalog"
+        }
+      },
+      "title": "ProviderEnvironment",
+      "type": "object"
+    },
+    "workbench": {
+      "description": "Validated environment accepted by a resident workbench process.",
+      "properties": {
+        "OTLP_ENDPOINT": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Otlp Endpoint"
+        },
+        "REPO2REE_EXEC_PATH": {
+          "default": "repo2ree-exec",
+          "title": "Repo2Ree Exec Path",
+          "type": "string"
+        },
+        "TRACE_FILE": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trace File"
+        },
+        "WORKBENCH_ALLOCATION_ID": {
+          "default": "",
+          "title": "Workbench Allocation Id",
+          "type": "string"
+        },
+        "WORKBENCH_API_WS_URL": {
+          "default": "ws://localhost:8000/workbench/connect",
+          "title": "Workbench Api Ws Url",
+          "type": "string"
+        },
+        "WORKBENCH_AUTH_TOKEN": {
+          "default": "",
+          "title": "Workbench Auth Token",
+          "type": "string"
+        },
+        "WORKBENCH_ID": {
+          "default": "",
+          "title": "Workbench Id",
+          "type": "string"
+        },
+        "WORKBENCH_IMAGE": {
+          "default": "",
+          "title": "Workbench Image",
+          "type": "string"
+        },
+        "WORKBENCH_LOCATION_ID": {
+          "default": "",
+          "title": "Workbench Location Id",
+          "type": "string"
+        },
+        "WORKBENCH_MODE": {
+          "anyOf": [
+            {
+              "enum": [
+                "managed",
+                "external"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Workbench Mode"
+        },
+        "WORKBENCH_ROOT": {
+          "default": "/ree",
+          "format": "path",
+          "title": "Workbench Root",
+          "type": "string"
+        },
+        "WORKBENCH_STATE_DIR": {
+          "default": "~/.repo2ree",
+          "format": "path",
+          "title": "Workbench State Dir",
+          "type": "string"
+        },
+        "WORKBENCH_TELEMETRY": {
+          "anyOf": [
+            {
+              "enum": [
+                "direct",
+                "relay",
+                "local",
+                "off"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Workbench Telemetry"
+        }
+      },
+      "title": "WorkbenchEnvironment",
+      "type": "object"
+    }
+  },
+  "variables": {
+    "ALLOCATION_STORE_FILE": {
+      "kind": "runtime",
+      "owner": "api",
+      "schema": {
+        "default": ".repo2ree/allocations.json",
+        "format": "path",
+        "title": "Allocation Store File",
+        "type": "string"
+      }
+    },
+    "API_BASE_URL": {
+      "kind": "workflow",
+      "owner": "test-client",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "API_DEMO_CAST": {
+      "kind": "workflow",
+      "owner": "just",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "API_DEMO_TRANSCRIPT": {
+      "kind": "workflow",
+      "owner": "just",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "ARGS": {
+      "kind": "workflow",
+      "owner": "just",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "BASH_SOURCE": {
+      "kind": "external",
+      "owner": "bash",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "COVERAGE_FILE": {
+      "kind": "external",
+      "owner": "coverage",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "COV_REPORT": {
+      "kind": "workflow",
+      "owner": "just",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "DEPLOY_ENV": {
+      "kind": "runtime",
+      "owner": "protocol",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "DOCKERHUB_NAMESPACE": {
+      "kind": "deployment",
+      "owner": "publishing",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "DOCKERHUB_REGISTRY": {
+      "kind": "deployment",
+      "owner": "publishing",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "E2E_API_BASE_URL": {
+      "kind": "internal",
+      "owner": "playwright",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "E2E_BASE_URL": {
+      "kind": "internal",
+      "owner": "playwright",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "EXTERNAL_WORKBENCH_TOKEN": {
+      "kind": "runtime",
+      "owner": "api",
+      "schema": {
+        "default": "",
+        "title": "External Workbench Token",
+        "type": "string"
+      }
+    },
+    "FILMSTRIP_CAPTURE": {
+      "kind": "workflow",
+      "owner": "just",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "GHCR_NAMESPACE": {
+      "kind": "deployment",
+      "owner": "publishing",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "GHCR_REGISTRY": {
+      "kind": "deployment",
+      "owner": "publishing",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "GIT_INDEX_FILE": {
+      "kind": "external",
+      "owner": "git",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "GUI_ARGS": {
+      "kind": "workflow",
+      "owner": "just",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "GUI_COLLAPSE": {
+      "kind": "workflow",
+      "owner": "just",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "GUI_CORE_COLLAPSE": {
+      "kind": "workflow",
+      "owner": "just",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "HOSTNAME": {
+      "kind": "external",
+      "owner": "container-runtime",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "IMAGE_ARCHIVE_DIR": {
+      "kind": "workflow",
+      "owner": "publishing",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "IMAGE_CANDIDATE_REV": {
+      "kind": "deployment",
+      "owner": "publishing",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "IMAGE_CANDIDATE_STATE_DIR": {
+      "kind": "workflow",
+      "owner": "publishing",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "IMAGE_TAG": {
+      "kind": "deployment",
+      "owner": "publishing",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "IMAGE_VALIDATION_REGISTRY": {
+      "kind": "deployment",
+      "owner": "publishing",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "JOURNAL_TRACE": {
+      "kind": "workflow",
+      "owner": "just",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "LOG_LEVEL": {
+      "kind": "runtime",
+      "owner": "protocol",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "OTEL_EXPORTER_OTLP_HEADERS": {
+      "kind": "external",
+      "owner": "opentelemetry",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "OTLP_ENDPOINT": {
+      "kind": "runtime",
+      "owner": "workbench",
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Otlp Endpoint"
+      }
+    },
+    "PATH": {
+      "kind": "external",
+      "owner": "operating-system",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH": {
+      "kind": "external",
+      "owner": "playwright",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "PROVIDER_ACCEPTS_CUSTOM_IMAGE": {
+      "kind": "runtime",
+      "owner": "provider",
+      "schema": {
+        "default": true,
+        "title": "Provider Accepts Custom Image",
+        "type": "boolean"
+      }
+    },
+    "PROVIDER_API_WS_URL": {
+      "kind": "runtime",
+      "owner": "provider",
+      "schema": {
+        "default": "ws://localhost:8000/provider/connect",
+        "title": "Provider Api Ws Url",
+        "type": "string"
+      }
+    },
+    "PROVIDER_DOCKER_MODE": {
+      "kind": "runtime",
+      "owner": "provider",
+      "schema": {
+        "default": "dind",
+        "enum": [
+          "dind",
+          "host-socket"
+        ],
+        "title": "Provider Docker Mode",
+        "type": "string"
+      }
+    },
+    "PROVIDER_ID": {
+      "kind": "runtime",
+      "owner": "provider",
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Provider Id"
+      }
+    },
+    "PROVIDER_LOCATION_ID": {
+      "kind": "runtime",
+      "owner": "provider",
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Provider Location Id"
+      }
+    },
+    "PROVIDER_LOCATION_LABEL": {
+      "kind": "runtime",
+      "owner": "provider",
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Provider Location Label"
+      }
+    },
+    "PROVIDER_STATE_DIR": {
+      "kind": "runtime",
+      "owner": "provider",
+      "schema": {
+        "default": "~/.repo2ree-provider",
+        "format": "path",
+        "title": "Provider State Dir",
+        "type": "string"
+      }
+    },
+    "PROVIDER_WORKBENCH_API_WS_URL": {
+      "kind": "runtime",
+      "owner": "provider",
+      "schema": {
+        "default": "ws://localhost:8000/workbench/connect",
+        "title": "Provider Workbench Api Ws Url",
+        "type": "string"
+      }
+    },
+    "PROVIDER_WORKBENCH_DOCKER_NETWORK": {
+      "kind": "runtime",
+      "owner": "provider",
+      "schema": {
+        "default": "",
+        "title": "Provider Workbench Docker Network",
+        "type": "string"
+      }
+    },
+    "PROVIDER_WORKBENCH_OTLP_ENDPOINT": {
+      "kind": "runtime",
+      "owner": "provider",
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Provider Workbench Otlp Endpoint"
+      }
+    },
+    "PROVIDER_WORKBENCH_TELEMETRY": {
+      "kind": "runtime",
+      "owner": "provider",
+      "schema": {
+        "default": "relay",
+        "enum": [
+          "relay",
+          "direct",
+          "local",
+          "off"
+        ],
+        "title": "Provider Workbench Telemetry",
+        "type": "string"
+      }
+    },
+    "REE_INDEX_FILE": {
+      "kind": "runtime",
+      "owner": "api",
+      "schema": {
+        "default": ".repo2ree/ree-index.json",
+        "format": "path",
+        "title": "Ree Index File",
+        "type": "string"
+      }
+    },
+    "REGISTRIES": {
+      "kind": "deployment",
+      "owner": "publishing",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REPO2REE_BACKEND_IMAGE": {
+      "kind": "deployment",
+      "owner": "compose",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REPO2REE_BUILD_REVISION": {
+      "kind": "build",
+      "owner": "protocol",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REPO2REE_EXEC_BUNDLE": {
+      "kind": "deployment",
+      "owner": "provider",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REPO2REE_EXEC_PATH": {
+      "kind": "runtime",
+      "owner": "workbench",
+      "schema": {
+        "default": "repo2ree-exec",
+        "title": "Repo2Ree Exec Path",
+        "type": "string"
+      }
+    },
+    "REPO2REE_GUI_IMAGE": {
+      "kind": "deployment",
+      "owner": "compose",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REPO2REE_NETWORK": {
+      "kind": "deployment",
+      "owner": "compose",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REPO2REE_PROVIDER_CONTAINER": {
+      "kind": "internal",
+      "owner": "compose",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REPO2REE_PROVIDER_IMAGE": {
+      "kind": "deployment",
+      "owner": "compose",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REPO2REE_PROVIDER_STATE_VOLUME": {
+      "kind": "deployment",
+      "owner": "compose",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REPO2REE_RESOURCE_OWNER": {
+      "kind": "internal",
+      "owner": "provider",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REPO2REE_TOOLS_BIN": {
+      "kind": "internal",
+      "owner": "executor",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REPO2REE_TOOLS_BUNDLE": {
+      "kind": "deployment",
+      "owner": "provider",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REPO2REE_WORKBENCH_PATH": {
+      "kind": "deployment",
+      "owner": "provider",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REPO2REE_WORKBENCH_ROOT": {
+      "kind": "internal",
+      "owner": "core",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "RUN_MAX_WORKERS": {
+      "kind": "runtime",
+      "owner": "api",
+      "schema": {
+        "default": 4,
+        "title": "Run Max Workers",
+        "type": "integer"
+      }
+    },
+    "RUN_REGISTRY_DIR": {
+      "kind": "runtime",
+      "owner": "api",
+      "schema": {
+        "default": ".repo2ree/runs",
+        "format": "path",
+        "title": "Run Registry Dir",
+        "type": "string"
+      }
+    },
+    "SERVICE_VERSION": {
+      "kind": "runtime",
+      "owner": "protocol",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "STACK_BACKEND_IMAGE": {
+      "kind": "internal",
+      "owner": "image-stack",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "STACK_GUI_IMAGE": {
+      "kind": "internal",
+      "owner": "image-stack",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "STACK_PROVIDER_IMAGE": {
+      "kind": "internal",
+      "owner": "image-stack",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "TRACEPARENT": {
+      "kind": "internal",
+      "owner": "tracing",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "TRACE_FILE": {
+      "kind": "runtime",
+      "owner": "workbench",
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Trace File"
+      }
+    },
+    "TRACE_RELAY": {
+      "kind": "internal",
+      "owner": "tracing",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "UPLOAD_MAX_BYTES": {
+      "kind": "runtime",
+      "owner": "api",
+      "schema": {
+        "default": 2147483648,
+        "title": "Upload Max Bytes",
+        "type": "integer"
+      }
+    },
+    "UPLOAD_STAGING_DIR": {
+      "kind": "runtime",
+      "owner": "api",
+      "schema": {
+        "default": ".repo2ree/upload-staging",
+        "format": "path",
+        "title": "Upload Staging Dir",
+        "type": "string"
+      }
+    },
+    "UPLOAD_STAGING_MAX_BYTES": {
+      "kind": "runtime",
+      "owner": "api",
+      "schema": {
+        "default": 8589934592,
+        "title": "Upload Staging Max Bytes",
+        "type": "integer"
+      }
+    },
+    "UPLOAD_TTL_SECONDS": {
+      "kind": "runtime",
+      "owner": "api",
+      "schema": {
+        "default": 3600,
+        "title": "Upload Ttl Seconds",
+        "type": "integer"
+      }
+    },
+    "VITE_API_BASE_URL": {
+      "kind": "build",
+      "owner": "gui",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "VITE_BUILD_REVISION": {
+      "kind": "build",
+      "owner": "gui",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "VITE_GITHUB_URL": {
+      "kind": "build",
+      "owner": "gui",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "WORKBENCH_ALLOCATION_ID": {
+      "kind": "runtime",
+      "owner": "workbench",
+      "schema": {
+        "default": "",
+        "title": "Workbench Allocation Id",
+        "type": "string"
+      }
+    },
+    "WORKBENCH_API_WS_URL": {
+      "kind": "runtime",
+      "owner": "workbench",
+      "schema": {
+        "default": "ws://localhost:8000/workbench/connect",
+        "title": "Workbench Api Ws Url",
+        "type": "string"
+      }
+    },
+    "WORKBENCH_AUTH_TOKEN": {
+      "kind": "runtime",
+      "owner": "workbench",
+      "schema": {
+        "default": "",
+        "title": "Workbench Auth Token",
+        "type": "string"
+      }
+    },
+    "WORKBENCH_ID": {
+      "kind": "runtime",
+      "owner": "workbench",
+      "schema": {
+        "default": "",
+        "title": "Workbench Id",
+        "type": "string"
+      }
+    },
+    "WORKBENCH_IMAGE": {
+      "kind": "runtime",
+      "owner": "workbench",
+      "schema": {
+        "default": "",
+        "title": "Workbench Image",
+        "type": "string"
+      }
+    },
+    "WORKBENCH_IMAGE_CATALOG": {
+      "kind": "runtime",
+      "owner": "provider",
+      "schema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Workbench Image Catalog"
+      }
+    },
+    "WORKBENCH_LOCATION_ID": {
+      "kind": "runtime",
+      "owner": "workbench",
+      "schema": {
+        "default": "",
+        "title": "Workbench Location Id",
+        "type": "string"
+      }
+    },
+    "WORKBENCH_MODE": {
+      "kind": "runtime",
+      "owner": "workbench",
+      "schema": {
+        "anyOf": [
+          {
+            "enum": [
+              "managed",
+              "external"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Workbench Mode"
+      }
+    },
+    "WORKBENCH_ROOT": {
+      "kind": "runtime",
+      "owner": "workbench",
+      "schema": {
+        "default": "/ree",
+        "format": "path",
+        "title": "Workbench Root",
+        "type": "string"
+      }
+    },
+    "WORKBENCH_STATE_DIR": {
+      "kind": "runtime",
+      "owner": "workbench",
+      "schema": {
+        "default": "~/.repo2ree",
+        "format": "path",
+        "title": "Workbench State Dir",
+        "type": "string"
+      }
+    },
+    "WORKBENCH_TELEMETRY": {
+      "kind": "runtime",
+      "owner": "workbench",
+      "schema": {
+        "anyOf": [
+          {
+            "enum": [
+              "direct",
+              "relay",
+              "local",
+              "off"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Workbench Telemetry"
+      }
+    }
+  },
+  "version": 1
+}

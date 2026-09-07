@@ -3,6 +3,7 @@ name = "repo2ree-workbench"
 version = "0.1.0"
 dependencies = [
     "repo2ree-protocol",
+    "pydantic-settings~=2.12.0",
     "websockets~=15.0",
 ]
 

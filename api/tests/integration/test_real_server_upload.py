@@ -66,7 +66,7 @@ def server(tmp_path: Path, request: pytest.FixtureRequest) -> Iterator[tuple[str
 
     server_env = {
         **os.environ,
-        "WORKBENCH_REGISTRY_FILE": str(tmp_path / "registry.json"),
+        "ALLOCATION_STORE_FILE": str(tmp_path / "allocations.json"),
         "UPLOAD_STAGING_DIR": str(tmp_path / "upload-staging"),
         "TRACE_FILE": str(out_dir / "traces.ndjson"),
         "EXTERNAL_WORKBENCH_TOKEN": "real-server-integration",

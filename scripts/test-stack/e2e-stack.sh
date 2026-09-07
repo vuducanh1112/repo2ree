@@ -49,16 +49,8 @@
 # Server and workbenches therefore share one COVERAGE_FILE under --parallel-mode,
 # each writing its own suffixed data file, combined at the end.
 #
-# Environment knobs (all optional):
-#   PYTHON_SLIM_IMAGE          docker-less Python image published in the catalog
-#                              and selected through the custom-image UI by the
-#                              lightweight E2E flows (default:
-#                              docker.io/library/python:3.11-slim)
-#   E2E_WORKBENCH_STATE_DIR        workbench identity dir (default: test-artifacts/state/workbenches);
-#                              with --workbenches N, workbench i > 1 uses <dir>-<i> so
-#                              each keeps a distinct persistent identity
-#   E2E_EXEC_BUNDLE            executor bundle path (default: dist/bundles/exec)
-#   E2E_TOOLS_BUNDLE           tools bundle path (default: dist/bundles/tools)
+# Stack choices are command arguments rather than ambient environment. Run with
+# no optional path flags to use the repository's test-artifact and bundle paths.
 #
 # The workbench always gets the executor/tools bundles: lean env images (the dind
 # default, custom benches) need the injection, and images that ship their own
@@ -71,7 +63,9 @@ export VITE_BUILD_REVISION=${VITE_BUILD_REVISION:-$REPO2REE_BUILD_REVISION}
 
 usage() {
     echo "usage: $0 (--project <playwright-project> | --script <path> --tier <name>)" \
-        "[--mode provider|external] [--capacity <n>] [--record <cast>]" >&2
+        "[--mode provider|external] [--capacity <n>] [--docker-mode dind|host-socket]" \
+        "[--state-root <path>] [--exec-bundle <path>] [--tools-bundle <path>]" \
+        "[--python-image <ref>] [--record <cast>]" >&2
     exit 2
 }
 
@@ -83,7 +77,12 @@ project=
 script=
 record=
 capacity=1
-mode=${E2E_CAPACITY_MODE:-provider}
+mode=provider
+docker_mode=dind
+state_root=
+exec_bundle=
+tools_bundle=
+python_slim_image=docker.io/library/python:3.11-slim
 tier=
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -93,6 +92,11 @@ while [ $# -gt 0 ]; do
         --record) [ $# -ge 2 ] || usage; record=$2; shift 2 ;;
         --capacity) [ $# -ge 2 ] || usage; capacity=$2; shift 2 ;;
         --mode) [ $# -ge 2 ] || usage; mode=$2; shift 2 ;;
+        --docker-mode) [ $# -ge 2 ] || usage; docker_mode=$2; shift 2 ;;
+        --state-root) [ $# -ge 2 ] || usage; state_root=$2; shift 2 ;;
+        --exec-bundle) [ $# -ge 2 ] || usage; exec_bundle=$2; shift 2 ;;
+        --tools-bundle) [ $# -ge 2 ] || usage; tools_bundle=$2; shift 2 ;;
+        --python-image) [ $# -ge 2 ] || usage; python_slim_image=$2; shift 2 ;;
         *) usage ;;
     esac
 done
@@ -101,6 +105,7 @@ if { [ -n "$project" ] && [ -n "$script" ]; } || { [ -z "$project" ] && [ -z "$s
 [ -z "$record" ] || [ -n "$script" ] || usage  # --record only applies to --script
 [ "$capacity" -ge 1 ] 2>/dev/null || usage
 case "$mode" in provider|external) ;; *) usage ;; esac
+case "$docker_mode" in dind|host-socket) ;; *) usage ;; esac
 # The tier is the project — one name, so the report can never be labelled with a
 # suite that did not produce it. --script has no project and must say which tier
 # its run belongs to; --tier alongside --project would be a second name for the
@@ -133,11 +138,11 @@ if [ -n "$project" ]; then
     fi
 fi
 
-docker_mode=${E2E_PROVIDER_DOCKER_MODE:-dind}
-state_dir=${E2E_WORKBENCH_STATE_DIR:-$root/test-artifacts/state/workbenches}
-provider_state_dir=${E2E_PROVIDER_STATE_DIR:-$root/test-artifacts/state/providers}
-exec_bundle=${E2E_EXEC_BUNDLE:-$root/dist/bundles/exec}
-tools_bundle=${E2E_TOOLS_BUNDLE:-$root/dist/bundles/tools}
+state_root=${state_root:-$root/test-artifacts/state}
+state_dir=$state_root/workbenches
+provider_state_dir=$state_root/providers
+exec_bundle=${exec_bundle:-$root/dist/bundles/exec}
+tools_bundle=${tools_bundle:-$root/dist/bundles/tools}
 
 # workbench_log <i>: log path for the i-th workbench (workbench-<tier>.log, workbench-<tier>-2.log,
 # ...). Every log shares one logs/ directory, so without the tier a demo run would
@@ -158,7 +163,7 @@ backend_log=$log_dir/backend-$tier.log
 run_token="e2e-$tier-$(python3 -c 'import uuid; print(uuid.uuid4().hex)')"
 port_file=$(mktemp)
 api_base_url=
-control_state_dir=${E2E_CONTROL_STATE_DIR:-$root/test-artifacts/state/control/$run_token}
+control_state_dir=$state_root/control/$run_token
 mkdir -p "$log_dir" "$state_dir" "$provider_state_dir" "$coverage_data_dir" "$control_state_dir"
 # Start the tier's data fresh: --parallel-mode leaves one suffixed file per
 # process, so a previous run's files would otherwise be combined in as well
@@ -170,7 +175,6 @@ for i in $(seq 1 "$capacity"); do rm -f "$(workbench_log "$i")"; done
 # offers, published outward so a run can pick one by label. Nothing here says
 # what an image supplies — a mismatch surfaces when the REE's build fails.
 standard_image=docker.io/library/docker:29-dind
-python_slim_image=${PYTHON_SLIM_IMAGE:-docker.io/library/python:3.11-slim}
 export WORKBENCH_IMAGE_CATALOG
 WORKBENCH_IMAGE_CATALOG=$(python3 -c '
 import json, sys
@@ -281,7 +285,7 @@ wait_for_backend() {
 
 echo ">> starting backend on an isolated port under coverage (log: $backend_log)"
 UPLOAD_STAGING_DIR=$control_state_dir/upload-staging \
-WORKBENCH_REGISTRY_FILE=$control_state_dir/workbench-registry.json \
+ALLOCATION_STORE_FILE=$control_state_dir/allocations.json \
 REE_INDEX_FILE=$control_state_dir/ree-index.json \
 RUN_REGISTRY_DIR=$control_state_dir/runs \
 EXTERNAL_WORKBENCH_TOKEN=$run_token \
@@ -320,7 +324,7 @@ start_external_workbench() {
     WORKBENCH_LOCATION_ID="lab-$3" \
     WORKBENCH_ROOT=$1/root \
     WORKBENCH_STATE_DIR=$1 \
-    REPO2REE_EXEC_PATH=${E2E_EXEC_PATH:-repo2ree-exec} \
+    REPO2REE_EXEC_PATH=repo2ree-exec \
     COVERAGE_FILE=$coverage_file \
     uv run --package repo2ree-workbench coverage run --parallel-mode \
         -m repo2ree_workbench >"$2" 2>&1 &
