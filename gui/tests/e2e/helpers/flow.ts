@@ -287,12 +287,20 @@ export async function startReeCreation(page: Page, options?: { labIndex?: number
  * (the live lab), so this resolves there and then dives into the Source node so
  * the rest of the walkthrough continues from the docked authoring drawer.
  */
-export async function provisionWorkbench(page: Page, options?: { imageLabel?: string }) {
+export async function provisionWorkbench(
+  page: Page,
+  options?: { imageLabel?: string; imageRef?: string },
+) {
   await stepShot(page, "provision-workbench", "before");
   // Setup is the drawer the lab picker opens, so scope to it rather than to a
   // page that no longer exists on its own.
   const setup = page.getByRole("region", { name: "Set up the workbench" });
-  if (options?.imageLabel) {
+  if (options?.imageRef) {
+    // Custom refs are the portable path across stacks: a deployment may curate
+    // different named profiles while still accepting the same explicit image.
+    await setup.getByRole("button", { name: /Custom…/ }).click();
+    await setup.getByRole("textbox", { name: "Custom image reference" }).fill(options.imageRef);
+  } else if (options?.imageLabel) {
     // Pick one of the lab's curated images by its label rather than its ref:
     // the stack pins the actual refs per environment, so the label is the
     // stable half of a catalog entry.
