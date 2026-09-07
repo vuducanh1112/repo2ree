@@ -87,8 +87,9 @@ be-unit-tests coverage_report="":
 be-integration-tests coverage_report="": e2e-bundles
     COVERAGE_FILE={{ quote(ROOT + "/" + COVERAGE_DATA + "/integration/.coverage") }} pytest {{ INTEGRATION_SUITES }} --cov --cov-report={{ quote(coverage_report) }}
 
-# Run both measured backend tiers.
+# Run both measured backend tiers concurrently.
 [group('Backend tests')]
+[parallel]
 be-tests coverage_report="": (be-unit-tests coverage_report) (be-integration-tests coverage_report)
 
 # Render one measured tier's total and per-package HTML coverage reports.
