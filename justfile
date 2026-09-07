@@ -7,7 +7,7 @@ set default-list
 ROOT := justfile_directory()
 
 IMAGE_TAG := env("IMAGE_TAG", "edge")
-IMAGE_ARCHIVE_DIR := env("IMAGE_ARCHIVE_DIR", "dist/images")
+DEFAULT_IMAGE_ARCHIVE_DIR := "dist/images"
 GHCR_REGISTRY := env("GHCR_REGISTRY", "ghcr.io")
 GHCR_NAMESPACE := env("GHCR_NAMESPACE", "vuducanh1112")
 DOCKERHUB_REGISTRY := env("DOCKERHUB_REGISTRY", "docker.io")
@@ -19,6 +19,7 @@ DEFAULT_E2E_CAPACITY := "2"
 DEFAULT_STACK_PROVIDERS := "2"
 DEFAULT_STACK_IMAGE_REPO := DOCKERHUB_REGISTRY + "/" + DOCKERHUB_NAMESPACE
 DEFAULT_STACK_IMAGE_TAG := IMAGE_TAG
+DEFAULT_IMAGE_CANDIDATE_STATE_DIR := ".validation-certificates/image-candidates"
 
 DIAGRAM_DIR := "dist/diagrams"
 ARCH_DIR := DIAGRAM_DIR + "/architecture"

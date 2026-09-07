@@ -65,7 +65,7 @@ usage() {
     echo "usage: $0 (--project <playwright-project> | --script <path> --tier <name>)" \
         "[--mode provider|external] [--capacity <n>] [--docker-mode dind|host-socket]" \
         "[--state-root <path>] [--exec-bundle <path>] [--tools-bundle <path>]" \
-        "[--python-image <ref>] [--record <cast>]" >&2
+        "[--python-image <ref>] [--git-origin <url>] [--record <cast>]" >&2
     exit 2
 }
 
@@ -83,6 +83,7 @@ state_root=
 exec_bundle=
 tools_bundle=
 python_slim_image=docker.io/library/python:3.11-slim
+git_origin=https://github.com/vuducanh1112/ree-e2e-fixture.git
 tier=
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -97,6 +98,7 @@ while [ $# -gt 0 ]; do
         --exec-bundle) [ $# -ge 2 ] || usage; exec_bundle=$2; shift 2 ;;
         --tools-bundle) [ $# -ge 2 ] || usage; tools_bundle=$2; shift 2 ;;
         --python-image) [ $# -ge 2 ] || usage; python_slim_image=$2; shift 2 ;;
+        --git-origin) [ $# -ge 2 ] || usage; git_origin=$2; shift 2 ;;
         *) usage ;;
     esac
 done
@@ -410,7 +412,9 @@ else
     echo ">> stack ready — running playwright project=$project"
     (
         cd gui
-        exec env E2E_API_BASE_URL="$api_base_url" npm exec -- playwright test \
+        exec env E2E_API_BASE_URL="$api_base_url" \
+            E2E_GIT_ORIGIN_URL="$git_origin" PYTHON_SLIM_IMAGE="$python_slim_image" \
+            npm exec -- playwright test \
             -c playwright.config.ts --project="$project"
     ) &
     client_pid=$!

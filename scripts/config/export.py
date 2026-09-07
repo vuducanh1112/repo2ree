@@ -20,35 +20,27 @@ CONTRACT = ROOT / "contracts/config/environment.json"
 # still part of the checked contract rather than an invisible exception list.
 NON_SERVICE_ENVIRONMENT: dict[str, tuple[str, str]] = {
     "API_BASE_URL": ("test-client", "workflow"),
-    "API_DEMO_CAST": ("just", "workflow"),
-    "API_DEMO_TRANSCRIPT": ("just", "workflow"),
-    "ARGS": ("just", "workflow"),
     "BASH_SOURCE": ("bash", "external"),
     "COVERAGE_FILE": ("coverage", "external"),
-    "COV_REPORT": ("just", "workflow"),
     "DEPLOY_ENV": ("protocol", "runtime"),
     "DOCKERHUB_NAMESPACE": ("publishing", "deployment"),
     "DOCKERHUB_REGISTRY": ("publishing", "deployment"),
     "E2E_API_BASE_URL": ("playwright", "internal"),
     "E2E_BASE_URL": ("playwright", "internal"),
-    "FILMSTRIP_CAPTURE": ("just", "workflow"),
+    "E2E_GIT_ORIGIN_URL": ("playwright", "internal"),
     "GHCR_NAMESPACE": ("publishing", "deployment"),
     "GHCR_REGISTRY": ("publishing", "deployment"),
     "GIT_INDEX_FILE": ("git", "external"),
-    "GUI_ARGS": ("just", "workflow"),
-    "GUI_COLLAPSE": ("just", "workflow"),
-    "GUI_CORE_COLLAPSE": ("just", "workflow"),
     "HOSTNAME": ("container-runtime", "external"),
-    "IMAGE_ARCHIVE_DIR": ("publishing", "workflow"),
     "IMAGE_CANDIDATE_REV": ("publishing", "deployment"),
-    "IMAGE_CANDIDATE_STATE_DIR": ("publishing", "workflow"),
     "IMAGE_TAG": ("publishing", "deployment"),
     "IMAGE_VALIDATION_REGISTRY": ("publishing", "deployment"),
-    "JOURNAL_TRACE": ("just", "workflow"),
     "LOG_LEVEL": ("protocol", "runtime"),
     "OTEL_EXPORTER_OTLP_HEADERS": ("opentelemetry", "external"),
     "PATH": ("operating-system", "external"),
     "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH": ("playwright", "external"),
+    "PYTHONPATH": ("python", "external"),
+    "PYTHON_SLIM_IMAGE": ("playwright", "internal"),
     "REGISTRIES": ("publishing", "deployment"),
     "REPO2REE_BACKEND_IMAGE": ("compose", "deployment"),
     "REPO2REE_BUILD_REVISION": ("protocol", "build"),
@@ -63,6 +55,7 @@ NON_SERVICE_ENVIRONMENT: dict[str, tuple[str, str]] = {
     "REPO2REE_TOOLS_BUNDLE": ("provider", "deployment"),
     "REPO2REE_WORKBENCH_PATH": ("provider", "deployment"),
     "REPO2REE_WORKBENCH_ROOT": ("core", "internal"),
+    "REPRODUCE_REFETCH": ("reproducer", "runtime"),
     "SERVICE_VERSION": ("protocol", "runtime"),
     "STACK_BACKEND_IMAGE": ("image-stack", "internal"),
     "STACK_GUI_IMAGE": ("image-stack", "internal"),
@@ -72,6 +65,14 @@ NON_SERVICE_ENVIRONMENT: dict[str, tuple[str, str]] = {
     "VITE_API_BASE_URL": ("gui", "build"),
     "VITE_BUILD_REVISION": ("gui", "build"),
     "VITE_GITHUB_URL": ("gui", "build"),
+}
+
+# Some internal environment names are derived from manifest data and therefore
+# cannot be enumerated without coupling this contract to one particular tools
+# bundle. Patterns keep those namespaces governed without pretending the set is
+# static.
+ENVIRONMENT_PATTERNS: dict[str, tuple[str, str]] = {
+    r"^REPO2REE_TOOL_[A-Z0-9_]+$": ("tool-injection", "internal"),
 }
 
 MODELS = (
@@ -97,6 +98,10 @@ def build_contract() -> dict[str, Any]:
         variables.setdefault(name, {"owner": owner, "kind": kind, "schema": {"type": "string"}})
     return {
         "version": 1,
+        "patterns": {
+            pattern: {"owner": owner, "kind": kind, "schema": {"type": "string"}}
+            for pattern, (owner, kind) in sorted(ENVIRONMENT_PATTERNS.items())
+        },
         "variables": dict(sorted(variables.items())),
         "serviceSchemas": schemas,
     }
@@ -111,7 +116,7 @@ def main() -> int:
     action = parser.add_mutually_exclusive_group(required=True)
     action.add_argument("--write", action="store_true")
     action.add_argument("--check", action="store_true")
-    action.add_argument("--show", choices=("all", "api", "provider", "workbench"))
+    action.add_argument("--show", metavar="OWNER")
     args = parser.parse_args()
     rendered = rendered_contract()
     if args.write:
@@ -128,6 +133,9 @@ def main() -> int:
         if args.show == "all" or detail["owner"] == args.show:
             default = detail["schema"].get("default", "<required>")
             print(f"{name:42} {detail['owner']:12} {detail['kind']:10} default={default}")
+    for pattern, detail in contract["patterns"].items():
+        if args.show == "all" or detail["owner"] == args.show:
+            print(f"{pattern:42} {detail['owner']:12} {detail['kind']:10} pattern")
     return 0
 
 

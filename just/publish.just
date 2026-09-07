@@ -1,4 +1,3 @@
-IMAGE_CANDIDATE_STATE_DIR := env("IMAGE_CANDIDATE_STATE_DIR", ".validation-certificates/image-candidates")
 IMAGE_CANDIDATE_TOOL := "scripts/publish/image-candidate.sh"
 IMAGE_VALIDATION_REGISTRY := env("IMAGE_VALIDATION_REGISTRY", DOCKERHUB_REGISTRY + "/" + DOCKERHUB_NAMESPACE)
 IMAGE_CANDIDATE_REV := env("IMAGE_CANDIDATE_REV", "")
@@ -50,10 +49,10 @@ push-image-candidate revision="": _require-clean-tree (_require-current-image-ca
 
 # Load and push a stamped image archive set.
 [group('Publishing')]
-push-image-archives: load-image-archives
+push-image-archives archive_dir=DEFAULT_IMAGE_ARCHIVE_DIR: (load-image-archives archive_dir)
     #!/usr/bin/env bash
     set -euo pipefail
-    stamp={{ quote(IMAGE_ARCHIVE_DIR + "/IMAGE_CANDIDATE_REV") }}
+    stamp={{ quote(archive_dir + "/IMAGE_CANDIDATE_REV") }}
     test -s "$stamp" || { echo "no IMAGE_CANDIDATE_REV stamp — build with 'just image-archives'"; exit 1; }
     candidate="$(cat "$stamp")"
     REGISTRIES={{ quote(REGISTRIES) }} scripts/publish/push-image-set.sh "$candidate"
@@ -62,7 +61,7 @@ push-image-archives: load-image-archives
 
 # Resolve, test, and record one exact registry image candidate.
 [group('Publishing')]
-validate-image-candidate revision="": _require-clean-tree
+validate-image-candidate revision="" state_dir=DEFAULT_IMAGE_CANDIDATE_STATE_DIR: _require-clean-tree
     #!/usr/bin/env bash
     set -euo pipefail
     candidate={{ quote(revision) }}
@@ -70,7 +69,7 @@ validate-image-candidate revision="": _require-clean-tree
     candidate="${candidate:-$configured_candidate}"
     candidate="${candidate:-$(git describe --always --dirty)}"
     case "$candidate" in *-dirty) echo "tree is dirty — name the image candidate explicitly: just validate-image-candidate <rev>"; exit 1;; esac
-    receipt={{ quote(IMAGE_CANDIDATE_STATE_DIR + "/") }}"$candidate.validated"
+    receipt={{ quote(state_dir + "/") }}"$candidate.validated"
     pending="$receipt.pending"
     trap 'rm -f "$pending"' EXIT
     candidate_tool={{ quote(IMAGE_CANDIDATE_TOOL) }}
@@ -80,15 +79,15 @@ validate-image-candidate revision="": _require-clean-tree
     "$candidate_tool" resolve "$candidate" "$pending" "${registries[@]}"
     eval "$("$candidate_tool" environment "$pending" "$validation_registry")"
     export STACK_GUI_IMAGE STACK_BACKEND_IMAGE STACK_PROVIDER_IMAGE
-    scripts/test-stack/run-image-suite.sh e2e-gui 2 "$validation_registry" "$candidate"
-    scripts/test-stack/run-image-suite.sh e2e-gui-review 1 "$validation_registry" "$candidate"
+    scripts/test-stack/run-image-suite.sh --suite e2e-gui --workbenches 2 --images published --repository "$validation_registry" --tag "$candidate"
+    scripts/test-stack/run-image-suite.sh --suite e2e-gui-review --workbenches 1 --images published --repository "$validation_registry" --tag "$candidate"
     mv "$pending" "$receipt"
     trap - EXIT
     echo ">> image candidate $candidate validated — receipt written"
 
 # Verify that candidate tags still name the recorded digest set.
 [group('Publishing')]
-verify-image-candidate revision="":
+verify-image-candidate revision="" state_dir=DEFAULT_IMAGE_CANDIDATE_STATE_DIR:
     #!/usr/bin/env bash
     set -euo pipefail
     candidate={{ quote(revision) }}
@@ -96,11 +95,11 @@ verify-image-candidate revision="":
     candidate="${candidate:-$configured_candidate}"
     candidate="${candidate:-$(git describe --always --dirty)}"
     case "$candidate" in *-dirty) echo "tree is dirty — name the image candidate explicitly: just verify-image-candidate <rev>"; exit 1;; esac
-    {{ quote(IMAGE_CANDIDATE_TOOL) }} verify "$candidate" {{ quote(IMAGE_CANDIDATE_STATE_DIR + "/") }}"$candidate.validated"
+    {{ quote(IMAGE_CANDIDATE_TOOL) }} verify "$candidate" {{ quote(state_dir + "/") }}"$candidate.validated"
 
 # Promote a validated candidate's exact digest set to edge.
 [group('Publishing')]
-promote-image-candidate-to-edge revision="":
+promote-image-candidate-to-edge revision="" state_dir=DEFAULT_IMAGE_CANDIDATE_STATE_DIR:
     #!/usr/bin/env bash
     set -euo pipefail
     candidate={{ quote(revision) }}
@@ -108,5 +107,5 @@ promote-image-candidate-to-edge revision="":
     candidate="${candidate:-$configured_candidate}"
     candidate="${candidate:-$(git describe --always --dirty)}"
     case "$candidate" in *-dirty) echo "tree is dirty — name the image candidate explicitly: just promote-image-candidate-to-edge <rev>"; exit 1;; esac
-    {{ quote(IMAGE_CANDIDATE_TOOL) }} promote "$candidate" {{ quote(IMAGE_CANDIDATE_STATE_DIR + "/") }}"$candidate.validated"
+    {{ quote(IMAGE_CANDIDATE_TOOL) }} promote "$candidate" {{ quote(state_dir + "/") }}"$candidate.validated"
     echo ">> promoted validated image candidate $candidate to edge"

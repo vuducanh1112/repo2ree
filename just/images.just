@@ -6,8 +6,8 @@
 
 # Create archive output directory.
 [private]
-_image-archive-dir:
-    @mkdir -p {{ quote(IMAGE_ARCHIVE_DIR) }}
+_image-archive-dir archive_dir:
+    @mkdir -p {{ quote(archive_dir) }}
 
 # Make untracked Python sources visible to Nix source filtering.
 # Nix only includes Git-visible sources, so intent-to-add lets local builds see
@@ -57,37 +57,37 @@ gui-npm-hash:
 
 # Build a loadable GUI image archive.
 [group('Image archives')]
-gui-image-archive: _image-archive-dir
+gui-image-archive archive_dir=DEFAULT_IMAGE_ARCHIVE_DIR: (_image-archive-dir archive_dir)
     @echo "Building GUI image archive..."
     nix build .#gui-image
-    cp -fL result {{ quote(IMAGE_ARCHIVE_DIR + "/repo2ree-gui-local.tar") }}
-    @printf 'Wrote %s\n' {{ quote(IMAGE_ARCHIVE_DIR + "/repo2ree-gui-local.tar") }}
+    cp -fL result {{ quote(archive_dir + "/repo2ree-gui-local.tar") }}
+    @printf 'Wrote %s\n' {{ quote(archive_dir + "/repo2ree-gui-local.tar") }}
 
 # Save the loaded backend image as an archive.
 [group('Image archives')]
-backend-image-archive: backend-image _image-archive-dir
-    docker save repo2ree-backend:local -o {{ quote(IMAGE_ARCHIVE_DIR + "/repo2ree-backend-local.tar") }}
-    @printf 'Wrote %s\n' {{ quote(IMAGE_ARCHIVE_DIR + "/repo2ree-backend-local.tar") }}
+backend-image-archive archive_dir=DEFAULT_IMAGE_ARCHIVE_DIR: backend-image (_image-archive-dir archive_dir)
+    docker save repo2ree-backend:local -o {{ quote(archive_dir + "/repo2ree-backend-local.tar") }}
+    @printf 'Wrote %s\n' {{ quote(archive_dir + "/repo2ree-backend-local.tar") }}
 
 # Build a loadable provider image archive.
 [group('Image archives')]
-provider-image-archive: _stage-nix-sources _image-archive-dir
+provider-image-archive archive_dir=DEFAULT_IMAGE_ARCHIVE_DIR: _stage-nix-sources (_image-archive-dir archive_dir)
     @echo "Building provider image archive..."
     nix build .#provider-image
-    cp -fL result {{ quote(IMAGE_ARCHIVE_DIR + "/repo2ree-provider-docker-local.tar") }}
-    @printf 'Wrote %s\n' {{ quote(IMAGE_ARCHIVE_DIR + "/repo2ree-provider-docker-local.tar") }}
+    cp -fL result {{ quote(archive_dir + "/repo2ree-provider-docker-local.tar") }}
+    @printf 'Wrote %s\n' {{ quote(archive_dir + "/repo2ree-provider-docker-local.tar") }}
 
 # Build and stamp the complete clean-tree image archive set.
 [group('Image archives')]
-image-archives: _require-clean-tree gui-image-archive backend-image-archive provider-image-archive
-    @git describe --always > {{ quote(IMAGE_ARCHIVE_DIR + "/IMAGE_CANDIDATE_REV") }}
-    @echo ">> stamped candidate: $(cat {{ quote(IMAGE_ARCHIVE_DIR + "/IMAGE_CANDIDATE_REV") }})"
+image-archives archive_dir=DEFAULT_IMAGE_ARCHIVE_DIR: _require-clean-tree (gui-image-archive archive_dir) (backend-image-archive archive_dir) (provider-image-archive archive_dir)
+    @git describe --always > {{ quote(archive_dir + "/IMAGE_CANDIDATE_REV") }}
+    @echo ">> stamped candidate: $(cat {{ quote(archive_dir + "/IMAGE_CANDIDATE_REV") }})"
 
 # Load every image from an archive set.
 [group('Image archives')]
-load-image-archives:
+load-image-archives archive_dir=DEFAULT_IMAGE_ARCHIVE_DIR:
     #!/usr/bin/env bash
     set -euo pipefail
     for image in repo2ree-gui repo2ree-backend repo2ree-provider-docker; do
-      docker load -i {{ quote(IMAGE_ARCHIVE_DIR) }}/"$image"-local.tar
+      docker load -i {{ quote(archive_dir) }}/"$image"-local.tar
     done

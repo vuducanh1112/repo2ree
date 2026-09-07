@@ -7,7 +7,8 @@
 #   docker compose -f docker-compose.workbench.yml down -v    # also drop workbench state
 #
 # Defaults dial a control plane on the same host (host-published :8000).
-# Point it at a different backend by overriding WORKBENCH_API_WS_URL.
+# Point it at a different backend by overriding PROVIDER_API_WS_URL and
+# PROVIDER_WORKBENCH_API_WS_URL.
 name: repo2ree-provider
 
 services:

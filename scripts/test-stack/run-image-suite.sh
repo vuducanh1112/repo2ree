@@ -2,34 +2,57 @@
 # Own an image-backed stack for one browser suite or API walkthrough.
 set -euo pipefail
 
-if (($# < 2 || $# > 4)); then
-    echo "usage: ${0##*/} <suite> <workbenches> [image-repository image-tag]" >&2
+usage() {
+    echo "usage: ${0##*/} --suite NAME --workbenches N --images local|published" >&2
+    echo "       [--repository REPOSITORY --tag TAG]" >&2
     exit 2
-fi
+}
 
-suite=$1
-workbenches=$2
-image_repository=${3:-}
-image_tag=${4:-}
+suite=
+workbenches=
+images=local
+image_repository=
+image_tag=
+while (($#)); do
+    case "$1" in
+        --suite) (($# >= 2)) || usage; suite=$2; shift 2 ;;
+        --workbenches) (($# >= 2)) || usage; workbenches=$2; shift 2 ;;
+        --images) (($# >= 2)) || usage; images=$2; shift 2 ;;
+        --repository) (($# >= 2)) || usage; image_repository=$2; shift 2 ;;
+        --tag) (($# >= 2)) || usage; image_tag=$2; shift 2 ;;
+        *) usage ;;
+    esac
+done
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 stack="$root/scripts/test-stack/image-stack.sh"
 
+[[ -n $suite ]] || usage
 [[ $workbenches =~ ^[1-9][0-9]*$ ]] || {
     echo "workbenches must be a positive integer" >&2
     exit 2
 }
-if { [[ -n $image_repository ]] && [[ -z $image_tag ]]; } || \
-    { [[ -z $image_repository ]] && [[ -n $image_tag ]]; }; then
-    echo "image repository and tag must be provided together" >&2
-    exit 2
-fi
+case "$images" in
+    local)
+        if [[ -n $image_repository || -n $image_tag ]]; then
+            echo "--repository and --tag apply only to --images published" >&2
+            exit 2
+        fi
+        ;;
+    published)
+        if [[ -z $image_repository || -z $image_tag ]]; then
+            echo "--images published requires --repository and --tag" >&2
+            exit 2
+        fi
+        ;;
+    *) usage ;;
+esac
 
 cleanup() { "$stack" down --volumes; }
 trap cleanup EXIT
 cd "$root"
 
 up_args=(--providers "$workbenches")
-if [[ -n $image_repository ]]; then
+if [[ $images == published ]]; then
     up_args+=(--image-repository "$image_repository" --image-tag "$image_tag")
 fi
 "$stack" up "${up_args[@]}"

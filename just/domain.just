@@ -1,4 +1,4 @@
-FILMSTRIP_CAPTURE := env("FILMSTRIP_CAPTURE", "test-artifacts/ree-snapshots/api-integration/test_full_authoring_pipeline.ndjson")
+DEFAULT_FILMSTRIP_CAPTURE := "test-artifacts/ree-snapshots/api-integration/test_full_authoring_pipeline.ndjson"
 
 # These views consume the real API integration capture rather than fixtures, so
 # a missing capture fails with the producing tier instead of drawing an empty or
@@ -6,7 +6,7 @@ FILMSTRIP_CAPTURE := env("FILMSTRIP_CAPTURE", "test-artifacts/ree-snapshots/api-
 
 # Generate every domain-model view.
 [group('Diagrams')]
-domain-diagrams: evidence-graph ree-filmstrip ree-timeline ree-browser
+domain-diagrams capture=DEFAULT_FILMSTRIP_CAPTURE: evidence-graph (ree-filmstrip capture) (ree-timeline capture) (ree-browser capture)
 
 # Generate the evidence graph when its inputs changed.
 [group('Diagrams')]
@@ -22,21 +22,21 @@ evidence-graph:
     fi
 
 [private]
-_require-filmstrip-capture:
-    @test -f {{ quote(FILMSTRIP_CAPTURE) }} || { printf 'no capture at %s\n' {{ quote(FILMSTRIP_CAPTURE) }} >&2; echo "run: just e2e-bundles && pytest api/tests/integration" >&2; exit 1; }
+_require-filmstrip-capture capture:
+    @test -f {{ quote(capture) }} || { printf 'no capture at %s\n' {{ quote(capture) }} >&2; echo "run: just e2e-bundles && pytest api/tests/integration" >&2; exit 1; }
     @mkdir -p {{ quote(DOMAIN_DIR) }}
 
 # Render audit state across every captured authoring stage.
 [group('Diagrams')]
-ree-filmstrip: _require-filmstrip-capture
-    python scripts/diagrams/ree_filmstrip.py --frames {{ quote(FILMSTRIP_CAPTURE) }} -o {{ quote(DOMAIN_DIR + "/ree-filmstrip.svg") }}
+ree-filmstrip capture=DEFAULT_FILMSTRIP_CAPTURE: (_require-filmstrip-capture capture)
+    python scripts/diagrams/ree_filmstrip.py --frames {{ quote(capture) }} -o {{ quote(DOMAIN_DIR + "/ree-filmstrip.svg") }}
 
 # Render every aggregate field changed by each authoring stage.
 [group('Diagrams')]
-ree-timeline: _require-filmstrip-capture
-    python scripts/diagrams/ree_filmstrip.py -f timeline --frames {{ quote(FILMSTRIP_CAPTURE) }} -o {{ quote(DOMAIN_DIR + "/ree-timeline.html") }}
+ree-timeline capture=DEFAULT_FILMSTRIP_CAPTURE: (_require-filmstrip-capture capture)
+    python scripts/diagrams/ree_filmstrip.py -f timeline --frames {{ quote(capture) }} -o {{ quote(DOMAIN_DIR + "/ree-timeline.html") }}
 
 # Render the finished aggregate as browsable HTML.
 [group('Diagrams')]
-ree-browser: _require-filmstrip-capture
-    python scripts/diagrams/ree_filmstrip.py -f browse --frames {{ quote(FILMSTRIP_CAPTURE) }} -o {{ quote(DOMAIN_DIR + "/ree-browser.html") }}
+ree-browser capture=DEFAULT_FILMSTRIP_CAPTURE: (_require-filmstrip-capture capture)
+    python scripts/diagrams/ree_filmstrip.py -f browse --frames {{ quote(capture) }} -o {{ quote(DOMAIN_DIR + "/ree-browser.html") }}

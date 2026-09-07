@@ -1,4 +1,13 @@
 {
+  "patterns": {
+    "^REPO2REE_TOOL_[A-Z0-9_]+$": {
+      "kind": "internal",
+      "owner": "tool-injection",
+      "schema": {
+        "type": "string"
+      }
+    }
+  },
   "serviceSchemas": {
     "api": {
       "properties": {
@@ -323,27 +332,6 @@
         "type": "string"
       }
     },
-    "API_DEMO_CAST": {
-      "kind": "workflow",
-      "owner": "just",
-      "schema": {
-        "type": "string"
-      }
-    },
-    "API_DEMO_TRANSCRIPT": {
-      "kind": "workflow",
-      "owner": "just",
-      "schema": {
-        "type": "string"
-      }
-    },
-    "ARGS": {
-      "kind": "workflow",
-      "owner": "just",
-      "schema": {
-        "type": "string"
-      }
-    },
     "BASH_SOURCE": {
       "kind": "external",
       "owner": "bash",
@@ -354,13 +342,6 @@
     "COVERAGE_FILE": {
       "kind": "external",
       "owner": "coverage",
-      "schema": {
-        "type": "string"
-      }
-    },
-    "COV_REPORT": {
-      "kind": "workflow",
-      "owner": "just",
       "schema": {
         "type": "string"
       }
@@ -400,19 +381,19 @@
         "type": "string"
       }
     },
+    "E2E_GIT_ORIGIN_URL": {
+      "kind": "internal",
+      "owner": "playwright",
+      "schema": {
+        "type": "string"
+      }
+    },
     "EXTERNAL_WORKBENCH_TOKEN": {
       "kind": "runtime",
       "owner": "api",
       "schema": {
         "default": "",
         "title": "External Workbench Token",
-        "type": "string"
-      }
-    },
-    "FILMSTRIP_CAPTURE": {
-      "kind": "workflow",
-      "owner": "just",
-      "schema": {
         "type": "string"
       }
     },
@@ -437,27 +418,6 @@
         "type": "string"
       }
     },
-    "GUI_ARGS": {
-      "kind": "workflow",
-      "owner": "just",
-      "schema": {
-        "type": "string"
-      }
-    },
-    "GUI_COLLAPSE": {
-      "kind": "workflow",
-      "owner": "just",
-      "schema": {
-        "type": "string"
-      }
-    },
-    "GUI_CORE_COLLAPSE": {
-      "kind": "workflow",
-      "owner": "just",
-      "schema": {
-        "type": "string"
-      }
-    },
     "HOSTNAME": {
       "kind": "external",
       "owner": "container-runtime",
@@ -465,22 +425,8 @@
         "type": "string"
       }
     },
-    "IMAGE_ARCHIVE_DIR": {
-      "kind": "workflow",
-      "owner": "publishing",
-      "schema": {
-        "type": "string"
-      }
-    },
     "IMAGE_CANDIDATE_REV": {
       "kind": "deployment",
-      "owner": "publishing",
-      "schema": {
-        "type": "string"
-      }
-    },
-    "IMAGE_CANDIDATE_STATE_DIR": {
-      "kind": "workflow",
       "owner": "publishing",
       "schema": {
         "type": "string"
@@ -496,13 +442,6 @@
     "IMAGE_VALIDATION_REGISTRY": {
       "kind": "deployment",
       "owner": "publishing",
-      "schema": {
-        "type": "string"
-      }
-    },
-    "JOURNAL_TRACE": {
-      "kind": "workflow",
-      "owner": "just",
       "schema": {
         "type": "string"
       }
@@ -689,6 +628,20 @@
         "type": "string"
       }
     },
+    "PYTHONPATH": {
+      "kind": "external",
+      "owner": "python",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "PYTHON_SLIM_IMAGE": {
+      "kind": "internal",
+      "owner": "playwright",
+      "schema": {
+        "type": "string"
+      }
+    },
     "REE_INDEX_FILE": {
       "kind": "runtime",
       "owner": "api",
@@ -802,6 +755,13 @@
     "REPO2REE_WORKBENCH_ROOT": {
       "kind": "internal",
       "owner": "core",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REPRODUCE_REFETCH": {
+      "kind": "runtime",
+      "owner": "reproducer",
       "schema": {
         "type": "string"
       }

@@ -1,14 +1,14 @@
-JOURNAL_TRACE := env("JOURNAL_TRACE", "test-artifacts/traces/api-integration/by-test/api_tests_integration_test_api_full_pipeline.py_test_full_authoring_pipeline.ndjson")
+DEFAULT_JOURNAL_TRACE := "test-artifacts/traces/api-integration/by-test/api_tests_integration_test_api_full_pipeline.py_test_full_authoring_pipeline.ndjson"
 
 # Journals derive one cross-component page per captured run trace. The trace is
 # an integration-test artifact; absence is an error, never an empty success.
 
 # Generate one cross-component journal page per captured workflow.
 [group('Diagrams')]
-journals:
+journals trace=DEFAULT_JOURNAL_TRACE:
     #!/usr/bin/env bash
     set -euo pipefail
-    journal_trace={{ quote(JOURNAL_TRACE) }}
+    journal_trace={{ quote(trace) }}
     test -f "$journal_trace" || {
       printf 'no capture at %s\n' "$journal_trace" >&2
       echo "run: just e2e-bundles && pytest api/tests/integration" >&2

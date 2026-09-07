@@ -2,7 +2,6 @@ COVERAGE_HTML := "test-artifacts/coverage/python"
 COVERAGE_DATA := COVERAGE_HTML + "/data"
 UNIT_SUITES := "protocol/tests core/tests/unit api/tests/unit supervisor/tests/unit executor/tests docker-support/tests provider/tests workbench/tests"
 INTEGRATION_SUITES := "core/tests/integration api/tests/integration supervisor/tests/integration"
-COV_REPORT := env("COV_REPORT", "")
 
 # Running a measured tier is the only operation that writes that tier's data.
 # Per-package recipes stay unmeasured so a partial debugging run cannot make a
@@ -80,17 +79,17 @@ supervisor-tests: supervisor-unit-tests supervisor-integration-tests
 
 # Run the complete measured, container-free backend unit tier.
 [group('Backend tests')]
-be-unit-tests:
-    COVERAGE_FILE={{ quote(ROOT + "/" + COVERAGE_DATA + "/unit/.coverage") }} pytest {{ UNIT_SUITES }} --cov --cov-report={{ quote(COV_REPORT) }}
+be-unit-tests coverage_report="":
+    COVERAGE_FILE={{ quote(ROOT + "/" + COVERAGE_DATA + "/unit/.coverage") }} pytest {{ UNIT_SUITES }} --cov --cov-report={{ quote(coverage_report) }}
 
 # Run the complete measured backend integration tier.
 [group('Backend tests')]
-be-integration-tests: e2e-bundles
-    COVERAGE_FILE={{ quote(ROOT + "/" + COVERAGE_DATA + "/integration/.coverage") }} pytest {{ INTEGRATION_SUITES }} --cov --cov-report={{ quote(COV_REPORT) }}
+be-integration-tests coverage_report="": e2e-bundles
+    COVERAGE_FILE={{ quote(ROOT + "/" + COVERAGE_DATA + "/integration/.coverage") }} pytest {{ INTEGRATION_SUITES }} --cov --cov-report={{ quote(coverage_report) }}
 
 # Run both measured backend tiers.
 [group('Backend tests')]
-be-tests: be-unit-tests be-integration-tests
+be-tests coverage_report="": (be-unit-tests coverage_report) (be-integration-tests coverage_report)
 
 # Render one measured tier's total and per-package HTML coverage reports.
 [group('Coverage')]
