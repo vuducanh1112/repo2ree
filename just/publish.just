@@ -1,4 +1,5 @@
 IMAGE_CANDIDATE_TOOL := "scripts/publish/image-candidate.sh"
+PUBLISH_GATE_RECEIPT_TOOL := "scripts/publish/publish-gate-receipt.sh"
 IMAGE_VALIDATION_REGISTRY := env("IMAGE_VALIDATION_REGISTRY", DOCKERHUB_REGISTRY + "/" + DOCKERHUB_NAMESPACE)
 IMAGE_CANDIDATE_REV := env("IMAGE_CANDIDATE_REV", "")
 
@@ -26,16 +27,28 @@ commit-gate: docs-checks scripts-checks gui-checks be-checks gui-tests be-unit-t
     scripts/publish/commit-gate-stamp.sh write
     @echo ">> commit gate green — certificate written for the current tree"
 
-# This intentionally exercises both measured source runs and the uninstrumented
-# local-image topology before any candidate is pushed.
-# Run every check required before publishing the local image set.
-[group('Release gates')]
-push-gate: _require-clean-tree scripts-checks gui-checks be-checks e2e-bundles gui-tests be-tests gui-accessibility-tests gui-screenshot-tests e2e-gui e2e-gui-review e2e-gui-stack-local
-    @echo ">> push gate green — publish with: just push-image-candidate"
+# Require the current clean content to have passed the commit gate.
+[private]
+_require-current-commit-gate:
+    scripts/publish/commit-gate-stamp.sh verify
 
-# Build a clean-tree image candidate and push it under its Git revision.
+# Run the checks not covered by commit-gate, then build and exercise the exact
+# local image set that push-image-candidate will publish. Both image-backed roles
+# run here; a receipt is written only after every source and image test passes.
+[group('Release gates')]
+publish-gate: _require-clean-tree _require-current-commit-gate e2e-bundles api-integration-tests supervisor-integration-tests gui-accessibility-tests gui-screenshot-tests e2e-gui e2e-gui-review images
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just stack-test e2e-gui {{ quote(DEFAULT_STACK_COMPUTE_LOCATIONS) }} local
+    just stack-test e2e-gui-review 1 local
+    revision=$(git describe --always)
+    {{ quote(PUBLISH_GATE_RECEIPT_TOOL) }} write {{ quote(DEFAULT_PUBLISH_GATE_RECEIPT) }} "$revision"
+    echo ">> publish gate green — certified local image set for $revision"
+    echo ">> publish with: just push-image-candidate"
+
+# Push the exact local image set certified by publish-gate under its Git revision.
 [group('Publishing')]
-push-image-candidate revision="": _require-clean-tree (_require-current-image-candidate revision) images
+push-image-candidate revision="": _require-clean-tree (_require-current-image-candidate revision)
     #!/usr/bin/env bash
     set -euo pipefail
     git_rev="$(git describe --always --dirty)"
@@ -43,7 +56,9 @@ push-image-candidate revision="": _require-clean-tree (_require-current-image-ca
     configured_candidate={{ quote(IMAGE_CANDIDATE_REV) }}
     candidate="${candidate:-$configured_candidate}"
     candidate="${candidate:-$git_rev}"
-    REGISTRIES={{ quote(REGISTRIES) }} scripts/publish/push-image-set.sh "$candidate"
+    receipt={{ quote(DEFAULT_PUBLISH_GATE_RECEIPT) }}
+    {{ quote(PUBLISH_GATE_RECEIPT_TOOL) }} verify "$receipt" "$candidate"
+    REGISTRIES={{ quote(REGISTRIES) }} scripts/publish/push-image-set.sh "$candidate" "$receipt"
     echo ">> pushed image candidate :$candidate"
     echo ">> next: just validate-image-candidate $candidate && just promote-image-candidate-to-edge $candidate"
 
@@ -79,8 +94,8 @@ validate-image-candidate revision="" state_dir=DEFAULT_IMAGE_CANDIDATE_STATE_DIR
     "$candidate_tool" resolve "$candidate" "$pending" "${registries[@]}"
     eval "$("$candidate_tool" environment "$pending" "$validation_registry")"
     export STACK_GUI_IMAGE STACK_BACKEND_IMAGE STACK_PROVIDER_IMAGE
-    scripts/test-stack/run-image-suite.sh --suite e2e-gui --workbenches 2 --images published --repository "$validation_registry" --tag "$candidate"
-    scripts/test-stack/run-image-suite.sh --suite e2e-gui-review --workbenches 1 --images published --repository "$validation_registry" --tag "$candidate"
+    scripts/test-stack/run-image-suite.sh --suite e2e-gui --compute-locations 2 --images published --repository "$validation_registry" --tag "$candidate"
+    scripts/test-stack/run-image-suite.sh --suite e2e-gui-review --compute-locations 1 --images published --repository "$validation_registry" --tag "$candidate"
     mv "$pending" "$receipt"
     trap - EXIT
     echo ">> image candidate $candidate validated — receipt written"

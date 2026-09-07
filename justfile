@@ -20,6 +20,7 @@ DEFAULT_STACK_COMPUTE_LOCATIONS := "2"
 DEFAULT_STACK_IMAGE_REPO := DOCKERHUB_REGISTRY + "/" + DOCKERHUB_NAMESPACE
 DEFAULT_STACK_IMAGE_TAG := IMAGE_TAG
 DEFAULT_IMAGE_CANDIDATE_STATE_DIR := ".validation-certificates/image-candidates"
+DEFAULT_PUBLISH_GATE_RECEIPT := ".validation-certificates/publish-gate-ok"
 
 DIAGRAM_DIR := "dist/diagrams"
 ARCH_DIR := DIAGRAM_DIR + "/architecture"

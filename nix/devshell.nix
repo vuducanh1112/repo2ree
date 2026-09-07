@@ -45,8 +45,9 @@ pkgs.mkShell {
     asciinema
     asciinema-agg
 
-    # nix linting: antipatterns (statix) and unused bindings (deadnix);
-    # formatting goes through `nix fmt` (see formatter in ../flake.nix)
+    # nix formatting and linting. `nix fmt` remains the writing interface;
+    # checks call nixfmt directly because treefmt has no non-writing mode.
+    nixfmt
     statix
     deadnix
 
