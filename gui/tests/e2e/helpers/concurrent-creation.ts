@@ -3,6 +3,7 @@ import { expect, test } from "./fixtures";
 import {
   cleanupWorkbench,
   connectedLabCount,
+  LIGHTWEIGHT_WORKBENCH_IMAGE,
   main,
   provideMetadata,
   provisionWorkbench,
@@ -54,8 +55,10 @@ export async function twoConcurrentCreations(
 
   try {
     await test.step("pin each session to its lab", async () => {
-      const labA = await startReeCreation(page, { labIndex: options.labIndexes[0] });
-      const labB = await startReeCreation(pageB, { labIndex: options.labIndexes[1] });
+      const [labA, labB] = await Promise.all([
+        startReeCreation(page, { labIndex: options.labIndexes[0] }),
+        startReeCreation(pageB, { labIndex: options.labIndexes[1] }),
+      ]);
       expect(labA).toBeTruthy();
       expect(labB).toBeTruthy();
       if (options.sameLab) {
@@ -66,26 +69,43 @@ export async function twoConcurrentCreations(
     });
 
     await test.step("provision a workbench for each session", async () => {
-      await provisionWorkbench(page);
-      await provisionWorkbench(pageB);
+      const provisionA = () => provisionWorkbench(page, { imageRef: LIGHTWEIGHT_WORKBENCH_IMAGE });
+      const provisionB = () => provisionWorkbench(pageB, { imageRef: LIGHTWEIGHT_WORKBENCH_IMAGE });
+
+      if (options.sameLab) {
+        // One provider owns both allocations, so its in-process bundle lock
+        // makes a cold first provision safe to run concurrently.
+        await Promise.all([provisionA(), provisionB()]);
+      } else {
+        // Separate provider processes share the content-addressed bundle volume
+        // but not its population lock. Keep a cold first population serialized;
+        // the operations after provisioning are the concurrency under test.
+        await provisionA();
+        await provisionB();
+      }
     });
 
     await test.step("upload source into both workspaces", async () => {
-      await expect(await uploadSource(page, pythonHelloWorld())).toBeVisible();
-      await expect(await uploadSource(pageB, pythonHelloWorld())).toBeVisible();
+      const [clearA, clearB] = await Promise.all([
+        uploadSource(page, pythonHelloWorld()),
+        uploadSource(pageB, pythonHelloWorld()),
+      ]);
+      await Promise.all([expect(clearA).toBeVisible(), expect(clearB).toBeVisible()]);
     });
 
     await test.step("give each REE its own metadata", async () => {
-      await provideMetadata(page, {
-        name: "ree-session-a",
-        version: "1.0.0",
-        description: "REE created by the first of two concurrent sessions.",
-      });
-      await provideMetadata(pageB, {
-        name: "ree-session-b",
-        version: "1.0.0",
-        description: "REE created by the second of two concurrent sessions.",
-      });
+      await Promise.all([
+        provideMetadata(page, {
+          name: "ree-session-a",
+          version: "1.0.0",
+          description: "REE created by the first of two concurrent sessions.",
+        }),
+        provideMetadata(pageB, {
+          name: "ree-session-b",
+          version: "1.0.0",
+          description: "REE created by the second of two concurrent sessions.",
+        }),
+      ]);
 
       // Isolation: each session holds its own name, not the other's — the
       // sessions share one backend (and in the same-lab variant one
@@ -98,8 +118,7 @@ export async function twoConcurrentCreations(
     await test.step("run evaluation on both benches", async () => {
       // A real run round-trips through each session's own bench, so this is
       // the check that commands route to the bench they belong to.
-      await runEvaluate(page);
-      await runEvaluate(pageB);
+      await Promise.all([runEvaluate(page), runEvaluate(pageB)]);
       await expect(main(page).getByRole("button", { name: /Re-run Evaluate/ })).toBeVisible();
       await expect(main(pageB).getByRole("button", { name: /Re-run Evaluate/ })).toBeVisible();
     });

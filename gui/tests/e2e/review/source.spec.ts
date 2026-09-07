@@ -1,16 +1,13 @@
 import { expect, test } from "../helpers/fixtures";
 import {
   downloadSource,
+  LIGHTWEIGHT_WORKBENCH_IMAGE,
   openReviewConsole,
   provisionWorkbench,
   reproduceSource,
   startReeCreation,
 } from "../helpers/flow";
-
-// The same origin the source-acquisition spec fetches. A review re-fetches the
-// commit the author's acquisition resolved to (it is pinned onto the intent), so
-// the comparison is deterministic even though HEAD moves.
-const GIT_ORIGIN_URL = "https://github.com/vuducanh1112/repo2ree.git";
+import { E2E_GIT_ORIGIN_URL } from "../helpers/origins";
 
 // The one thing the golden path (lifecycle.spec.ts) structurally cannot cover:
 // re-fetching a *live origin*. Its REE was acquired by upload, so it records a
@@ -23,10 +20,10 @@ test.describe("Review source", () => {
     page,
   }) => {
     await startReeCreation(page);
-    await provisionWorkbench(page);
+    await provisionWorkbench(page, { imageRef: LIGHTWEIGHT_WORKBENCH_IMAGE });
     // Upload-acquired source has no origin to re-fetch, so a reviewable REE
     // needs the download path.
-    await downloadSource(page, { url: GIT_ORIGIN_URL, sourceType: "git" });
+    await downloadSource(page, { url: E2E_GIT_ORIGIN_URL, sourceType: "git" });
     // The resolved commit is what the review re-fetches; wait for it to settle
     // onto the intent before reviewing, or the review races the metadata step.
     await expect(page.getByText(/Resolved to commit/)).toBeVisible({ timeout: 20000 });

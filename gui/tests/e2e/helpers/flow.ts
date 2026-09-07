@@ -24,6 +24,13 @@ import { stepShot } from "../../screenshot";
 // live at the repository root rather than under this suite.
 const EXAMPLES_DIR = path.resolve(__dirname, "../../../../examples");
 
+/**
+ * Fast provider-managed bench for scenarios that do not need a Docker daemon.
+ * The provider injects the executor and source-handling tools into this image.
+ */
+export const LIGHTWEIGHT_WORKBENCH_IMAGE =
+  process.env.E2E_LIGHTWEIGHT_WORKBENCH_IMAGE ?? "docker.io/library/python:3.11-slim";
+
 /** Absolute path to the bundled Python hello-world source archive. */
 export function pythonHelloWorld(): string {
   return path.join(EXAMPLES_DIR, "projects/python-hello-world.tar.gz");

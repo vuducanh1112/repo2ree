@@ -1,7 +1,11 @@
 import { expect, test } from "./helpers/fixtures";
-import { downloadSource, provisionWorkbench, startReeCreation } from "./helpers/flow";
-
-const GIT_ORIGIN_URL = "https://github.com/vuducanh1112/repo2ree.git";
+import {
+  downloadSource,
+  LIGHTWEIGHT_WORKBENCH_IMAGE,
+  provisionWorkbench,
+  startReeCreation,
+} from "./helpers/flow";
+import { E2E_GIT_ORIGIN_URL } from "./helpers/origins";
 
 // The upload path is covered by the golden-path journey (ree-pipeline.spec.ts).
 // This spec keeps the branch the journey cannot take: fetching from an origin
@@ -9,14 +13,19 @@ const GIT_ORIGIN_URL = "https://github.com/vuducanh1112/repo2ree.git";
 test.describe("Source acquisition page", () => {
   test("git origin URL is fetched into the workspace and its commit resolved", async ({ page }) => {
     await startReeCreation(page);
-    await provisionWorkbench(page);
+    await provisionWorkbench(page, { imageRef: LIGHTWEIGHT_WORKBENCH_IMAGE });
 
-    const clearSource = await downloadSource(page, { url: GIT_ORIGIN_URL, sourceType: "git" });
+    const clearSource = await downloadSource(page, {
+      url: E2E_GIT_ORIGIN_URL,
+      sourceType: "git",
+    });
 
     await expect(clearSource).toBeVisible();
     await expect(page.getByText(/Configuration locked/)).toBeVisible();
     // The origin URL is committed into the (now locked) Source Snapshot field.
-    await expect(page.getByPlaceholder("https://github.com/org/repo")).toHaveValue(GIT_ORIGIN_URL);
+    await expect(page.getByPlaceholder("https://github.com/org/repo")).toHaveValue(
+      E2E_GIT_ORIGIN_URL,
+    );
 
     // With no revision requested we fetched HEAD; acquisition settles the concrete
     // commit onto the intent and the UI surfaces it as the reproducibility receipt

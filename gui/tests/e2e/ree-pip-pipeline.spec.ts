@@ -3,6 +3,7 @@ import {
   buildRuntime,
   EXPERIMENT_OUTPUT_FILE,
   generateScript,
+  LIGHTWEIGHT_WORKBENCH_IMAGE,
   main,
   openPort,
   provisionWorkbench,
@@ -33,7 +34,6 @@ import {
  * path; this spec only walks the stages the pip flow actually changes.
  */
 
-const PYTHON_IMAGE_REF = "docker.io/library/python:3.11-slim";
 const PROJECT_DIR = "python_pip_hello_world";
 // Packed inside the project dir, not at the workspace root: the declared runtime
 // must live within the logical project root, or script inference refuses to
@@ -92,7 +92,7 @@ test.describe("REE pip pipeline", () => {
 
     await test.step("provision a python:slim workbench", async () => {
       await startReeCreation(page);
-      await provisionWorkbench(page, { imageRef: PYTHON_IMAGE_REF });
+      await provisionWorkbench(page, { imageRef: LIGHTWEIGHT_WORKBENCH_IMAGE });
     });
 
     await test.step("upload source tarball", async () => {

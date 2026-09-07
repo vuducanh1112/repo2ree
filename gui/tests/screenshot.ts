@@ -14,13 +14,24 @@ import { type Page, test } from "@playwright/test";
  */
 export async function stepShot(page: Page, name: string, timing: "before" | "after") {
   const info = test.info();
+  let state = shotStates.get(info);
+  if (!state) {
+    state = { pages: [], counters: new WeakMap() };
+    shotStates.set(info, state);
+  }
+
+  let pageIndex = state.pages.indexOf(page);
+  if (pageIndex === -1) {
+    pageIndex = state.pages.length;
+    state.pages.push(page);
+  }
 
   let seq: number;
   if (timing === "before") {
-    seq = (stepCounters.get(info) ?? 0) + 1;
-    stepCounters.set(info, seq);
+    seq = (state.counters.get(page) ?? 0) + 1;
+    state.counters.set(page, seq);
   } else {
-    seq = stepCounters.get(info) ?? 1;
+    seq = state.counters.get(page) ?? 1;
   }
 
   const slug =
@@ -28,9 +39,18 @@ export async function stepShot(page: Page, name: string, timing: "before" | "aft
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "") || "step";
-  const file = `${String(seq).padStart(2, "0")}-${slug}-${timing}.png`;
+  // Preserve historical names for the primary page. Concurrent secondary
+  // sessions get a stable lane prefix so their before/after captures cannot
+  // overwrite the primary page's files or each other's.
+  const lane = pageIndex === 0 ? "" : `${String.fromCharCode(97 + pageIndex)}-`;
+  const file = `${lane}${String(seq).padStart(2, "0")}-${slug}-${timing}.png`;
 
   await page.screenshot({ path: info.outputPath(file) });
 }
 
-const stepCounters = new WeakMap<ReturnType<typeof test.info>, number>();
+interface ShotState {
+  pages: Page[];
+  counters: WeakMap<Page, number>;
+}
+
+const shotStates = new WeakMap<ReturnType<typeof test.info>, ShotState>();
