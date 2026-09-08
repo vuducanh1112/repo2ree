@@ -51,6 +51,20 @@ def test_stack_clis_reject_invalid_combinations() -> None:
             "--images",
             "published",
         ],
+        [
+            "scripts/test-stack/run_image_suite.py",
+            "--suite",
+            "e2e-gui",
+            "--compute-locations",
+            "1",
+            "--images",
+            "published",
+            "--repository",
+            "registry/team",
+            "--tag",
+            "revision-1",
+            "--existing",
+        ],
     )
     import subprocess
     import sys

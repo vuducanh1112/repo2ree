@@ -5,13 +5,13 @@ DEFAULT_JOURNAL_TRACE := "test-artifacts/traces/api-integration/by-test/api_test
 
 # Generate one cross-component journal page per captured workflow.
 [group('Diagrams')]
-journals trace=DEFAULT_JOURNAL_TRACE:
+generate-journals trace=DEFAULT_JOURNAL_TRACE:
     #!/usr/bin/env bash
     set -euo pipefail
     journal_trace={{ quote(trace) }}
     test -f "$journal_trace" || {
       printf 'no capture at %s\n' "$journal_trace" >&2
-      echo "run: just e2e-bundles && pytest api/tests/integration" >&2
+      echo "run: just build-e2e-bundles && pytest api/tests/integration" >&2
       exit 1
     }
     mkdir -p {{ quote(JOURNAL_DIR) }}

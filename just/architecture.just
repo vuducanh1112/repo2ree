@@ -10,11 +10,16 @@ DEFAULT_GUI_CORE_COLLAPSE := "^src/(core/[^/]+|shell/[^/]+)/"
 
 # Generate every backend and GUI architecture diagram.
 [group('Diagrams')]
-architecture-diagrams: be-graphs be-graph-all gui-graph gui-graph-core
+generate-architecture-diagrams: generate-backend-graphs generate-backend-workspace-graphs generate-gui-graph generate-gui-core-graph generate-just-recipe-graph
+
+# Generate the declared Just recipe dependency graph.
+[group('Diagrams')]
+generate-just-recipe-graph:
+    python scripts/diagrams/just_graph.py -o {{ quote(ARCH_DIR + "/just-recipes.svg") }}
 
 # Generate one backend package graph.
 [group('Diagrams')]
-be-graph package="repo2ree_core":
+generate-backend-graph package="repo2ree_core":
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p {{ quote(ARCH_DIR) }}
@@ -22,7 +27,7 @@ be-graph package="repo2ree_core":
 
 # Generate a graph for every backend root package.
 [group('Diagrams')]
-be-graphs:
+generate-backend-graphs:
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p {{ quote(ARCH_DIR) }}
@@ -37,7 +42,7 @@ be-graphs:
 
 # Generate collapsed and module-level whole-workspace backend graphs.
 [group('Diagrams')]
-be-graph-all:
+generate-backend-workspace-graphs:
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p {{ quote(ARCH_DIR) }}
@@ -48,7 +53,7 @@ be-graph-all:
 # be hidden by a successful final pipeline command that emits an empty SVG.
 # Generate the collapsed GUI dependency graph.
 [group('Diagrams')]
-gui-graph collapse=DEFAULT_GUI_COLLAPSE:
+generate-gui-graph collapse=DEFAULT_GUI_COLLAPSE:
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p {{ quote(ARCH_DIR) }}
@@ -63,7 +68,7 @@ gui-graph collapse=DEFAULT_GUI_COLLAPSE:
 
 # Generate a GUI dependency graph with the functional core expanded.
 [group('Diagrams')]
-gui-graph-core collapse=DEFAULT_GUI_CORE_COLLAPSE:
+generate-gui-core-graph collapse=DEFAULT_GUI_CORE_COLLAPSE:
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p {{ quote(ARCH_DIR) }}

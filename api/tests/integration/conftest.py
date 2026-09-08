@@ -66,7 +66,7 @@ if _claimed and _claimed != "api-integration":
     raise RuntimeError(
         f"Both {_claimed} and api-integration tiers loaded in one pytest process; their spans "
         "collide on OpenTelemetry's set-once global provider. Run them separately: "
-        "`just api-unit-tests` / `just api-integration-tests`, or `pytest api/tests/unit` "
+        "`just test-api-unit` / `just test-api-integration`, or `pytest api/tests/unit` "
         "and `pytest api/tests/integration`."
     )
 os.environ["_REPO2REE_TRACE_TIER"] = "api-integration"

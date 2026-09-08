@@ -53,7 +53,7 @@ let
 
     # The hash of the fetched npm dependency set. It is not hand-maintained:
     # it lives in ./gui-npm-deps.hash and is regenerated from
-    # gui/package-lock.json by `just gui-npm-hash` (run after any
+    # gui/package-lock.json by `just update-gui-npm-hash` (run after any
     # lockfile change). That target uses prefetch-npm-deps — the same tool
     # buildNpmPackage uses internally — so the file can never disagree with
     # what the build expects.

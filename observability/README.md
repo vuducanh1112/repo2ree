@@ -9,7 +9,7 @@ its telemetry in its own volume, so history does not carry across a switch.
 ```sh
 docker compose -f observability/docker-compose.<backend>.yml up -d
 
-OTLP_ENDPOINT=http://host.docker.internal:4318 just demo-gui-stack-local
+OTLP_ENDPOINT=http://host.docker.internal:4318 just test-stack-local demo-gui
 # (host.docker.internal resolves inside the compose services via host-gateway;
 #  processes running directly on the host use http://localhost:4318)
 ```
@@ -34,7 +34,7 @@ control-plane/provider compose files pass through:
 ```sh
 OTLP_ENDPOINT=http://host.docker.internal:4318 \
 OTEL_EXPORTER_OTLP_HEADERS="authorization=<ingestion-key>" \
-just demo-gui-stack-local
+just test-stack-local demo-gui
 ```
 
 ## What lands where

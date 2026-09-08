@@ -7,7 +7,7 @@ PYTHON_FORMAT_PATHS := "scripts protocol core supervisor api executor docker-sup
 GUI_FORMAT_PATHS := "src tests scripts playwright.config.ts"
 
 [private]
-_checks-write-hint:
+_check-write-hint:
     @echo ">> checks are read-only; run 'just format' to format or 'just fix' to apply safe fixes"
 
 # Apply Python, GUI, and Nix formatting.
@@ -19,19 +19,18 @@ format:
 
 # Apply safe Python and GUI lint fixes, then normalize formatting.
 [group('Formatting')]
-fix:
+fix: && format
     ruff check --fix {{ PYTHON_FORMAT_PATHS }}
     cd gui && npx biome check --write {{ GUI_FORMAT_PATHS }}
-    just format
 
 # Run tests for repository scripts.
 [group('Script tests')]
-scripts-tests:
+test-scripts:
     pytest scripts/tests
 
 # Statically check shell and Python scripts.
 [group('Checks')]
-scripts-checks: _checks-write-hint config-check
+check-scripts: _check-write-hint check-config
     @echo "Running shellcheck..."
     find scripts -name '*.sh' -exec shellcheck {} +
     @echo "Checking python scripts..."
@@ -41,7 +40,7 @@ scripts-checks: _checks-write-hint config-check
 
 # Check formatting and lint Nix sources without modifying them.
 [group('Checks')]
-nix-checks: _checks-write-hint
+check-nix: _check-write-hint
     @echo "Checking Nix formatting..."
     git ls-files -z --cached --others --exclude-standard -- '*.nix' | xargs -0 -r nixfmt --check
     @echo "Running statix..."
@@ -51,7 +50,7 @@ nix-checks: _checks-write-hint
 
 # Run all GUI static checks.
 [group('Checks')]
-gui-checks: _checks-write-hint api-types-check
+check-gui: _check-write-hint check-api-types
     #!/usr/bin/env bash
     set -euo pipefail
     echo "Running GUI checks..."
@@ -75,7 +74,7 @@ gui-checks: _checks-write-hint api-types-check
 # to be current. Comparing content rather than against HEAD also works while an
 # API migration is intentionally uncommitted, without modifying the worktree.
 [group('Checks')]
-api-types-check: _checks-write-hint
+check-api-types: _check-write-hint
     #!/usr/bin/env bash
     set -euo pipefail
     generated={{ quote(ROOT + "/gui/src/shell/infra/api/generated/openapi.ts") }}
@@ -86,7 +85,7 @@ api-types-check: _checks-write-hint
     diff -u "$generated" "$candidate"
 
 [private]
-_python-package-checks package: _checks-write-hint
+_check-python-package package: _check-write-hint
     #!/usr/bin/env bash
     set -euo pipefail
     package={{ quote(package) }}
@@ -99,42 +98,50 @@ _python-package-checks package: _checks-write-hint
 
 # Run static checks for the protocol package.
 [group('Checks')]
-protocol-checks: (_python-package-checks "protocol")
+check-protocol: (_check-python-package "protocol")
 
 # Run static checks for the core package.
 [group('Checks')]
-core-checks: (_python-package-checks "core")
+check-core: (_check-python-package "core")
 
 # Run static checks for the supervisor package.
 [group('Checks')]
-supervisor-checks: (_python-package-checks "supervisor")
+check-supervisor: (_check-python-package "supervisor")
 
 # Run static checks for the API package.
 [group('Checks')]
-api-checks: (_python-package-checks "api")
+check-api: (_check-python-package "api")
 
 # Run static checks for the executor package.
 [group('Checks')]
-executor-checks: (_python-package-checks "executor")
+check-executor: (_check-python-package "executor")
 
 # Run static checks for the workbench package.
 [group('Checks')]
-workbench-checks: (_python-package-checks "workbench")
+check-workbench: (_check-python-package "workbench")
 
 # Run static checks for shared Docker mechanics.
 [group('Checks')]
-docker-support-checks: (_python-package-checks "docker-support")
+check-docker-support: (_check-python-package "docker-support")
 
 # Run static checks for the Docker provider package.
 [group('Checks')]
-provider-checks: (_python-package-checks "provider")
+check-provider: (_check-python-package "provider")
 
 # Check backend import-layer contracts.
 [group('Checks')]
-arch-checks: _checks-write-hint
+check-architecture: _check-write-hint
     @echo "Running import-linter..."
     lint-imports
 
 # Run static checks for every Python workspace package.
 [group('Checks')]
-be-checks: protocol-checks core-checks supervisor-checks api-checks executor-checks docker-support-checks provider-checks workbench-checks arch-checks
+check-backend: check-protocol check-core check-supervisor check-api check-executor check-docker-support check-provider check-workbench check-architecture
+
+# Run every static analysis check.
+[group('Checks')]
+check: check-docs check-scripts check-nix check-gui check-backend
+
+# Run every container-free unit test suite.
+[group('Tests')]
+test-unit: test-scripts test-gui test-backend-unit

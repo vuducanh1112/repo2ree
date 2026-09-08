@@ -53,9 +53,9 @@ command.
 To build the images locally from this repository:
 
 ```bash
-just gui-image
-just backend-image
-just provider-image
+just build-gui-image
+just build-backend-image
+just build-provider-image
 ```
 
 Then run the complete demo stack with the local image tags:
@@ -98,7 +98,7 @@ scripts/with-build-revision uv run --package repo2ree-api uvicorn repo2ree_api.m
    keep running the old executor:
 
 ```bash
-just e2e-bundles   # builds dist/bundles/{exec,tools} via nix
+just build-e2e-bundles   # builds dist/bundles/{exec,tools} via nix
 ```
 
 3. Start the Docker provider, which dials the API and owns the container
@@ -203,5 +203,5 @@ For the full test map, see
 [docs/engineering/how-to/testing.md](docs/engineering/how-to/testing.md).
 
 ```bash
-just e2e-gui
+just test-e2e-gui
 ```

@@ -51,3 +51,23 @@ def test_image_environment_is_digest_pinned() -> None:
 
     assert set(environment) == set(image_candidate.STACK_VARIABLES.values())
     assert all(value.endswith(f"@{DIGEST_1}") for value in environment.values())
+
+
+def test_push_archive_uses_stamped_revision(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    (tmp_path / "IMAGE_CANDIDATE_REV").write_text("revision-1\n")
+    pushed: list[tuple[str, list[str], None]] = []
+    monkeypatch.setattr(
+        image_candidate,
+        "push_candidate",
+        lambda revision, registries, gate: pushed.append((revision, registries, gate)),
+    )
+
+    assert image_candidate.push_archive(tmp_path, ["registry/team"]) == "revision-1"
+    assert pushed == [("revision-1", ["registry/team"], None)]
+
+
+def test_push_candidate_can_require_current_revision(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(image_candidate, "capture", lambda *args: "current-revision")
+
+    with pytest.raises(RuntimeError, match="must name the clean tree"):
+        image_candidate.push_candidate("other-revision", ["registry/team"], None, require_current=True)

@@ -175,7 +175,21 @@ def gate_images(path: Path) -> dict[str, str]:
     return images
 
 
-def push_candidate(revision: str, registries: list[str], gate_receipt: Path | None) -> None:
+def verify_publish_gate(path: Path, revision: str) -> None:
+    subprocess.run(
+        [sys.executable, str(ROOT / "scripts/publish/publish_gate_receipt.py"), "verify", str(path), revision],
+        cwd=ROOT,
+        check=True,
+    )
+
+
+def push_candidate(
+    revision: str,
+    registries: list[str],
+    gate_receipt: Path | None,
+    *,
+    require_current: bool = False,
+) -> None:
     assert_revision(revision)
     if revision == "edge":
         raise RuntimeError(
@@ -183,6 +197,12 @@ def push_candidate(revision: str, registries: list[str], gate_receipt: Path | No
         )
     if not registries:
         raise RuntimeError("at least one registry namespace is required")
+    if require_current:
+        current = capture("git", "describe", "--always", "--dirty")
+        if revision != current:
+            raise RuntimeError(f"image candidate must name the clean tree being built ({current})")
+    if gate_receipt:
+        verify_publish_gate(gate_receipt, revision)
     certified = gate_images(gate_receipt) if gate_receipt else {}
     for registry in registries:
         for image in IMAGES:
@@ -190,6 +210,14 @@ def push_candidate(revision: str, registries: list[str], gate_receipt: Path | No
             target = f"{registry}/{image}:{revision}"
             subprocess.run(["docker", "tag", source, target], check=True)
             subprocess.run(["docker", "push", target], check=True)
+
+
+def push_archive(archive_dir: Path, registry_names: list[str]) -> str:
+    stamp = archive_dir / "IMAGE_CANDIDATE_REV"
+    if not stamp.is_file() or not (revision := stamp.read_text().strip()):
+        raise RuntimeError(f"no IMAGE_CANDIDATE_REV stamp in {archive_dir} — build with 'just archive-images'")
+    push_candidate(revision, registry_names, None)
+    return revision
 
 
 def validate_candidate(revision: str, state_dir: Path, validation_registry: str, registry_names: list[str]) -> None:
@@ -241,39 +269,69 @@ def registries(value: str) -> list[str]:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     commands = parser.add_subparsers(dest="command", required=True)
-    for name in ("resolve", "verify", "promote", "environment", "push", "validate"):
+    for name in ("resolve", "verify", "promote", "environment", "push", "validate", "push-archive"):
         command = commands.add_parser(name)
-        command.add_argument("--revision", default="")
-        command.add_argument("--configured-revision", default="")
-        if name in {"resolve", "verify", "promote", "environment"}:
+        if name != "push-archive":
+            command.add_argument("--revision", default="")
+            command.add_argument("--configured-revision", default="")
+        if name in {"resolve", "environment"}:
             command.add_argument("--receipt", type=Path, required=True)
-        if name in {"resolve", "push", "validate"}:
+        if name in {"verify", "promote"}:
+            receipt = command.add_mutually_exclusive_group(required=True)
+            receipt.add_argument("--receipt", type=Path)
+            receipt.add_argument("--state-dir", type=Path)
+        if name in {"resolve", "push", "validate", "push-archive"}:
             command.add_argument("--registries", required=True)
         if name == "environment":
             command.add_argument("--registry", required=True)
         if name == "push":
             command.add_argument("--gate-receipt", type=Path)
+            command.add_argument("--require-current", action="store_true")
         if name == "validate":
             command.add_argument("--state-dir", type=Path, required=True)
             command.add_argument("--validation-registry", required=True)
+        if name == "push-archive":
+            command.add_argument("--archive-dir", type=Path, required=True)
     return parser
 
 
 def main() -> int:
     args = build_parser().parse_args()
     try:
+        if args.command == "push-archive":
+            revision = push_archive(args.archive_dir, registries(args.registries))
+            print(f">> pushed image candidate :{revision}")
+            print(f">> next: just validate-candidate {revision}")
+            return 0
         revision = chosen_revision(args.revision, args.configured_revision, allow_dirty=args.command == "push")
+        receipt = (
+            args.state_dir / f"{revision}.validated"
+            if args.command in {"verify", "promote"} and args.state_dir
+            else getattr(args, "receipt", None)
+        )
         if args.command == "resolve":
             write_receipt(args.receipt, resolve_candidate(revision, registries(args.registries)))
         elif args.command == "verify":
-            verify_candidate(revision, args.receipt)
+            if receipt is None:
+                raise RuntimeError("candidate receipt path is required")
+            verify_candidate(revision, receipt)
         elif args.command == "promote":
-            promote_candidate(revision, args.receipt)
+            if receipt is None:
+                raise RuntimeError("candidate receipt path is required")
+            promote_candidate(revision, receipt)
+            print(f">> promoted validated image candidate {revision} to edge")
         elif args.command == "environment":
             for name, value in image_environment(parse_receipt(args.receipt), args.registry).items():
                 print(f"{name}={shlex.quote(value)}")
         elif args.command == "push":
-            push_candidate(revision, registries(args.registries), args.gate_receipt)
+            push_candidate(
+                revision,
+                registries(args.registries),
+                args.gate_receipt,
+                require_current=args.require_current,
+            )
+            print(f">> pushed image candidate :{revision}")
+            print(f">> next: just validate-candidate {revision} && just promote-candidate {revision}")
         elif args.command == "validate":
             validate_candidate(
                 revision,

@@ -63,7 +63,7 @@ The backend image catalog defines the available per-REE workbench images
 Build and load the GUI image:
 
 ```bash
-just gui-image
+just build-gui-image
 ```
 
 This builds `.#gui-image` with Nix, serves the static bundle with Caddy,
@@ -72,7 +72,7 @@ and tags the result as `repo2ree-gui:local`.
 Build the backend image:
 
 ```bash
-just backend-image
+just build-backend-image
 ```
 
 This runs the Dockerfile build for `docker/demo/backend.Dockerfile` and tags the
@@ -82,7 +82,7 @@ Build and load the provider image (provider process plus the embedded
 workbench, executor, and tools bundles):
 
 ```bash
-just provider-image
+just build-provider-image
 ```
 
 ## Publishing images
@@ -92,16 +92,16 @@ candidate is pushed under a Git revision, validated by manifest digest, then
 promoted as one set:
 
 ```bash
-just push-gate                       # source + local-image validation
-just push-image-candidate            # push the three images as :<git-rev>
-just validate-image-candidate        # test their exact registry digests
-just promote-image-candidate-to-edge # move edge to the validated digests
+just publish-gate                    # source + local-image validation
+just publish-candidate  # push the three images as :<git-rev>
+just validate-candidate # test their exact registry digests
+just promote-candidate  # move edge to the validated digests
 ```
 
-`push-image-candidate` refuses a dirty tree and requires
+`publish-candidate` refuses a dirty tree and requires
 `IMAGE_CANDIDATE_REV` to name that tree. It never moves `edge`.
 
-`validate-image-candidate` resolves every component in both registries and
+`validate-candidate` resolves every component in both registries and
 requires the corresponding manifests to have identical digests. Both GUI e2e
 projects then run against explicit `@sha256` references rather than mutable
 revision tags. A successful run writes one ignored, tab-separated receipt at
@@ -109,7 +109,7 @@ revision tags. A successful run writes one ignored, tab-separated receipt at
 candidate revision and one digest row for each registry/image pair. The file is
 moved into place only after both validation suites pass.
 
-`promote-image-candidate-to-edge` requires that receipt, re-resolves every
+`promote-candidate` requires that receipt, re-resolves every
 candidate tag, and promotes from the recorded `@sha256` references. It verifies
 each resulting `edge` tag and stops on failure. A candidate does not expire by
 age; it becomes stale when a recorded revision tag no longer resolves to its
@@ -118,16 +118,16 @@ validated digest.
 The candidate defaults to the current Git revision. Name another explicitly:
 
 ```bash
-just validate-image-candidate <rev>
-just verify-image-candidate <rev>
-just promote-image-candidate-to-edge <rev>
+just validate-candidate <rev>
+just verify-candidate <rev>
+just promote-candidate <rev>
 ```
 
 When builds and registry credentials live on different machines (e.g. nix
 only in the dev container, docker login only on the host), replace
-`push-image-candidate` with the archive pair: run `just image-archives` in the
+`publish-candidate` with the archive pair: run `just archive-images` in the
 dev container, copy `dist/images/` to the host, then run
-`just push-image-archives`. The archive directory carries an
+`just publish-image-archives`. The archive directory carries an
 `IMAGE_CANDIDATE_REV` stamp, so the host cannot accidentally push the tarballs
 under a different tag. Continue with validation and promotion using
 `IMAGE_CANDIDATE_REV=$(cat dist/images/IMAGE_CANDIDATE_REV)`.
@@ -173,8 +173,8 @@ supervisor's request, not inside `repo2ree-demo-data`.
 `docker compose down` keeps both volumes, which is what a stack you intend to
 restart wants. To stop a stack and reclaim everything it stored — the compose
 volumes plus any workbench containers and per-REE volumes left behind — use
-`scripts/test-stack/image-stack.sh down --volumes` (`just stack-clean`), or
-`scripts/test-stack/workbench-cleanup.sh` for the workbench leftovers alone —
+`scripts/test-stack/image_stack.py down --volumes` (`just stack-clean`), or
+`scripts/test-stack/workbench_cleanup.py` for the workbench leftovers alone —
 the latter also sweeps unreferenced anonymous volumes, which the bench image
 declares for itself and which nothing can address once their container is gone.
 

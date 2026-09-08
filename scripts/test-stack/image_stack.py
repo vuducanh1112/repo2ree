@@ -211,7 +211,7 @@ class ImageStack:
                 print(f">> pulling {image}")
                 run(["docker", "pull", image])
             elif run(["docker", "image", "inspect", image], check=False, quiet=True).returncode != 0:
-                raise RuntimeError(f"{image} not found — build the local images first: just images")
+                raise RuntimeError(f"{image} not found — build the local images first: just build-images")
         print(f">> starting compose control plane ({self.gui_image}, {self.backend_image})")
         self.compose("up", "-d", "backend", "gui")
         count = self.options.compute_locations

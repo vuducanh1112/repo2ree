@@ -10,7 +10,7 @@ import { test } from "./helpers/fixtures";
  *
  * The suite runs against whatever stack it is pointed at, so this spec
  * checks the connected-lab count itself and skips on single-lab stacks;
- * `just e2e-gui capacity=2` and `just stack-up providers=2` both
+ * `just test-e2e-gui locations=2` and `just stack-up locations=2` both
  * connect 2 labs by default, so it normally runs.
  */
 

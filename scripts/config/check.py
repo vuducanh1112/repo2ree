@@ -228,7 +228,7 @@ def main() -> int:
                 print(f"  {reference.access:12} {reference.path.relative_to(ROOT)}:{reference.line}")
         return 1
     if not CONTRACT.exists() or CONTRACT.read_text() != rendered_contract():
-        print("configuration contract is stale; run: just config-export")
+        print("configuration contract is stale; run: just export-config")
         return 1
     print(f"configuration contract valid: {len(declared)} variables, {len(declared_patterns)} patterns")
     return 0

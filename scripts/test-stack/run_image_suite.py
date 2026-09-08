@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run one browser suite or API walkthrough against an owned image stack."""
+"""Run one browser suite or API walkthrough against an image stack."""
 
 from __future__ import annotations
 
@@ -25,7 +25,10 @@ def main() -> int:
     parser.add_argument("--images", choices=("local", "published"), default="local")
     parser.add_argument("--repository", default="")
     parser.add_argument("--tag", default="")
+    parser.add_argument("--existing", action="store_true")
     args = parser.parse_args()
+    if args.existing and args.images != "local":
+        parser.error("--existing cannot be combined with --images published")
     if args.images == "local" and (args.repository or args.tag):
         parser.error("--repository and --tag apply only to --images published")
     if args.images == "published" and (not args.repository or not args.tag):
@@ -39,9 +42,10 @@ def main() -> int:
         )
     )
     status = 0
-    started = True
+    owned = not args.existing
     try:
-        stack.up()
+        if owned:
+            stack.up()
         stack.check()
         if args.suite == "demo-api":
             subprocess.run(
@@ -58,7 +62,7 @@ def main() -> int:
         print(error, file=sys.stderr)
         status = 1
     finally:
-        if started:
+        if owned:
             try:
                 stack.down(volumes=True)
             except (OSError, RuntimeError, subprocess.CalledProcessError) as error:

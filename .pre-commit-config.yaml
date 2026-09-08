@@ -38,6 +38,6 @@ repos:
       - id: gui-npm-hash
         name: GUI npm-deps hash in sync with lockfile
         language: system
-        entry: just gui-npm-hash
+        entry: just update-gui-npm-hash
         files: ^gui/package-lock\.json$
         pass_filenames: false

@@ -6,7 +6,7 @@
 
 # Create archive output directory.
 [private]
-_image-archive-dir archive_dir:
+_create-image-archive-dir archive_dir:
     @mkdir -p {{ quote(archive_dir) }}
 
 # Make untracked Python sources visible to Nix source filtering.
@@ -18,7 +18,7 @@ _stage-nix-sources:
 
 # Build and load the GUI image.
 [group('Images')]
-gui-image:
+build-gui-image:
     @echo "Building GUI image..."
     nix build .#gui-image
     @echo "Loading into docker..."
@@ -27,7 +27,7 @@ gui-image:
 
 # Build and load the backend image.
 [group('Images')]
-backend-image:
+build-backend-image:
     #!/usr/bin/env bash
     set -euo pipefail
     echo "Building backend image..."
@@ -37,7 +37,7 @@ backend-image:
 
 # Build and load the self-contained Docker provider image.
 [group('Images')]
-provider-image: _stage-nix-sources
+build-provider-image: _stage-nix-sources
     @echo "Building Docker provider image..."
     nix build .#provider-image
     @echo "Loading into docker..."
@@ -46,18 +46,18 @@ provider-image: _stage-nix-sources
 
 # Build and load all deployable images.
 [group('Images')]
-images: gui-image backend-image provider-image
+build-images: build-gui-image build-backend-image build-provider-image
 
 # Regenerate the pinned GUI npm dependency hash.
 [group('Images')]
-gui-npm-hash:
+update-gui-npm-hash:
     @echo "Computing npm deps hash from gui/package-lock.json..."
     nix run nixpkgs#prefetch-npm-deps -- gui/package-lock.json > nix/gui-npm-deps.hash
     @echo "Wrote nix/gui-npm-deps.hash: $(cat nix/gui-npm-deps.hash)"
 
 # Build a loadable GUI image archive.
 [group('Image archives')]
-gui-image-archive archive_dir=DEFAULT_IMAGE_ARCHIVE_DIR: (_image-archive-dir archive_dir)
+archive-gui-image archive_dir=DEFAULT_IMAGE_ARCHIVE_DIR: (_create-image-archive-dir archive_dir)
     @echo "Building GUI image archive..."
     nix build .#gui-image
     cp -fL result {{ quote(archive_dir + "/repo2ree-gui-local.tar") }}
@@ -65,13 +65,13 @@ gui-image-archive archive_dir=DEFAULT_IMAGE_ARCHIVE_DIR: (_image-archive-dir arc
 
 # Save the loaded backend image as an archive.
 [group('Image archives')]
-backend-image-archive archive_dir=DEFAULT_IMAGE_ARCHIVE_DIR: backend-image (_image-archive-dir archive_dir)
+archive-backend-image archive_dir=DEFAULT_IMAGE_ARCHIVE_DIR: build-backend-image (_create-image-archive-dir archive_dir)
     docker save repo2ree-backend:local -o {{ quote(archive_dir + "/repo2ree-backend-local.tar") }}
     @printf 'Wrote %s\n' {{ quote(archive_dir + "/repo2ree-backend-local.tar") }}
 
 # Build a loadable provider image archive.
 [group('Image archives')]
-provider-image-archive archive_dir=DEFAULT_IMAGE_ARCHIVE_DIR: _stage-nix-sources (_image-archive-dir archive_dir)
+archive-provider-image archive_dir=DEFAULT_IMAGE_ARCHIVE_DIR: _stage-nix-sources (_create-image-archive-dir archive_dir)
     @echo "Building provider image archive..."
     nix build .#provider-image
     cp -fL result {{ quote(archive_dir + "/repo2ree-provider-docker-local.tar") }}
@@ -79,7 +79,7 @@ provider-image-archive archive_dir=DEFAULT_IMAGE_ARCHIVE_DIR: _stage-nix-sources
 
 # Build and stamp the complete clean-tree image archive set.
 [group('Image archives')]
-image-archives archive_dir=DEFAULT_IMAGE_ARCHIVE_DIR: _require-clean-tree (gui-image-archive archive_dir) (backend-image-archive archive_dir) (provider-image-archive archive_dir)
+archive-images archive_dir=DEFAULT_IMAGE_ARCHIVE_DIR: _require-clean-tree (archive-gui-image archive_dir) (archive-backend-image archive_dir) (archive-provider-image archive_dir)
     @git describe --always > {{ quote(archive_dir + "/IMAGE_CANDIDATE_REV") }}
     @echo ">> stamped candidate: $(cat {{ quote(archive_dir + "/IMAGE_CANDIDATE_REV") }})"
 

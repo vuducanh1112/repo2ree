@@ -1,48 +1,48 @@
 DOCS_DEMO_ASSET_DIR := "docs/public/tutorials/assets/create-first-ree"
 
-# Run deterministic, offline documentation checks.
+# Run deterministic, offline documentation static analysis.
 [group('Documentation')]
-docs-checks: docs-style docs-links-local docs-site
+check-docs: lint-docs check-doc-links-local
 
 # Lint documentation prose.
 [group('Documentation')]
-docs-style:
+lint-docs:
     @echo "Linting docs with Vale..."
     vale docs README.md
 
 # Download configured Vale styles.
 [group('Documentation')]
-docs-style-sync:
+sync-doc-styles:
     @echo "Downloading configured Vale styles..."
     vale sync
 
 # Check local documentation links and fragments.
 [group('Documentation')]
-docs-links-local:
+check-doc-links-local:
     @echo "Checking local documentation links and heading fragments..."
     lychee --offline --include-fragments README.md docs
 
 # Check all documentation links, including external URLs.
 [group('Documentation')]
-docs-links-external:
+check-doc-links-external:
     @echo "Checking all documentation links, including external URLs..."
     lychee --cache --cache-exclude-status '429, 500..=599' --exclude-all-private --include-fragments --max-retries 3 --timeout 20 --no-progress README.md docs
 
 # Build the curated public documentation site.
 [group('Documentation')]
-docs-site:
+build-docs:
     @echo "Building the public documentation site..."
     zensical build --clean
 
 # Serve a local documentation preview.
 [group('Documentation')]
-docs-serve:
+serve-docs:
     @echo "Serving the public documentation preview..."
     zensical serve -a localhost:8001
 
 # Promote one recorded demo's video and screenshots into public docs.
 [group('Documentation')]
-docs-demo-assets:
+publish-doc-demo-assets:
     #!/usr/bin/env bash
     set -euo pipefail
     shopt -s nullglob

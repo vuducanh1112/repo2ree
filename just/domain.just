@@ -6,11 +6,11 @@ DEFAULT_FILMSTRIP_CAPTURE := "test-artifacts/ree-snapshots/api-integration/test_
 
 # Generate every domain-model view.
 [group('Diagrams')]
-domain-diagrams capture=DEFAULT_FILMSTRIP_CAPTURE: evidence-graph (ree-filmstrip capture) (ree-timeline capture) (ree-browser capture)
+generate-domain-diagrams capture=DEFAULT_FILMSTRIP_CAPTURE: generate-evidence-graph (generate-ree-filmstrip capture) (generate-ree-timeline capture) (generate-ree-browser capture)
 
 # Generate the evidence graph when its inputs changed.
 [group('Diagrams')]
-evidence-graph:
+generate-evidence-graph:
     #!/usr/bin/env bash
     set -euo pipefail
     output={{ quote(DOMAIN_DIR + "/evidence.svg") }}
@@ -23,20 +23,20 @@ evidence-graph:
 
 [private]
 _require-filmstrip-capture capture:
-    @test -f {{ quote(capture) }} || { printf 'no capture at %s\n' {{ quote(capture) }} >&2; echo "run: just e2e-bundles && pytest api/tests/integration" >&2; exit 1; }
+    @test -f {{ quote(capture) }} || { printf 'no capture at %s\n' {{ quote(capture) }} >&2; echo "run: just build-e2e-bundles && pytest api/tests/integration" >&2; exit 1; }
     @mkdir -p {{ quote(DOMAIN_DIR) }}
 
 # Render audit state across every captured authoring stage.
 [group('Diagrams')]
-ree-filmstrip capture=DEFAULT_FILMSTRIP_CAPTURE: (_require-filmstrip-capture capture)
+generate-ree-filmstrip capture=DEFAULT_FILMSTRIP_CAPTURE: (_require-filmstrip-capture capture)
     python scripts/diagrams/ree_filmstrip.py --frames {{ quote(capture) }} -o {{ quote(DOMAIN_DIR + "/ree-filmstrip.svg") }}
 
 # Render every aggregate field changed by each authoring stage.
 [group('Diagrams')]
-ree-timeline capture=DEFAULT_FILMSTRIP_CAPTURE: (_require-filmstrip-capture capture)
+generate-ree-timeline capture=DEFAULT_FILMSTRIP_CAPTURE: (_require-filmstrip-capture capture)
     python scripts/diagrams/ree_filmstrip.py -f timeline --frames {{ quote(capture) }} -o {{ quote(DOMAIN_DIR + "/ree-timeline.html") }}
 
 # Render the finished aggregate as browsable HTML.
 [group('Diagrams')]
-ree-browser capture=DEFAULT_FILMSTRIP_CAPTURE: (_require-filmstrip-capture capture)
+generate-ree-browser capture=DEFAULT_FILMSTRIP_CAPTURE: (_require-filmstrip-capture capture)
     python scripts/diagrams/ree_filmstrip.py -f browse --frames {{ quote(capture) }} -o {{ quote(DOMAIN_DIR + "/ree-browser.html") }}

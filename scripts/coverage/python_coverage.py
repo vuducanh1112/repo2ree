@@ -95,7 +95,7 @@ def combine() -> None:
         else:
             stale.append(tier)
     if not files:
-        raise RuntimeError("no tier has been measured; run e.g. 'just be-unit-tests' first")
+        raise RuntimeError("no tier has been measured; run e.g. 'just test-backend-unit' first")
     print(f">> combined: {' '.join(included)}")
     if missing:
         print(f">> NOT included (never measured on this tree): {' '.join(missing)}")

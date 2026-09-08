@@ -1,13 +1,13 @@
 # Generated views and enforcement for the typed environment contract.
 
 [group('Configuration')]
-config-check:
+check-config:
     python -m scripts.config.check
 
 [group('Configuration')]
-config-export:
+export-config:
     python -m scripts.config.export --write
 
 [group('Configuration')]
-config-show owner="all":
+show-config owner="all":
     python -m scripts.config.export --show {{ quote(owner) }}

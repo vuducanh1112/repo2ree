@@ -1,12 +1,8 @@
 COMPLEXITY_DIR := METRICS_DIR + "/complexity"
 
-# Generate every advisory code-metric report.
-[group('Metrics')]
-metrics: metrics-complexity
-
 # Generate separate Python and TypeScript complexity reports.
 [group('Metrics')]
-metrics-complexity:
+generate-metrics:
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p {{ quote(COMPLEXITY_DIR) }}

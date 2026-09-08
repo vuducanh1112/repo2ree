@@ -15,8 +15,8 @@ DOCKERHUB_NAMESPACE := env("DOCKERHUB_NAMESPACE", "vuducanh1112")
 REGISTRIES := env("REGISTRIES", GHCR_REGISTRY + "/" + GHCR_NAMESPACE + " " + DOCKERHUB_REGISTRY + "/" + DOCKERHUB_NAMESPACE)
 DEFAULT_E2E_PROVIDER_DOCKER_MODE := "dind"
 DEFAULT_E2E_COMPUTE_LOCATION_MODE := "provider"
-DEFAULT_E2E_COMPUTE_LOCATIONS := "2"
-DEFAULT_STACK_COMPUTE_LOCATIONS := "2"
+DEFAULT_E2E_LOCATIONS := "2"
+DEFAULT_STACK_LOCATIONS := "2"
 DEFAULT_STACK_IMAGE_REPO := DOCKERHUB_REGISTRY + "/" + DOCKERHUB_NAMESPACE
 DEFAULT_STACK_IMAGE_TAG := IMAGE_TAG
 DEFAULT_IMAGE_CANDIDATE_STATE_DIR := ".validation-certificates/image-candidates"
@@ -37,7 +37,7 @@ import 'just/journals.just'
 import 'just/docs.just'
 import 'just/contracts.just'
 import 'just/gui-tests.just'
-import 'just/be-tests.just'
+import 'just/backend-tests.just'
 import 'just/e2e.just'
 import 'just/images.just'
 import 'just/publish.just'
@@ -49,5 +49,5 @@ _require-clean-tree:
 
 # Generate every architecture, domain, and run-journal diagram.
 [group('Diagrams')]
-diagrams: architecture-diagrams domain-diagrams journals
+generate-diagrams: generate-architecture-diagrams generate-domain-diagrams generate-journals
     @printf '>> diagrams written under %s\n' {{ quote(DIAGRAM_DIR + "/") }}

@@ -124,7 +124,7 @@ def main() -> int:
         return 0
     if args.check:
         if not CONTRACT.exists() or CONTRACT.read_text() != rendered:
-            print("configuration contract is stale; run: just config-export")
+            print("configuration contract is stale; run: just export-config")
             return 1
         return 0
     contract = json.loads(rendered)

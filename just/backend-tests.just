@@ -12,89 +12,89 @@ INTEGRATION_SUITES := "core/tests/integration api/tests/integration supervisor/t
 
 # Run protocol tests without recording tier coverage.
 [group('Backend tests')]
-protocol-tests:
+test-protocol:
     pytest protocol/tests
 
 # Run core unit tests without recording tier coverage.
 [group('Backend tests')]
-core-unit-tests:
+test-core-unit:
     pytest core/tests/unit
 
 # Run API unit tests without recording tier coverage.
 [group('Backend tests')]
-api-unit-tests:
+test-api-unit:
     pytest api/tests/unit
 
 # Run executor tests without recording tier coverage.
 [group('Backend tests')]
-executor-tests:
+test-executor:
     pytest executor/tests
 
 # Run workbench tests without recording tier coverage.
 [group('Backend tests')]
-workbench-tests:
+test-workbench:
     pytest workbench/tests
 
 # Run Docker support tests without recording tier coverage.
 [group('Backend tests')]
-docker-support-tests:
+test-docker-support:
     pytest docker-support/tests
 
 # Run Docker provider tests without recording tier coverage.
 [group('Backend tests')]
-provider-tests:
+test-provider:
     pytest provider/tests
 
 # Run supervisor unit tests without recording tier coverage.
 [group('Backend tests')]
-supervisor-unit-tests:
+test-supervisor-unit:
     pytest supervisor/tests/unit
 
 # Run core integration tests without recording tier coverage.
 [group('Backend tests')]
-core-integration-tests:
+test-core-integration:
     pytest core/tests/integration
 
 # Run API integration tests without recording tier coverage.
 [group('Backend tests')]
-api-integration-tests:
+test-api-integration:
     pytest api/tests/integration
 
 # Run supervisor integration tests without recording tier coverage.
 [group('Backend tests')]
-supervisor-integration-tests:
+test-supervisor-integration:
     pytest supervisor/tests/integration
 
 # Run all core unit and integration tests.
 [group('Backend tests')]
-core-tests: core-unit-tests core-integration-tests
+test-core: test-core-unit test-core-integration
 
 # Run all API unit and integration tests.
 [group('Backend tests')]
-api-tests: api-unit-tests api-integration-tests
+test-api: test-api-unit test-api-integration
 
 # Run all supervisor unit and integration tests.
 [group('Backend tests')]
-supervisor-tests: supervisor-unit-tests supervisor-integration-tests
+test-supervisor: test-supervisor-unit test-supervisor-integration
 
 # Run the complete measured, container-free backend unit tier.
 [group('Backend tests')]
-be-unit-tests coverage_report="":
+test-backend-unit coverage_report="":
     COVERAGE_FILE={{ quote(ROOT + "/" + COVERAGE_DATA + "/unit/.coverage") }} pytest {{ UNIT_SUITES }} --cov --cov-report={{ quote(coverage_report) }}
 
 # Run the complete measured backend integration tier.
 [group('Backend tests')]
-be-integration-tests coverage_report="": e2e-bundles
+test-backend-integration coverage_report="": build-e2e-bundles
     COVERAGE_FILE={{ quote(ROOT + "/" + COVERAGE_DATA + "/integration/.coverage") }} pytest {{ INTEGRATION_SUITES }} --cov --cov-report={{ quote(coverage_report) }}
 
 # Run both measured backend tiers concurrently.
 [group('Backend tests')]
 [parallel]
-be-tests coverage_report="": (be-unit-tests coverage_report) (be-integration-tests coverage_report)
+test-backend coverage_report="": (test-backend-unit coverage_report) (test-backend-integration coverage_report)
 
 # Render one measured tier's total and per-package HTML coverage reports.
 [group('Coverage')]
-be-coverage-report tier:
+report-backend-coverage tier:
     python scripts/coverage/python_coverage.py render {{ quote(tier) }}
 
 # This is a separate view, not another tier: contexts make the database larger,
@@ -102,7 +102,7 @@ be-coverage-report tier:
 # OpenTelemetry providers cannot safely share one interpreter.
 # Generate per-test coverage attribution over both pytest tiers.
 [group('Coverage')]
-be-coverage-context: e2e-bundles
+attribute-backend-coverage: build-e2e-bundles
     COVERAGE_FILE={{ quote(ROOT + "/test-artifacts/coverage/python/data/context/.coverage") }} pytest {{ UNIT_SUITES }} --cov --cov-context=test --cov-report=
     COVERAGE_FILE={{ quote(ROOT + "/test-artifacts/coverage/python/data/context/.coverage") }} pytest {{ INTEGRATION_SUITES }} --cov --cov-append --cov-context=test --cov-report=
     COVERAGE_FILE={{ quote(ROOT + "/test-artifacts/coverage/python/data/context/.coverage") }} coverage html --show-contexts -d '{{ COVERAGE_HTML }}/context'
@@ -110,5 +110,5 @@ be-coverage-context: e2e-bundles
 
 # Combine whichever measured backend tiers exist on this checkout.
 [group('Coverage')]
-be-coverage-combined:
+combine-backend-coverage:
     python scripts/coverage/python_coverage.py combine
