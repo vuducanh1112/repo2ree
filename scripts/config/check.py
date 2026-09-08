@@ -5,22 +5,15 @@ from __future__ import annotations
 
 import ast
 import re
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
 from scripts.config.export import CONTRACT, ROOT, build_contract, rendered_contract
 
-PYTHON_ROOTS = (
-    "api/src",
-    "core/src",
-    "executor/src",
-    "protocol/src",
-    "provider/src",
-    "supervisor/src",
-    "workbench/src",
-    "scripts",
-)
+WORKSPACE_MEMBERS = tuple(tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["uv"]["workspace"]["members"])
+PYTHON_ROOTS = (*(f"{member}/src" for member in WORKSPACE_MEMBERS), "scripts")
 TYPESCRIPT_ROOTS = ("gui/src", "gui/tests", "gui/scripts")
 TYPESCRIPT_INPUTS = tuple(
     sorted(

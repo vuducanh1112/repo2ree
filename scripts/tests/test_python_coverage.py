@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -26,23 +27,49 @@ def test_tier_matches_tree_rejects_missing_sources(tmp_path: Path) -> None:
     assert not python_coverage.tier_matches_tree(tmp_path)
 
 
-def test_combine_unit_requires_every_part(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize(
+    ("tier", "parts", "combine_parts"),
+    [
+        ("unit", python_coverage.UNIT_PARTS, python_coverage.combine_unit),
+        ("integration", python_coverage.INTEGRATION_PARTS, python_coverage.combine_integration),
+    ],
+)
+def test_combine_tier_requires_every_part(
+    tier: str,
+    parts: tuple[str, ...],
+    combine_parts: Callable[[], None],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(python_coverage, "DATA_DIR", tmp_path)
-    for part in python_coverage.UNIT_PARTS[:-1]:
-        path = tmp_path / "unit-parts" / part / ".coverage"
+    for part in parts[:-1]:
+        path = tmp_path / f"{tier}-parts" / part / ".coverage"
         path.parent.mkdir(parents=True)
         path.touch()
 
-    with pytest.raises(RuntimeError, match=f"^unit coverage is incomplete; missing: {python_coverage.UNIT_PARTS[-1]}$"):
-        python_coverage.combine_unit()
+    with pytest.raises(RuntimeError, match=rf"^{tier} coverage is incomplete; missing: {parts[-1]}$"):
+        combine_parts()
 
 
-def test_combine_unit_uses_each_expected_part(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize(
+    ("tier", "parts", "combine_parts"),
+    [
+        ("unit", python_coverage.UNIT_PARTS, python_coverage.combine_unit),
+        ("integration", python_coverage.INTEGRATION_PARTS, python_coverage.combine_integration),
+    ],
+)
+def test_combine_tier_uses_each_expected_part(
+    tier: str,
+    parts: tuple[str, ...],
+    combine_parts: Callable[[], None],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(python_coverage, "ROOT", tmp_path)
     monkeypatch.setattr(python_coverage, "DATA_DIR", tmp_path)
     files = []
-    for part in python_coverage.UNIT_PARTS:
-        path = tmp_path / "unit-parts" / part / ".coverage"
+    for part in parts:
+        path = tmp_path / f"{tier}-parts" / part / ".coverage"
         path.parent.mkdir(parents=True)
         path.touch()
         files.append(path)
@@ -55,6 +82,35 @@ def test_combine_unit_uses_each_expected_part(tmp_path: Path, monkeypatch: pytes
 
     monkeypatch.setattr(python_coverage, "coverage_command", record_call)
 
-    python_coverage.combine_unit()
+    combine_parts()
 
-    assert calls == [(tmp_path / "unit" / ".coverage", "combine", "--keep", *(str(path) for path in files))]
+    assert calls == [(tmp_path / tier / ".coverage", "combine", "--keep", *(str(path) for path in files))]
+
+
+def test_combine_uses_only_selected_tiers(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(python_coverage, "ROOT", tmp_path)
+    monkeypatch.setattr(python_coverage, "DATA_DIR", tmp_path)
+    selected = []
+    for tier in ("unit", "integration", "demo-api"):
+        path = tmp_path / tier / ".coverage"
+        path.parent.mkdir(parents=True)
+        path.touch()
+        if tier != "demo-api":
+            selected.append(path)
+
+    calls: list[tuple[object, ...]] = []
+
+    def record_call(*args: object, **_kwargs: object) -> str:
+        calls.append(args)
+        return ""
+
+    monkeypatch.setattr(python_coverage, "coverage_command", record_call)
+    monkeypatch.setattr(python_coverage, "tier_matches_tree", lambda _directory: True)
+
+    python_coverage.combine(("unit", "integration"))
+
+    combined = tmp_path / "combined" / ".coverage"
+    assert calls == [
+        (combined, "combine", "--keep", *(str(path) for path in selected)),
+        (combined, "report"),
+    ]

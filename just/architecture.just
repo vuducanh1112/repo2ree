@@ -7,6 +7,7 @@
 
 DEFAULT_GUI_COLLAPSE := "^src/(core|shell/[^/]+)/"
 DEFAULT_GUI_CORE_COLLAPSE := "^src/(core/[^/]+|shell/[^/]+)/"
+BACKEND_GRAPH_PACKAGES := "repo2ree_api repo2ree_core repo2ree_docker repo2ree_executor repo2ree_provider_docker repo2ree_protocol repo2ree_supervisor repo2ree_workbench"
 
 # Generate every backend and GUI architecture diagram.
 [group('Diagrams')]
@@ -22,18 +23,16 @@ generate-backend-graph package="repo2ree_core":
 
 # Generate a graph for every backend root package.
 [group('Diagrams')]
-generate-backend-graphs:
+generate-backend-graphs: (generate-backend-graph "repo2ree_api") (generate-backend-graph "repo2ree_core") (generate-backend-graph "repo2ree_docker") (generate-backend-graph "repo2ree_executor") (generate-backend-graph "repo2ree_provider_docker") (generate-backend-graph "repo2ree_protocol") (generate-backend-graph "repo2ree_supervisor") (generate-backend-graph "repo2ree_workbench")
     #!/usr/bin/env bash
     set -euo pipefail
-    mkdir -p {{ quote(ARCH_DIR) }}
-    packages="$(python scripts/diagrams/arch_graph.py --list-packages)"
-    test -n "$packages" || {
-      echo "no root packages resolved from pyproject.toml [tool.importlinter] — check 'python scripts/diagrams/arch_graph.py --list-packages'" >&2
+    configured="$(python scripts/diagrams/arch_graph.py --list-packages)"
+    test "$configured" = {{ quote(BACKEND_GRAPH_PACKAGES) }} || {
+      echo "generate-backend-graphs dependencies differ from pyproject.toml [tool.importlinter].root_packages" >&2
+      echo "configured: $configured" >&2
+      echo "recipes:    " {{ quote(BACKEND_GRAPH_PACKAGES) }} >&2
       exit 1
     }
-    for package in $packages; do
-      python scripts/diagrams/arch_graph.py "$package" -f svg -o {{ quote(ARCH_DIR) }}/"$package".svg
-    done
 
 # Generate collapsed and module-level whole-workspace backend graphs.
 [group('Diagrams')]

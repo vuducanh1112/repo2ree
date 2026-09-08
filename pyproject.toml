@@ -56,7 +56,7 @@ markers = [
     "property: generative/invariant test (hypothesis); slower, randomized inputs",
 ]
 
-# Coverage measures the six workspace src trees. Listing them here lets the
+# Coverage measures the eight workspace src trees. Listing them here lets the
 # Just recipes pass a bare `--cov` (no per-package paths) and keep the same
 # config for a direct `pytest --cov` run. Branch coverage is on because a lot
 # of the value is in the error/cancel branches the container-free tier added.
@@ -64,11 +64,12 @@ markers = [
 branch = true
 # Fallback data file for an ad-hoc `pytest --cov` with no tier chosen. The
 # Measured tiers (unit, integration, e2e, demo) override this via COVERAGE_FILE.
-# Unit suites first write isolated parts below data/unit-parts/<package>/ and
-# combine them into data/unit/.coverage; the other tiers write below
-# data/<tier>/. Separate directories, rather than suffixed sibling files, keep
-# `coverage combine` from consuming another tier's parallel-mode output and let
-# each combine name its inputs explicitly. See just/backend-tests.just.
+# Unit and integration suites first write isolated parts below
+# data/<tier>-parts/<package>/ and combine them into data/<tier>/.coverage; the
+# stack tiers write directly below data/<tier>/. Separate directories, rather
+# than suffixed sibling files, keep `coverage combine` from consuming another
+# tier's parallel-mode output and let each combine name its inputs explicitly.
+# See just/backend-tests.just.
 #
 # The `python/` level is the runtime, above the tier: coverage.py's reports are
 # one measuring tool's subtree, sibling to the browser V8 reports, because

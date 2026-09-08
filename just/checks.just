@@ -10,6 +10,12 @@ GUI_FORMAT_PATHS := "src tests scripts playwright.config.ts"
 _check-write-hint:
     @echo ">> checks are read-only; run 'just format' to format or 'just fix' to apply safe fixes"
 
+# Require every workspace-wide Just list and aggregate to cover the packages
+# declared by pyproject.toml rather than silently drifting when one is added.
+[private]
+_check-just-workspace:
+    python scripts/check_just_workspace.py
+
 # Apply Python, GUI, and Nix formatting.
 [group('Formatting')]
 format:
@@ -30,7 +36,7 @@ test-scripts:
 
 # Statically check shell and Python scripts.
 [group('Checks')]
-check-scripts: _check-write-hint check-config
+check-scripts: _check-write-hint check-config _check-just-workspace
     @echo "Running shellcheck..."
     find scripts -name '*.sh' -exec shellcheck {} +
     @echo "Checking python scripts..."

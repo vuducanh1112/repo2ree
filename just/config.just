@@ -5,7 +5,7 @@ check-config:
     python -m scripts.config.check
 
 [group('Configuration')]
-export-config:
+export-config: && check-config
     python -m scripts.config.export --write
 
 [group('Configuration')]

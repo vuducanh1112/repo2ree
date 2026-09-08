@@ -17,12 +17,15 @@ ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = ROOT / "test-artifacts/coverage/python/data"
 HTML_DIR = ROOT / "test-artifacts/coverage/python"
 TIERS = ("unit", "integration", "e2e-gui", "e2e-gui-review", "demo-gui", "demo-api", "demo-gui-code-ocean")
-UNIT_PARTS = ("protocol", "core", "api", "supervisor", "executor", "docker-support", "provider", "workbench")
 
 
 def packages() -> tuple[str, ...]:
     configuration = tomllib.loads((ROOT / "pyproject.toml").read_text())
     return tuple(configuration["tool"]["uv"]["workspace"]["members"])
+
+
+UNIT_PARTS = packages()
+INTEGRATION_PARTS = tuple(package for package in UNIT_PARTS if (ROOT / package / "tests" / "integration").is_dir())
 
 
 def coverage_command(coverage_file: Path, *args: str, capture: bool = False, quiet: bool = False) -> str:
@@ -80,27 +83,35 @@ def tier_matches_tree(directory: Path) -> bool:
     return True
 
 
-def combine_unit() -> None:
-    parts_dir = DATA_DIR / "unit-parts"
-    files = [parts_dir / part / ".coverage" for part in UNIT_PARTS]
-    missing = [part for part, path in zip(UNIT_PARTS, files, strict=True) if not path.is_file()]
+def combine_parts(tier: str, parts: tuple[str, ...]) -> None:
+    parts_dir = DATA_DIR / f"{tier}-parts"
+    files = [parts_dir / part / ".coverage" for part in parts]
+    missing = [part for part, path in zip(parts, files, strict=True) if not path.is_file()]
     if missing:
-        raise RuntimeError(f"unit coverage is incomplete; missing: {' '.join(missing)}")
+        raise RuntimeError(f"{tier} coverage is incomplete; missing: {' '.join(missing)}")
 
-    unit_dir = DATA_DIR / "unit"
-    shutil.rmtree(unit_dir, ignore_errors=True)
-    unit_dir.mkdir(parents=True)
-    coverage_file = unit_dir / ".coverage"
+    tier_dir = DATA_DIR / tier
+    shutil.rmtree(tier_dir, ignore_errors=True)
+    tier_dir.mkdir(parents=True)
+    coverage_file = tier_dir / ".coverage"
     coverage_command(coverage_file, "combine", "--keep", *(str(path) for path in files))
-    print(f">> combined {len(files)} unit coverage parts: {coverage_file.relative_to(ROOT)}")
+    print(f">> combined {len(files)} {tier} coverage parts: {coverage_file.relative_to(ROOT)}")
 
 
-def combine() -> None:
+def combine_unit() -> None:
+    combine_parts("unit", UNIT_PARTS)
+
+
+def combine_integration() -> None:
+    combine_parts("integration", INTEGRATION_PARTS)
+
+
+def combine(tiers: tuple[str, ...] = TIERS) -> None:
     files: list[Path] = []
     included: list[str] = []
     missing: list[str] = []
     stale: list[str] = []
-    for tier in TIERS:
+    for tier in tiers:
         directory = DATA_DIR / tier
         found = sorted(directory.glob(".coverage*"))
         if not found:
@@ -123,7 +134,6 @@ def combine() -> None:
     coverage_file = combined_dir / ".coverage"
     coverage_command(coverage_file, "combine", "--keep", *(str(path) for path in files))
     coverage_command(coverage_file, "report")
-    render("combined")
 
 
 def main() -> int:
@@ -131,16 +141,24 @@ def main() -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     render_parser = commands.add_parser("render")
     render_parser.add_argument("tier")
-    commands.add_parser("combine")
+    combine_parser = commands.add_parser("combine")
+    combine_parser.add_argument("--tiers", default="", help="comma-separated tiers; default: every measured tier")
     commands.add_parser("combine-unit")
+    commands.add_parser("combine-integration")
     args = parser.parse_args()
     try:
         if args.command == "render":
             render(args.tier)
         elif args.command == "combine-unit":
             combine_unit()
+        elif args.command == "combine-integration":
+            combine_integration()
         else:
-            combine()
+            tiers = tuple(filter(None, args.tiers.split(","))) or TIERS
+            unknown = sorted(set(tiers) - set(TIERS))
+            if unknown:
+                raise RuntimeError(f"unknown coverage tier: {' '.join(unknown)}")
+            combine(tiers)
     except (RuntimeError, subprocess.CalledProcessError) as error:
         print(error, file=sys.stderr)
         return 1

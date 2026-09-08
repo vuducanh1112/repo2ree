@@ -15,8 +15,8 @@
 | `just check-scripts` | ShellCheck over every `scripts/**/*.sh`, plus Ruff and mypy over the Python tools. |
 | `just test-backend-unit` | The container-free backend `unit` tier, measured into its data directory. |
 | `just test-backend-integration` | The backend `integration` tier, measured. Builds the bundles first; Docker-gated tests skip when Docker is absent. |
-| `just test-backend` | Both backend tiers. |
-| `just test-core-unit` / `test-api-unit` / … | One package's suite, unmeasured — the debugging loop. |
+| `just test-backend` | Both backend tiers, combined into one backend coverage report. |
+| `just test-core-unit` / `test-api-unit` / … | One package's suite and isolated coverage contribution — the debugging loop. |
 | `just test-e2e-gui` | Browser regression suite against a live API and GUI dev server. Measured. |
 | `just test-e2e-review` | Browser regression suite, reviewer side: the reproduction specs. Measured. |
 | `just demo-gui` | Narrated browser walkthrough with video. Measured. |
@@ -29,10 +29,10 @@
 | `just stack-clean` | Stop it and drop every volume it created, workbench leftovers included. |
 | `just clean-workbenches` | Just the workbench leftovers; pass `1` to also drop every bundle store volume. |
 | `just gc-bundle-store` | Evict bundle store caches unused for 14 days by default, keeping the live one. |
-| `just commit-gate` | Fast pre-commit gate: documentation, static checks, and all container-free test tiers. Certifies the tree it passed on; the pre-commit hook checks that certificate. |
+| `just commit-gate` | Fast pre-commit gate: documentation, static checks, and unit tests. Certifies the tree it passed on; the pre-commit hook checks that certificate. |
 | `just check-doc-links-external` | Manually check external documentation URLs with retries and a local response cache; intentionally excluded from deterministic gates. |
 | `just publish-gate` | The pre-publish gate: clean tree, all checks and tests, e2e source-run and image-backed. |
-| `just report-backend-coverage <tier>` | Render a tier's HTML from data already on disk. |
+| `just render-backend-coverage <tier>` | Render a tier's HTML from data already on disk. |
 | `just combine-backend-coverage` | Union of whichever backend tiers have been measured on this checkout. |
 | `just attribute-backend-coverage` | Per-test coverage attribution over the two pytest tiers. |
 
@@ -80,7 +80,7 @@ Fast, container-free tests:
 just test-backend-unit
 ```
 
-Full backend test suite:
+Full backend test suite and combined unit/integration coverage report:
 
 ```bash
 just test-backend
@@ -151,15 +151,16 @@ Every stack suite measures the same thing — the backend — whichever interfac
 drove it; see "The browser is not measured" below.
 
 Branch coverage adds roughly 30% to pytest runtime. Per-package targets such as
-`just test-core-unit` therefore stays unmeasured and serves as the debugging
-loop. Allowing partial runs to write tier data would make a tier's result an
-unreliable blend of whichever packages ran most recently.
+`just test-core-unit` serve as the debugging loop and write isolated coverage
+parts, but only the aggregate target combines every required part into the
+tier's reportable data. A partial run therefore cannot be mistaken for a
+complete tier.
 
 A tier run produces *data*, not HTML. Render it when you want to look:
 
 ```bash
 just test-backend-unit               # run + measure
-just report-backend-coverage unit    # render, from data already on disk
+just render-backend-coverage unit    # render, from data already on disk
 ```
 
 Pass `COV_REPORT=term-missing` to a tier target for a terminal report during the
@@ -303,7 +304,7 @@ report rendering live in `scripts/coverage/python_coverage.py`. To re-render a
 tier from data already measured, without repeating its suite:
 
 ```bash
-just report-backend-coverage unit
+just render-backend-coverage unit
 ```
 
 Union of whatever has been measured:
@@ -450,9 +451,9 @@ The source-run `e2e-gui` remains the iteration loop (fast, easy to debug,
 coverage-capable); the image-backed variants are the deployment gate before
 pushing or promoting images.
 
-`just commit-gate` runs offline docs and static checks plus all tests that need
-no Docker, Nix build, or browser. It takes about a minute when warm and leaves
-fresh `unit` and `node` coverage. Use the push gate for the exhaustive suite.
+`just commit-gate` runs offline docs and static checks plus the unit tests. It
+takes about a minute when warm and leaves fresh `unit` and `node` coverage. Use
+the push gate for the integration and end-to-end suites.
 
 The pre-commit hook checks that you ran the gate. A successful gate records a
 tree hash under `.validation-certificates/`. Its `.gitignore` keeps certificates
