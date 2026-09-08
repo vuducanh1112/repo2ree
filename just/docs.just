@@ -54,14 +54,36 @@ publish-doc-demo-assets:
     fi
     source_dir="$(dirname "${videos[0]}")"
     mkdir -p '{{ DOCS_DEMO_ASSET_DIR }}'
+
+    # Playwright prefixes step screenshots with their execution order. Match
+    # the stable, human-readable step slug instead so inserting a chapter into
+    # the narrated demo does not break publication or silently select the
+    # wrong frame.
+    copy_step() {
+      local step_slug="$1"
+      local public_name="$2"
+      local screenshots=("$source_dir"/[0-9][0-9]-"$step_slug"-after.png)
+      if (( ${#screenshots[@]} != 1 )); then
+        echo "Expected exactly one after-screenshot for '$step_slug', found ${#screenshots[@]}."
+        exit 1
+      fi
+      cp "${screenshots[0]}" '{{ DOCS_DEMO_ASSET_DIR }}/'"$public_name"
+    }
+
     cp "$source_dir/video.webm" '{{ DOCS_DEMO_ASSET_DIR }}/demo.webm'
-    cp "$source_dir/01-open-ree-creation-flow-after.png" '{{ DOCS_DEMO_ASSET_DIR }}/01-provision.png'
-    cp "$source_dir/04-review-workspace-source-after.png" '{{ DOCS_DEMO_ASSET_DIR }}/02-source.png'
-    cp "$source_dir/08-evaluate-ree-after.png" '{{ DOCS_DEMO_ASSET_DIR }}/03-evaluate.png'
-    cp "$source_dir/09-generate-a-build-script-from-the-repository-after.png" '{{ DOCS_DEMO_ASSET_DIR }}/04-infer-build.png'
-    cp "$source_dir/10-build-runtime-after.png" '{{ DOCS_DEMO_ASSET_DIR }}/05-build.png'
-    cp "$source_dir/12-cross-check-sbom-against-declared-dependencies-after.png" '{{ DOCS_DEMO_ASSET_DIR }}/06-sbom.png'
-    cp "$source_dir/14-test-activation-after.png" '{{ DOCS_DEMO_ASSET_DIR }}/07-activation.png'
-    cp "$source_dir/17-run-experiment-after.png" '{{ DOCS_DEMO_ASSET_DIR }}/08-experiment.png'
-    cp "$source_dir/19-seal-and-download-after.png" '{{ DOCS_DEMO_ASSET_DIR }}/09-seal.png'
+    copy_step open-the-repo2ree-landing-page 01-landing.png
+    copy_step choose-a-compute-location 01-compute-location.png
+    copy_step open-workbench-setup 01-workbench-setup.png
+    copy_step provision-the-workbench 01-provision.png
+    copy_step review-workspace-source 02-source.png
+    copy_step browse-extracted-files 02-files.png
+    copy_step provide-metadata 02-metadata.png
+    copy_step provide-hbom-entry 02-hardware.png
+    copy_step evaluate-ree 03-evaluate.png
+    copy_step generate-a-build-script-from-the-repository 04-infer-build.png
+    copy_step build-runtime 05-build.png
+    copy_step cross-check-sbom-against-declared-dependencies 06-sbom.png
+    copy_step test-activation 07-activation.png
+    copy_step run-experiment 08-experiment.png
+    copy_step seal-and-download 09-seal.png
     echo "Published tutorial screenshots and video under {{ DOCS_DEMO_ASSET_DIR }}/"

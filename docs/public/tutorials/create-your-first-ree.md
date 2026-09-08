@@ -215,28 +215,49 @@ result also appears in the written tutorial.
 - the [Python hello-world source archive](assets/downloads/python-hello-world.tar.gz),
   downloaded to your computer.
 
-Open the repo2ree address supplied by your service operator. The service handles
-workbench provisioning, runtime builds, and storage on your behalf.
+The service handles workbench provisioning, runtime builds, and storage on your
+behalf.
 
-## 1. Create an isolated workbench
+## 1. Start from the landing page
 
-Select **Create REE**, choose the connected lab location, and keep the
-**Standard (docker)** workbench image. Select **Provision workbench**.
+Open the repo2ree address supplied by your service operator. The landing page
+shows whether a connected lab is ready. Select **Create a new REE**.
 
-![The workbench setup screen with a connected lab location and the standard Docker image selected](assets/create-first-ree/01-provision.png)
+![The repo2ree landing page with the Create a new REE action](assets/create-first-ree/01-landing.png)
+
+## 2. Choose a compute location and provision the workbench
+
+The **Where should this REE run?** page lists the available compute locations.
+Select the connected lab that will own this REE's workbench and execute its
+scripts. The choice lasts for the lifetime of the workbench.
+
+![The compute-location page with a connected lab ready to select](assets/create-first-ree/01-compute-location.png)
+
+Selecting the lab opens **Set up the workbench**. Keep the **Standard (docker)**
+base image and leave **Contents** blank to start a new REE. The same panel can
+instead initialize a workbench from a previously downloaded REE bundle, but
+this tutorial starts from source.
+
+![The selected lab's workbench setup with its base image and starting contents](assets/create-first-ree/01-workbench-setup.png)
+
+Select **Provision workbench** and wait for the lab to bring it online.
+
+![A newly provisioned workbench on the REE authoring canvas, with Source Acquisition selected as the first step](assets/create-first-ree/01-provision.png)
 
 The lab location names the provider that owns the execution infrastructure. The
 workbench is the isolated, disposable place where repo2ree assembles this REE;
 it is not the final artifact.
 
-Once the editor opens, select **Decompose**. This exposes the source, build,
-activation, experiment, and evidence areas that you will work through.
+When provisioning finishes, the REE Editor opens on its authoring canvas and
+selects **Source Acquisition**, the first step in the strip across the top. The
+canvas keeps the whole REE visible while the selected step opens in the drawer
+on the right.
 
-## 2. Acquire a source snapshot
+## 3. Acquire a source snapshot
 
-Open **Source**, select **Upload tarball**, and choose
-the downloaded `python-hello-world.tar.gz`. Select **Add to workspace** and wait
-for the acquisition run to succeed.
+In **Source Acquisition**, select **Upload tarball** and choose the downloaded
+`python-hello-world.tar.gz`. Select **Add to workspace** and wait for the
+acquisition run to succeed.
 
 ![The source acquisition panel after repo2ree materializes the Python archive](assets/create-first-ree/02-source.png)
 
@@ -245,20 +266,33 @@ a workspace from it. The recorded SWHID identifies the acquired source tree.
 The workspace is a derived build view, so authoring files do not have to alter
 the upstream snapshot.
 
-Open **Metadata** and enter:
+To inspect what arrived, select **Files** in the workspace status area. Filter
+for `upstream`, expand `python_hello_world`, and open `main.py`. Close the file
+browser to return to authoring.
+
+![The file browser showing the acquired upstream tree and the contents of main.py](assets/create-first-ree/02-files.png)
+
+Select **Provide Metadata** and enter:
 
 - name: `ree-hello-world`;
 - version: `1.0.0`;
 - description: `A reusable execution environment for the Python hello world archive.`
 
-Open **Hardware**. If the service reports the execution host's CPU model, add a
-CPU and record that model exactly. If the service does not expose this
-information, leave the entry absent rather than guessing. An incomplete HBOM is
-an honest limitation; invented hardware metadata is misleading provenance.
+![The Metadata step with the REE name, version, and description filled in](assets/create-first-ree/02-metadata.png)
 
-## 3. Evaluate the source
+Select **Hardware BOM**. If machine profiling is available, select **Profile
+machine** and review what it detects. Otherwise, add a CPU and record the
+execution host's model exactly. The recording uses an illustrative CPU entry to
+show the editor; do not copy that model unless it describes your host. If the
+service does not expose this information, leave the entry absent rather than
+guessing. An incomplete HBOM is an honest limitation; invented hardware
+metadata is misleading provenance.
 
-Open **Reproducibility Readiness** and select **Run Evaluate**. The analysis
+![The Hardware BOM editor with one CPU component recorded](assets/create-first-ree/02-hardware.png)
+
+## 4. Evaluate the source
+
+Select **Reproducibility Readiness** and then **Run Evaluate**. The analysis
 finds the project manifest, its pinned `pandas==2.2.1` dependency, and the
 Dockerfile that can build the project.
 
@@ -270,15 +304,16 @@ that different question. Also notice that pinning `pandas==2.2.1` does not pin
 the Docker base image or every package fetched during the build. The evaluation
 is a risk assessment, not a guarantee that the same build will work later.
 
-## 4. Build and declare the runtime
+## 5. Build and declare the runtime
 
-Open the inner shell with **Open build runtime**, then select **Generate from
-repository**. Inspect both the proposed script and its decision graph.
+Select **Build Runtime**, then select **Generate from repository**. Inspect both
+the proposed script and its decision graph.
 
 ![The build-inference decision graph showing which repository facts selected the Docker strategy](assets/create-first-ree/04-infer-build.png)
 
 Inference found both a Dockerfile and a Python requirements file. It proposes a
-Docker build, but the author still owns that choice. Save this build script:
+Docker build, but the author still owns that choice. For this exercise, replace
+the proposal with this shorter build script and save it:
 
 ```sh
 #!/usr/bin/env sh
@@ -296,8 +331,11 @@ echo "Exporting image to $RUNTIME_FILE..."
 docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
 ```
 
-Declare `python_hello_world/runtime.tar` as the **Runtime Artifact**, then
-select **Run build**. Watch the log until the **Built** outcome appears.
+Declare `python_hello_world/runtime.tar` as the **Runtime Artifact**, then select
+**Run build**. Watch the log until **Built** appears. Generated Docker scripts
+use a `.repo2ree/artifacts/runtime.tar` default when the REE has no path; this
+tutorial deliberately chooses a shorter path and keeps every later script in
+sync with it.
 
 ![The successful build and its declared runtime tarball](assets/create-first-ree/05-build.png)
 
@@ -305,9 +343,10 @@ Declaring the artifact before running the build creates a checkable contract:
 the recipe says where it writes the runtime, and the build fails if that file
 does not appear.
 
-## 5. Inspect the runtime and test activation
+## 6. Inspect the runtime and test activation
 
-Open **SBOM**, select **Generate**, and then **Cross-check**. The generated
+Select **Generate SBOM** and then **Generate**. Once the inventory is ready,
+select **Cross-check** in the runtime cross-check section. The generated
 CycloneDX inventory describes what is actually present in the runtime. The
 cross-check joins that inventory with the dependency declarations found during
 evaluation.
@@ -318,10 +357,10 @@ Seeing transitive packages as undeclared is normal here: the source directly
 declares pandas, while the built environment also contains packages installed
 as its dependencies.
 
-Open **Activation** and select **Generate from repository**. repo2ree can infer
+Select **Test Activation**, then **Generate from repository**. repo2ree can infer
 how to load and enter the saved container image, but it deliberately leaves the
 proof of usability to you. Keep the generated runtime-loading scaffold and
-replace its fail-closed placeholder so the complete script reads:
+use it as a reference. For this tutorial, save the following shorter script:
 
 ```sh
 #!/usr/bin/env sh
@@ -342,20 +381,19 @@ docker run --rm \
   python -c "import sys; print('ok')"
 ```
 
-Save the script and select **Run activation**.
+Select **Run activation**.
 
 ![The successful activation run against the declared runtime](assets/create-first-ree/07-activation.png)
 
 Activation now establishes a small but explicit claim: the built runtime can
 start and run Python successfully.
 
-## 6. Declare and verify an experiment
+## 7. Declare and verify an experiment
 
-Open **Experiments**, add an experiment, and name it `python-hello`. Generate
+Select **Experiments**, add an experiment, and name it `python-hello`. Generate
 its run script from the repository. As with activation, repo2ree supplies the
-runtime plumbing but leaves the scientific command to the author.
-
-Keep the generated scaffold and set the complete run script to:
+runtime plumbing but leaves the scientific command to the author. Use the
+proposal as a reference, then save this shorter script:
 
 ```sh
 #!/usr/bin/env sh
@@ -373,11 +411,13 @@ docker run --rm \
   -v "$(pwd):/workspace" \
   -w /workspace \
   "$IMAGE_NAME:$TAG" \
-  python python_hello_world/main.py | tee "result.txt"
+  python python_hello_world/main.py > "result.txt"
+cat "result.txt"
 ```
 
-The final `tee` materializes stdout as `result.txt`, giving the verifier an
-ordinary workspace file to inspect. Use this verify script:
+The redirect saves stdout without hiding a failed container run. The following
+`cat` displays the saved output only after Docker succeeds. Use this verify
+script:
 
 ```sh
 #!/usr/bin/env sh
@@ -388,8 +428,8 @@ grep -Fq "$EXPECTED" "result.txt"
 ```
 
 Declare `result.txt` as an output file, save both scripts, and select **Run**.
-The run passes only when the experiment completes and the verify script exits
-with status zero.
+The run passes only when the experiment and verify script both exit with status
+zero.
 
 ![The authored experiment run and verify scripts](assets/create-first-ree/08-experiment.png)
 
@@ -402,11 +442,12 @@ A real analysis should compare its declared outputs with a method appropriate
 to the result, such as exact hashes, numeric tolerances, structured comparisons,
 or statistical tests.
 
-## 7. Seal and reproduce the REE
+## 8. Seal and reproduce the REE
 
-Select **Reassemble**, open **Seal**, review the bundle contents, and select
-the source, runtime, and `python-hello` result baseline for inclusion. Then
-select **Seal REE** and download the resulting ZIP archive.
+Select **Seal** and review **Bundle contents**. The panel selects the available
+source, runtime, and experiment results by default; keep all three selected for
+this tutorial. Select **Seal REE**, then use **Download REE** in the header to
+save the resulting ZIP archive.
 
 ![The sealed REE with its digest and download action](assets/create-first-ree/09-seal.png)
 
@@ -432,30 +473,47 @@ Then replay the complete supported sequence:
 sh run.sh all
 ```
 
-This optional run creates the first independent reproduction attempt. The
-reproducer does not require repo2ree itself, but it does require the runtimes
-and tools used by the author's scripts. Compare the new output and verdict with
-the author baseline; successful replay, comparison, and validation support a
-reproduction claim.
+This optional run creates a fresh result and validates it with the bundled
+verify script. The reproducer does not require repo2ree itself, but it does
+require the runtimes and tools used by the author's scripts. `all` does not
+silently claim that the new bytes match the author's baseline. Compare them
+explicitly:
+
+```bash
+cmp \
+  ree/results/python-hello/result.txt \
+  ree/workspace/result.txt
+```
+
+A zero exit status means the files are identical. A scientifically meaningful
+project may instead need a tolerance-aware or structured comparison. A
+successful replay, validation, and appropriate baseline comparison support an
+independent reproduction claim.
 
 This is the tutorial's payoff: the hosted workbench helped author the record,
 while the downloaded record is portable beyond that workbench and the repo2ree
 service.
 
-Return to the workbench console and select **Release workbench**. You can safely
-discard this execution environment after downloading the bundle.
+Return to the workbench console from the **Workbench** status control and select
+**Release workbench**. You can safely discard this execution environment after
+downloading the bundle. Back on the landing page, open **REE index**. The sealed
+record outlives its workbench, and the seal digest identifies it more precisely
+than its display name does. It remains marked **Not deposited** until an archive
+accepts it and issues an identifier.
 
 ## What you learned
 
 You followed the complete authoring chain:
 
-1. source snapshot;
-2. source evaluation;
-3. authored build recipe and declared runtime;
-4. runtime SBOM and dependency cross-check;
-5. activation proof;
-6. experiment plus explicit verification;
-7. sealed, independently runnable bundle.
+1. compute-location selection and isolated workbench provisioning;
+2. source snapshot;
+3. source evaluation;
+4. authored build recipe and declared runtime;
+5. runtime SBOM and dependency cross-check;
+6. activation proof;
+7. experiment plus explicit verification;
+8. sealed, independently runnable bundle that remains in the REE index after
+   you release its workbench.
 
 Next, use the Review console when you want repo2ree to record and compare an
 independent attempt against another author's evidence. The standalone `run.sh`

@@ -78,11 +78,12 @@ export function pythonPipHelloWorld(): string {
  * bind-mounting the workspace so declared file outputs surface on the host.
  *
  * When `outputFile` is given the run's stdout is materialized to that
- * workspace-relative file (via `tee`) so a verify script can read it back —
- * there are no magic variables handing stdout to verification.
+ * workspace-relative file with a redirect so a verify script can read it back.
+ * The script prints the file afterwards without masking the command's status.
  */
 export function dockerRunScript(command: string, runtimePath: string, outputFile?: string): string {
-  const capture = outputFile ? ` | tee ${JSON.stringify(outputFile)}` : "";
+  const capture = outputFile ? ` > ${JSON.stringify(outputFile)}` : "";
+  const replay = outputFile ? `\ncat ${JSON.stringify(outputFile)}` : "";
   return `#!/usr/bin/env sh
 set -eu
 
@@ -98,7 +99,7 @@ docker run --rm \\
   -v "$(pwd):/workspace" \\
   -w /workspace \\
   "$IMAGE_NAME:$TAG" \\
-  ${command}${capture}
+  ${command}${capture}${replay}
 `;
 }
 

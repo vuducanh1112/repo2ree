@@ -1,26 +1,21 @@
 # The Runtime of an REE
 
-The runtime is the self-contained environment an REE builds so that the
-repository's **experiments** can run inside it. It is the thing you package, and
-the thing every other piece of evidence in the REE describes: the recipe that
-produces it, the SBOM that inventories it, and the receipts that bind a result
-to the environment that produced it.
+The runtime is the environment in which an REE runs its experiments. The build
+recipe produces it, the SBOM inventories it, and receipts bind results to it.
 
-This guide covers what repo2ree expects from a build, how to package software so
-the build stays reproducible, which technologies fit, and the mistakes that most
-often make a runtime unusable a year later.
+This guide explains the build contract, supported packages, and common sources
+of long-term build failure.
 
 ## Three environments, and which one you are packaging
 
-It is easy to say "the runtime" and mean three different things, so it is worth
-separating them once. Building an REE involves three nested environments, and
-only the innermost one is the runtime.
+Building an REE involves three nested environments. Only the innermost one is
+the runtime.
 
 | | What it is | Who provides it | Does it ship? |
 |---|---|---|---|
 | **Workbench** | An isolated container, one per REE, where every repo2ree operation runs — acquiring source, evaluating, building, scanning, sealing. | repo2ree, from a base image; the provider injects the executor and its tools at provision time. | No. |
-| **Workspace** | A directory inside that workbench (`workspace/`), materialized from the frozen source plus the REE overlay. Scripts run from its root. | repo2ree, derived from `upstream/` + `overlay/`. | Its declared contents do; the directory is derived and resettable. |
-| **Runtime** | The artifact your build script produces — an image tar or equivalent — that experiments run *inside*. | **You**, via the repository's own build recipe. | Optionally. Its recipe and SBOM always do. |
+| **Workspace** | A directory inside that workbench (`workspace/`), materialized from the frozen source plus the REE overlay. Scripts run from its root. | repo2ree combines `upstream/` + `overlay/`. | Its declared contents do; repo2ree can reset the directory. |
+| **Runtime** | The artifact your build script produces and experiments enter. | **You**, through the repository's build recipe. | Optionally. Its recipe and available evidence always do. |
 
 The build script runs **in the workspace, not in the runtime**. It executes as a
 plain subprocess from the workspace root inside the workbench, using the
@@ -32,8 +27,7 @@ workspace, but its job is to *enter* the runtime: load the artifact, then run th
 command inside it with the workspace bind-mounted, so the code and the produced
 outputs live in the workspace while the environment comes from the runtime.
 
-Three consequences follow, and they are the source of most confusing build
-failures:
+Three consequences explain most confusing build failures:
 
 - **What the workbench has, the runtime does not.** `git`, `curl`, a Python
   interpreter, or the Docker CLI being available to the build script says
@@ -43,8 +37,8 @@ failures:
   disposable and can be re-provisioned from its base image; only the REE tree
   is durable. An environment assembled by hand there is not part of the
   artifact and will not exist for anyone else. It must be in the recipe.
-- **The build should touch the workspace only to write its artifact.** Other
-  changes it makes are recorded as workspace drift on the build receipt, and a
+- **The build should touch the workspace only to write its artifact.** The build
+  receipt records other changes as workspace drift. A
   build that quietly edits source is a build nobody else can repeat.
 
 The rest of this guide is about the third row of that table.
@@ -72,8 +66,8 @@ is a worse artifact than one whose environment is in the repository.
 ### Example
 
 The [tutorial](../tutorials/create-your-first-ree.md) uses a small pandas
-project. Everything that describes the environment is already in the source
-tree, before repo2ree is involved:
+project. The source tree already describes the environment before repo2ree
+enters the process:
 
 ```
 python_hello_world/
@@ -99,44 +93,47 @@ COPY . .
 CMD ["python", "main.py"]
 ```
 
-The REE adds exactly one thing on top: a build script that invokes that recipe
-and exports the result to the declared path.
+The REE adds a build script that invokes the recipe and exports its result. This
+is the script generated for the tutorial project when it has no runtime path:
 
 ```sh
 #!/usr/bin/env sh
 set -eu
 
-IMAGE_NAME="pandas-hello"
-TAG="latest"
-PROJECT_DIR="python_hello_world"
-RUNTIME_FILE="$PROJECT_DIR/runtime.tar"
+DOCKERFILE='python_hello_world/Dockerfile'
+BUILD_CONTEXT=python_hello_world
+IMAGE_TAG=ree-runtime:ree-hello-world
+RUNTIME_ARTIFACT=python_hello_world/.repo2ree/artifacts/runtime.tar
 
-echo "Building $IMAGE_NAME:$TAG from $PROJECT_DIR..."
-docker build -t "$IMAGE_NAME:$TAG" "$PROJECT_DIR"
+docker build \
+    --file "$DOCKERFILE" \
+    --tag "$IMAGE_TAG" \
+    "$BUILD_CONTEXT"
 
-echo "Exporting image to $RUNTIME_FILE..."
-docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
+mkdir -p "$(dirname "$RUNTIME_ARTIFACT")"
+docker save \
+    "$IMAGE_TAG" \
+    --output "$RUNTIME_ARTIFACT"
 ```
 
 Notice what the script does **not** do. It does not choose a base image, install
 pandas, set a working directory, or know that the program is `main.py`. Every one
-of those decisions lives in the repository, where it is versioned and reviewable
-with the research code. The script only:
+of those decisions lives in the repository. Researchers can version and review
+them with the code. The script only:
 
 1. names the build context — `python_hello_world`, the project root;
 2. tags the image so later scripts can refer to it;
 3. exports the image to a file at the path the REE declares.
 
-That last point is the checkable contract: `python_hello_world/runtime.tar` is
-declared as the runtime artifact *before* the build runs, so a script that exits
-0 without producing it fails rather than silently passing.
+Generation also proposes
+`python_hello_world/.repo2ree/artifacts/runtime.tar` as the runtime declaration.
+The page applies that path when the field is empty. A script that exits zero
+without producing the declared file still fails the build.
 
-The example is deliberately a starting point, not a model answer. Evaluate will
-report that `pandas==2.2.1` is pinned while `python:3.11-slim` is a floating tag
-and the transitive dependency set is unlocked — which is exactly the gap
-[Packaging rules](#packaging-rules-that-keep-a-build-reproducible) is about, and
-exactly the kind of thing to fix upstream in the repository rather than in the
-build script.
+The example is a starting point, not a model answer. Evaluate reports the exact
+`pandas==2.2.1` pin, the floating `python:3.11-slim` tag, and the unlocked
+transitive dependencies. Fix these gaps upstream by following the
+[packaging rules](#packaging-rules-that-keep-a-build-reproducible).
 
 ## The build contract
 
@@ -144,7 +141,7 @@ build script.
 
 The Build Runtime step in the app is that contract made concrete: you declare
 where the build writes its runtime, author the recipe that puts it there, and
-run it. A runtime build in repo2ree is defined by three things:
+run it. Three things define a repo2ree runtime build:
 
 1. **A build script path**, workspace-relative — conventionally
    `ree-scripts/build_script.sh`.
@@ -157,13 +154,13 @@ Execution details you can rely on:
 
 - the script runs as `sh <path>` **from the workspace root**, so every path in
   it is workspace-relative unless it `cd`s first;
-- **no environment is injected** — no REE id, no output directory, no secrets.
+- **repo2ree injects no environment** — no REE id, output directory, or secrets.
   If your build needs a value, it must come from the repository or be a literal
   in the script;
 - the workbench *is* the isolation boundary, so the script runs as a plain
   subprocess inside it rather than in a container of its own, with the
   workbench's Docker daemon available to it;
-- the build script's bytes are digested and recorded in the definition. Editing
+- the definition records a digest of the build script. Editing
   the script invalidates the recorded build and requires a rebuild;
 - if the script exits 0 but `runtime_path` does not exist, the build fails. A
   build that "succeeded" without producing an artifact is not a build.
@@ -174,9 +171,10 @@ first — `mkdir -p "$(dirname "$RUNTIME_ARTIFACT")"` before the export — sinc
 missing parent directory is the usual reason a `docker save` fails at the end of
 an otherwise successful build.
 
-repo2ree can propose the script for you when it finds exactly one Dockerfile at
-the project root, or a `requirements.txt` project. A proposal is a starting
-point that has been inferred but not executed — read it before you accept it.
+repo2ree can propose a script when it finds one Dockerfile at the logical
+project root or a plain `requirements.txt` project. Generation loads the script
+into the editor but does not save or run it. Review it, then save it if it fits
+the project.
 
 ## The runtime is a file, not a running thing
 
@@ -189,24 +187,17 @@ you choose to include it — the sealed bundle.
 That means every packaging technology needs an export step at the end of the
 build:
 
-| Technology | Export step | Artifact |
+| Technology | Export step | First-class downstream support |
 |---|---|---|
-| Docker | `docker save "$IMAGE_TAG" --output runtime.tar` | image tar |
-| Podman | `podman save --format docker-archive "$IMAGE_TAG" -o runtime.tar` | image tar |
-| Buildah | `buildah push "$IMAGE" docker-archive:runtime.tar` | image tar |
-| `docker buildx` | `--output type=docker,dest=runtime.tar` (build and export in one pass) | image tar |
-| A remote image you did not build | `skopeo copy docker://ghcr.io/org/img@sha256:… docker-archive:runtime.tar` | image tar |
-| Apptainer / Singularity | `apptainer build runtime.sif recipe.def` | `.sif` file |
-| Nix | `nix build .#dockerImage` (`dockerTools.buildLayeredImage`), then copy the result | image tar |
-| Conda | `conda-pack -n env -o runtime.tar.gz` | packed env |
-| Python venv | `tar czf runtime-venv.tar.gz -C /opt venv` | packed venv |
-| Plain rootfs / chroot | `tar czf runtime.tar.gz -C rootfs .` | filesystem tar |
+| Docker | `docker save "$IMAGE_TAG" --output runtime.tar` | Build generation, activation and experiment scaffolds, SBOM, and review |
+| Python venv | `tar czf runtime-venv.tar.gz -C /opt venv` | Build generation, activation and experiment scaffolds; no SBOM |
+| Podman or Buildah | Export a Docker archive | Same downstream Docker-archive support; scripts require the chosen tool |
+| Nix | Build a Docker image tar | Same downstream Docker-archive support |
+| Apptainer, Conda, or a rootfs | Export one file | Custom scripts only; no generated scaffold or runtime SBOM |
 
 Worked recipes for Docker, Podman, Apptainer, and Nix are
-[below](#recipes-by-technology). Prefer the Docker image tar unless something
-forces you elsewhere: the SBOM scanner reads it, a reviewer's rebuild can
-compare against it by digest, and the bundle's `run.sh` knows how to load it on
-a stranger's machine.
+[below](#recipes-by-technology). Prefer a Docker image tar unless the project
+requires another format. It has the complete generation, SBOM, and review path.
 
 ## What ships, and what the artifact adds
 
@@ -216,8 +207,8 @@ and to check that the result is the same environment:
 
 - the **build recipe** — the repository's `Dockerfile` or equivalent in the
   frozen source snapshot, plus the build script in the overlay;
-- the **SBOM** — the inventory of what the runtime actually contained, so a
-  future rebuild has something to be compared against;
+- the **SBOM** — the inventory of what the runtime contained, which provides a
+  comparison point for a future rebuild;
 - the **receipts** — the build script's digest, the artifact's digest, and the
   runs that used it.
 
@@ -253,24 +244,20 @@ it existing, whether or not it ends up in the bundle.
 
 ## Choosing a packaging technology
 
-Anything that can be exported to a file is a candidate. The practical choices,
-in order of how well they are supported today:
+Any environment that a build can export to a file is a candidate. These are the
+practical choices, ordered by current support:
 
-**Docker image, exported with `docker save`.** The default and the best
-supported. The SBOM step scans `docker-archive:` tarballs and nothing else, the
-sealed bundle's `run.sh` expects one on a recipient's machine, and image digests
-give the reviewer an exact-match comparison before falling back to SBOM closure.
-Choose this unless you have a reason not to.
+**Docker image, exported with `docker save`.** This is the best-supported path.
+The SBOM step scans Docker archives, and generated run scripts know how to load
+them. Review first compares the artifact digest, then the SBOM closure when the
+bytes differ.
 
 **A packed Python virtualenv** (`.tar.gz` of a venv). The docker-less path for
-plain `requirements.txt` projects: the build packs a venv and every runnable
-restores it instead of loading an image. Cheap and fast, but note what it means
-for the separation above — the workbench base image ends up *being* the
-environment, so the interpreter and system libraries are inherited rather than
-pinned, and there is no container to scan for an SBOM. Build the venv *outside*
-the workspace and pack only the tarball into it — the workspace is
-snapshot-hashed on every change, and a venv bakes absolute paths, so it must be
-restored where it was built.
+plain `requirements.txt` projects. The generated build packs a venv, and each
+generated runnable restores it. This is fast but inherits the workbench's
+interpreter and system libraries. The SBOM scanner cannot scan the packed venv.
+The generated scripts build it outside the workspace and restore it to the same
+absolute path because virtual environments contain absolute paths.
 
 **Podman.** A drop-in alternative that reads the same recipe file and exports
 the same archive format, so nothing downstream can tell the difference.
@@ -282,9 +269,9 @@ strongest reproducibility story; Conda gives the weakest unless you commit a
 fully solved lock file (`conda-lock`), because `environment.yml` re-solves
 differently on every machine and date.
 
-**Apptainer / Singularity.** A `.sif` is a legitimate runtime artifact and the
-right answer for HPC, but it costs you the SBOM scan and requires Apptainer on
-every recipient's machine. See the recipe below before committing to it.
+**Apptainer / Singularity.** A `.sif` can be the right artifact for HPC. It has
+no generated run scaffolds or SBOM support. Each recipient also needs
+Apptainer. See the recipe below before choosing it.
 
 **Not runtimes:** a `setup.sh` that installs into the host, a README that says
 "install PyTorch", or an environment that exists only on your cluster.
@@ -297,9 +284,9 @@ invoke it and export the result.
 
 One constraint applies to all of them. The build script can only use tools the
 workbench actually has, and the stock workbench is Docker-based — see
-[Three environments](#three-environments-and-which-one-you-are-packaging). A
-non-Docker toolchain is therefore usually invoked *through* a container, which
-is what the Apptainer and Nix examples below do. If your deployment provides a
+[Three environments](#three-environments-and-which-one-you-are-packaging). The
+Apptainer and Nix examples run their toolchains *through* a container. If your
+deployment provides a
 workbench image that already carries the tool, call it directly instead.
 
 #### Docker
@@ -471,14 +458,13 @@ docker run --rm \
 test -f "$RUNTIME_ARTIFACT"
 ```
 
-`dockerTools.buildLayeredImage` emits a gzip-compressed Docker image tarball, so declare
-`myproject/runtime.tar.gz` as the runtime artifact and everything downstream
-works as it does for Docker — the SBOM scanner accepts `.tar.gz`.
+`dockerTools.buildLayeredImage` emits a gzip-compressed Docker image tarball.
+Declare `myproject/runtime.tar.gz` as the runtime artifact. The SBOM scanner
+accepts the suffix because the contents are still a Docker archive.
 
-Two things make this worth the extra machinery: the build is pinned by
-`flake.lock` rather than by whatever the package index served that day, and the
-images are timestamp-free by construction, so a rebuild is far more likely to
-match by digest instead of falling back to an SBOM comparison.
+Two things make this worth the extra machinery. `flake.lock` pins the build
+instead of accepting whatever the package index serves. The image construction
+also omits timestamps, which makes matching rebuild digests more likely.
 
 ## Packaging rules that keep a build reproducible
 
@@ -500,8 +486,8 @@ against the index at build time. Use `pip install -r requirements.lock`
 **Pin system packages too, or accept that you have not.** `apt-get install -y
 libgdal-dev` is a floating dependency exactly like an unpinned Python package.
 Pin versions (`libgdal-dev=3.6.2+dfsg-1+b2`) where the distribution archive
-makes it possible, and prefer a distribution whose archive is preserved
-(Debian's snapshot.debian.org) when it matters.
+makes it possible. When it matters, prefer a distribution that preserves its
+archive, such as Debian through snapshot.debian.org.
 
 **Fetch nothing at run time.** Every download that happens when the experiment
 runs — model weights, reference data, a `git clone`, a `pip install` in an
@@ -520,10 +506,10 @@ belong in the workspace, which is bind-mounted into the container when
 experiments run. An image that carries its own results makes the reviewer's
 fresh run indistinguishable from your old one.
 
-**Keep the image lean, but not at the cost of the environment.** The runtime
-artifact is stored, digested, transferred, scanned, and archived. Multi-stage
-builds and `--no-cache-dir` help. Deleting the compiler your code needs to
-rebuild an extension does not.
+**Keep the image lean, but not at the cost of the environment.** Every runtime
+artifact requires storage, hashing, transfer, scanning, and archiving.
+Multi-stage builds and `--no-cache-dir` help. Deleting a required compiler does
+not.
 
 **No secrets, ever.** Tokens and keys baked into a layer survive `rm` in a later
 layer and ship inside a public archive. If the build genuinely needs a
@@ -548,7 +534,7 @@ that indirection invisible to the reviewer.
   into the mounted workspace. Either run as a matching non-root user or expect
   files you cannot clean up from the host.
 - **The workspace mount shadows baked-in source.** If the Dockerfile `COPY`s
-  the project to the same path the workspace is mounted at, the mount wins at
+  the project to the workspace mount path, the mount wins at
   run time. Bake the *environment*, mount the *code*.
 - **GPU and driver assumptions.** A CUDA image binds to a host driver range,
   so an artifact that runs on your cluster may not run anywhere else. Record the
@@ -558,8 +544,8 @@ that indirection invisible to the reviewer.
   package mirrors, and institutional proxies all produce a build that no
   reviewer can repeat.
 - **An artifact path outside the workspace.** The build must leave its output at
-  the declared workspace-relative path; scripts that resolve outside the
-  workspace are rejected.
+  the declared workspace-relative path. repo2ree rejects paths that resolve
+  outside the workspace.
 - **A giant runtime artifact.** A multi-gigabyte image tar makes every later
   step — SBOM scan, seal, download, deposit — slow, and may force the choice of
   sealing without the runtime. Check the size before you commit to the
@@ -576,32 +562,31 @@ The **Evaluate** step reads the repository as it stands and inventories what it
 *declares*. It parses the manifests and lock files it finds — PyPI
 (`requirements.txt`, `pyproject.toml`, `poetry.lock`, `uv.lock`), Conda
 (`environment.yml`), npm (`package.json`, `package-lock.json`), OS packages, and
-the base images named in Dockerfiles — and classifies every row by how firmly it
-is bound: **locked** (a lock file resolved it), **pinned**, **ranged**,
-**unpinned**.
+the base images named in Dockerfiles. It classifies every row as **locked** (a
+lock file resolved it), **pinned**, **ranged**, or **unpinned**.
 
-This is a source-level assessment, produced before anything is built. It is
-where floating tags and unpinned ranges show up as findings, and it is the
-cheapest place to fix them: the rules in [Packaging rules](#packaging-rules-that-keep-a-build-reproducible)
-are, more or less, the list of things that move a row up that ladder.
+This source-level assessment runs before the build. It exposes floating tags and
+unpinned ranges while they remain cheap to fix. The
+[packaging rules](#packaging-rules-that-keep-a-build-reproducible) explain how to
+improve them.
 
 ### After the build: the SBOM
 
 Once the runtime artifact exists, the **SBOM** step scans it and records what is
 *actually inside* it. The scan reads the artifact as a `docker-archive:` tarball
 with `--scope squashed` — the squashed filesystem, not just the top layer — and
-writes a CycloneDX document that is digested and committed to the REE as
+writes a CycloneDX document. repo2ree digests it and commits it to the REE as
 evidence.
 
 That document is the certifiable inventory of the environment: the package list
 a reviewer, a security audit, or an archive can read without ever running the
-image. It also becomes the basis for the reviewer's comparison, since a rebuild
-whose image digest differs can still be checked against the author's SBOM
-closure.
+image. It also supports review: when the image digests differ, repo2ree can
+compare the rebuilt environment with the author's SBOM closure.
 
-If the scan produces nothing, check that `runtime_path` ends in `.tar`,
-`.tar.gz`, or `.tgz` and holds a `docker save` archive — this is the concrete
-reason the Docker image tar is the recommended packaging form.
+If the scan produces nothing, check both the name and the contents.
+`runtime_path` must end in `.tar`, `.tar.gz`, or `.tgz`, and the file must be a
+Docker archive. The suffix alone does not make a packed venv or root filesystem
+scannable.
 
 ### Cross-check: declared versus observed
 
@@ -616,16 +601,14 @@ gets a verdict:
 | `not-observed` | Declared but absent. Normal for dev- and build-only dependencies; not a defect by itself. |
 | `undeclared` | Present in the runtime with no manifest declaring it. |
 
-Undeclared packages are only reported for ecosystems the repository actually
-uses: an unexpected PyPI package is a real signal, while the base image's
-hundreds of OS packages are noise and are counted rather than listed.
+repo2ree reports undeclared packages only for ecosystems used by the repository.
+An unexpected PyPI package is useful evidence. The hundreds of OS packages in a
+base image add noise, so the report counts them without listing them.
 
-The cross-check is where the two halves of the guide meet. A `version-mismatch`
-usually means a dependency was declared as a range and resolved to something
-else at build time. A pile of undeclared same-ecosystem packages usually means
-something was installed inside the Dockerfile that never made it into a
-manifest. Both are fixable in the source repository, and both are much cheaper
-to fix now than to explain later.
+The cross-check joins both inventories. A `version-mismatch` often means a
+declared range resolved to another version at build time. Many undeclared
+packages in the same ecosystem can mean that the Dockerfile installed software
+absent from a manifest. Fix both cases in the source repository.
 
 ## Optional: test activation
 
@@ -658,10 +641,9 @@ docker run --rm -v "$(pwd):/workspace" -w /workspace "$IMAGE_TAG" \
 ```
 
 The differences from an experiment are all about scope. An REE has exactly one
-activation rather than a named catalog; it declares no output files, so nothing
-is captured or sealed from it; and a reviewer's activation records a plain
-probe outcome instead of a comparison against your baseline, because the probe
-*is* the whole claim.
+activation rather than a named catalog. It declares no output files, so the REE
+captures nothing from it. A reviewer's activation records a probe outcome
+instead of comparing a baseline because the probe is the whole claim.
 
 **Keep the command finite and cheap.** `python --version`, `Rscript -e
 'sessionInfo()'`, `julia --version` — something that starts, prints, and exits.

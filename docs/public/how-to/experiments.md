@@ -1,241 +1,171 @@
 # Experiments in an REE
 
-An experiment is a pair of script that 1) produces a result and 2) a check that decides whether the result is the being claimed.
+An experiment has a run script that produces a result and, optionally, a verify
+script that decides whether the result supports the declared claim.
 
-This is the companion to [The runtime of an REE](build-runtimes.md). That guide
-covers packaging the environment; this one covers what you execute inside it and
-how the outcome becomes evidence.
+This guide follows [The runtime of an REE](build-runtimes.md). That guide covers
+the environment. This one covers what runs inside it and how the outcome becomes
+evidence.
 
-## What an experiment is made of
+## The experiment contract
 
-Naming an experiment declares it on the REE and settles its reserved script
-paths. From `figure-3`, repo2ree derives:
+Naming an experiment declares it on the REE and fixes its reserved script paths.
+For an experiment named `figure-3`, repo2ree uses:
 
-| Part | Where it lives | What it does |
+| Part | Path | Purpose |
 |---|---|---|
-| **Run script** | `ree-scripts/experiments/figure-3.sh` | Produces the result. Owns entering the runtime. |
-| **Verify script** | `ree-scripts/experiments/figure-3.verify.sh` | Decides the verdict. Its exit code *is* the verdict. |
-| **Output files** | declared paths in the workspace | The files the run produces, captured after every successful run. |
+| Run script | `ree-scripts/experiments/figure-3.sh` | Enters the runtime and produces the result. |
+| Verify script | `ree-scripts/experiments/figure-3.verify.sh` | Checks the fresh result. Its exit code is the verdict. |
+| Output files | Declared workspace paths | Files captured after a successful run. |
 
-Names accept letters, digits, spaces, `.`, `_`, and `-`; spaces collapse to
-hyphens in the derived slug. Name an experiment for the claim it settles —
-`figure-3`, `table-2-ablation`, `smoke-test` — rather than for the mechanism.
+Names may contain letters, digits, spaces, `.`, `_`, and `-`. Spaces become
+hyphens in the script slug. Use a name for the claim, such as `figure-3` or
+`table-2-ablation`, rather than for the mechanism.
 
-![The experiment page: the saved run script that loads the runtime and runs the command, and the verify script below it with its starter templates](../tutorials/assets/create-first-ree/08-experiment.png)
+![The experiment page with the run and verify scripts](../tutorials/assets/create-first-ree/08-experiment.png)
 
-Only the verify script is optional, and leaving it out has a cost: without a
-declared criterion, a later review can only report `inconclusive`. An experiment
-with no check is a command that ran, not a claim anyone can reproduce.
+The verify script is optional. Without one, repo2ree can record that the command
+ran, but a later review cannot decide whether the result reproduced the claim.
 
-## The run script
+## Generate the run scaffold
 
-The run script executes as `sh <path>` from the **workspace root**:
+After you declare an experiment and build the runtime, select **Generate from
+repository**. repo2ree inspects the runtime and fills in the mechanical parts:
+
+- the runtime artifact path;
+- the Docker image reference or virtualenv restore path;
+- the workspace mount and working directory;
+- a reserved log path for captured stdout.
+
+It does not choose the scientific command. The generated script contains an
+empty `set --` and exits 64 until you fill it in. This fail-closed behavior
+prevents an inferred command from becoming evidence by accident.
+
+For a Docker runtime, replace the empty line with the command and its arguments:
 
 ```sh
-#!/usr/bin/env sh
-set -eu
+# Generated scaffold excerpt
+set -- python python_hello_world/main.py
+```
 
-# Keep these in sync with the build script's variables.
-RUNTIME_ARTIFACT="runtime.tar"
-IMAGE_TAG="ree-runtime:latest"
-RUN_LOG="results/run.log"
+Keep the generated loading and output-capture code unless the experiment needs
+different behavior. The generated scaffold redirects stdout to a file and then
+prints that file:
 
-# Loading from the saved artifact — not the locally built image — proves the
-# artifact itself is self-contained.
-docker load --input "$RUNTIME_ARTIFACT"
+```sh
+docker run --rm \
+    -v "$(pwd):/workspace" \
+    -w /workspace \
+    "$IMAGE_TAG" \
+    "$@" \
+    >"$RUN_LOG"
 
-mkdir -p "$(dirname "$RUN_LOG")"
-docker run --rm -v "$(pwd):/workspace" -w /workspace "$IMAGE_TAG" \
-  python main.py > "$RUN_LOG"
 cat "$RUN_LOG"
 ```
 
-Three details in that template earn their place:
+Do not replace the redirect with `| tee`. A POSIX pipeline reports the status of
+its last command, so `tee` can hide a failed experiment. Redirecting preserves
+the experiment command's exit status.
 
-- **Load from the artifact, not from the daemon's image cache.** A run against
-  an image that happens to sit in the local daemon proves nothing about the file
-  the REE carries. Loading the artifact each time tests the thing that ships.
-- **The workspace is bind-mounted, so outputs land in the workspace.** The
-  environment comes from the runtime; the code and the results live in the
-  workspace, where the verify script and the capture step can reach them.
-- **Stdout goes to a file through a redirect, never `| tee`.** A pipeline
-  reports the exit status of its *last* command, so `| tee` would mask a failing
-  run as a pass. Redirect, then `cat` the file if you want the log on screen.
+The run script executes as `sh <path>` from the workspace root. repo2ree does
+not inject environment variables or capture stdout for the verify script. If a
+check needs stdout, the run script must write it to a declared workspace file.
 
-That last point matters more than it looks. Nothing captures stdout for the
-verify script: **to check what a run printed, the run script has to materialize
-it to a workspace file first.**
+## Write the verify script
 
-## The verify script
+The verify script runs from the workspace root after the run script. A zero exit
+code means the declared check passed; any other code means it failed.
 
-The verify script is the criterion, expressed as a plain script rather than as a
-matcher configuration. It runs from the workspace root after the run script,
-again with nothing injected, and **its exit code is the verdict — 0 means the
-declared validation passed.**
+The editor provides templates for common checks:
 
-It reads whatever it needs straight from the workspace. Four starter templates
-cover the standard cases:
-
-| Template | The claim it encodes |
+| Template | Claim |
 |---|---|
-| **Stdout contains** | The run log holds an expected phrase. |
-| **Stdout matches regex** | The run log matches an extended regular expression. |
-| **Numeric within tolerance** | A number extracted from the run log sits within ± epsilon of the claimed value. |
-| **Output file sha256** | A produced file hashes to a recorded baseline. |
+| Stdout contains | The run log contains an expected phrase. |
+| Stdout matches regex | The run log matches an extended regular expression. |
+| Numeric within tolerance | An extracted number is within an allowed tolerance. |
+| Output file SHA-256 | A file has the recorded digest. |
 
-Each arrives with `EDIT-ME` placeholders on the parts that carry the claim, so an
-unedited template fails rather than passing vacuously. The numeric one is the
-most instructive:
-
-```sh
-#!/usr/bin/env sh
-set -eu
-
-# Claim: the reported metric equals EXPECTED within ± EPSILON.
-RUN_LOG='EDIT-ME results/run.log'
-EXPECTED='EDIT-ME 0.9542'
-EPSILON='EDIT-ME 0.001'
-EXTRACT_PATTERN='[0-9]+\.[0-9]+'
-actual=$(grep -Eo "$EXTRACT_PATTERN" "$RUN_LOG" | head -n 1)
-[ -n "$actual" ] || { echo "no number matching the extract pattern in $RUN_LOG" >&2; exit 1; }
-awk -v a="$actual" -v e="$EXPECTED" -v eps="$EPSILON" \
-  'BEGIN { d = a - e; if (d < 0) d = -d; exit !(d <= eps) }'
-```
-
-### Choose the criterion the science actually needs
-
-Byte-exactness is one option among several, and often the wrong one. A run that
-writes a timestamp, a hostname, or a floating-point sum computed in a different
-thread order will differ byte-for-byte while agreeing perfectly on the claim.
-Pick the weakest check that still fails when the result is wrong:
-
-- an exact digest for artefacts that must not change at all;
-- a tolerance for metrics;
-- a structural check — row counts, schema, a key subset — for tabular output;
-- a statistical test where the claim is distributional.
-
-Writing it as a script is what makes this honest. A reviewer can read the check,
-disagree with it, and say why — which is not possible when the criterion is
-"the author eyeballed the figure".
-
-## Example
-
-The tutorial's pandas project declares one experiment, `python-hello`. Its run
-script loads the runtime, runs `main.py` inside it with the workspace mounted,
-and materializes stdout to `result.txt`:
+Templates contain `EDIT-ME` values. An unedited template fails instead of
+passing without a real check. A simple fixed-text check looks like this:
 
 ```sh
 #!/usr/bin/env sh
 set -eu
 
-IMAGE_NAME="pandas-hello"
-TAG="latest"
-RUNTIME_FILE="python_hello_world/runtime.tar"
-
-if ! docker image inspect "$IMAGE_NAME:$TAG" >/dev/null 2>&1; then
-  docker load < "$RUNTIME_FILE"
-fi
-
-docker run --rm \
-  -v "$(pwd):/workspace" \
-  -w /workspace \
-  "$IMAGE_NAME:$TAG" \
-  python python_hello_world/main.py > "result.txt"
-```
-
-Its verify script reads that file back, and nothing else:
-
-```sh
-#!/usr/bin/env sh
-set -eu
-
-# The run script materialized its stdout to this workspace file; read it back.
 EXPECTED="Pandas Hello World"
-grep -Fq "$EXPECTED" "result.txt"
+grep -Fq "$EXPECTED" "results/python-hello.log"
 ```
 
-`result.txt` is then declared as the experiment's **output file**. Those three
-pieces — run, check, declared output — are the whole contract.
+### Choose a scientifically meaningful check
 
-## Output files and the author baseline
+Byte-for-byte equality is often too strict. Timestamps, hostnames, and floating-
+point operation order can change without changing the result. Choose the least
+strict check that still rejects a wrong result:
 
-Declaring output files is what turns a run into evidence rather than a log line.
-After every successful run, the workbench copies the declared paths into a
-per-experiment results store and records their digest on the run receipt.
+- use a digest when every byte must match;
+- use a tolerance for numeric metrics;
+- check schema, row counts, or key values for tabular data;
+- use a statistical test for a distributional claim.
 
-Capture is always local. An experiment can additionally **opt into sealing** its
-results, which packages that captured baseline into the downloadable bundle at
-`ree/results/<name>/`.
+Because the criterion is a script, a reviewer can inspect it and challenge it.
+That is stronger than asking the reviewer to judge a figure by eye.
 
-The distinction that trips people up: the sealed baseline is for *comparison*,
-not for verification. A reviewer's fresh run writes its own outputs to the
-declared paths in the workspace, and the verify script always reads that fresh
-workspace — never the baseline sitting beside it. The baseline is what the
-reviewer's result gets compared *against* afterwards.
+## Declare output files
 
-## What a passing run means
+Declare every file that the run produces and that matters to the claim. After a
+successful run, repo2ree copies those paths into the experiment's result store
+and records their digests.
 
-A run whose script and verify script both exit 0 is **validated against its
-declared check**. It is not a reproduction. Reproduction is the later comparison:
-a fresh run, evaluated against the author's recorded baseline.
+The **Seal** page has one option to include experiment results. When selected,
+the bundle stores captured author baselines under
+`ree/results/<experiment>/`. This is a bundle-wide choice, not an option on each
+experiment.
 
-When a reviewer re-runs the experiment, the comparison settles on this ladder:
+The baseline is comparison evidence. The verify script must always read the
+fresh files in the workspace. A check that reads `ree/results/<experiment>/`
+would only test the author's old result and could pass without reproducing
+anything.
 
-| Verdict | When |
+## What the verdicts mean
+
+An author **validates** a run when the run and verification scripts exit zero.
+This is not yet a reproduction. Reproduction requires a later, independent run
+and a comparison with the author's evidence.
+
+| Verdict | Meaning |
 |---|---|
-| `inconclusive` | No verify script, no author baseline, the author's own verify never passed, or the reviewer ran a *different* criterion than the author recorded. |
-| `different` | The author's criterion, applied to the reviewer's fresh outputs, exited nonzero. |
-| `reproduced` | The criterion passed on the reviewer's outputs. |
-| `identical` | It passed *and* both sides recorded the same output digest. |
+| `inconclusive` | The comparison lacks a verify script, a valid author baseline, or the same verification criterion. |
+| `different` | The author's criterion failed on the reviewer's fresh outputs. |
+| `reproduced` | The author's criterion passed on the reviewer's fresh outputs. |
+| `identical` | The criterion passed and both output digests match. |
 
-Two asymmetries are deliberate. A criterion-digest mismatch downgrades to
-`inconclusive`, because a different test cannot reproduce the old claim. An
-output-digest mismatch never downgrades a passing verify, because timestamps,
-seeds, and hostnames land in output files on every honest re-run.
+A changed verify-script digest makes the comparison inconclusive because it is a
+different test. A changed output digest does not override a passing criterion:
+two valid results can differ in irrelevant bytes.
 
-The consequence for authors: **the verify script is the artefact a reviewer
-inherits.** Change it after publishing and you have not tightened your evidence,
-you have made the old claim unreproducible.
+## Design experiments that survive
 
-## Designing experiments that survive
+- **Keep one claim per experiment.** Split a script that produces many unrelated
+  results so a failure identifies the affected claim.
+- **Control randomness.** Seed every generator and record any remaining
+  nondeterminism.
+- **Fetch nothing at run time.** Put stable inputs in the source or runtime, or
+  document and declare them separately.
+- **Offer a short check.** A smoke test helps reviewers diagnose the setup before
+  they start an expensive experiment.
+- **Write only to declared paths.** Undeclared outputs are not captured or
+  compared.
+- **Make experiments independent.** The standalone `run.sh all` uses one clean
+  materialization for the sequence. A reviewer may also run one experiment by
+  itself, so never depend on leftovers from another experiment.
 
-- **One claim per experiment.** A single script that regenerates every figure in
-  the paper produces one verdict for twelve claims. Split them so a failure
-  names what broke.
-- **Pin the randomness.** Seed every generator the run touches, and set
-  `PYTHONHASHSEED` where hash ordering can leak into output. An unpinned seed
-  turns a tolerance check into a coin flip.
-- **Fetch nothing at run time.** Downloads at experiment time are an unrecorded
-  dependency and a future failure. Bake data into the runtime, or declare it as
-  an input.
-- **Keep runs short where you can.** A reviewer with a ten-minute smoke test
-  will run it; one facing a six-hour job may not. A cheap `smoke-test` beside
-  the expensive experiments is worth the extra declaration.
-- **Write outputs only to declared paths.** An undeclared output is not
-  captured, not digested, and not comparable.
-- **Do not chain experiments.** The workspace is reset before a reproduction
-  run, so an experiment that silently depends on a previous one's leftovers
-  passes for you and fails for everyone else.
+## Common mistakes
 
-## Pitfalls that bite in practice
-
-- **A verify script that cannot fail.** `grep -q phrase results/run.log || true`,
-  or a check against a file the run script never writes, passes without checking
-  anything. Test it: break the run deliberately and confirm the verify script
-  goes red.
-- **Checking stdout that was never materialized.** Nothing captures stdout for
-  the verify script. If the run script does not write it to a file, the verify
-  script cannot read it.
-- **`| tee` masking a failed run.** The pipeline's exit status belongs to `tee`.
-  Redirect instead.
-- **Verifying against the baseline instead of the fresh output.** A verify script
-  that reads `ree/results/<name>/…` checks the author's own recorded answer and
-  passes for everybody. Read the workspace.
-- **Root-owned outputs.** A container running as root writes root-owned files
-  into the mounted workspace. Run as a matching user, or expect files you cannot
-  clean up.
-- **An unconfigured generated scaffold.** A generated run script ships with an
-  empty `set --` and exits **64** until you fill in the command. That is a
-  refusal to guess your science, not a bug.
-- **Output paths outside the workspace.** Scripts and outputs that resolve
-  outside the workspace are rejected.
+- A check such as `grep ... || true` cannot fail and proves nothing.
+- A verify script cannot inspect stdout unless the run script saved it.
+- `| tee` can replace the experiment's failure code with `tee`'s success code.
+- A verify script must read fresh workspace output, not the sealed baseline.
+- A container running as root may create workspace files the host user cannot
+  remove.
+- A generated scaffold still containing `set --` exits 64 by design.
+- Script and output paths must remain inside the workspace.

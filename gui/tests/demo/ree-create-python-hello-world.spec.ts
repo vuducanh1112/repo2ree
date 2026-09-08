@@ -56,14 +56,30 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
   // used to pick this run's row out of the index (which keeps earlier runs').
   let sealedShortDigest = "";
 
-  await demoStep(page, "Choose a lab and bring the bench online", async () => {
+  await demoStep(page, "Open the repo2ree landing page", async () => {
     await page.goto("/");
+    await showcasePanel(
+      page,
+      page.getByRole("button", { name: "Create a new REE" }),
+      "Start here to author a new reproducible execution environment",
+    );
+  });
+
+  await demoStep(page, "Choose a compute location", async () => {
     await clickDemo(
       page,
       page.getByRole("button", { name: "Create a new REE" }),
       "Start REE creation",
     );
     await expect(page.getByRole("heading", { name: "Where should this REE run?" })).toBeVisible();
+    await showcasePanel(
+      page,
+      page.getByRole("button", { name: AVAILABLE_LAB }).first(),
+      "Choose the connected lab that will own this REE's workbench and execution",
+    );
+  });
+
+  await demoStep(page, "Open workbench setup", async () => {
     await clickDemo(
       page,
       page.getByRole("button", { name: AVAILABLE_LAB }).first(),
@@ -76,6 +92,10 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
       setup,
       "Choosing a lab opens its bench setup in place — which of the lab's curated base images to build the bench from, and whether it starts blank or from a downloaded bundle",
     );
+  });
+
+  await demoStep(page, "Provision the workbench", async () => {
+    const setup = page.getByRole("region", { name: "Set up the workbench" });
     await clickDemo(
       page,
       setup.getByRole("button", { name: /Provision workbench/i }),
@@ -89,6 +109,13 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
         .getByRole("navigation", { name: "Workspace pages" })
         .getByRole("button", { name: "Source", exact: true }),
     ).toBeVisible({ timeout: 120000 });
+    await showcasePanel(
+      page,
+      page
+        .getByRole("navigation", { name: "Workspace pages" })
+        .getByRole("button", { name: "Source", exact: true }),
+      "The workbench is online; authoring begins with Source Acquisition",
+    );
     await page.keyboard.press("Escape").catch(() => {});
     await page
       .getByRole("navigation", { name: "Workspace pages" })
@@ -290,10 +317,6 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
     );
     await clickDemo(page, main.getByRole("button", { name: "Save build script" }));
 
-    // The runtime the build produces is declared before it runs — the build
-    // refuses to start without it and fails if nothing lands at that path. The
-    // declaration names the runtime the whole REE runs on, shared by
-    // activation and every experiment.
     await fillDemo(
       page,
       page.getByRole("region", { name: "Runtime artifact" }).getByRole("textbox"),
@@ -459,7 +482,7 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
         PYTHON_RUNTIME_PATH,
         EXPERIMENT_OUTPUT_FILE,
       ),
-      "The experiment owns its full run: load the image and docker run the script in the mounted workspace, teeing stdout to a workspace file",
+      "The experiment owns its full run: load the image and run the command in the mounted workspace, saving stdout to a workspace file",
     );
     await saveVerifyScript(
       page,
