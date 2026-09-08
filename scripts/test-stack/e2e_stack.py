@@ -54,8 +54,6 @@ class Options:
     state_root: Path
     exec_bundle: Path
     tools_bundle: Path
-    python_image: str
-    git_origin: str
 
 
 class E2EStack:
@@ -97,21 +95,6 @@ class E2EStack:
             path.unlink()
         for index in range(1, self.options.compute_locations + 1):
             self.workbench_log(index).unlink(missing_ok=True)
-        catalog = [
-            {
-                "id": "standard",
-                "ref": "docker.io/library/docker:29-dind",
-                "label": "Standard bench",
-                "description": "Docker workbench pinned for this e2e run.",
-            },
-            {
-                "id": "python",
-                "ref": self.options.python_image,
-                "label": "Python bench",
-                "description": "Docker-less workbench: the base image is the runtime.",
-            },
-        ]
-        self.environment["WORKBENCH_IMAGE_CATALOG"] = json.dumps(catalog)
 
     def log_handle(self, path: Path) -> BinaryIO:
         handle = path.open("wb")
@@ -262,8 +245,6 @@ class E2EStack:
         environment = {
             **self.environment,
             "E2E_API_BASE_URL": self.api_url,
-            "E2E_GIT_ORIGIN_URL": self.options.git_origin,
-            "PYTHON_SLIM_IMAGE": self.options.python_image,
         }
         return (
             subprocess.Popen(
@@ -384,8 +365,6 @@ def options() -> Options:
     parser.add_argument("--state-root", type=Path, default=ROOT / "test-artifacts/state")
     parser.add_argument("--exec-bundle", type=Path, default=ROOT / "dist/bundles/exec")
     parser.add_argument("--tools-bundle", type=Path, default=ROOT / "dist/bundles/tools")
-    parser.add_argument("--python-image", default="docker.io/library/python:3.11-slim")
-    parser.add_argument("--git-origin", default="https://github.com/vuducanh1112/ree-e2e-fixture.git")
     args = parser.parse_args()
     if args.project and args.tier:
         parser.error(f"--tier is implied by --project ({args.project}); drop it")
@@ -426,8 +405,6 @@ def options() -> Options:
         state_root=args.state_root,
         exec_bundle=args.exec_bundle,
         tools_bundle=args.tools_bundle,
-        python_image=args.python_image,
-        git_origin=args.git_origin,
     )
 
 

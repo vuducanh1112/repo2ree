@@ -2,8 +2,6 @@ E2E_BUNDLE_DIR := ROOT + "/dist/bundles"
 E2E_EXEC_BUNDLE := E2E_BUNDLE_DIR + "/exec"
 E2E_TOOLS_BUNDLE := E2E_BUNDLE_DIR + "/tools"
 DEFAULT_API_DEMO_CAST := ROOT + "/test-artifacts/casts/api-walkthrough.cast"
-DEFAULT_E2E_GIT_ORIGIN := "https://github.com/vuducanh1112/ree-e2e-fixture.git"
-DEFAULT_E2E_PYTHON_IMAGE := "docker.io/library/python:3.11-slim"
 
 # Source-run suites are measured because the host can collect coverage from
 # their backend and workbench processes. Image-backed variants deliberately are
@@ -19,24 +17,24 @@ build-e2e-bundles: _stage-nix-sources
     nix build .#tools-bundle -o {{ quote(E2E_TOOLS_BUNDLE) }}
 
 [private]
-_source-stack-playwright project locations mode docker_mode python_image git_origin:
-    python scripts/test-stack/e2e_stack.py --project {{ quote(project) }} --mode {{ quote(mode) }} --compute-locations {{ quote(locations) }} --docker-mode {{ quote(docker_mode) }} --python-image {{ quote(python_image) }} --git-origin {{ quote(git_origin) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
+_source-stack-playwright project locations mode docker_mode:
+    python scripts/test-stack/e2e_stack.py --project {{ quote(project) }} --mode {{ quote(mode) }} --compute-locations {{ quote(locations) }} --docker-mode {{ quote(docker_mode) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
 
 # Run the measured author-side browser E2E tier.
 [group('E2E tests')]
-test-e2e-gui locations=DEFAULT_E2E_LOCATIONS mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE python_image=DEFAULT_E2E_PYTHON_IMAGE git_origin=DEFAULT_E2E_GIT_ORIGIN: build-e2e-bundles (_source-stack-playwright "e2e-gui" locations mode docker_mode python_image git_origin)
+test-e2e-gui locations=DEFAULT_E2E_LOCATIONS mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE: build-e2e-bundles (_source-stack-playwright "e2e-gui" locations mode docker_mode)
 
 # Run the measured reviewer-side browser E2E tier.
 [group('E2E tests')]
-test-e2e-review mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE python_image=DEFAULT_E2E_PYTHON_IMAGE git_origin=DEFAULT_E2E_GIT_ORIGIN: build-e2e-bundles (_source-stack-playwright "e2e-gui-review" "1" mode docker_mode python_image git_origin)
+test-e2e-review mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE: build-e2e-bundles (_source-stack-playwright "e2e-gui-review" "1" mode docker_mode)
 
 # Record the measured narrated browser demo.
 [group('Demos')]
-demo-gui mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE python_image=DEFAULT_E2E_PYTHON_IMAGE git_origin=DEFAULT_E2E_GIT_ORIGIN: build-e2e-bundles (_source-stack-playwright "demo-gui" "1" mode docker_mode python_image git_origin)
+demo-gui mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE: build-e2e-bundles (_source-stack-playwright "demo-gui" "1" mode docker_mode)
 
 # Record the measured external-capsule browser demo.
 [group('Demos')]
-demo-gui-code-ocean mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE python_image=DEFAULT_E2E_PYTHON_IMAGE git_origin=DEFAULT_E2E_GIT_ORIGIN: build-e2e-bundles (_source-stack-playwright "demo-gui-code-ocean" "1" mode docker_mode python_image git_origin)
+demo-gui-code-ocean mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE: build-e2e-bundles (_source-stack-playwright "demo-gui-code-ocean" "1" mode docker_mode)
 
 # Record the measured pure-API walkthrough and render its transcript.
 [group('Demos')]

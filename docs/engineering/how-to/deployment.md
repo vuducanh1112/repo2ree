@@ -128,8 +128,9 @@ only in the dev container, docker login only on the host), replace
 `publish-candidate` with the archive pair: run `just archive-images` in the
 dev container, copy `dist/images/` to the host, then run
 `just publish-image-archives`. The archive directory carries an
-`IMAGE_CANDIDATE_REV` stamp, so the host cannot accidentally push the tarballs
-under a different tag. Continue with validation and promotion using
+`IMAGE_CANDIDATE_REV` stamp and a manifest binding every tarball to its SHA-256
+digest. Loading or publishing refuses an incomplete or modified set, so the
+host cannot accidentally push the tarballs under a different tag. Continue with validation and promotion using
 `IMAGE_CANDIDATE_REV=$(cat dist/images/IMAGE_CANDIDATE_REV)`.
 
 All images always move together because the compute-side↔control-plane

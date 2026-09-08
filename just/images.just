@@ -1,8 +1,8 @@
 # Normal image recipes build and load :local images. Archive recipes are an
 # explicit credential-free handoff: build tarballs in the development
 # container, then load and publish them on a host with registry credentials.
-# The archive set is stamped with its clean Git revision so the host cannot
-# accidentally publish it under a different candidate name.
+# The complete archive set is installed from staging with a manifest binding
+# each tarball to its clean Git revision and digest.
 
 # Create archive output directory.
 [private]
@@ -51,9 +51,15 @@ build-images: build-gui-image build-backend-image build-provider-image
 # Regenerate the pinned GUI npm dependency hash.
 [group('Images')]
 update-gui-npm-hash:
-    @echo "Computing npm deps hash from gui/package-lock.json..."
-    nix run nixpkgs#prefetch-npm-deps -- gui/package-lock.json > nix/gui-npm-deps.hash
-    @echo "Wrote nix/gui-npm-deps.hash: $(cat nix/gui-npm-deps.hash)"
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Computing npm deps hash from gui/package-lock.json..."
+    candidate=$(mktemp nix/.gui-npm-deps.hash.XXXXXX)
+    trap 'rm -f "$candidate"' EXIT
+    nix run nixpkgs#prefetch-npm-deps -- gui/package-lock.json > "$candidate"
+    chmod 0644 "$candidate"
+    mv "$candidate" nix/gui-npm-deps.hash
+    echo "Wrote nix/gui-npm-deps.hash: $(cat nix/gui-npm-deps.hash)"
 
 # Build a loadable GUI image archive.
 [group('Image archives')]
@@ -77,17 +83,32 @@ archive-provider-image archive_dir=DEFAULT_IMAGE_ARCHIVE_DIR: _stage-nix-sources
     cp -fL result {{ quote(archive_dir + "/repo2ree-provider-docker-local.tar") }}
     @printf 'Wrote %s\n' {{ quote(archive_dir + "/repo2ree-provider-docker-local.tar") }}
 
-# Build and stamp the complete clean-tree image archive set.
+# Build the complete clean-tree image set in staging, bind every archive to its
+# revision by digest, then replace the published directory only after success.
 [group('Image archives')]
-archive-images archive_dir=DEFAULT_IMAGE_ARCHIVE_DIR: _require-clean-tree (archive-gui-image archive_dir) (archive-backend-image archive_dir) (archive-provider-image archive_dir)
-    @git describe --always > {{ quote(archive_dir + "/IMAGE_CANDIDATE_REV") }}
-    @echo ">> stamped candidate: $(cat {{ quote(archive_dir + "/IMAGE_CANDIDATE_REV") }})"
+archive-images archive_dir=DEFAULT_IMAGE_ARCHIVE_DIR: _require-clean-tree
+    #!/usr/bin/env bash
+    set -euo pipefail
+    archive_dir={{ quote(archive_dir) }}
+    archive_parent=$(dirname "$archive_dir")
+    archive_name=$(basename "$archive_dir")
+    mkdir -p "$archive_parent"
+    pending=$(mktemp -d "$archive_parent/.${archive_name}.pending.XXXXXX")
+    trap 'rm -rf "$pending"' EXIT
+    just --justfile {{ quote(ROOT + "/justfile") }} archive-gui-image "$pending"
+    just --justfile {{ quote(ROOT + "/justfile") }} archive-backend-image "$pending"
+    just --justfile {{ quote(ROOT + "/justfile") }} archive-provider-image "$pending"
+    revision=$(git describe --always)
+    python scripts/publish/image_archive_set.py seal "$pending" "$revision"
+    python scripts/replace_generated_directory.py "$pending" "$archive_dir"
+    echo ">> sealed image candidate: $revision"
 
 # Load every image from an archive set.
 [group('Image archives')]
 load-image-archives archive_dir=DEFAULT_IMAGE_ARCHIVE_DIR:
     #!/usr/bin/env bash
     set -euo pipefail
+    python scripts/publish/image_archive_set.py verify {{ quote(archive_dir) }}
     for image in repo2ree-gui repo2ree-backend repo2ree-provider-docker; do
       docker load -i {{ quote(archive_dir) }}/"$image"-local.tar
     done
