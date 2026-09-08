@@ -20,7 +20,7 @@ e2e-bundles: _stage-nix-sources
 
 [private]
 _source-stack-playwright project compute_locations mode docker_mode python_image git_origin:
-    scripts/test-stack/e2e-stack.sh --project {{ quote(project) }} --mode {{ quote(mode) }} --compute-locations {{ quote(compute_locations) }} --docker-mode {{ quote(docker_mode) }} --python-image {{ quote(python_image) }} --git-origin {{ quote(git_origin) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
+    python scripts/test-stack/e2e_stack.py --project {{ quote(project) }} --mode {{ quote(mode) }} --compute-locations {{ quote(compute_locations) }} --docker-mode {{ quote(docker_mode) }} --python-image {{ quote(python_image) }} --git-origin {{ quote(git_origin) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
 
 # Run the measured author-side browser E2E tier.
 [group('E2E tests')]
@@ -47,62 +47,62 @@ demo-api mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER
     transcript={{ quote(transcript) }}
     transcript=${transcript:-${cast%.cast}.md}
     mkdir -p "$(dirname "$cast")"
-    scripts/test-stack/e2e-stack.sh --script {{ quote(ROOT + "/api/tests/e2e/api_walkthrough.py") }} --tier demo-api --mode {{ quote(mode) }} --compute-locations 1 --docker-mode {{ quote(docker_mode) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} --record "$cast"
+    python scripts/test-stack/e2e_stack.py --script {{ quote(ROOT + "/api/tests/e2e/api_walkthrough.py") }} --tier demo-api --mode {{ quote(mode) }} --compute-locations 1 --docker-mode {{ quote(docker_mode) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} --record "$cast"
     python3 {{ quote(ROOT + "/api/tests/e2e/render_cast_transcript.py") }} "$cast" "$transcript"
 
 # Start the local image-backed stack.
 [group('Stack management')]
 stack-up compute_locations=DEFAULT_STACK_COMPUTE_LOCATIONS:
-    scripts/test-stack/image-stack.sh up --compute-locations {{ quote(compute_locations) }}
+    python scripts/test-stack/image_stack.py up --compute-locations {{ quote(compute_locations) }}
 
 # Stop the image-backed stack while retaining volumes.
 [group('Stack management')]
 stack-down:
-    scripts/test-stack/image-stack.sh down
+    python scripts/test-stack/image_stack.py down
 
 # Stop the image-backed stack and remove its volumes and workbenches.
 [group('Stack management')]
 stack-clean:
-    scripts/test-stack/image-stack.sh down --volumes
+    python scripts/test-stack/image_stack.py down --volumes
 
 # Remove leftover workbenches; run `just workbench-clean 1` to include bundle stores.
 [group('Stack management')]
 workbench-clean store="":
-    scripts/test-stack/workbench-cleanup.sh {{ if store != "" { "--store" } else { "" } }}
+    python scripts/test-stack/workbench_cleanup.py {{ if store != "" { "--store" } else { "" } }}
 
 # Run any browser or API suite against an owned image-backed stack.
 [group('Stack tests')]
 stack-test suite compute_locations="1" images="local" repository="" tag="":
-    scripts/test-stack/run-image-suite.sh --suite {{ quote(suite) }} --compute-locations {{ quote(compute_locations) }} --images {{ quote(images) }} --repository {{ quote(repository) }} --tag {{ quote(tag) }}
+    python scripts/test-stack/run_image_suite.py --suite {{ quote(suite) }} --compute-locations {{ quote(compute_locations) }} --images {{ quote(images) }} --repository {{ quote(repository) }} --tag {{ quote(tag) }}
 
 # Evict unreferenced bundle-store caches older than the requested days.
 [group('Stack management')]
 store-gc days="14":
-    scripts/test-stack/workbench-cleanup.sh --store-gc {{ quote(days) }}
+    python scripts/test-stack/workbench_cleanup.py --store-gc {{ quote(days) }}
 
 [private]
 _check-image-stack:
-    @scripts/test-stack/image-stack.sh check
+    @python scripts/test-stack/image_stack.py check
 
 # Run the author-side browser suite against an already-running image stack.
 [group('Stack tests')]
 e2e-gui-on-stack: _check-image-stack
-    cd gui && E2E_BASE_URL="$(../scripts/test-stack/image-stack.sh gui-url)" npm exec -- playwright test -c playwright.config.ts --project=e2e-gui
+    cd gui && E2E_BASE_URL="$(python ../scripts/test-stack/image_stack.py gui-url)" npm exec -- playwright test -c playwright.config.ts --project=e2e-gui
 
 # Run the reviewer-side browser suite against an already-running image stack.
 [group('Stack tests')]
 e2e-gui-review-on-stack: _check-image-stack
-    cd gui && E2E_BASE_URL="$(../scripts/test-stack/image-stack.sh gui-url)" npm exec -- playwright test -c playwright.config.ts --project=e2e-gui-review
+    cd gui && E2E_BASE_URL="$(python ../scripts/test-stack/image_stack.py gui-url)" npm exec -- playwright test -c playwright.config.ts --project=e2e-gui-review
 
 # Run the GUI demo against an already-running image stack.
 [group('Stack tests')]
 demo-gui-on-stack: _check-image-stack
-    cd gui && E2E_BASE_URL="$(../scripts/test-stack/image-stack.sh gui-url)" npm exec -- playwright test -c playwright.config.ts --project=demo-gui
+    cd gui && E2E_BASE_URL="$(python ../scripts/test-stack/image_stack.py gui-url)" npm exec -- playwright test -c playwright.config.ts --project=demo-gui
 
 # Run the API walkthrough against an already-running image stack.
 [group('Stack tests')]
 demo-api-on-stack: _check-image-stack
-    api/tests/e2e/api_walkthrough.py --base-url "$(scripts/test-stack/image-stack.sh api-url)"
+    api/tests/e2e/api_walkthrough.py --base-url "$(python scripts/test-stack/image_stack.py api-url)"
 
 # Build local images and run the author-side browser suite against them.
 [group('Stack tests')]

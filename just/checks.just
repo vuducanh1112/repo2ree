@@ -24,10 +24,14 @@ fix:
     cd gui && npx biome check --write {{ GUI_FORMAT_PATHS }}
     just format
 
-# Check shell and Python scripts.
+# Run tests for repository scripts.
+[group('Script tests')]
+scripts-tests:
+    pytest scripts/tests
+
+# Statically check shell and Python scripts.
 [group('Checks')]
 scripts-checks: _checks-write-hint config-check
-    pytest scripts/tests
     @echo "Running shellcheck..."
     find scripts -name '*.sh' -exec shellcheck {} +
     @echo "Checking python scripts..."

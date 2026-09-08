@@ -95,7 +95,7 @@ be-tests coverage_report="": (be-unit-tests coverage_report) (be-integration-tes
 # Render one measured tier's total and per-package HTML coverage reports.
 [group('Coverage')]
 be-coverage-report tier:
-    scripts/coverage/python-coverage.sh render {{ quote(tier) }}
+    python scripts/coverage/python_coverage.py render {{ quote(tier) }}
 
 # This is a separate view, not another tier: contexts make the database larger,
 # and API unit and integration tests remain separate processes because their
@@ -111,4 +111,4 @@ be-coverage-context: e2e-bundles
 # Combine whichever measured backend tiers exist on this checkout.
 [group('Coverage')]
 be-coverage-combined:
-    scripts/coverage/python-coverage.sh combine
+    python scripts/coverage/python_coverage.py combine

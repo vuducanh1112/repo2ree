@@ -1,10 +1,11 @@
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).parents[2]
-RECEIPT_TOOL = ROOT / "scripts/publish/publish-gate-receipt.sh"
-PUSH_TOOL = ROOT / "scripts/publish/push-image-set.sh"
+RECEIPT_TOOL = ROOT / "scripts/publish/publish_gate_receipt.py"
+PUSH_TOOL = ROOT / "scripts/publish/image_candidate.py"
 IMAGE_ID = "sha256:" + "1" * 64
 CHANGED_IMAGE_ID = "sha256:" + "2" * 64
 
@@ -50,19 +51,19 @@ def test_receipt_binds_revision_tree_and_local_image_ids(tmp_path: Path) -> None
     receipt = tmp_path / ".validation-certificates/publish-gate-ok"
 
     subprocess.run(
-        [RECEIPT_TOOL, "write", receipt, "revision-1"],
+        [sys.executable, RECEIPT_TOOL, "write", receipt, "revision-1"],
         check=True,
         env=environment,
     )
     subprocess.run(
-        [RECEIPT_TOOL, "verify", receipt, "revision-1"],
+        [sys.executable, RECEIPT_TOOL, "verify", receipt, "revision-1"],
         check=True,
         env=environment,
     )
 
     environment["FAKE_IMAGE_ID"] = CHANGED_IMAGE_ID
     changed = subprocess.run(
-        [RECEIPT_TOOL, "verify", receipt, "revision-1"],
+        [sys.executable, RECEIPT_TOOL, "verify", receipt, "revision-1"],
         check=False,
         env=environment,
         capture_output=True,
@@ -90,7 +91,17 @@ def test_push_uses_certified_ids_instead_of_mutable_local_tags(tmp_path: Path) -
     )
 
     subprocess.run(
-        [PUSH_TOOL, "revision-1", receipt],
+        [
+            sys.executable,
+            PUSH_TOOL,
+            "push",
+            "--revision",
+            "revision-1",
+            "--registries",
+            "registry.example/team",
+            "--gate-receipt",
+            receipt,
+        ],
         check=True,
         env=environment,
     )
