@@ -10,12 +10,7 @@ DEFAULT_GUI_CORE_COLLAPSE := "^src/(core/[^/]+|shell/[^/]+)/"
 
 # Generate every backend and GUI architecture diagram.
 [group('Diagrams')]
-generate-architecture-diagrams: generate-backend-graphs generate-backend-workspace-graphs generate-gui-graph generate-gui-core-graph generate-just-recipe-graph
-
-# Generate the declared Just recipe dependency graph.
-[group('Diagrams')]
-generate-just-recipe-graph:
-    python scripts/diagrams/just_graph.py -o {{ quote(ARCH_DIR + "/just-recipes.svg") }}
+generate-architecture-diagrams: generate-backend-graphs generate-backend-workspace-graphs generate-gui-graph generate-gui-core-graph
 
 # Generate one backend package graph.
 [group('Diagrams')]

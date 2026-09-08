@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = ROOT / "test-artifacts/coverage/python/data"
 HTML_DIR = ROOT / "test-artifacts/coverage/python"
 TIERS = ("unit", "integration", "e2e-gui", "e2e-gui-review", "demo-gui", "demo-api", "demo-gui-code-ocean")
+UNIT_PARTS = ("protocol", "core", "api", "supervisor", "executor", "docker-support", "provider", "workbench")
 
 
 def packages() -> tuple[str, ...]:
@@ -79,6 +80,21 @@ def tier_matches_tree(directory: Path) -> bool:
     return True
 
 
+def combine_unit() -> None:
+    parts_dir = DATA_DIR / "unit-parts"
+    files = [parts_dir / part / ".coverage" for part in UNIT_PARTS]
+    missing = [part for part, path in zip(UNIT_PARTS, files, strict=True) if not path.is_file()]
+    if missing:
+        raise RuntimeError(f"unit coverage is incomplete; missing: {' '.join(missing)}")
+
+    unit_dir = DATA_DIR / "unit"
+    shutil.rmtree(unit_dir, ignore_errors=True)
+    unit_dir.mkdir(parents=True)
+    coverage_file = unit_dir / ".coverage"
+    coverage_command(coverage_file, "combine", "--keep", *(str(path) for path in files))
+    print(f">> combined {len(files)} unit coverage parts: {coverage_file.relative_to(ROOT)}")
+
+
 def combine() -> None:
     files: list[Path] = []
     included: list[str] = []
@@ -116,9 +132,15 @@ def main() -> int:
     render_parser = commands.add_parser("render")
     render_parser.add_argument("tier")
     commands.add_parser("combine")
+    commands.add_parser("combine-unit")
     args = parser.parse_args()
     try:
-        render(args.tier) if args.command == "render" else combine()
+        if args.command == "render":
+            render(args.tier)
+        elif args.command == "combine-unit":
+            combine_unit()
+        else:
+            combine()
     except (RuntimeError, subprocess.CalledProcessError) as error:
         print(error, file=sys.stderr)
         return 1

@@ -63,13 +63,12 @@ markers = [
 [tool.coverage.run]
 branch = true
 # Fallback data file for an ad-hoc `pytest --cov` with no tier chosen. The
-# measured tiers (unit, integration, e2e, demo) each override this via
-# COVERAGE_FILE to write into their own directory under
-# test-artifacts/coverage/python/data/<tier>/ — see just/backend-tests.just. One directory
-# per tier, rather than one suffixed file per tier, because `coverage combine`
-# treats sibling `.coverage.*` files as its own parallel-mode output and
-# consumes them: separate directories make a tier's data impossible to eat by
-# accident, and let the combine name its inputs explicitly.
+# Measured tiers (unit, integration, e2e, demo) override this via COVERAGE_FILE.
+# Unit suites first write isolated parts below data/unit-parts/<package>/ and
+# combine them into data/unit/.coverage; the other tiers write below
+# data/<tier>/. Separate directories, rather than suffixed sibling files, keep
+# `coverage combine` from consuming another tier's parallel-mode output and let
+# each combine name its inputs explicitly. See just/backend-tests.just.
 #
 # The `python/` level is the runtime, above the tier: coverage.py's reports are
 # one measuring tool's subtree, sibling to the browser V8 reports, because

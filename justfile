@@ -23,6 +23,7 @@ DEFAULT_IMAGE_CANDIDATE_STATE_DIR := ".validation-certificates/image-candidates"
 DEFAULT_PUBLISH_GATE_RECEIPT := ".validation-certificates/publish-gate-ok"
 
 DIAGRAM_DIR := "dist/diagrams"
+JUST_RECIPE_GRAPH := DIAGRAM_DIR + "/just-recipes.svg"
 ARCH_DIR := DIAGRAM_DIR + "/architecture"
 DOMAIN_DIR := DIAGRAM_DIR + "/domain"
 JOURNAL_DIR := DIAGRAM_DIR + "/journals"
@@ -47,7 +48,12 @@ import 'just/publish.just'
 _require-clean-tree:
     @test -z "$(git status --porcelain)" || { echo "working tree dirty — commit first, so published images match a commit"; exit 1; }
 
-# Generate every architecture, domain, and run-journal diagram.
+# Generate every architecture, domain, run-journal, and recipe graph diagram.
 [group('Diagrams')]
-generate-diagrams: generate-architecture-diagrams generate-domain-diagrams generate-journals
+generate-diagrams: generate-architecture-diagrams generate-domain-diagrams generate-journals generate-just-recipe-graph
     @printf '>> diagrams written under %s\n' {{ quote(DIAGRAM_DIR + "/") }}
+
+# Generate the declared Just recipe dependency graph.
+[group('Diagrams')]
+generate-just-recipe-graph:
+    python scripts/diagrams/just_graph.py -o {{ quote(JUST_RECIPE_GRAPH) }}

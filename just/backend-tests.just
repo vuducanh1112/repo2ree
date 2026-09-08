@@ -1,54 +1,71 @@
 COVERAGE_HTML := "test-artifacts/coverage/python"
 COVERAGE_DATA := COVERAGE_HTML + "/data"
+UNIT_COVERAGE_PARTS := COVERAGE_DATA + "/unit-parts"
 UNIT_SUITES := "protocol/tests core/tests/unit api/tests/unit supervisor/tests/unit executor/tests docker-support/tests provider/tests workbench/tests"
 INTEGRATION_SUITES := "core/tests/integration api/tests/integration supervisor/tests/integration"
 
-# Running a measured tier is the only operation that writes that tier's data.
-# Per-package recipes stay unmeasured so a partial debugging run cannot make a
-# tier report look complete. Stack tiers use parallel coverage files (server
-# plus workbenches); the stack driver folds those into the same single-file shape as
-# pytest tiers before rendering. Combined reports use --keep so their inputs
-# remain available for regenerating individual tier reports.
+# Each unit recipe writes an isolated coverage data file. The unit aggregate
+# explicitly requires and combines every part, so an incomplete run cannot be
+# mistaken for the complete unit tier. Stack tiers similarly use parallel
+# coverage files (server plus workbenches), which the stack driver folds into
+# the same single-file shape before rendering. Combined reports use --keep so
+# their inputs remain available for regenerating individual tier reports.
 
-# Run protocol tests without recording tier coverage.
+# Run protocol tests and record their unit coverage contribution.
 [group('Backend tests')]
 test-protocol:
-    pytest protocol/tests
+    mkdir -p {{ quote(UNIT_COVERAGE_PARTS + "/protocol") }}
+    rm -f {{ quote(ROOT + "/" + COVERAGE_DATA + "/unit/.coverage") }}
+    COVERAGE_FILE={{ quote(ROOT + "/" + UNIT_COVERAGE_PARTS + "/protocol/.coverage") }} pytest protocol/tests --cov --cov-report=
 
-# Run core unit tests without recording tier coverage.
+# Run core unit tests and record their unit coverage contribution.
 [group('Backend tests')]
 test-core-unit:
-    pytest core/tests/unit
+    mkdir -p {{ quote(UNIT_COVERAGE_PARTS + "/core") }}
+    rm -f {{ quote(ROOT + "/" + COVERAGE_DATA + "/unit/.coverage") }}
+    COVERAGE_FILE={{ quote(ROOT + "/" + UNIT_COVERAGE_PARTS + "/core/.coverage") }} pytest core/tests/unit --cov --cov-report=
 
-# Run API unit tests without recording tier coverage.
+# Run API unit tests and record their unit coverage contribution.
 [group('Backend tests')]
 test-api-unit:
-    pytest api/tests/unit
+    mkdir -p {{ quote(UNIT_COVERAGE_PARTS + "/api") }}
+    rm -f {{ quote(ROOT + "/" + COVERAGE_DATA + "/unit/.coverage") }}
+    COVERAGE_FILE={{ quote(ROOT + "/" + UNIT_COVERAGE_PARTS + "/api/.coverage") }} pytest api/tests/unit --cov --cov-report=
 
-# Run executor tests without recording tier coverage.
+# Run executor tests and record their unit coverage contribution.
 [group('Backend tests')]
 test-executor:
-    pytest executor/tests
+    mkdir -p {{ quote(UNIT_COVERAGE_PARTS + "/executor") }}
+    rm -f {{ quote(ROOT + "/" + COVERAGE_DATA + "/unit/.coverage") }}
+    COVERAGE_FILE={{ quote(ROOT + "/" + UNIT_COVERAGE_PARTS + "/executor/.coverage") }} pytest executor/tests --cov --cov-report=
 
-# Run workbench tests without recording tier coverage.
+# Run workbench tests and record their unit coverage contribution.
 [group('Backend tests')]
 test-workbench:
-    pytest workbench/tests
+    mkdir -p {{ quote(UNIT_COVERAGE_PARTS + "/workbench") }}
+    rm -f {{ quote(ROOT + "/" + COVERAGE_DATA + "/unit/.coverage") }}
+    COVERAGE_FILE={{ quote(ROOT + "/" + UNIT_COVERAGE_PARTS + "/workbench/.coverage") }} pytest workbench/tests --cov --cov-report=
 
-# Run Docker support tests without recording tier coverage.
+# Run Docker support tests and record their unit coverage contribution.
 [group('Backend tests')]
 test-docker-support:
-    pytest docker-support/tests
+    mkdir -p {{ quote(UNIT_COVERAGE_PARTS + "/docker-support") }}
+    rm -f {{ quote(ROOT + "/" + COVERAGE_DATA + "/unit/.coverage") }}
+    COVERAGE_FILE={{ quote(ROOT + "/" + UNIT_COVERAGE_PARTS + "/docker-support/.coverage") }} pytest docker-support/tests --cov --cov-report=
 
-# Run Docker provider tests without recording tier coverage.
+# Run Docker provider tests and record their unit coverage contribution.
 [group('Backend tests')]
 test-provider:
-    pytest provider/tests
+    mkdir -p {{ quote(UNIT_COVERAGE_PARTS + "/provider") }}
+    rm -f {{ quote(ROOT + "/" + COVERAGE_DATA + "/unit/.coverage") }}
+    COVERAGE_FILE={{ quote(ROOT + "/" + UNIT_COVERAGE_PARTS + "/provider/.coverage") }} pytest provider/tests --cov --cov-report=
 
-# Run supervisor unit tests without recording tier coverage.
+# Run supervisor unit tests and record their unit coverage contribution.
 [group('Backend tests')]
 test-supervisor-unit:
-    pytest supervisor/tests/unit
+    mkdir -p {{ quote(UNIT_COVERAGE_PARTS + "/supervisor") }}
+    rm -f {{ quote(ROOT + "/" + COVERAGE_DATA + "/unit/.coverage") }}
+    COVERAGE_FILE={{ quote(ROOT + "/" + UNIT_COVERAGE_PARTS + "/supervisor/.coverage") }} pytest supervisor/tests/unit --cov --cov-report=
 
 # Run core integration tests without recording tier coverage.
 [group('Backend tests')]
@@ -77,10 +94,10 @@ test-api: test-api-unit test-api-integration
 [group('Backend tests')]
 test-supervisor: test-supervisor-unit test-supervisor-integration
 
-# Run the complete measured, container-free backend unit tier.
+# Run and merge the complete measured, container-free backend unit tier.
 [group('Backend tests')]
-test-backend-unit coverage_report="":
-    COVERAGE_FILE={{ quote(ROOT + "/" + COVERAGE_DATA + "/unit/.coverage") }} pytest {{ UNIT_SUITES }} --cov --cov-report={{ quote(coverage_report) }}
+test-backend-unit: test-protocol test-core-unit test-api-unit test-supervisor-unit test-executor test-docker-support test-provider test-workbench
+    python scripts/coverage/python_coverage.py combine-unit
 
 # Run the complete measured backend integration tier.
 [group('Backend tests')]
@@ -90,7 +107,7 @@ test-backend-integration coverage_report="": build-e2e-bundles
 # Run both measured backend tiers concurrently.
 [group('Backend tests')]
 [parallel]
-test-backend coverage_report="": (test-backend-unit coverage_report) (test-backend-integration coverage_report)
+test-backend: test-backend-unit test-backend-integration
 
 # Render one measured tier's total and per-package HTML coverage reports.
 [group('Coverage')]
