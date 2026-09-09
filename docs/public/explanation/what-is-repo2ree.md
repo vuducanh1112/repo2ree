@@ -92,15 +92,17 @@ repo2ree separates coordination from execution. The API and GUI form the
 control plane. A connected provider provisions workbenches on infrastructure
 owned by a lab, institution, facility, or cloud account.
 
-The provider translates operations into local execution and advertises the
-capabilities it offers. It connects outward to the control plane. Infrastructure
-credentials, scheduler access, and container sockets stay within the provider's
-boundary.
+The provider advertises a compute location and provisions or releases
+workbenches there. It connects outward to the control plane on a capacity-only
+connection and never receives an REE command. Each workbench opens a separate
+outbound execution connection, receives the commands for one REE, and returns
+logs and results directly. Infrastructure credentials and the host container
+socket stay on the provider side of that boundary.
 
 This design allows computation to run near restricted data. The current
-provider uses Docker and creates one workbench per REE on its host. Scheduler,
-cluster, and cloud integrations are extension points, not currently shipped
-backends.
+provider uses Docker on one host and creates one workbench per REE allocation.
+Scheduler, cluster, and cloud integrations, general resource matching, and
+VM-backed isolation are extension points rather than shipped capabilities.
 
 See [Federated compute](../reference/architecture/federated-compute.md) for the
 architecture.

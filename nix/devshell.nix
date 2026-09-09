@@ -34,6 +34,7 @@ pkgs.mkShell {
     vale
     lychee
     zensical
+    typst
 
     # static analyser for shell scripts
     shellcheck

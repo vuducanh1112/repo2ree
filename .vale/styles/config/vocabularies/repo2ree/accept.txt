@@ -86,6 +86,9 @@ uvicorn
 jsdom
 Caddy
 Graphviz
+Typst
+Slidev
+PDFs?
 Fortran
 kubeconfigs?
 tolerations

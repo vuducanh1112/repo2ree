@@ -44,10 +44,11 @@ together.
 
 The GUI and API belong to the control plane: they coordinate work but do not
 hold a container-runtime socket. A separately running provider connects outbound
-to the API and owns Docker on its host. Choosing a lab location therefore
-chooses which connected provider will host the work. This separation lets
-repo2ree coordinate execution without requiring the hosted service to own
-credentials or direct access to a user's infrastructure.
+to the API, owns Docker on its host, and creates the workbench. The workbench
+then opens its own outbound connection for REE commands and results; the
+provider is not in that execution path. Choosing a lab location therefore
+chooses which connected provider will supply the workbench without giving the
+hosted service that provider's infrastructure credentials.
 
 ### Workbench
 

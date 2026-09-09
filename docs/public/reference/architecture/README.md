@@ -18,8 +18,9 @@ flows.
    compute-side deployables: the provider that creates a workbench and the
    service that executes inside one.
 5. [Federated compute through connected providers](federated-compute.md) shows
-   how private, university, institutional, and cloud resources can participate
-   without giving the control plane their infrastructure credentials.
+   the separate capacity and execution connections that let owner-operated
+   compute participate without giving the control plane its infrastructure
+   credentials, and distinguishes today's Docker provider from future backends.
 
 ## Execution flows
 
