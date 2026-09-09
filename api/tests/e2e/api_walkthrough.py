@@ -654,11 +654,14 @@ def run() -> None:
 
     chapter("14. Seal and download")
     note("seal binds the whole record; package the source and the experiment baselines")
-    sealed = call(
+    run_stage(
+        ree_id,
         "POST",
         f"/api/v1/rees/{ree_id}/ree:seal",
         {"include_source": True, "include_results": True},
+        what="seal",
     )
+    sealed = call("GET", f"/api/v1/rees/{ree_id}")
     seal_hash = sealed["ree"]["seal"]["ree_digest"]
     check(seal_hash.startswith("sha256:"), "seal did not produce a sha256 hash")
     ok(f"sealed as {seal_hash}")

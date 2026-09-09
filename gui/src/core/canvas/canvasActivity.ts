@@ -17,6 +17,7 @@ const PAGE_BY_OPERATION: Readonly<Partial<Record<ReeRunOperation, AppShellPage>>
   activation: PAGE.ACTIVATION,
   hbom: PAGE.HBOM,
   evaluate: PAGE.EVALUATE,
+  seal: PAGE.SEAL,
   swh: PAGE.ARCHIVE,
   zenodo: PAGE.ARCHIVE,
   dataverse: PAGE.ARCHIVE,
@@ -49,9 +50,8 @@ export const NO_CANVAS_ACTIVITY: CanvasActivity = {
  * Reads the hub's live activity off the REE's run listing, so a run started
  * anywhere — this tab, another tab, a workbench service — lights the same panel.
  *
- * `alsoRunning` carries the work that is not a backend run: sealing is driven
- * from the client and has no entry in the listing, but it is a panel on the
- * hub like any other.
+ * `alsoRunning` carries work that has not become a backend run yet, such as
+ * flushing pending editor changes before the seal run starts.
  */
 export function canvasActivity(
   runs: readonly ReeRunSummary[],

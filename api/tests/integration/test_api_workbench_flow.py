@@ -150,7 +150,10 @@ def test_api_ree_lifecycle(client: TestClient, ree: dict[str, Any]) -> None:
     # --- seal, then download the sealed archive -------------------------
     resp = client.post(f"/api/v1/rees/{ree_id}/ree:seal", json={})
     assert resp.status_code == 200, resp.text
-    sealed = resp.json()
+    seal_run = resp.json()
+    assert seal_run["operation"] == "seal"
+    assert _wait_for_run(client, ree_id, seal_run["run_id"]) == "succeeded"
+    sealed = client.get(f"/api/v1/rees/{ree_id}").json()
     assert sealed["ree"]["seal"]["ree_digest"].startswith("sha256:")
 
     resp = client.get(f"/api/v1/rees/{ree_id}/ree-archive")

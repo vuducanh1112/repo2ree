@@ -42,6 +42,14 @@ _EPOCH_DATE_TIME = (1980, 1, 1, 0, 0, 0)
 # ================================================
 
 
+def deterministic_zip_info(archive_path: str) -> zipfile.ZipInfo:
+    """Return the canonical metadata shared by every REE ZIP writer."""
+    info = zipfile.ZipInfo(filename=archive_path, date_time=_EPOCH_DATE_TIME)
+    info.compress_type = zipfile.ZIP_DEFLATED
+    info.external_attr = _unix_mode_attr(archive_path)
+    return info
+
+
 def build_zip_bytes(entries: Iterable[tuple[str, bytes]]) -> bytes:
     """Pack ``entries`` into a deflate-compressed ZIP and return the bytes.
 
@@ -56,10 +64,7 @@ def build_zip_bytes(entries: Iterable[tuple[str, bytes]]) -> bytes:
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
         for archive_path, content in entries:
-            info = zipfile.ZipInfo(filename=archive_path, date_time=_EPOCH_DATE_TIME)
-            info.compress_type = zipfile.ZIP_DEFLATED
-            info.external_attr = _unix_mode_attr(archive_path)
-            archive.writestr(info, content)
+            archive.writestr(deterministic_zip_info(archive_path), content)
     return buffer.getvalue()
 
 

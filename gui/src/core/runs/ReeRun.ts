@@ -51,6 +51,7 @@ export interface ReeRun {
 export type ReeRunOperation =
   | "provision"
   | "ree-load"
+  | "seal"
   | "source"
   | "build"
   | "sbom"

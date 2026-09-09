@@ -22,22 +22,22 @@ from repo2ree_api.authoring.upload_runs import StagedUploadLog, start_staged_upl
 from repo2ree_api.contracts import (
     ERROR_RESPONSES,
     ReeBundleLoadPayload,
-    ReeDocument,
     ReeSealPayload,
     RunSummary,
     UploadInitPayload,
     UploadInitResponse,
     UploadStoredResponse,
 )
-from repo2ree_api.control.run_orchestration import run_summary
+from repo2ree_api.control.run_orchestration import run_summary, start_single_command_run
 from repo2ree_api.deps import ree_index, workbench_manager
 from repo2ree_api.ree_index import entry_from_ree
 from repo2ree_api.workbench.archives import archive_download_filename, spool_chunks
-from repo2ree_api.workbench.commands import dispatch_or_fail, ree_command_span, require_handle
+from repo2ree_api.workbench.commands import ree_command_span, require_handle
 from repo2ree_api.workbench.uploads import mint_upload_token, stage_upload_bytes
 from repo2ree_core.domain.ree.model import Ree
-from repo2ree_protocol import LoadReeBundleCommand, SealReeCommand
+from repo2ree_protocol import ActionResult, LoadReeBundleCommand, SealReeCommand
 from repo2ree_protocol.command import LoadReeBundleArgs, SealReeArgs
+from repo2ree_supervisor import WorkbenchHandle
 
 _log = logging.getLogger(__name__)
 
@@ -110,24 +110,31 @@ def load_ree_bundle_route(ree_id: str, payload: ReeBundleLoadPayload) -> RunSumm
 @seal_router.post(
     "/api/v1/rees/{ree_id}/ree:seal",
     operation_id="sealRee",
-    response_model=ReeDocument,
+    response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def seal_ree_route(ree_id: str, payload: ReeSealPayload) -> ReeDocument:
-    handle = require_handle(ree_id)
-    with ree_command_span("seal", ree_id):
-        cmd = SealReeCommand(
+def seal_ree_route(ree_id: str, payload: ReeSealPayload) -> RunSummary:
+    def record_sealed_ree(handle: WorkbenchHandle, result: ActionResult) -> ActionResult:
+        document = workbench_manager.get_ree_document(handle)
+        _record_in_ree_index(ree_id, document)
+        return result
+
+    run_state = start_single_command_run(
+        ree_id,
+        operation="seal",
+        command=SealReeCommand(
             args=SealReeArgs(
                 source_included=payload.include_source,
                 runtime_included=payload.include_runtime,
                 results_included=payload.include_results,
             )
-        )
-        dispatch_or_fail(handle, cmd, "seal", "Workbench seal_ree failed")
-        # Return the post-seal REE document so the client sees the sealed state.
-        document = workbench_manager.get_ree_document(handle)
-        _record_in_ree_index(ree_id, document)
-        return ReeDocument.model_validate(document)
+        ),
+        run_id_prefix="seal",
+        request_payload=payload.model_dump(),
+        canceled_message="REE sealing canceled",
+        after_success=record_sealed_ree,
+    )
+    return RunSummary.model_validate(run_summary(run_state))
 
 
 def _record_in_ree_index(ree_id: str, document: Mapping[str, Any]) -> None:

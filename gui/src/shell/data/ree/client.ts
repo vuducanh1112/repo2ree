@@ -7,7 +7,7 @@ import { useMemo } from "react";
 import { ApiRequestError } from "../../infra/api/ApiClient";
 import {
   type ReeDefinitionPatchPayload,
-  type ReeDocument,
+  type RunSummary,
   toSourceAcquireRequest,
 } from "../../infra/api/apiTypes";
 import type { ReeApi } from "../../infra/api/ReeApi";
@@ -27,7 +27,7 @@ export interface ReeClient<TFile = unknown, TRee = unknown> {
   sealRee(
     id: ReeId | string,
     opts: { includeSource: boolean; includeRuntime: boolean; includeResults: boolean },
-  ): Promise<ReeDocument>;
+  ): Promise<RunSummary>;
   getReeArchive(id: ReeId | string): Promise<WorkspaceBinaryDownload>;
   resetWorkspaceRequest(id: ReeId | string, request: WorkspaceResetPayload): Promise<void>;
   /** End the REE session and remove its workbench. Succeeds if it is already gone. */

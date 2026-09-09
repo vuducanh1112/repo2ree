@@ -3,7 +3,8 @@ import type { ReeId } from "@core/ree/ReeId";
 import type { LogEntry } from "@core/ree/ReeTypes";
 import { queryKeys } from "@shell/data/queryKeys";
 import { useReeClient } from "@shell/data/ree/client";
-import { mapReeDetailToReeProject } from "@shell/data/ree/reeMapping";
+import { useReeRunsClient } from "@shell/data/runs/client";
+import { observeReeRun } from "@shell/data/runs/queries";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import type { ShowToast } from "../types";
@@ -26,6 +27,7 @@ interface UseReeSealArgs {
  */
 export function useReeSeal({ reeId, showToast, hydrateWorkspace, flushReeIntent }: UseReeSealArgs) {
   const reeClient = useReeClient();
+  const reeRunsClient = useReeRunsClient();
   const queryClient = useQueryClient();
   const [sealRunning, setSealRunning] = useState(false);
   const [sealLog, setSealLog] = useState<LogEntry | null>(null);
@@ -33,20 +35,39 @@ export function useReeSeal({ reeId, showToast, hydrateWorkspace, flushReeIntent 
   const handleSealRee = useCallback(
     async (inclusionOpts: InclusionOpts): Promise<void> => {
       const ts = new Date().toISOString();
+      let latestLines: LogEntry["lines"] = [{ type: "info", msg: "Sealing REE…" }];
       setSealRunning(true);
-      setSealLog({ ts, lines: [{ type: "info", msg: "Sealing REE…" }] });
+      setSealLog({ ts, lines: latestLines });
       try {
         try {
           await flushReeIntent();
         } catch {
           throw new Error("could not save pending changes");
         }
-        const workspaceWire = await reeClient.sealRee(reeId, {
+        const run = await reeClient.sealRee(reeId, {
           includeSource: inclusionOpts.includeSource,
           includeRuntime: inclusionOpts.includeRuntime,
           includeResults: inclusionOpts.includeResults,
         });
-        const project = mapReeDetailToReeProject(workspaceWire);
+        const terminal = await observeReeRun(queryClient, reeRunsClient, {
+          reeId: String(reeId),
+          runId: run.run_id,
+          onUpdate: (update) => {
+            latestLines = update.lines.length > 0 ? update.lines : latestLines;
+            setSealLog({
+              ts: update.ts,
+              lines: latestLines,
+            });
+          },
+        });
+        if (terminal.status !== "succeeded") {
+          throw new Error(
+            terminal.failure?.message ??
+              (terminal.status === "canceled" ? "sealing was canceled" : "sealing did not succeed"),
+          );
+        }
+
+        const project = await reeClient.getRee(reeId);
         queryClient.setQueryData(queryKeys.ree(String(reeId)), project);
         hydrateWorkspace({
           workspaceFiles: project.files,
@@ -54,28 +75,22 @@ export function useReeSeal({ reeId, showToast, hydrateWorkspace, flushReeIntent 
           ree: project.ree,
         });
         setSealLog({
-          ts,
-          lines: [
-            { type: "info", msg: "Sealing REE…" },
-            { type: "ok", msg: "Sealed — workspace updated" },
-          ],
+          ts: terminal.ts,
+          lines: [...terminal.lines, { type: "ok", msg: "Sealed — workspace updated" }],
         });
         showToast("REE sealed — now read-only", "success");
       } catch (error) {
         const msg = `Seal failed: ${error instanceof Error ? error.message : "unknown error"}`;
         setSealLog({
           ts,
-          lines: [
-            { type: "info", msg: "Sealing REE…" },
-            { type: "err", msg },
-          ],
+          lines: [...latestLines, { type: "err", msg }],
         });
         showToast(msg, "error");
       } finally {
         setSealRunning(false);
       }
     },
-    [flushReeIntent, hydrateWorkspace, queryClient, reeClient, reeId, showToast],
+    [flushReeIntent, hydrateWorkspace, queryClient, reeClient, reeId, reeRunsClient, showToast],
   );
 
   return { handleSealRee, sealRunning, sealLog };

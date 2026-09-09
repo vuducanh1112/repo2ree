@@ -23,9 +23,12 @@ function run(overrides: Partial<ReeRunSummary> & { runId: string }): ReeRunSumma
 
 const OPERATIONS: ReeRunOperation[] = [
   "provision",
+  "ree-load",
+  "seal",
   "source",
   "build",
   "sbom",
+  "crosscheck",
   "hbom",
   "activation",
   "evaluate",

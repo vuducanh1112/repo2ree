@@ -4952,7 +4952,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ReeDocument"
+                  "$ref": "#/components/schemas/RunSummary"
                 }
               }
             }
@@ -12460,6 +12460,7 @@
             "enum": [
               "provision",
               "ree-load",
+              "seal",
               "build",
               "sbom",
               "crosscheck",

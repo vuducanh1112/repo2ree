@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import sys
 from pathlib import Path
 from typing import Any, TextIO
 
 import click
 
-from repo2ree_core.bundle.seal import build_ree_archive as _build_archive
+from repo2ree_core.bundle.seal import materialized_ree_archive
 from repo2ree_core.digests import digest_file
 from repo2ree_core.doctor import run_doctor
 from repo2ree_core.domain.ree.model import (
@@ -421,11 +422,14 @@ def get_reviews_cmd() -> None:
 def build_archive_cmd() -> None:
     """Write the sealed REE zip archive bytes to stdout."""
     try:
-        data = _build_archive(ReeLayout.in_workbench())
+        with (
+            materialized_ree_archive(ReeLayout.in_workbench()) as archive_path,
+            archive_path.open("rb") as archive,
+        ):
+            shutil.copyfileobj(archive, sys.stdout.buffer, length=1024 * 1024)
     except (FileNotFoundError, RuntimeError) as exc:
         click.echo(json.dumps({"error": str(exc)}), file=sys.stderr)
         sys.exit(1)
-    sys.stdout.buffer.write(data)
 
 
 @cli.command("read-ree-file")

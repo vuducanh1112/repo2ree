@@ -23,13 +23,43 @@ const sealedDocument = {
 
 describe("useReeSeal", () => {
   it("flushes edits, seals with inclusion options and hydrates the returned workspace", async () => {
-    const sealRee = vi.fn().mockResolvedValue(sealedDocument);
+    const sealedRun = {
+      run_id: "seal-1",
+      ree_id: "ree-1",
+      operation: "seal" as const,
+      status: "succeeded" as const,
+      created_at: "2026-01-01T00:00:00Z",
+      started_at: "2026-01-01T00:00:00Z",
+      finished_at: "2026-01-01T00:00:01Z",
+      outputs: {},
+      failure: null,
+    };
+    const sealRee = vi.fn().mockResolvedValue(sealedRun);
+    const getRee = vi.fn().mockResolvedValue(sealedDocument);
     const flushReeIntent = vi.fn().mockResolvedValue(undefined);
     const hydrateWorkspace = vi.fn();
     const showToast = vi.fn();
     const { Wrapper } = createShellWrapper({
       reeId: "ree-1",
-      services: fakeApiServices({ ree: { sealRee } }),
+      services: fakeApiServices({
+        ree: { sealRee, getRee },
+        runs: {
+          getRun: vi.fn().mockResolvedValue(sealedRun),
+          listRunLogs: vi.fn().mockResolvedValue({
+            entries: [
+              {
+                seq: 1,
+                ts: "2026-01-01T00:00:00Z",
+                stream: "system",
+                level: "info",
+                message: "Writing sealed bundle: 10/10 bytes (100%), 2/2 entries",
+              },
+            ],
+            next_cursor: null,
+            has_more: false,
+          }),
+        },
+      }),
     });
     const { result } = renderHook(
       () =>

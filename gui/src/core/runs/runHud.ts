@@ -29,6 +29,7 @@ export const RUN_HUD_TABS = [
   { key: "activation", abbrev: "ACT", label: "Activation", operations: ["activation"] },
   { key: "evaluate", abbrev: "EVAL", label: "Evaluate", operations: ["evaluate"] },
   { key: "hbom", abbrev: "HBOM", label: "HBOM", operations: ["hbom"] },
+  { key: "seal", abbrev: "SEAL", label: "Seal", operations: ["seal"] },
   { key: "archive", abbrev: "ARC", label: "Archive", operations: ["swh", "zenodo", "dataverse"] },
   { key: "experiment", abbrev: "EXP", label: "Experiments", operations: ["experiment"] },
 ] as const satisfies readonly RunHudTab[];

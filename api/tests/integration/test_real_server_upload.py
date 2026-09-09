@@ -226,6 +226,13 @@ def test_upload_over_real_server(server: tuple[str, str]) -> None:
             # --- seal (with source), download an archive over one WS frame --
             resp = client.post(f"/api/v1/rees/{ree_id}/ree:seal", json={"include_source": True})
             assert resp.status_code == 200, resp.text
+            seal_run = resp.json()
+            assert _wait_for_run(client, ree_id, seal_run["run_id"]) == "succeeded"
+
+            resp = client.get(f"/api/v1/rees/{ree_id}/runs/{seal_run['run_id']}/logs")
+            assert resp.status_code == 200
+            messages = [entry["message"] for entry in resp.json()["entries"]]
+            assert any("Writing sealed bundle" in message for message in messages)
 
             # The archive (> uvicorn's 16 MiB WS cap) must arrive intact via
             # chunked frames — one oversized frame used to kill the connection.

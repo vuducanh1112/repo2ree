@@ -311,8 +311,8 @@ export class ReeApi {
   async sealRee(
     reeId: ReeId,
     opts: { includeSource: boolean; includeRuntime: boolean; includeResults: boolean },
-  ): Promise<ReeDocument> {
-    return this.client.request<ReeDocument>(endpoints.reeSeal(reeId), {
+  ): Promise<RunSummary> {
+    return this.client.request<RunSummary>(endpoints.reeSeal(reeId), {
       method: "POST",
       body: JSON.stringify({
         include_source: opts.includeSource,

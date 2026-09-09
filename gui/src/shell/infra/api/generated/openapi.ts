@@ -3413,7 +3413,7 @@ export interface components {
              * Operation
              * @enum {string}
              */
-            operation: "provision" | "ree-load" | "build" | "sbom" | "crosscheck" | "hbom" | "activation" | "source" | "evaluate" | "experiment";
+            operation: "provision" | "ree-load" | "seal" | "build" | "sbom" | "crosscheck" | "hbom" | "activation" | "source" | "evaluate" | "experiment";
             /**
              * Status
              * @enum {string}
@@ -8133,7 +8133,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ReeDocument"];
+                    "application/json": components["schemas"]["RunSummary"];
                 };
             };
             /** @description Invalid request or operation precondition */

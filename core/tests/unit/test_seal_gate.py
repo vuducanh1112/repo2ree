@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.bundle.seal import seal_ree
+from repo2ree_core.bundle.seal import BundleProgress, BundleSealCanceledError, seal_ree
 from repo2ree_core.digests import digest_bytes
 from repo2ree_core.domain.primitives import Digest, ReePath, RunId, WorkspacePath, parse_utc_instant
 from repo2ree_core.domain.ree.model import (
@@ -150,6 +150,59 @@ def test_missing_evidence_still_seals(tmp_path: Path) -> None:
     )
 
     assert outputs.sealed_at == _NOW
+
+
+def test_sealing_streams_runtime_without_reading_the_whole_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = _store(tmp_path, _ree())
+    runtime = store.layout.workspace / "runtime.tar"
+    runtime.write_bytes(b"runtime payload")
+    original_read_bytes = Path.read_bytes
+
+    def guarded_read_bytes(path: Path) -> bytes:
+        if path == runtime:
+            raise AssertionError("runtime must be streamed")
+        return original_read_bytes(path)
+
+    monkeypatch.setattr(Path, "read_bytes", guarded_read_bytes)
+    progress: list[BundleProgress] = []
+
+    outputs = seal_ree(
+        store.layout,
+        source_included=False,
+        runtime_included=True,
+        results_included=False,
+        sealed_at=_NOW,
+        progress=progress.append,
+    )
+
+    assert outputs.input_bytes >= runtime.stat().st_size
+    assert outputs.archive_bytes == store.layout.sealed_archive.stat().st_size
+    assert [update.phase for update in progress][-2:] == ["manifest", "publishing"]
+    assert progress[-1].bytes_processed == progress[-1].bytes_total
+
+
+def test_canceling_a_streamed_seal_does_not_publish_partial_state(tmp_path: Path) -> None:
+    store = _store(tmp_path, _ree())
+    runtime = store.layout.workspace / "runtime.tar"
+    runtime.write_bytes(b"x" * (2 * 1024 * 1024))
+    progress: list[BundleProgress] = []
+
+    with pytest.raises(BundleSealCanceledError):
+        seal_ree(
+            store.layout,
+            source_included=False,
+            runtime_included=True,
+            results_included=False,
+            sealed_at=_NOW,
+            progress=progress.append,
+            is_canceled=lambda: any(update.bytes_processed >= 1024 * 1024 for update in progress),
+        )
+
+    assert load_ree(store.layout, store).seal is None
+    assert not store.layout.sealed_archive.exists()
+    assert not list(store.layout.sealed_archive.parent.glob(f".{store.layout.sealed_archive.name}.*.tmp"))
 
 
 def test_sealing_is_refused_while_a_receipt_outlives_its_declaration(tmp_path: Path) -> None:

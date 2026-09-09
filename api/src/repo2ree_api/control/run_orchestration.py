@@ -21,6 +21,7 @@ from repo2ree_api.storage.json_run_store import JsonRunStore
 from repo2ree_api.workbench.commands import require_handle
 from repo2ree_protocol.command import Command
 from repo2ree_protocol.result import ActionResult
+from repo2ree_supervisor import WorkbenchHandle
 
 # ================================================
 # Registry
@@ -88,6 +89,7 @@ def start_single_command_run(
     canceled_message: str,
     fallback_outputs: dict[str, Any] | None = None,
     idempotency_key: str | None = None,
+    after_success: Callable[[WorkbenchHandle, ActionResult], ActionResult] | None = None,
 ) -> dict[str, Any]:
     """Start a background run that dispatches a single workbench command.
 
@@ -128,6 +130,8 @@ def start_single_command_run(
             )
 
         result = workbench_manager.dispatch_action(handle, command, run_id, _log)
+        if result.status == "succeeded" and after_success is not None:
+            result = after_success(handle, result)
         # Preserve the route's fallback outputs when the command reported none.
         if not result.outputs and outputs:
             return result.model_copy(update={"outputs": outputs})

@@ -25,6 +25,7 @@ RunStatus = Literal[
 RunOperation = Literal[
     "provision",
     "ree-load",
+    "seal",
     "build",
     "sbom",
     "crosscheck",

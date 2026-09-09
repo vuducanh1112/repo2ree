@@ -283,7 +283,8 @@ def test_full_authoring_pipeline(client: TestClient, ree: dict[str, Any], filmst
     # --- seal: refused if any receipt above has gone stale ---------------
     response = client.post(f"/api/v1/rees/{ree_id}/ree:seal", json={})
     assert response.status_code == 200, response.text
-    sealed = response.json()["ree"]
+    _await_run(client, ree_id, response.json(), what="seal")
+    sealed = client.get(f"/api/v1/rees/{ree_id}").json()["ree"]
     assert sealed["seal"]["ree_digest"].startswith("sha256:")
     filmstrip.frame(ree_id, "sealed")
 
