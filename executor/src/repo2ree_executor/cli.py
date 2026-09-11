@@ -10,20 +10,14 @@ from typing import Any, TextIO
 import click
 
 from repo2ree_core.bundle.seal import materialized_ree_archive
-from repo2ree_core.digests import digest_file
 from repo2ree_core.doctor import run_doctor
-from repo2ree_core.domain.ree.model import (
-    BuildRuntimeDefinition,
-    Ree,
-    ReeDefinition,
-    ReeSubject,
-    TestActivationDefinition,
-)
 from repo2ree_core.evidence.review.store import load_reviews
 from repo2ree_core.operations.dispatch import run_command
+from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.operations.read_models.files import read_ree_file_bytes as _read_ree_file_bytes
 from repo2ree_core.operations.read_models.ree_document import get_ree_document as _get_ree_document
 from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.history import HistoryCaptureError
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
 from repo2ree_core.reproduction.commands import (
     BUILD_RUNTIME,
@@ -31,7 +25,6 @@ from repo2ree_core.reproduction.commands import (
     MATERIALIZE_WORKSPACE,
     TEST_ACTIVATION,
 )
-from repo2ree_core.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BUILD_SCRIPT
 from repo2ree_protocol import ActionResult, command_adapter, current_build
 from repo2ree_protocol.command import (
     ActivationTestArgs,
@@ -313,46 +306,17 @@ def experiment_cmd(name: str, run_id: str | None) -> None:
 @cli.command("init-ree")
 @click.option("--name", required=True, help="Human-readable name for the REE.")
 def init_ree_cmd(name: str) -> None:
-    """Initialise the REE directory structure at /ree.
+    """Initialize the REE through core and capture its first Git version.
 
-    Creates the directory skeleton and writes an initial ree.json.
-    Idempotent: exits 0 without modifying anything if already initialised.
-
-    Takes no identifier: an REE is addressed by the tree it lives in, which is
-    always ``/ree`` here. The handle its control plane files it under is that
-    control plane's own (see ``WorkbenchManager._with_handle``) and nothing in
-    the workbench could confirm or contradict it.
+    Retrying preserves existing files and ensures a baseline exists. A capture
+    failure can leave initialized files; a later invocation retries the capture.
     """
-    layout = ReeLayout.in_workbench()
-    store = ReeDirectory(layout)
-
-    if store.manifest_exists():
-        click.echo(json.dumps({"status": "already_initialised"}))
-        return
-
-    store.ensure_dirs()
-    store.ensure_reserved_overlay_scripts()
-
-    build_path = store.overlay.absolute(RESERVED_BUILD_SCRIPT)
-    activation_path = store.overlay.absolute(RESERVED_ACTIVATION_SCRIPT)
-    store.write_ree(
-        Ree(
-            subject=ReeSubject(
-                definition=ReeDefinition(
-                    name=name,
-                    build_runtime=BuildRuntimeDefinition(
-                        build_runtime_script_digest=digest_file(build_path),
-                        build_runtime_script_size=build_path.stat().st_size,
-                    ),
-                    test_activation=TestActivationDefinition(
-                        run_script_digest=digest_file(activation_path),
-                        run_script_size=activation_path.stat().st_size,
-                    ),
-                ),
-            )
-        )
-    )
-    click.echo(json.dumps({"status": "initialised"}))
+    try:
+        result = initialize_ree(ReeLayout.in_workbench(), name=name)
+    except HistoryCaptureError as exc:
+        click.echo(json.dumps({"error": str(exc)}), err=True)
+        raise click.exceptions.Exit(1) from exc
+    click.echo(json.dumps({"status": result.status, "snapshot_id": result.snapshot_id}))
 
 
 # ================================================

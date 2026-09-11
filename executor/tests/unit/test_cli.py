@@ -69,7 +69,8 @@ def test_build_info_reports_injected_revision(monkeypatch: pytest.MonkeyPatch) -
 def test_init_ree_bootstraps_tree_and_metadata(ree_root: Path) -> None:
     result = runner.invoke(cli, ["init-ree", "--name", "demo"])
     assert result.exit_code == 0
-    assert json.loads(result.output) == {"status": "initialised"}
+    assert json.loads(result.output)["status"] == "initialised"
+    assert json.loads(result.output)["snapshot_id"]
 
     layout = ReeLayout.in_workbench()
     assert layout.workspace.is_dir()
@@ -90,6 +91,15 @@ def test_init_ree_is_idempotent(initialized_ree: Path) -> None:
     assert result.exit_code == 0
     assert json.loads(result.output)["status"] == "already_initialised"
     assert layout.manifest.read_text() == before
+
+
+def test_init_ree_reports_capture_failure(ree_root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("repo2ree_core.persistence.history.find_tool", lambda name: None)
+    result = runner.invoke(cli, ["init-ree", "--name", "demo"])
+    assert result.exit_code == 1
+    assert result.stdout == ""
+    assert "Git is required" in json.loads(result.stderr)["error"]
+    assert not ree_root.exists()
 
 
 def test_get_ree_before_init_exits_nonzero(ree_root: Path) -> None:

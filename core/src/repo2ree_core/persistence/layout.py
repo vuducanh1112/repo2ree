@@ -159,6 +159,11 @@ class ReeLayout:
         return self.root / MATERIALIZE_SCRIPT_FILENAME
 
     @property
+    def git_dir(self) -> Path:
+        """Local version storage, excluded from REE file views and bundles."""
+        return self.root / ".git"
+
+    @property
     def snapshot_archive(self) -> Path:
         return self.root / SNAPSHOT_FILENAME
 

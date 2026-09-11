@@ -17,8 +17,8 @@
 #     image's own PATH), so lifecycle scripts calling bare ``git`` /
 #     ``curl`` / ``tar`` work on images that ship none of them.
 #
-# A bench where the provider shipped no tools closure simply reports these
-# capabilities as absent; nothing here is required to execute an REE.
+# A bench without the tools closure uses its own executables. Git is required
+# to initialize an REE and capture its initial version.
 # ----------------------------------------------------------------
 { pkgs }:
 
@@ -33,7 +33,7 @@ let
     };
     # Source acquisition: acquire_source.sh clones/fetches/extracts.
     # These mirror the reproducer's prerequisites.
-    # gitMinimal: no perl/gui/manpage closure — acquisition needs clone/checkout only.
+    # gitMinimal also supplies the plumbing used by core history captures.
     git = {
       pkg = pkgs.gitMinimal;
       bin = "git";

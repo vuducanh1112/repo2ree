@@ -84,7 +84,7 @@ def _read_text_if_possible(path: Path) -> str | None:
 def read_ree_file_bytes(layout: ReeLayout, path: str) -> bytes:
     """Read one regular file addressed relative to the REE root."""
     target = resolve_within(layout.root, path)
-    if target is None:
+    if target is None or target.is_relative_to(layout.git_dir.resolve()):
         raise ValueError("Invalid REE file path")
     if not target.is_file():
         raise FileNotFoundError(path)
@@ -103,7 +103,7 @@ def list_workspace_files(
     overlay_paths = {relative.as_posix() for relative in directory.overlay.iter_files()}
     entries: list[WorkspaceFile] = []
     for path in sorted(layout.workspace.rglob("*")):
-        if not path.is_file():
+        if not path.is_file() or path.resolve().is_relative_to(layout.git_dir.resolve()):
             continue
         relative = path.relative_to(layout.workspace).as_posix()
         size = path.stat().st_size
@@ -135,12 +135,23 @@ def list_ree_files(
     if not layout.root.exists():
         raise FileNotFoundError(f"REE not found at {layout.root}")
     entries: list[ReeFile] = []
-    for path in sorted(layout.root.rglob("*")):
+    # Prune Git storage before traversal: it can dwarf the visible REE tree.
+    visible_paths: list[Path] = []
+    for directory, directories, files in layout.root.walk():
+        if directory == layout.root:
+            directories[:] = [name for name in directories if name != ".git"]
+        visible_paths.extend(directory / name for name in files)
+    for path in sorted(visible_paths):
         # The REE document itself is listed: it is the REE's own published
         # description, the same file a bundle carries, and a client auditing an
         # REE has every reason to read it. Writes never reach it — they are
         # confined to the overlay and workspace subtrees.
-        if not path.is_file() or path.is_relative_to(layout.upload_staging) or path.is_relative_to(layout.workspace):
+        if (
+            not path.is_file()
+            or path.resolve().is_relative_to(layout.git_dir.resolve())
+            or path.is_relative_to(layout.upload_staging)
+            or path.is_relative_to(layout.workspace)
+        ):
             continue
         relative = path.relative_to(layout.root).as_posix()
         size = path.stat().st_size

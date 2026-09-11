@@ -36,9 +36,23 @@ Without Nix, install equivalent tools yourself:
 - `uv`
 - Node/npm compatible with the GUI lockfile
 - Docker
+- Git (required for the initial REE version capture as well as source acquisition)
 - Playwright browser dependencies, if running e2e tests
 
 ## Initial setup
+
+`repo2ree-exec init-ree` delegates initialization to core and captures the initial
+files in `/ree/.git`. Its JSON response includes `snapshot_id`, the Git commit
+ID. Repeating initialization preserves authored files and returns the original
+baseline. If the files already exist without history, it records a
+`baseline_existing_ree` commit instead of claiming they are the original state.
+If capture fails after initialization, the files remain and the command exits
+nonzero; retrying captures them without overwriting them.
+
+This history is local to the workbench and is removed with its volume. Git
+storage is excluded from REE file views and exported bundles. Later authoring
+operations do not capture versions yet; the REE seal retains its existing
+canonical digest, independent of the Git commit ID.
 
 From the repository root:
 
