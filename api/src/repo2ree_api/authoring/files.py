@@ -57,7 +57,9 @@ def put_workspace_file_content_route(ree_id: str, payload: WorkspaceFileContentP
             args=WriteFileArgs(path=payload.path, content=payload.content, expected_etag=payload.if_match or "")
         )
         wb_result = dispatch_or_fail(handle, cmd, "write-file", "Workbench write_file failed")
-        result = dict(wb_result.outputs or {})
+        # Command metadata remains in the run result and traces; this route
+        # publishes only its declared file-mutation response fields.
+        result = {key: value for key, value in wb_result.outputs.items() if key in FileMutationResponse.model_fields}
         # The workbench validates a later ``if_match`` against
         # ``workspace_content_etag``, which digests the stored bytes the same
         # way — one shared helper so the compare cannot drift across processes.
@@ -81,4 +83,6 @@ def delete_workspace_file_content_route(
     with ree_command_span("delete-file", ree_id):
         cmd = DeleteFileCommand(args=DeleteFileArgs(path=path, expected_etag=if_match or ""))
         wb_result = dispatch_or_fail(handle, cmd, "delete-file", "Workbench delete_file failed")
-        return FileMutationResponse.model_validate(wb_result.outputs or {"deleted_at": None})
+        return FileMutationResponse.model_validate(
+            {key: value for key, value in wb_result.outputs.items() if key in FileMutationResponse.model_fields}
+        )

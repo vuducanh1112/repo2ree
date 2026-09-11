@@ -63,22 +63,23 @@ def test_repeat_preserves_authored_files_and_returns_original_snapshot(tmp_path)
 def test_git_ignores_filters_and_callers_repository_do_not_change_capture(tmp_path, monkeypatch):
     layout = ReeLayout.for_ree(tmp_path, "ree")
     layout.root.mkdir()
-    (layout.root / ".gitignore").write_text("*\n")
-    (layout.root / ".gitattributes").write_text("* text eol=lf\n")
-    (layout.root / "bytes.txt").write_bytes(b"keep\r\nthese\r\nbytes\x00")
-    executable = layout.root / "executable.sh"
+    layout.overlay.mkdir()
+    (layout.overlay / ".gitignore").write_text("*\n")
+    (layout.overlay / ".gitattributes").write_text("* text eol=lf\n")
+    (layout.overlay / "bytes.txt").write_bytes(b"keep\r\nthese\r\nbytes\x00")
+    executable = layout.overlay / "executable.sh"
     executable.write_bytes(b"#!/bin/sh\n")
     executable.chmod(0o755)
-    (layout.root / "link").symlink_to("bytes.txt")
+    (layout.overlay / "link").symlink_to("bytes.txt")
     foreign = tmp_path / "foreign.git"
     monkeypatch.setenv("GIT_DIR", str(foreign))
     monkeypatch.setenv("GIT_INDEX_FILE", str(tmp_path / "foreign-index"))
     result = initialize_ree(layout, name="demo")
     assert not foreign.exists()
     assert not (tmp_path / "foreign-index").exists()
-    assert git(layout, "show", f"{result.snapshot_id}:bytes.txt") == (layout.root / "bytes.txt").read_bytes()
-    assert git(layout, "show", f"{result.snapshot_id}:link") == b"bytes.txt"
-    assert git(layout, "ls-tree", result.snapshot_id, "executable.sh").startswith(b"100755 blob")
+    assert git(layout, "show", f"{result.snapshot_id}:overlay/bytes.txt") == (layout.overlay / "bytes.txt").read_bytes()
+    assert git(layout, "show", f"{result.snapshot_id}:overlay/link") == b"bytes.txt"
+    assert git(layout, "ls-tree", result.snapshot_id, "overlay/executable.sh").startswith(b"100755 blob")
 
 
 def test_failed_capture_can_be_retried_without_overwriting_ree(tmp_path, monkeypatch):

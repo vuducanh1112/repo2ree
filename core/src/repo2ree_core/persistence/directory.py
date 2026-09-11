@@ -193,6 +193,14 @@ class ReeDirectory:
         self.layout.upload_staging.mkdir(parents=True, exist_ok=True)
         self.layout.runs.mkdir(parents=True, exist_ok=True)
 
+    def history_artifacts(self) -> tuple[Path, ...]:
+        """Keep declared runtime artifacts even with the root-relative fallback."""
+        if not self.manifest_exists():
+            return ()
+        build = self.read_ree().subject.definition.build_runtime
+        artifact = self.author_artifact(str(build.runtime_path)) if build and build.runtime_path else None
+        return (artifact,) if artifact is not None else ()
+
     def ensure_reserved_overlay_scripts(self) -> None:
         """Seed the REE-owned scripts with their packaged starter templates.
 

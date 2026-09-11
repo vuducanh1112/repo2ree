@@ -151,6 +151,23 @@ class ReeLayout:
     root: Path
 
     @property
+    def history_files(self) -> tuple[Path, ...]:
+        """Fixed state files; operational logs and upload staging are not state."""
+        return (
+            self.manifest,
+            self.snapshot_archive,
+            self.sealed_archive,
+            self.acquire_script,
+            self.materialize_script,
+            self.materialize_marker,
+        )
+
+    @property
+    def history_trees(self) -> tuple[Path, ...]:
+        """Open-ended state subtrees, including arbitrary user filenames."""
+        return (self.upstream, self.overlay, self.workspace, self.artifacts, self.results)
+
+    @property
     def acquire_script(self) -> Path:
         return self.root / ACQUIRE_SCRIPT_FILENAME
 
@@ -321,6 +338,14 @@ class ReviewLayout(ReeLayout):
         workspace is disposable and pruned after a build, while this document is
         the evidence the build verdict rests on.
     """
+
+    @property
+    def history_files(self) -> tuple[Path, ...]:
+        return (*super().history_files, self.metadata)
+
+    @property
+    def history_trees(self) -> tuple[Path, ...]:
+        return (*super().history_trees, self.receipts, self.comparisons)
 
     @property
     def metadata(self) -> Path:

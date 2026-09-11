@@ -84,11 +84,21 @@ def _read_text_if_possible(path: Path) -> str | None:
 def read_ree_file_bytes(layout: ReeLayout, path: str) -> bytes:
     """Read one regular file addressed relative to the REE root."""
     target = resolve_within(layout.root, path)
-    if target is None or target.is_relative_to(layout.git_dir.resolve()):
+    if target is None or _is_history_storage(layout, target):
         raise ValueError("Invalid REE file path")
     if not target.is_file():
         raise FileNotFoundError(path)
     return target.read_bytes()
+
+
+def _is_history_storage(layout: ReeLayout, path: Path) -> bool:
+    resolved = path.resolve()
+    if resolved.is_relative_to(layout.git_dir.resolve()):
+        return True
+    if resolved.is_relative_to(layout.reviews.resolve()):
+        parts = resolved.relative_to(layout.reviews.resolve()).parts
+        return len(parts) >= 2 and parts[1] == ".git"
+    return False
 
 
 def list_workspace_files(
@@ -103,7 +113,7 @@ def list_workspace_files(
     overlay_paths = {relative.as_posix() for relative in directory.overlay.iter_files()}
     entries: list[WorkspaceFile] = []
     for path in sorted(layout.workspace.rglob("*")):
-        if not path.is_file() or path.resolve().is_relative_to(layout.git_dir.resolve()):
+        if not path.is_file() or _is_history_storage(layout, path):
             continue
         relative = path.relative_to(layout.workspace).as_posix()
         size = path.stat().st_size
@@ -138,8 +148,7 @@ def list_ree_files(
     # Prune Git storage before traversal: it can dwarf the visible REE tree.
     visible_paths: list[Path] = []
     for directory, directories, files in layout.root.walk():
-        if directory == layout.root:
-            directories[:] = [name for name in directories if name != ".git"]
+        directories[:] = [name for name in directories if not _is_history_storage(layout, directory / name)]
         visible_paths.extend(directory / name for name in files)
     for path in sorted(visible_paths):
         # The REE document itself is listed: it is the REE's own published
@@ -148,7 +157,7 @@ def list_ree_files(
         # confined to the overlay and workspace subtrees.
         if (
             not path.is_file()
-            or path.resolve().is_relative_to(layout.git_dir.resolve())
+            or _is_history_storage(layout, path)
             or path.is_relative_to(layout.upload_staging)
             or path.is_relative_to(layout.workspace)
         ):

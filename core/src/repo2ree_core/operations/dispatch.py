@@ -6,6 +6,7 @@ from uuid import uuid4
 from pydantic import BaseModel
 
 from repo2ree_core.execution.process import CancelCheck
+from repo2ree_core.operations.capture import capture_command
 from repo2ree_core.operations.handlers.author.acquire_source import handle_acquire_source
 from repo2ree_core.operations.handlers.author.activation_test import handle_activation_test
 from repo2ree_core.operations.handlers.author.build_runtime import handle_build_runtime
@@ -33,6 +34,7 @@ from repo2ree_core.operations.handlers.review.acquire_source import handle_revie
 from repo2ree_core.operations.handlers.review.activation_test import handle_review_activation_test
 from repo2ree_core.operations.handlers.review.build_runtime import handle_review_build_runtime
 from repo2ree_core.operations.handlers.review.run_experiment import handle_review_run_experiment
+from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import (
     AcquireSourceCommand,
     ActivationTestCommand,
@@ -101,7 +103,13 @@ def run_command(
         args = getattr(cmd, "args", None)
         if isinstance(args, BaseModel):
             record_span_facts(span, args.model_dump(), namespace="arg")
-        result = _run_unless_canceled(cmd, log=log, run_id=resolved_run_id, cancel=cancel)
+        result = capture_command(
+            layout=ReeLayout.in_workbench(),
+            cmd=cmd,
+            run_id=resolved_run_id,
+            log=log,
+            execute=lambda: _run_unless_canceled(cmd, log=log, run_id=resolved_run_id, cancel=cancel),
+        )
         record_exit_code(span, result.exit_code)
         record_span_facts(span, result.outputs, namespace="output")
         record_failure(span, result.failure)
