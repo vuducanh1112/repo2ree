@@ -639,13 +639,29 @@ export interface paths {
         };
         /**
          * Download Ree Archive Route
-         * @description Download this REE as a bundle, loadable into another REE via ``ree:load``.
+         * @description Download a portable sealed/draft ree.zip alongside captured Git histories.
          *
-         *     A sealed REE hands back its immutable sealed archive; an unsealed one is
-         *     assembled into a draft bundle on demand. Only the sealed bundle carries a
-         *     seal hash — a draft is a handoff, not a citable artifact.
+         *     The inner portable bundle retains its existing seal and is independently
+         *     loadable. The outer envelope carries local history for later inspection.
          */
         get: operations["downloadReeArchive"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rees/{ree_id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Operation History */
+        get: operations["listOperationHistory"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2602,6 +2618,60 @@ export interface components {
             observation: components["schemas"]["HBOM"];
             /** Observer Version */
             observer_version: string;
+        };
+        /** OperationHistory */
+        OperationHistory: {
+            /** Operations */
+            operations?: components["schemas"]["OperationRecord"][];
+        };
+        /**
+         * OperationRecord
+         * @description One invocation, including no-ops and attempts left pending by process death.
+         */
+        OperationRecord: {
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+            /**
+             * Selection Version
+             * @default 1
+             */
+            selection_version: number;
+            /** Attempt Id */
+            attempt_id: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence?: number | null;
+            /** Command */
+            command: {
+                [key: string]: unknown;
+            };
+            /** Scope */
+            scope: string;
+            /** Author Seal Digest */
+            author_seal_digest?: string | null;
+            /**
+             * Capture Status
+             * @default pending
+             * @enum {string}
+             */
+            capture_status: "pending" | "captured" | "failed";
+            /**
+             * Operation Status
+             * @default not_started
+             */
+            operation_status: ("succeeded" | "failed" | "canceled") | ("not_started" | "unknown");
+            /** Before Snapshot Id */
+            before_snapshot_id?: string | null;
+            /** After Snapshot Id */
+            after_snapshot_id?: string | null;
+            operation_failure?: components["schemas"]["Failure"] | null;
+            /** Capture Error */
+            capture_error?: string | null;
         };
         /**
          * PackageDeltaRecord
@@ -8230,13 +8300,116 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description REE ZIP bundle — the sealed archive, or a draft bundle when unsealed */
+            /** @description REE download ZIP containing a portable ree.zip and local Git histories */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/zip": string;
+                };
+            };
+            /** @description Invalid request or operation precondition */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description REE, run, file, or artifact not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Version or idempotency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload exceeds the configured size limit */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench returned an invalid upstream response */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Compute provider or workbench unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload staging capacity exhausted */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listOperationHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ree_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationHistory"];
                 };
             };
             /** @description Invalid request or operation precondition */

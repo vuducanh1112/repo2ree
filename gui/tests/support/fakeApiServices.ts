@@ -23,6 +23,7 @@ export function fakeApiServices({
   runs?: Overrides<ReeRunsApi>;
 } = {}): ApiServicesValue {
   const reeDefaults: Overrides<ReeApi> = {
+    listOperationHistory: async () => ({ operations: [] }),
     getBuildInfo: async () => ({ version: "0.1.0", revision: "test-gui-api" }),
     getReeState: async () =>
       ({

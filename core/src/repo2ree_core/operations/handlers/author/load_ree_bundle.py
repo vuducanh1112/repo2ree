@@ -59,10 +59,17 @@ def handle_load_ree_bundle(
         with tempfile.TemporaryDirectory() as tmp:
             bundle_root = Path(tmp)
             safe_extract_zip(staged, bundle_root)
+            portable = staged
+            # Downloads wrap the original portable archive beside Git history.
+            # Import only the portable REE; never activate downloaded Git config.
+            if (bundle_root / "export.json").is_file() and (bundle_root / "ree.zip").is_file():
+                portable = bundle_root / "ree.zip"
+                bundle_root = bundle_root / "portable"
+                safe_extract_zip(portable, bundle_root)
             loaded = restore_ree_bundle(
                 layout,
                 bundle_root=bundle_root,
-                archive_path=staged,
+                archive_path=portable,
             )
     except Exception as exc:
         log("system", "error", f"bundle load failed: {exc}")

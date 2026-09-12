@@ -217,7 +217,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
         <button
           type="button"
           onClick={commands.onDownloadRee}
-          disabled={!workspaceRemote.artifactStatus.sealedAt}
+          disabled={!provisioned}
           className={styles.download}
         >
           <span aria-hidden className={styles.downloadIcon}>

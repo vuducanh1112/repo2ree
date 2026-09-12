@@ -34,6 +34,7 @@ export const endpoints = {
   // workbench necessarily exists.
   scriptLintDraft: () => `${API_V1_BASE}/script-lints:draft`,
   reeSeal: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/ree:seal`,
+  operationHistory: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/history`,
   reeArchive: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/ree-archive`,
   reeBuildRuntime: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/build-runtime`,

@@ -485,6 +485,9 @@ class WorkbenchManager:
         document["ree_id"] = handle.ree_id
         return document
 
+    def get_history(self, handle: WorkbenchHandle) -> dict[str, Any]:
+        return self._query_json(handle, "get-history")
+
     def get_reviews(self, handle: WorkbenchHandle) -> dict[str, Any]:
         return self._query_json(handle, "get-reviews")
 

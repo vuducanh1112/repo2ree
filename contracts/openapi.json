@@ -5056,7 +5056,7 @@
           "rees"
         ],
         "summary": "Download Ree Archive Route",
-        "description": "Download this REE as a bundle, loadable into another REE via ``ree:load``.\n\nA sealed REE hands back its immutable sealed archive; an unsealed one is\nassembled into a draft bundle on demand. Only the sealed bundle carries a\nseal hash \u2014 a draft is a handoff, not a citable artifact.",
+        "description": "Download a portable sealed/draft ree.zip alongside captured Git histories.\n\nThe inner portable bundle retains its existing seal and is independently\nloadable. The outer envelope carries local history for later inspection.",
         "operationId": "downloadReeArchive",
         "parameters": [
           {
@@ -5071,12 +5071,134 @@
         ],
         "responses": {
           "200": {
-            "description": "REE ZIP bundle \u2014 the sealed archive, or a draft bundle when unsealed",
+            "description": "REE download ZIP containing a portable ree.zip and local Git histories",
             "content": {
               "application/zip": {
                 "schema": {
                   "type": "string",
                   "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or operation precondition",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "REE, run, file, or artifact not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Workbench returned an invalid upstream response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Compute provider or workbench unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "507": {
+            "description": "Upload staging capacity exhausted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rees/{ree_id}/history": {
+      "get": {
+        "tags": [
+          "history"
+        ],
+        "summary": "List Operation History",
+        "operationId": "listOperationHistory",
+        "parameters": [
+          {
+            "name": "ree_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ree Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationHistory"
                 }
               }
             }
@@ -10298,6 +10420,158 @@
           "observer_version"
         ],
         "title": "ObserveHardwareReceipt"
+      },
+      "OperationHistory": {
+        "properties": {
+          "operations": {
+            "items": {
+              "$ref": "#/components/schemas/OperationRecord"
+            },
+            "type": "array",
+            "title": "Operations"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "OperationHistory"
+      },
+      "OperationRecord": {
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Schema Version",
+            "default": 1
+          },
+          "selection_version": {
+            "type": "integer",
+            "title": "Selection Version",
+            "default": 1
+          },
+          "attempt_id": {
+            "type": "string",
+            "title": "Attempt Id"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "sequence": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sequence"
+          },
+          "command": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Command"
+          },
+          "scope": {
+            "type": "string",
+            "title": "Scope"
+          },
+          "author_seal_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Seal Digest"
+          },
+          "capture_status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "captured",
+              "failed"
+            ],
+            "title": "Capture Status",
+            "default": "pending"
+          },
+          "operation_status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "succeeded",
+                  "failed",
+                  "canceled"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "not_started",
+                  "unknown"
+                ]
+              }
+            ],
+            "title": "Operation Status",
+            "default": "not_started"
+          },
+          "before_snapshot_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before Snapshot Id"
+          },
+          "after_snapshot_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After Snapshot Id"
+          },
+          "operation_failure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Failure"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "capture_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capture Error"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "attempt_id",
+          "run_id",
+          "command",
+          "scope"
+        ],
+        "title": "OperationRecord",
+        "description": "One invocation, including no-ops and attempts left pending by process death."
       },
       "PackageDeltaRecord": {
         "properties": {

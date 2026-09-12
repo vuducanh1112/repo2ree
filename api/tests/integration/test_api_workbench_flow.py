@@ -201,4 +201,7 @@ def test_archive_before_seal_returns_a_draft_bundle(client: TestClient, ree: dic
     resp = client.get(f"/api/v1/rees/{ree['ree_id']}/ree-archive")
     assert resp.status_code == 200
     assert resp.headers["content-type"] == "application/zip"
-    assert resp.content
+    with zipfile.ZipFile(BytesIO(resp.content)) as archive:
+        assert "ree/.git/HEAD" in archive.namelist()
+        with zipfile.ZipFile(BytesIO(archive.read("ree.zip"))) as portable:
+            assert "ree/ree.json" in portable.namelist()

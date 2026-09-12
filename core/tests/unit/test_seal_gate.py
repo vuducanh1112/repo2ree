@@ -226,3 +226,15 @@ def test_sealing_is_refused_while_a_receipt_outlives_its_declaration(tmp_path: P
 
     assert load_ree(store.layout, store).seal is None
     assert not store.layout.sealed_archive.exists()
+
+
+def test_download_keeps_sealed_archive_bytes_unchanged(tmp_path):
+    from repo2ree_core.bundle.download import materialized_ree_download
+
+    store = _store(tmp_path, _ree())
+    seal_ree(store.layout, source_included=False, runtime_included=False, results_included=False, sealed_at=_NOW)
+    original = store.layout.sealed_archive.read_bytes()
+    with materialized_ree_download(store.layout) as download, zipfile.ZipFile(download) as archive:
+        assert archive.read("ree.zip") == original
+        assert "ree/.git/HEAD" in archive.namelist()
+    assert store.layout.sealed_archive.read_bytes() == original

@@ -86,6 +86,14 @@ class GitHistory:
             raise HistoryCaptureError(result.stderr.decode(errors="replace").strip() or "Git capture failed")
         return result
 
+    def head_snapshot(self) -> str | None:
+        result = self._git("rev-parse", "--verify", "--quiet", f"{HISTORY_REF}^{{commit}}", check=False)
+        if result.returncode == 1:
+            return None
+        if result.returncode:
+            raise HistoryCaptureError("Cannot read REE history head")
+        return result.stdout.decode().strip()
+
     def initial_snapshot(self) -> str | None:
         result = self._git("rev-parse", "--verify", "--quiet", f"{INITIAL_REF}^{{commit}}", check=False)
         if result.returncode == 1:

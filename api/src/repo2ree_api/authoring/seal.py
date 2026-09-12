@@ -164,17 +164,16 @@ def _record_in_ree_index(ree_id: str, document: Mapping[str, Any]) -> None:
     responses={
         **ERROR_RESPONSES,
         200: {
-            "description": "REE ZIP bundle — the sealed archive, or a draft bundle when unsealed",
+            "description": "REE download ZIP containing a portable ree.zip and local Git histories",
             "content": {"application/zip": {"schema": {"type": "string", "format": "binary"}}},
         },
     },
 )
 def download_ree_archive_route(ree_id: str) -> StreamingResponse:
-    """Download this REE as a bundle, loadable into another REE via ``ree:load``.
+    """Download a portable sealed/draft ree.zip alongside captured Git histories.
 
-    A sealed REE hands back its immutable sealed archive; an unsealed one is
-    assembled into a draft bundle on demand. Only the sealed bundle carries a
-    seal hash — a draft is a handoff, not a citable artifact.
+    The inner portable bundle retains its existing seal and is independently
+    loadable. The outer envelope carries local history for later inspection.
     """
     handle = require_handle(ree_id)
     archive_filename = archive_download_filename(handle)

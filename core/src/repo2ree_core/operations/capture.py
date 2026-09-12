@@ -9,16 +9,15 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from contextlib import ExitStack
-from typing import Any, Literal
+from typing import Any
 from uuid import uuid4
-
-from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import write_json_atomic
-from repo2ree_core.persistence.history import SELECTION_VERSION, HistoryCaptureError, open_history
+from repo2ree_core.persistence.history import HistoryCaptureError, open_history
 from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.persistence.operation_history import OperationRecord, next_operation_sequence
 from repo2ree_protocol.command import (
     Command,
     ReviewAcquireSourceCommand,
@@ -27,27 +26,7 @@ from repo2ree_protocol.command import (
     ReviewRunExperimentCommand,
 )
 from repo2ree_protocol.log import LogSink
-from repo2ree_protocol.result import ActionResult, ActionStatus, Failure
-
-
-class OperationRecord(BaseModel):
-    """One invocation, including no-ops and attempts left pending by process death."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    schema_version: Literal[1] = 1
-    selection_version: int = SELECTION_VERSION
-    attempt_id: str
-    run_id: str
-    command: dict[str, Any]
-    scope: str
-    author_seal_digest: str | None = None
-    capture_status: Literal["pending", "captured", "failed"] = "pending"
-    operation_status: ActionStatus | Literal["not_started", "unknown"] = "not_started"
-    before_snapshot_id: str | None = None
-    after_snapshot_id: str | None = None
-    operation_failure: Failure | None = None
-    capture_error: str | None = None
+from repo2ree_protocol.result import ActionResult
 
 
 def capture_command(
@@ -79,6 +58,7 @@ def capture_command(
     try:
         with ExitStack() as stack:
             history = stack.enter_context(open_history(layout))
+            record.sequence = next_operation_sequence(layout)
             if scope != layout:
                 author = ReeDirectory(layout).read_ree()
                 record.author_seal_digest = str(author.seal.ree_digest) if author.seal else None

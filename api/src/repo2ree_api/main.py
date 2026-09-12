@@ -15,6 +15,7 @@ from repo2ree_api.authoring.catalog import ree_steps_router, script_templates_ro
 from repo2ree_api.authoring.definition import definition_router
 from repo2ree_api.authoring.evidence import receipts_router
 from repo2ree_api.authoring.files import files_router
+from repo2ree_api.authoring.history import history_router
 from repo2ree_api.authoring.inference import inference_router
 from repo2ree_api.authoring.lint import lint_router
 from repo2ree_api.authoring.seal import seal_router
@@ -158,6 +159,7 @@ ROUTERS = (
     stages_router,
     receipts_router,
     seal_router,
+    history_router,
     # What sealing leaves behind, once the workbench above is gone.
     ree_index_router,
     # Review — the same lifecycle, reproduced independently.

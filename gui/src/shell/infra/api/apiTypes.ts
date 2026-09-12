@@ -15,6 +15,8 @@ export interface ApiListResponse<TItem> {
   next_cursor?: string | null;
 }
 
+export type OperationHistoryWire = Schema<"OperationHistory">;
+
 export type ReeSummary = Schema<"ReeSummary">;
 
 export type ReviewRecordWire = Schema<"ReviewRecord">;

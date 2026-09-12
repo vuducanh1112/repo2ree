@@ -305,6 +305,15 @@ describe("AppShellView", () => {
     expect(screen.queryByText("Source acquisition")).not.toBeInTheDocument();
   });
 
+  it("allows downloading an available draft REE", () => {
+    const commands = controller(PAGE.METADATA);
+    render(<AppShellView onBack={vi.fn()} />);
+    const download = screen.getByRole("button", { name: "Download REE" });
+    expect(download).toBeEnabled();
+    fireEvent.click(download);
+    expect(commands.onDownloadRee).toHaveBeenCalledOnce();
+  });
+
   it("runs seal and enabled download actions and clears a toast", () => {
     const commands = controller(PAGE.SEAL);
     shell.value = {

@@ -10,8 +10,6 @@ path; there is no apply or resolve endpoint here.
 
 from __future__ import annotations
 
-from typing import Any
-
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict
 
@@ -75,7 +73,7 @@ class GenerateScriptCandidatesPayload(BaseModel):
     response_model=InferenceReport,
     responses=ERROR_RESPONSES,
 )
-def generate_script_candidates_route(ree_id: str, payload: GenerateScriptCandidatesPayload) -> dict[str, Any]:
+def generate_script_candidates_route(ree_id: str, payload: GenerateScriptCandidatesPayload) -> InferenceReport:
     """Synchronously generate candidate scripts for the requested targets.
 
     Read-only and always recomputed: every call rescans and re-runs the DAGs
@@ -93,4 +91,7 @@ def generate_script_candidates_route(ree_id: str, payload: GenerateScriptCandida
             )
         )
         result = dispatch_or_fail(handle, cmd, "generate-script-candidates", "Workbench inference failed")
-        return result.outputs
+        # Capture metadata belongs to operation history, outside the report contract.
+        return InferenceReport.model_validate(
+            {key: value for key, value in result.outputs.items() if key in InferenceReport.model_fields}
+        )

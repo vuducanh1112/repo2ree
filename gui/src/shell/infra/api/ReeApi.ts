@@ -12,6 +12,7 @@ import type {
   InferenceReport,
   LintReport,
   LintScriptsResponse,
+  OperationHistoryWire,
   ProviderList,
   ReeCreatePayload,
   ReeDefinitionPatchPayload,
@@ -181,6 +182,12 @@ export class ReeApi {
 
   async getEvaluateReport(reeId: ReeId): Promise<ReproducibilityReportWire> {
     return this.client.request<ReproducibilityReportWire>(endpoints.reeEvaluateReport(reeId), {
+      method: "GET",
+    });
+  }
+
+  async listOperationHistory(reeId: ReeId | string): Promise<OperationHistoryWire> {
+    return this.client.request<OperationHistoryWire>(endpoints.operationHistory(reeId), {
       method: "GET",
     });
   }

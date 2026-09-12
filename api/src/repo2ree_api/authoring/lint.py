@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -53,7 +51,7 @@ class ScriptDraftPayload(BaseModel):
     response_model=LintScriptsResponse,
     responses=ERROR_RESPONSES,
 )
-def lint_ree_scripts_route(ree_id: str, payload: LintScriptsPayload) -> dict[str, Any]:
+def lint_ree_scripts_route(ree_id: str, payload: LintScriptsPayload) -> LintScriptsResponse:
     """Statically check persisted scripts on every available tier."""
     handle = require_handle(ree_id)
     with ree_command_span("lint-scripts", ree_id):
@@ -66,7 +64,10 @@ def lint_ree_scripts_route(ree_id: str, payload: LintScriptsPayload) -> dict[str
             )
         )
         result = dispatch_or_fail(handle, cmd, "lint-scripts", "Workbench lint failed")
-        return result.outputs
+        # Capture metadata belongs to operation history, outside the report contract.
+        return LintScriptsResponse.model_validate(
+            {key: value for key, value in result.outputs.items() if key in LintScriptsResponse.model_fields}
+        )
 
 
 @lint_router.post(

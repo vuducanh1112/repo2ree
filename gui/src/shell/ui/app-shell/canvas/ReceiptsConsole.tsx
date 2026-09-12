@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Ic } from "../../shared/components/Icon";
 import { HudConsole } from "./HudConsole";
 import hud from "./HudConsole.module.css";
+import { OperationHistorySection } from "./OperationHistorySection";
 import { ReceiptCard } from "./ReceiptCard";
 import styles from "./ReceiptsConsole.module.css";
 
@@ -61,6 +62,7 @@ export function ReceiptsConsole({
           receipts.map((receipt) => <ReceiptCard key={receipt.key} receipt={receipt} />)
         )}
       </Section>
+      <OperationHistorySection enabled={provisioned && open} />
     </HudConsole>
   );
 }

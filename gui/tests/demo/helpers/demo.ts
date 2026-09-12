@@ -237,6 +237,7 @@ export function createDemoKit(options: DemoKitOptions = {}) {
     // The status line renders only once the round-trip settles.
     const status = main.getByText(GENERATE_STATUS).first();
     await expect(status).toBeVisible({ timeout: 30000 });
+    await expect(status).not.toContainText("Generation failed:");
     await showcasePanel(page, status, narration.result);
 
     // The decision graph is collapsed by default — open it and dwell on it.

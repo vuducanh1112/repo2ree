@@ -9,7 +9,7 @@ from typing import Any, TextIO
 
 import click
 
-from repo2ree_core.bundle.seal import materialized_ree_archive
+from repo2ree_core.bundle.download import materialized_ree_download
 from repo2ree_core.doctor import run_doctor
 from repo2ree_core.evidence.review.store import load_reviews
 from repo2ree_core.operations.dispatch import run_command
@@ -19,6 +19,7 @@ from repo2ree_core.operations.read_models.ree_document import get_ree_document a
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.history import HistoryCaptureError
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
+from repo2ree_core.persistence.operation_history import read_operation_history
 from repo2ree_core.reproduction.commands import (
     BUILD_RUNTIME,
     EXPERIMENT,
@@ -382,12 +383,18 @@ def get_reviews_cmd() -> None:
     click.echo(load_reviews(ReeLayout.in_workbench()).model_dump_json())
 
 
+@cli.command("get-history")
+def get_history_cmd() -> None:
+    """Read operation records from author and review histories."""
+    click.echo(read_operation_history(ReeLayout.in_workbench()).model_dump_json())
+
+
 @cli.command("build-archive")
 def build_archive_cmd() -> None:
-    """Write the sealed REE zip archive bytes to stdout."""
+    """Write a portable REE bundle and Git histories in one download."""
     try:
         with (
-            materialized_ree_archive(ReeLayout.in_workbench()) as archive_path,
+            materialized_ree_download(ReeLayout.in_workbench()) as archive_path,
             archive_path.open("rb") as archive,
         ):
             shutil.copyfileobj(archive, sys.stdout.buffer, length=1024 * 1024)

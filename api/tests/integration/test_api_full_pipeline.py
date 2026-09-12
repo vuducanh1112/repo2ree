@@ -302,4 +302,14 @@ def test_full_authoring_pipeline(client: TestClient, ree: dict[str, Any], filmst
     response = client.get(f"/api/v1/rees/{ree_id}/ree-archive")
     assert response.status_code == 200
     with zipfile.ZipFile(BytesIO(response.content)) as archive:
-        assert archive.namelist()
+        assert "ree.zip" in archive.namelist()
+        assert "ree/.git/HEAD" in archive.namelist()
+        history_response = client.get(f"/api/v1/rees/{ree_id}/history")
+        assert history_response.status_code == 200
+        operations = history_response.json()["operations"]
+        assert operations
+        assert operations[0]["command"]["operation"] == "seal_ree"
+        assert operations[0]["capture_status"] == "captured"
+        record_path = f"ree/.git/repo2ree/operations/{operations[0]['attempt_id']}.json"
+        assert record_path in archive.namelist()
+        assert operations[0]["after_snapshot_id"]

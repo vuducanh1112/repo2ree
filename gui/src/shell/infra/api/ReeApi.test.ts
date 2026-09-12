@@ -16,6 +16,16 @@ function harness() {
 }
 
 describe("ReeApi", () => {
+  it("reads operation history using the encoded REE identity", async () => {
+    const { api, client } = harness();
+    const response = { operations: [] };
+    client.request.mockResolvedValueOnce(response);
+    expect(await api.listOperationHistory("ree/1")).toBe(response);
+    expect(client.request).toHaveBeenCalledWith("/api/v1/rees/ree%2F1/history", {
+      method: "GET",
+    });
+  });
+
   it("maps global catalogs and filtered listings", async () => {
     const { api, client } = harness();
     await api.listReeSteps();

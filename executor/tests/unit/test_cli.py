@@ -296,5 +296,7 @@ def test_build_archive_before_seal_writes_a_draft_bundle(initialized_ree: Path) 
 
     assert result.exit_code == 0
     with zipfile.ZipFile(io.BytesIO(result.stdout_bytes)) as archive:
-        manifest = json.loads(archive.read("ree/ree.json"))
+        assert "ree/.git/HEAD" in archive.namelist()
+        with zipfile.ZipFile(io.BytesIO(archive.read("ree.zip"))) as portable:
+            manifest = json.loads(portable.read("ree/ree.json"))
     assert "seal" not in manifest

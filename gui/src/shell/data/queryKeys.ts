@@ -6,6 +6,7 @@ export const queryKeys = {
   reeIndex: (depositedOnly: boolean) => ["ree-index", depositedOnly] as const,
   ree: (id: string) => ["ree", id] as const,
   evaluateReport: (reeId: string) => ["evaluate-report", reeId] as const,
+  history: (reeId: string) => ["operation-history", reeId] as const,
   reviews: (reeId: string) => ["reviews", reeId] as const,
   scriptLintDraft: (kind: string, experimentName: string, source: string) =>
     ["script-lint-draft", kind, experimentName, source] as const,
