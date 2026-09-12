@@ -124,7 +124,7 @@ def start_staged_upload_run(
             _log_run("system", "error", f"Workbench step {command.operation} {result.status}")
             return result.model_copy(update={"outputs": outputs})
         _log_run("system", "info", messages.succeeded)
-        return ActionResult(status="succeeded", outputs=outputs)
+        return result.model_copy(update={"outputs": outputs})
 
     return start_background_run(
         ree_id,

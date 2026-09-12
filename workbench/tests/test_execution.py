@@ -7,8 +7,23 @@ from pathlib import Path
 
 import pytest
 
+from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import ResultFrame
 from repo2ree_workbench.executor_process import LocalExecutor
+
+
+def test_local_executor_passes_explicit_context_over_process_boundary(tmp_path):
+    script = tmp_path / "context-executor"
+    script.write_text(
+        "#!/bin/sh\ncat >/dev/null\n"
+        'test "$6" = --execution-context || exit 1\n'
+        'printf \'{"status":"succeeded","context":%s}\\n\' "$7"\n'
+    )
+    script.chmod(0o700)
+    context = ExecutionContext.new(ree_id="ree-1")
+    frames = list(LocalExecutor(tmp_path, str(script)).exec_action("{}", "reused-run", {}, context))
+    assert isinstance(frames[-1], ResultFrame)
+    assert frames[-1].result.context == context
 
 
 @pytest.fixture

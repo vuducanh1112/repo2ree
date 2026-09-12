@@ -23,6 +23,7 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
 from repo2ree_protocol.allocation import AllocationRequest
 from repo2ree_protocol.build import BuildInfo
+from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import Frame
 
 # ================================================
@@ -94,6 +95,7 @@ class ExecActionRequest(BaseModel):
 
     op: Literal["exec_action"] = "exec_action"
     cmd_json: str
+    context: ExecutionContext | None = None
     run_id: str
     # Extra environment injected into the executor (trace propagation).
     env: dict[str, str] = {}

@@ -14,6 +14,7 @@ from contextlib import suppress
 from pathlib import Path, PurePosixPath
 
 from repo2ree_protocol.build import BuildInfo
+from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import Frame, ResultFrame
 from repo2ree_protocol.tracing import current_traceparent
 from repo2ree_workbench import executor_frames
@@ -81,9 +82,20 @@ class LocalExecutor:
         for offset in range(0, len(view), 256 * 1024):
             yield bytes(view[offset : offset + 256 * 1024])
 
-    def exec_action(self, cmd_json: str, run_id: str, env: dict[str, str]) -> Iterator[Frame]:
+    def exec_action(
+        self, cmd_json: str, run_id: str, env: dict[str, str], context: ExecutionContext | None = None
+    ) -> Iterator[Frame]:
         proc = subprocess.Popen(
-            [self.exec_path, "execute", "--action", "-", "--run-id", run_id],
+            [
+                self.exec_path,
+                "execute",
+                "--action",
+                "-",
+                "--run-id",
+                run_id,
+                "--execution-context",
+                (context or ExecutionContext.new()).model_dump_json(),
+            ],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

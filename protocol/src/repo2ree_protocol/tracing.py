@@ -27,6 +27,9 @@ from typing import TYPE_CHECKING, Any, ClassVar, TextIO
 
 from opentelemetry import context, metrics, trace
 
+from repo2ree_protocol.execution import ExecutionContext
+from repo2ree_protocol.result import ActionResult, HistoryReference
+
 if TYPE_CHECKING:
     from opentelemetry.proto.common.v1.common_pb2 import AnyValue as _PbAnyValue
     from opentelemetry.proto.resource.v1.resource_pb2 import Resource as _PbResource
@@ -297,6 +300,7 @@ class CommandSpanAttrs:
     operation: str
     run_id: str | None = None
     ree_id: str | None = None
+    execution: ExecutionContext | None = None
 
     def apply(self, span: Span) -> None:
         span.set_attribute(_ATTR_OPERATION, self.operation)
@@ -304,6 +308,29 @@ class CommandSpanAttrs:
             span.set_attribute(_ATTR_RUN_ID, self.run_id)
         if self.ree_id is not None:
             span.set_attribute(_ATTR_REE_ID, self.ree_id)
+        record_execution_context(span, self.execution)
+
+
+def record_execution_context(span: Span, execution: ExecutionContext | None) -> None:
+    if execution is not None:
+        span.set_attribute("repo2ree.operation_id", execution.operation_id)
+        span.set_attribute("repo2ree.attempt_id", execution.attempt_id)
+        if execution.ree_id is not None:
+            span.set_attribute(_ATTR_REE_ID, execution.ree_id)
+
+
+def record_result_evidence(span: Span, result: ActionResult) -> None:
+    """Write identity/evidence links last so bulky domain facts cannot evict them."""
+    record_execution_context(span, result.context)
+    record_history_reference(span, result.history)
+
+
+def record_history_reference(span: Span, history: HistoryReference | None) -> None:
+    """Record evidence links explicitly, outside bounded domain-fact flattening."""
+    if history is None:
+        return
+    for key, value in history.model_dump(exclude={"operation_failure"}, exclude_none=True).items():
+        span.set_attribute(f"repo2ree.history.{key}", value)
 
 
 def record_command_status(span: Span, status: str) -> None:

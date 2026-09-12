@@ -23,6 +23,7 @@ which stage feeds which — at a cost CI can pay on every run.
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 import time
@@ -310,6 +311,8 @@ def test_full_authoring_pipeline(client: TestClient, ree: dict[str, Any], filmst
         assert operations
         assert operations[0]["command"]["operation"] == "seal_ree"
         assert operations[0]["capture_status"] == "captured"
-        record_path = f"ree/.git/repo2ree/operations/{operations[0]['attempt_id']}.json"
-        assert record_path in archive.namelist()
+        assert operations[0]["context"]["ree_id"] == ree_id
+        assert operations[0]["context"]["attempt_id"] == operations[0]["attempt_id"]
+        assert operations[0]["result"]["context"] == operations[0]["context"]
+        assert json.loads(archive.read("export.json"))["history_heads"]["."] == operations[0]["after_snapshot_id"]
         assert operations[0]["after_snapshot_id"]

@@ -31,7 +31,7 @@ class _Service:
     def assign(self, allocation: AllocationRequest) -> None:
         self.calls.append(("assign", allocation.allocation_id))
 
-    def exec_action(self, cmd_json: str, run_id: str, env: dict[str, str]):
+    def exec_action(self, cmd_json: str, run_id: str, env: dict[str, str], context=None):
         self.calls.append(("exec_action", cmd_json, run_id, env))
         yield DoneFrame()
 

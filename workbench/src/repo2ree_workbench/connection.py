@@ -367,6 +367,8 @@ async def _handle(
         try:
             if isinstance(req, ExecActionRequest | CancelRunRequest):
                 span.set_attribute("repo2ree.run_id", req.run_id)
+            if isinstance(req, ExecActionRequest):
+                CommandSpanAttrs(operation=operation, run_id=req.run_id, execution=req.context).apply(span)
             await dispatch_workbench_request(
                 req,
                 service,

@@ -7,7 +7,8 @@ from typing import Any, Literal, Protocol
 from pydantic import BaseModel, ConfigDict, Field
 
 from repo2ree_api.contracts import RunLogEntry, RunOperation, RunStatus
-from repo2ree_protocol.result import Failure
+from repo2ree_protocol.execution import ExecutionContext
+from repo2ree_protocol.result import Failure, HistoryReference
 
 
 class StoredRun(BaseModel):
@@ -27,6 +28,8 @@ class StoredRun(BaseModel):
     request: dict[str, Any]
     outputs: dict[str, Any] = Field(default_factory=dict)
     failure: Failure | None = None
+    context: ExecutionContext | None = None
+    history: HistoryReference | None = None
     idempotency_key: str | None = None
     request_fingerprint: str | None = None
 
@@ -83,6 +86,8 @@ class RunStore(Protocol):
         status: RunStatus,
         outputs: dict[str, Any],
         failure: Failure | None,
+        context: ExecutionContext | None = None,
+        history: HistoryReference | None = None,
     ) -> StoredRun | None: ...
 
     def interrupt_incomplete(self) -> list[StoredRun]: ...

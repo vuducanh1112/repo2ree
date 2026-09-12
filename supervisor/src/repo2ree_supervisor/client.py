@@ -18,6 +18,7 @@ from collections.abc import Iterator
 from typing import Protocol
 
 from repo2ree_protocol.allocation import AllocationRequest
+from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import ErrorFrame, Frame, UnavailableFrame
 
 
@@ -89,7 +90,14 @@ class WorkbenchClient(Protocol):
 
     def exec_query_stream(self, workbench_id: str, argv: list[str], timeout: int = 30) -> Iterator[bytes]: ...
 
-    def exec_action(self, workbench_id: str, cmd_json: str, run_id: str, env: dict[str, str]) -> Iterator[Frame]: ...
+    def exec_action(
+        self,
+        workbench_id: str,
+        cmd_json: str,
+        run_id: str,
+        env: dict[str, str],
+        context: ExecutionContext | None = None,
+    ) -> Iterator[Frame]: ...
 
     def cancel_run(self, workbench_id: str, run_id: str) -> None: ...
 

@@ -13,6 +13,8 @@ from repo2ree_protocol import (
     Frame,
     ResultFrame,
 )
+from repo2ree_protocol.command import PatchReeDefinitionArgs, PatchReeDefinitionCommand
+from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_supervisor import AllocationStore, WorkbenchManager
 
 _CATALOG_IMAGE = "docker.io/library/docker:29-dind"
@@ -82,7 +84,9 @@ class FakeWorkbench:
     def is_connected(self, workbench_id: str) -> bool:
         return True
 
-    def exec_action(self, workbench_id: str, cmd_json: str, run_id: str, env: dict[str, str]) -> Iterator[Frame]:
+    def exec_action(
+        self, workbench_id: str, cmd_json: str, run_id: str, env: dict[str, str], context=None
+    ) -> Iterator[Frame]:
         yield ResultFrame(result=ActionResult(status="succeeded"))
 
     def cancel_run(self, workbench_id: str, run_id: str) -> None:
@@ -122,6 +126,31 @@ def test_provision_records_the_place_and_image_then_assigns(tmp_path: Path) -> N
     assert workbench.assigned is not None
     assert workbench.simple_calls == [["init-ree", "--name", "My REE"]]
     assert store.for_ree("ree-1").state == AllocationState.ASSIGNED  # type: ignore[union-attr]
+
+
+def test_dispatch_mints_distinct_attempts_and_preserves_explicit_retry_context(tmp_path):
+    contexts = []
+
+    class RecordingWorkbench(FakeWorkbench):
+        def exec_action(self, workbench_id, cmd_json, run_id, env, context=None):
+            assert "TRACE_RELAY" not in env
+            contexts.append(context)
+            yield ResultFrame(result=ActionResult(status="succeeded", context=context))
+
+    manager, _, _ = _manager(tmp_path, RecordingWorkbench())
+    handle = manager.provision("ree-1", "test", location_id="lab-1")
+    command = PatchReeDefinitionCommand(args=PatchReeDefinitionArgs(patch={"name": "test"}))
+    first = manager.dispatch_action(handle, command, "repeated-run", lambda *args: None)
+    second = manager.dispatch_action(handle, command, "repeated-run", lambda *args: None)
+    assert first.context is not None
+    assert second.context is not None
+    retry = ExecutionContext.new(operation_id=first.context.operation_id, ree_id="ree-1")
+    third = manager.dispatch_action(handle, command, "repeated-run", lambda *args: None, retry)
+    assert third.context is not None
+    assert contexts == [first.context, second.context, third.context]
+    assert len({c.attempt_id for c in contexts}) == 3
+    assert first.context.operation_id == third.context.operation_id
+    assert first.context.operation_id != second.context.operation_id
 
 
 def test_blank_image_falls_back_to_the_locations_own_catalog(tmp_path: Path) -> None:

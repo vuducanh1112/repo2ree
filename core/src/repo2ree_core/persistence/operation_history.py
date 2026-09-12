@@ -5,12 +5,14 @@ from __future__ import annotations
 import json
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from repo2ree_core.persistence.files import write_json_atomic
-from repo2ree_core.persistence.history import SELECTION_VERSION
+from repo2ree_core.persistence.history import SELECTION_VERSION, GitHistory, HistoryCaptureError
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
-from repo2ree_protocol.result import ActionStatus, Failure
+from repo2ree_core.tooling import find_tool
+from repo2ree_protocol.execution import ExecutionContext
+from repo2ree_protocol.result import ActionResult, ActionStatus, Failure
 
 
 class OperationRecord(BaseModel):
@@ -22,6 +24,7 @@ class OperationRecord(BaseModel):
     selection_version: int = SELECTION_VERSION
     attempt_id: str
     run_id: str
+    context: ExecutionContext | None = None
     sequence: int | None = None
     command: dict[str, Any]
     scope: str
@@ -32,12 +35,35 @@ class OperationRecord(BaseModel):
     after_snapshot_id: str | None = None
     operation_failure: Failure | None = None
     capture_error: str | None = None
+    result: ActionResult | None = None
+    changed: bool | None = None
 
 
 class OperationHistory(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     operations: list[OperationRecord] = Field(default_factory=list)
+
+
+class CompletedOperation(OperationRecord):
+    """The record bound to an operation commit; its own ID is derived on read."""
+
+    context: ExecutionContext
+    result: ActionResult
+    before_snapshot_id: str
+    after_snapshot_id: None = None
+    operation_status: ActionStatus
+    capture_status: Literal["captured"] = "captured"
+
+    @model_validator(mode="after")
+    def consistent_outcome(self) -> CompletedOperation:
+        if self.attempt_id != self.context.attempt_id or self.result.context != self.context:
+            raise ValueError("Operation identity differs from its result")
+        if self.result.history is not None:
+            raise ValueError("A completed record cannot reference its own commit")
+        if self.result.status != self.operation_status or self.result.failure != self.operation_failure:
+            raise ValueError("Operation outcome differs from its result")
+        return self
 
 
 def history_scopes(layout: ReeLayout) -> list[ReeLayout]:
@@ -54,11 +80,36 @@ def history_scopes(layout: ReeLayout) -> list[ReeLayout]:
 def read_operation_history(layout: ReeLayout) -> OperationHistory:
     records = []
     for scope in history_scopes(layout):
+        scoped: dict[str, OperationRecord] = {}
         directory = scope.git_dir / "repo2ree" / "operations"
-        if not directory.is_dir():
-            continue
+        if scope.git_dir.is_symlink():
+            raise HistoryCaptureError("REE history requires a local .git directory")
+        if scope.git_dir.is_dir():
+            executable = find_tool("git")
+            if executable is None:
+                raise HistoryCaptureError("Git is required to read REE history")
+            published: set[str] = set()
+            for commit, document in GitHistory(scope, executable).completed_operations():
+                completed = CompletedOperation.model_validate(document)
+                record = OperationRecord.model_validate(completed.model_dump())
+                record.after_snapshot_id = commit
+                record.capture_status = "captured"
+                # Newest published entry wins over stale pending/legacy files.
+                if record.attempt_id not in published:
+                    scoped[record.attempt_id] = record
+                    published.add(record.attempt_id)
         for path in sorted(directory.glob("*.json")):
-            record = OperationRecord.model_validate_json(path.read_text())
+            if path.stem in scoped:
+                continue
+            try:
+                document_text = path.read_text()
+            except FileNotFoundError:
+                # Concurrent publication may have reclaimed this pending file.
+                continue
+            record = OperationRecord.model_validate_json(document_text)
+            if record.attempt_id not in scoped:
+                scoped[record.attempt_id] = record
+        for record in scoped.values():
             # Scope comes from storage, never from an imported record's claim.
             record.scope = scope.root.relative_to(layout.root).as_posix()
             records.append(record)

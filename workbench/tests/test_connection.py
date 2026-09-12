@@ -227,7 +227,7 @@ def test_stream_terminal_frame_drives_request_telemetry(
     monkeypatch.setattr(connection._request_duration, "record", lambda value, attrs: durations.append(attrs))
 
     class TerminalExec(FakeExec):
-        def exec_action(self, cmd_json: str, run_id: str, env: dict[str, str]):
+        def exec_action(self, cmd_json: str, run_id: str, env: dict[str, str], context=None):
             yield ResultFrame(result=ActionResult.failed("execution", "command failed", origin="workbench"))
 
     request = ExecActionRequest(cmd_json="{}", run_id="run-1")

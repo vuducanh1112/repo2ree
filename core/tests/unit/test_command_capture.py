@@ -13,8 +13,10 @@ from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.history import GitHistory, HistoryCaptureError
 from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.persistence.operation_history import read_operation_history
 from repo2ree_core.tooling import find_tool
 from repo2ree_protocol.command import Command, PatchReeDefinitionArgs, PatchReeDefinitionCommand
+from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.result import ActionResult
 
 
@@ -45,7 +47,7 @@ def test_patch_captures_files_parent_and_run(ree):
     initial = git(ree, "rev-parse", "HEAD")
     result = patch()
     assert result.status == "succeeded"
-    history = result.outputs["history"]
+    history = result.history.model_dump()
     assert history["before_snapshot_id"] == initial
     after = history["after_snapshot_id"]
     assert git(ree, "rev-parse", f"{after}^") == initial
@@ -54,57 +56,144 @@ def test_patch_captures_files_parent_and_run(ree):
     assert git(ree, "log", "-1", "--format=%s") == "patch_ree_definition"
     assert json.loads(git(ree, "log", "-1", "--format=%b"))["run_id"] == "patch-run"
     assert result.outputs["revision"] == str(revision_of(ReeDirectory(ree).read_ree()))
+    metadata = json.loads(git(ree, "log", "-1", "--format=%b"))
+    assert metadata["kind"] == "operation.completed"
+    assert metadata["schema_version"] == 2
+    assert metadata["record"]["context"] == result.context.model_dump(mode="json")
+    assert metadata["record"]["result"]["outputs"] == result.outputs
+    assert metadata["record"]["result"]["history"] is None
+    assert "after_snapshot_id" not in metadata["record"]
+    assert "history" not in result.outputs
+    assert not list((ree.git_dir / "repo2ree" / "operations").glob("*.json"))
 
 
-def test_noop_and_conflict_do_not_create_versions(ree):
+def test_invocation_identity_distinguishes_repeated_run_labels_and_explicit_retries(ree):
+    first, second = patch(), patch()
+    assert first.context.attempt_id != second.context.attempt_id
+    assert first.context.operation_id != second.context.operation_id
+    retry = ExecutionContext.new(operation_id=first.context.operation_id)
+    result = dispatch.run_command(
+        PatchReeDefinitionCommand(args=PatchReeDefinitionArgs(patch={"name": "after"})),
+        context=retry,
+        run_id="patch-run",
+        log=lambda *args: None,
+    )
+    assert result.context == retry
+    assert result.history is not None
+    assert result.history.changed is False
+    records = read_operation_history(ree).operations
+    assert [r.sequence for r in records] == [3, 2, 1]
+    assert {r.run_id for r in records} == {"patch-run"}
+    assert records[0].context is not None
+    assert records[-1].context is not None
+    assert records[0].context.operation_id == records[-1].context.operation_id
+
+
+def test_duplicate_attempt_cannot_execute_or_overwrite_its_published_outcome(ree):
+    first = patch()
+    head = git(ree, "rev-parse", "HEAD")
+    repeated = dispatch.run_command(
+        PatchReeDefinitionCommand(args=PatchReeDefinitionArgs(patch={"name": "duplicate"})),
+        context=first.context,
+        log=lambda *args: None,
+    )
+    assert repeated.status == "failed"
+    assert repeated.failure is not None
+    assert repeated.failure.category == "conflict"
+    assert git(ree, "rev-parse", "HEAD") == head
+    assert ReeDirectory(ree).read_ree().subject.definition.name == "after"
+
+
+def test_index_refresh_failure_does_not_reverse_published_success(ree, monkeypatch):
+    real_git = GitHistory._git
+
+    def fail_index(self, *args, **kwargs):
+        if args[0] == "read-tree" and len(args) == 2 and args[1] != "--empty":
+            raise HistoryCaptureError("index unavailable")
+        return real_git(self, *args, **kwargs)
+
+    monkeypatch.setattr(GitHistory, "_git", fail_index)
+    first = patch()
+    assert first.status == "succeeded"
+    assert first.history.after_snapshot_id == git(ree, "rev-parse", "HEAD")
+    record = read_operation_history(ree).operations[0]
+    assert record.result is not None
+    assert record.result.status == "succeeded"
+    assert patch().status == "succeeded"
+
+
+def test_process_death_after_publication_is_reconciled_from_commit(ree, monkeypatch):
+    publish = GitHistory.commit_operation
+
+    def interrupted(self, **kwargs):
+        publish(self, **kwargs)
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(GitHistory, "commit_operation", interrupted)
+    with pytest.raises(KeyboardInterrupt):
+        patch()
+    pending = next((ree.git_dir / "repo2ree" / "operations").glob("*.json"))
+    assert json.loads(pending.read_text())["capture_status"] == "pending"
+    record = read_operation_history(ree).operations[0]
+    assert record.capture_status == "captured"
+    assert record.result is not None
+    assert record.result.status == "succeeded"
+    assert record.after_snapshot_id == git(ree, "rev-parse", "HEAD")
+    # Even unreadable leftovers cannot displace published evidence.
+    pending.write_text("incomplete leftover")
+    assert read_operation_history(ree).operations[0] == record
+
+
+def test_noop_and_conflict_each_create_operation_commits(ree):
     original = str(revision_of(ReeDirectory(ree).read_ree()))
-    assert patch("before").outputs["history"]["changed"] is False
-    assert git(ree, "rev-list", "--count", "HEAD") == "1"
+    assert patch("before").history.changed is False
+    assert git(ree, "rev-list", "--count", "HEAD") == "2"
     assert patch().status == "succeeded"
     result = patch("other", expected_version=original)
     assert result.status == "failed"
     assert result.failure.category == "conflict"
-    assert result.outputs["history"]["changed"] is False
-    assert git(ree, "rev-list", "--count", "HEAD") == "2"
+    assert result.history.changed is False
+    assert git(ree, "rev-list", "--count", "HEAD") == "4"
 
 
 def test_preexisting_changes_have_separate_observation(ree):
     ree.overlay_file("external.txt").write_text("unrecorded")
     result = patch()
-    before = result.outputs["history"]["before_snapshot_id"]
+    before = result.history.before_snapshot_id
     assert git(ree, "show", "-s", "--format=%s", before) == "observe_existing_ree"
-    assert git(ree, "diff", "--name-only", before, result.outputs["history"]["after_snapshot_id"]) == "ree.json"
+    assert git(ree, "diff", "--name-only", before, result.history.after_snapshot_id) == "ree.json"
 
 
-def test_cancel_before_start_does_not_capture(ree):
+def test_cancel_before_handler_is_journaled(ree):
     assert patch(cancel=lambda: True).status == "canceled"
-    assert git(ree, "rev-list", "--count", "HEAD") == "1"
+    assert git(ree, "rev-list", "--count", "HEAD") == "2"
 
 
 @pytest.mark.parametrize("after_mutation", [False, True])
 def test_capture_failure_reports_whether_handler_ran(ree, monkeypatch, after_mutation):
-    real_capture = GitHistory.capture
+    method = "commit_operation" if after_mutation else "capture"
+    real_capture = getattr(GitHistory, method)
 
     def failing_capture(self, **kwargs):
         if not after_mutation or kwargs["operation"] == "patch_ree_definition":
             raise HistoryCaptureError("disk full")
         return real_capture(self, **kwargs)
 
-    monkeypatch.setattr(GitHistory, "capture", failing_capture)
+    monkeypatch.setattr(GitHistory, method, failing_capture)
     result = patch()
     assert result.status == "failed"
     assert result.failure.retryable is False
-    assert result.outputs["history"]["capture_status"] == "failed"
-    assert result.outputs["history"]["operation_status"] == ("succeeded" if after_mutation else "not_started")
+    assert result.history.capture_status == "failed"
+    assert result.history.operation_status == ("succeeded" if after_mutation else "not_started")
     assert ReeDirectory(ree).read_ree().subject.definition.name == ("after" if after_mutation else "before")
     assert git(ree, "rev-list", "--count", "HEAD") == "1"
-    monkeypatch.setattr(GitHistory, "capture", real_capture)
+    monkeypatch.setattr(GitHistory, method, real_capture)
     # Retrying observes an already-applied change separately, never attributes it
     # to the retry's no-op patch.
     if after_mutation:
         retry = patch()
-        assert retry.outputs["history"]["changed"] is False
-        assert git(ree, "log", "-1", "--format=%s") == "observe_existing_ree"
+        assert retry.history.changed is False
+        assert git(ree, "log", "-1", "--format=%s", "HEAD^") == "observe_existing_ree"
 
 
 @pytest.mark.parametrize("outcome", ["failed", "canceled", "exception"])
@@ -121,7 +210,7 @@ def test_partial_change_captured_with_original_outcome(ree, monkeypatch, outcome
     result = patch()
     expected = "failed" if outcome == "exception" else outcome
     assert result.status == expected
-    assert result.outputs["history"]["changed"] is True
+    assert result.history.changed is True
     assert git(ree, "show", "HEAD:overlay/partial.txt") == "partial"
     assert json.loads(git(ree, "log", "-1", "--format=%b"))["outcome"] == expected
 
@@ -131,13 +220,15 @@ def test_concurrent_patches_check_revision_under_capture_lock(ree):
     with ThreadPoolExecutor(max_workers=2) as pool:
         results = list(pool.map(lambda name: patch(name, expected_version=original), ["one", "two"]))
     assert sorted(result.status for result in results) == ["failed", "succeeded"]
-    assert git(ree, "rev-list", "--count", "HEAD") == "2"
+    assert git(ree, "rev-list", "--count", "HEAD") == "3"
 
 
 def operation_record(layout, result):
-    history = result.outputs["history"]
-    root = layout.root / history["scope"]
-    return json.loads((root / ".git" / "repo2ree" / "operations" / f"{history['attempt_id']}.json").read_text())
+    return next(
+        record.model_dump(mode="json")
+        for record in read_operation_history(layout).operations
+        if record.attempt_id == result.context.attempt_id
+    )
 
 
 def test_noop_cancel_and_failure_each_have_command_record(ree):
@@ -147,7 +238,8 @@ def test_noop_cancel_and_failure_each_have_command_record(ree):
     assert [record["operation_status"] for record in records] == ["succeeded", "canceled", "failed"]
     for record in records:
         assert record["command"]["operation"] == "patch_ree_definition"
-        assert record["before_snapshot_id"] == record["after_snapshot_id"]
+        assert record["before_snapshot_id"] != record["after_snapshot_id"]
+        assert record["changed"] is False
         assert record["capture_status"] == "captured"
     assert records[2]["command"]["args"]["expected_version"] == "stale"
 
@@ -163,8 +255,9 @@ def test_executor_bookkeeping_does_not_create_observation(ree):
     result = dispatch.run_command(
         LintScriptsCommand(args=LintScriptsArgs(targets=[])), run_id="lint", log=lambda *args: None
     )
-    assert result.outputs["history"]["changed"] is False
-    assert git(ree, "rev-list", "--count", "HEAD") == "2"
+    assert result.history is not None
+    assert result.history.changed is False
+    assert git(ree, "rev-list", "--count", "HEAD") == "3"
     assert "runs/" not in git(ree, "ls-tree", "-r", "--name-only", "HEAD")
 
 

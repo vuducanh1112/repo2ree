@@ -29,6 +29,7 @@ from repo2ree_protocol.frames import (
 from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.workbench import (
     CopyChunkRequest,
+    ExecActionRequest,
     ExecSimpleRequest,
     WorkbenchWsMessage,
     WorkbenchWsRequest,
@@ -141,14 +142,19 @@ def test_is_running_true_and_no_workbench_false() -> None:
 
 
 def test_exec_action_streams_logs_then_result() -> None:
+    from repo2ree_protocol.execution import ExecutionContext
+
     socket = FakeSocket()
     registry = WorkbenchConnectionRegistry()
     registry.register("a1", socket.connection)
     client = WsWorkbenchClient(registry)
 
     frames: list[Any] = []
-    join = _run_in_thread(lambda: frames.extend(client.exec_action("a1", "{}", "run1", {})))
-    socket.wait_for_request()
+    context = ExecutionContext.new(ree_id="ree-1")
+    join = _run_in_thread(lambda: frames.extend(client.exec_action("a1", "{}", "run1", {}, context)))
+    request = socket.wait_for_request()
+    assert isinstance(request.request, ExecActionRequest)
+    assert request.request.context == context
     socket.respond(LogFrame(stream="stdout", level="info", message="working"))
     socket.respond(ResultFrame(result=ActionResult(status="succeeded")))
     join()

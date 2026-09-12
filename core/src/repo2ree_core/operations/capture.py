@@ -8,16 +8,19 @@ A pending record means completion is unresolved, not that execution rolled back.
 from __future__ import annotations
 
 from collections.abc import Callable
-from contextlib import ExitStack
-from typing import Any
-from uuid import uuid4
+from contextlib import ExitStack, suppress
 
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import write_json_atomic
 from repo2ree_core.persistence.history import HistoryCaptureError, open_history
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_core.persistence.operation_history import OperationRecord, next_operation_sequence
+from repo2ree_core.persistence.operation_history import (
+    CompletedOperation,
+    OperationRecord,
+    next_operation_sequence,
+    read_operation_history,
+)
 from repo2ree_protocol.command import (
     Command,
     ReviewAcquireSourceCommand,
@@ -25,12 +28,19 @@ from repo2ree_protocol.command import (
     ReviewBuildRuntimeCommand,
     ReviewRunExperimentCommand,
 )
+from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.log import LogSink
-from repo2ree_protocol.result import ActionResult
+from repo2ree_protocol.result import ActionResult, HistoryReference
 
 
 def capture_command(
-    *, layout: ReeLayout, cmd: Command, run_id: str, log: LogSink, execute: Callable[[], ActionResult]
+    *,
+    layout: ReeLayout,
+    cmd: Command,
+    run_id: str,
+    context: ExecutionContext,
+    log: LogSink,
+    execute: Callable[[], ActionResult],
 ) -> ActionResult:
     """Capture input, outcome and state without implying transactional rollback."""
     # Preserve missing-REE preconditions without creating a new REE implicitly.
@@ -48,7 +58,8 @@ def capture_command(
     ):
         scope = layout.review(cmd.args.review_id)
     record = OperationRecord(
-        attempt_id=uuid4().hex,
+        attempt_id=context.attempt_id,
+        context=context,
         run_id=run_id,
         command=cmd.model_dump(mode="json"),
         scope=scope.root.relative_to(layout.root).as_posix(),
@@ -58,6 +69,8 @@ def capture_command(
     try:
         with ExitStack() as stack:
             history = stack.enter_context(open_history(layout))
+            if any(item.attempt_id == context.attempt_id for item in read_operation_history(layout).operations):
+                return ActionResult.failed("conflict", "Execution attempt already exists; retry with a new attempt ID")
             record.sequence = next_operation_sequence(layout)
             if scope != layout:
                 author = ReeDirectory(layout).read_ree()
@@ -70,23 +83,27 @@ def capture_command(
             record.operation_status = "unknown"
             write_json_atomic(record_path, record.model_dump(mode="json"))
             try:
-                result = execute()
+                result = execute().model_copy(update={"context": context, "history": None})
             except Exception as exc:  # noqa: BLE001 — capture partial state from escaped handlers
                 log("system", "error", f"{cmd.operation} raised: {exc}")
                 result = failed_from_exception(exc, f"{cmd.operation} raised: {exc}")
+                result = result.model_copy(update={"context": context})
             record.operation_status = result.status
             record.operation_failure = result.failure
+            record.result = result
             # Preserve the handler outcome even if snapshot publication fails.
             write_json_atomic(record_path, record.model_dump(mode="json"))
-            record.after_snapshot_id = history.capture(
+            record.after_snapshot_id, record.changed = history.commit_operation(
                 operation=cmd.operation,
-                run_id=run_id,
-                outcome=result.status,
-                attempt_id=record.attempt_id,
-                reuse_unchanged=True,
+                record=CompletedOperation.model_validate(
+                    {**record.model_dump(), "capture_status": "captured"}
+                ).model_dump(mode="json", exclude={"after_snapshot_id"}),
             )
             record.capture_status = "captured"
-            write_json_atomic(record_path, record.model_dump(mode="json"))
+            # The commit is authoritative. Cleanup is best-effort; a stale
+            # pending record is reconciled with the published attempt on read.
+            with suppress(OSError):
+                record_path.unlink(missing_ok=True)
     except (HistoryCaptureError, OSError, ValueError) as exc:
         record.capture_status = "failed"
         record.capture_error = str(exc)
@@ -99,27 +116,28 @@ def capture_command(
             log("system", "error", f"Cannot finalize history record: {record_error}")
         message = f"REE history capture failed: {exc}; REE files have not been rolled back"
         log("system", "error", message)
-        return ActionResult.failed(
+        failed = ActionResult.failed(
             "internal",
             message,
             details={"code": "history_capture_failed"},
-            outputs={**(result.outputs if result is not None else {}), "history": _references(record)},
+            outputs=result.outputs if result is not None else {},
         )
-    return result.model_copy(update={"outputs": {**result.outputs, "history": _references(record)}})
+        return failed.model_copy(update={"context": context, "history": _references(record)})
+    return result.model_copy(update={"history": _references(record)})
 
 
-def _references(record: OperationRecord) -> dict[str, Any]:
-    return {
-        "schema_version": record.schema_version,
-        "selection_version": record.selection_version,
-        "attempt_id": record.attempt_id,
-        "scope": record.scope,
-        "capture_status": record.capture_status,
-        "before_snapshot_id": record.before_snapshot_id,
-        "after_snapshot_id": record.after_snapshot_id,
-        "operation_status": record.operation_status,
-        "operation_failure": record.operation_failure.model_dump(mode="json") if record.operation_failure else None,
-        "changed": (record.before_snapshot_id != record.after_snapshot_id)
-        if record.capture_status == "captured"
-        else None,
-    }
+def _references(record: OperationRecord) -> HistoryReference:
+    return HistoryReference.model_validate(
+        {
+            "schema_version": record.schema_version,
+            "selection_version": record.selection_version,
+            "attempt_id": record.attempt_id,
+            "scope": record.scope,
+            "capture_status": record.capture_status,
+            "before_snapshot_id": record.before_snapshot_id,
+            "after_snapshot_id": record.after_snapshot_id,
+            "operation_status": record.operation_status,
+            "operation_failure": record.operation_failure.model_dump(mode="json") if record.operation_failure else None,
+            "changed": record.changed if record.capture_status == "captured" else None,
+        }
+    )

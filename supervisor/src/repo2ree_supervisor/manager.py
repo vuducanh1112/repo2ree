@@ -28,6 +28,7 @@ from uuid import uuid4
 
 from repo2ree_protocol.allocation import AllocationRecord, AllocationRequest, AllocationState
 from repo2ree_protocol.command import Command
+from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import (
     AllocationStatusFrame,
     ErrorFrame,
@@ -50,6 +51,7 @@ from repo2ree_protocol.tracing import (
     record_exit_code,
     record_failure,
     record_ree_id,
+    record_result_evidence,
     record_span_facts,
 )
 from repo2ree_supervisor.allocation_store import AllocationStore
@@ -313,10 +315,17 @@ class WorkbenchManager:
         cmd: Command,
         run_id: str,
         log: LogSink,
+        context: ExecutionContext | None = None,
     ) -> ActionResult:
         """Run a typed Command inside the workbench; stream logs to log."""
+        context = context or ExecutionContext.new(ree_id=handle.ree_id)
+        if context.ree_id not in {None, handle.ree_id}:
+            raise ValueError("Execution context belongs to another REE")
+        context = context.model_copy(update={"ree_id": handle.ree_id})
         with tracer.start_as_current_span("workbench.dispatch_action") as span:
-            CommandSpanAttrs(operation=str(cmd.operation), run_id=run_id, ree_id=handle.ree_id).apply(span)
+            CommandSpanAttrs(
+                operation=str(cmd.operation), run_id=run_id, ree_id=handle.ree_id, execution=context
+            ).apply(span)
             WorkbenchSpanAttrs(
                 workbench_id=handle.workbench_id,
             ).apply(span)
@@ -341,11 +350,16 @@ class WorkbenchManager:
                 )
                 with tracer.start_as_current_span("workbench.execute"):
                     _t0 = time.monotonic()
-                    result = self._dispatch_action_locked(handle, cmd, run_id, log)
+                    result = self._dispatch_action_locked(handle, cmd, run_id, log, context)
                     _exec_duration.record(
                         time.monotonic() - _t0,
                         command_metric_attrs(str(cmd.operation), status=result.status),
                     )
+            if result.context is not None and result.context != context:
+                raise RuntimeError("Executor returned a different execution context")
+            if result.history is not None and result.history.attempt_id != context.attempt_id:
+                raise RuntimeError("Executor returned history for a different execution attempt")
+            result = result.model_copy(update={"context": context})
             # Mirror the executor's wide event host-side: the command span's
             # outputs travel over the best-effort span relay, so this dispatch
             # span is the copy guaranteed to reach the collector.
@@ -353,6 +367,7 @@ class WorkbenchManager:
             record_span_facts(span, result.outputs, namespace="output")
             record_failure(span, result.failure)
             record_command_status(span, result.status)
+            record_result_evidence(span, result)
             return result
 
     def cancel_run(self, handle: WorkbenchHandle, run_id: str) -> None:
@@ -369,6 +384,7 @@ class WorkbenchManager:
         cmd: Command,
         run_id: str,
         log: LogSink,
+        context: ExecutionContext,
     ) -> ActionResult:
         cmd_json = cmd.model_dump_json()
 
@@ -389,7 +405,7 @@ class WorkbenchManager:
         # is non-blocking (it enqueues for a background forwarder), so export never
         # sits on this loop, the per-REE lock, or the measured execute window.
         result: ActionResult | None = None
-        for frame in self._workbench.exec_action(handle.workbench_id, cmd_json, run_id, env):
+        for frame in self._workbench.exec_action(handle.workbench_id, cmd_json, run_id, env, context):
             if isinstance(frame, LogFrame):
                 log(frame.stream, frame.level, frame.message)
             elif isinstance(frame, SpanFrame):

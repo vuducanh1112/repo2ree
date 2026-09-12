@@ -29,14 +29,15 @@ def test_read_history_orders_attempts_and_preserves_legacy_records(tmp_path, mon
     _patch("second")
     records = read_operation_history(layout).operations
     assert [record.sequence for record in records] == [2, 1]
-    assert records[0].before_snapshot_id == records[0].after_snapshot_id
+    assert records[0].before_snapshot_id != records[0].after_snapshot_id
+    assert records[0].changed is False
     assert records[1].command["args"]["patch"] == {"name": "second"}
-    legacy = records[1].model_dump(mode="json", exclude={"sequence"})
+    legacy = records[1].model_dump(mode="json", exclude={"sequence", "context", "result", "changed"})
     legacy["attempt_id"] = "legacy"
     path = layout.git_dir / "repo2ree" / "operations" / "legacy.json"
     path.write_text(json.dumps(legacy))
     assert read_operation_history(layout).operations[-1].sequence is None
-    assert first.outputs["history"]["capture_status"] == "captured"
+    assert first.history.capture_status == "captured"
 
 
 def test_download_contains_inspectable_git_and_loadable_portable_bundle(tmp_path, monkeypatch):

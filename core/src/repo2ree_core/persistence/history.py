@@ -15,9 +15,10 @@ import stat
 import subprocess
 import tempfile
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from repo2ree_core.persistence.directory import UNREADABLE_DOCUMENT, ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
@@ -173,21 +174,66 @@ class GitHistory:
         run_id: str | None = None,
         outcome: str | None = None,
         attempt_id: str | None = None,
+        record: dict[str, Any] | None = None,
     ) -> str:
-        metadata = {
+        metadata: dict[str, Any] = {
             "schema_version": 1,
             "selection_version": SELECTION_VERSION,
             "run_id": run_id,
             "outcome": outcome,
             "attempt_id": attempt_id,
         }
+        if record is not None:
+            metadata.update(kind="operation.completed", schema_version=2, record=record)
         message = f"{operation}\n\n{json.dumps(metadata)}\n"
         parents = ("-p", parent) if parent is not None else ()
         commit = self._git("commit-tree", tree, *parents, data=message.encode()).stdout.decode().strip()
         # Compare-and-swap also detects a non-cooperating writer moving the ref.
         self._git("update-ref", HISTORY_REF, commit, parent or "")
-        self._git("read-tree", commit)
+        # update-ref publishes the journal entry. The index is only a cache:
+        # failing to refresh it must not turn a published outcome into failure.
+        with suppress(HistoryCaptureError, OSError):
+            self._git("read-tree", commit)
         return commit
+
+    def commit_operation(self, *, operation: str, record: dict[str, Any]) -> tuple[str, bool]:
+        """Publish a completed attempt even when its state tree is unchanged."""
+        before = record["before_snapshot_id"]
+        if self.head_snapshot() != before:
+            raise HistoryCaptureError("History head changed before operation publication")
+        tree = self._tree()
+        previous_tree = self._git("rev-parse", f"{before}^{{tree}}").stdout.decode().strip()
+        changed = tree != previous_tree
+        commit = self._commit(
+            tree,
+            before,
+            operation=operation,
+            run_id=record["run_id"],
+            outcome=record["operation_status"],
+            attempt_id=record["attempt_id"],
+            record={**record, "changed": changed},
+        )
+        return commit, changed
+
+    def completed_operations(self) -> Iterator[tuple[str, dict[str, Any]]]:
+        """Read published journal entries without initializing or locking storage."""
+        head = self.head_snapshot()
+        if head is None:
+            return
+        entries = self._git("log", "--format=%H%x00%B%x00", head).stdout.decode().split("\0")
+        for index in range(0, len(entries) - 1, 2):
+            commit, body = entries[index].strip(), entries[index + 1]
+            _subject, separator, metadata = body.partition("\n\n")
+            if not separator:
+                continue
+            try:
+                document = json.loads(metadata)
+            except ValueError as exc:
+                raise HistoryCaptureError(f"Unreadable history metadata at {commit}") from exc
+            if document.get("kind") == "operation.completed":
+                if document.get("schema_version") != 2:
+                    raise HistoryCaptureError(f"Unsupported operation history at {commit}")
+                yield commit, document["record"]
 
     def capture(
         self,

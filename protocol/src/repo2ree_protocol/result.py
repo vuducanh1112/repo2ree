@@ -4,6 +4,8 @@ from typing import Any, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
+from repo2ree_protocol.execution import ExecutionContext
+
 # The terminal status of any executed action, shared by every layer that
 # produces or relays one (executor handlers, workbench, manager, run registry).
 ActionStatus = Literal["succeeded", "failed", "canceled"]
@@ -46,6 +48,23 @@ class Failure(BaseModel):
     details: dict[str, Any] | None = None
 
 
+class HistoryReference(BaseModel):
+    """Capture evidence, separate from operation-specific outputs."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    schema_version: Literal[1] = 1
+    selection_version: int
+    attempt_id: str
+    scope: str
+    capture_status: Literal["pending", "captured", "failed"]
+    before_snapshot_id: str | None = None
+    after_snapshot_id: str | None = None
+    operation_status: ActionStatus | Literal["not_started", "unknown"]
+    operation_failure: Failure | None = None
+    changed: bool | None = None
+
+
 class ActionResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -55,6 +74,8 @@ class ActionResult(BaseModel):
     # Present iff ``status == "failed"`` (enforced below). Absent for a success
     # or a cancellation, whose terminal status is itself the whole outcome.
     failure: Failure | None = None
+    context: ExecutionContext | None = None
+    history: HistoryReference | None = None
 
     @model_validator(mode="after")
     def _enforce_status_invariants(self) -> Self:
@@ -64,6 +85,8 @@ class ActionResult(BaseModel):
         * ``failed`` carries a nonzero exit code and a failure.
         * ``canceled`` is its own terminal outcome and carries no failure.
         """
+        if self.context is not None and self.history is not None and self.context.attempt_id != self.history.attempt_id:
+            raise ValueError("History reference belongs to another execution attempt")
         if self.status == "succeeded":
             if self.exit_code != 0:
                 raise ValueError("a succeeded ActionResult must have exit_code 0")

@@ -20,9 +20,11 @@ from click.testing import CliRunner
 
 import repo2ree_core.persistence.layout as layout_mod
 from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.persistence.operation_history import read_operation_history
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_executor.cli import cli
 from repo2ree_protocol.command import WriteFileArgs, WriteFileCommand
+from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.result import ActionResult
 
 # ================================================
@@ -31,6 +33,28 @@ from repo2ree_protocol.result import ActionResult
 
 
 runner = CliRunner()
+
+
+def test_explicit_context_joins_stdout_logs_and_git_without_tracing(initialized_ree, monkeypatch):
+    monkeypatch.delenv("TRACE_RELAY", raising=False)
+    context = ExecutionContext.new(ree_id="ree-1")
+    command = WriteFileCommand(args=WriteFileArgs(path="identity.txt", content="recorded"))
+    invocation = runner.invoke(
+        cli,
+        ["execute", "--action", "-", "--run-id", "reused-run", "--execution-context", context.model_dump_json()],
+        input=command.model_dump_json(),
+    )
+    assert invocation.exit_code == 0, invocation.output
+    result = ActionResult.model_validate_json(invocation.stdout)
+    assert result.context == context
+    assert result.history is not None
+    layout = ReeLayout.in_workbench()
+    record = read_operation_history(layout).operations[0]
+    assert record.context == context
+    assert record.after_snapshot_id == result.history.after_snapshot_id
+    frames = [json.loads(line) for line in layout.run_log("reused-run").read_text().splitlines()]
+    assert all(frame["context"] == context.model_dump(mode="json") for frame in frames)
+    assert frames[-1]["result"]["history"] == result.history.model_dump(mode="json")
 
 
 @pytest.fixture

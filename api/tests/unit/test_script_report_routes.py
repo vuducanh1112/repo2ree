@@ -20,6 +20,8 @@ def test_script_report_excludes_capture_metadata(client, online_ree, monkeypatch
 
     def dispatch(handle, command, run_id, log):
         result = run_command(command, run_id=run_id, log=log)
+        assert result.history is not None
+        assert result.history.capture_status == "captured"
         outputs.update(result.model_dump(mode="json")["outputs"])
         return result
 
@@ -27,7 +29,7 @@ def test_script_report_excludes_capture_metadata(client, online_ree, monkeypatch
     response = client.post(f"/api/v1/rees/{online_ree.ree_id}/{endpoint}", json={"targets": [{"kind": "build"}]})
 
     assert response.status_code == 200, response.text
-    assert outputs["history"]["capture_status"] == "captured"
+    assert "history" not in outputs
     assert response.json() == {key: value for key, value in outputs.items() if key != "history"}
     assert len(read_operation_history(layout).operations) == 1
     if endpoint == "script-inferences:generate":

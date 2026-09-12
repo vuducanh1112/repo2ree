@@ -997,6 +997,29 @@ export interface components {
             /** Snapshot Digest */
             snapshot_digest: string;
         };
+        /** ActionResult */
+        ActionResult: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "succeeded" | "failed" | "canceled";
+            /**
+             * Exit Code
+             * @default 0
+             */
+            exit_code: number;
+            /**
+             * Outputs
+             * @default {}
+             */
+            outputs: {
+                [key: string]: unknown;
+            };
+            failure?: components["schemas"]["Failure"] | null;
+            context?: components["schemas"]["ExecutionContext"] | null;
+            history?: components["schemas"]["HistoryReference"] | null;
+        };
         /**
          * ActivationOutcome
          * @description Whether the runtime this attempt certified is inhabitable.
@@ -1993,6 +2016,15 @@ export interface components {
             /** Runtime Presence */
             runtime_presence?: ("observed" | "version-mismatch" | "not-observed") | null;
         };
+        /** ExecutionContext */
+        ExecutionContext: {
+            /** Operation Id */
+            operation_id: string;
+            /** Attempt Id */
+            attempt_id: string;
+            /** Ree Id */
+            ree_id?: string | null;
+        };
         /** ExperimentAudit */
         ExperimentAudit: {
             /** Name */
@@ -2371,6 +2403,38 @@ export interface components {
             message: string;
         };
         /**
+         * HistoryReference
+         * @description Capture evidence, separate from operation-specific outputs.
+         */
+        HistoryReference: {
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+            /** Selection Version */
+            selection_version: number;
+            /** Attempt Id */
+            attempt_id: string;
+            /** Scope */
+            scope: string;
+            /**
+             * Capture Status
+             * @enum {string}
+             */
+            capture_status: "pending" | "captured" | "failed";
+            /** Before Snapshot Id */
+            before_snapshot_id?: string | null;
+            /** After Snapshot Id */
+            after_snapshot_id?: string | null;
+            /** Operation Status */
+            operation_status: ("succeeded" | "failed" | "canceled") | ("not_started" | "unknown");
+            operation_failure?: components["schemas"]["Failure"] | null;
+            /** Changed */
+            changed?: boolean | null;
+        };
+        /**
          * ImageCommandBinding
          * @description The runtime image's declared command (Entrypoint/Cmd), parsed once when
          *     the artifact is inspected and carried forward so the command-candidate check
@@ -2644,6 +2708,7 @@ export interface components {
             attempt_id: string;
             /** Run Id */
             run_id: string;
+            context?: components["schemas"]["ExecutionContext"] | null;
             /** Sequence */
             sequence?: number | null;
             /** Command */
@@ -2672,6 +2737,9 @@ export interface components {
             operation_failure?: components["schemas"]["Failure"] | null;
             /** Capture Error */
             capture_error?: string | null;
+            result?: components["schemas"]["ActionResult"] | null;
+            /** Changed */
+            changed?: boolean | null;
         };
         /**
          * PackageDeltaRecord
@@ -3500,6 +3568,8 @@ export interface components {
                 [key: string]: unknown;
             };
             failure?: components["schemas"]["Failure"] | null;
+            context?: components["schemas"]["ExecutionContext"] | null;
+            history?: components["schemas"]["HistoryReference"] | null;
         };
         /**
          * RuntimeContractBinding

@@ -7007,6 +7007,66 @@
         ],
         "title": "AcquireSourceReceipt"
       },
+      "ActionResult": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "succeeded",
+              "failed",
+              "canceled"
+            ],
+            "title": "Status"
+          },
+          "exit_code": {
+            "type": "integer",
+            "title": "Exit Code",
+            "default": 0
+          },
+          "outputs": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Outputs",
+            "default": {}
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Failure"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "context": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExecutionContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "history": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoryReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "ActionResult"
+      },
       "ActivationOutcome": {
         "properties": {
           "policy": {
@@ -9103,6 +9163,38 @@
         "title": "EvaluatedDependency",
         "description": "A ``Dependency`` row plus the report's classification of it.\n\nThe status is computed here \u2014 the single classifier that also feeds the\nsummary buckets \u2014 so presentation layers never re-derive it. The same\nholds for ``runtime_presence``, filled by the SBOM cross-check step."
       },
+      "ExecutionContext": {
+        "properties": {
+          "operation_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$",
+            "title": "Operation Id"
+          },
+          "attempt_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$",
+            "title": "Attempt Id"
+          },
+          "ree_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ree Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "operation_id",
+          "attempt_id"
+        ],
+        "title": "ExecutionContext"
+      },
       "ExperimentAudit": {
         "properties": {
           "name": {
@@ -9930,6 +10022,111 @@
         ],
         "title": "HealthResponse"
       },
+      "HistoryReference": {
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Schema Version",
+            "default": 1
+          },
+          "selection_version": {
+            "type": "integer",
+            "title": "Selection Version"
+          },
+          "attempt_id": {
+            "type": "string",
+            "title": "Attempt Id"
+          },
+          "scope": {
+            "type": "string",
+            "title": "Scope"
+          },
+          "capture_status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "captured",
+              "failed"
+            ],
+            "title": "Capture Status"
+          },
+          "before_snapshot_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before Snapshot Id"
+          },
+          "after_snapshot_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After Snapshot Id"
+          },
+          "operation_status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "succeeded",
+                  "failed",
+                  "canceled"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "not_started",
+                  "unknown"
+                ]
+              }
+            ],
+            "title": "Operation Status"
+          },
+          "operation_failure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Failure"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "changed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Changed"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "selection_version",
+          "attempt_id",
+          "scope",
+          "capture_status",
+          "operation_status"
+        ],
+        "title": "HistoryReference",
+        "description": "Capture evidence, separate from operation-specific outputs."
+      },
       "ImageCommandBinding": {
         "properties": {
           "kind": {
@@ -10456,6 +10653,16 @@
             "type": "string",
             "title": "Run Id"
           },
+          "context": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExecutionContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "sequence": {
             "anyOf": [
               {
@@ -10560,6 +10767,27 @@
               }
             ],
             "title": "Capture Error"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActionResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "changed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Changed"
           }
         },
         "additionalProperties": false,
@@ -12794,6 +13022,26 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/Failure"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "context": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExecutionContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "history": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoryReference"
               },
               {
                 "type": "null"

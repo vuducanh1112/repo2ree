@@ -46,7 +46,7 @@ async def dispatch_workbench_request(
         service.assign(req.allocation)
         await send(DoneFrame())
     elif isinstance(req, ExecActionRequest):
-        await pump(lambda: service.exec_action(req.cmd_json, req.run_id, req.env))
+        await pump(lambda: service.exec_action(req.cmd_json, req.run_id, req.env, req.context))
     elif isinstance(req, CancelRunRequest):
         service.cancel_run(req.run_id)
         await send(DoneFrame())

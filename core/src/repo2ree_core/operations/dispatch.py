@@ -59,6 +59,7 @@ from repo2ree_protocol.command import (
     SealReeCommand,
     WriteFileCommand,
 )
+from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.tracing import (
@@ -67,6 +68,7 @@ from repo2ree_protocol.tracing import (
     record_command_status,
     record_exit_code,
     record_failure,
+    record_result_evidence,
     record_span_facts,
 )
 
@@ -79,6 +81,7 @@ def run_command(
     log: LogSink,
     run_id: str | None = None,
     is_canceled: CancelCheck | None = None,
+    context: ExecutionContext | None = None,
 ) -> ActionResult:
     """Dispatch a typed Command to its handler and return an ActionResult.
 
@@ -89,10 +92,11 @@ def run_command(
     makes a trace joinable to what it produced. Minting it later meant a manual
     run's span said ``manual`` while its receipt said ``manual-<uuid>``.
     """
+    context = context or ExecutionContext.new()
     resolved_run_id = run_id or f"manual-{uuid4().hex[:12]}"
     cancel: CancelCheck = is_canceled if is_canceled is not None else lambda: False
     with tracer.start_as_current_span(f"command.{cmd.operation}") as span:
-        CommandSpanAttrs(operation=str(cmd.operation), run_id=resolved_run_id).apply(span)
+        CommandSpanAttrs(operation=str(cmd.operation), run_id=resolved_run_id, execution=context).apply(span)
         # The command span is the wide event for this unit of work: args go on
         # before dispatch so a failed or killed command still carries its
         # inputs; outputs (receipts, verdicts, digests) and the failure, when
@@ -104,16 +108,19 @@ def run_command(
         if isinstance(args, BaseModel):
             record_span_facts(span, args.model_dump(), namespace="arg")
         result = capture_command(
+            context=context,
             layout=ReeLayout.in_workbench(),
             cmd=cmd,
             run_id=resolved_run_id,
             log=log,
             execute=lambda: _run_unless_canceled(cmd, log=log, run_id=resolved_run_id, cancel=cancel),
         )
+        result = result.model_copy(update={"context": context})
         record_exit_code(span, result.exit_code)
         record_span_facts(span, result.outputs, namespace="output")
         record_failure(span, result.failure)
         record_command_status(span, result.status)
+        record_result_evidence(span, result)
         return result
 
 

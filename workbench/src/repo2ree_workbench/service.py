@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 
 from repo2ree_protocol.allocation import AllocationRequest
+from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import Frame
 from repo2ree_workbench.executor_process import LocalExecutor
 
@@ -34,9 +35,11 @@ class WorkbenchService:
         if self._assignment is None:
             raise RuntimeError("workbench has not been assigned")
 
-    def exec_action(self, cmd_json: str, run_id: str, env: dict[str, str]) -> Iterator[Frame]:
+    def exec_action(
+        self, cmd_json: str, run_id: str, env: dict[str, str], context: ExecutionContext | None = None
+    ) -> Iterator[Frame]:
         self._require_bound()
-        return self._executor.exec_action(cmd_json, run_id, env)
+        return self._executor.exec_action(cmd_json, run_id, env, context)
 
     def exec_simple(self, argv: list[str], timeout: int = 60) -> None:
         self._require_bound()

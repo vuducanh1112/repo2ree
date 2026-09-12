@@ -15,7 +15,7 @@ class _Backend:
         self.calls: list[str] = []
         self.root = root or Path("/nonexistent-test-root")
 
-    def exec_action(self, cmd_json: str, run_id: str, env: dict[str, str]) -> Iterator[Frame]:
+    def exec_action(self, cmd_json: str, run_id: str, env: dict[str, str], context=None) -> Iterator[Frame]:
         self.calls.append("exec_action")
         yield DoneFrame()
 

@@ -131,7 +131,14 @@ def start_single_command_run(
 
         result = workbench_manager.dispatch_action(handle, command, run_id, _log)
         if result.status == "succeeded" and after_success is not None:
-            result = after_success(handle, result)
+            completed = result
+            try:
+                result = after_success(handle, completed)
+            except Exception as exc:  # noqa: BLE001 — retain published evidence when API post-processing fails
+                result = ActionResult.failed(
+                    "internal", f"Post-execution processing failed: {exc}", origin="api", outputs=completed.outputs
+                )
+            result = result.model_copy(update={"context": completed.context, "history": completed.history})
         # Preserve the route's fallback outputs when the command reported none.
         if not result.outputs and outputs:
             return result.model_copy(update={"outputs": outputs})

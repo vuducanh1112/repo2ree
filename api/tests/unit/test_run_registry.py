@@ -140,6 +140,39 @@ def test_successful_run_reaches_succeeded_with_outputs():
     assert "_next_seq" not in final
 
 
+def test_run_keeps_execution_evidence_after_registry_restart(tmp_path):
+    from repo2ree_protocol.execution import ExecutionContext
+    from repo2ree_protocol.result import HistoryReference
+
+    context = ExecutionContext.new(ree_id=KNOWN_REE)
+    history = HistoryReference(
+        selection_version=1,
+        attempt_id=context.attempt_id,
+        scope=".",
+        capture_status="captured",
+        operation_status="succeeded",
+        after_snapshot_id="published",
+        before_snapshot_id="before",
+        changed=True,
+    )
+    registry = _registry(root=tmp_path)
+    run = registry.start_background(
+        KNOWN_REE,
+        "source",
+        {},
+        "src",
+        lambda e, r: ActionResult(status="succeeded", context=context, history=history, outputs={"domain": "value"}),
+    )
+    _wait_for(registry, run["run_id"], TERMINAL)
+    registry.shutdown()
+    reopened = _registry(root=tmp_path)
+    summary = reopened.get_run_summary(KNOWN_REE, run["run_id"])
+    assert summary["context"] == context.model_dump()
+    assert summary["history"] == history.model_dump()
+    assert summary["outputs"] == {"domain": "value"}
+    reopened.shutdown()
+
+
 def test_run_summary_has_stable_keys():
     registry = _registry()
     run_state = registry.start_background(KNOWN_REE, "source", {}, "src", lambda e, r: ActionResult(status="succeeded"))
@@ -154,6 +187,8 @@ def test_run_summary_has_stable_keys():
         "finished_at",
         "outputs",
         "failure",
+        "context",
+        "history",
     ]
     _wait_for(registry, run_state["run_id"], TERMINAL)
 

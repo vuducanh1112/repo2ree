@@ -49,10 +49,35 @@ baseline. If the files already exist without history, it records a
 If capture fails after initialization, the files remain and the command exits
 nonzero; retrying captures them without overwriting them.
 
-This history is local to the workbench and is removed with its volume. Git
-storage is excluded from REE file views and exported bundles. Later authoring
-operations do not capture versions yet; the REE seal retains its existing
-canonical digest, independent of the Git commit ID.
+Every completed core operation publishes a Git commit, including failures,
+cancellations, and attempts whose state tree is unchanged. Versioned JSON in
+the commit message binds the command, inputs, result, execution context, and
+before-state reference to the resulting tree. A changed commit ID therefore
+does not necessarily mean changed files; the history's `changed` field compares
+the trees. Review operations publish in their own history scopes.
+
+An execution context carries a logical `operation_id` and a unique `attempt_id`
+from supervisor dispatch through the workbench and executor to core. Explicit
+retries keep the operation ID and use a new attempt ID. These identities are
+independent of run labels, transport request IDs, and OpenTelemetry trace IDs.
+Direct executor calls create a context unless supplied `--execution-context`.
+
+`ActionResult.context` and `ActionResult.history` carry execution metadata
+separately from domain `outputs`. API run records preserve both. Executor
+stdout remains one result JSON; stderr carries log and span frames. Span
+attributes and local run logs reference the same invocation and published
+commit, but telemetry delivery is not required for history capture.
+
+Pending attempt files under `.git/repo2ree/operations/` preserve interrupted
+or unpublished work. Once an operation commit is published, it takes precedence
+over any pending file left behind. Legacy operation JSON remains readable.
+Publication does not roll back partial effects or establish response delivery.
+
+History is local to the workbench and is removed with its volume unless
+exported. Downloads wrap the unchanged portable `ree.zip`, author/review Git
+histories, and `export.json` in an outer ZIP. Git storage stays hidden from REE
+file views. The seal's canonical digest remains independent of Git commit IDs.
+The protocol change requires updating API, workbench, and executor together.
 
 From the repository root:
 

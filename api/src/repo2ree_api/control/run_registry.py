@@ -14,8 +14,9 @@ from fastapi import HTTPException
 from repo2ree_api.contracts import RunOperation, RunStatus
 from repo2ree_api.storage.run_store import IdempotencyConflictError, RunStore, StoredRun
 from repo2ree_core.time_utils import utc_now
+from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.log import emit_run_log
-from repo2ree_protocol.result import ActionResult, Failure, FailureCategory
+from repo2ree_protocol.result import ActionResult, Failure, FailureCategory, HistoryReference
 from repo2ree_protocol.tracing import (
     CommandSpanAttrs,
     command_metric_attrs,
@@ -24,6 +25,7 @@ from repo2ree_protocol.tracing import (
     get_tracer,
     record_command_status,
     record_failure,
+    record_result_evidence,
     record_span_facts,
 )
 
@@ -219,6 +221,8 @@ class RunRegistry:
         status: RunStatus,
         outputs: dict[str, Any],
         failure: Failure | None = None,
+        context: ExecutionContext | None = None,
+        history: HistoryReference | None = None,
     ) -> str:
         """Atomically settle a run and return the status actually stored."""
         with self._changed:
@@ -228,6 +232,8 @@ class RunRegistry:
                 status=status,
                 outputs=outputs,
                 failure=failure,
+                context=context,
+                history=history,
             )
             if stored is None:
                 return status
@@ -342,10 +348,16 @@ class RunRegistry:
                     # The run root is the trace a user finds first; make it a
                     # self-sufficient wide event by recording the outputs — and the
                     # failure, when there is one — here too.
+                    CommandSpanAttrs(operation=operation, run_id=run_id, ree_id=ree_id, execution=result.context).apply(
+                        span
+                    )
                     record_span_facts(span, result.outputs, namespace="output")
                     record_failure(span, result.failure)
                     record_command_status(span, result.status)
-                    settled = self.finalize(ree_id, run_id, result.status, result.outputs, result.failure)
+                    record_result_evidence(span, result)
+                    settled = self.finalize(
+                        ree_id, run_id, result.status, result.outputs, result.failure, result.context, result.history
+                    )
                     # Attributed with the *settled* status, so the counter agrees
                     # with what a poller reads back and with the run's own span.
                     terminal_attrs = command_metric_attrs(operation, status=settled)
@@ -420,8 +432,10 @@ class RunRegistry:
             "finished_at",
             "outputs",
             "failure",
+            "context",
+            "history",
         ]
-        return {key: run_state[key] for key in keys}
+        return {key: run_state.get(key) if key in {"context", "history"} else run_state[key] for key in keys}
 
     def list_runs(self, ree_id: str) -> list[dict[str, Any]]:
         """Summaries of every recorded run for ree_id, newest first."""

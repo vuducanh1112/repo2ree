@@ -35,6 +35,7 @@ from repo2ree_protocol.command import (
     RunExperimentArgs,
     RunExperimentCommand,
 )
+from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.log import configure_logging as _configure_logging
 from repo2ree_protocol.tracing import (
@@ -45,6 +46,7 @@ from repo2ree_protocol.tracing import (
     record_command_status,
     record_exit_code,
     record_failure,
+    record_result_evidence,
     setup_relay_tracing,
 )
 
@@ -55,7 +57,9 @@ tracer = get_tracer(__name__)
 # ================================================
 
 
-def _write_run_log_frame(run_log: TextIO | None, run_id: str | None, frame: dict[str, Any]) -> None:
+def _write_run_log_frame(
+    run_log: TextIO | None, run_id: str | None, frame: dict[str, Any], context: ExecutionContext | None = None
+) -> None:
     """Append one self-describing NDJSON frame to the run log.
 
     Every frame names its own ``type`` and the run it belongs to, so a reader
@@ -67,11 +71,15 @@ def _write_run_log_frame(run_log: TextIO | None, run_id: str | None, frame: dict
     """
     if run_log is None:
         return
-    run_log.write(json.dumps({"run_id": run_id, **frame}) + "\n")
+    run_log.write(
+        json.dumps({"run_id": run_id, "context": context.model_dump(mode="json") if context else None, **frame}) + "\n"
+    )
     run_log.flush()
 
 
-def _make_log_sink(run_log: TextIO | None, run_id: str | None = None) -> LogSink:
+def _make_log_sink(
+    run_log: TextIO | None, run_id: str | None = None, context: ExecutionContext | None = None
+) -> LogSink:
     """Return a LogSink that emits NDJSON to stderr (and optionally a run log file).
 
     The two destinations carry the same event in deliberately different shapes.
@@ -84,7 +92,7 @@ def _make_log_sink(run_log: TextIO | None, run_id: str | None = None) -> LogSink
     def _log(stream: str, level: str, message: str) -> None:
         event = {"type": "log", "stream": stream, "level": level, "message": message}
         click.echo(json.dumps(event), file=sys.stderr)
-        _write_run_log_frame(run_log, run_id, event)
+        _write_run_log_frame(run_log, run_id, event, context)
 
     return _log
 
@@ -136,7 +144,8 @@ def main() -> None:
     default=None,
     help="If set, append NDJSON events to /ree/runs/<run-id>.ndjson.",
 )
-def execute_cmd(action_source: str, run_id: str | None) -> None:
+@click.option("--execution-context", default=None, help="Serialized invocation identity.")
+def execute_cmd(action_source: str, run_id: str | None, execution_context: str | None) -> None:
     """Execute a typed Command envelope (JSON).
 
     The dispatcher calls this with the serialised Command on stdin:
@@ -154,6 +163,9 @@ def execute_cmd(action_source: str, run_id: str | None) -> None:
 
     try:
         cmd = command_adapter.validate_json(text)
+        context = (
+            ExecutionContext.model_validate_json(execution_context) if execution_context else ExecutionContext.new()
+        )
     except Exception as exc:  # noqa: BLE001 — malformed input is reported on the wire as a log frame, not as a traceback
         click.echo(
             json.dumps(
@@ -168,10 +180,10 @@ def execute_cmd(action_source: str, run_id: str | None) -> None:
         )
         sys.exit(2)
 
-    _run_command_envelope(cmd, run_id)
+    _run_command_envelope(cmd, run_id, context)
 
 
-def _run_command_envelope(cmd: Any, run_id: str | None) -> None:
+def _run_command_envelope(cmd: Any, run_id: str | None, context: ExecutionContext | None = None) -> None:
     """Run a validated Command envelope, streaming NDJSON and emitting the result.
 
     Shared by ``execute`` (the machine path, host → workbench) and the
@@ -179,6 +191,8 @@ def _run_command_envelope(cmd: Any, run_id: str | None) -> None:
     ``experiment``, ``materialize-workspace``) so they all log, persist, and
     signal failure identically. Exits non-zero on failure or cancellation.
     """
+    context = context or ExecutionContext.new()
+    run_id = run_id or f"manual-{context.attempt_id}"
     run_log: TextIO | None = None
     cancel_marker: Path | None = None
     if run_id is not None:
@@ -202,14 +216,19 @@ def _run_command_envelope(cmd: Any, run_id: str | None) -> None:
     _write_run_log_frame(
         run_log,
         run_id,
-        {"type": "command", "operation": str(cmd.operation), "command": cmd.model_dump(mode="json")},
+        {
+            "type": "command",
+            "operation": str(cmd.operation),
+            "command": cmd.model_dump(mode="json"),
+            "context": context.model_dump(mode="json"),
+        },
     )
 
     # Attach the dispatcher's trace context (forwarded via TRACEPARENT) so this
     # process's spans hang under the host-side dispatch span.
     ctx_token = attach_remote_context(os.environ.get("TRACEPARENT"))
     try:
-        log = _make_log_sink(run_log, run_id)
+        log = _make_log_sink(run_log, run_id, context)
         # The executor process itself, as one span. Without it a trace steps
         # straight from the supervisor's `docker exec` into core's command span
         # and the process boundary is nowhere in the picture — which also means
@@ -218,16 +237,18 @@ def _run_command_envelope(cmd: Any, run_id: str | None) -> None:
         # rather than at the CLI entry point because this is the first moment a
         # command exists to name.
         with tracer.start_as_current_span(f"executor.{cmd.operation}") as span:
-            CommandSpanAttrs(operation=str(cmd.operation), run_id=run_id).apply(span)
+            CommandSpanAttrs(operation=str(cmd.operation), run_id=run_id, execution=context).apply(span)
             result = run_command(
                 cmd,
                 log=log,
                 run_id=run_id,
                 is_canceled=is_canceled,
+                context=context,
             )
             record_exit_code(span, result.exit_code)
             record_failure(span, result.failure)
             record_command_status(span, result.status)
+            record_result_evidence(span, result)
         # stdout stays the wire protocol, byte for byte: one bare ActionResult
         # line is what the dispatcher parses. The run log gets the same value
         # wrapped in a named frame, which only the file needs.
@@ -236,6 +257,7 @@ def _run_command_envelope(cmd: Any, run_id: str | None) -> None:
             run_log,
             run_id,
             {"type": "result", "operation": str(cmd.operation), "result": result.model_dump(mode="json")},
+            context,
         )
     finally:
         detach_context(ctx_token)

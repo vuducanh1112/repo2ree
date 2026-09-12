@@ -11,7 +11,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from repo2ree_protocol.result import Failure
+from repo2ree_protocol.execution import ExecutionContext
+from repo2ree_protocol.result import Failure, HistoryReference
 
 RunStatus = Literal[
     "queued",
@@ -53,6 +54,8 @@ class RunSummary(BaseModel):
     # for succeeded/canceled runs, and (best-effort) for a failure that predates
     # this contract or arises outside a single ActionResult.
     failure: Failure | None = None
+    context: ExecutionContext | None = None
+    history: HistoryReference | None = None
 
 
 class RunList(BaseModel):

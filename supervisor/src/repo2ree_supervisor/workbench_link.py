@@ -35,6 +35,7 @@ from uuid import uuid4
 
 from repo2ree_protocol.allocation import AllocationRequest
 from repo2ree_protocol.build import BuildInfo
+from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import (
     COPY_CHUNK_BYTES,
     TERMINAL_FRAME_TYPES,
@@ -445,8 +446,17 @@ class WsWorkbenchClient:
     # Streaming — hand the frame stream straight to the manager.
     # ------------------------------------------------
 
-    def exec_action(self, workbench_id: str, cmd_json: str, run_id: str, env: dict[str, str]) -> Iterator[Frame]:
-        return self._registry.pick(workbench_id).request(ExecActionRequest(cmd_json=cmd_json, run_id=run_id, env=env))
+    def exec_action(
+        self,
+        workbench_id: str,
+        cmd_json: str,
+        run_id: str,
+        env: dict[str, str],
+        context: ExecutionContext | None = None,
+    ) -> Iterator[Frame]:
+        return self._registry.pick(workbench_id).request(
+            ExecActionRequest(cmd_json=cmd_json, run_id=run_id, env=env, context=context)
+        )
 
     def cancel_run(self, workbench_id: str, run_id: str) -> None:
         conn = self._registry.pick(workbench_id)
