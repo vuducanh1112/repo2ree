@@ -175,7 +175,11 @@ class ReeDirectory:
         """
         if not declared:
             return None
-        for candidate in (self.layout.workspace_file(declared), self.layout.ree_file(declared)):
+        for candidate in (
+            self.layout.workspace_file(declared),
+            self.layout.ree_file(declared),
+            self.layout.artifacts / Path(declared).name,
+        ):
             if candidate.is_file():
                 return candidate
         return None

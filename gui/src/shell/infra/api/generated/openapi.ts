@@ -639,10 +639,10 @@ export interface paths {
         };
         /**
          * Download Ree Archive Route
-         * @description Download a portable sealed/draft ree.zip alongside captured Git histories.
+         * @description Download a captured REE repository with selected offline LFS payloads.
          *
-         *     The inner portable bundle retains its existing seal and is independently
-         *     loadable. The outer envelope carries local history for later inspection.
+         *     The extracted directory contains both the working files and Git storage.
+         *     Selected LFS payloads are included locally for offline use.
          */
         get: operations["downloadReeArchive"];
         put?: never;
@@ -1390,14 +1390,12 @@ export interface components {
         };
         /**
          * BundleContents
-         * @description What a bundle holds, as the REE document records it.
+         * @description Materialized payload inventory bound by the seal.
          *
-         *     A seal binds this: once sealed, the inventory and the bytes are fixed
-         *     together. Before that it is only ever what some earlier bundling saw — a
-         *     draft restored from a bundle keeps the inventory it arrived with, and any
-         *     edit since makes it a description of a bundle that no longer exists. Nothing
-         *     reads it as a claim about a draft: the audit reports payload status only
-         *     once the bundle has settled.
+         *     Capture-policy version 2 uses repository-relative paths and actual LFS
+         *     payload digests, excluding Git storage and the self-containing manifest.
+         *     Legacy inventories retain their original portable-archive path semantics.
+         *     Draft inventories are historical observations, not availability guarantees.
          */
         BundleContents: {
             /**
@@ -1479,6 +1477,23 @@ export interface components {
             digest: string;
             /** Role */
             role: string;
+        };
+        /**
+         * CapturePolicy
+         * @description Versioned payload inclusion, independent of a transient Git index.
+         */
+        CapturePolicy: {
+            /**
+             * Version
+             * @default 2
+             * @constant
+             */
+            version: 2;
+            /**
+             * Lfs Paths
+             * @default []
+             */
+            lfs_paths: string[];
         };
         /** CheckNode */
         CheckNode: {
@@ -2701,7 +2716,7 @@ export interface components {
             schema_version: 1;
             /**
              * Selection Version
-             * @default 1
+             * @default 2
              */
             selection_version: number;
             /** Attempt Id */
@@ -3112,6 +3127,7 @@ export interface components {
             definition?: components["schemas"]["ReeDefinition-Output"];
             receipts?: components["schemas"]["ReeReceipts"];
             contents?: components["schemas"]["BundleContents"];
+            capture?: components["schemas"]["CapturePolicy"] | null;
         };
         /** ReeSummary */
         ReeSummary: {
@@ -8370,7 +8386,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description REE download ZIP containing a portable ree.zip and local Git histories */
+            /** @description REE repository ZIP containing Git histories and selected offline LFS payloads */
             200: {
                 headers: {
                     [name: string]: unknown;

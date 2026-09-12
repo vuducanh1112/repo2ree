@@ -232,7 +232,7 @@ def test_upload_over_real_server(server: tuple[str, str]) -> None:
             resp = client.get(f"/api/v1/rees/{ree_id}/runs/{seal_run['run_id']}/logs")
             assert resp.status_code == 200
             messages = [entry["message"] for entry in resp.json()["entries"]]
-            assert any("Writing sealed bundle" in message for message in messages)
+            assert any("Preparing sealed artifacts" in message for message in messages)
 
             # The archive (> uvicorn's 16 MiB WS cap) must arrive intact via
             # chunked frames — one oversized frame used to kill the connection.

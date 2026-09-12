@@ -1,63 +1,93 @@
-"""Download envelope: an unchanged portable bundle plus local Git histories."""
+"""Download a pinned repository and its selected local LFS objects."""
 
 from __future__ import annotations
 
 import json
-import stat
+import os
+import shutil
 import tempfile
 import zipfile
 from collections.abc import Iterator
 from contextlib import ExitStack, contextmanager
 from pathlib import Path
 
-from repo2ree_core.bundle.seal import materialized_ree_archive
-from repo2ree_core.persistence.history import SELECTION_VERSION, open_history
+from repo2ree_core.bundle.export_format import RepositoryExport, ScopeExport
+from repo2ree_core.bundle.repository_export import transfer_scope
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.history import HistoryCaptureError, open_history
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.operation_history import history_scopes
 
 
 @contextmanager
 def materialized_ree_download(layout: ReeLayout) -> Iterator[Path]:
-    """Stage a consistent export under capture locks, then release before streaming."""
+    """Export captured state; no second domain selection or nested portable archive."""
     if not layout.manifest.is_file():
         raise FileNotFoundError(f"REE not found at {layout.root}")
     with tempfile.TemporaryDirectory() as temporary:
-        destination = Path(temporary) / "download.zip"
+        staging = Path(temporary)
+        with open_history(layout):
+            legacy = ReeDirectory(layout).read_ree()
+            if legacy.seal is not None and legacy.subject.capture is None:
+                # Preserve old seal bytes without inventing a new signed inventory.
+                if not layout.sealed_archive.is_file():
+                    raise HistoryCaptureError("Legacy sealed archive is unavailable")
+                destination = staging / "legacy.zip"
+                shutil.copyfile(layout.sealed_archive, destination)
+            else:
+                destination = None
+        if destination is not None:
+            yield destination
+            return
+        root = staging / "export"
+        exports: list[ScopeExport] = []
         with ExitStack() as locks:
-            author = locks.enter_context(open_history(layout))
-            author.capture_initial(existing=True)
-            scopes = history_scopes(layout)
-            heads: dict[str, str] = {}
-            histories = [author]
-            histories.extend(locks.enter_context(open_history(scope)) for scope in scopes[1:] if scope.git_dir.is_dir())
-            with materialized_ree_archive(layout) as portable, zipfile.ZipFile(destination, "w") as archive:
-                archive.write(portable, "ree.zip")
-                for history in histories:
-                    scope = history.layout
-                    if head := history.head_snapshot():
-                        heads[scope.root.relative_to(layout.root).as_posix()] = head
-                    for directory, _directories, files in scope.git_dir.walk(on_error=_walk_error):
-                        for name in sorted(files):
-                            path = directory / name
-                            # Copy bytes only; do not follow links into external storage.
-                            if not stat.S_ISREG(path.lstat().st_mode):
-                                raise RuntimeError(f"Cannot export non-regular Git storage: {path.name}")
-                            archive.write(path, f"ree/{path.relative_to(layout.root).as_posix()}")
-                archive.writestr(
-                    "export.json",
-                    json.dumps(
-                        {
-                            "schema_version": 1,
-                            "selection_version": SELECTION_VERSION,
-                            "portable_bundle": "ree.zip",
-                            "history_heads": heads,
-                            "history_scope": "captured state only; pending attempts may be unresolved",
-                        },
-                        indent=2,
-                    ),
+            for scope in history_scopes(layout):
+                history = locks.enter_context(open_history(scope))
+                head = history.head_snapshot()
+                if head is None:
+                    raise HistoryCaptureError("REE has no captured snapshot to export")
+                if scope == layout:
+                    ree = ReeDirectory(layout).read_ree()
+                    if ree.seal and ree.subject.capture:
+                        # The seal commit is immutable even if review operations follow it.
+                        found = None
+                        for commit, record in history.completed_operations():
+                            if (
+                                record["command"]["operation"] != "seal_ree"
+                                or record["operation_status"] != "succeeded"
+                            ):
+                                continue
+                            document = json.loads(history.git("show", f"{commit}:ree.json").stdout)
+                            if document.get("seal", {}).get("ree_digest") == str(ree.seal.ree_digest):
+                                found = commit
+                                break
+                        if found is None:
+                            raise HistoryCaptureError("Sealed state has no published successful seal operation")
+                        head = found
+                relative = scope.root.relative_to(layout.root).as_posix()
+                exports.append(
+                    transfer_scope(
+                        history,
+                        root / "ree" / relative,
+                        head=head,
+                        scope=relative,
+                        bundle=staging / f"scope-{len(exports)}.bundle",
+                    )
                 )
+        metadata = RepositoryExport(scopes=tuple(exports))
+        (root / "export.json").write_text(metadata.model_dump_json(indent=2))
+        destination = staging / "download.zip"
+        with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED, allowZip64=True) as archive:
+            for directory, _dirs, files in root.walk():
+                for name in sorted(files):
+                    path = directory / name
+                    relative = path.relative_to(root).as_posix()
+                    if path.is_symlink():
+                        info = zipfile.ZipInfo(relative)
+                        info.create_system = 3
+                        info.external_attr = 0o120777 << 16
+                        archive.writestr(info, os.fsencode(path.readlink()))
+                    else:
+                        archive.write(path, relative)
         yield destination
-
-
-def _walk_error(error: OSError) -> None:
-    raise error

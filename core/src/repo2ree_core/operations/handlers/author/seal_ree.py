@@ -56,14 +56,14 @@ class _ProgressLogger:
 
         if update.phase == "writing":
             message = (
-                f"Writing sealed bundle: {_format_bytes(update.bytes_processed)} / "
+                f"Preparing sealed artifacts: {_format_bytes(update.bytes_processed)} / "
                 f"{_format_bytes(update.bytes_total)} "
                 f"({percent}%), {update.entries_processed}/{update.entries_total} entries"
             )
         elif update.phase == "manifest":
             message = "Writing sealed manifest"
         else:
-            message = f"Publishing sealed bundle ({_format_bytes(update.archive_bytes)})"
+            message = "Publishing sealed repository state"
         self._log("system", "info", message)
         self._last_phase = update.phase
         self._last_percent = percent
@@ -107,6 +107,6 @@ def handle_seal_ree(
     log(
         "system",
         "info",
-        f"REE sealed: {outputs.ree_digest} ({_format_bytes(outputs.archive_bytes)}, {outputs.entry_count} entries)",
+        f"REE sealed: {outputs.ree_digest} ({_format_bytes(outputs.input_bytes)}, {outputs.entry_count} entries)",
     )
     return ActionResult(status="succeeded", exit_code=0, outputs=outputs.model_dump(mode="json"))

@@ -105,14 +105,14 @@ def test_duplicate_attempt_cannot_execute_or_overwrite_its_published_outcome(ree
 
 
 def test_index_refresh_failure_does_not_reverse_published_success(ree, monkeypatch):
-    real_git = GitHistory._git
+    real_git = GitHistory.git
 
     def fail_index(self, *args, **kwargs):
         if args[0] == "read-tree" and len(args) == 2 and args[1] != "--empty":
             raise HistoryCaptureError("index unavailable")
         return real_git(self, *args, **kwargs)
 
-    monkeypatch.setattr(GitHistory, "_git", fail_index)
+    monkeypatch.setattr(GitHistory, "git", fail_index)
     first = patch()
     assert first.status == "succeeded"
     assert first.history.after_snapshot_id == git(ree, "rev-parse", "HEAD")

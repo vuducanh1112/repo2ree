@@ -15,6 +15,7 @@ pkgs.mkShell {
 
     # Essentials
     git
+    git-lfs
     less
     vim
     docker-client

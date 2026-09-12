@@ -22,7 +22,7 @@ def test_seal_runs_in_background_and_relays_progress(
 
     def dispatch_action(handle: WorkbenchHandle, command: Any, run_id: str, log: Any) -> ActionResult:
         assert isinstance(command, SealReeCommand)
-        log("system", "info", "Writing sealed bundle: 5/10 bytes (50%), 1/2 entries")
+        log("system", "info", "Preparing sealed artifacts: 5/10 bytes (50%), 1/2 entries")
         return ActionResult(status="succeeded", outputs={"ree_digest": "sha256:value"})
 
     monkeypatch.setattr(workbench_manager, "dispatch_action", dispatch_action)
@@ -49,5 +49,5 @@ def test_seal_runs_in_background_and_relays_progress(
 
     assert run["status"] == "succeeded"
     logs = client.get(f"/api/v1/rees/{online_ree.ree_id}/runs/{started['run_id']}/logs").json()
-    assert any("Writing sealed bundle" in entry["message"] for entry in logs["entries"])
+    assert any("Preparing sealed artifacts" in entry["message"] for entry in logs["entries"])
     assert indexed == [(online_ree.ree_id, {"ree": {}})]

@@ -164,16 +164,16 @@ def _record_in_ree_index(ree_id: str, document: Mapping[str, Any]) -> None:
     responses={
         **ERROR_RESPONSES,
         200: {
-            "description": "REE download ZIP containing a portable ree.zip and local Git histories",
+            "description": "REE repository ZIP containing Git histories and selected offline LFS payloads",
             "content": {"application/zip": {"schema": {"type": "string", "format": "binary"}}},
         },
     },
 )
 def download_ree_archive_route(ree_id: str) -> StreamingResponse:
-    """Download a portable sealed/draft ree.zip alongside captured Git histories.
+    """Download a captured REE repository with selected offline LFS payloads.
 
-    The inner portable bundle retains its existing seal and is independently
-    loadable. The outer envelope carries local history for later inspection.
+    The extracted directory contains both the working files and Git storage.
+    Selected LFS payloads are included locally for offline use.
     """
     handle = require_handle(ree_id)
     archive_filename = archive_download_filename(handle)

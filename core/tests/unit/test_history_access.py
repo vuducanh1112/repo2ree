@@ -1,6 +1,5 @@
 """History reads and portable downloads preserve prior state and operation records."""
 
-import io
 import json
 import subprocess
 import zipfile
@@ -40,7 +39,7 @@ def test_read_history_orders_attempts_and_preserves_legacy_records(tmp_path, mon
     assert first.history.capture_status == "captured"
 
 
-def test_download_contains_inspectable_git_and_loadable_portable_bundle(tmp_path, monkeypatch):
+def test_download_contains_usable_repository_and_preserves_imported_history(tmp_path, monkeypatch):
     from repo2ree_core.operations.handlers.author.load_ree_bundle import handle_load_ree_bundle
     from repo2ree_protocol.command import LoadReeBundleArgs
 
@@ -57,8 +56,8 @@ def test_download_contains_inspectable_git_and_loadable_portable_bundle(tmp_path
         payload = download.read_bytes()
         with zipfile.ZipFile(download) as archive:
             archive.extractall(tmp_path / "export")
-            with zipfile.ZipFile(io.BytesIO(archive.read("ree.zip"))) as portable:
-                assert json.loads(portable.read("ree/ree.json"))["subject"]["definition"]["name"] == "after"
+            assert "ree.zip" not in archive.namelist()
+            assert json.loads(archive.read("ree/ree.json"))["subject"]["definition"]["name"] == "after"
     executable = find_tool("git")
     assert executable is not None
     exported = tmp_path / "export" / "ree"
@@ -91,7 +90,9 @@ def test_download_contains_inspectable_git_and_loadable_portable_bundle(tmp_path
     assert json.loads(destination.manifest.read_bytes())["subject"]["definition"]["name"] == "after"
     with open_history(destination) as history:
         assert history.initial_snapshot() == destination_initial
-    assert read_operation_history(destination).operations == []
+    assert read_operation_history(destination).operations[0].command["args"]["patch"] == {"name": "after"}
+    with materialized_ree_download(destination) as reexport, zipfile.ZipFile(reexport) as archive:
+        assert archive.read("ree/reviews/review-1/overlay/review.txt") == b"evidence"
 
 
 def test_export_holds_lock_only_while_staging(tmp_path):
@@ -104,3 +105,16 @@ def test_export_holds_lock_only_while_staging(tmp_path):
         with (layout.git_dir / "repo2ree.lock").open("a") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     assert not download.exists()
+
+
+def test_ordinary_git_commit_body_does_not_hide_operation_evidence(tmp_path, monkeypatch):
+    layout = ReeLayout(root=tmp_path / "ree")
+    initialize_ree(layout, name="before")
+    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
+    result = _patch("after")
+    with open_history(layout) as history:
+        history.git("commit", "--allow-empty", "-m", "Manual inspection", "-m", "A normal human commit message.")
+    records = read_operation_history(layout).operations
+    assert len(records) == 1
+    assert result.history is not None
+    assert records[0].after_snapshot_id == result.history.after_snapshot_id

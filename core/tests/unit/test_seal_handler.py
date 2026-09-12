@@ -28,10 +28,9 @@ def test_seal_progress_log_uses_human_readable_sizes() -> None:
             phase="writing",
             bytes_processed=5 * 1024 * 1024,
             bytes_total=20 * 1024 * 1024,
-            archive_bytes=2 * 1024 * 1024,
             entries_processed=1,
             entries_total=4,
         )
     )
 
-    assert messages == ["Writing sealed bundle: 5.0 MiB / 20.0 MiB (25%), 1/4 entries"]
+    assert messages == ["Preparing sealed artifacts: 5.0 MiB / 20.0 MiB (25%), 1/4 entries"]

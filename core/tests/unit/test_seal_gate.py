@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import zipfile
 from pathlib import Path
 
 import pytest
@@ -101,10 +100,11 @@ def test_a_consistent_ree_seals_and_carries_its_inventory(tmp_path: Path) -> Non
     sealed = load_ree(store.layout, store)
     assert sealed.seal is not None
     assert sealed.seal.ree_digest == outputs.ree_digest
-    # The inventory the seal digest covers is the one the archive actually holds.
-    with zipfile.ZipFile(store.layout.sealed_archive) as archive:
-        packed = set(archive.namelist())
-    assert {str(entry.path) for entry in sealed.subject.contents.entries} <= packed
+    from repo2ree_core.bundle.repository_export import verify_inventory
+
+    verify_inventory(store.layout.root)
+    assert not store.layout.sealed_archive.exists()
+    assert sealed.subject.capture is not None
 
 
 def test_sealing_is_refused_while_a_receipt_is_stale(tmp_path: Path) -> None:
@@ -178,7 +178,7 @@ def test_sealing_streams_runtime_without_reading_the_whole_file(
     )
 
     assert outputs.input_bytes >= runtime.stat().st_size
-    assert outputs.archive_bytes == store.layout.sealed_archive.stat().st_size
+    assert not store.layout.sealed_archive.exists()
     assert [update.phase for update in progress][-2:] == ["manifest", "publishing"]
     assert progress[-1].bytes_processed == progress[-1].bytes_total
 
@@ -228,13 +228,16 @@ def test_sealing_is_refused_while_a_receipt_outlives_its_declaration(tmp_path: P
     assert not store.layout.sealed_archive.exists()
 
 
-def test_download_keeps_sealed_archive_bytes_unchanged(tmp_path):
+def test_download_refuses_seal_without_published_operation(tmp_path):
     from repo2ree_core.bundle.download import materialized_ree_download
+    from repo2ree_core.persistence.history import HistoryCaptureError, open_history
 
     store = _store(tmp_path, _ree())
+    with open_history(store.layout) as history:
+        history.capture_initial(existing=True)
     seal_ree(store.layout, source_included=False, runtime_included=False, results_included=False, sealed_at=_NOW)
-    original = store.layout.sealed_archive.read_bytes()
-    with materialized_ree_download(store.layout) as download, zipfile.ZipFile(download) as archive:
-        assert archive.read("ree.zip") == original
-        assert "ree/.git/HEAD" in archive.namelist()
-    assert store.layout.sealed_archive.read_bytes() == original
+    with (
+        pytest.raises(HistoryCaptureError, match="no published successful seal"),
+        materialized_ree_download(store.layout),
+    ):
+        pass

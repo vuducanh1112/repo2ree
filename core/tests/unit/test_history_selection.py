@@ -25,8 +25,8 @@ def test_layout_selection_and_declared_root_artifact(tmp_path):
     layout.materialize_marker.write_text("{}")
     with open_history(layout) as history:
         commit = history.capture(operation="test")
-        paths = history._git("ls-tree", "-r", "--name-only", commit).stdout.decode().splitlines()
-    assert "custom-runtime.tar" in paths
+        paths = history.git("ls-tree", "-r", "--name-only", commit).stdout.decode().splitlines()
+    assert "custom-runtime.tar" not in paths
     assert "unknown" not in paths
     assert ".workspace.materialized.json" in paths
     for tree in layout.history_trees:
@@ -41,7 +41,7 @@ def test_review_receipts_are_state_but_logs_are_not(tmp_path):
     layout.metadata.write_text("{}")
     with open_history(layout) as history:
         commit = history.capture(operation="review")
-        paths = history._git("ls-tree", "-r", "--name-only", commit).stdout.decode().splitlines()
+        paths = history.git("ls-tree", "-r", "--name-only", commit).stdout.decode().splitlines()
     assert paths == ["review.json", "runs/run.receipt.json"]
 
 
@@ -51,17 +51,17 @@ def test_legacy_history_migrates_once_and_preserves_initial_ref(tmp_path):
     with open_history(layout) as history:
         # An old whole-tree commit has no selection-version metadata.
         (layout.root / "legacy-log").write_text("log")
-        history._git("add", "--", "legacy-log")
-        tree = history._git("write-tree").stdout.decode().strip()
-        legacy = history._git("commit-tree", tree, "-p", initial, data=b"old capture\n").stdout.decode().strip()
-        history._git("update-ref", "refs/heads/ree-history", legacy)
+        history.git("add", "--", "legacy-log")
+        tree = history.git("write-tree").stdout.decode().strip()
+        legacy = history.git("commit-tree", tree, "-p", initial, data=b"old capture\n").stdout.decode().strip()
+        history.git("update-ref", "refs/heads/ree-history", legacy)
         migrated = history.capture(operation="observe_existing_ree", reuse_unchanged=True)
-        assert history._git("show", "-s", "--format=%s", migrated).stdout.strip() == b"migrate_history_selection"
-        assert b"legacy-log" not in history._git("ls-tree", "-r", "--name-only", migrated).stdout
+        assert history.git("show", "-s", "--format=%s", migrated).stdout.strip() == b"migrate_history_selection"
+        assert b"legacy-log" not in history.git("ls-tree", "-r", "--name-only", migrated).stdout
         assert history.capture(operation="observe_existing_ree", reuse_unchanged=True) == migrated
-        metadata = json.loads(history._git("show", "-s", "--format=%b", migrated).stdout)
+        metadata = json.loads(history.git("show", "-s", "--format=%b", migrated).stdout)
         assert metadata["selection_version"] == SELECTION_VERSION
-        assert history._git("rev-parse", INITIAL_REF).stdout.decode().strip() == initial
+        assert history.git("rev-parse", INITIAL_REF).stdout.decode().strip() == initial
 
 
 def test_only_owned_temporary_files_are_excluded(tmp_path):
@@ -75,7 +75,7 @@ def test_only_owned_temporary_files_are_excluded(tmp_path):
     user_file.write_text("authored bytes")
     with open_history(layout) as history:
         commit = history.capture(operation="test")
-        paths = history._git("ls-tree", "-r", "--name-only", commit).stdout.decode().splitlines()
+        paths = history.git("ls-tree", "-r", "--name-only", commit).stdout.decode().splitlines()
     assert staged.relative_to(layout.root).as_posix() not in paths
     assert user_file.relative_to(layout.root).as_posix() in paths
 

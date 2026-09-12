@@ -5056,7 +5056,7 @@
           "rees"
         ],
         "summary": "Download Ree Archive Route",
-        "description": "Download a portable sealed/draft ree.zip alongside captured Git histories.\n\nThe inner portable bundle retains its existing seal and is independently\nloadable. The outer envelope carries local history for later inspection.",
+        "description": "Download a captured REE repository with selected offline LFS payloads.\n\nThe extracted directory contains both the working files and Git storage.\nSelected LFS payloads are included locally for offline use.",
         "operationId": "downloadReeArchive",
         "parameters": [
           {
@@ -5071,7 +5071,7 @@
         ],
         "responses": {
           "200": {
-            "description": "REE download ZIP containing a portable ree.zip and local Git histories",
+            "description": "REE repository ZIP containing Git histories and selected offline LFS payloads",
             "content": {
               "application/zip": {
                 "schema": {
@@ -7731,7 +7731,7 @@
         "additionalProperties": false,
         "type": "object",
         "title": "BundleContents",
-        "description": "What a bundle holds, as the REE document records it.\n\nA seal binds this: once sealed, the inventory and the bytes are fixed\ntogether. Before that it is only ever what some earlier bundling saw \u2014 a\ndraft restored from a bundle keeps the inventory it arrived with, and any\nedit since makes it a description of a bundle that no longer exists. Nothing\nreads it as a claim about a draft: the audit reports payload status only\nonce the bundle has settled."
+        "description": "Materialized payload inventory bound by the seal.\n\nCapture-policy version 2 uses repository-relative paths and actual LFS\npayload digests, excluding Git storage and the self-containing manifest.\nLegacy inventories retain their original portable-archive path semantics.\nDraft inventories are historical observations, not availability guarantees."
       },
       "BundleEntry": {
         "properties": {
@@ -7871,6 +7871,28 @@
         ],
         "title": "CandidateDependency",
         "description": "Exactly which evidence justifies a candidate \u2014 the staleness key."
+      },
+      "CapturePolicy": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 2,
+            "title": "Version",
+            "default": 2
+          },
+          "lfs_paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Lfs Paths",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CapturePolicy",
+        "description": "Versioned payload inclusion, independent of a transient Git index."
       },
       "CheckNode": {
         "properties": {
@@ -10643,7 +10665,7 @@
           "selection_version": {
             "type": "integer",
             "title": "Selection Version",
-            "default": 1
+            "default": 2
           },
           "attempt_id": {
             "type": "string",
@@ -11783,6 +11805,16 @@
           },
           "contents": {
             "$ref": "#/components/schemas/BundleContents"
+          },
+          "capture": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CapturePolicy"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,

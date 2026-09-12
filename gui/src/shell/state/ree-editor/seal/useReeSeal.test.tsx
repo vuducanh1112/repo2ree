@@ -52,7 +52,7 @@ describe("useReeSeal", () => {
                 ts: "2026-01-01T00:00:00Z",
                 stream: "system",
                 level: "info",
-                message: "Writing sealed bundle: 10/10 bytes (100%), 2/2 entries",
+                message: "Preparing sealed artifacts: 10/10 bytes (100%), 2/2 entries",
               },
             ],
             next_cursor: null,

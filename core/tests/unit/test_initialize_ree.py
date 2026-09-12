@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.bundle.seal import materialized_ree_archive
+from repo2ree_core.bundle.download import materialized_ree_download
 from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.operations.read_models.files import list_ree_files, list_workspace_files, read_ree_file_bytes
 from repo2ree_core.persistence.history import GitHistory, HistoryCaptureError
@@ -37,7 +37,7 @@ def test_initial_snapshot_contains_the_actual_ree_and_scripts(tmp_path):
     assert result.status == "initialised"
     assert git(layout, "show", f"{result.snapshot_id}:ree.json") == layout.manifest.read_bytes()
     assert json.loads(layout.manifest.read_bytes())["subject"]["definition"]["name"] == "demo"
-    for tree in ("overlay", "workspace"):
+    for tree in ("overlay",):
         path = f"{tree}/{RESERVED_BUILD_SCRIPT}"
         assert git(layout, "show", f"{result.snapshot_id}:{path}") == (layout.root / path).read_bytes()
     assert git(layout, "log", "-1", "--format=%s").strip() == b"initialize_ree"
@@ -118,7 +118,7 @@ def test_unreadable_directory_does_not_publish_an_incomplete_snapshot(tmp_path, 
 
     with monkeypatch.context() as patch:
         patch.setattr(Path, "walk", unreadable_walk)
-        with pytest.raises(HistoryCaptureError, match="Cannot enumerate REE files"):
+        with pytest.raises(HistoryCaptureError, match="unreadable directory"):
             initialize_ree(layout, name="demo")
     assert git(layout, "for-each-ref", "refs/repo2ree/initial") == b""
     assert initialize_ree(layout, name="demo").snapshot_id
@@ -139,8 +139,8 @@ def test_git_storage_is_not_a_visible_file_or_bundle_content(tmp_path):
     assert not any(entry.path.startswith(".git/") for entry in list_ree_files(layout))
     with pytest.raises(ValueError, match="Invalid REE file path"):
         read_ree_file_bytes(layout, ".git/config")
-    with materialized_ree_archive(layout) as archive_path, zipfile.ZipFile(archive_path) as archive:
-        assert not any(".git" in Path(entry).parts for entry in archive.namelist())
+    with materialized_ree_download(layout) as archive_path, zipfile.ZipFile(archive_path) as archive:
+        assert "ree/.git/HEAD" in archive.namelist()
     # A symlink must not make private repository bytes visible through another path.
     (layout.workspace / "git-config").symlink_to(layout.git_dir / "config")
     assert not any(entry.path == "git-config" for entry in list_workspace_files(layout))

@@ -185,14 +185,12 @@ class BundleEntry(_DomainModel):
 
 
 class BundleContents(_DomainModel):
-    """What a bundle holds, as the REE document records it.
+    """Materialized payload inventory bound by the seal.
 
-    A seal binds this: once sealed, the inventory and the bytes are fixed
-    together. Before that it is only ever what some earlier bundling saw — a
-    draft restored from a bundle keeps the inventory it arrived with, and any
-    edit since makes it a description of a bundle that no longer exists. Nothing
-    reads it as a claim about a draft: the audit reports payload status only
-    once the bundle has settled.
+    Capture-policy version 2 uses repository-relative paths and actual LFS
+    payload digests, excluding Git storage and the self-containing manifest.
+    Legacy inventories retain their original portable-archive path semantics.
+    Draft inventories are historical observations, not availability guarantees.
     """
 
     entries: tuple[BundleEntry, ...] = ()
@@ -207,11 +205,29 @@ class BundleContents(_DomainModel):
         return self
 
 
+class CapturePolicy(_DomainModel):
+    """Versioned payload inclusion, independent of a transient Git index."""
+
+    version: Literal[2] = 2
+    lfs_paths: tuple[ReePath, ...] = ()
+
+    @model_validator(mode="after")
+    def canonical_paths(self) -> CapturePolicy:
+        paths = [str(path) for path in self.lfs_paths]
+        if paths != sorted(set(paths)):
+            raise ValueError("LFS paths must be unique and sorted")
+        for path in paths:
+            if any(part in {".git", ".", ".."} for part in path.split("/")) or path.startswith("/"):
+                raise ValueError("Unsafe LFS path")
+        return self
+
+
 class ReeSubject(_DomainModel):
     schema_version: Literal[1] = CURRENT_SCHEMA_VERSION
     definition: ReeDefinition = Field(default_factory=ReeDefinition)
     receipts: ReeReceipts = Field(default_factory=ReeReceipts)
     contents: BundleContents = Field(default_factory=BundleContents)
+    capture: CapturePolicy | None = None
 
 
 class Signature(_DomainModel):
@@ -227,11 +243,15 @@ class ReeSeal(_DomainModel):
 
 
 def canonical_subject_digest(subject: ReeSubject) -> Digest:
+    # Preserve the exact legacy digest encoding for documents predating capture policy.
+    document = subject.model_dump(mode="json")
+    if subject.capture is None:
+        document.pop("capture")
     return digest_json(
         {
             "domain": "org.repo2ree.ree-subject",
             "version": subject.schema_version,
-            "subject": subject.model_dump(mode="json"),
+            "subject": document,
         }
     )
 

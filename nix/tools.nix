@@ -38,6 +38,10 @@ let
       pkg = pkgs.gitMinimal;
       bin = "git";
     };
+    git-lfs = {
+      pkg = pkgs.git-lfs;
+      bin = "git-lfs";
+    };
     curl = {
       pkg = pkgs.curl;
       bin = "curl";

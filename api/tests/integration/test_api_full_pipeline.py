@@ -23,6 +23,7 @@ which stage feeds which — at a cost CI can pay on every run.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import subprocess
@@ -282,7 +283,10 @@ def test_full_authoring_pipeline(client: TestClient, ree: dict[str, Any], filmst
     filmstrip.frame(ree_id, "describe")
 
     # --- seal: refused if any receipt above has gone stale ---------------
-    response = client.post(f"/api/v1/rees/{ree_id}/ree:seal", json={})
+    response = client.post(
+        f"/api/v1/rees/{ree_id}/ree:seal",
+        json={"include_source": True, "include_runtime": True, "include_results": True},
+    )
     assert response.status_code == 200, response.text
     _await_run(client, ree_id, response.json(), what="seal")
     sealed = client.get(f"/api/v1/rees/{ree_id}").json()["ree"]
@@ -303,7 +307,8 @@ def test_full_authoring_pipeline(client: TestClient, ree: dict[str, Any], filmst
     response = client.get(f"/api/v1/rees/{ree_id}/ree-archive")
     assert response.status_code == 200
     with zipfile.ZipFile(BytesIO(response.content)) as archive:
-        assert "ree.zip" in archive.namelist()
+        assert "ree.zip" not in archive.namelist()
+        assert "ree/ree.json" in archive.namelist()
         assert "ree/.git/HEAD" in archive.namelist()
         history_response = client.get(f"/api/v1/rees/{ree_id}/history")
         assert history_response.status_code == 200
@@ -314,5 +319,37 @@ def test_full_authoring_pipeline(client: TestClient, ree: dict[str, Any], filmst
         assert operations[0]["context"]["ree_id"] == ree_id
         assert operations[0]["context"]["attempt_id"] == operations[0]["attempt_id"]
         assert operations[0]["result"]["context"] == operations[0]["context"]
-        assert json.loads(archive.read("export.json"))["history_heads"]["."] == operations[0]["after_snapshot_id"]
+        assert json.loads(archive.read("export.json"))["scopes"][0]["head"] == operations[0]["after_snapshot_id"]
         assert operations[0]["after_snapshot_id"]
+        metadata = json.loads(archive.read("export.json"))
+        assert metadata["payload_completeness"] == "selected_commits"
+        assert metadata["scopes"][0]["lfs_objects"]
+        for obj in metadata["scopes"][0]["lfs_objects"]:
+            oid = obj["oid"]
+            payload = archive.read(f"ree/.git/lfs/objects/{oid[:2]}/{oid[2:4]}/{oid}")
+            assert len(payload) == obj["size"]
+            assert hashlib.sha256(payload).hexdigest() == oid
+
+    # Load the downloaded release back through the real transport. The existing
+    # journal survives, and the load itself contributes a new completed attempt.
+    downloaded = response.content
+    upload_response = client.post(
+        f"/api/v1/rees/{ree_id}/ree:upload-init",
+        json={"file_name": "repository.zip", "size": len(downloaded), "content_type": "application/zip"},
+    )
+    assert upload_response.status_code == 200, upload_response.text
+    upload = upload_response.json()
+    assert client.put(upload["upload_url"], content=downloaded).status_code == 200
+    load_response = client.post(
+        f"/api/v1/rees/{ree_id}/ree:load",
+        json={"upload_token": upload["upload_token"], "archive_name": "repository.zip"},
+    )
+    assert load_response.status_code == 200, load_response.text
+    _await_run(client, ree_id, load_response.json(), what="repository reload")
+    reloaded = client.get(f"/api/v1/rees/{ree_id}").json()["ree"]
+    assert reloaded["seal"] == sealed["seal"]
+    after_import = client.get(f"/api/v1/rees/{ree_id}/history").json()["operations"]
+    assert {entry["attempt_id"] for entry in operations} <= {entry["attempt_id"] for entry in after_import}
+    assert any(entry["command"]["operation"] == "load_ree_bundle" for entry in after_import)
+    reexport = client.get(f"/api/v1/rees/{ree_id}/ree-archive")
+    assert reexport.status_code == 200

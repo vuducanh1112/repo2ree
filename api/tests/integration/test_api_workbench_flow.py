@@ -203,5 +203,5 @@ def test_archive_before_seal_returns_a_draft_bundle(client: TestClient, ree: dic
     assert resp.headers["content-type"] == "application/zip"
     with zipfile.ZipFile(BytesIO(resp.content)) as archive:
         assert "ree/.git/HEAD" in archive.namelist()
-        with zipfile.ZipFile(BytesIO(archive.read("ree.zip"))) as portable:
-            assert "ree/ree.json" in portable.namelist()
+        assert "ree/ree.json" in archive.namelist()
+        assert "ree.zip" not in archive.namelist()

@@ -95,6 +95,12 @@ def read_operation_history(layout: ReeLayout) -> OperationHistory:
                 record.after_snapshot_id = commit
                 record.capture_status = "captured"
                 # Newest published entry wins over stale pending/legacy files.
+                if record.attempt_id in published:
+                    previous = scoped[record.attempt_id]
+                    if previous.model_dump(exclude={"after_snapshot_id"}) != record.model_dump(
+                        exclude={"after_snapshot_id"}
+                    ):
+                        raise HistoryCaptureError(f"Conflicting journal identity: {record.attempt_id}")
                 if record.attempt_id not in published:
                     scoped[record.attempt_id] = record
                     published.add(record.attempt_id)

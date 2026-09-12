@@ -10,7 +10,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from contextlib import ExitStack, suppress
 
+from repo2ree_core.bundle.repository_files import prepare_reproducer
 from repo2ree_core.failures import failed_from_exception
+from repo2ree_core.persistence.capture_policy import write_capture_controls
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import write_json_atomic
 from repo2ree_core.persistence.history import HistoryCaptureError, open_history
@@ -93,6 +95,11 @@ def capture_command(
             record.result = result
             # Preserve the handler outcome even if snapshot publication fails.
             write_json_atomic(record_path, record.model_dump(mode="json"))
+            if scope.manifest.is_file():
+                current = ReeDirectory(scope).read_ree()
+                if current.seal is None:
+                    prepare_reproducer(scope, current)
+                    write_capture_controls(scope, current)
             record.after_snapshot_id, record.changed = history.commit_operation(
                 operation=cmd.operation,
                 record=CompletedOperation.model_validate(

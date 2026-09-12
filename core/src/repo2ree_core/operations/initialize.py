@@ -5,14 +5,17 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
+from repo2ree_core.bundle.repository_files import prepare_reproducer
 from repo2ree_core.digests import digest_file
 from repo2ree_core.domain.ree.model import (
     BuildRuntimeDefinition,
+    CapturePolicy,
     Ree,
     ReeDefinition,
     ReeSubject,
     TestActivationDefinition,
 )
+from repo2ree_core.persistence.capture_policy import write_capture_controls
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.history import open_history
 from repo2ree_core.persistence.layout import ReeLayout
@@ -43,6 +46,7 @@ def initialize_ree(layout: ReeLayout, *, name: str) -> InitializationResult:
             store.write_ree(
                 Ree(
                     subject=ReeSubject(
+                        capture=CapturePolicy(),
                         definition=ReeDefinition(
                             name=name,
                             build_runtime=BuildRuntimeDefinition(
@@ -53,9 +57,12 @@ def initialize_ree(layout: ReeLayout, *, name: str) -> InitializationResult:
                                 run_script_digest=digest_file(activation),
                                 run_script_size=activation.stat().st_size,
                             ),
-                        )
+                        ),
                     )
                 )
             )
+        if not existing:
+            prepare_reproducer(layout, store.read_ree())
+            write_capture_controls(layout, store.read_ree())
         snapshot = history.capture_initial(existing=existing)
     return InitializationResult("already_initialised" if existing else "initialised", snapshot)

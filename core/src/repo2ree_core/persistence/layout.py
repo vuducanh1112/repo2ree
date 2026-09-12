@@ -8,7 +8,7 @@ path arithmetic, but performs no filesystem I/O. The imperative shell —
 Layout under ``<storage_root>/<ree_id>/`` (host) or ``/ree/`` (workbench):
 
     ree.json              the REE document (a bundle carries the same file)
-    sealed.zip            immutable sealed archive (written by seal_ree)
+    sealed.zip            legacy portable archive cache (legacy imports only)
     snapshot.tar.gz       frozen upstream archive
     upload-staging/       staging area for in-flight source uploads
     upstream/             extracted snapshot, treated as read-only
@@ -155,8 +155,6 @@ class ReeLayout:
         """Fixed state files; operational logs and upload staging are not state."""
         return (
             self.manifest,
-            self.snapshot_archive,
-            self.sealed_archive,
             self.acquire_script,
             self.materialize_script,
             self.materialize_marker,
@@ -165,7 +163,7 @@ class ReeLayout:
     @property
     def history_trees(self) -> tuple[Path, ...]:
         """Open-ended state subtrees, including arbitrary user filenames."""
-        return (self.upstream, self.overlay, self.workspace, self.artifacts, self.results)
+        return (self.overlay,)
 
     @property
     def acquire_script(self) -> Path:

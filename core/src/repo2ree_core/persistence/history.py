@@ -18,15 +18,17 @@ from collections.abc import Iterator
 from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, BinaryIO
 
-from repo2ree_core.persistence.directory import UNREADABLE_DOCUMENT, ReeDirectory
+from repo2ree_core.persistence.capture_policy import capture_plan
+from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
+from repo2ree_core.persistence.lfs import store_payload
 from repo2ree_core.tooling import find_tool
 
 INITIAL_REF = "refs/repo2ree/initial"
 HISTORY_REF = "refs/heads/ree-history"
-SELECTION_VERSION = 1
+SELECTION_VERSION = 2
 
 
 class HistoryCaptureError(RuntimeError):
@@ -45,10 +47,15 @@ class GitHistory:
     executable: str
 
     def initialize(self) -> None:
-        self._git("init", "--quiet", "--template=", "--initial-branch=ree-history")
+        self.git("init", "--quiet", "--template=", "--initial-branch=ree-history")
 
-    def _git(
-        self, *args: str, data: bytes | None = None, index: Path | None = None, check: bool = True
+    def git(
+        self,
+        *args: str,
+        data: bytes | None = None,
+        index: Path | None = None,
+        check: bool = True,
+        output: BinaryIO | None = None,
     ) -> subprocess.CompletedProcess[bytes]:
         # A caller's repository, index, identity or config must not redirect a
         # capture. The absolute git-dir also prevents parent-repository discovery.
@@ -57,6 +64,7 @@ class GitHistory:
             GIT_CONFIG_NOSYSTEM="1",
             GIT_CONFIG_GLOBAL=os.devnull,
             GIT_ATTR_NOSYSTEM="1",
+            GIT_NO_REPLACE_OBJECTS="1",
             GIT_AUTHOR_NAME="repo2ree",
             GIT_AUTHOR_EMAIL="repo2ree@localhost",
             GIT_COMMITTER_NAME="repo2ree",
@@ -80,7 +88,8 @@ class GitHistory:
             cwd=self.layout.root,
             env=env,
             input=data,
-            capture_output=True,
+            stdout=output if output is not None else subprocess.PIPE,
+            stderr=subprocess.PIPE,
             check=False,
         )
         if check and result.returncode:
@@ -88,7 +97,7 @@ class GitHistory:
         return result
 
     def head_snapshot(self) -> str | None:
-        result = self._git("rev-parse", "--verify", "--quiet", f"{HISTORY_REF}^{{commit}}", check=False)
+        result = self.git("rev-parse", "--verify", "--quiet", f"{HISTORY_REF}^{{commit}}", check=False)
         if result.returncode == 1:
             return None
         if result.returncode:
@@ -96,7 +105,7 @@ class GitHistory:
         return result.stdout.decode().strip()
 
     def initial_snapshot(self) -> str | None:
-        result = self._git("rev-parse", "--verify", "--quiet", f"{INITIAL_REF}^{{commit}}", check=False)
+        result = self.git("rev-parse", "--verify", "--quiet", f"{INITIAL_REF}^{{commit}}", check=False)
         if result.returncode == 1:
             return None
         if result.returncode:
@@ -104,33 +113,12 @@ class GitHistory:
         return result.stdout.decode().strip()
 
     def _selected_files(self) -> list[Path]:
-        paths: set[Path] = set()
-        try:
-            fixed = (*self.layout.history_files, *ReeDirectory(self.layout).history_artifacts())
-        except UNREADABLE_DOCUMENT as exc:
-            raise HistoryCaptureError(f"Cannot resolve declared history artifacts: {exc}") from exc
-        for path in fixed:
-            if path.exists() or path.is_symlink():
-                paths.add(path)
-        for root in self.layout.history_trees:
-            if root.is_symlink():
-                paths.add(root)
-            elif root.exists():
-                for directory, _directories, files in root.walk(on_error=_walk_failed):
-                    paths.update(directory / name for name in files)
-        if isinstance(self.layout, ReviewLayout) and self.layout.runs.exists():
-            paths.update(self.layout.runs.glob("*.receipt.json"))
-        # Never read a declared artifact through a directory symlink (including
-        # one into recorder storage). Tree walks themselves do not follow links.
-        for path in paths:
-            relative = path.relative_to(self.layout.root)
-            if relative.parts[0] == ".git" or any(
-                parent.is_symlink()
-                for parent in path.parents
-                if parent != self.layout.root and self.layout.root in parent.parents
-            ):
-                raise HistoryCaptureError(f"Unsafe history artifact: {relative}")
-        return sorted(path for path in paths if not self._internal_temporary(path))
+        ree = ReeDirectory(self.layout).read_ree() if self.layout.manifest.is_file() else None
+        return [
+            self.layout.root / entry.path
+            for entry in capture_plan(self.layout, ree).entries
+            if not self._internal_temporary(self.layout.root / entry.path)
+        ]
 
     def _internal_temporary(self, path: Path) -> bool:
         """Recognize our staging names only for REE-owned persistence targets."""
@@ -147,23 +135,29 @@ class GitHistory:
     def _tree(self) -> str:
         with tempfile.TemporaryDirectory(dir=self.layout.git_dir, prefix="capture-") as temporary:
             index = Path(temporary) / "index"
-            self._git("read-tree", "--empty", index=index)
+            self.git("read-tree", "--empty", index=index)
             entries = bytearray()
+            ree = ReeDirectory(self.layout).read_ree() if self.layout.manifest.is_file() else None
+            lfs_paths = set(ree.subject.capture.lfs_paths) if ree and ree.subject.capture else set()
             for path in self._selected_files():
                 relative = path.relative_to(self.layout.root)
                 info = path.lstat()
                 if stat.S_ISLNK(info.st_mode):
                     mode = "120000"
-                    blob = self._git("hash-object", "-w", "--stdin", data=os.fsencode(path.readlink()))
+                    blob = self.git("hash-object", "-w", "--stdin", data=os.fsencode(path.readlink()))
                 elif stat.S_ISREG(info.st_mode):
                     mode = "100755" if info.st_mode & 0o111 else "100644"
-                    blob = self._git("hash-object", "-w", "--no-filters", "--", str(relative))
+                    if relative.as_posix() in lfs_paths:
+                        pointer = store_payload(path, self.layout.git_dir)
+                        blob = self.git("hash-object", "-w", "--stdin", data=pointer.encode())
+                    else:
+                        blob = self.git("hash-object", "-w", "--no-filters", "--", str(relative))
                 else:
                     raise HistoryCaptureError(f"Cannot capture special file: {relative}")
                 entries.extend(f"{mode} {blob.stdout.decode().strip()}\t".encode())
                 entries.extend(os.fsencode(relative.as_posix()) + b"\0")
-            self._git("update-index", "-z", "--index-info", data=bytes(entries), index=index)
-            return self._git("write-tree", index=index).stdout.decode().strip()
+            self.git("update-index", "-z", "--index-info", data=bytes(entries), index=index)
+            return self.git("write-tree", index=index).stdout.decode().strip()
 
     def _commit(
         self,
@@ -187,13 +181,13 @@ class GitHistory:
             metadata.update(kind="operation.completed", schema_version=2, record=record)
         message = f"{operation}\n\n{json.dumps(metadata)}\n"
         parents = ("-p", parent) if parent is not None else ()
-        commit = self._git("commit-tree", tree, *parents, data=message.encode()).stdout.decode().strip()
+        commit = self.git("commit-tree", tree, *parents, data=message.encode()).stdout.decode().strip()
         # Compare-and-swap also detects a non-cooperating writer moving the ref.
-        self._git("update-ref", HISTORY_REF, commit, parent or "")
+        self.git("update-ref", HISTORY_REF, commit, parent or "")
         # update-ref publishes the journal entry. The index is only a cache:
         # failing to refresh it must not turn a published outcome into failure.
         with suppress(HistoryCaptureError, OSError):
-            self._git("read-tree", commit)
+            self.git("read-tree", commit)
         return commit
 
     def commit_operation(self, *, operation: str, record: dict[str, Any]) -> tuple[str, bool]:
@@ -202,7 +196,7 @@ class GitHistory:
         if self.head_snapshot() != before:
             raise HistoryCaptureError("History head changed before operation publication")
         tree = self._tree()
-        previous_tree = self._git("rev-parse", f"{before}^{{tree}}").stdout.decode().strip()
+        previous_tree = self.git("rev-parse", f"{before}^{{tree}}").stdout.decode().strip()
         changed = tree != previous_tree
         commit = self._commit(
             tree,
@@ -218,19 +212,23 @@ class GitHistory:
     def completed_operations(self) -> Iterator[tuple[str, dict[str, Any]]]:
         """Read published journal entries without initializing or locking storage."""
         head = self.head_snapshot()
-        if head is None:
+        imported = (
+            self.git("for-each-ref", "--format=%(refname)", "refs/repo2ree/imports/").stdout.decode().splitlines()
+        )
+        heads = ([head] if head else []) + imported
+        if not heads:
             return
-        entries = self._git("log", "--format=%H%x00%B%x00", head).stdout.decode().split("\0")
+        entries = self.git("log", "--format=%H%x00%B%x00", *heads).stdout.decode().split("\0")
         for index in range(0, len(entries) - 1, 2):
             commit, body = entries[index].strip(), entries[index + 1]
             _subject, separator, metadata = body.partition("\n\n")
-            if not separator:
+            if not separator or not metadata.lstrip().startswith("{"):
                 continue
             try:
                 document = json.loads(metadata)
             except ValueError as exc:
                 raise HistoryCaptureError(f"Unreadable history metadata at {commit}") from exc
-            if document.get("kind") == "operation.completed":
+            if isinstance(document, dict) and document.get("kind") == "operation.completed":
                 if document.get("schema_version") != 2:
                     raise HistoryCaptureError(f"Unsupported operation history at {commit}")
                 yield commit, document["record"]
@@ -245,13 +243,13 @@ class GitHistory:
         reuse_unchanged: bool = False,
     ) -> str:
         """Capture selected state while the caller holds the operation lock."""
-        parent = self._git("rev-parse", "--verify", "--quiet", f"{HISTORY_REF}^{{commit}}", check=False)
+        parent = self.git("rev-parse", "--verify", "--quiet", f"{HISTORY_REF}^{{commit}}", check=False)
         if parent.returncode not in {0, 1}:
             raise HistoryCaptureError("Cannot read the REE history head")
         parent_id = parent.stdout.decode().strip() if parent.returncode == 0 else None
         tree = self._tree()
         if parent_id is not None:
-            body = self._git("show", "-s", "--format=%b", parent_id).stdout.decode()
+            body = self.git("show", "-s", "--format=%b", parent_id).stdout.decode()
             try:
                 metadata = json.loads(body)
             except ValueError:
@@ -260,7 +258,7 @@ class GitHistory:
             if version != SELECTION_VERSION:
                 parent_id = self._commit(tree, parent_id, operation="migrate_history_selection")
             if reuse_unchanged:
-                previous_tree = self._git("rev-parse", f"{parent_id}^{{tree}}").stdout.decode().strip()
+                previous_tree = self.git("rev-parse", f"{parent_id}^{{tree}}").stdout.decode().strip()
                 if tree == previous_tree:
                     return parent_id
         return self._commit(tree, parent_id, operation=operation, run_id=run_id, outcome=outcome, attempt_id=attempt_id)
@@ -269,7 +267,7 @@ class GitHistory:
         if snapshot := self.initial_snapshot():
             return snapshot
         snapshot = self.capture(operation="baseline_existing_ree" if existing else "initialize_ree")
-        self._git("update-ref", INITIAL_REF, snapshot)
+        self.git("update-ref", INITIAL_REF, snapshot)
         return snapshot
 
 
