@@ -20,6 +20,9 @@ from pathlib import Path
 from typing import BinaryIO
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+
+from test_support.artifacts import run_dir, write_provenance  # noqa: E402
 
 
 def capture(*args: str, cwd: Path = ROOT) -> str:
@@ -59,13 +62,14 @@ class Options:
 class E2EStack:
     def __init__(self, options: Options) -> None:
         self.options = options
+        run_dir()
         self.environment = os.environ.copy()
         revision = self.environment.get("REPO2REE_BUILD_REVISION") or build_revision()
         self.environment.setdefault("REPO2REE_BUILD_REVISION", revision)
         self.environment.setdefault("VITE_BUILD_REVISION", revision)
         self.run_token = f"e2e-{options.tier}-{uuid.uuid4().hex}"
-        self.log_dir = ROOT / "test-artifacts/logs"
-        self.coverage_dir = ROOT / "test-artifacts/coverage/python/data" / options.tier
+        self.log_dir = run_dir() / "python/services" / options.tier
+        self.coverage_dir = run_dir() / "python/coverage/data" / options.tier
         self.coverage_file = self.coverage_dir / ".coverage"
         self.control_state = options.state_root / "control" / self.run_token
         descriptor, port_name = tempfile.mkstemp(prefix="repo2ree-e2e-port-")
@@ -326,6 +330,7 @@ class E2EStack:
             f"{self.options.mode} compute-location process(es))"
         )
         subprocess.run(["coverage", "combine"], cwd=ROOT, env=environment, check=True)
+        write_provenance(self.coverage_dir)
         subprocess.run(["coverage", "report"], cwd=ROOT, env=environment, check=True)
         subprocess.run(
             [sys.executable, str(ROOT / "scripts/coverage/python_coverage.py"), "render", self.options.tier],

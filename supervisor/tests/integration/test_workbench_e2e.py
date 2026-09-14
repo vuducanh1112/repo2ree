@@ -44,6 +44,8 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
+from test_support.artifacts import case_dir, service_dir
+from test_support.recording import TestRecorder
 from websockets.asyncio.server import ServerConnection, serve
 
 from repo2ree_protocol import ProviderHello, WorkbenchImage
@@ -94,7 +96,7 @@ _TOOLS_BUNDLE = _REPO_ROOT / "dist" / "bundles" / "tools"
 os.environ.setdefault("REPO2REE_EXEC_BUNDLE", str(_EXEC_BUNDLE))
 os.environ.setdefault("REPO2REE_TOOLS_BUNDLE", str(_TOOLS_BUNDLE))
 
-TEST_RESULTS_DIR = Path(__file__).resolve().parents[3] / "test-artifacts" / "traces" / "supervisor-e2e"
+TEST_RESULTS_DIR = service_dir("supervisor-e2e")
 
 # The staging slot the upload acquisition reads from; the API mints these per
 # request, but the name only has to agree with the file we place in the bench.
@@ -216,6 +218,7 @@ def workbench(
     tmp_path: Path,
     service_connections: tuple[ProviderConnectionRegistry, WorkbenchConnectionRegistry],
     request: pytest.FixtureRequest,
+    test_recording: TestRecorder,
 ) -> Iterator[tuple[WorkbenchManager, WorkbenchHandle]]:
     """Provision a real workbench container; tear it down unconditionally.
 
@@ -240,8 +243,11 @@ def workbench(
     try:
         yield manager, handle
     finally:
-        _dump_workbench_logs(f"repo2ree-wb-{handle.allocation_id}", request.node.name)
-        manager.teardown(handle)
+        try:
+            test_recording.workbench(f"repo2ree-wb-{handle.allocation_id}")
+            _dump_workbench_logs(f"repo2ree-wb-{handle.allocation_id}", request.node.nodeid)
+        finally:
+            manager.teardown(handle)
 
 
 def _free_port() -> int:
@@ -282,7 +288,7 @@ def _dump_workbench_logs(container_name: str, test_name: str) -> None:
     the in-container Docker daemon's log (the entrypoint redirects it to
     ``/var/log/dockerd.log``), which is where runtime-build failures surface.
     """
-    out_dir = TEST_RESULTS_DIR / test_name
+    out_dir = case_dir(test_name) / "logs"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     entrypoint = subprocess.run(["docker", "logs", container_name], capture_output=True, text=True)

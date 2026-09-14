@@ -3,7 +3,7 @@
 test-gui:
     @echo "Running GUI unit tests..."
     cd gui && npx vitest run --coverage.enabled
-    @echo ">> node/unit report: test-artifacts/coverage/node/unit/index.html"
+    @echo ">> node/unit report: {{REPO2REE_TEST_RUN_DIR}}/node/coverage/unit/index.html"
 
 # Run browser-rendered accessibility checks against deterministic fixtures.
 [group('GUI tests')]

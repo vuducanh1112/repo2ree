@@ -2,7 +2,7 @@
 
 The home directory is pinned repo-wide (see the root ``conftest.py``); this
 narrows the *example database* — the failing cases Hypothesis replays on the
-next run — to ``test-artifacts/property-based-tests/core/``. Entries are keyed
+next run — to ``test-artifacts/cache/hypothesis/core/``. Entries are keyed
 by test identity, so a single shared database would also be correct; the split
 is for legibility, and so that dropping one package's accumulated cases never
 touches another's.

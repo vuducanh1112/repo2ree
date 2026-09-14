@@ -13,7 +13,7 @@ Deliberately not a recording. The demo walkthrough
 (``api/tests/e2e/api_walkthrough.py``) drives the same surface for a human
 audience, with narration and asciinema; it needs a live stack and a person to
 read it. This runs in CI and leaves a span record behind
-(``test-artifacts/traces/api-integration/``), which is what the trace journal
+(``test-artifacts/python/services/api-integration/``), which is what the trace journal
 renders.
 
 Scripts here are trivial by intent. A real Dockerfile build is the walkthrough's

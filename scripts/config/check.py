@@ -13,17 +13,22 @@ from typing import Any, Literal
 from scripts.config.export import CONTRACT, ROOT, build_contract, rendered_contract
 
 WORKSPACE_MEMBERS = tuple(tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["uv"]["workspace"]["members"])
-PYTHON_ROOTS = (*(f"{member}/src" for member in WORKSPACE_MEMBERS), "scripts")
+PYTHON_ROOTS = (*(f"{member}/src" for member in WORKSPACE_MEMBERS), "scripts", "test_support")
 TYPESCRIPT_ROOTS = ("gui/src", "gui/tests", "gui/scripts")
 TYPESCRIPT_INPUTS = tuple(
     sorted(
         {
             path
             for root in TYPESCRIPT_ROOTS
-            for suffix in ("*.js", "*.mjs", "*.ts", "*.tsx")
+            for suffix in ("*.js", "*.mjs", "*.cjs", "*.ts", "*.tsx")
             for path in (ROOT / root).rglob(suffix)
         }
-        | {path for suffix in ("*.js", "*.mjs", "*.ts") for path in (ROOT / "gui").glob(suffix) if path.is_file()}
+        | {
+            path
+            for suffix in ("*.js", "*.mjs", "*.cjs", "*.ts")
+            for path in (ROOT / "gui").glob(suffix)
+            if path.is_file()
+        }
     )
 )
 NIX_INPUTS = (ROOT / "flake.nix", *sorted((ROOT / "nix").rglob("*.nix")))

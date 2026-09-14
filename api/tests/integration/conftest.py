@@ -17,7 +17,6 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-import shutil
 import socket
 import subprocess
 import tempfile
@@ -36,12 +35,13 @@ import pytest
 # docstring.
 from api_integration_bench import (
     EXEC_BUNDLE,
-    SNAPSHOT_DIR,
     TEST_RESULTS_DIR,
     TOOLS_BUNDLE,
     WORKBENCH_IMAGE,
     ReeFilmstrip,
 )
+from test_support.artifacts import case_dir
+from test_support.recording import TestRecorder
 from websockets.asyncio.server import ServerConnection, serve
 
 # Must be set before the in-test workbench constructs its DockerIsolation.
@@ -80,11 +80,14 @@ if "TRACE_FILE" not in os.environ:
     os.environ["TRACE_FILE"] = str(_trace_file)
     _trace_file.parent.mkdir(parents=True, exist_ok=True)
     _trace_file.unlink(missing_ok=True)
-    shutil.rmtree(TEST_RESULTS_DIR / "by-test", ignore_errors=True)
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from repo2ree_api.deps import provider_connections, workbench_connections  # noqa: E402
+from repo2ree_api.deps import (  # noqa: E402
+    provider_connections,
+    workbench_connections,
+    workbench_manager,
+)
 from repo2ree_api.main import app  # noqa: E402
 from repo2ree_protocol import ProviderHello, WorkbenchImage  # noqa: E402
 from repo2ree_protocol.workbench import workbench_hello_adapter  # noqa: E402
@@ -126,11 +129,11 @@ def client() -> Iterator[TestClient]:
 @pytest.fixture
 def filmstrip(client: TestClient, request: pytest.FixtureRequest) -> ReeFilmstrip:
     """Per-test REE snapshot recorder, written beside the trace capture."""
-    return ReeFilmstrip(client, SNAPSHOT_DIR / f"{request.node.name}.ndjson")
+    return ReeFilmstrip(client, case_dir(request.node.nodeid) / "state.ndjson")
 
 
 @pytest.fixture
-def ree(client: TestClient, request: pytest.FixtureRequest) -> Iterator[dict[str, Any]]:
+def ree(client: TestClient, request: pytest.FixtureRequest, test_recording: TestRecorder) -> Iterator[dict[str, Any]]:
     """A real REE backed by a freshly provisioned workbench container.
 
     Teardown snapshots the container's logs into ``test-results/`` for
@@ -155,8 +158,18 @@ def ree(client: TestClient, request: pytest.FixtureRequest) -> Iterator[dict[str
         workspace = client.get(f"/api/v1/rees/{ree_id}").json()
         yield workspace
     finally:
-        _dump_workbench_logs(ree_id, request.node.name)
-        client.delete(f"/api/v1/rees/{ree_id}")
+        try:
+            handle = workbench_manager.lookup(ree_id)
+            if handle is not None:
+                container = f"repo2ree-wb-{handle.allocation_id}"
+                test_recording.workbench(container)
+                _dump_workbench_logs(container, request.node.nodeid)
+            else:
+                test_recording.repositories.append(
+                    {"source": ree_id, "status": "unavailable", "reason": "REE already deleted"}
+                )
+        finally:
+            client.delete(f"/api/v1/rees/{ree_id}")
 
 
 def _wait_for_provision(client: TestClient, ree_id: str, run_id: str, timeout_seconds: int = 180) -> str:
@@ -296,15 +309,14 @@ def _wait_until_provider_connected(provider_id: str, timeout: float = 10.0) -> N
     raise RuntimeError(f"provider {provider_id!r} did not dial in within {timeout}s")
 
 
-def _dump_workbench_logs(ree_id: str, test_name: str) -> None:
+def _dump_workbench_logs(container_name: str, test_name: str) -> None:
     """Snapshot the workbench's logs before it is torn down.
 
     ``workbench.log`` is the container's entrypoint output; ``dockerd.log`` is
     the in-container Docker daemon's log (the entrypoint redirects it to
     ``/var/log/dockerd.log``), which is where runtime-build failures surface.
     """
-    container_name = f"repo2ree-wb-{ree_id}"
-    out_dir = TEST_RESULTS_DIR / test_name
+    out_dir = case_dir(test_name) / "logs"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     entrypoint = subprocess.run(["docker", "logs", container_name], capture_output=True, text=True)

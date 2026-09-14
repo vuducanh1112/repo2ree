@@ -46,6 +46,7 @@ def test_combine_tier_requires_every_part(
         path = tmp_path / f"{tier}-parts" / part / ".coverage"
         path.parent.mkdir(parents=True)
         path.touch()
+        (path.parent / "provenance.json").write_text('{"execution_id":"same-run"}')
 
     with pytest.raises(RuntimeError, match=rf"^{tier} coverage is incomplete; missing: {parts[-1]}$"):
         combine_parts()
@@ -72,6 +73,7 @@ def test_combine_tier_uses_each_expected_part(
         path = tmp_path / f"{tier}-parts" / part / ".coverage"
         path.parent.mkdir(parents=True)
         path.touch()
+        (path.parent / "provenance.json").write_text('{"execution_id":"same-run"}')
         files.append(path)
 
     calls: list[tuple[object, ...]] = []
@@ -95,6 +97,7 @@ def test_combine_uses_only_selected_tiers(tmp_path: Path, monkeypatch: pytest.Mo
         path = tmp_path / tier / ".coverage"
         path.parent.mkdir(parents=True)
         path.touch()
+        (path.parent / "provenance.json").write_text('{"execution_id":"same-run"}')
         if tier != "demo-api":
             selected.append(path)
 
@@ -114,3 +117,49 @@ def test_combine_uses_only_selected_tiers(tmp_path: Path, monkeypatch: pytest.Mo
         (combined, "combine", "--keep", *(str(path) for path in selected)),
         (combined, "report"),
     ]
+
+
+def test_reporting_selects_one_complete_historical_run(tmp_path, monkeypatch):
+    monkeypatch.setattr(python_coverage, "ARTIFACTS", tmp_path)
+    monkeypatch.setattr(python_coverage, "DATA_DIR", tmp_path / "runs/new/coverage/python/data")
+    complete = tmp_path / "runs/complete"
+    for run, tier in [(complete, "unit"), (complete, "integration"), (tmp_path / "runs/later-unit", "unit")]:
+        path = run / "coverage/python/data" / tier / ".coverage"
+        path.parent.mkdir(parents=True)
+        path.touch()
+        (path.parent / "provenance.json").write_text('{"execution_id":"same-run"}')
+    assert python_coverage.select_reporting_run(("unit", "integration")) == complete
+
+
+def test_reporting_does_not_mix_separate_runs(tmp_path, monkeypatch):
+    monkeypatch.setattr(python_coverage, "ARTIFACTS", tmp_path)
+    monkeypatch.setattr(python_coverage, "DATA_DIR", tmp_path / "runs/new/coverage/python/data")
+    for tier in ("unit", "integration"):
+        path = tmp_path / "runs" / tier / "coverage/python/data" / tier / ".coverage"
+        path.parent.mkdir(parents=True)
+        path.touch()
+        (path.parent / "provenance.json").write_text('{"execution_id":"same-run"}')
+    with pytest.raises(RuntimeError, match="no recorded run"):
+        python_coverage.select_reporting_run(("unit", "integration"))
+
+
+def test_current_and_explicit_reporting_runs_are_preserved(tmp_path, monkeypatch):
+    current = tmp_path / "current"
+    data = current / "coverage/python/data"
+    monkeypatch.setattr(python_coverage, "DATA_DIR", data)
+    (data / "unit").mkdir(parents=True)
+    (data / "unit/.coverage").touch()
+    assert python_coverage.select_reporting_run(("unit", "integration")) == current
+    assert python_coverage.select_reporting_run(("combined",), tmp_path / "explicit") == tmp_path / "explicit"
+
+
+def test_stable_coverage_paths_reject_mixed_executions(tmp_path):
+    files = []
+    for tier in ("unit", "integration"):
+        path = tmp_path / tier / ".coverage"
+        path.parent.mkdir()
+        path.touch()
+        (path.parent / "provenance.json").write_text('{"execution_id":"' + tier + '"}')
+        files.append(path)
+    with pytest.raises(RuntimeError, match="different executions"):
+        python_coverage.coverage_identity(files)

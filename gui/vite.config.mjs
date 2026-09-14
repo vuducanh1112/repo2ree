@@ -1,13 +1,17 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { playwright } from '@vitest/browser-playwright'
-import { fileURLToPath, URL } from 'node:url'
+import { fileURLToPath, URL } from "node:url";
+import react from "@vitejs/plugin-react";
+import { playwright } from "@vitest/browser-playwright";
+import { defineConfig } from "vite";
+import { recordRuntime, testRunDir } from "./testArtifacts.cjs";
+
+// The Playwright dev server must not overwrite the Vitest invocation metadata.
+if (process.env.VITEST) recordRuntime("node");
 
 export default defineConfig({
   resolve: {
     alias: {
-      '@core': fileURLToPath(new URL('./src/core', import.meta.url)),
-      '@shell': fileURLToPath(new URL('./src/shell', import.meta.url)),
+      "@core": fileURLToPath(new URL("./src/core", import.meta.url)),
+      "@shell": fileURLToPath(new URL("./src/shell", import.meta.url)),
     },
   },
   plugins: [react()],
@@ -64,7 +68,7 @@ export default defineConfig({
     // which is what keeps it correct however vitest is invoked.
     coverage: {
       provider: "v8",
-      reportsDirectory: "../test-artifacts/coverage/node/unit",
+      reportsDirectory: `${testRunDir}/node/coverage/unit`,
       reporter: ["html", "text-summary", "lcovonly"],
       // Every file in `include` counts, whether a test imported it or not. That
       // is what makes the number honest rather than flattering: measure only the
@@ -100,7 +104,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       // Proxy API calls to the backend FastAPI server
-      '/api': 'http://localhost:8000'
-    }
-  }
-})
+      "/api": "http://localhost:8000",
+    },
+  },
+});

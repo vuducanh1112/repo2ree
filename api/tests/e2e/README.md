@@ -22,14 +22,14 @@ just demo-api        # bring up the stack, run this, record to a .cast, tear dow
 api/tests/e2e/api_walkthrough.py --base-url http://127.0.0.1:8000
 ```
 
-`just demo-api` writes `test-artifacts/casts/api-walkthrough.cast` and, because a
+`just demo-api` writes `test-artifacts/python/attachments/api-walkthrough.cast` and, because a
 recording is a poor standalone document, derives
-`test-artifacts/casts/api-walkthrough.md` from it — a chaptered written
+`test-artifacts/python/attachments/api-walkthrough.md` from it — a chaptered written
 transcript (`render_cast_transcript.py`): the walkthrough's section banners
 become headings, the `#` asides become prose, and the real commands with their
 real responses stay as console blocks. Same artifact, written form — it cannot
 drift from the recording. Render the cast to a GIF/SVG with
-`agg test-artifacts/casts/api-walkthrough.cast out.gif`.
+`agg test-artifacts/python/attachments/api-walkthrough.cast out.gif`.
 
 The Python is pure orchestration — control flow, the `observeRun` poll loop, JSON
 parsing, assertions. Needs only `curl` (already required by the stack

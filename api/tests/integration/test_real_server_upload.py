@@ -30,12 +30,13 @@ from pathlib import Path
 
 import httpx
 import pytest
+from test_support.artifacts import case_dir, service_dir
 
 # ================================================
 # Constants
 # ================================================
 
-TEST_RESULTS_DIR = Path(__file__).resolve().parents[3] / "test-artifacts" / "traces" / "api-real-server"
+TEST_RESULTS_DIR = service_dir("api-real-server")
 
 STARTUP_TIMEOUT_SECONDS = 30
 RUN_TIMEOUT_SECONDS = 180
@@ -61,7 +62,7 @@ def server(tmp_path: Path, request: pytest.FixtureRequest) -> Iterator[tuple[str
     """
     port = _free_port()
     base_url = f"http://127.0.0.1:{port}"
-    out_dir = TEST_RESULTS_DIR / request.node.name
+    out_dir = case_dir(request.node.nodeid)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     server_env = {

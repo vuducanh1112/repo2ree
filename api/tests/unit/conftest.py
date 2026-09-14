@@ -20,15 +20,15 @@ and with it the workbench-manager singleton — is imported, so a developer's
 from __future__ import annotations
 
 import os
-import shutil
 import tempfile
 from collections.abc import Iterator
 from pathlib import Path
 from uuid import uuid4
 
 import pytest
+from test_support.artifacts import service_dir
 
-TEST_RESULTS_DIR = Path(__file__).resolve().parents[3] / "test-artifacts" / "traces" / "api-unit"
+TEST_RESULTS_DIR = service_dir("api-unit")
 
 # Settings and the registry singleton built from them are read at import time,
 # so the isolated test paths must be in the process environment before any
@@ -64,7 +64,6 @@ if "TRACE_FILE" not in os.environ:
     os.environ["TRACE_FILE"] = str(_trace_file)
     _trace_file.parent.mkdir(parents=True, exist_ok=True)
     _trace_file.unlink(missing_ok=True)
-    shutil.rmtree(TEST_RESULTS_DIR / "by-test", ignore_errors=True)
 
 from fastapi.testclient import TestClient  # noqa: E402
 

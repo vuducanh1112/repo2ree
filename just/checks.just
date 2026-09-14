@@ -4,7 +4,7 @@
 # `just fix` to apply safe lint fixes and then format the affected sources.
 
 PYTHON_FORMAT_PATHS := "scripts protocol core supervisor api executor docker-support provider workbench"
-GUI_FORMAT_PATHS := "src tests scripts playwright.config.ts"
+GUI_FORMAT_PATHS := "src tests scripts playwright.config.ts vite.config.mjs testArtifacts.cjs testArtifacts.d.cts"
 
 [private]
 _check-write-hint:
@@ -19,20 +19,20 @@ _check-just-workspace:
 # Apply Python, GUI, and Nix formatting.
 [group('Formatting')]
 format:
-    ruff format {{ PYTHON_FORMAT_PATHS }}
+    ruff format {{ PYTHON_FORMAT_PATHS }} test_support conftest.py
     cd gui && npx biome format --write {{ GUI_FORMAT_PATHS }}
     nix fmt
 
 # Apply safe Python and GUI lint fixes, then normalize formatting.
 [group('Formatting')]
 fix: && format
-    ruff check --fix {{ PYTHON_FORMAT_PATHS }}
+    ruff check --fix {{ PYTHON_FORMAT_PATHS }} test_support conftest.py
     cd gui && npx biome check --write {{ GUI_FORMAT_PATHS }}
 
 # Run tests for repository scripts.
 [group('Script tests')]
 test-scripts:
-    pytest scripts/tests
+    pytest scripts/tests test_support/tests
 
 # Statically check shell and Python scripts.
 [group('Checks')]
@@ -40,9 +40,10 @@ check-scripts: _check-write-hint check-config _check-just-workspace
     @echo "Running shellcheck..."
     find scripts -name '*.sh' -exec shellcheck {} +
     @echo "Checking python scripts..."
-    ruff check scripts
-    ruff format --check scripts
-    mypy scripts
+    ruff check scripts test_support conftest.py
+    ruff format --check scripts test_support conftest.py
+    mypy scripts test_support
+    mypy conftest.py
 
 # Check formatting and lint Nix sources without modifying them.
 [group('Checks')]
@@ -66,7 +67,7 @@ check-gui: _check-write-hint check-api-types
     echo "Running TypeScript compiler (e2e)..."
     npx tsc -p tsconfig.e2e.json
     echo "Running Biome..."
-    npx biome check src tests scripts playwright.config.ts
+    npx biome check {{ GUI_FORMAT_PATHS }}
     echo "Running knip..."
     npx knip
     echo "Checking functional-core effects..."

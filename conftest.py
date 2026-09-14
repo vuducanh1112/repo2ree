@@ -16,7 +16,7 @@ use. ``setdefault`` so an explicit override from the environment still wins.
 
 Layout under the home directory:
 
-    test-artifacts/property-based-tests/
+    test-artifacts/cache/hypothesis/
         <package>/          per-package example database (see the package's
                             tests/conftest.py — a shared database would work,
                             entries are keyed by test identity, but one
@@ -35,6 +35,12 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-HYPOTHESIS_HOME = Path(__file__).parent / "test-artifacts" / "property-based-tests"
+from test_support.artifacts import run_dir
+
+pytest_plugins = ["test_support.pytest_plugin"]
+
+run_dir()
+
+HYPOTHESIS_HOME = Path(__file__).parent / "test-artifacts" / "cache" / "hypothesis"
 
 os.environ.setdefault("HYPOTHESIS_STORAGE_DIRECTORY", str(HYPOTHESIS_HOME))

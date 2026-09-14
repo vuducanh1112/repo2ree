@@ -1,7 +1,7 @@
 E2E_BUNDLE_DIR := ROOT + "/dist/bundles"
 E2E_EXEC_BUNDLE := E2E_BUNDLE_DIR + "/exec"
 E2E_TOOLS_BUNDLE := E2E_BUNDLE_DIR + "/tools"
-DEFAULT_API_DEMO_CAST := ROOT + "/test-artifacts/casts/api-walkthrough.cast"
+DEFAULT_API_DEMO_CAST := REPO2REE_TEST_RUN_DIR + "/python/attachments/api-walkthrough.cast"
 
 # Source-run suites are measured because the host can collect coverage from
 # their backend and workbench processes. Image-backed variants deliberately are

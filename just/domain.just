@@ -1,4 +1,4 @@
-DEFAULT_FILMSTRIP_CAPTURE := "test-artifacts/ree-snapshots/api-integration/test_full_authoring_pipeline.ndjson"
+DEFAULT_FILMSTRIP_CAPTURE := ""
 
 # These views consume the real API integration capture rather than fixtures, so
 # a missing capture fails with the producing tier instead of drawing an empty or
@@ -23,20 +23,20 @@ generate-evidence-graph:
 
 [private]
 _require-filmstrip-capture capture:
-    @test -f {{ quote(capture) }} || { printf 'no capture at %s\n' {{ quote(capture) }} >&2; echo "run: just build-e2e-bundles && pytest api/tests/integration" >&2; exit 1; }
+    @test -f {{ if capture == "" { '"$(python -m test_support.artifacts latest-test test_full_authoring_pipeline state.ndjson)"' } else { quote(capture) } }} || { printf 'no capture at %s\n' {{ if capture == "" { '"$(python -m test_support.artifacts latest-test test_full_authoring_pipeline state.ndjson)"' } else { quote(capture) } }} >&2; echo "run: just build-e2e-bundles && pytest api/tests/integration" >&2; exit 1; }
     @mkdir -p {{ quote(DOMAIN_DIR) }}
 
 # Render audit state across every captured authoring stage.
 [group('Diagrams')]
 generate-ree-filmstrip capture=DEFAULT_FILMSTRIP_CAPTURE: (_require-filmstrip-capture capture)
-    python scripts/diagrams/ree_filmstrip.py --frames {{ quote(capture) }} -o {{ quote(DOMAIN_DIR + "/ree-filmstrip.svg") }}
+    python scripts/diagrams/ree_filmstrip.py --frames {{ if capture == "" { '"$(python -m test_support.artifacts latest-test test_full_authoring_pipeline state.ndjson)"' } else { quote(capture) } }} -o {{ quote(DOMAIN_DIR + "/ree-filmstrip.svg") }}
 
 # Render every aggregate field changed by each authoring stage.
 [group('Diagrams')]
 generate-ree-timeline capture=DEFAULT_FILMSTRIP_CAPTURE: (_require-filmstrip-capture capture)
-    python scripts/diagrams/ree_filmstrip.py -f timeline --frames {{ quote(capture) }} -o {{ quote(DOMAIN_DIR + "/ree-timeline.html") }}
+    python scripts/diagrams/ree_filmstrip.py -f timeline --frames {{ if capture == "" { '"$(python -m test_support.artifacts latest-test test_full_authoring_pipeline state.ndjson)"' } else { quote(capture) } }} -o {{ quote(DOMAIN_DIR + "/ree-timeline.html") }}
 
 # Render the finished aggregate as browsable HTML.
 [group('Diagrams')]
 generate-ree-browser capture=DEFAULT_FILMSTRIP_CAPTURE: (_require-filmstrip-capture capture)
-    python scripts/diagrams/ree_filmstrip.py -f browse --frames {{ quote(capture) }} -o {{ quote(DOMAIN_DIR + "/ree-browser.html") }}
+    python scripts/diagrams/ree_filmstrip.py -f browse --frames {{ if capture == "" { '"$(python -m test_support.artifacts latest-test test_full_authoring_pipeline state.ndjson)"' } else { quote(capture) } }} -o {{ quote(DOMAIN_DIR + "/ree-browser.html") }}

@@ -19,17 +19,14 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from test_support.artifacts import service_dir
+
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 
-TEST_RESULTS_DIR = _REPO_ROOT / "test-artifacts" / "traces" / "api-integration"
-# Its own namespace beside the traces, for the same reason `dist/diagrams` is
-# not `dist/images`: both are captures this tier leaves behind, but a span
-# record and an REE snapshot are read by different tools.
-SNAPSHOT_DIR = _REPO_ROOT / "test-artifacts" / "ree-snapshots" / "api-integration"
-
+TEST_RESULTS_DIR = service_dir("api-integration")
 # The bench this whole tier provisions from: upstream dind pinned by digest
 # (keep in sync with the catalog default in api/src/repo2ree_api/settings.py).
 # The in-test workbench injects the executor/tools bundles (built by

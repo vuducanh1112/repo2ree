@@ -46,7 +46,8 @@ publish-doc-demo-assets:
     #!/usr/bin/env bash
     set -euo pipefail
     shopt -s nullglob
-    videos=(test-artifacts/playwright/demo-gui/*/video.webm)
+    recorded_demo=$(python -m test_support.artifacts latest-path browser/tests/demo-gui)
+    videos=("$recorded_demo"/*/video.webm)
     if (( ${#videos[@]} != 1 )); then
       echo "Expected exactly one demo-gui run, found ${#videos[@]}."
       echo "Run 'just demo-gui', then retry this recipe."

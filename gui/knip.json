@@ -4,7 +4,8 @@
     "@biomejs/biome"
   ],
   "ignore": [
-    "src/viteEnv.d.ts"
+    "src/viteEnv.d.ts",
+    "testArtifacts.d.cts"
   ],
   "ignoreIssues": {
     "src/shell/infra/api/generated/openapi.ts": [

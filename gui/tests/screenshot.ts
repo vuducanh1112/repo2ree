@@ -9,8 +9,8 @@ import { type Page, test } from "@playwright/test";
  * pair for every step, all sorted in execution order.
  *
  * Files land in the test's Playwright output dir, e.g.:
- *   test-artifacts/playwright/<project>/<test>/01-provision-workbench-before.png
- *   test-artifacts/playwright/<project>/<test>/01-provision-workbench-after.png
+ *   test-artifacts/browser/tests/<project>/<test>/01-provision-workbench-before.png
+ *   test-artifacts/browser/tests/<project>/<test>/01-provision-workbench-after.png
  */
 export async function stepShot(page: Page, name: string, timing: "before" | "after") {
   const info = test.info();

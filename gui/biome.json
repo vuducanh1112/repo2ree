@@ -16,7 +16,11 @@
       "!node_modules",
       "!.vite",
       "!build",
-      "tests/**/*.{ts,tsx}"
+      "tests/**/*.{ts,tsx}",
+      "playwright.config.ts",
+      "vite.config.mjs",
+      "testArtifacts.cjs",
+      "testArtifacts.d.cts"
     ]
   },
   "formatter": {

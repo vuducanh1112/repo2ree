@@ -724,6 +724,20 @@
         "type": "string"
       }
     },
+    "REPO2REE_TEST_RUN_DIR": {
+      "kind": "internal",
+      "owner": "test-recording",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REPO2REE_TEST_RUN_ID": {
+      "kind": "internal",
+      "owner": "test-recording",
+      "schema": {
+        "type": "string"
+      }
+    },
     "REPO2REE_TOOLS_BIN": {
       "kind": "internal",
       "owner": "executor",
@@ -871,6 +885,13 @@
         "default": 3600,
         "title": "Upload Ttl Seconds",
         "type": "integer"
+      }
+    },
+    "VITEST": {
+      "kind": "external",
+      "owner": "vitest",
+      "schema": {
+        "type": "string"
       }
     },
     "VITE_API_BASE_URL": {

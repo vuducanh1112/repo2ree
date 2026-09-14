@@ -1,6 +1,6 @@
 """Render one captured trace as a waterfall — the picture a span file cannot show you.
 
-The trace files under ``test-artifacts/traces/`` answer "what happened" only in
+The trace files under ``test-artifacts/python/services/`` answer "what happened" only in
 the sense that grep does. This answers the question you actually have while
 reading them: what called what, in which process, and where the time went.
 

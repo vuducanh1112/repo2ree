@@ -14,7 +14,7 @@ result-*
 # run, but machine-local and ephemeral. Durable regressions are pinned with
 # @example in the test source, so this dir is never committed.
 #
-# The suite redirects it to test-artifacts/property-based-tests/ (ignored below
+# The suite redirects it to test-artifacts/cache/hypothesis/ (ignored below
 # with the rest of that root) — see the root conftest.py. This entry stays as
 # the backstop for anything that reaches hypothesis without going through
 # pytest, which still writes ./.hypothesis relative to the cwd.
@@ -28,7 +28,7 @@ result-*
 .repo2ree/
 
 # Test artifacts — all coverage reports/data and observability traces live
-# under one gitignored root (see the test-artifacts layout in just/be-tests.just).
+# under one gitignored root (see the test-artifacts layout in docs/engineering/how-to/testing.md).
 /test-artifacts/
 
 # Coverage data files, in case a run lands one at the repo root rather than the

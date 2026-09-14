@@ -1,4 +1,7 @@
 import { defineConfig } from "@playwright/test";
+import { recordRuntime, testRunDir } from "./testArtifacts.cjs";
+
+recordRuntime("browser");
 
 // When E2E_BASE_URL is set, the tests run against an externally provided
 // GUI (e.g. the compose image stack on :3000) and no vite dev server is
@@ -52,7 +55,7 @@ export default defineConfig({
       // Axe results are attached for review and debugging.
       name: "gui-accessibility-tests",
       testDir: "./tests/gui-accessibility-tests",
-      outputDir: "../test-artifacts/playwright/gui-accessibility-tests",
+      outputDir: `${testRunDir}/browser/tests/gui-accessibility-tests`,
       timeout: 30 * 1000,
       expect: { timeout: 10 * 1000 },
       use: {
@@ -68,7 +71,7 @@ export default defineConfig({
       // check never pays for workbench provisioning or a runtime build.
       name: "gui-screenshot-tests",
       testDir: "./tests/gui-screenshot-tests",
-      outputDir: "../test-artifacts/playwright/gui-screenshot-tests",
+      outputDir: `${testRunDir}/browser/tests/gui-screenshot-tests`,
       timeout: 30 * 1000,
       expect: {
         timeout: 10 * 1000,
@@ -97,7 +100,7 @@ export default defineConfig({
       // The review specs are their own project (below), so the authoring suite
       // does not also run them.
       testIgnore: ["**/review/**"],
-      outputDir: "../test-artifacts/playwright/e2e-gui",
+      outputDir: `${testRunDir}/browser/tests/e2e-gui`,
       // Generous per-test budget: with DinD, each workbench builds against a
       // cold (empty) image cache, so a test that builds + runs can need ~60s+.
       timeout: 180 * 1000,
@@ -121,7 +124,7 @@ export default defineConfig({
       // top of doing it once to have something to review.
       name: "e2e-gui-review",
       testDir: "./tests/e2e/review",
-      outputDir: "../test-artifacts/playwright/e2e-gui-review",
+      outputDir: `${testRunDir}/browser/tests/e2e-gui-review`,
       timeout: 420 * 1000,
       expect: { timeout: 15 * 1000 },
       use: {
@@ -138,7 +141,7 @@ export default defineConfig({
       name: "demo-gui",
       testDir: "./tests/demo",
       testIgnore: ["**/code-ocean/**"],
-      outputDir: "../test-artifacts/playwright/demo-gui",
+      outputDir: `${testRunDir}/browser/tests/demo-gui`,
       timeout: 300 * 1000,
       expect: { timeout: 10 * 1000 },
       use: {
@@ -152,7 +155,7 @@ export default defineConfig({
       // ordinary narrated demo remains quick and self-contained.
       name: "demo-gui-code-ocean",
       testDir: "./tests/demo/code-ocean",
-      outputDir: "../test-artifacts/playwright/demo-gui-code-ocean",
+      outputDir: `${testRunDir}/browser/tests/demo-gui-code-ocean`,
       timeout: 900 * 1000,
       expect: { timeout: 10 * 1000 },
       use: {

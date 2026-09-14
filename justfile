@@ -6,6 +6,11 @@ set default-list
 
 ROOT := justfile_directory()
 
+# One identity is inherited by every process in an aggregate invocation.
+export REPO2REE_TEST_RUN_DIR := env("REPO2REE_TEST_RUN_DIR", ROOT + "/test-artifacts")
+export REPO2REE_TEST_RUN_ID := env("REPO2REE_TEST_RUN_ID", `python -c 'import uuid; print(uuid.uuid4().hex)'`)
+
+
 IMAGE_TAG := env("IMAGE_TAG", "edge")
 DEFAULT_IMAGE_ARCHIVE_DIR := "dist/images"
 GHCR_REGISTRY := env("GHCR_REGISTRY", "ghcr.io")
@@ -27,7 +32,7 @@ JUST_RECIPE_GRAPH := DIAGRAM_DIR + "/just-recipes.svg"
 ARCH_DIR := DIAGRAM_DIR + "/architecture"
 DOMAIN_DIR := DIAGRAM_DIR + "/domain"
 JOURNAL_DIR := DIAGRAM_DIR + "/journals"
-METRICS_DIR := "test-artifacts/metrics"
+METRICS_DIR := REPO2REE_TEST_RUN_DIR + "/python/reports/metrics"
 
 import 'just/checks.just'
 import 'just/config.just'

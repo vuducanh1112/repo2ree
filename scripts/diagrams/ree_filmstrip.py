@@ -29,7 +29,9 @@ from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-CAPTURE = REPO_ROOT / "test-artifacts/ree-snapshots/api-integration/test_full_authoring_pipeline.ndjson"
+sys.path.insert(0, str(REPO_ROOT))
+
+from test_support.artifacts import latest_test  # noqa: E402
 
 # The audited steps, in the order ReeAudit declares them — which is also the
 # order they can first become applicable, so the matrix reads as a staircase
@@ -714,9 +716,11 @@ _BROWSE_PAGE = """<!doctype html>
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("-f", "--format", choices=("matrix", "timeline", "browse"), default="matrix")
-    parser.add_argument("--frames", type=Path, default=CAPTURE, help="capture to render")
+    parser.add_argument("--frames", type=Path, default=None, help="capture to render")
     parser.add_argument("-o", "--output", type=Path, help="write here instead of stdout")
     args = parser.parse_args()
+    if args.frames is None:
+        args.frames = latest_test("test_full_authoring_pipeline", "state.ndjson")
 
     if not args.frames.is_file():
         raise SystemExit(

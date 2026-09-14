@@ -1,4 +1,4 @@
-DEFAULT_JOURNAL_TRACE := "test-artifacts/traces/api-integration/by-test/api_tests_integration_test_api_full_pipeline.py_test_full_authoring_pipeline.ndjson"
+DEFAULT_JOURNAL_TRACE := ""
 
 # Journals derive one cross-component page per captured run trace. The trace is
 # an integration-test artifact; absence is an error, never an empty success.
@@ -10,7 +10,7 @@ generate-journals trace=DEFAULT_JOURNAL_TRACE:
     #!/usr/bin/env bash
     set -euo pipefail
     shopt -s nullglob
-    journal_trace={{ quote(trace) }}
+    journal_trace={{ if trace == "" { "$(python -m test_support.artifacts latest-test test_full_authoring_pipeline traces.ndjson)" } else { quote(trace) } }}
     test -f "$journal_trace" || {
       printf 'no capture at %s\n' "$journal_trace" >&2
       echo "run: just build-e2e-bundles && pytest api/tests/integration" >&2
