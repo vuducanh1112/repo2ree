@@ -8,11 +8,11 @@ Every number is read from the file. Nothing is inferred, and nothing is styled
 into significance the capture does not support: a span with no recorded
 duration draws as no bar rather than as a guess.
 
-    python scripts/diagrams/trace_journal.py TRACE.ndjson                      # list traces
-    python scripts/diagrams/trace_journal.py TRACE.ndjson --trace d6edcd       # -> SVG on stdout
-    python scripts/diagrams/trace_journal.py TRACE.ndjson --trace d6edcd -f html -o t.html
-    python scripts/diagrams/trace_journal.py TRACE.ndjson --trace d6edcd --shapes none
-    python scripts/diagrams/trace_journal.py TRACE.ndjson --trace d6edcd --all-spans
+    python -m repo2ree_history trace-journal TRACE.ndjson                      # list traces
+    python -m repo2ree_history trace-journal TRACE.ndjson --trace d6edcd       # -> SVG on stdout
+    python -m repo2ree_history trace-journal TRACE.ndjson --trace d6edcd -f html -o t.html
+    python -m repo2ree_history trace-journal TRACE.ndjson --trace d6edcd --shapes none
+    python -m repo2ree_history trace-journal TRACE.ndjson --trace d6edcd --all-spans
 
 Two emitters over one model, as ``arch_graph.py`` emits one import graph as dot
 or mermaid. ``svg`` is a file you can commit and embed; ``html`` hands the
@@ -26,17 +26,14 @@ which is the form that scales.
 
 from __future__ import annotations
 
-import argparse
 import json
 import re
-import subprocess
-import sys
 import textwrap
 from collections import defaultdict
-from dataclasses import dataclass, field
-from datetime import datetime
+from copy import deepcopy
+from dataclasses import dataclass, field, replace
+from datetime import UTC, datetime
 from html import escape
-from pathlib import Path
 from typing import Any
 
 # ================================================
@@ -153,10 +150,14 @@ class Group:
 
 
 def _parse_iso_ns(value: str) -> int:
-    return int(datetime.fromisoformat(value).timestamp() * 1e9)
+    parsed = datetime.fromisoformat(value)
+    if parsed.tzinfo is None:
+        raise ValueError("span timestamps must include a timezone")
+    delta = parsed - datetime(1970, 1, 1, tzinfo=UTC)
+    return (delta.days * 86400 + delta.seconds) * 1_000_000_000 + delta.microseconds * 1000
 
 
-def load_spans(path: Path) -> list[Span]:
+def parse_spans(text: str) -> list[Span]:
     """Read the SDK-shaped span lines a trace file holds.
 
     Lines that are not spans, or are spans without both timestamps, are skipped
@@ -164,12 +165,14 @@ def load_spans(path: Path) -> list[Span]:
     capture, and the capture is the only thing this tool is entitled to show.
     """
     spans: list[Span] = []
-    for line in path.read_text(encoding="utf-8").splitlines():
+    for line in text.splitlines():
         if not line.strip():
             continue
         try:
             raw = json.loads(line)
         except json.JSONDecodeError:
+            continue
+        if not isinstance(raw, dict):
             continue
         context = raw.get("context")
         if not isinstance(context, dict) or not raw.get("start_time") or not raw.get("end_time"):
@@ -207,10 +210,11 @@ def build_forest(spans: list[Span]) -> list[Span]:
     A span whose parent is outside this set is treated as a root. That happens
     legitimately, which is why it is not reported as an error.
     """
-    by_id = {span.span_id: span for span in spans}
+    spans = [replace(span, children=[]) for span in spans]
+    by_id = {(span.trace_id, span.span_id): span for span in spans}
     roots: list[Span] = []
     for span in spans:
-        parent = by_id.get(span.parent_id or "")
+        parent = by_id.get((span.trace_id, span.parent_id or ""))
         if parent is None:
             roots.append(span)
         else:
@@ -229,6 +233,7 @@ def prune(spans: list[Span], patterns: list[str], keep: list[str]) -> list[Span]
     dropped span's children adopt its nearest surviving ancestor, and the graph
     still says who ultimately reached what.
     """
+    spans = deepcopy(spans)
     if not patterns and not keep:
         return spans
 
@@ -239,25 +244,29 @@ def prune(spans: list[Span], patterns: list[str], keep: list[str]) -> list[Span]
         # too — and those two are not always the same component's spans.
         return any(name == pattern[1:] if pattern.startswith("=") else pattern in name for pattern in patterns)
 
-    by_id = {span.span_id: span for span in spans}
+    by_id = {(span.trace_id, span.span_id): span for span in spans}
     # ``--only`` narrows to one altitude — the core-internal view of a trace,
     # say — and the re-parenting below is what makes that read as a graph
     # rather than a pile of roots: a kept span whose parents were all dropped
     # attaches to the nearest kept ancestor, or becomes a root if there is none.
     doomed = {
-        span.span_id
+        (span.trace_id, span.span_id)
         for span in spans
         if matches(span.name) or (keep and not any(pattern in span.name for pattern in keep))
     }
 
     def survivor(span: Span) -> str | None:
         parent_id = span.parent_id
-        while parent_id in doomed:
-            parent = by_id.get(parent_id or "")
+        visited: set[str | None] = set()
+        while (span.trace_id, parent_id or "") in doomed:
+            if parent_id in visited:
+                raise ValueError("cycle in span parents")
+            visited.add(parent_id)
+            parent = by_id.get((span.trace_id, parent_id or ""))
             parent_id = parent.parent_id if parent else None
         return parent_id
 
-    kept = [span for span in spans if span.span_id not in doomed]
+    kept = [span for span in spans if (span.trace_id, span.span_id) not in doomed]
     for span in kept:
         span.parent_id = survivor(span)
     return kept
@@ -277,6 +286,7 @@ def flatten(roots: list[Span]) -> list[Span]:
     ordinal is the fallback, and a worse anchor: inserting a call renumbers
     every sibling after it, so references drift silently.
     """
+    roots = deepcopy(roots)
     ordered: list[Span] = []
 
     def walk(span: Span, depth: int) -> None:
@@ -667,7 +677,7 @@ def parse_zones(specs: list[str]) -> list[tuple[str, list[str]]]:
     for spec in specs:
         name, _, patterns = spec.partition("=")
         if not patterns:
-            raise SystemExit(f"--zone expects NAME=PATTERN[,PATTERN...], got {spec!r}")
+            raise ValueError(f"--zone expects NAME=PATTERN[,PATTERN...], got {spec!r}")
         rules.append((name, [pattern for pattern in patterns.split(",") if pattern]))
     return rules
 
@@ -733,7 +743,7 @@ def render_dot(
     moves through it, and a merged node has no single duration anyway —
     inventing a mean would put a number on the picture that no run produced.
     """
-    by_id = {span.span_id: span for span in spans}
+    by_id = {(span.trace_id, span.span_id): span for span in spans}
     services = sorted({span.service for span in spans})
 
     nodes: dict[str, Span] = {}
@@ -743,7 +753,7 @@ def render_dot(
         key = node_key(span)
         nodes.setdefault(key, span)
         occurrences[key] += 1
-        parent = by_id.get(span.parent_id or "")
+        parent = by_id.get((span.trace_id, span.parent_id or ""))
         if parent is not None:
             edges[(node_key(parent), key)] += 1
 
@@ -780,8 +790,8 @@ def render_dot(
     # of one operation opens twice: the request in one component, the run it
     # started in another, with nothing between them.
     for span in spans:
-        for _, linked_span in span.links:
-            source = by_id.get(linked_span)
+        for linked_trace, linked_span in span.links:
+            source = by_id.get((linked_trace, linked_span))
             if source is not None:
                 lines.append(
                     f'  "{node_key(source)}" -> "{node_key(span)}" '
@@ -853,20 +863,14 @@ def _dot_escape(text: str) -> str:
 # ================================================
 
 
-def render_graph_page(dot_source: str, *, title: str) -> str:
-    """Run graphviz over *dot_source* and inline the result in a standalone page.
+def render_graph_page(rendered: str, *, title: str) -> str:
+    """Wrap a Graphviz-rendered SVG in a standalone page.
 
     A bare ``.svg`` from dot is a fine file and a poor document: it carries no
     heading, no legend, and no theme, so whoever opens it has to already know
     what they are looking at. Inlining keeps the page self-contained — no
     sidecar to lose — and lets the surrounding chrome say what the colours mean.
     """
-    rendered = subprocess.run(
-        ["dot", "-Tsvg"],
-        input=dot_source.encode(),
-        capture_output=True,
-        check=True,
-    ).stdout.decode()
     # dot sizes the root <svg> in points; dropping that lets CSS scale it to the
     # page instead of overflowing on a narrow screen.
     body = re.sub(r'<svg width="[^"]+" height="[^"]+"', "<svg", rendered, count=1)
@@ -902,126 +906,3 @@ def render_graph_page(dot_source: str, *, title: str) -> str:
   <div class="sheet">{body}</div>
 </div>
 """
-
-
-# ================================================
-# CLI
-# ================================================
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("trace_file", type=Path, help="an NDJSON trace file (session or by-test slice)")
-    parser.add_argument("--trace", help="trace id, or any unique prefix; omit to list what the file holds")
-    parser.add_argument("-f", "--format", choices=("svg", "html", "dot", "graph"), default="svg")
-    parser.add_argument("-o", "--out", type=Path, help="write here instead of stdout")
-    parser.add_argument("--shapes", choices=("inline", "none"), default="inline")
-    parser.add_argument("--title", help="heading for the graph page; defaults to the root span's name")
-    parser.add_argument("--all-spans", action="store_true", help="keep the ASGI http send/receive spans")
-    parser.add_argument("--no-links", action="store_true", help="show only the named trace, not what links to it")
-    parser.add_argument(
-        "--exclude",
-        action="append",
-        default=[],
-        metavar="TEXT",
-        help="drop spans whose name contains TEXT (or equals it, as =TEXT), re-parenting their children",
-    )
-    parser.add_argument(
-        "--only",
-        action="append",
-        default=[],
-        metavar="TEXT",
-        help="keep only spans whose name contains TEXT, re-parenting across the rest (repeatable)",
-    )
-    parser.add_argument(
-        "--zone",
-        action="append",
-        default=[],
-        metavar="NAME=PATTERN[,PATTERN]",
-        help="dot only: box spans whose name matches any PATTERN as component NAME (repeatable)",
-    )
-    args = parser.parse_args()
-
-    spans = load_spans(args.trace_file)
-    if not spans:
-        print(f"no spans with timestamps in {args.trace_file}", file=sys.stderr)
-        return 1
-    if not args.all_spans:
-        spans = [span for span in spans if not span.name.endswith(NOISE_SUFFIXES)]
-    # Kept for the diagnostic below: after filtering, a trace that held only
-    # spans the filters removed is indistinguishable from one that never
-    # existed — and telling a caller to "be more specific" about an id that
-    # was right sends them looking in the wrong place.
-    traces_before_filtering = {span.trace_id for span in spans}
-    spans = prune(spans, args.exclude, args.only)
-
-    by_trace: defaultdict[str, list[Span]] = defaultdict(list)
-    for span in spans:
-        by_trace[span.trace_id].append(span)
-
-    args.trace_given = bool(args.trace)
-    if not args.trace and args.format != "dot":
-        for trace_id, members in sorted(by_trace.items(), key=lambda item: -len(item[1])):
-            root = min(members, key=lambda span: span.start_ns)
-            print(f"{trace_id}  {len(members):3d} spans  {root.name}")
-        return 0
-
-    matches = [trace_id for trace_id in by_trace if trace_id.startswith(args.trace or "")]
-    if args.trace_given and len(matches) != 1:
-        filtered_out = [t for t in traces_before_filtering if t.startswith(args.trace or "")]
-        if not matches and filtered_out:
-            print(f"--trace {args.trace!r} has no spans left after --only/--exclude", file=sys.stderr)
-        else:
-            print(f"--trace {args.trace!r} matched {len(matches)} traces; be more specific", file=sys.stderr)
-        return 1
-
-    if args.format in ("dot", "graph"):
-        # A named trace draws that one operation, link included, with its real
-        # values — the question is what flowed. With no trace named it merges
-        # the file, where the question is which paths exist at all and values
-        # differ per run, so notes fall back to keys.
-        if args.trace_given:
-            subject = [span for group in collect_groups(dict(by_trace), matches[0]) for span in group.spans]
-        else:
-            subject = spans
-        dot = render_dot(
-            subject,
-            notes=args.shapes == "inline",
-            merged=not args.trace_given,
-            zones=parse_zones(args.zone),
-        )
-        summary = f"{len({node_key(span) for span in subject})} nodes"
-        if args.format == "dot":
-            return _emit(dot, args.out, summary)
-        title = args.title or (subject[0].name if subject else "trace")
-        return _emit(render_graph_page(dot, title=title), args.out, summary)
-
-    groups = (
-        [Group(matches[0], flatten(build_forest(by_trace[matches[0]])), "")]
-        if args.no_links
-        else collect_groups(dict(by_trace), matches[0])
-    )
-    scale = build_scale(groups)
-    inline = args.shapes == "inline"
-    if args.format == "svg":
-        out = render_svg(groups, scale, shapes=inline)
-    else:
-        title = f"{groups[-1].spans[0].anchor} — {args.trace_file.name}"
-        out = render_html(groups, scale, shapes=inline, title=title)
-
-    total = sum(len(group.spans) for group in groups)
-    return _emit(out, args.out, f"{total} spans, {len(groups)} trace(s)")
-
-
-def _emit(text: str, out: Path | None, summary: str) -> int:
-    if out is None:
-        print(text)
-        return 0
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(text, encoding="utf-8")
-    print(f"{out}  ({summary})", file=sys.stderr)
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

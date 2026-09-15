@@ -5,7 +5,7 @@ DEFAULT_JOURNAL_TRACE := ""
 
 # Generate one cross-component journal page per captured workflow, replacing
 # the previous complete set only after every page renders successfully.
-[group('Diagrams')]
+[group('Assurance')]
 generate-journals trace=DEFAULT_JOURNAL_TRACE:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -21,10 +21,10 @@ generate-journals trace=DEFAULT_JOURNAL_TRACE:
     mkdir -p "$journal_parent"
     pending=$(mktemp -d "$journal_parent/.${journal_name}.pending.XXXXXX")
     trap 'rm -rf "$pending"' EXIT
-    python scripts/diagrams/trace_journal.py "$journal_trace" 2>/dev/null \
+    python -m repo2ree_history trace-journal "$journal_trace" 2>/dev/null \
       | awk '$4 ~ /^run\./ { name = substr($4, 5); n = ++seen[name]; print $1, (n == 1 ? name : name "-" n) }' \
       | while read -r trace name; do
-          python scripts/diagrams/trace_journal.py "$journal_trace" -f graph --trace "$trace" \
+          python -m repo2ree_history trace-journal "$journal_trace" -f graph --trace "$trace" \
             --exclude 'docker.' --exclude 'process.exec' \
             --zone 'api=ree.,run.,POST ,GET ,PUT ,DELETE ' \
             --zone 'supervisor=workbench.' \

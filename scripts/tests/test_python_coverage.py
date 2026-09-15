@@ -6,7 +6,7 @@ from coverage import CoverageData
 from scripts.coverage import python_coverage
 
 
-def test_packages_come_from_workspace_configuration() -> None:
+def test_packages_come_from_backend_workspace_category() -> None:
     assert python_coverage.packages() == (
         "protocol",
         "core",

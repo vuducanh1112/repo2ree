@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render and combine Python coverage tiers."""
+"""Render and combine backend Python coverage tiers."""
 
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ TIERS = ("unit", "integration", "e2e-gui", "e2e-gui-review", "demo-gui", "demo-a
 
 def packages() -> tuple[str, ...]:
     configuration = tomllib.loads((ROOT / "pyproject.toml").read_text())
-    return tuple(configuration["tool"]["uv"]["workspace"]["members"])
+    return tuple(configuration["tool"]["repo2ree"]["workspace"]["backend"])
 
 
 UNIT_PARTS = packages()

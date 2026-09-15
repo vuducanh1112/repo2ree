@@ -13,25 +13,14 @@ single act changed. Cells that differ from the frame before them are ticked, so
 the transitions — the part a table of verdicts buries — are what the eye lands
 on.
 
-    python scripts/diagrams/ree_filmstrip.py                                # SVG on stdout
-    python scripts/diagrams/ree_filmstrip.py -o dist/diagrams/domain/ree-filmstrip.svg
-    python scripts/diagrams/ree_filmstrip.py --frames path/to/capture.ndjson
 """
 
 from __future__ import annotations
 
-import argparse
 import json
-import sys
 from dataclasses import dataclass, field
 from html import escape
-from pathlib import Path
 from typing import Any
-
-REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT))
-
-from test_support.artifacts import latest_test  # noqa: E402
 
 # The audited steps, in the order ReeAudit declares them — which is also the
 # order they can first become applicable, so the matrix reads as a staircase
@@ -106,7 +95,7 @@ class Row:
     kind: str = "step"  # step | experiment
 
 
-def load_frames(path: Path) -> list[Frame]:
+def parse_frames(text: str) -> list[Frame]:
     """Read the capture into the two things the emitters draw from.
 
     The verdicts are what the matrix shows; the aggregate itself is what the
@@ -115,7 +104,7 @@ def load_frames(path: Path) -> list[Frame]:
     """
     frames: list[Frame] = []
     previous_runs: dict[str, str] = {}
-    for line in path.read_text(encoding="utf-8").splitlines():
+    for line in text.splitlines():
         if not line.strip():
             continue
         raw = json.loads(line)
@@ -177,7 +166,7 @@ def build_rows(frames: list[Frame]) -> list[Row]:
 
 def render_svg(frames: list[Frame], rows: list[Row]) -> str:
     if not frames:
-        raise SystemExit("capture holds no frames")
+        raise ValueError("capture holds no frames")
 
     labels = [_row_label(row) for row in rows]
     name_w = max(len(label) for label in labels) * ROW_FS * CHAR_W + NAME_GAP
@@ -711,38 +700,3 @@ _BROWSE_PAGE = """<!doctype html>
   }});
 </script>
 """
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("-f", "--format", choices=("matrix", "timeline", "browse"), default="matrix")
-    parser.add_argument("--frames", type=Path, default=None, help="capture to render")
-    parser.add_argument("-o", "--output", type=Path, help="write here instead of stdout")
-    args = parser.parse_args()
-    if args.frames is None:
-        args.frames = latest_test("test_full_authoring_pipeline", "state.ndjson")
-
-    if not args.frames.is_file():
-        raise SystemExit(
-            f"no capture at {args.frames} — run the api integration tier first (just test-api-integration)"
-        )
-    frames = load_frames(args.frames)
-    if args.format == "matrix":
-        rendered = render_svg(frames, build_rows(frames))
-    elif args.format == "timeline":
-        rendered = render_timeline(frames, diff_frames(frames))
-    else:
-        # The last frame, because a browser is for the finished article: the
-        # timeline is where the intermediate states are already answered for.
-        rendered = render_browser(frames[-1])
-    if args.output is None:
-        print(rendered)
-    else:
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(rendered + "\n", encoding="utf-8")
-        print(f"wrote {args.output}")
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())

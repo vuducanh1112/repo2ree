@@ -54,18 +54,27 @@ def compare(label: str, actual: list[str], expected: list[str]) -> str | None:
 
 def validate(document: dict[str, Any], config: dict[str, Any], root: Path) -> list[str]:
     members = list(config["tool"]["uv"]["workspace"]["members"])
+    categories = config["tool"]["repo2ree"]["workspace"]
+    backend = list(categories["backend"])
+    assurance = list(categories["assurance"])
     import_packages = list(config["tool"]["importlinter"]["root_packages"])
     unit_suites = assignment_words(document, "UNIT_SUITES")
     integration_suites = assignment_words(document, "INTEGRATION_SUITES")
-    integration_members = expected_suites(root, members, "integration")
+    integration_members = expected_suites(root, backend, "integration")
     checks = (
+        compare("workspace categories", [*backend, *assurance], members),
         compare("PYTHON_FORMAT_PATHS", assignment_words(document, "PYTHON_FORMAT_PATHS"), ["scripts", *members]),
         compare(
             "PYTHON_METRIC_PATHS",
             assignment_words(document, "PYTHON_METRIC_PATHS"),
-            [f"{m}/src" for m in members],
+            [f"{m}/src" for m in backend],
         ),
-        compare("UNIT_SUITES packages", [suite.split("/", 1)[0] for suite in unit_suites], members),
+        compare(
+            "ASSURANCE_METRIC_PATHS",
+            assignment_words(document, "ASSURANCE_METRIC_PATHS"),
+            [f"{m}/src" for m in assurance],
+        ),
+        compare("UNIT_SUITES packages", [suite.split("/", 1)[0] for suite in unit_suites], backend),
         compare(
             "INTEGRATION_SUITES packages",
             [suite.split("/", 1)[0] for suite in integration_suites],
@@ -75,7 +84,7 @@ def validate(document: dict[str, Any], config: dict[str, Any], root: Path) -> li
         compare(
             "check-backend dependencies",
             [name for name in dependency_names(document, "check-backend") if name != "check-architecture"],
-            [f"check-{member}" for member in members],
+            [f"check-{member}" for member in backend],
         ),
         compare(
             "test-backend-unit dependencies",
@@ -88,7 +97,18 @@ def validate(document: dict[str, Any], config: dict[str, Any], root: Path) -> li
             expected_test_recipes(integration_suites, "integration"),
         ),
     )
-    return [problem for problem in checks if problem is not None]
+    problems = [problem for problem in checks if problem is not None]
+    for aggregate, recipe in (("check", "check-assurance"), ("test-unit", "test-assurance")):
+        if recipe not in dependency_names(document, aggregate):
+            problems.append(f"{aggregate} must include {recipe} independently of backend")
+    for aggregate, prefix in (("check-assurance", "check"), ("test-assurance", "test")):
+        expected = [f"{prefix}-{member}" for member in assurance]
+        if problem := compare(f"{aggregate} dependencies", dependency_names(document, aggregate), expected):
+            problems.append(problem)
+        problems.extend(
+            f"missing assurance recipe: {recipe}" for recipe in expected if recipe not in document["recipes"]
+        )
+    return problems
 
 
 def main() -> int:

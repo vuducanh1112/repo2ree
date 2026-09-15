@@ -27,11 +27,13 @@ DEFAULT_STACK_IMAGE_TAG := IMAGE_TAG
 DEFAULT_IMAGE_CANDIDATE_STATE_DIR := ".validation-certificates/image-candidates"
 DEFAULT_PUBLISH_GATE_RECEIPT := ".validation-certificates/publish-gate-ok"
 
+export REPO2REE_ASSURANCE_DIR := env("REPO2REE_ASSURANCE_DIR", ROOT + "/dist/assurance")
+ASSURANCE_DIR := REPO2REE_ASSURANCE_DIR
 DIAGRAM_DIR := "dist/diagrams"
 JUST_RECIPE_GRAPH := DIAGRAM_DIR + "/just-recipes.svg"
 ARCH_DIR := DIAGRAM_DIR + "/architecture"
 DOMAIN_DIR := DIAGRAM_DIR + "/domain"
-JOURNAL_DIR := DIAGRAM_DIR + "/journals"
+JOURNAL_DIR := ASSURANCE_DIR + "/journals"
 METRICS_DIR := REPO2REE_TEST_RUN_DIR + "/python/reports/metrics"
 
 import 'just/checks.just'
@@ -45,6 +47,7 @@ import 'just/presentations.just'
 import 'just/contracts.just'
 import 'just/gui-tests.just'
 import 'just/backend-tests.just'
+import 'just/assurance.just'
 import 'just/e2e.just'
 import 'just/images.just'
 import 'just/publish.just'
@@ -56,7 +59,7 @@ _require-clean-tree:
 
 # Generate every architecture, domain, run-journal, and recipe graph diagram.
 [group('Diagrams')]
-generate-diagrams: generate-architecture-diagrams generate-domain-diagrams generate-journals generate-just-recipe-graph
+generate-diagrams: generate-architecture-diagrams generate-domain-diagrams generate-assurance-diagrams generate-just-recipe-graph
     @printf '>> diagrams written under %s\n' {{ quote(DIAGRAM_DIR + "/") }}
 
 # Generate the declared Just recipe dependency graph.

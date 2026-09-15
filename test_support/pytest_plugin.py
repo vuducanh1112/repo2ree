@@ -5,12 +5,13 @@ from __future__ import annotations
 import json
 import os
 import warnings
+from collections import Counter
 from collections.abc import Generator, Iterator
 from pathlib import Path
 
 import pytest
 
-from test_support.artifacts import case_key, execution_id, run_dir, write_provenance
+from test_support.artifacts import artifact_domain, case_key, domain_dir, execution_id, write_provenance
 from test_support.recording import TestRecorder
 
 _OUTCOME = pytest.StashKey[str]()
@@ -52,18 +53,23 @@ def test_recording(request: pytest.FixtureRequest) -> Iterator[TestRecorder]:
 
 def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
     suite = " ".join(str(arg) for arg in session.config.args)
-    directory = run_dir() / "python/sessions"
-    directory.mkdir(parents=True, exist_ok=True)
-    (directory / f"{case_key(suite)}.json").write_text(
-        json.dumps(
-            {
-                "suite": suite,
-                "execution_id": execution_id(),
-                "exitstatus": exitstatus,
-                "tests": session.testscollected,
-            }
+    counts = Counter(artifact_domain(item.nodeid) for item in session.items)
+    if not counts:
+        counts.update({artifact_domain(str(arg)): 0 for arg in session.config.args})
+    for domain, tests in sorted(counts.items()):
+        directory = domain_dir(domain) / "sessions"
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / f"{case_key(suite)}.json").write_text(
+            json.dumps(
+                {
+                    "suite": suite,
+                    "execution_id": execution_id(),
+                    "exitstatus": exitstatus,  # Status of the whole pytest session, including mixed suites.
+                    "tests": tests,
+                    "artifact_domain": domain,
+                }
+            )
+            + "\n"
         )
-        + "\n"
-    )
     if coverage_file := os.environ.get("COVERAGE_FILE"):
         write_provenance(Path(coverage_file).parent)

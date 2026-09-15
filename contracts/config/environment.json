@@ -411,6 +411,13 @@
         "type": "string"
       }
     },
+    "HISTORY_GIT": {
+      "kind": "internal",
+      "owner": "history",
+      "schema": {
+        "type": "string"
+      }
+    },
     "HOSTNAME": {
       "kind": "external",
       "owner": "container-runtime",
@@ -648,6 +655,13 @@
     "REGISTRIES": {
       "kind": "deployment",
       "owner": "publishing",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REPO2REE_ASSURANCE_DIR": {
+      "kind": "internal",
+      "owner": "test-recording",
       "schema": {
         "type": "string"
       }

@@ -36,10 +36,29 @@ def case_key(name: str) -> str:
     return encoded
 
 
+def artifact_domain(nodeid: str) -> str:
+    """Route system-evidence tooling independently of backend language artifacts."""
+    source = Path(nodeid.split("::", 1)[0])
+    if source.is_absolute() and source.is_relative_to(ROOT):
+        source = source.relative_to(ROOT)
+    return "assurance" if source.parts and source.parts[0] == "history" else "python"
+
+
+def domain_dir(domain: str) -> Path:
+    """Keep assurance output independent of the backend recording root."""
+    if domain == "assurance":
+        return Path(os.environ.get("REPO2REE_ASSURANCE_DIR", str(ROOT / "dist/assurance"))).resolve()
+    return run_dir() / domain
+
+
 def case_dir(nodeid: str) -> Path:
     source, *test = nodeid.split("::")
-    parts = [part for part in Path(source).with_suffix("").parts if part != "tests"]
-    return run_dir() / "python/tests" / Path(*(case_key(part) for part in [*parts, *test]))
+    path = Path(source)
+    if path.is_absolute() and path.is_relative_to(ROOT):
+        path = path.relative_to(ROOT)
+    domain = artifact_domain(nodeid)
+    parts = [part for part in path.with_suffix("").parts if part != "tests"]
+    return domain_dir(domain) / "tests" / Path(*(case_key(part) for part in [*parts, *test]))
 
 
 def service_dir(suite: str) -> Path:
@@ -63,7 +82,11 @@ def latest_path(relative: str) -> Path:
 
 def latest_test(suffix: str, filename: str) -> Path:
     candidates = []
-    manifests = list((run_dir() / "python/tests").rglob("manifest.json"))
+    manifests = [
+        manifest
+        for domain in ("python", "assurance")
+        for manifest in (domain_dir(domain) / "tests").rglob("manifest.json")
+    ]
     manifests.extend((ARTIFACTS / "runs").glob("*/tests/*/manifest.json"))
     for manifest in manifests:
         document = json.loads(manifest.read_text())

@@ -3,7 +3,7 @@ PYTHON_METRIC_PATHS := "protocol/src core/src supervisor/src api/src executor/sr
 
 # Generate separate Python and TypeScript complexity reports.
 [group('Metrics')]
-generate-metrics:
+generate-metrics: generate-assurance-metrics
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p {{ quote(COMPLEXITY_DIR) }}
