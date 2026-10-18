@@ -56,6 +56,7 @@ os.environ["UPLOAD_STAGING_DIR"] = str(_state_dir / "upload-staging")
 os.environ["ALLOCATION_STORE_FILE"] = str(_state_dir / "allocations.json")
 os.environ["REE_INDEX_FILE"] = str(_state_dir / "ree-index.json")
 os.environ["RUN_REGISTRY_DIR"] = str(_state_dir / "runs")
+os.environ["BEHAVIOUR_JOURNAL_DIR"] = str(_state_dir / "journal")
 # OpenTelemetry's set_tracer_provider is honored once per process, so two API
 # tiers in one pytest run share a single provider baked to whichever tier booted
 # first — the other's spans silently flow to the wrong file. Just runs the tiers

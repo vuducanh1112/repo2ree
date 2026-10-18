@@ -36,6 +36,7 @@ from repo2ree_api.review.records import review_records_router
 from repo2ree_api.review.stages import review_stages_router
 from repo2ree_api.settings import service_settings
 from repo2ree_api.storage.init_storage import create_upload_staging_if_not_exists
+from repo2ree_protocol.behaviour import close_journal, open_journal
 from repo2ree_protocol.build import BuildInfo, current_build
 from repo2ree_protocol.log import configure_logging, configure_run_log_export
 from repo2ree_protocol.tracing import otlp_log_handler, setup_logs, setup_metrics, setup_tracing
@@ -57,11 +58,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     tracer_provider = setup_tracing("repo2ree-api", endpoint=service_settings.OTLP_ENDPOINT, console_fallback=True)
     meter_provider = setup_metrics("repo2ree-api", endpoint=service_settings.OTLP_ENDPOINT)
     create_upload_staging_if_not_exists()
+    # Opened before startup settles interrupted runs, so those transitions are
+    # journaled too; closed only after the worker pool has drained.
+    open_journal(service_settings.BEHAVIOUR_JOURNAL_DIR, "api", hosts=("api", "supervisor"))
     startup_runs()
     try:
         yield
     finally:
         shutdown_runs()
+        close_journal()
         if tracer_provider is not None:
             tracer_provider.shutdown()
         if meter_provider is not None:

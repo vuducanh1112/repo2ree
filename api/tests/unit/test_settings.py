@@ -13,6 +13,7 @@ def test_unit_tier_redirects_every_durable_api_path_to_one_temporary_root() -> N
         service_settings.ALLOCATION_STORE_FILE.parent,
         service_settings.REE_INDEX_FILE.parent,
         service_settings.RUN_REGISTRY_DIR.parent,
+        service_settings.BEHAVIOUR_JOURNAL_DIR.parent,
     }
 
     assert len(parents) == 1

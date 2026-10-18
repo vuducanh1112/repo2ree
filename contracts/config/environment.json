@@ -17,6 +17,12 @@
           "title": "Allocation Store File",
           "type": "string"
         },
+        "BEHAVIOUR_JOURNAL_DIR": {
+          "default": ".repo2ree/journal",
+          "format": "path",
+          "title": "Behaviour Journal Dir",
+          "type": "string"
+        },
         "EXTERNAL_WORKBENCH_TOKEN": {
           "default": "",
           "title": "External Workbench Token",
@@ -329,6 +335,16 @@
       "kind": "external",
       "owner": "bash",
       "schema": {
+        "type": "string"
+      }
+    },
+    "BEHAVIOUR_JOURNAL_DIR": {
+      "kind": "runtime",
+      "owner": "api",
+      "schema": {
+        "default": ".repo2ree/journal",
+        "format": "path",
+        "title": "Behaviour Journal Dir",
         "type": "string"
       }
     },

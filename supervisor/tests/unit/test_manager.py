@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -13,9 +14,11 @@ from repo2ree_protocol import (
     Frame,
     ResultFrame,
 )
+from repo2ree_protocol.behaviour import close_journal, open_journal
 from repo2ree_protocol.command import PatchReeDefinitionArgs, PatchReeDefinitionCommand
 from repo2ree_protocol.execution import ExecutionContext
-from repo2ree_supervisor import AllocationStore, WorkbenchManager
+from repo2ree_protocol.frames import UnavailableFrame
+from repo2ree_supervisor import AllocationStore, WorkbenchManager, WorkbenchUnavailableError
 
 _CATALOG_IMAGE = "docker.io/library/docker:29-dind"
 
@@ -207,3 +210,84 @@ def test_teardown_releases_allocation_and_placement(tmp_path: Path) -> None:
     assert store.get(handle.allocation_id).state == AllocationState.RELEASED  # type: ignore[union-attr]
     assert store.for_ree("ree-1") is None
     assert provider.released == [handle.allocation_id]
+
+
+def _exchanges(path):
+    return [
+        (record["kind"], record.get("message"), record["facts"])
+        for record in map(json.loads, path.read_text().splitlines())
+        if record["kind"] in {"send", "receive", "abandon"}
+    ]
+
+
+@pytest.mark.parametrize(
+    ("frames", "expected", "raises"),
+    [
+        (
+            [ResultFrame(result=ActionResult(status="succeeded"))],
+            [("receive", "result", {"status": "succeeded"})],
+            None,
+        ),
+        ([UnavailableFrame(detail="gone")], [("receive", "unavailable", {})], WorkbenchUnavailableError),
+        ([], [("abandon", None, {"reason": "closed_without_response"})], None),
+    ],
+)
+def test_dispatch_journals_one_request_and_what_came_back(tmp_path, frames, expected, raises):
+    class ScriptedWorkbench(FakeWorkbench):
+        def exec_action(self, workbench_id, cmd_json, run_id, env, context=None):
+            yield from frames
+
+    manager, _, _ = _manager(tmp_path, ScriptedWorkbench())
+    handle = manager.provision("ree-1", "My REE", location_id="lab-1", image=_CATALOG_IMAGE)
+    opened = open_journal(tmp_path / "journal", "api", hosts=("supervisor",))
+    command = PatchReeDefinitionCommand(args=PatchReeDefinitionArgs(patch={"name": "x"}))
+    try:
+        if raises is None:
+            manager.dispatch_action(handle, command, "run-1", lambda *_: None)
+        else:
+            with pytest.raises(raises):
+                manager.dispatch_action(handle, command, "run-1", lambda *_: None)
+    finally:
+        close_journal()
+
+    sent, *outcomes = _exchanges(opened.path)
+    assert sent == ("send", "exec_action", {"operation": "patch_ree_definition", "run_id": "run-1"})
+    assert outcomes == expected
+
+
+def test_dispatch_that_raises_is_journaled_as_abandoned(tmp_path):
+    class BrokenWorkbench(FakeWorkbench):
+        def exec_action(self, workbench_id, cmd_json, run_id, env, context=None):
+            raise TimeoutError("socket stalled")
+            yield  # pragma: no cover
+
+    manager, _, _ = _manager(tmp_path, BrokenWorkbench())
+    handle = manager.provision("ree-1", "My REE", location_id="lab-1", image=_CATALOG_IMAGE)
+    opened = open_journal(tmp_path / "journal", "api", hosts=("supervisor",))
+    command = PatchReeDefinitionCommand(args=PatchReeDefinitionArgs(patch={"name": "x"}))
+    try:
+        with pytest.raises(TimeoutError):
+            manager.dispatch_action(handle, command, "run-1", lambda *_: None)
+    finally:
+        close_journal()
+    assert _exchanges(opened.path)[1:] == [("abandon", None, {"reason": "TimeoutError"})]
+
+
+def test_allocation_lifecycle_is_journaled_by_its_owner(tmp_path):
+    opened = open_journal(tmp_path / "journal", "api", hosts=("supervisor",))
+    manager, _, _ = _manager(tmp_path)
+    try:
+        handle = manager.provision("ree-1", "My REE", location_id="lab-1", image=_CATALOG_IMAGE)
+        manager.teardown(handle)
+    finally:
+        close_journal()
+    records = [json.loads(line) for line in opened.path.read_text().splitlines()]
+    assert [(r["owner"], r["from"], r["to"]) for r in records if r["kind"] == "transition"] == [
+        ("supervisor", None, "requested"),
+        ("supervisor", "requested", "provisioning"),
+        ("supervisor", "provisioning", "waiting_for_workbench"),
+        ("supervisor", "waiting_for_workbench", "ready"),
+        ("supervisor", "ready", "assigned"),
+        ("supervisor", "assigned", "draining"),
+        ("supervisor", "draining", "released"),
+    ]

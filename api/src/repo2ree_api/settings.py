@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     # Durable background-run state. The JSON backend coordinates threads in one
     # API process; deployments using it must run a single API worker.
     RUN_REGISTRY_DIR: Path = Path(".repo2ree/runs")
+    # Append-only behaviour journals (one file per API process epoch) recording
+    # Run, Allocation, and dispatch transitions for the conformance checker. They
+    # are evidence, not state: nothing here reads them back.
+    BEHAVIOUR_JOURNAL_DIR: Path = Path(".repo2ree/journal")
     # Bounds both concurrent workbench commands and the API's worker threads.
     RUN_MAX_WORKERS: int = 4
     # The provider owns the container runtime (PROVIDER_DOCKER_MODE is its concern,

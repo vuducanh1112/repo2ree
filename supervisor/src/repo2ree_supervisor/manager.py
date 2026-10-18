@@ -20,13 +20,14 @@ import logging
 import secrets
 import threading
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import suppress
 from dataclasses import dataclass
 from typing import Any
 from uuid import uuid4
 
 from repo2ree_protocol.allocation import AllocationRecord, AllocationRequest, AllocationState
+from repo2ree_protocol.behaviour import journal
 from repo2ree_protocol.command import Command
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import (
@@ -351,7 +352,7 @@ class WorkbenchManager:
                 )
                 with tracer.start_as_current_span("workbench.execute"):
                     _t0 = time.monotonic()
-                    result = self._dispatch_action_locked(handle, cmd, run_id, log, context)
+                    result = self._dispatch_recorded(handle, cmd, run_id, log, context)
                     _exec_duration.record(
                         time.monotonic() - _t0,
                         command_metric_attrs(str(cmd.operation), status=result.status),
@@ -380,6 +381,51 @@ class WorkbenchManager:
         """
         self._workbench.cancel_run(handle.workbench_id, run_id)
 
+    def _dispatch_recorded(
+        self,
+        handle: WorkbenchHandle,
+        cmd: Command,
+        run_id: str,
+        log: LogSink,
+        context: ExecutionContext,
+    ) -> ActionResult:
+        """One ``dispatch`` exchange: the request is journaled before it leaves, and one outcome after.
+
+        Every terminal frame is recorded as received, so a duplicated result is
+        visible to the checker rather than silently overwritten here.
+        """
+        exchange = journal()
+        exchange.send(
+            "supervisor",
+            "dispatch",
+            "exec_action",
+            context.attempt_id,
+            partition=handle.ree_id,
+            facts={"operation": str(cmd.operation), "run_id": run_id},
+        )
+        answered = False
+
+        def observe(message: str, facts: dict[str, str] | None = None) -> None:
+            nonlocal answered
+            answered = True
+            exchange.receive(
+                "supervisor", "dispatch", message, context.attempt_id, partition=handle.ree_id, facts=facts
+            )
+
+        try:
+            result = self._dispatch_action_locked(handle, cmd, run_id, log, context, observe)
+        except BaseException as exc:
+            if not answered:
+                exchange.abandon(
+                    "supervisor", "dispatch", context.attempt_id, partition=handle.ree_id, reason=type(exc).__name__
+                )
+            raise
+        if not answered:
+            exchange.abandon(
+                "supervisor", "dispatch", context.attempt_id, partition=handle.ree_id, reason="closed_without_response"
+            )
+        return result
+
     def _dispatch_action_locked(
         self,
         handle: WorkbenchHandle,
@@ -387,6 +433,7 @@ class WorkbenchManager:
         run_id: str,
         log: LogSink,
         context: ExecutionContext,
+        observe: Callable[[str, dict[str, str] | None], None],
     ) -> ActionResult:
         cmd_json = cmd.model_dump_json()
 
@@ -414,11 +461,14 @@ class WorkbenchManager:
                 if self._span_sink is not None:
                     self._span_sink([frame.payload])
             elif isinstance(frame, ResultFrame):
+                observe("result", {"status": frame.result.status})
                 result = frame.result
             elif isinstance(frame, UnavailableFrame):
+                observe("unavailable", None)
                 _container_gone_counter.add(1, command_metric_attrs(str(cmd.operation)))
                 raise WorkbenchUnavailableError(frame.detail)
             elif isinstance(frame, ErrorFrame):
+                observe("error", None)
                 raise RuntimeError(frame.detail)
 
         if result is None:

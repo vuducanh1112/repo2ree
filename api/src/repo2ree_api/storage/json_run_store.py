@@ -17,11 +17,33 @@ from typing import Any
 from repo2ree_api.contracts import RunLogEntry, RunStatus
 from repo2ree_api.storage.run_store import IdempotencyConflictError, StoredRun
 from repo2ree_core.time_utils import utc_now
+from repo2ree_protocol.behaviour import journal
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.result import Failure, HistoryReference
 
 _ACTIVE_STATUSES = frozenset({"running", "queued", "provisioning", "canceling"})
 _TERMINAL_STATUSES = frozenset({"succeeded", "failed", "canceled"})
+
+
+def _journal_transition(previous: StoredRun | None, updated: StoredRun) -> None:
+    """Record a status change of the Run machine; called under the store lock after the write."""
+    if previous is not None and previous.status == updated.status:
+        return
+    facts: dict[str, str | None] = {}
+    if previous is None:
+        facts["operation"] = updated.operation
+    if updated.status in _TERMINAL_STATUSES:
+        facts["attempt_id"] = updated.context.attempt_id if updated.context is not None else None
+        facts["failure_category"] = updated.failure.category if updated.failure is not None else None
+    journal().transition(
+        "api",
+        "Run",
+        updated.run_id,
+        None if previous is None else previous.status,
+        updated.status,
+        partition=updated.ree_id,
+        facts=facts,
+    )
 
 
 class JsonRunStore:
@@ -51,6 +73,7 @@ class JsonRunStore:
                 raise FileExistsError(f"run directory already exists: {run.run_id}")
             run_dir.mkdir(parents=True)
             self._write_state_unlocked(run_dir / "state.json", run)
+            _journal_transition(None, run)
             key = (run.ree_id, run.run_id)
             self._runs[key] = run_dir
             self._next_log_seq[key] = 1
@@ -83,6 +106,7 @@ class JsonRunStore:
                 status = "provisioning" if current.operation == "provision" else "running"
             updated = current.model_copy(update={"started_at": utc_now(), "status": status})
             self._write_for_run_unlocked(updated)
+            _journal_transition(current, updated)
             return updated
 
     def append_log(
@@ -153,6 +177,7 @@ class JsonRunStore:
                 return current
             updated = current.model_copy(update=changes)
             self._write_for_run_unlocked(updated)
+            _journal_transition(current, updated)
             return updated
 
     def is_cancel_requested(self, ree_id: str, run_id: str) -> bool:
@@ -175,6 +200,11 @@ class JsonRunStore:
             current = self._get_unlocked(ree_id, run_id)
             if current is None:
                 return None
+            if current.status in _TERMINAL_STATUSES:
+                # Settled is final (the Run machine has no edge out of a terminal
+                # state): a late finalize, such as a worker that outlived an
+                # interrupted-run sweep, must not rewrite the recorded outcome.
+                return current
             if current.cancel_requested_at is not None and status not in {"failed", "succeeded"}:
                 status = "canceled"
                 failure = None
@@ -189,6 +219,7 @@ class JsonRunStore:
                 }
             )
             self._write_for_run_unlocked(updated)
+            _journal_transition(current, updated)
             return updated
 
     def interrupt_incomplete(self) -> list[StoredRun]:
@@ -207,6 +238,7 @@ class JsonRunStore:
                     continue
                 updated = current.model_copy(update={"status": "failed", "failure": failure, "finished_at": utc_now()})
                 self._write_state_unlocked(run_dir / "state.json", updated)
+                _journal_transition(current, updated)
                 interrupted.append(updated)
                 self._next_log_seq[key] = self._next_sequence_unlocked(run_dir)
         return interrupted

@@ -13,6 +13,7 @@ from threading import RLock
 from pydantic import ValidationError
 
 from repo2ree_protocol.allocation import AllocationRecord, AllocationRequest, AllocationState
+from repo2ree_protocol.behaviour import journal
 from repo2ree_supervisor.allocation_state import require_transition
 
 logger = logging.getLogger(__name__)
@@ -60,6 +61,19 @@ class AllocationStore:
             data["allocations"][request.allocation_id] = record.model_dump(mode="json")
             data["placements"][request.ree_id] = request.allocation_id
             self._write(data)
+            journal().transition(
+                "supervisor",
+                "Allocation",
+                request.allocation_id,
+                None,
+                record.state.value,
+                partition=request.ree_id,
+                facts={
+                    "provider_id": provider_id,
+                    "workbench_id": workbench_id,
+                    "location_id": request.location_id or None,
+                },
+            )
         return record
 
     def update(
@@ -75,6 +89,7 @@ class AllocationStore:
             data = self._read()
             record = AllocationRecord.model_validate(data["allocations"][allocation_id])
             require_transition(record.state, state)
+            previous = record.state
             record.state = state
             if workbench_id is not None:
                 record.workbench_id = workbench_id
@@ -85,6 +100,17 @@ class AllocationStore:
             record.updated_at = datetime.now(UTC)
             data["allocations"][allocation_id] = record.model_dump(mode="json")
             self._write(data)
+            if previous != state:
+                changed = {"workbench_id": workbench_id, "detail": detail}
+                journal().transition(
+                    "supervisor",
+                    "Allocation",
+                    allocation_id,
+                    previous.value,
+                    state.value,
+                    partition=record.request.ree_id,
+                    facts={name: value for name, value in changed.items() if value is not None},
+                )
             return record
 
     def get(self, allocation_id: str) -> AllocationRecord | None:
