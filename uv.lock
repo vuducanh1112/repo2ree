@@ -10,7 +10,6 @@ members = [
     "repo2ree-core",
     "repo2ree-docker-support",
     "repo2ree-executor",
-    "repo2ree-history",
     "repo2ree-protocol",
     "repo2ree-provider-docker",
     "repo2ree-supervisor",
@@ -2014,17 +2013,6 @@ requires-dist = [
     { name = "click", specifier = "~=8.2.1" },
     { name = "repo2ree-core", editable = "core" },
 ]
-
-[[package]]
-name = "repo2ree-history"
-version = "0.1.0"
-source = { editable = "history" }
-dependencies = [
-    { name = "pydantic" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "pydantic", specifier = "~=2.11.7" }]
 
 [[package]]
 name = "repo2ree-protocol"

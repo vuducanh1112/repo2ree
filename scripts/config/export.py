@@ -31,7 +31,6 @@ NON_SERVICE_ENVIRONMENT: dict[str, tuple[str, str]] = {
     "GHCR_NAMESPACE": ("publishing", "deployment"),
     "GHCR_REGISTRY": ("publishing", "deployment"),
     "GIT_INDEX_FILE": ("git", "external"),
-    "HISTORY_GIT": ("history", "internal"),
     "HOSTNAME": ("container-runtime", "external"),
     "IMAGE_CANDIDATE_REV": ("publishing", "deployment"),
     "IMAGE_TAG": ("publishing", "deployment"),

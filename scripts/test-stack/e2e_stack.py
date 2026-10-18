@@ -365,19 +365,6 @@ class E2EStack:
         )
         if self.recording_dir is not None and (self.recording_dir / "manifest.json").exists():
             demo_recording.finish(self.recording_dir, "passed" if self.client_status == 0 else "interrupted_or_failed")
-            subprocess.run(
-                [
-                    sys.executable,
-                    "-m",
-                    "repo2ree_history",
-                    "assemble",
-                    str(self.recording_dir),
-                    "-o",
-                    str(self.recording_dir / "analysis"),
-                ],
-                cwd=ROOT,
-                check=True,
-            )
             # Reported, not yet gating: 1 is a violation, 2 is inconclusive evidence.
             conformance = subprocess.run(
                 [

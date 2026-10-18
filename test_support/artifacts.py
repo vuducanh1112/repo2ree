@@ -41,7 +41,7 @@ def artifact_domain(nodeid: str) -> str:
     source = Path(nodeid.split("::", 1)[0])
     if source.is_absolute() and source.is_relative_to(ROOT):
         source = source.relative_to(ROOT)
-    return "assurance" if source.parts and source.parts[0] == "history" else "python"
+    return "assurance" if source.parts and source.parts[0] == "conformance" else "python"
 
 
 def domain_dir(domain: str) -> Path:

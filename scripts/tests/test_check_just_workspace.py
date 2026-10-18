@@ -5,13 +5,13 @@ from scripts import check_just_workspace
 
 
 def fixture(root: Path) -> tuple[dict[str, Any], dict[str, Any]]:
-    members = ["alpha", "beta", "history"]
+    members = ["alpha", "beta", "conformance"]
     for path in (root / "alpha/tests/unit", root / "beta/tests", root / "beta/tests/integration"):
         path.mkdir(parents=True)
     assignments = {
-        "PYTHON_FORMAT_PATHS": {"value": "scripts alpha beta history"},
+        "PYTHON_FORMAT_PATHS": {"value": "scripts alpha beta conformance"},
         "PYTHON_METRIC_PATHS": {"value": "alpha/src beta/src"},
-        "ASSURANCE_METRIC_PATHS": {"value": "history/src"},
+        "ASSURANCE_METRIC_PATHS": {"value": "conformance/src"},
         "UNIT_SUITES": {"value": "alpha/tests/unit beta/tests"},
         "INTEGRATION_SUITES": {"value": "beta/tests/integration"},
         "BACKEND_GRAPH_PACKAGES": {"value": "pkg_alpha pkg_beta"},
@@ -19,10 +19,10 @@ def fixture(root: Path) -> tuple[dict[str, Any], dict[str, Any]]:
     recipes = {
         "check": {"dependencies": [{"recipe": "check-backend"}, {"recipe": "check-assurance"}]},
         "test-unit": {"dependencies": [{"recipe": "test-backend-unit"}, {"recipe": "test-assurance"}]},
-        "check-assurance": {"dependencies": [{"recipe": "check-history"}]},
-        "test-assurance": {"dependencies": [{"recipe": "test-history"}]},
-        "check-history": {"dependencies": []},
-        "test-history": {"dependencies": []},
+        "check-assurance": {"dependencies": [{"recipe": "check-conformance"}]},
+        "test-assurance": {"dependencies": [{"recipe": "test-conformance"}]},
+        "check-conformance": {"dependencies": []},
+        "test-conformance": {"dependencies": []},
         "check-backend": {
             "dependencies": [{"recipe": name} for name in ("check-alpha", "check-beta", "check-architecture")]
         },
@@ -32,7 +32,7 @@ def fixture(root: Path) -> tuple[dict[str, Any], dict[str, Any]]:
     document = {"assignments": assignments, "recipes": recipes}
     config = {
         "tool": {
-            "repo2ree": {"workspace": {"backend": ["alpha", "beta"], "assurance": ["history"]}},
+            "repo2ree": {"workspace": {"backend": ["alpha", "beta"], "assurance": ["conformance"]}},
             "uv": {"workspace": {"members": members}},
             "importlinter": {"root_packages": ["pkg_alpha", "pkg_beta"]},
         }
@@ -55,16 +55,16 @@ def test_validate_reports_a_missing_package(tmp_path: Path) -> None:
     ]
 
 
-def test_history_cannot_leak_back_into_backend(tmp_path: Path) -> None:
+def test_assurance_cannot_leak_back_into_backend(tmp_path: Path) -> None:
     document, config = fixture(tmp_path)
-    document["assignments"]["UNIT_SUITES"]["value"] += " history/tests"
-    document["recipes"]["check-backend"]["dependencies"].append({"recipe": "check-history"})
+    document["assignments"]["UNIT_SUITES"]["value"] += " conformance/tests"
+    document["recipes"]["check-backend"]["dependencies"].append({"recipe": "check-conformance"})
     problems = check_just_workspace.validate(document, config, tmp_path)
     assert any("UNIT_SUITES packages" in problem for problem in problems)
     assert any("check-backend dependencies" in problem for problem in problems)
 
 
-def test_history_still_required_by_global_aggregates(tmp_path: Path) -> None:
+def test_assurance_still_required_by_global_aggregates(tmp_path: Path) -> None:
     document, config = fixture(tmp_path)
     document["recipes"]["test-unit"]["dependencies"] = [{"recipe": "test-backend-unit"}]
     assert "test-unit must include test-assurance independently of backend" in check_just_workspace.validate(
@@ -74,7 +74,7 @@ def test_history_still_required_by_global_aggregates(tmp_path: Path) -> None:
 
 def test_categories_cover_workspace_exactly_once(tmp_path: Path) -> None:
     document, config = fixture(tmp_path)
-    config["tool"]["repo2ree"]["workspace"]["backend"].append("history")
+    config["tool"]["repo2ree"]["workspace"]["backend"].append("conformance")
     assert any(
         "workspace categories" in problem for problem in check_just_workspace.validate(document, config, tmp_path)
     )

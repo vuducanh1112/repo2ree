@@ -8,7 +8,7 @@ requires-python = "~=3.13.0"
 dependencies = []
 
 [tool.uv.workspace]
-members = ["protocol", "core", "supervisor", "api", "executor", "docker-support", "provider", "workbench", "history", "conformance"]
+members = ["protocol", "core", "supervisor", "api", "executor", "docker-support", "provider", "workbench", "conformance"]
 
 [dependency-groups]
 dev = [
@@ -108,7 +108,6 @@ src = [
     "docker-support/src",
     "provider/src",
     "workbench/src",
-    "history/src",
     "conformance/src",
 ]
 line-length = 120
@@ -666,4 +665,4 @@ no_implicit_reexport = false
 
 [tool.repo2ree.workspace]
 backend = ["protocol", "core", "supervisor", "api", "executor", "docker-support", "provider", "workbench"]
-assurance = ["history", "conformance"]
+assurance = ["conformance"]

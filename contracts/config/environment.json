@@ -434,13 +434,6 @@
         "type": "string"
       }
     },
-    "HISTORY_GIT": {
-      "kind": "internal",
-      "owner": "history",
-      "schema": {
-        "type": "string"
-      }
-    },
     "HOSTNAME": {
       "kind": "external",
       "owner": "container-runtime",

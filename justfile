@@ -33,7 +33,6 @@ DIAGRAM_DIR := "dist/diagrams"
 JUST_RECIPE_GRAPH := DIAGRAM_DIR + "/just-recipes.svg"
 ARCH_DIR := DIAGRAM_DIR + "/architecture"
 DOMAIN_DIR := DIAGRAM_DIR + "/domain"
-JOURNAL_DIR := ASSURANCE_DIR + "/journals"
 METRICS_DIR := REPO2REE_TEST_RUN_DIR + "/python/reports/metrics"
 
 import 'just/checks.just'
@@ -41,7 +40,6 @@ import 'just/config.just'
 import 'just/metrics.just'
 import 'just/architecture.just'
 import 'just/domain.just'
-import 'just/journals.just'
 import 'just/docs.just'
 import 'just/presentations.just'
 import 'just/contracts.just'
@@ -57,9 +55,9 @@ import 'just/publish.just'
 _require-clean-tree:
     @test -z "$(git status --porcelain)" || { echo "working tree dirty — commit first, so published images match a commit"; exit 1; }
 
-# Generate every architecture, domain, run-journal, and recipe graph diagram.
+# Generate every architecture, domain, and recipe graph diagram.
 [group('Diagrams')]
-generate-diagrams: generate-architecture-diagrams generate-domain-diagrams generate-assurance-diagrams generate-just-recipe-graph
+generate-diagrams: generate-architecture-diagrams generate-domain-diagrams generate-just-recipe-graph
     @printf '>> diagrams written under %s\n' {{ quote(DIAGRAM_DIR + "/") }}
 
 # Generate the declared Just recipe dependency graph.
