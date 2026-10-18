@@ -11,6 +11,7 @@ from collections.abc import Callable
 from contextlib import ExitStack, suppress
 
 from repo2ree_core.bundle.repository_files import prepare_reproducer
+from repo2ree_core.domain.ree.audit import audit
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.persistence.capture_policy import write_capture_controls
 from repo2ree_core.persistence.directory import ReeDirectory
@@ -82,6 +83,8 @@ def capture_command(
             write_json_atomic(record_path, record.model_dump(mode="json"))
             history.capture_initial(existing=True)
             record.before_snapshot_id = history.capture(operation="observe_existing_ree", reuse_unchanged=True)
+            if scope == layout:
+                record.step_evidence_before = step_evidence(layout, log)
             record.operation_status = "unknown"
             write_json_atomic(record_path, record.model_dump(mode="json"))
             try:
@@ -100,6 +103,8 @@ def capture_command(
                 if current.seal is None:
                     prepare_reproducer(scope, current)
                     write_capture_controls(scope, current)
+            if scope == layout:
+                record.step_evidence_after = step_evidence(layout, log)
             record.after_snapshot_id, record.changed = history.commit_operation(
                 operation=cmd.operation,
                 record=CompletedOperation.model_validate(
@@ -131,6 +136,24 @@ def capture_command(
         )
         return failed.model_copy(update={"context": context, "history": _references(record)})
     return result.model_copy(update={"history": _references(record)})
+
+
+def step_evidence(layout: ReeLayout, log: LogSink) -> dict[str, str] | None:
+    """Each author step's evidence standing; recording it must never fail the capture."""
+    if not layout.manifest.is_file():
+        return None
+    try:
+        report = audit(ReeDirectory(layout).read_ree())
+    except Exception as exc:  # noqa: BLE001 — evidence about the REE, not a precondition of the command
+        log("system", "warn", f"Step evidence was not recorded: {exc}")
+        return None
+    standing = {
+        name: step.evidence
+        for name in ("source", "evaluation", "hardware", "runtime", "sbom", "sbom_cross_check", "test_activation")
+        if (step := getattr(report, name)) is not None
+    }
+    standing.update({f"experiment:{item.name}": item.run.evidence for item in report.experiments})
+    return standing
 
 
 def _references(record: OperationRecord) -> HistoryReference:

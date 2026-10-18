@@ -37,6 +37,11 @@ class OperationRecord(BaseModel):
     capture_error: str | None = None
     result: ActionResult | None = None
     changed: bool | None = None
+    # Evidence standing of every author step (``audit``) around the handler, so
+    # the history shows which attempt made which receipt current or stale.
+    # None for review scopes, legacy records, and REEs that could not be audited.
+    step_evidence_before: dict[str, str] | None = None
+    step_evidence_after: dict[str, str] | None = None
 
 
 class OperationHistory(BaseModel):

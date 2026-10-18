@@ -2755,6 +2755,14 @@ export interface components {
             result?: components["schemas"]["ActionResult"] | null;
             /** Changed */
             changed?: boolean | null;
+            /** Step Evidence Before */
+            step_evidence_before?: {
+                [key: string]: string;
+            } | null;
+            /** Step Evidence After */
+            step_evidence_after?: {
+                [key: string]: string;
+            } | null;
         };
         /**
          * PackageDeltaRecord

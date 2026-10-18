@@ -10810,6 +10810,34 @@
               }
             ],
             "title": "Changed"
+          },
+          "step_evidence_before": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step Evidence Before"
+          },
+          "step_evidence_after": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step Evidence After"
           }
         },
         "additionalProperties": false,
