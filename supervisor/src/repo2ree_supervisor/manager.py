@@ -51,6 +51,7 @@ from repo2ree_protocol.tracing import (
     record_exit_code,
     record_failure,
     record_ree_id,
+    record_result_boundary,
     record_result_evidence,
     record_span_facts,
 )
@@ -368,6 +369,7 @@ class WorkbenchManager:
             record_failure(span, result.failure)
             record_command_status(span, result.status)
             record_result_evidence(span, result)
+            record_result_boundary(span, "supervisor.received", result)
             return result
 
     def cancel_run(self, handle: WorkbenchHandle, run_id: str) -> None:

@@ -319,6 +319,23 @@ def record_execution_context(span: Span, execution: ExecutionContext | None) -> 
             span.set_attribute(_ATTR_REE_ID, execution.ree_id)
 
 
+def record_result_boundary(span: Span, boundary: str, result: ActionResult) -> None:
+    """Observe a local result boundary; sending does not assert remote receipt."""
+    attributes: dict[str, str | int] = {
+        "repo2ree.boundary": boundary,
+        "repo2ree.status": result.status,
+        "repo2ree.exit_code": result.exit_code,
+    }
+    if result.context is not None:
+        attributes.update(
+            {
+                "repo2ree.operation_id": result.context.operation_id,
+                "repo2ree.attempt_id": result.context.attempt_id,
+            }
+        )
+    span.add_event("repo2ree.result", attributes)
+
+
 def record_result_evidence(span: Span, result: ActionResult) -> None:
     """Write identity/evidence links last so bulky domain facts cannot evict them."""
     record_execution_context(span, result.context)

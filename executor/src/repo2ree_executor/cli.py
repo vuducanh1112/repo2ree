@@ -46,6 +46,7 @@ from repo2ree_protocol.tracing import (
     record_command_status,
     record_exit_code,
     record_failure,
+    record_result_boundary,
     record_result_evidence,
     setup_relay_tracing,
 )
@@ -249,6 +250,7 @@ def _run_command_envelope(cmd: Any, run_id: str | None, context: ExecutionContex
             record_failure(span, result.failure)
             record_command_status(span, result.status)
             record_result_evidence(span, result)
+            record_result_boundary(span, "executor.completed", result)
         # stdout stays the wire protocol, byte for byte: one bare ActionResult
         # line is what the dispatcher parses. The run log gets the same value
         # wrapped in a named frame, which only the file needs.

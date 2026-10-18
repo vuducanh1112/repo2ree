@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import contextvars
 import logging
 import queue
 import socket
@@ -48,6 +49,7 @@ from repo2ree_protocol.tracing import (
     record_command_status,
     record_exit_code,
     record_failure,
+    record_result_boundary,
     remote_context,
 )
 from repo2ree_protocol.workbench import (
@@ -362,7 +364,11 @@ async def _handle(
 
         async def send_frame(frame: Frame) -> None:
             outcome.observe(frame)
+            if isinstance(frame, ResultFrame):
+                record_result_boundary(span, "workbench.received", frame.result)
             await _send(ws, req_id, frame)
+            if isinstance(frame, ResultFrame):
+                record_result_boundary(span, "workbench.sent", frame.result)
 
         try:
             if isinstance(req, ExecActionRequest | CancelRunRequest):
@@ -441,7 +447,8 @@ async def _pump(send: Callable[[Frame], Awaitable[None]], gen_factory: Callable[
             if not stopped.is_set():
                 pending.put(sentinel)
 
-    threading.Thread(target=produce, daemon=True).start()
+    worker_context = contextvars.copy_context()
+    threading.Thread(target=worker_context.run, args=(produce,), daemon=True).start()
     try:
         while True:
             try:

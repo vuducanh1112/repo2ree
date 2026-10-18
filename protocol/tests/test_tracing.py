@@ -931,3 +931,23 @@ def test_setup_relayed_span_export_hands_spans_to_the_callback(monkeypatch: pyte
 
     assert registered == [provider]
     assert [_span_names(payload) for payload in wire.sent] == [["workbench.request"]]
+
+
+def test_result_boundary_records_local_observation_with_identity():
+    from opentelemetry.sdk.trace import Span as SDKSpan
+
+    from repo2ree_protocol.execution import ExecutionContext
+    from repo2ree_protocol.result import ActionResult
+    from repo2ree_protocol.tracing import record_result_boundary
+
+    provider = TracerProvider()
+    with provider.get_tracer(__name__).start_as_current_span("receiver") as span:
+        result = ActionResult(status="succeeded", context=ExecutionContext.new(ree_id="ree"))
+        record_result_boundary(span, "workbench.received", result)
+        assert isinstance(span, SDKSpan)
+        event = span.events[0]
+        assert event.name == "repo2ree.result"
+        assert event.attributes is not None
+        assert event.attributes["repo2ree.boundary"] == "workbench.received"
+        assert result.context is not None
+        assert event.attributes["repo2ree.attempt_id"] == result.context.attempt_id

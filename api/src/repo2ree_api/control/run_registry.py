@@ -25,6 +25,7 @@ from repo2ree_protocol.tracing import (
     get_tracer,
     record_command_status,
     record_failure,
+    record_result_boundary,
     record_result_evidence,
     record_span_facts,
 )
@@ -355,9 +356,11 @@ class RunRegistry:
                     record_failure(span, result.failure)
                     record_command_status(span, result.status)
                     record_result_evidence(span, result)
+                    record_result_boundary(span, "api.received", result)
                     settled = self.finalize(
                         ree_id, run_id, result.status, result.outputs, result.failure, result.context, result.history
                     )
+                    record_result_boundary(span, "api.finalized", result.model_copy(update={"status": settled}))
                     # Attributed with the *settled* status, so the counter agrees
                     # with what a poller reads back and with the run's own span.
                     terminal_attrs = command_metric_attrs(operation, status=settled)

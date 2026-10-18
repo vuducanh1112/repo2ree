@@ -427,3 +427,25 @@ def test_a_relayed_span_is_sent_uncorrelated() -> None:
     message = workbench_ws_message_adapter.validate_json(ws.sent[0])
     assert message.id is None
     assert message.frame == SpanFrame(payload="c3Bhbg==")
+
+
+def test_pump_preserves_trace_context_without_leaking_to_caller():
+    from repo2ree_protocol.tracing import attach_remote_context, current_traceparent, detach_context
+
+    parent = "00-" + "a" * 32 + "-" + "b" * 16 + "-01"
+    token = attach_remote_context(parent)
+    observed = []
+
+    def generate():
+        observed.append(current_traceparent())
+        yield from ()
+
+    async def send(frame):
+        pytest.fail("empty generator must not send")
+
+    try:
+        asyncio.run(connection._pump(send, generate))
+        assert observed == [parent]
+        assert current_traceparent() == parent
+    finally:
+        detach_context(token)
