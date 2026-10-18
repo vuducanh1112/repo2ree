@@ -41,3 +41,13 @@ repos:
         entry: just update-gui-npm-hash
         files: ^gui/package-lock\.json$
         pass_filenames: false
+
+      # The behaviour specification is the oracle implementations are checked
+      # against, so a commit may change it or the runtime code, not both: rules
+      # edited alongside the code they judge can be bent to fit it. Deliberate
+      # exceptions are explicit: SKIP=spec-isolation git commit ...
+      - id: spec-isolation
+        name: behaviour specification changes apart from implementation
+        language: system
+        entry: python scripts/check_spec_isolation.py
+        always_run: true
