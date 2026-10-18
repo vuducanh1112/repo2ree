@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 import shlex
+import shutil
 import signal
 import subprocess
 import sys
@@ -84,6 +85,7 @@ class E2EStack:
         self.stopped = False
         self.recording_dir = run_dir() / "recordings" / self.run_token if options.project == "demo-gui" else None
         self.client_status: int | None = None
+        self.conformance_status: int | None = None
 
     def workbench_log(self, index: int) -> Path:
         suffix = "" if index == 1 else f"-{index}"
@@ -141,6 +143,10 @@ class E2EStack:
             "ALLOCATION_STORE_FILE": str(self.control_state / "allocations.json"),
             "REE_INDEX_FILE": str(self.control_state / "ree-index.json"),
             "RUN_REGISTRY_DIR": str(self.control_state / "runs"),
+            # A recording keeps the owners' journals beside its traces and REE repositories.
+            "BEHAVIOUR_JOURNAL_DIR": str(
+                self.recording_dir / "journal" if self.recording_dir is not None else self.control_state / "journal"
+            ),
             "EXTERNAL_WORKBENCH_TOKEN": self.run_token,
             "COVERAGE_FILE": str(self.coverage_file),
         }
@@ -350,6 +356,8 @@ class E2EStack:
         for process in self.locations:
             self.terminate(process)
         self.terminate(self.backend)
+        if self.recording_dir is not None:
+            self.snapshot_stores(self.recording_dir / "stores")
         subprocess.run(
             [sys.executable, str(ROOT / "scripts/test-stack/workbench_cleanup.py"), "--owner", self.run_token],
             cwd=ROOT,
@@ -369,6 +377,25 @@ class E2EStack:
                 ],
                 cwd=ROOT,
                 check=True,
+            )
+            # Reported, not yet gating: 1 is a violation, 2 is inconclusive evidence.
+            conformance = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "repo2ree_conformance",
+                    "check",
+                    "--recording",
+                    str(self.recording_dir),
+                    "-o",
+                    str(self.recording_dir / "analysis"),
+                ],
+                cwd=ROOT,
+                check=False,
+            )
+            self.conformance_status = conformance.returncode
+            print(
+                f">> behaviour conformance exit {conformance.returncode}: {self.recording_dir}/analysis/conformance.md"
             )
             print(f">> demo recording: {self.recording_dir}")
         self.port_file.unlink(missing_ok=True)
@@ -391,6 +418,18 @@ class E2EStack:
             check=True,
         )
 
+    def snapshot_stores(self, destination: Path) -> None:
+        """The owners' final persisted state, copied after they stopped, for journal reconciliation."""
+        runs = self.control_state / "runs"
+        for state in sorted(runs.glob("*/state.json")):
+            target = destination / "runs" / state.parent.name / "state.json"
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(state, target)
+        allocations = self.control_state / "allocations.json"
+        if allocations.exists():
+            destination.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(allocations, destination / "allocations.json")
+
     def run(self) -> int:
         self.prepare()
         self.start_backend()
@@ -400,6 +439,11 @@ class E2EStack:
         print(">> stopping workbench service and backend (SIGTERM so coverage can flush)")
         self.stop()
         self.coverage_report()
+        # A test that passes while its own behaviour evidence contradicts the
+        # specification has not passed. Inconclusive evidence is reported only.
+        if status == 0 and self.conformance_status == 1:
+            print(">> behaviour conformance violated; failing the run", file=sys.stderr)
+            return 1
         return status
 
 
