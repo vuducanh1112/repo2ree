@@ -1,0 +1,107 @@
+# Cross-entity behaviour. Each invariant uses one fixed pattern; see README.md.
+
+# ---- Control plane ------------------------------------------------------------
+
+[[invariant]]
+id = "run-success-is-backed"
+pattern = "requires"
+summary = "A command run reports success only after its attempt was captured as succeeded."
+when = { entity = "Run", to = "succeeded", where = { operation = { not = "provision" } } }
+require = { entity = "Attempt", key_from = "attempt_id", reached = "captured", where = { outcome = "succeeded" }, order = "before" }
+
+[[invariant]]
+id = "dispatch-success-is-captured"
+pattern = "requires"
+summary = "A successful dispatch result is backed by a captured, successful attempt."
+when = { boundary = "dispatch", message = "result", where = { status = "succeeded" } }
+require = { entity = "Attempt", key_from = "$key", reached = "captured", where = { outcome = "succeeded" }, order = "before" }
+
+[[invariant]]
+id = "execution-was-dispatched"
+pattern = "requires"
+summary = "Every attempt that executed was dispatched by the supervisor."
+when = { entity = "Attempt", to = "executing" }
+require = { boundary = "dispatch", message = "exec_action", key_from = "$key", order = "before" }
+
+[[invariant]]
+id = "allocation-ends"
+pattern = "response"
+summary = "An assigned allocation is eventually released, failed, or lost."
+when = { entity = "Allocation", to = "assigned" }
+eventually = ["released", "failed", "lost"]
+
+# ---- REE domain ---------------------------------------------------------------
+
+[[invariant]]
+id = "ree-changes-through-operations"
+pattern = "guard"
+summary = "The committed REE changes only through dispatched operations, never between them."
+when = { entity = "Ree", from = ["draft", "sealed"], to = ["draft", "sealed"] }
+require = { where = { cause = "operation" } }
+
+[[invariant]]
+id = "sealed-without-stale-evidence"
+pattern = "excludes"
+summary = "An REE is never sealed while any of its receipts is stale."
+when = { entity = "Ree", from = "draft", to = "sealed" }
+require = { entity = "Step", in_states = ["stale"] }
+
+# A receipt appears only through the operation that produces it (or a bundle
+# load that restores receipts made elsewhere). Edits can make evidence stale or
+# current again; they can never create it.
+
+[[invariant]]
+id = "source-receipts-come-from-acquisition"
+pattern = "guard"
+summary = "Source evidence appears only by acquiring source or loading a bundle."
+when = { entity = "Step", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "source" } }
+require = { where = { operation = { in = ["acquire_source", "load_ree_bundle"] } } }
+
+[[invariant]]
+id = "evaluation-receipts-come-from-evaluation"
+pattern = "guard"
+summary = "Evaluation evidence appears only by evaluating or loading a bundle."
+when = { entity = "Step", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "evaluation" } }
+require = { where = { operation = { in = ["evaluate_dependency_score", "load_ree_bundle"] } } }
+
+[[invariant]]
+id = "hardware-receipts-come-from-observation"
+pattern = "guard"
+summary = "Hardware evidence appears only by observing hardware or loading a bundle."
+when = { entity = "Step", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "hardware" } }
+require = { where = { operation = { in = ["generate_hbom", "load_ree_bundle"] } } }
+
+[[invariant]]
+id = "runtime-receipts-come-from-builds"
+pattern = "guard"
+summary = "Runtime evidence appears only by building or loading a bundle."
+when = { entity = "Step", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "runtime" } }
+require = { where = { operation = { in = ["build_runtime", "load_ree_bundle"] } } }
+
+[[invariant]]
+id = "sbom-receipts-come-from-scans"
+pattern = "guard"
+summary = "SBOM evidence appears only by generating an SBOM or loading a bundle."
+when = { entity = "Step", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "sbom" } }
+require = { where = { operation = { in = ["generate_sbom", "load_ree_bundle"] } } }
+
+[[invariant]]
+id = "cross-check-receipts-come-from-cross-checks"
+pattern = "guard"
+summary = "Cross-check evidence appears only by cross-checking or loading a bundle."
+when = { entity = "Step", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "sbom_cross_check" } }
+require = { where = { operation = { in = ["cross_check_sbom", "load_ree_bundle"] } } }
+
+[[invariant]]
+id = "activation-receipts-come-from-activation"
+pattern = "guard"
+summary = "Activation evidence appears only by testing activation or loading a bundle."
+when = { entity = "Step", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "test_activation" } }
+require = { where = { operation = { in = ["activation_test", "load_ree_bundle"] } } }
+
+[[invariant]]
+id = "experiment-receipts-come-from-runs"
+pattern = "guard"
+summary = "Experiment evidence appears only by running the experiment or loading a bundle."
+when = { entity = "Step", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "experiment" } }
+require = { where = { operation = { in = ["run_experiment", "load_ree_bundle"] } } }

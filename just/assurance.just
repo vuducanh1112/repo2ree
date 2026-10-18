@@ -1,17 +1,42 @@
 # Assurance collects evidence, checks specifications, and presents results.
-# History is its current implementation package, separate from the backend.
-[group('Assurance')]
-check-assurance: check-history
+# History assembles traces; conformance checks behaviour journals against
+# specifications/behaviour. Both are separate from the backend they observe.
 
+# Static checks for every assurance package.
 [group('Assurance')]
-test-assurance: test-history
+check-assurance: check-history check-conformance
+
+# Tests for every assurance package.
+[group('Assurance')]
+test-assurance: test-history test-conformance
 
 # System evidence tooling has independent checks and test artifacts.
-ASSURANCE_METRIC_PATHS := "history/src"
+ASSURANCE_METRIC_PATHS := "history/src conformance/src"
 
 [group('Assurance')]
 check-history: (_check-python-package "history")
     lint-imports --config history/pyproject.toml
+
+# Static checks, the checker's independence contracts, and a fresh generated machines module.
+[group('Assurance')]
+check-conformance: (_check-python-package "conformance")
+    lint-imports --config conformance/pyproject.toml
+    python -m repo2ree_conformance generate --check
+
+# Conformance tests; the system test drives the real owners and needs git.
+[group('Assurance')]
+test-conformance:
+    pytest conformance/tests
+
+# Regenerate protocol's behaviour machines after editing specifications/behaviour.
+[group('Assurance')]
+generate-behaviour:
+    python -m repo2ree_conformance generate
+
+# Check a recording's journals and REE histories against the behaviour specification (exit 0/1/2).
+[group('Assurance')]
+check-behaviour recording output=(ASSURANCE_DIR + "/behaviour"):
+    python -m repo2ree_conformance check --recording {{ quote(recording) }} -o {{ quote(output) }}
 
 # Run history tests without contributing to backend coverage.
 [group('Assurance')]

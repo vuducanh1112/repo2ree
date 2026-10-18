@@ -6,6 +6,7 @@ requires-python = "==3.13.*"
 members = [
     "repo2ree",
     "repo2ree-api",
+    "repo2ree-conformance",
     "repo2ree-core",
     "repo2ree-docker-support",
     "repo2ree-executor",
@@ -1947,6 +1948,17 @@ requires-dist = [
     { name = "uvicorn", specifier = "~=0.40.0" },
     { name = "websockets", specifier = "~=15.0" },
 ]
+
+[[package]]
+name = "repo2ree-conformance"
+version = "0.1.0"
+source = { editable = "conformance" }
+dependencies = [
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pydantic", specifier = "~=2.11.7" }]
 
 [[package]]
 name = "repo2ree-core"

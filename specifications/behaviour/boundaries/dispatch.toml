@@ -1,0 +1,30 @@
+# Typed command dispatch from the supervisor to a workbench.
+#
+# Recorded on the sender's side: the supervisor journals each request before it
+# is sent and the one outcome it observed. The workbench side is not journaled
+# yet; the Attempt machine is the receiver's evidence.
+
+name = "dispatch"
+sender = "supervisor"
+receiver = "workbench"
+key = "attempt_id"
+partition = "ree_id"
+summary = "One typed command sent to a workbench and the single outcome the sender observed."
+request = "exec_action"
+responses = ["result", "unavailable", "error"]
+# An attempt for key K runs while exchange K is open: after the request was sent,
+# before its outcome arrived. This orders Git evidence against the journal.
+brackets = ["Attempt"]
+
+[messages]
+exec_action = "The command envelope, sent over the workbench's connection."
+result = "The executor's terminal ActionResult frame."
+unavailable = "The workbench reported that it cannot run commands."
+error = "The workbench reported a transport or protocol error."
+
+[facts.exec_action]
+operation = "str"
+run_id = "str"
+
+[facts.result]
+status = "str"

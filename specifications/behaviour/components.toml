@@ -1,0 +1,22 @@
+# The components that own entities or take part in boundaries, and the process
+# each runs in. A process journal speaks for the components it hosts.
+
+[[component]]
+name = "api"
+process = "api"
+summary = "HTTP control plane: accepts requests and owns background runs."
+
+[[component]]
+name = "supervisor"
+process = "api"
+summary = "Library inside the API process: allocates workbenches and dispatches commands."
+
+[[component]]
+name = "workbench"
+process = "workbench"
+summary = "Resident service in the REE's environment: receives commands and starts the executor."
+
+[[component]]
+name = "core"
+process = "workbench"
+summary = "Domain logic run by the executor inside the workbench: owns the REE and its history."

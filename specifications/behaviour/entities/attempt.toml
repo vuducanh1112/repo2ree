@@ -1,0 +1,44 @@
+# One execution attempt of a typed command inside an REE.
+#
+# Core is the owner and the REE's Git history is its journal: capture_command
+# rewrites the attempt's record at every phase and publishes the final record as
+# a commit. The checker reads those records rather than a separate event file.
+
+name = "Attempt"
+owner = "core"
+key = "attempt_id"
+partition = "ree_id"
+evidence = "git"
+initial = "pending"
+terminal = ["captured", "capture_failed"]
+settles_before_close = false
+summary = "One command execution inside an REE, from its pending record to its published capture."
+
+[states]
+pending = "The attempt record exists; the before-snapshot is not taken yet."
+executing = "The before-snapshot was taken and the handler was started."
+completed = "The handler returned an outcome; the after-state is not published yet."
+captured = "The outcome and after-state are published as a commit."
+capture_failed = "Recording failed; the REE files were not rolled back."
+
+[facts]
+operation = "str"
+run_id = "str"
+scope = "str"
+outcome = "str"
+commit = "str"
+changed = "bool"
+error = "str"
+
+[[transitions]]
+from = "pending"
+to = ["executing", "capture_failed"]
+why = "The before-snapshot either succeeds or fails before anything runs."
+
+[[transitions]]
+from = "executing"
+to = ["completed", "capture_failed"]
+
+[[transitions]]
+from = "completed"
+to = ["captured", "capture_failed"]

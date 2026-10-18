@@ -1,0 +1,66 @@
+# A background run as the API stores and reports it.
+#
+# Derived from JsonRunStore on 2026-10-18; every edge below is one the
+# implementation can take today. Review the edges marked "questionable" before
+# enforcing this machine in the store.
+
+name = "Run"
+owner = "api"
+key = "run_id"
+partition = "ree_id"
+evidence = "journal"
+initial = "queued"
+terminal = ["succeeded", "failed", "canceled"]
+# The API drains its worker pool on orderly shutdown, so a run still active in a
+# cleanly closed journal was abandoned rather than interrupted.
+settles_before_close = true
+summary = "One accepted background request, from durable acceptance to its settled outcome."
+
+[states]
+queued = "Durably accepted; no worker has started it."
+provisioning = "A worker is creating the REE's workbench."
+running = "A worker is executing the run's command."
+canceling = "Cancellation was requested and the outcome is not settled yet."
+succeeded = "Settled: the work completed."
+failed = "Settled: the work could not complete, or the API stopped before it did."
+canceled = "Settled: the work stopped because cancellation was requested."
+
+[facts]
+operation = "str"
+attempt_id = "str?"
+failure_category = "str?"
+
+[[transitions]]
+from = "queued"
+to = ["provisioning", "running"]
+why = "A worker begins the run; provisioning runs report provisioning."
+
+[[transitions]]
+from = "queued"
+to = ["canceling"]
+why = "Cancellation was requested before a worker began."
+
+[[transitions]]
+from = "queued"
+to = ["failed"]
+why = "The run could not be scheduled, or the API restarted before it began."
+
+[[transitions]]
+from = "provisioning"
+to = ["canceling", "succeeded", "failed", "canceled"]
+why = "Provisioning settles, or cancellation is requested while it runs."
+
+[[transitions]]
+from = "running"
+to = ["canceling", "succeeded", "failed", "canceled"]
+why = "The command settles, or cancellation is requested while it runs."
+
+[[transitions]]
+from = "canceling"
+to = ["canceled"]
+why = "The work stopped in response to cancellation."
+
+[[transitions]]
+from = "canceling"
+to = ["succeeded", "failed"]
+why = "Questionable: the work finished before cancellation took effect, and its outcome wins."

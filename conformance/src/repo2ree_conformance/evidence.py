@@ -1,0 +1,67 @@
+"""Normalized evidence: owner-ordered events plus what each source can vouch for."""
+
+from __future__ import annotations
+
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, JsonValue
+
+type Scalar = str | int | bool | None
+
+
+class EvidenceModel(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+
+class Source(EvidenceModel):
+    """One durable journal of one owner.
+
+    ``partitions`` is None when the source covers every partition its owner
+    touched (a process journal); a Git history covers only its own REE.
+    """
+
+    id: str
+    kind: Literal["journal", "git", "store"]
+    process: str
+    rank: int  # Order among sources of the same process (journal epoch).
+    hosts: frozenset[str]  # Owners whose records this source would hold.
+    complete: bool  # No gaps or unreadable records.
+    closed: bool  # The owner ended the journal deliberately.
+    partitions: frozenset[str] | None = None
+    spec_digest: str | None = None
+    problems: tuple[str, ...] = ()
+
+
+class Event(EvidenceModel):
+    source: str
+    position: int  # Order within its source.
+    # "observed" is a persisted state read after the owners stopped, for reconciliation.
+    kind: Literal["transition", "send", "receive", "abandon", "observed"]
+    owner: str
+    subject: str  # Entity name for transitions, boundary name for messages.
+    key: str
+    partition: str | None = None
+    source_state: str | None = None
+    target_state: str | None = None
+    message: str | None = None
+    facts: dict[str, JsonValue] = {}
+    at: str | None = None
+    locator: str | None = None  # A human address for the evidence (commit, file), when positions are synthetic.
+
+    @property
+    def ref(self) -> str:
+        return self.locator or f"{self.source}#{self.position}"
+
+
+class Evidence(EvidenceModel):
+    sources: tuple[Source, ...]
+    events: tuple[Event, ...]
+    problems: tuple[str, ...] = ()
+
+    def source(self, source_id: str) -> Source:
+        return next(source for source in self.sources if source.id == source_id)
+
+    def ordered(self, events: list[Event]) -> list[Event]:
+        """Owner order: source rank, then position. Never wall-clock time."""
+        ranks = {source.id: (source.process, source.rank) for source in self.sources}
+        return sorted(events, key=lambda event: (*ranks[event.source], event.position))

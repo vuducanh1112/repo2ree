@@ -1,0 +1,47 @@
+# One author step's evidence standing, as core's audit reports it around each attempt.
+#
+# The audit (core/domain/ree/audit.py) compares each receipt against what the REE
+# now declares. Core records it before and after every author attempt; the
+# checker turns differences into transitions, attributed to the attempt (cause
+# "operation") or to a change found between attempts (cause "external").
+# A step that is no longer listed (a removed experiment) reads not_applicable.
+
+name = "Step"
+owner = "core"
+key = "step_id"
+partition = "ree_id"
+evidence = "git"
+initial = ["missing", "not_applicable", "current", "stale"]
+settles_before_close = false
+summary = "Whether one step's receipt still speaks for the REE as it now stands."
+
+[states]
+missing = "Applicable, and no receipt: the step has not run successfully."
+current = "The receipt still matches everything it rests on."
+stale = "A receipt exists, but something it rests on moved or was removed."
+not_applicable = "Nothing is declared for this step to be about, and there is no receipt."
+
+[facts]
+# source, evaluation, hardware, runtime, sbom, sbom_cross_check, test_activation, or experiment:<name>.
+step = "str"
+# The step without the experiment name: one of the above, or "experiment".
+kind = "str"
+operation = "str?"
+attempt_id = "str?"
+cause = "str"
+
+[[transitions]]
+from = "missing"
+to = ["current", "stale", "not_applicable"]
+
+[[transitions]]
+from = "current"
+to = ["stale", "missing", "not_applicable"]
+
+[[transitions]]
+from = "stale"
+to = ["current", "missing", "not_applicable"]
+
+[[transitions]]
+from = "not_applicable"
+to = ["missing", "current", "stale"]
