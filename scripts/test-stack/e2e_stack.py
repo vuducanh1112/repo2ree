@@ -22,6 +22,7 @@ from typing import BinaryIO
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
+from test_support import demo_recording  # noqa: E402
 from test_support.artifacts import run_dir, write_provenance  # noqa: E402
 
 
@@ -81,12 +82,38 @@ class E2EStack:
         self.client: subprocess.Popen[bytes] | None = None
         self.logs: list[BinaryIO] = []
         self.stopped = False
+        self.recording_dir = run_dir() / "recordings" / self.run_token if options.project == "demo-gui" else None
+        self.client_status: int | None = None
 
     def workbench_log(self, index: int) -> Path:
         suffix = "" if index == 1 else f"-{index}"
         return self.log_dir / f"workbench-{self.options.tier}{suffix}.log"
 
     def prepare(self) -> None:
+        if self.recording_dir is not None:
+            (self.recording_dir / "telemetry").mkdir(parents=True)
+            self.environment["E2E_RECORDING_DIR"] = str(self.recording_dir)
+            self.environment["OTLP_ENDPOINT"] = ""
+            (self.recording_dir / "manifest.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "execution_id": self.run_token,
+                        "nodeid": "gui/tests/demo/ree-create-python-hello-world.spec.ts",
+                        "runtime": "node",
+                        "suite": "demo-gui",
+                        "started": time.time(),
+                        "finished": None,
+                        "repositories": [],
+                        "owner": self.run_token,
+                        "mode": self.options.mode,
+                        "workbench_root": str(self.options.state_root / "workbenches"),
+                        "build_revision": self.environment["REPO2REE_BUILD_REVISION"],
+                    },
+                    indent=2,
+                )
+                + "\n"
+            )
         for path in (
             self.log_dir,
             self.options.state_root / "workbenches",
@@ -117,6 +144,8 @@ class E2EStack:
             "EXTERNAL_WORKBENCH_TOKEN": self.run_token,
             "COVERAGE_FILE": str(self.coverage_file),
         }
+        if self.recording_dir is not None:
+            environment["TRACE_FILE"] = str(self.recording_dir / "telemetry/api.ndjson")
         self.backend = subprocess.Popen(
             [
                 "coverage",
@@ -207,6 +236,8 @@ class E2EStack:
                     "REPO2REE_EXEC_PATH": "repo2ree-exec",
                 }
                 label = "external workbench"
+            if self.recording_dir is not None:
+                environment["TRACE_FILE"] = str(self.recording_dir / f"telemetry/location-{index}.ndjson")
             log = self.workbench_log(index)
             print(f">> starting {label} {index}/{self.options.compute_locations} (log: {log})")
             process = subprocess.Popen(
@@ -311,6 +342,11 @@ class E2EStack:
             return
         self.stopped = True
         self.terminate(self.client)
+        if self.recording_dir is not None and (self.recording_dir / "manifest.json").exists():
+            try:
+                demo_recording.preserve(self.recording_dir)
+            except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
+                print(f"demo preservation: {exc}", file=sys.stderr)
         for process in self.locations:
             self.terminate(process)
         self.terminate(self.backend)
@@ -319,6 +355,22 @@ class E2EStack:
             cwd=ROOT,
             check=False,
         )
+        if self.recording_dir is not None and (self.recording_dir / "manifest.json").exists():
+            demo_recording.finish(self.recording_dir, "passed" if self.client_status == 0 else "interrupted_or_failed")
+            subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "repo2ree_history",
+                    "assemble",
+                    str(self.recording_dir),
+                    "-o",
+                    str(self.recording_dir / "analysis"),
+                ],
+                cwd=ROOT,
+                check=True,
+            )
+            print(f">> demo recording: {self.recording_dir}")
         self.port_file.unlink(missing_ok=True)
         for handle in self.logs:
             handle.close()
@@ -344,6 +396,7 @@ class E2EStack:
         self.start_backend()
         self.start_locations()
         status = self.wait_for_run()
+        self.client_status = status
         print(">> stopping workbench service and backend (SIGTERM so coverage can flush)")
         self.stop()
         self.coverage_report()

@@ -17,9 +17,9 @@ from test_support.artifacts import case_dir, case_key, execution_id
 class TestRecorder:
     __test__ = False
 
-    def __init__(self, nodeid: str):
+    def __init__(self, nodeid: str, *, directory: Path | None = None):
         self.nodeid = nodeid
-        self.directory = case_dir(nodeid)
+        self.directory = directory if directory is not None else case_dir(nodeid)
         if self.directory.exists():
             shutil.rmtree(self.directory)
         self.repositories: list[dict[str, Any]] = []

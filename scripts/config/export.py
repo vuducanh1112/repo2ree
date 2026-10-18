@@ -25,6 +25,7 @@ NON_SERVICE_ENVIRONMENT: dict[str, tuple[str, str]] = {
     "DOCKERHUB_NAMESPACE": ("publishing", "deployment"),
     "DOCKERHUB_REGISTRY": ("publishing", "deployment"),
     "E2E_API_BASE_URL": ("playwright", "internal"),
+    "E2E_RECORDING_DIR": ("test-recording", "internal"),
     "E2E_BASE_URL": ("playwright", "internal"),
     "E2E_GIT_ORIGIN_URL": ("playwright", "internal"),
     "GHCR_NAMESPACE": ("publishing", "deployment"),

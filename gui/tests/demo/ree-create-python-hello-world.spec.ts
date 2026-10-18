@@ -581,6 +581,15 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
     });
   });
 
+  // Preserve the live operation journal, including seal publication, before release.
+  if (process.env.E2E_RECORDING_DIR) {
+    execFileSync("python", ["-m", "test_support.demo_recording", process.env.E2E_RECORDING_DIR], {
+      cwd: path.resolve(__dirname, "../../.."),
+      stdio: "inherit",
+      timeout: 120000,
+    });
+  }
+
   await demoStep(page, "Release workbench", async () => {
     await clickDemo(
       page,
