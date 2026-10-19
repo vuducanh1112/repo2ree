@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from repo2ree_conformance import Event, Evidence, Source, check, judge_occurrences, load_spec, replay
+from repo2ree_conformance import Event, Evidence, Source, Verification, VerifiedModel, load_spec, verify
 from repo2ree_traceview.model import OperationTrace, Recording
 from repo2ree_traceview.operations import build_trace
 from repo2ree_traceview.spans import Span, SpanEvent, SpanIndex
@@ -33,6 +33,8 @@ class Scenario:
         self.seq = 0
         # What the next records are about; switch them to interleave several REEs in one journal.
         self.ree, self.git, self.alloc = REE, "git:ree", "alloc-1"
+        # Each dispatched attempt's request, which its record cites, as the supervisor's context carries it.
+        self.requests: dict[str, str] = {}
 
     def journal(self, t: float, trace: str | None = None, **fields: Any) -> None:
         self.seq += 1
@@ -87,6 +89,7 @@ class Scenario:
             message="exec_action",
             facts={"operation": operation, "run_id": run_id},
         )
+        self.requests[attempt] = f"api-000001#{self.seq}"
         self.journal(
             answered,
             trace,
@@ -149,8 +152,16 @@ class Scenario:
         base, locator, sha = index * 1000, f"{self.git}@c{index}", f"c{index}" + "0" * 38
         common: dict[str, Any] = {"source": self.git, "owner": "core", "partition": self.ree, "locator": locator}
         if attempt is not None:
+            # The two sides cite each other: the attempt names its request, the result the capture commit.
+            pending = {"operation": operation, "run_id": run_id, "dispatched_by": self.requests.get(attempt)}
+            self.events = [
+                event.model_copy(update={"facts": {**event.facts, "commit": sha}})
+                if event.subject == "dispatch" and event.key == attempt and event.message == "result"
+                else event
+                for event in self.events
+            ]
             path: list[tuple[str | None, str, dict[str, Any]]] = [
-                (None, "pending", {"operation": operation, "run_id": run_id}),
+                (None, "pending", {name: value for name, value in pending.items() if value is not None}),
                 ("pending", "executing", {}),
                 ("executing", "completed", {"outcome": "succeeded"}),
                 ("completed", "captured", {"commit": sha, "changed": True}),
@@ -456,11 +467,10 @@ def trace_of(scenario: Scenario, spans: list[Span] | None = None, ree: str = REE
         ),
     )
     evidence = Evidence(sources=sources, events=tuple(scenario.events))
-    model, _, _ = replay(SPEC, evidence)
+    # Through the artifact, as the command line reads it: a view only ever sees what was verified.
+    verification = Verification.model_validate_json(verify(SPEC, evidence).model_dump_json())
     return build_trace(
-        model,
-        check(SPEC, evidence),
-        judge_occurrences(model),
+        VerifiedModel.of(verification),
         SpanIndex(spans or []),
         ree=ree,
         recording=Recording(name="synthetic"),

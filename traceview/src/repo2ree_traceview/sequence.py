@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Sequence as Seq
 
-from repo2ree_conformance import Event
+from repo2ree_conformance.evidence import Event
 from repo2ree_traceview.model import Activation, Lane, Provenance, ReeChange, Row, Sequence, StepChange, Tone
 from repo2ree_traceview.spans import Span, SpanIndex, timestamp
 

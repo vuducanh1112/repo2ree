@@ -5,9 +5,9 @@ have recorded it, and order is asserted only where the evidence establishes it.
 Everything else that cannot be decided is inconclusive, never a pass.
 
 Order comes from three places only: positions within one source, epochs and
-positions within one process's journals, and boundary exchanges that bracket
-the receiver's work (``brackets`` in a boundary spec). Wall-clock time is never
-used.
+positions within one process's journals, and citations (``cites`` in a boundary
+spec): a record that names another was written after it. Wall-clock time is
+never used, and nothing is assumed about where the receiver did its work.
 """
 
 from __future__ import annotations
@@ -18,11 +18,13 @@ from typing import Literal
 
 from pydantic import JsonValue
 
-from repo2ree_conformance.evidence import Event, Evidence, EvidenceModel, Source
+from repo2ree_conformance.evidence import Cut, Event, Evidence, EvidenceModel, Source
 from repo2ree_conformance.spec import (
     CREATED,
     OWN_KEY,
     BoundarySpec,
+    Citation,
+    CitingMessage,
     EntityRequirement,
     EntitySpec,
     EntityTrigger,
@@ -299,9 +301,53 @@ class Model:
         self.instances = instances
         self.exchanges = exchanges
         self._sources = {source.id: source for source in evidence.sources}
+        # Citations, as evidence of order: events recorded after an event (they name it), and before it.
+        self._later: dict[tuple[str, int], list[Event]] = defaultdict(list)
+        self._earlier: dict[tuple[str, int], list[Event]] = defaultdict(list)
+        # Citations that name a record other than the one the evidence holds, per boundary.
+        self.miscited: dict[str, list[Finding]] = defaultdict(list)
+        for boundary in spec.boundaries.values():
+            for citation in boundary.cites:
+                self._link(boundary, citation)
 
-    def coverage(self, owner: str, kind: str, partition: str | None) -> tuple[bool, str]:
-        """Whether a missing record is certain: (complete coverage, explanation)."""
+    def _link(self, boundary: BoundarySpec, citation: Citation) -> None:
+        record = citation.record
+        for key, exchange in self.exchanges.get(boundary.name, {}).items():
+            instance = self.instances.get(record.entity, {}).get(key)
+            if instance is None:
+                continue  # Its absence is what the invariants requiring it report.
+            reached = [item for item in instance.reached if item.state == record.reached]
+            messages = exchange.carrying(citation.message)
+            if isinstance(citation.by, CitingMessage):
+                fact = citation.by.fact
+                by_identity = {str(item.facts.get(record.fact)): item.event for item in reached}
+                for message in messages:
+                    self._cite(boundary.name, message, message.facts.get(fact), by_identity)
+            else:
+                by_ref = {message.ref: message for message in messages}
+                for item in reached:
+                    self._cite(boundary.name, item.event, item.facts.get(record.fact), by_ref)
+
+    def _cite(self, boundary: str, citing: Event, named: JsonValue, candidates: dict[str, Event]) -> None:
+        if not isinstance(named, str) or not named:
+            return  # It names nothing, so the order stays unknown.
+        cited = candidates.get(named)
+        if cited is None:
+            if candidates:
+                reason = f"names {named}, but the evidence records {sorted(candidates)}"
+                subject = f"{citing.subject} {citing.key}"
+                self.miscited[boundary].append(_finding("violated", subject, reason, citing, *candidates.values()))
+            return
+        self._later[(cited.source, cited.position)].append(citing)
+        self._earlier[(citing.source, citing.position)].append(cited)
+
+    def coverage(self, owner: str, kind: str, partition: str | None, before: Event | None = None) -> tuple[bool, str]:
+        """Whether a missing record is certain: (complete coverage, explanation).
+
+        ``before`` is the moment the record must precede. A snapshot taken while
+        the system ran (a source with a cut) can only vouch for what happened
+        before it was taken, so without such a moment it cannot vouch at all.
+        """
         covering = [
             source
             for source in self.evidence.sources
@@ -313,7 +359,33 @@ class Model:
             return False, f"no {kind} evidence from {owner} covers {partition or 'this partition'}"
         if incomplete := [source.id for source in covering if not source.complete]:
             return False, f"evidence from {owner} has gaps in {', '.join(incomplete)}"
+        for source in covering:
+            if source.cut is None:
+                continue
+            if before is None:
+                return False, f"{source.id} was taken while the system ran"
+            placed = self.placed(before, source.cut)
+            if placed is None:
+                return False, f"the evidence cannot place {before.ref} against when {source.id} was taken"
+            if placed != "before":
+                return False, f"{before.ref} was recorded {placed} {source.id} was taken"
         return True, ""
+
+    def placed(self, event: Event, cut: Cut) -> Literal["before", "while", "after"] | None:
+        """Where a journal event falls against the cut a snapshot was taken at; None when they share no journal."""
+        origin = self._sources.get(event.source)
+        for journal_id, (low, high) in cut.items():
+            mark = self._sources.get(journal_id)
+            if origin is None or mark is None or origin.kind != "journal" or mark.kind != "journal":
+                continue
+            if origin.process != mark.process:
+                continue
+            if origin.rank != mark.rank:
+                return "before" if origin.rank < mark.rank else "after"
+            if event.position <= low:
+                return "before"
+            return "while" if event.position <= high else "after"
+        return None
 
     def _direct(self, a: Event, b: Event) -> bool | None:
         if a.source == b.source:
@@ -323,14 +395,15 @@ class Model:
             return (first.rank, a.position) < (second.rank, b.position)
         return None
 
-    def _bracket(self, event: Event) -> tuple[Event, Event | None] | None:
-        if event.kind != "transition":
-            return None
-        boundary = self.spec.bracketing(event.subject)
-        exchange = self.exchanges.get(boundary.name, {}).get(event.key) if boundary is not None else None
-        if exchange is None or exchange.request is None:
-            return None
-        return exchange.request, exchange.outcome
+    def _cited(self, a: Event, b: Event) -> bool:
+        """Whether a citation shows ``a`` was recorded before ``b``."""
+        for later in self._later.get((a.source, a.position), ()):
+            if later is b or self._direct(later, b):
+                return True
+        for earlier in self._earlier.get((b.source, b.position), ()):
+            if earlier is a or self._direct(a, earlier):
+                return True
+        return False
 
     def precedes(self, a: Event, b: Event) -> bool | None:
         """True if ``a`` happened before ``b``, False if after, None if the evidence cannot say."""
@@ -338,18 +411,10 @@ class Model:
             return False
         if (direct := self._direct(a, b)) is not None:
             return direct
-        if bracket := self._bracket(a):
-            request, outcome = bracket
-            if outcome is not None and (outcome is b or self._direct(outcome, b)):
-                return True
-            if self._direct(b, request):
-                return False
-        if bracket := self._bracket(b):
-            request, outcome = bracket
-            if request is a or self._direct(a, request):
-                return True
-            if outcome is not None and self._direct(outcome, a):
-                return False
+        if self._cited(a, b):
+            return True
+        if self._cited(b, a):
+            return False
         return None
 
     def state_at(self, instance: Instance, moment: Event) -> tuple[bool, str | None]:
@@ -418,12 +483,14 @@ def check_requires(
     key = occurrence.key if require.key_from == OWN_KEY else occurrence.facts.get(require.key_from)
     if not isinstance(key, str) or not key:
         return _finding("violated", occurrence.subject, f"has no {require.key_from}", occurrence.event)
+    # Only a requirement that precedes the trigger must be in a snapshot taken after it.
+    before = occurrence.event if require.order == "before" else None
     if isinstance(require, EntityRequirement):
         target_spec = model.spec.entities[require.entity]
         instance = model.instances.get(require.entity, {}).get(key)
         name = f"{require.entity} {key}"
         if instance is None:
-            certain, why = model.coverage(target_spec.owner, target_spec.evidence, occurrence.partition)
+            certain, why = model.coverage(target_spec.owner, target_spec.evidence, occurrence.partition, before)
             if certain:
                 return _finding("violated", occurrence.subject, f"{name} was never recorded", occurrence.event)
             return _finding("inconclusive", occurrence.subject, why, occurrence.event)
@@ -450,7 +517,7 @@ def check_requires(
         if require.order == "before":
             return _ordered_requirement(model, carrying, occurrence, name)
         return None
-    certain, why = model.coverage(boundary.sender, "journal", occurrence.partition)
+    certain, why = model.coverage(boundary.sender, "journal", occurrence.partition, before)
     if certain:
         return _finding("violated", occurrence.subject, f"no {name}", occurrence.event)
     return _finding("inconclusive", occurrence.subject, why, occurrence.event)
@@ -561,6 +628,30 @@ def judge_occurrences(model: Model) -> list[Judgement]:
 # ================================================
 
 
+def states_around(model: Model, instance: Instance, cut: Cut) -> set[str] | None:
+    """The states a store snapshot taken at ``cut`` may hold for one instance.
+
+    Owners write their store and then journal the change, so the snapshot holds
+    the state at the cut's start, one reached while it was taken, or the first
+    one journaled after it. None when the instance's journal shares no process with the cut.
+    """
+    states: set[str] = set()
+    last: str | None = None
+    for item in instance.reached:
+        placed = model.placed(item.event, cut)
+        if placed is None:
+            return None
+        if placed == "before":
+            last = item.state
+            continue
+        states.add(item.state)
+        if placed == "after":
+            break
+    if last is not None:
+        states.add(last)
+    return states
+
+
 def check_reconciliation(model: Model, observed: list[Event]) -> RuleResult:
     """Persisted owner state must be what the owner's journal replays to.
 
@@ -577,9 +668,19 @@ def check_reconciliation(model: Model, observed: list[Event]) -> RuleResult:
         certain, why = model.coverage(spec.owner, spec.evidence, event.partition)
         verdict: FindingVerdict = "violated" if certain else "inconclusive"
         instance = model.instances.get(event.subject, {}).get(event.key)
+        cut = model.evidence.source(event.source).cut
         if instance is None:
             reason = f"persisted as {event.target_state}, but never journaled" if certain else why
             findings.append(_finding(verdict, subject, reason, event))
+        elif cut is not None:
+            states = states_around(model, instance, cut)
+            if states is None:
+                reason = f"the evidence cannot place its journal against when {event.source} was taken"
+                findings.append(_finding("inconclusive", subject, reason, event))
+            elif event.target_state not in states:
+                shown = sorted(states)
+                reason = f"persisted as {event.target_state}, but around {event.source} the journal shows {shown}"
+                findings.append(_finding(verdict, subject, reason, event, instance.reached[-1].event))
         elif instance.current != event.target_state:
             reason = f"persisted as {event.target_state}, but the journal replays to {instance.current}"
             findings.append(_finding(verdict, subject, reason, event, instance.reached[-1].event))
@@ -663,11 +764,14 @@ def replay(spec: Spec, evidence: Evidence) -> tuple[Model, list[RuleResult], Cov
         events = [event for event in by_subject.get(name, []) if event.kind in {"send", "receive", "abandon"}]
         exchanges[name], result, messages[name] = replay_boundary(boundary, events, evidence)
         rules.append(result)
-    return (
-        Model(spec, evidence, instances, exchanges),
-        rules,
-        Coverage(transitions=transitions, messages=messages),
-    )
+    model = Model(spec, evidence, instances, exchanges)
+    rules = [
+        rule.model_copy(update={"findings": (*rule.findings, *model.miscited[rule.rule.removeprefix("boundary:")])})
+        if rule.kind == "boundary"
+        else rule
+        for rule in rules
+    ]
+    return model, rules, Coverage(transitions=transitions, messages=messages)
 
 
 def check(spec: Spec, evidence: Evidence) -> CheckResult:

@@ -6,7 +6,11 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, JsonValue
 
+from repo2ree_recording import Cut
+
 type Scalar = str | int | bool | None
+
+__all__ = ["Cut", "Event", "Evidence", "EvidenceModel", "Scalar", "Source"]
 
 
 class EvidenceModel(BaseModel):
@@ -18,6 +22,10 @@ class Source(EvidenceModel):
 
     ``partitions`` is None when the source covers every partition its owner
     touched (a process journal); a Git history covers only its own REE.
+
+    ``cut`` is None when the source was taken after the owners it speaks for
+    stopped. A snapshot of a running system carries the journal positions it
+    was taken between: only what happened before the cut must be in it.
     """
 
     id: str
@@ -30,6 +38,8 @@ class Source(EvidenceModel):
     partitions: frozenset[str] | None = None
     spec_digest: str | None = None
     problems: tuple[str, ...] = ()
+    origin: str | None = None  # Where it was collected from: a control-plane URL, or a local path.
+    cut: Cut | None = None
 
 
 class Event(EvidenceModel):

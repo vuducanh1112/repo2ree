@@ -67,8 +67,9 @@ class Journal:
         *,
         partition: str | None,
         facts: Mapping[str, Fact] | None = None,
-    ) -> None:
-        self._message("send", owner, boundary, message, key, partition, facts)
+    ) -> str | None:
+        """Record a request; returns its reference (``<journal>#<seq>``) for the receiver to cite, if written."""
+        return self._message("send", owner, boundary, message, key, partition, facts)
 
     def receive(
         self,
@@ -98,8 +99,8 @@ class Journal:
         key: str,
         partition: str | None,
         facts: Mapping[str, Fact] | None,
-    ) -> None:
-        self._record(
+    ) -> str | None:
+        return self._record(
             {
                 "kind": kind,
                 "owner": owner,
@@ -111,7 +112,8 @@ class Journal:
             }
         )
 
-    def _record(self, record: dict[str, Any]) -> None:
+    def _record(self, record: dict[str, Any]) -> str | None:
+        """Write one record; its reference when it was written, else None."""
         return None
 
 
@@ -156,17 +158,19 @@ class FileJournal(Journal):
             self._closed = True
             self._stream.close()
 
-    def _record(self, record: dict[str, Any]) -> None:
+    def _record(self, record: dict[str, Any]) -> str | None:
         context = trace.get_current_span().get_span_context()
         if context.is_valid:
             record["trace"] = {"trace_id": f"{context.trace_id:032x}", "span_id": f"{context.span_id:016x}"}
-        self._append(record)
+        seq = self._append(record)
+        return None if seq is None else f"{self.path.stem}#{seq}"
 
-    def _append(self, record: dict[str, Any]) -> None:
+    def _append(self, record: dict[str, Any]) -> int | None:
+        """Write one record; its sequence number when it was written, else None."""
         with self._lock:
             if self._closed:
                 _log.error("behaviour journal %s is closed; dropping %s", self.path.name, record.get("kind"))
-                return
+                return None
             self._sequence += 1
             line = json.dumps(
                 {"v": 1, "seq": self._sequence, **record, "at": datetime.now(UTC).isoformat()},
@@ -180,6 +184,8 @@ class FileJournal(Journal):
             except (OSError, ValueError):
                 # The sequence number stays consumed, so the loss is visible to readers.
                 _log.exception("behaviour journal %s lost seq %d", self.path.name, self._sequence)
+                return None
+            return self._sequence
 
 
 _current: Journal = Journal()

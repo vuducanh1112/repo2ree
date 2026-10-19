@@ -42,6 +42,12 @@ class OperationRecord(BaseModel):
     # None for review scopes, legacy records, and REEs that could not be audited.
     step_evidence_before: dict[str, str] | None = None
     step_evidence_after: dict[str, str] | None = None
+    # Each phase the attempt entered, appended and written before the next begins:
+    # pending, executing, completed, then captured or capture_failed. The record of
+    # what happened in order, rather than a final state to infer it from.
+    phases: list[Literal["pending", "executing", "completed", "captured", "capture_failed"]] = Field(
+        default_factory=list
+    )
 
 
 class OperationHistory(BaseModel):

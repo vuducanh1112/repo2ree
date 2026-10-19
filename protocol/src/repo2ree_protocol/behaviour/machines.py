@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from repo2ree_protocol.behaviour.model import BoundaryShape, MachineShape
 
-SPEC_DIGEST = "sha256:f4b7b99e46587d1f1ae8771ff205e497ed052ebd7079bb4faf39d083c0eceb46"
+SPEC_DIGEST = "sha256:1eaaf8f051595b63be721fad378339209cad47c76e07bc695ceab8c3ed464532"
 
 MACHINES: dict[str, MachineShape] = {
     "Allocation": MachineShape(
@@ -127,6 +127,7 @@ MACHINES: dict[str, MachineShape] = {
             {
                 "changed",
                 "commit",
+                "dispatched_by",
                 "error",
                 "operation",
                 "outcome",

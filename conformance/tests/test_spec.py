@@ -101,10 +101,38 @@ def test_owners_and_boundary_ends_must_be_declared_components() -> None:
         parse_spec(entities, boundaries, invariants, components)
 
 
-def test_bracketed_entities_share_the_boundary_key() -> None:
+@pytest.mark.parametrize(
+    ("citation", "problem"),
+    [
+        (
+            {"by": {"entity": "Run", "reached": "queued", "fact": "operation"}, "cited": {"message": "exec_action"}},
+            "not keyed by attempt_id",
+        ),
+        (
+            {"by": {"entity": "Attempt", "reached": "gone", "fact": "operation"}, "cited": {"message": "exec_action"}},
+            "unknown state 'gone'",
+        ),
+        (
+            {"by": {"entity": "Attempt", "reached": "pending", "fact": "nope"}, "cited": {"message": "exec_action"}},
+            "undeclared fact 'nope'",
+        ),
+        (
+            {
+                "by": {"message": "result", "fact": "nope"},
+                "cited": {"entity": "Attempt", "reached": "captured", "fact": "commit"},
+            },
+            "undeclared fact 'nope'",
+        ),
+        (
+            {"by": {"message": "result", "fact": "status"}, "cited": {"message": "exec_action"}},
+            "one of the exchange's messages and one entity record",
+        ),
+    ],
+)
+def test_citations_link_a_message_and_a_record_keyed_like_the_exchange(citation: dict[str, Any], problem: str) -> None:
     entities, boundaries, invariants, components = documents()
-    boundaries[0]["brackets"] = ["Run"]
-    with pytest.raises(ValidationError, match="not keyed by attempt_id"):
+    boundaries[0]["cites"] = [citation]
+    with pytest.raises(ValidationError, match=problem):
         parse_spec(entities, boundaries, invariants, components)
 
 

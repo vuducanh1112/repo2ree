@@ -66,6 +66,7 @@ def capture_command(
         run_id=run_id,
         command=cmd.model_dump(mode="json"),
         scope=scope.root.relative_to(layout.root).as_posix(),
+        phases=["pending"],
     )
     record_path = scope.git_dir / "repo2ree" / "operations" / f"{record.attempt_id}.json"
     result: ActionResult | None = None
@@ -86,6 +87,7 @@ def capture_command(
             if scope == layout:
                 record.step_evidence_before = step_evidence(layout, log)
             record.operation_status = "unknown"
+            record.phases.append("executing")
             write_json_atomic(record_path, record.model_dump(mode="json"))
             try:
                 result = execute().model_copy(update={"context": context, "history": None})
@@ -96,6 +98,7 @@ def capture_command(
             record.operation_status = result.status
             record.operation_failure = result.failure
             record.result = result
+            record.phases.append("completed")
             # Preserve the handler outcome even if snapshot publication fails.
             write_json_atomic(record_path, record.model_dump(mode="json"))
             if scope.manifest.is_file():
@@ -108,10 +111,11 @@ def capture_command(
             record.after_snapshot_id, record.changed = history.commit_operation(
                 operation=cmd.operation,
                 record=CompletedOperation.model_validate(
-                    {**record.model_dump(), "capture_status": "captured"}
+                    {**record.model_dump(), "capture_status": "captured", "phases": [*record.phases, "captured"]}
                 ).model_dump(mode="json", exclude={"after_snapshot_id"}),
             )
             record.capture_status = "captured"
+            record.phases.append("captured")
             # The commit is authoritative. Cleanup is best-effort; a stale
             # pending record is reconciled with the published attempt on read.
             with suppress(OSError):
@@ -119,6 +123,7 @@ def capture_command(
     except (HistoryCaptureError, OSError, ValueError) as exc:
         record.capture_status = "failed"
         record.capture_error = str(exc)
+        record.phases.append("capture_failed")
         try:
             # The unique attempt path is safe to finalize after releasing locks.
             # If storage is unavailable, the last pending record remains evidence.

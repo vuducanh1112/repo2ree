@@ -51,8 +51,10 @@ from repo2ree_protocol.frames import ResultFrame, UnavailableFrame
 from repo2ree_supervisor import AllocationStore, WorkbenchManager, WorkbenchUnavailableError
 
 GIT = os.environ.get("REPO2REE_TOOL_GIT") or shutil.which("git")
+# Git histories are evidence under test: without git these tests would check nothing, so they fail rather than skip.
+if GIT is None:
+    raise RuntimeError("conformance tests need a git executable: put git on PATH or set REPO2REE_TOOL_GIT")
 ARCHIVE = Path(__file__).resolve().parents[2] / "examples" / "projects" / "python-hello-world.tar.gz"
-pytestmark = pytest.mark.skipif(GIT is None, reason="core's Git capture needs a git executable")
 SPEC = load_spec()
 
 _PROVIDER_GAP = "needs a provider that loses benches or drains them before assignment"

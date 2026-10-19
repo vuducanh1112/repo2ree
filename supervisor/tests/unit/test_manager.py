@@ -18,6 +18,7 @@ from repo2ree_protocol.behaviour import close_journal, open_journal
 from repo2ree_protocol.command import PatchReeDefinitionArgs, PatchReeDefinitionCommand
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import UnavailableFrame
+from repo2ree_protocol.result import HistoryReference
 from repo2ree_supervisor import AllocationStore, WorkbenchManager, WorkbenchUnavailableError
 
 _CATALOG_IMAGE = "docker.io/library/docker:29-dind"
@@ -225,7 +226,7 @@ def _exchanges(path):
     [
         (
             [ResultFrame(result=ActionResult(status="succeeded"))],
-            [("receive", "result", {"status": "succeeded"})],
+            [("receive", "result", {"status": "succeeded", "commit": None})],
             None,
         ),
         ([UnavailableFrame(detail="gone")], [("receive", "unavailable", {})], WorkbenchUnavailableError),
@@ -233,8 +234,11 @@ def _exchanges(path):
     ],
 )
 def test_dispatch_journals_one_request_and_what_came_back(tmp_path, frames, expected, raises):
+    sent_contexts = []
+
     class ScriptedWorkbench(FakeWorkbench):
         def exec_action(self, workbench_id, cmd_json, run_id, env, context=None):
+            sent_contexts.append(context)
             yield from frames
 
     manager, _, _ = _manager(tmp_path, ScriptedWorkbench())
@@ -253,6 +257,36 @@ def test_dispatch_journals_one_request_and_what_came_back(tmp_path, frames, expe
     sent, *outcomes = _exchanges(opened.path)
     assert sent == ("send", "exec_action", {"operation": "patch_ree_definition", "run_id": "run-1"})
     assert outcomes == expected
+    # The command carries the request's journal reference, for the attempt's record to cite.
+    request = next(json.loads(line) for line in opened.path.read_text().splitlines() if '"kind":"send"' in line)
+    assert [context.dispatch_record for context in sent_contexts] == [f"{opened.path.stem}#{request['seq']}"]
+
+
+def test_a_result_names_the_commit_that_captured_the_attempt(tmp_path):
+    history = HistoryReference(
+        selection_version=1,
+        attempt_id="a1",
+        scope=".",
+        capture_status="captured",
+        after_snapshot_id="c" * 40,
+        operation_status="succeeded",
+    )
+
+    class CapturingWorkbench(FakeWorkbench):
+        def exec_action(self, workbench_id, cmd_json, run_id, env, context=None):
+            cited = history.model_copy(update={"attempt_id": context.attempt_id})
+            yield ResultFrame(result=ActionResult(status="succeeded", history=cited))
+
+    manager, _, _ = _manager(tmp_path, CapturingWorkbench())
+    handle = manager.provision("ree-1", "My REE", location_id="lab-1", image=_CATALOG_IMAGE)
+    opened = open_journal(tmp_path / "journal", "api", hosts=("supervisor",))
+    try:
+        command = PatchReeDefinitionCommand(args=PatchReeDefinitionArgs(patch={"name": "x"}))
+        manager.dispatch_action(handle, command, "run-1", lambda *_: None)
+    finally:
+        close_journal()
+    _, outcome = _exchanges(opened.path)
+    assert outcome == ("receive", "result", {"status": "succeeded", "commit": "c" * 40})
 
 
 def test_dispatch_that_raises_is_journaled_as_abandoned(tmp_path):

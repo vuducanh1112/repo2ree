@@ -1,10 +1,18 @@
 """The published wire vocabulary: request payloads, responses, and the envelope.
 
-Split by subject (``runs``, ``ree``, ``requests``, ``errors``) and re-exported
+Split by subject (``runs``, ``ree``, ``requests``, ``errors``, ``behaviour``) and re-exported
 here, so route modules keep importing from one place — ``repo2ree_api.contracts``
 — while the definitions stay grouped by what they describe.
 """
 
+from repo2ree_api.contracts.behaviour import (
+    BehaviourArchive,
+    BehaviourArchiveList,
+    BehaviourJournal,
+    BehaviourJournalList,
+    BehaviourPositions,
+    BehaviourState,
+)
 from repo2ree_api.contracts.errors import ERROR_RESPONSES, ErrorDetail, ErrorEnvelope
 from repo2ree_api.contracts.ree import (
     DeleteReeResponse,
@@ -45,6 +53,12 @@ from repo2ree_api.contracts.runs import (
 
 __all__ = [
     "ERROR_RESPONSES",
+    "BehaviourArchive",
+    "BehaviourArchiveList",
+    "BehaviourJournal",
+    "BehaviourJournalList",
+    "BehaviourPositions",
+    "BehaviourState",
     "CancelRunResponse",
     "CreateRunPayload",
     "DeleteReeResponse",

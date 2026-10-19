@@ -9,6 +9,7 @@ not an upstream snapshot.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import tempfile
 from collections.abc import Mapping
@@ -28,6 +29,7 @@ from repo2ree_api.contracts import (
     UploadInitResponse,
     UploadStoredResponse,
 )
+from repo2ree_api.control.behaviour import journal_positions, record_archive
 from repo2ree_api.control.run_orchestration import run_summary, start_single_command_run
 from repo2ree_api.deps import ree_index, workbench_manager
 from repo2ree_api.ree_index import entry_from_ree
@@ -182,14 +184,19 @@ def download_ree_archive_route(ree_id: str) -> StreamingResponse:
     # streams to us — never for as long as the client takes to download — so a
     # slow client cannot block other operations on the REE.
     spool = tempfile.TemporaryFile()  # noqa: SIM115 — the spool outlives this frame — it is closed by the streaming response below
+    before = journal_positions()
+    digest = hashlib.sha256()
     try:
         with ree_command_span("ree-archive", ree_id):
             for chunk in workbench_manager.build_archive_stream(handle):
                 spool.write(chunk)
+                digest.update(chunk)
             if spool.tell() == 0:
                 raise HTTPException(status_code=502, detail="workbench returned an empty archive")
         size = spool.tell()
         spool.seek(0)
+        # Lets a collector place the copy the client keeps against the behaviour journals.
+        record_archive(ree_id, digest.hexdigest(), size, before)
     except HTTPException:
         spool.close()
         raise

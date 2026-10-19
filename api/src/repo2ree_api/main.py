@@ -22,6 +22,7 @@ from repo2ree_api.authoring.seal import seal_router
 from repo2ree_api.authoring.source import source_router
 from repo2ree_api.authoring.stages import stages_router
 from repo2ree_api.contracts import ErrorEnvelope, HealthResponse
+from repo2ree_api.control.behaviour import behaviour_router
 from repo2ree_api.control.compute import compute_router
 from repo2ree_api.control.fleet import (
     provider_ws_router,
@@ -175,6 +176,8 @@ ROUTERS = (
     provider_ws_router,
     workbench_ws_router,
     workbenches_router,
+    # What the fleet's owners recorded, for checking it against the behaviour specification.
+    behaviour_router,
 )
 
 for router in ROUTERS:

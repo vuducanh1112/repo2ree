@@ -15,8 +15,6 @@ from repo2ree_conformance.sources import load_evidence
 from repo2ree_conformance.spec import parse_spec
 from repo2ree_conformance.views import diff_specs, render_diff_markdown, system_map
 
-pytestmark = pytest.mark.skipif(GIT is None, reason="real evidence needs a git executable")
-
 
 @pytest.fixture(scope="module")
 def sealed(tmp_path_factory: pytest.TempPathFactory) -> tuple[object, object]:
@@ -45,7 +43,7 @@ def test_the_html_report_draws_every_view(sealed: tuple[object, object]) -> None
     result, _ = sealed
     page = render_html(SPEC, result)  # type: ignore[arg-type]
     assert page.count('<pre class="mermaid">') == 1 + len(SPEC.entities)  # The map, and one chart per entity.
-    assert "just trace-recording" in page
+    assert "just trace-behaviour" in page
     assert "<script" in page
     assert "violated</span> ·" not in page
 

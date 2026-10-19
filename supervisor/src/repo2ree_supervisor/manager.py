@@ -352,7 +352,7 @@ class WorkbenchManager:
                 )
                 with tracer.start_as_current_span("workbench.execute"):
                     _t0 = time.monotonic()
-                    result = self._dispatch_recorded(handle, cmd, run_id, log, context)
+                    result, context = self._dispatch_recorded(handle, cmd, run_id, log, context)
                     _exec_duration.record(
                         time.monotonic() - _t0,
                         command_metric_attrs(str(cmd.operation), status=result.status),
@@ -388,14 +388,17 @@ class WorkbenchManager:
         run_id: str,
         log: LogSink,
         context: ExecutionContext,
-    ) -> ActionResult:
+    ) -> tuple[ActionResult, ExecutionContext]:
         """One ``dispatch`` exchange: the request is journaled before it leaves, and one outcome after.
 
         Every terminal frame is recorded as received, so a duplicated result is
-        visible to the checker rather than silently overwritten here.
+        visible to the checker rather than silently overwritten here. The two
+        sides cite each other: the command carries the request's journal
+        reference into the attempt's record, and the recorded result names the
+        commit that captured the attempt. Returns the result and the context sent.
         """
         exchange = journal()
-        exchange.send(
+        dispatched = exchange.send(
             "supervisor",
             "dispatch",
             "exec_action",
@@ -403,9 +406,10 @@ class WorkbenchManager:
             partition=handle.ree_id,
             facts={"operation": str(cmd.operation), "run_id": run_id},
         )
+        context = context.model_copy(update={"dispatch_record": dispatched})
         answered = False
 
-        def observe(message: str, facts: dict[str, str] | None = None) -> None:
+        def observe(message: str, facts: dict[str, str | None] | None = None) -> None:
             nonlocal answered
             answered = True
             exchange.receive(
@@ -424,7 +428,7 @@ class WorkbenchManager:
             exchange.abandon(
                 "supervisor", "dispatch", context.attempt_id, partition=handle.ree_id, reason="closed_without_response"
             )
-        return result
+        return result, context
 
     def _dispatch_action_locked(
         self,
@@ -433,7 +437,7 @@ class WorkbenchManager:
         run_id: str,
         log: LogSink,
         context: ExecutionContext,
-        observe: Callable[[str, dict[str, str] | None], None],
+        observe: Callable[[str, dict[str, str | None] | None], None],
     ) -> ActionResult:
         cmd_json = cmd.model_dump_json()
 
@@ -461,7 +465,8 @@ class WorkbenchManager:
                 if self._span_sink is not None:
                     self._span_sink([frame.payload])
             elif isinstance(frame, ResultFrame):
-                observe("result", {"status": frame.result.status})
+                captured = frame.result.history.after_snapshot_id if frame.result.history else None
+                observe("result", {"status": frame.result.status, "commit": captured})
                 result = frame.result
             elif isinstance(frame, UnavailableFrame):
                 observe("unavailable", None)

@@ -30,7 +30,7 @@ def journal(
     )
 
 
-def git(*partitions: str, complete: bool = True) -> Source:
+def git(*partitions: str, complete: bool = True, cut: dict[str, tuple[int, int]] | None = None) -> Source:
     return Source(
         id="git:ree",
         kind="git",
@@ -40,6 +40,20 @@ def git(*partitions: str, complete: bool = True) -> Source:
         complete=complete,
         closed=False,
         partitions=frozenset(partitions),
+        cut=cut,
+    )
+
+
+def stores(cut: dict[str, tuple[int, int]] | None = None) -> Source:
+    return Source(
+        id="stores",
+        kind="store",
+        process="stores",
+        rank=0,
+        hosts=frozenset({"api", "supervisor"}),
+        complete=True,
+        closed=True,
+        cut=cut,
     )
 
 
@@ -83,9 +97,14 @@ class Recorder:
             facts={"attempt_id": attempt_id, "failure_category": None},
         )
 
-    def attempt(self, key: str, outcome: str = "succeeded", *, captured: bool = True) -> None:
+    def attempt(
+        self, key: str, outcome: str = "succeeded", *, captured: bool = True, dispatched_by: str | None = None
+    ) -> None:
+        pending: dict[str, Any] = {"operation": "build_runtime"}
+        if dispatched_by is not None:
+            pending["dispatched_by"] = dispatched_by
         steps: list[tuple[str | None, str, dict[str, Any]]] = [
-            (None, "pending", {"operation": "build_runtime"}),
+            (None, "pending", pending),
             ("pending", "executing", {}),
             ("executing", "completed", {"outcome": outcome}),
         ]
@@ -103,7 +122,10 @@ class Recorder:
                 facts=facts,
             )
 
-    def dispatch(self, key: str, *outcomes: tuple[str, str | None], owner: str = "supervisor") -> None:
+    def dispatch(
+        self, key: str, *outcomes: tuple[str, str | None], owner: str = "supervisor", commit: str | None = "c" * 40
+    ) -> str:
+        """Record an exchange; returns the request's reference, which the attempt cites."""
         self._add(
             "api-000001",
             kind="send",
@@ -113,11 +135,15 @@ class Recorder:
             message="exec_action",
             facts={"operation": "build_runtime", "run_id": "run-1"},
         )
+        request = f"api-000001#{self.positions['api-000001']}"
         for kind, message in outcomes:
             facts: dict[str, Any] = (
-                {"status": "succeeded"} if message == "result" else ({"reason": "x"} if kind == "abandon" else {})
+                {"status": "succeeded", "commit": commit}
+                if message == "result"
+                else ({"reason": "x"} if kind == "abandon" else {})
             )
             self._add("api-000001", kind=kind, owner=owner, subject="dispatch", key=key, message=message, facts=facts)
+        return request
 
 
 def verdicts(recorder: Recorder, *sources: Source) -> dict[str, str]:
@@ -132,8 +158,8 @@ def findings(recorder: Recorder, rule: str, *sources: Source) -> list[str]:
 
 def complete_command(recorder: Recorder, run: str = "run-1", attempt: str = "a1") -> None:
     recorder.run(run, "queued", "running")
-    recorder.dispatch(attempt, ("receive", "result"))
-    recorder.attempt(attempt)
+    request = recorder.dispatch(attempt, ("receive", "result"))
+    recorder.attempt(attempt, dispatched_by=request)
     recorder.settle(run, "running", "succeeded", attempt)
 
 
@@ -333,3 +359,104 @@ def test_occurrence_verdicts_agree_with_the_rule_verdicts() -> None:
     for rule, _, verdict in judgements(recorder):
         assert verdict == rules[rule] or (verdict == "passed" and rules[rule] != "not_triggered")
     assert ("run-success-is-backed", "api-000001#3", "violated") in judgements(recorder)
+
+
+# ---- Snapshots taken while the system ran ---------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("cut", "expected"),
+    [
+        ((3, 4), "violated: Attempt missing was never recorded"),
+        ((2, 3), "inconclusive: api-000001#3 was recorded while git:ree was taken"),
+        ((1, 2), "inconclusive: api-000001#3 was recorded after git:ree was taken"),
+    ],
+)
+def test_a_snapshot_must_hold_only_what_happened_before_it_was_taken(cut: tuple[int, int], expected: str) -> None:
+    recorder = Recorder()
+    recorder.run("run-1", "queued", "running", "succeeded", attempt_id="missing")  # api-000001#1..3
+    recorder.attempt("other")
+    sources = (journal(closed=False), git(REE, cut={"api-000001": cut}))
+    assert findings(recorder, "run-success-is-backed", *sources) == [expected]
+
+
+def test_a_snapshot_cannot_vouch_for_a_journal_it_was_not_cut_against() -> None:
+    recorder = Recorder()
+    recorder.run("run-1", "queued", "running", "succeeded", attempt_id="missing")
+    recorder.attempt("other")
+    sources = (journal(closed=False), git(REE, cut={"workbench-000001": (5, 6)}))
+    assert findings(recorder, "run-success-is-backed", *sources) == [
+        "inconclusive: the evidence cannot place api-000001#3 against when git:ree was taken"
+    ]
+
+
+def observed(recorder: Recorder, state: str) -> None:
+    recorder.events.append(
+        Event(
+            source="stores",
+            position=1,
+            kind="observed",
+            owner="api",
+            subject="Run",
+            key="run-1",
+            partition=REE,
+            target_state=state,
+        )
+    )
+
+
+@pytest.mark.parametrize(
+    ("state", "expected"),
+    [
+        ("running", []),  # The state when the cut began.
+        ("succeeded", []),  # Written to the store just before the snapshot, journaled just after the cut.
+        ("queued", ["violated: persisted as queued, but around stores the journal shows ['running', 'succeeded']"]),
+    ],
+)
+def test_a_live_store_snapshot_holds_a_state_reached_around_its_cut(state: str, expected: list[str]) -> None:
+    recorder = Recorder()
+    recorder.run("run-1", "queued", "running", "succeeded", attempt_id="a1")  # api-000001#1..3
+    recorder.attempt("a1")
+    observed(recorder, state)
+    sources = (journal(closed=False), git(REE), stores(cut={"api-000001": (2, 2)}))
+    assert findings(recorder, "reconciliation", *sources) == expected
+
+
+def test_a_store_snapshot_after_the_owners_stopped_must_match_exactly() -> None:
+    recorder = Recorder()
+    recorder.run("run-1", "queued", "running", "succeeded", attempt_id="a1")
+    recorder.attempt("a1")
+    observed(recorder, "running")
+    assert findings(recorder, "reconciliation", journal(), git(REE), stores()) == [
+        "violated: persisted as running, but the journal replays to succeeded"
+    ]
+
+
+# ---- Order across sources, evidenced by citations ----------------------------------
+
+
+def test_without_citations_the_order_across_sources_is_unknown() -> None:
+    recorder = Recorder()
+    recorder.run("run-1", "queued", "running")
+    recorder.dispatch("a1", ("receive", "result"), commit=None)
+    recorder.attempt("a1")  # Names no request, and the result names no commit.
+    recorder.settle("run-1", "running", "succeeded", "a1")
+    result = verdicts(recorder)
+    assert result["execution-was-dispatched"] == "inconclusive"
+    assert result["dispatch-success-is-captured"] == "inconclusive"
+    assert result["run-success-is-backed"] == "inconclusive"
+    assert findings(recorder, "execution-was-dispatched") == [
+        "inconclusive: the evidence cannot order dispatch.exec_action a1 against it"
+    ]
+
+
+def test_a_citation_of_a_record_the_evidence_does_not_hold_is_violated() -> None:
+    recorder = Recorder()
+    recorder.run("run-1", "queued", "running")
+    recorder.dispatch("a1", ("receive", "result"), commit="d" * 40)  # Not the commit that captured a1.
+    recorder.attempt("a1", dispatched_by="api-000001#99")  # Not the request that sent it.
+    recorder.settle("run-1", "running", "succeeded", "a1")
+    assert sorted(findings(recorder, "boundary:dispatch")) == [
+        "violated: names api-000001#99, but the evidence records ['api-000001#3']",
+        f"violated: names {'d' * 40}, but the evidence records ['{'c' * 40}']",
+    ]

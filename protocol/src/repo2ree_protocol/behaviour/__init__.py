@@ -7,6 +7,7 @@ every change with ``journal()``; ``repo2ree_conformance`` checks the records.
 
 from repo2ree_protocol.behaviour.machines import BOUNDARIES, MACHINES, SPEC_DIGEST
 from repo2ree_protocol.behaviour.model import BoundaryShape, MachineShape
+from repo2ree_protocol.behaviour.reader import JournalFile, journal_file, journal_files, positions, records_after
 from repo2ree_protocol.behaviour.writer import Journal, close_journal, journal, open_journal
 
 
@@ -29,9 +30,14 @@ __all__ = [
     "BoundaryShape",
     "IllegalTransitionError",
     "Journal",
+    "JournalFile",
     "MachineShape",
     "close_journal",
     "journal",
+    "journal_file",
+    "journal_files",
     "open_journal",
+    "positions",
+    "records_after",
     "require_transition",
 ]

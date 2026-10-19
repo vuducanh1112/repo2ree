@@ -1,34 +1,35 @@
-"""Read what a recording holds besides the checker's evidence: spans, its manifest, capture commit sizes."""
+"""Read what a recording holds besides the checker's evidence: spans, its context, capture commit sizes."""
 
 from __future__ import annotations
 
-import json
 import os
 import subprocess
 from importlib.resources import files
 from pathlib import Path
 
+from repo2ree_conformance.recording import history_head
+from repo2ree_recording import Recording as Manifest
 from repo2ree_traceview.model import Recording
 from repo2ree_traceview.spans import Span, parse_spans
 
-TRACES = "traces.ndjson"
-HISTORY_REF = "refs/heads/ree-history"
+
+def read_spans(recording: Path, manifest: Manifest) -> list[Span]:
+    """Every spans file the manifest lists, one per process that exported them."""
+    spans: list[Span] = []
+    for source in manifest.recorded("spans"):
+        path = recording / source.path
+        if path.exists():
+            spans.extend(parse_spans(path.read_text()))
+    return spans
 
 
-def read_spans(recording: Path) -> list[Span]:
-    path = recording / TRACES
-    return parse_spans(path.read_text()) if path.exists() else []
+def describe(recording: Path, manifest: Manifest) -> Recording:
+    context = manifest.context
+    return Recording(name=recording.name, test=context.test, outcome=context.outcome, revision=manifest.build_revision)
 
 
-def read_recording(recording: Path) -> Recording:
-    path = recording / "manifest.json"
-    manifest = json.loads(path.read_text()) if path.exists() else {}
-    return Recording(
-        name=recording.name,
-        test=manifest.get("nodeid"),
-        outcome=manifest.get("outcome"),
-        revision=manifest.get("build_revision"),
-    )
+def repositories(recording: Path, manifest: Manifest) -> list[Path]:
+    return [recording / source.path for source in manifest.recorded("git")]
 
 
 def commit_sizes(repositories: list[Path], executable: str = "git") -> dict[str, int]:
@@ -36,6 +37,9 @@ def commit_sizes(repositories: list[Path], executable: str = "git") -> dict[str,
     sizes: dict[str, int] = {}
     for repository in repositories:
         try:
+            head, _ = history_head(executable, repository)
+            if head is None:
+                continue
             log = subprocess.run(
                 [
                     executable,
@@ -46,7 +50,7 @@ def commit_sizes(repositories: list[Path], executable: str = "git") -> dict[str,
                     "--format=%x00%H",
                     "--name-only",
                     "--no-renames",
-                    HISTORY_REF,
+                    head,
                     "--",
                 ],
                 capture_output=True,

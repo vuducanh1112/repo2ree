@@ -11,6 +11,9 @@ class ExecutionContext(BaseModel):
     operation_id: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
     attempt_id: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
     ree_id: str | None = None
+    # Where the sender journaled dispatching this attempt (``<journal>#<seq>``). The
+    # attempt's record keeps it, which proves the attempt ran after the dispatch.
+    dispatch_record: str | None = None
 
     @classmethod
     def new(cls, *, ree_id: str | None = None, operation_id: str | None = None) -> "ExecutionContext":

@@ -105,6 +105,62 @@ class EntitySpec(SpecModel):
         return self
 
 
+class CitedEntity(SpecModel):
+    """An entity's record for the boundary's key, at the transition into ``reached``; ``fact`` is its identity."""
+
+    entity: Name
+    reached: Name
+    fact: Name
+
+
+class CitedMessage(SpecModel):
+    """A message of the exchange; its identity is the journal reference of its record."""
+
+    message: Name
+
+
+class CitingEntity(CitedEntity):
+    """An entity's record whose ``fact`` names the cited record."""
+
+
+class CitingMessage(SpecModel):
+    """A message whose ``fact`` names the cited record."""
+
+    message: Name
+    fact: Name
+
+
+class Citation(SpecModel):
+    """One record naming another, which it could only know once the other existed: evidence of order."""
+
+    by: CitingEntity | CitingMessage
+    cited: CitedEntity | CitedMessage
+
+    @model_validator(mode="after")
+    def across_the_boundary(self) -> Self:
+        if isinstance(self.by, CitingEntity) == isinstance(self.cited, CitedEntity):
+            raise ValueError("a citation links one of the exchange's messages and one entity record")
+        return self
+
+    @property
+    def record(self) -> CitedEntity:
+        """The entity side of the citation, citing or cited."""
+        if isinstance(self.by, CitingEntity):
+            return self.by
+        if isinstance(self.cited, CitedEntity):
+            return self.cited
+        raise ValueError("a citation without an entity side")  # Refused by the validator above.
+
+    @property
+    def message(self) -> str:
+        """The exchange side of the citation, citing or cited."""
+        if isinstance(self.by, CitingMessage):
+            return self.by.message
+        if isinstance(self.cited, CitedMessage):
+            return self.cited.message
+        raise ValueError("a citation without a message side")  # Refused by the validator above.
+
+
 class BoundarySpec(SpecModel):
     """One request/response exchange between two components, recorded by the sender."""
 
@@ -118,10 +174,9 @@ class BoundarySpec(SpecModel):
     responses: tuple[Name, ...] = Field(min_length=1)
     messages: dict[Name, str]
     facts: dict[Name, dict[Name, FactType]] = {}
-    # Entities whose transitions for key K happen inside exchange K: after the
-    # request is sent and before its outcome is received. This is the only
-    # ordering the checker assumes across evidence sources.
-    brackets: tuple[Name, ...] = ()
+    # Records of the exchange and of an entity keyed like it that name each other:
+    # the only way the checker orders evidence across sources.
+    cites: tuple[Citation, ...] = ()
 
     @model_validator(mode="after")
     def coherent_boundary(self) -> Self:
@@ -134,6 +189,16 @@ class BoundarySpec(SpecModel):
             raise ValueError(f"{self.name}: the request cannot also be a response")
         if unknown := set(self.facts) - declared:
             raise ValueError(f"{self.name}: facts for unknown messages {sorted(unknown)}")
+        for citation in self.cites:
+            for side in (citation.by, citation.cited):
+                if isinstance(side, CitedMessage | CitingMessage) and side.message not in declared:
+                    raise ValueError(f"{self.name}: cites unknown message {side.message!r}")
+            if isinstance(citation.by, CitingMessage) and citation.by.fact not in self.facts.get(
+                citation.by.message, {}
+            ):
+                raise ValueError(
+                    f"{self.name}: {citation.by.message} cites through undeclared fact {citation.by.fact!r}"
+                )
         return self
 
 
@@ -234,9 +299,6 @@ class Spec(SpecModel):
             return self.entities[trigger.entity].partition
         return self.boundaries[trigger.boundary].partition
 
-    def bracketing(self, entity: str) -> BoundarySpec | None:
-        return next((b for b in self.boundaries.values() if entity in b.brackets), None)
-
     def hosted_by(self, process: str) -> frozenset[str]:
         return frozenset(name for name, component in self.components.items() if component.process == process)
 
@@ -252,10 +314,15 @@ class Spec(SpecModel):
                 raise ValueError(f"boundary {boundary.name!r} is filed as {name!r}")
             if unknown := {boundary.sender, boundary.receiver} - set(self.components):
                 raise ValueError(f"{name}: undeclared components {sorted(unknown)}")
-            for bracketed in boundary.brackets:
-                target = self.entities.get(bracketed)
+            for citation in boundary.cites:
+                side = citation.record
+                target = self.entities.get(side.entity)
                 if target is None or target.key != boundary.key:
-                    raise ValueError(f"{name}: brackets {bracketed!r}, which is not keyed by {boundary.key}")
+                    raise ValueError(f"{name}: cites {side.entity!r}, which is not keyed by {boundary.key}")
+                if side.reached not in target.states:
+                    raise ValueError(f"{name}: cites {side.entity} reaching unknown state {side.reached!r}")
+                if side.fact not in target.facts:
+                    raise ValueError(f"{name}: cites {side.entity} through undeclared fact {side.fact!r}")
         if len({invariant.id for invariant in self.invariants}) != len(self.invariants):
             raise ValueError("invariant ids must be unique")
         for invariant in self.invariants:

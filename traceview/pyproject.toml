@@ -3,10 +3,11 @@ name = "repo2ree-traceview"
 version = "0.1.0"
 description = "Operation-level views of recorded repo2ree behaviour: checked evidence with spans as context."
 requires-python = "~=3.13.0"
-dependencies = ["pydantic~=2.11.7", "repo2ree-conformance"]
+dependencies = ["pydantic~=2.11.7", "repo2ree-conformance", "repo2ree-recording"]
 
 [tool.uv.sources]
 repo2ree-conformance = { workspace = true }
+repo2ree-recording = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
@@ -19,7 +20,7 @@ packages = ["src/repo2ree_traceview"]
 [tool.importlinter]
 include_external_packages = true
 root_packages = [
-    "repo2ree_traceview", "repo2ree_conformance", "repo2ree_api", "repo2ree_core", "repo2ree_docker",
+    "repo2ree_traceview", "repo2ree_conformance", "repo2ree_recording", "repo2ree_api", "repo2ree_core", "repo2ree_docker",
     "repo2ree_executor", "repo2ree_provider_docker", "repo2ree_protocol", "repo2ree_supervisor",
     "repo2ree_workbench",
 ]
@@ -34,15 +35,18 @@ forbidden_modules = [
     "repo2ree_provider_docker", "repo2ree_protocol", "repo2ree_supervisor", "repo2ree_workbench",
 ]
 
-# The checker's model is the only model of what happened. Views take its public
-# surface; reading journals or REE histories themselves would grow a second one
-# (the retired history package).
+# Views draw a verification; they never verify. They read the verifier's artifact
+# (repo2ree_conformance.verification), the recording format, and evidence types:
+# judging or reading evidence themselves would grow a second model of what
+# happened (the retired history package) and verdicts of their own.
 [[tool.importlinter.contracts]]
-name = "Traceview uses only the checker's public surface"
+name = "Traceview draws verifications without verifying"
 type = "forbidden"
 source_modules = ["repo2ree_traceview"]
 forbidden_modules = [
+    "repo2ree_conformance.check",
     "repo2ree_conformance.sources",
+    "repo2ree_conformance.spec",
     "repo2ree_conformance.files",
     "repo2ree_conformance.cli",
     "repo2ree_conformance.codegen",
@@ -50,7 +54,7 @@ forbidden_modules = [
     "repo2ree_conformance.report",
     "repo2ree_conformance.views",
 ]
-# The package root re-exports load_evidence from sources; only direct reaches count.
+# The read-side modules build on the checker's types; only direct reaches count.
 allow_indirect_imports = true
 
 # And the checker never depends on its views.

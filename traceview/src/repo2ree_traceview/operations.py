@@ -2,12 +2,13 @@
 
 An operation is an author attempt that belongs to a run (acquire_source, build_runtime, …).
 Attempts without a run of their own (definition patches, file writes, lints) are authoring and are
-collapsed between operations. Every entry is grouped from the checker's replayed model, and
-carries the verdict of each rule occurrence its events triggered.
+collapsed between operations. Every entry is grouped from the verification of the recording (the
+verifier's artifact, read back), and carries the verdict of each rule occurrence its events triggered.
 
 Order: attempts keep capture order, which step evidence depends on. Setup and release, which only
-the journal records, are merged in by the journal position of each attempt's dispatch, the same
-bracket the checker orders Git evidence by. Wall-clock time places nothing.
+the journal records, are merged in by the journal position of each attempt's dispatch, the request
+the attempt's record cites, which is how the checker orders Git evidence too. Wall-clock time places
+nothing.
 
 Scope: the REE's own history is the Git source that witnesses its Ree transitions. Review histories
 of the same REE are not drawn yet (reviews are not specified); they are only counted.
@@ -19,7 +20,8 @@ from collections import Counter, defaultdict
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
-from repo2ree_conformance import CheckResult, Event, Judgement, Model
+from repo2ree_conformance.evidence import Event
+from repo2ree_conformance.verification import Judgement, VerifiedModel
 from repo2ree_traceview.model import (
     Attempt,
     Dispatch,
@@ -56,10 +58,9 @@ class _Authoring:
 
 
 class _Builder:
-    def __init__(
-        self, model: Model, result: CheckResult, judgements: list[Judgement], spans: SpanIndex, ree: str
-    ) -> None:
+    def __init__(self, model: VerifiedModel, spans: SpanIndex, ree: str) -> None:
         self.model = model
+        result, judgements = model.result, model.judgements
         self.spans = spans
         self.events = model.evidence.ordered([e for e in model.evidence.events if e.partition == ree])
         kinds = {source.id: source.kind for source in model.evidence.sources}
@@ -125,7 +126,7 @@ class _Builder:
         )
 
 
-def rees(model: Model) -> list[str]:
+def rees(model: VerifiedModel) -> list[str]:
     """The REEs a recording holds, each witnessed by its own Git history."""
     return sorted(model.instances.get("Ree", {}))
 
@@ -163,16 +164,16 @@ def _setups(b: _Builder) -> list[_Setup]:
 
 
 def build_trace(
-    model: Model,
-    result: CheckResult,
-    judgements: list[Judgement],
+    model: VerifiedModel,
     spans: SpanIndex,
     *,
     ree: str,
     recording: Recording,
     commit_files: Mapping[str, int] | None = None,
 ) -> OperationTrace:
-    b = _Builder(model, result, judgements, spans, ree)
+    """One REE's operation trace, drawn from a verification: its verdicts are the verifier's, never redrawn."""
+    b = _Builder(model, spans, ree)
+    result = model.result
     files = commit_files or {}
     entries: list[Entry] = []
     standings: list[Standing] = []

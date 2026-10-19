@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
-import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
+from repo2ree_recording import read_recording
 from repo2ree_traceview.cli import main
 from repo2ree_traceview.files import template
 from repo2ree_traceview.model import Entry, OperationTrace, Recording
@@ -76,15 +78,37 @@ def test_a_template_without_a_place_for_the_trace_is_refused() -> None:
 def recordings() -> list[Path]:
     if not RECORDINGS.is_dir():
         return []
-    return [
-        path for path in sorted(RECORDINGS.iterdir()) if (path / "journal").is_dir() and (path / "capture").is_dir()
-    ]
+    found: list[Path] = []
+    for path in sorted(RECORDINGS.iterdir()):
+        try:
+            if read_recording(path).recorded("journal"):
+                found.append(path)
+        except (OSError, ValueError):
+            continue  # Not a recording in the current format.
+    return found
 
 
-@pytest.mark.skipif(shutil.which("git") is None or not recordings(), reason="needs git and a recording with journals")
+@pytest.mark.skipif(not recordings(), reason="needs a recording with journals under test-artifacts/recordings")
 def test_a_real_recording_draws_one_page_per_ree(tmp_path: Path) -> None:
-    assert main([str(recordings()[0]), "-o", str(tmp_path), "--json", "--provenance"]) == 0
-    pages = sorted(tmp_path.glob("*.html"))
+    # Verification is its own step; the views read only what it wrote.
+    verified = tmp_path / "verified"
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "repo2ree_conformance",
+            "check",
+            "--recording",
+            str(recordings()[0]),
+            "-o",
+            str(verified),
+        ],
+        check=False,
+        capture_output=True,
+    )
+    pages_dir = tmp_path / "pages"
+    assert main([str(verified), "-o", str(pages_dir), "--json", "--provenance"]) == 0
+    pages = sorted(pages_dir.glob("*.html"))
     assert pages
     for page in pages:
         trace = OperationTrace.model_validate_json(page.with_suffix(".json").read_text())

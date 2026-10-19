@@ -6,12 +6,14 @@ requires-python = "==3.13.*"
 members = [
     "repo2ree",
     "repo2ree-api",
+    "repo2ree-collect",
     "repo2ree-conformance",
     "repo2ree-core",
     "repo2ree-docker-support",
     "repo2ree-executor",
     "repo2ree-protocol",
     "repo2ree-provider-docker",
+    "repo2ree-recording",
     "repo2ree-supervisor",
     "repo2ree-traceview",
     "repo2ree-workbench",
@@ -1950,15 +1952,34 @@ requires-dist = [
 ]
 
 [[package]]
+name = "repo2ree-collect"
+version = "0.1.0"
+source = { editable = "collect" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "repo2ree-recording" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pydantic", specifier = "~=2.11.7" },
+    { name = "repo2ree-recording", editable = "recording" },
+]
+
+[[package]]
 name = "repo2ree-conformance"
 version = "0.1.0"
 source = { editable = "conformance" }
 dependencies = [
     { name = "pydantic" },
+    { name = "repo2ree-recording" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pydantic", specifier = "~=2.11.7" }]
+requires-dist = [
+    { name = "pydantic", specifier = "~=2.11.7" },
+    { name = "repo2ree-recording", editable = "recording" },
+]
 
 [[package]]
 name = "repo2ree-core"
@@ -2066,6 +2087,17 @@ requires-dist = [
 ]
 
 [[package]]
+name = "repo2ree-recording"
+version = "0.1.0"
+source = { editable = "recording" }
+dependencies = [
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pydantic", specifier = "~=2.11.7" }]
+
+[[package]]
 name = "repo2ree-supervisor"
 version = "0.1.0"
 source = { editable = "supervisor" }
@@ -2087,12 +2119,14 @@ source = { editable = "traceview" }
 dependencies = [
     { name = "pydantic" },
     { name = "repo2ree-conformance" },
+    { name = "repo2ree-recording" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "pydantic", specifier = "~=2.11.7" },
     { name = "repo2ree-conformance", editable = "conformance" },
+    { name = "repo2ree-recording", editable = "recording" },
 ]
 
 [[package]]

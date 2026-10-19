@@ -18,6 +18,7 @@ from repo2ree_conformance.evidence import Event, Evidence, Source
 
 JOURNAL_NAME = re.compile(r"^(?P<process>[a-z][a-z0-9-]*)-(?P<epoch>[0-9]{6})\.ndjson$")
 HISTORY_REF = "refs/heads/ree-history"
+EXPORTED_JOURNAL = re.compile(r"^refs/repo2ree/imports/[0-9a-f]{40,64}/journal$")
 MESSAGE_KINDS = {"send", "receive", "abandon"}
 TERMINAL_OUTCOMES = {"succeeded", "failed", "canceled"}
 
@@ -153,18 +154,44 @@ class Commit:
     metadata: dict[str, Any] | None
 
 
-def history_commits(executable: str, repository: Path) -> tuple[list[Commit], list[str]]:
-    """The REE's own capture history, oldest first.
+def history_head(executable: str, repository: Path) -> tuple[str | None, list[str]]:
+    """The ref holding this lifetime's whole capture history, or None for a repository without one.
 
-    Imported histories (refs/repo2ree/imports/) describe another workbench
-    lifetime; they are not this deployment's behaviour.
+    In a workbench that is ``ree-history``. A downloaded archive checks out the
+    seal instead, and keeps the history it was exported from as
+    ``refs/repo2ree/imports/<tip>/journal``: the one journal ref ``ree-history``
+    leads into. Other imported refs describe earlier lifetimes elsewhere; they
+    are not this deployment's behaviour.
     """
     if not git(executable, repository, "for-each-ref", "--format=%(refname)", HISTORY_REF).split():
-        return [], []
-    raw = git(executable, repository, "log", "--reverse", "--format=%H%x00%T%x00%P%x00%B%x1e", HISTORY_REF, "--")
+        return None, []
+    refs = git(executable, repository, "for-each-ref", "--format=%(refname)", "refs/repo2ree/imports/").split()
+    journals = [ref for ref in refs if EXPORTED_JOURNAL.match(ref)]
+    later = [ref for ref in journals if _is_ancestor(executable, repository, HISTORY_REF, ref)]
+    if not later:
+        return HISTORY_REF, []
+    latest = [ref for ref in later if all(_is_ancestor(executable, repository, other, ref) for other in later)]
+    if len({git(executable, repository, "rev-parse", ref).strip() for ref in latest}) != 1:
+        return HISTORY_REF, [f"cannot tell which exported journal continues {HISTORY_REF}: {sorted(later)}"]
+    return latest[0], []
+
+
+def _is_ancestor(executable: str, repository: Path, ancestor: str, descendant: str) -> bool:
+    try:
+        git(executable, repository, "merge-base", "--is-ancestor", ancestor, descendant)
+    except subprocess.CalledProcessError:
+        return False
+    return True
+
+
+def history_commits(executable: str, repository: Path) -> tuple[list[Commit], list[str]]:
+    """The REE's own capture history, oldest first."""
+    head, problems = history_head(executable, repository)
+    if head is None:
+        return [], problems
+    raw = git(executable, repository, "log", "--reverse", "--format=%H%x00%T%x00%P%x00%B%x1e", head, "--")
     trees: dict[str, str] = {}
     commits: list[Commit] = []
-    problems: list[str] = []
     for entry in raw.split("\x1e"):
         if not entry.strip():
             continue
@@ -209,10 +236,43 @@ def pending_records(repository: Path, published: set[str]) -> tuple[list[dict[st
     return records, problems
 
 
+def inferred_phases(record: dict[str, Any], commit: Commit | None) -> list[str]:
+    """The phases a record without its own phase list implies, from its final fields alone."""
+    status = record.get("operation_status")
+    phases = ["pending"]
+    if status != "not_started":
+        phases.append("executing")
+    if status in TERMINAL_OUTCOMES:
+        phases.append("completed")
+    if commit is not None:
+        phases.append("captured")
+    elif record.get("capture_status") == "failed":
+        phases.append("capture_failed")
+    return phases
+
+
+def recorded_phases(record: dict[str, Any], commit: Commit | None) -> tuple[list[str], str | None]:
+    """The phases core recorded entering, in order, and why they cannot be trusted, if they cannot.
+
+    A record without them is replayed from its final fields, which follow the machine by
+    construction, so it is reported: such an Attempt history proves nothing about its order.
+    """
+    phases = record.get("phases")
+    implied = inferred_phases(record, commit)
+    attempt = record.get("attempt_id")
+    if not isinstance(phases, list) or not phases:
+        return implied, f"attempt {attempt}: no recorded phases; its transitions are inferred, not evidenced"
+    if phases[-1] != implied[-1]:
+        return [str(phase) for phase in phases], (
+            f"attempt {attempt}: recorded phases end in {phases[-1]}, but its record and commit say {implied[-1]}"
+        )
+    return [str(phase) for phase in phases], None
+
+
 def attempt_events(
     source_id: str, base: int, record: dict[str, Any], commit: Commit | None, locator: str | None = None
 ) -> list[Event]:
-    """The transitions an attempt record proves, in the order capture_command writes them.
+    """The transitions an attempt record proves: the phases core recorded entering, in that order.
 
     ``changed`` is witnessed from the commit's tree, not taken from the record.
     """
@@ -226,25 +286,22 @@ def attempt_events(
         "locator": locator,
     }
     command = record.get("command") or {}
-    steps: list[tuple[str | None, str, dict[str, Any]]] = [
-        (
-            None,
-            "pending",
-            {"operation": command.get("operation"), "run_id": record.get("run_id"), "scope": record.get("scope")},
-        )
+    phase_facts: dict[str, dict[str, Any]] = {
+        "pending": {
+            "operation": command.get("operation"),
+            "run_id": record.get("run_id"),
+            "scope": record.get("scope"),
+            # The journal record of the dispatch that sent it: the attempt's citation of the request.
+            "dispatched_by": context.get("dispatch_record"),
+        },
+        "completed": {"outcome": record.get("operation_status")},
+        "captured": {"commit": commit.id, "changed": commit.tree != commit.parent_tree} if commit else {},
+        "capture_failed": {"error": record.get("capture_error") or ""},
+    }
+    phases, _ = recorded_phases(record, commit)
+    steps = [
+        (previous, phase, phase_facts.get(phase, {})) for previous, phase in zip([None, *phases], phases, strict=False)
     ]
-    status = record.get("operation_status")
-    state = "pending"
-    if status != "not_started":
-        steps.append((state, "executing", {}))
-        state = "executing"
-    if status in TERMINAL_OUTCOMES:
-        steps.append((state, "completed", {"outcome": status}))
-        state = "completed"
-    if commit is not None:
-        steps.append((state, "captured", {"commit": commit.id, "changed": commit.tree != commit.parent_tree}))
-    elif record.get("capture_status") == "failed":
-        steps.append((state, "capture_failed", {"error": record.get("capture_error") or ""}))
     return [
         Event(
             **common,
@@ -387,9 +444,11 @@ def read_git_history(
     problems.extend(found)
     for index, commit, record in published:
         events.extend(attempt_events(source_id, (index + 1) * 1000, record, commit, f"git:{label}@{commit.id[:12]}"))
+        problems.extend(problem for problem in [recorded_phases(record, commit)[1]] if problem)
     for offset, record in enumerate(pending):
         locator = f"git:{label}/operations/{record['attempt_id']}.json"
         events.extend(attempt_events(source_id, (len(commits) + 1 + offset) * 1000, record, None, locator))
+        problems.extend(problem for problem in [recorded_phases(record, None)[1]] if problem)
     ree_ids = {event.partition for event in events if event.partition is not None}
     if author and len(ree_ids) == 1:
         found_events, found, _ = ree_events(executable, repository, source_id, label, next(iter(ree_ids)), commits)
@@ -411,14 +470,15 @@ def read_git_history(
     return source, events
 
 
-def git_repositories(root: Path) -> Iterable[tuple[Path, str, bool]]:
+def git_repositories(root: Path, label: str | None = None) -> Iterable[tuple[Path, str, bool]]:
     """An REE root and its review attempts; each scope keeps its own history."""
-    yield root, root.name, True
+    label = label or root.name
+    yield root, label, True
     reviews = root / "reviews"
     if reviews.is_dir():
         for path in sorted(reviews.iterdir()):
             if (path / ".git").is_dir():
-                yield path, f"{root.name}/reviews/{path.name}", False
+                yield path, f"{label}/reviews/{path.name}", False
 
 
 # ================================================
@@ -519,15 +579,16 @@ def load_evidence(
         source, found = read_stores(directory)
         sources.append(source)
         events.extend(found)
+    return combine(Evidence(sources=tuple(sources), events=tuple(events), problems=tuple(problems)))
+
+
+def combine(*parts: Evidence) -> Evidence:
+    """One body of evidence from several; each source must keep its own identity."""
+    sources = tuple(source for part in parts for source in part.sources)
     if len({source.id for source in sources}) != len(sources):
         raise ValueError("two evidence sources share an identity")
-    return Evidence(sources=tuple(sources), events=tuple(events), problems=tuple(problems))
-
-
-def recording_inputs(recording: Path) -> tuple[list[Path], list[Path], list[Path]]:
-    """Journals, preserved REE repositories, and store snapshots inside an E2E recording."""
-    journals = [recording / "journal"] if (recording / "journal").is_dir() else []
-    capture = recording / "capture" / "rees"
-    repositories = sorted(path for path in capture.iterdir() if (path / ".git").is_dir()) if capture.is_dir() else []
-    stores = [recording / "stores"] if (recording / "stores").is_dir() else []
-    return journals, repositories, stores
+    return Evidence(
+        sources=sources,
+        events=tuple(event for part in parts for event in part.events),
+        problems=tuple(problem for part in parts for problem in part.problems),
+    )

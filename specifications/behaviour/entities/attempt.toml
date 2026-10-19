@@ -25,6 +25,8 @@ capture_failed = "Recording failed; the REE files were not rolled back."
 operation = "str"
 run_id = "str"
 scope = "str"
+# The journal record of the request that dispatched this attempt (see boundaries/dispatch.toml).
+dispatched_by = "str?"
 outcome = "str"
 commit = "str"
 changed = "bool"

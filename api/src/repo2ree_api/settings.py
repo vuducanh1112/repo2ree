@@ -37,7 +37,8 @@ class Settings(BaseSettings):
     RUN_REGISTRY_DIR: Path = Path(".repo2ree/runs")
     # Append-only behaviour journals (one file per API process epoch) recording
     # Run, Allocation, and dispatch transitions for the conformance checker. They
-    # are evidence, not state: nothing here reads them back.
+    # are evidence, not state: nothing here acts on them; /api/v1/behaviour
+    # serves them unchanged to collectors.
     BEHAVIOUR_JOURNAL_DIR: Path = Path(".repo2ree/journal")
     # Bounds both concurrent workbench commands and the API's worker threads.
     RUN_MAX_WORKERS: int = 4

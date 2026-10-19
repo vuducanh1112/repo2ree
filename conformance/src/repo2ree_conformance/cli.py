@@ -7,12 +7,13 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from repo2ree_conformance.check import check
 from repo2ree_conformance.codegen import render_machines
 from repo2ree_conformance.files import GENERATED_MACHINES, SPEC_DIR, load_spec, load_spec_at
 from repo2ree_conformance.html import render_html
+from repo2ree_conformance.recording import load_recording
 from repo2ree_conformance.report import render_json, render_markdown
-from repo2ree_conformance.sources import load_evidence, recording_inputs
+from repo2ree_conformance.sources import combine, load_evidence
+from repo2ree_conformance.verification import ARTIFACT, verify
 from repo2ree_conformance.views import diff_specs, render_diff_markdown, system_map
 
 
@@ -33,12 +34,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     changes.add_argument("--output", "-o", type=Path, help="Markdown file to write")
 
     run = commands.add_parser("check", help="Check evidence against the specification (exit 0/1/2)")
-    run.add_argument("--recording", type=Path, action="append", default=[], help="E2E recording directory")
+    run.add_argument("--recording", type=Path, action="append", default=[], help="Recording directory (manifest.json)")
     run.add_argument("--journal", type=Path, action="append", default=[], help="Owner journal directory")
     run.add_argument("--git", type=Path, action="append", default=[], help="REE repository root")
     run.add_argument("--stores", type=Path, action="append", default=[], help="Snapshot of persisted owner stores")
     run.add_argument("--git-executable", default="git")
-    run.add_argument("--output", "-o", type=Path, help="Directory for conformance.md and conformance.json")
+    run.add_argument(
+        "--output", "-o", type=Path, help="Directory for the reports and verification.json (read by the views)"
+    )
 
     args = parser.parse_args(argv)
     spec = load_spec(args.spec)
@@ -75,19 +78,22 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.output.write_text(rendered)
         sys.stdout.write(f"{args.output}: {spec.digest}\n")
         return 0
-    journals, repositories, stores = list(args.journal), list(args.git), list(args.stores)
-    for recording in args.recording:
-        found_journals, found_repositories, found_stores = recording_inputs(recording)
-        journals.extend(found_journals)
-        repositories.extend(found_repositories)
-        stores.extend(found_stores)
-    evidence = load_evidence(journals, repositories, args.git_executable, stores)
-    result = check(spec, evidence)
+    try:
+        recordings = [load_recording(recording, args.git_executable) for recording in args.recording]
+    except ValueError as exc:
+        sys.stderr.write(f"{exc}\n")
+        return 2
+    evidence = combine(*recordings, load_evidence(args.journal, args.git, args.git_executable, args.stores))
+    verified = str(args.recording[0].resolve()) if len(args.recording) == 1 else None
+    verification = verify(spec, evidence, recording=verified)
+    result = verification.result
     if args.output is not None:
         args.output.mkdir(parents=True, exist_ok=True)
         (args.output / "conformance.md").write_text(render_markdown(spec, result))
         (args.output / "conformance.json").write_text(render_json(result))
         (args.output / "conformance.html").write_text(render_html(spec, result))
+        # What later steps (the trace views) read instead of verifying again.
+        (args.output / ARTIFACT).write_text(verification.model_dump_json())
     summary = ", ".join(f"{rule.rule}={rule.verdict}" for rule in result.rules)
     sys.stdout.write(f"{result.verdict}: {summary}\n")
     return result.exit_code

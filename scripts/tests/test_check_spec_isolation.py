@@ -25,3 +25,10 @@ def test_specification_and_runtime_together_are_refused() -> None:
     paths = ["specifications/behaviour/invariants.toml", "core/src/repo2ree_core/operations/capture.py"]
     assert conflicts(paths) == (paths[:1], paths[1:])
     assert main(paths) == 1
+
+
+def test_the_checker_and_runtime_together_are_refused() -> None:
+    # Weakening a rule's reading, or excusing an edge, beside the code that needed it.
+    paths = ["conformance/tests/test_system_conformance.py", "supervisor/src/repo2ree_supervisor/manager.py"]
+    assert conflicts(paths) == (paths[:1], paths[1:])
+    assert main(paths) == 1

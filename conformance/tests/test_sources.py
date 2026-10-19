@@ -8,10 +8,20 @@ import shutil
 import subprocess
 from pathlib import Path
 
-import pytest
-
-from repo2ree_conformance.sources import attempt_events, load_evidence, read_journals, recording_inputs
+from repo2ree_conformance.check import check
+from repo2ree_conformance.evidence import Evidence, Source
+from repo2ree_conformance.files import load_spec
+from repo2ree_conformance.recording import load_recording, one_per_history
+from repo2ree_conformance.sources import (
+    Commit,
+    attempt_events,
+    history_head,
+    load_evidence,
+    read_journals,
+    recorded_phases,
+)
 from repo2ree_protocol.behaviour import close_journal, journal, open_journal
+from repo2ree_recording import RecordedSource, Recording, write_recording
 
 
 def write_journal(directory: Path) -> Path:
@@ -107,6 +117,60 @@ def test_an_unclosed_journal_is_complete_but_open(tmp_path: Path) -> None:
         close_journal()
 
 
+RECORD: dict[str, object] = {
+    "attempt_id": "a1",
+    "context": {"ree_id": "ree-1", "dispatch_record": "api-000001#3"},
+    "command": {"operation": "build_runtime"},
+    "run_id": "build-1",
+    "scope": ".",
+    "operation_status": "succeeded",
+    "capture_status": "captured",
+}
+
+
+def test_an_attempt_replays_the_phases_core_recorded_in_their_order() -> None:
+    phases = ["pending", "executing", "completed", "capture_failed"]
+    record = {**RECORD, "phases": phases, "capture_status": "failed"}
+    events = attempt_events("git:ree", 10, record, None)
+    assert [event.target_state for event in events] == phases
+    assert events[0].facts["dispatched_by"] == "api-000001#3"
+    assert recorded_phases(record, None) == (phases, None)
+
+
+def test_a_skipped_phase_is_replayed_as_recorded_and_the_machine_refuses_it() -> None:
+    record = {**RECORD, "phases": ["pending", "completed"], "capture_status": "pending"}
+    events = attempt_events("git:ree", 10, record, None)
+    assert [(event.source_state, event.target_state) for event in events] == [
+        (None, "pending"),
+        ("pending", "completed"),
+    ]
+    spec = load_spec()
+    result = check(spec, Evidence(sources=(git_source(),), events=tuple(events)))
+    (machine,) = [rule for rule in result.rules if rule.rule == "machine:Attempt"]
+    assert [f.reason for f in machine.findings] == ["undeclared transition pending -> completed"]
+
+
+def test_phases_that_disagree_with_the_record_or_are_missing_are_reported() -> None:
+    _, disagree = recorded_phases({**RECORD, "phases": ["pending", "executing"], "capture_status": "failed"}, None)
+    assert disagree == "attempt a1: recorded phases end in executing, but its record and commit say capture_failed"
+    implied, missing = recorded_phases({**RECORD, "capture_status": "failed"}, None)
+    assert implied == ["pending", "executing", "completed", "capture_failed"]
+    assert missing == "attempt a1: no recorded phases; its transitions are inferred, not evidenced"
+
+
+def git_source() -> Source:
+    return Source(
+        id="git:ree",
+        kind="git",
+        process="core",
+        rank=0,
+        hosts=frozenset({"core"}),
+        complete=True,
+        closed=False,
+        partitions=frozenset({"ree-1"}),
+    )
+
+
 def test_attempt_records_become_their_proven_transitions() -> None:
     record = {
         "attempt_id": "a1",
@@ -134,9 +198,11 @@ def test_attempt_records_become_their_proven_transitions() -> None:
 
 
 GIT = os.environ.get("REPO2REE_TOOL_GIT") or shutil.which("git")
+# Git histories are evidence under test: without git these tests would check nothing, so they fail rather than skip.
+if GIT is None:
+    raise RuntimeError("conformance tests need a git executable: put git on PATH or set REPO2REE_TOOL_GIT")
 
 
-@pytest.mark.skipif(GIT is None, reason="needs a git executable")
 def test_unreadable_capture_commits_make_git_evidence_incomplete(tmp_path: Path) -> None:
     assert GIT is not None
     root = tmp_path / "ree"
@@ -171,12 +237,116 @@ def test_unreadable_capture_commits_make_git_evidence_incomplete(tmp_path: Path)
     assert "commit without readable capture metadata" in source.problems[0]
 
 
-def test_recordings_are_discovered_by_layout(tmp_path: Path) -> None:
-    (tmp_path / "journal").mkdir()
-    (tmp_path / "capture" / "rees" / "workbench" / ".git").mkdir(parents=True)
-    (tmp_path / "capture" / "rees" / "not-a-repo").mkdir()
+GIT_ENVIRONMENT = {
+    "GIT_AUTHOR_NAME": "t",
+    "GIT_AUTHOR_EMAIL": "t@t",
+    "GIT_COMMITTER_NAME": "t",
+    "GIT_COMMITTER_EMAIL": "t@t",
+}
+
+
+def captured_repository(root: Path, *attempts: str) -> list[str]:
+    """An REE history with one capture commit per attempt; returns the commit ids."""
+    assert GIT is not None
+    environment = {**os.environ, **GIT_ENVIRONMENT}
+    subprocess.run([GIT, "init", "-q", "-b", "ree-history", str(root)], check=True, env=environment)
+    commits: list[str] = []
+    for attempt in attempts:
+        record = {
+            "attempt_id": attempt,
+            "context": {"ree_id": "ree-1"},
+            "command": {"operation": "x"},
+            "operation_status": "succeeded",
+        }
+        message = "x\n\n" + json.dumps({"kind": "operation.completed", "schema_version": 2, "record": record})
+        subprocess.run(
+            [GIT, "-C", str(root), "commit", "-q", "--allow-empty", "-m", message], check=True, env=environment
+        )
+        head = subprocess.run([GIT, "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True)
+        commits.append(head.stdout.strip())
+    return commits
+
+
+def test_a_downloaded_archive_is_read_through_its_exported_journal(tmp_path: Path) -> None:
+    # An export checks out the seal and keeps the history it came from as imports/<tip>/journal.
+    assert GIT is not None
+    root = tmp_path / "ree"
+    sealed, after_seal = captured_repository(root, "seal", "after-seal")
+    subprocess.run(
+        [GIT, "-C", str(root), "update-ref", f"refs/repo2ree/imports/{after_seal}/journal", after_seal], check=True
+    )
+    subprocess.run([GIT, "-C", str(root), "update-ref", "refs/heads/ree-history", sealed], check=True)
+    other = captured_repository(tmp_path / "elsewhere", "elsewhere")[0]
+    subprocess.run([GIT, "-C", str(root), "fetch", "-q", str(tmp_path / "elsewhere"), "ree-history"], check=True)
+    subprocess.run([GIT, "-C", str(root), "update-ref", f"refs/repo2ree/imports/{other}/journal", other], check=True)
+
+    assert history_head(GIT, root) == (f"refs/repo2ree/imports/{after_seal}/journal", [])
+    evidence = load_evidence(repositories=[root], git_executable=GIT)
+    assert {event.key for event in evidence.events if event.subject == "Attempt"} == {"seal", "after-seal"}
+
+
+def test_a_workbench_repository_is_read_through_ree_history(tmp_path: Path) -> None:
+    assert GIT is not None
+    captured_repository(tmp_path / "ree", "a1")
+    assert history_head(GIT, tmp_path / "ree") == ("refs/heads/ree-history", [])
+
+
+def test_a_recording_is_read_through_its_manifest_with_origins_and_cuts(tmp_path: Path) -> None:
+    write_journal(tmp_path / "journal")
     (tmp_path / "stores").mkdir()
-    journals, repositories, stores = recording_inputs(tmp_path)
-    assert journals == [tmp_path / "journal"]
-    assert repositories == [tmp_path / "capture" / "rees" / "workbench"]
-    assert stores == [tmp_path / "stores"]
+    cut = {"api-000001": (2, 3)}
+    write_recording(
+        tmp_path,
+        Recording(
+            control_plane="http://cp",
+            sources=(
+                RecordedSource(kind="journal", path="journal", origin="http://cp/journal"),
+                RecordedSource(kind="state", path="stores", origin="http://cp/state", cut=cut),
+                RecordedSource(kind="spans", path="telemetry/api.ndjson", origin="http://traces"),
+                RecordedSource(kind="git", path="rees/gone/ree", origin="http://cp/archive", name="gone"),
+                RecordedSource(
+                    kind="git", path="rees/x/ree", origin="http://cp/archive", status="error", problem="timed out"
+                ),
+            ),
+        ),
+    )
+    evidence = load_recording(tmp_path)
+    sources = {source.id: source for source in evidence.sources}
+    assert sources["api-000001"].origin == "http://cp/journal"
+    assert sources["api-000001"].cut is None
+    assert sources["stores"].cut == cut
+    assert evidence.problems == (
+        "git gone from http://cp/archive: listed in the manifest but not in the recording",
+        "git rees/x/ree from http://cp/archive: error (timed out)",
+    )
+
+
+def snapshot(label: str, *attempts: tuple[str, str | None]) -> Evidence:
+    """One REE's history as a download holds it: each attempt, captured by a commit or still pending."""
+    events = [
+        event
+        for index, (attempt, commit) in enumerate(attempts)
+        for event in attempt_events(
+            f"git:{label}",
+            (index + 1) * 1000,
+            {**RECORD, "attempt_id": attempt, "phases": ["pending", "executing", "completed", "captured"]},
+            None if commit is None else Commit(commit, "t", None, "x", None),
+        )
+    ]
+    source = git_source().model_copy(update={"id": f"git:{label}"})
+    return Evidence(sources=(source,), events=tuple(events))
+
+
+def test_snapshots_of_one_history_are_read_once_as_the_latest() -> None:
+    before_seal = snapshot("early", ("a1", "c1"))
+    after_seal = snapshot("late", ("a1", "c1"), ("a2", "c2"))
+    kept, problems = one_per_history([before_seal, after_seal, after_seal.model_copy()])
+    assert kept == [after_seal]
+    assert problems == []
+
+
+def test_snapshots_that_are_not_prefixes_of_the_latest_are_reported() -> None:
+    rewritten = snapshot("early", ("a1", "c9"))
+    kept, problems = one_per_history([rewritten, snapshot("late", ("a1", "c1"), ("a2", "c2"))])
+    assert [evidence.sources[0].id for evidence in kept] == ["git:late"]
+    assert problems == ["git:early is not a prefix of git:late: the snapshots diverge"]

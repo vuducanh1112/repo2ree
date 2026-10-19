@@ -7,8 +7,9 @@ conforms.
 
 Review changes here carefully. Code that satisfies the checker does not need the
 same line-by-line review; a wrong specification makes the checker approve wrong
-code. A commit may change this directory or runtime code, not both (the
-`spec-isolation` pre-commit hook).
+code. The same holds for the checker that applies it (`conformance/`, with its tests and
+the edges they excuse): a commit may change this directory or the checker, or runtime
+code, not both (the `spec-isolation` pre-commit hook).
 
 ## Model
 
@@ -16,7 +17,7 @@ code. A commit may change this directory or runtime code, not both (the
 |---|---|
 | `components.toml` | Components and the process each runs in. A process journal speaks for the components it hosts. |
 | `entities/*.toml` | State machines. Each has exactly one **owner** component; nothing else changes its state. |
-| `boundaries/*.toml` | Request/response exchanges between components, recorded by the sender. `brackets` names entities whose work for key K happens inside exchange K. |
+| `boundaries/*.toml` | Request/response exchanges between components, recorded by the sender. `cites` names records of the exchange and of the receiver's entity that name each other. |
 | `invariants.toml` | Cross-entity rules, each in one fixed pattern. |
 
 | Entity / boundary | Owner | Evidence |
@@ -24,7 +25,7 @@ code. A commit may change this directory or runtime code, not both (the
 | `Run` | api (`JsonRunStore`) | API process journal, reconciled against `runs/*/state.json` |
 | `Allocation` | supervisor (`AllocationStore`) | API process journal, reconciled against `allocations.json` |
 | `dispatch` | supervisor → workbench (`dispatch_action`) | API process journal |
-| `Attempt` | core (`capture_command`) | the REE's Git history: capture commits and pending records |
+| `Attempt` | core (`capture_command`) | the REE's Git history: each attempt record lists the phases it entered, in order, in capture commits and pending records |
 | `Ree` | core | **witnessed** from Git: a transition per commit whose tree changed, `sealed` iff the committed `ree.json` carries a seal |
 | `Step` | core | core's `audit()` before and after each author attempt, recorded in the capture commit |
 
@@ -44,9 +45,33 @@ of `dispatch`.
   state change that bypassed journaling is a violation.
 
 Order comes only from: positions within one source; epochs then positions within
-one process's journals; and boundary brackets (an `Attempt` for key K happened
-after `dispatch` K was sent and before its outcome was received). Wall-clock time
-is never used.
+one process's journals; and citations, where a record names another (a journal
+record's position, a commit's hash) that it could only know once that record
+existed. An `Attempt` cites the `dispatch` request that sent it, and the `result`
+cites the commit that captured it; without the citation the evidence cannot order
+the two, and the rule that needed the order is inconclusive. Wall-clock time is
+never used, and neither is an assumption about where the receiver did its work.
+
+## Recordings
+
+A recording is a directory whose `manifest.json` lists each source it holds: its kind
+(`journal`, `git`, `state`, `spans`), where it was collected from (`origin`, e.g. the
+control plane it was fetched through), and whether collection succeeded. The system is
+distributed, so nothing assumes one host; readers find evidence only through the manifest,
+and a source listed as failed or missing makes the check inconclusive. `repo2ree_collect`
+(`just collect-behaviour <control-plane> <dir> [ree…]`) gathers one through the control
+plane alone: journals and persisted state from `/api/v1/behaviour`, REEs via `ree-archive`.
+
+An REE's Git evidence is the archive the product downloads (`ree-archive`, the GUI's
+*Download REE*). The archive checks out the seal and keeps the history it came from as
+`refs/repo2ree/imports/<tip>/journal`; the checker reads that history.
+
+A snapshot of a running system carries a **cut**: the journal positions read just before
+and just after it was taken. Only what happened before the cut must be in it, so a record
+missing from it is a violation only when the rule requires that record before a trigger
+journaled before the cut; otherwise it is inconclusive. A store snapshot with a cut may
+hold any state its journal reached around the cut. A source without a cut was taken after
+its owners stopped and must match exactly.
 
 ## Patterns
 
@@ -72,7 +97,8 @@ Triggers name target states (`to`), optionally source states (`from`, where
   written against another specification digest, or no behaviour at all.
 - **passed**: every triggered rule held. A check where nothing triggered is inconclusive.
 
-The CLI exits 0, 1, or 2. The demo stack fails a passing test whose evidence is violated.
+The CLI exits 0, 1, or 2. Checking is its own step on a collected recording: test runs and
+demos only collect, so a test's outcome never depends on the checker, and a gate composes the two.
 
 ## Views
 
@@ -85,15 +111,17 @@ The CLI exits 0, 1, or 2. The demo stack fails a passing test whose evidence is 
 - **Specification diff**: `python -m repo2ree_conformance diff --base <ref>` draws
   added and removed edges, entities, invariants, and boundaries for review.
 
-Views of a recording's evidence live in `repo2ree_traceview`, which reads the checker's
-replayed model and verdicts and nothing else; OpenTelemetry spans are attached as context
-and never change a verdict:
+Views of a recording's evidence live in `repo2ree_traceview`, which draws the verifier's
+artifact (`verification.json`: the evidence, replayed model, and verdicts) and never
+verifies itself; OpenTelemetry spans are attached as context and never change a verdict.
+Collect, check, and draw are separate steps, each on the previous one's artifact:
+`just collect-behaviour` (or any e2e run) → `just check-behaviour` → the views.
 
-- **Operation trace** (`just trace-recording <recording>`): setup, the operations that
+- **Operation trace** (`just trace-behaviour [recording]`): setup, the operations that
   produce evidence with the authoring between them collapsed, each step's standing after
   every operation, and each operation's path across client, API, supervisor, workbench,
   executor, and core.
-- **Provenance** (`just provenance-recording <recording>`): for a sealed REE, each step's
+- **Provenance** (`just provenance-behaviour [recording]`): for a sealed REE, each step's
   evidence at seal traced back through attempt, dispatch, and run to the request, with
   the verdict of every rule each link triggered.
 
@@ -108,4 +136,5 @@ and never change a verdict:
 4. `just test-conformance` runs the scenario suite: the real owners and core in one process,
    with faults injected at boundaries. Every specified edge must be exercised by a scenario
    or listed in `UNEXERCISED` with a reason; the suite fails in both directions.
-5. `just demo-gui` (or `just check-behaviour <recording>`) checks a real end-to-end run.
+5. `just demo-gui` collects a recording of a real end-to-end run (`just collect-behaviour` does the
+   same for any running deployment); `just check-behaviour [recording]` judges it, the newest by default.
