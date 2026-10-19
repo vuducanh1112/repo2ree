@@ -36,6 +36,41 @@ def test_runtime_journals_round_trip(tmp_path: Path) -> None:
     assert events[2].facts == {"reason": "TimeoutError"}
 
 
+def test_journal_records_keep_the_span_they_were_written_in(tmp_path: Path) -> None:
+    records = [
+        {"v": 1, "seq": 1, "kind": "journal.opened", "process": "api", "epoch": 1, "hosts": ["api"]},
+        {
+            "v": 1,
+            "seq": 2,
+            "kind": "transition",
+            "owner": "api",
+            "subject": "Run",
+            "key": "run-1",
+            "partition": "ree-1",
+            "from": None,
+            "to": "queued",
+            "trace": {"trace_id": "a" * 32, "span_id": "b" * 16},
+        },
+        {"v": 1, "seq": 3, "kind": "transition", "owner": "api", "subject": "Run", "key": "run-1", "to": "running"},
+        {
+            "v": 1,
+            "seq": 4,
+            "kind": "transition",
+            "owner": "api",
+            "subject": "Run",
+            "key": "run-1",
+            "from": "running",
+            "to": "succeeded",
+            "trace": {"trace_id": 7, "span_id": None},
+        },
+    ]
+    (tmp_path / "api-000001.ndjson").write_text("".join(json.dumps(record) + "\n" for record in records))
+    sources, events = read_journals(tmp_path)
+    assert [(event.trace_id, event.span_id) for event in events] == [("a" * 32, "b" * 16), (None, None), (None, None)]
+    # Context only: a malformed one never makes the journal incomplete.
+    assert sources[0].complete, sources[0].problems
+
+
 def test_each_process_start_is_a_new_epoch(tmp_path: Path) -> None:
     write_journal(tmp_path)
     write_journal(tmp_path)

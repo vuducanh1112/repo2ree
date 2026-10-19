@@ -47,6 +47,9 @@ class Event(EvidenceModel):
     facts: dict[str, JsonValue] = {}
     at: str | None = None
     locator: str | None = None  # A human address for the evidence (commit, file), when positions are synthetic.
+    # The span active when the owner recorded this, if any. Lets views join spans; never used by the checker.
+    trace_id: str | None = None
+    span_id: str | None = None
 
     @property
     def ref(self) -> str:

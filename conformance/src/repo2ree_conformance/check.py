@@ -493,22 +493,23 @@ def check_excludes(model: Model, require: ExclusionRequirement, occurrence: Occu
     return findings
 
 
+def judge(model: Model, invariant: Invariant, occurrence: Occurrence) -> list[Finding]:
+    """What one occurrence of an invariant found; empty when it held."""
+    require = invariant.require
+    if isinstance(require, ExclusionRequirement):
+        return check_excludes(model, require, occurrence)
+    if isinstance(require, EntityRequirement | MessageRequirement):
+        found = check_requires(model, require, occurrence)
+    elif isinstance(require, GuardRequirement):
+        found = check_guard(require, occurrence)
+    else:
+        found = check_response(invariant.eventually, occurrence)
+    return [found] if found is not None else []
+
+
 def check_invariant(model: Model, invariant: Invariant) -> RuleResult:
     occurrences = model.occurrences(invariant)
-    require = invariant.require
-    findings: list[Finding] = []
-    for occurrence in occurrences:
-        if isinstance(require, ExclusionRequirement):
-            findings.extend(check_excludes(model, require, occurrence))
-            continue
-        if isinstance(require, EntityRequirement | MessageRequirement):
-            found = check_requires(model, require, occurrence)
-        elif isinstance(require, GuardRequirement):
-            found = check_guard(require, occurrence)
-        else:
-            found = check_response(invariant.eventually, occurrence)
-        if found is not None:
-            findings.append(found)
+    findings = [finding for occurrence in occurrences for finding in judge(model, invariant, occurrence)]
     return RuleResult(
         rule=invariant.id,
         kind="invariant",
@@ -516,6 +517,43 @@ def check_invariant(model: Model, invariant: Invariant) -> RuleResult:
         triggered=len(occurrences),
         findings=tuple(findings),
     )
+
+
+class Judgement(EvidenceModel):
+    """One invariant occurrence and its verdict, addressed by the event that triggered it."""
+
+    rule: str
+    event: str  # Event.ref of the trigger; Git events of one commit share it.
+    subject: str  # The trigger's entity or boundary, and its key: what tells such events apart.
+    key: str
+    verdict: Literal["passed", "violated", "inconclusive"]
+    findings: tuple[Finding, ...] = ()
+
+
+def judge_occurrences(model: Model) -> list[Judgement]:
+    """Every invariant occurrence with its own verdict, so views can attach rules to the events they checked."""
+    judgements: list[Judgement] = []
+    for invariant in model.spec.invariants:
+        for occurrence in model.occurrences(invariant):
+            findings = judge(model, invariant, occurrence)
+            verdict: Literal["passed", "violated", "inconclusive"] = (
+                "violated"
+                if any(finding.verdict == "violated" for finding in findings)
+                else "inconclusive"
+                if findings
+                else "passed"
+            )
+            judgements.append(
+                Judgement(
+                    rule=invariant.id,
+                    event=occurrence.event.ref,
+                    subject=occurrence.event.subject,
+                    key=occurrence.event.key,
+                    verdict=verdict,
+                    findings=tuple(findings),
+                )
+            )
+    return judgements
 
 
 # ================================================
@@ -642,4 +680,14 @@ def check(spec: Spec, evidence: Evidence) -> CheckResult:
     return CheckResult(spec_digest=spec.digest, sources=evidence.sources, rules=tuple(rules), coverage=coverage)
 
 
-__all__ = ["CheckResult", "Coverage", "Finding", "Model", "RuleResult", "check", "replay"]
+__all__ = [
+    "CheckResult",
+    "Coverage",
+    "Finding",
+    "Judgement",
+    "Model",
+    "RuleResult",
+    "check",
+    "judge_occurrences",
+    "replay",
+]

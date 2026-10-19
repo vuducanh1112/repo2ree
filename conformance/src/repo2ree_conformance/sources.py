@@ -67,6 +67,9 @@ def read_journal(path: Path, epoch_gap: bool = False) -> tuple[Source, list[Even
         elif kind == "journal.closed":
             closed = True
         elif kind == "transition" or kind in MESSAGE_KINDS:
+            # Trace context is for views only: a malformed one is dropped, never a reason to distrust the record.
+            context = record.get("trace")
+            trace = {k: v for k, v in context.items() if isinstance(v, str)} if isinstance(context, dict) else {}
             try:
                 events.append(
                     Event(
@@ -82,6 +85,8 @@ def read_journal(path: Path, epoch_gap: bool = False) -> tuple[Source, list[Even
                         message=record.get("message"),
                         facts=record.get("facts") or {},
                         at=record.get("at"),
+                        trace_id=trace.get("trace_id"),
+                        span_id=trace.get("span_id"),
                     )
                 )
             except (KeyError, ValueError) as exc:

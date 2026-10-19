@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from repo2ree_conformance.check import check
+from repo2ree_conformance.check import check, judge_occurrences, replay
 from repo2ree_conformance.evidence import Event, Evidence, Source
 from repo2ree_conformance.files import load_spec
 
@@ -306,3 +306,30 @@ def test_events_for_undeclared_subjects_are_violated() -> None:
         facts={},
     )
     assert verdicts(recorder)["evidence"] == "violated"
+
+
+def judgements(recorder: Recorder) -> list[tuple[str, str, str]]:
+    model, _, _ = replay(SPEC, Evidence(sources=(journal(), git(REE)), events=tuple(recorder.events)))
+    return [(j.rule, j.event, j.verdict) for j in judge_occurrences(model)]
+
+
+def test_each_occurrence_is_judged_at_the_event_that_triggered_it() -> None:
+    recorder = Recorder()
+    complete_command(recorder)
+    found = judgements(recorder)
+    settled = next(e for e in recorder.events if e.subject == "Run" and e.target_state == "succeeded")
+    assert ("run-success-is-backed", settled.ref, "passed") in found
+    model, _, _ = replay(SPEC, Evidence(sources=(journal(), git(REE)), events=tuple(recorder.events)))
+    captured = next(j for j in judge_occurrences(model) if j.rule == "execution-was-dispatched")
+    assert (captured.subject, captured.key) == ("Attempt", "a1")
+    assert {verdict for _, _, verdict in found} == {"passed"}
+
+
+def test_occurrence_verdicts_agree_with_the_rule_verdicts() -> None:
+    recorder = Recorder()
+    recorder.run("run-1", "queued", "running", "succeeded", attempt_id="a1")
+    recorder.attempt("a1", outcome="failed")
+    rules = verdicts(recorder)
+    for rule, _, verdict in judgements(recorder):
+        assert verdict == rules[rule] or (verdict == "passed" and rules[rule] != "not_triggered")
+    assert ("run-success-is-backed", "api-000001#3", "violated") in judgements(recorder)
