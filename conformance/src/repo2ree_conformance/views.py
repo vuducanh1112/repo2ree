@@ -1,17 +1,15 @@
-"""Pictures of the specification and of replayed evidence.
+"""Pictures of the specification: the system map and the diff between two specifications.
 
-Every view is derived: the system map from the specification alone, timelines
-and filmstrips from the replayed model. Nothing here decides a verdict.
+Views of recorded evidence (operation traces, sequences, step standings, provenance)
+live in repo2ree_traceview. Nothing here decides a verdict.
 """
 
 from __future__ import annotations
 
 import re
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-from repo2ree_conformance.check import Model
-from repo2ree_conformance.evidence import Event
 from repo2ree_conformance.spec import (
     EntityRequirement,
     EntityTrigger,
@@ -21,18 +19,10 @@ from repo2ree_conformance.spec import (
     Spec,
 )
 
-STEP_ORDER = ("source", "evaluation", "hardware", "runtime", "sbom", "sbom_cross_check", "test_activation")
-BLOCK = 1000  # Git evidence positions: one block per capture commit (see sources.py).
-PARTICIPANTS = (("api", "API"), ("supervisor", "Supervisor"), ("core", "Core"), ("git", "Git"))
-
 
 def _safe(text: str) -> str:
     """Mermaid treats ';' and '#' specially in labels."""
     return re.sub(r"[;#]", ",", text)
-
-
-def _short(key: str) -> str:
-    return key.rsplit("-", 1)[-1][:8] if "-" in key else key[:8]
 
 
 # ================================================
@@ -77,147 +67,6 @@ def system_map(spec: Spec) -> str:
             lines.append(f"  {source} -. {invariant.id} .-> {target}")
     lines += ["  classDef anchor fill:none,stroke:none", "  classDef boundary stroke-width:2px"]
     return "\n".join(lines)
-
-
-# ================================================
-# Timelines
-# ================================================
-
-
-@dataclass
-class _GitSide:
-    attempts: dict[str, list[Event]] = field(default_factory=lambda: defaultdict(list))
-    blocks: dict[int, list[Event]] = field(default_factory=lambda: defaultdict(list))
-    attempt_block: dict[str, int] = field(default_factory=dict)
-    emitted: set[int] = field(default_factory=set)
-
-
-def _git_side(events: list[Event]) -> _GitSide:
-    side = _GitSide()
-    for event in sorted(events, key=lambda item: item.position):
-        block = event.position // BLOCK
-        if event.subject == "Attempt":
-            side.attempts[event.key].append(event)
-            side.attempt_block.setdefault(event.key, block)
-        else:
-            side.blocks[block].append(event)
-    return side
-
-
-def _domain_notes(events: list[Event]) -> list[str]:
-    notes: list[str] = []
-    steps = [event for event in events if event.subject == "Step"]
-    if steps:
-        changes = ", ".join(
-            f"{event.facts.get('step')} {event.source_state or 'new'}→{event.target_state}" for event in steps
-        )
-        notes.append(f"  Note over git: evidence: {_safe(changes)}")
-    for event in events:
-        if event.subject == "Ree":
-            cause = "" if event.facts.get("cause") == "operation" else f" ({event.facts.get('cause')})"
-            notes.append(
-                f"  Note over git: REE {event.source_state or 'new'}→{event.target_state}"
-                f" @{str(event.facts.get('commit', ''))[:8]}{_safe(cause)}"
-            )
-    return notes
-
-
-def _attempt_notes(side: _GitSide, key: str) -> list[str]:
-    lines: list[str] = []
-    block = side.attempt_block.get(key)
-    if block is None:
-        return lines
-    for earlier in sorted(b for b in side.blocks if b < block and b not in side.emitted):
-        lines.extend(_domain_notes(side.blocks[earlier]))
-        side.emitted.add(earlier)
-    events = side.attempts[key]
-    path = "→".join(event.target_state or "?" for event in events)
-    outcome = next((event.facts.get("outcome") for event in events if "outcome" in event.facts), None)
-    changed = next((event.facts.get("changed") for event in events if "changed" in event.facts), None)
-    detail = f"{outcome or 'no outcome'}{', changed' if changed else ', unchanged' if changed is False else ''}"
-    lines.append(f"  Note over core: attempt {_short(key)} {path} ({detail})")
-    if block not in side.emitted:
-        lines.extend(_domain_notes(side.blocks.get(block, [])))
-        side.emitted.add(block)
-    return lines
-
-
-def timeline(model: Model, partition: str) -> str:
-    """One REE's life across components as a sequence diagram, in evidence order."""
-    events = [event for event in model.evidence.events if event.partition == partition]
-    journal = model.evidence.ordered(
-        [event for event in events if model.evidence.source(event.source).kind == "journal"]
-    )
-    side = _git_side([event for event in events if model.evidence.source(event.source).kind == "git"])
-    operations: dict[str, str] = {}
-    lines = ["sequenceDiagram", *(f"  participant {alias} as {label}" for alias, label in PARTICIPANTS)]
-    for event in journal:
-        if event.subject == "Run" and event.kind == "transition":
-            operations.setdefault(event.key, str(event.facts.get("operation", "")))
-            label = (
-                f"run {operations[event.key]} {_short(event.key)}: {event.source_state or 'new'}→{event.target_state}"
-            )
-            lines.append(f"  Note over api: {_safe(label)}")
-        elif event.subject == "Allocation" and event.kind == "transition":
-            lines.append(f"  Note over supervisor: allocation {event.source_state or 'new'}→{event.target_state}")
-        elif event.kind == "send":
-            operation = _safe(str(event.facts.get("operation", event.message)))
-            lines.append(f"  supervisor->>core: {operation} [{_short(event.key)}]")
-            lines.extend(_attempt_notes(side, event.key))
-        elif event.kind == "receive":
-            status = event.facts.get("status")
-            lines.append(f"  core-->>supervisor: {event.message}{f' {status}' if status else ''}")
-        elif event.kind == "abandon":
-            lines.append(f"  core--xsupervisor: abandoned ({_safe(str(event.facts.get('reason')))})")
-    for key in sorted(side.attempts, key=lambda item: side.attempt_block[item]):
-        if side.attempt_block[key] not in side.emitted:
-            lines.append("  Note over core: not dispatched in this evidence")
-            lines.extend(_attempt_notes(side, key))
-    for block in sorted(set(side.blocks) - side.emitted):
-        lines.extend(_domain_notes(side.blocks[block]))
-    return "\n".join(lines)
-
-
-# ================================================
-# Step evidence filmstrip
-# ================================================
-
-
-@dataclass(frozen=True)
-class Filmstrip:
-    columns: tuple[str, ...]  # One per attempt, in capture order.
-    rows: tuple[tuple[str, tuple[str | None, ...]], ...]  # Step name, its standing after each attempt.
-
-
-def step_filmstrip(model: Model, partition: str) -> Filmstrip:
-    attempts = sorted(
-        (
-            (min(item.event.position for item in instance.reached) // BLOCK, instance)
-            for instance in model.instances.get("Attempt", {}).values()
-            if instance.partition == partition
-        ),
-        key=lambda pair: pair[0],
-    )
-    steps = [instance for instance in model.instances.get("Step", {}).values() if instance.partition == partition]
-    if not steps:
-        return Filmstrip((), ())
-
-    def order(name: str) -> tuple[int, str]:
-        return (STEP_ORDER.index(name), "") if name in STEP_ORDER else (len(STEP_ORDER), name)
-
-    named = sorted(((str(step.reached[0].facts.get("step")), step) for step in steps), key=lambda pair: order(pair[0]))
-    columns = tuple(f"{index + 1}. {instance.facts.get('operation')}" for index, (_, instance) in enumerate(attempts))
-    rows = []
-    for name, step in named:
-        cells: list[str | None] = []
-        for block, _ in attempts:
-            state = None
-            for item in step.reached:
-                if item.event.position < (block + 1) * BLOCK:
-                    state = item.state
-            cells.append(state)
-        rows.append((name, tuple(cells)))
-    return Filmstrip(columns, tuple(rows))
 
 
 # ================================================

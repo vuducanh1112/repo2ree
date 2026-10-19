@@ -3,7 +3,7 @@
 # Checks below are read-only. Run `just format` to apply formatting, or
 # `just fix` to apply safe lint fixes and then format the affected sources.
 
-PYTHON_FORMAT_PATHS := "scripts protocol core supervisor api executor docker-support provider workbench conformance"
+PYTHON_FORMAT_PATHS := "scripts protocol core supervisor api executor docker-support provider workbench conformance traceview"
 GUI_FORMAT_PATHS := "src tests scripts playwright.config.ts vite.config.mjs testArtifacts.cjs testArtifacts.d.cts"
 
 [private]

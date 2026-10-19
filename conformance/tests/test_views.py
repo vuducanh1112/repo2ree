@@ -1,4 +1,4 @@
-"""Views are drawn from the specification and from real replayed evidence."""
+"""Specification views: the system map, the report, and the diff between two specifications."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from repo2ree_conformance.check import replay
 from repo2ree_conformance.html import render_html
 from repo2ree_conformance.sources import load_evidence
 from repo2ree_conformance.spec import parse_spec
-from repo2ree_conformance.views import diff_specs, render_diff_markdown, step_filmstrip, system_map, timeline
+from repo2ree_conformance.views import diff_specs, render_diff_markdown, system_map
 
 pytestmark = pytest.mark.skipif(GIT is None, reason="real evidence needs a git executable")
 
@@ -41,32 +41,11 @@ def test_the_system_map_places_entities_in_their_owners_and_processes() -> None:
     assert "Attempt -. execution-was-dispatched .-> boundary_dispatch" in drawn
 
 
-def test_the_timeline_brackets_each_attempt_inside_its_dispatch(sealed: tuple[object, object]) -> None:
-    _, model = sealed
-    lines = timeline(model, "ree-1").splitlines()  # type: ignore[arg-type]
-    send = next(i for i, line in enumerate(lines) if "supervisor->>core: acquire_source" in line)
-    attempt = next(i for i, line in enumerate(lines) if "Note over core: attempt" in line and i > send)
-    answer = next(i for i, line in enumerate(lines) if "core-->>supervisor" in line and i > send)
-    assert send < attempt < answer
-    assert any("REE draft→sealed" in line for line in lines)
-    assert any("source not_applicable→current" in line for line in lines)
-
-
-def test_the_filmstrip_shows_evidence_going_stale_and_current_again(sealed: tuple[object, object]) -> None:
-    _, model = sealed
-    film = step_filmstrip(model, "ree-1")  # type: ignore[arg-type]
-    source = dict(film.rows)["source"]
-    assert "stale" in source
-    assert source[-1] == "current"
-    assert source.index("stale") < len(source) - 1
-    assert film.columns[0].endswith("acquire_source")
-
-
 def test_the_html_report_draws_every_view(sealed: tuple[object, object]) -> None:
-    result, model = sealed
-    page = render_html(SPEC, result, model)  # type: ignore[arg-type]
-    assert page.count('<pre class="mermaid">') == 2 + len(SPEC.entities)  # Map, one timeline, one chart each.
-    assert "Step evidence after each attempt" in page
+    result, _ = sealed
+    page = render_html(SPEC, result)  # type: ignore[arg-type]
+    assert page.count('<pre class="mermaid">') == 1 + len(SPEC.entities)  # The map, and one chart per entity.
+    assert "just trace-recording" in page
     assert "<script" in page
     assert "violated</span> ·" not in page
 

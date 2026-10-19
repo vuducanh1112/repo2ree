@@ -13,6 +13,7 @@ members = [
     "repo2ree-protocol",
     "repo2ree-provider-docker",
     "repo2ree-supervisor",
+    "repo2ree-traceview",
     "repo2ree-workbench",
 ]
 
@@ -2077,6 +2078,21 @@ dependencies = [
 requires-dist = [
     { name = "httpx", specifier = "~=0.28.1" },
     { name = "repo2ree-protocol", editable = "protocol" },
+]
+
+[[package]]
+name = "repo2ree-traceview"
+version = "0.1.0"
+source = { editable = "traceview" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "repo2ree-conformance" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pydantic", specifier = "~=2.11.7" },
+    { name = "repo2ree-conformance", editable = "conformance" },
 ]
 
 [[package]]

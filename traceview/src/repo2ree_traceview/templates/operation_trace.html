@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>REE Operation Trace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: header facts, a wall-clock lane chart, the evidence standing grid, per-operation sequences, then the operation log. */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --ink: #1b2230;
+  --muted: #5d6779;
+  --line: #dde1e8;
+  --accent: #2f5bd3;
+  --accent-soft: #e4ebfb;
+  --current: #1f8a5b;
+  --current-soft: #dcf1e6;
+  --stale: #b7791f;
+  --stale-soft: #f8ecd6;
+  --missing: #c2410c;
+  --missing-soft: #fbe5da;
+  --na: #a3abb8;
+  --setup: #6b5bd2;
+  --setup-soft: #ebe7fb;
+  --author: #8a93a3;
+  --bad: #c62828;
+  --font-ui: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11151c; --surface: #181e27; --ink: #e5e9f0; --muted: #98a2b3; --line: #2a3240;
+    --accent: #7c9cf5; --accent-soft: #1f2b47;
+    --current: #4cc38a; --current-soft: #173326; --stale: #e0a54a; --stale-soft: #3a2c14;
+    --missing: #f07a4a; --missing-soft: #3d2016; --na: #5b6576;
+    --setup: #a79af0; --setup-soft: #2a2547; --author: #6f7a8c; --bad: #ef6b6b;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11151c; --surface: #181e27; --ink: #e5e9f0; --muted: #98a2b3; --line: #2a3240;
+  --accent: #7c9cf5; --accent-soft: #1f2b47;
+  --current: #4cc38a; --current-soft: #173326; --stale: #e0a54a; --stale-soft: #3a2c14;
+  --missing: #f07a4a; --missing-soft: #3d2016; --na: #5b6576;
+  --setup: #a79af0; --setup-soft: #2a2547; --author: #6f7a8c; --bad: #ef6b6b;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 var(--font-ui); }
+.page { max-width: 1120px; margin: 0 auto; padding: 32px 20px 64px; display: grid; gap: 36px; }
+h1, h2 { text-wrap: balance; margin: 0; }
+h1 { font-size: 26px; font-weight: 650; letter-spacing: -0.01em; }
+h2 { font-size: 16px; font-weight: 600; }
+.mono, code { font-family: var(--font-data); font-size: 12.5px; }
+.muted { color: var(--muted); }
+.eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
+section { display: grid; gap: 14px; min-width: 0; }
+.section-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+.section-head p { margin: 0; max-width: 62ch; color: var(--muted); }
+
+/* header */
+header { display: grid; gap: 14px; }
+.facts { display: flex; flex-wrap: wrap; gap: 8px 28px; }
+.fact { display: grid; gap: 2px; min-width: 0; }
+.fact .v { font-family: var(--font-data); font-size: 13px; overflow-wrap: anywhere; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.pill.passed, .pill.succeeded, .pill.released { background: var(--current-soft); color: var(--current); }
+.pill.violated, .pill.failed { background: var(--missing-soft); color: var(--bad); }
+.pill.inconclusive { background: var(--stale-soft); color: var(--stale); }
+.pill.sealed { background: var(--accent-soft); color: var(--accent); }
+.sources { display: flex; flex-wrap: wrap; gap: 6px; }
+.src { font-family: var(--font-data); font-size: 12px; border: 1px solid var(--line); border-radius: 6px; padding: 1px 8px; background: var(--surface); }
+.src.ctx { border-style: dashed; color: var(--muted); }
+
+/* panels */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.scroll { overflow-x: auto; }
+
+/* lane chart */
+#lanes svg { display: block; min-width: 760px; width: 100%; height: auto; }
+#lanes text { font-family: var(--font-data); font-size: 11px; fill: var(--muted); }
+#lanes .lane-label { font-family: var(--font-ui); font-size: 12px; font-weight: 600; fill: var(--ink); }
+#lanes .op-label { fill: var(--ink); }
+#lanes .grid { stroke: var(--line); stroke-width: 1; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+/* standing grid */
+#grid table { border-collapse: separate; border-spacing: 0; font-size: 12.5px; min-width: 100%; }
+#grid th, #grid td { padding: 0; text-align: center; }
+#grid thead th { font-family: var(--font-data); font-weight: 500; font-size: 11px; color: var(--muted); vertical-align: bottom; height: 132px; padding-bottom: 8px; }
+#grid thead th > div { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; margin: 0 auto; }
+#grid thead th.op > div { color: var(--ink); font-weight: 500; }
+#grid tbody th { text-align: left; font-family: var(--font-data); font-weight: 500; padding: 0 14px 0 12px; white-space: nowrap; position: sticky; left: 0; background: var(--surface); }
+#grid td { width: 44px; min-width: 44px; height: 34px; border-left: 1px solid var(--line); }
+#grid td.authoring, #grid thead th.authoring { background: color-mix(in srgb, var(--author) 7%, transparent); }
+#grid tbody tr + tr td, #grid tbody tr + tr th { border-top: 1px solid var(--line); }
+.cell { display: inline-flex; width: 26px; height: 20px; border-radius: 5px; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+.cell.current { background: var(--current-soft); color: var(--current); }
+.cell.stale { background: var(--stale-soft); color: var(--stale); }
+.cell.missing { background: var(--missing-soft); color: var(--missing); }
+.cell.not_applicable, .cell.none { color: var(--na); }
+.cell.changed { box-shadow: 0 0 0 2px var(--accent); }
+#grid tfoot td { height: auto; padding: 8px 0 10px; font-size: 11px; color: var(--muted); border-left: 1px solid var(--line); }
+
+/* operation log */
+#log { display: grid; gap: 0; }
+.entry { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 0 14px; position: relative; }
+.entry::before { content: ""; position: absolute; left: 16px; top: 0; bottom: 0; width: 2px; background: var(--line); }
+.entry:first-child::before { top: 18px; }
+.entry:last-child::before { bottom: calc(100% - 18px); }
+.node { position: relative; z-index: 1; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--font-data); font-size: 12px; font-weight: 500; background: var(--surface); border: 2px solid var(--accent); color: var(--accent); margin-top: 2px; }
+.entry.setup .node { border-color: var(--setup); color: var(--setup); }
+.entry.authoring .node { width: 14px; height: 14px; margin: 12px 10px; border: 2px solid var(--author); }
+.body { padding: 8px 0 22px; min-width: 0; display: grid; gap: 8px; }
+.row1 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+.name { font-family: var(--font-data); font-size: 15px; font-weight: 500; }
+.entry.authoring .name { font-family: var(--font-ui); font-size: 13px; color: var(--muted); font-weight: 600; }
+.dur { font-family: var(--font-data); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.effects { display: flex; flex-wrap: wrap; gap: 6px; }
+.effect { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-data); font-size: 12px; border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; background: var(--surface); }
+.effect .to.current { color: var(--current); font-weight: 600; }
+.effect .to.stale { color: var(--stale); font-weight: 600; }
+.effect .to.missing { color: var(--missing); font-weight: 600; }
+.effect .from { color: var(--muted); }
+.noeffect { font-size: 12px; color: var(--muted); }
+.checks { font-size: 12px; color: var(--current); font-weight: 600; }
+.checks.bad { color: var(--bad); }
+.ops-list { font-family: var(--font-data); font-size: 12px; color: var(--muted); }
+details { border-top: 1px dashed var(--line); padding-top: 6px; }
+summary { cursor: pointer; font-size: 12px; color: var(--accent); width: fit-content; }
+summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+.detail { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px 24px; padding: 10px 0 4px; }
+.detail > div { min-width: 0; display: grid; gap: 6px; align-content: start; }
+.chain { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-family: var(--font-data); font-size: 12px; }
+.chain .st { padding: 1px 6px; border-radius: 4px; background: var(--bg); border: 1px solid var(--line); }
+.chain .arr { color: var(--muted); }
+.kv { font-family: var(--font-data); font-size: 12px; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px 10px; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; overflow-wrap: anywhere; }
+.rules { list-style: none; padding: 0; margin: 0; font-family: var(--font-data); font-size: 12px; display: grid; gap: 2px; }
+.rules .ok { color: var(--current); }
+.rules .no { color: var(--bad); }
+.spans { display: grid; gap: 4px; font-family: var(--font-data); font-size: 11.5px; }
+.span-row { display: grid; grid-template-columns: minmax(0, 1fr) 64px; gap: 8px; align-items: center; }
+.span-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.span-name .svc { color: var(--muted); }
+.span-bar { height: 6px; border-radius: 3px; background: var(--line); position: relative; overflow: hidden; }
+.span-bar i { position: absolute; inset: 0 auto 0 0; background: var(--muted); border-radius: 3px; }
+.span-row .d { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ctx-note { font-size: 11.5px; color: var(--muted); }
+
+/* sequence */
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.tab { font: 500 12px var(--font-data); padding: 4px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.tab[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#seq svg { display: block; min-width: 940px; width: 100%; height: auto; }
+#seq text { font-family: var(--font-data); font-size: 11.5px; fill: var(--ink); paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
+#seq .lane-name { font-family: var(--font-ui); font-weight: 600; font-size: 12.5px; stroke: none; }
+#seq .proc { font-family: var(--font-ui); font-size: 10.5px; fill: var(--muted); text-transform: uppercase; letter-spacing: .08em; stroke: none; }
+#seq .t { fill: var(--muted); font-size: 11px; }
+#seq .sub { fill: var(--muted); font-size: 10.5px; }
+#seq .ev-journal { fill: var(--accent); font-weight: 600; }
+#seq .ev-git { fill: var(--current); font-weight: 600; }
+#seq .ev-inferred { fill: var(--stale); }
+#seq .ev-span, #seq .ev-time, #seq .ev-gap { fill: var(--muted); }
+#seq .commit { fill: var(--current); font-weight: 600; }
+#seq .effect { fill: var(--current); }
+#seq .gapnote { fill: var(--stale); font-style: italic; }
+.seq-legend line { stroke-width: 2; }
+footer { font-size: 12.5px; color: var(--muted); display: grid; gap: 6px; max-width: 75ch; }
+footer p { margin: 0; }
+@media (max-width: 520px) {
+  .page { padding: 20px 16px 48px; gap: 28px; }
+  h1 { font-size: 21px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  summary { transition: color .15s; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="eyebrow">Operation trace · e2e recording</div>
+    <h1 id="title">REE operation trace</h1>
+    <div class="facts" id="facts"></div>
+    <div class="sources" id="sources"></div>
+  </header>
+
+  <section>
+    <div class="section-head">
+      <h2>When it ran</h2>
+      <p>Wall-clock seconds from the first journal record. Shown for orientation only: the checker never orders events by time.</p>
+    </div>
+    <div class="panel scroll" id="lanes"></div>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--setup)"></i>compute allocation</span>
+      <span><i class="sw" style="background:var(--accent)"></i>REE operation (its run)</span>
+      <span><i class="sw" style="background:var(--author)"></i>authoring: edits, lints, file writes</span>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>Evidence standing after each step</h2>
+      <p>Core's audit of every step, read from the capture commits. Each column is the state after that operation; a ring marks what it changed. Together the columns are the REE's high-level state path.</p>
+    </div>
+    <div class="panel scroll" id="grid"></div>
+    <div class="legend">
+      <span><i class="cell current" style="width:18px;height:14px">●</i>current</span>
+      <span><i class="cell stale" style="width:18px;height:14px">◐</i>stale</span>
+      <span><i class="cell missing" style="width:18px;height:14px">○</i>missing</span>
+      <span><i class="cell not_applicable" style="width:18px;height:14px">–</i>not applicable</span>
+    </div>
+  </section>
+
+
+  <section>
+    <div class="section-head">
+      <h2>How an operation travels</h2>
+      <p>One operation from the client's request to the change in the REE, across every component. Solid arrows are journal records the checker reads; dashed ones come from spans; dotted ones are matched by time only. The right column says where each line comes from.</p>
+    </div>
+    <div class="tabs" id="seqtabs" role="group" aria-label="Operation"></div>
+    <div class="panel scroll" id="seq"></div>
+    <div class="legend">
+      <span><svg width="34" height="10"><line x1="0" y1="5" x2="34" y2="5" stroke="var(--accent)" stroke-width="2"/></svg>journal (checked)</span>
+      <span><svg width="34" height="10"><line x1="0" y1="5" x2="34" y2="5" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 3"/></svg>span (context)</span>
+      <span><svg width="34" height="10"><line x1="0" y1="5" x2="34" y2="5" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="1.5 3"/></svg>span, matched by time</span>
+      <span><i class="sw" style="background:var(--current)"></i>Git capture (witnessed)</span>
+      <span><i class="sw" style="background:var(--stale)"></i>attempt state placed inside capture_command</span>
+    </div>
+  </section>
+  <section>
+    <div class="section-head">
+      <h2>Operations</h2>
+      <p>Setup and the operations that produce evidence, in evidence order. Authoring between them is collapsed. Expand an entry for its run, dispatch, attempt, the rules it triggered and its largest spans.</p>
+    </div>
+    <div id="log"></div>
+  </section>
+
+  <footer>
+    <p><strong>Checked evidence:</strong> the API process journal (runs, allocations, dispatch), the REE's Git capture history (attempts, steps, REE state) and the persisted stores. Rule results come from <code>repo2ree_conformance</code>.</p>
+    <p><strong>Context only:</strong> OpenTelemetry spans, joined through the trace id the journal records carry: the provider's and workbench's spans join the control plane's trace. Only requests that led up to an operation (an upload's init and chunks) are matched by time, marked "by time".</p>
+    <p id="gen" class="mono"></p>
+  </footer>
+</div>
+
+<script>
+const TRACE = /*TRACE*/null;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const GLYPH = { current: "●", stale: "◐", missing: "○", not_applicable: "–" };
+const fmt = (s) => s == null ? "–" : s < 1 ? `${Math.round(s * 1000)} ms` : s < 90 ? `${s.toFixed(1)} s` : `${Math.floor(s / 60)} m ${Math.round(s % 60)} s`;
+const span = (e) => (e.end ?? 0) - (e.start ?? 0);
+const shortStep = (s) => s.replace("experiment:", "exp:");
+const LABEL = { provision: "Provision compute", release: "Release compute", allocation: "Allocation" };
+
+function header() {
+  const t = TRACE, r = t.recording, rev = r.revision ?? "";
+  $("title").textContent = t.ree ? `REE ${t.ree.slice(0, 8)}` : "No REE in this recording";
+  document.title = `${$("title").textContent} · operation trace`;
+  const facts = [
+    ["Conformance", `<span class="pill ${t.verdict}">${esc(t.verdict)}</span>`],
+    ["REE", `<span class="pill ${t.sealed ? "sealed" : ""}">${t.sealed ? "sealed" : "draft"}</span>`],
+    ["Test", `<span class="v">${esc(r.test ?? "–")}</span>`],
+    ["Test outcome", r.outcome ? `<span class="pill ${esc(r.outcome)}">${esc(r.outcome)}</span>` : `<span class="v">–</span>`],
+    ["Build", `<span class="v">${esc(rev.slice(0, 10))}${rev.endsWith("-dirty") ? "-dirty" : ""}</span>`],
+    ["Duration", `<span class="v">${fmt(t.duration)}</span>`],
+  ];
+  if (t.reviews) facts.push(["Reviews", `<span class="v">${t.reviews} attempts not drawn</span>`]);
+  $("facts").innerHTML = facts.map(([k, v]) => `<div class="fact"><span class="eyebrow">${k}</span>${v}</div>`).join("");
+  $("sources").innerHTML = t.sources.map((s) => `<span class="src" title="${s.complete ? "complete" : "incomplete"}">${esc(s.id)} · ${esc(s.kind)}${s.complete ? "" : " ⚠"}</span>`).join("")
+    + `<span class="src ctx">traces.ndjson · context</span>`;
+  $("gen").textContent = `${r.name} · spec ${t.spec_digest.slice(7, 19)}`;
+}
+
+function lanes() {
+  const W = 1000, L = 120, R = 20, T = 26;
+  const total = Math.max(TRACE.duration, 1), x = (t) => L + (t / total) * (W - L - R);
+  const entries = TRACE.entries;
+  const ops = entries.filter((e) => e.kind === "operation" && e.start != null);
+  // Greedy label rows so neighbouring operations never overlap.
+  const rows = [], placed = ops.map((o) => {
+    const lx = x(o.start), w = o.name.length * 6.8 + 10;
+    let r = rows.findIndex((end) => end < lx);
+    if (r < 0) { rows.push(0); r = rows.length - 1; }
+    rows[r] = lx + w;
+    return { o, lx, r };
+  });
+  const y = { compute: T + 10, ops: T + 56, author: T + 56 + 34 + rows.length * 16 + 14 };
+  const H = y.author + 40;
+  const step = total > 600 ? 120 : total > 240 ? 60 : 30;
+  let g = "";
+  for (let t = 0; t <= total; t += step) {
+    g += `<line class="grid" x1="${x(t)}" y1="${T - 6}" x2="${x(t)}" y2="${H - 10}"/><text x="${x(t)}" y="${T - 12}" text-anchor="middle">${t}s</text>`;
+  }
+  g += `<text class="lane-label" x="12" y="${y.compute + 15}">Compute</text>`;
+  g += `<text class="lane-label" x="12" y="${y.ops + 15}">Operations</text>`;
+  g += `<text class="lane-label" x="12" y="${y.author + 13}">Authoring</text>`;
+  const alloc = entries.filter((e) => e.allocation).flatMap((e) => e.allocation.states).filter((s) => s.t != null);
+  alloc.forEach((s, i) => {
+    const end = alloc[i + 1] ? alloc[i + 1].t : s.t + 0.5;
+    const held = ["ready", "assigned"].includes(s.state), w = Math.max(x(end) - x(s.t), 2);
+    g += `<rect x="${x(s.t)}" y="${y.compute}" width="${w}" height="20" rx="3" fill="var(--setup)" opacity="${held ? 0.85 : 0.4}"><title>allocation ${esc(s.state)} at ${s.t}s</title></rect>`;
+    if (w > 70) g += `<text x="${x(s.t) + 6}" y="${y.compute + 14}" style="fill:var(--surface)">${esc(s.state)}</text>`;
+  });
+  const prov = entries.find((e) => e.name === "provision");
+  if (prov && prov.start != null) {
+    g += `<rect x="${x(prov.start)}" y="${y.ops}" width="${Math.max(x(prov.end) - x(prov.start), 3)}" height="20" rx="3" fill="var(--setup)"><title>provision · ${fmt(span(prov))}</title></rect>`;
+    g += `<text class="op-label" x="${x(prov.start) + 6}" y="${y.ops + 14}" style="fill:var(--surface)">provision</text>`;
+  }
+  placed.forEach(({ o, lx, r }) => {
+    const w = Math.max(x(o.end) - lx, 3), ly = y.ops + 34 + r * 16;
+    const fill = o.outcome === "succeeded" ? "var(--accent)" : "var(--bad)";
+    g += `<rect x="${lx}" y="${y.ops}" width="${w}" height="20" rx="3" fill="${fill}"><title>${esc(o.name)} · ${fmt(span(o))}</title></rect>`;
+    g += `<line x1="${lx + 1}" y1="${y.ops + 20}" x2="${lx + 1}" y2="${ly - 9}" stroke="var(--line)"/>`;
+    g += `<text class="op-label" x="${lx}" y="${ly}">${esc(o.name)}</text>`;
+  });
+  entries.filter((e) => e.kind === "authoring" && e.start != null).forEach((a) => {
+    g += `<rect x="${x(a.start)}" y="${y.author}" width="${Math.max(x(a.end) - x(a.start), 3)}" height="16" rx="3" fill="var(--author)" opacity="0.55"><title>${a.attempts} authoring attempts</title></rect>`;
+  });
+  $("lanes").innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Operations over wall-clock time">${g}</svg>`;
+}
+
+function grid() {
+  const cols = TRACE.standings;
+  if (!cols.length) { $("grid").innerHTML = `<p class="muted" style="padding:12px 16px;margin:0">No capture commits in this recording.</p>`; return; }
+  const head = cols.map((c) => `<th class="${c.kind === "operation" ? "op" : c.kind}"><div>${esc(c.kind === "authoring" ? "· authoring" : c.label)}</div></th>`).join("");
+  const body = TRACE.steps.map((s) => `<tr><th>${esc(shortStep(s))}</th>${cols.map((c) => {
+    const st = c.states[s];
+    return `<td class="${c.kind}"><span class="cell ${st ?? "none"}${c.changed.includes(s) ? " changed" : ""}" title="${esc(s)}: ${esc(st ?? "not declared")}">${st ? GLYPH[st] ?? "?" : ""}</span></td>`;
+  }).join("")}</tr>`).join("");
+  const ree = `<tr><th class="muted">REE</th>${cols.map((c, i) => {
+    const turned = c.sealed && !(cols[i - 1]?.sealed);
+    return `<td class="${c.kind}"><span class="cell${turned ? " changed" : ""}" style="color:var(--${c.sealed ? "accent" : "muted"})" title="${c.sealed ? "sealed" : "draft"}">${c.sealed ? "S" : "d"}</span></td>`;
+  }).join("")}</tr>`;
+  $("grid").innerHTML = `<table><thead><tr><th></th>${head}</tr></thead><tbody>${body}${ree}</tbody></table>`;
+}
+
+const PROV = { journal: "journal", git: "git", inferred: "inferred", span: "span", time: "span · by time", gap: "no spans" };
+function seqView(entry) {
+  const sq = entry.sequence, lanes = sq.lanes, rows = sq.rows;
+  const G = 74, LW = 148, RW = 150, RH = 28, TOP = 64;
+  const W = G + lanes.length * LW + RW, H = TOP + rows.length * RH + 20;
+  const lx = Object.fromEntries(lanes.map((l, i) => [l.id, G + i * LW + LW / 2]));
+  const idx = Object.fromEntries(lanes.map((l, i) => [l.id, i]));
+  const y = (i) => TOP + i * RH + RH / 2;
+  let g = "";
+  const groups = [];
+  lanes.forEach((l, i) => { const last = groups[groups.length - 1]; if (last && last.p === l.process) last.to = i; else groups.push({ p: l.process, from: i, to: i }); });
+  groups.forEach((gr) => {
+    const x0 = G + gr.from * LW + 6, x1 = G + (gr.to + 1) * LW - 6;
+    g += `<rect x="${x0}" y="6" width="${x1 - x0}" height="${H - 12}" rx="8" fill="var(--bg)" opacity="0.7"/>`;
+    g += `<text class="proc" x="${(x0 + x1) / 2}" y="22" text-anchor="middle">${esc(gr.p)}</text>`;
+  });
+  lanes.forEach((l) => {
+    g += `<line x1="${lx[l.id]}" y1="${TOP - 8}" x2="${lx[l.id]}" y2="${H - 10}" stroke="var(--line)" stroke-width="1.5"/>`;
+    g += `<text class="lane-name" x="${lx[l.id]}" y="${TOP - 18}" text-anchor="middle">${esc(l.label)}</text>`;
+  });
+  sq.activations.forEach((a) => {
+    const i0 = rows.findIndex((r) => r.t >= a.start - 1e-6);
+    let i1 = -1;
+    rows.forEach((r, i) => { if (r.t <= a.end + 1e-6) i1 = i; });
+    if (i0 < 0 || i1 < i0) return;
+    const byTime = a.provenance === "time";
+    g += `<rect x="${lx[a.lane] - 5}" y="${y(i0) - 10}" width="10" height="${y(i1) - y(i0) + 20}" rx="2" fill="var(--surface)" stroke="${byTime ? "var(--muted)" : "var(--accent)"}" stroke-opacity="0.45" stroke-dasharray="${byTime ? "2 3" : ""}"><title>${esc(a.label)} · ${fmt(a.end - a.start)}</title></rect>`;
+  });
+  let prev = 0;
+  rows.forEach((r, i) => {
+    const yy = y(i), dt = r.t - prev;
+    prev = r.t;
+    g += `<text class="t" x="${G - 10}" y="${yy + 4}" text-anchor="end">+${r.t < 10 ? (r.t * 1000).toFixed(0) + " ms" : r.t.toFixed(2) + " s"}</text>`;
+    if (i && dt > 1) g += `<line x1="16" y1="${yy - RH / 2}" x2="${W - 8}" y2="${yy - RH / 2}" stroke="var(--line)" stroke-dasharray="2 4"/>`;
+    const seqNo = r.ref && r.provenance === "journal" ? ` <tspan class="sub">#${esc(r.ref.split("#")[1])}</tspan>` : "";
+    g += `<text class="ev-${r.provenance}" x="${W - RW + 14}" y="${yy + 4}">${PROV[r.provenance] ?? esc(r.provenance)}${seqNo}</text>`;
+    const detail = r.detail ? ` <tspan class="sub">${esc(r.detail)}</tspan>` : "";
+    if (r.to) {
+      const x1 = lx[r.lane], x2 = lx[r.to], dir = x2 > x1 ? 1 : -1;
+      const stroke = r.provenance === "journal" ? "var(--accent)" : "var(--muted)";
+      const dash = r.provenance === "journal" ? "" : r.provenance === "time" ? "1.5 3" : "5 3";
+      const xe = x2 - dir * 7;
+      g += `<line x1="${x1 + dir * 6}" y1="${yy}" x2="${xe}" y2="${yy}" stroke="${stroke}" stroke-width="${r.provenance === "journal" ? 2 : 1.5}" stroke-dasharray="${dash}"/>`;
+      g += `<path d="M${xe + dir} ${yy - 4} L${x2 - dir} ${yy} L${xe + dir} ${yy + 4} Z" fill="${stroke}"/>`;
+      g += `<text x="${Math.min(x1, x2) + 10}" y="${yy - 5}">${esc(r.label)}${detail}</text>`;
+    } else {
+      const x = lx[r.lane], right = idx[r.lane] < lanes.length - 2;
+      const dot = { journal: "var(--accent)", git: "var(--current)", inferred: "var(--stale)", gap: "var(--stale)" }[r.provenance] ?? "var(--muted)";
+      g += r.provenance === "gap"
+        ? `<line x1="${x}" y1="${yy - 9}" x2="${x}" y2="${yy + 9}" stroke="var(--stale)" stroke-width="3" stroke-dasharray="2 2"/>`
+        : `<circle cx="${x}" cy="${yy}" r="${r.provenance === "git" || r.provenance === "journal" ? 4.5 : 3.5}" fill="${dot}"/>`;
+      const cls = { commit: "commit", effect: "effect", gap: "gapnote" }[r.tone] ?? "";
+      g += `<text class="${cls}" x="${right ? x + 10 : x - 10}" y="${yy + 4}" text-anchor="${right ? "start" : "end"}">${esc(r.label)}${detail}</text>`;
+    }
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Sequence of ${esc(entry.name)} across components">${g}</svg>`;
+}
+
+function sequences() {
+  const items = TRACE.entries.filter((e) => e.sequence && e.sequence.rows.length);
+  if (!items.length) { $("seq").innerHTML = `<p class="muted" style="padding:12px 16px;margin:0">No operation in this recording has spans or journal records to draw.</p>`; return; }
+  let current = items.find((e) => e.name === "acquire_source") ?? items[0];
+  const draw = () => {
+    $("seqtabs").innerHTML = items.map((e, i) => `<button class="tab" type="button" data-i="${i}" aria-pressed="${e === current}">${esc(e.name)}</button>`).join("");
+    $("seq").innerHTML = seqView(current);
+  };
+  $("seqtabs").addEventListener("click", (ev) => {
+    const b = ev.target.closest("button[data-i]");
+    if (b) { current = items[+b.dataset.i]; draw(); }
+  });
+  draw();
+}
+
+function chain(states) {
+  return `<div class="chain">${states.map((s) => typeof s === "string"
+    ? `<span class="st">${esc(s)}</span>`
+    : `<span class="st" title="${esc(s.ref)}${s.t != null ? ` · ${s.t}s` : ""}">${esc(s.state)}</span>`).join('<span class="arr">→</span>')}</div>`;
+}
+
+function ruleSummary(rules) {
+  const by = {};
+  rules.forEach((r) => { (by[r.rule] ??= { passed: 0, violated: 0, inconclusive: 0 })[r.verdict] += 1; });
+  return { by, bad: rules.filter((r) => r.verdict !== "passed").length, count: Object.keys(by).length };
+}
+
+function rulesList(by) {
+  return `<ul class="rules">${Object.entries(by).sort().map(([rule, v]) => {
+    const n = v.passed + v.violated + v.inconclusive, ok = !v.violated && !v.inconclusive;
+    return `<li class="${ok ? "ok" : "no"}">${ok ? "✓" : "✗"} ${esc(rule)}${n > 1 ? ` <span class="muted">×${n}</span>` : ""}</li>`;
+  }).join("")}</ul>`;
+}
+
+function spansBlock(spans) {
+  if (!spans.length) return "";
+  const max = Math.max(...spans.map((s) => s.duration), 0.001);
+  return `<div><span class="eyebrow">OTel spans · context</span><div class="spans">${spans.map((s) => `
+    <div class="span-row"><div><div class="span-name" title="${esc(s.service)} ${esc(s.name)}"><span class="svc">${esc(s.service)}</span> ${esc(s.name)}</div><div class="span-bar"><i style="width:${(s.duration / max) * 100}%"></i></div></div><span class="d">${fmt(s.duration)}</span></div>`).join("")}
+  </div></div>`;
+}
+
+function changeChips(changes) {
+  if (!changes.length) return `<span class="noeffect">no change to step evidence</span>`;
+  // Repeated changes to one step within an entry collapse into first → last.
+  const by = new Map();
+  changes.forEach((c) => { const p = by.get(c.step); by.set(c.step, { step: c.step, before: p ? p.before : c.before, after: c.after }); });
+  return `<div class="effects">${[...by.values()].map((c) => `<span class="effect">${esc(shortStep(c.step))} <span class="from">${esc(c.before ?? "undeclared")}</span>→<span class="to ${esc(c.after)}">${esc(c.after)}</span></span>`).join("")}</div>`;
+}
+
+function log() {
+  let n = 0;
+  $("log").innerHTML = TRACE.entries.map((e) => {
+    const sum = ruleSummary(e.rules);
+    const checks = sum.count ? `<span class="checks ${sum.bad ? "bad" : ""}">${sum.bad ? `✗ ${sum.bad} not passed` : `✓ ${sum.count} rule${sum.count > 1 ? "s" : ""}`}</span>` : "";
+    if (e.kind === "authoring") {
+      const ops = Object.entries(e.operations).map(([k, v]) => `${v}× ${k}`).join(" · ");
+      return `<div class="entry authoring"><div class="node"></div><div class="body">
+        <div class="row1"><span class="name">Authoring · ${e.attempts} attempt${e.attempts > 1 ? "s" : ""}</span><span class="dur">${fmt(span(e))}</span>${e.failed ? `<span class="pill failed">${e.failed} failed</span>` : ""}${checks}</div>
+        <div class="ops-list">${esc(ops)}</div>
+        ${changeChips(e.changes)}
+      </div></div>`;
+    }
+    n += 1;
+    let detail = "";
+    if (e.run) detail += `<div><span class="eyebrow">Run ${esc(e.run.key.slice(0, 20))}</span>${chain(e.run.states)}</div>`;
+    if (e.allocation) {
+      const f = e.allocation.facts;
+      detail += `<div><span class="eyebrow">Allocation ${esc(e.allocation.key.slice(0, 14))}</span>${chain(e.allocation.states)}${f.provider_id ? `<dl class="kv"><dt>provider</dt><dd>${esc(f.provider_id)}</dd><dt>location</dt><dd>${esc(f.location_id)}</dd><dt>workbench</dt><dd>${esc(f.workbench_id)}</dd></dl>` : ""}</div>`;
+    }
+    if (e.dispatch) {
+      const d = e.dispatch;
+      detail += `<div><span class="eyebrow">Dispatch · supervisor → workbench</span><dl class="kv"><dt>exec_action</dt><dd>${esc(d.sent ?? "not recorded")}</dd><dt>outcome</dt><dd>${esc(d.outcome ?? "–")} · ${esc(d.received ?? "not recorded")}</dd><dt>round trip</dt><dd>${d.start != null && d.end != null ? fmt(d.end - d.start) : "–"}</dd></dl></div>`;
+    }
+    if (e.attempt) {
+      const a = e.attempt;
+      detail += `<div><span class="eyebrow">Attempt ${esc(a.key.slice(0, 8))} · core</span>${chain(a.states)}<dl class="kv"><dt>commit</dt><dd>${esc(a.commit ?? "none")}</dd><dt>tree changed</dt><dd>${a.changed ? `yes${a.files != null ? ` · ${a.files} files` : ""}` : "no"}</dd>${e.ree ? `<dt>REE</dt><dd>${esc(e.ree.before)} → ${esc(e.ree.after)}</dd>` : ""}</dl></div>`;
+    }
+    if (sum.count) detail += `<div><span class="eyebrow">Rules triggered</span>${rulesList(sum.by)}</div>`;
+    detail += spansBlock(e.spans);
+    const sealed = e.ree && e.ree.after === "sealed" && e.ree.before !== "sealed" ? `<span class="pill sealed">REE sealed</span>` : "";
+    return `<div class="entry ${e.kind}"><div class="node">${n}</div><div class="body">
+      <div class="row1"><span class="name">${esc(LABEL[e.name] ?? e.name)}</span>${e.outcome ? `<span class="pill ${esc(e.outcome)}">${esc(e.outcome)}</span>` : ""}<span class="dur">${fmt(span(e))} · at ${fmt(e.start)}</span>${sealed}${checks}</div>
+      ${e.kind === "operation" ? changeChips(e.changes) : ""}
+      <details><summary>Evidence</summary><div class="detail">${detail}</div></details>
+    </div></div>`;
+  }).join("");
+}
+
+header(); lanes(); grid(); sequences(); log();
+</script>
+</body>
+</html>

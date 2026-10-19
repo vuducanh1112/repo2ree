@@ -7,7 +7,7 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from repo2ree_conformance.check import check, replay
+from repo2ree_conformance.check import check
 from repo2ree_conformance.codegen import render_machines
 from repo2ree_conformance.files import GENERATED_MACHINES, SPEC_DIR, load_spec, load_spec_at
 from repo2ree_conformance.html import render_html
@@ -87,7 +87,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.output.mkdir(parents=True, exist_ok=True)
         (args.output / "conformance.md").write_text(render_markdown(spec, result))
         (args.output / "conformance.json").write_text(render_json(result))
-        (args.output / "conformance.html").write_text(render_html(spec, result, replay(spec, evidence)[0]))
+        (args.output / "conformance.html").write_text(render_html(spec, result))
     summary = ", ".join(f"{rule.rule}={rule.verdict}" for rule in result.rules)
     sys.stdout.write(f"{result.verdict}: {summary}\n")
     return result.exit_code

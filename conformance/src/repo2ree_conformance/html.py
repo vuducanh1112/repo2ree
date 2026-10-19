@@ -1,12 +1,15 @@
-"""A self-contained HTML conformance report: verdicts first, then the system and its evidence drawn."""
+"""A self-contained HTML conformance report: verdicts first, then the system and its machines drawn.
+
+Per-REE views of the evidence (operations, sequences, step standings) are drawn by repo2ree_traceview.
+"""
 
 from __future__ import annotations
 
 from html import escape
 
-from repo2ree_conformance.check import INITIAL, CheckResult, Model
+from repo2ree_conformance.check import INITIAL, CheckResult
 from repo2ree_conformance.spec import Spec
-from repo2ree_conformance.views import step_filmstrip, system_map, timeline
+from repo2ree_conformance.views import system_map
 
 MERMAID = "https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs"
 LABELS = {"passed": "passed", "violated": "violated", "inconclusive": "inconclusive", "not_triggered": "not triggered"}
@@ -14,11 +17,11 @@ LABELS = {"passed": "passed", "violated": "violated", "inconclusive": "inconclus
 STYLE = """
 :root { --bg:#fbfaf8; --fg:#1d1d1b; --muted:#6b6a66; --line:#e4e1db; --card:#ffffff;
   --ok:#2f7d4f; --bad:#b3261e; --warn:#9a6700; --idle:#8a8780;
-  --current:#d8efe0; --stale:#f8e3b5; --missing:#ecebe7; }
+ }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg:#171716; --fg:#ecebe7; --muted:#a3a19b; --line:#2f2e2b; --card:#1f1f1d;
   --ok:#6cc58f; --bad:#f2847b; --warn:#e5b54a; --idle:#8a8780;
-  --current:#1f3d2b; --stale:#4a3a12; --missing:#2a2927; } }
+ } }
 * { box-sizing: border-box; }
 body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui, sans-serif; }
 main { max-width:1180px; margin:0 auto; padding:24px 16px 64px; }
@@ -39,16 +42,9 @@ td.num { text-align:right; font-variant-numeric:tabular-nums; }
 .scroll { overflow-x:auto; }
 .card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; overflow-x:auto; }
 .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); gap:12px; }
-.film td { text-align:center; font-size:12px; min-width:28px; }
-.film th { writing-mode:vertical-rl; transform:rotate(180deg); font-weight:500; }
-.film td.name { text-align:left; white-space:nowrap; }
-.s-current { background:var(--current); } .s-stale { background:var(--stale); }
-.s-missing { background:var(--missing); }
 ul.findings { padding-left:18px; } ul.findings li { margin:4px 0; }
 details summary { cursor:pointer; color:var(--muted); }
 """
-
-STATE_MARK = {"current": "✓", "stale": "!", "missing": "·", "not_applicable": ""}
 
 
 def _badge(verdict: str) -> str:
@@ -72,7 +68,7 @@ def _state_chart(spec: Spec, result: CheckResult, entity: str) -> str:
     return "\n".join(lines)
 
 
-def render_html(spec: Spec, result: CheckResult, model: Model) -> str:
+def render_html(spec: Spec, result: CheckResult) -> str:
     parts: list[str] = [
         "<!doctype html><html lang='en'><head><meta charset='utf-8'>",
         "<meta name='viewport' content='width=device-width, initial-scale=1'>",
@@ -112,34 +108,10 @@ def render_html(spec: Spec, result: CheckResult, model: Model) -> str:
         "boundaries (thick) and cross-entity invariants (dashed). Drawn from the specification.</p>",
         f"<div class='card'>{_mermaid(system_map(spec))}</div>",
     ]
-    partitions = {instance.partition for instances in model.instances.values() for instance in instances.values()} - {
-        None
-    }
-    for ree_id in sorted(partition for partition in partitions if partition is not None):
-        parts.append(f"<h2>REE <code>{escape(ree_id)}</code></h2>")
-        film = step_filmstrip(model, ree_id)
-        if film.rows:
-            parts.append(
-                "<h3>Step evidence after each attempt</h3><p class='muted'>✓ current · ! stale · · missing · "
-                "blank: not applicable. Columns are capture order.</p>"
-                "<div class='scroll'><table class='film'><tr><th></th>"
-            )
-            parts += [f"<th>{escape(column)}</th>" for column in film.columns]
-            parts.append("</tr>")
-            for name, cells in film.rows:
-                parts.append(f"<tr><td class='name'><code>{escape(name)}</code></td>")
-                parts += [
-                    f"<td class='s-{cell or 'none'}' title='{escape(cell or 'not recorded')}'>"
-                    f"{STATE_MARK.get(cell or '', '')}</td>"
-                    for cell in cells
-                ]
-                parts.append("</tr>")
-            parts.append("</table></div>")
-        parts += [
-            "<h3>Timeline</h3><details><summary>Every run, dispatch, attempt, and committed change, in evidence "
-            "order</summary>",
-            f"<div class='card'>{_mermaid(timeline(model, ree_id))}</div></details>",
-        ]
+    parts.append(
+        "<p class='muted'>Each REE's operations, how they travel across components, and its step evidence: "
+        "<code>just trace-recording &lt;recording&gt;</code>.</p>"
+    )
     parts.append(
         "<h2>State machines</h2><p class='muted'>Edge labels count observed transitions; 0 is declared "
         "behaviour no evidence exercised.</p><div class='grid'>"

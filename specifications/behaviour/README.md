@@ -80,14 +80,22 @@ The CLI exits 0, 1, or 2. The demo stack fails a passing test whose evidence is 
 
 - **System map**: processes ⊃ components ⊃ owned entities, boundaries, and invariants,
   drawn from this directory alone (`python -m repo2ree_conformance map`).
-- **Per-REE timeline**: every run, dispatch, attempt, and committed change across
-  API, supervisor, core, and Git, in evidence order.
-- **Step evidence filmstrip**: each step's standing (current, stale, missing) after
-  every attempt.
 - **State machines** with each edge labelled by how often it was exercised; `0` is
   specified behaviour no evidence reached.
 - **Specification diff**: `python -m repo2ree_conformance diff --base <ref>` draws
   added and removed edges, entities, invariants, and boundaries for review.
+
+Views of a recording's evidence live in `repo2ree_traceview`, which reads the checker's
+replayed model and verdicts and nothing else; OpenTelemetry spans are attached as context
+and never change a verdict:
+
+- **Operation trace** (`just trace-recording <recording>`): setup, the operations that
+  produce evidence with the authoring between them collapsed, each step's standing after
+  every operation, and each operation's path across client, API, supervisor, workbench,
+  executor, and core.
+- **Provenance** (`just provenance-recording <recording>`): for a sealed REE, each step's
+  evidence at seal traced back through attempt, dispatch, and run to the request, with
+  the verdict of every rule each link triggered.
 
 ## Workflow
 
