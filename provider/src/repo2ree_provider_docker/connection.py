@@ -29,9 +29,11 @@ from repo2ree_protocol.provider import (
     ReleaseAllocationRequest,
     provider_ws_request_adapter,
 )
+from repo2ree_protocol.tracing import get_tracer, record_command_status, remote_context
 from repo2ree_provider_docker.provisioner import ProvisionerService
 
 logger = logging.getLogger(__name__)
+tracer = get_tracer(__name__)
 
 
 class _RequestId(BaseModel):
@@ -96,7 +98,7 @@ async def _serve(ws: ClientConnection, provisioner: ProvisionerService) -> None:
                     target.cancel()
                 await _send(ws, envelope.id, DoneFrame())
                 continue
-            task = asyncio.create_task(_handle(ws, provisioner, envelope.id, envelope.request))
+            task = asyncio.create_task(_handle(ws, provisioner, envelope.id, envelope.request, envelope.traceparent))
             inflight[envelope.id] = task
             task.add_done_callback(partial(_forget, inflight, envelope.id))
     finally:
@@ -113,10 +115,36 @@ async def _handle(
     provisioner: ProvisionerService,
     req_id: str,
     request: ProviderRequest,
+    traceparent: str | None = None,
 ) -> None:
-    async def send(frame: Frame) -> None:
-        await _send(ws, req_id, frame)
+    # Parent the request under the supervisor's span (carried on the envelope), as the
+    # workbench does, so the docker calls it makes join the control plane's trace
+    # instead of each rooting its own. A None context means "current".
+    with tracer.start_as_current_span("provider.request", context=remote_context(traceparent)) as span:
+        span.set_attribute("repo2ree.operation", request.op)
+        span.set_attribute("repo2ree.provider.request_id", req_id)
+        if isinstance(request, EnsureAllocationRequest):
+            span.set_attribute("repo2ree.allocation_id", request.allocation.allocation_id)
+            span.set_attribute("repo2ree.workbench_id", request.workbench_id)
+        elif isinstance(request, InspectAllocationRequest | ReleaseAllocationRequest):
+            span.set_attribute("repo2ree.allocation_id", request.allocation_id)
+        failed = False
 
+        async def send(frame: Frame) -> None:
+            nonlocal failed
+            failed = failed or isinstance(frame, ErrorFrame)
+            await _send(ws, req_id, frame)
+
+        await _serve_request(provisioner, request, req_id, send)
+        record_command_status(span, "failed" if failed else "succeeded")
+
+
+async def _serve_request(
+    provisioner: ProvisionerService,
+    request: ProviderRequest,
+    req_id: str,
+    send: Callable[[Frame], Awaitable[None]],
+) -> None:
     try:
         if isinstance(request, EnsureAllocationRequest):
             await _pump(
