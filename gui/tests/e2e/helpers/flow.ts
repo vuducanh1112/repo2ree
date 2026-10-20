@@ -531,14 +531,28 @@ export async function runBuild(
   // path changes nothing, so no PATCH would fire to wait on.
   if (!rebuild) await declareRuntimeArtifact(page, producedRuntimePath);
 
+  const started = page.waitForResponse(
+    (res) => res.url().endsWith("/build-runtime") && res.request().method() === "POST",
+  );
   await main(page)
     .getByRole("button", { name: rebuild ? /Re-build/ : /Run build/ })
     .click();
+  // The API names it run_id; read it as a key rather than declare a snake_case property.
+  const runId = ((await (await started).json()) as Record<string, string>).run_id;
+  // Wait for this run's own end, as the page's poll reports it. Re-build is no
+  // signal for a rebuild: it is already on screen from the run before, so a wait
+  // on it passed at once and left the caller's badge wait to time the whole build.
   // DinD: each workbench daemon starts with an empty image cache, so the first
   // build is a cold pull + install (~30s+), not a warm shared-cache build.
-  await expect(main(page).getByRole("button", { name: /Re-build/ })).toBeVisible({
-    timeout: 90000,
-  });
+  await page.waitForResponse(
+    async (res) => {
+      if (res.request().method() !== "GET" || !res.url().endsWith(`/runs/${runId}`)) return false;
+      const run = (await res.json()) as { status?: string };
+      return ["succeeded", "failed", "canceled"].includes(run.status ?? "");
+    },
+    { timeout: 90000 },
+  );
+  await expect(main(page).getByRole("button", { name: /Re-build/ })).toBeVisible();
 }
 
 /**
