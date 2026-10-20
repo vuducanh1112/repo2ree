@@ -11,6 +11,32 @@ trees: no REE metadata, no receipts. `python-hello-world.tar.gz` is the packed
 form of `python_hello_world/`, uploaded as-is by the specs that exercise the
 upload path.
 
+### `instant_hello_world/`
+
+The project to reach for when a test needs the whole pipeline but not a real
+toolchain. It runs on the standard library alone, and its `requirements.txt`
+declares no packages, so it builds on any bench with Python and downloads
+nothing. Script inference takes the pip/venv branch
+(`root-pip-requirements-v1`): the generated build creates a venv, installs the
+empty requirements without reaching an index, and packs the venv (about 4 MB)
+as the runtime. `main.py` prints fixed output, so an experiment can verify it
+exactly.
+
+Driven through core's handlers with networking disabled, source to seal takes
+about 4 s, the build about 2 s. Compare `python_hello_world/`, whose Docker
+build pulls a base image and installs pandas and takes 40 s or more.
+
+The SBOM steps are not covered yet: the scanner reads only `docker-archive:`
+runtimes, and this runtime is a packed venv.
+
+## `recipes/`
+
+The REE scripts that run a project, kept beside it rather than in it so the
+project stays an ordinary source tree. `recipes/instant_hello_world/` holds
+the build (what inference generates for the project), activation, experiment
+and verify scripts that both the system suite (`api/tests/system`) and the
+instant GUI suite (`gui/tests/e2e-instant`) author.
+
 ## `rees/`
 
 Complete REEs, packaged the way `ree-archive` downloads them — the shape the
