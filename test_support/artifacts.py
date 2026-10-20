@@ -47,7 +47,7 @@ def artifact_domain(nodeid: str) -> str:
 def domain_dir(domain: str) -> Path:
     """Keep assurance output independent of the backend recording root."""
     if domain == "assurance":
-        return Path(os.environ.get("REPO2REE_ASSURANCE_DIR", str(ROOT / "dist/assurance"))).resolve()
+        return Path(os.environ.get("REPO2REE_ASSURANCE_DIR", str(run_dir() / "assurance"))).resolve()
     return run_dir() / domain
 
 

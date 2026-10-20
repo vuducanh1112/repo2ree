@@ -46,8 +46,9 @@ publish-doc-demo-assets:
     #!/usr/bin/env bash
     set -euo pipefail
     shopt -s nullglob
-    recorded_demo=$(python -m test_support.artifacts latest-path browser/tests/demo-gui)
-    videos=("$recorded_demo"/*/video.webm)
+    # The newest demo-gui run; Playwright kept its video and screenshots in the run.
+    run=$(ls -td {{ quote(REPO2REE_TEST_RUN_DIR + "/e2e") }}/demo-gui-*/ 2>/dev/null | head -n 1 || true)
+    videos=(${run:+"$run"tests/suite/artifacts/*/video.webm})
     if (( ${#videos[@]} != 1 )); then
       echo "Expected exactly one demo-gui run, found ${#videos[@]}."
       echo "Run 'just demo-gui', then retry this recipe."

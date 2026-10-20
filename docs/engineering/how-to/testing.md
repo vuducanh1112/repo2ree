@@ -523,17 +523,19 @@ Useful locations:
 
 | Path | Contents |
 |---|---|
-| `test-artifacts/coverage/python/<tier>/` | Backend coverage, one report per tier, plus `combined/`. |
-| `test-artifacts/coverage/python/context/` | Per-test attribution (`attribute-backend-coverage`). A different *view* over the pytest tiers, not a fifth tier — it is never part of `combined`. |
-| `test-artifacts/coverage/node/unit/` | GUI Vitest coverage (V8), from `just test-gui`. |
-| `test-artifacts/playwright/<suite>/` | Playwright traces, screenshots, and videos. |
-| `test-artifacts/traces/<suite>/` | OpenTelemetry spans and workbench log snapshots. Keyed by *suite*, not by coverage tier: `api-unit/`, `api-integration/`, `api-real-server/`, `supervisor-e2e/`. |
-| `test-artifacts/property-based-tests/` | Hypothesis home: `<package>/` example databases plus its own caches. |
-| `test-artifacts/logs/` | `api-server.log` for plain runs, `backend-<tier>.log` and `workbench-<tier>.log` for measured ones. |
-| `test-artifacts/casts/` | The API walkthrough `.cast` recording and its markdown transcript. |
+| `test-artifacts/e2e/<tier>-<timestamp>/` | One e2e run: `run.json`, an `index.html`, and `tests/<test>/` per test (a whole-suite tier such as `demo-gui` has one entry, `tests/suite/`) with `test.json`, `junit.xml`, `logs/`, the behaviour `recording/`, its `verification/` and `traces/`, and what the client kept in `artifacts/`. |
+| `test-artifacts/python/coverage/` | Backend coverage data and HTML, one report per tier, plus per-test attribution under `context/`. |
+| `test-artifacts/python/sessions/`, `tests/`, `services/` | pytest sessions, per-test output, and service logs of the pytest tiers. |
+| `test-artifacts/node/coverage/unit/` | GUI Vitest coverage (V8), from `just test-gui`. |
+| `test-artifacts/browser/tests/<project>/` | Playwright output of the browser suites that run without a stack (accessibility, screenshots). |
+| `test-artifacts/assurance/` | Output of the assurance packages' tests, and `check-behaviour` reports of recordings collected outside an e2e run. |
+| `test-artifacts/cache/hypothesis/` | Hypothesis home: `<package>/` example databases plus its own caches. |
 | `test-artifacts/fixtures/` | Archives the suites pack on demand from `examples/`; repacked every run. |
-| `test-artifacts/state/workbenches/` | Throwaway e2e workbench identities; with `--workbenches N`, workbench *i* > 1 uses `workbenches-<i>/`. State, not output — but still safe to delete. |
-| `dist/bundles/{exec,tools}` | Executor/tools bundles the workbench injects — a build input, not an artifact. |
+| `test-artifacts/state/` | Throwaway state of test stacks (control planes, providers, workbenches). State, not output, but safe to delete. |
+| `dist/bundles/{exec,tools}` | Executor/tools bundles the workbench injects: a build input, not an artifact. |
+
+Views of the repository (diagrams, metrics, the overview) live under `reports/`, not here;
+a report that shows test output copies what it shows (see `just repo-overview`).
 
 When a Docker-gated test fails, inspect both the workbench entrypoint log and
 the nested daemon log:

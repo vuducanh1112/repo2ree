@@ -17,7 +17,7 @@ from repo2ree_traceview.render import PLACEHOLDER, render_html
 from repo2ree_traceview.spans import SpanIndex, parse_spans
 
 ROOT = Path(__file__).resolve().parents[2]
-RECORDINGS = ROOT / "test-artifacts" / "recordings"
+E2E_RUNS = ROOT / "test-artifacts" / "e2e"
 
 
 def exported(span_id: str, parent: str | None, start: str, end: str, **extra: object) -> dict[str, object]:
@@ -76,10 +76,8 @@ def test_a_template_without_a_place_for_the_trace_is_refused() -> None:
 
 
 def recordings() -> list[Path]:
-    if not RECORDINGS.is_dir():
-        return []
     found: list[Path] = []
-    for path in sorted(RECORDINGS.iterdir()):
+    for path in sorted(E2E_RUNS.glob("*/tests/*/recording")):
         try:
             if read_recording(path).recorded("journal"):
                 found.append(path)
@@ -88,7 +86,7 @@ def recordings() -> list[Path]:
     return found
 
 
-@pytest.mark.skipif(not recordings(), reason="needs a recording with journals under test-artifacts/recordings")
+@pytest.mark.skipif(not recordings(), reason="needs an e2e run's recording with journals under test-artifacts/e2e")
 def test_a_real_recording_draws_one_page_per_ree(tmp_path: Path) -> None:
     # Verification is its own step; the views read only what it wrote.
     verified = tmp_path / "verified"

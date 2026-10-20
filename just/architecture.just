@@ -20,6 +20,7 @@ generate-backend-graph package="repo2ree_core":
     set -euo pipefail
     mkdir -p {{ quote(ARCH_DIR) }}
     python scripts/diagrams/arch_graph.py {{ quote(package) }} -f svg -o {{ quote(ARCH_DIR + "/" + package + ".svg") }}
+    {{ STAMP_DIAGRAMS }} --by generate-backend-graph {{ quote(ARCH_DIR + "/" + package + ".svg") }}
 
 # Generate a graph for every backend root package.
 [group('Diagrams')]
@@ -42,6 +43,7 @@ generate-backend-workspace-graphs:
     mkdir -p {{ quote(ARCH_DIR) }}
     python scripts/diagrams/arch_graph.py --collapse -f svg -o {{ quote(ARCH_DIR + "/workspace.svg") }}
     python scripts/diagrams/arch_graph.py --all -f svg -o {{ quote(ARCH_DIR + "/workspace-modules.svg") }}
+    {{ STAMP_DIAGRAMS }} --by generate-backend-workspace-graphs {{ quote(ARCH_DIR + "/workspace.svg") }} {{ quote(ARCH_DIR + "/workspace-modules.svg") }}
 
 # dependency-cruiser writes DOT before Graphviz runs so a failed cruise cannot
 # be hidden by a successful final pipeline command that emits an empty SVG.
@@ -58,6 +60,7 @@ generate-gui-graph collapse=DEFAULT_GUI_COLLAPSE:
     cd ..
     dot -Tsvg -o {{ quote(ARCH_DIR + "/gui.svg") }} {{ quote(ARCH_DIR + "/gui.dot") }}
     rm -f {{ quote(ARCH_DIR + "/gui.dot") }}
+    {{ STAMP_DIAGRAMS }} --by generate-gui-graph {{ quote(ARCH_DIR + "/gui.svg") }}
     printf 'wrote %s\n' {{ quote(ARCH_DIR + "/gui.svg") }}
 
 # Generate a GUI dependency graph with the functional core expanded.
@@ -71,4 +74,5 @@ generate-gui-core-graph collapse=DEFAULT_GUI_CORE_COLLAPSE:
     cd ..
     dot -Tsvg -o {{ quote(ARCH_DIR + "/gui-core.svg") }} {{ quote(ARCH_DIR + "/gui-core.dot") }}
     rm -f {{ quote(ARCH_DIR + "/gui-core.dot") }}
+    {{ STAMP_DIAGRAMS }} --by generate-gui-core-graph {{ quote(ARCH_DIR + "/gui-core.svg") }}
     printf 'wrote %s\n' {{ quote(ARCH_DIR + "/gui-core.svg") }}

@@ -78,7 +78,7 @@ def free_port() -> int:
 
 @dataclass(frozen=True)
 class Layout:
-    """Where one stack writes what it produces; by default the suite-wide places under the run dir."""
+    """Where one stack writes what it produces: a directory of its own inside a run."""
 
     run_token: str
     log_dir: Path
@@ -93,18 +93,7 @@ class Layout:
     client_log: Path | None = None
 
     @classmethod
-    def suite(cls, tier: str, *, collector: bool) -> Layout:
-        token = f"e2e-{tier}-{uuid.uuid4().hex}"
-        return cls(
-            run_token=token,
-            log_dir=run_dir() / "python/services" / tier,
-            recording_dir=run_dir() / "recordings" / token,
-            archive_dir=run_dir() / "archives" / token,
-            telemetry_dir=None if collector else run_dir() / "telemetry" / token,
-        )
-
-    @classmethod
-    def for_test(cls, tier: str, directory: Path, test: str, *, collector: bool) -> Layout:
+    def for_test(cls, tier: str, directory: Path, test: str | None, *, collector: bool) -> Layout:
         recording = directory / "recording"
         return cls(
             run_token=f"e2e-{tier}-{uuid.uuid4().hex}",
@@ -120,16 +109,15 @@ class Layout:
 
 
 class E2EStack:
-    def __init__(self, options: Options, layout: Layout | None = None, selection: Sequence[str] = ()) -> None:
+    def __init__(self, options: Options, layout: Layout, selection: Sequence[str] = ()) -> None:
         self.options = options
         run_dir()
         self.environment = os.environ.copy()
         revision = self.environment.get("REPO2REE_BUILD_REVISION") or build_revision()
         self.environment.setdefault("REPO2REE_BUILD_REVISION", revision)
         self.environment.setdefault("VITE_BUILD_REVISION", revision)
-        # A stack of a per-test run shares the tier's coverage data with the run's other stacks.
-        self.fresh_coverage = layout is None
-        layout = layout or Layout.suite(options.tier, collector=bool(self.environment.get("OTLP_ENDPOINT")))
+        # Whether this stack starts the tier's coverage data afresh; a run sets it for its first stack.
+        self.fresh_coverage = False
         self.layout = layout
         # Arguments that narrow the client to part of its suite (one test).
         self.selection = list(selection)
@@ -466,9 +454,8 @@ class E2EStack:
         """
         command = [*self.collect_command(), "--control-plane", self.api_url, "--skip-owners"]
         command += ["--archives-in", str(self.archive_dir)]
-        if not self.options.script:
-            browser = self.layout.browser_output or run_dir() / "browser/tests" / self.options.project
-            command += ["--archives-in", str(browser)]
+        if not self.options.script and self.layout.browser_output is not None:
+            command += ["--archives-in", str(self.layout.browser_output)]
         subprocess.run(command, cwd=ROOT, check=False)
 
     def collect_stopped(self) -> bool:
@@ -521,11 +508,6 @@ class E2EStack:
         self.client_status = status
         print(">> stopping workbench service and backend (SIGTERM so coverage can flush)")
         self.stop()
-        return status
-
-    def run(self) -> int:
-        status = self.run_once()
-        self.coverage_report()
         return status
 
 
@@ -727,6 +709,63 @@ class PerTestRun:
         return 0 if all(result["exit_code"] == 0 for result in ordered) else 1
 
 
+class SuiteRun:
+    """A whole suite on one stack, laid out like a per-test run with the suite as its one entry.
+
+    Every e2e run, per test or whole, is then one directory under e2e/ with a run.json, so
+    pruning, judging (judge-e2e), the run pages, and the overview read them all the same way.
+    """
+
+    def __init__(self, options: Options) -> None:
+        self.options = options
+        self.root = run_dir() / "e2e" / f"{options.tier}-{time.strftime('%Y%m%d-%H%M%S')}"
+        self.stack: E2EStack | None = None
+
+    def stop(self) -> None:
+        if self.stack is not None:
+            self.stack.stop()
+
+    def run(self) -> int:
+        directory = self.root / "tests" / "suite"
+        layout = Layout.for_test(self.options.tier, directory, None, collector=bool(os.environ.get("OTLP_ENDPOINT")))
+        # Playwright writes the suite's screenshots, videos, and kept downloads into the run, not its own outputDir.
+        selection = [] if self.options.script else ["--output", str(layout.browser_output)]
+        stack = E2EStack(self.options, layout, selection)
+        stack.fresh_coverage = True
+        stack.environment["E2E_TEST_DIR"] = str(directory)
+        self.stack = stack
+        name = self.options.project or (self.options.script.name if self.options.script else self.options.tier)
+        started = time.time()
+        status = stack.run_once()
+        # A suite's JUnit report holds many cases; its outcome is the client's exit status.
+        result: dict[str, Any] = {
+            "name": f"{name} (whole suite)",
+            "selection": [],
+            "outcome": "passed" if status == 0 else "failed",
+            "reason": "",
+            "exit_code": status,
+            "started": started,
+            "finished": time.time(),
+            "rees": recorded_rees(layout.recording_dir),
+            "phases": stack.phases,
+        }
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / "test.json").write_text(json.dumps(result, indent=2) + "\n")
+        run = {
+            "tier": self.options.tier,
+            "suite": name,
+            "build_revision": stack.environment.get("REPO2REE_BUILD_REVISION", ""),
+            "jobs": 1,
+            "whole_suite": True,
+            "tests": [{**result, "directory": "tests/suite"}],
+        }
+        (self.root / "run.json").write_text(json.dumps(run, indent=2) + "\n")
+        stack.coverage_report()
+        subprocess.run([sys.executable, str(ROOT / "scripts/test-stack/inspect_run.py"), str(self.root)], check=False)
+        print(f">> suite run: {self.root}")
+        return status
+
+
 def positive(value: str) -> int:
     parsed = int(value)
     if parsed < 1:
@@ -806,7 +845,7 @@ def main() -> int:
     selected = options()
     # Every run adds hundreds of megabytes; prune before adding more (prune_artifacts.py keeps what is in use).
     subprocess.run([sys.executable, str(ROOT / "scripts/test-stack/prune_artifacts.py")], cwd=ROOT, check=False)
-    stack: E2EStack | PerTestRun = PerTestRun(selected) if selected.per_test else E2EStack(selected)
+    stack: SuiteRun | PerTestRun = PerTestRun(selected) if selected.per_test else SuiteRun(selected)
 
     def interrupted(_signal: int, _frame: object) -> None:
         stack.stop()

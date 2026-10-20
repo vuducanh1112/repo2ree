@@ -13,4 +13,5 @@ generate-evidence-graph:
     if [[ ! -e "$output" || "$rules" -nt "$output" || "$renderer" -nt "$output" ]]; then
       mkdir -p {{ quote(DOMAIN_DIR) }}
       python "$renderer" -o "$output"
+      {{ STAMP_DIAGRAMS }} --by generate-evidence-graph "$output"
     fi

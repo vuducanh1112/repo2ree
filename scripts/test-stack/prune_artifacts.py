@@ -3,12 +3,12 @@
 
 Every e2e run adds hundreds of megabytes and nothing removed them. This keeps:
 
-- ``e2e/<tier>-<stamp>/`` (per-test runs): the newest ``--keep-runs`` finished runs of each tier,
-  the newest one of each tier with a problem (a test that failed, or passed with
+- ``e2e/<tier>-<stamp>/`` (every e2e run, per test or whole suite): the newest ``--keep-runs``
+  finished runs of each tier, the newest one of each tier with a problem (a test that failed, or passed with
   behaviour that did not), every run the behaviour receipt names, and every run
   still in progress (no ``run.json`` yet, and recent).
-- ``recordings/``, ``archives/``, ``telemetry/`` ``<e2e-tier-token>/`` (suite runs):
-  the newest ``--keep-suite`` of each tier, and anything recent.
+- ``recordings/``, ``archives/``, ``telemetry/`` ``<e2e-tier-token>/``: where whole-suite runs wrote
+  before they were laid out like the others under ``e2e/``; the newest ``--keep-suite`` of each tier.
 - ``state/control/<token>/``: a stack removes its own once exported; leftovers of
   stacks that did not are removed once stale.
 

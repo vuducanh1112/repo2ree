@@ -27,13 +27,17 @@ DEFAULT_STACK_IMAGE_TAG := IMAGE_TAG
 DEFAULT_IMAGE_CANDIDATE_STATE_DIR := ".validation-certificates/image-candidates"
 DEFAULT_PUBLISH_GATE_RECEIPT := ".validation-certificates/publish-gate-ok"
 
-export REPO2REE_ASSURANCE_DIR := env("REPO2REE_ASSURANCE_DIR", ROOT + "/dist/assurance")
+export REPO2REE_ASSURANCE_DIR := env("REPO2REE_ASSURANCE_DIR", REPO2REE_TEST_RUN_DIR + "/assurance")
 ASSURANCE_DIR := REPO2REE_ASSURANCE_DIR
-DIAGRAM_DIR := "dist/diagrams"
+# Views of the repository, as opposed to what ships (dist/) and what tests leave (test-artifacts/).
+REPORTS_DIR := "reports"
+DIAGRAM_DIR := REPORTS_DIR + "/diagrams"
 JUST_RECIPE_GRAPH := DIAGRAM_DIR + "/just-recipes.svg"
+# Records the commit each generated diagram or metric came from (scripts/diagrams/stamp.py).
+STAMP_DIAGRAMS := "python scripts/diagrams/stamp.py --manifest " + DIAGRAM_DIR + "/manifest.json"
 ARCH_DIR := DIAGRAM_DIR + "/architecture"
 DOMAIN_DIR := DIAGRAM_DIR + "/domain"
-METRICS_DIR := REPO2REE_TEST_RUN_DIR + "/python/reports/metrics"
+METRICS_DIR := REPORTS_DIR + "/metrics"
 
 import 'just/checks.just'
 import 'just/config.just'
@@ -61,7 +65,13 @@ _require-clean-tree:
 generate-diagrams: generate-architecture-diagrams generate-domain-diagrams generate-just-recipe-graph
     @printf '>> diagrams written under %s\n' {{ quote(DIAGRAM_DIR + "/") }}
 
+# Build the repository overview in reports/overview/<revision>/ (reports/overview/latest): zones, gates, behaviour, architecture, recipes, configuration, API.
+[group('Diagrams')]
+repo-overview: generate-diagrams
+    python scripts/overview/build.py
+
 # Generate the declared Just recipe dependency graph.
 [group('Diagrams')]
 generate-just-recipe-graph:
     python scripts/diagrams/just_graph.py -o {{ quote(JUST_RECIPE_GRAPH) }}
+    {{ STAMP_DIAGRAMS }} --by generate-just-recipe-graph {{ quote(JUST_RECIPE_GRAPH) }}

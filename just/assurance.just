@@ -32,7 +32,7 @@ test-conformance:
 check-traceview: (_check-python-package "traceview")
     lint-imports --config traceview/pyproject.toml
 
-# Traceview tests; the recording smoke test needs a recording under test-artifacts/recordings.
+# Traceview tests; the recording smoke test needs an e2e run's recording under test-artifacts/e2e.
 [group('Assurance')]
 test-traceview:
     pytest traceview/tests
@@ -67,27 +67,39 @@ collect-behaviour control_plane output *rees:
 generate-behaviour:
     python -m repo2ree_conformance generate
 
-# Where test runs leave the behaviour recordings they collected.
-RECORDINGS_DIR := REPO2REE_TEST_RUN_DIR + "/recordings"
+# Every e2e run leaves one recording per test (a whole-suite run, one for the suite) under its run directory.
+E2E_RUNS_DIR := REPO2REE_TEST_RUN_DIR + "/e2e"
 
-# The newest recording in RECORDINGS_DIR, or the one given; never empty.
+# The newest recording any e2e run left, or the one given; never empty.
 [private]
 _recording recording:
     #!/usr/bin/env bash
     set -euo pipefail
     if [[ -n {{ quote(recording) }} ]]; then printf '%s\n' {{ quote(recording) }}; exit 0; fi
-    latest=$(ls -td {{ quote(RECORDINGS_DIR) }}/*/manifest.json 2>/dev/null | head -n 1 || true)
-    [[ -n "$latest" ]] || { echo "no recording under {{ RECORDINGS_DIR }}; run an e2e suite that records (just demo-gui)" >&2; exit 2; }
+    latest=$(ls -td {{ quote(E2E_RUNS_DIR) }}/*/tests/*/recording/manifest.json 2>/dev/null | head -n 1 || true)
+    [[ -n "$latest" ]] || { echo "no recording under {{ E2E_RUNS_DIR }}; run an e2e suite (just demo-gui)" >&2; exit 2; }
     dirname "$latest"
+
+# Where a recording's report and views go: beside it in its run's test directory, as the gate writes them;
+# for a recording collected elsewhere (collect-behaviour), under the assurance directory by its name.
+[private]
+_beside recording kind:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    parent=$(dirname {{ quote(recording) }})
+    if [[ -f "$parent/test.json" ]]; then printf '%s\n' "$parent/{{ kind }}"; exit 0; fi
+    printf '%s\n' {{ quote(ASSURANCE_DIR) }}/{{ kind }}/"$(basename {{ quote(recording) }})"
 
 # Judge a collected recording against the behaviour specification, apart from the run that collected it.
 # Exit 0 passed, 1 violated, 2 inconclusive. The report goes beside, never into, the recording.
 [group('Assurance')]
-check-behaviour recording="" output=(ASSURANCE_DIR + "/behaviour"):
+check-behaviour recording="" output="":
     #!/usr/bin/env bash
     set -euo pipefail
     recording=$(just _recording {{ quote(recording) }})
-    python -m repo2ree_conformance check --recording "$recording" -o {{ quote(output) }}/"$(basename "$recording")"
+    output={{ quote(output) }}
+    output=${output:-$(just _beside "$recording" verification)}
+    python -m repo2ree_conformance check --recording "$recording" -o "$output"
 
 # The verification check-behaviour wrote for a recording (the newest by default); drawing never verifies.
 [private]
@@ -95,14 +107,19 @@ _verification recording:
     #!/usr/bin/env bash
     set -euo pipefail
     recording=$(just _recording {{ quote(recording) }})
-    verification={{ quote(ASSURANCE_DIR + "/behaviour") }}/"$(basename "$recording")"
+    verification=$(just _beside "$recording" verification)
     [[ -f "$verification/verification.json" ]] || { echo "no verification of $recording; run: just check-behaviour $recording" >&2; exit 2; }
     printf '%s\n' "$verification"
 
 # Draw one operation trace page per REE of a verified recording: setup, operations across components, rules triggered.
 [group('Assurance')]
-trace-behaviour recording="" output=(ASSURANCE_DIR + "/traces"):
-    python -m repo2ree_traceview "$(just _verification {{ quote(recording) }})" -o {{ quote(output) }}
+trace-behaviour recording="" output="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    recording=$(just _recording {{ quote(recording) }})
+    output={{ quote(output) }}
+    output=${output:-$(just _beside "$recording" traces)}
+    python -m repo2ree_traceview "$(just _verification "$recording")" -o "$output"
 
 # Print why a verified recording's sealed REE can be trusted: each step's evidence back to its request.
 [group('Assurance')]
@@ -111,6 +128,7 @@ provenance-behaviour recording="":
 
 [group('Assurance')]
 generate-assurance-metrics:
-    mkdir -p {{ quote(ASSURANCE_DIR + "/reports/metrics") }}
-    lizard -l python -i -1 -o {{ quote(ASSURANCE_DIR + "/reports/metrics/complexity.html") }} {{ ASSURANCE_METRIC_PATHS }}
-    lizard -l python -i -1 --csv {{ ASSURANCE_METRIC_PATHS }} > {{ quote(ASSURANCE_DIR + "/reports/metrics/complexity.csv") }}
+    mkdir -p {{ quote(METRICS_DIR + "/assurance") }}
+    lizard -l python -i -1 -o {{ quote(METRICS_DIR + "/assurance/complexity.html") }} {{ ASSURANCE_METRIC_PATHS }}
+    lizard -l python -i -1 --csv {{ ASSURANCE_METRIC_PATHS }} > {{ quote(METRICS_DIR + "/assurance/complexity.csv") }}
+    python scripts/diagrams/stamp.py --manifest {{ quote(METRICS_DIR + "/manifest.json") }} --by generate-assurance-metrics {{ quote(METRICS_DIR + "/assurance/complexity.html") }} {{ quote(METRICS_DIR + "/assurance/complexity.csv") }}

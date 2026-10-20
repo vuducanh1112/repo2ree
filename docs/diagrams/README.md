@@ -15,7 +15,7 @@ live beside their published descriptions:
   companion workflow derived from the GUI and HTTP API end-to-end demos.
 
 The SVG files are currently maintained by hand. Generated diagnostic diagrams
-under `dist/diagrams/` are separate, disposable views and are not documentation
+under `reports/diagrams/` are separate, disposable views and are not documentation
 sources.
 
 Component views group modules by responsibility, not source file. Dynamic views

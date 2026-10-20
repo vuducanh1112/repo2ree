@@ -177,7 +177,7 @@ def test_pytest_retains_evidence_before_cleanup_and_records_failure(tmp_path, fa
             "PYTHONPATH": str(Path(__file__).resolve().parents[2]),
             "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
             "REPO2REE_TEST_RUN_DIR": str(artifacts),
-            "REPO2REE_ASSURANCE_DIR": str(project / "dist/assurance"),
+            "REPO2REE_ASSURANCE_DIR": str(project / "test-artifacts/assurance"),
         },
         capture_output=True,
         text=True,
@@ -206,11 +206,11 @@ def test_readable_test_path_and_repeated_execution_cleanup(tmp_path, monkeypatch
 
 
 def test_assurance_artifacts_have_an_independent_root(tmp_path, monkeypatch):
-    monkeypatch.setenv("REPO2REE_ASSURANCE_DIR", str(tmp_path / "dist/assurance"))
+    monkeypatch.setenv("REPO2REE_ASSURANCE_DIR", str(tmp_path / "test-artifacts/assurance"))
     monkeypatch.setenv("REPO2REE_TEST_RUN_DIR", str(tmp_path))
     assert (
         case_dir("conformance/tests/test_matrix.py::test_rows")
-        == tmp_path / "dist/assurance/tests/conformance/test_matrix/test_rows"
+        == tmp_path / "test-artifacts/assurance/tests/conformance/test_matrix/test_rows"
     )
     assert case_dir("api/tests/test_api.py::test_rows") == tmp_path / "python/tests/api/test_api/test_rows"
 
@@ -245,15 +245,15 @@ def test_pytest_routes_assurance_sessions_and_tests_separately(tmp_path, mixed):
             "PYTHONPATH": str(Path(__file__).resolve().parents[2]),
             "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
             "REPO2REE_TEST_RUN_DIR": str(artifacts),
-            "REPO2REE_ASSURANCE_DIR": str(project / "dist/assurance"),
+            "REPO2REE_ASSURANCE_DIR": str(project / "test-artifacts/assurance"),
         },
         capture_output=True,
         text=True,
     )
     assert completed.returncode == 0, completed.stdout + completed.stderr
-    (manifest,) = (project / "dist/assurance/tests/conformance").rglob("manifest.json")
+    (manifest,) = (project / "test-artifacts/assurance/tests/conformance").rglob("manifest.json")
     assert json.loads(manifest.read_text())["nodeid"].startswith("conformance/tests/")
-    (session,) = (project / "dist/assurance/sessions").glob("*.json")
+    (session,) = (project / "test-artifacts/assurance/sessions").glob("*.json")
     document = json.loads(session.read_text())
     assert document["tests"] == 1
     assert document["artifact_domain"] == "assurance"
