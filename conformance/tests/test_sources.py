@@ -295,6 +295,63 @@ def test_a_downloaded_archive_is_read_through_its_exported_journal(tmp_path: Pat
     assert {event.key for event in evidence.events if event.subject == "Attempt"} == {"seal", "after-seal"}
 
 
+def update_ref(root: Path, ref: str, commit: str) -> None:
+    assert GIT is not None
+    subprocess.run([GIT, "-C", str(root), "update-ref", ref, commit], check=True)
+
+
+def loaded_repository(tmp_path: Path) -> tuple[Path, str, str, str]:
+    """A reader's REE that loaded an author's bundle: (root, reader's initial, its load, the author's seal)."""
+    assert GIT is not None
+    author = tmp_path / "author"
+    (sealed,) = captured_repository(author, "author-seal")
+    root = tmp_path / "reader"
+    initial, load = captured_repository(root, "reader-init", "reader-load")
+    update_ref(root, "refs/repo2ree/initial", initial)
+    # Loading keeps the head it replaced and fetches the bundle under its own namespace.
+    update_ref(root, f"refs/repo2ree/imports/{initial}/journal", initial)
+    subprocess.run(
+        [GIT, "-C", str(root), "fetch", "-q", str(author), f"+refs/*:refs/repo2ree/imports/{sealed}/*"], check=True
+    )
+    return root, initial, load, sealed
+
+
+def test_a_loaded_ree_in_its_workbench_is_read_through_ree_history(tmp_path: Path) -> None:
+    assert GIT is not None
+    root, _, _, _ = loaded_repository(tmp_path)
+    assert history_head(GIT, root) == ("refs/heads/ree-history", [])
+
+
+def test_a_downloaded_loaded_ree_is_read_through_its_own_journal_not_the_author_seal(tmp_path: Path) -> None:
+    assert GIT is not None
+    # Its export checks out the author's seal; the reader's initialization and load are on the journal ref.
+    root, _, load, sealed = loaded_repository(tmp_path)
+    update_ref(root, f"refs/repo2ree/imports/{load}/journal", load)
+    update_ref(root, "refs/heads/ree-history", sealed)
+
+    assert history_head(GIT, root) == (f"refs/repo2ree/imports/{load}/journal", [])
+    evidence = load_evidence(repositories=[root], git_executable=GIT)
+    assert {event.key for event in evidence.events if event.subject == "Attempt"} == {"reader-init", "reader-load"}
+
+
+def test_diverging_histories_from_the_initial_capture_are_reported(tmp_path: Path) -> None:
+    assert GIT is not None
+    root, initial, _, _ = loaded_repository(tmp_path)
+    tree = subprocess.run([GIT, "-C", str(root), "rev-parse", f"{initial}^{{tree}}"], capture_output=True, text=True)
+    sibling = subprocess.run(
+        [GIT, "-C", str(root), "commit-tree", tree.stdout.strip(), "-p", initial, "-m", "elsewhere"],
+        capture_output=True,
+        text=True,
+        env={**os.environ, **GIT_ENVIRONMENT},
+        check=True,
+    ).stdout.strip()
+    update_ref(root, f"refs/repo2ree/imports/{sibling}/journal", sibling)
+    head, problems = history_head(GIT, root)
+    assert head == "refs/heads/ree-history"
+    grown = ["refs/heads/ree-history", *(f"refs/repo2ree/imports/{commit}/journal" for commit in (initial, sibling))]
+    assert problems == [f"cannot tell which history continues refs/repo2ree/initial: {sorted(grown)}"]
+
+
 def test_a_workbench_repository_is_read_through_ree_history(tmp_path: Path) -> None:
     assert GIT is not None
     captured_repository(tmp_path / "ree", "a1")

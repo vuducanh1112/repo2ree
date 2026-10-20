@@ -18,6 +18,7 @@ from repo2ree_conformance.evidence import Event, Evidence, Source
 
 JOURNAL_NAME = re.compile(r"^(?P<process>[a-z][a-z0-9-]*)-(?P<epoch>[0-9]{6})\.ndjson$")
 HISTORY_REF = "refs/heads/ree-history"
+INITIAL_REF = "refs/repo2ree/initial"
 EXPORTED_JOURNAL = re.compile(r"^refs/repo2ree/imports/[0-9a-f]{40,64}/journal$")
 MESSAGE_KINDS = {"send", "receive", "abandon"}
 TERMINAL_OUTCOMES = {"succeeded", "failed", "canceled"}
@@ -160,23 +161,31 @@ class Commit:
 def history_head(executable: str, repository: Path) -> tuple[str | None, list[str]]:
     """The ref holding this lifetime's whole capture history, or None for a repository without one.
 
-    In a workbench that is ``ree-history``. A downloaded archive checks out the
-    seal instead, and keeps the history it was exported from as
-    ``refs/repo2ree/imports/<tip>/journal``: the one journal ref ``ree-history``
-    leads into. Other imported refs describe earlier lifetimes elsewhere; they
-    are not this deployment's behaviour.
+    This lifetime's history is the one that grows from its first capture,
+    ``refs/repo2ree/initial``. In a workbench that is ``ree-history``. A downloaded
+    archive checks out the seal instead, and keeps the history it was exported from
+    as ``refs/repo2ree/imports/<tip>/journal``. The seal need not be this lifetime's:
+    an REE that loaded a bundle checks out the author's seal, and its own
+    initialization and load continue only on the journal ref. Loading also keeps the
+    head it replaced as a journal ref, an ancestor of the history that continued it.
+    Other imported refs describe earlier lifetimes elsewhere; they are not this
+    deployment's behaviour. A repository from before the initial ref grows from
+    ``ree-history``.
     """
-    if not git(executable, repository, "for-each-ref", "--format=%(refname)", HISTORY_REF).split():
+    if not _ref_exists(executable, repository, HISTORY_REF):
         return None, []
+    anchor = INITIAL_REF if _ref_exists(executable, repository, INITIAL_REF) else HISTORY_REF
     refs = git(executable, repository, "for-each-ref", "--format=%(refname)", "refs/repo2ree/imports/").split()
-    journals = [ref for ref in refs if EXPORTED_JOURNAL.match(ref)]
-    later = [ref for ref in journals if _is_ancestor(executable, repository, HISTORY_REF, ref)]
-    if not later:
-        return HISTORY_REF, []
-    latest = [ref for ref in later if all(_is_ancestor(executable, repository, other, ref) for other in later)]
-    if len({git(executable, repository, "rev-parse", ref).strip() for ref in latest}) != 1:
-        return HISTORY_REF, [f"cannot tell which exported journal continues {HISTORY_REF}: {sorted(later)}"]
+    candidates = [HISTORY_REF, *(ref for ref in refs if EXPORTED_JOURNAL.match(ref))]
+    grown = [ref for ref in candidates if _is_ancestor(executable, repository, anchor, ref)]
+    latest = [ref for ref in grown if all(_is_ancestor(executable, repository, other, ref) for other in grown)]
+    if not latest:
+        return HISTORY_REF, [f"cannot tell which history continues {anchor}: {sorted(grown) or 'none does'}"]
     return latest[0], []
+
+
+def _ref_exists(executable: str, repository: Path, ref: str) -> bool:
+    return bool(git(executable, repository, "for-each-ref", "--format=%(refname)", ref).split())
 
 
 def _is_ancestor(executable: str, repository: Path, ancestor: str, descendant: str) -> bool:
