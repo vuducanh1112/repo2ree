@@ -3,7 +3,7 @@ E2E_EXEC_BUNDLE := E2E_BUNDLE_DIR + "/exec"
 E2E_TOOLS_BUNDLE := E2E_BUNDLE_DIR + "/tools"
 DEFAULT_API_DEMO_CAST := REPO2REE_TEST_RUN_DIR + "/python/attachments/api-walkthrough.cast"
 # Per-test stacks running side by side in the per-test tiers (a recipe argument overrides it).
-E2E_JOBS := "1"
+E2E_JOBS := "4"
 
 # Source-run suites are measured because the host can collect coverage from
 # their backend and workbench processes. Image-backed variants deliberately are
