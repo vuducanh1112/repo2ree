@@ -87,7 +87,7 @@ class Journal:
         """The sender stopped waiting without receiving any response."""
         self._message("abandon", owner, boundary, None, key, partition, {"reason": reason})
 
-    def close(self) -> None:
+    def close(self, *, final: bool = False) -> None:
         return None
 
     def _message(
@@ -149,11 +149,12 @@ class FileJournal(Journal):
             }
         )
 
-    def close(self) -> None:
+    def close(self, *, final: bool = False) -> None:
+        """End the journal; ``final`` when this owner will not resume, so what it still holds is held for good."""
         with self._lock:
             if self._closed:
                 return
-        self._append({"kind": "journal.closed"})
+        self._append({"kind": "journal.closed", "final": True} if final else {"kind": "journal.closed"})
         with self._lock:
             self._closed = True
             self._stream.close()
@@ -202,11 +203,12 @@ def open_journal(directory: Path, process: str, hosts: Iterable[str] = ()) -> Fi
     return opened
 
 
-def close_journal() -> None:
+def close_journal(*, final: bool = False) -> None:
+    """End this process's journal; ``final`` when the process will not resume (see ``FileJournal.close``)."""
     global _current
     with _current_lock:
         previous, _current = _current, Journal()
-    previous.close()
+    previous.close(final=final)
 
 
 def journal() -> Journal:

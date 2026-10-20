@@ -17,6 +17,11 @@
           "title": "Allocation Store File",
           "type": "string"
         },
+        "BEHAVIOUR_FINAL_SHUTDOWN": {
+          "default": false,
+          "title": "Behaviour Final Shutdown",
+          "type": "boolean"
+        },
         "BEHAVIOUR_JOURNAL_DIR": {
           "default": ".repo2ree/journal",
           "format": "path",
@@ -336,6 +341,15 @@
       "owner": "bash",
       "schema": {
         "type": "string"
+      }
+    },
+    "BEHAVIOUR_FINAL_SHUTDOWN": {
+      "kind": "runtime",
+      "owner": "api",
+      "schema": {
+        "default": false,
+        "title": "Behaviour Final Shutdown",
+        "type": "boolean"
       }
     },
     "BEHAVIOUR_JOURNAL_DIR": {

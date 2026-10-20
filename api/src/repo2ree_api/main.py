@@ -67,7 +67,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         yield
     finally:
         shutdown_runs()
-        close_journal()
+        close_journal(final=service_settings.BEHAVIOUR_FINAL_SHUTDOWN)
         if tracer_provider is not None:
             tracer_provider.shutdown()
         if meter_provider is not None:

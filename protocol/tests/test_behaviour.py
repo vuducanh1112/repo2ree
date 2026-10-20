@@ -48,6 +48,16 @@ def test_a_journal_is_sequenced_stamped_and_closed(tmp_path: Path) -> None:
     assert written[1]["facts"] == {"status": "failed"}
 
 
+def test_a_final_close_says_so_and_an_ordinary_one_does_not(tmp_path: Path) -> None:
+    ordinary = open_journal(tmp_path / "ordinary", "api")
+    close_journal()
+    final = open_journal(tmp_path / "final", "api")
+    close_journal(final=True)
+    assert records(ordinary.path)[-1]["kind"] == "journal.closed"
+    assert "final" not in records(ordinary.path)[-1]
+    assert (records(final.path)[-1]["kind"], records(final.path)[-1]["final"]) == ("journal.closed", True)
+
+
 def test_a_failed_write_leaves_a_visible_gap(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     writer = FileJournal(tmp_path, "api", ())
     original = writer._stream.write

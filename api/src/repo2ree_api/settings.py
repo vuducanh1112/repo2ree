@@ -40,6 +40,11 @@ class Settings(BaseSettings):
     # are evidence, not state: nothing here acts on them; /api/v1/behaviour
     # serves them unchanged to collectors.
     BEHAVIOUR_JOURNAL_DIR: Path = Path(".repo2ree/journal")
+    # Set when this shutdown is final: the deployment will not resume (it is
+    # decommissioned, or it is a test stack). The journal then closes "final",
+    # telling the checker that allocations still held are held for good. A
+    # restartable deployment leaves it off: its allocations resume on restart.
+    BEHAVIOUR_FINAL_SHUTDOWN: bool = False
     # Bounds both concurrent workbench commands and the API's worker threads.
     RUN_MAX_WORKERS: int = 4
     # The provider owns the container runtime (PROVIDER_DOCKER_MODE is its concern,
