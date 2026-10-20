@@ -20,8 +20,8 @@ commit-gate: check build-docs test-unit
 _require-current-commit-gate:
     python scripts/publish/commit_gate_stamp.py verify
 
-# A test is accepted when it passed (or is a strict xfail) and its behaviour passed, or left
-# exactly the rules conformance/expected-verdicts.toml excuses for it open.
+# A test is accepted when it passed and its behaviour passed, or it is excused by
+# conformance/expected-verdicts.toml (as every xfail must be) and left exactly those rules open.
 # Run the per-test e2e tiers on HEAD, judge every test's behaviour, and certify HEAD's tree.
 [group('Release gates')]
 behaviour-gate: _require-clean-tree

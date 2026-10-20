@@ -5,9 +5,9 @@ Test runs only collect; inspect_run.py draws verdicts but never fails a run. Thi
 composes the two into a gate:
 
 - ``judge RUN...`` checks every test's recording again with the checker in this
-  tree and accepts a test only if it passed (or is a declared xfail) and its
-  behaviour passed, or left exactly the rules ``conformance/expected-verdicts.toml``
-  excuses for it non-passing. Exit 1 if any test is not accepted.
+  tree and accepts a test only if it passed and its behaviour passed, or the
+  test ``conformance/expected-verdicts.toml`` excuses (an xfail must be) left
+  exactly the rules it names non-passing. Exit 1 if any test is not accepted.
 - ``certify RUN...`` judges, then also requires every tier in ``TIERS`` to be among
   the runs, each built from HEAD with a clean tree that is still HEAD, and every
   expectation to have been used. It writes ``.validation-certificates/behaviour-ok``,
@@ -106,6 +106,9 @@ def judge_test(run: str, directory: Path, test: dict[str, Any], expectations: di
     }
     expected = expectations.get(name)
     if expected is None:
+        # Tests are not oracle: marking a failing test xfail must not be enough to pass the gate.
+        if judgement.outcome == "xfailed":
+            judgement.problems.append("xfailed, and expected-verdicts.toml does not excuse it")
         if judgement.behaviour != "passed":
             judgement.problems.append(f"behaviour {judgement.behaviour}: {describe(judgement.rules)}")
         return judgement

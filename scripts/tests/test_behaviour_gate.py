@@ -68,6 +68,12 @@ def test_a_failed_test_or_one_without_a_verdict_is_refused(tmp_path: Path, outco
     assert not judged(run)["t"].accepted
 
 
+def test_an_xfail_is_accepted_only_when_excused(tmp_path: Path) -> None:
+    run = write_run(tmp_path / "run", "e2e-system", {"t": ("xfailed", checker_report(a="passed"))})
+    assert judged(run)["t"].problems == ["xfailed, and expected-verdicts.toml does not excuse it"]
+    assert judged(run, expectation("t"))["t"].accepted
+
+
 def test_an_expectation_excuses_exactly_the_rules_it_names(tmp_path: Path) -> None:
     excuse = expectation("t", violated=("a",), inconclusive=("b",))
     exact_report = checker_report(a="violated", b="inconclusive")
