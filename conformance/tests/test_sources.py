@@ -106,6 +106,16 @@ def test_a_missing_earlier_epoch_taints_the_later_one(tmp_path: Path) -> None:
     assert source.problems == ("an earlier epoch of this process is missing",)
 
 
+def test_a_journal_closed_for_good_is_read_as_final(tmp_path: Path) -> None:
+    open_journal(tmp_path / "final", "api")
+    close_journal(final=True)
+    write_journal(tmp_path / "ordinary")
+    (final,), _ = read_journals(tmp_path / "final")
+    (ordinary,), _ = read_journals(tmp_path / "ordinary")
+    assert (final.closed, final.final) == (True, True)
+    assert (ordinary.closed, ordinary.final) == (True, False)
+
+
 def test_an_unclosed_journal_is_complete_but_open(tmp_path: Path) -> None:
     open_journal(tmp_path, "api")
     journal().transition("api", "Run", "run-1", None, "queued", partition="ree-1", facts={})

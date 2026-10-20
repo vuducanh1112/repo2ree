@@ -10,8 +10,10 @@ partition = "ree_id"
 evidence = "journal"
 initial = "requested"
 terminal = ["released"]
-# Allocations outlive the API process that holds them.
-settles_before_close = false
+# Allocations outlive the API process that holds them: a restart resumes them.
+# A final close (the owner will not resume) leaves no one to release them, so
+# by then each must be released.
+settles_before_close = "final"
 summary = "Bookkeeping for obtaining, holding, and returning one workbench for one REE."
 
 [states]

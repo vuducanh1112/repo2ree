@@ -205,8 +205,8 @@ def replay_entity(
             instance.facts.update(event.facts)
         if not instance.settled and spec.terminal:
             last = evidence.source(ordered[-1].source)
-            if spec.settles_before_close and last.closed:
-                reason = f"still {instance.current} when {last.id} closed"
+            if spec.settles_at(last.closed, last.final):
+                reason = f"still {instance.current} when {last.id} closed{' for good' if last.final else ''}"
                 findings.append(_finding("violated", subject, reason, ordered[-1]))
             else:
                 open_count += 1
@@ -523,7 +523,7 @@ def check_requires(
     return _finding("inconclusive", occurrence.subject, why, occurrence.event)
 
 
-def check_response(eventually: tuple[str, ...], occurrence: Occurrence) -> Finding | None:
+def check_response(model: Model, eventually: tuple[str, ...], occurrence: Occurrence) -> Finding | None:
     instance = occurrence.instance
     if instance is None:  # The specification only allows entity triggers here.
         return _finding("inconclusive", occurrence.subject, "not an entity transition", occurrence.event)
@@ -533,6 +533,12 @@ def check_response(eventually: tuple[str, ...], occurrence: Occurrence) -> Findi
     last = instance.reached[-1].event
     if instance.settled:
         return _finding("violated", occurrence.subject, f"settled in {instance.current}", occurrence.event, last)
+    # "Eventually" has a horizon only where the owner's journal ended in a way that settles the entity:
+    # after that, nothing can still bring the response.
+    source = model.evidence.source(last.source)
+    if model.spec.entities[instance.subject].settles_at(source.closed, source.final):
+        reason = f"still {instance.current} when {source.id} closed{' for good' if source.final else ''}"
+        return _finding("violated", occurrence.subject, reason, occurrence.event, last)
     return _finding("inconclusive", occurrence.subject, f"still {instance.current}", occurrence.event, last)
 
 
@@ -570,7 +576,7 @@ def judge(model: Model, invariant: Invariant, occurrence: Occurrence) -> list[Fi
     elif isinstance(require, GuardRequirement):
         found = check_guard(require, occurrence)
     else:
-        found = check_response(invariant.eventually, occurrence)
+        found = check_response(model, invariant.eventually, occurrence)
     return [found] if found is not None else []
 
 

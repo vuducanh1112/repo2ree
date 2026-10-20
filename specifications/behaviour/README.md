@@ -37,7 +37,10 @@ of `dispatch`.
 
 - **Journals** (`BEHAVIOUR_JOURNAL_DIR`, one `<process>-<epoch>.ndjson` per process
   start) carry contiguous sequence numbers, so a lost record is a visible gap. A
-  journal closed deliberately ends with `journal.closed`.
+  journal closed deliberately ends with `journal.closed`; one closed for good (the owner
+  will not resume: a decommissioned deployment, the end of a test stack) carries
+  `"final": true`. Only a final close gives "eventually" a horizon for an entity that
+  outlives a restart.
 - **Git** is core's journal. Facts that matter are read from Git itself where
   possible (tree changes, the seal), not from what the owner claims.
 - **Stores** are the owners' persisted state, snapshotted after they stop. The
@@ -62,6 +65,12 @@ and a source listed as failed or missing makes the check inconclusive. `repo2ree
 (`just collect-behaviour <control-plane> <dir> [ree…]`) gathers one through the control
 plane alone: journals and persisted state from `/api/v1/behaviour`, REEs via `ree-archive`.
 
+A deployment that shuts down for good (a test stack does) can instead export its owners'
+journals and persisted state after they stopped (`repo2ree_collect --journal-dir`): taken
+after the owners stopped, they carry no cut, and only they hold the journals' close, which
+gives "eventually" its horizon. The e2e harness collects REE archives through the control
+plane while it runs, then exports the owners once the stack stopped.
+
 An REE's Git evidence is the archive the product downloads (`ree-archive`, the GUI's
 *Download REE*). The archive checks out the seal and keeps the history it came from as
 `refs/repo2ree/imports/<tip>/journal`; the checker reads that history.
@@ -77,10 +86,10 @@ its owners stopped and must match exactly.
 
 | Pattern | Checked as |
 |---|---|
-| machine (per entity) | Transitions start where the last ended, follow declared edges, are recorded by the owner, carry declared facts, and never leave a terminal state. With `settles_before_close`, an entity must be terminal when its owner's journal closes. |
+| machine (per entity) | Transitions start where the last ended, follow declared edges, are recorded by the owner, carry declared facts, and never leave a terminal state. With `settles_before_close = true`, an entity must be terminal when its owner's journal closes; with `"final"`, when it closes for good. |
 | exchange (per boundary) | Per key: one request, then at most one response or abandonment, never before the request, and not missing once the sender's journal closed. |
 | `requires` | When the trigger occurs, the keyed entity reached a state (with facts) or the keyed message exists; with `order = "before"`, it happened before the trigger. |
-| `response` | After the trigger, the entity eventually reaches one of the listed states. |
+| `response` | After the trigger, the entity eventually reaches one of the listed states: violated once its owner's journal closed in a way that settles it (see `settles_before_close`) and it had not; inconclusive while it still could. |
 | `guard` | The triggering transition's facts satisfy a condition (for example: a receipt appears only through its own operation). |
 | `excludes` | At the trigger, no entity of the given kind in the same partition is in the listed states. |
 | reconciliation (implicit) | Persisted store state equals the journal replay. |

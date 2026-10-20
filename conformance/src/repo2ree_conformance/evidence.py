@@ -23,6 +23,10 @@ class Source(EvidenceModel):
     ``partitions`` is None when the source covers every partition its owner
     touched (a process journal); a Git history covers only its own REE.
 
+    ``final`` marks a journal its owner closed for good (a decommissioned
+    deployment, the end of a test stack): an entity the specification lets
+    outlive a restart must still be settled by then.
+
     ``cut`` is None when the source was taken after the owners it speaks for
     stopped. A snapshot of a running system carries the journal positions it
     was taken between: only what happened before the cut must be in it.
@@ -35,6 +39,8 @@ class Source(EvidenceModel):
     hosts: frozenset[str]  # Owners whose records this source would hold.
     complete: bool  # No gaps or unreadable records.
     closed: bool  # The owner ended the journal deliberately.
+    # The owner closed it for good: it will not resume, so what it still holds open it holds forever.
+    final: bool = False
     partitions: frozenset[str] | None = None
     spec_digest: str | None = None
     problems: tuple[str, ...] = ()

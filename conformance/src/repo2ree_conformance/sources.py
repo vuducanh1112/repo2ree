@@ -38,6 +38,7 @@ def read_journal(path: Path, epoch_gap: bool = False) -> tuple[Source, list[Even
     events: list[Event] = []
     header: dict[str, Any] = {}
     closed = False
+    final = False
     expected = 1
     lines = path.read_bytes().splitlines()
     for number, raw in enumerate(lines, 1):
@@ -67,6 +68,7 @@ def read_journal(path: Path, epoch_gap: bool = False) -> tuple[Source, list[Even
             header = record
         elif kind == "journal.closed":
             closed = True
+            final = record.get("final") is True
         elif kind == "transition" or kind in MESSAGE_KINDS:
             # Trace context is for views only: a malformed one is dropped, never a reason to distrust the record.
             context = record.get("trace")
@@ -108,6 +110,7 @@ def read_journal(path: Path, epoch_gap: bool = False) -> tuple[Source, list[Even
         hosts=frozenset(header.get("hosts") or [match["process"]]),
         complete=not problems,
         closed=closed,
+        final=final,
         spec_digest=header.get("spec_digest"),
         problems=tuple(problems),
     )

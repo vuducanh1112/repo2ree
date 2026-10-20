@@ -48,6 +48,12 @@ class Transition(SpecModel):
 class EntitySpec(SpecModel):
     """One state machine with a single owning component."""
 
+    def settles_at(self, closed: bool, final: bool) -> bool:
+        """Whether an instance still open when its owner's journal ended this way is left unsettled."""
+        if not closed:
+            return False
+        return self.settles_before_close is True or (self.settles_before_close == "final" and final)
+
     name: Name
     owner: Name
     key: Name
@@ -55,7 +61,9 @@ class EntitySpec(SpecModel):
     evidence: Literal["journal", "git"]
     initial: tuple[Name, ...] = Field(min_length=1)
     terminal: tuple[Name, ...] = ()
-    settles_before_close: bool
+    # True: terminal whenever its owner's journal closes. "final": it may outlive a restart, but must
+    # be terminal when its owner closes the journal for good. False: no close settles it.
+    settles_before_close: bool | Literal["final"]
     summary: str
     states: dict[Name, str]
     facts: dict[Name, FactType] = {}

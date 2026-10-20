@@ -290,6 +290,63 @@ def test_an_attempt_without_a_dispatch_is_violated() -> None:
     assert findings(recorder, "execution-was-dispatched") == ["violated: no dispatch.exec_action a1"]
 
 
+def assigned_allocation(recorder: Recorder) -> None:
+    for current, target in [
+        (None, "requested"),
+        ("requested", "waiting_for_workbench"),
+        ("waiting_for_workbench", "ready"),
+        ("ready", "assigned"),
+    ]:
+        recorder._add(
+            "api-000001",
+            kind="transition",
+            owner="supervisor",
+            subject="Allocation",
+            key="alloc-1",
+            source_state=current,
+            target_state=target,
+            facts={},
+        )
+
+
+def final(source: Source) -> Source:
+    return source.model_copy(update={"final": True})
+
+
+def test_an_allocation_left_assigned_at_a_final_close_is_violated() -> None:
+    recorder = Recorder()
+    assigned_allocation(recorder)
+    expected = "violated: still assigned when api-000001 closed for good"
+    assert findings(recorder, "allocation-ends", final(journal()), git(REE)) == [expected]
+    assert findings(recorder, "machine:Allocation", final(journal()), git(REE)) == [expected]
+
+
+def test_an_allocation_outlives_an_ordinary_close_or_an_open_journal() -> None:
+    recorder = Recorder()
+    assigned_allocation(recorder)
+    for source in (journal(), journal(closed=False), final(journal(closed=False))):
+        assert verdicts(recorder, source, git(REE))["allocation-ends"] == "inconclusive"
+        assert verdicts(recorder, source, git(REE))["machine:Allocation"] == "passed"
+
+
+def test_a_released_allocation_passes_at_a_final_close() -> None:
+    recorder = Recorder()
+    assigned_allocation(recorder)
+    for current, target in [("assigned", "draining"), ("draining", "released")]:
+        recorder._add(
+            "api-000001",
+            kind="transition",
+            owner="supervisor",
+            subject="Allocation",
+            key="alloc-1",
+            source_state=current,
+            target_state=target,
+            facts={},
+        )
+    found = verdicts(recorder, final(journal()), git(REE))
+    assert (found["allocation-ends"], found["machine:Allocation"]) == ("passed", "passed")
+
+
 def test_an_assigned_allocation_that_never_ends_is_inconclusive() -> None:
     recorder = Recorder()
     for current, target in [
