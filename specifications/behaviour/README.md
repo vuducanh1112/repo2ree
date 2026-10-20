@@ -7,13 +7,11 @@ conforms.
 
 Review changes here carefully. Code that satisfies the checker does not need the
 same line-by-line review; a wrong specification makes the checker approve wrong
-code. The same holds for everything else that decides what the gate certifies: the
-checker (`conformance/`, with its tests and the edges and verdicts they excuse), the gate,
-the gated scenarios with their fixtures, and the harness that runs them and collects their
-evidence. Together they are the **oracle**, declared in `../zones.toml` beside the
-**product** they judge and the **support** that can change no verdict; `just show-oracle`
-draws the zones, and `just show-oracle <path>` names one path's. A commit may change the
-oracle or the product, not both (the `spec-isolation` pre-commit hook).
+code. The same holds for the checker that applies it (`conformance/`, with its tests and the
+edges and verdicts they excuse) and for the gates. The repository's `zones.toml` declares both
+protected (the `spec` and `gates` zones); the tests that produce the evidence are product.
+`just repo-map` draws the zones, and `just repo-map <path>` places one path. A commit that
+changes a protected zone changes nothing unprotected (the `spec-isolation` pre-commit hook).
 
 ## Model
 
@@ -120,14 +118,15 @@ demos only collect, so a test's outcome never depends on the checker, and a gate
 HEAD, checks every test's recording again with the checker in that tree, and accepts a test
 only when it passed and its behaviour passed. A test may instead leave open exactly the rules
 `conformance/expected-verdicts.toml` excuses for it, with its reason; an xfail is accepted only
-when excused there, since tests are not oracle and marking one xfail must not pass the gate. The
+when excused there, since tests are not protected and marking one xfail must not pass the gate. The
 sets must match, so a fix that makes the test conform makes its excuse stale, and a
 stale or unused excuse fails the gate. A test's verdicts also pass a rule nothing triggered,
 so the gate judges the suite as a whole too: the tests together must reach every rule, machine
 edge, and boundary message this directory declares, except those `[[unreached]]` in the same file
 lists with a reason. A change that stops reaching an item fails the gate, and so does a listed item
-a test now reaches; that list is what a receipt does not prove. The excuses are part of the
-oracle, committed apart from runtime code like the checker. When every test is accepted, the gate writes
+a test now reaches; that list is what a receipt does not prove. Only the last test reaching an
+item is noticed this way: a test whose items others also reach can go unnoticed. The excuses
+are protected, committed apart from runtime code like the checker. When every test is accepted, the gate writes
 `.validation-certificates/behaviour-ok`, binding the verdicts to HEAD's tree; `publish-gate`
 requires it. `just judge-e2e [run…]` judges runs the same way without certifying anything.
 

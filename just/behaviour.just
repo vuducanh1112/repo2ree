@@ -1,4 +1,4 @@
-# The behaviour gate and the tiers it runs. This file is oracle (specifications/zones.toml):
+# The behaviour gate and the tiers it runs. This file is protected (zones.toml, gates):
 # what runs and how it is judged decide what a receipt certifies, so it changes apart
 # from the product it judges.
 
@@ -54,8 +54,8 @@ judge-e2e *runs:
     [[ -n "${runs// /}" ]] || { echo "no per-test run under {{ REPO2REE_TEST_RUN_DIR }}/e2e" >&2; exit 2; }
     python scripts/publish/behaviour_gate.py judge $runs
 
-# With paths, name the zone of each; `--files oracle[.group]` lists a zone's files.
-# Draw which parts of the repository are oracle (humans review), product (the gate judges), and support.
+# With paths, place each in its zone; `python scripts/zones.py verify` reports unclaimed files and empty entries.
+# Draw the repository by zone: what each part is for, and which parts humans review.
 [group('Behaviour')]
-show-oracle *args:
-    python scripts/oracle.py show {{ args }}
+repo-map *paths:
+    python scripts/zones.py map {{ paths }}
