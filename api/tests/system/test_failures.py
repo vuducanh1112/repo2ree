@@ -67,11 +67,6 @@ def test_failing_activation_and_unverified_experiment_leave_no_receipts(api: Api
     assert api.experiment(ree_id)["status"] == "succeeded"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="product bug: the workbench stops the executor with SIGTERM, which then reports no result (exit -15), "
-    "so the run goes canceling -> failed (internal) instead of canceled",
-)
 def test_canceling_a_running_build(api: Api, new_ree: Callable[..., str]) -> None:
     ree_id = new_ree()
     prepared(api, ree_id)
@@ -86,6 +81,12 @@ def test_canceling_a_running_build(api: Api, new_ree: Callable[..., str]) -> Non
     assert settled["status"] == "canceled"
     assert time.monotonic() - started < 30, "cancel waited for the script instead of stopping it"
     assert api.ree(ree_id)["subject"]["receipts"]["build"] is None
+    # The attempt ended, it was not abandoned: captured, and canceled. (That its capture changed
+    # nothing is witnessed from Git by the behaviour check: canceled-attempts-change-nothing.)
+    attempts = [
+        item for item in api.get(f"/api/v1/rees/{ree_id}/history")["operations"] if item["run_id"] == run["run_id"]
+    ]
+    assert [(item["operation_status"], item["capture_status"]) for item in attempts] == [("canceled", "captured")]
 
     # The workbench is still usable after the canceled build.
     assert api.build(ree_id)["status"] == "succeeded"

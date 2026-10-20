@@ -2,7 +2,8 @@
 
 All dispatched commands cooperate on the author REE lock. Review snapshots
 live in their own attempt directories; external writers are not synchronized.
-A pending record means completion is unresolved, not that execution rolled back.
+A pending record means completion is unresolved, not that execution rolled back;
+only a canceled attempt is rolled back, to its before-snapshot, before it is captured.
 """
 
 from __future__ import annotations
@@ -45,7 +46,12 @@ def capture_command(
     log: LogSink,
     execute: Callable[[], ActionResult],
 ) -> ActionResult:
-    """Capture input, outcome and state without implying transactional rollback."""
+    """Capture input, outcome and state; only a canceled attempt is rolled back.
+
+    A cancel ends the attempt without its effects: the selected REE files go back to the
+    before-snapshot, so its capture commit changes nothing. Any other outcome keeps, and
+    commits, whatever the handler changed.
+    """
     # Preserve missing-REE preconditions without creating a new REE implicitly.
     if not layout.manifest.is_file():
         return execute()
@@ -101,6 +107,8 @@ def capture_command(
             record.phases.append("completed")
             # Preserve the handler outcome even if snapshot publication fails.
             write_json_atomic(record_path, record.model_dump(mode="json"))
+            if result.status == "canceled" and record.before_snapshot_id is not None:
+                history.restore(record.before_snapshot_id)
             if scope.manifest.is_file():
                 current = ReeDirectory(scope).read_ree()
                 if current.seal is None:

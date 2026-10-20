@@ -196,7 +196,7 @@ def test_capture_failure_reports_whether_handler_ran(ree, monkeypatch, after_mut
         assert git(ree, "log", "-1", "--format=%s", "HEAD^") == "observe_existing_ree"
 
 
-@pytest.mark.parametrize("outcome", ["failed", "canceled", "exception"])
+@pytest.mark.parametrize("outcome", ["failed", "exception"])
 def test_partial_change_captured_with_original_outcome(ree, monkeypatch, outcome):
     def handler(*args, **kwargs):
         ree.overlay_file("partial.txt").write_text("partial")
@@ -213,6 +213,32 @@ def test_partial_change_captured_with_original_outcome(ree, monkeypatch, outcome
     assert result.history.changed is True
     assert git(ree, "show", "HEAD:overlay/partial.txt") == "partial"
     assert json.loads(git(ree, "log", "-1", "--format=%b"))["outcome"] == expected
+
+
+def test_a_canceled_attempt_is_rolled_back_before_it_is_captured(ree, monkeypatch):
+    ree.overlay_file("kept.txt").write_text("before")
+    ree.overlay_file("removed.txt").write_text("before")
+
+    def handler(*args, **kwargs):
+        ree.overlay_file("kept.txt").write_text("partial")
+        ree.overlay_file("removed.txt").unlink()
+        ree.overlay_file("created.txt").write_text("partial")
+        manifest = json.loads(ree.manifest.read_text())
+        manifest["subject"]["definition"]["name"] = "partial"
+        ree.manifest.write_text(json.dumps(manifest))
+        return ActionResult(status="canceled")
+
+    monkeypatch.setattr(dispatch, "handle_patch_ree_definition", handler)
+    result = patch()
+    assert result.status == "canceled"
+    assert result.history.capture_status == "captured"
+    assert result.history.changed is False
+    assert ree.overlay_file("kept.txt").read_text() == "before"
+    assert ree.overlay_file("removed.txt").read_text() == "before"
+    assert not ree.overlay_file("created.txt").exists()
+    assert ReeDirectory(ree).read_ree().subject.definition.name == "before"
+    assert git(ree, "diff", "--name-only", result.history.before_snapshot_id, result.history.after_snapshot_id) == ""
+    assert json.loads(git(ree, "log", "-1", "--format=%b"))["outcome"] == "canceled"
 
 
 def test_concurrent_patches_check_revision_under_capture_lock(ree):
@@ -325,3 +351,27 @@ def test_every_command_records_inputs_and_selected_scope(ree, monkeypatch, comma
     assert git(scope, "show", "HEAD:overlay/operation.txt") == cmd.operation
     if scope != ree:
         assert git(ree, "rev-parse", "HEAD") == author_head
+
+
+def test_restoring_a_snapshot_brings_back_lfs_payloads_and_removes_new_recorded_files(ree):
+    from repo2ree_core.domain.primitives import ReePath
+    from repo2ree_core.domain.ree.model import CapturePolicy
+    from repo2ree_core.persistence.history import open_history
+
+    runtime = ree.workspace / "runtime.tar"
+    runtime.parent.mkdir(parents=True, exist_ok=True)
+    runtime.write_bytes(b"runtime built before" * 100)
+    directory = ReeDirectory(ree)
+    current = directory.read_ree()
+    subject = current.subject.model_copy(
+        update={"capture": CapturePolicy(lfs_paths=(ReePath("workspace/runtime.tar"),))}
+    )
+    directory.write_ree(current.model_copy(update={"subject": subject}))
+    with open_history(ree) as history:
+        snapshot = history.capture(operation="observe_existing_ree")
+        assert git(ree, "show", f"{snapshot}:workspace/runtime.tar").startswith("version https://git-lfs")
+        runtime.write_bytes(b"half a runtime")
+        ree.overlay_file("partial.sh").write_text("partial")
+        history.restore(snapshot)
+    assert runtime.read_bytes() == b"runtime built before" * 100
+    assert not ree.overlay_file("partial.sh").exists()

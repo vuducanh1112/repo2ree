@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import os
 import stat
+import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -78,3 +80,55 @@ def test_action_receives_configured_root(fake_executor: Path, tmp_path: Path) ->
     executor = LocalExecutor(root, str(fake_executor))
     observed = executor._environment()
     assert observed["REPO2REE_WORKBENCH_ROOT"] == os.fspath(root.resolve())
+
+
+def cancellable_executor(tmp_path: Path, on_term: str) -> Path:
+    """An executor whose run waits for the cancel marker (``cooperative``), or ignores it.
+
+    ``on_term`` is what it does on SIGTERM: report canceled (``report``), or nothing (``ignore``).
+    """
+    path = tmp_path / "repo2ree-exec"
+    marker = tmp_path / "marker"
+    trap = {"report": 'trap \'echo {\\"status\\":\\"canceled\\"}; exit 0\' TERM', "ignore": "trap '' TERM"}
+    wait = (
+        f'while [ ! -e "{marker}" ]; do sleep 0.05; done; echo \'{{"status":"canceled"}}\''
+        if on_term == "cooperative"
+        else "while :; do sleep 0.05; done"
+    )
+    path.write_text(
+        "#!/bin/sh\n"
+        'case "$1" in\n'
+        f"  execute) cat >/dev/null; {trap.get(on_term, '')}\n    {wait} ;;\n"
+        f'  cancel-run) touch "{marker}" ;;\n'
+        "esac\n"
+    )
+    path.chmod(path.stat().st_mode | stat.S_IXUSR)
+    return path
+
+
+def cancel_while_running(executor: LocalExecutor) -> tuple[list[object], float]:
+    frames: list[object] = []
+    running = threading.Thread(target=lambda: frames.extend(executor.exec_action("{}", "run-1", {})))
+    running.start()
+    while "run-1" not in executor._runs:
+        time.sleep(0.01)
+    started = time.monotonic()
+    executor.cancel_run("run-1")
+    returned = time.monotonic() - started
+    running.join(timeout=10)
+    assert not running.is_alive()
+    return frames, returned
+
+
+@pytest.mark.parametrize("on_term", ["cooperative", "report", "ignore"])
+def test_cancel_lets_the_executor_stop_itself_and_forces_only_one_that_does_not(tmp_path: Path, on_term: str) -> None:
+    executor = LocalExecutor(tmp_path / "ree", str(cancellable_executor(tmp_path, on_term)), cancel_grace=0.3)
+    executor.cancel_kill = 0.3
+    frames, returned = cancel_while_running(executor)
+    assert returned < 0.3, "cancel_run waits for the grace period instead of returning"
+    result = frames[-1]
+    assert isinstance(result, ResultFrame)
+    if on_term == "ignore":
+        assert result.result.status == "failed"  # Killed: it could not report.
+    else:
+        assert result.result.status == "canceled"

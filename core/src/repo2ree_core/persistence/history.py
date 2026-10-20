@@ -11,6 +11,7 @@ import fcntl
 import json
 import os
 import re
+import shutil
 import stat
 import subprocess
 import tempfile
@@ -23,7 +24,7 @@ from typing import Any, BinaryIO
 from repo2ree_core.persistence.capture_policy import capture_plan
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
-from repo2ree_core.persistence.lfs import store_payload
+from repo2ree_core.persistence.lfs import LfsPointer, store_payload
 from repo2ree_core.tooling import find_tool
 
 INITIAL_REF = "refs/repo2ree/initial"
@@ -158,6 +159,49 @@ class GitHistory:
                 entries.extend(os.fsencode(relative.as_posix()) + b"\0")
             self.git("update-index", "-z", "--index-info", data=bytes(entries), index=index)
             return self.git("write-tree", index=index).stdout.decode().strip()
+
+    def restore(self, snapshot: str) -> None:
+        """Put the selected REE files back as ``snapshot`` recorded them: a canceled attempt's rollback.
+
+        Selected files the snapshot does not hold are removed. Files outside the selection (logs,
+        upload staging, the recorder's own storage) are never captured, so they are left alone.
+        The manifest is restored first: it says which paths the snapshot holds as LFS pointers.
+        """
+        recorded: dict[str, tuple[str, str]] = {}
+        for entry in self.git("ls-tree", "-rz", snapshot).stdout.split(b"\0"):
+            if not entry:
+                continue
+            metadata, raw_path = entry.split(b"\t", 1)
+            mode, kind, oid = metadata.decode().split()
+            if kind != "blob":
+                raise HistoryCaptureError(f"Cannot restore {os.fsdecode(raw_path)}: not a file")
+            recorded[os.fsdecode(raw_path)] = (mode, oid)
+        for path in self._selected_files():
+            if path.relative_to(self.layout.root).as_posix() not in recorded:
+                path.unlink()
+        manifest = self.layout.manifest.relative_to(self.layout.root).as_posix()
+        lfs_paths: set[str] = set()
+        for relative in sorted(recorded, key=lambda name: name != manifest):
+            mode, oid = recorded[relative]
+            target = self.layout.root / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if target.is_symlink() or target.is_file():
+                target.unlink()
+            if mode == "120000":
+                target.symlink_to(os.fsdecode(self.git("cat-file", "blob", oid).stdout))
+                continue
+            pointer = LfsPointer.parse(self.git("cat-file", "blob", oid).stdout) if relative in lfs_paths else None
+            if relative in lfs_paths and pointer is None:
+                raise HistoryCaptureError(f"Cannot restore {relative}: expected an LFS pointer")
+            if pointer is not None:
+                shutil.copyfile(pointer.verify(self.layout.git_dir), target)
+            else:
+                with target.open("wb") as stream:
+                    self.git("cat-file", "blob", oid, output=stream)
+            target.chmod(0o755 if mode == "100755" else 0o644)
+            if relative == manifest:
+                ree = ReeDirectory(self.layout).read_ree()
+                lfs_paths = set(ree.subject.capture.lfs_paths) if ree.subject.capture else set()
 
     def _commit(
         self,

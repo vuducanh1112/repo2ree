@@ -3,7 +3,9 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import signal
 import sys
+import threading
 from pathlib import Path
 from typing import Any, TextIO
 
@@ -206,7 +208,16 @@ def _run_command_envelope(cmd: Any, run_id: str | None, context: ExecutionContex
         evidence_layout.runs.mkdir(parents=True, exist_ok=True)
         run_log = evidence_layout.run_log(run_id).open("a", encoding="utf-8")
         cancel_marker = layout.run_cancel_marker(run_id)
-    is_canceled = (lambda marker=cancel_marker: marker.exists()) if cancel_marker is not None else None
+    # SIGTERM asks for the same cooperative stop as the marker: whoever signals the executor
+    # gets its script stopped, the REE rolled back, and the attempt captured, not abandoned.
+    terminated = threading.Event()
+    on_term = signal.getsignal(signal.SIGTERM)
+    handling = threading.current_thread() is threading.main_thread()
+    if handling:
+        signal.signal(signal.SIGTERM, lambda _signum, _frame: terminated.set())
+
+    def is_canceled() -> bool:
+        return terminated.is_set() or (cancel_marker is not None and cancel_marker.exists())
 
     # The command as it arrived, whole and untruncated. Its counterpart on the
     # way out is the result frame below, and the two together are the complete
@@ -262,6 +273,8 @@ def _run_command_envelope(cmd: Any, run_id: str | None, context: ExecutionContex
             context,
         )
     finally:
+        if handling:
+            signal.signal(signal.SIGTERM, on_term)
         detach_context(ctx_token)
         if run_log is not None:
             run_log.close()

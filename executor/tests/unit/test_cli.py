@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import io
 import json
+import os
+import signal
 import zipfile
 from pathlib import Path
 
@@ -19,6 +21,7 @@ import pytest
 from click.testing import CliRunner
 
 import repo2ree_core.persistence.layout as layout_mod
+import repo2ree_executor.cli as cli_module
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.operation_history import read_operation_history
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
@@ -238,6 +241,24 @@ def test_execute_observes_existing_cancel_marker(initialized_ree: Path) -> None:
     assert result.exit_code == 1
     action_result = ActionResult.model_validate_json(result.stdout.strip())
     assert action_result.status == "canceled"
+
+
+def test_sigterm_cancels_the_run_cooperatively_and_the_handler_is_restored(
+    initialized_ree: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def interrupted(cmd, *, log, run_id, is_canceled, context):
+        assert not is_canceled()
+        os.kill(os.getpid(), signal.SIGTERM)  # As the workbench escalates a cancel the run did not observe.
+        return ActionResult(status="canceled" if is_canceled() else "succeeded")
+
+    monkeypatch.setattr(cli_module, "run_command", interrupted)
+    before = signal.getsignal(signal.SIGTERM)
+    cmd = WriteFileCommand(args=WriteFileArgs(path="build.sh", content="echo build\n"))
+
+    result = runner.invoke(cli, ["execute", "--action", "-", "--run-id", "run-1"], input=cmd.model_dump_json())
+
+    assert ActionResult.model_validate_json(result.stdout.strip()).status == "canceled"
+    assert signal.getsignal(signal.SIGTERM) is before
 
 
 def test_execute_clears_cancel_marker_after_run(initialized_ree: Path) -> None:

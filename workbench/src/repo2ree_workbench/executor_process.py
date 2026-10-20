@@ -19,13 +19,28 @@ from repo2ree_protocol.frames import Frame, ResultFrame
 from repo2ree_protocol.tracing import current_traceparent
 from repo2ree_workbench import executor_frames
 
+# How long a canceled executor gets to stop by itself — stop its script, roll the REE back,
+# capture the attempt, report — before it is signalled. Fixed for now; one place to change it.
+CANCEL_GRACE_SECONDS = 10.0
+# How long a signalled executor gets after SIGTERM (which it also treats as a cancel) before SIGKILL.
+CANCEL_KILL_SECONDS = 5.0
+
 
 class LocalExecutor:
     """Run short-lived executor processes locally against one configured root."""
 
-    def __init__(self, root: Path, exec_path: str = "repo2ree-exec") -> None:
+    def __init__(
+        self,
+        root: Path,
+        exec_path: str = "repo2ree-exec",
+        *,
+        cancel_grace: float = CANCEL_GRACE_SECONDS,
+        cancel_kill: float = CANCEL_KILL_SECONDS,
+    ) -> None:
         self.root = root.resolve()
         self.exec_path = exec_path
+        self.cancel_grace = cancel_grace
+        self.cancel_kill = cancel_kill
         self._runs: dict[str, subprocess.Popen[str]] = {}
         self._runs_lock = threading.Lock()
 
@@ -131,14 +146,29 @@ class LocalExecutor:
                 self._runs.pop(run_id, None)
 
     def cancel_run(self, run_id: str) -> None:
-        # Leave the durable cooperative marker first, then stop the complete
-        # executor process group so cancellation also covers a wedged child.
+        """Ask the run's executor to stop, and only force it if it does not.
+
+        The cancel marker is cooperative: the executor stops its script, rolls the REE back,
+        captures the attempt, and reports it canceled. Killing it at once would abandon the
+        attempt mid-execution, or mid-capture. An executor still running after the grace
+        period is signalled (SIGTERM, which it treats as a cancel too), then killed.
+        """
         self.exec_simple(["cancel-run", "--run-id", run_id], timeout=10)
         with self._runs_lock:
             proc = self._runs.get(run_id)
         if proc is not None and proc.poll() is None:
-            with suppress(ProcessLookupError):
-                os.killpg(proc.pid, signal.SIGTERM)
+            threading.Thread(target=self._escalate, args=(proc,), name=f"cancel-{run_id}", daemon=True).start()
+
+    def _escalate(self, proc: subprocess.Popen[str]) -> None:
+        for sig, wait in ((None, self.cancel_grace), (signal.SIGTERM, self.cancel_kill), (signal.SIGKILL, None)):
+            if sig is not None:
+                with suppress(ProcessLookupError):
+                    os.killpg(proc.pid, sig)
+            if wait is None:
+                return
+            with suppress(subprocess.TimeoutExpired):
+                proc.wait(timeout=wait)
+                return
 
     def copy_in(self, source_path: str, workbench_path: str) -> None:
         destination = self._resolve_destination(workbench_path)
