@@ -214,9 +214,18 @@ export async function generateScript(
  * what it just declared, and the failure would surface pages later as something
  * else entirely (inference reporting an experiment it cannot resolve).
  */
-async function waitForDefinitionPatch(page: Page, { expectOk = true } = {}) {
+async function waitForDefinitionPatch(
+  page: Page,
+  { expectOk = true, carrying }: { expectOk?: boolean; carrying?: string } = {},
+) {
+  // With `carrying`, only the PATCH whose body holds that value: another, earlier
+  // PATCH (a debounced save from the step before) must not stand in for it.
   const response = await page.waitForResponse(
-    (res) => res.url().includes("/definition") && res.request().method() === "PATCH",
+    (res) =>
+      res.url().includes("/definition") &&
+      res.request().method() === "PATCH" &&
+      (carrying === undefined ||
+        (res.request().postData() ?? "").includes(JSON.stringify(carrying))),
   );
   if (expectOk && !response.ok()) {
     throw new Error(
@@ -513,7 +522,10 @@ export async function runBuild(
   // REE owns one reserved build script — author the whole build in it directly
   // (produce the runtime artifact and land it in the workspace).
   await page.getByLabel("Build script").fill(buildScript);
+  // The build runs whatever script is saved when it starts: wait for the save to land.
+  const scriptSaved = waitForFileWrite(page);
   await main(page).getByRole("button", { name: "Save build script" }).click();
+  await scriptSaved;
 
   // A rebuild keeps the declaration the first build made: re-entering the same
   // path changes nothing, so no PATCH would fire to wait on.
@@ -566,7 +578,7 @@ async function declareRuntimeArtifact(page: Page, producedRuntimePath: string) {
   // declaration server-side, and anything else that asks the backend about the
   // runtime next (script inference, most obviously) must not race it, so settle
   // the declaration here rather than in each caller.
-  const runtimeDeclared = waitForDefinitionPatch(page);
+  const runtimeDeclared = waitForDefinitionPatch(page, { carrying: producedRuntimePath });
   await page
     .getByRole("region", { name: "Runtime artifact" })
     .getByRole("textbox")
