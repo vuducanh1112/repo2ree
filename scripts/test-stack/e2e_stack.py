@@ -8,15 +8,20 @@ import json
 import os
 import re
 import shlex
+import shutil
 import signal
+import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import urllib.error
 import urllib.request
 import uuid
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, BinaryIO
@@ -61,6 +66,14 @@ class Options:
     state_root: Path
     exec_bundle: Path
     tools_bundle: Path
+    # Per-test stacks run side by side, this many at once.
+    jobs: int = 1
+
+
+def free_port() -> int:
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        return int(probe.getsockname()[1])
 
 
 @dataclass(frozen=True)
@@ -76,6 +89,8 @@ class Layout:
     browser_output: Path | None = None
     # The one test this stack runs, for the recording's context; None: the whole suite.
     test: str | None = None
+    # Where the client's output goes when stacks run side by side; None: this process's own.
+    client_log: Path | None = None
 
     @classmethod
     def suite(cls, tier: str, *, collector: bool) -> Layout:
@@ -100,6 +115,7 @@ class Layout:
             telemetry_dir=None if collector else recording / "telemetry",
             browser_output=directory / "artifacts",
             test=test,
+            client_log=directory / "logs/client.log",
         )
 
 
@@ -131,6 +147,7 @@ class E2EStack:
         self.client: subprocess.Popen[bytes] | None = None
         self.logs: list[BinaryIO] = []
         self.stopped = False
+        self.stop_lock = threading.Lock()
         # Every run leaves a behaviour recording, collected through the control plane; judging it is a
         # separate step (just check-behaviour) that never decides this run's outcome.
         self.recording_dir = layout.recording_dir
@@ -140,6 +157,16 @@ class E2EStack:
         # The stack exports spans here unless the environment names a collector, whatever the suite.
         self.telemetry_dir = layout.telemetry_dir
         self.client_status: int | None = None
+        # Seconds spent in each phase of this stack's life, in order, for test.json.
+        self.phases: dict[str, float] = {}
+
+    @contextmanager
+    def phase(self, name: str) -> Iterator[None]:
+        started = time.monotonic()
+        try:
+            yield
+        finally:
+            self.phases[name] = round(self.phases.get(name, 0.0) + time.monotonic() - started, 2)
 
     def workbench_log(self, index: int) -> Path:
         suffix = "" if index == 1 else f"-{index}"
@@ -148,13 +175,7 @@ class E2EStack:
     def prepare(self) -> None:
         if self.telemetry_dir is not None:
             self.telemetry_dir.mkdir(parents=True, exist_ok=True)
-        for path in (
-            self.log_dir,
-            self.options.state_root / "workbenches",
-            self.options.state_root / "providers",
-            self.coverage_dir,
-            self.control_state,
-        ):
+        for path in (self.log_dir, self.coverage_dir, self.control_state):
             path.mkdir(parents=True, exist_ok=True)
         if self.fresh_coverage:
             for path in self.coverage_dir.glob(".coverage*"):
@@ -243,8 +264,8 @@ class E2EStack:
         host, network = self.provider_network()
         for index in range(1, self.options.compute_locations + 1):
             if self.options.mode == "provider":
-                base = self.options.state_root / "providers"
-                state = base if index == 1 else Path(f"{base}-{index}")
+                # Each stack's locations keep their state in its own control state, so stacks never share it.
+                state = self.control_state / f"provider-{index}"
                 package = "repo2ree-provider-docker"
                 module = "repo2ree_provider_docker"
                 environment = {
@@ -261,8 +282,7 @@ class E2EStack:
                 }
                 label = "Docker provider"
             else:
-                base = self.options.state_root / "workbenches"
-                state = base if index == 1 else Path(f"{base}-{index}")
+                state = self.control_state / f"workbench-{index}"
                 package = "repo2ree-workbench"
                 module = "repo2ree_workbench"
                 environment = {
@@ -319,6 +339,7 @@ class E2EStack:
                     [str(self.options.script), "--base-url", self.api_url, *self.selection],
                     cwd=ROOT,
                     env=self.environment,
+                    **self.client_output(),
                 ),
                 None,
             )
@@ -327,6 +348,9 @@ class E2EStack:
             **self.environment,
             "E2E_API_BASE_URL": self.api_url,
         }
+        if self.layout.test:
+            # A dev server of its own, proxying to this stack's API: a shared one would serve another stack.
+            environment["E2E_GUI_PORT"] = str(free_port())
         return (
             subprocess.Popen(
                 [
@@ -342,9 +366,16 @@ class E2EStack:
                 ],
                 cwd=ROOT / "gui",
                 env=environment,
+                **self.client_output(),
             ),
             None,
         )
+
+    def client_output(self) -> dict[str, Any]:
+        if self.layout.client_log is None or self.options.jobs == 1:
+            return {}
+        self.layout.client_log.parent.mkdir(parents=True, exist_ok=True)
+        return {"stdout": self.log_handle(self.layout.client_log), "stderr": subprocess.STDOUT}
 
     def wait_for_run(self) -> int:
         self.client, status_file = self.start_client()
@@ -385,22 +416,31 @@ class E2EStack:
             process.wait()
 
     def stop(self) -> None:
-        if self.stopped:
-            return
-        self.stopped = True
+        # A signal stops the stacks running beside the thread that runs this one.
+        with self.stop_lock:
+            if self.stopped:
+                return
+            self.stopped = True
         self.terminate(self.client)
         if self.api_url:
-            self.collect_live()
-        for process in self.locations:
-            self.terminate(process)
-        self.terminate(self.backend)
+            with self.phase("collect_live"):
+                self.collect_live()
+        with self.phase("shutdown"):
+            for process in self.locations:
+                self.terminate(process)
+            self.terminate(self.backend)
         if self.api_url:
-            self.collect_stopped()
-        subprocess.run(
-            [sys.executable, str(ROOT / "scripts/test-stack/workbench_cleanup.py"), "--owner", self.run_token],
-            cwd=ROOT,
-            check=False,
-        )
+            with self.phase("export"):
+                exported = self.collect_stopped()
+            # The recording now holds the owners' journals and stores; the raw copies are kept only when it does not.
+            if exported:
+                shutil.rmtree(self.control_state, ignore_errors=True)
+        with self.phase("cleanup"):
+            subprocess.run(
+                [sys.executable, str(ROOT / "scripts/test-stack/workbench_cleanup.py"), "--owner", self.run_token],
+                cwd=ROOT,
+                check=False,
+            )
         self.port_file.unlink(missing_ok=True)
         for handle in self.logs:
             handle.close()
@@ -431,7 +471,7 @@ class E2EStack:
             command += ["--archives-in", str(browser)]
         subprocess.run(command, cwd=ROOT, check=False)
 
-    def collect_stopped(self) -> None:
+    def collect_stopped(self) -> bool:
         """Export the owners' journals, stores, and spans once the stack stopped, so the journals carry their close.
 
         A test stack shuts down for good, and only a closed journal gives "eventually" rules a horizon.
@@ -451,6 +491,7 @@ class E2EStack:
         collected = subprocess.run(command, cwd=ROOT, check=False)
         status = "" if collected.returncode == 0 else " (incomplete: see the sources listed above)"
         print(f">> behaviour recording{status}: {self.recording_dir}")
+        return collected.returncode == 0
 
     def coverage_report(self) -> None:
         environment = {**self.environment, "COVERAGE_FILE": str(self.coverage_file)}
@@ -470,10 +511,13 @@ class E2EStack:
 
     def run_once(self) -> int:
         """Bring the stack up, run the client, collect, and tear the stack down; no coverage report."""
-        self.prepare()
-        self.start_backend()
-        self.start_locations()
-        status = self.wait_for_run()
+        with self.phase("backend"):
+            self.prepare()
+            self.start_backend()
+        with self.phase("locations"):
+            self.start_locations()
+        with self.phase("client"):
+            status = self.wait_for_run()
         self.client_status = status
         print(">> stopping workbench service and backend (SIGTERM so coverage can flush)")
         self.stop()
@@ -576,59 +620,111 @@ class PerTestRun:
     def __init__(self, options: Options) -> None:
         self.options = options
         self.root = run_dir() / "e2e" / f"{options.tier}-{time.strftime('%Y%m%d-%H%M%S')}"
-        self.current: E2EStack | None = None
+        self.collector = bool(os.environ.get("OTLP_ENDPOINT"))
+        self.lock = threading.Lock()
+        self.active: set[E2EStack] = set()
+        self.stopping = False
+        self.started = 0
+        self.total = 0
+        self.last: E2EStack | None = None
 
     def stop(self) -> None:
-        if self.current is not None:
-            self.current.stop()
+        with self.lock:
+            self.stopping = True
+            stacks = list(self.active)
+        for stack in stacks:
+            stack.stop()
+
+    def previous_durations(self) -> dict[str, float]:
+        """Each test's duration in this tier's latest finished run; empty without one."""
+        for path in sorted((run_dir() / "e2e").glob(f"{self.options.tier}-*/run.json"), reverse=True):
+            if path.parent == self.root:
+                continue
+            try:
+                tests = json.loads(path.read_text())["tests"]
+                return {str(test["name"]): float(test["finished"]) - float(test["started"]) for test in tests}
+            except (OSError, ValueError, KeyError, TypeError):
+                continue
+        return {}
+
+    def run_case(self, case: TestCase, *, first: bool) -> dict[str, Any]:
+        directory = self.root / "tests" / case.slug
+        layout = Layout.for_test(self.options.tier, directory, case.name, collector=self.collector)
+        selection = list(case.selection)
+        if not self.options.script and layout.browser_output is not None:
+            selection = ["--output", str(layout.browser_output), *selection]
+        stack = E2EStack(self.options, layout, selection)
+        # The first stack starts the tier's coverage data afresh; it runs alone, before any other writes to it.
+        stack.fresh_coverage = first
+        stack.environment["E2E_TEST_DIR"] = str(directory)
+        with self.lock:
+            if self.stopping:
+                raise KeyboardInterrupt
+            self.active.add(stack)
+            self.started += 1
+            print(f">> [{self.started}/{self.total}] {case.name} on a fresh stack -> {directory}")
+        started = time.time()
+        try:
+            status = stack.run_once()
+        finally:
+            with self.lock:
+                self.active.discard(stack)
+        outcome, reason = reported_outcome(directory / "junit.xml", status)
+        result: dict[str, Any] = {
+            "name": case.name,
+            "selection": list(case.selection),
+            "outcome": outcome,
+            "reason": reason,
+            "exit_code": status,
+            "started": started,
+            "finished": time.time(),
+            "rees": recorded_rees(layout.recording_dir),
+            "phases": stack.phases,
+        }
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / "test.json").write_text(json.dumps(result, indent=2) + "\n")
+        with self.lock:
+            self.last = stack
+            print(f">> {outcome} in {result['finished'] - started:.0f} s: {case.name}")
+            if outcome == "failed" and layout.client_log is not None and layout.client_log.is_file():
+                tail = layout.client_log.read_text(errors="replace").splitlines()[-40:]
+                print("\n".join(f"   | {line}" for line in tail))
+        return {**result, "directory": f"tests/{case.slug}"}
 
     def run(self) -> int:
         cases = list_tests(self.options)
         if not cases:
             raise RuntimeError(f"the {self.options.tier} suite lists no tests")
-        collector = bool(os.environ.get("OTLP_ENDPOINT"))
-        results: list[dict[str, Any]] = []
-        stack: E2EStack | None = None
-        for index, case in enumerate(cases, 1):
-            directory = self.root / "tests" / case.slug
-            layout = Layout.for_test(self.options.tier, directory, case.name, collector=collector)
-            selection = list(case.selection)
-            if not self.options.script and layout.browser_output is not None:
-                selection = ["--output", str(layout.browser_output), *selection]
-            print(f">> [{index}/{len(cases)}] {case.name} on a fresh stack -> {directory}")
-            stack = E2EStack(self.options, layout, selection)
-            stack.fresh_coverage = index == 1
-            stack.environment["E2E_TEST_DIR"] = str(directory)
-            self.current = stack
-            started = time.time()
-            status = stack.run_once()
-            self.current = None
-            outcome, reason = reported_outcome(directory / "junit.xml", status)
-            result = {
-                "name": case.name,
-                "selection": list(case.selection),
-                "outcome": outcome,
-                "reason": reason,
-                "exit_code": status,
-                "started": started,
-                "finished": time.time(),
-                "rees": recorded_rees(layout.recording_dir),
-            }
-            directory.mkdir(parents=True, exist_ok=True)
-            (directory / "test.json").write_text(json.dumps(result, indent=2) + "\n")
-            results.append({**result, "directory": f"tests/{case.slug}"})
+        self.total = len(cases)
+        # The shortest test runs first and alone: it fills what stacks share (the bundle-store volume, the
+        # tier's coverage data) before any run beside it. The rest start longest first, so the slowest do not
+        # start last. A test without a previous duration counts as the longest.
+        durations = self.previous_durations()
+        known = sorted(cases, key=lambda case: durations.get(case.name, float("inf")))
+        first, rest = known[0], sorted(known[1:], key=lambda case: -durations.get(case.name, float("inf")))
+        results = {first.name: self.run_case(first, first=True)}
+        pool = ThreadPoolExecutor(max_workers=self.options.jobs)
+        try:
+            futures = {pool.submit(self.run_case, case, first=False): case for case in rest}
+            for future in as_completed(futures):
+                results[futures[future].name] = future.result()
+        finally:
+            pool.shutdown(wait=True, cancel_futures=True)
+        ordered = [results[case.name] for case in cases]
+        last = self.last
         run = {
             "tier": self.options.tier,
             "suite": self.options.project or (self.options.script.name if self.options.script else ""),
-            "build_revision": stack.environment.get("REPO2REE_BUILD_REVISION", "") if stack else "",
-            "tests": results,
+            "build_revision": last.environment.get("REPO2REE_BUILD_REVISION", "") if last else "",
+            "jobs": self.options.jobs,
+            "tests": ordered,
         }
         (self.root / "run.json").write_text(json.dumps(run, indent=2) + "\n")
-        if stack is not None:
-            stack.coverage_report()
+        if last is not None:
+            last.coverage_report()
         subprocess.run([sys.executable, str(ROOT / "scripts/test-stack/inspect_run.py"), str(self.root)], check=False)
         print(f">> per-test run: {self.root}")
-        return 0 if all(result["exit_code"] == 0 for result in results) else 1
+        return 0 if all(result["exit_code"] == 0 for result in ordered) else 1
 
 
 def positive(value: str) -> int:
@@ -649,6 +745,7 @@ def options() -> Options:
         "--per-test", action="store_true", help="Run each test on a fresh stack, into a directory of its own"
     )
     parser.add_argument("--compute-locations", type=positive, default=1)
+    parser.add_argument("--jobs", type=positive, default=1, help="With --per-test: stacks run side by side")
     parser.add_argument("--mode", choices=("provider", "external"), default="provider")
     parser.add_argument("--docker-mode", choices=("dind", "host-socket"), default="dind")
     parser.add_argument("--state-root", type=Path, default=ROOT / "test-artifacts/state")
@@ -659,6 +756,8 @@ def options() -> Options:
         parser.error(f"--tier is implied by --project ({args.project}); drop it")
     if args.record and not args.script:
         parser.error("--record only applies to --script")
+    if args.jobs > 1 and not args.per_test:
+        parser.error("--jobs runs stacks side by side; it needs --per-test")
     if args.record and args.per_test:
         parser.error("--record records one session; it does not combine with --per-test")
     tier = args.project or args.tier
@@ -697,11 +796,16 @@ def options() -> Options:
         state_root=args.state_root,
         exec_bundle=args.exec_bundle,
         tools_bundle=args.tools_bundle,
+        jobs=args.jobs,
     )
 
 
 def main() -> int:
+    # Stacks running side by side print from several threads, between subprocesses writing to the same stream.
+    sys.stdout.reconfigure(line_buffering=True)  # type: ignore[union-attr]
     selected = options()
+    # Every run adds hundreds of megabytes; prune before adding more (prune_artifacts.py keeps what is in use).
+    subprocess.run([sys.executable, str(ROOT / "scripts/test-stack/prune_artifacts.py")], cwd=ROOT, check=False)
     stack: E2EStack | PerTestRun = PerTestRun(selected) if selected.per_test else E2EStack(selected)
 
     def interrupted(_signal: int, _frame: object) -> None:

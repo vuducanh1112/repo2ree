@@ -411,6 +411,13 @@
         "type": "string"
       }
     },
+    "E2E_GUI_PORT": {
+      "kind": "internal",
+      "owner": "playwright",
+      "schema": {
+        "type": "string"
+      }
+    },
     "E2E_RECORDING_DIR": {
       "kind": "internal",
       "owner": "test-recording",

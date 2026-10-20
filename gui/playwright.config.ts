@@ -11,9 +11,14 @@ const externalBaseURL = process.env.E2E_BASE_URL;
 // here. Vite proxies the browser to that exact process; browser-only suites and
 // direct local Playwright runs retain the conventional :8000 fallback.
 const apiBaseURL = process.env.E2E_API_BASE_URL ?? "http://localhost:8000";
+// A per-test stack names a dev-server port of its own (stacks run side by side,
+// each proxying to its own API), and that server must be its own: never reused,
+// never moved to another port.
+const ownGuiPort = process.env.E2E_GUI_PORT;
+const guiPort = ownGuiPort ?? "4173";
 
 const baseUse = {
-  baseURL: externalBaseURL ?? "http://127.0.0.1:4173",
+  baseURL: externalBaseURL ?? `http://127.0.0.1:${guiPort}`,
   browserName: "chromium" as const,
   launchOptions: {
     executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
@@ -39,9 +44,9 @@ export default defineConfig({
   webServer: externalBaseURL
     ? undefined
     : {
-        command: "npm run dev -- --host 127.0.0.1 --port 4173",
-        url: "http://127.0.0.1:4173",
-        reuseExistingServer: true,
+        command: `npm run dev -- --host 127.0.0.1 --port ${guiPort}${ownGuiPort ? " --strictPort" : ""}`,
+        url: `http://127.0.0.1:${guiPort}`,
+        reuseExistingServer: ownGuiPort === undefined,
         timeout: 10 * 1000,
         env: {
           VITE_API_BASE_URL: apiBaseURL,

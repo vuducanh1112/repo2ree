@@ -28,6 +28,7 @@ NON_SERVICE_ENVIRONMENT: dict[str, tuple[str, str]] = {
     "E2E_RECORDING_DIR": ("test-recording", "internal"),
     "E2E_BASE_URL": ("playwright", "internal"),
     "E2E_GIT_ORIGIN_URL": ("playwright", "internal"),
+    "E2E_GUI_PORT": ("playwright", "internal"),
     "GHCR_NAMESPACE": ("publishing", "deployment"),
     "GHCR_REGISTRY": ("publishing", "deployment"),
     "GIT_INDEX_FILE": ("git", "external"),

@@ -42,6 +42,7 @@ def test_stack_clis_reject_invalid_combinations() -> None:
     commands = (
         ["scripts/test-stack/image_stack.py", "up", "--compute-locations", "0"],
         ["scripts/test-stack/e2e_stack.py", "--script", "walkthrough.py"],
+        ["scripts/test-stack/e2e_stack.py", "--script", "suite.py", "--tier", "t", "--jobs", "2"],
         [
             "scripts/test-stack/run_image_suite.py",
             "--suite",

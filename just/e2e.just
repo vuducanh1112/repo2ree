@@ -2,6 +2,8 @@ E2E_BUNDLE_DIR := ROOT + "/dist/bundles"
 E2E_EXEC_BUNDLE := E2E_BUNDLE_DIR + "/exec"
 E2E_TOOLS_BUNDLE := E2E_BUNDLE_DIR + "/tools"
 DEFAULT_API_DEMO_CAST := REPO2REE_TEST_RUN_DIR + "/python/attachments/api-walkthrough.cast"
+# Per-test stacks running side by side in the per-test tiers (a recipe argument overrides it).
+E2E_JOBS := "1"
 
 # Source-run suites are measured because the host can collect coverage from
 # their backend and workbench processes. Image-backed variants deliberately are
@@ -26,13 +28,19 @@ test-e2e-gui locations=DEFAULT_E2E_LOCATIONS mode=DEFAULT_E2E_COMPUTE_LOCATION_M
 
 # Run the instant GUI tier: each test on a fresh stack, into test-artifacts/e2e/<run>/tests/<test>/.
 [group('E2E tests')]
-test-e2e-gui-instant mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE: build-e2e-bundles
-    python scripts/test-stack/e2e_stack.py --project e2e-gui-instant --per-test --mode {{ quote(mode) }} --compute-locations 1 --docker-mode {{ quote(docker_mode) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
+test-e2e-gui-instant mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE jobs=E2E_JOBS: build-e2e-bundles (_e2e-gui-instant jobs mode docker_mode)
+
+[private]
+_e2e-gui-instant jobs mode docker_mode:
+    python scripts/test-stack/e2e_stack.py --project e2e-gui-instant --per-test --jobs {{ quote(jobs) }} --mode {{ quote(mode) }} --compute-locations 1 --docker-mode {{ quote(docker_mode) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
 
 # Run the system tier, no browser: each test on a fresh stack, into test-artifacts/e2e/<run>/tests/<test>/.
 [group('E2E tests')]
-test-e2e-system locations="1" mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE: build-e2e-bundles
-    python scripts/test-stack/e2e_stack.py --script {{ quote(ROOT + "/api/tests/system/run_system_suite.py") }} --tier e2e-system --per-test --mode {{ quote(mode) }} --compute-locations {{ quote(locations) }} --docker-mode {{ quote(docker_mode) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
+test-e2e-system locations="1" mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE jobs=E2E_JOBS: build-e2e-bundles (_e2e-system jobs locations mode docker_mode)
+
+[private]
+_e2e-system jobs locations mode docker_mode:
+    python scripts/test-stack/e2e_stack.py --script {{ quote(ROOT + "/api/tests/system/run_system_suite.py") }} --tier e2e-system --per-test --jobs {{ quote(jobs) }} --mode {{ quote(mode) }} --compute-locations {{ quote(locations) }} --docker-mode {{ quote(docker_mode) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
 
 # Run the measured reviewer-side browser E2E tier.
 [group('E2E tests')]
@@ -112,6 +120,11 @@ test-stack-published suite locations="1" repository=DEFAULT_STACK_IMAGE_REPO tag
 [group('Stack tests')]
 test-stack-existing suite:
     python scripts/test-stack/run_image_suite.py --suite {{ quote(suite) }} --compute-locations 1 --images local --existing
+
+# Remove old e2e runs, suite recordings, and stale stack state; every e2e run does this first.
+[group('Stack management')]
+prune-test-artifacts *args:
+    python scripts/test-stack/prune_artifacts.py {{ args }}
 
 # Evict unreferenced bundle-store caches older than the requested days.
 [group('Stack management')]

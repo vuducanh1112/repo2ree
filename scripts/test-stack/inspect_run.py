@@ -79,6 +79,11 @@ def write_test_index(directory: Path, test: dict[str, Any], verdict: str) -> Non
         ("Reason", html.escape(str(test.get("reason") or "")) or "<span class='muted'>none</span>"),
         ("Behaviour", f"<span class='{verdict}'>{verdict}</span>"),
         ("Duration", f"{test['finished'] - test['started']:.0f} s, stack start to teardown"),
+        (
+            "Phases",
+            html.escape(", ".join(f"{name} {seconds:.1f} s" for name, seconds in test.get("phases", {}).items()))
+            or "<span class='muted'>not recorded</span>",
+        ),
         ("REEs", ", ".join(html.escape(ree) for ree in test.get("rees", [])) or "none recorded"),
     ]
     body = [f"<h1>{html.escape(test['name'])}</h1>", "<table>"]
