@@ -114,9 +114,10 @@ demos only collect, so a test's outcome never depends on the checker, and a gate
 
 `just behaviour-gate` runs the per-test tiers (`e2e-system`, `e2e-gui-instant`) on a clean
 HEAD, checks every test's recording again with the checker in that tree, and accepts a test
-only when it passed (or is a strict xfail) and its behaviour passed. A test may instead leave
-open exactly the rules `conformance/expected-verdicts.toml` excuses for it, each with its
-reason; the sets must match, so a fix that makes the test conform makes its excuse stale, and a
+only when it passed and its behaviour passed. A test may instead leave open exactly the rules
+`conformance/expected-verdicts.toml` excuses for it, with its reason; an xfail is accepted only
+when excused there, since tests are not oracle and marking one xfail must not pass the gate. The
+sets must match, so a fix that makes the test conform makes its excuse stale, and a
 stale or unused excuse fails the gate. The excuses are part of the oracle, committed apart from
 runtime code like the checker. When every test is accepted, the gate writes
 `.validation-certificates/behaviour-ok`, binding the verdicts to HEAD's tree; `publish-gate`
