@@ -229,13 +229,18 @@ class MessageTrigger(SpecModel):
 
 
 class EntityRequirement(SpecModel):
-    """The keyed entity reached a state (with facts), optionally before the trigger."""
+    """The keyed entity reached one of the states (with facts), optionally before the trigger."""
 
     entity: Name
     key_from: str
-    reached: Name
+    reached: tuple[Name, ...] = Field(min_length=1)
     where: Condition = {}
     order: Literal["any", "before"] = "any"
+
+    @field_validator("reached", mode="before")
+    @classmethod
+    def _reached(cls, value: object) -> object:
+        return (value,) if isinstance(value, str) else value
 
 
 class MessageRequirement(SpecModel):
@@ -372,8 +377,8 @@ class Spec(SpecModel):
             raise ValueError(f"{invariant.id}: key_from {require.key_from!r} is not a trigger fact")
         if isinstance(require, EntityRequirement):
             entity_target = self.entities.get(require.entity)
-            if entity_target is None or require.reached not in entity_target.states:
-                raise ValueError(f"{invariant.id}: unknown requirement {require.entity}.{require.reached}")
+            if entity_target is None or not set(require.reached) <= set(entity_target.states):
+                raise ValueError(f"{invariant.id}: unknown requirement {require.entity}.{'/'.join(require.reached)}")
             if unknown := set(require.where) - set(entity_target.facts):
                 raise ValueError(f"{invariant.id}: requirement 'where' names undeclared facts {sorted(unknown)}")
             for condition in require.where.values():
@@ -399,9 +404,9 @@ def check_condition(owner: str, condition: JsonValue) -> None:
 
 
 def matches(where: Condition, facts: dict[str, JsonValue]) -> bool:
-    """Absent facts never satisfy a condition, including a negated one."""
+    """Absent facts never satisfy a condition, including a negated one; a fact recorded as null is absent."""
     for name, condition in where.items():
-        if name not in facts:
+        if facts.get(name) is None:
             return False
         value = facts[name]
         if isinstance(condition, dict):

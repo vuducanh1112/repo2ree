@@ -23,6 +23,26 @@ summary = "Every attempt that executed was dispatched by the supervisor."
 when = { entity = "Attempt", to = "executing" }
 require = { boundary = "dispatch", message = "exec_action", key_from = "$key", order = "before" }
 
+# A run that did not succeed still settles the attempt it started: the executor
+# outcome is captured (or its capture is recorded as failed) before the run
+# reports, never abandoned mid-execution. A cancel ends the attempt; it does not
+# kill it. Runs that failed before any attempt existed carry no attempt_id.
+[[invariant]]
+id = "settled-runs-settle-their-attempt"
+pattern = "requires"
+summary = "A run that failed or was canceled settled its attempt before it reported."
+when = { entity = "Run", to = ["failed", "canceled"], where = { attempt_id = { not = "" } } }
+require = { entity = "Attempt", key_from = "attempt_id", reached = ["captured", "capture_failed"], order = "before" }
+
+# Canceling an attempt rolls the REE back to its before-snapshot: the capture
+# commit's tree is the tree it started from.
+[[invariant]]
+id = "canceled-attempts-change-nothing"
+pattern = "guard"
+summary = "A canceled attempt is captured with the REE as it was before the attempt."
+when = { entity = "Attempt", to = "captured", where = { outcome = "canceled" } }
+require = { where = { changed = false } }
+
 [[invariant]]
 id = "allocation-ends"
 pattern = "response"

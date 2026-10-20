@@ -88,7 +88,7 @@ its owners stopped and must match exactly.
 |---|---|
 | machine (per entity) | Transitions start where the last ended, follow declared edges, are recorded by the owner, carry declared facts, and never leave a terminal state. With `settles_before_close = true`, an entity must be terminal when its owner's journal closes; with `"final"`, when it closes for good. |
 | exchange (per boundary) | Per key: one request, then at most one response or abandonment, never before the request, and not missing once the sender's journal closed. |
-| `requires` | When the trigger occurs, the keyed entity reached a state (with facts) or the keyed message exists; with `order = "before"`, it happened before the trigger. |
+| `requires` | When the trigger occurs, the keyed entity reached one of the listed states (with facts) or the keyed message exists; with `order = "before"`, it happened before the trigger. An entity still open is violated when the evidence covers everything before the trigger, as a record never written is. |
 | `response` | After the trigger, the entity eventually reaches one of the listed states: violated once its owner's journal closed in a way that settles it (see `settles_before_close`) and it had not; inconclusive while it still could. |
 | `guard` | The triggering transition's facts satisfy a condition (for example: a receipt appears only through its own operation). |
 | `excludes` | At the trigger, no entity of the given kind in the same partition is in the listed states. |
@@ -96,7 +96,8 @@ its owners stopped and must match exactly.
 
 Triggers name target states (`to`), optionally source states (`from`, where
 `(none)` means creation), and fact conditions (`where`). Conditions take a value,
-`{ not = value }`, or `{ in = [values] }`; an absent fact never matches.
+`{ not = value }`, or `{ in = [values] }`; an absent fact never matches, and a fact recorded
+as null is absent.
 
 ## Verdicts
 

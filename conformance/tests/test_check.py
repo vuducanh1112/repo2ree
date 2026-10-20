@@ -98,18 +98,23 @@ class Recorder:
         )
 
     def attempt(
-        self, key: str, outcome: str = "succeeded", *, captured: bool = True, dispatched_by: str | None = None
+        self,
+        key: str,
+        outcome: str = "succeeded",
+        *,
+        captured: bool = True,
+        completed: bool = True,
+        changed: bool = True,
+        dispatched_by: str | None = None,
     ) -> None:
         pending: dict[str, Any] = {"operation": "build_runtime"}
         if dispatched_by is not None:
             pending["dispatched_by"] = dispatched_by
-        steps: list[tuple[str | None, str, dict[str, Any]]] = [
-            (None, "pending", pending),
-            ("pending", "executing", {}),
-            ("executing", "completed", {"outcome": outcome}),
-        ]
-        if captured:
-            steps.append(("completed", "captured", {"commit": "c" * 40, "changed": True}))
+        steps: list[tuple[str | None, str, dict[str, Any]]] = [(None, "pending", pending), ("pending", "executing", {})]
+        if completed:
+            steps.append(("executing", "completed", {"outcome": outcome}))
+        if completed and captured:
+            steps.append(("completed", "captured", {"commit": "c" * 40, "changed": changed}))
         for current, target, facts in steps:
             self._add(
                 "git:ree",
@@ -277,11 +282,62 @@ def test_provisioning_runs_need_no_attempt() -> None:
     assert verdicts(recorder)["run-success-is-backed"] == "not_triggered"
 
 
-def test_an_attempt_still_executing_is_inconclusive() -> None:
+def test_an_attempt_never_captured_is_violated_once_the_evidence_covers_the_result() -> None:
     recorder = Recorder()
     recorder.dispatch("a1", ("receive", "result"))
     recorder.attempt("a1", captured=False)
-    assert findings(recorder, "dispatch-success-is-captured") == ["inconclusive: Attempt a1 is still completed"]
+    expected = "violated: Attempt a1 is still completed, not captured"
+    assert findings(recorder, "dispatch-success-is-captured") == [expected]
+
+
+def test_an_attempt_still_open_when_its_history_was_taken_is_inconclusive() -> None:
+    recorder = Recorder()
+    recorder.dispatch("a1", ("receive", "result"))
+    recorder.attempt("a1", captured=False)
+    # The history was taken after the request (#1) but before the result (#2) it must precede.
+    taken = git(REE, cut={"api-000001": (1, 1)})
+    assert findings(recorder, "dispatch-success-is-captured", journal(), taken) == [
+        "inconclusive: Attempt a1 is still completed"
+    ]
+
+
+def canceled_run(recorder: Recorder, **attempt: Any) -> None:
+    recorder.run("run-1", "queued", "running")
+    request = recorder.dispatch("a1", ("receive", "result"))
+    recorder.attempt("a1", "canceled", dispatched_by=request, **attempt)
+    recorder.settle("run-1", "running", "canceling", "a1")
+    recorder.settle("run-1", "canceling", "canceled", "a1")
+
+
+def test_a_canceled_run_settles_its_attempt_before_it_reports() -> None:
+    recorder = Recorder()
+    canceled_run(recorder, changed=False)
+    found = verdicts(recorder)
+    assert found["settled-runs-settle-their-attempt"] == "passed"
+    assert found["canceled-attempts-change-nothing"] == "passed"
+
+
+def test_a_run_that_abandons_its_attempt_mid_execution_is_violated() -> None:
+    recorder = Recorder()
+    canceled_run(recorder, completed=False)
+    assert findings(recorder, "settled-runs-settle-their-attempt") == [
+        "violated: Attempt a1 is still executing, not captured or capture_failed"
+    ]
+
+
+def test_a_failed_run_without_an_attempt_does_not_trigger_the_rule() -> None:
+    recorder = Recorder()
+    recorder.run("run-1", "queued", "running")
+    recorder.settle("run-1", "running", "failed", None)
+    assert verdicts(recorder)["settled-runs-settle-their-attempt"] == "not_triggered"
+
+
+def test_a_canceled_attempt_that_changed_the_ree_is_violated() -> None:
+    recorder = Recorder()
+    canceled_run(recorder, changed=True)
+    assert findings(recorder, "canceled-attempts-change-nothing") == [
+        "violated: completed -> captured with {'changed': True}"
+    ]
 
 
 def test_an_attempt_without_a_dispatch_is_violated() -> None:

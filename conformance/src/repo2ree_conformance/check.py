@@ -494,21 +494,30 @@ def check_requires(
             if certain:
                 return _finding("violated", occurrence.subject, f"{name} was never recorded", occurrence.event)
             return _finding("inconclusive", occurrence.subject, why, occurrence.event)
-        reached = [item for item in instance.reached if item.state == require.reached]
+        states = " or ".join(require.reached)
+        reached = [item for item in instance.reached if item.state in require.reached]
         satisfying = [item for item in reached if matches(require.where, item.facts)]
         last = instance.reached[-1].event
         if satisfying:
             if require.order == "before":
-                name = f"{name} reaching {require.reached}"
+                name = f"{name} reaching {states}"
                 return _ordered_requirement(model, [item.event for item in satisfying], occurrence, name)
             return None
         if reached:
             facts = {fact: reached[-1].facts.get(fact) for fact in require.where}
-            reason = f"{name} reached {require.reached} with {facts}"
+            reason = f"{name} reached {reached[-1].state} with {facts}"
             return _finding("violated", occurrence.subject, reason, occurrence.event, last)
-        verdict: FindingVerdict = "violated" if instance.settled else "inconclusive"
         how = "settled in" if instance.settled else "is still"
-        return _finding(verdict, occurrence.subject, f"{name} {how} {instance.current}", occurrence.event, last)
+        if instance.settled:
+            return _finding("violated", occurrence.subject, f"{name} {how} {instance.current}", occurrence.event, last)
+        # Still open: a state it must have reached before the trigger is certainly missing when the
+        # evidence covers everything that happened before the trigger, as for a record never written.
+        if require.order == "before":
+            certain, why = model.coverage(target_spec.owner, target_spec.evidence, occurrence.partition, before)
+            if certain:
+                reason = f"{name} {how} {instance.current}, not {states}"
+                return _finding("violated", occurrence.subject, reason, occurrence.event, last)
+        return _finding("inconclusive", occurrence.subject, f"{name} {how} {instance.current}", occurrence.event, last)
     boundary = model.spec.boundaries[require.boundary]
     exchange = model.exchanges.get(require.boundary, {}).get(key)
     carrying = exchange.carrying(require.message) if exchange is not None else []
