@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { expect, type Locator, type Page } from "@playwright/test";
 import { FIXTURES_DIR } from "../../artifacts";
@@ -69,6 +69,33 @@ export function pythonPipHelloWorld(): string {
     "python_pip_hello_world",
   ]);
   return archive;
+}
+
+/** Where the instant project's runtime lands: a packed venv inside the project root. */
+export const INSTANT_RUNTIME_PATH = "instant_hello_world/runtime-venv.tar.gz";
+
+/**
+ * Absolute path to the instant hello-world source archive: standard library
+ * only, nothing to download, so every stage runs in seconds on a bench without
+ * a Docker daemon. Packed on demand like {@link pythonPipHelloWorld}.
+ */
+export function instantHelloWorld(): string {
+  mkdirSync(FIXTURES_DIR, { recursive: true });
+  const archive = path.join(FIXTURES_DIR, "instant-hello-world.tar.gz");
+  execFileSync("tar", [
+    "-czf",
+    archive,
+    "--exclude=__pycache__",
+    "-C",
+    path.join(EXAMPLES_DIR, "projects"),
+    "instant_hello_world",
+  ]);
+  return archive;
+}
+
+/** One of the scripts that run the instant project (`examples/recipes/instant_hello_world/`). */
+export function instantRecipe(name: "build_script.sh" | "activation.sh" | "experiment.sh"): string {
+  return readFileSync(path.join(EXAMPLES_DIR, "recipes/instant_hello_world", name), "utf8");
 }
 
 /**
@@ -453,8 +480,32 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
 `;
 }
 
-export async function buildRuntime(page: Page, buildScript: string, producedRuntimePath: string) {
+export async function buildRuntime(
+  page: Page,
+  buildScript: string,
+  producedRuntimePath: string,
+  options: { rebuild?: boolean } = {},
+) {
   await stepShot(page, "build-runtime", "before");
+  await runBuild(page, buildScript, producedRuntimePath, options);
+  // Re-build appears for failed runs too. The earned-outcome badge
+  // (role="status") renders only for a succeeded run, so a failed build fails
+  // this step with its log on screen instead of surfacing 20s later as an
+  // artifact-picker timeout.
+  await expect(main(page).getByRole("status", { name: "Built" })).toBeVisible();
+  await stepShot(page, "build-runtime", "after");
+}
+
+/**
+ * Author, declare and run a build, and wait for the run to settle whatever its
+ * outcome — the half of {@link buildRuntime} a spec about a failing build needs.
+ */
+export async function runBuild(
+  page: Page,
+  buildScript: string,
+  producedRuntimePath: string,
+  { rebuild = false }: { rebuild?: boolean } = {},
+) {
   await openPort(page, "Build");
   await expect(
     main(page).getByRole("heading", { name: "Build Runtime", exact: true }),
@@ -464,23 +515,18 @@ export async function buildRuntime(page: Page, buildScript: string, producedRunt
   await page.getByLabel("Build script").fill(buildScript);
   await main(page).getByRole("button", { name: "Save build script" }).click();
 
-  await declareRuntimeArtifact(page, producedRuntimePath);
+  // A rebuild keeps the declaration the first build made: re-entering the same
+  // path changes nothing, so no PATCH would fire to wait on.
+  if (!rebuild) await declareRuntimeArtifact(page, producedRuntimePath);
 
   await main(page)
-    .getByRole("button", { name: /Run build/ })
+    .getByRole("button", { name: rebuild ? /Re-build/ : /Run build/ })
     .click();
   // DinD: each workbench daemon starts with an empty image cache, so the first
   // build is a cold pull + install (~30s+), not a warm shared-cache build.
   await expect(main(page).getByRole("button", { name: /Re-build/ })).toBeVisible({
     timeout: 90000,
   });
-
-  // Re-build appears for failed runs too. The earned-outcome badge
-  // (role="status") renders only for a succeeded run, so a failed build fails
-  // this step with its log on screen instead of surfacing 20s later as an
-  // artifact-picker timeout.
-  await expect(main(page).getByRole("status", { name: "Built" })).toBeVisible();
-  await stepShot(page, "build-runtime", "after");
 }
 
 /**

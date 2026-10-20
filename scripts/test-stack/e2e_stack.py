@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shlex
 import signal
 import subprocess
@@ -15,9 +16,11 @@ import time
 import urllib.error
 import urllib.request
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import BinaryIO
+from typing import Any, BinaryIO
+from xml.etree import ElementTree
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -50,6 +53,7 @@ class Options:
     project: str
     script: Path | None
     tier: str
+    per_test: bool
     record: Path | None
     compute_locations: int
     mode: str
@@ -59,16 +63,62 @@ class Options:
     tools_bundle: Path
 
 
+@dataclass(frozen=True)
+class Layout:
+    """Where one stack writes what it produces; by default the suite-wide places under the run dir."""
+
+    run_token: str
+    log_dir: Path
+    recording_dir: Path
+    archive_dir: Path
+    telemetry_dir: Path | None
+    # Where Playwright puts this stack's test output (screenshots, kept downloads); None: the project's own.
+    browser_output: Path | None = None
+    # The one test this stack runs, for the recording's context; None: the whole suite.
+    test: str | None = None
+
+    @classmethod
+    def suite(cls, tier: str, *, collector: bool) -> Layout:
+        token = f"e2e-{tier}-{uuid.uuid4().hex}"
+        return cls(
+            run_token=token,
+            log_dir=run_dir() / "python/services" / tier,
+            recording_dir=run_dir() / "recordings" / token,
+            archive_dir=run_dir() / "archives" / token,
+            telemetry_dir=None if collector else run_dir() / "telemetry" / token,
+        )
+
+    @classmethod
+    def for_test(cls, tier: str, directory: Path, test: str, *, collector: bool) -> Layout:
+        recording = directory / "recording"
+        return cls(
+            run_token=f"e2e-{tier}-{uuid.uuid4().hex}",
+            log_dir=directory / "logs",
+            recording_dir=recording,
+            archive_dir=directory / "artifacts/archives",
+            # Inside the recording, so the collector lists the span files in place instead of copying them.
+            telemetry_dir=None if collector else recording / "telemetry",
+            browser_output=directory / "artifacts",
+            test=test,
+        )
+
+
 class E2EStack:
-    def __init__(self, options: Options) -> None:
+    def __init__(self, options: Options, layout: Layout | None = None, selection: Sequence[str] = ()) -> None:
         self.options = options
         run_dir()
         self.environment = os.environ.copy()
         revision = self.environment.get("REPO2REE_BUILD_REVISION") or build_revision()
         self.environment.setdefault("REPO2REE_BUILD_REVISION", revision)
         self.environment.setdefault("VITE_BUILD_REVISION", revision)
-        self.run_token = f"e2e-{options.tier}-{uuid.uuid4().hex}"
-        self.log_dir = run_dir() / "python/services" / options.tier
+        # A stack of a per-test run shares the tier's coverage data with the run's other stacks.
+        self.fresh_coverage = layout is None
+        layout = layout or Layout.suite(options.tier, collector=bool(self.environment.get("OTLP_ENDPOINT")))
+        self.layout = layout
+        # Arguments that narrow the client to part of its suite (one test).
+        self.selection = list(selection)
+        self.run_token = layout.run_token
+        self.log_dir = layout.log_dir
         self.coverage_dir = run_dir() / "python/coverage/data" / options.tier
         self.coverage_file = self.coverage_dir / ".coverage"
         self.control_state = options.state_root / "control" / self.run_token
@@ -83,9 +133,12 @@ class E2EStack:
         self.stopped = False
         # Every run leaves a behaviour recording, collected through the control plane; judging it is a
         # separate step (just check-behaviour) that never decides this run's outcome.
-        self.recording_dir = run_dir() / "recordings" / self.run_token
+        self.recording_dir = layout.recording_dir
+        # Where a client keeps the REE archives it downloaded, as a user would; collected as Git evidence.
+        self.archive_dir = layout.archive_dir
+        self.environment["E2E_ARCHIVE_DIR"] = str(self.archive_dir)
         # The stack exports spans here unless the environment names a collector, whatever the suite.
-        self.telemetry_dir = None if self.environment.get("OTLP_ENDPOINT") else run_dir() / "telemetry" / self.run_token
+        self.telemetry_dir = layout.telemetry_dir
         self.client_status: int | None = None
 
     def workbench_log(self, index: int) -> Path:
@@ -94,7 +147,7 @@ class E2EStack:
 
     def prepare(self) -> None:
         if self.telemetry_dir is not None:
-            self.telemetry_dir.mkdir(parents=True)
+            self.telemetry_dir.mkdir(parents=True, exist_ok=True)
         for path in (
             self.log_dir,
             self.options.state_root / "workbenches",
@@ -103,8 +156,9 @@ class E2EStack:
             self.control_state,
         ):
             path.mkdir(parents=True, exist_ok=True)
-        for path in self.coverage_dir.glob(".coverage*"):
-            path.unlink()
+        if self.fresh_coverage:
+            for path in self.coverage_dir.glob(".coverage*"):
+                path.unlink()
         for index in range(1, self.options.compute_locations + 1):
             self.workbench_log(index).unlink(missing_ok=True)
 
@@ -124,6 +178,8 @@ class E2EStack:
             "RUN_REGISTRY_DIR": str(self.control_state / "runs"),
             # Where the owners journal, as in any deployment; a recording collects them over HTTP.
             "BEHAVIOUR_JOURNAL_DIR": str(self.control_state / "journal"),
+            # A test stack never resumes: its journal closes for good, so whatever it still holds is leaked.
+            "BEHAVIOUR_FINAL_SHUTDOWN": "true",
             "EXTERNAL_WORKBENCH_TOKEN": self.run_token,
             "COVERAGE_FILE": str(self.coverage_file),
         }
@@ -258,7 +314,14 @@ class E2EStack:
                     ["asciinema", "rec", "--overwrite", "-c", command, str(self.options.record)], cwd=ROOT
                 )
                 return process, status_file
-            return subprocess.Popen([str(self.options.script), "--base-url", self.api_url], cwd=ROOT), None
+            return (
+                subprocess.Popen(
+                    [str(self.options.script), "--base-url", self.api_url, *self.selection],
+                    cwd=ROOT,
+                    env=self.environment,
+                ),
+                None,
+            )
         print(f">> stack ready — running playwright project={self.options.project}")
         environment = {
             **self.environment,
@@ -275,6 +338,7 @@ class E2EStack:
                     "-c",
                     "playwright.config.ts",
                     f"--project={self.options.project}",
+                    *self.selection,
                 ],
                 cwd=ROOT / "gui",
                 env=environment,
@@ -326,10 +390,12 @@ class E2EStack:
         self.stopped = True
         self.terminate(self.client)
         if self.api_url:
-            self.collect()
+            self.collect_live()
         for process in self.locations:
             self.terminate(process)
         self.terminate(self.backend)
+        if self.api_url:
+            self.collect_stopped()
         subprocess.run(
             [sys.executable, str(ROOT / "scripts/test-stack/workbench_cleanup.py"), "--owner", self.run_token],
             cwd=ROOT,
@@ -339,26 +405,47 @@ class E2EStack:
         for handle in self.logs:
             handle.close()
 
-    def collect(self) -> None:
-        """Collect the run's behaviour evidence while the control plane still serves, as from any deployment.
-
-        A separate process with nothing but the control plane's address, the folders where the
-        client kept what it downloaded, and the exported span files. Its result never changes the run's.
-        """
+    def collect_command(self) -> list[str]:
         command = [
             sys.executable,
             "-m",
             "repo2ree_collect",
             str(self.recording_dir),
-            "--control-plane",
-            self.api_url,
             "--suite",
             self.options.project if not self.options.script else self.options.script.name,
             "--outcome",
             "passed" if self.client_status == 0 else "interrupted_or_failed",
         ]
+        return [*command, "--test", self.layout.test] if self.layout.test else command
+
+    def collect_live(self) -> None:
+        """Collect the REEs the client kept while the control plane still serves the record of serving them.
+
+        A separate process with nothing but the control plane's address and the folders where the
+        client kept what it downloaded. Its result never changes the run's.
+        """
+        command = [*self.collect_command(), "--control-plane", self.api_url, "--skip-owners"]
+        command += ["--archives-in", str(self.archive_dir)]
         if not self.options.script:
-            command += ["--archives-in", str(run_dir() / "browser/tests" / self.options.project)]
+            browser = self.layout.browser_output or run_dir() / "browser/tests" / self.options.project
+            command += ["--archives-in", str(browser)]
+        subprocess.run(command, cwd=ROOT, check=False)
+
+    def collect_stopped(self) -> None:
+        """Export the owners' journals, stores, and spans once the stack stopped, so the journals carry their close.
+
+        A test stack shuts down for good, and only a closed journal gives "eventually" rules a horizon.
+        The span files are complete too: each process flushes its spans as it exits.
+        """
+        command = [
+            *self.collect_command(),
+            "--journal-dir",
+            str(self.control_state / "journal"),
+            "--runs-dir",
+            str(self.control_state / "runs"),
+            "--allocations-file",
+            str(self.control_state / "allocations.json"),
+        ]
         for path in sorted(self.telemetry_dir.glob("*.ndjson")) if self.telemetry_dir is not None else []:
             command += ["--spans", str(path)]
         collected = subprocess.run(command, cwd=ROOT, check=False)
@@ -381,7 +468,8 @@ class E2EStack:
             check=True,
         )
 
-    def run(self) -> int:
+    def run_once(self) -> int:
+        """Bring the stack up, run the client, collect, and tear the stack down; no coverage report."""
         self.prepare()
         self.start_backend()
         self.start_locations()
@@ -389,8 +477,158 @@ class E2EStack:
         self.client_status = status
         print(">> stopping workbench service and backend (SIGTERM so coverage can flush)")
         self.stop()
+        return status
+
+    def run(self) -> int:
+        status = self.run_once()
         self.coverage_report()
         return status
+
+
+@dataclass(frozen=True)
+class TestCase:
+    """One test of a suite: how it is named, where it lands, and the client arguments that run it alone."""
+
+    name: str
+    slug: str
+    selection: tuple[str, ...]
+
+
+def slug(*parts: str) -> str:
+    return "--".join(re.sub(r"[^a-z0-9]+", "-", part.lower()).strip("-") for part in parts if part)
+
+
+def list_tests(options: Options) -> list[TestCase]:
+    """The suite's tests, in the order the client runs them."""
+    if options.script:
+        cases = []
+        for node in filter(None, capture(str(options.script), "--list").splitlines()):
+            path, _, name = node.partition("::")
+            cases.append(TestCase(name=node, slug=slug(Path(path).stem, name), selection=(node,)))
+        return cases
+    listing = capture(
+        "npm",
+        "exec",
+        "--",
+        "playwright",
+        "test",
+        "-c",
+        "playwright.config.ts",
+        f"--project={options.project}",
+        "--list",
+        "--reporter=json",
+        cwd=ROOT / "gui",
+    )
+    report = json.loads(listing)
+    root = Path(report["config"]["rootDir"])
+    found: list[TestCase] = []
+
+    def walk(suite: dict[str, Any], titles: list[str]) -> None:
+        for spec in suite.get("specs", []):
+            location = f"{(root / spec['file']).relative_to(ROOT / 'gui')}:{spec['line']}"
+            stem = Path(spec["file"]).name.removesuffix(".spec.ts")
+            name = " > ".join([spec["file"], *titles, spec["title"]])
+            found.append(TestCase(name=name, slug=slug(stem, *titles, spec["title"]), selection=(location,)))
+        for child in suite.get("suites", []):
+            title = str(child.get("title", ""))
+            walk(child, [*titles, title] if title and not title.endswith(".ts") else titles)
+
+    for suite in report["suites"]:
+        walk(suite, [])
+    return found
+
+
+def reported_outcome(report: Path, status: int) -> tuple[str, str]:
+    """The test's outcome and its reason: from its JUnit report when it wrote one, else from the exit status."""
+    fallback = ("passed", "") if status == 0 else ("failed", "")
+    try:
+        case = ElementTree.parse(report).getroot().find(".//testcase")  # noqa: S314 - written by our own pytest run
+    except (OSError, ElementTree.ParseError):
+        return fallback
+    if case is None:
+        return fallback
+    for tag, outcome in (("failure", "failed"), ("error", "failed"), ("skipped", "skipped")):
+        found = case.find(tag)
+        if found is not None:
+            if tag == "skipped" and found.get("type") == "pytest.xfail":
+                outcome = "xfailed"
+            return outcome, found.get("message", "")
+    return fallback
+
+
+def recorded_rees(recording: Path) -> list[str]:
+    try:
+        manifest = json.loads((recording / "manifest.json").read_text())
+    except (OSError, ValueError):
+        return []
+    return sorted({str(source["name"]) for source in manifest["sources"] if source["kind"] == "git"})
+
+
+class PerTestRun:
+    """Every test of a suite on a fresh stack of its own, each leaving a directory named for it.
+
+    A test's directory holds everything its stack produced: the behaviour recording (its own
+    journals from start to finish, its REEs' histories, its spans), the stack's logs, and what the
+    client kept (screenshots, downloaded REEs). Checking and drawing them is ``inspect_run.py``'s
+    job, run afterwards; it never changes a test's outcome.
+    """
+
+    def __init__(self, options: Options) -> None:
+        self.options = options
+        self.root = run_dir() / "e2e" / f"{options.tier}-{time.strftime('%Y%m%d-%H%M%S')}"
+        self.current: E2EStack | None = None
+
+    def stop(self) -> None:
+        if self.current is not None:
+            self.current.stop()
+
+    def run(self) -> int:
+        cases = list_tests(self.options)
+        if not cases:
+            raise RuntimeError(f"the {self.options.tier} suite lists no tests")
+        collector = bool(os.environ.get("OTLP_ENDPOINT"))
+        results: list[dict[str, Any]] = []
+        stack: E2EStack | None = None
+        for index, case in enumerate(cases, 1):
+            directory = self.root / "tests" / case.slug
+            layout = Layout.for_test(self.options.tier, directory, case.name, collector=collector)
+            selection = list(case.selection)
+            if not self.options.script and layout.browser_output is not None:
+                selection = ["--output", str(layout.browser_output), *selection]
+            print(f">> [{index}/{len(cases)}] {case.name} on a fresh stack -> {directory}")
+            stack = E2EStack(self.options, layout, selection)
+            stack.fresh_coverage = index == 1
+            stack.environment["E2E_TEST_DIR"] = str(directory)
+            self.current = stack
+            started = time.time()
+            status = stack.run_once()
+            self.current = None
+            outcome, reason = reported_outcome(directory / "junit.xml", status)
+            result = {
+                "name": case.name,
+                "selection": list(case.selection),
+                "outcome": outcome,
+                "reason": reason,
+                "exit_code": status,
+                "started": started,
+                "finished": time.time(),
+                "rees": recorded_rees(layout.recording_dir),
+            }
+            directory.mkdir(parents=True, exist_ok=True)
+            (directory / "test.json").write_text(json.dumps(result, indent=2) + "\n")
+            results.append({**result, "directory": f"tests/{case.slug}"})
+        run = {
+            "tier": self.options.tier,
+            "suite": self.options.project or (self.options.script.name if self.options.script else ""),
+            "build_revision": stack.environment.get("REPO2REE_BUILD_REVISION", "") if stack else "",
+            "tests": results,
+        }
+        (self.root / "run.json").write_text(json.dumps(run, indent=2) + "\n")
+        if stack is not None:
+            stack.coverage_report()
+        subprocess.run([sys.executable, str(ROOT / "scripts/test-stack/inspect_run.py"), str(self.root)], check=False)
+        print(f">> per-test run: {self.root}")
+        return 0 if all(result["exit_code"] == 0 for result in results) else 1
 
 
 def positive(value: str) -> int:
@@ -407,6 +645,9 @@ def options() -> Options:
     runners.add_argument("--script", type=Path)
     parser.add_argument("--tier", default="")
     parser.add_argument("--record", type=Path)
+    parser.add_argument(
+        "--per-test", action="store_true", help="Run each test on a fresh stack, into a directory of its own"
+    )
     parser.add_argument("--compute-locations", type=positive, default=1)
     parser.add_argument("--mode", choices=("provider", "external"), default="provider")
     parser.add_argument("--docker-mode", choices=("dind", "host-socket"), default="dind")
@@ -418,6 +659,8 @@ def options() -> Options:
         parser.error(f"--tier is implied by --project ({args.project}); drop it")
     if args.record and not args.script:
         parser.error("--record only applies to --script")
+    if args.record and args.per_test:
+        parser.error("--record records one session; it does not combine with --per-test")
     tier = args.project or args.tier
     if args.script and not tier:
         parser.error("--script needs --tier <name> to say which tier it measures")
@@ -446,6 +689,7 @@ def options() -> Options:
         project=args.project,
         script=args.script,
         tier=tier,
+        per_test=args.per_test,
         record=args.record,
         compute_locations=args.compute_locations,
         mode=args.mode,
@@ -457,7 +701,8 @@ def options() -> Options:
 
 
 def main() -> int:
-    stack = E2EStack(options())
+    selected = options()
+    stack: E2EStack | PerTestRun = PerTestRun(selected) if selected.per_test else E2EStack(selected)
 
     def interrupted(_signal: int, _frame: object) -> None:
         stack.stop()

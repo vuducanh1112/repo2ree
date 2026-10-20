@@ -113,6 +113,22 @@ export default defineConfig({
       },
     },
     {
+      // The instant fixture through the GUI: every stage on a bench without a
+      // Docker daemon and with nothing to download, so a spec takes seconds per
+      // stage. Screenshots before and after each step are kept for inspection.
+      name: "e2e-gui-instant",
+      testDir: "./tests/e2e-instant",
+      outputDir: `${testRunDir}/browser/tests/e2e-gui-instant`,
+      timeout: 120 * 1000,
+      expect: { timeout: 15 * 1000 },
+      use: {
+        ...baseUse,
+        video: "off",
+        trace: "retain-on-failure",
+        screenshot: "only-on-failure",
+      },
+    },
+    {
       // The reviewer side of the lifecycle: a golden path that loads an REE
       // this repo authored earlier (examples/rees/) and reproduces all four
       // steps against its evidence, plus one narrow spec for the case it cannot

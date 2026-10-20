@@ -21,7 +21,17 @@ from test_support.artifacts import ARTIFACTS, run_dir, write_provenance  # noqa:
 
 DATA_DIR = run_dir() / "python/coverage/data"
 HTML_DIR = run_dir() / "python/coverage"
-TIERS = ("unit", "integration", "e2e-gui", "e2e-gui-review", "demo-gui", "demo-api", "demo-gui-code-ocean")
+TIERS = (
+    "unit",
+    "integration",
+    "e2e-gui",
+    "e2e-gui-instant",
+    "e2e-gui-review",
+    "e2e-system",
+    "demo-gui",
+    "demo-api",
+    "demo-gui-code-ocean",
+)
 
 
 def packages() -> tuple[str, ...]:
