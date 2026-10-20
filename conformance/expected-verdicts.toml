@@ -1,0 +1,17 @@
+# Behaviour verdicts the behaviour gate accepts from an e2e test other than "passed".
+#
+# This belongs to the oracle (the spec-isolation hook keeps it apart from runtime
+# code): an entry excuses evidence, so writing one beside the code it excuses
+# would let any change pass. Each entry names one test and the exact rules it
+# leaves violated or inconclusive; the gate requires those sets to match exactly.
+# A fix that makes such a test conform makes its entry stale, and a stale entry
+# fails the gate too: remove it with the fix's oracle commit.
+
+[[expected]]
+test = "api/tests/system/test_failures.py::test_workbench_lost_during_a_build"
+violated = ["machine:Allocation", "allocation-ends"]
+# The bench is killed with the REE inside it, so no archive of its history exists:
+# the attempts its dispatches report cannot be witnessed.
+inconclusive = ["run-success-is-backed", "dispatch-success-is-captured"]
+reason = """Product bug (the test is a strict xfail): the run fails but the allocation stays \
+assigned when its workbench is lost, so it is still assigned when the API closes for good."""

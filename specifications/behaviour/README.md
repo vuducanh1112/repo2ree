@@ -110,6 +110,18 @@ as null is absent.
 The CLI exits 0, 1, or 2. Checking is its own step on a collected recording: test runs and
 demos only collect, so a test's outcome never depends on the checker, and a gate composes the two.
 
+## Gate
+
+`just behaviour-gate` runs the per-test tiers (`e2e-system`, `e2e-gui-instant`) on a clean
+HEAD, checks every test's recording again with the checker in that tree, and accepts a test
+only when it passed (or is a strict xfail) and its behaviour passed. A test may instead leave
+open exactly the rules `conformance/expected-verdicts.toml` excuses for it, each with its
+reason; the sets must match, so a fix that makes the test conform makes its excuse stale, and a
+stale or unused excuse fails the gate. The excuses are part of the oracle, committed apart from
+runtime code like the checker. When every test is accepted, the gate writes
+`.validation-certificates/behaviour-ok`, binding the verdicts to HEAD's tree; `publish-gate`
+requires it. `just judge-e2e [run…]` judges runs the same way without certifying anything.
+
 ## Views
 
 `check -o DIR` writes `conformance.md`, `conformance.json`, and `conformance.html`:
@@ -148,3 +160,4 @@ Collect, check, and draw are separate steps, each on the previous one's artifact
    or listed in `UNEXERCISED` with a reason; the suite fails in both directions.
 5. `just demo-gui` collects a recording of a real end-to-end run (`just collect-behaviour` does the
    same for any running deployment); `just check-behaviour [recording]` judges it, the newest by default.
+6. Commit, then `just behaviour-gate`: the change is done when HEAD carries a behaviour receipt.
