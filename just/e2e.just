@@ -48,6 +48,16 @@ inspect-e2e run="":
     [[ -n "$run" ]] || { echo "no per-test run under {{ REPO2REE_TEST_RUN_DIR }}/e2e" >&2; exit 2; }
     python scripts/test-stack/inspect_run.py "$run"
 
+# Judge per-test runs as the behaviour gate would (the newest by default), certifying nothing.
+[group('E2E tests')]
+judge-e2e *runs:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    runs="{{ runs }}"
+    runs=${runs:-$(ls -td {{ quote(REPO2REE_TEST_RUN_DIR + "/e2e") }}/*/ 2>/dev/null | head -n 1)}
+    [[ -n "$runs" ]] || { echo "no per-test run under {{ REPO2REE_TEST_RUN_DIR }}/e2e" >&2; exit 2; }
+    python scripts/publish/behaviour_gate.py judge $runs
+
 # Record the measured narrated browser demo.
 [group('Demos')]
 demo-gui mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE: build-e2e-bundles (_source-stack-playwright "demo-gui" "1" mode docker_mode)

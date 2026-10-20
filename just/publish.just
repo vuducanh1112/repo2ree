@@ -20,9 +20,32 @@ commit-gate: check build-docs test-unit
 _require-current-commit-gate:
     python scripts/publish/commit_gate_stamp.py verify
 
+# A test is accepted when it passed (or is a strict xfail) and its behaviour passed, or left
+# exactly the rules conformance/expected-verdicts.toml excuses for it open.
+# Run the per-test e2e tiers on HEAD, judge every test's behaviour, and certify HEAD's tree.
+[group('Release gates')]
+behaviour-gate: _require-clean-tree
+    #!/usr/bin/env bash
+    set -euo pipefail
+    runs=()
+    for tier in test-e2e-system test-e2e-gui-instant; do
+        log=$(mktemp)
+        just "$tier" 2>&1 | tee "$log" || true
+        run=$(sed -n 's/^>> per-test run: //p' "$log" | tail -n 1)
+        rm -f "$log"
+        [[ -n "$run" ]] || { echo ">> $tier left no per-test run" >&2; exit 1; }
+        runs+=("$run")
+    done
+    python scripts/publish/behaviour_gate.py certify "${runs[@]}"
+
+# Require a behaviour receipt for HEAD's clean tree.
+[private]
+_require-current-behaviour-receipt:
+    python scripts/publish/behaviour_gate.py verify
+
 # Run the complete pre-publish gate and certify the local image set.
 [group('Release gates')]
-publish-gate: _require-clean-tree _require-current-commit-gate test-backend-integration test-gui-accessibility test-gui-screenshots test-e2e-gui test-e2e-review build-images
+publish-gate: _require-clean-tree _require-current-commit-gate _require-current-behaviour-receipt test-backend-integration test-gui-accessibility test-gui-screenshots test-e2e-gui test-e2e-review build-images
     #!/usr/bin/env bash
     set -euo pipefail
     python scripts/test-stack/run_image_suite.py --suite e2e-gui --compute-locations {{ quote(DEFAULT_STACK_LOCATIONS) }} --images local

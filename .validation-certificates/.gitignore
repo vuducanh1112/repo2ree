@@ -2,7 +2,8 @@
 # commit-gate-stamp.sh writes the tree certificate checked by pre-commit;
 # publish-gate-receipt.sh binds the publish gate to exact local image IDs; and
 # image-candidate.sh writes digest-bound image-candidate receipts consumed by
-# edge promotion. They describe one clone's validation state, so they are
+# edge promotion; behaviour_gate.py binds the e2e behaviour verdicts to HEAD's
+# tree. They describe one clone's validation state, so they are
 # never committed — but the directory is, so a fresh clone has somewhere to put
 # them and this rule is in force before the first certificate is written.
 #
