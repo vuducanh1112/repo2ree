@@ -15,3 +15,97 @@ violated = ["machine:Allocation", "allocation-ends"]
 inconclusive = ["run-success-is-backed", "dispatch-success-is-captured"]
 reason = """Product bug (the test is a strict xfail): the run fails but the allocation stays \
 assigned when its workbench is lost, so it is still assigned when the API closes for good."""
+
+# Specified rules, edges, and messages no gated test reaches, and why.
+#
+# Each test's verdicts pass a rule nothing triggered, so only the suite as a whole
+# can say a rule was ever tested. The behaviour gate requires the gated tests
+# together to reach everything the specification declares except what is listed
+# here: a change that stops reaching an item fails the gate, and a test that starts
+# reaching a listed item makes its entry stale, which fails the gate too until the
+# entry goes. This list is what a receipt does not prove.
+
+[[unreached]]
+items = [
+  "rule:sbom-receipts-come-from-scans",
+  "rule:cross-check-receipts-come-from-cross-checks",
+]
+reason = """The gated tiers author the instant project, which has no SBOM scan or \
+cross-check step, so no such receipt is ever written."""
+
+[[unreached]]
+items = [
+  "Step (none) -> stale",
+  "Step current -> missing",
+  "Step current -> not_applicable",
+  "Step missing -> not_applicable",
+  "Step missing -> stale",
+  "Step not_applicable -> stale",
+  "Step stale -> missing",
+  "Step stale -> not_applicable",
+]
+reason = """The scenarios add and refresh evidence but never remove it or make a step \
+stop applying."""
+
+[[unreached]]
+items = ["Allocation assigned -> lost"]
+reason = """test_workbench_lost_during_a_build is where this belongs, but the allocation \
+stays assigned when its workbench is lost (the product bug excused above)."""
+
+[[unreached]]
+items = [
+  "Allocation assigned -> failed",
+  "Allocation draining -> failed",
+  "Allocation failed -> draining",
+  "Allocation lost -> draining",
+  "Allocation provisioning -> draining",
+  "Allocation provisioning -> failed",
+  "Allocation provisioning -> lost",
+  "Allocation ready -> draining",
+  "Allocation ready -> failed",
+  "Allocation ready -> lost",
+  "Allocation requested -> draining",
+  "Allocation requested -> failed",
+  "Allocation requested -> waiting_for_workbench",
+  "Allocation waiting_for_workbench -> draining",
+  "Allocation waiting_for_workbench -> failed",
+  "Allocation waiting_for_workbench -> lost",
+]
+reason = """Needs a provider that fails, loses, or drains a bench before it is assigned; \
+the stacks' provider never does."""
+
+[[unreached]]
+items = [
+  "Attempt pending -> capture_failed",
+  "Attempt executing -> capture_failed",
+  "Attempt completed -> capture_failed",
+]
+reason = """Needs Git capture inside the REE to fail; only the in-process scenarios \
+inject that fault."""
+
+[[unreached]]
+items = ["Ree (none) -> sealed"]
+reason = """Needs a workbench that baselines an REE sealed elsewhere; loading a sealed \
+bundle starts a fresh draft."""
+
+[[unreached]]
+items = [
+  "Run queued -> canceling",
+  "Run provisioning -> canceling",
+  "Run provisioning -> canceled",
+  "Run running -> canceled",
+  "Run canceling -> succeeded",
+  "Run canceling -> failed",
+]
+reason = """Cancellation is exercised only while a build runs (running -> canceling -> \
+canceled). Canceling before it runs, a build finishing despite the request, and an \
+executor reporting canceled unasked are not."""
+
+[[unreached]]
+items = ["Run queued -> failed", "Run provisioning -> failed"]
+reason = """Needs scheduling or provisioning to fail; the stacks always provision."""
+
+[[unreached]]
+items = ["dispatch: error", "dispatch: abandoned"]
+reason = """Needs a workbench that answers a dispatched action with an error or never \
+answers it."""

@@ -10,7 +10,8 @@ composes the two into a gate:
   exactly the rules it names non-passing. Exit 1 if any test is not accepted.
 - ``certify RUN...`` judges, then also requires every tier in ``TIERS`` to be among
   the runs, each built from HEAD with a clean tree that is still HEAD, and every
-  expectation to have been used. It writes ``.validation-certificates/behaviour-ok``,
+  expectation to have been used, and the tests together to reach every specified
+  rule, edge, and message the file does not declare unreached. It writes ``.validation-certificates/behaviour-ok``,
   binding the verdicts to HEAD's tree.
 - ``verify`` requires that receipt to cover HEAD's tree, and the tree to be clean.
 """
@@ -51,6 +52,9 @@ class Judgement:
     outcome: str
     behaviour: str
     rules: dict[str, frozenset[str]] = field(default_factory=dict)
+    # What the specification declares, and what this test's evidence reached of it.
+    declared: frozenset[str] = frozenset()
+    reached: frozenset[str] = frozenset()
     problems: list[str] = field(default_factory=list)
     excused_by: str = ""
 
@@ -77,6 +81,53 @@ def load_expectations(path: Path = EXPECTATIONS) -> dict[str, Expectation]:
     return expectations
 
 
+def load_unreached(path: Path = EXPECTATIONS) -> dict[str, str]:
+    """Each rule, edge, or message no gated test reaches, with the reason."""
+    unreached: dict[str, str] = {}
+    for entry in tomllib.loads(path.read_text()).get("unreached", []):
+        unknown = set(entry) - {"items", "reason"}
+        if unknown or not entry.get("items") or not str(entry.get("reason", "")).strip():
+            raise ValueError(f"{path}: an unreached entry needs items and a reason, and nothing else: {entry}")
+        for item in entry["items"]:
+            if item in unreached:
+                raise ValueError(f"{path}: {item} is declared unreached twice")
+            unreached[item] = entry["reason"]
+    return unreached
+
+
+def coverage(report: dict[str, Any]) -> tuple[frozenset[str], frozenset[str]]:
+    """(declared, reached): rules as ``rule:<name>``, machine edges as ``<Machine> <from> -> <to>``,
+    boundary messages as ``<boundary>: <message>``."""
+    counts: dict[str, int] = {f"rule:{rule['rule']}": int(rule.get("triggered", 0)) for rule in report["rules"]}
+    exercised = report.get("coverage", {})
+    for machine, edges in exercised.get("transitions", {}).items():
+        counts |= {f"{machine} {edge}": count for edge, count in edges.items()}
+    for boundary, messages in exercised.get("messages", {}).items():
+        counts |= {f"{boundary}: {message}": count for message, count in messages.items()}
+    return frozenset(counts), frozenset(item for item, count in counts.items() if count)
+
+
+def coverage_problems(judgements: list[Judgement], unreached: dict[str, str]) -> list[str]:
+    """What the tests together leave unreached and the oracle does not excuse, and excuses gone stale.
+
+    Per-test verdicts pass for a rule nothing triggered; only the suite can say a rule was ever tested.
+    """
+    declared = frozenset().union(*(item.declared for item in judgements))
+    reached = frozenset().union(*(item.reached for item in judgements))
+    excused = frozenset(unreached)
+    problems = [f"no gated test reaches {item}" for item in sorted(declared - reached - excused)]
+    problems += [
+        f"expected-verdicts.toml declares {item} unreached, but a test reached it: remove it"
+        for item in sorted(excused & reached)
+    ]
+    if declared:
+        problems += [
+            f"expected-verdicts.toml declares {item} unreached, which the specification does not declare"
+            for item in sorted(excused - declared)
+        ]
+    return problems
+
+
 def check_recording(directory: Path) -> dict[str, Any] | None:
     """The checker's report on a test's recording, from the checker in this tree; None without a recording."""
     recording = directory / "recording"
@@ -100,6 +151,7 @@ def judge_test(run: str, directory: Path, test: dict[str, Any], expectations: di
         judgement.problems.append("no behaviour verdict: the recording is missing or the checker failed")
         return judgement
     judgement.behaviour = str(report["verdict"])
+    judgement.declared, judgement.reached = coverage(report)
     judgement.rules = {
         verdict: frozenset(rule["rule"] for rule in report["rules"] if rule["verdict"] == verdict)
         for verdict in NON_PASSING
@@ -179,7 +231,7 @@ def certification_problems(
     return problems
 
 
-def write_receipt(judgements: list[Judgement], runs: list[Path]) -> None:
+def write_receipt(judgements: list[Judgement], runs: list[Path], unreached: dict[str, str]) -> None:
     revision, tree, _ = clean_head()
     receipt = {
         "revision": revision,
@@ -190,6 +242,11 @@ def write_receipt(judgements: list[Judgement], runs: list[Path]) -> None:
             | ({"excused": item.excused_by} if item.excused_by else {})
             for item in judgements
         ],
+        "coverage": {
+            "declared": len(frozenset().union(*(item.declared for item in judgements))),
+            "reached": len(frozenset().union(*(item.reached for item in judgements))),
+            "unreached": sorted(unreached),
+        },
     }
     if subprocess.run(["git", "check-ignore", "-q", str(RECEIPT)], cwd=ROOT, check=False).returncode != 0:
         raise RuntimeError(f"{RECEIPT} is not ignored by git; a tracked receipt changes the tree it certifies")
@@ -223,13 +280,19 @@ def main() -> int:
         parser.error(f"{args.command} needs at least one run directory")
     runs = [root.resolve() for root in args.runs]
     expectations = load_expectations()
+    unreached = load_unreached()
     judgements = judge_runs(runs, expectations)
-    problems = certification_problems(runs, judgements, expectations) if args.command == "certify" else []
+    gaps = coverage_problems(judgements, unreached)
+    problems = certification_problems(runs, judgements, expectations) + gaps if args.command == "certify" else []
     report(judgements, problems)
+    if args.command == "judge":
+        # Coverage belongs to the whole suite; a subset of it may leave items unreached.
+        for gap in gaps:
+            print(f"note {gap}")
     if problems or not all(item.accepted for item in judgements):
         return 1
     if args.command == "certify":
-        write_receipt(judgements, runs)
+        write_receipt(judgements, runs, unreached)
         print(f">> behaviour receipt written for {clean_head()[0]}")
     return 0
 

@@ -111,3 +111,59 @@ def test_expectations_need_a_reason(tmp_path: Path) -> None:
 
 def test_the_committed_expectations_load() -> None:
     assert all(item.reason.strip() for item in gate.load_expectations().values())
+
+
+def covering(
+    report: dict[str, Any], reached: dict[str, int], triggered: dict[str, int] | None = None
+) -> dict[str, Any]:
+    """A checker report whose evidence reached the given Run edges and triggered the given rules."""
+    for rule in report["rules"]:
+        rule["triggered"] = (triggered or {}).get(rule["rule"], 0)
+    report["coverage"] = {"transitions": {"Run": reached}, "messages": {"dispatch": {"error": 0}}}
+    return report
+
+
+def test_the_suite_must_reach_every_declared_item_it_does_not_excuse(tmp_path: Path) -> None:
+    # Each test passes rule b, which nothing triggered; only the suite sees it was never tested.
+    first = covering(
+        checker_report(a="passed", b="not_triggered"), {"queued -> running": 1, "running -> failed": 0}, {"a": 1}
+    )
+    second = covering(checker_report(a="passed", b="not_triggered"), {"queued -> running": 0, "running -> failed": 0})
+    run = write_run(tmp_path / "run", "e2e-system", {"t": ("passed", first), "u": ("passed", second)})
+    judgements = gate.judge_runs([run], {})
+    assert all(item.accepted for item in judgements)
+
+    assert gate.coverage_problems(judgements, {}) == [
+        "no gated test reaches Run running -> failed",
+        "no gated test reaches dispatch: error",
+        "no gated test reaches rule:b",
+    ]
+    excused = {"Run running -> failed": "r", "dispatch: error": "r", "rule:b": "r"}
+    assert gate.coverage_problems(judgements, excused) == []
+
+
+def test_an_unreached_item_a_test_reaches_or_the_spec_dropped_is_stale(tmp_path: Path) -> None:
+    report = covering(checker_report(a="passed"), {"queued -> running": 1}, {"a": 1})
+    run = write_run(tmp_path / "run", "e2e-system", {"t": ("passed", report)})
+    judgements = gate.judge_runs([run], {})
+    excused = {"Run queued -> running": "r", "dispatch: error": "r", "Run gone -> away": "r"}
+    assert gate.coverage_problems(judgements, excused) == [
+        "expected-verdicts.toml declares Run queued -> running unreached, but a test reached it: remove it",
+        "expected-verdicts.toml declares Run gone -> away unreached, which the specification does not declare",
+    ]
+
+
+def test_unreached_entries_need_items_and_a_reason_and_name_each_item_once(tmp_path: Path) -> None:
+    path = tmp_path / "expected.toml"
+    path.write_text('[[unreached]]\nitems = ["rule:a"]\n')
+    with pytest.raises(ValueError, match="needs items and a reason"):
+        gate.load_unreached(path)
+    path.write_text(
+        '[[unreached]]\nitems = ["rule:a"]\nreason = "r"\n[[unreached]]\nitems = ["rule:a"]\nreason = "s"\n'
+    )
+    with pytest.raises(ValueError, match="rule:a is declared unreached twice"):
+        gate.load_unreached(path)
+
+
+def test_the_committed_unreached_items_load() -> None:
+    assert all(reason.strip() for reason in gate.load_unreached().values())

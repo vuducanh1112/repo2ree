@@ -122,8 +122,12 @@ only when it passed and its behaviour passed. A test may instead leave open exac
 `conformance/expected-verdicts.toml` excuses for it, with its reason; an xfail is accepted only
 when excused there, since tests are not oracle and marking one xfail must not pass the gate. The
 sets must match, so a fix that makes the test conform makes its excuse stale, and a
-stale or unused excuse fails the gate. The excuses are part of the oracle, committed apart from
-runtime code like the checker. When every test is accepted, the gate writes
+stale or unused excuse fails the gate. A test's verdicts also pass a rule nothing triggered,
+so the gate judges the suite as a whole too: the tests together must reach every rule, machine
+edge, and boundary message this directory declares, except those `[[unreached]]` in the same file
+lists with a reason. A change that stops reaching an item fails the gate, and so does a listed item
+a test now reaches; that list is what a receipt does not prove. The excuses are part of the
+oracle, committed apart from runtime code like the checker. When every test is accepted, the gate writes
 `.validation-certificates/behaviour-ok`, binding the verdicts to HEAD's tree; `publish-gate`
 requires it. `just judge-e2e [run…]` judges runs the same way without certifying anything.
 
