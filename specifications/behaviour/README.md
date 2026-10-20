@@ -7,9 +7,13 @@ conforms.
 
 Review changes here carefully. Code that satisfies the checker does not need the
 same line-by-line review; a wrong specification makes the checker approve wrong
-code. The same holds for the checker that applies it (`conformance/`, with its tests and
-the edges they excuse): a commit may change this directory or the checker, or runtime
-code, not both (the `spec-isolation` pre-commit hook).
+code. The same holds for everything else that decides what the gate certifies: the
+checker (`conformance/`, with its tests and the edges and verdicts they excuse), the gate,
+the gated scenarios with their fixtures, and the harness that runs them and collects their
+evidence. Together they are the **oracle**, declared in `../zones.toml` beside the
+**product** they judge and the **support** that can change no verdict; `just show-oracle`
+draws the zones, and `just show-oracle <path>` names one path's. A commit may change the
+oracle or the product, not both (the `spec-isolation` pre-commit hook).
 
 ## Model
 

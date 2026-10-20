@@ -42,13 +42,17 @@ repos:
         files: ^gui/package-lock\.json$
         pass_filenames: false
 
-      # The behaviour specification and the checker that applies it are the oracle
-      # implementations are checked against, so a commit may change the oracle or
-      # the runtime code, not both: rules, or their reading, edited alongside the
-      # code they judge can be bent to fit it. Deliberate exceptions are explicit:
-      # SKIP=spec-isolation git commit ...
+      # The oracle (specifications/zones.toml: the specification, the checker, its
+      # excuses, the gate, the gated scenarios and their harness, and this guard) is
+      # what implementations are checked against, so a commit may change the oracle
+      # or the product, not both: rules, their reading, their evidence, or their
+      # excuses edited alongside the code they judge can be bent to fit it. The check
+      # reads the staged diff itself, since pre-commit leaves deletions out of the
+      # file names it passes. `just show-oracle` draws the zones. Deliberate
+      # exceptions are explicit: SKIP=spec-isolation git commit ...
       - id: spec-isolation
-        name: behaviour oracle (specification, checker) changes apart from implementation
+        name: oracle changes apart from product
         language: system
-        entry: python scripts/check_spec_isolation.py
+        entry: python scripts/oracle.py check
         always_run: true
+        pass_filenames: false

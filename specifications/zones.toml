@@ -1,0 +1,159 @@
+# Which parts of the repository are oracle, product, or support.
+#
+# The oracle is what humans review: everything that decides whether the behaviour
+# gate certifies a tree. Product is what the gate judges, so it needs no line-by-line
+# review. Support neither decides a verdict nor is judged by one. A commit may change
+# the oracle or the product, never both (the `spec-isolation` pre-commit hook), so a
+# rule, its reading, its evidence, or its excuse cannot be bent beside the code it judges.
+#
+# Each entry is a path prefix (a directory ends in `/`) or an exact file. A path belongs
+# to the zone of its longest matching entry, so `api/tests/system/` is oracle inside
+# product `api/`. Every tracked file must match an entry, and every entry a tracked
+# file: `just show-oracle` draws the result, and its tests enforce both.
+
+[oracle]
+summary = "Humans review every change. It decides what the gate certifies."
+
+[oracle.groups.specification]
+summary = "What must hold: the behaviour machines, boundaries, and invariants."
+paths = [
+  "specifications/",
+  "protocol/src/repo2ree_protocol/behaviour/machines.py",
+]
+
+[oracle.groups.checker]
+summary = "Reads evidence against the specification and gives verdicts."
+paths = ["conformance/"]
+
+[oracle.groups.excuses]
+summary = "Verdicts and edges the oracle concedes are not proven, each with a reason."
+paths = [
+  "conformance/expected-verdicts.toml",
+  "conformance/tests/test_system_conformance.py",
+]
+
+[oracle.groups.gate]
+summary = "Composes outcomes and verdicts into a receipt, and requires it to publish."
+paths = [
+  "scripts/publish/behaviour_gate.py",
+  "scripts/tests/test_behaviour_gate.py",
+  "just/behaviour.just",
+  "just/publish.just",
+]
+
+[oracle.groups.scenarios]
+summary = "What the gated tiers exercise and assert; dropping one drops its evidence."
+paths = [
+  "api/tests/system/",
+  "gui/tests/e2e-instant/",
+  "gui/tests/e2e/helpers/",
+  "gui/playwright.config.ts",
+]
+
+[oracle.groups.fixtures]
+summary = "The projects and REE scripts the scenarios author."
+paths = [
+  "examples/projects/instant_hello_world/",
+  "examples/recipes/instant_hello_world/",
+  "examples/projects/python-hello-world.tar.gz",
+]
+
+[oracle.groups.harness]
+summary = "Runs each test on its own stack, records outcomes, and collects the evidence."
+paths = [
+  "scripts/test-stack/e2e_stack.py",
+  "collect/",
+  "recording/",
+]
+
+[oracle.groups.guard]
+summary = "Keeps the oracle apart from product."
+paths = [
+  "scripts/oracle.py",
+  "scripts/tests/test_oracle.py",
+  ".pre-commit-config.yaml",
+]
+
+[product]
+summary = "Agents change it. The behaviour gate judges it; nobody needs to read it."
+
+[product.groups.runtime]
+summary = "The services, the core, and the GUI, with their own unit tests."
+paths = [
+  "api/",
+  "core/",
+  "supervisor/",
+  "workbench/",
+  "executor/",
+  "provider/",
+  "protocol/",
+  "docker-support/",
+  "gui/",
+]
+
+[product.groups.packaging]
+summary = "How the runtime is built and deployed: bundles, images, compose files, contracts."
+paths = [
+  "nix/clean-py-src.nix",
+  "nix/exec-bundle.nix",
+  "nix/gui-image.nix",
+  "nix/gui-npm-deps.hash",
+  "nix/provider-image.nix",
+  "nix/ree-executor.nix",
+  "nix/tools-bundle.nix",
+  "nix/workbench-bundle.nix",
+  "nix/workbench-image.nix",
+  "nix/workbench-service.nix",
+  "nix/workbench.nix",
+  "docker/",
+  "docker-compose.yml",
+  "docker-compose.dev.yml",
+  "docker-compose.workbench.yml",
+  "contracts/",
+]
+
+[support]
+summary = "Neither reviewed as oracle nor judged. It cannot change a verdict."
+
+[support.groups.views]
+summary = "Draw the verifier's artifacts; never verify."
+paths = [
+  "traceview/",
+  "scripts/test-stack/inspect_run.py",
+]
+
+[support.groups.tooling]
+summary = "Developer workflow, other gates, test plumbing, and the build environment."
+paths = [
+  "justfile",
+  "just/",
+  "scripts/",
+  "test_support/",
+  "conftest.py",
+  "pyproject.toml",
+  "uv.lock",
+  "flake.nix",
+  "flake.lock",
+  "nix/devshell.nix",
+  "nix/tools.nix",
+  "observability/",
+  ".devcontainer/",
+  ".vscode/",
+  ".envrc",
+  ".gitignore",
+  ".dockerignore",
+  ".validation-certificates/",
+]
+
+[support.groups.docs]
+summary = "Documentation, presentations, and examples outside the scenarios."
+paths = [
+  "README.md",
+  "LICENSE",
+  "docs/",
+  "presentations/",
+  "examples/",
+  "zensical.toml",
+  ".vale.ini",
+  ".vale/",
+]

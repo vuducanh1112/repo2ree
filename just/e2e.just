@@ -30,17 +30,9 @@ test-e2e-gui locations=DEFAULT_E2E_LOCATIONS mode=DEFAULT_E2E_COMPUTE_LOCATION_M
 [group('E2E tests')]
 test-e2e-gui-instant mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE jobs=E2E_JOBS: build-e2e-bundles (_e2e-gui-instant jobs mode docker_mode)
 
-[private]
-_e2e-gui-instant jobs mode docker_mode:
-    python scripts/test-stack/e2e_stack.py --project e2e-gui-instant --per-test --jobs {{ quote(jobs) }} --mode {{ quote(mode) }} --compute-locations 1 --docker-mode {{ quote(docker_mode) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
-
 # Run the system tier, no browser: each test on a fresh stack, into test-artifacts/e2e/<run>/tests/<test>/.
 [group('E2E tests')]
 test-e2e-system locations="1" mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE jobs=E2E_JOBS: build-e2e-bundles (_e2e-system jobs locations mode docker_mode)
-
-[private]
-_e2e-system jobs locations mode docker_mode:
-    python scripts/test-stack/e2e_stack.py --script {{ quote(ROOT + "/api/tests/system/run_system_suite.py") }} --tier e2e-system --per-test --jobs {{ quote(jobs) }} --mode {{ quote(mode) }} --compute-locations {{ quote(locations) }} --docker-mode {{ quote(docker_mode) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
 
 # Run the measured reviewer-side browser E2E tier.
 [group('E2E tests')]
@@ -55,16 +47,6 @@ inspect-e2e run="":
     run=${run:-$(ls -td {{ quote(REPO2REE_TEST_RUN_DIR + "/e2e") }}/*/ 2>/dev/null | head -n 1)}
     [[ -n "$run" ]] || { echo "no per-test run under {{ REPO2REE_TEST_RUN_DIR }}/e2e" >&2; exit 2; }
     python scripts/test-stack/inspect_run.py "$run"
-
-# Judge per-test runs as the behaviour gate would (the newest by default), certifying nothing.
-[group('E2E tests')]
-judge-e2e *runs:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    runs="{{ runs }}"
-    runs=${runs:-$(ls -td {{ quote(REPO2REE_TEST_RUN_DIR + "/e2e") }}/*/ 2>/dev/null | head -n 1)}
-    [[ -n "$runs" ]] || { echo "no per-test run under {{ REPO2REE_TEST_RUN_DIR }}/e2e" >&2; exit 2; }
-    python scripts/publish/behaviour_gate.py judge $runs
 
 # Record the measured narrated browser demo.
 [group('Demos')]
