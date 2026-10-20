@@ -13,7 +13,16 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_collect import ControlPlane, archive, collect_control_plane, download_archive, kept_archives, spans, start
+from repo2ree_collect import (
+    ControlPlane,
+    archive,
+    collect_control_plane,
+    download_archive,
+    kept_archives,
+    spans,
+    start,
+    stopped_owners,
+)
 from repo2ree_collect.cli import main
 from repo2ree_conformance import load_recording
 from repo2ree_recording import read_recording
@@ -190,3 +199,70 @@ def test_span_files_are_listed_and_copied_in_when_outside(tmp_path: Path) -> Non
     listed = spans(directory, [directory / "telemetry/api.ndjson", tmp_path / "location-1.ndjson"], "local")
     assert [source.path for source in listed] == ["telemetry/api.ndjson", "telemetry/location-1.ndjson"]
     assert (directory / "telemetry/location-1.ndjson").is_file()
+
+
+CLOSED = JOURNAL + record(3, kind="journal.closed", final=True)
+
+
+def stopped_stack(tmp_path: Path) -> tuple[Path, Path, Path]:
+    """The control state an API leaves behind once it stopped: journals, run store, allocation store."""
+    journals, runs = tmp_path / "control/journal", tmp_path / "control/runs/build-1"
+    journals.mkdir(parents=True)
+    runs.mkdir(parents=True)
+    (journals / "api-000001.ndjson").write_bytes(CLOSED)
+    (journals / "ree-archives.ndjson").write_text("{}\n")  # The control plane's record of serving archives.
+    (runs / "state.json").write_text(json.dumps({"run_id": "build-1", "status": "queued"}))
+    (runs / "logs.jsonl").write_text("{}\n")
+    allocations = tmp_path / "control/allocations.json"
+    allocations.write_text("{}")
+    return journals, runs.parent, allocations
+
+
+def test_owners_exported_after_they_stopped_replace_the_live_snapshot(stub: tuple[Stub, str], tmp_path: Path) -> None:
+    _, url = stub
+    directory = tmp_path / "recording"
+    start(directory)
+    collect_control_plane(directory, ControlPlane(url))
+    journals, runs, allocations = stopped_stack(tmp_path)
+
+    journal, state = stopped_owners(directory, journals=journals, runs=runs, allocations=allocations)
+
+    assert (journal.status, journal.cut) == ("recorded", None)
+    assert (state.status, state.cut) == ("recorded", None)  # Taken after its owners stopped: must match exactly.
+    assert sorted(path.name for path in (directory / "journal").iterdir()) == ["api-000001.ndjson"]
+    assert (directory / "journal/api-000001.ndjson").read_bytes() == CLOSED
+    assert sorted(path.name for path in (directory / "stores/runs/build-1").iterdir()) == ["state.json"]
+    recording = read_recording(directory)
+    assert [source.path for source in recording.sources].count("journal") == 1
+    evidence = load_recording(directory)
+    (source,) = [source for source in evidence.sources if source.kind == "journal"]
+    assert (source.closed, source.final) == (True, True)
+
+
+def test_an_export_without_journals_is_an_error(tmp_path: Path) -> None:
+    directory = tmp_path / "recording"
+    start(directory)
+    (journal,) = stopped_owners(directory, journals=tmp_path / "missing", runs=None, allocations=None)
+    assert journal.status == "error"
+    assert "no journals" in str(journal.problem)
+
+
+def test_the_cli_collects_archives_live_and_owners_after_they_stopped(stub: tuple[Stub, str], tmp_path: Path) -> None:
+    _, url = stub
+    directory = tmp_path / "recording"
+    assert main([str(directory), "--control-plane", url, "--ree", "ree-1", "--skip-owners"]) == 0
+    assert [source.kind for source in read_recording(directory).sources] == ["git"]
+    journals, runs, allocations = stopped_stack(tmp_path)
+    exported = [
+        str(directory),
+        "--journal-dir",
+        str(journals),
+        "--runs-dir",
+        str(runs),
+        "--allocations-file",
+        str(allocations),
+    ]
+    assert main(exported) == 0
+    recording = read_recording(directory)
+    assert sorted(source.kind for source in recording.sources) == ["git", "journal", "state"]
+    assert recording.build_revision == "abc123"

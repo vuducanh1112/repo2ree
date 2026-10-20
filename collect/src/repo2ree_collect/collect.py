@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import shutil
 import stat
 import time
@@ -29,6 +30,8 @@ JOURNAL = "journal"
 STORES = "stores"
 TELEMETRY = "telemetry"
 JOURNALS = "/api/v1/behaviour/journals"
+# An owner's journal epoch, as the runtime names it: ``<process>-<epoch>.ndjson``.
+JOURNAL_FILE = re.compile(r"^[a-z][a-z0-9-]*-[0-9]{6}\.ndjson$")
 STATE = "/api/v1/behaviour/state"
 ARCHIVES = "/api/v1/behaviour/archives"
 
@@ -158,8 +161,8 @@ def extract(path: Path, destination: Path) -> None:
 # ================================================
 
 
-def collect_control_plane(directory: Path, control_plane: ControlPlane) -> list[RecordedSource]:
-    """The owners' persisted state, then their journals, so the journals reach past the state's cut."""
+def describe(directory: Path, control_plane: ControlPlane) -> None:
+    """Name the deployment the recording was collected from: its control plane and build."""
     recording = read_recording(directory)
     if recording.build_revision is None:
         try:
@@ -168,6 +171,11 @@ def collect_control_plane(directory: Path, control_plane: ControlPlane) -> list[
             revision = None
         recording = recording.model_copy(update={"build_revision": revision})
     write_recording(directory, recording.model_copy(update={"control_plane": control_plane.url}))
+
+
+def collect_control_plane(directory: Path, control_plane: ControlPlane) -> list[RecordedSource]:
+    """The owners' persisted state, then their journals, so the journals reach past the state's cut."""
+    describe(directory, control_plane)
     return [_state(directory, control_plane), _journals(directory, control_plane)]
 
 
@@ -199,6 +207,48 @@ def _journals(directory: Path, control_plane: ControlPlane) -> RecordedSource:
     except UnreachableError as exc:
         return _add(directory, _failed(source, str(exc)))
     return _add(directory, source)
+
+
+def stopped_owners(
+    directory: Path, *, journals: Path, runs: Path | None, allocations: Path | None
+) -> list[RecordedSource]:
+    """The owners' journals and persisted state, exported after they stopped.
+
+    Only after its owner stops does a journal carry its close, and only a close gives
+    "eventually" a horizon, so this is the evidence a deployment that is shutting down for
+    good can give. Taken after the owners stopped, the state carries no cut and must match
+    the journals exactly. It replaces whatever was collected through the control plane.
+    """
+    journal = RecordedSource(kind="journal", path=JOURNAL, origin=f"{journals} (after its owners stopped)", name="api")
+    target = directory / JOURNAL
+    shutil.rmtree(target, ignore_errors=True)
+    target.mkdir(parents=True)
+    try:
+        # Only the owners' journals: the directory also keeps the control plane's record of serving archives.
+        found = sorted(path for path in journals.glob("*.ndjson") if JOURNAL_FILE.match(path.name))
+        if not found:
+            raise FileNotFoundError(f"no journals in {journals}")
+        for path in found:
+            shutil.copyfile(path, target / path.name)
+    except OSError as exc:
+        journal = _failed(journal, str(exc))
+    recorded = [_add(directory, journal)]
+    if runs is None and allocations is None:
+        return recorded
+    origins = ", ".join(str(path) for path in (runs, allocations) if path is not None)
+    state = RecordedSource(kind="state", path=STORES, origin=f"{origins} (after their owners stopped)", name="api")
+    stores = directory / STORES
+    shutil.rmtree(stores, ignore_errors=True)
+    stores.mkdir(parents=True)
+    try:
+        for run in sorted(runs.glob("*/state.json")) if runs is not None else []:
+            (stores / "runs" / run.parent.name).mkdir(parents=True)
+            shutil.copyfile(run, stores / "runs" / run.parent.name / "state.json")
+        if allocations is not None and allocations.is_file():
+            shutil.copyfile(allocations, stores / "allocations.json")
+    except OSError as exc:
+        state = _failed(state, str(exc))
+    return [*recorded, _add(directory, state)]
 
 
 # ================================================
