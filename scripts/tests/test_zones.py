@@ -13,10 +13,10 @@ RUNTIME = "core/src/repo2ree_core/operations/capture.py"
 # not tested here, so commit-gate does not require it yet.
 
 
-def test_a_specification_change_with_its_generated_module_checker_and_gate_is_allowed() -> None:
+def test_a_specification_change_with_its_generated_contract_checker_and_gate_is_allowed() -> None:
     paths = [
         "specifications/behaviour/entities/run.toml",
-        "protocol/src/repo2ree_protocol/behaviour/machines.py",
+        "contracts/behaviour/events.schema.json",
         "conformance/src/repo2ree_conformance/check.py",
         "conformance/expected-verdicts.toml",
         "scripts/publish/behaviour_gate.py",
@@ -60,7 +60,7 @@ def test_the_longest_entry_decides() -> None:
     assert declared.entry("conformance/src/repo2ree_conformance/check.py").group == "checker"  # type: ignore[union-attr]
     assert declared.entry("api/tests/system/test_failures.py").group == "scenarios"  # type: ignore[union-attr]
     assert declared.entry("scripts/test-stack/e2e_stack.py").zone == "tooling"  # type: ignore[union-attr]
-    assert declared.protected("protocol/src/repo2ree_protocol/behaviour/machines.py")
+    assert declared.protected("contracts/behaviour/events.schema.json")
     assert not declared.protected("protocol/src/repo2ree_protocol/behaviour/writer.py")
 
 
