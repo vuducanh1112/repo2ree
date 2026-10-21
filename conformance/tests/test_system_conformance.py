@@ -97,7 +97,7 @@ UNEXERCISED: dict[str, str] = {
     "Attempt executing -> capture_failed": "needs the record write between handler and capture to fail",
     "Ree (none) -> sealed": "needs a workbench that baselines an REE sealed elsewhere",
     **{
-        f"Step {edge}": _DOCKER_GAP
+        f"Receipt {edge}": _DOCKER_GAP
         for edge in (
             "(none) -> current",
             "(none) -> stale",
@@ -395,7 +395,7 @@ def test_authoring_lifecycle_conforms(system: System) -> None:
         "machine:AuthorApiAction",
         "machine:Attempt",
         "machine:Ree",
-        "machine:Step",
+        "machine:Receipt",
         "boundary:dispatch",
         "api-success-is-recorded",
         "dispatch-success-is-captured",
@@ -416,8 +416,8 @@ def test_authoring_staleness_and_sealing_conform(system: System) -> None:
         "ree-changes-through-operations",
     )
     edges = result.coverage.transitions
-    assert edges["Step"]["current -> stale"] >= 1
-    assert edges["Step"]["stale -> current"] >= 1
+    assert edges["Receipt"]["current -> stale"] >= 1
+    assert edges["Receipt"]["stale -> current"] >= 1
     assert edges["Ree"]["draft -> sealed"] == 1
 
 

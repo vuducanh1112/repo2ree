@@ -1,14 +1,15 @@
-# The words for one author step's evidence standing, as core's audit reports it
-# around each attempt (core/domain/ree/audit.py). The checker turns differences
-# between audits into transitions. Its machine is entities/step.toml.
+# The words for one receipt: whether the evidence an author step produced still speaks
+# for the REE, as core's audit reports it around each attempt
+# (core/domain/ree/audit.py). The checker turns differences between audits into
+# transitions. Its machine is entities/receipt.toml.
 
-name = "Step"
+name = "Receipt"
 kind = "entity"
 owner = "core"
 key = "step_id"
 partition = "ree_id"
 evidence = "git"
-summary = "Whether one step's receipt still speaks for the REE as it now stands."
+summary = "One step's receipt, and whether it still speaks for the REE as it now stands."
 
 [states]
 missing = "Applicable, and no receipt: the step has not run successfully."

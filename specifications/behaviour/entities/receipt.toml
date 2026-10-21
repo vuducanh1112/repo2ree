@@ -1,7 +1,7 @@
-# The Step machine: where an instance starts, which edges it may take, and when it
-# must have settled. Its states and facts are declared in vocabulary/step.toml.
+# The Receipt machine: where an instance starts, which edges it may take, and when it
+# must have settled. Its states and facts are declared in vocabulary/receipt.toml.
 
-name = "Step"
+name = "Receipt"
 initial = ["missing", "not_applicable", "current", "stale"]
 settles_before_close = false
 

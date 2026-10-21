@@ -101,7 +101,7 @@ id = "sealed-without-stale-evidence"
 pattern = "excludes"
 summary = "An REE is never sealed while any of its receipts is stale."
 when = { entity = "Ree", from = "draft", to = "sealed" }
-require = { entity = "Step", in_states = ["stale"] }
+require = { entity = "Receipt", in_states = ["stale"] }
 
 # A receipt appears only through the operation that produces it (or a bundle
 # load that restores receipts made elsewhere). Edits can make evidence stale or
@@ -111,54 +111,54 @@ require = { entity = "Step", in_states = ["stale"] }
 id = "source-receipts-come-from-acquisition"
 pattern = "guard"
 summary = "Source evidence appears only by acquiring source or loading a bundle."
-when = { entity = "Step", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "source" } }
+when = { entity = "Receipt", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "source" } }
 require = { where = { operation = { in = ["acquire_source", "load_ree_bundle"] } } }
 
 [[invariant]]
 id = "evaluation-receipts-come-from-evaluation"
 pattern = "guard"
 summary = "Evaluation evidence appears only by evaluating or loading a bundle."
-when = { entity = "Step", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "evaluation" } }
+when = { entity = "Receipt", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "evaluation" } }
 require = { where = { operation = { in = ["evaluate_dependency_score", "load_ree_bundle"] } } }
 
 [[invariant]]
 id = "hardware-receipts-come-from-observation"
 pattern = "guard"
 summary = "Hardware evidence appears only by observing hardware or loading a bundle."
-when = { entity = "Step", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "hardware" } }
+when = { entity = "Receipt", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "hardware" } }
 require = { where = { operation = { in = ["generate_hbom", "load_ree_bundle"] } } }
 
 [[invariant]]
 id = "runtime-receipts-come-from-builds"
 pattern = "guard"
 summary = "Runtime evidence appears only by building or loading a bundle."
-when = { entity = "Step", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "runtime" } }
+when = { entity = "Receipt", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "runtime" } }
 require = { where = { operation = { in = ["build_runtime", "load_ree_bundle"] } } }
 
 [[invariant]]
 id = "sbom-receipts-come-from-scans"
 pattern = "guard"
 summary = "SBOM evidence appears only by generating an SBOM or loading a bundle."
-when = { entity = "Step", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "sbom" } }
+when = { entity = "Receipt", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "sbom" } }
 require = { where = { operation = { in = ["generate_sbom", "load_ree_bundle"] } } }
 
 [[invariant]]
 id = "cross-check-receipts-come-from-cross-checks"
 pattern = "guard"
 summary = "Cross-check evidence appears only by cross-checking or loading a bundle."
-when = { entity = "Step", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "sbom_cross_check" } }
+when = { entity = "Receipt", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "sbom_cross_check" } }
 require = { where = { operation = { in = ["cross_check_sbom", "load_ree_bundle"] } } }
 
 [[invariant]]
 id = "activation-receipts-come-from-activation"
 pattern = "guard"
 summary = "Activation evidence appears only by testing activation or loading a bundle."
-when = { entity = "Step", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "test_activation" } }
+when = { entity = "Receipt", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "test_activation" } }
 require = { where = { operation = { in = ["activation_test", "load_ree_bundle"] } } }
 
 [[invariant]]
 id = "experiment-receipts-come-from-runs"
 pattern = "guard"
 summary = "Experiment evidence appears only by running the experiment or loading a bundle."
-when = { entity = "Step", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "experiment" } }
+when = { entity = "Receipt", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "experiment" } }
 require = { where = { operation = { in = ["run_experiment", "load_ree_bundle"] } } }

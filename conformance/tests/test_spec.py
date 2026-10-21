@@ -56,7 +56,7 @@ def documents() -> Documents:
 
 def test_the_checked_in_specification_is_valid() -> None:
     spec = load_spec()
-    assert set(spec.entities) == {"Allocation", "Attempt", "AuthorApiAction", "Ree", "Step"}
+    assert set(spec.entities) == {"Allocation", "Attempt", "AuthorApiAction", "Ree", "Receipt"}
     assert spec.hosted_by("api") == {"api", "supervisor"}
     assert set(spec.boundaries) == {"dispatch"}
     assert spec.digest.startswith("sha256:")
@@ -170,7 +170,10 @@ def test_a_revision_with_vocabulary_and_rules_in_one_file_still_reads() -> None:
         ({"require": {"entity": "Attempt", "key_from": "attempt_id", "reached": "done"}}, "unknown requirement"),
         ({"pattern": "response"}, "'response' does not take this 'require'"),
         ({"pattern": "guard"}, "'guard' does not take this 'require'"),
-        ({"require": {"entity": "Step", "in_states": ["stale"]}, "pattern": "excludes"}, "'excludes' takes an entity"),
+        (
+            {"require": {"entity": "Receipt", "in_states": ["stale"]}, "pattern": "excludes"},
+            "'excludes' takes an entity",
+        ),
         (
             {"when": {"entity": "AuthorApiAction", "to": "succeeded", "where": {"path": ["a", "b"]}}},
             "in = \\[values\\]",

@@ -333,7 +333,7 @@ def step_kind(step: str) -> str:
 
 @dataclass
 class StepTracker:
-    """Turns successive audits into Step transitions for one REE."""
+    """Turns successive audits into Receipt transitions for one REE."""
 
     source_id: str
     ree_id: str
@@ -364,7 +364,7 @@ class StepTracker:
                     position=base + offset,
                     kind="transition",
                     owner="core",
-                    subject="Step",
+                    subject="Receipt",
                     key=f"{self.ree_id}/{step}",
                     partition=self.ree_id,
                     source_state=current,
@@ -380,7 +380,7 @@ class StepTracker:
 def ree_events(
     executable: str, repository: Path, source_id: str, label: str, ree_id: str, commits: list[Commit]
 ) -> tuple[list[Event], list[str], StepTracker]:
-    """Witnessed Ree transitions and recorded Step transitions, commit by commit."""
+    """Witnessed Ree transitions and recorded Receipt transitions, commit by commit."""
     events: list[Event] = []
     problems: list[str] = []
     steps = StepTracker(source_id, ree_id)

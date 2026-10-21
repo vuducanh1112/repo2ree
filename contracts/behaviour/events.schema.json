@@ -3,7 +3,7 @@
   "$id": "urn:repo2ree:contracts:behaviour:events",
   "title": "repo2ree behaviour journal record",
   "description": "One line of a behaviour journal. Generated from specifications/behaviour/vocabulary by `python -m repo2ree_conformance generate`; do not edit. Sequence, epochs, and the header are checked per journal by `python -m repo2ree_conformance validate-journal`.",
-  "x-vocabulary": "sha256:936aa79854f379d5ae2f102f597233f24e3c16ac7ffe7a21d00b987a1aeba62e",
+  "x-vocabulary": "sha256:0363e7c385a52852d9d27bcc2a279372f17ca297058d67c8022176c101a682af",
   "type": "object",
   "properties": {
     "v": {
@@ -42,10 +42,10 @@
       "$ref": "#/$defs/AuthorApiAction"
     },
     {
-      "$ref": "#/$defs/Ree"
+      "$ref": "#/$defs/Receipt"
     },
     {
-      "$ref": "#/$defs/Step"
+      "$ref": "#/$defs/Ree"
     },
     {
       "$ref": "#/$defs/dispatch"
@@ -159,8 +159,8 @@
               "Allocation",
               "Attempt",
               "AuthorApiAction",
+              "Receipt",
               "Ree",
-              "Step",
               "dispatch"
             ]
           }
@@ -726,130 +726,14 @@
       ],
       "description": "One thing an author asked of an REE, from the request to the answer they were given. Evidence: journal."
     },
-    "Ree": {
+    "Receipt": {
       "type": "object",
       "properties": {
         "kind": {
           "const": "transition"
         },
         "subject": {
-          "const": "Ree"
-        },
-        "owner": {
-          "const": "core"
-        },
-        "key": {
-          "type": "string"
-        },
-        "partition": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "from": {
-          "enum": [
-            null,
-            "draft",
-            "sealed"
-          ]
-        },
-        "to": {
-          "enum": [
-            "draft",
-            "sealed"
-          ]
-        },
-        "facts": {
-          "type": "object",
-          "properties": {
-            "attempt_id": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "cause": {
-              "enum": [
-                "operation",
-                "created",
-                "external"
-              ]
-            },
-            "commit": {
-              "type": "string"
-            },
-            "operation": {
-              "type": "string"
-            }
-          }
-        }
-      },
-      "required": [
-        "kind",
-        "subject",
-        "owner",
-        "key",
-        "to"
-      ],
-      "allOf": [
-        {
-          "if": {
-            "properties": {
-              "to": {
-                "enum": [
-                  "draft",
-                  "sealed"
-                ]
-              }
-            }
-          },
-          "then": {
-            "properties": {
-              "facts": {
-                "type": "object",
-                "properties": {
-                  "attempt_id": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  },
-                  "cause": {
-                    "enum": [
-                      "operation",
-                      "created",
-                      "external"
-                    ]
-                  },
-                  "commit": {
-                    "type": "string"
-                  },
-                  "operation": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "cause"
-                ]
-              }
-            },
-            "required": [
-              "facts"
-            ]
-          }
-        }
-      ],
-      "description": "The author REE's committed state: authored while draft, frozen once sealed. Evidence: git."
-    },
-    "Step": {
-      "type": "object",
-      "properties": {
-        "kind": {
-          "const": "transition"
-        },
-        "subject": {
-          "const": "Step"
+          "const": "Receipt"
         },
         "owner": {
           "const": "core"
@@ -992,7 +876,123 @@
           }
         }
       ],
-      "description": "Whether one step's receipt still speaks for the REE as it now stands. Evidence: git."
+      "description": "One step's receipt, and whether it still speaks for the REE as it now stands. Evidence: git."
+    },
+    "Ree": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "transition"
+        },
+        "subject": {
+          "const": "Ree"
+        },
+        "owner": {
+          "const": "core"
+        },
+        "key": {
+          "type": "string"
+        },
+        "partition": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "from": {
+          "enum": [
+            null,
+            "draft",
+            "sealed"
+          ]
+        },
+        "to": {
+          "enum": [
+            "draft",
+            "sealed"
+          ]
+        },
+        "facts": {
+          "type": "object",
+          "properties": {
+            "attempt_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "cause": {
+              "enum": [
+                "operation",
+                "created",
+                "external"
+              ]
+            },
+            "commit": {
+              "type": "string"
+            },
+            "operation": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "subject",
+        "owner",
+        "key",
+        "to"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "to": {
+                "enum": [
+                  "draft",
+                  "sealed"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "facts": {
+                "type": "object",
+                "properties": {
+                  "attempt_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "cause": {
+                    "enum": [
+                      "operation",
+                      "created",
+                      "external"
+                    ]
+                  },
+                  "commit": {
+                    "type": "string"
+                  },
+                  "operation": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "cause"
+                ]
+              }
+            },
+            "required": [
+              "facts"
+            ]
+          }
+        }
+      ],
+      "description": "The author REE's committed state: authored while draft, frozen once sealed. Evidence: git."
     },
     "dispatch": {
       "description": "One typed command sent to a workbench and the single outcome the sender observed.",

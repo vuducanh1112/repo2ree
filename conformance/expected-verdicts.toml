@@ -35,14 +35,14 @@ cross-check step, so no such receipt is ever written."""
 
 [[unreached]]
 items = [
-  "Step (none) -> stale",
-  "Step current -> missing",
-  "Step current -> not_applicable",
-  "Step missing -> not_applicable",
-  "Step missing -> stale",
-  "Step not_applicable -> stale",
-  "Step stale -> missing",
-  "Step stale -> not_applicable",
+  "Receipt (none) -> stale",
+  "Receipt current -> missing",
+  "Receipt current -> not_applicable",
+  "Receipt missing -> not_applicable",
+  "Receipt missing -> stale",
+  "Receipt not_applicable -> stale",
+  "Receipt stale -> missing",
+  "Receipt stale -> not_applicable",
 ]
 reason = """The scenarios add and refresh evidence but never remove it or make a step \
 stop applying."""
