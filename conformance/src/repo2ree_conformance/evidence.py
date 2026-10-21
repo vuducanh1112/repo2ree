@@ -45,7 +45,6 @@ class Source(EvidenceModel):
     # Provenance only: the vocabulary the owner says it wrote against. Records are judged by
     # what they hold, so a journal from an older vocabulary is checked like any other.
     vocabulary: str | None = None
-    spec_digest: str | None = None  # Before 2026-10-21 journals named the whole specification instead.
     problems: tuple[str, ...] = ()
     origin: str | None = None  # Where it was collected from: a control-plane URL, or a local path.
     cut: Cut | None = None

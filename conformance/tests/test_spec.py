@@ -1,4 +1,4 @@
-"""The specification is validated as a whole, and the contract and runtime module are generated from it."""
+"""The specification is validated as a whole, and the published contract is generated from it."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from repo2ree_conformance.codegen import render_machines, render_schema
-from repo2ree_conformance.files import GENERATED_MACHINES, GENERATED_SCHEMA, SPEC_DIR, load_spec, split_combined
+from repo2ree_conformance.codegen import render_schema
+from repo2ree_conformance.files import GENERATED_SCHEMA, SPEC_DIR, load_spec, split_combined
 from repo2ree_conformance.spec import Spec, fact_problems, matches, parse_spec
 
 
@@ -59,10 +59,8 @@ def test_the_checked_in_specification_is_valid() -> None:
     assert spec.boundaries["dispatch"].required == {"result": ("status",)}
 
 
-def test_the_generated_contract_and_runtime_module_match_the_specification() -> None:
-    spec = load_spec()
-    assert GENERATED_SCHEMA.read_text() == render_schema(spec), "run `python -m repo2ree_conformance generate`"
-    assert GENERATED_MACHINES.read_text() == render_machines(spec), "run `python -m repo2ree_conformance generate`"
+def test_the_published_contract_matches_the_vocabulary() -> None:
+    assert GENERATED_SCHEMA.read_text() == render_schema(load_spec()), "run `python -m repo2ree_conformance generate`"
 
 
 def test_the_digest_changes_with_behaviour_but_not_with_file_order() -> None:

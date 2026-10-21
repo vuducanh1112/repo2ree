@@ -177,9 +177,8 @@ Collect, check, and draw are separate steps, each on the previous one's artifact
 ## Workflow
 
 1. Change behaviour here, in its own commit. Review it with `diff --base HEAD`.
-2. `just generate-behaviour` regenerates `contracts/behaviour/events.schema.json` (and,
-   until the product stops importing it, `protocol/src/repo2ree_protocol/behaviour/machines.py`);
-   `just check-conformance` fails while either is stale. A vocabulary change that removes or
+2. `just generate-behaviour` regenerates `contracts/behaviour/events.schema.json`;
+   `just check-conformance` fails while it is stale. A vocabulary change that removes or
    retypes a word breaks owners that still emit it: add the new word, move the owners to it
    in a product commit, then remove the old one.
 3. Implement. Owners change state where they already did and record each change in their

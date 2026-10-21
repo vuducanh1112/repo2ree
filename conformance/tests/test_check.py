@@ -15,9 +15,7 @@ SPEC = load_spec()
 REE = "ree-1"
 
 
-def journal(
-    source_id: str = "api-000001", *, closed: bool = True, complete: bool = True, digest: str | None = None
-) -> Source:
+def journal(source_id: str = "api-000001", *, closed: bool = True, complete: bool = True) -> Source:
     return Source(
         id=source_id,
         kind="journal",
@@ -26,7 +24,7 @@ def journal(
         hosts=frozenset({"api", "supervisor"}),
         complete=complete,
         closed=closed,
-        spec_digest=digest or SPEC.digest,
+        vocabulary=SPEC.vocabulary_digest,
     )
 
 
@@ -427,7 +425,7 @@ def test_an_assigned_allocation_that_never_ends_is_inconclusive() -> None:
 def test_a_journal_is_judged_by_what_it_holds_not_by_the_vocabulary_it_names() -> None:
     recorder = Recorder()
     complete_command(recorder)
-    older = journal().model_copy(update={"vocabulary": "sha256:old", "spec_digest": "sha256:older"})
+    older = journal().model_copy(update={"vocabulary": "sha256:old"})
     assert verdicts(recorder, older, git(REE))["overall"] == "passed"
 
 

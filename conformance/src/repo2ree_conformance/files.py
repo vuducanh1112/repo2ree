@@ -11,7 +11,6 @@ from repo2ree_conformance.spec import Spec, parse_spec
 
 ROOT = Path(__file__).resolve().parents[3]
 SPEC_DIR = ROOT / "specifications" / "behaviour"
-GENERATED_MACHINES = ROOT / "protocol" / "src" / "repo2ree_protocol" / "behaviour" / "machines.py"
 CONTRACT_DIR = ROOT / "contracts" / "behaviour"
 GENERATED_SCHEMA = CONTRACT_DIR / "events.schema.json"
 
