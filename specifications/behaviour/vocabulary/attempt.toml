@@ -3,7 +3,7 @@
 # Core is the owner and the REE's Git history is its journal: capture_command
 # rewrites the attempt's record at every phase and publishes the final record as
 # a commit. The checker reads those records rather than a separate event file
-# (see contracts/behaviour/JOURNAL.md). Its machine is entities/attempt.toml.
+# (repo2ree_conformance.sources). Its machine is entities/attempt.toml.
 
 name = "Attempt"
 kind = "entity"

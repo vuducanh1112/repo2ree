@@ -151,8 +151,8 @@ def render_schema(spec: Spec) -> str:
         "title": "repo2ree behaviour journal record",
         "description": (
             "One line of a behaviour journal. Generated from specifications/behaviour/vocabulary by "
-            "`python -m repo2ree_conformance generate`; do not edit. contracts/behaviour/JOURNAL.md "
-            "states what a schema cannot: sequence, epochs, durability, and citations."
+            "`python -m repo2ree_conformance generate`; do not edit. Sequence, epochs, and the header are "
+            "checked per journal by `python -m repo2ree_conformance validate-journal`."
         ),
         "x-vocabulary": spec.vocabulary_digest,
         "type": "object",

@@ -35,7 +35,6 @@ def test_unprotected_changes_alone_are_allowed() -> None:
         "specifications/behaviour/invariants.toml",
         "specifications/behaviour/vocabulary/run.toml",
         "contracts/behaviour/events.schema.json",
-        "contracts/behaviour/JOURNAL.md",
         "conformance/tests/test_system_conformance.py",
         "conformance/expected-verdicts.toml",
         "scripts/publish/behaviour_gate.py",
