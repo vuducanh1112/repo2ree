@@ -17,6 +17,10 @@ dev = [
     # GUI's dependency-cruiser rules. Neither ruff nor mypy sees the import
     # graph, so layering is only enforced here.
     "import-linter~=2.13.0",
+    # Validates sample journal records against the generated behaviour event schema
+    # (contracts/behaviour), so the schema and the checker agree on what a record is.
+    "jsonschema~=4.26.0",
+    "types-jsonschema~=4.26.0",
     # Property-based testing (the `property`-marked tests). Resolves transitively
     # today via core's test-only `swh.model` oracle, but declared directly so the
     # property tests don't hinge on that pin.
