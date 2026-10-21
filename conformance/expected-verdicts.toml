@@ -12,7 +12,7 @@ test = "api/tests/system/test_failures.py::test_workbench_lost_during_a_build"
 violated = ["machine:Allocation", "allocation-ends"]
 # The bench is killed with the REE inside it, so no archive of its history exists:
 # the attempts its dispatches report cannot be witnessed.
-inconclusive = ["run-success-is-backed", "dispatch-success-is-captured"]
+inconclusive = ["run-success-is-backed", "api-success-is-recorded", "dispatch-success-is-captured"]
 reason = """Product bug (the test is a strict xfail): the run fails but the allocation stays \
 assigned when its workbench is lost, so it is still assigned when the API closes for good."""
 
@@ -109,3 +109,13 @@ reason = """Needs scheduling or provisioning to fail; the stacks always provisio
 items = ["dispatch: error", "dispatch: abandoned"]
 reason = """Needs a workbench that answers a dispatched action with an error or never \
 answers it."""
+
+[[unreached]]
+items = [
+  "AuthorApiAction requested -> canceling",
+  "AuthorApiAction canceling -> succeeded",
+  "AuthorApiAction canceling -> failed",
+]
+reason = """Cancellation is exercised only while a build runs, where the canceled build \
+settles canceled; canceling before a worker starts, or work finishing after the cancel, \
+needs a race the gated tiers do not stage."""
