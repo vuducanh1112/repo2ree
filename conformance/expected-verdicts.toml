@@ -12,7 +12,7 @@ test = "api/tests/system/test_failures.py::test_workbench_lost_during_a_build"
 violated = ["machine:Allocation", "allocation-ends"]
 # The bench is killed with the REE inside it, so no archive of its history exists:
 # the attempts its dispatches report cannot be witnessed.
-inconclusive = ["run-success-is-backed", "api-success-is-recorded", "dispatch-success-is-captured"]
+inconclusive = ["api-success-is-recorded", "dispatch-success-is-captured"]
 reason = """Product bug (the test is a strict xfail): the run fails but the allocation stays \
 assigned when its workbench is lost, so it is still assigned when the API closes for good."""
 
@@ -87,23 +87,6 @@ inject that fault."""
 items = ["Ree (none) -> sealed"]
 reason = """Needs a workbench that baselines an REE sealed elsewhere; loading a sealed \
 bundle starts a fresh draft."""
-
-[[unreached]]
-items = [
-  "Run queued -> canceling",
-  "Run provisioning -> canceling",
-  "Run provisioning -> canceled",
-  "Run running -> canceled",
-  "Run canceling -> succeeded",
-  "Run canceling -> failed",
-]
-reason = """Cancellation is exercised only while a build runs (running -> canceling -> \
-canceled). Canceling before it runs, a build finishing despite the request, and an \
-executor reporting canceled unasked are not."""
-
-[[unreached]]
-items = ["Run queued -> failed", "Run provisioning -> failed"]
-reason = """Needs scheduling or provisioning to fail; the stacks always provision."""
 
 [[unreached]]
 items = ["dispatch: error", "dispatch: abandoned"]

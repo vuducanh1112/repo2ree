@@ -157,12 +157,12 @@ def test_the_corpus_holds_both_kept_and_broken_records() -> None:
 
 
 def test_required_facts_are_missing_only_where_the_vocabulary_requires_them() -> None:
-    queued = next(r for r in transitions() if r["subject"] == "Run" and r["to"] == "queued")
-    running = next(r for r in transitions() if r["subject"] == "Run" and r["to"] == "running")
-    queued["facts"].pop("operation")
-    running["facts"].pop("operation")
-    assert record_problems(SPEC, queued) == ["missing required facts ['operation']"]
-    assert record_problems(SPEC, running) == []
+    completed = next(r for r in transitions() if r["subject"] == "Attempt" and r["to"] == "completed")
+    executing = next(r for r in transitions() if r["subject"] == "Attempt" and r["to"] == "executing")
+    completed["facts"].pop("outcome")
+    executing["facts"].pop("outcome")
+    assert record_problems(SPEC, completed) == ["missing required facts ['outcome']"]
+    assert record_problems(SPEC, executing) == []
 
 
 def write_journal(path: Path, records: list[dict[str, Any]]) -> Path:
@@ -173,23 +173,23 @@ def write_journal(path: Path, records: list[dict[str, Any]]) -> Path:
 def test_validate_journal_accepts_a_journal_that_keeps_the_contract(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    run = next(r for r in transitions() if r["subject"] == "Run" and r["to"] == "queued")
-    write_journal(tmp_path / "api-000001.ndjson", [header(), run, envelope(3, kind="journal.closed", final=True)])
+    action = next(r for r in transitions() if r["subject"] == "AuthorApiAction" and r["to"] == "requested")
+    write_journal(tmp_path / "api-000001.ndjson", [header(), action, envelope(3, kind="journal.closed", final=True)])
     assert main(["validate-journal", str(tmp_path)]) == 0
     assert capsys.readouterr().out.startswith("ok: ")
 
 
 def test_validate_journal_lists_what_breaks_the_contract(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    run = next(r for r in transitions() if r["subject"] == "Run" and r["to"] == "queued")
-    run["facts"] = {}
+    action = next(r for r in transitions() if r["subject"] == "AuthorApiAction" and r["to"] == "requested")
+    action["facts"] = {}
     path = write_journal(
         tmp_path / "api-000001.ndjson",
-        [header(), envelope(3) | {k: v for k, v in run.items() if k not in {"v", "seq", "at"}}],
+        [header(), envelope(3) | {k: v for k, v in action.items() if k not in {"v", "seq", "at"}}],
     )
     assert main(["validate-journal", str(path)]) == 1
     out = capsys.readouterr().out
     assert "sequence jumps from 1 to 3" in out
-    assert "seq 3: missing required facts ['operation']" in out
+    assert "seq 3: missing required facts ['action']" in out
 
 
 def test_validate_journal_refuses_to_pass_without_journals(tmp_path: Path) -> None:

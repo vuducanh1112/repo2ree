@@ -3,7 +3,7 @@
   "$id": "urn:repo2ree:contracts:behaviour:events",
   "title": "repo2ree behaviour journal record",
   "description": "One line of a behaviour journal. Generated from specifications/behaviour/vocabulary by `python -m repo2ree_conformance generate`; do not edit. Sequence, epochs, and the header are checked per journal by `python -m repo2ree_conformance validate-journal`.",
-  "x-vocabulary": "sha256:63748ed77fe180f1af3707c290a749b412c1e044c9c724b05044b6c2b3ff15ae",
+  "x-vocabulary": "sha256:c2048c6b7997af29e4efc971385dc5ebbf18c6ff1271f80e4e03a29bb65fa8bf",
   "type": "object",
   "properties": {
     "v": {
@@ -43,9 +43,6 @@
     },
     {
       "$ref": "#/$defs/Ree"
-    },
-    {
-      "$ref": "#/$defs/Run"
     },
     {
       "$ref": "#/$defs/Step"
@@ -163,7 +160,6 @@
               "Attempt",
               "AuthorApiAction",
               "Ree",
-              "Run",
               "Step",
               "dispatch"
             ]
@@ -825,123 +821,6 @@
         }
       ],
       "description": "The author REE's committed state: authored while draft, frozen once sealed. Evidence: git."
-    },
-    "Run": {
-      "type": "object",
-      "properties": {
-        "kind": {
-          "const": "transition"
-        },
-        "subject": {
-          "const": "Run"
-        },
-        "owner": {
-          "const": "api"
-        },
-        "key": {
-          "type": "string"
-        },
-        "partition": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "from": {
-          "enum": [
-            null,
-            "queued",
-            "provisioning",
-            "running",
-            "canceling",
-            "succeeded",
-            "failed",
-            "canceled"
-          ]
-        },
-        "to": {
-          "enum": [
-            "queued",
-            "provisioning",
-            "running",
-            "canceling",
-            "succeeded",
-            "failed",
-            "canceled"
-          ]
-        },
-        "facts": {
-          "type": "object",
-          "properties": {
-            "attempt_id": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "failure_category": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "operation": {
-              "type": "string"
-            }
-          }
-        }
-      },
-      "required": [
-        "kind",
-        "subject",
-        "owner",
-        "key",
-        "to"
-      ],
-      "allOf": [
-        {
-          "if": {
-            "properties": {
-              "to": {
-                "enum": [
-                  "queued"
-                ]
-              }
-            }
-          },
-          "then": {
-            "properties": {
-              "facts": {
-                "type": "object",
-                "properties": {
-                  "attempt_id": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  },
-                  "failure_category": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  },
-                  "operation": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "operation"
-                ]
-              }
-            },
-            "required": [
-              "facts"
-            ]
-          }
-        }
-      ],
-      "description": "One accepted background request, from durable acceptance to its settled outcome. Evidence: journal."
     },
     "Step": {
       "type": "object",

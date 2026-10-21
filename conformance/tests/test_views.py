@@ -33,7 +33,7 @@ def test_the_system_map_places_entities_in_their_owners_and_processes() -> None:
     assert "subgraph component_core[core]" in drawn
     assert "boundary_dispatch{{dispatch}}" in drawn
     assert "component_supervisor === boundary_dispatch ==> component_workbench" in drawn
-    assert "Run -. run-success-is-backed .-> Attempt" in drawn
+    assert "AuthorApiAction -. api-success-is-recorded .-> Attempt" in drawn
     assert "Attempt -. execution-was-dispatched .-> boundary_dispatch" in drawn
 
 
@@ -48,14 +48,14 @@ def test_the_html_report_draws_every_view(sealed: tuple[object, object]) -> None
 
 def test_a_specification_change_is_drawn_as_a_diff(tmp_path: Path) -> None:
     docs = documents()
-    run = docs.machine("Run")
-    run["transitions"] = [t for t in run["transitions"] if t.get("why", "").startswith("Questionable") is False]
+    action = docs.machine("AuthorApiAction")
+    action["transitions"] = [t for t in action["transitions"] if not t.get("why", "").startswith("Open question")]
     docs.invariants["invariant"] = docs.invariants["invariant"][1:]
     new = docs.parse()
     diff = diff_specs(SPEC, new)
-    run_diff = next(machine for machine in diff.machines if machine.entity == "Run")
-    assert set(run_diff.removed_edges) == {("canceling", "succeeded"), ("canceling", "failed")}
-    assert diff.removed_invariants == ("run-success-is-backed",)
+    action_diff = next(machine for machine in diff.machines if machine.entity == "AuthorApiAction")
+    assert set(action_diff.removed_edges) == {("canceling", "succeeded"), ("canceling", "failed")}
+    assert diff.removed_invariants == ("dispatch-success-is-captured",)
     rendered = render_diff_markdown(diff, SPEC.digest, new.digest)
     assert "canceling --> succeeded: - removed" in rendered
     assert diff_specs(SPEC, SPEC).empty

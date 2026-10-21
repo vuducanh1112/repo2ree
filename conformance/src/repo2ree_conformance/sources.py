@@ -498,6 +498,18 @@ def git_repositories(root: Path, label: str | None = None) -> Iterable[tuple[Pat
 # ================================================
 
 
+# A stored run's status, read as the state of the author action it carries.
+RUN_ACTION_STATES = {
+    "queued": "requested",
+    "provisioning": "running",
+    "running": "running",
+    "canceling": "canceling",
+    "succeeded": "succeeded",
+    "failed": "failed",
+    "canceled": "canceled",
+}
+
+
 def read_stores(directory: Path) -> tuple[Source, list[Event]]:
     """Final persisted owner state, observed after the owners stopped.
 
@@ -528,7 +540,13 @@ def read_stores(directory: Path) -> tuple[Source, list[Event]]:
     for path in sorted((directory / "runs").glob("*/state.json")):
         try:
             run = json.loads(path.read_text())
-            observe("api", "Run", run["run_id"], run["ree_id"], run["status"], f"stores/runs/{path.parent.name}")
+            # The API's background runs are the long author actions: a run that carries one
+            # persists that action's state as its status. A reviewer's run carries none.
+            if run.get("action_id") is not None:
+                state = RUN_ACTION_STATES[run["status"]]
+                observe(
+                    "api", "AuthorApiAction", run["action_id"], run["ree_id"], state, f"stores/runs/{path.parent.name}"
+                )
         except (ValueError, KeyError, TypeError) as exc:
             problems.append(f"{path.parent.name}: unreadable run state ({exc})")
     allocations = directory / "allocations.json"

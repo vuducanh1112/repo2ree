@@ -26,6 +26,7 @@ from typing import Any
 import pytest
 
 from repo2ree_api.control.run_registry import RunRegistry
+from repo2ree_api.storage import author_actions
 from repo2ree_api.storage.json_run_store import JsonRunStore
 from repo2ree_conformance import check, load_evidence, load_spec
 from repo2ree_conformance.check import CheckResult
@@ -36,6 +37,7 @@ from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol import ActionResult, AllocationRequest, AllocationState, AllocationStatusFrame, Frame
 from repo2ree_protocol.behaviour import close_journal, open_journal
 from repo2ree_protocol.behaviour import writer as journal_module
+from repo2ree_protocol.behaviour.events import AuthorApiActionName
 from repo2ree_protocol.command import (
     AcquireSourceArgs,
     AcquireSourceCommand,
@@ -59,7 +61,14 @@ SPEC = load_spec()
 
 _PROVIDER_GAP = "needs a provider that loses benches or drains them before assignment"
 _DOCKER_GAP = "needs runtime, SBOM, or experiment steps, which require Docker (exercised by demo-gui)"
-_ACTIONS_GAP = "the scenarios drive the run registry and owners directly, not the API's routes (the e2e tiers do)"
+_ROUTES_GAP = "needs the API's routes, which answer synchronous actions; the scenarios drive the run registry"
+# The author action each scenario operation is, as the API's routes name it.
+RUN_ACTIONS: dict[str, AuthorApiActionName] = {
+    "source": "acquire_source",
+    "evaluate": "evaluate_reproducibility",
+    "build": "build_runtime",
+    "seal": "seal_ree",
+}
 # Declared edges no in-process scenario reaches, and why. A newly specified edge
 # must gain a scenario or be listed here; the coverage test enforces both ways.
 UNEXERCISED: dict[str, str] = {
@@ -87,16 +96,6 @@ UNEXERCISED: dict[str, str] = {
     "Attempt pending -> capture_failed": "needs the before-snapshot itself to fail",
     "Attempt executing -> capture_failed": "needs the record write between handler and capture to fail",
     "Ree (none) -> sealed": "needs a workbench that baselines an REE sealed elsewhere",
-    "Run queued -> canceling": "needs cancellation to win the race against the worker starting",
-    "Run queued -> failed": "needs the worker pool to refuse scheduling",
-    "Run provisioning -> canceling": "needs cancellation during provisioning",
-    "Run provisioning -> failed": "needs provisioning through the API route rather than the supervisor directly",
-    "Run provisioning -> succeeded": "needs provisioning through the API route rather than the supervisor directly",
-    "Run provisioning -> canceled": "needs cancellation during provisioning",
-    "Run queued -> provisioning": "needs provisioning through the API route rather than the supervisor directly",
-    "Run running -> canceled": "needs an executor that reports canceled without a cancel request",
-    "Run canceling -> succeeded": "needs work to finish after cancellation was requested",
-    "Run canceling -> failed": "needs work to fail after cancellation was requested",
     **{
         f"Step {edge}": _DOCKER_GAP
         for edge in (
@@ -111,14 +110,11 @@ UNEXERCISED: dict[str, str] = {
             "not_applicable -> stale",
         )
     },
-    **{
-        f"AuthorApiAction {source} -> {target}": _ACTIONS_GAP
-        for source, targets in [
-            ("(none)", SPEC.entities["AuthorApiAction"].initial),
-            *SPEC.entities["AuthorApiAction"].edges.items(),
-        ]
-        for target in targets
-    },
+    "AuthorApiAction requested -> succeeded": _ROUTES_GAP,
+    "AuthorApiAction requested -> failed": _ROUTES_GAP,
+    "AuthorApiAction requested -> canceling": "needs cancellation to win the race against the worker starting",
+    "AuthorApiAction canceling -> succeeded": "needs work to finish after cancellation was requested",
+    "AuthorApiAction canceling -> failed": "needs work to fail after cancellation was requested",
 }
 
 
@@ -192,7 +188,15 @@ class System:
         return self.manager.dispatch_action(handle, command, run_id, lambda *_: None)
 
     def start(self, operation: str, runner: Callable[[str, str], ActionResult]) -> str:
-        started = self.registry.start_background("ree-1", operation, {}, operation, runner)  # type: ignore[arg-type]
+        """A background run, carrying the author action its operation is as the API's routes name it."""
+        started = self.registry.start_background(
+            "ree-1",
+            operation,  # type: ignore[arg-type]
+            {},
+            operation,
+            runner,
+            action=RUN_ACTIONS[operation],
+        )
         return str(started["run_id"])
 
     def run(self, handle: Any, command: Command, operation: str = "evaluate") -> str:
@@ -229,9 +233,15 @@ class System:
         return check(SPEC, load_evidence(journals, repositories, str(GIT), [stores] if stores.exists() else []))
 
     def finish(self) -> CheckResult:
-        self.registry.shutdown()
-        close_journal()
+        stop(self)
         return self.evidence()
+
+
+def stop(system: System) -> None:
+    """The API's orderly shutdown: drain the workers, fail what is still open, close the journal."""
+    system.registry.shutdown()
+    author_actions.settle_open("abandoned")
+    close_journal()
 
 
 def make_system(tmp: Path, monkeypatch: pytest.MonkeyPatch, provider: Provider | None = None) -> System:
@@ -255,8 +265,7 @@ def system(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[System]:
     try:
         yield built
     finally:
-        built.registry.shutdown()
-        close_journal()
+        stop(built)
 
 
 def verdicts(result: CheckResult) -> dict[str, str]:
@@ -383,12 +392,12 @@ def test_authoring_lifecycle_conforms(system: System) -> None:
     assert_conforms(
         lifecycle(system),
         "machine:Allocation",
-        "machine:Run",
+        "machine:AuthorApiAction",
         "machine:Attempt",
         "machine:Ree",
         "machine:Step",
         "boundary:dispatch",
-        "run-success-is-backed",
+        "api-success-is-recorded",
         "dispatch-success-is-captured",
         "execution-was-dispatched",
         "allocation-ends",
@@ -421,8 +430,8 @@ def test_boundary_faults_conform(system: System) -> None:
 
 def test_cancellation_conforms(system: System) -> None:
     result = cancellation(system)
-    assert_conforms(result, "machine:Run")
-    assert result.coverage.transitions["Run"]["canceling -> canceled"] == 1
+    assert_conforms(result, "machine:AuthorApiAction")
+    assert result.coverage.transitions["AuthorApiAction"]["canceling -> canceled"] == 1
 
 
 def test_capture_failure_conforms(system: System, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -439,9 +448,9 @@ def test_provisioning_failure_conforms(system: System) -> None:
 
 def test_an_interrupted_process_is_settled_by_its_successor(system: System) -> None:
     result = process_restart(system)
-    assert verdicts(result)["machine:Run"] == "passed"
+    assert verdicts(result)["machine:AuthorApiAction"] == "passed"
     assert verdicts(result)["reconciliation"] == "passed"
-    assert result.coverage.transitions["Run"]["running -> failed"] == 1
+    assert result.coverage.transitions["AuthorApiAction"]["running -> failed"] == 1
 
 
 def test_scenarios_cover_every_specified_edge(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -461,8 +470,7 @@ def test_scenarios_cover_every_specified_edge(tmp_path: Path, monkeypatch: pytes
         try:
             result = scenario(system)
         finally:
-            system.registry.shutdown()
-            close_journal()
+            stop(system)
         for entity, edges in result.coverage.transitions.items():
             exercised.update({f"{entity} {edge}": count for edge, count in edges.items()})
     gaps = {edge for edge, count in exercised.items() if not count} - set(UNEXERCISED)
@@ -484,7 +492,7 @@ def test_a_run_that_claims_success_without_an_attempt_is_a_violation(system: Sys
     run_id = system.start("evaluate", lambda ree_id, run: ActionResult(status="succeeded", context=phantom))
     assert system.settle(run_id) == "succeeded"
     result = verdicts(system.finish())
-    assert result["run-success-is-backed"] == "violated"
+    assert result["api-success-is-recorded"] == "violated"
     assert result["overall"] == "violated"
 
 

@@ -67,16 +67,17 @@ class Recorder:
         self.events.append(Event(source=source, position=self.positions[source], partition=REE, **fields))
 
     def run(self, key: str, *path: str, source: str = "api-000001", **facts: Any) -> None:
+        """An author action through ``path``: build_runtime unless ``action`` names another."""
         for current, target in pairwise([None, *path]):
             assert target is not None
-            step = {"operation": facts.get("operation", "build")} if current is None else {}
+            step = {"action": facts.get("action", "build_runtime")}
             if target in {"succeeded", "failed", "canceled"}:
-                step = {"attempt_id": facts.get("attempt_id"), "failure_category": None}
+                step |= {"attempt_id": facts.get("attempt_id"), "failure_category": None}
             self._add(
                 source,
                 kind="transition",
                 owner="api",
-                subject="Run",
+                subject="AuthorApiAction",
                 key=key,
                 source_state=current,
                 target_state=target,
@@ -88,11 +89,11 @@ class Recorder:
             "api-000001",
             kind="transition",
             owner="api",
-            subject="Run",
+            subject="AuthorApiAction",
             key=key,
             source_state=current,
             target_state=target,
-            facts={"attempt_id": attempt_id, "failure_category": None},
+            facts={"action": "build_runtime", "attempt_id": attempt_id, "failure_category": None},
         )
 
     def attempt(
@@ -160,7 +161,7 @@ def findings(recorder: Recorder, rule: str, *sources: Source) -> list[str]:
 
 
 def complete_command(recorder: Recorder, run: str = "run-1", attempt: str = "a1") -> None:
-    recorder.run(run, "queued", "running")
+    recorder.run(run, "requested", "running")
     request = recorder.dispatch(attempt, ("receive", "result"))
     recorder.attempt(attempt, dispatched_by=request)
     recorder.settle(run, "running", "succeeded", attempt)
@@ -180,33 +181,35 @@ def test_no_triggered_behaviour_is_inconclusive_not_passed() -> None:
 
 def test_an_undeclared_transition_is_violated() -> None:
     recorder = Recorder()
-    recorder.run("run-1", "queued", "succeeded")
-    assert findings(recorder, "machine:Run") == ["violated: undeclared transition queued -> succeeded"]
+    recorder.run("run-1", "requested", "canceled")
+    assert findings(recorder, "machine:AuthorApiAction") == ["violated: undeclared transition requested -> canceled"]
 
 
 def test_a_discontinuous_history_is_violated_only_when_the_source_is_complete() -> None:
     recorder = Recorder()
-    recorder.run("run-1", "queued")
+    recorder.run("run-1", "requested")
     recorder._add(
         "api-000001",
         kind="transition",
         owner="api",
-        subject="Run",
+        subject="AuthorApiAction",
         key="run-1",
         source_state="running",
         target_state="canceling",
-        facts={},
+        facts={"action": "build_runtime"},
     )
-    assert findings(recorder, "machine:Run")[0].startswith("violated: recorded running -> canceling after queued")
-    gappy = findings(recorder, "machine:Run", journal(complete=False), git(REE))
+    assert findings(recorder, "machine:AuthorApiAction")[0].startswith(
+        "violated: recorded running -> canceling after requested"
+    )
+    gappy = findings(recorder, "machine:AuthorApiAction", journal(complete=False), git(REE))
     assert gappy[0].startswith("inconclusive")
 
 
 def test_a_run_left_active_in_a_closed_journal_is_violated_but_open_one_is_not() -> None:
     recorder = Recorder()
-    recorder.run("run-1", "queued", "running")
-    assert findings(recorder, "machine:Run") == ["violated: still running when api-000001 closed"]
-    assert verdicts(recorder, journal(closed=False), git(REE))["machine:Run"] == "passed"
+    recorder.run("run-1", "requested", "running")
+    assert findings(recorder, "machine:AuthorApiAction") == ["violated: still running when api-000001 closed"]
+    assert verdicts(recorder, journal(closed=False), git(REE))["machine:AuthorApiAction"] == "passed"
 
 
 def test_an_event_from_a_component_that_does_not_own_the_entity_is_violated() -> None:
@@ -215,13 +218,15 @@ def test_an_event_from_a_component_that_does_not_own_the_entity_is_violated() ->
         "api-000001",
         kind="transition",
         owner="supervisor",
-        subject="Run",
+        subject="AuthorApiAction",
         key="run-1",
         source_state=None,
-        target_state="queued",
+        target_state="requested",
         facts={"operation": "build"},
     )
-    assert "violated: recorded by supervisor, but api owns Run" in findings(recorder, "machine:Run")
+    assert "violated: recorded by supervisor, but api owns AuthorApiAction" in findings(
+        recorder, "machine:AuthorApiAction"
+    )
 
 
 @pytest.mark.parametrize(
@@ -246,38 +251,38 @@ def test_an_abandoned_dispatch_is_a_legal_outcome() -> None:
 
 def test_success_without_a_captured_attempt_is_violated_when_git_covers_the_ree() -> None:
     recorder = Recorder()
-    recorder.run("run-1", "queued", "running", "succeeded", attempt_id="missing")
+    recorder.run("run-1", "requested", "running", "succeeded", attempt_id="missing")
     recorder.attempt("other")
-    assert findings(recorder, "run-success-is-backed") == ["violated: Attempt missing was never recorded"]
+    assert findings(recorder, "api-success-is-recorded") == ["violated: Attempt missing was never recorded"]
 
 
 def test_success_without_git_evidence_for_the_ree_is_inconclusive() -> None:
     recorder = Recorder()
-    recorder.run("run-1", "queued", "running", "succeeded", attempt_id="missing")
-    assert findings(recorder, "run-success-is-backed", journal(), git("another-ree")) == [
+    recorder.run("run-1", "requested", "running", "succeeded", attempt_id="missing")
+    assert findings(recorder, "api-success-is-recorded", journal(), git("another-ree")) == [
         "inconclusive: no git evidence from core covers ree-1"
     ]
 
 
 def test_success_backed_by_a_failed_attempt_is_violated() -> None:
     recorder = Recorder()
-    recorder.run("run-1", "queued", "running", "succeeded", attempt_id="a1")
+    recorder.run("run-1", "requested", "running", "succeeded", attempt_id="a1")
     recorder.attempt("a1", outcome="failed")
-    assert findings(recorder, "run-success-is-backed") == [
+    assert findings(recorder, "api-success-is-recorded") == [
         "violated: Attempt a1 reached captured with {'outcome': 'failed'}"
     ]
 
 
 def test_a_success_without_an_attempt_id_is_violated() -> None:
     recorder = Recorder()
-    recorder.run("run-1", "queued", "running", "succeeded")
-    assert findings(recorder, "run-success-is-backed") == ["violated: has no attempt_id"]
+    recorder.run("run-1", "requested", "running", "succeeded")
+    assert findings(recorder, "api-success-is-recorded") == ["violated: has no attempt_id"]
 
 
-def test_provisioning_runs_need_no_attempt() -> None:
+def test_workbench_actions_need_no_attempt() -> None:
     recorder = Recorder()
-    recorder.run("run-1", "queued", "provisioning", "succeeded", operation="provision")
-    assert verdicts(recorder)["run-success-is-backed"] == "not_triggered"
+    recorder.run("run-1", "requested", "running", "succeeded", action="create_ree")
+    assert verdicts(recorder)["api-success-is-recorded"] == "not_triggered"
 
 
 def test_an_attempt_never_captured_is_violated_once_the_evidence_covers_the_result() -> None:
@@ -300,7 +305,7 @@ def test_an_attempt_still_open_when_its_history_was_taken_is_inconclusive() -> N
 
 
 def canceled_run(recorder: Recorder, **attempt: Any) -> None:
-    recorder.run("run-1", "queued", "running")
+    recorder.run("run-1", "requested", "running")
     request = recorder.dispatch("a1", ("receive", "result"))
     recorder.attempt("a1", "canceled", dispatched_by=request, **attempt)
     recorder.settle("run-1", "running", "canceling", "a1")
@@ -311,23 +316,23 @@ def test_a_canceled_run_settles_its_attempt_before_it_reports() -> None:
     recorder = Recorder()
     canceled_run(recorder, changed=False)
     found = verdicts(recorder)
-    assert found["settled-runs-settle-their-attempt"] == "passed"
+    assert found["settled-api-actions-settle-their-attempt"] == "passed"
     assert found["canceled-attempts-change-nothing"] == "passed"
 
 
 def test_a_run_that_abandons_its_attempt_mid_execution_is_violated() -> None:
     recorder = Recorder()
     canceled_run(recorder, completed=False)
-    assert findings(recorder, "settled-runs-settle-their-attempt") == [
+    assert findings(recorder, "settled-api-actions-settle-their-attempt") == [
         "violated: Attempt a1 is still executing, not captured or capture_failed"
     ]
 
 
 def test_a_failed_run_without_an_attempt_does_not_trigger_the_rule() -> None:
     recorder = Recorder()
-    recorder.run("run-1", "queued", "running")
+    recorder.run("run-1", "requested", "running")
     recorder.settle("run-1", "running", "failed", None)
-    assert verdicts(recorder)["settled-runs-settle-their-attempt"] == "not_triggered"
+    assert verdicts(recorder)["settled-api-actions-settle-their-attempt"] == "not_triggered"
 
 
 def test_a_canceled_attempt_that_changed_the_ree_is_violated() -> None:
@@ -446,21 +451,21 @@ def test_what_owners_record_beyond_the_vocabulary_is_reported_and_never_judged()
         "api-000001",
         kind="transition",
         owner="api",
-        subject="Run",
+        subject="AuthorApiAction",
         key="run-2",
         source_state=None,
-        target_state="queued",
-        facts={"operation": "build", "queue": "fast"},
+        target_state="requested",
+        facts={"action": "build_runtime", "queue": "fast"},
     )
-    recorder.settle("run-2", "queued", "failed", None)
+    recorder.settle("run-2", "requested", "failed", None)
     result = check(SPEC, Evidence(sources=(journal(), git(REE)), events=tuple(recorder.events)))
     assert result.verdict == "passed"
     assert [(extra.subject, extra.fact, extra.count) for extra in result.extras] == [
+        ("AuthorApiAction", "queue", 1),
         ("Deposit", None, 1),
-        ("Run", "queue", 1),
     ]
     model, _, _ = replay(SPEC, Evidence(sources=(journal(), git(REE)), events=tuple(recorder.events)))
-    assert "queue" not in model.instances["Run"]["run-2"].facts
+    assert "queue" not in model.instances["AuthorApiAction"]["run-2"].facts
 
 
 def test_a_missing_required_fact_leaves_the_machine_inconclusive() -> None:
@@ -469,20 +474,21 @@ def test_a_missing_required_fact_leaves_the_machine_inconclusive() -> None:
         "api-000001",
         kind="transition",
         owner="api",
-        subject="Run",
+        subject="AuthorApiAction",
         key="run-1",
         source_state=None,
-        target_state="queued",
+        target_state="requested",
         facts={"queue": "fast"},
     )
-    recorder.settle("run-1", "queued", "failed", None)
-    assert findings(recorder, "machine:Run") == ["inconclusive: missing required facts ['operation']"]
+    recorder.settle("run-1", "requested", "failed", None)
+    assert findings(recorder, "machine:AuthorApiAction") == ["inconclusive: missing required facts ['action']"]
 
 
 def test_a_declared_fact_of_another_type_is_violated() -> None:
     recorder = Recorder()
-    recorder.run("run-1", "queued", "failed", operation=7)
-    assert findings(recorder, "machine:Run") == ["violated: fact 'operation' is not str"]
+    recorder.run("run-1", "requested", "failed", action=7)
+    # Both records carry the action, and both mistype it.
+    assert findings(recorder, "machine:AuthorApiAction") == ["violated: fact 'action' is not str"] * 2
 
 
 def test_a_message_missing_a_required_fact_leaves_the_exchange_inconclusive() -> None:
@@ -540,8 +546,8 @@ def test_each_occurrence_is_judged_at_the_event_that_triggered_it() -> None:
     recorder = Recorder()
     complete_command(recorder)
     found = judgements(recorder)
-    settled = next(e for e in recorder.events if e.subject == "Run" and e.target_state == "succeeded")
-    assert ("run-success-is-backed", settled.ref, "passed") in found
+    settled = next(e for e in recorder.events if e.subject == "AuthorApiAction" and e.target_state == "succeeded")
+    assert ("api-success-is-recorded", settled.ref, "passed") in found
     model, _, _ = replay(SPEC, Evidence(sources=(journal(), git(REE)), events=tuple(recorder.events)))
     captured = next(j for j in judge_occurrences(model) if j.rule == "execution-was-dispatched")
     assert (captured.subject, captured.key) == ("Attempt", "a1")
@@ -550,12 +556,12 @@ def test_each_occurrence_is_judged_at_the_event_that_triggered_it() -> None:
 
 def test_occurrence_verdicts_agree_with_the_rule_verdicts() -> None:
     recorder = Recorder()
-    recorder.run("run-1", "queued", "running", "succeeded", attempt_id="a1")
+    recorder.run("run-1", "requested", "running", "succeeded", attempt_id="a1")
     recorder.attempt("a1", outcome="failed")
     rules = verdicts(recorder)
     for rule, _, verdict in judgements(recorder):
         assert verdict == rules[rule] or (verdict == "passed" and rules[rule] != "not_triggered")
-    assert ("run-success-is-backed", "api-000001#3", "violated") in judgements(recorder)
+    assert ("api-success-is-recorded", "api-000001#3", "violated") in judgements(recorder)
 
 
 # ---- Snapshots taken while the system ran ---------------------------------------
@@ -571,18 +577,18 @@ def test_occurrence_verdicts_agree_with_the_rule_verdicts() -> None:
 )
 def test_a_snapshot_must_hold_only_what_happened_before_it_was_taken(cut: tuple[int, int], expected: str) -> None:
     recorder = Recorder()
-    recorder.run("run-1", "queued", "running", "succeeded", attempt_id="missing")  # api-000001#1..3
+    recorder.run("run-1", "requested", "running", "succeeded", attempt_id="missing")  # api-000001#1..3
     recorder.attempt("other")
     sources = (journal(closed=False), git(REE, cut={"api-000001": cut}))
-    assert findings(recorder, "run-success-is-backed", *sources) == [expected]
+    assert findings(recorder, "api-success-is-recorded", *sources) == [expected]
 
 
 def test_a_snapshot_cannot_vouch_for_a_journal_it_was_not_cut_against() -> None:
     recorder = Recorder()
-    recorder.run("run-1", "queued", "running", "succeeded", attempt_id="missing")
+    recorder.run("run-1", "requested", "running", "succeeded", attempt_id="missing")
     recorder.attempt("other")
     sources = (journal(closed=False), git(REE, cut={"workbench-000001": (5, 6)}))
-    assert findings(recorder, "run-success-is-backed", *sources) == [
+    assert findings(recorder, "api-success-is-recorded", *sources) == [
         "inconclusive: the evidence cannot place api-000001#3 against when git:ree was taken"
     ]
 
@@ -594,7 +600,7 @@ def observed(recorder: Recorder, state: str) -> None:
             position=1,
             kind="observed",
             owner="api",
-            subject="Run",
+            subject="AuthorApiAction",
             key="run-1",
             partition=REE,
             target_state=state,
@@ -607,12 +613,15 @@ def observed(recorder: Recorder, state: str) -> None:
     [
         ("running", []),  # The state when the cut began.
         ("succeeded", []),  # Written to the store just before the snapshot, journaled just after the cut.
-        ("queued", ["violated: persisted as queued, but around stores the journal shows ['running', 'succeeded']"]),
+        (
+            "requested",
+            ["violated: persisted as requested, but around stores the journal shows ['running', 'succeeded']"],
+        ),
     ],
 )
 def test_a_live_store_snapshot_holds_a_state_reached_around_its_cut(state: str, expected: list[str]) -> None:
     recorder = Recorder()
-    recorder.run("run-1", "queued", "running", "succeeded", attempt_id="a1")  # api-000001#1..3
+    recorder.run("run-1", "requested", "running", "succeeded", attempt_id="a1")  # api-000001#1..3
     recorder.attempt("a1")
     observed(recorder, state)
     sources = (journal(closed=False), git(REE), stores(cut={"api-000001": (2, 2)}))
@@ -621,7 +630,7 @@ def test_a_live_store_snapshot_holds_a_state_reached_around_its_cut(state: str, 
 
 def test_a_store_snapshot_after_the_owners_stopped_must_match_exactly() -> None:
     recorder = Recorder()
-    recorder.run("run-1", "queued", "running", "succeeded", attempt_id="a1")
+    recorder.run("run-1", "requested", "running", "succeeded", attempt_id="a1")
     recorder.attempt("a1")
     observed(recorder, "running")
     assert findings(recorder, "reconciliation", journal(), git(REE), stores()) == [
@@ -634,14 +643,14 @@ def test_a_store_snapshot_after_the_owners_stopped_must_match_exactly() -> None:
 
 def test_without_citations_the_order_across_sources_is_unknown() -> None:
     recorder = Recorder()
-    recorder.run("run-1", "queued", "running")
+    recorder.run("run-1", "requested", "running")
     recorder.dispatch("a1", ("receive", "result"), commit=None)
     recorder.attempt("a1")  # Names no request, and the result names no commit.
     recorder.settle("run-1", "running", "succeeded", "a1")
     result = verdicts(recorder)
     assert result["execution-was-dispatched"] == "inconclusive"
     assert result["dispatch-success-is-captured"] == "inconclusive"
-    assert result["run-success-is-backed"] == "inconclusive"
+    assert result["api-success-is-recorded"] == "inconclusive"
     assert findings(recorder, "execution-was-dispatched") == [
         "inconclusive: the evidence cannot order dispatch.exec_action a1 against it"
     ]
@@ -649,7 +658,7 @@ def test_without_citations_the_order_across_sources_is_unknown() -> None:
 
 def test_a_citation_of_a_record_the_evidence_does_not_hold_is_violated() -> None:
     recorder = Recorder()
-    recorder.run("run-1", "queued", "running")
+    recorder.run("run-1", "requested", "running")
     recorder.dispatch("a1", ("receive", "result"), commit="d" * 40)  # Not the commit that captured a1.
     recorder.attempt("a1", dispatched_by="api-000001#99")  # Not the request that sent it.
     recorder.settle("run-1", "running", "succeeded", "a1")

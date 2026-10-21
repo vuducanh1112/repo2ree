@@ -56,7 +56,7 @@ def documents() -> Documents:
 
 def test_the_checked_in_specification_is_valid() -> None:
     spec = load_spec()
-    assert set(spec.entities) == {"Allocation", "Attempt", "AuthorApiAction", "Ree", "Run", "Step"}
+    assert set(spec.entities) == {"Allocation", "Attempt", "AuthorApiAction", "Ree", "Step"}
     assert spec.hosted_by("api") == {"api", "supervisor"}
     assert set(spec.boundaries) == {"dispatch"}
     assert spec.digest.startswith("sha256:")
@@ -76,7 +76,7 @@ def test_the_digest_changes_with_behaviour_but_not_with_file_order() -> None:
     docs.entities.reverse()
     docs.vocabulary.reverse()
     assert docs.parse().digest == digest
-    docs.machine("Run")["transitions"].append({"from": "succeeded", "to": ["queued"]})
+    docs.machine("AuthorApiAction")["transitions"].append({"from": "succeeded", "to": ["requested"]})
     with pytest.raises(ValidationError, match="terminal states have transitions"):
         docs.parse()
 
@@ -85,35 +85,40 @@ def test_the_vocabulary_digest_changes_with_the_contract_but_not_with_the_rules(
     docs = documents()
     spec = docs.parse()
     docs.invariants["invariant"] = docs.invariants["invariant"][1:]
-    docs.machine("Run")["transitions"] = docs.machine("Run")["transitions"][:-1]
+    docs.machine("AuthorApiAction")["transitions"] = docs.machine("AuthorApiAction")["transitions"][:-1]
     rules_changed = docs.parse()
     assert rules_changed.digest != spec.digest
     assert rules_changed.vocabulary_digest == spec.vocabulary_digest
-    docs.words("Run")["facts"]["queue"] = "str?"
+    docs.words("AuthorApiAction")["facts"]["queue"] = "str?"
     assert docs.parse().vocabulary_digest != spec.vocabulary_digest
 
 
 @pytest.mark.parametrize(
     ("mutate", "message"),
     [
-        (lambda docs: docs.machine("Run").update(initial="paused"), "unknown states"),
-        (lambda docs: docs.machine("Run")["transitions"].append({"from": "queued", "to": ["running"]}), "twice"),
-        (lambda docs: docs.words("Run")["states"].update(orphan="Never entered."), "unreachable states"),
-        (lambda docs: docs.words("Run")["facts"].update(run_id="str"), "is the identity"),
-        (lambda docs: docs.words("Run")["facts"].update(operation="float"), "facts"),
+        (lambda docs: docs.machine("AuthorApiAction").update(initial="paused"), "unknown states"),
         (
-            lambda docs: docs.words("Run")["facts"].update(operation={"type": "str", "required_in": ["done"]}),
+            lambda docs: docs.machine("AuthorApiAction")["transitions"].append(
+                {"from": "requested", "to": ["running"]}
+            ),
+            "twice",
+        ),
+        (lambda docs: docs.words("AuthorApiAction")["states"].update(orphan="Never entered."), "unreachable states"),
+        (lambda docs: docs.words("AuthorApiAction")["facts"].update(action_id="str"), "is the identity"),
+        (lambda docs: docs.words("AuthorApiAction")["facts"].update(path="float"), "facts"),
+        (
+            lambda docs: docs.words("AuthorApiAction")["facts"].update(path={"type": "str", "required_in": ["done"]}),
             "facts required in unknown states",
         ),
         (
-            lambda docs: docs.words("Run")["facts"].update(
-                operation={"type": "str", "required": True, "required_in": ["queued"]}
+            lambda docs: docs.words("AuthorApiAction")["facts"].update(
+                path={"type": "str", "required": True, "required_in": ["requested"]}
             ),
             "either required everywhere or required_in",
         ),
-        (lambda docs: docs.machine("Run").update(states={"queued": "x"}), "Extra inputs"),
-        (lambda docs: docs.words("Run").update(initial="queued"), "Extra inputs"),
-        (lambda docs: docs.entities.remove(docs.machine("Run")), "both a vocabulary and a machine"),
+        (lambda docs: docs.machine("AuthorApiAction").update(states={"requested": "x"}), "Extra inputs"),
+        (lambda docs: docs.words("AuthorApiAction").update(initial="requested"), "Extra inputs"),
+        (lambda docs: docs.entities.remove(docs.machine("AuthorApiAction")), "both a vocabulary and a machine"),
     ],
 )
 def test_incoherent_machines_are_rejected(mutate: Any, message: str) -> None:
@@ -159,22 +164,25 @@ def test_a_revision_with_vocabulary_and_rules_in_one_file_still_reads() -> None:
 @pytest.mark.parametrize(
     ("change", "message"),
     [
-        ({"when": {"entity": "Run", "to": "finished"}}, "unknown trigger"),
-        ({"when": {"entity": "Run", "to": "succeeded", "where": {"colour": "red"}}}, "undeclared facts"),
-        ({"require": {"entity": "Attempt", "key_from": "run_id", "reached": "captured"}}, "not a trigger fact"),
+        ({"when": {"entity": "AuthorApiAction", "to": "finished"}}, "unknown trigger"),
+        ({"when": {"entity": "AuthorApiAction", "to": "succeeded", "where": {"colour": "red"}}}, "undeclared facts"),
+        ({"require": {"entity": "Attempt", "key_from": "outcome", "reached": "captured"}}, "not a trigger fact"),
         ({"require": {"entity": "Attempt", "key_from": "attempt_id", "reached": "done"}}, "unknown requirement"),
         ({"pattern": "response"}, "'response' does not take this 'require'"),
         ({"pattern": "guard"}, "'guard' does not take this 'require'"),
         ({"require": {"entity": "Step", "in_states": ["stale"]}, "pattern": "excludes"}, "'excludes' takes an entity"),
-        ({"when": {"entity": "Run", "to": "succeeded", "where": {"operation": ["a", "b"]}}}, "in = \\[values\\]"),
+        (
+            {"when": {"entity": "AuthorApiAction", "to": "succeeded", "where": {"path": ["a", "b"]}}},
+            "in = \\[values\\]",
+        ),
     ],
 )
 def test_incoherent_invariants_are_rejected(change: dict[str, Any], message: str) -> None:
     docs = documents()
-    run_success = next(item for item in docs.invariants["invariant"] if item["id"] == "run-success-is-backed")
-    run_success.update(change)
+    recorded = next(item for item in docs.invariants["invariant"] if item["id"] == "api-success-is-recorded")
+    recorded.update(change)
     if change.get("pattern") == "excludes":
-        run_success["when"] = {"boundary": "dispatch", "message": "result"}
+        recorded["when"] = {"boundary": "dispatch", "message": "result"}
     with pytest.raises(ValidationError, match=message):
         docs.parse()
 
@@ -190,7 +198,10 @@ def test_owners_and_boundary_ends_must_be_declared_components() -> None:
     ("citation", "problem"),
     [
         (
-            {"by": {"entity": "Run", "reached": "queued", "fact": "operation"}, "cited": {"message": "exec_action"}},
+            {
+                "by": {"entity": "AuthorApiAction", "reached": "requested", "fact": "path"},
+                "cited": {"message": "exec_action"},
+            },
             "not keyed by attempt_id",
         ),
         (
