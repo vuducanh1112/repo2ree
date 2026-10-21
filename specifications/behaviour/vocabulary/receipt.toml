@@ -1,7 +1,8 @@
 # The words for one receipt: whether the evidence an author step produced still speaks
 # for the REE, as core's audit reports it around each attempt
 # (core/domain/ree/audit.py). The checker turns differences between audits into
-# transitions. Its machine is entities/receipt.toml.
+# transitions. It has no machine: any standing may follow any other, so only the
+# invariants say who may change one.
 
 name = "Receipt"
 kind = "entity"

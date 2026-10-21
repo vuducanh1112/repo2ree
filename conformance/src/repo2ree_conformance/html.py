@@ -60,12 +60,16 @@ def _state_chart(spec: Spec, result: CheckResult, entity: str) -> str:
     machine = spec.entities[entity]
     counts = result.coverage.transitions.get(entity, {})
     lines = ["stateDiagram-v2"]
-    lines.extend(f"    [*] --> {state}: {counts.get(f'{INITIAL} -> {state}', 0)}" for state in machine.initial)
-    for source, targets in machine.edges.items():
-        lines.extend(
-            f"    {source} --> {target}: {counts.get(f'{source} -> {target}', 0)}" for target in sorted(targets)
-        )
-    lines.extend(f"    {state} --> [*]" for state in machine.terminal)
+    if not machine.constrained:
+        # Any move between its states is allowed: there are no edges to draw or count.
+        lines.extend(f"    {state}" for state in machine.states)
+    else:
+        lines.extend(f"    [*] --> {state}: {counts.get(f'{INITIAL} -> {state}', 0)}" for state in machine.initial)
+        for source, targets in machine.edges.items():
+            lines.extend(
+                f"    {source} --> {target}: {counts.get(f'{source} -> {target}', 0)}" for target in sorted(targets)
+            )
+        lines.extend(f"    {state} --> [*]" for state in machine.terminal)
     return "\n".join(lines)
 
 

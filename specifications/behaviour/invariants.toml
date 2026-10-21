@@ -9,13 +9,6 @@ summary = "A successful dispatch result is backed by a captured, successful atte
 when = { boundary = "dispatch", message = "result", where = { status = "succeeded" } }
 require = { entity = "Attempt", key_from = "$key", reached = "captured", where = { outcome = "succeeded" }, order = "before" }
 
-[[invariant]]
-id = "execution-was-dispatched"
-pattern = "requires"
-summary = "Every attempt that executed was dispatched by the supervisor."
-when = { entity = "Attempt", to = "executing" }
-require = { boundary = "dispatch", message = "exec_action", key_from = "$key", order = "before" }
-
 # Canceling an attempt rolls the REE back to its before-snapshot: the capture
 # commit's tree is the tree it started from.
 [[invariant]]
@@ -35,10 +28,7 @@ eventually = ["released", "failed", "lost"]
 # ---- The author, through the API ----------------------------------------------
 #
 # What the author is told against what happened. An action that runs a command in
-# the REE names the attempt that ran it (attempt_id); a workbench action names the
-# allocation it set up or released (allocation_id). Which receipt an action may
-# produce is not stated here but below, on the commands themselves, so it holds for
-# every interface that runs them.
+# the REE names the attempt that ran it (attempt_id).
 
 [[invariant]]
 id = "api-success-is-recorded"
@@ -57,27 +47,6 @@ summary = "The author is told an action failed or was canceled only after its at
 when = { entity = "AuthorApiAction", to = ["failed", "canceled"], where = { attempt_id = { not = "" } } }
 require = { entity = "Attempt", key_from = "attempt_id", reached = ["captured", "capture_failed"], order = "before" }
 
-[[invariant]]
-id = "only-long-actions-run"
-pattern = "guard"
-summary = "Edits, assistance, and reads are answered within their request: only workbench, source, evidence, and lifecycle actions run or are canceled."
-when = { entity = "AuthorApiAction", to = ["running", "canceling"] }
-require = { where = { action = { group = ["workbench", "source", "evidence", "lifecycle"] } } }
-
-[[invariant]]
-id = "created-rees-hold-their-workbench"
-pattern = "requires"
-summary = "The author is told an REE was created only once its workbench holds it."
-when = { entity = "AuthorApiAction", to = "succeeded", where = { action = "create_ree" } }
-require = { entity = "Allocation", key_from = "allocation_id", reached = "assigned", order = "before" }
-
-[[invariant]]
-id = "released-workbenches-are-released"
-pattern = "requires"
-summary = "The author is told a workbench was released only once it was."
-when = { entity = "AuthorApiAction", to = "succeeded", where = { action = "release_workbench" } }
-require = { entity = "Allocation", key_from = "allocation_id", reached = "released", order = "before" }
-
 # ---- REE domain ---------------------------------------------------------------
 
 [[invariant]]
@@ -87,14 +56,38 @@ summary = "The committed REE changes only through dispatched operations, never b
 when = { entity = "Ree", from = ["draft", "sealed"], to = ["draft", "sealed"] }
 require = { where = { cause = "operation" } }
 
-# Linting and suggesting scripts read the REE; the attempt still records them, with
-# its tree unchanged.
+# Evidence an attempt brings into being is that attempt's work: it exists only if the
+# attempt succeeded, and only if it is the work that produces that kind of evidence. A
+# bundle load restores evidence of every kind. The operation and outcome are the
+# attempt's own record, not what the receipt repeats of them. Evidence going stale and
+# current again is not appearing: an edit can do that.
 [[invariant]]
-id = "assistance-changes-nothing"
-pattern = "guard"
-summary = "Linting scripts and suggesting scripts are captured with the REE as it was before."
-when = { entity = "Attempt", to = "captured", where = { operation = { in = ["lint_scripts", "generate_script_candidates"] } } }
-require = { where = { changed = false } }
+id = "receipts-come-from-their-producers"
+pattern = "requires"
+summary = "Evidence appears only through a successful attempt of an operation that produces it."
+when = { entity = "Receipt", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { cause = "operation" } }
+
+[invariant.require]
+entity = "Attempt"
+key_from = "attempt_id"
+reached = "captured"
+order = "before"
+
+[invariant.require.where]
+outcome = "succeeded"
+
+[invariant.require.where.operation]
+per = "kind"
+
+[invariant.require.where.operation.in]
+source = ["acquire_source", "load_ree_bundle"]
+evaluation = ["evaluate_dependency_score", "load_ree_bundle"]
+hardware = ["generate_hbom", "load_ree_bundle"]
+runtime = ["build_runtime", "load_ree_bundle"]
+sbom = ["generate_sbom", "load_ree_bundle"]
+sbom_cross_check = ["cross_check_sbom", "load_ree_bundle"]
+test_activation = ["activation_test", "load_ree_bundle"]
+experiment = ["run_experiment", "load_ree_bundle"]
 
 [[invariant]]
 id = "sealed-without-stale-evidence"
@@ -102,63 +95,3 @@ pattern = "excludes"
 summary = "An REE is never sealed while any of its receipts is stale."
 when = { entity = "Ree", from = "draft", to = "sealed" }
 require = { entity = "Receipt", in_states = ["stale"] }
-
-# A receipt appears only through the operation that produces it (or a bundle
-# load that restores receipts made elsewhere). Edits can make evidence stale or
-# current again; they can never create it.
-
-[[invariant]]
-id = "source-receipts-come-from-acquisition"
-pattern = "guard"
-summary = "Source evidence appears only by acquiring source or loading a bundle."
-when = { entity = "Receipt", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "source" } }
-require = { where = { operation = { in = ["acquire_source", "load_ree_bundle"] } } }
-
-[[invariant]]
-id = "evaluation-receipts-come-from-evaluation"
-pattern = "guard"
-summary = "Evaluation evidence appears only by evaluating or loading a bundle."
-when = { entity = "Receipt", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "evaluation" } }
-require = { where = { operation = { in = ["evaluate_dependency_score", "load_ree_bundle"] } } }
-
-[[invariant]]
-id = "hardware-receipts-come-from-observation"
-pattern = "guard"
-summary = "Hardware evidence appears only by observing hardware or loading a bundle."
-when = { entity = "Receipt", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "hardware" } }
-require = { where = { operation = { in = ["generate_hbom", "load_ree_bundle"] } } }
-
-[[invariant]]
-id = "runtime-receipts-come-from-builds"
-pattern = "guard"
-summary = "Runtime evidence appears only by building or loading a bundle."
-when = { entity = "Receipt", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "runtime" } }
-require = { where = { operation = { in = ["build_runtime", "load_ree_bundle"] } } }
-
-[[invariant]]
-id = "sbom-receipts-come-from-scans"
-pattern = "guard"
-summary = "SBOM evidence appears only by generating an SBOM or loading a bundle."
-when = { entity = "Receipt", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "sbom" } }
-require = { where = { operation = { in = ["generate_sbom", "load_ree_bundle"] } } }
-
-[[invariant]]
-id = "cross-check-receipts-come-from-cross-checks"
-pattern = "guard"
-summary = "Cross-check evidence appears only by cross-checking or loading a bundle."
-when = { entity = "Receipt", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "sbom_cross_check" } }
-require = { where = { operation = { in = ["cross_check_sbom", "load_ree_bundle"] } } }
-
-[[invariant]]
-id = "activation-receipts-come-from-activation"
-pattern = "guard"
-summary = "Activation evidence appears only by testing activation or loading a bundle."
-when = { entity = "Receipt", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "test_activation" } }
-require = { where = { operation = { in = ["activation_test", "load_ree_bundle"] } } }
-
-[[invariant]]
-id = "experiment-receipts-come-from-runs"
-pattern = "guard"
-summary = "Experiment evidence appears only by running the experiment or loading a bundle."
-when = { entity = "Receipt", from = ["(none)", "missing", "not_applicable"], to = ["current", "stale"], where = { kind = "experiment" } }
-require = { where = { operation = { in = ["run_experiment", "load_ree_bundle"] } } }

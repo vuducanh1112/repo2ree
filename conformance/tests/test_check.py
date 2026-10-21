@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import tomllib
 from itertools import pairwise
 from typing import Any
 
@@ -10,8 +11,43 @@ import pytest
 from repo2ree_conformance.check import check, judge_occurrences, replay
 from repo2ree_conformance.evidence import Event, Evidence, Source
 from repo2ree_conformance.files import load_spec
+from repo2ree_conformance.spec import Invariant, Spec
 
-SPEC = load_spec()
+# Example rules the checker's tests judge beside the specification's, so a pattern
+# stays tested whether or not a specified rule uses it. Each id says ``example-``,
+# so a finding is never mistaken for a specified rule.
+EXAMPLE_RULES = tomllib.loads(
+    """
+# A requirement on a message: the citation that orders the journal against Git.
+[[invariant]]
+id = "example-execution-was-dispatched"
+pattern = "requires"
+summary = "Every attempt that executed was dispatched by the supervisor."
+when = { entity = "Attempt", to = "executing" }
+require = { boundary = "dispatch", message = "exec_action", key_from = "$key", order = "before" }
+
+# A guard on a fact's listed values, entered from the absent state.
+[[invariant]]
+id = "example-source-receipts-come-from-acquisition"
+pattern = "guard"
+summary = "Source evidence appears only by acquiring source or loading a bundle."
+require = { where = { operation = { in = ["acquire_source", "load_ree_bundle"] } } }
+[invariant.when]
+entity = "Receipt"
+from = ["(none)", "missing", "not_applicable"]
+to = ["current", "stale"]
+where = { kind = "source" }
+"""
+)["invariant"]
+
+
+def with_examples(spec: Spec) -> Spec:
+    return spec.model_copy(
+        update={"invariants": (*spec.invariants, *(Invariant.model_validate(rule) for rule in EXAMPLE_RULES))}
+    )
+
+
+SPEC = with_examples(load_spec())
 REE = "ree-1"
 
 
@@ -105,8 +141,9 @@ class Recorder:
         completed: bool = True,
         changed: bool = True,
         dispatched_by: str | None = None,
+        operation: str = "build_runtime",
     ) -> None:
-        pending: dict[str, Any] = {"operation": "build_runtime", "run_id": "run-1", "scope": "author"}
+        pending: dict[str, Any] = {"operation": operation, "run_id": "run-1", "scope": "author"}
         if dispatched_by is not None:
             pending["dispatched_by"] = dispatched_by
         steps: list[tuple[str | None, str, dict[str, Any]]] = [(None, "pending", pending), ("pending", "executing", {})]
@@ -148,6 +185,21 @@ class Recorder:
             )
             self._add("api-000001", kind=kind, owner=owner, subject="dispatch", key=key, message=message, facts=facts)
         return request
+
+    def receipt(
+        self, step: str, current: str | None, target: str, *, attempt_id: str | None, cause: str = "operation"
+    ) -> None:
+        """A step's evidence changing standing, as the Git adapter reads it from the attempt's commit."""
+        self._add(
+            "git:ree",
+            kind="transition",
+            owner="core",
+            subject="Receipt",
+            key=f"{REE}/{step}",
+            source_state=current,
+            target_state=target,
+            facts={"step": step, "kind": step, "cause": cause, "operation": "build_runtime", "attempt_id": attempt_id},
+        )
 
 
 def verdicts(recorder: Recorder, *sources: Source) -> dict[str, str]:
@@ -346,7 +398,61 @@ def test_a_canceled_attempt_that_changed_the_ree_is_violated() -> None:
 def test_an_attempt_without_a_dispatch_is_violated() -> None:
     recorder = Recorder()
     recorder.attempt("a1")
-    assert findings(recorder, "execution-was-dispatched") == ["violated: no dispatch.exec_action a1"]
+    assert findings(recorder, "example-execution-was-dispatched") == ["violated: no dispatch.exec_action a1"]
+
+
+def test_evidence_from_a_successful_attempt_passes() -> None:
+    recorder = Recorder()
+    recorder.receipt("runtime", None, "missing", attempt_id=None, cause="baseline")
+    recorder.attempt("a1")
+    recorder.receipt("runtime", "missing", "current", attempt_id="a1")
+    assert verdicts(recorder)["receipts-come-from-their-producers"] == "passed"
+
+
+def test_evidence_from_a_failed_attempt_is_violated() -> None:
+    recorder = Recorder()
+    recorder.receipt("runtime", None, "missing", attempt_id=None, cause="baseline")
+    recorder.attempt("a1", outcome="failed")
+    recorder.receipt("runtime", "missing", "current", attempt_id="a1")
+    assert verdicts(recorder)["receipts-come-from-their-producers"] == "violated"
+
+
+def test_evidence_from_an_operation_that_does_not_produce_it_is_violated() -> None:
+    recorder = Recorder()
+    recorder.receipt("runtime", None, "missing", attempt_id=None, cause="baseline")
+    recorder.attempt("a1", operation="write_file")
+    recorder.receipt("runtime", "missing", "current", attempt_id="a1")
+    assert findings(recorder, "receipts-come-from-their-producers") == [
+        "violated: Attempt a1 reached captured with {'outcome': 'succeeded', 'operation': 'write_file'}"
+    ]
+
+
+def test_evidence_restored_by_a_bundle_load_passes_for_every_kind() -> None:
+    recorder = Recorder()
+    recorder.attempt("a1", operation="load_ree_bundle")
+    for step in ("source", "runtime", "test_activation"):
+        recorder.receipt(step, None, "missing", attempt_id=None, cause="baseline")
+        recorder.receipt(step, "missing", "current", attempt_id="a1")
+    assert verdicts(recorder)["receipts-come-from-their-producers"] == "passed"
+
+
+def test_evidence_going_stale_and_current_again_is_not_appearing() -> None:
+    recorder = Recorder()
+    recorder.receipt("runtime", None, "current", attempt_id=None, cause="baseline")
+    recorder.attempt("a1", outcome="failed")
+    recorder.receipt("runtime", "current", "stale", attempt_id="a1")
+    recorder.receipt("runtime", "stale", "current", attempt_id="a1")
+    assert verdicts(recorder)["receipts-come-from-their-producers"] == "not_triggered"
+
+
+def test_an_entity_without_a_machine_still_has_its_records_checked_but_covers_nothing() -> None:
+    recorder = Recorder()
+    recorder.receipt("runtime", None, "stale", attempt_id=None, cause="baseline")
+    recorder.receipt("runtime", "stale", "not_applicable", attempt_id=None, cause="external")
+    recorder.receipt("runtime", "missing", "current", attempt_id=None, cause="external")
+    assert findings(recorder, "machine:Receipt") == ["violated: recorded missing -> current after not_applicable"]
+    result = check(SPEC, Evidence(sources=(journal(), git(REE)), events=tuple(recorder.events)))
+    assert result.coverage.transitions["Receipt"] == {}
 
 
 def assigned_allocation(recorder: Recorder) -> None:
@@ -549,7 +655,7 @@ def test_each_occurrence_is_judged_at_the_event_that_triggered_it() -> None:
     settled = next(e for e in recorder.events if e.subject == "AuthorApiAction" and e.target_state == "succeeded")
     assert ("api-success-is-recorded", settled.ref, "passed") in found
     model, _, _ = replay(SPEC, Evidence(sources=(journal(), git(REE)), events=tuple(recorder.events)))
-    captured = next(j for j in judge_occurrences(model) if j.rule == "execution-was-dispatched")
+    captured = next(j for j in judge_occurrences(model) if j.rule == "example-execution-was-dispatched")
     assert (captured.subject, captured.key) == ("Attempt", "a1")
     assert {verdict for _, _, verdict in found} == {"passed"}
 
@@ -648,10 +754,10 @@ def test_without_citations_the_order_across_sources_is_unknown() -> None:
     recorder.attempt("a1")  # Names no request, and the result names no commit.
     recorder.settle("run-1", "running", "succeeded", "a1")
     result = verdicts(recorder)
-    assert result["execution-was-dispatched"] == "inconclusive"
+    assert result["example-execution-was-dispatched"] == "inconclusive"
     assert result["dispatch-success-is-captured"] == "inconclusive"
     assert result["api-success-is-recorded"] == "inconclusive"
-    assert findings(recorder, "execution-was-dispatched") == [
+    assert findings(recorder, "example-execution-was-dispatched") == [
         "inconclusive: the evidence cannot order dispatch.exec_action a1 against it"
     ]
 

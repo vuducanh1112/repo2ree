@@ -184,9 +184,12 @@ def replay_entity(
     spec: EntitySpec, events: list[Event], evidence: Evidence
 ) -> tuple[dict[str, Instance], RuleResult, dict[str, int]]:
     findings: list[Finding] = []
-    counts: dict[str, int] = {edge(None, state): 0 for state in spec.initial}
-    for source_state, targets in spec.edges.items():
-        counts.update({edge(source_state, target): 0 for target in sorted(targets)})
+    # An unconstrained entity declares no edges, so there is nothing for its evidence to cover.
+    counts: dict[str, int] = {}
+    if spec.constrained:
+        counts = {edge(None, state): 0 for state in spec.initial}
+        for source_state, targets in spec.edges.items():
+            counts.update({edge(source_state, target): 0 for target in sorted(targets)})
     grouped: dict[str, list[Event]] = defaultdict(list)
     for event in events:
         grouped[event.key].append(event)
@@ -214,7 +217,8 @@ def replay_entity(
                 expected = instance.current or "its creation"
                 reasons.append(("inconclusive" if gap else "violated", f"recorded {move} after {expected}"))
             if spec.allows(event.source_state, target):
-                counts[move] += 1
+                if move in counts:
+                    counts[move] += 1
             elif not instance.settled:
                 reasons.append(("violated", f"undeclared transition {move}"))
             findings.extend(_finding(verdict, subject, reason, event) for verdict, reason in reasons)
@@ -519,7 +523,7 @@ def check_requires(
             return _finding("inconclusive", occurrence.subject, why, occurrence.event)
         states = " or ".join(require.reached)
         reached = [item for item in instance.reached if item.state in require.reached]
-        satisfying = [item for item in reached if matches(require.where, item.facts)]
+        satisfying = [item for item in reached if matches(require.where, item.facts, occurrence.facts)]
         last = instance.reached[-1].event
         if satisfying:
             if require.order == "before":

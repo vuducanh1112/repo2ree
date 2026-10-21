@@ -21,7 +21,6 @@ captured = "The outcome and after-state are published as a commit."
 capture_failed = "Recording failed; the REE files were not rolled back."
 
 [facts]
-operation = "str"
 run_id = "str"
 scope = "str"
 # The journal record of the request that dispatched this attempt (see boundaries/dispatch.toml).
@@ -39,3 +38,30 @@ required_in = ["completed"]
 succeeded = "The command did what it was asked."
 failed = "The command could not do it."
 canceled = "The command stopped because its run was canceled."
+
+# The command core ran: one of the typed commands the product dispatches into an REE.
+[facts.operation]
+type = "str"
+
+[facts.operation.values]
+acquire_source = "Fetch or receive the source and freeze it."
+remove_source = "Remove the frozen source."
+patch_ree_definition = "Change the REE's declarations."
+write_file = "Create or overwrite a file in the REE's overlay."
+delete_file = "Delete a file from the REE's overlay."
+generate_script_candidates = "Suggest build and activation scripts."
+lint_scripts = "Check the REE's scripts."
+evaluate_dependency_score = "Assess how reproducible the source's dependencies are."
+generate_hbom = "Record the hardware the REE runs on."
+build_runtime = "Build the runtime with the build script."
+generate_sbom = "List what the built runtime contains."
+cross_check_sbom = "Compare the declared dependencies with the SBOM."
+activation_test = "Check that the runtime activates."
+run_experiment = "Run one declared experiment and verify its outputs."
+seal_ree = "Freeze the REE."
+load_ree_bundle = "Restore an REE from a bundle, its receipts included."
+materialize_workspace = "Merge the upstream source and the overlay into the workspace."
+review_acquire_source = "A reviewer reproduces the source."
+review_build_runtime = "A reviewer reproduces the runtime build."
+review_activation_test = "A reviewer reproduces the activation test."
+review_run_experiment = "A reviewer reproduces one experiment."

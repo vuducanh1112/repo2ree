@@ -12,7 +12,8 @@ from pydantic import ValidationError
 from repo2ree_conformance.codegen import render_schema
 from repo2ree_conformance.files import GENERATED_SCHEMA, SPEC_DIR, load_spec, split_combined
 from repo2ree_conformance.spec import (
-    GuardRequirement,
+    EntitySpec,
+    EntityTrigger,
     Spec,
     fact_problems,
     matches,
@@ -118,10 +119,58 @@ def test_the_vocabulary_digest_changes_with_the_contract_but_not_with_the_rules(
         ),
         (lambda docs: docs.machine("AuthorApiAction").update(states={"requested": "x"}), "Extra inputs"),
         (lambda docs: docs.words("AuthorApiAction").update(initial="requested"), "Extra inputs"),
-        (lambda docs: docs.entities.remove(docs.machine("AuthorApiAction")), "both a vocabulary and a machine"),
+        (lambda docs: docs.vocabulary.remove(docs.words("AuthorApiAction")), "machines without a vocabulary"),
     ],
 )
 def test_incoherent_machines_are_rejected(mutate: Any, message: str) -> None:
+    docs = documents()
+    mutate(docs)
+    with pytest.raises((ValidationError, ValueError), match=message):
+        docs.parse()
+
+
+def test_an_entity_without_a_machine_is_unconstrained() -> None:
+    docs = documents()
+    docs.entities.remove(docs.machine("AuthorApiAction"))
+    action = docs.parse().entities["AuthorApiAction"]
+    assert not action.constrained
+    assert set(action.initial) == set(action.states)
+    assert (action.terminal, action.settles_before_close, action.transitions) == ((), False, ())
+    assert action.allows(None, "succeeded")
+    assert action.allows("succeeded", "requested")
+    assert not action.allows("requested", "sealed")
+
+
+def rule(docs: Documents, rule_id: str) -> dict[str, Any]:
+    return next(invariant for invariant in docs.invariants["invariant"] if invariant["id"] == rule_id)
+
+
+def producers(docs: Documents) -> dict[str, Any]:
+    operation: dict[str, Any] = rule(docs, "receipts-come-from-their-producers")["require"]["where"]["operation"]
+    return operation
+
+
+@pytest.mark.parametrize(
+    ("mutate", "message"),
+    [
+        (
+            lambda docs: rule(docs, "dispatch-success-is-captured")["require"]["where"].update(outcome="succeded"),
+            r"outcome names values its declaration does not list: \['succeded'\]",
+        ),
+        (
+            lambda docs: rule(docs, "api-success-is-recorded")["when"].update(where={"action": "build_runtim"}),
+            r"action names values its declaration does not list",
+        ),
+        (lambda docs: producers(docs)["in"].pop("experiment"), r"missing \['experiment'\]"),
+        (lambda docs: producers(docs)["in"].update(painting=["build_runtime"]), r"unlisted \['painting'\]"),
+        (
+            lambda docs: producers(docs)["in"]["runtime"].append("build_runtim"),
+            r"operation for kind runtime names values its declaration does not list",
+        ),
+        (lambda docs: producers(docs).update(per="outcome"), "'per' names 'outcome', which is not a trigger fact"),
+    ],
+)
+def test_rules_name_only_values_the_vocabulary_lists(mutate: Any, message: str) -> None:
     docs = documents()
     mutate(docs)
     with pytest.raises((ValidationError, ValueError), match=message):
@@ -136,16 +185,21 @@ def test_boundary_facts_are_required_on_every_record_of_their_message() -> None:
 
 
 # Fields the specification derives from fact declarations, which an old combined file never carried.
-DERIVED = {"required", "allowed", "meanings", "groups"}
+DERIVED = {"required", "allowed", "meanings", "groups", "constrained"}
 
 
 def test_a_revision_with_vocabulary_and_rules_in_one_file_still_reads() -> None:
     """``diff --base`` reads specifications committed before the vocabulary had files of its own."""
     spec = load_spec()
-    combined = [
-        {**spec.entities[name].model_dump(mode="json", by_alias=True, exclude=DERIVED)}
-        for name in sorted(spec.entities)
-    ]
+
+    def combined_words(entity: EntitySpec) -> dict[str, Any]:
+        """The entity as one old-style file: its facts keep the values they list, as such files did."""
+        dumped = entity.model_dump(mode="json", by_alias=True, exclude=DERIVED)
+        for fact in entity.allowed:
+            dumped["facts"][fact] = {"type": dumped["facts"][fact], "values": dict(entity.meanings[fact])}
+        return dumped
+
+    combined = [combined_words(spec.entities[name]) for name in sorted(spec.entities)]
     exchanges = [
         {**boundary.model_dump(mode="json", by_alias=True, exclude=DERIVED)} for boundary in spec.boundaries.values()
     ]
@@ -301,10 +355,12 @@ def test_the_author_rules_name_the_action_groups_they_mean() -> None:
     rules = {invariant.id: invariant for invariant in spec.invariants}
     declared = documents().words("AuthorApiAction")["facts"]["action"]["groups"]
     groups = {name: set(values) for name, values in declared.items()}
-    guard = rules["only-long-actions-run"].require
-    assert isinstance(guard, GuardRequirement)
-    condition = guard.where["action"]
+    trigger = rules["api-success-is-recorded"].when
+    assert isinstance(trigger, EntityTrigger)
+    condition = trigger.where["action"]
     assert isinstance(condition, dict)
     assert isinstance(condition["in"], list)
-    long_running = set(condition["in"])
-    assert long_running == groups["workbench"] | groups["source"] | groups["evidence"] | groups["lifecycle"]
+    on_the_ree = set(condition["in"])
+    assert on_the_ree == set().union(
+        *(groups[name] for name in ("source", "editing", "assistance", "evidence", "lifecycle"))
+    )

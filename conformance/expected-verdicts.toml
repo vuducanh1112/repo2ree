@@ -26,28 +26,6 @@ assigned when its workbench is lost, so it is still assigned when the API closes
 # entry goes. This list is what a receipt does not prove.
 
 [[unreached]]
-items = [
-  "rule:sbom-receipts-come-from-scans",
-  "rule:cross-check-receipts-come-from-cross-checks",
-]
-reason = """The gated tiers author the instant project, which has no SBOM scan or \
-cross-check step, so no such receipt is ever written."""
-
-[[unreached]]
-items = [
-  "Receipt (none) -> stale",
-  "Receipt current -> missing",
-  "Receipt current -> not_applicable",
-  "Receipt missing -> not_applicable",
-  "Receipt missing -> stale",
-  "Receipt not_applicable -> stale",
-  "Receipt stale -> missing",
-  "Receipt stale -> not_applicable",
-]
-reason = """The scenarios add and refresh evidence but never remove it or make a step \
-stop applying."""
-
-[[unreached]]
 items = ["Allocation assigned -> lost"]
 reason = """test_workbench_lost_during_a_build is where this belongs, but the allocation \
 stays assigned when its workbench is lost (the product bug excused above)."""

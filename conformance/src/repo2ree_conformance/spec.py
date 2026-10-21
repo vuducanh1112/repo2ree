@@ -110,7 +110,13 @@ class Transition(SpecModel):
 
 
 class EntitySpec(SpecModel):
-    """One state machine with a single owning component."""
+    """One state machine with a single owning component.
+
+    An entity without a machine (no ``entities/<name>.toml``) is unconstrained: it may
+    start in and move between any of its states, never settles, and declares no edges
+    for the evidence to cover. Its records are still checked: owner, facts, partition,
+    and that each move starts where the previous one ended.
+    """
 
     def settles_at(self, closed: bool, final: bool) -> bool:
         """Whether an instance still open when its owner's journal ended this way is left unsettled."""
@@ -138,6 +144,7 @@ class EntitySpec(SpecModel):
     meanings: dict[Name, dict[str, str]] = {}
     groups: dict[Name, dict[Name, tuple[str, ...]]] = {}
     transitions: tuple[Transition, ...]
+    constrained: bool = True
 
     @field_validator("initial", mode="before")
     @classmethod
@@ -152,6 +159,8 @@ class EntitySpec(SpecModel):
         return {state: frozenset(merged.get(state, ())) for state in self.states}
 
     def allows(self, source: str | None, target: str) -> bool:
+        if not self.constrained:
+            return target in self.states
         if source is None:
             return target in self.initial
         return target in self.edges.get(source, frozenset())
@@ -178,6 +187,8 @@ class EntitySpec(SpecModel):
             raise ValueError(f"{self.name}: unreachable states {sorted(unreachable)}")
         if self.settles_before_close and not self.terminal:
             raise ValueError(f"{self.name}: an entity that settles needs a terminal state")
+        if not self.constrained and (self.transitions or self.terminal or set(self.initial) != states):
+            raise ValueError(f"{self.name}: an unconstrained entity starts anywhere and declares no edges")
         if self.key in self.facts:
             raise ValueError(f"{self.name}: the key {self.key!r} is the identity, not a fact")
         if unknown := set(self.required) - states:
@@ -516,6 +527,12 @@ class Spec(SpecModel):
             return dict(self.entities[trigger.entity].facts)
         return dict(self.boundaries[trigger.boundary].facts.get(trigger.message, {}))
 
+    def trigger_allowed(self, trigger: EntityTrigger | MessageTrigger) -> dict[str, tuple[str, ...]]:
+        """The values the trigger's facts may take, for the facts that list them."""
+        if isinstance(trigger, EntityTrigger):
+            return dict(self.entities[trigger.entity].allowed)
+        return dict(self.boundaries[trigger.boundary].allowed.get(trigger.message, {}))
+
     def trigger_partition(self, trigger: EntityTrigger | MessageTrigger) -> str:
         if isinstance(trigger, EntityTrigger):
             return self.entities[trigger.entity].partition
@@ -566,13 +583,14 @@ class Spec(SpecModel):
             if boundary is None or when.message not in boundary.messages:
                 raise ValueError(f"{invariant.id}: unknown trigger {when.boundary}.{when.message}")
         trigger_facts = self.trigger_facts(when)
+        trigger_allowed = self.trigger_allowed(when)
         conditions = dict(when.where)
         if isinstance(invariant.require, GuardRequirement):
             conditions.update(invariant.require.where)
         if unknown := set(conditions) - set(trigger_facts):
             raise ValueError(f"{invariant.id}: 'where' names undeclared facts {sorted(unknown)}")
-        for condition in conditions.values():
-            check_condition(invariant.id, condition)
+        for fact, condition in conditions.items():
+            check_condition(invariant.id, fact, condition, trigger_allowed, trigger_allowed, trigger_facts)
         require = invariant.require
         if isinstance(require, ExclusionRequirement):
             target = self.entities.get(require.entity)
@@ -590,8 +608,8 @@ class Spec(SpecModel):
                 raise ValueError(f"{invariant.id}: unknown requirement {require.entity}.{'/'.join(require.reached)}")
             if unknown := set(require.where) - set(entity_target.facts):
                 raise ValueError(f"{invariant.id}: requirement 'where' names undeclared facts {sorted(unknown)}")
-            for condition in require.where.values():
-                check_condition(invariant.id, condition)
+            for fact, condition in require.where.items():
+                check_condition(invariant.id, fact, condition, entity_target.allowed, trigger_allowed, trigger_facts)
             partition = entity_target.partition
         else:
             boundary = self.boundaries.get(require.boundary)
@@ -607,23 +625,78 @@ def _digest(document: object) -> str:
     return "sha256:" + sha256(canonical.encode()).hexdigest()
 
 
-def check_condition(owner: str, condition: JsonValue) -> None:
+def check_condition(
+    owner: str,
+    fact: str,
+    condition: JsonValue,
+    listed: Mapping[str, tuple[str, ...]],
+    trigger_listed: Mapping[str, tuple[str, ...]],
+    trigger_facts: Collection[str],
+) -> None:
+    """A condition's shape, and each value it names against the values its fact lists, where the fact lists them.
+
+    ``{per = fact, in = {value = [values]}}`` takes its alternatives from the trigger's
+    ``fact``: it gives a list for each value that fact lists, so none is left unsaid.
+    """
+    values = listed.get(fact)
+
+    def named(items: list[JsonValue], context: str = "") -> None:
+        if values is not None and (unknown := [item for item in items if item not in values]):
+            raise ValueError(f"{owner}: {fact}{context} names values its declaration does not list: {unknown}")
+
     if isinstance(condition, dict):
+        if set(condition) == {"per", "in"}:
+            by, table = condition["per"], condition["in"]
+            if not isinstance(by, str) or by not in trigger_facts:
+                raise ValueError(f"{owner}: 'per' names {by!r}, which is not a trigger fact")
+            if not isinstance(table, dict) or not all(isinstance(items, list) for items in table.values()):
+                raise ValueError(f"{owner}: with 'per', 'in' takes a list of values for each value of {by}")
+            keys = trigger_listed.get(by)
+            if keys is None:
+                raise ValueError(f"{owner}: 'per' needs {by} to list its values")
+            if set(table) != set(keys):
+                missing, extra = sorted(set(keys) - set(table)), sorted(set(table) - set(keys))
+                raise ValueError(
+                    f"{owner}: 'in' must give a list for each value of {by}: missing {missing}, unlisted {extra}"
+                )
+            for key, items in table.items():
+                named(items, f" for {by} {key}")  # type: ignore[arg-type]
+            return
         if len(condition) != 1 or next(iter(condition)) not in {"not", "in"}:
-            raise ValueError(f"{owner}: a condition is a value, {{not = value}}, {{in = [values]}}, or {{group = ...}}")
-        if "in" in condition and not isinstance(condition["in"], list):
-            raise ValueError(f"{owner}: 'in' takes a list")
+            raise ValueError(
+                f"{owner}: a condition is a value, {{not = value}}, {{in = [values]}}, {{group = ...}}, "
+                "or {per = fact, in = {value = [values]}}"
+            )
+        if "in" in condition:
+            if not isinstance(condition["in"], list):
+                raise ValueError(f"{owner}: 'in' takes a list")
+            named(condition["in"])
+        else:
+            named([condition["not"]])
     elif isinstance(condition, list):
         raise ValueError(f"{owner}: use {{in = [values]}} for alternatives")
+    else:
+        named([condition])
 
 
-def matches(where: Condition, facts: dict[str, JsonValue]) -> bool:
-    """Absent facts never satisfy a condition, including a negated one; a fact recorded as null is absent."""
+def matches(where: Condition, facts: dict[str, JsonValue], trigger: dict[str, JsonValue] | None = None) -> bool:
+    """Absent facts never satisfy a condition, including a negated one; a fact recorded as null is absent.
+
+    A ``{per, in}`` condition reads its key from ``trigger``'s facts: the trigger's, when the
+    facts are another record's; the facts themselves otherwise.
+    """
     for name, condition in where.items():
         if facts.get(name) is None:
             return False
         value = facts[name]
         if isinstance(condition, dict):
+            if "per" in condition:
+                key = (facts if trigger is None else trigger).get(str(condition["per"]))
+                table = condition["in"]
+                options = table.get(key) if isinstance(table, dict) and isinstance(key, str) else None
+                if not isinstance(options, list) or value not in options:
+                    return False
+                continue
             if "not" in condition and value == condition["not"]:
                 return False
             options = condition.get("in")
@@ -708,6 +781,11 @@ def parse_vocabulary(document: dict[str, Any]) -> EntityVocabulary | BoundaryVoc
     return EntityVocabulary.model_validate(document)
 
 
+def _unconstrained(word: EntityVocabulary) -> dict[str, Any]:
+    """The machine of an entity that has none: any state, any move, never settled."""
+    return {"initial": tuple(word.states), "settles_before_close": False, "transitions": (), "constrained": False}
+
+
 def parse_spec(
     vocabulary: list[dict[str, Any]],
     entities: list[dict[str, Any]],
@@ -732,12 +810,14 @@ def parse_spec(
         raise ValueError("entity names must be unique")
     if len({exchange.name for exchange in exchanges}) != len(exchanges):
         raise ValueError("boundary names must be unique")
-    if unmatched := set(entity_words) ^ {machine.name for machine in machines}:
-        raise ValueError(f"entities need both a vocabulary and a machine: {sorted(unmatched)}")
+    if unknown := {machine.name for machine in machines} - set(entity_words):
+        raise ValueError(f"machines without a vocabulary: {sorted(unknown)}")
     if unknown := {exchange.name for exchange in exchanges} - set(boundary_words):
         raise ValueError(f"boundary rules without a vocabulary: {sorted(unknown)}")
+    declared = {machine.name: dict(machine) for machine in machines}
     entity_specs = [
-        EntitySpec.model_validate(entity_words[machine.name].entity_fields() | dict(machine)) for machine in machines
+        EntitySpec.model_validate(word.entity_fields() | declared.get(name, _unconstrained(word)))
+        for name, word in entity_words.items()
     ]
     rules = {exchange.name: exchange for exchange in exchanges}
     boundary_specs = [

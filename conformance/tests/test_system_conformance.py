@@ -24,12 +24,13 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from test_check import with_examples
 
 from repo2ree_api.control.run_registry import RunRegistry
 from repo2ree_api.storage import author_actions
 from repo2ree_api.storage.json_run_store import JsonRunStore
 from repo2ree_conformance import check, load_evidence, load_spec
-from repo2ree_conformance.check import CheckResult
+from repo2ree_conformance.check import CheckResult, replay
 from repo2ree_core.operations.dispatch import run_command
 from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.persistence.history import GitHistory, HistoryCaptureError
@@ -57,10 +58,9 @@ GIT = os.environ.get("REPO2REE_TOOL_GIT") or shutil.which("git")
 if GIT is None:
     raise RuntimeError("conformance tests need a git executable: put git on PATH or set REPO2REE_TOOL_GIT")
 ARCHIVE = Path(__file__).resolve().parents[2] / "examples" / "projects" / "python-hello-world.tar.gz"
-SPEC = load_spec()
+SPEC = with_examples(load_spec())
 
 _PROVIDER_GAP = "needs a provider that loses benches or drains them before assignment"
-_DOCKER_GAP = "needs runtime, SBOM, or experiment steps, which require Docker (exercised by demo-gui)"
 _ROUTES_GAP = "needs the API's routes, which answer synchronous actions; the scenarios drive the run registry"
 # The author action each scenario operation is, as the API's routes name it.
 RUN_ACTIONS: dict[str, AuthorApiActionName] = {
@@ -96,20 +96,6 @@ UNEXERCISED: dict[str, str] = {
     "Attempt pending -> capture_failed": "needs the before-snapshot itself to fail",
     "Attempt executing -> capture_failed": "needs the record write between handler and capture to fail",
     "Ree (none) -> sealed": "needs a workbench that baselines an REE sealed elsewhere",
-    **{
-        f"Receipt {edge}": _DOCKER_GAP
-        for edge in (
-            "(none) -> current",
-            "(none) -> stale",
-            "missing -> stale",
-            "missing -> not_applicable",
-            "current -> missing",
-            "current -> not_applicable",
-            "stale -> missing",
-            "stale -> not_applicable",
-            "not_applicable -> stale",
-        )
-    },
     "AuthorApiAction requested -> succeeded": _ROUTES_GAP,
     "AuthorApiAction requested -> failed": _ROUTES_GAP,
     "AuthorApiAction requested -> canceling": "needs cancellation to win the race against the worker starting",
@@ -399,7 +385,7 @@ def test_authoring_lifecycle_conforms(system: System) -> None:
         "boundary:dispatch",
         "api-success-is-recorded",
         "dispatch-success-is-captured",
-        "execution-was-dispatched",
+        "example-execution-was-dispatched",
         "allocation-ends",
         "ree-changes-through-operations",
         "reconciliation",
@@ -411,14 +397,14 @@ def test_authoring_staleness_and_sealing_conform(system: System) -> None:
     assert_conforms(
         result,
         "sealed-without-stale-evidence",
-        "source-receipts-come-from-acquisition",
-        "evaluation-receipts-come-from-evaluation",
+        "example-source-receipts-come-from-acquisition",
         "ree-changes-through-operations",
     )
-    edges = result.coverage.transitions
-    assert edges["Receipt"]["current -> stale"] >= 1
-    assert edges["Receipt"]["stale -> current"] >= 1
-    assert edges["Ree"]["draft -> sealed"] == 1
+    evidence = load_evidence([system.tmp / "journal"], [system.layout.root], str(GIT), [system.tmp / "stores"])
+    receipts = replay(SPEC, evidence)[0].instances["Receipt"]
+    moves = {(reached.source_state, reached.state) for receipt in receipts.values() for reached in receipt.reached}
+    assert {("current", "stale"), ("stale", "current")} <= moves
+    assert result.coverage.transitions["Ree"]["draft -> sealed"] == 1
 
 
 def test_boundary_faults_conform(system: System) -> None:
@@ -500,7 +486,7 @@ def test_an_attempt_nobody_dispatched_is_a_violation(system: System) -> None:
     handle = system.provision()
     system.dispatch(handle, patch({"name": "dispatched"}))
     run_command(patch({"name": "smuggled"}), log=lambda *_: None, context=ExecutionContext.new(ree_id="ree-1"))
-    assert verdicts(system.finish())["execution-was-dispatched"] == "violated"
+    assert verdicts(system.finish())["example-execution-was-dispatched"] == "violated"
 
 
 def test_an_unjournaled_state_change_is_a_violation(system: System) -> None:
@@ -532,7 +518,9 @@ def test_a_receipt_that_appears_without_its_operation_is_a_violation(system: Sys
         # A bug that records the acquisition under another operation's name.
         patched.setattr(AcquireSourceCommand, "model_dump", lambda self, **kw: {"operation": "write_file", "args": {}})
         system.run(handle, AcquireSourceCommand(args=upload), "source")
-    assert verdicts(system.finish())["source-receipts-come-from-acquisition"] == "violated"
+    result = verdicts(system.finish())
+    assert result["receipts-come-from-their-producers"] == "violated"
+    assert result["example-source-receipts-come-from-acquisition"] == "violated"
 
 
 def test_a_crashed_journal_leaves_cross_component_rules_inconclusive(system: System) -> None:
@@ -545,7 +533,7 @@ def test_a_crashed_journal_leaves_cross_component_rules_inconclusive(system: Sys
     journal_file.write_text("\n".join(lines[:send] + lines[send + 1 :]) + "\n")
     result = verdicts(system.evidence())
     assert result["evidence"] == "inconclusive"
-    assert result["execution-was-dispatched"] == "inconclusive"
+    assert result["example-execution-was-dispatched"] == "inconclusive"
 
 
 def test_unavailable_workbench_is_an_answered_dispatch(system: System) -> None:

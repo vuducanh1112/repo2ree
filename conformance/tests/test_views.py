@@ -34,7 +34,7 @@ def test_the_system_map_places_entities_in_their_owners_and_processes() -> None:
     assert "boundary_dispatch{{dispatch}}" in drawn
     assert "component_supervisor === boundary_dispatch ==> component_workbench" in drawn
     assert "AuthorApiAction -. api-success-is-recorded .-> Attempt" in drawn
-    assert "Attempt -. execution-was-dispatched .-> boundary_dispatch" in drawn
+    assert "Attempt -. example-execution-was-dispatched .-> boundary_dispatch" in drawn
 
 
 def test_the_html_report_draws_every_view(sealed: tuple[object, object]) -> None:
@@ -49,13 +49,14 @@ def test_the_html_report_draws_every_view(sealed: tuple[object, object]) -> None
 def test_a_specification_change_is_drawn_as_a_diff(tmp_path: Path) -> None:
     docs = documents()
     action = docs.machine("AuthorApiAction")
-    action["transitions"] = [t for t in action["transitions"] if not t.get("why", "").startswith("Open question")]
+    # The work finishing before the cancel took effect.
+    action["transitions"] = [t for t in action["transitions"] if not (t["from"] == "canceling" and "failed" in t["to"])]
     docs.invariants["invariant"] = docs.invariants["invariant"][1:]
-    new = docs.parse()
-    diff = diff_specs(SPEC, new)
+    old, new = documents().parse(), docs.parse()
+    diff = diff_specs(old, new)
     action_diff = next(machine for machine in diff.machines if machine.entity == "AuthorApiAction")
     assert set(action_diff.removed_edges) == {("canceling", "succeeded"), ("canceling", "failed")}
     assert diff.removed_invariants == ("dispatch-success-is-captured",)
-    rendered = render_diff_markdown(diff, SPEC.digest, new.digest)
+    rendered = render_diff_markdown(diff, old.digest, new.digest)
     assert "canceling --> succeeded: - removed" in rendered
-    assert diff_specs(SPEC, SPEC).empty
+    assert diff_specs(old, old).empty

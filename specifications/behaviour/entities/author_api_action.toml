@@ -36,4 +36,4 @@ why = "The work stopped."
 [[transitions]]
 from = "canceling"
 to = ["succeeded", "failed"]
-why = "Open question, carried over from Run: the work finished before the cancel took effect, and its outcome wins."
+why = "The work reached its capture before the cancel took effect; its outcome stands."

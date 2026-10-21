@@ -3,7 +3,7 @@
   "$id": "urn:repo2ree:contracts:behaviour:events",
   "title": "repo2ree behaviour journal record",
   "description": "One line of a behaviour journal. Generated from specifications/behaviour/vocabulary by `python -m repo2ree_conformance generate`; do not edit. Sequence, epochs, and the header are checked per journal by `python -m repo2ree_conformance validate-journal`.",
-  "x-vocabulary": "sha256:0363e7c385a52852d9d27bcc2a279372f17ca297058d67c8022176c101a682af",
+  "x-vocabulary": "sha256:427ecedb90c709b157456fd3533219063a36f8b3a449d3d6cd885c90693a2470",
   "type": "object",
   "properties": {
     "v": {
@@ -328,7 +328,29 @@
               "type": "string"
             },
             "operation": {
-              "type": "string"
+              "enum": [
+                "acquire_source",
+                "remove_source",
+                "patch_ree_definition",
+                "write_file",
+                "delete_file",
+                "generate_script_candidates",
+                "lint_scripts",
+                "evaluate_dependency_score",
+                "generate_hbom",
+                "build_runtime",
+                "generate_sbom",
+                "cross_check_sbom",
+                "activation_test",
+                "run_experiment",
+                "seal_ree",
+                "load_ree_bundle",
+                "materialize_workspace",
+                "review_acquire_source",
+                "review_build_runtime",
+                "review_activation_test",
+                "review_run_experiment"
+              ]
             },
             "outcome": {
               "enum": [
@@ -385,7 +407,29 @@
                     "type": "string"
                   },
                   "operation": {
-                    "type": "string"
+                    "enum": [
+                      "acquire_source",
+                      "remove_source",
+                      "patch_ree_definition",
+                      "write_file",
+                      "delete_file",
+                      "generate_script_candidates",
+                      "lint_scripts",
+                      "evaluate_dependency_score",
+                      "generate_hbom",
+                      "build_runtime",
+                      "generate_sbom",
+                      "cross_check_sbom",
+                      "activation_test",
+                      "run_experiment",
+                      "seal_ree",
+                      "load_ree_bundle",
+                      "materialize_workspace",
+                      "review_acquire_source",
+                      "review_build_runtime",
+                      "review_activation_test",
+                      "review_run_experiment"
+                    ]
                   },
                   "outcome": {
                     "enum": [
@@ -443,7 +487,29 @@
                     "type": "string"
                   },
                   "operation": {
-                    "type": "string"
+                    "enum": [
+                      "acquire_source",
+                      "remove_source",
+                      "patch_ree_definition",
+                      "write_file",
+                      "delete_file",
+                      "generate_script_candidates",
+                      "lint_scripts",
+                      "evaluate_dependency_score",
+                      "generate_hbom",
+                      "build_runtime",
+                      "generate_sbom",
+                      "cross_check_sbom",
+                      "activation_test",
+                      "run_experiment",
+                      "seal_ree",
+                      "load_ree_bundle",
+                      "materialize_workspace",
+                      "review_acquire_source",
+                      "review_build_runtime",
+                      "review_activation_test",
+                      "review_run_experiment"
+                    ]
                   },
                   "outcome": {
                     "enum": [
