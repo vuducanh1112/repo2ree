@@ -18,7 +18,6 @@ from repo2ree_api.contracts import RunLogEntry, RunStatus
 from repo2ree_api.storage import author_actions
 from repo2ree_api.storage.run_store import IdempotencyConflictError, StoredRun
 from repo2ree_core.time_utils import utc_now
-from repo2ree_protocol.behaviour import events
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.result import Failure, HistoryReference
 
@@ -27,25 +26,9 @@ _TERMINAL_STATUSES = frozenset({"succeeded", "failed", "canceled"})
 
 
 def _journal_transition(previous: StoredRun | None, updated: StoredRun) -> None:
-    """Record a status change of the Run machine, and of the author action the run carries.
-
-    Called under the store lock after the write.
-    """
+    """Move the author action the run carries with its status; called under the store lock after the write."""
     if previous is not None and previous.status == updated.status:
         return
-    facts: events.RunFacts = {}
-    if previous is None:
-        facts["operation"] = updated.operation
-    if updated.status in _TERMINAL_STATUSES:
-        facts["attempt_id"] = updated.context.attempt_id if updated.context is not None else None
-        facts["failure_category"] = updated.failure.category if updated.failure is not None else None
-    events.run(
-        updated.run_id,
-        None if previous is None else previous.status,
-        updated.status,
-        partition=updated.ree_id,
-        facts=facts,
-    )
     if updated.action is not None and updated.action_id is not None:
         recorded = updated.history is not None and updated.context is not None
         author_actions.follow_run(

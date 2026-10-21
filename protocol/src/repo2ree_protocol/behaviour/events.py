@@ -18,7 +18,6 @@ from typing import Literal, NotRequired, TypedDict, cast
 from repo2ree_protocol.allocation import AllocationState
 from repo2ree_protocol.behaviour.writer import Fact, journal
 
-RunState = Literal["queued", "provisioning", "running", "canceling", "succeeded", "failed", "canceled"]
 DispatchResponse = Literal["result", "unavailable", "error"]
 AuthorApiActionState = Literal["requested", "running", "canceling", "succeeded", "failed", "canceled"]
 # What an author can ask of one REE through the API, by group.
@@ -63,13 +62,6 @@ AuthorApiActionName = Literal[
 ]
 
 
-class RunFacts(TypedDict, total=False):
-    # Required when the run is accepted (``queued``).
-    operation: str
-    attempt_id: str | None
-    failure_category: str | None
-
-
 class AllocationFacts(TypedDict, total=False):
     provider_id: str | None
     workbench_id: str | None
@@ -104,11 +96,6 @@ class ResultFacts(TypedDict):
 def _facts(facts: Mapping[str, object]) -> dict[str, Fact]:
     """The TypedDicts above hold scalars only; the writer takes them as plain facts."""
     return cast("dict[str, Fact]", dict(facts))
-
-
-def run(key: str, current: RunState | None, target: RunState, *, partition: str, facts: RunFacts) -> None:
-    """A background run's status changed; the API's run store owns it."""
-    journal().transition("api", "Run", key, current, target, partition=partition, facts=_facts(facts))
 
 
 def allocation(

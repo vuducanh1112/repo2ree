@@ -26,8 +26,10 @@ def kept_contract(journals: Path) -> subprocess.CompletedProcess[str]:
 
 def test_every_typed_record_keeps_the_published_contract(tmp_path: Path) -> None:
     open_journal(tmp_path, "api", hosts=("supervisor",))
-    events.run("r1", None, "queued", partition="ree-1", facts={"operation": "build"})
-    events.run("r1", "queued", "failed", partition="ree-1", facts={"attempt_id": None, "failure_category": "x"})
+    events.author_api_action("a1", None, "requested", action="build_runtime", partition="ree-1", facts={"run_id": "r1"})
+    events.author_api_action(
+        "a1", "requested", "failed", action="build_runtime", partition="ree-1", facts={"failure_category": "x"}
+    )
     events.allocation(
         "al1",
         None,
