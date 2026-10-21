@@ -13,8 +13,7 @@ from repo2ree_traceview.spans import Span, SpanEvent, SpanIndex
 
 SPEC = load_spec()
 REE = "ree-1"
-# The evidence-standing subject, whichever name the specification gives it.
-RECEIPT = "Receipt" if "Receipt" in SPEC.entities else "Step"
+RECEIPT = "Receipt"
 START = datetime(2026, 10, 18, 10, 0, tzinfo=UTC)
 REQUEST, WORKER, PROVISION = "a" * 32, "b" * 32, "c" * 32
 

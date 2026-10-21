@@ -45,8 +45,8 @@ NOISE = ("websocket", "GET ", "HTTP /provider/connect", "HTTP /workbench/connect
 # The author action that sets up an REE's workbench.
 PROVISION = "create_ree"
 RELEASED = ("released", "failed", "lost")
-# The evidence standing of each step; "Step" until the specification names it Receipt.
-RECEIPT_SUBJECTS = frozenset({"Receipt", "Step"})
+# The evidence standing of each step.
+RECEIPT_SUBJECTS = frozenset({"Receipt"})
 TOP_SPANS = 6
 
 
