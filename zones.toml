@@ -182,6 +182,7 @@ summary = "What people read."
 [docs.groups.documentation]
 summary = "The documentation site, by audience."
 [docs.groups.documentation.paths]
+"README.md" = "Start here: demo, local development, observability, e2e"
 "docs/" = "Index of the documentation"
 "docs/public/" = "For users: tutorials, how-to, reference, explanation"
 "docs/engineering/" = "For contributors: decisions, how-to, reference, explanation"

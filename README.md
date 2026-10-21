@@ -197,6 +197,58 @@ npm --prefix gui ci
 VITE_API_BASE_URL=http://localhost:8000 scripts/with-build-revision npm --prefix gui run dev -- --host
 ```
 
+## Observability
+
+The app only speaks OTLP to `OTLP_ENDPOINT` (HTTP on `4318`); without it, spans
+fall back to `TRACE_FILE` (NDJSON) or stdout and logs to stdout. Local collector
+stacks live in `observability/`; each is a drop-in swap. Start one, then point
+the app at it:
+
+```bash
+docker compose -f observability/docker-compose.<backend>.yml up -d
+
+# The demo stack (its containers reach the host via host.docker.internal):
+OTLP_ENDPOINT=http://host.docker.internal:4318 docker compose up -d
+# A test stack:
+OTLP_ENDPOINT=http://host.docker.internal:4318 just test-stack-local demo-gui
+# Processes started on the host (local development above):
+OTLP_ENDPOINT=http://localhost:4318 scripts/with-build-revision uv run --package repo2ree-api uvicorn repo2ree_api.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+| Backend | Compose file | UI | Logs stored | Notes |
+| --- | --- | --- | --- | --- |
+| ClickStack | [`docker-compose.clickstack.yml`](observability/docker-compose.clickstack.yml) | :8080 | yes | ClickHouse + HyperDX. Trace ↔ logs correlation, SQL over span attributes. Ingest is authenticated (below). |
+| Grafana LGTM | [`docker-compose.lgtm.yml`](observability/docker-compose.lgtm.yml) | :3000 | yes | Tempo, Loki, Mimir, and Grafana in one container (admin/admin). Trace → logs via span links. |
+| Jaeger | [`docker-compose.jaeger.yml`](observability/docker-compose.jaeger.yml) | :16686 | no | Traces only. |
+
+The backends cannot run side by side without remapping ports (all bind `4317`
+and `4318`), and each keeps its telemetry in its own volume, so history does not
+carry across a switch. The Grafana LGTM UI also takes port `3000`, the demo GUI's
+port, so pair it with the local GUI dev server rather than the demo stack.
+
+ClickStack rejects OTLP requests without an `authorization` header. Copy the
+**Ingestion API Key** from the HyperDX UI (Team Settings → API Keys) and pass it
+in the standard OTLP variable, which the SDK exporters, the executor span relay,
+and the compose files all honor:
+
+```bash
+OTLP_ENDPOINT=http://host.docker.internal:4318 \
+OTEL_EXPORTER_OTLP_HEADERS="authorization=<ingestion-key>" \
+just test-stack-local demo-gui
+```
+
+What lands where:
+
+- **Traces:** every API request, background run (`run.*`), and dispatch, and,
+  relayed from inside the workbench container, the executor's `command.*` and
+  `process.exec` spans with their wide-event attributes (arguments, receipts,
+  exit codes, output tails on failure).
+- **Logs:** host process logs (API, provider, workbench) and the full run stream
+  (the `repo2ree.run` logger), each line correlated with its trace and tagged with
+  `repo2ree.ree_id`, `repo2ree.run_id`, and `repo2ree.stream`. They outlive
+  container teardown, unlike `docker logs`.
+- **Metrics:** the `workbench.*` and `ree.*` counters and duration histograms.
+
 ## E2E test
 
 For the full test map, see

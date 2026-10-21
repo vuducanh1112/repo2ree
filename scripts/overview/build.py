@@ -37,7 +37,17 @@ from scripts import zones as zone_map  # noqa: E402
 from scripts.diagrams.stamp import read_svg_stamp  # noqa: E402
 
 from repo2ree_conformance import load_spec  # noqa: E402
-from repo2ree_conformance.spec import Spec  # noqa: E402
+from repo2ree_conformance.spec import (  # noqa: E402
+    CitedEntity,
+    CitingEntity,
+    EntityRequirement,
+    EntityTrigger,
+    ExclusionRequirement,
+    GuardRequirement,
+    Invariant,
+    MessageRequirement,
+    Spec,
+)
 
 CERTIFICATES = ROOT / ".validation-certificates"
 EXPECTATIONS = ROOT / "conformance/expected-verdicts.toml"
@@ -272,8 +282,12 @@ def dot_svg(source: str) -> str:
     return re.sub(r'font-family="[^"]*"', 'font-family="system-ui,sans-serif"', svg[svg.index("<svg") :])
 
 
-def machine_svg(spec: Spec, name: str, edges: Counter[str], unreached: dict[str, str]) -> str:
+def machine_svg(
+    spec: Spec, name: str, edges: Counter[str] | None = None, unreached: dict[str, str] | None = None
+) -> str:
+    """One machine. With ``edges``, each edge carries how often the receipt's tests took it; without, the spec alone."""
     entity = spec.entities[name]
+    why = {(t.source, target): t.why for t in entity.transitions for target in t.targets if t.why}
     lines = [
         "digraph machine {",
         '  rankdir=LR; bgcolor="transparent"; pad=0.2;',
@@ -289,10 +303,14 @@ def machine_svg(spec: Spec, name: str, edges: Counter[str], unreached: dict[str,
     ]
     for source, target in pairs:
         key = f"{name} {source} -> {target}"
+        if edges is None:
+            tip = f', tooltip="{esc(why[(source, target)])}"' if (source, target) in why else ""
+            lines.append(f'  "{source}" -> "{target}" [color="#475569"{tip}];')
+            continue
         count = edges.get(key, 0)
         if count:
             style = f'label="{count}", color="#0f766e", fontcolor="#0f766e", penwidth=1.6'
-        elif key in unreached:
+        elif unreached and key in unreached:
             style = (
                 f'label="excused", style=dashed, color="#b45309", fontcolor="#b45309", tooltip="{esc(unreached[key])}"'
             )
@@ -404,7 +422,8 @@ def page_zones(declared: zone_map.Zones, problems: list[str]) -> str:
             for g in zone.groups
         )
         parts.append(
-            f'<div class="zone{" is-protected" if zone.protected else ""}"><h3>{esc(zone.name)} {badge}</h3>'
+            f'<div class="zone{" is-protected" if zone.protected else ""}" id="zone-{esc(zone.name)}">'
+            f'<h3><span class="dot zone-{esc(zone.name)}"></span>{esc(zone.name)} {badge}</h3>'
             f'<div class="muted">{esc(zone.summary)}</div>{groups}</div>'
         )
     warn = "".join(f'<p class="state-missing">! {esc(p)}</p>' for p in problems)
@@ -440,7 +459,10 @@ def page_gates(
 ) -> str:
     if not receipt:
         return section(
-            "gates", "Gates", "No behaviour receipt in this clone yet: run <code>just behaviour-gate</code>.", ""
+            "behaviour-gate",
+            "Behaviour gate",
+            "No behaviour receipt in this clone yet: run <code>just behaviour-gate</code>.",
+            "",
         )
     rows = [
         [
@@ -474,27 +496,293 @@ def page_gates(
         + f"<h3>What a receipt does not prove ({len(unreached)} items)</h3>"
         + table(["Unreached by any gated test", "Why"], unreached_rows)
     )
-    return section("gates", "Gates", "What the last behaviour gate accepted, and what its receipt concedes.", body)
+    lede = "What the last behaviour gate accepted, and what its receipt concedes."
+    return section("behaviour-gate", "Behaviour gate", lede, body)
 
 
-def page_behaviour(spec: Spec, edges: Counter[str], rules: Counter[str], unreached: dict[str, str]) -> str:
+TYPES = {"str": "str", "str?": "str | None", "bool": "bool", "bool?": "bool | None", "int": "int", "int?": "int | None"}
+
+
+@dataclass
+class Line:
+    """One line of a rendered declaration: its plain text (to align comments), its markup, and a comment."""
+
+    text: str
+    markup: str = ""
+    note: str = ""
+
+
+def code(lines: list[Line]) -> str:
+    noted = [len(line.text) for line in lines if line.note]
+    column = min(max(noted, default=0), 44) + 2
+    rendered = []
+    for line in lines:
+        markup = line.markup or esc(line.text)
+        if line.note:
+            pad = " " * max(column - len(line.text), 2)
+            markup += f'{pad}<span class="c"># {esc(line.note)}</span>'
+        rendered.append(markup)
+    return '<pre class="code">' + "\n".join(rendered) + "</pre>"
+
+
+def kw(word: str) -> str:
+    return f'<span class="k">{esc(word)}</span>'
+
+
+def quoted(value: str) -> str:
+    return f'<span class="s">"{esc(value)}"</span>'
+
+
+def required_note(states: list[str], everywhere: list[str]) -> str:
+    if not states:
+        return ""
+    return "required" if set(states) == set(everywhere) else "required in " + ", ".join(states)
+
+
+def entity_code(spec: Spec, name: str) -> str:
+    entity = spec.entities[name]
+    source = "witnessed from Git" if entity.evidence == "git" else "from its journal"
+    lines = [
+        Line(
+            f"# owned by {entity.owner} · {source} · keyed by {entity.key} · partitioned by {entity.partition}",
+            f'<span class="c"># owned by {esc(entity.owner)} · {source} · keyed by {esc(entity.key)} · '
+            f"partitioned by {esc(entity.partition)}</span>",
+        ),
+        Line(f"class {name}(Entity):", f"{kw('class')} <b>{esc(name)}</b>(Entity):"),
+        Line(f'    """{entity.summary}"""', f'    <span class="s">"""{esc(entity.summary)}"""</span>'),
+        Line("    state: Literal[", f"    state: {kw('Literal')}["),
+    ]
+    lines += [
+        Line(f'        "{state}",', f"        {quoted(state)},", description)
+        for state, description in entity.states.items()
+    ]
+    lines.append(Line("    ]"))
+    states = list(entity.states)
+    for fact, kind in entity.facts.items():
+        where = [state for state in states if fact in entity.required.get(state, ())]
+        lines.append(Line(f"    {fact}: {TYPES[kind]}", note=required_note(where, states)))
+    return code(lines)
+
+
+def boundary_code(spec: Spec, name: str) -> str:
+    boundary = spec.boundaries[name]
+    header = (
+        f"# sent by {boundary.sender} to {boundary.receiver} · recorded by the sender · "
+        f"keyed by {boundary.key} · partitioned by {boundary.partition}"
+    )
+    lines = [
+        Line(header, f'<span class="c">{esc(header)}</span>'),
+        Line(f"class {name}(Boundary):", f"{kw('class')} <b>{esc(name)}</b>(Boundary):"),
+        Line(f'    """{boundary.summary}"""', f'    <span class="s">"""{esc(boundary.summary)}"""</span>'),
+    ]
+    for message, description in boundary.messages.items():
+        role = "Request" if message == boundary.request else "Response"
+        facts = boundary.facts.get(message, {})
+        opening = f"    class {message}({role}):"
+        markup = f"    {kw('class')} <b>{esc(message)}</b>({role}):"
+        if not facts:
+            lines.append(Line(opening + " ...", markup + " ...", description))
+            continue
+        lines.append(Line(opening, markup, description))
+        required = boundary.required.get(message, ())
+        lines += [
+            Line(f"        {fact}: {TYPES[kind]}", note="required" if fact in required else "")
+            for fact, kind in facts.items()
+        ]
+    abandon = "    class abandoned(Outcome): ..."
+    lines.append(
+        Line(
+            abandon, f"    {kw('class')} <b>abandoned</b>(Outcome): ...", "the sender stopped waiting; carries a reason"
+        )
+    )
+    return code(lines)
+
+
+def page_vocabulary(spec: Spec) -> str:
+    processes: dict[str, list[str]] = defaultdict(list)
+    for component in spec.components.values():
+        processes[component.process].append(component.name)
+    process_rows = [
+        [
+            f"<code>{esc(process)}</code>",
+            "<br>".join(
+                f"<code>{esc(member)}</code> <span class='muted'>{esc(spec.components[member].summary)}</span>"
+                for member in sorted(members)
+            ),
+        ]
+        for process, members in sorted(processes.items())
+    ]
+    entities = "".join(f'<div class="decl">{entity_code(spec, name)}</div>' for name in sorted(spec.entities))
+    boundaries = "".join(f'<div class="decl">{boundary_code(spec, name)}</div>' for name in sorted(spec.boundaries))
+    body = (
+        "<h3>Processes</h3>"
+        '<p class="lede">A journal speaks for every component its process hosts, and is named after the process.</p>'
+        + table(["Process", "Components"], process_rows)
+        + "<h3>Entities</h3>"
+        '<p class="lede">Each change of state is one record, written by the owner after its own state changed. '
+        "A fact is required where a rule cannot decide without it; the rest may be absent. Owners may record "
+        "more than this; it is listed as not judged and never part of a verdict.</p>" + entities + "<h3>Boundaries</h3>"
+        '<p class="lede">The sender records the request before it leaves and the one outcome it observed.</p>'
+        + boundaries
+    )
+    lede = (
+        f"What owners record, from <code>specifications/behaviour/vocabulary/</code>; published to the product as "
+        "<code>contracts/behaviour/events.schema.json</code> "
+        f"(vocabulary <code>{esc(spec.vocabulary_digest[:19])}…</code>)."
+    )
+    return section("vocabulary", "Vocabulary", lede, body)
+
+
+def literal(value: Any) -> str:
+    """A condition's value as written in the specification: names bare, anything else (``""``, ``false``) as JSON."""
+    return value if isinstance(value, str) and value else json.dumps(value)
+
+
+def condition(name: str, value: Any) -> str:
+    if isinstance(value, dict) and "not" in value:
+        return f"{name} ≠ {literal(value['not'])}"
+    if isinstance(value, dict) and "in" in value:
+        return f"{name} ∈ {{{', '.join(map(literal, value['in']))}}}"
+    return f"{name} = {literal(value)}"
+
+
+def where(conditions: dict[str, Any]) -> str:
+    return " where " + ", ".join(condition(name, value) for name, value in conditions.items()) if conditions else ""
+
+
+def trigger_text(invariant: Invariant) -> str:
+    when = invariant.when
+    if isinstance(when, EntityTrigger):
+        source = f" from {' | '.join(when.source)}" if when.source else ""
+        return f"{when.entity}{source} → {' | '.join(when.to)}{where(when.where)}"
+    return f"{when.boundary}.{when.message}{where(when.where)}"
+
+
+def requirement_text(spec: Spec, invariant: Invariant) -> str:
+    require = invariant.require
+    if isinstance(require, GuardRequirement):
+        return where(require.where).removeprefix(" where ")
+    if isinstance(require, ExclusionRequirement):
+        partition = spec.entities[require.entity].partition
+        return f"no {require.entity} in {' | '.join(require.in_states)} with the same {partition}"
+    if isinstance(require, EntityRequirement | MessageRequirement):
+        key = "its own key" if require.key_from == "$key" else require.key_from
+        before = ", before it" if require.order == "before" else ""
+        if isinstance(require, EntityRequirement):
+            reached = " | ".join(require.reached)
+            return f"{require.entity} keyed by {key} reached {reached}{where(require.where)}{before}"
+        return f"{require.boundary}.{require.message} keyed by {key} was recorded{before}"
+    return f"eventually {' | '.join(invariant.eventually)}"
+
+
+SETTLES = {
+    True: "must be terminal when its owner's journal closes",
+    "final": "must be terminal when its owner's journal closes for good",
+    False: "no close settles it",
+}
+
+
+def page_specification(spec: Spec) -> str:
+    machines = []
+    for name, entity in sorted(spec.entities.items()):
+        edges = sum(len(targets) for targets in entity.edges.values())
+        facts = (
+            f"starts in {' | '.join(entity.initial)} · ends in {' | '.join(entity.terminal) or 'nothing'} · "
+            f"{edges} edges · {SETTLES[entity.settles_before_close]}"
+        )
+        reasons = [(t.source, ", ".join(t.targets), t.why) for t in entity.transitions if t.why]
+        why = (
+            "<details><summary>Why these edges</summary><ul>"
+            + "".join(f"<li><code>{esc(s)} → {esc(ts)}</code>: {esc(w)}</li>" for s, ts, w in reasons)
+            + "</ul></details>"
+            if reasons
+            else ""
+        )
+        machines.append(
+            f'<div class="card"><b>{esc(name)}</b> <span class="muted">owned by {esc(entity.owner)}</span>'
+            f'<div class="muted">{esc(facts)}</div>'
+            f'<div class="svgwrap">{machine_svg(spec, name)}</div>{why}</div>'
+        )
+    citations = []
+    for boundary in spec.boundaries.values():
+        for cite in boundary.cites:
+            by, cited = cite.by, cite.cited
+            citing = (
+                f"{by.entity} reaching {by.reached}"
+                if isinstance(by, CitingEntity)
+                else f"{boundary.name}.{by.message}"
+            )
+            named = (
+                f"{cited.entity} reaching {cited.reached} (its {cited.fact})"
+                if isinstance(cited, CitedEntity)
+                else f"the {boundary.name}.{cited.message} record"
+            )
+            citations.append([f"<code>{esc(boundary.name)}</code>", esc(f"{citing} names {named} in {by.fact}")])
+    patterns: dict[str, list[Any]] = defaultdict(list)
+    for invariant in spec.invariants:
+        patterns[invariant.pattern].append(invariant)
+    invariants = "".join(
+        f"<h4>{esc(pattern)}</h4>"
+        + table(
+            ["Rule", "When", "Then", "Meaning"],
+            [
+                [
+                    f"<code>{esc(i.id)}</code>",
+                    f"<code>{esc(trigger_text(i))}</code>",
+                    f"<code>{esc(requirement_text(spec, i))}</code>",
+                    esc(i.summary),
+                ]
+                for i in rules
+            ],
+        )
+        for pattern, rules in sorted(patterns.items())
+    )
+    body = (
+        '<h3>System map</h3><div class="diagram svgwrap">' + system_svg(spec) + "</div><h3>State machines</h3>"
+        '<p class="lede">Where an instance starts, which edges it may take, and when it must have settled. '
+        "Every other edge is a violation; nothing may leave a terminal state.</p>"
+        + f'<div class="machines">{"".join(machines)}</div>'
+        + "<h3>Citations</h3>"
+        '<p class="lede">The only order the checker trusts across sources: a record that names another was written '
+        "after it. Without the citation, a rule that needs the order is inconclusive.</p>"
+        + table(["Boundary", "Citation"], citations)
+        + "<h3>Invariants</h3>"
+        '<p class="lede">Cross-entity rules, each in one fixed pattern. A condition never matches an absent fact.</p>'
+        + invariants
+    )
+    lede = "What the checker holds the evidence to, from <code>specifications/behaviour/</code>: no test results here."
+    return section("specification", "Specification", lede, body)
+
+
+def suite_extras(runs: list[Path]) -> Counter[tuple[str, str]]:
+    """What the receipt's tests recorded beyond the vocabulary, as each test's verdicts list it."""
+    found: Counter[tuple[str, str]] = Counter()
+    for run in runs:
+        for report in run.glob("tests/*/verification/conformance.json"):
+            for extra in json.loads(report.read_text()).get("extras", []):
+                found[(extra["subject"], extra.get("fact") or "")] += int(extra["count"])
+    return found
+
+
+def page_coverage(
+    spec: Spec, edges: Counter[str], rules: Counter[str], unreached: dict[str, str], extras: Counter[tuple[str, str]]
+) -> str:
     legend = (
         '<p class="legend"><span class="ok">— reached (count)</span><span class="ex">- - excused</span>'
         '<span class="no">- - unreached, not excused</span></p>'
     )
     machines = "".join(
-        f'<div class="card"><b>{esc(name)}</b> '
-        f'<span class="muted">owned by {esc(entity.owner)}, evidence from {esc(entity.evidence)}</span>'
-        f'<div class="muted">{esc(entity.summary)}</div>'
+        f'<div class="card"><b>{esc(name)}</b> <span class="muted">owned by {esc(entity.owner)}</span>'
         f'<div class="svgwrap">{machine_svg(spec, name, edges, unreached)}</div></div>'
-        for name, entity in spec.entities.items()
+        for name, entity in sorted(spec.entities.items())
     )
     boundary_rows = [
         [
             f"<code>{esc(b.name)}</code>",
-            esc(f"{b.sender} → {b.receiver}"),
-            esc(b.summary),
-            " ".join(f'<span class="badge">{esc(m)} · {edges.get(f"{b.name}: {m}", 0)}</span>' for m in b.messages),
+            " ".join(
+                f'<span class="badge">{esc(m)} · {edges.get(f"{b.name}: {m}", 0)}</span>'
+                for m in [*b.messages, "abandoned"]
+            ),
         ]
         for b in spec.boundaries.values()
     ]
@@ -510,23 +798,31 @@ def page_behaviour(spec: Spec, edges: Counter[str], rules: Counter[str], unreach
                 else '<span class="no">0</span>'
             )
         )
-        invariant_rows.append(
-            [f"<code>{esc(invariant.id)}</code>", esc(invariant.pattern), esc(invariant.summary), status]
-        )
+        invariant_rows.append([f"<code>{esc(invariant.id)}</code>", esc(invariant.pattern), status])
+    extra_rows = [
+        [f"<code>{esc(subject)}</code>", f"<code>{esc(fact)}</code>" if fact else "the whole subject", str(count)]
+        for (subject, fact), count in sorted(extras.items())
+    ]
     body = (
-        '<h3>System map</h3><div class="diagram svgwrap">'
-        + system_svg(spec)
-        + "</div>"
-        + "<h3>State machines, with how often the last gated suite exercised each edge</h3>"
+        "<h3>State machines, with how often each edge was taken</h3>"
         + legend
         + f'<div class="machines">{machines}</div>'
-        + "<h3>Boundaries</h3>"
-        + table(["Boundary", "Between", "Summary", "Messages · times sent"], boundary_rows)
-        + "<h3>Invariants, with how often the last gated suite triggered each</h3>"
-        + table(["Rule", "Pattern", "Summary", "Triggered"], invariant_rows)
+        + "<h3>Boundaries, with how often each message was recorded</h3>"
+        + table(["Boundary", "Messages"], boundary_rows)
+        + "<h3>Invariants, with how often each was triggered</h3>"
+        + table(["Rule", "Pattern", "Triggered"], invariant_rows)
+        + "<h3>Recorded beyond the vocabulary</h3>"
+        + (
+            table(["Subject", "Fact", "Records"], extra_rows)
+            if extra_rows
+            else '<p class="muted">Nothing: every record the tests left is declared in the vocabulary.</p>'
+        )
     )
-    lede = "From <code>specifications/behaviour/</code>, coloured by the evidence behind the last behaviour receipt."
-    return section("behaviour", "Behaviour", lede, body)
+    lede = (
+        "How the tests behind the last behaviour receipt exercised the specification, summed over their recordings. "
+        'Excused items are listed with their reasons on the <a href="behaviour-gate.html">Behaviour gate</a> page.'
+    )
+    return section("coverage", "Coverage", lede, body)
 
 
 def diagram_origin(bundle: Bundle, path: Path) -> str:
@@ -617,8 +913,8 @@ def page_recipes(listed: list[dict[str, Any]], bundle: Bundle) -> str:
         "Prerequisites point to the recipe that consumes them.",
     )
     return section(
-        "recipes",
-        "Recipes",
+        "just-recipes",
+        "Just recipes",
         f"{public} public recipes and {len(listed) - public} private ones, from <code>just --dump</code>.",
         body,
     )
@@ -707,13 +1003,51 @@ def frame(page: Page, pages: list[Page], now: Head) -> str:
     )
 
 
-def landing(now: Head, found: list[Certificate], pages: list[Page]) -> str:
+def file_tree(declared: zone_map.Zones, files: list[str]) -> str:
+    """The repository's top level, alphabetically, each entry coloured by the zones of the files under it."""
+    entries: dict[str, Counter[str]] = defaultdict(Counter)
+    for path in files:
+        top, separator, _ = path.partition("/")
+        found = declared.entry(path)
+        entries[top + separator][found.zone if found else "unclaimed"] += 1
+    order = [zone.name for zone in declared.zones]
+    rows = []
+    names = sorted(entries, key=lambda name: name.lstrip(".").lower())
+    for index, name in enumerate(names):
+        zones = sorted(
+            entries[name], key=lambda zone: (-entries[name][zone], order.index(zone) if zone in order else 99)
+        )
+        main = zones[0]
+        branch = "└──" if index == len(names) - 1 else "├──"
+        dots = "".join(f'<span class="dot zone-{esc(zone)}"></span>' for zone in zones)
+        title = ", ".join(f"{zone} {entries[name][zone]}" for zone in zones)
+        rows.append(
+            f'<a class="tree-row" href="zones.html#zone-{esc(main)}" title="{esc(title)}">'
+            f'<span class="branch">{branch}</span><span class="name zone-text-{esc(main)}">{esc(name)}</span>'
+            f'<span class="dots">{dots}</span></a>'
+        )
+    legend = "".join(
+        f'<a class="legend-item" href="zones.html#zone-{esc(zone.name)}">'
+        f'<span class="dot zone-{esc(zone.name)}"></span>'
+        f"{esc(zone.name)}{' (protected)' if zone.protected else ''}</a>"
+        for zone in declared.zones
+    )
+    return (
+        '<section><h2>Repository</h2><p class="lede">The top level, coloured by zone; a directory holding more '
+        "than one zone shows a dot for each, largest first. "
+        'The <a href="zones.html">Zones</a> page has the details.</p>'
+        f'<div class="tree-legend">{legend}</div><div class="tree"><div class="tree-root">repo2ree/</div>'
+        f"{''.join(rows)}</div></section>"
+    )
+
+
+def landing(now: Head, found: list[Certificate], pages: list[Page], tree: str) -> str:
     cards = "".join(
         f'<a class="card link" href="{p.slug}.html"><div class="v">{esc(p.title)}</div>'
         f'<div class="muted">{p.teaser}</div></a>'
         for p in pages
     )
-    return page_overview(now, found) + f'<section><h2>Pages</h2><div class="cards">{cards}</div></section>'
+    return page_overview(now, found) + tree + f'<section><h2>Pages</h2><div class="cards">{cards}</div></section>'
 
 
 def bundle_name(now: Head) -> str:
@@ -764,6 +1098,7 @@ def build(output: Path | None) -> Path:
     found, receipt = certificates(now)
     runs, tests = bundle_evidence(bundle, receipt)
     edges, rules = suite_coverage(runs)
+    extras = suite_extras(runs)
     _, unreached = excuses()
     spec = load_spec()
     listed = recipes()
@@ -780,29 +1115,46 @@ def build(output: Path | None) -> Path:
             page_zones(declared, zone_map.problems(declared, zone_map.tracked())),
         ),
         Page(
-            "gates",
-            "Gates",
+            "behaviour-gate",
+            "Behaviour gate",
             f"{len((receipt or {}).get('tests', []))} tests in the last receipt; "
             f"{coverage.get('reached', '?')} of {coverage.get('declared', '?')} specified items reached",
             page_gates(receipt, unreached, bundle, tests),
         ),
         Page(
-            "behaviour",
-            "Behaviour",
-            f"{len(spec.entities)} state machines, {len(spec.boundaries)} boundary, {len(spec.invariants)} invariants",
-            page_behaviour(spec, edges, rules, unreached),
+            "vocabulary",
+            "Vocabulary",
+            f"{len(spec.entities)} entities and {len(spec.boundaries)} boundary owners record, "
+            f"{sum(len(e.facts) for e in spec.entities.values())} entity facts",
+            page_vocabulary(spec),
+        ),
+        Page(
+            "specification",
+            "Specification",
+            f"{len(spec.entities)} state machines, "
+            f"{sum(len(t) for e in spec.entities.values() for t in e.edges.values())} edges, "
+            f"{len(spec.invariants)} invariants",
+            page_specification(spec),
+        ),
+        Page(
+            "coverage",
+            "Coverage",
+            f"How the last receipt's tests exercised the specification: "
+            f"{coverage.get('reached', '?')} of {coverage.get('declared', '?')} items reached",
+            page_coverage(spec, edges, rules, unreached, extras),
         ),
         Page("architecture", "Architecture", "Import graphs of the backend and the GUI", page_architecture(bundle)),
         Page(
-            "recipes",
-            "Recipes",
+            "just-recipes",
+            "Just recipes",
             f"{sum(not r['private'] for r in listed)} public recipes",
             page_recipes(listed, bundle),
         ),
         Page("configuration", "Configuration", f"{len(environment)} environment variables", page_configuration()),
         Page("api", "API", f"{operations} operations", page_api()),
     ]
-    home = Page("index", "Overview", "", landing(now, found, pages) + page_provenance(facts))
+    tree = file_tree(declared, zone_map.tracked())
+    home = Page("index", "Overview", "", landing(now, found, pages, tree) + page_provenance(facts))
     everything = [home, *pages]
     for page in everything:
         (target / f"{page.slug}.html").write_text(frame(page, everything, now), encoding="utf-8")

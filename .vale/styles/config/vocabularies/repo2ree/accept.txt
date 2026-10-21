@@ -86,6 +86,7 @@ uvicorn
 jsdom
 Caddy
 Graphviz
+Grafana
 Typst
 Slidev
 PDFs?
