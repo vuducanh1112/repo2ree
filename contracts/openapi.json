@@ -15689,6 +15689,6 @@
   ],
   "externalDocs": {
     "description": "End-to-end API authoring walkthrough (real curl session, CI-asserted)",
-    "url": "https://codeberg.org/vuducanh1112/repo2ree/src/branch/main/api/tests/e2e/README.md"
+    "url": "https://codeberg.org/vuducanh1112/repo2ree/src/branch/main/api/tests/e2e/api_walkthrough.py"
   }
 }

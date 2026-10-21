@@ -132,10 +132,10 @@ app = FastAPI(
     openapi_tags=_OPENAPI_TAGS,
     # externalDocs must be an absolute URL — the document is consumed away from
     # the repo (fetched from a live server), so a repo-relative path would
-    # dangle. Points at the public Codeberg mirror's walkthrough.
+    # dangle. Points at the walkthrough script on the public Codeberg mirror.
     openapi_external_docs={
         "description": "End-to-end API authoring walkthrough (real curl session, CI-asserted)",
-        "url": "https://codeberg.org/vuducanh1112/repo2ree/src/branch/main/api/tests/e2e/README.md",
+        "url": "https://codeberg.org/vuducanh1112/repo2ree/src/branch/main/api/tests/e2e/api_walkthrough.py",
     },
     lifespan=lifespan,
 )

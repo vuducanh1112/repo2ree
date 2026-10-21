@@ -1,4 +1,4 @@
-"""Durable, owner-written behaviour journals, as ``contracts/behaviour/JOURNAL.md`` states them.
+"""Durable, owner-written behaviour journals.
 
 Each process writes one journal file per epoch: ``<process>-<epoch>.ndjson``.
 Records carry a contiguous sequence number assigned here, so a reader can prove

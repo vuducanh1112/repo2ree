@@ -1,7 +1,7 @@
 """Typed records of the behaviour vocabulary, for the owners that journal them.
 
-The contract is ``contracts/behaviour`` (``events.schema.json`` and ``JOURNAL.md``),
-which the specification publishes and the product never edits. This module is the
+The contract is ``contracts/behaviour/events.schema.json``, which the specification
+publishes and the product never edits. This module is the
 product's own reading of it: owners call these functions instead of naming subjects,
 owners, states, and facts as strings, so a misspelled word or a mistyped fact is a type
 error here. Nothing in it is generated, and nothing checks it against the specification

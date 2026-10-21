@@ -8,7 +8,7 @@ check-docs: lint-docs check-doc-links-local
 [group('Documentation')]
 lint-docs:
     @echo "Linting docs with Vale..."
-    vale docs presentations README.md
+    vale docs
 
 # Download configured Vale styles.
 [group('Documentation')]
@@ -20,13 +20,13 @@ sync-doc-styles:
 [group('Documentation')]
 check-doc-links-local:
     @echo "Checking local documentation links and heading fragments..."
-    lychee --offline --include-fragments README.md docs presentations
+    lychee --offline --include-fragments docs
 
 # Check all documentation links, including external URLs.
 [group('Documentation')]
 check-doc-links-external:
     @echo "Checking all documentation links, including external URLs..."
-    lychee --cache --cache-exclude-status '429, 500..=599' --exclude-all-private --include-fragments --max-retries 3 --timeout 20 --no-progress README.md docs presentations
+    lychee --cache --cache-exclude-status '429, 500..=599' --exclude-all-private --include-fragments --max-retries 3 --timeout 20 --no-progress docs
 
 # Build the curated public documentation site.
 [group('Documentation')]
