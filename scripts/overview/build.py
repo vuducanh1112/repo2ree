@@ -560,8 +560,26 @@ def entity_code(spec: Spec, name: str) -> str:
     states = list(entity.states)
     for fact, kind in entity.facts.items():
         where = [state for state in states if fact in entity.required.get(state, ())]
-        lines.append(Line(f"    {fact}: {TYPES[kind]}", note=required_note(where, states)))
+        note = required_note(where, states)
+        if fact not in entity.meanings:
+            lines.append(Line(f"    {fact}: {TYPES[kind]}", note=note))
+            continue
+        optional = " | None" if kind.endswith("?") else ""
+        lines.append(Line(f"    {fact}: Literal[", f"    {esc(fact)}: {kw('Literal')}[", note))
+        lines += value_lines(entity.meanings[fact], entity.groups.get(fact, {}))
+        lines.append(Line(f"    ]{optional}"))
     return code(lines)
+
+
+def value_lines(meanings: dict[str, str], groups: dict[str, tuple[str, ...]]) -> list[Line]:
+    """A fact's listed values with what each means, under a comment naming each group."""
+    sections = list(groups.items()) or [("", tuple(meanings))]
+    lines: list[Line] = []
+    for group, values in sections:
+        if group:
+            lines.append(Line(f"        # {group}", f'        <span class="c"># {esc(group)}</span>'))
+        lines += [Line(f'        "{value}",', f"        {quoted(value)},", meanings[value]) for value in values]
+    return lines
 
 
 def boundary_code(spec: Spec, name: str) -> str:
@@ -638,30 +656,50 @@ def literal(value: Any) -> str:
     return value if isinstance(value, str) and value else json.dumps(value)
 
 
-def condition(name: str, value: Any) -> str:
+type Groups = dict[str, dict[str, tuple[str, ...]]]
+
+
+def whole_groups(values: list[Any], groups: dict[str, tuple[str, ...]]) -> list[str]:
+    """The groups that together list exactly ``values``, in declaration order; none when no such groups exist."""
+    named = [group for group, members in groups.items() if set(members) <= set(values)]
+    covered = {value for group in named for value in groups[group]}
+    return named if covered == set(values) else []
+
+
+def condition(name: str, value: Any, groups: Groups) -> str:
+    """A condition as the specification states it: a value list that is whole groups reads as those groups."""
     if isinstance(value, dict) and "not" in value:
         return f"{name} ≠ {literal(value['not'])}"
     if isinstance(value, dict) and "in" in value:
+        if named := whole_groups(value["in"], groups.get(name, {})):
+            return f"{name} ∈ {' ∪ '.join(named)}"  # noqa: RUF001 — the union sign, as the page shows it
         return f"{name} ∈ {{{', '.join(map(literal, value['in']))}}}"
     return f"{name} = {literal(value)}"
 
 
-def where(conditions: dict[str, Any]) -> str:
-    return " where " + ", ".join(condition(name, value) for name, value in conditions.items()) if conditions else ""
+def where(conditions: dict[str, Any], groups: Groups) -> str:
+    if not conditions:
+        return ""
+    return " where " + ", ".join(condition(name, value, groups) for name, value in conditions.items())
 
 
-def trigger_text(invariant: Invariant) -> str:
+def entity_groups(spec: Spec, entity: str) -> Groups:
+    return spec.entities[entity].groups if entity in spec.entities else {}
+
+
+def trigger_text(spec: Spec, invariant: Invariant) -> str:
     when = invariant.when
     if isinstance(when, EntityTrigger):
         source = f" from {' | '.join(when.source)}" if when.source else ""
-        return f"{when.entity}{source} → {' | '.join(when.to)}{where(when.where)}"
-    return f"{when.boundary}.{when.message}{where(when.where)}"
+        return f"{when.entity}{source} → {' | '.join(when.to)}{where(when.where, entity_groups(spec, when.entity))}"
+    return f"{when.boundary}.{when.message}{where(when.where, {})}"
 
 
 def requirement_text(spec: Spec, invariant: Invariant) -> str:
     require = invariant.require
     if isinstance(require, GuardRequirement):
-        return where(require.where).removeprefix(" where ")
+        trigger = invariant.when.entity if isinstance(invariant.when, EntityTrigger) else ""
+        return where(require.where, entity_groups(spec, trigger)).removeprefix(" where ")
     if isinstance(require, ExclusionRequirement):
         partition = spec.entities[require.entity].partition
         return f"no {require.entity} in {' | '.join(require.in_states)} with the same {partition}"
@@ -670,9 +708,75 @@ def requirement_text(spec: Spec, invariant: Invariant) -> str:
         before = ", before it" if require.order == "before" else ""
         if isinstance(require, EntityRequirement):
             reached = " | ".join(require.reached)
-            return f"{require.entity} keyed by {key} reached {reached}{where(require.where)}{before}"
+            conditions = where(require.where, entity_groups(spec, require.entity))
+            return f"{require.entity} keyed by {key} reached {reached}{conditions}{before}"
         return f"{require.boundary}.{require.message} keyed by {key} was recorded{before}"
     return f"eventually {' | '.join(invariant.eventually)}"
+
+
+def rule_values(spec: Spec) -> tuple[dict[tuple[str, str, str], list[str]], dict[str, list[str]]]:
+    """((entity, fact, value) -> the rules whose trigger names that value, entity -> the rules naming none of its).
+
+    A requirement's conditions on another entity name values of that entity's facts; a guard's
+    condition is what the trigger must satisfy, so the guard applies to every value its trigger admits.
+    """
+    named: dict[tuple[str, str, str], list[str]] = defaultdict(list)
+    every: dict[str, list[str]] = defaultdict(list)
+
+    def collect(rule: str, entity: str, conditions: dict[str, Any]) -> set[str]:
+        listed = spec.entities[entity].allowed if entity in spec.entities else {}
+        facts = set()
+        for fact, value in conditions.items():
+            if fact not in listed:
+                continue
+            facts.add(fact)
+            if isinstance(value, dict) and "in" in value:
+                values = set(value["in"])
+            elif isinstance(value, dict) and "not" in value:
+                values = set(listed[fact]) - {value["not"]}
+            else:
+                values = {value}
+            for item in values:
+                named[(entity, fact, item)].append(rule)
+        return facts
+
+    for invariant in spec.invariants:
+        when, require = invariant.when, invariant.require
+        names_none = isinstance(when, EntityTrigger) and not collect(invariant.id, when.entity, when.where)
+        if isinstance(when, EntityTrigger) and names_none and spec.entities[when.entity].allowed:
+            every[when.entity].append(invariant.id)
+        if isinstance(require, EntityRequirement):
+            collect(invariant.id, require.entity, require.where)
+    for name, entity in spec.entities.items():
+        if entity.allowed:
+            every[name].insert(0, f"machine:{name}")
+    return named, every
+
+
+def listed_values(spec: Spec) -> str:
+    """Each value a fact lists, its group and meaning, and which rules name it."""
+    named, every = rule_values(spec)
+    out = []
+    for name, entity in sorted(spec.entities.items()):
+        for fact, meanings in entity.meanings.items():
+            group_of = {value: group for group, values in entity.groups.get(fact, {}).items() for value in values}
+            rows = [
+                [
+                    esc(group_of.get(value, "")),
+                    f"<code>{esc(value)}</code>",
+                    esc(meaning),
+                    " ".join(f"<code>{esc(rule)}</code>" for rule in named.get((name, fact, value), []))
+                    or '<span class="muted">none</span>',
+                ]
+                for value, meaning in meanings.items()
+            ]
+            applies = " ".join(f"<code>{esc(rule)}</code>" for rule in every.get(name, []))
+            out.append(
+                f"<h4>{esc(name)}.{esc(fact)}</h4>"
+                f'<p class="lede">Every {esc(name)}, whatever its {esc(fact)}: {applies}</p>'
+                + table(["Group", "Value", "Meaning", "Rules naming it"], rows)
+            )
+    return "".join(out)
 
 
 SETTLES = {
@@ -728,7 +832,7 @@ def page_specification(spec: Spec) -> str:
             [
                 [
                     f"<code>{esc(i.id)}</code>",
-                    f"<code>{esc(trigger_text(i))}</code>",
+                    f"<code>{esc(trigger_text(spec, i))}</code>",
                     f"<code>{esc(requirement_text(spec, i))}</code>",
                     esc(i.summary),
                 ]
@@ -749,6 +853,10 @@ def page_specification(spec: Spec) -> str:
         + "<h3>Invariants</h3>"
         '<p class="lede">Cross-entity rules, each in one fixed pattern. A condition never matches an absent fact.</p>'
         + invariants
+        + "<h3>Listed values</h3>"
+        '<p class="lede">The values a fact may take, as its declaration lists and groups them, and the rules '
+        "whose trigger or requirement names each one. A value no rule names is still checked by the rules "
+        "that apply to every value.</p>" + listed_values(spec)
     )
     lede = "What the checker holds the evidence to, from <code>specifications/behaviour/</code>: no test results here."
     return section("specification", "Specification", lede, body)
