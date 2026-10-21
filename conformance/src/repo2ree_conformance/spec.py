@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Collection, Iterable, Mapping
 from hashlib import sha256
 from typing import Annotated, Any, Literal, Self
 
@@ -50,6 +50,9 @@ class FactDeclaration(SpecModel):
     required: bool = False
     # Present (and not null) on every transition into these states; entities only.
     required_in: tuple[Name, ...] = ()
+    # The only values the fact may take, each with what it means; or the same values, grouped.
+    values: dict[Name, str] = {}
+    groups: dict[Name, dict[Name, str]] = {}
 
     @field_validator("required_in", mode="before")
     @classmethod
@@ -62,12 +65,37 @@ class FactDeclaration(SpecModel):
             raise ValueError("a fact is either required everywhere or required_in some states")
         return self
 
+    @model_validator(mode="after")
+    def coherent_values(self) -> Self:
+        if self.values and self.groups:
+            raise ValueError("a fact lists its values or groups them, not both")
+        if self.allowed and self.type.rstrip("?") != "str":
+            raise ValueError("only a str fact lists its values")
+        grouped = [value for group in self.groups.values() for value in group]
+        if len(grouped) != len(set(grouped)):
+            raise ValueError("a value belongs to one group")
+        return self
+
+    @property
+    def allowed(self) -> tuple[str, ...]:
+        return tuple(self.meanings)
+
+    @property
+    def meanings(self) -> dict[str, str]:
+        """Each listed value with what it means, in declaration order, whether listed or grouped."""
+        return {**self.values, **{value: meaning for group in self.groups.values() for value, meaning in group.items()}}
+
 
 type FactEntry = FactType | FactDeclaration
 
 
 def fact_types(declared: dict[str, FactEntry]) -> dict[str, FactType]:
     return {name: entry if isinstance(entry, str) else entry.type for name, entry in declared.items()}
+
+
+def allowed_values(declared: dict[str, FactEntry]) -> dict[str, tuple[str, ...]]:
+    """The facts that list their values, with those values."""
+    return {name: entry.allowed for name, entry in declared.items() if not isinstance(entry, str) and entry.allowed}
 
 
 class Transition(SpecModel):
@@ -105,6 +133,10 @@ class EntitySpec(SpecModel):
     facts: dict[Name, FactType] = {}
     # The facts every transition into a state must carry, by state.
     required: dict[Name, tuple[Name, ...]] = {}
+    # The only values a fact may take, for the facts that list them; what each means; and how they group.
+    allowed: dict[Name, tuple[str, ...]] = {}
+    meanings: dict[Name, dict[str, str]] = {}
+    groups: dict[Name, dict[Name, tuple[str, ...]]] = {}
     transitions: tuple[Transition, ...]
 
     @field_validator("initial", mode="before")
@@ -226,6 +258,8 @@ class BoundarySpec(SpecModel):
     facts: dict[Name, dict[Name, FactType]] = {}
     # The facts every record of a message must carry, by message.
     required: dict[Name, tuple[Name, ...]] = {}
+    # The only values a fact may take, by message, for the facts that list them.
+    allowed: dict[Name, dict[Name, tuple[str, ...]]] = {}
     # Records of the exchange and of an entity keyed like it that name each other:
     # the only way the checker orders evidence across sources.
     cites: tuple[Citation, ...] = ()
@@ -270,6 +304,14 @@ class EntityVocabulary(SpecModel):
     states: dict[Name, str]
     facts: dict[Name, FactEntry] = {}
 
+    def fact_groups(self) -> dict[str, dict[str, tuple[str, ...]]]:
+        """Each fact that groups its values, with the values of each group."""
+        return {
+            name: {group: tuple(values) for group, values in entry.groups.items()}
+            for name, entry in self.facts.items()
+            if not isinstance(entry, str) and entry.groups
+        }
+
     def entity_fields(self) -> dict[str, Any]:
         required: dict[str, list[str]] = defaultdict(list)
         for fact, entry in self.facts.items():
@@ -278,7 +320,17 @@ class EntityVocabulary(SpecModel):
             for state in self.states if entry.required else entry.required_in:
                 required[state].append(fact)
         fields = self.model_dump(exclude={"kind", "facts"})
-        return fields | {"facts": fact_types(self.facts), "required": {s: tuple(f) for s, f in required.items()}}
+        return fields | {
+            "facts": fact_types(self.facts),
+            "required": {s: tuple(f) for s, f in required.items()},
+            "allowed": allowed_values(self.facts),
+            "meanings": {
+                name: entry.meanings
+                for name, entry in self.facts.items()
+                if not isinstance(entry, str) and entry.meanings
+            },
+            "groups": self.fact_groups(),
+        }
 
 
 class BoundaryVocabulary(SpecModel):
@@ -312,6 +364,9 @@ class BoundaryVocabulary(SpecModel):
         return fields | {
             "facts": {message: fact_types(facts) for message, facts in self.facts.items()},
             "required": {message: facts for message, facts in required.items() if facts},
+            "allowed": {
+                message: allowed for message, facts in self.facts.items() if (allowed := allowed_values(facts))
+            },
         }
 
 
@@ -431,10 +486,13 @@ class Spec(SpecModel):
     @property
     def vocabulary(self) -> dict[str, Any]:
         """The contract owners emit against, without the rules: what ``contracts/behaviour`` publishes."""
-        entity_fields = ("owner", "key", "partition", "evidence", "summary", "states", "facts", "required")
+        entity_fields = (
+            *("owner", "key", "partition", "evidence", "summary", "states"),
+            *("facts", "required", "allowed", "meanings", "groups"),
+        )
         boundary_fields = (
             *("sender", "receiver", "key", "partition", "summary", "request", "responses", "messages"),
-            *("facts", "required"),
+            *("facts", "required", "allowed"),
         )
         dumped = self.model_dump(mode="json")
         return {
@@ -552,7 +610,7 @@ def _digest(document: object) -> str:
 def check_condition(owner: str, condition: JsonValue) -> None:
     if isinstance(condition, dict):
         if len(condition) != 1 or next(iter(condition)) not in {"not", "in"}:
-            raise ValueError(f"{owner}: a condition is a value, {{not = value}}, or {{in = [values]}}")
+            raise ValueError(f"{owner}: a condition is a value, {{not = value}}, {{in = [values]}}, or {{group = ...}}")
         if "in" in condition and not isinstance(condition["in"], list):
             raise ValueError(f"{owner}: 'in' takes a list")
     elif isinstance(condition, list):
@@ -577,12 +635,16 @@ def matches(where: Condition, facts: dict[str, JsonValue]) -> bool:
 
 
 def fact_problems(
-    declared: dict[str, FactType], required: Iterable[str], facts: dict[str, Any]
+    declared: dict[str, FactType],
+    required: Iterable[str],
+    facts: dict[str, Any],
+    allowed: Mapping[str, Collection[str]] | None = None,
 ) -> list[tuple[Literal["violated", "inconclusive"], str]]:
     """How a record's facts disagree with the vocabulary.
 
     Undeclared facts are the owner's own and never a problem. A declared fact of another
-    type is violated: the owner gave a declared word another meaning. A required fact
+    type, or a value its declaration does not list, is violated: the owner gave a declared
+    word another meaning. A required fact
     that is absent (or null) leaves the record short of what the rules need, so nothing
     it should have proven can be decided: inconclusive.
     """
@@ -598,6 +660,8 @@ def fact_problems(
         expected = {"str": str, "bool": bool, "int": int}[kind.rstrip("?")]
         if not isinstance(value, expected) or (expected is int and isinstance(value, bool)):
             problems.append(("violated", f"fact {name!r} is not {kind}"))
+        elif (options := (allowed or {}).get(name)) and value not in options:
+            problems.append(("violated", f"fact {name!r} is {value!r}, which its declaration does not list"))
     if missing := sorted(name for name in required if facts.get(name) is None):
         problems.append(("inconclusive", f"missing required facts {missing}"))
     return problems
@@ -606,6 +670,36 @@ def fact_problems(
 def declared_facts(declared: dict[str, FactType], facts: dict[str, JsonValue]) -> dict[str, JsonValue]:
     """The facts the vocabulary declares; the rest are the owner's own and never judged."""
     return {name: value for name, value in facts.items() if name in declared}
+
+
+type FactGroups = dict[str, dict[str, dict[str, tuple[str, ...]]]]
+
+
+def spell_out_groups(invariant: dict[str, Any], groups: FactGroups) -> dict[str, Any]:
+    """An invariant with each ``{ group = ... }`` condition replaced by ``{ in = [...] }`` over the groups' values.
+
+    A group condition names one group or a list of them, of the fact as the condition's
+    entity declares it: the trigger's, or the required entity's.
+    """
+    when, require = dict(invariant.get("when", {})), dict(invariant.get("require", {}))
+
+    def spelled(entity: str | None, where: dict[str, Any]) -> dict[str, Any]:
+        conditions = {}
+        for fact, condition in where.items():
+            if isinstance(condition, dict) and set(condition) == {"group"}:
+                named = [condition["group"]] if isinstance(condition["group"], str) else list(condition["group"])
+                declared = groups.get(entity or "", {}).get(fact, {})
+                if unknown := [name for name in named if name not in declared]:
+                    raise ValueError(f"{invariant.get('id')}: {entity}.{fact} declares no groups {unknown}")
+                condition = {"in": [value for name in named for value in declared[name]]}
+            conditions[fact] = condition
+        return conditions
+
+    if "where" in when:
+        when["where"] = spelled(when.get("entity"), when["where"])
+    if "where" in require:
+        require["where"] = spelled(require.get("entity", when.get("entity")), require["where"])
+    return invariant | {"when": when} | ({"require": require} if require else {})
 
 
 def parse_vocabulary(document: dict[str, Any]) -> EntityVocabulary | BoundaryVocabulary:
@@ -652,9 +746,12 @@ def parse_spec(
     ]
     if unexpected := set(invariants) - {"invariant"}:
         raise ValueError(f"invariants file has unexpected tables {sorted(unexpected)}")
+    groups = {name: word.fact_groups() for name, word in entity_words.items()}
     return Spec(
         components={component.name: component for component in component_specs},
         entities={entity.name: entity for entity in entity_specs},
         boundaries={boundary.name: boundary for boundary in boundary_specs},
-        invariants=tuple(Invariant.model_validate(item) for item in invariants.get("invariant", [])),
+        invariants=tuple(
+            Invariant.model_validate(spell_out_groups(item, groups)) for item in invariants.get("invariant", [])
+        ),
     )

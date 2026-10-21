@@ -41,7 +41,7 @@ def header(process: str = "api", **changes: Any) -> dict[str, Any]:
 def transitions() -> Iterator[dict[str, Any]]:
     """One record per entity and target state, carrying every declared fact."""
     for name, entity in sorted(SPEC.entities.items()):
-        facts = {fact: SAMPLE[kind] for fact, kind in entity.facts.items()}
+        facts = {fact: entity.allowed.get(fact, (SAMPLE[kind],))[0] for fact, kind in entity.facts.items()}
         for target in entity.states:
             yield envelope(
                 kind="transition",
@@ -104,6 +104,8 @@ def mutations(record: dict[str, Any]) -> Iterator[tuple[str, dict[str, Any]]]:
             yield changed(f"{fact} of another type", lambda r, f=fact, k=kind: r["facts"].update({f: WRONG[k]}))
             yield changed(f"{fact} null", lambda r, f=fact: r["facts"].update({f: None}))
             yield changed(f"{fact} absent", lambda r, f=fact: r["facts"].pop(f))
+            if fact in entity.allowed:
+                yield changed(f"{fact} unlisted", lambda r, f=fact: r["facts"].update({f: "unlisted"}))
     elif record["kind"] == "abandon":
         yield changed("an abandonment with a message", lambda r: r.update(message="result"))
         yield changed("a numeric reason", lambda r: r["facts"].update(reason=1))

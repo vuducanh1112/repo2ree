@@ -50,6 +50,51 @@ summary = "An assigned allocation is eventually released, failed, or lost."
 when = { entity = "Allocation", to = "assigned" }
 eventually = ["released", "failed", "lost"]
 
+# ---- The author, through the API ----------------------------------------------
+#
+# What the author is told against what happened. An action that runs a command in
+# the REE names the attempt that ran it (attempt_id); a workbench action names the
+# allocation it set up or released (allocation_id). Which receipt an action may
+# produce is not stated here but below, on the commands themselves, so it holds for
+# every interface that runs them.
+
+[[invariant]]
+id = "api-success-is-recorded"
+pattern = "requires"
+summary = "The author is told an action on the REE succeeded only after its attempt was recorded as succeeded."
+when = { entity = "AuthorApiAction", to = "succeeded", where = { action = { group = ["source", "editing", "assistance", "evidence", "lifecycle"] } } }
+require = { entity = "Attempt", key_from = "attempt_id", reached = "captured", where = { outcome = "succeeded" }, order = "before" }
+
+# A failed or canceled action that got as far as an attempt names it, and that
+# attempt settled first; one that failed before any attempt existed names none.
+[[invariant]]
+id = "settled-api-actions-settle-their-attempt"
+pattern = "requires"
+summary = "The author is told an action failed or was canceled only after its attempt settled."
+when = { entity = "AuthorApiAction", to = ["failed", "canceled"], where = { attempt_id = { not = "" } } }
+require = { entity = "Attempt", key_from = "attempt_id", reached = ["captured", "capture_failed"], order = "before" }
+
+[[invariant]]
+id = "only-long-actions-run"
+pattern = "guard"
+summary = "Edits, assistance, and reads are answered within their request: only workbench, source, evidence, and lifecycle actions run or are canceled."
+when = { entity = "AuthorApiAction", to = ["running", "canceling"] }
+require = { where = { action = { group = ["workbench", "source", "evidence", "lifecycle"] } } }
+
+[[invariant]]
+id = "created-rees-hold-their-workbench"
+pattern = "requires"
+summary = "The author is told an REE was created only once its workbench holds it."
+when = { entity = "AuthorApiAction", to = "succeeded", where = { action = "create_ree" } }
+require = { entity = "Allocation", key_from = "allocation_id", reached = "assigned", order = "before" }
+
+[[invariant]]
+id = "released-workbenches-are-released"
+pattern = "requires"
+summary = "The author is told a workbench was released only once it was."
+when = { entity = "AuthorApiAction", to = "succeeded", where = { action = "release_workbench" } }
+require = { entity = "Allocation", key_from = "allocation_id", reached = "released", order = "before" }
+
 # ---- REE domain ---------------------------------------------------------------
 
 [[invariant]]
@@ -58,6 +103,15 @@ pattern = "guard"
 summary = "The committed REE changes only through dispatched operations, never between them."
 when = { entity = "Ree", from = ["draft", "sealed"], to = ["draft", "sealed"] }
 require = { where = { cause = "operation" } }
+
+# Linting and suggesting scripts read the REE; the attempt still records them, with
+# its tree unchanged.
+[[invariant]]
+id = "assistance-changes-nothing"
+pattern = "guard"
+summary = "Linting scripts and suggesting scripts are captured with the REE as it was before."
+when = { entity = "Attempt", to = "captured", where = { operation = { in = ["lint_scripts", "generate_script_candidates"] } } }
+require = { where = { changed = false } }
 
 [[invariant]]
 id = "sealed-without-stale-evidence"

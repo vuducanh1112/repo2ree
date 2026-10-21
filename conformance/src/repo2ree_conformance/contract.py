@@ -82,7 +82,7 @@ def _transition_problems(spec: Spec, record: dict[str, Any], facts: dict[str, An
     if target not in entity.states:
         problems.append(f"to {target!r} is not a state of {entity.name}")
     required = entity.required.get(target, ()) if isinstance(target, str) else ()
-    return problems + [problem for _, problem in fact_problems(entity.facts, required, facts)]
+    return problems + [problem for _, problem in fact_problems(entity.facts, required, facts, entity.allowed)]
 
 
 def _message_problems(spec: Spec, record: dict[str, Any], facts: dict[str, Any]) -> list[str]:
@@ -103,7 +103,8 @@ def _message_problems(spec: Spec, record: dict[str, Any], facts: dict[str, Any])
     if message not in allowed:
         return [*problems, f"{kind} {message!r} is not one of {allowed}"]
     declared, required = boundary.facts.get(message, {}), boundary.required.get(message, ())
-    return problems + [problem for _, problem in fact_problems(declared, required, facts)]
+    values = boundary.allowed.get(message, {})
+    return problems + [problem for _, problem in fact_problems(declared, required, facts, values)]
 
 
 def journal_problems(spec: Spec, path: Path) -> list[str]:

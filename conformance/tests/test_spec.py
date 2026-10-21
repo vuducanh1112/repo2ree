@@ -11,7 +11,14 @@ from pydantic import ValidationError
 
 from repo2ree_conformance.codegen import render_schema
 from repo2ree_conformance.files import GENERATED_SCHEMA, SPEC_DIR, load_spec, split_combined
-from repo2ree_conformance.spec import Spec, fact_problems, matches, parse_spec
+from repo2ree_conformance.spec import (
+    GuardRequirement,
+    Spec,
+    fact_problems,
+    matches,
+    parse_spec,
+    spell_out_groups,
+)
 
 
 @dataclass
@@ -49,7 +56,7 @@ def documents() -> Documents:
 
 def test_the_checked_in_specification_is_valid() -> None:
     spec = load_spec()
-    assert set(spec.entities) == {"Allocation", "Attempt", "Ree", "Run", "Step"}
+    assert set(spec.entities) == {"Allocation", "Attempt", "AuthorApiAction", "Ree", "Run", "Step"}
     assert spec.hosted_by("api") == {"api", "supervisor"}
     assert set(spec.boundaries) == {"dispatch"}
     assert spec.digest.startswith("sha256:")
@@ -123,20 +130,26 @@ def test_boundary_facts_are_required_on_every_record_of_their_message() -> None:
         docs.parse()
 
 
+# Fields the specification derives from fact declarations, which an old combined file never carried.
+DERIVED = {"required", "allowed", "meanings", "groups"}
+
+
 def test_a_revision_with_vocabulary_and_rules_in_one_file_still_reads() -> None:
     """``diff --base`` reads specifications committed before the vocabulary had files of its own."""
     spec = load_spec()
     combined = [
-        {**spec.entities[name].model_dump(mode="json", by_alias=True, exclude={"required"})}
+        {**spec.entities[name].model_dump(mode="json", by_alias=True, exclude=DERIVED)}
         for name in sorted(spec.entities)
     ]
     exchanges = [
-        {**boundary.model_dump(mode="json", by_alias=True, exclude={"required"})}
-        for boundary in spec.boundaries.values()
+        {**boundary.model_dump(mode="json", by_alias=True, exclude=DERIVED)} for boundary in spec.boundaries.values()
     ]
     docs = documents()
     vocabulary, entities, boundaries = split_combined(combined, exchanges)
-    old = parse_spec(vocabulary, entities, boundaries, docs.invariants, docs.components)
+    # The rules as loaded, with group conditions already spelled out: the dumped words keep no groups.
+    rules = [invariant.model_dump(mode="json", by_alias=True, exclude_none=True) for invariant in spec.invariants]
+    invariants = {"invariant": rules}
+    old = parse_spec(vocabulary, entities, boundaries, invariants, docs.components)
     assert {name: entity.edges for name, entity in old.entities.items()} == {
         name: entity.edges for name, entity in spec.entities.items()
     }
@@ -225,3 +238,59 @@ def test_declared_facts_are_typed_required_ones_present_and_the_rest_the_owners_
     assert fact_problems(declared, ("name", "count"), {"count": None}) == [
         ("inconclusive", "missing required facts ['count', 'name']")
     ]
+
+
+def test_a_fact_that_lists_its_values_takes_no_other() -> None:
+    allowed = {"action": ("write_file", "seal_ree")}
+    assert fact_problems({"action": "str"}, (), {"action": "seal_ree"}, allowed) == []
+    assert fact_problems({"action": "str"}, (), {"action": "seal"}, allowed) == [
+        ("violated", "fact 'action' is 'seal', which its declaration does not list")
+    ]
+    assert load_spec().entities["AuthorApiAction"].allowed["action"][:2] == ("create_ree", "release_workbench")
+
+
+@pytest.mark.parametrize(
+    ("declaration", "message"),
+    [
+        ({"type": "str", "values": {"a": ""}, "groups": {"g": {"b": ""}}}, "lists its values or groups them"),
+        ({"type": "int", "values": {"a": ""}}, "only a str fact lists its values"),
+        ({"type": "str", "groups": {"g": {"a": ""}, "h": {"a": ""}}}, "a value belongs to one group"),
+    ],
+)
+def test_incoherent_value_lists_are_rejected(declaration: dict[str, Any], message: str) -> None:
+    docs = documents()
+    docs.words("AuthorApiAction")["facts"]["action"] = declaration
+    with pytest.raises(ValidationError, match=message):
+        docs.parse()
+
+
+def test_a_group_condition_is_spelled_out_as_the_groups_values() -> None:
+    groups = {"AuthorApiAction": {"action": {"editing": ("write_file", "delete_file"), "reading": ("read_file",)}}}
+    invariant = {
+        "id": "x",
+        "when": {
+            "entity": "AuthorApiAction",
+            "to": "succeeded",
+            "where": {"action": {"group": ["editing", "reading"]}},
+        },
+        "require": {"where": {"action": {"group": "reading"}}},
+    }
+    spelled = spell_out_groups(invariant, groups)
+    assert spelled["when"]["where"] == {"action": {"in": ["write_file", "delete_file", "read_file"]}}
+    assert spelled["require"]["where"] == {"action": {"in": ["read_file"]}}
+    with pytest.raises(ValueError, match="declares no groups"):
+        spell_out_groups(invariant | {"require": {"where": {"action": {"group": "painting"}}}}, groups)
+
+
+def test_the_author_rules_name_the_action_groups_they_mean() -> None:
+    spec = load_spec()
+    rules = {invariant.id: invariant for invariant in spec.invariants}
+    declared = documents().words("AuthorApiAction")["facts"]["action"]["groups"]
+    groups = {name: set(values) for name, values in declared.items()}
+    guard = rules["only-long-actions-run"].require
+    assert isinstance(guard, GuardRequirement)
+    condition = guard.where["action"]
+    assert isinstance(condition, dict)
+    assert isinstance(condition["in"], list)
+    long_running = set(condition["in"])
+    assert long_running == groups["workbench"] | groups["source"] | groups["evidence"] | groups["lifecycle"]

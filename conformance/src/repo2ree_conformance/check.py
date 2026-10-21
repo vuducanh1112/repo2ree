@@ -201,7 +201,8 @@ def replay_entity(
             reasons: list[tuple[FindingVerdict, str]] = []
             if event.owner != spec.owner:
                 reasons.append(("violated", f"recorded by {event.owner}, but {spec.owner} owns {spec.name}"))
-            reasons.extend(fact_problems(spec.facts, spec.required.get(event.target_state or "", ()), event.facts))
+            required = spec.required.get(event.target_state or "", ())
+            reasons.extend(fact_problems(spec.facts, required, event.facts, spec.allowed))
             if event.partition != instance.partition:
                 reasons.append(("violated", f"moved from partition {instance.partition} to {event.partition}"))
             target = event.target_state or ""
@@ -273,7 +274,8 @@ def replay_boundary(
             if event.kind != "abandon":
                 message = event.message or ""
                 declared, required = spec.facts.get(message, {}), spec.required.get(message, ())
-                for verdict, problem in fact_problems(declared, required, event.facts):
+                allowed = spec.allowed.get(message, {})
+                for verdict, problem in fact_problems(declared, required, event.facts, allowed):
                     violation(problem, event, verdict=verdict)
         sends = [event for event in ordered if event.kind == "send"]
         outcomes = [event for event in ordered if event.kind in {"receive", "abandon"}]

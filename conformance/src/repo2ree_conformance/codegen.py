@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from typing import Any
 
 from repo2ree_conformance.spec import BoundarySpec, EntitySpec, FactType, Spec
@@ -26,14 +26,21 @@ FACT_SCHEMA: dict[str, dict[str, Any]] = {
 NON_NULL = {"str": "string", "bool": "boolean", "int": "integer"}
 
 
-def _facts(declared: dict[str, FactType], required: Iterable[str] = ()) -> dict[str, Any]:
-    """Declared facts by type, open to the owner's own; required ones present and not null."""
+def _fact(kind: FactType, required: bool, allowed: tuple[str, ...]) -> dict[str, Any]:
+    if allowed:
+        return {"enum": [*allowed] if required or not kind.endswith("?") else [*allowed, None]}
+    return {"type": NON_NULL[kind.rstrip("?")]} if required else FACT_SCHEMA[kind]
+
+
+def _facts(
+    declared: dict[str, FactType], required: Iterable[str] = (), allowed: Mapping[str, tuple[str, ...]] | None = None
+) -> dict[str, Any]:
+    """Declared facts by type or listed values, open to the owner's own; required ones present and not null."""
     names = sorted(required)
     schema: dict[str, Any] = {
         "type": "object",
         "properties": {
-            name: FACT_SCHEMA[kind] if name not in names else {"type": NON_NULL[kind.rstrip("?")]}
-            for name, kind in sorted(declared.items())
+            name: _fact(kind, name in names, (allowed or {}).get(name, ())) for name, kind in sorted(declared.items())
         },
     }
     if names:
@@ -58,14 +65,21 @@ def _envelope(kind: dict[str, Any], subject: str, owner: str, required: list[str
 def _entity(name: str, entity: EntitySpec) -> dict[str, Any]:
     branch = _envelope({"const": "transition"}, name, entity.owner, ["to"])
     states = list(entity.states)
-    branch["properties"] |= {"from": {"enum": [None, *states]}, "to": {"enum": states}, "facts": _facts(entity.facts)}
+    branch["properties"] |= {
+        "from": {"enum": [None, *states]},
+        "to": {"enum": states},
+        "facts": _facts(entity.facts, (), entity.allowed),
+    }
     by_facts: dict[tuple[str, ...], list[str]] = defaultdict(list)
     for state, facts in sorted(entity.required.items()):
         by_facts[tuple(sorted(facts))].append(state)
     branch["allOf"] = [
         {
             "if": {"properties": {"to": {"enum": targets}}},
-            "then": {"properties": {"facts": _facts(entity.facts, facts)}, "required": ["facts"]},
+            "then": {
+                "properties": {"facts": _facts(entity.facts, facts, entity.allowed)},
+                "required": ["facts"],
+            },
         }
         for facts, targets in sorted(by_facts.items())
     ]
@@ -83,7 +97,11 @@ def _boundary(name: str, boundary: BoundarySpec) -> dict[str, Any]:
             {
                 "if": {"properties": {"message": {"const": item}}},
                 "then": {
-                    "properties": {"facts": _facts(boundary.facts.get(item, {}), boundary.required.get(item, ()))},
+                    "properties": {
+                        "facts": _facts(
+                            boundary.facts.get(item, {}), boundary.required.get(item, ()), boundary.allowed.get(item)
+                        )
+                    },
                     **({"required": ["facts"]} if boundary.required.get(item) else {}),
                 },
             }

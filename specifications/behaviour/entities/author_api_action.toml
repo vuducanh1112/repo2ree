@@ -1,0 +1,39 @@
+# The AuthorApiAction machine: where an action starts, which edges it may take, and when it
+# must have settled. Its states and facts are declared in vocabulary/author_api_action.toml.
+
+name = "AuthorApiAction"
+initial = "requested"
+terminal = ["succeeded", "failed", "canceled"]
+# The API answers every request before it stops, and drains its workers on an orderly
+# shutdown, so an action still open in a closed journal was abandoned. An upload the
+# author never completed is the API's to settle (as failed) before it closes.
+settles_before_close = true
+
+[[transitions]]
+from = "requested"
+to = ["succeeded", "failed"]
+why = "A synchronous action is answered within its request; reads and edits never run long."
+
+[[transitions]]
+from = "requested"
+to = ["running"]
+why = "A long action starts: a worker picks it up, or the author completed an upload."
+
+[[transitions]]
+from = "requested"
+to = ["canceling"]
+why = "The author canceled before the work started."
+
+[[transitions]]
+from = "running"
+to = ["succeeded", "failed", "canceling"]
+
+[[transitions]]
+from = "canceling"
+to = ["canceled"]
+why = "The work stopped."
+
+[[transitions]]
+from = "canceling"
+to = ["succeeded", "failed"]
+why = "Open question, carried over from Run: the work finished before the cancel took effect, and its outcome wins."

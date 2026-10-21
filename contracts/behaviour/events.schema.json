@@ -3,7 +3,7 @@
   "$id": "urn:repo2ree:contracts:behaviour:events",
   "title": "repo2ree behaviour journal record",
   "description": "One line of a behaviour journal. Generated from specifications/behaviour/vocabulary by `python -m repo2ree_conformance generate`; do not edit. Sequence, epochs, and the header are checked per journal by `python -m repo2ree_conformance validate-journal`.",
-  "x-vocabulary": "sha256:f7400ce1e95c86a5ca3185296fe2e76f5df920283738e38aebdb0d76aba53f78",
+  "x-vocabulary": "sha256:63748ed77fe180f1af3707c290a749b412c1e044c9c724b05044b6c2b3ff15ae",
   "type": "object",
   "properties": {
     "v": {
@@ -37,6 +37,9 @@
     },
     {
       "$ref": "#/$defs/Attempt"
+    },
+    {
+      "$ref": "#/$defs/AuthorApiAction"
     },
     {
       "$ref": "#/$defs/Ree"
@@ -158,6 +161,7 @@
             "enum": [
               "Allocation",
               "Attempt",
+              "AuthorApiAction",
               "Ree",
               "Run",
               "Step",
@@ -459,6 +463,260 @@
         }
       ],
       "description": "One command execution inside an REE, from its pending record to its published capture. Evidence: git."
+    },
+    "AuthorApiAction": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "transition"
+        },
+        "subject": {
+          "const": "AuthorApiAction"
+        },
+        "owner": {
+          "const": "api"
+        },
+        "key": {
+          "type": "string"
+        },
+        "partition": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "from": {
+          "enum": [
+            null,
+            "requested",
+            "running",
+            "canceling",
+            "succeeded",
+            "failed",
+            "canceled"
+          ]
+        },
+        "to": {
+          "enum": [
+            "requested",
+            "running",
+            "canceling",
+            "succeeded",
+            "failed",
+            "canceled"
+          ]
+        },
+        "facts": {
+          "type": "object",
+          "properties": {
+            "about_action_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "action": {
+              "enum": [
+                "create_ree",
+                "release_workbench",
+                "acquire_source",
+                "upload_source",
+                "remove_source",
+                "edit_definition",
+                "write_file",
+                "delete_file",
+                "suggest_scripts",
+                "lint_scripts",
+                "evaluate_reproducibility",
+                "observe_hardware",
+                "build_runtime",
+                "generate_sbom",
+                "cross_check_sbom",
+                "test_activation",
+                "run_experiment",
+                "seal_ree",
+                "load_ree_bundle",
+                "view_ree",
+                "view_ree_state",
+                "read_file",
+                "list_receipts",
+                "view_history",
+                "view_evaluation_report",
+                "download_ree",
+                "list_actions",
+                "view_action",
+                "view_action_log",
+                "watch_action"
+              ]
+            },
+            "allocation_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "attempt_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "experiment": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "failure_category": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "http_status": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "path": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "run_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "subject",
+        "owner",
+        "key",
+        "to"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "to": {
+                "enum": [
+                  "canceled",
+                  "canceling",
+                  "failed",
+                  "requested",
+                  "running",
+                  "succeeded"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "facts": {
+                "type": "object",
+                "properties": {
+                  "about_action_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "action": {
+                    "enum": [
+                      "create_ree",
+                      "release_workbench",
+                      "acquire_source",
+                      "upload_source",
+                      "remove_source",
+                      "edit_definition",
+                      "write_file",
+                      "delete_file",
+                      "suggest_scripts",
+                      "lint_scripts",
+                      "evaluate_reproducibility",
+                      "observe_hardware",
+                      "build_runtime",
+                      "generate_sbom",
+                      "cross_check_sbom",
+                      "test_activation",
+                      "run_experiment",
+                      "seal_ree",
+                      "load_ree_bundle",
+                      "view_ree",
+                      "view_ree_state",
+                      "read_file",
+                      "list_receipts",
+                      "view_history",
+                      "view_evaluation_report",
+                      "download_ree",
+                      "list_actions",
+                      "view_action",
+                      "view_action_log",
+                      "watch_action"
+                    ]
+                  },
+                  "allocation_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "attempt_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "experiment": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "failure_category": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "http_status": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "path": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "run_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              }
+            },
+            "required": [
+              "facts"
+            ]
+          }
+        }
+      ],
+      "description": "One thing an author asked of an REE, from the request to the answer they were given. Evidence: journal."
     },
     "Ree": {
       "type": "object",

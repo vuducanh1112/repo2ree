@@ -59,6 +59,7 @@ SPEC = load_spec()
 
 _PROVIDER_GAP = "needs a provider that loses benches or drains them before assignment"
 _DOCKER_GAP = "needs runtime, SBOM, or experiment steps, which require Docker (exercised by demo-gui)"
+_ACTIONS_GAP = "the API does not journal author actions yet"
 # Declared edges no in-process scenario reaches, and why. A newly specified edge
 # must gain a scenario or be listed here; the coverage test enforces both ways.
 UNEXERCISED: dict[str, str] = {
@@ -109,6 +110,14 @@ UNEXERCISED: dict[str, str] = {
             "stale -> not_applicable",
             "not_applicable -> stale",
         )
+    },
+    **{
+        f"AuthorApiAction {source} -> {target}": _ACTIONS_GAP
+        for source, targets in [
+            ("(none)", SPEC.entities["AuthorApiAction"].initial),
+            *SPEC.entities["AuthorApiAction"].edges.items(),
+        ]
+        for target in targets
     },
 }
 

@@ -1,6 +1,0 @@
-*
-!.gitignore
-# The behaviour specification is the source of the generated runtime machines
-# and of every conformance verdict, so it is versioned with the code.
-!behaviour/
-!behaviour/**

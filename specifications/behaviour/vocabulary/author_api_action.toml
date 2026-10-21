@@ -1,0 +1,91 @@
+# The words for what an author does with one REE, as the API answers it: the actions
+# that change the REE, the ones that only read it, and the long ones the author watches
+# while they run. Its machine is entities/author_api_action.toml.
+#
+# An action is what the author asked for; the Attempt that runs it inside the REE, if
+# it runs anything there, is one try of it. Canceling is not an action of its own but
+# the canceled action's `canceling`; watching an action is a read that names it.
+#
+# Only the API's interface: what an author runs directly through repo2ree-exec inside a
+# workbench is not one of these, and shows only as the Attempt it leaves in the REE.
+
+name = "AuthorApiAction"
+kind = "entity"
+owner = "api"
+key = "action_id"
+partition = "ree_id"
+evidence = "journal"
+summary = "One thing an author asked of an REE, from the request to the answer they were given."
+
+[states]
+requested = "The API accepted the request and nothing runs yet. An upload stays here until the author completes it."
+running = "The work is under way: a workbench is being set up, or a command runs in the REE."
+canceling = "The author canceled, and the outcome is not settled yet."
+succeeded = "Settled: the author was told it worked."
+failed = "Settled: the author was told it did not work."
+canceled = "Settled: the work stopped because the author canceled it."
+
+[facts]
+# For an action that ran a command in the REE: the attempt that ran it.
+attempt_id = "str?"
+# For create_ree and release_workbench: the allocation of the workbench it set up or released.
+allocation_id = "str?"
+# For an action the author can watch: the API's handle for it (/rees/{ree_id}/runs/{run_id}).
+run_id = "str?"
+# For run_experiment: the experiment's name.
+experiment = "str?"
+# For write_file, delete_file, and read_file: the file's path in the REE.
+path = "str?"
+# For view_action, view_action_log, and watch_action: the action they read.
+about_action_id = "str?"
+# The HTTP status of the answer the author was given.
+http_status = "int?"
+failure_category = "str?"
+
+[facts.action]
+type = "str"
+required = true
+
+[facts.action.groups.workbench]
+create_ree = "Set up a workbench for a new REE; core starts the REE inside it."
+release_workbench = "Tear down the REE's workbench (the API's deleteRee)."
+
+[facts.action.groups.source]
+acquire_source = "Fetch the source from a repository and freeze it."
+upload_source = "Hand over the source as an archive (start, send the bytes, complete) and freeze it."
+remove_source = "Remove the frozen source."
+
+[facts.action.groups.editing]
+edit_definition = "Change the REE's declarations, by patching or replacing them."
+write_file = "Create or overwrite a file in the REE's overlay."
+delete_file = "Delete a file from the REE's overlay."
+
+[facts.action.groups.assistance]
+suggest_scripts = "Ask for candidate build and activation scripts."
+lint_scripts = "Check the REE's scripts."
+
+[facts.action.groups.evidence]
+evaluate_reproducibility = "Assess how reproducible the source's dependencies are."
+observe_hardware = "Record the hardware the REE runs on."
+build_runtime = "Build the runtime with the build script."
+generate_sbom = "List what the built runtime contains."
+cross_check_sbom = "Compare the declared dependencies with the SBOM."
+test_activation = "Check that the runtime activates."
+run_experiment = "Run one declared experiment and verify its outputs."
+
+[facts.action.groups.lifecycle]
+seal_ree = "Freeze the REE: nothing changes after this."
+load_ree_bundle = "Restore an REE from a bundle (start, send the bytes, load), its receipts included."
+
+[facts.action.groups.reading]
+view_ree = "Show the REE's document."
+view_ree_state = "Show the REE's declarations and the standing of its evidence."
+read_file = "Show one file of the REE."
+list_receipts = "List the REE's receipts."
+view_history = "Show the REE's operation history."
+view_evaluation_report = "Show the reproducibility evaluation's report."
+download_ree = "Download the REE as an archive."
+list_actions = "List the REE's watchable actions."
+view_action = "Show one action."
+view_action_log = "Show one action's log."
+watch_action = "Follow one action as it runs."
