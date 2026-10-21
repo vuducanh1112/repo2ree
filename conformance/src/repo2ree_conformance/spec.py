@@ -1,9 +1,17 @@
-"""The behaviour specification: entities, boundaries, and invariants, validated as a whole."""
+"""The behaviour specification: entities, boundaries, and invariants, validated as a whole.
+
+It has two layers. The vocabulary (``vocabulary/*.toml``, with ``components.toml``) is
+the contract owners emit against: each subject's owner, key, states or messages, and
+facts with their types and where they are required. The rules (``entities/*.toml``,
+``boundaries/*.toml``, ``invariants.toml``) are what the checker holds the evidence to.
+Only the vocabulary is published to the product (``contracts/behaviour``).
+"""
 
 from __future__ import annotations
 
 import json
 from collections import defaultdict
+from collections.abc import Iterable
 from hashlib import sha256
 from typing import Annotated, Any, Literal, Self
 
@@ -32,6 +40,34 @@ class Component(SpecModel):
     name: Name
     process: Name
     summary: str
+
+
+class FactDeclaration(SpecModel):
+    """A fact with where it must be present; a bare type string declares an optional fact."""
+
+    type: FactType
+    # Present (and not null) on every transition of the entity, or on every record of the message.
+    required: bool = False
+    # Present (and not null) on every transition into these states; entities only.
+    required_in: tuple[Name, ...] = ()
+
+    @field_validator("required_in", mode="before")
+    @classmethod
+    def _states(cls, value: object) -> object:
+        return cls.one_or_many(value)
+
+    @model_validator(mode="after")
+    def one_requirement(self) -> Self:
+        if self.required and self.required_in:
+            raise ValueError("a fact is either required everywhere or required_in some states")
+        return self
+
+
+type FactEntry = FactType | FactDeclaration
+
+
+def fact_types(declared: dict[str, FactEntry]) -> dict[str, FactType]:
+    return {name: entry if isinstance(entry, str) else entry.type for name, entry in declared.items()}
 
 
 class Transition(SpecModel):
@@ -67,6 +103,8 @@ class EntitySpec(SpecModel):
     summary: str
     states: dict[Name, str]
     facts: dict[Name, FactType] = {}
+    # The facts every transition into a state must carry, by state.
+    required: dict[Name, tuple[Name, ...]] = {}
     transitions: tuple[Transition, ...]
 
     @field_validator("initial", mode="before")
@@ -110,6 +148,10 @@ class EntitySpec(SpecModel):
             raise ValueError(f"{self.name}: an entity that settles needs a terminal state")
         if self.key in self.facts:
             raise ValueError(f"{self.name}: the key {self.key!r} is the identity, not a fact")
+        if unknown := set(self.required) - states:
+            raise ValueError(f"{self.name}: facts required in unknown states {sorted(unknown)}")
+        if unknown := {fact for facts in self.required.values() for fact in facts} - set(self.facts):
+            raise ValueError(f"{self.name}: requires undeclared facts {sorted(unknown)}")
         return self
 
 
@@ -182,6 +224,8 @@ class BoundarySpec(SpecModel):
     responses: tuple[Name, ...] = Field(min_length=1)
     messages: dict[Name, str]
     facts: dict[Name, dict[Name, FactType]] = {}
+    # The facts every record of a message must carry, by message.
+    required: dict[Name, tuple[Name, ...]] = {}
     # Records of the exchange and of an entity keyed like it that name each other:
     # the only way the checker orders evidence across sources.
     cites: tuple[Citation, ...] = ()
@@ -197,6 +241,9 @@ class BoundarySpec(SpecModel):
             raise ValueError(f"{self.name}: the request cannot also be a response")
         if unknown := set(self.facts) - declared:
             raise ValueError(f"{self.name}: facts for unknown messages {sorted(unknown)}")
+        for message, facts in self.required.items():
+            if unknown := set(facts) - set(self.facts.get(message, {})):
+                raise ValueError(f"{self.name}: {message} requires undeclared facts {sorted(unknown)}")
         for citation in self.cites:
             for side in (citation.by, citation.cited):
                 if isinstance(side, CitedMessage | CitingMessage) and side.message not in declared:
@@ -208,6 +255,86 @@ class BoundarySpec(SpecModel):
                     f"{self.name}: {citation.by.message} cites through undeclared fact {citation.by.fact!r}"
                 )
         return self
+
+
+class EntityVocabulary(SpecModel):
+    """The words owners emit for one entity: who records it, how it is keyed, its states and facts."""
+
+    kind: Literal["entity"]
+    name: Name
+    owner: Name
+    key: Name
+    partition: Name
+    evidence: Literal["journal", "git"]
+    summary: str
+    states: dict[Name, str]
+    facts: dict[Name, FactEntry] = {}
+
+    def entity_fields(self) -> dict[str, Any]:
+        required: dict[str, list[str]] = defaultdict(list)
+        for fact, entry in self.facts.items():
+            if isinstance(entry, str):
+                continue
+            for state in self.states if entry.required else entry.required_in:
+                required[state].append(fact)
+        fields = self.model_dump(exclude={"kind", "facts"})
+        return fields | {"facts": fact_types(self.facts), "required": {s: tuple(f) for s, f in required.items()}}
+
+
+class BoundaryVocabulary(SpecModel):
+    """The words of one exchange: its ends, key, messages, and each message's facts."""
+
+    kind: Literal["boundary"]
+    name: Name
+    sender: Name
+    receiver: Name
+    key: Name
+    partition: Name
+    summary: str
+    request: Name
+    responses: tuple[Name, ...] = Field(min_length=1)
+    messages: dict[Name, str]
+    facts: dict[Name, dict[Name, FactEntry]] = {}
+
+    @model_validator(mode="after")
+    def required_everywhere(self) -> Self:
+        for message, facts in self.facts.items():
+            if any(not isinstance(entry, str) and entry.required_in for entry in facts.values()):
+                raise ValueError(f"{self.name}: {message} has no states; use required = true")
+        return self
+
+    def boundary_fields(self) -> dict[str, Any]:
+        required = {
+            message: tuple(name for name, entry in facts.items() if not isinstance(entry, str) and entry.required)
+            for message, facts in self.facts.items()
+        }
+        fields = self.model_dump(exclude={"kind", "facts"})
+        return fields | {
+            "facts": {message: fact_types(facts) for message, facts in self.facts.items()},
+            "required": {message: facts for message, facts in required.items() if facts},
+        }
+
+
+class MachineRules(SpecModel):
+    """One entity's machine: where instances start, the edges they may take, and when they settle."""
+
+    name: Name
+    initial: tuple[Name, ...] = Field(min_length=1)
+    terminal: tuple[Name, ...] = ()
+    settles_before_close: bool | Literal["final"]
+    transitions: tuple[Transition, ...]
+
+    @field_validator("initial", mode="before")
+    @classmethod
+    def _initial(cls, value: object) -> object:
+        return cls.one_or_many(value)
+
+
+class ExchangeRules(SpecModel):
+    """One boundary's rules beyond the exchange pattern itself: the records that name each other."""
+
+    name: Name
+    cites: tuple[Citation, ...] = ()
 
 
 class EntityTrigger(SpecModel):
@@ -299,8 +426,32 @@ class Spec(SpecModel):
 
     @property
     def digest(self) -> str:
-        canonical = json.dumps(self.model_dump(mode="json", by_alias=True), sort_keys=True, separators=(",", ":"))
-        return "sha256:" + sha256(canonical.encode()).hexdigest()
+        return _digest(self.model_dump(mode="json", by_alias=True))
+
+    @property
+    def vocabulary(self) -> dict[str, Any]:
+        """The contract owners emit against, without the rules: what ``contracts/behaviour`` publishes."""
+        entity_fields = ("owner", "key", "partition", "evidence", "summary", "states", "facts", "required")
+        boundary_fields = (
+            *("sender", "receiver", "key", "partition", "summary", "request", "responses", "messages"),
+            *("facts", "required"),
+        )
+        dumped = self.model_dump(mode="json")
+        return {
+            "components": dumped["components"],
+            "entities": {
+                name: {field: entity[field] for field in entity_fields} for name, entity in dumped["entities"].items()
+            },
+            "boundaries": {
+                name: {field: boundary[field] for field in boundary_fields}
+                for name, boundary in dumped["boundaries"].items()
+            },
+        }
+
+    @property
+    def vocabulary_digest(self) -> str:
+        """Changes with the contract only: rules can change without touching what owners emit."""
+        return _digest(self.vocabulary)
 
     def trigger_facts(self, trigger: EntityTrigger | MessageTrigger) -> dict[str, FactType]:
         if isinstance(trigger, EntityTrigger):
@@ -393,6 +544,11 @@ class Spec(SpecModel):
             raise ValueError(f"{invariant.id}: trigger and requirement are partitioned differently")
 
 
+def _digest(document: object) -> str:
+    canonical = json.dumps(document, sort_keys=True, separators=(",", ":"))
+    return "sha256:" + sha256(canonical.encode()).hexdigest()
+
+
 def check_condition(owner: str, condition: JsonValue) -> None:
     if isinstance(condition, dict):
         if len(condition) != 1 or next(iter(condition)) not in {"not", "in"}:
@@ -420,40 +576,80 @@ def matches(where: Condition, facts: dict[str, JsonValue]) -> bool:
     return True
 
 
-def fact_problem(declared: dict[str, FactType], facts: dict[str, Any]) -> str | None:
-    """Why a fact set disagrees with its declaration, or None."""
-    if unknown := set(facts) - set(declared):
-        return f"undeclared facts {sorted(unknown)}"
+def fact_problems(
+    declared: dict[str, FactType], required: Iterable[str], facts: dict[str, Any]
+) -> list[tuple[Literal["violated", "inconclusive"], str]]:
+    """How a record's facts disagree with the vocabulary.
+
+    Undeclared facts are the owner's own and never a problem. A declared fact of another
+    type is violated: the owner gave a declared word another meaning. A required fact
+    that is absent (or null) leaves the record short of what the rules need, so nothing
+    it should have proven can be decided: inconclusive.
+    """
+    problems: list[tuple[Literal["violated", "inconclusive"], str]] = []
     for name, value in facts.items():
-        kind = declared[name]
+        kind = declared.get(name)
+        if kind is None:
+            continue
         if value is None:
             if not kind.endswith("?"):
-                return f"fact {name!r} is null"
+                problems.append(("violated", f"fact {name!r} is null"))
             continue
         expected = {"str": str, "bool": bool, "int": int}[kind.rstrip("?")]
         if not isinstance(value, expected) or (expected is int and isinstance(value, bool)):
-            return f"fact {name!r} is not {kind}"
-    return None
+            problems.append(("violated", f"fact {name!r} is not {kind}"))
+    if missing := sorted(name for name in required if facts.get(name) is None):
+        problems.append(("inconclusive", f"missing required facts {missing}"))
+    return problems
+
+
+def declared_facts(declared: dict[str, FactType], facts: dict[str, JsonValue]) -> dict[str, JsonValue]:
+    """The facts the vocabulary declares; the rest are the owner's own and never judged."""
+    return {name: value for name, value in facts.items() if name in declared}
+
+
+def parse_vocabulary(document: dict[str, Any]) -> EntityVocabulary | BoundaryVocabulary:
+    if document.get("kind") == "boundary":
+        return BoundaryVocabulary.model_validate(document)
+    return EntityVocabulary.model_validate(document)
 
 
 def parse_spec(
+    vocabulary: list[dict[str, Any]],
     entities: list[dict[str, Any]],
     boundaries: list[dict[str, Any]],
     invariants: dict[str, Any],
     components: dict[str, Any],
 ) -> Spec:
-    """Build the specification from already-parsed TOML documents."""
+    """Build the specification from already-parsed TOML documents: the vocabulary, then the rules."""
     component_specs = [Component.model_validate(item) for item in components.get("component", [])]
     if unexpected := set(components) - {"component"}:
         raise ValueError(f"components file has unexpected tables {sorted(unexpected)}")
     if len({component.name for component in component_specs}) != len(component_specs):
         raise ValueError("component names must be unique")
-    entity_specs = [EntitySpec.model_validate(document) for document in entities]
-    boundary_specs = [BoundarySpec.model_validate(document) for document in boundaries]
-    if len({entity.name for entity in entity_specs}) != len(entity_specs):
+    words = [parse_vocabulary(document) for document in vocabulary]
+    if len({word.name for word in words}) != len(words):
+        raise ValueError("vocabulary names must be unique")
+    entity_words = {word.name: word for word in words if isinstance(word, EntityVocabulary)}
+    boundary_words = {word.name: word for word in words if isinstance(word, BoundaryVocabulary)}
+    machines = [MachineRules.model_validate(document) for document in entities]
+    exchanges = [ExchangeRules.model_validate(document) for document in boundaries]
+    if len({machine.name for machine in machines}) != len(machines):
         raise ValueError("entity names must be unique")
-    if len({boundary.name for boundary in boundary_specs}) != len(boundary_specs):
+    if len({exchange.name for exchange in exchanges}) != len(exchanges):
         raise ValueError("boundary names must be unique")
+    if unmatched := set(entity_words) ^ {machine.name for machine in machines}:
+        raise ValueError(f"entities need both a vocabulary and a machine: {sorted(unmatched)}")
+    if unknown := {exchange.name for exchange in exchanges} - set(boundary_words):
+        raise ValueError(f"boundary rules without a vocabulary: {sorted(unknown)}")
+    entity_specs = [
+        EntitySpec.model_validate(entity_words[machine.name].entity_fields() | dict(machine)) for machine in machines
+    ]
+    rules = {exchange.name: exchange for exchange in exchanges}
+    boundary_specs = [
+        BoundarySpec.model_validate(word.boundary_fields() | {"cites": rules[name].cites if name in rules else ()})
+        for name, word in boundary_words.items()
+    ]
     if unexpected := set(invariants) - {"invariant"}:
         raise ValueError(f"invariants file has unexpected tables {sorted(unexpected)}")
     return Spec(

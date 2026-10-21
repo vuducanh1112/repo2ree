@@ -1,0 +1,25 @@
+# The words for a background run as the API stores and reports it. Its machine is
+# entities/run.toml.
+
+name = "Run"
+kind = "entity"
+owner = "api"
+key = "run_id"
+partition = "ree_id"
+evidence = "journal"
+summary = "One accepted background request, from durable acceptance to its settled outcome."
+
+[states]
+queued = "Durably accepted; no worker has started it."
+provisioning = "A worker is creating the REE's workbench."
+running = "A worker is executing the run's command."
+canceling = "Cancellation was requested and the outcome is not settled yet."
+succeeded = "Settled: the work completed."
+failed = "Settled: the work could not complete, or the API stopped before it did."
+canceled = "Settled: the work stopped because cancellation was requested."
+
+[facts]
+# Recorded once, when the run is accepted.
+operation = { type = "str", required_in = ["queued"] }
+attempt_id = "str?"
+failure_category = "str?"

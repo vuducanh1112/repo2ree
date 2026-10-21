@@ -1,0 +1,1027 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:repo2ree:contracts:behaviour:events",
+  "title": "repo2ree behaviour journal record",
+  "description": "One line of a behaviour journal. Generated from specifications/behaviour/vocabulary by `python -m repo2ree_conformance generate`; do not edit. contracts/behaviour/JOURNAL.md states what a schema cannot: sequence, epochs, durability, and citations.",
+  "x-vocabulary": "sha256:f7400ce1e95c86a5ca3185296fe2e76f5df920283738e38aebdb0d76aba53f78",
+  "type": "object",
+  "properties": {
+    "v": {
+      "const": 1
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "at": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "v",
+    "seq",
+    "kind"
+  ],
+  "oneOf": [
+    {
+      "$ref": "#/$defs/journal.opened"
+    },
+    {
+      "$ref": "#/$defs/journal.closed"
+    },
+    {
+      "$ref": "#/$defs/undeclared"
+    },
+    {
+      "$ref": "#/$defs/Allocation"
+    },
+    {
+      "$ref": "#/$defs/Attempt"
+    },
+    {
+      "$ref": "#/$defs/Ree"
+    },
+    {
+      "$ref": "#/$defs/Run"
+    },
+    {
+      "$ref": "#/$defs/Step"
+    },
+    {
+      "$ref": "#/$defs/dispatch"
+    }
+  ],
+  "$defs": {
+    "journal.opened": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "journal.opened"
+        },
+        "process": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "epoch": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "hosts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "vocabulary": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "kind",
+        "process",
+        "epoch",
+        "hosts",
+        "vocabulary"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "process": {
+                "const": "api"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "hosts": {
+                "const": [
+                  "api",
+                  "supervisor"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "process": {
+                "const": "workbench"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "hosts": {
+                "const": [
+                  "core",
+                  "workbench"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "journal.closed": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "journal.closed"
+        },
+        "final": {
+          "const": true
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    "undeclared": {
+      "description": "A subject the vocabulary does not declare: the owner's own, never judged.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "transition",
+            "send",
+            "receive",
+            "abandon"
+          ]
+        },
+        "subject": {
+          "type": "string",
+          "not": {
+            "enum": [
+              "Allocation",
+              "Attempt",
+              "Ree",
+              "Run",
+              "Step",
+              "dispatch"
+            ]
+          }
+        },
+        "owner": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string"
+        },
+        "facts": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "kind",
+        "subject",
+        "owner",
+        "key"
+      ]
+    },
+    "Allocation": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "transition"
+        },
+        "subject": {
+          "const": "Allocation"
+        },
+        "owner": {
+          "const": "supervisor"
+        },
+        "key": {
+          "type": "string"
+        },
+        "partition": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "from": {
+          "enum": [
+            null,
+            "requested",
+            "provisioning",
+            "waiting_for_workbench",
+            "ready",
+            "assigned",
+            "draining",
+            "released",
+            "failed",
+            "lost"
+          ]
+        },
+        "to": {
+          "enum": [
+            "requested",
+            "provisioning",
+            "waiting_for_workbench",
+            "ready",
+            "assigned",
+            "draining",
+            "released",
+            "failed",
+            "lost"
+          ]
+        },
+        "facts": {
+          "type": "object",
+          "properties": {
+            "detail": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "location_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "provider_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "workbench_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "subject",
+        "owner",
+        "key",
+        "to"
+      ],
+      "description": "Bookkeeping for obtaining, holding, and returning one workbench for one REE. Evidence: journal."
+    },
+    "Attempt": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "transition"
+        },
+        "subject": {
+          "const": "Attempt"
+        },
+        "owner": {
+          "const": "core"
+        },
+        "key": {
+          "type": "string"
+        },
+        "partition": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "from": {
+          "enum": [
+            null,
+            "pending",
+            "executing",
+            "completed",
+            "captured",
+            "capture_failed"
+          ]
+        },
+        "to": {
+          "enum": [
+            "pending",
+            "executing",
+            "completed",
+            "captured",
+            "capture_failed"
+          ]
+        },
+        "facts": {
+          "type": "object",
+          "properties": {
+            "changed": {
+              "type": "boolean"
+            },
+            "commit": {
+              "type": "string"
+            },
+            "dispatched_by": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "error": {
+              "type": "string"
+            },
+            "operation": {
+              "type": "string"
+            },
+            "outcome": {
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            },
+            "scope": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "subject",
+        "owner",
+        "key",
+        "to"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "to": {
+                "enum": [
+                  "captured"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "facts": {
+                "type": "object",
+                "properties": {
+                  "changed": {
+                    "type": "boolean"
+                  },
+                  "commit": {
+                    "type": "string"
+                  },
+                  "dispatched_by": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "error": {
+                    "type": "string"
+                  },
+                  "operation": {
+                    "type": "string"
+                  },
+                  "outcome": {
+                    "type": "string"
+                  },
+                  "run_id": {
+                    "type": "string"
+                  },
+                  "scope": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "changed",
+                  "commit"
+                ]
+              }
+            },
+            "required": [
+              "facts"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "to": {
+                "enum": [
+                  "completed"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "facts": {
+                "type": "object",
+                "properties": {
+                  "changed": {
+                    "type": "boolean"
+                  },
+                  "commit": {
+                    "type": "string"
+                  },
+                  "dispatched_by": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "error": {
+                    "type": "string"
+                  },
+                  "operation": {
+                    "type": "string"
+                  },
+                  "outcome": {
+                    "type": "string"
+                  },
+                  "run_id": {
+                    "type": "string"
+                  },
+                  "scope": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "outcome"
+                ]
+              }
+            },
+            "required": [
+              "facts"
+            ]
+          }
+        }
+      ],
+      "description": "One command execution inside an REE, from its pending record to its published capture. Evidence: git."
+    },
+    "Ree": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "transition"
+        },
+        "subject": {
+          "const": "Ree"
+        },
+        "owner": {
+          "const": "core"
+        },
+        "key": {
+          "type": "string"
+        },
+        "partition": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "from": {
+          "enum": [
+            null,
+            "draft",
+            "sealed"
+          ]
+        },
+        "to": {
+          "enum": [
+            "draft",
+            "sealed"
+          ]
+        },
+        "facts": {
+          "type": "object",
+          "properties": {
+            "attempt_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "cause": {
+              "type": "string"
+            },
+            "commit": {
+              "type": "string"
+            },
+            "operation": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "subject",
+        "owner",
+        "key",
+        "to"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "to": {
+                "enum": [
+                  "draft",
+                  "sealed"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "facts": {
+                "type": "object",
+                "properties": {
+                  "attempt_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "cause": {
+                    "type": "string"
+                  },
+                  "commit": {
+                    "type": "string"
+                  },
+                  "operation": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "cause"
+                ]
+              }
+            },
+            "required": [
+              "facts"
+            ]
+          }
+        }
+      ],
+      "description": "The author REE's committed state: authored while draft, frozen once sealed. Evidence: git."
+    },
+    "Run": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "transition"
+        },
+        "subject": {
+          "const": "Run"
+        },
+        "owner": {
+          "const": "api"
+        },
+        "key": {
+          "type": "string"
+        },
+        "partition": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "from": {
+          "enum": [
+            null,
+            "queued",
+            "provisioning",
+            "running",
+            "canceling",
+            "succeeded",
+            "failed",
+            "canceled"
+          ]
+        },
+        "to": {
+          "enum": [
+            "queued",
+            "provisioning",
+            "running",
+            "canceling",
+            "succeeded",
+            "failed",
+            "canceled"
+          ]
+        },
+        "facts": {
+          "type": "object",
+          "properties": {
+            "attempt_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "failure_category": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "operation": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "subject",
+        "owner",
+        "key",
+        "to"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "to": {
+                "enum": [
+                  "queued"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "facts": {
+                "type": "object",
+                "properties": {
+                  "attempt_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "failure_category": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "operation": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "operation"
+                ]
+              }
+            },
+            "required": [
+              "facts"
+            ]
+          }
+        }
+      ],
+      "description": "One accepted background request, from durable acceptance to its settled outcome. Evidence: journal."
+    },
+    "Step": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "transition"
+        },
+        "subject": {
+          "const": "Step"
+        },
+        "owner": {
+          "const": "core"
+        },
+        "key": {
+          "type": "string"
+        },
+        "partition": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "from": {
+          "enum": [
+            null,
+            "missing",
+            "current",
+            "stale",
+            "not_applicable"
+          ]
+        },
+        "to": {
+          "enum": [
+            "missing",
+            "current",
+            "stale",
+            "not_applicable"
+          ]
+        },
+        "facts": {
+          "type": "object",
+          "properties": {
+            "attempt_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "cause": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string"
+            },
+            "operation": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "step": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "subject",
+        "owner",
+        "key",
+        "to"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "to": {
+                "enum": [
+                  "current",
+                  "missing",
+                  "not_applicable",
+                  "stale"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "facts": {
+                "type": "object",
+                "properties": {
+                  "attempt_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "cause": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "operation": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "step": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              }
+            },
+            "required": [
+              "facts"
+            ]
+          }
+        }
+      ],
+      "description": "Whether one step's receipt still speaks for the REE as it now stands. Evidence: git."
+    },
+    "dispatch": {
+      "description": "One typed command sent to a workbench and the single outcome the sender observed.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "send"
+            },
+            "subject": {
+              "const": "dispatch"
+            },
+            "owner": {
+              "const": "supervisor"
+            },
+            "key": {
+              "type": "string"
+            },
+            "partition": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "message": {
+              "enum": [
+                "exec_action"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "subject",
+            "owner",
+            "key",
+            "message"
+          ],
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "message": {
+                    "const": "exec_action"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "facts": {
+                    "type": "object",
+                    "properties": {
+                      "operation": {
+                        "type": "string"
+                      },
+                      "run_id": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "receive"
+            },
+            "subject": {
+              "const": "dispatch"
+            },
+            "owner": {
+              "const": "supervisor"
+            },
+            "key": {
+              "type": "string"
+            },
+            "partition": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "message": {
+              "enum": [
+                "result",
+                "unavailable",
+                "error"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "subject",
+            "owner",
+            "key",
+            "message"
+          ],
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "message": {
+                    "const": "result"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "facts": {
+                    "type": "object",
+                    "properties": {
+                      "commit": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "status"
+                    ]
+                  }
+                },
+                "required": [
+                  "facts"
+                ]
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "message": {
+                    "const": "unavailable"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "facts": {
+                    "type": "object",
+                    "properties": {}
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "message": {
+                    "const": "error"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "facts": {
+                    "type": "object",
+                    "properties": {}
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "abandon"
+            },
+            "subject": {
+              "const": "dispatch"
+            },
+            "owner": {
+              "const": "supervisor"
+            },
+            "key": {
+              "type": "string"
+            },
+            "partition": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "message": {
+              "type": "null"
+            },
+            "facts": {
+              "type": "object",
+              "properties": {
+                "reason": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "subject",
+            "owner",
+            "key"
+          ]
+        }
+      ]
+    }
+  }
+}

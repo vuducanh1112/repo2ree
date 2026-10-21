@@ -112,6 +112,7 @@ def read_journal(path: Path, epoch_gap: bool = False) -> tuple[Source, list[Even
         complete=not problems,
         closed=closed,
         final=final,
+        vocabulary=header.get("vocabulary"),
         spec_digest=header.get("spec_digest"),
         problems=tuple(problems),
     )

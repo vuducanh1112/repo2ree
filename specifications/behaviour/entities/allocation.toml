@@ -1,37 +1,13 @@
-# One workbench allocation, owned by the supervisor's allocation store.
-#
-# This machine replaces the hand-written table that lived in
-# supervisor/allocation_state.py; the store still refuses any other edge.
+# The Allocation machine: where an instance starts, which edges it may take, and when it
+# must have settled. Its states and facts are declared in vocabulary/allocation.toml.
 
 name = "Allocation"
-owner = "supervisor"
-key = "allocation_id"
-partition = "ree_id"
-evidence = "journal"
 initial = "requested"
 terminal = ["released"]
 # Allocations outlive the API process that holds them: a restart resumes them.
 # A final close (the owner will not resume) leaves no one to release them, so
 # by then each must be released.
 settles_before_close = "final"
-summary = "Bookkeeping for obtaining, holding, and returning one workbench for one REE."
-
-[states]
-requested = "Recorded for an REE; nothing has been asked of a provider yet."
-provisioning = "A provider is creating the workbench."
-waiting_for_workbench = "The environment exists; the workbench has not dialed in yet."
-ready = "The workbench is connected and not yet bound to the REE."
-assigned = "The workbench holds the REE and accepts commands."
-draining = "The workbench is being released."
-released = "The workbench and its storage were returned."
-failed = "Obtaining or keeping the workbench failed."
-lost = "The workbench disappeared without being released."
-
-[facts]
-provider_id = "str?"
-workbench_id = "str?"
-location_id = "str?"
-detail = "str?"
 
 [[transitions]]
 from = "requested"

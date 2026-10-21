@@ -1,0 +1,27 @@
+# The words for one author step's evidence standing, as core's audit reports it
+# around each attempt (core/domain/ree/audit.py). The checker turns differences
+# between audits into transitions. Its machine is entities/step.toml.
+
+name = "Step"
+kind = "entity"
+owner = "core"
+key = "step_id"
+partition = "ree_id"
+evidence = "git"
+summary = "Whether one step's receipt still speaks for the REE as it now stands."
+
+[states]
+missing = "Applicable, and no receipt: the step has not run successfully."
+current = "The receipt still matches everything it rests on."
+stale = "A receipt exists, but something it rests on moved or was removed."
+not_applicable = "Nothing is declared for this step to be about, and there is no receipt."
+
+[facts]
+# source, evaluation, hardware, runtime, sbom, sbom_cross_check, test_activation, or experiment:<name>.
+step = "str"
+# The step without the experiment name: one of the above, or "experiment".
+kind = { type = "str", required = true }
+operation = "str?"
+attempt_id = "str?"
+# "operation" when an attempt changed the standing, "external" when it changed between attempts.
+cause = "str"

@@ -15,12 +15,31 @@ changes a protected zone changes nothing unprotected (the `spec-isolation` pre-c
 
 ## Model
 
-| File | Declares |
-|---|---|
-| `components.toml` | Components and the process each runs in. A process journal speaks for the components it hosts. |
-| `entities/*.toml` | State machines. Each has exactly one **owner** component; nothing else changes its state. |
-| `boundaries/*.toml` | Request/response exchanges between components, recorded by the sender. `cites` names records of the exchange and of the receiver's entity that name each other. |
-| `invariants.toml` | Cross-entity rules, each in one fixed pattern. |
+The specification has two layers. The **vocabulary** is the contract owners emit
+against: which subjects exist, who records them, and what each record carries. The
+**rules** are what the checker holds that evidence to. Only the vocabulary reaches the
+product, published as data in `contracts/behaviour/` (a JSON Schema generated from it,
+and `JOURNAL.md` for what a schema cannot state), so rules change without touching
+product code, and the product could change language without touching the rules.
+
+| File | Layer | Declares |
+|---|---|---|
+| `components.toml` | vocabulary | Components and the process each runs in. A process journal speaks for the components it hosts. |
+| `vocabulary/*.toml` | vocabulary | Each subject: an entity (owner, key, partition, evidence, states) or a boundary (sender, receiver, key, request and responses), with its facts. |
+| `entities/*.toml` | rules | State machines over the vocabulary's states: initial and terminal states, edges, when an instance must have settled. Each entity has exactly one **owner** component; nothing else changes its state. |
+| `boundaries/*.toml` | rules | `cites`: records of an exchange and of the receiver's entity that name each other. The exchange pattern itself (one request, at most one outcome, recorded by the sender) is implicit. |
+| `invariants.toml` | rules | Cross-entity rules, each in one fixed pattern. |
+
+A fact is declared by type (`"str"`, `"str?"`, `"bool"`, `"int"`, with `?` allowing null)
+or as `{ type = …, required = true }` (every record) or `{ type = …, required_in = [states] }`
+(every transition into those states; entities only). A fact is required where a rule
+cannot decide without it (a trigger's or requirement's `where`, a guard, a citation that
+must order two records); the rest are declared so their meaning is fixed, and may be
+absent. Owners may record more than the
+vocabulary declares, other subjects and other facts: those are theirs, listed in the
+report as not judged, and never part of a verdict. A declared word must keep its
+meaning: a declared fact of another type, or an undeclared state of a declared entity,
+is a violation.
 
 | Entity / boundary | Owner | Evidence |
 |---|---|---|
@@ -88,7 +107,7 @@ its owners stopped and must match exactly.
 
 | Pattern | Checked as |
 |---|---|
-| machine (per entity) | Transitions start where the last ended, follow declared edges, are recorded by the owner, carry declared facts, and never leave a terminal state. With `settles_before_close = true`, an entity must be terminal when its owner's journal closes; with `"final"`, when it closes for good. |
+| machine (per entity) | Transitions start where the last ended, follow declared edges, are recorded by the owner, carry their required facts with declared types, and never leave a terminal state. With `settles_before_close = true`, an entity must be terminal when its owner's journal closes; with `"final"`, when it closes for good. |
 | exchange (per boundary) | Per key: one request, then at most one response or abandonment, never before the request, and not missing once the sender's journal closed. |
 | `requires` | When the trigger occurs, the keyed entity reached one of the listed states (with facts) or the keyed message exists; with `order = "before"`, it happened before the trigger. An entity still open is violated when the evidence covers everything before the trigger, as a record never written is. |
 | `response` | After the trigger, the entity eventually reaches one of the listed states: violated once its owner's journal closed in a way that settles it (see `settles_before_close`) and it had not; inconclusive while it still could. |
@@ -105,8 +124,8 @@ as null is absent.
 
 - **violated**: complete evidence that covers the subject contradicts the specification.
 - **inconclusive**: the evidence cannot decide: a journal gap, no source for the
-  partition, an entity still in flight, events the evidence cannot order, journals
-  written against another specification digest, or no behaviour at all.
+  partition, an entity still in flight, events the evidence cannot order, a record
+  missing a fact the vocabulary requires, or no behaviour at all.
 - **passed**: every triggered rule held. A check where nothing triggered is inconclusive.
 
 The CLI exits 0, 1, or 2. Checking is its own step on a collected recording: test runs and
@@ -158,11 +177,14 @@ Collect, check, and draw are separate steps, each on the previous one's artifact
 ## Workflow
 
 1. Change behaviour here, in its own commit. Review it with `diff --base HEAD`.
-2. `just generate-behaviour` regenerates `protocol/src/repo2ree_protocol/behaviour/machines.py`
-   (`just check-conformance` fails while it is stale).
-3. Implement. Owners change state where they already did and record each change through
-   `repo2ree_protocol.behaviour.journal()`; `require_transition` enforces a machine
-   in-process (today: Allocation, and settled Runs are never rewritten).
+2. `just generate-behaviour` regenerates `contracts/behaviour/events.schema.json` (and,
+   until the product stops importing it, `protocol/src/repo2ree_protocol/behaviour/machines.py`);
+   `just check-conformance` fails while either is stale. A vocabulary change that removes or
+   retypes a word breaks owners that still emit it: add the new word, move the owners to it
+   in a product commit, then remove the old one.
+3. Implement. Owners change state where they already did and record each change in their
+   journal as `contracts/behaviour/JOURNAL.md` states; `python -m repo2ree_conformance
+   validate-journal <journal…>` checks what an owner wrote against the contract, in any language.
 4. `just test-conformance` runs the scenario suite: the real owners and core in one process,
    with faults injected at boundaries. Every specified edge must be exercised by a scenario
    or listed in `UNEXERCISED` with a reason; the suite fails in both directions.

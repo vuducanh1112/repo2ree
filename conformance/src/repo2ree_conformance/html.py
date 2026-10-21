@@ -8,6 +8,7 @@ from __future__ import annotations
 from html import escape
 
 from repo2ree_conformance.check import INITIAL, CheckResult
+from repo2ree_conformance.report import describe_extra, stamped
 from repo2ree_conformance.spec import Spec
 from repo2ree_conformance.views import system_map
 
@@ -75,7 +76,8 @@ def render_html(spec: Spec, result: CheckResult) -> str:
         f"<title>Behaviour Conformance</title><style>{STYLE}</style></head><body><main>",
         "<h1>Behaviour conformance</h1>",
         f"<p>{_badge(result.verdict)} <span class='muted'>against specification "
-        f"<code>{escape(result.spec_digest)}</code></span></p>",
+        f"<code>{escape(result.spec_digest)}</code>, vocabulary "
+        f"<code>{escape(result.vocabulary_digest)}</code></span></p>",
     ]
     findings = [(rule, finding) for rule in result.rules for finding in rule.findings]
     parts.append("<h2>Findings</h2>")
@@ -129,15 +131,28 @@ def render_html(spec: Spec, result: CheckResult) -> str:
         parts.append("</table>")
     parts.append(
         "<h2>Sources</h2><div class='scroll'><table><tr><th>Source</th><th>Kind</th><th>Complete</th><th>Closed</th>"
-        "<th>Problems</th></tr>"
+        "<th>Vocabulary</th><th>Problems</th></tr>"
     )
     parts += [
         f"<tr><td><code>{escape(source.id)}</code></td><td>{source.kind}</td><td>{'yes' if source.complete else 'no'}"
-        f"</td><td>{'yes' if source.closed else 'no'}</td><td>{escape('; '.join(source.problems)) or '—'}</td></tr>"
+        f"</td><td>{'yes' if source.closed else 'no'}</td><td>{escape(stamped(source, result))}</td>"
+        f"<td>{escape('; '.join(source.problems)) or '—'}</td></tr>"
         for source in result.sources
     ]
+    parts.append("</table></div>")
+    if result.extras:
+        parts.append(
+            "<h2>Not judged</h2><p class='muted'>Recorded beyond the vocabulary; the owners' own, never part of "
+            "a verdict.</p><ul>"
+        )
+        parts += [
+            f"<li>{escape(describe_extra(extra).replace('`', ''))}: {extra.count} records "
+            f"<span class='muted'>{' '.join(f'<code>{escape(ref)}</code>' for ref in extra.evidence)}</span></li>"
+            for extra in result.extras
+        ]
+        parts.append("</ul>")
     parts += [
-        "</table></div></main>",
+        "</main>",
         "<script type='module'>",
         f"import mermaid from '{MERMAID}';",
         "const dark = matchMedia('(prefers-color-scheme: dark)').matches;",

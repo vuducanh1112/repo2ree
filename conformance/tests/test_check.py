@@ -107,7 +107,7 @@ class Recorder:
         changed: bool = True,
         dispatched_by: str | None = None,
     ) -> None:
-        pending: dict[str, Any] = {"operation": "build_runtime"}
+        pending: dict[str, Any] = {"operation": "build_runtime", "run_id": "run-1", "scope": "author"}
         if dispatched_by is not None:
             pending["dispatched_by"] = dispatched_by
         steps: list[tuple[str | None, str, dict[str, Any]]] = [(None, "pending", pending), ("pending", "executing", {})]
@@ -424,14 +424,14 @@ def test_an_assigned_allocation_that_never_ends_is_inconclusive() -> None:
     assert findings(recorder, "allocation-ends") == ["inconclusive: still assigned"]
 
 
-def test_journals_written_against_another_specification_are_inconclusive() -> None:
+def test_a_journal_is_judged_by_what_it_holds_not_by_the_vocabulary_it_names() -> None:
     recorder = Recorder()
     complete_command(recorder)
-    result = verdicts(recorder, journal(digest="sha256:old"), git(REE))
-    assert result["evidence"] == "inconclusive"
+    older = journal().model_copy(update={"vocabulary": "sha256:old", "spec_digest": "sha256:older"})
+    assert verdicts(recorder, older, git(REE))["overall"] == "passed"
 
 
-def test_events_for_undeclared_subjects_are_violated() -> None:
+def test_what_owners_record_beyond_the_vocabulary_is_reported_and_never_judged() -> None:
     recorder = Recorder()
     complete_command(recorder)
     recorder._add(
@@ -444,7 +444,93 @@ def test_events_for_undeclared_subjects_are_violated() -> None:
         target_state="started",
         facts={},
     )
-    assert verdicts(recorder)["evidence"] == "violated"
+    recorder._add(
+        "api-000001",
+        kind="transition",
+        owner="api",
+        subject="Run",
+        key="run-2",
+        source_state=None,
+        target_state="queued",
+        facts={"operation": "build", "queue": "fast"},
+    )
+    recorder.settle("run-2", "queued", "failed", None)
+    result = check(SPEC, Evidence(sources=(journal(), git(REE)), events=tuple(recorder.events)))
+    assert result.verdict == "passed"
+    assert [(extra.subject, extra.fact, extra.count) for extra in result.extras] == [
+        ("Deposit", None, 1),
+        ("Run", "queue", 1),
+    ]
+    model, _, _ = replay(SPEC, Evidence(sources=(journal(), git(REE)), events=tuple(recorder.events)))
+    assert "queue" not in model.instances["Run"]["run-2"].facts
+
+
+def test_a_missing_required_fact_leaves_the_machine_inconclusive() -> None:
+    recorder = Recorder()
+    recorder._add(
+        "api-000001",
+        kind="transition",
+        owner="api",
+        subject="Run",
+        key="run-1",
+        source_state=None,
+        target_state="queued",
+        facts={"queue": "fast"},
+    )
+    recorder.settle("run-1", "queued", "failed", None)
+    assert findings(recorder, "machine:Run") == ["inconclusive: missing required facts ['operation']"]
+
+
+def test_a_declared_fact_of_another_type_is_violated() -> None:
+    recorder = Recorder()
+    recorder.run("run-1", "queued", "failed", operation=7)
+    assert findings(recorder, "machine:Run") == ["violated: fact 'operation' is not str"]
+
+
+def test_a_message_missing_a_required_fact_leaves_the_exchange_inconclusive() -> None:
+    recorder = Recorder()
+    recorder.dispatch("a1")
+    recorder._add(
+        "api-000001",
+        kind="receive",
+        owner="supervisor",
+        subject="dispatch",
+        key="a1",
+        message="result",
+        facts={"commit": "c" * 40},
+    )
+    assert findings(recorder, "boundary:dispatch") == ["inconclusive: missing required facts ['status']"]
+
+
+def test_transitions_recorded_against_a_boundary_are_violated() -> None:
+    recorder = Recorder()
+    complete_command(recorder)
+    recorder._add(
+        "api-000001",
+        kind="transition",
+        owner="supervisor",
+        subject="dispatch",
+        key="a1",
+        source_state=None,
+        target_state="sent",
+        facts={},
+    )
+    assert findings(recorder, "boundary:dispatch") == ["violated: transitions recorded against a boundary"]
+
+
+def test_a_journal_of_a_process_the_vocabulary_does_not_place_is_not_judged() -> None:
+    recorder = Recorder()
+    complete_command(recorder)
+    provider = Source(
+        id="provider-000001",
+        kind="journal",
+        process="provider",
+        rank=1,
+        hosts=frozenset({"provider"}),
+        complete=True,
+        closed=True,
+    )
+    assert verdicts(recorder, journal(), git(REE), provider)["evidence"] == "passed"
 
 
 def judgements(recorder: Recorder) -> list[tuple[str, str, str]]:

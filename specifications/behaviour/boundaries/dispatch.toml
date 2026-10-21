@@ -1,32 +1,7 @@
-# Typed command dispatch from the supervisor to a workbench.
-#
-# Recorded on the sender's side: the supervisor journals each request before it
-# is sent and the one outcome it observed. The workbench side is not journaled
-# yet; the Attempt machine is the receiver's evidence.
+# The dispatch exchange's rules: which records of it and of the receiver's entity
+# name each other. Its messages and facts are declared in vocabulary/dispatch.toml.
 
 name = "dispatch"
-sender = "supervisor"
-receiver = "workbench"
-key = "attempt_id"
-partition = "ree_id"
-summary = "One typed command sent to a workbench and the single outcome the sender observed."
-request = "exec_action"
-responses = ["result", "unavailable", "error"]
-
-[messages]
-exec_action = "The command envelope, sent over the workbench's connection."
-result = "The executor's terminal ActionResult frame."
-unavailable = "The workbench reported that it cannot run commands."
-error = "The workbench reported a transport or protocol error."
-
-[facts.exec_action]
-operation = "str"
-run_id = "str"
-
-[facts.result]
-status = "str"
-# The commit that captured the attempt, as the result reported it.
-commit = "str?"
 
 # The two sides' records name each other, so their order across the journal and
 # Git is evidenced rather than assumed: a record that names another can only have

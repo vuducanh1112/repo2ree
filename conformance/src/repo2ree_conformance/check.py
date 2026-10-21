@@ -4,6 +4,11 @@ Absence is a violation only where a complete source covering the subject could
 have recorded it, and order is asserted only where the evidence establishes it.
 Everything else that cannot be decided is inconclusive, never a pass.
 
+The checker judges only what the vocabulary declares. Owners may record more (other
+subjects, other facts); that is reported as extras and never changes a verdict. A
+declared fact of the wrong type is violated; a required one that is missing leaves the
+record unable to prove anything, so it is inconclusive.
+
 Order comes from three places only: positions within one source, epochs and
 positions within one process's journals, and citations (``cites`` in a boundary
 spec): a record that names another was written after it. Wall-clock time is
@@ -33,7 +38,8 @@ from repo2ree_conformance.spec import (
     Invariant,
     MessageRequirement,
     Spec,
-    fact_problem,
+    declared_facts,
+    fact_problems,
     matches,
 )
 
@@ -67,6 +73,15 @@ class RuleResult(EvidenceModel):
         return "passed" if self.triggered else "not_triggered"
 
 
+class Extra(EvidenceModel):
+    """What owners recorded beyond the vocabulary: a subject it does not declare, or a fact of one it does."""
+
+    subject: str
+    fact: str | None = None  # None: the whole subject is undeclared.
+    count: int
+    evidence: tuple[str, ...] = ()
+
+
 class Coverage(EvidenceModel):
     """How often each declared edge and message was observed; zero marks a gap."""
 
@@ -79,6 +94,9 @@ class CheckResult(EvidenceModel):
     sources: tuple[Source, ...]
     rules: tuple[RuleResult, ...]
     coverage: Coverage
+    # The contract the evidence was judged against; a journal's own stamp is provenance only.
+    vocabulary_digest: str = ""
+    extras: tuple[Extra, ...] = ()
 
     @property
     def verdict(self) -> Verdict:
@@ -183,8 +201,7 @@ def replay_entity(
             reasons: list[tuple[FindingVerdict, str]] = []
             if event.owner != spec.owner:
                 reasons.append(("violated", f"recorded by {event.owner}, but {spec.owner} owns {spec.name}"))
-            if problem := fact_problem(spec.facts, event.facts):
-                reasons.append(("violated", problem))
+            reasons.extend(fact_problems(spec.facts, spec.required.get(event.target_state or "", ()), event.facts))
             if event.partition != instance.partition:
                 reasons.append(("violated", f"moved from partition {instance.partition} to {event.partition}"))
             target = event.target_state or ""
@@ -200,9 +217,10 @@ def replay_entity(
             elif not instance.settled:
                 reasons.append(("violated", f"undeclared transition {move}"))
             findings.extend(_finding(verdict, subject, reason, event) for verdict, reason in reasons)
-            instance.reached.append(Reached(instance.current, target, {**instance.facts, **event.facts}, event))
+            facts = declared_facts(spec.facts, event.facts)
+            instance.reached.append(Reached(instance.current, target, {**instance.facts, **facts}, event))
             instance.current = target
-            instance.facts.update(event.facts)
+            instance.facts.update(facts)
         if not instance.settled and spec.terminal:
             last = evidence.source(ordered[-1].source)
             if spec.settles_at(last.closed, last.final):
@@ -238,8 +256,10 @@ def replay_boundary(
         exchanges[key] = exchange
         subject = f"{spec.name} {key}"
 
-        def violation(reason: str, *events: Event, subject: str = subject) -> None:
-            findings.append(_finding("violated", subject, reason, *events))
+        def violation(
+            reason: str, *events: Event, subject: str = subject, verdict: FindingVerdict = "violated"
+        ) -> None:
+            findings.append(_finding(verdict, subject, reason, *events))
 
         for event in ordered:
             label = "abandoned" if event.kind == "abandon" else event.message or ""
@@ -250,10 +270,11 @@ def replay_boundary(
                 violation(f"sent {event.message}, which is not the request", event)
             if event.kind == "receive" and event.message not in spec.responses:
                 violation(f"received {event.message}, which is not a response", event)
-            if event.kind != "abandon" and (
-                problem := fact_problem(spec.facts.get(event.message or "", {}), event.facts)
-            ):
-                violation(problem, event)
+            if event.kind != "abandon":
+                message = event.message or ""
+                declared, required = spec.facts.get(message, {}), spec.required.get(message, ())
+                for verdict, problem in fact_problems(declared, required, event.facts):
+                    violation(problem, event, verdict=verdict)
         sends = [event for event in ordered if event.kind == "send"]
         outcomes = [event for event in ordered if event.kind in {"receive", "abandon"}]
         if not sends:
@@ -714,8 +735,9 @@ def check_evidence(spec: Spec, evidence: Evidence) -> RuleResult:
         findings.extend(
             Finding(verdict="inconclusive", subject=source.id, reason=problem) for problem in source.problems
         )
+        # A process the vocabulary places nothing in is the owner's own, like any undeclared subject.
         expected_hosts = spec.hosted_by(source.process)
-        if source.kind == "journal" and source.hosts != expected_hosts:
+        if source.kind == "journal" and expected_hosts and source.hosts != expected_hosts:
             findings.append(
                 Finding(
                     verdict="inconclusive",
@@ -724,31 +746,37 @@ def check_evidence(spec: Spec, evidence: Evidence) -> RuleResult:
                     f"{sorted(expected_hosts)} in process {source.process}",
                 )
             )
-        if source.spec_digest is not None and source.spec_digest != spec.digest:
-            findings.append(
-                Finding(
-                    verdict="inconclusive",
-                    subject=source.id,
-                    reason=f"written against specification {source.spec_digest}, checking {spec.digest}",
-                )
-            )
-    known_subjects = {*spec.entities, *spec.boundaries}
-    for subject, events in sorted(_by_subject(evidence.events).items()):
-        if subject not in known_subjects:
-            findings.append(
-                Finding(
-                    verdict="violated",
-                    subject=subject,
-                    reason=f"{len(events)} events for an undeclared entity or boundary",
-                    evidence=tuple(event.ref for event in events[:3]),
-                )
-            )
     return RuleResult(
         rule="evidence",
         kind="evidence",
-        summary="Sources are complete, readable, and written against this specification.",
+        summary="Sources are complete and readable, and journals speak for the components the specification "
+        "places in their process.",
         triggered=len(evidence.sources),
         findings=tuple(findings),
+    )
+
+
+def extras(spec: Spec, evidence: Evidence) -> tuple[Extra, ...]:
+    """What the evidence holds beyond the vocabulary, for the report; never part of a verdict."""
+    found: dict[tuple[str, str | None], list[Event]] = defaultdict(list)
+    for event in evidence.events:
+        if event.kind == "observed":
+            continue
+        if event.subject in spec.entities:
+            declared = spec.entities[event.subject].facts
+        elif event.subject in spec.boundaries and event.kind != "abandon":
+            declared = spec.boundaries[event.subject].facts.get(event.message or "", {})
+        elif event.subject in spec.boundaries:
+            continue
+        else:
+            found[(event.subject, None)].append(event)
+            continue
+        for fact in event.facts:
+            if fact not in declared:
+                found[(event.subject, fact)].append(event)
+    return tuple(
+        Extra(subject=subject, fact=fact, count=len(events), evidence=tuple(event.ref for event in events[:3]))
+        for (subject, fact), events in sorted(found.items(), key=lambda item: (item[0][0], item[0][1] or ""))
     )
 
 
@@ -777,7 +805,11 @@ def replay(spec: Spec, evidence: Evidence) -> tuple[Model, list[RuleResult], Cov
         rules.append(result)
     for name, boundary in sorted(spec.boundaries.items()):
         events = [event for event in by_subject.get(name, []) if event.kind in {"send", "receive", "abandon"}]
+        stray = [event for event in by_subject.get(name, []) if event.kind not in {"send", "receive", "abandon"}]
         exchanges[name], result, messages[name] = replay_boundary(boundary, events, evidence)
+        if stray:
+            stray_finding = _finding("violated", name, "transitions recorded against a boundary", *stray[:3])
+            result = result.model_copy(update={"findings": (*result.findings, stray_finding)})
         rules.append(result)
     model = Model(spec, evidence, instances, exchanges)
     rules = [
@@ -796,12 +828,20 @@ def check(spec: Spec, evidence: Evidence) -> CheckResult:
     observed = [event for event in evidence.events if event.kind == "observed"]
     if observed:
         rules.append(check_reconciliation(model, observed))
-    return CheckResult(spec_digest=spec.digest, sources=evidence.sources, rules=tuple(rules), coverage=coverage)
+    return CheckResult(
+        spec_digest=spec.digest,
+        vocabulary_digest=spec.vocabulary_digest,
+        sources=evidence.sources,
+        rules=tuple(rules),
+        coverage=coverage,
+        extras=extras(spec, evidence),
+    )
 
 
 __all__ = [
     "CheckResult",
     "Coverage",
+    "Extra",
     "Finding",
     "Judgement",
     "Model",

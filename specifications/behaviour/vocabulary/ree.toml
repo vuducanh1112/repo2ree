@@ -1,0 +1,27 @@
+# The words for the author REE as its Git history shows it.
+#
+# Every transition is witnessed rather than claimed: the checker derives it from
+# the REE's own capture commits, reading only whether the committed tree changed
+# and whether the committed ree.json carries a seal. Its machine is entities/ree.toml.
+
+name = "Ree"
+kind = "entity"
+owner = "core"
+key = "ree_id"
+partition = "ree_id"
+evidence = "git"
+summary = "The author REE's committed state: authored while draft, frozen once sealed."
+
+[states]
+draft = "Authoring: definition, files, and receipts may change."
+sealed = "Sealed: the committed tree is final."
+
+[facts]
+# The capture commit that produced this state.
+commit = "str"
+# The operation that changed the tree, or the snapshot kind for changes made outside operations.
+operation = "str"
+attempt_id = "str?"
+# "operation" when an attempt changed the tree, "created" for the first snapshot, and
+# "external" when a snapshot found the tree changed between operations.
+cause = { type = "str", required = true }

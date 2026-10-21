@@ -1,4 +1,4 @@
-"""Command line: generate the runtime machines, describe the spec, or check evidence."""
+"""Command line: generate the published contract, describe the spec, validate journals, or check evidence."""
 
 from __future__ import annotations
 
@@ -7,8 +7,9 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from repo2ree_conformance.codegen import render_machines
-from repo2ree_conformance.files import GENERATED_MACHINES, SPEC_DIR, load_spec, load_spec_at
+from repo2ree_conformance.codegen import render_machines, render_schema
+from repo2ree_conformance.contract import journal_problems
+from repo2ree_conformance.files import GENERATED_MACHINES, GENERATED_SCHEMA, SPEC_DIR, load_spec, load_spec_at
 from repo2ree_conformance.html import render_html
 from repo2ree_conformance.recording import load_recording
 from repo2ree_conformance.report import render_json, render_markdown
@@ -22,9 +23,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--spec", type=Path, default=SPEC_DIR, help="Specification directory")
     commands = parser.add_subparsers(dest="command", required=True)
 
-    generate = commands.add_parser("generate", help="Write the runtime machines module from the specification")
-    generate.add_argument("--check", action="store_true", help="Fail instead of writing when the module is stale")
-    generate.add_argument("--output", type=Path, default=GENERATED_MACHINES)
+    generate = commands.add_parser(
+        "generate", help="Write the event schema (and the runtime machines module) from the specification"
+    )
+    generate.add_argument("--check", action="store_true", help="Fail instead of writing when an output is stale")
+    generate.add_argument("--schema", type=Path, default=GENERATED_SCHEMA)
+    generate.add_argument("--output", type=Path, default=GENERATED_MACHINES, help="The runtime machines module")
+
+    validate = commands.add_parser(
+        "validate-journal", help="Check journal files against the published contract (exit 0/1)"
+    )
+    validate.add_argument("journals", type=Path, nargs="+", help="Journal files, or directories of them")
 
     commands.add_parser("describe", help="Validate the specification and print its digest")
     commands.add_parser("map", help="Print the system map (Mermaid) drawn from the specification")
@@ -46,7 +55,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     spec = load_spec(args.spec)
     if args.command == "describe":
-        sys.stdout.write(f"{spec.digest}\n")
+        sys.stdout.write(f"{spec.digest}\n  vocabulary {spec.vocabulary_digest}\n")
         for name, entity in sorted(spec.entities.items()):
             edges = sum(len(targets) for targets in entity.edges.values())
             sys.stdout.write(f"  entity {name}: {len(entity.states)} states, {edges} edges, owner {entity.owner}\n")
@@ -67,17 +76,33 @@ def main(argv: Sequence[str] | None = None) -> int:
             sys.stdout.write(rendered)
         return 0
     if args.command == "generate":
-        rendered = render_machines(spec)
-        current = args.output.read_text() if args.output.exists() else None
+        outputs = {args.schema: render_schema(spec), args.output: render_machines(spec)}
+        stale = [
+            path for path, rendered in outputs.items() if (path.read_text() if path.exists() else None) != rendered
+        ]
         if args.check:
-            if current != rendered:
-                sys.stderr.write(f"{args.output} is stale; run `python -m repo2ree_conformance generate`\n")
-                return 1
-            return 0
-        if current != rendered:
-            args.output.write_text(rendered)
-        sys.stdout.write(f"{args.output}: {spec.digest}\n")
+            for path in stale:
+                sys.stderr.write(f"{path} is stale; run `python -m repo2ree_conformance generate`\n")
+            return 1 if stale else 0
+        for path in stale:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(outputs[path])
+        sys.stdout.write(f"{args.schema}: {spec.vocabulary_digest}\n{args.output}: {spec.digest}\n")
         return 0
+    if args.command == "validate-journal":
+        files = [
+            found for path in args.journals for found in (sorted(path.glob("*.ndjson")) if path.is_dir() else [path])
+        ]
+        failed = False
+        for path in files:
+            problems = journal_problems(spec, path)
+            failed = failed or bool(problems)
+            sys.stdout.write(f"{'ok' if not problems else 'broken'}: {path}\n")
+            sys.stdout.writelines(f"  {problem}\n" for problem in problems)
+        if not files:
+            sys.stderr.write("no journal files\n")
+            return 1
+        return 1 if failed else 0
     try:
         recordings = [load_recording(recording, args.git_executable) for recording in args.recording]
     except ValueError as exc:
