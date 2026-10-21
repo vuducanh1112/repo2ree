@@ -27,7 +27,15 @@ scope = "str"
 # The journal record of the request that dispatched this attempt (see boundaries/dispatch.toml).
 # Absent for an attempt nothing dispatched, such as one run in-process.
 dispatched_by = "str?"
-outcome = { type = "str", required_in = ["completed"] }
 commit = { type = "str", required_in = ["captured"] }
 changed = { type = "bool", required_in = ["captured"] }
 error = "str"
+
+[facts.outcome]
+type = "str"
+required_in = ["completed"]
+
+[facts.outcome.values]
+succeeded = "The command did what it was asked."
+failed = "The command could not do it."
+canceled = "The command stopped because its run was canceled."

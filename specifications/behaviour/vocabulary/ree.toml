@@ -22,6 +22,12 @@ commit = "str"
 # The operation that changed the tree, or the snapshot kind for changes made outside operations.
 operation = "str"
 attempt_id = "str?"
-# "operation" when an attempt changed the tree, "created" for the first snapshot, and
-# "external" when a snapshot found the tree changed between operations.
-cause = { type = "str", required = true }
+
+[facts.cause]
+type = "str"
+required = true
+
+[facts.cause.values]
+operation = "An attempt changed the tree."
+created = "The first snapshot of a new REE."
+external = "A snapshot found the tree changed between operations."

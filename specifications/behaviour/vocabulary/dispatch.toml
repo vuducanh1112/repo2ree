@@ -26,6 +26,14 @@ operation = "str"
 run_id = "str"
 
 [facts.result]
-status = { type = "str", required = true }
 # The commit that captured the attempt, as the result reported it.
 commit = "str?"
+
+[facts.result.status]
+type = "str"
+required = true
+
+[facts.result.status.values]
+succeeded = "The command did what it was asked."
+failed = "The command could not do it."
+canceled = "The command stopped because its run was canceled."

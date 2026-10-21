@@ -19,9 +19,28 @@ not_applicable = "Nothing is declared for this step to be about, and there is no
 [facts]
 # source, evaluation, hardware, runtime, sbom, sbom_cross_check, test_activation, or experiment:<name>.
 step = "str"
-# The step without the experiment name: one of the above, or "experiment".
-kind = { type = "str", required = true }
 operation = "str?"
 attempt_id = "str?"
-# "operation" when an attempt changed the standing, "external" when it changed between attempts.
-cause = "str"
+
+# The step without the experiment name.
+[facts.kind]
+type = "str"
+required = true
+
+[facts.kind.values]
+source = "The frozen source."
+evaluation = "The reproducibility evaluation."
+hardware = "The observed hardware."
+runtime = "The built runtime."
+sbom = "The runtime's SBOM."
+sbom_cross_check = "Declared dependencies checked against the SBOM."
+test_activation = "The runtime's activation test."
+experiment = "One declared experiment."
+
+[facts.cause]
+type = "str"
+
+[facts.cause.values]
+operation = "An attempt changed the standing."
+external = "The standing changed between attempts."
+baseline = "The standing as first audited, before any attempt."

@@ -3,7 +3,7 @@
   "$id": "urn:repo2ree:contracts:behaviour:events",
   "title": "repo2ree behaviour journal record",
   "description": "One line of a behaviour journal. Generated from specifications/behaviour/vocabulary by `python -m repo2ree_conformance generate`; do not edit. Sequence, epochs, and the header are checked per journal by `python -m repo2ree_conformance validate-journal`.",
-  "x-vocabulary": "sha256:c2048c6b7997af29e4efc971385dc5ebbf18c6ff1271f80e4e03a29bb65fa8bf",
+  "x-vocabulary": "sha256:936aa79854f379d5ae2f102f597233f24e3c16ac7ffe7a21d00b987a1aeba62e",
   "type": "object",
   "properties": {
     "v": {
@@ -331,7 +331,11 @@
               "type": "string"
             },
             "outcome": {
-              "type": "string"
+              "enum": [
+                "succeeded",
+                "failed",
+                "canceled"
+              ]
             },
             "run_id": {
               "type": "string"
@@ -384,7 +388,11 @@
                     "type": "string"
                   },
                   "outcome": {
-                    "type": "string"
+                    "enum": [
+                      "succeeded",
+                      "failed",
+                      "canceled"
+                    ]
                   },
                   "run_id": {
                     "type": "string"
@@ -438,7 +446,11 @@
                     "type": "string"
                   },
                   "outcome": {
-                    "type": "string"
+                    "enum": [
+                      "succeeded",
+                      "failed",
+                      "canceled"
+                    ]
                   },
                   "run_id": {
                     "type": "string"
@@ -758,7 +770,11 @@
               ]
             },
             "cause": {
-              "type": "string"
+              "enum": [
+                "operation",
+                "created",
+                "external"
+              ]
             },
             "commit": {
               "type": "string"
@@ -800,7 +816,11 @@
                     ]
                   },
                   "cause": {
-                    "type": "string"
+                    "enum": [
+                      "operation",
+                      "created",
+                      "external"
+                    ]
                   },
                   "commit": {
                     "type": "string"
@@ -870,10 +890,23 @@
               ]
             },
             "cause": {
-              "type": "string"
+              "enum": [
+                "operation",
+                "external",
+                "baseline"
+              ]
             },
             "kind": {
-              "type": "string"
+              "enum": [
+                "source",
+                "evaluation",
+                "hardware",
+                "runtime",
+                "sbom",
+                "sbom_cross_check",
+                "test_activation",
+                "experiment"
+              ]
             },
             "operation": {
               "type": [
@@ -920,10 +953,23 @@
                     ]
                   },
                   "cause": {
-                    "type": "string"
+                    "enum": [
+                      "operation",
+                      "external",
+                      "baseline"
+                    ]
                   },
                   "kind": {
-                    "type": "string"
+                    "enum": [
+                      "source",
+                      "evaluation",
+                      "hardware",
+                      "runtime",
+                      "sbom",
+                      "sbom_cross_check",
+                      "test_activation",
+                      "experiment"
+                    ]
                   },
                   "operation": {
                     "type": [
@@ -1069,7 +1115,11 @@
                         ]
                       },
                       "status": {
-                        "type": "string"
+                        "enum": [
+                          "succeeded",
+                          "failed",
+                          "canceled"
+                        ]
                       }
                     },
                     "required": [
