@@ -3,6 +3,7 @@
 name = "repo2ree"
 version = "0.1.0"
 description = "A utility tool to create a reusable execution environment from a repo."
+readme = "README.md"
 requires-python = "~=3.13.0"
 dependencies = []
 
