@@ -19,6 +19,7 @@ from repo2ree_api.deps import workbench_manager
 from repo2ree_api.settings import service_settings
 from repo2ree_api.storage.json_run_store import JsonRunStore
 from repo2ree_api.workbench.commands import require_handle
+from repo2ree_protocol.behaviour.events import AuthorApiActionName
 from repo2ree_protocol.command import Command
 from repo2ree_protocol.result import ActionResult
 from repo2ree_supervisor import WorkbenchHandle
@@ -49,6 +50,7 @@ update_run_outputs = _registry.update_outputs
 is_cancel_requested = _registry.is_cancel_requested
 mark_cancel_requested = _registry.mark_cancel_requested
 run_summary = _registry.run_summary
+run_action_id = _registry.action_of
 get_run_state = _registry.get_run_state
 get_run_summary = _registry.get_run_summary
 list_runs = _registry.list_runs
@@ -75,6 +77,7 @@ def start_provisioning_run(
         request_payload,
         "provision",
         runner,
+        action="create_ree",
         require_ree_exists=False,
     )
 
@@ -83,6 +86,7 @@ def start_single_command_run(
     ree_id: str,
     *,
     operation: RunOperation,
+    action: AuthorApiActionName | None,
     command: Command,
     run_id_prefix: str,
     request_payload: dict[str, Any],
@@ -94,7 +98,8 @@ def start_single_command_run(
     """Start a background run that dispatches a single workbench command.
 
     Collapses the common runner shape used by the build / activation / sbom /
-    hbom routes: cancel-check → workbench lookup → dispatch → result.
+    hbom routes: cancel-check → workbench lookup → dispatch → result. ``action`` is
+    the author action the run carries out; a reviewer's run passes None.
 
     The fallback outputs stand in whenever the command reports none — on cancel,
     and when it simply produced nothing — and are also seeded onto the run at
@@ -150,6 +155,7 @@ def start_single_command_run(
         request_payload,
         run_id_prefix,
         _runner,
+        action=action,
         idempotency_key=idempotency_key,
         initial_outputs=outputs,
     )

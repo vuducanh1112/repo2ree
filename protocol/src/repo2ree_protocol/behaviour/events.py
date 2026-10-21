@@ -20,6 +20,47 @@ from repo2ree_protocol.behaviour.writer import Fact, journal
 
 RunState = Literal["queued", "provisioning", "running", "canceling", "succeeded", "failed", "canceled"]
 DispatchResponse = Literal["result", "unavailable", "error"]
+AuthorApiActionState = Literal["requested", "running", "canceling", "succeeded", "failed", "canceled"]
+# What an author can ask of one REE through the API, by group.
+AuthorApiActionName = Literal[
+    # workbench
+    "create_ree",
+    "release_workbench",
+    # source
+    "acquire_source",
+    "upload_source",
+    "remove_source",
+    # editing
+    "edit_definition",
+    "write_file",
+    "delete_file",
+    # assistance
+    "suggest_scripts",
+    "lint_scripts",
+    # evidence
+    "evaluate_reproducibility",
+    "observe_hardware",
+    "build_runtime",
+    "generate_sbom",
+    "cross_check_sbom",
+    "test_activation",
+    "run_experiment",
+    # lifecycle
+    "seal_ree",
+    "load_ree_bundle",
+    # reading
+    "view_ree",
+    "view_ree_state",
+    "read_file",
+    "list_receipts",
+    "view_history",
+    "view_evaluation_report",
+    "download_ree",
+    "list_actions",
+    "view_action",
+    "view_action_log",
+    "watch_action",
+]
 
 
 class RunFacts(TypedDict, total=False):
@@ -34,6 +75,19 @@ class AllocationFacts(TypedDict, total=False):
     workbench_id: str | None
     location_id: str | None
     detail: str | None
+
+
+class AuthorApiActionFacts(TypedDict, total=False):
+    # The attempt the workbench reported, for an action that ran a command in the REE.
+    attempt_id: str | None
+    # The workbench's allocation, for create_ree and release_workbench.
+    allocation_id: str | None
+    run_id: str | None
+    experiment: str | None
+    path: str | None
+    about_action_id: str | None
+    http_status: int | None
+    failure_category: str | None
 
 
 class ExecActionFacts(TypedDict):
@@ -70,6 +124,20 @@ def allocation(
     journal().transition(
         "supervisor", "Allocation", key, source, target.value, partition=partition, facts=_facts(facts)
     )
+
+
+def author_api_action(
+    key: str,
+    current: AuthorApiActionState | None,
+    target: AuthorApiActionState,
+    *,
+    action: AuthorApiActionName,
+    partition: str,
+    facts: AuthorApiActionFacts,
+) -> None:
+    """What an author asked of one REE through the API moved on; the API owns it."""
+    recorded: dict[str, Fact] = {"action": action, **_facts(facts)}
+    journal().transition("api", "AuthorApiAction", key, current, target, partition=partition, facts=recorded)
 
 
 def dispatch_sent(key: str, *, partition: str, facts: ExecActionFacts) -> str | None:

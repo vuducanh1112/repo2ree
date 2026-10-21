@@ -25,6 +25,7 @@ from repo2ree_api.contracts import (
 )
 from repo2ree_api.control.run_orchestration import run_summary, start_single_command_run
 from repo2ree_api.deps import workbench_manager
+from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import dispatch_or_fail, ree_command_span, require_handle
 from repo2ree_api.workbench.uploads import mint_upload_token, stage_upload_bytes
 from repo2ree_protocol import AcquireSourceCommand, RemoveSourceCommand
@@ -51,6 +52,7 @@ def acquire_source_route(ree_id: str, payload: SourceAcquirePayload) -> RunSumma
     run_state = start_single_command_run(
         ree_id,
         operation="source",
+        action="acquire_source",
         command=AcquireSourceCommand(
             args=AcquireSourceArgs(
                 mode="download",
@@ -78,7 +80,7 @@ def acquire_source_route(ree_id: str, payload: SourceAcquirePayload) -> RunSumma
 )
 def upload_init_route(ree_id: str, payload: UploadInitPayload) -> UploadInitResponse:
     return UploadInitResponse.model_validate(
-        mint_upload_token(ree_id, payload, upload_route="source:upload", purpose="source")
+        mint_upload_token(ree_id, payload, upload_route="source:upload", purpose="source", action="upload_source")
     )
 
 
@@ -109,6 +111,7 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload) -> 
         archive_name=payload.archive_name,
         purpose="source",
         operation="source",
+        action="upload_source",
         run_id_prefix="source",
         command=AcquireSourceCommand(
             args=AcquireSourceArgs(
@@ -141,7 +144,8 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload) -> 
     responses=ERROR_RESPONSES,
 )
 def remove_source_route(ree_id: str) -> ReeDocument:
-    handle = require_handle(ree_id)
-    with ree_command_span("remove-source", ree_id):
-        dispatch_or_fail(handle, RemoveSourceCommand(), "remove-source", "Workbench remove_source failed")
-        return ReeDocument.model_validate(workbench_manager.get_ree_document(handle))
+    with author_api_action("remove_source", ree_id):
+        handle = require_handle(ree_id)
+        with ree_command_span("remove-source", ree_id):
+            dispatch_or_fail(handle, RemoveSourceCommand(), "remove-source", "Workbench remove_source failed")
+            return ReeDocument.model_validate(workbench_manager.get_ree_document(handle))

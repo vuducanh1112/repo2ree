@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from repo2ree_api.authoring.inference import ScriptTargetSelectorPayload
 from repo2ree_api.contracts import ERROR_RESPONSES
+from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import dispatch_or_fail, ree_command_span, require_handle
 from repo2ree_core.author_recipes.lint import (
     CONTRACT_ONLY,
@@ -53,6 +54,11 @@ class ScriptDraftPayload(BaseModel):
 )
 def lint_ree_scripts_route(ree_id: str, payload: LintScriptsPayload) -> LintScriptsResponse:
     """Statically check persisted scripts on every available tier."""
+    with author_api_action("lint_scripts", ree_id):
+        return _lint(ree_id, payload)
+
+
+def _lint(ree_id: str, payload: LintScriptsPayload) -> LintScriptsResponse:
     handle = require_handle(ree_id)
     with ree_command_span("lint-scripts", ree_id):
         cmd = LintScriptsCommand(

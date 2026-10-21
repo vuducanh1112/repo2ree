@@ -20,10 +20,12 @@ from repo2ree_api.control.run_orchestration import (
     list_runs,
     mark_cancel_requested,
     observe_run,
+    run_action_id,
 )
 from repo2ree_api.control.run_registry import TERMINAL_STATUSES
 from repo2ree_api.deps import workbench_manager
 from repo2ree_api.pagination import keyset_paginate
+from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import require_handle
 
 logger = logging.getLogger(__name__)
@@ -52,6 +54,11 @@ def list_ree_runs(
     cursor: str | None = Query(None),
     limit: Annotated[int | None, Query(ge=1, le=500)] = None,
 ) -> RunList:
+    with author_api_action("list_actions", ree_id):
+        return _list_runs(ree_id, cursor, limit)
+
+
+def _list_runs(ree_id: str, cursor: str | None, limit: int | None) -> RunList:
     runs = list_runs(ree_id)
     if not runs:
         # No historical run can establish the identifier; require a current
@@ -73,7 +80,8 @@ def list_ree_runs(
     responses=ERROR_RESPONSES,
 )
 def get_ree_run(ree_id: str, run_id: str) -> RunSummary:
-    return RunSummary.model_validate(get_run_summary(ree_id, run_id))
+    with author_api_action("view_action", ree_id, run_id=run_id, about_action_id=run_action_id(ree_id, run_id)):
+        return RunSummary.model_validate(get_run_summary(ree_id, run_id))
 
 
 @runs_router.get(
@@ -88,6 +96,11 @@ def get_ree_run_logs(
     cursor: Annotated[int | None, Query(ge=0)] = None,
     limit: Annotated[int, Query(ge=1, le=500)] = 200,
 ) -> RunLogPage:
+    with author_api_action("view_action_log", ree_id, run_id=run_id, about_action_id=run_action_id(ree_id, run_id)):
+        return _run_logs(ree_id, run_id, cursor, limit)
+
+
+def _run_logs(ree_id: str, run_id: str, cursor: int | None, limit: int) -> RunLogPage:
     after_seq = cursor or 0
     run_state = get_run_summary(ree_id, run_id)
     remaining = list_run_logs(ree_id, run_id, after_seq=after_seq, limit=limit + 1)
@@ -116,6 +129,11 @@ def observe_ree_run(
     wait_seconds: Annotated[float, Query(ge=0, le=30)] = 25,
     limit: Annotated[int, Query(ge=1, le=500)] = 200,
 ) -> RunObservation:
+    with author_api_action("watch_action", ree_id, run_id=run_id, about_action_id=run_action_id(ree_id, run_id)):
+        return _observe(ree_id, run_id, cursor, wait_seconds, limit)
+
+
+def _observe(ree_id: str, run_id: str, cursor: int | None, wait_seconds: float, limit: int) -> RunObservation:
     run, entries, next_cursor, changed = observe_run(
         ree_id,
         run_id,

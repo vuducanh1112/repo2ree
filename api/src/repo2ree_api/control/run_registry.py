@@ -5,6 +5,7 @@ import logging
 import time
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
+from contextlib import nullcontext
 from threading import Condition, RLock
 from typing import Any
 from uuid import uuid4
@@ -12,8 +13,10 @@ from uuid import uuid4
 from fastapi import HTTPException
 
 from repo2ree_api.contracts import RunOperation, RunStatus
+from repo2ree_api.storage import author_actions
 from repo2ree_api.storage.run_store import IdempotencyConflictError, RunStore, StoredRun
 from repo2ree_core.time_utils import utc_now
+from repo2ree_protocol.behaviour.events import AuthorApiActionName
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.log import emit_run_log
 from repo2ree_protocol.result import ActionResult, Failure, FailureCategory, HistoryReference
@@ -160,7 +163,14 @@ class RunRegistry:
 
     def _snapshot(self, run: StoredRun, *, include_logs: bool) -> dict[str, Any]:
         state = run.model_dump(
-            exclude={"schema_version", "cancel_requested_at", "idempotency_key", "request_fingerprint"}
+            exclude={
+                "schema_version",
+                "cancel_requested_at",
+                "idempotency_key",
+                "request_fingerprint",
+                "action",
+                "action_id",
+            }
         )
         state["logs"] = (
             [entry.model_dump() for entry in self._store.list_logs(run.ree_id, run.run_id, after_seq=0)]
@@ -272,9 +282,51 @@ class RunRegistry:
         request_payload: dict[str, Any],
         run_id_prefix: str,
         runner: Callable[[str, str], ActionResult],
+        *,
+        action: AuthorApiActionName | None = None,
+        action_id: str | None = None,
         require_ree_exists: bool = True,
         idempotency_key: str | None = None,
         initial_outputs: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Start a durable background run.
+
+        ``action`` is the author action the run carries out, or None for work no author
+        asked for through the API (a reviewer's run). ``action_id`` continues an action
+        already requested (an upload opened earlier); otherwise the run's creation
+        requests a new one.
+        """
+        try:
+            return self._start_background(
+                ree_id,
+                operation,
+                request_payload,
+                run_id_prefix,
+                runner,
+                action=action,
+                action_id=action_id,
+                require_ree_exists=require_ree_exists,
+                idempotency_key=idempotency_key,
+                initial_outputs=initial_outputs,
+            )
+        except BaseException as exc:
+            if action is not None:
+                author_actions.refuse(action, ree_id, action_id, exc)
+            raise
+
+    def _start_background(
+        self,
+        ree_id: str,
+        operation: RunOperation,
+        request_payload: dict[str, Any],
+        run_id_prefix: str,
+        runner: Callable[[str, str], ActionResult],
+        *,
+        action: AuthorApiActionName | None,
+        action_id: str | None,
+        require_ree_exists: bool,
+        idempotency_key: str | None,
+        initial_outputs: dict[str, Any] | None,
     ) -> dict[str, Any]:
         # A provisioning run *creates* its REE, so it can't require the REE
         # to already exist; every other run runs against a live REE.
@@ -296,6 +348,8 @@ class RunRegistry:
             outputs=dict(initial_outputs or {}),
             idempotency_key=normalized_key or None,
             request_fingerprint=fingerprint if normalized_key else None,
+            action=action,
+            action_id=(action_id or author_actions.new_action_id()) if action is not None else None,
         )
         try:
             stored, created = self._store.create_idempotent(proposed)
@@ -334,7 +388,8 @@ class RunRegistry:
                 _runs_active.add(1, active_attrs)
                 try:
                     try:
-                        result = runner(ree_id, run_id)
+                        with author_actions.acting(stored.action_id) if stored.action_id else nullcontext():
+                            result = runner(ree_id, run_id)
                     except HTTPException as exc:
                         failure = _failure_from_http_exception(exc)
                         # The envelope's message, not the dict it arrived in:
@@ -423,6 +478,11 @@ class RunRegistry:
 
         future.add_done_callback(_forget)
         return self._snapshot(stored, include_logs=True)
+
+    def action_of(self, ree_id: str, run_id: str) -> str | None:
+        """The author action a run carries out, if it carries one."""
+        run = self._store.get(ree_id, run_id)
+        return run.action_id if run is not None else None
 
     def run_summary(self, run_state: dict[str, Any]) -> dict[str, Any]:
         keys = [

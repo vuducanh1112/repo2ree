@@ -11,6 +11,7 @@ from repo2ree_api.contracts import (
     ReeDocument,
 )
 from repo2ree_api.deps import workbench_manager
+from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import dispatch_or_fail, ree_command_span, require_handle
 from repo2ree_protocol import PatchReeDefinitionCommand
 from repo2ree_protocol.command import PatchReeDefinitionArgs
@@ -25,6 +26,11 @@ definition_router = APIRouter(tags=["rees"])
     responses=ERROR_RESPONSES,
 )
 def patch_ree_definition_route(ree_id: str, payload: ReeDefinitionPatchPayload) -> ReeDocument:
+    with author_api_action("edit_definition", ree_id):
+        return _patch_definition(ree_id, payload)
+
+
+def _patch_definition(ree_id: str, payload: ReeDefinitionPatchPayload) -> ReeDocument:
     handle = require_handle(ree_id)
     with ree_command_span("patch-definition", ree_id):
         command = PatchReeDefinitionCommand(
@@ -49,10 +55,11 @@ def patch_ree_definition_route(ree_id: str, payload: ReeDefinitionPatchPayload) 
     responses=ERROR_RESPONSES,
 )
 def replace_ree_definition_route(ree_id: str, payload: ReeDefinitionReplacePayload) -> ReeDocument:
-    return patch_ree_definition_route(
-        ree_id,
-        ReeDefinitionPatchPayload(
-            definition_patch=payload.definition.model_dump(mode="json"),
-            expected_version=payload.expected_version,
-        ),
-    )
+    with author_api_action("edit_definition", ree_id):
+        return _patch_definition(
+            ree_id,
+            ReeDefinitionPatchPayload(
+                definition_patch=payload.definition.model_dump(mode="json"),
+                expected_version=payload.expected_version,
+            ),
+        )

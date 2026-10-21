@@ -28,6 +28,7 @@ from repo2ree_api.control.run_orchestration import (
     update_run_outputs,
 )
 from repo2ree_api.deps import workbench_manager
+from repo2ree_api.storage import author_actions
 from repo2ree_api.storage.upload_staging import (
     InvalidUploadTokenError,
     UnknownUploadTokenError,
@@ -35,9 +36,11 @@ from repo2ree_api.storage.upload_staging import (
     discard_expired_uploads,
     discard_staged_upload,
     staged_upload_path,
+    upload_action_id,
     validate_upload_owner,
 )
 from repo2ree_api.workbench.commands import require_handle
+from repo2ree_protocol.behaviour.events import AuthorApiActionName
 from repo2ree_protocol.command import Command
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
@@ -66,6 +69,7 @@ def start_staged_upload_run(
     archive_name: str,
     purpose: str,
     operation: RunOperation,
+    action: AuthorApiActionName,
     run_id_prefix: str,
     command: Command,
     request_payload: dict[str, Any],
@@ -81,7 +85,49 @@ def start_staged_upload_run(
     Run outputs are what the caller asked for, overlaid with whatever the command
     reported — so a run always echoes its own request even when the command said
     nothing, and never hides what the command found.
+
+    The run continues the ``action`` its upload slot opened; a slot this process did
+    not open (it was minted before a restart) gets an action of its own here.
     """
+    opened = upload_action_id(upload_token)
+    action_id = (
+        opened if opened is not None and author_actions.is_open(opened) else author_actions.start(action, ree_id)
+    )
+    try:
+        return _start(
+            ree_id,
+            upload_token=upload_token,
+            archive_name=archive_name,
+            purpose=purpose,
+            operation=operation,
+            action=action,
+            action_id=action_id,
+            run_id_prefix=run_id_prefix,
+            command=command,
+            request_payload=request_payload,
+            messages=messages,
+            idempotency_key=idempotency_key,
+        )
+    except BaseException as exc:
+        author_actions.settle(action_id, "failed", http_status=author_actions.http_status(exc))
+        raise
+
+
+def _start(
+    ree_id: str,
+    *,
+    upload_token: str,
+    archive_name: str,
+    purpose: str,
+    operation: RunOperation,
+    action: AuthorApiActionName,
+    action_id: str,
+    run_id_prefix: str,
+    command: Command,
+    request_payload: dict[str, Any],
+    messages: StagedUploadLog,
+    idempotency_key: str | None,
+) -> dict[str, Any]:
     handle = require_handle(ree_id)
     try:
         validate_upload_owner(upload_token, ree_id=ree_id, purpose=purpose, file_name=archive_name)
@@ -132,6 +178,8 @@ def start_staged_upload_run(
         request_payload,
         run_id_prefix,
         _runner,
+        action=action,
+        action_id=action_id,
         idempotency_key=idempotency_key,
     )
 

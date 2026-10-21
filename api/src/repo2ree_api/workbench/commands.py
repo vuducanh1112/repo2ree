@@ -17,6 +17,7 @@ from contextlib import contextmanager
 from fastapi import HTTPException
 
 from repo2ree_api.deps import workbench_manager
+from repo2ree_api.storage import author_actions
 from repo2ree_protocol.command import Command
 from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.tracing import (
@@ -108,6 +109,8 @@ def dispatch_or_fail(handle: WorkbenchHandle, cmd: Command, run_id: str, error_m
     map to 503 in the app-level handler.
     """
     result = workbench_manager.dispatch_action(handle, cmd, run_id, lambda *_: None)
+    # Before any answer is decided: a failed command still names the attempt it left.
+    author_actions.learn_attempt(result)
     if result.status == "succeeded":
         return result
     outputs = result.outputs or {}

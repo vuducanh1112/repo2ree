@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, Query, Response
 
 from repo2ree_api.contracts import ERROR_RESPONSES, FileMutationResponse, WorkspaceFileContentPayload
 from repo2ree_api.deps import workbench_manager
+from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import dispatch_or_fail, ree_command_span, require_handle
 from repo2ree_core.digests import digest_bytes
 from repo2ree_protocol import DeleteFileCommand, WriteFileCommand
@@ -33,12 +34,13 @@ files_router = APIRouter(tags=["rees", "files"])
     },
 )
 def get_ree_file_raw_route(ree_id: str, path: str = Query(...)) -> Response:
-    handle = require_handle(ree_id)
-    try:
-        content = workbench_manager.read_ree_file_bytes(handle, path)
-    except RuntimeError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    return Response(content=content, media_type="application/octet-stream")
+    with author_api_action("read_file", ree_id, path=path):
+        handle = require_handle(ree_id)
+        try:
+            content = workbench_manager.read_ree_file_bytes(handle, path)
+        except RuntimeError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        return Response(content=content, media_type="application/octet-stream")
 
 
 @files_router.put(
@@ -48,6 +50,11 @@ def get_ree_file_raw_route(ree_id: str, path: str = Query(...)) -> Response:
     responses=ERROR_RESPONSES,
 )
 def put_workspace_file_content_route(ree_id: str, payload: WorkspaceFileContentPayload) -> FileMutationResponse:
+    with author_api_action("write_file", ree_id, path=payload.path):
+        return _write_file(ree_id, payload)
+
+
+def _write_file(ree_id: str, payload: WorkspaceFileContentPayload) -> FileMutationResponse:
     handle = require_handle(ree_id)
     with ree_command_span("write-file", ree_id):
         # The if_match check rides inside the command so the workbench verifies
@@ -79,10 +86,11 @@ def delete_workspace_file_content_route(
     path: str = Query(...),
     if_match: str | None = Query(None),
 ) -> FileMutationResponse:
-    handle = require_handle(ree_id)
-    with ree_command_span("delete-file", ree_id):
-        cmd = DeleteFileCommand(args=DeleteFileArgs(path=path, expected_etag=if_match or ""))
-        wb_result = dispatch_or_fail(handle, cmd, "delete-file", "Workbench delete_file failed")
-        return FileMutationResponse.model_validate(
-            {key: value for key, value in wb_result.outputs.items() if key in FileMutationResponse.model_fields}
-        )
+    with author_api_action("delete_file", ree_id, path=path):
+        handle = require_handle(ree_id)
+        with ree_command_span("delete-file", ree_id):
+            cmd = DeleteFileCommand(args=DeleteFileArgs(path=path, expected_etag=if_match or ""))
+            wb_result = dispatch_or_fail(handle, cmd, "delete-file", "Workbench delete_file failed")
+            return FileMutationResponse.model_validate(
+                {key: value for key, value in wb_result.outputs.items() if key in FileMutationResponse.model_fields}
+            )

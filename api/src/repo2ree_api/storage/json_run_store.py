@@ -15,6 +15,7 @@ from threading import RLock
 from typing import Any
 
 from repo2ree_api.contracts import RunLogEntry, RunStatus
+from repo2ree_api.storage import author_actions
 from repo2ree_api.storage.run_store import IdempotencyConflictError, StoredRun
 from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol.behaviour import events
@@ -26,7 +27,10 @@ _TERMINAL_STATUSES = frozenset({"succeeded", "failed", "canceled"})
 
 
 def _journal_transition(previous: StoredRun | None, updated: StoredRun) -> None:
-    """Record a status change of the Run machine; called under the store lock after the write."""
+    """Record a status change of the Run machine, and of the author action the run carries.
+
+    Called under the store lock after the write.
+    """
     if previous is not None and previous.status == updated.status:
         return
     facts: events.RunFacts = {}
@@ -42,6 +46,18 @@ def _journal_transition(previous: StoredRun | None, updated: StoredRun) -> None:
         partition=updated.ree_id,
         facts=facts,
     )
+    if updated.action is not None and updated.action_id is not None:
+        recorded = updated.history is not None and updated.context is not None
+        author_actions.follow_run(
+            updated.action_id,
+            updated.action,
+            updated.ree_id,
+            None if previous is None else previous.status,
+            updated.status,
+            run_id=updated.run_id,
+            attempt_id=updated.context.attempt_id if recorded and updated.context is not None else None,
+            failure_category=updated.failure.category if updated.failure is not None else None,
+        )
 
 
 class JsonRunStore:

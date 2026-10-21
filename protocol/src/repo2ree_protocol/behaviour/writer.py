@@ -29,7 +29,7 @@ type Fact = str | int | bool | None
 # The vocabulary these records were written against (the schema's ``x-vocabulary``).
 # Provenance only: journals are judged by what they hold. Update it when the records in
 # ``events`` are brought up to a new vocabulary.
-VOCABULARY = "sha256:f7400ce1e95c86a5ca3185296fe2e76f5df920283738e38aebdb0d76aba53f78"
+VOCABULARY = "sha256:63748ed77fe180f1af3707c290a749b412c1e044c9c724b05044b6c2b3ff15ae"
 
 _NAME = re.compile(r"^(?P<process>[a-z][a-z0-9-]*)-(?P<epoch>[0-9]{6})\.ndjson$")
 

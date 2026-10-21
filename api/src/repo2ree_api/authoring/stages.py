@@ -25,6 +25,7 @@ from fastapi import APIRouter, HTTPException
 from repo2ree_api.contracts import ERROR_RESPONSES, CreateRunPayload, RunSummary
 from repo2ree_api.control.run_orchestration import run_summary, start_single_command_run
 from repo2ree_api.deps import workbench_manager
+from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import require_handle
 from repo2ree_core.analysis.repository.reproducibility_report import ReproducibilityReport
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
@@ -65,6 +66,7 @@ def create_generate_hbom_run(ree_id: str, payload: CreateGenerateHbomRunPayload)
             start_single_command_run(
                 ree_id,
                 operation="hbom",
+                action="observe_hardware",
                 command=GenerateHbomCommand(),
                 run_id_prefix="hbom",
                 request_payload={},
@@ -96,6 +98,7 @@ def create_evaluate_run(ree_id: str, payload: CreateEvaluateRunPayload) -> RunSu
             start_single_command_run(
                 ree_id,
                 operation="evaluate",
+                action="evaluate_reproducibility",
                 command=EvaluateDependencyScoreCommand(args=EvaluateDependencyScoreArgs(strict=payload.strict)),
                 run_id_prefix="evaluate",
                 request_payload={"strict": bool(payload.strict)},
@@ -117,6 +120,11 @@ _REPORT_FILENAME = "reproducibility-report.json"
 )
 def get_ree_evaluate_report(ree_id: str) -> dict[str, Any]:
     """The persisted evaluate-run report artifact."""
+    with author_api_action("view_evaluation_report", ree_id):
+        return _evaluation_report(ree_id)
+
+
+def _evaluation_report(ree_id: str) -> dict[str, Any]:
     # An unknown or unreachable REE is resolved first, so "no report yet" is
     # never how a caller learns their REE is gone (404) or its workbench is
     # down (503).
@@ -153,6 +161,7 @@ def create_build_runtime_run(ree_id: str, payload: CreateBuildRuntimeRunPayload)
             start_single_command_run(
                 ree_id,
                 operation="build",
+                action="build_runtime",
                 command=BuildRuntimeCommand(),
                 run_id_prefix="build",
                 request_payload={"build_runtime_script_path": RESERVED_BUILD_SCRIPT},
@@ -190,6 +199,7 @@ def create_generate_sbom_run(ree_id: str, payload: CreateGenerateSbomRunPayload)
             start_single_command_run(
                 ree_id,
                 operation="sbom",
+                action="generate_sbom",
                 command=GenerateSbomCommand(),
                 run_id_prefix="sbom",
                 request_payload={},
@@ -221,6 +231,7 @@ def create_cross_check_sbom_run(ree_id: str, payload: CreateCrossCheckSbomRunPay
             start_single_command_run(
                 ree_id,
                 operation="crosscheck",
+                action="cross_check_sbom",
                 command=CrossCheckSbomCommand(args=CrossCheckSbomArgs()),
                 run_id_prefix="crosscheck",
                 request_payload={},
@@ -252,6 +263,7 @@ def create_activation_test_run(ree_id: str, payload: CreateActivationTestRunPayl
             start_single_command_run(
                 ree_id,
                 operation="activation",
+                action="test_activation",
                 command=ActivationTestCommand(args=ActivationTestArgs()),
                 run_id_prefix="activation",
                 request_payload={},
@@ -294,6 +306,7 @@ def create_experiment_run(
             start_single_command_run(
                 ree_id,
                 operation="experiment",
+                action="run_experiment",
                 command=RunExperimentCommand(args=RunExperimentArgs(experiment_name=experiment_name)),
                 run_id_prefix="experiment",
                 request_payload={"experiment_name": experiment_name},

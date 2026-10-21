@@ -33,6 +33,7 @@ from repo2ree_api.control.behaviour import journal_positions, record_archive
 from repo2ree_api.control.run_orchestration import run_summary, start_single_command_run
 from repo2ree_api.deps import ree_index, workbench_manager
 from repo2ree_api.ree_index import entry_from_ree
+from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.archives import archive_download_filename, spool_chunks
 from repo2ree_api.workbench.commands import ree_command_span, require_handle
 from repo2ree_api.workbench.uploads import mint_upload_token, stage_upload_bytes
@@ -55,7 +56,7 @@ seal_router = APIRouter(tags=["rees"])
 def bundle_upload_init_route(ree_id: str, payload: UploadInitPayload) -> UploadInitResponse:
     """Open a staging slot for a downloaded REE bundle (see ``ree:load``)."""
     return UploadInitResponse.model_validate(
-        mint_upload_token(ree_id, payload, upload_route="ree:upload", purpose="bundle")
+        mint_upload_token(ree_id, payload, upload_route="ree:upload", purpose="bundle", action="load_ree_bundle")
     )
 
 
@@ -90,6 +91,7 @@ def load_ree_bundle_route(ree_id: str, payload: ReeBundleLoadPayload) -> RunSumm
         archive_name=payload.archive_name,
         purpose="bundle",
         operation="ree-load",
+        action="load_ree_bundle",
         run_id_prefix="ree-load",
         command=LoadReeBundleCommand(
             args=LoadReeBundleArgs(
@@ -124,6 +126,7 @@ def seal_ree_route(ree_id: str, payload: ReeSealPayload) -> RunSummary:
     run_state = start_single_command_run(
         ree_id,
         operation="seal",
+        action="seal_ree",
         command=SealReeCommand(
             args=SealReeArgs(
                 source_included=payload.include_source,
@@ -177,6 +180,11 @@ def download_ree_archive_route(ree_id: str) -> StreamingResponse:
     The extracted directory contains both the working files and Git storage.
     Selected LFS payloads are included locally for offline use.
     """
+    with author_api_action("download_ree", ree_id):
+        return _download_ree_archive(ree_id)
+
+
+def _download_ree_archive(ree_id: str) -> StreamingResponse:
     handle = require_handle(ree_id)
     archive_filename = archive_download_filename(handle)
     # Spool the archive to a control-plane temp file before responding. The

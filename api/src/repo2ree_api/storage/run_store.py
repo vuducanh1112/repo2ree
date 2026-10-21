@@ -32,6 +32,10 @@ class StoredRun(BaseModel):
     history: HistoryReference | None = None
     idempotency_key: str | None = None
     request_fingerprint: str | None = None
+    # The author action this run carries out, when an author asked for it through the API
+    # (a reviewer's run carries none); the run store moves it along with the run's status.
+    action: str | None = None
+    action_id: str | None = None
 
 
 class IdempotencyConflictError(Exception):

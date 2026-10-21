@@ -65,6 +65,7 @@ def start_source_review(ree_id: str, payload: CreateSourceReviewPayload) -> RunS
             start_single_command_run(
                 ree_id,
                 operation="source",
+                action=None,
                 command=command,
                 run_id_prefix="review-source",
                 request_payload={},
@@ -101,6 +102,7 @@ def start_build_review(ree_id: str, review_id: str, payload: CreateBuildReviewPa
             start_single_command_run(
                 ree_id,
                 operation="build",
+                action=None,
                 command=command,
                 run_id_prefix="review-build",
                 request_payload={"review_id": review_id},
@@ -131,6 +133,7 @@ def start_activation_review(ree_id: str, review_id: str, payload: CreateRunPaylo
             start_single_command_run(
                 ree_id,
                 operation="activation",
+                action=None,
                 command=command,
                 run_id_prefix="review-activation",
                 request_payload={"review_id": review_id},
@@ -175,6 +178,7 @@ def start_experiment_review(
             start_single_command_run(
                 ree_id,
                 operation="experiment",
+                action=None,
                 command=command,
                 run_id_prefix="review-experiment",
                 request_payload={"review_id": review_id, "experiment_name": experiment_name},

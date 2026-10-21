@@ -35,6 +35,8 @@ from repo2ree_api.control.run_orchestration import (
 from repo2ree_api.control.run_registry import ACTIVE_STATUSES
 from repo2ree_api.deps import provider_connections, workbench_connections, workbench_manager
 from repo2ree_api.pagination import keyset_paginate
+from repo2ree_api.storage import author_actions
+from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import ree_command_span, require_handle
 from repo2ree_core.domain.ree.model import Ree, ree_status
 from repo2ree_core.time_utils import utc_now
@@ -90,6 +92,7 @@ def create_ree_route(payload: ReeCreatePayload) -> RunSummary:
                 origin="supervisor",
                 retryable=True,
             )
+        author_actions.learn(allocation_id=handle.allocation_id)
 
         if is_cancel_requested(rid, run_id):
             _log_run("system", "warn", "Provisioning canceled after workbench startup")
@@ -168,12 +171,13 @@ def _ree_page_key(summary: ReeSummary) -> tuple[str, str]:
     responses=ERROR_RESPONSES,
 )
 def get_ree_route(ree_id: str) -> ReeDocument:
-    handle = require_handle(ree_id)
-    document = workbench_manager.get_ree_document(handle)
-    document["allocation_id"] = handle.allocation_id
-    document["location_id"] = handle.location_id
-    document["image"] = handle.image
-    return ReeDocument.model_validate(document)
+    with author_api_action("view_ree", ree_id):
+        handle = require_handle(ree_id)
+        document = workbench_manager.get_ree_document(handle)
+        document["allocation_id"] = handle.allocation_id
+        document["location_id"] = handle.location_id
+        document["image"] = handle.image
+        return ReeDocument.model_validate(document)
 
 
 @rees_router.get(
@@ -184,6 +188,11 @@ def get_ree_route(ree_id: str) -> ReeDocument:
 )
 def get_ree_state_route(ree_id: str) -> ReeState:
     """Compact automation view: durable state and file metadata, never contents."""
+    with author_api_action("view_ree_state", ree_id):
+        return _ree_state(ree_id)
+
+
+def _ree_state(ree_id: str) -> ReeState:
     handle = require_handle(ree_id)
     # The workbench returns the same document `getRee` publishes, so it is parsed
     # as one rather than picked apart by key: this view *is* that document plus
@@ -232,7 +241,13 @@ def get_ree_state_route(ree_id: str) -> ReeState:
     responses=ERROR_RESPONSES,
 )
 def delete_ree_route(ree_id: str) -> DeleteReeResponse:
+    with author_api_action("release_workbench", ree_id):
+        return _release_workbench(ree_id)
+
+
+def _release_workbench(ree_id: str) -> DeleteReeResponse:
     handle = require_handle(ree_id)
+    author_actions.learn(allocation_id=handle.allocation_id)
     with ree_command_span("delete", ree_id):
         try:
             workbench_manager.teardown(handle)

@@ -16,6 +16,7 @@ from fastapi import HTTPException, Request
 
 from repo2ree_api.contracts import UploadInitPayload
 from repo2ree_api.settings import service_settings
+from repo2ree_api.storage import author_actions
 from repo2ree_api.storage.upload_staging import (
     InvalidUploadTokenError,
     UnknownUploadTokenError,
@@ -24,13 +25,29 @@ from repo2ree_api.storage.upload_staging import (
     UploadTooLargeError,
     new_upload_token,
     stage_upload_stream,
+    upload_action_id,
     validate_upload_owner,
 )
 from repo2ree_api.workbench.commands import require_handle
 from repo2ree_core.time_utils import utc_now
+from repo2ree_protocol.behaviour.events import AuthorApiActionName
 
 
-def mint_upload_token(ree_id: str, payload: UploadInitPayload, *, upload_route: str, purpose: str) -> dict[str, Any]:
+def mint_upload_token(
+    ree_id: str, payload: UploadInitPayload, *, upload_route: str, purpose: str, action: AuthorApiActionName
+) -> dict[str, Any]:
+    """Open an upload slot: the author's ``action`` is requested here, and continues when the upload completes."""
+    action_id = author_actions.start(action, ree_id)
+    try:
+        return _mint(ree_id, payload, upload_route=upload_route, purpose=purpose, action_id=action_id)
+    except BaseException as exc:
+        author_actions.settle(action_id, "failed", http_status=author_actions.http_status(exc))
+        raise
+
+
+def _mint(
+    ree_id: str, payload: UploadInitPayload, *, upload_route: str, purpose: str, action_id: str
+) -> dict[str, Any]:
     require_handle(ree_id)
     if payload.size > service_settings.UPLOAD_MAX_BYTES:
         raise HTTPException(
@@ -47,12 +64,23 @@ def mint_upload_token(ree_id: str, payload: UploadInitPayload, *, upload_route: 
         content_type=payload.content_type,
         ree_id=ree_id,
         purpose=purpose,
+        action_id=action_id,
     )
     result["upload_url"] = f"/api/v1/rees/{ree_id}/{upload_route}/{result['upload_token']}"
     return result
 
 
 async def stage_upload_bytes(ree_id: str, upload_token: str, request: Request, *, purpose: str) -> dict[str, Any]:
+    """Receive an upload's bytes; a refusal fails the upload's action, since its bytes never arrived."""
+    try:
+        return await _stage(ree_id, upload_token, request, purpose=purpose)
+    except BaseException as exc:
+        if (action_id := upload_action_id(upload_token)) is not None:
+            author_actions.settle(action_id, "failed", http_status=author_actions.http_status(exc))
+        raise
+
+
+async def _stage(ree_id: str, upload_token: str, request: Request, *, purpose: str) -> dict[str, Any]:
     await asyncio.to_thread(require_handle, ree_id)
     try:
         validate_upload_owner(upload_token, ree_id=ree_id, purpose=purpose)

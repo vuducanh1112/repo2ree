@@ -82,8 +82,11 @@ def new_upload_token(
     content_type: str | None = None,
     ree_id: str = "",
     purpose: str = "",
+    action_id: str | None = None,
 ) -> dict[str, str]:
     """Allocate an upload token and its expiry, minting its (empty) staged file.
+
+    ``action_id`` is the author action the upload belongs to, continued when it completes.
 
     The empty file is the token's proof of mint: the PUT refuses tokens without
     one, and the TTL sweep reclaims it like any other staged file if the bytes
@@ -102,6 +105,7 @@ def new_upload_token(
                 "content_type": content_type,
                 "ree_id": ree_id,
                 "purpose": purpose,
+                "action_id": action_id,
             }
         ),
         encoding="utf-8",
@@ -109,6 +113,16 @@ def new_upload_token(
     ttl = timedelta(seconds=service_settings.UPLOAD_TTL_SECONDS)
     expires_at = iso_utc(datetime.now(UTC) + ttl)
     return {"upload_token": token, "expires_at": expires_at}
+
+
+def upload_action_id(token: str) -> str | None:
+    """The author action an upload token was minted for, if it is still staged and names one."""
+    try:
+        metadata = _read_upload_metadata(token)
+    except (InvalidUploadTokenError, UnknownUploadTokenError, OSError, ValueError):
+        return None
+    action_id = metadata.get("action_id")
+    return action_id if isinstance(action_id, str) else None
 
 
 def validate_upload_owner(token: str, *, ree_id: str, purpose: str, file_name: str | None = None) -> None:

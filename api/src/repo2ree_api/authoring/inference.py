@@ -14,6 +14,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_api.contracts import ERROR_RESPONSES
+from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import dispatch_or_fail, ree_command_span, require_handle
 from repo2ree_core.author_recipes.inference.models import InferenceReport
 from repo2ree_protocol.command import (
@@ -80,6 +81,11 @@ def generate_script_candidates_route(ree_id: str, payload: GenerateScriptCandida
     against current inputs, so it needs no idempotency key and returns the report
     directly rather than a background run.
     """
+    with author_api_action("suggest_scripts", ree_id):
+        return _suggest(ree_id, payload)
+
+
+def _suggest(ree_id: str, payload: GenerateScriptCandidatesPayload) -> InferenceReport:
     handle = require_handle(ree_id)
     with ree_command_span("generate-script-candidates", ree_id):
         cmd = GenerateScriptCandidatesCommand(
