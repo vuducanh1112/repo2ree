@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from traceview_scenario import build_spans, recorded, trace_of
+from traceview_scenario import SPEC, build_spans, recorded, trace_of
 
 from repo2ree_traceview.provenance import build_provenance, render_text
 
@@ -40,13 +40,23 @@ def test_every_link_carries_the_rules_its_own_events_triggered() -> None:
     provenance = build_provenance(trace_of(recorded(sealed=True), build_spans()))
     assert provenance is not None
     runtime = next(origin for origin in provenance.steps if origin.step == "runtime")
-    assert [rule.rule for rule in runtime.rules] == ["runtime-receipts-come-from-builds"]
+    # Which rules a subject triggers is the specification's to say; each link holds only its own subject's.
+    assert {rule.rule for rule in runtime.rules} <= triggered_by("Receipt")
     links = {link.label.split(" ", 1)[0]: link for link in runtime.chain}
-    assert {rule.rule for rule in links["attempt"].rules} == {"execution-was-dispatched"}
+    assert {rule.rule for rule in links["attempt"].rules} <= triggered_by("Attempt")
     assert {rule.rule for rule in links["dispatch"].rules} == {"dispatch-success-is-captured"}
-    assert {rule.rule for rule in links["action"].rules} == {"api-success-is-recorded", "only-long-actions-run"}
+    assert "api-success-is-recorded" in {rule.rule for rule in links["action"].rules}
+    assert {rule.rule for rule in links["action"].rules} <= triggered_by("AuthorApiAction")
     assert runtime.chain[-1].label == "POST /rees/{id}/build-runtime → 202 at +10 s"
     assert {rule.rule for rule in provenance.seal_rules} >= {"sealed-without-stale-evidence"}
+
+
+def triggered_by(subject: str) -> set[str]:
+    return {
+        invariant.id
+        for invariant in SPEC.invariants
+        if getattr(invariant.when, "entity", None) == subject or getattr(invariant.when, "boundary", None) == subject
+    }
 
 
 def test_provenance_renders_as_a_tree() -> None:

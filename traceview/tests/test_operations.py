@@ -37,8 +37,7 @@ def test_rules_attach_to_the_entries_whose_events_triggered_them() -> None:
     build = trace_of(recorded()).entries[1]
     assert {(hit.rule, hit.verdict) for hit in build.rules} >= {
         ("api-success-is-recorded", "passed"),
-        ("execution-was-dispatched", "passed"),
-        ("runtime-receipts-come-from-builds", "passed"),
+        ("dispatch-success-is-captured", "passed"),
     }
 
 

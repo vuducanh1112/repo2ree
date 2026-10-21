@@ -670,6 +670,10 @@ def condition(name: str, value: Any, groups: Groups) -> str:
     """A condition as the specification states it: a value list that is whole groups reads as those groups."""
     if isinstance(value, dict) and "not" in value:
         return f"{name} ≠ {literal(value['not'])}"
+    if isinstance(value, dict) and "per" in value:
+        # The alternatives depend on the trigger's fact: one list for each of its values.
+        cases = "; ".join(f"{key}: {', '.join(map(literal, items))}" for key, items in value["in"].items())
+        return f"{name} by the trigger's {value['per']} ({cases})"
     if isinstance(value, dict) and "in" in value:
         if named := whole_groups(value["in"], groups.get(name, {})):
             return f"{name} ∈ {' ∪ '.join(named)}"  # noqa: RUF001 — the union sign, as the page shows it
@@ -730,7 +734,9 @@ def rule_values(spec: Spec) -> tuple[dict[tuple[str, str, str], list[str]], dict
             if fact not in listed:
                 continue
             facts.add(fact)
-            if isinstance(value, dict) and "in" in value:
+            if isinstance(value, dict) and "per" in value:
+                values = {item for items in value["in"].values() for item in items}
+            elif isinstance(value, dict) and "in" in value:
                 values = set(value["in"])
             elif isinstance(value, dict) and "not" in value:
                 values = set(listed[fact]) - {value["not"]}
