@@ -42,25 +42,27 @@ class Scenario:
             Event(source="api-000001", position=self.seq, partition=self.ree, at=at(t), trace_id=trace, **fields)
         )
 
-    def run(self, key: str, path: list[tuple[float, str]], trace: str | None = None, **facts: Any) -> None:
+    def run(self, key: str, path: list[tuple[float, str]], trace: str | None = None, *, action: str) -> None:
+        """A long author action, watched as run ``key``, through ``path``."""
         previous: str | None = None
         for t, state in path:
-            settled = state in {"succeeded", "failed", "canceled"}
-            step_facts = {"operation": facts["operation"]} if previous is None else {}
-            if settled:
-                step_facts = {"attempt_id": facts.get("attempt_id"), "failure_category": None}
-            self.journal(
-                t,
-                trace,
-                kind="transition",
-                owner="api",
-                subject="Run",
-                key=key,
-                source_state=previous,
-                target_state=state,
-                facts=step_facts,
-            )
+            self.action(t, key, previous, state, trace, action=action)
             previous = state
+
+    def action(
+        self, t: float, run: str, previous: str | None, state: str, trace: str | None = None, **facts: Any
+    ) -> None:
+        self.journal(
+            t,
+            trace,
+            kind="transition",
+            owner="api",
+            subject="AuthorApiAction",
+            key=f"act-{run}",
+            source_state=previous,
+            target_state=state,
+            facts={"run_id": run, **facts},
+        )
 
     def allocation(self, path: list[tuple[float, str]], start: str | None = None) -> None:
         previous = start
@@ -101,24 +103,15 @@ class Scenario:
             facts={"status": "succeeded"},
         )
 
-    def operation(self, run: str, kind: str, attempt: str, operation: str, t: float) -> None:
-        """A background run whose one dispatched attempt succeeds."""
-        self.run(run, [(t, "queued"), (t + 0.1, "running")], operation=kind)
+    def operation(self, run: str, action: str, attempt: str, operation: str, t: float) -> None:
+        """A long author action whose one dispatched attempt succeeds."""
+        self.run(run, [(t, "requested"), (t + 0.1, "running")], action=action)
         self.dispatch(attempt, operation, run, t + 0.2, t + 1.0)
-        self.journal(
-            t + 1.1,
-            kind="transition",
-            owner="api",
-            subject="Run",
-            key=run,
-            source_state="running",
-            target_state="succeeded",
-            facts={"attempt_id": attempt, "failure_category": None},
-        )
+        self.action(t + 1.1, run, "running", "succeeded", action=action, attempt_id=attempt)
 
     def provision(self, run: str, t: float, trace: str | None = None) -> None:
-        """A provision run, and the allocation it moves while it runs, as the API journals them."""
-        self.run(run, [(t, "queued"), (t + 0.01, "provisioning")], trace, operation="provision")
+        """An REE's creation, and the allocation it moves while it runs, as the API journals them."""
+        self.run(run, [(t, "requested"), (t + 0.01, "running")], trace, action="create_ree")
         self.allocation(
             [
                 (t + 0.02, "requested"),
@@ -128,17 +121,7 @@ class Scenario:
                 (t + 5.2, "assigned"),
             ]
         )
-        self.journal(
-            t + 5.3,
-            kind="transition",
-            owner="api",
-            subject="Run",
-            key=run,
-            source_state="provisioning",
-            target_state="succeeded",
-            facts={"attempt_id": None, "failure_category": None},
-            trace=trace,
-        )
+        self.action(t + 5.3, run, "running", "succeeded", trace, action="create_ree", allocation_id=self.alloc)
 
     def commit(
         self,
@@ -219,49 +202,20 @@ class Scenario:
 def recorded(*, sealed: bool = False, scenario: Scenario | None = None) -> Scenario:
     s = scenario or Scenario()
     s.provision("run-provision", 0.0, PROVISION)
-    s.run("run-build", [(10.0, "queued")], REQUEST, operation="build")
-    s.journal(
-        10.1,
-        WORKER,
-        kind="transition",
-        owner="api",
-        subject="Run",
-        key="run-build",
-        source_state="queued",
-        target_state="running",
-        facts={},
-    )
+    s.run("run-build", [(10.0, "requested")], REQUEST, action="build_runtime")
+    s.action(10.1, "run-build", "requested", "running", WORKER, action="build_runtime")
     s.dispatch("a-build", "build_runtime", "run-build", 10.2, 12.0, WORKER)
-    s.journal(
-        12.1,
-        WORKER,
-        kind="transition",
-        owner="api",
-        subject="Run",
-        key="run-build",
-        source_state="running",
-        target_state="succeeded",
-        facts={"attempt_id": "a-build", "failure_category": None},
-    )
+    s.action(12.1, "run-build", "running", "succeeded", WORKER, action="build_runtime", attempt_id="a-build")
     s.dispatch("a-patch", "patch_ree_definition", "patch-definition", 13.0, 13.2)
-    s.run("run-sbom", [(20.0, "queued"), (20.1, "running")], operation="sbom")
+    s.run("run-sbom", [(20.0, "requested"), (20.1, "running")], action="generate_sbom")
     s.dispatch("a-sbom", "generate_sbom", "run-sbom", 20.2, 21.0)
-    s.journal(
-        21.1,
-        kind="transition",
-        owner="api",
-        subject="Run",
-        key="run-sbom",
-        source_state="running",
-        target_state="succeeded",
-        facts={"attempt_id": "a-sbom", "failure_category": None},
-    )
+    s.action(21.1, "run-sbom", "running", "succeeded", action="generate_sbom", attempt_id="a-sbom")
     if sealed:
         # An edit stales the runtime; rebuilding refreshes it and stales the SBOM; a rescan; then the seal.
         s.dispatch("a-edit", "patch_ree_definition", "patch-definition", 30.0, 30.2)
-        s.operation("run-rebuild", "build", "a-rebuild", "build_runtime", 40.0)
-        s.operation("run-rescan", "sbom", "a-rescan", "generate_sbom", 45.0)
-        s.operation("run-seal", "seal", "a-seal", "seal_ree", 50.0)
+        s.operation("run-rebuild", "build_runtime", "a-rebuild", "build_runtime", 40.0)
+        s.operation("run-rescan", "generate_sbom", "a-rescan", "generate_sbom", 45.0)
+        s.operation("run-seal", "seal_ree", "a-seal", "seal_ree", 50.0)
     s.allocation([(60.0, "draining"), (60.5, "released")], start="assigned")
 
     s.commit(1, None, "initialize_ree", "", [], (None, "draft"))

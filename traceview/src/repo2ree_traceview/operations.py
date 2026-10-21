@@ -42,7 +42,8 @@ from repo2ree_traceview.spans import SpanIndex, timestamp
 
 STEP_ORDER = ("source", "evaluation", "hardware", "runtime", "sbom", "sbom_cross_check", "test_activation")
 NOISE = ("websocket", "GET ", "HTTP /provider/connect", "HTTP /workbench/connect")
-PROVISION = "provision"
+# The author action that sets up an REE's workbench.
+PROVISION = "create_ree"
 RELEASED = ("released", "failed", "lost")
 TOP_SPANS = 6
 
@@ -133,23 +134,32 @@ def rees(model: VerifiedModel) -> list[str]:
 
 @dataclass
 class _Setup:
-    """Journal-only work: a provision run with the allocation moves it made, or an allocation's release."""
+    """Journal-only work: an REE's creation with the allocation moves it made, or an allocation's release."""
 
     position: int
     run: list[Event]
     allocation: list[Event]
 
 
-def _setups(b: _Builder) -> list[_Setup]:
-    runs: dict[str, list[Event]] = defaultdict(list)
+def _runs(b: _Builder) -> dict[str, list[Event]]:
+    """The author actions the author watched as runs, by action: the long ones, which carry a run_id.
+
+    A synchronous action (an edit, a lint) answers within its request; its attempt is authoring.
+    """
+    actions: dict[str, list[Event]] = defaultdict(list)
     for event in b.journal:
-        if event.subject == "Run" and event.kind == "transition":
-            runs[event.key].append(event)
+        if event.subject == "AuthorApiAction" and event.kind == "transition":
+            actions[event.key].append(event)
+    return {key: events for key, events in actions.items() if any(e.facts.get("run_id") for e in events)}
+
+
+def _setups(b: _Builder) -> list[_Setup]:
+    runs = _runs(b)
     allocations = [e for e in b.journal if e.subject == "Allocation" and e.kind == "transition"]
     setups: list[_Setup] = []
     claimed: set[str] = set()
     for events in runs.values():
-        if events[0].facts.get("operation") != PROVISION:
+        if events[0].facts.get("action") != PROVISION:
             continue
         first, last = b.position[events[0].ref], b.position[events[-1].ref]
         moved = [e for e in allocations if first <= b.position[e.ref] <= last]
@@ -178,10 +188,7 @@ def build_trace(
     entries: list[Entry] = []
     standings: list[Standing] = []
 
-    runs: dict[str, list[Event]] = defaultdict(list)
-    for event in b.journal:
-        if event.subject == "Run" and event.kind == "transition":
-            runs[event.key].append(event)
+    runs = _runs(b)
     run_of_attempt = {
         str(e.facts["attempt_id"]): key for key, events in runs.items() for e in events if e.facts.get("attempt_id")
     }

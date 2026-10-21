@@ -77,9 +77,9 @@ def chain(entry: Entry) -> tuple[Link, ...]:
         run, states = entry.run, entry.run.states
         links.append(
             Link(
-                label=f"run {run.key}: {' → '.join(s.state for s in states)}",
+                label=f"action {run.key}: {' → '.join(s.state for s in states)}",
                 source=f"journal {states[0].ref} → {states[-1].ref}" if states else "journal",
-                rules=_hits(entry, "Run", run.key),
+                rules=_hits(entry, "AuthorApiAction", run.key),
             )
         )
     request = _request(entry)

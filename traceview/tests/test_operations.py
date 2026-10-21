@@ -36,7 +36,7 @@ def test_standings_trace_the_step_states_column_by_column() -> None:
 def test_rules_attach_to_the_entries_whose_events_triggered_them() -> None:
     build = trace_of(recorded()).entries[1]
     assert {(hit.rule, hit.verdict) for hit in build.rules} >= {
-        ("run-success-is-backed", "passed"),
+        ("api-success-is-recorded", "passed"),
         ("execution-was-dispatched", "passed"),
         ("runtime-receipts-come-from-builds", "passed"),
     }
@@ -102,7 +102,7 @@ def two_rees() -> Scenario:
     s = recorded()
     s.ree, s.git, s.alloc = "ree-2", "git:ree-2", "alloc-2"
     s.provision("run-provision-2", 70.0)
-    s.operation("run-build-2", "build", "b-build", "build_runtime", 80.0)
+    s.operation("run-build-2", "build_runtime", "b-build", "build_runtime", 80.0)
     s.commit(1, None, "initialize_ree", "", [], (None, "draft"))
     s.commit(
         2,
@@ -125,7 +125,7 @@ def test_each_ree_gets_only_its_own_operations() -> None:
     ]
     assert second.standings[-1].states == {"runtime": "current"}
     assert second.entries[1].run is not None
-    assert second.entries[1].run.key == "run-build-2"
+    assert second.entries[1].run.key == "act-run-build-2"
 
 
 def test_review_histories_are_counted_not_drawn() -> None:

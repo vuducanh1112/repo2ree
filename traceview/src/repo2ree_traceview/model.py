@@ -117,6 +117,7 @@ class Entry(ViewModel):
     start: float | None
     end: float | None
     outcome: str | None = None
+    # The author action the author watched as a run, for an operation or an REE's creation.
     run: Machine | None = None
     allocation: Machine | None = None
     dispatch: Dispatch | None = None

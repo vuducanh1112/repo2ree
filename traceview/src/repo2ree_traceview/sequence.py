@@ -108,8 +108,9 @@ def build_sequence(
     request = _request(builder, spans, related)
 
     for event in runs:
-        detail = " · ".join(f"{n} {event.facts[n]}" for n in ("operation", "failure_category") if event.facts.get(n))
-        builder.note(_at(event), "api", f"Run → {event.target_state}", "journal", ref=event.ref, detail=detail or None)
+        detail = f"failure {event.facts['failure_category']}" if event.facts.get("failure_category") else None
+        label = f"{event.facts.get('action', 'action')} → {event.target_state}"
+        builder.note(_at(event), "api", label, "journal", ref=event.ref, detail=detail)
     for event in allocations:
         builder.note(_at(event), "supervisor", f"Allocation → {event.target_state}", "journal", ref=event.ref)
     for event in exchange:

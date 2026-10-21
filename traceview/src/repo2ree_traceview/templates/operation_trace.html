@@ -467,7 +467,7 @@ function log() {
     }
     n += 1;
     let detail = "";
-    if (e.run) detail += `<div><span class="eyebrow">Run ${esc(e.run.key.slice(0, 20))}</span>${chain(e.run.states)}</div>`;
+    if (e.run) detail += `<div><span class="eyebrow">Action ${esc(e.run.key.slice(0, 20))}</span>${chain(e.run.states)}</div>`;
     if (e.allocation) {
       const f = e.allocation.facts;
       detail += `<div><span class="eyebrow">Allocation ${esc(e.allocation.key.slice(0, 14))}</span>${chain(e.allocation.states)}${f.provider_id ? `<dl class="kv"><dt>provider</dt><dd>${esc(f.provider_id)}</dd><dt>location</dt><dd>${esc(f.location_id)}</dd><dt>workbench</dt><dd>${esc(f.workbench_id)}</dd></dl>` : ""}</div>`;

@@ -44,7 +44,7 @@ def test_every_link_carries_the_rules_its_own_events_triggered() -> None:
     links = {link.label.split(" ", 1)[0]: link for link in runtime.chain}
     assert {rule.rule for rule in links["attempt"].rules} == {"execution-was-dispatched"}
     assert {rule.rule for rule in links["dispatch"].rules} == {"dispatch-success-is-captured"}
-    assert {rule.rule for rule in links["run"].rules} == {"run-success-is-backed"}
+    assert {rule.rule for rule in links["action"].rules} == {"api-success-is-recorded", "only-long-actions-run"}
     assert runtime.chain[-1].label == "POST /rees/{id}/build-runtime → 202 at +10 s"
     assert {rule.rule for rule in provenance.seal_rules} >= {"sealed-without-stale-evidence"}
 
