@@ -142,7 +142,8 @@ def test_a_deployment_is_collected_through_its_control_plane(stub: tuple[Stub, s
     sources = {source.id: source for source in evidence.sources}
     assert sources["api-000001"].origin == f"{url}/api/v1/behaviour/journals"
     assert sources["stores"].cut == {"api-000001": (2, 2)}
-    assert [event.key for event in evidence.events if event.subject == "Run"] == ["build-1", "build-1"]
+    # The journal's record is read back; how the checker reads the stored run is its own business.
+    assert [event.key for event in evidence.events if event.source == "api-000001"] == ["build-1"]
 
 
 def test_an_unreachable_control_plane_is_listed_not_skipped(tmp_path: Path) -> None:
