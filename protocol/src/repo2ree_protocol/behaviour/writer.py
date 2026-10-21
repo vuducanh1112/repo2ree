@@ -1,4 +1,4 @@
-"""Durable, owner-written behaviour journals.
+"""Durable, owner-written behaviour journals, as ``contracts/behaviour/JOURNAL.md`` states them.
 
 Each process writes one journal file per epoch: ``<process>-<epoch>.ndjson``.
 Records carry a contiguous sequence number assigned here, so a reader can prove
@@ -22,11 +22,14 @@ from typing import Any
 
 from opentelemetry import trace
 
-from repo2ree_protocol.behaviour.machines import SPEC_DIGEST
-
 _log = logging.getLogger(__name__)
 
 type Fact = str | int | bool | None
+
+# The vocabulary these records were written against (the schema's ``x-vocabulary``).
+# Provenance only: journals are judged by what they hold. Update it when the records in
+# ``events`` are brought up to a new vocabulary.
+VOCABULARY = "sha256:f7400ce1e95c86a5ca3185296fe2e76f5df920283738e38aebdb0d76aba53f78"
 
 _NAME = re.compile(r"^(?P<process>[a-z][a-z0-9-]*)-(?P<epoch>[0-9]{6})\.ndjson$")
 
@@ -144,7 +147,7 @@ class FileJournal(Journal):
                 "process": process,
                 "epoch": self.epoch,
                 "hosts": sorted(set(hosts) | {process}),
-                "spec_digest": SPEC_DIGEST,
+                "vocabulary": VOCABULARY,
                 "pid": os.getpid(),
             }
         )

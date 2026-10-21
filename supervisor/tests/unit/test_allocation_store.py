@@ -7,6 +7,7 @@ import pytest
 
 from repo2ree_protocol import AllocationRequest, AllocationState
 from repo2ree_supervisor import AllocationStore
+from repo2ree_supervisor.allocation_state import EDGES, IllegalTransitionError, require_transition
 
 
 def _request(allocation_id: str = "alloc-1", ree_id: str = "ree-1") -> AllocationRequest:
@@ -37,6 +38,14 @@ def test_allocation_rejects_illegal_transition(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="requested -> assigned"):
         store.update("alloc-1", AllocationState.ASSIGNED)
+
+
+def test_the_table_covers_every_state_lets_one_stay_put_and_nothing_leave_released() -> None:
+    assert set(EDGES) == set(AllocationState)
+    require_transition(AllocationState.REQUESTED, AllocationState.PROVISIONING)
+    require_transition(AllocationState.RELEASED, AllocationState.RELEASED)
+    with pytest.raises(IllegalTransitionError, match="illegal allocation transition released -> assigned"):
+        require_transition(AllocationState.RELEASED, AllocationState.ASSIGNED)
 
 
 def test_one_ree_has_one_active_placement(tmp_path: Path) -> None:

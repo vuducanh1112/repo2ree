@@ -33,7 +33,7 @@ def record(seq: int, **fields: object) -> bytes:
 
 
 JOURNAL = record(
-    1, kind="journal.opened", process="api", epoch=1, hosts=["api", "supervisor"], spec_digest="sha256:x"
+    1, kind="journal.opened", process="api", epoch=1, hosts=["api", "supervisor"], vocabulary="sha256:x"
 ) + record(
     2,
     kind="transition",

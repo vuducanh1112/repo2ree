@@ -13,7 +13,7 @@ from threading import RLock
 from pydantic import ValidationError
 
 from repo2ree_protocol.allocation import AllocationRecord, AllocationRequest, AllocationState
-from repo2ree_protocol.behaviour import journal
+from repo2ree_protocol.behaviour import events
 from repo2ree_supervisor.allocation_state import require_transition
 
 logger = logging.getLogger(__name__)
@@ -61,12 +61,10 @@ class AllocationStore:
             data["allocations"][request.allocation_id] = record.model_dump(mode="json")
             data["placements"][request.ree_id] = request.allocation_id
             self._write(data)
-            journal().transition(
-                "supervisor",
-                "Allocation",
+            events.allocation(
                 request.allocation_id,
                 None,
-                record.state.value,
+                record.state,
                 partition=request.ree_id,
                 facts={
                     "provider_id": provider_id,
@@ -101,16 +99,12 @@ class AllocationStore:
             data["allocations"][allocation_id] = record.model_dump(mode="json")
             self._write(data)
             if previous != state:
-                changed = {"workbench_id": workbench_id, "detail": detail}
-                journal().transition(
-                    "supervisor",
-                    "Allocation",
-                    allocation_id,
-                    previous.value,
-                    state.value,
-                    partition=record.request.ree_id,
-                    facts={name: value for name, value in changed.items() if value is not None},
-                )
+                changed: events.AllocationFacts = {}
+                if workbench_id is not None:
+                    changed["workbench_id"] = workbench_id
+                if detail is not None:
+                    changed["detail"] = detail
+                events.allocation(allocation_id, previous, state, partition=record.request.ree_id, facts=changed)
             return record
 
     def get(self, allocation_id: str) -> AllocationRecord | None:

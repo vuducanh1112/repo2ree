@@ -16,7 +16,7 @@ test-assurance: test-conformance test-traceview test-collect test-recording
 # System evidence tooling has independent checks and test artifacts.
 ASSURANCE_METRIC_PATHS := "conformance/src traceview/src collect/src recording/src"
 
-# Static checks, the checker's independence contracts, and a fresh generated machines module.
+# Static checks, the checker's independence contracts, and a fresh generated contract (contracts/behaviour).
 [group('Assurance')]
 check-conformance: (_check-python-package "conformance")
     lint-imports --config conformance/pyproject.toml
@@ -62,7 +62,7 @@ test-collect:
 collect-behaviour control_plane output *rees:
     python -m repo2ree_collect {{ quote(output) }} --control-plane {{ quote(control_plane) }} {{ prepend("--ree ", rees) }}
 
-# Regenerate protocol's behaviour machines after editing specifications/behaviour.
+# Regenerate the published event schema (contracts/behaviour) after editing specifications/behaviour.
 [group('Assurance')]
 generate-behaviour:
     python -m repo2ree_conformance generate

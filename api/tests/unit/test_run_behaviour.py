@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 import typing
 from pathlib import Path
 
 import pytest
 
-from repo2ree_api.contracts import RunStatus
 from repo2ree_api.storage.json_run_store import JsonRunStore
 from repo2ree_api.storage.run_store import StoredRun
-from repo2ree_protocol.behaviour import MACHINES, close_journal, open_journal
+from repo2ree_protocol.behaviour import close_journal, open_journal
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.result import Failure
 
@@ -41,8 +42,17 @@ def transitions(tmp_path: Path) -> typing.Iterator[typing.Callable[[], list[tupl
     close_journal()
 
 
-def test_run_statuses_are_the_specified_machine() -> None:
-    assert set(typing.get_args(RunStatus)) == set(MACHINES["Run"].states)
+def test_what_the_store_journals_keeps_the_published_contract(tmp_path: Path) -> None:
+    opened = open_journal(tmp_path / "journal", "api", hosts=("supervisor",))
+    store = JsonRunStore(tmp_path / "runs")
+    store.create_idempotent(_run())
+    store.begin("ree-1", "build-1")
+    store.request_cancel("ree-1", "build-1")
+    store.finalize("ree-1", "build-1", status="canceled", outputs={}, failure=None)
+    close_journal(final=True)
+    command = [sys.executable, "-m", "repo2ree_conformance", "validate-journal", str(opened.path)]
+    checked = subprocess.run(command, capture_output=True, text=True, check=False)
+    assert checked.returncode == 0, checked.stdout
 
 
 def test_each_persisted_status_change_is_one_transition(tmp_path: Path, transitions) -> None:

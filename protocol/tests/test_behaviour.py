@@ -1,14 +1,16 @@
-"""The generated machines and the journal writer owners record through."""
+"""The journal writer and the typed records owners write through it."""
 
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
 from repo2ree_protocol.allocation import AllocationState
-from repo2ree_protocol.behaviour import MACHINES, SPEC_DIGEST, IllegalTransitionError, require_transition
+from repo2ree_protocol.behaviour import VOCABULARY, events
 from repo2ree_protocol.behaviour.writer import FileJournal, Journal, close_journal, journal, open_journal
 
 
@@ -16,15 +18,36 @@ def records(path: Path) -> list[dict[str, object]]:
     return [json.loads(line) for line in path.read_text().splitlines()]
 
 
-def test_allocation_states_are_the_specified_machine() -> None:
-    assert MACHINES["Allocation"].states == tuple(state.value for state in AllocationState)
+def kept_contract(journals: Path) -> subprocess.CompletedProcess[str]:
+    """What the published contract's own checker says about the journals written here."""
+    command = [sys.executable, "-m", "repo2ree_conformance", "validate-journal", str(journals)]
+    return subprocess.run(command, capture_output=True, text=True, check=False)
 
 
-def test_require_transition_follows_the_specification() -> None:
-    require_transition("Allocation", "requested", "provisioning")
-    require_transition("Allocation", "released", "released")
-    with pytest.raises(IllegalTransitionError, match="illegal allocation transition released -> assigned"):
-        require_transition("Allocation", "released", "assigned")
+def test_every_typed_record_keeps_the_published_contract(tmp_path: Path) -> None:
+    open_journal(tmp_path, "api", hosts=("supervisor",))
+    events.run("r1", None, "queued", partition="ree-1", facts={"operation": "build"})
+    events.run("r1", "queued", "failed", partition="ree-1", facts={"attempt_id": None, "failure_category": "x"})
+    events.allocation(
+        "al1",
+        None,
+        AllocationState.REQUESTED,
+        partition="ree-1",
+        facts={"provider_id": "p", "workbench_id": "w", "location_id": None},
+    )
+    events.allocation(
+        "al1", AllocationState.REQUESTED, AllocationState.FAILED, partition="ree-1", facts={"detail": "x"}
+    )
+    sent = events.dispatch_sent("a1", partition="ree-1", facts={"operation": "build_runtime", "run_id": "r1"})
+    events.dispatch_received("a1", "result", partition="ree-1", facts={"status": "succeeded", "commit": "c" * 40})
+    events.dispatch_sent("a2", partition="ree-1", facts={"operation": "build_runtime", "run_id": "r1"})
+    events.dispatch_received("a2", "unavailable", partition="ree-1")
+    events.dispatch_sent("a3", partition="ree-1", facts={"operation": "build_runtime", "run_id": "r1"})
+    events.dispatch_abandoned("a3", partition="ree-1", reason="closed_without_response")
+    close_journal(final=True)
+    assert sent == "api-000001#6"
+    checked = kept_contract(tmp_path)
+    assert checked.returncode == 0, checked.stdout + checked.stderr
 
 
 def test_without_an_open_journal_nothing_is_recorded() -> None:
@@ -43,7 +66,7 @@ def test_a_journal_is_sequenced_stamped_and_closed(tmp_path: Path) -> None:
         (2, "receive"),
         (3, "journal.closed"),
     ]
-    assert written[0]["spec_digest"] == SPEC_DIGEST
+    assert written[0]["vocabulary"] == VOCABULARY
     assert written[0]["hosts"] == ["api", "supervisor"]
     assert written[1]["facts"] == {"status": "failed"}
 

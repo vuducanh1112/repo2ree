@@ -450,7 +450,7 @@ def trace_of(scenario: Scenario, spans: list[Span] | None = None, ree: str = REE
             hosts=frozenset({"api", "supervisor"}),
             complete=True,
             closed=True,
-            spec_digest=SPEC.digest,
+            vocabulary=SPEC.vocabulary_digest,
         ),
         *(
             Source(

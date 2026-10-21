@@ -27,7 +27,7 @@ from typing import Any
 from uuid import uuid4
 
 from repo2ree_protocol.allocation import AllocationRecord, AllocationRequest, AllocationState
-from repo2ree_protocol.behaviour import journal
+from repo2ree_protocol.behaviour import events
 from repo2ree_protocol.command import Command
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import (
@@ -397,37 +397,25 @@ class WorkbenchManager:
         reference into the attempt's record, and the recorded result names the
         commit that captured the attempt. Returns the result and the context sent.
         """
-        exchange = journal()
-        dispatched = exchange.send(
-            "supervisor",
-            "dispatch",
-            "exec_action",
-            context.attempt_id,
-            partition=handle.ree_id,
-            facts={"operation": str(cmd.operation), "run_id": run_id},
+        dispatched = events.dispatch_sent(
+            context.attempt_id, partition=handle.ree_id, facts={"operation": str(cmd.operation), "run_id": run_id}
         )
         context = context.model_copy(update={"dispatch_record": dispatched})
         answered = False
 
-        def observe(message: str, facts: dict[str, str | None] | None = None) -> None:
+        def observe(message: events.DispatchResponse, facts: events.ResultFacts | None = None) -> None:
             nonlocal answered
             answered = True
-            exchange.receive(
-                "supervisor", "dispatch", message, context.attempt_id, partition=handle.ree_id, facts=facts
-            )
+            events.dispatch_received(context.attempt_id, message, partition=handle.ree_id, facts=facts)
 
         try:
             result = self._dispatch_action_locked(handle, cmd, run_id, log, context, observe)
         except BaseException as exc:
             if not answered:
-                exchange.abandon(
-                    "supervisor", "dispatch", context.attempt_id, partition=handle.ree_id, reason=type(exc).__name__
-                )
+                events.dispatch_abandoned(context.attempt_id, partition=handle.ree_id, reason=type(exc).__name__)
             raise
         if not answered:
-            exchange.abandon(
-                "supervisor", "dispatch", context.attempt_id, partition=handle.ree_id, reason="closed_without_response"
-            )
+            events.dispatch_abandoned(context.attempt_id, partition=handle.ree_id, reason="closed_without_response")
         return result, context
 
     def _dispatch_action_locked(
@@ -437,7 +425,7 @@ class WorkbenchManager:
         run_id: str,
         log: LogSink,
         context: ExecutionContext,
-        observe: Callable[[str, dict[str, str | None] | None], None],
+        observe: Callable[[events.DispatchResponse, events.ResultFacts | None], None],
     ) -> ActionResult:
         cmd_json = cmd.model_dump_json()
 

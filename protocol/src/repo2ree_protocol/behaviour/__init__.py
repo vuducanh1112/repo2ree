@@ -1,43 +1,25 @@
-"""Runtime side of the behaviour specification in ``specifications/behaviour``.
+"""The product's side of the behaviour contract in ``contracts/behaviour``.
 
-``machines`` is generated from the specification. Owners enforce their machine
-with ``require_transition`` where they already refuse illegal states, and record
-every change with ``journal()``; ``repo2ree_conformance`` checks the records.
+Owners record every state change through the typed records in ``events``; the writer
+keeps the journal rules (one file per epoch, contiguous sequence numbers, durable
+lines). ``repo2ree_conformance`` judges what they wrote. Nothing here is generated from
+the specification, and the specification's rules never run in the product.
 """
 
-from repo2ree_protocol.behaviour.machines import BOUNDARIES, MACHINES, SPEC_DIGEST
-from repo2ree_protocol.behaviour.model import BoundaryShape, MachineShape
+from repo2ree_protocol.behaviour import events
 from repo2ree_protocol.behaviour.reader import JournalFile, journal_file, journal_files, positions, records_after
-from repo2ree_protocol.behaviour.writer import Journal, close_journal, journal, open_journal
-
-
-class IllegalTransitionError(ValueError):
-    pass
-
-
-def require_transition(machine: str, current: str, target: str) -> None:
-    """Refuse an edge the specification does not declare; staying put is always allowed."""
-    if current == target:
-        return
-    if not MACHINES[machine].allows(current, target):
-        raise IllegalTransitionError(f"illegal {machine.lower()} transition {current} -> {target}")
-
+from repo2ree_protocol.behaviour.writer import VOCABULARY, Journal, close_journal, journal, open_journal
 
 __all__ = [
-    "BOUNDARIES",
-    "MACHINES",
-    "SPEC_DIGEST",
-    "BoundaryShape",
-    "IllegalTransitionError",
+    "VOCABULARY",
     "Journal",
     "JournalFile",
-    "MachineShape",
     "close_journal",
+    "events",
     "journal",
     "journal_file",
     "journal_files",
     "open_journal",
     "positions",
     "records_after",
-    "require_transition",
 ]
