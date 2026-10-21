@@ -9,6 +9,7 @@ Built from an operation trace alone, so it can never disagree with the other vie
 from __future__ import annotations
 
 from repo2ree_traceview.model import Entry, OperationTrace, RuleHit, StepChange, ViewModel
+from repo2ree_traceview.operations import RECEIPT_SUBJECTS
 
 ABSENT = (None, "missing", "not_applicable")
 PRESENT = ("current", "stale")
@@ -138,7 +139,9 @@ def build_provenance(trace: OperationTrace) -> Provenance | None:
                 produced_by=entry.name,
                 change=change,
                 commit=entry.attempt.commit if entry.attempt else None,
-                rules=tuple(hit for hit in entry.rules if hit.subject == "Step" and hit.key.endswith(f"/{step}")),
+                rules=tuple(
+                    hit for hit in entry.rules if hit.subject in RECEIPT_SUBJECTS and hit.key.endswith(f"/{step}")
+                ),
                 later=tuple(later[step]),
                 chain=chain(entry),
             )

@@ -45,6 +45,8 @@ NOISE = ("websocket", "GET ", "HTTP /provider/connect", "HTTP /workbench/connect
 # The author action that sets up an REE's workbench.
 PROVISION = "create_ree"
 RELEASED = ("released", "failed", "lost")
+# The evidence standing of each step; "Step" until the specification names it Receipt.
+RECEIPT_SUBJECTS = frozenset({"Receipt", "Step"})
 TOP_SPANS = 6
 
 
@@ -237,7 +239,7 @@ def build_trace(
         by_commit[event.locator or event.source].append(event)
     for events in by_commit.values():
         attempt_events = [e for e in events if e.subject == "Attempt"]
-        step_events = [e for e in events if e.subject == "Step"]
+        step_events = [e for e in events if e.subject in RECEIPT_SUBJECTS]
         ree_events = [e for e in events if e.subject == "Ree"]
         for event in step_events:
             if event.facts.get("cause") == "baseline" or not attempt_events:

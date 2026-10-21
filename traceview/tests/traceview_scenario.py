@@ -13,6 +13,8 @@ from repo2ree_traceview.spans import Span, SpanEvent, SpanIndex
 
 SPEC = load_spec()
 REE = "ree-1"
+# The evidence-standing subject, whichever name the specification gives it.
+RECEIPT = "Receipt" if "Receipt" in SPEC.entities else "Step"
 START = datetime(2026, 10, 18, 10, 0, tzinfo=UTC)
 REQUEST, WORKER, PROVISION = "a" * 32, "b" * 32, "c" * 32
 
@@ -175,7 +177,7 @@ class Scenario:
                     **common,
                     position=base + 100 + offset,
                     kind="transition",
-                    subject="Step",
+                    subject=RECEIPT,
                     key=f"{self.ree}/{step}",
                     source_state=current,
                     target_state=target,
