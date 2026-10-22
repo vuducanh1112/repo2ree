@@ -14,16 +14,6 @@
 # ----------------------------------------------------------------
 { pkgs, devPkgs }:
 
-let
-  # The installed git hook runs `<interpreter> -m pre_commit`, with the
-  # interpreter pre-commit was installed from. Nixpkgs packages pre-commit as an
-  # application whose bare interpreter cannot import it, so it gets one that
-  # can, and `pre-commit` runs through that interpreter.
-  preCommitPython = devPkgs.python3.withPackages (ps: [ (ps.toPythonModule devPkgs.pre-commit) ]);
-  preCommit = devPkgs.writeShellScriptBin "pre-commit" ''
-    exec ${preCommitPython}/bin/python3 -m pre_commit "$@"
-  '';
-in
 devPkgs.mkShell {
   buildInputs = [
     # The Node the GUI image is built with, and the Python the shipped closures
@@ -61,8 +51,9 @@ devPkgs.mkShell {
 
     # Runs the git hooks in .pre-commit-config.yaml; every hook there is a
     # local command, so this is a dispatcher, not a dependency of the code.
-    # .envrc reinstalls the hook on entry, so it runs this shell's version.
-    preCommit
+    # The hook nixpkgs' pre-commit installs runs it by its store path; .envrc
+    # reinstalls the hook when that path is not this shell's.
+    pre-commit
 
     # Cyclomatic complexity for the metrics reports.
     python313Packages.lizard
