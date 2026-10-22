@@ -34,6 +34,11 @@ test-e2e-gui-instant mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_
 [group('E2E tests')]
 test-e2e-system locations="1" mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE jobs=E2E_JOBS: build-e2e-bundles (_e2e-system jobs locations mode docker_mode)
 
+# Run the fault suite, not gated: each test on a fresh stack that injects the faults it asks for.
+[group('E2E tests')]
+test-e2e-faults jobs=E2E_JOBS: build-e2e-bundles
+    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/api/tests/faults/run_fault_suite.py") }} --tier e2e-faults --per-test --jobs {{ quote(jobs) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
+
 # Run the measured reviewer-side browser E2E tier.
 [group('E2E tests')]
 test-e2e-review mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE: build-e2e-bundles (_source-stack-playwright "e2e-gui-review" "1" mode docker_mode)
