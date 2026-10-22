@@ -9,8 +9,9 @@ import sys
 from pathlib import Path
 
 import pytest
-from test_support.artifacts import case_dir, case_key, run_dir
-from test_support.recording import TestRecorder
+
+from repo2ree_testbed.artifacts import case_dir, case_key, run_dir
+from repo2ree_testbed.recording import TestRecorder
 
 
 @pytest.fixture
@@ -170,7 +171,7 @@ def test_pytest_retains_evidence_before_cleanup_and_records_failure(tmp_path, fa
         + ("    assert False\n" if failure == "call" else "    assert ree.is_dir()\n")
     )
     result = subprocess.run(
-        [sys.executable, "-m", "pytest", "-p", "test_support.pytest_plugin", "--confcutdir", str(project), "-q"],
+        [sys.executable, "-m", "pytest", "-p", "repo2ree_testbed.pytest_plugin", "--confcutdir", str(project), "-q"],
         cwd=project,
         env={
             **os.environ,
@@ -232,7 +233,7 @@ def test_pytest_routes_assurance_sessions_and_tests_separately(tmp_path, mixed):
             "-m",
             "pytest",
             "-p",
-            "test_support.pytest_plugin",
+            "repo2ree_testbed.pytest_plugin",
             "--confcutdir",
             str(project),
             "-q",

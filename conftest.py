@@ -35,9 +35,9 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from test_support.artifacts import run_dir
+from repo2ree_testbed.artifacts import run_dir
 
-pytest_plugins = ["test_support.pytest_plugin"]
+pytest_plugins = ["repo2ree_testbed.pytest_plugin"]
 
 run_dir()
 

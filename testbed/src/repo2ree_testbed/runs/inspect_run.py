@@ -1,7 +1,6 @@
-#!/usr/bin/env python3
-"""Check and draw every test of a per-test e2e run: ``inspect_run.py <run directory>``.
+"""Check and draw every test of a per-test e2e run: ``python -m repo2ree_testbed inspect <run directory>``.
 
-For each test directory the run left (``e2e_stack.py --per-test``), this judges its
+For each test directory the run left (``python -m repo2ree_testbed e2e --per-test``), this judges its
 recording against the behaviour specification (``verification/``), draws its REEs'
 operation traces and provenance (``traces/``), and writes ``index.html``: the
 outcome, the behaviour verdict, the trace pages, the logs, and the screenshots
@@ -19,7 +18,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parents[2]
+from repo2ree_testbed.artifacts import ROOT
+
 VERDICTS = {0: "passed", 1: "violated", 2: "inconclusive"}
 
 STYLE = """
@@ -137,7 +137,7 @@ def write_run_index(root: Path, run: dict[str, Any], tests: list[dict[str, Any]]
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("run", type=Path, help="The run directory e2e_stack.py --per-test wrote")
+    parser.add_argument("run", type=Path, help="The run directory `repo2ree_testbed e2e --per-test` wrote")
     root = parser.parse_args().run
     run = json.loads((root / "run.json").read_text())
     tests = []

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Run the system suite against a stack: ``run_system_suite.py --base-url URL [TEST...] [pytest args...]``.
 
-The client ``scripts/test-stack/e2e_stack.py --script`` runs once the stack is up.
+The client ``python -m repo2ree_testbed e2e --script`` runs once the stack is up.
 With ``--list`` it prints the suite's test ids, one per line, and runs nothing;
 given test ids it runs only those (``--per-test`` gives each one a stack of its own).
 """

@@ -1,0 +1,52 @@
+[project]
+name = "repo2ree-testbed"
+version = "0.1.0"
+description = "Stand up stacks, run the suites on them, and keep what they leave: per-test stacks, image suites, run pages, artifact pruning, coverage tiers, and the pytest artifact plugin."
+requires-python = "~=3.13.0"
+dependencies = ["coverage~=7.14.1", "pytest~=8.4.1", "uvicorn~=0.40.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/repo2ree_testbed"]
+
+
+[tool.importlinter]
+include_external_packages = true
+root_packages = [
+    "repo2ree_testbed", "repo2ree_collect", "repo2ree_recording", "repo2ree_conformance", "repo2ree_traceview",
+    "repo2ree_api", "repo2ree_core", "repo2ree_docker", "repo2ree_executor", "repo2ree_provider_docker",
+    "repo2ree_protocol", "repo2ree_supervisor", "repo2ree_workbench",
+]
+
+# The testbed starts what it tests as processes and reaches them over HTTP: a stack
+# under test is a deployment, never code imported beside the driver.
+[[tool.importlinter.contracts]]
+name = "Testbed stays independent of runtime packages"
+type = "forbidden"
+source_modules = ["repo2ree_testbed"]
+forbidden_modules = [
+    "repo2ree_api", "repo2ree_core", "repo2ree_docker", "repo2ree_executor",
+    "repo2ree_provider_docker", "repo2ree_protocol", "repo2ree_supervisor", "repo2ree_workbench",
+]
+
+# It runs the collector, the checker, and the views as commands on a run's directory,
+# so what it does to a run never shapes what they read or decide.
+[[tool.importlinter.contracts]]
+name = "Testbed runs evidence tools without importing them"
+type = "forbidden"
+source_modules = ["repo2ree_testbed"]
+forbidden_modules = ["repo2ree_collect", "repo2ree_recording", "repo2ree_conformance", "repo2ree_traceview"]
+
+# Product and evidence code never depend on how they are tested; their tests may.
+[[tool.importlinter.contracts]]
+name = "Nothing that ships or judges imports the testbed"
+type = "forbidden"
+source_modules = [
+    "repo2ree_api", "repo2ree_core", "repo2ree_docker", "repo2ree_executor", "repo2ree_provider_docker",
+    "repo2ree_protocol", "repo2ree_supervisor", "repo2ree_workbench",
+    "repo2ree_collect", "repo2ree_recording", "repo2ree_conformance", "repo2ree_traceview",
+]
+forbidden_modules = ["repo2ree_testbed"]

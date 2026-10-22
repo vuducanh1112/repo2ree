@@ -19,7 +19,7 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from test_support.artifacts import service_dir
+from repo2ree_testbed.artifacts import service_dir
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient

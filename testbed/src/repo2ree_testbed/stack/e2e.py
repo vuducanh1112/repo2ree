@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Run a measured source E2E stack and one client suite."""
 
 from __future__ import annotations
@@ -27,10 +26,7 @@ from pathlib import Path
 from typing import Any, BinaryIO
 from xml.etree import ElementTree
 
-ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT))
-
-from test_support.artifacts import run_dir, write_provenance  # noqa: E402
+from repo2ree_testbed.artifacts import ROOT, run_dir, write_provenance
 
 
 def capture(*args: str, cwd: Path = ROOT) -> str:
@@ -199,7 +195,8 @@ class E2EStack:
                 "coverage",
                 "run",
                 "--parallel-mode",
-                str(ROOT / "scripts/test-stack/serve-e2e-api.py"),
+                "-m",
+                "repo2ree_testbed.stack.serve_api",
                 str(self.port_file),
             ],
             cwd=ROOT,
@@ -425,7 +422,7 @@ class E2EStack:
                 shutil.rmtree(self.control_state, ignore_errors=True)
         with self.phase("cleanup"):
             subprocess.run(
-                [sys.executable, str(ROOT / "scripts/test-stack/workbench_cleanup.py"), "--owner", self.run_token],
+                [sys.executable, "-m", "repo2ree_testbed.stack.workbench_cleanup", "--owner", self.run_token],
                 cwd=ROOT,
                 check=False,
             )
@@ -490,7 +487,7 @@ class E2EStack:
         write_provenance(self.coverage_dir)
         subprocess.run(["coverage", "report"], cwd=ROOT, env=environment, check=True)
         subprocess.run(
-            [sys.executable, str(ROOT / "scripts/coverage/python_coverage.py"), "render", self.options.tier],
+            [sys.executable, "-m", "repo2ree_testbed.python_coverage", "render", self.options.tier],
             cwd=ROOT,
             env=environment,
             check=True,
@@ -595,7 +592,7 @@ class PerTestRun:
 
     A test's directory holds everything its stack produced: the behaviour recording (its own
     journals from start to finish, its REEs' histories, its spans), the stack's logs, and what the
-    client kept (screenshots, downloaded REEs). Checking and drawing them is ``inspect_run.py``'s
+    client kept (screenshots, downloaded REEs). Checking and drawing them is ``runs.inspect_run``'s
     job, run afterwards; it never changes a test's outcome.
     """
 
@@ -704,7 +701,7 @@ class PerTestRun:
         (self.root / "run.json").write_text(json.dumps(run, indent=2) + "\n")
         if last is not None:
             last.coverage_report()
-        subprocess.run([sys.executable, str(ROOT / "scripts/test-stack/inspect_run.py"), str(self.root)], check=False)
+        subprocess.run([sys.executable, "-m", "repo2ree_testbed.runs.inspect_run", str(self.root)], check=False)
         print(f">> per-test run: {self.root}")
         return 0 if all(result["exit_code"] == 0 for result in ordered) else 1
 
@@ -761,7 +758,7 @@ class SuiteRun:
         }
         (self.root / "run.json").write_text(json.dumps(run, indent=2) + "\n")
         stack.coverage_report()
-        subprocess.run([sys.executable, str(ROOT / "scripts/test-stack/inspect_run.py"), str(self.root)], check=False)
+        subprocess.run([sys.executable, "-m", "repo2ree_testbed.runs.inspect_run", str(self.root)], check=False)
         print(f">> suite run: {self.root}")
         return status
 
@@ -843,8 +840,8 @@ def main() -> int:
     # Stacks running side by side print from several threads, between subprocesses writing to the same stream.
     sys.stdout.reconfigure(line_buffering=True)  # type: ignore[union-attr]
     selected = options()
-    # Every run adds hundreds of megabytes; prune before adding more (prune_artifacts.py keeps what is in use).
-    subprocess.run([sys.executable, str(ROOT / "scripts/test-stack/prune_artifacts.py")], cwd=ROOT, check=False)
+    # Every run adds hundreds of megabytes; prune before adding more (runs.prune keeps what is in use).
+    subprocess.run([sys.executable, "-m", "repo2ree_testbed.runs.prune"], cwd=ROOT, check=False)
     stack: SuiteRun | PerTestRun = PerTestRun(selected) if selected.per_test else SuiteRun(selected)
 
     def interrupted(_signal: int, _frame: object) -> None:

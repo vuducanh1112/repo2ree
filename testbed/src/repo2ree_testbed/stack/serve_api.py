@@ -12,7 +12,7 @@ import uvicorn
 def main() -> None:
     """Publish the reserved port, then serve Uvicorn through that socket."""
     if len(sys.argv) != 2:
-        raise SystemExit("usage: serve-e2e-api.py <port-file>")
+        raise SystemExit("usage: python -m repo2ree_testbed.stack.serve_api <port-file>")
 
     port_file = Path(sys.argv[1])
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:

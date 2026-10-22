@@ -174,8 +174,8 @@ supervisor's request, not inside `repo2ree-demo-data`.
 `docker compose down` keeps both volumes, which is what a stack you intend to
 restart wants. To stop a stack and reclaim everything it stored — the compose
 volumes plus any workbench containers and per-REE volumes left behind — use
-`scripts/test-stack/image_stack.py down --volumes` (`just stack-clean`), or
-`scripts/test-stack/workbench_cleanup.py` for the workbench leftovers alone —
+`python -m repo2ree_testbed images down --volumes` (`just stack-clean`), or
+`python -m repo2ree_testbed workbench-cleanup` for the workbench leftovers alone —
 the latter also sweeps unreferenced anonymous volumes, which the bench image
 declares for itself and which nothing can address once their container is gone.
 

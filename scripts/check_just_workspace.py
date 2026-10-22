@@ -57,12 +57,13 @@ def validate(document: dict[str, Any], config: dict[str, Any], root: Path) -> li
     categories = config["tool"]["repo2ree"]["workspace"]
     backend = list(categories["backend"])
     assurance = list(categories["assurance"])
+    testbed = list(categories["testbed"])
     import_packages = list(config["tool"]["importlinter"]["root_packages"])
     unit_suites = assignment_words(document, "UNIT_SUITES")
     integration_suites = assignment_words(document, "INTEGRATION_SUITES")
     integration_members = expected_suites(root, backend, "integration")
     checks = (
-        compare("workspace categories", [*backend, *assurance], members),
+        compare("workspace categories", [*backend, *assurance, *testbed], members),
         compare("PYTHON_FORMAT_PATHS", assignment_words(document, "PYTHON_FORMAT_PATHS"), ["scripts", *members]),
         compare(
             "PYTHON_METRIC_PATHS",
@@ -101,6 +102,12 @@ def validate(document: dict[str, Any], config: dict[str, Any], root: Path) -> li
     for aggregate, recipe in (("check", "check-assurance"), ("test-unit", "test-assurance")):
         if recipe not in dependency_names(document, aggregate):
             problems.append(f"{aggregate} must include {recipe} independently of backend")
+    for member in testbed:
+        for aggregate, recipe in (("check", f"check-{member}"), ("test-unit", f"test-{member}")):
+            if recipe not in document["recipes"]:
+                problems.append(f"missing testbed recipe: {recipe}")
+            elif recipe not in dependency_names(document, aggregate):
+                problems.append(f"{aggregate} must include {recipe}")
     for aggregate, prefix in (("check-assurance", "check"), ("test-assurance", "test")):
         expected = [f"{prefix}-{member}" for member in assurance]
         if problem := compare(f"{aggregate} dependencies", dependency_names(document, aggregate), expected):

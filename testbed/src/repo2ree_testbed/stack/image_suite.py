@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Run one browser suite or API walkthrough against an image stack."""
 
 from __future__ import annotations
@@ -8,7 +7,8 @@ import os
 import subprocess
 import sys
 
-from image_stack import ROOT, ImageStack, Options
+from repo2ree_testbed.artifacts import ROOT
+from repo2ree_testbed.stack.images import ImageStack, Options
 
 
 def positive(value: str) -> int:

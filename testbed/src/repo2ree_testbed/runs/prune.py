@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-"""Keep test-artifacts bounded: ``prune_artifacts.py [--keep-runs N] [--keep-suite N] [--dry-run]``.
+"""Keep test-artifacts bounded: ``python -m repo2ree_testbed prune [--keep-runs N] [--keep-suite N] [--dry-run]``.
 
 Every e2e run adds hundreds of megabytes and nothing removed them. This keeps:
 
@@ -14,7 +13,7 @@ Every e2e run adds hundreds of megabytes and nothing removed them. This keeps:
 
 and removes unused bundle-store volumes older than ``--store-days``: only those. (``workbench_cleanup
 --store-gc`` also removes every workbench, so it would take down stacks running beside this one.)
-e2e_stack.py runs it before every run, so the disk cannot creep up.
+The e2e stack runs it before every run, so the disk cannot creep up.
 """
 
 from __future__ import annotations
@@ -30,12 +29,8 @@ from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT))
-sys.path.insert(0, str(ROOT / "scripts/test-stack"))
-
-from test_support.artifacts import run_dir  # noqa: E402
-from workbench_cleanup import live_store_volume, stale_store_volumes  # noqa: E402
+from repo2ree_testbed.artifacts import ROOT, run_dir
+from repo2ree_testbed.stack.workbench_cleanup import live_store_volume, stale_store_volumes
 
 RECEIPT = ROOT / ".validation-certificates/behaviour-ok"
 PER_TEST_RUN = re.compile(r"^(?P<tier>.+)-(?P<stamp>\d{8}-\d{6})$")

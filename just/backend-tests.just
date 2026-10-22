@@ -104,12 +104,12 @@ test-supervisor: test-supervisor-unit test-supervisor-integration
 # Run and merge the complete measured, container-free backend unit tier.
 [group('Backend tests')]
 test-backend-unit: test-protocol test-core-unit test-api-unit test-supervisor-unit test-executor test-docker-support test-provider test-workbench
-    python scripts/coverage/python_coverage.py combine-unit
+    python -m repo2ree_testbed coverage combine-unit
 
 # Run and merge the complete measured backend integration tier.
 [group('Backend tests')]
 test-backend-integration coverage_report="": build-e2e-bundles (test-core-integration coverage_report) (test-api-integration coverage_report) (test-supervisor-integration coverage_report)
-    python scripts/coverage/python_coverage.py combine-integration
+    python -m repo2ree_testbed coverage combine-integration
 
 # Run both measured backend tiers concurrently.
 [group('Backend tests')]
@@ -119,7 +119,7 @@ test-backend: test-backend-unit test-backend-integration && (combine-backend-cov
 # Render one measured tier's total and per-package HTML coverage reports.
 [group('Coverage')]
 render-backend-coverage tier run="":
-    python scripts/coverage/python_coverage.py render {{ quote(tier) }} {{ if run == "" { "" } else { "--run " + quote(run) } }}
+    python -m repo2ree_testbed coverage render {{ quote(tier) }} {{ if run == "" { "" } else { "--run " + quote(run) } }}
 
 # This is a separate view, not another tier: contexts make the database larger,
 # and API unit and integration tests remain separate processes because their
@@ -135,4 +135,4 @@ attribute-backend-coverage: build-e2e-bundles
 # Combine selected measured backend tiers, or every available tier by default.
 [group('Coverage')]
 combine-backend-coverage tiers="" run="":
-    python scripts/coverage/python_coverage.py combine --tiers {{ quote(tiers) }} --render {{ if run == "" { "" } else { "--run " + quote(run) } }}
+    python -m repo2ree_testbed coverage combine --tiers {{ quote(tiers) }} --render {{ if run == "" { "" } else { "--run " + quote(run) } }}

@@ -1,17 +1,9 @@
-import importlib.util
 import json
 import os
-import sys
 import time
 from pathlib import Path
 
-ROOT = Path(__file__).parents[2]
-SPEC = importlib.util.spec_from_file_location("prune_artifacts", ROOT / "scripts/test-stack/prune_artifacts.py")
-assert SPEC
-assert SPEC.loader
-prune = importlib.util.module_from_spec(SPEC)
-sys.modules["prune_artifacts"] = prune
-SPEC.loader.exec_module(prune)
+from repo2ree_testbed.runs import prune
 
 NOW = time.time()
 OLD = NOW - 30 * 24 * 3600

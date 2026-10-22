@@ -3,7 +3,7 @@
 # Checks below are read-only. Run `just format` to apply formatting, or
 # `just fix` to apply safe lint fixes and then format the affected sources.
 
-PYTHON_FORMAT_PATHS := "scripts protocol core supervisor api executor docker-support provider workbench conformance traceview collect recording"
+PYTHON_FORMAT_PATHS := "scripts protocol core supervisor api executor docker-support provider workbench conformance traceview collect recording testbed"
 GUI_FORMAT_PATHS := "src tests scripts playwright.config.ts vite.config.mjs testArtifacts.cjs testArtifacts.d.cts"
 
 [private]
@@ -19,20 +19,30 @@ _check-just-workspace:
 # Apply Python, GUI, and Nix formatting.
 [group('Formatting')]
 format:
-    ruff format {{ PYTHON_FORMAT_PATHS }} test_support conftest.py
+    ruff format {{ PYTHON_FORMAT_PATHS }} conftest.py
     cd gui && npx biome format --write {{ GUI_FORMAT_PATHS }}
     nix fmt
 
 # Apply safe Python and GUI lint fixes, then normalize formatting.
 [group('Formatting')]
 fix: && format
-    ruff check --fix {{ PYTHON_FORMAT_PATHS }} test_support conftest.py
+    ruff check --fix {{ PYTHON_FORMAT_PATHS }} conftest.py
     cd gui && npx biome check --write {{ GUI_FORMAT_PATHS }}
 
 # Run tests for repository scripts.
 [group('Script tests')]
 test-scripts:
-    pytest scripts/tests test_support/tests
+    pytest scripts/tests
+
+# Static checks and the testbed's import contracts: it starts what it tests as processes, never importing it.
+[group('Checks')]
+check-testbed: (_check-python-package "testbed")
+    lint-imports --config testbed/pyproject.toml
+
+# Testbed tests: stack command lines, run pruning, coverage tiers, and REE preservation.
+[group('Script tests')]
+test-testbed:
+    pytest testbed/tests
 
 # Statically check shell and Python scripts.
 [group('Checks')]
@@ -40,9 +50,9 @@ check-scripts: _check-write-hint check-config _check-just-workspace
     @echo "Running shellcheck..."
     find scripts -name '*.sh' -exec shellcheck {} +
     @echo "Checking python scripts..."
-    ruff check scripts test_support conftest.py
-    ruff format --check scripts test_support conftest.py
-    mypy scripts test_support
+    ruff check scripts conftest.py
+    ruff format --check scripts conftest.py
+    mypy scripts
     mypy conftest.py
 
 # Check formatting and lint Nix sources without modifying them.
@@ -147,8 +157,8 @@ check-backend: check-protocol check-core check-supervisor check-api check-execut
 
 # Run every static analysis check.
 [group('Checks')]
-check: check-docs check-scripts check-nix check-gui check-backend check-assurance
+check: check-docs check-scripts check-nix check-gui check-backend check-assurance check-testbed
 
 # Run every container-free unit test suite.
 [group('Tests')]
-test-unit: test-scripts test-gui test-backend-unit test-assurance
+test-unit: test-scripts test-gui test-backend-unit test-assurance test-testbed

@@ -40,9 +40,10 @@ from api_integration_bench import (
     WORKBENCH_IMAGE,
     ReeFilmstrip,
 )
-from test_support.artifacts import case_dir
-from test_support.recording import TestRecorder
 from websockets.asyncio.server import ServerConnection, serve
+
+from repo2ree_testbed.artifacts import case_dir
+from repo2ree_testbed.recording import TestRecorder
 
 # Must be set before the in-test workbench constructs its DockerIsolation.
 os.environ.setdefault("REPO2REE_EXEC_BUNDLE", str(EXEC_BUNDLE))

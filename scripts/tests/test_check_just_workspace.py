@@ -5,11 +5,11 @@ from scripts import check_just_workspace
 
 
 def fixture(root: Path) -> tuple[dict[str, Any], dict[str, Any]]:
-    members = ["alpha", "beta", "conformance"]
+    members = ["alpha", "beta", "conformance", "testbed"]
     for path in (root / "alpha/tests/unit", root / "beta/tests", root / "beta/tests/integration"):
         path.mkdir(parents=True)
     assignments = {
-        "PYTHON_FORMAT_PATHS": {"value": "scripts alpha beta conformance"},
+        "PYTHON_FORMAT_PATHS": {"value": "scripts alpha beta conformance testbed"},
         "PYTHON_METRIC_PATHS": {"value": "alpha/src beta/src"},
         "ASSURANCE_METRIC_PATHS": {"value": "conformance/src"},
         "UNIT_SUITES": {"value": "alpha/tests/unit beta/tests"},
@@ -17,8 +17,12 @@ def fixture(root: Path) -> tuple[dict[str, Any], dict[str, Any]]:
         "BACKEND_GRAPH_PACKAGES": {"value": "pkg_alpha pkg_beta"},
     }
     recipes = {
-        "check": {"dependencies": [{"recipe": "check-backend"}, {"recipe": "check-assurance"}]},
-        "test-unit": {"dependencies": [{"recipe": "test-backend-unit"}, {"recipe": "test-assurance"}]},
+        "check": {"dependencies": [{"recipe": name} for name in ("check-backend", "check-assurance", "check-testbed")]},
+        "test-unit": {
+            "dependencies": [{"recipe": name} for name in ("test-backend-unit", "test-assurance", "test-testbed")]
+        },
+        "check-testbed": {"dependencies": []},
+        "test-testbed": {"dependencies": []},
         "check-assurance": {"dependencies": [{"recipe": "check-conformance"}]},
         "test-assurance": {"dependencies": [{"recipe": "test-conformance"}]},
         "check-conformance": {"dependencies": []},
@@ -32,7 +36,9 @@ def fixture(root: Path) -> tuple[dict[str, Any], dict[str, Any]]:
     document = {"assignments": assignments, "recipes": recipes}
     config = {
         "tool": {
-            "repo2ree": {"workspace": {"backend": ["alpha", "beta"], "assurance": ["conformance"]}},
+            "repo2ree": {
+                "workspace": {"backend": ["alpha", "beta"], "assurance": ["conformance"], "testbed": ["testbed"]}
+            },
             "uv": {"workspace": {"members": members}},
             "importlinter": {"root_packages": ["pkg_alpha", "pkg_beta"]},
         }
@@ -78,3 +84,13 @@ def test_categories_cover_workspace_exactly_once(tmp_path: Path) -> None:
     assert any(
         "workspace categories" in problem for problem in check_just_workspace.validate(document, config, tmp_path)
     )
+
+
+def test_testbed_required_by_global_aggregates(tmp_path: Path) -> None:
+    document, config = fixture(tmp_path)
+    document["recipes"]["check"]["dependencies"].pop()
+    del document["recipes"]["test-testbed"]
+    assert check_just_workspace.validate(document, config, tmp_path) == [
+        "check must include check-testbed",
+        "missing testbed recipe: test-testbed",
+    ]

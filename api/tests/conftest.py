@@ -1,1 +1,1 @@
-"""API trace and repository artifacts are collected by test_support.pytest_plugin."""
+"""API trace and repository artifacts are collected by repo2ree_testbed.pytest_plugin."""

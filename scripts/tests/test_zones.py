@@ -25,7 +25,12 @@ def test_a_specification_change_with_its_generated_contract_checker_and_gate_is_
 
 
 def test_unprotected_changes_alone_are_allowed() -> None:
-    paths = [RUNTIME, "api/tests/system/test_failures.py", "scripts/test-stack/e2e_stack.py", "docs/README.md"]
+    paths = [
+        RUNTIME,
+        "api/tests/system/test_failures.py",
+        "testbed/src/repo2ree_testbed/stack/e2e.py",
+        "docs/README.md",
+    ]
     assert check(paths) == 0
 
 
@@ -58,7 +63,7 @@ def test_the_longest_entry_decides() -> None:
     assert declared.entry("conformance/expected-verdicts.toml").group == "excuses"  # type: ignore[union-attr]
     assert declared.entry("conformance/src/repo2ree_conformance/check.py").group == "checker"  # type: ignore[union-attr]
     assert declared.entry("api/tests/system/test_failures.py").group == "scenarios"  # type: ignore[union-attr]
-    assert declared.entry("scripts/test-stack/e2e_stack.py").zone == "tooling"  # type: ignore[union-attr]
+    assert declared.entry("testbed/src/repo2ree_testbed/stack/e2e.py").zone == "tooling"  # type: ignore[union-attr]
     assert declared.protected("contracts/behaviour/events.schema.json")
     assert not declared.protected("protocol/src/repo2ree_protocol/behaviour/writer.py")
 

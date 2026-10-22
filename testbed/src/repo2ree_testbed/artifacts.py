@@ -10,7 +10,8 @@ from pathlib import Path
 from urllib.parse import quote
 from uuid import uuid4
 
-ROOT = Path(__file__).resolve().parents[1]
+# The package is installed editable from testbed/src, so the repository is three levels up.
+ROOT = Path(__file__).resolve().parents[3]
 ARTIFACTS = ROOT / "test-artifacts"
 
 
@@ -105,4 +106,4 @@ if __name__ == "__main__":
     elif len(sys.argv) == 4 and sys.argv[1] == "latest-test":
         sys.stdout.write(str(latest_test(sys.argv[2], sys.argv[3])) + "\n")
     else:
-        raise SystemExit("usage: python -m test_support.artifacts run-dir | latest-test SUFFIX FILE")
+        raise SystemExit("usage: python -m repo2ree_testbed artifacts run-dir | latest-test SUFFIX FILE")

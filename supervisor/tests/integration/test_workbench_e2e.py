@@ -44,8 +44,6 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
-from test_support.artifacts import case_dir, service_dir
-from test_support.recording import TestRecorder
 from websockets.asyncio.server import ServerConnection, serve
 
 from repo2ree_protocol import ProviderHello, WorkbenchImage
@@ -75,6 +73,8 @@ from repo2ree_supervisor import (
     WsProviderClient,
     WsWorkbenchClient,
 )
+from repo2ree_testbed.artifacts import case_dir, service_dir
+from repo2ree_testbed.recording import TestRecorder
 
 # ================================================
 # Constants

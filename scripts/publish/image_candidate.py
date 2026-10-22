@@ -227,12 +227,13 @@ def validate_candidate(revision: str, state_dir: Path, validation_registry: str,
     try:
         write_receipt(pending, resolve_candidate(revision, registry_names))
         environment = {**os.environ, **image_environment(parse_receipt(pending), validation_registry)}
-        suite = ROOT / "scripts/test-stack/run_image_suite.py"
         for name, locations in (("e2e-gui", "2"), ("e2e-gui-review", "1")):
             subprocess.run(
                 [
                     sys.executable,
-                    str(suite),
+                    "-m",
+                    "repo2ree_testbed",
+                    "image-suite",
                     "--suite",
                     name,
                     "--compute-locations",

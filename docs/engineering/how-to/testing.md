@@ -25,7 +25,7 @@
 | `just test-stack-existing <suite>` | Run any browser project or `demo-api` against an already-running image-backed stack. |
 | `just test-stack-local <suite> [locations]` | Build local images, start an owned stack, run the suite, and clean it up. |
 | `just test-stack-published <suite> [locations] [repository] [tag]` | Run the same flow against published registry images. |
-| `just stack-up` / `stack-down` | Start/stop the image-backed stack, keeping its volumes (`scripts/test-stack/image_stack.py`). |
+| `just stack-up` / `stack-down` | Start/stop the image-backed stack, keeping its volumes (`testbed/src/repo2ree_testbed/stack/images.py`). |
 | `just stack-clean` | Stop it and drop every volume it created, workbench leftovers included. |
 | `just clean-workbenches` | Just the workbench leftovers; pass `1` to also drop every bundle store volume. |
 | `just gc-bundle-store` | Evict bundle store caches unused for 14 days by default, keeping the live one. |
@@ -300,7 +300,7 @@ Comparing one package across tiers is often the useful read: `workbench` is 70% 
 stack tiers.
 
 Tier definitions live in `just/backend-tests.just`; package breakdown and shared
-report rendering live in `scripts/coverage/python_coverage.py`. To re-render a
+report rendering live in `testbed/src/repo2ree_testbed/python_coverage.py`. To re-render a
 tier from data already measured, without repeating its suite:
 
 ```bash
@@ -416,7 +416,7 @@ form only runs the suite. `E2E_BASE_URL` points Playwright to the Caddy-served G
 and skips the Vite server, exercising the GUI proxy and all three images.
 
 The host reaches the stack through `localhost`; the devcontainer uses Compose
-service DNS. `scripts/test-stack/image_stack.py` selects the correct address.
+service DNS. `testbed/src/repo2ree_testbed/stack/images.py` selects the correct address.
 
 One-command flows end with `stack-clean`, which removes Compose volumes,
 leftover workbenches, and per-REE volumes. For a manually started stack, use

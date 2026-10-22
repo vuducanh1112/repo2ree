@@ -139,13 +139,12 @@ summary = "The task runner."
 [tooling.groups.scripts]
 summary = "What the recipes call."
 [tooling.groups.scripts.paths]
-"scripts/" = "Config contract, coverage, diagrams, image publishing, build revision"
-"scripts/test-stack/" = "Per-test stacks, image suites, run pages, artifact pruning"
+"scripts/" = "Config contract, diagrams, image publishing, build revision"
 
 [tooling.groups.tests]
 summary = "Test plumbing shared across packages."
 [tooling.groups.tests.paths]
-"test_support/" = "Test artifact collection; never imported by the product"
+"testbed/" = "repo2ree_testbed: per-test stacks, image suites, run pages, artifact pruning, coverage tiers, the pytest artifact plugin"
 "conftest.py" = "Pins Hypothesis's state to the repository"
 
 [tooling.groups.views]

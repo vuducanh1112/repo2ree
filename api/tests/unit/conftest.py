@@ -26,7 +26,8 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
-from test_support.artifacts import service_dir
+
+from repo2ree_testbed.artifacts import service_dir
 
 TEST_RESULTS_DIR = service_dir("api-unit")
 

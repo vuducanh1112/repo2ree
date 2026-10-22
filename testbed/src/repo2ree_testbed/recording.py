@@ -11,7 +11,7 @@ from contextlib import ExitStack
 from pathlib import Path
 from typing import Any
 
-from test_support.artifacts import case_dir, case_key, execution_id
+from repo2ree_testbed.artifacts import case_dir, case_key, execution_id
 
 
 class TestRecorder:

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Manage the persistent image-backed demo and test stack."""
 
 from __future__ import annotations
@@ -16,7 +15,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+from repo2ree_testbed.artifacts import ROOT
+
 ATTACHMENT_FILE = ROOT / "test-artifacts/state/image-stack-caller-network"
 PROVIDER_CONTAINER = "repo2ree-provider-docker"
 
@@ -247,7 +247,7 @@ class ImageStack:
             if pattern.fullmatch(name):
                 self.provider_compose(name, *args, check=False, quiet=True)
         if volumes:
-            run([sys.executable, str(ROOT / "scripts/test-stack/workbench_cleanup.py")])
+            run([sys.executable, "-m", "repo2ree_testbed.stack.workbench_cleanup"])
         print(">> stopping compose control plane")
         self.compose(*args)
 

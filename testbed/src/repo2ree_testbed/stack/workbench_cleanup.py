@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Remove Docker resources left by workbench runs."""
 
 from __future__ import annotations
@@ -12,7 +11,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+from repo2ree_testbed.artifacts import ROOT
+
 ANONYMOUS_VOLUME = re.compile(r"[0-9a-f]{64}")
 
 

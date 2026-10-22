@@ -20,7 +20,7 @@ build-e2e-bundles: _stage-nix-sources
 
 [private]
 _source-stack-playwright project locations mode docker_mode:
-    python scripts/test-stack/e2e_stack.py --project {{ quote(project) }} --mode {{ quote(mode) }} --compute-locations {{ quote(locations) }} --docker-mode {{ quote(docker_mode) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
+    python -m repo2ree_testbed e2e --project {{ quote(project) }} --mode {{ quote(mode) }} --compute-locations {{ quote(locations) }} --docker-mode {{ quote(docker_mode) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
 
 # Run the measured author-side browser E2E tier.
 [group('E2E tests')]
@@ -46,7 +46,7 @@ inspect-e2e run="":
     run={{ quote(run) }}
     run=${run:-$(ls -td {{ quote(REPO2REE_TEST_RUN_DIR + "/e2e") }}/*/ 2>/dev/null | head -n 1)}
     [[ -n "$run" ]] || { echo "no per-test run under {{ REPO2REE_TEST_RUN_DIR }}/e2e" >&2; exit 2; }
-    python scripts/test-stack/inspect_run.py "$run"
+    python -m repo2ree_testbed inspect "$run"
 
 # Record the measured narrated browser demo.
 [group('Demos')]
@@ -65,50 +65,50 @@ demo-api mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER
     transcript={{ quote(transcript) }}
     transcript=${transcript:-${cast%.cast}.md}
     mkdir -p "$(dirname "$cast")"
-    python scripts/test-stack/e2e_stack.py --script {{ quote(ROOT + "/api/tests/e2e/api_walkthrough.py") }} --tier demo-api --mode {{ quote(mode) }} --compute-locations 1 --docker-mode {{ quote(docker_mode) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} --record "$cast"
+    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/api/tests/e2e/api_walkthrough.py") }} --tier demo-api --mode {{ quote(mode) }} --compute-locations 1 --docker-mode {{ quote(docker_mode) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} --record "$cast"
     python3 {{ quote(ROOT + "/api/tests/e2e/render_cast_transcript.py") }} "$cast" "$transcript"
 
 # Start the local image-backed stack.
 [group('Stack management')]
 stack-up locations=DEFAULT_STACK_LOCATIONS:
-    python scripts/test-stack/image_stack.py up --compute-locations {{ quote(locations) }}
+    python -m repo2ree_testbed images up --compute-locations {{ quote(locations) }}
 
 # Stop the image-backed stack while retaining volumes.
 [group('Stack management')]
 stack-down:
-    python scripts/test-stack/image_stack.py down
+    python -m repo2ree_testbed images down
 
 # Stop the image-backed stack and remove its volumes and workbenches.
 [group('Stack management')]
 stack-clean:
-    python scripts/test-stack/image_stack.py down --volumes
+    python -m repo2ree_testbed images down --volumes
 
 # Remove leftover workbenches; run `just clean-workbenches 1` to include bundle stores.
 [group('Stack management')]
 clean-workbenches store="":
-    python scripts/test-stack/workbench_cleanup.py {{ if store != "" { "--store" } else { "" } }}
+    python -m repo2ree_testbed workbench-cleanup {{ if store != "" { "--store" } else { "" } }}
 
 # Build local images and run any browser or API suite against an owned stack.
 [group('Stack tests')]
 test-stack-local suite locations="1": build-images
-    python scripts/test-stack/run_image_suite.py --suite {{ quote(suite) }} --compute-locations {{ quote(locations) }} --images local
+    python -m repo2ree_testbed image-suite --suite {{ quote(suite) }} --compute-locations {{ quote(locations) }} --images local
 
 # Run any browser or API suite against published images in an owned stack.
 [group('Stack tests')]
 test-stack-published suite locations="1" repository=DEFAULT_STACK_IMAGE_REPO tag=DEFAULT_STACK_IMAGE_TAG:
-    python scripts/test-stack/run_image_suite.py --suite {{ quote(suite) }} --compute-locations {{ quote(locations) }} --images published --repository {{ quote(repository) }} --tag {{ quote(tag) }}
+    python -m repo2ree_testbed image-suite --suite {{ quote(suite) }} --compute-locations {{ quote(locations) }} --images published --repository {{ quote(repository) }} --tag {{ quote(tag) }}
 
 # Run any browser or API suite against the already-running image stack.
 [group('Stack tests')]
 test-stack-existing suite:
-    python scripts/test-stack/run_image_suite.py --suite {{ quote(suite) }} --compute-locations 1 --images local --existing
+    python -m repo2ree_testbed image-suite --suite {{ quote(suite) }} --compute-locations 1 --images local --existing
 
 # Remove old e2e runs, suite recordings, and stale stack state; every e2e run does this first.
 [group('Stack management')]
 prune-test-artifacts *args:
-    python scripts/test-stack/prune_artifacts.py {{ args }}
+    python -m repo2ree_testbed prune {{ args }}
 
 # Evict unreferenced bundle-store caches older than the requested days.
 [group('Stack management')]
 gc-bundle-store days="14":
-    python scripts/test-stack/workbench_cleanup.py --store-gc {{ quote(days) }}
+    python -m repo2ree_testbed workbench-cleanup --store-gc {{ quote(days) }}

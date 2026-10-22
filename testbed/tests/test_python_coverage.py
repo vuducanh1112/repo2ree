@@ -3,7 +3,8 @@ from pathlib import Path
 
 import pytest
 from coverage import CoverageData
-from scripts.coverage import python_coverage
+
+from repo2ree_testbed import python_coverage
 
 
 def test_packages_come_from_backend_workspace_category() -> None:

@@ -30,7 +30,8 @@ from pathlib import Path
 
 import httpx
 import pytest
-from test_support.artifacts import case_dir, service_dir
+
+from repo2ree_testbed.artifacts import case_dir, service_dir
 
 # ================================================
 # Constants

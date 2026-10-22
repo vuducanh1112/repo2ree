@@ -1,26 +1,18 @@
-from types import ModuleType
-from typing import Any, cast
+import subprocess
+import sys
 
 import pytest
-from conftest import ROOT, load_script
+
+from repo2ree_testbed.stack import images as image_stack
+from repo2ree_testbed.stack import workbench_cleanup as cleanup
 
 
-@pytest.fixture(scope="module")
-def image_stack() -> ModuleType:
-    return cast(ModuleType, load_script("scripts/test-stack/image_stack.py", "tested_image_stack"))
-
-
-@pytest.fixture(scope="module")
-def cleanup() -> ModuleType:
-    return cast(ModuleType, load_script("scripts/test-stack/workbench_cleanup.py", "tested_workbench_cleanup"))
-
-
-def test_provider_names_remain_compatible(image_stack: Any) -> None:
+def test_provider_names_remain_compatible() -> None:
     assert image_stack.ImageStack.provider_name(1) == "repo2ree-provider-docker"
     assert image_stack.ImageStack.provider_name(3) == "repo2ree-provider-docker-3"
 
 
-def test_global_cleanup_selects_only_owned_name_families(cleanup: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_global_cleanup_selects_only_owned_name_families(monkeypatch: pytest.MonkeyPatch) -> None:
     anonymous = "a" * 64
 
     def fake_lines(*args: str) -> list[str]:
@@ -40,11 +32,11 @@ def test_global_cleanup_selects_only_owned_name_families(cleanup: Any, monkeypat
 
 def test_stack_clis_reject_invalid_combinations() -> None:
     commands = (
-        ["scripts/test-stack/image_stack.py", "up", "--compute-locations", "0"],
-        ["scripts/test-stack/e2e_stack.py", "--script", "walkthrough.py"],
-        ["scripts/test-stack/e2e_stack.py", "--script", "suite.py", "--tier", "t", "--jobs", "2"],
+        ["images", "up", "--compute-locations", "0"],
+        ["e2e", "--script", "walkthrough.py"],
+        ["e2e", "--script", "suite.py", "--tier", "t", "--jobs", "2"],
         [
-            "scripts/test-stack/run_image_suite.py",
+            "image-suite",
             "--suite",
             "e2e-gui",
             "--compute-locations",
@@ -53,7 +45,7 @@ def test_stack_clis_reject_invalid_combinations() -> None:
             "published",
         ],
         [
-            "scripts/test-stack/run_image_suite.py",
+            "image-suite",
             "--suite",
             "e2e-gui",
             "--compute-locations",
@@ -67,11 +59,6 @@ def test_stack_clis_reject_invalid_combinations() -> None:
             "--existing",
         ],
     )
-    import subprocess
-    import sys
-
     for command in commands:
-        result = subprocess.run(
-            [sys.executable, str(ROOT / command[0]), *command[1:]], check=False, capture_output=True
-        )
+        result = subprocess.run([sys.executable, "-m", "repo2ree_testbed", *command], check=False, capture_output=True)
         assert result.returncode == 2

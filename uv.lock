@@ -15,6 +15,7 @@ members = [
     "repo2ree-provider-docker",
     "repo2ree-recording",
     "repo2ree-supervisor",
+    "repo2ree-testbed",
     "repo2ree-traceview",
     "repo2ree-workbench",
 ]
@@ -2114,6 +2115,23 @@ dependencies = [
 requires-dist = [
     { name = "httpx", specifier = "~=0.28.1" },
     { name = "repo2ree-protocol", editable = "protocol" },
+]
+
+[[package]]
+name = "repo2ree-testbed"
+version = "0.1.0"
+source = { editable = "testbed" }
+dependencies = [
+    { name = "coverage" },
+    { name = "pytest" },
+    { name = "uvicorn" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "coverage", specifier = "~=7.14.1" },
+    { name = "pytest", specifier = "~=8.4.1" },
+    { name = "uvicorn", specifier = "~=0.40.0" },
 ]
 
 [[package]]

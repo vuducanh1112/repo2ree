@@ -13,7 +13,7 @@ from typing import Any, Literal
 from scripts.config.export import CONTRACT, ROOT, build_contract, rendered_contract
 
 WORKSPACE_MEMBERS = tuple(tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["uv"]["workspace"]["members"])
-PYTHON_ROOTS = (*(f"{member}/src" for member in WORKSPACE_MEMBERS), "scripts", "test_support")
+PYTHON_ROOTS = (*(f"{member}/src" for member in WORKSPACE_MEMBERS), "scripts")
 TYPESCRIPT_ROOTS = ("gui/src", "gui/tests", "gui/scripts")
 TYPESCRIPT_INPUTS = tuple(
     sorted(

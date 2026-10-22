@@ -11,8 +11,8 @@ from pathlib import Path
 
 import pytest
 
-from test_support.artifacts import artifact_domain, case_key, domain_dir, execution_id, write_provenance
-from test_support.recording import TestRecorder
+from repo2ree_testbed.artifacts import artifact_domain, case_key, domain_dir, execution_id, write_provenance
+from repo2ree_testbed.recording import TestRecorder
 
 _OUTCOME = pytest.StashKey[str]()
 _RECORDER = pytest.StashKey[TestRecorder]()

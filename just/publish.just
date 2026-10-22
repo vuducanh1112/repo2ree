@@ -25,8 +25,8 @@ _require-current-commit-gate:
 publish-gate: _require-clean-tree _require-current-commit-gate _require-current-behaviour-receipt test-backend-integration test-gui-accessibility test-gui-screenshots test-e2e-gui test-e2e-review build-images
     #!/usr/bin/env bash
     set -euo pipefail
-    python scripts/test-stack/run_image_suite.py --suite e2e-gui --compute-locations {{ quote(DEFAULT_STACK_LOCATIONS) }} --images local
-    python scripts/test-stack/run_image_suite.py --suite e2e-gui-review --compute-locations 1 --images local
+    python -m repo2ree_testbed image-suite --suite e2e-gui --compute-locations {{ quote(DEFAULT_STACK_LOCATIONS) }} --images local
+    python -m repo2ree_testbed image-suite --suite e2e-gui-review --compute-locations 1 --images local
     revision=$(git describe --always)
     python scripts/publish/publish_gate_receipt.py write {{ quote(DEFAULT_PUBLISH_GATE_RECEIPT) }} "$revision"
     echo ">> publish gate green — certified local image set for $revision"

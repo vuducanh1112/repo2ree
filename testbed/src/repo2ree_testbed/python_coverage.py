@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Render and combine backend Python coverage tiers."""
 
 from __future__ import annotations
@@ -14,10 +13,7 @@ from pathlib import Path
 
 from coverage import CoverageData
 
-ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT))
-
-from test_support.artifacts import ARTIFACTS, run_dir, write_provenance  # noqa: E402
+from repo2ree_testbed.artifacts import ARTIFACTS, ROOT, run_dir, write_provenance
 
 DATA_DIR = run_dir() / "python/coverage/data"
 HTML_DIR = run_dir() / "python/coverage"

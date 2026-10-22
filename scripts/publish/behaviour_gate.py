@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Judge per-test e2e runs on their behaviour, and certify the tree they ran on.
 
-Test runs only collect; inspect_run.py draws verdicts but never fails a run. This
+Test runs only collect; ``repo2ree_testbed inspect`` draws verdicts but never fails a run. This
 composes the two into a gate:
 
 - ``judge RUN...`` checks every test's recording again with the checker in this
@@ -269,7 +269,7 @@ def verify() -> list[str]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("command", choices=("judge", "certify", "verify"))
-    parser.add_argument("runs", nargs="*", type=Path, help="run directories e2e_stack.py --per-test wrote")
+    parser.add_argument("runs", nargs="*", type=Path, help="run directories `repo2ree_testbed e2e --per-test` wrote")
     args = parser.parse_args()
     if args.command == "verify":
         problems = verify()
