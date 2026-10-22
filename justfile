@@ -52,7 +52,7 @@ import 'just/backend-tests.just'
 import 'just/assurance.just'
 import 'just/e2e.just'
 import 'just/images.just'
-import 'just/behaviour.just'
+import 'just/gates.just'
 import 'just/publish.just'
 
 # Refuse workflows whose outputs must correspond to a committed tree.

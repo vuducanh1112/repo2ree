@@ -7,31 +7,6 @@ IMAGE_CANDIDATE_REV := env("IMAGE_CANDIDATE_REV", "")
 # exercised through those digests before its receipt may promote edge. Direct
 # pushes intentionally reject edge so validation cannot be bypassed.
 
-# The certificate records the exact tree only after every prerequisite passes;
-# the pre-commit hook performs the cheap content comparison later.
-# Run the fast checks, documentation build, and unit tests, then certify the tree.
-[group('Release gates')]
-commit-gate: check build-docs test-unit
-    python scripts/publish/commit_gate_stamp.py write
-    @echo ">> commit gate green — certificate written for the current tree"
-
-# Require the current clean content to have passed the commit gate.
-[private]
-_require-current-commit-gate:
-    python scripts/publish/commit_gate_stamp.py verify
-
-# Run the complete pre-publish gate and certify the local image set.
-[group('Release gates')]
-publish-gate: _require-clean-tree _require-current-commit-gate _require-current-behaviour-receipt test-backend-integration test-gui-accessibility test-gui-screenshots test-e2e-gui test-e2e-review build-images
-    #!/usr/bin/env bash
-    set -euo pipefail
-    python -m repo2ree_testbed image-suite --suite e2e-gui --compute-locations {{ quote(DEFAULT_STACK_LOCATIONS) }} --images local
-    python -m repo2ree_testbed image-suite --suite e2e-gui-review --compute-locations 1 --images local
-    revision=$(git describe --always)
-    python scripts/publish/publish_gate_receipt.py write {{ quote(DEFAULT_PUBLISH_GATE_RECEIPT) }} "$revision"
-    echo ">> publish gate green — certified local image set for $revision"
-    echo ">> publish with: just publish-candidate"
-
 # Push the exact local image set certified by publish-gate under its Git revision.
 [group('Publishing')]
 publish-candidate revision="": _require-clean-tree

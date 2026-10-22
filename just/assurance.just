@@ -72,6 +72,20 @@ generate-behaviour:
 export-behaviour-spec rev="" output="":
     python -m repo2ree_conformance export {{ if rev != "" { "--at " + quote(rev) } else { "" } }} {{ if output != "" { "-o " + quote(output) } else { "" } }}
 
+# Judge per-test runs as the behaviour gate would (the newest of each tier by default), certifying nothing.
+[group('E2E tests')]
+judge-e2e *runs:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    runs="{{ runs }}"
+    if [[ -z "$runs" ]]; then
+        for tier in e2e-system e2e-gui-instant; do
+            runs+=" $(ls -td {{ quote(REPO2REE_TEST_RUN_DIR + "/e2e") }}/"$tier"-*/ 2>/dev/null | head -n 1)"
+        done
+    fi
+    [[ -n "${runs// /}" ]] || { echo "no per-test run under {{ REPO2REE_TEST_RUN_DIR }}/e2e" >&2; exit 2; }
+    python scripts/publish/behaviour_gate.py judge $runs
+
 # Every e2e run leaves one recording per test (a whole-suite run, one for the suite) under its run directory.
 E2E_RUNS_DIR := REPO2REE_TEST_RUN_DIR + "/e2e"
 

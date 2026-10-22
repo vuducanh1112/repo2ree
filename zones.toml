@@ -41,17 +41,20 @@ summary = "What the specification concedes is not proven, each with a reason."
 summary = "What enforces the specification and issues certificates."
 protected = true
 
+[gates.groups.recipes]
+summary = "The gates as you run them."
+[gates.groups.recipes.paths]
+"just/gates.just" = "`commit-gate`, `behaviour-gate` and the tiers it runs, `publish-gate`"
+
 [gates.groups.behaviour]
 summary = "Certifies a tree by its tests' outcomes, verdicts, and coverage."
 [gates.groups.behaviour.paths]
-"just/behaviour.just" = "`behaviour-gate`, the tiers it runs, and `judge-e2e`"
 "scripts/publish/behaviour_gate.py" = "Judges per-test runs and writes the behaviour receipt"
 "scripts/tests/test_behaviour_gate.py" = "Its tests"
 
 [gates.groups.receipts]
 summary = "The commit and publish gates, and the certificates they leave."
 [gates.groups.receipts.paths]
-"just/publish.just" = "`commit-gate`, `publish-gate`, and publishing"
 "scripts/publish/commit_gate_stamp.py" = "Binds a passing commit gate to the staged tree"
 "scripts/publish/publish_gate_receipt.py" = "Binds a passing publish gate to an image set"
 "scripts/tests/test_commit_gate_stamp.py" = "Its tests"
@@ -134,7 +137,7 @@ summary = "What you run while developing: recipes, scripts, test plumbing, views
 summary = "The task runner."
 [tooling.groups.recipes.paths]
 "justfile" = "Entry point; imports just/"
-"just/" = "Recipes by topic: checks, tests, e2e, docs, diagrams, images"
+"just/" = "Recipes by topic: checks, tests, e2e, assurance, docs, diagrams, images, publishing"
 
 [tooling.groups.scripts]
 summary = "What the recipes call."
