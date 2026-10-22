@@ -44,6 +44,11 @@ test-e2e-faults jobs=E2E_JOBS: build-e2e-bundles
 test-e2e-chaos seeds="4" steps="12" jobs=E2E_JOBS: build-e2e-bundles
     CHAOS_SEEDS={{ quote(seeds) }} CHAOS_STEPS={{ quote(steps) }} python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/api/tests/chaos/run_chaos_suite.py") }} --tier e2e-chaos --per-test --jobs {{ quote(jobs) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
 
+# Fuzz every API operation against its contract on one stack, not gated.
+[group('E2E tests')]
+test-e2e-fuzz: build-e2e-bundles
+    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/api/tests/fuzz/run_fuzz_suite.py") }} --tier e2e-fuzz --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
+
 # Run the measured reviewer-side browser E2E tier.
 [group('E2E tests')]
 test-e2e-review mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE: build-e2e-bundles (_source-stack-playwright "e2e-gui-review" "1" mode docker_mode)

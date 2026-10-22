@@ -35,6 +35,7 @@ dev = [
     # how an RUF043 finding reached a commit `just check-backend` had just passed.
     "ruff~=0.14.5",
     "syrupy~=5.0.0",
+    "schemathesis~=4.32.3",
 ]
 notebooks = [
     "ipykernel~=7.2.0",
