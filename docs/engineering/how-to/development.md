@@ -27,7 +27,8 @@ If you use `direnv`, allow the repo once:
 direnv allow .
 ```
 
-`.envrc` enters the flake, creates `.venv` when needed, runs
+`.envrc` enters the flake, installs the git hooks (`pre-commit install`, with
+the shell's pre-commit), creates `.venv` when needed, runs
 `uv sync --all-packages`, and activates the virtualenv.
 
 Without Nix, install equivalent tools yourself:

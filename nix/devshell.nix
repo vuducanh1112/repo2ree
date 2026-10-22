@@ -14,6 +14,16 @@
 # ----------------------------------------------------------------
 { pkgs, devPkgs }:
 
+let
+  # The installed git hook runs `<interpreter> -m pre_commit`, with the
+  # interpreter pre-commit was installed from. Nixpkgs packages pre-commit as an
+  # application whose bare interpreter cannot import it, so it gets one that
+  # can, and `pre-commit` runs through that interpreter.
+  preCommitPython = devPkgs.python3.withPackages (ps: [ (ps.toPythonModule devPkgs.pre-commit) ]);
+  preCommit = devPkgs.writeShellScriptBin "pre-commit" ''
+    exec ${preCommitPython}/bin/python3 -m pre_commit "$@"
+  '';
+in
 devPkgs.mkShell {
   buildInputs = [
     # The Node the GUI image is built with, and the Python the shipped closures
@@ -49,6 +59,14 @@ devPkgs.mkShell {
     # static analyser for shell scripts
     shellcheck
 
+    # Runs the git hooks in .pre-commit-config.yaml; every hook there is a
+    # local command, so this is a dispatcher, not a dependency of the code.
+    # .envrc reinstalls the hook on entry, so it runs this shell's version.
+    preCommit
+
+    # Cyclomatic complexity for the metrics reports.
+    python313Packages.lizard
+
     # asciinema records the pure-API workbench walkthrough (api/tests/e2e/
     # api_walkthrough.py) as a terminal .cast; agg renders that .cast to an
     # SVG/GIF artifact. The walkthrough itself is stdlib-only python — no client
@@ -75,12 +93,11 @@ devPkgs.mkShell {
     export UV_PYTHON=${pkgs.python313}/bin/python3.13
     export UV_PYTHON_DOWNLOADS=never
 
-    # Lizard is a Python application, but only its executable belongs in this
-    # full-stack shell. Putting the package in buildInputs would export its
-    # Python dependencies through PYTHONPATH, where they can shadow the uv
-    # virtualenv (notably pathspec, which mypy also imports). The Nix wrapper
-    # on the executable already carries everything Lizard itself needs.
-    export PATH="${devPkgs.python313Packages.lizard}/bin:$PATH"
+    # Python applications above (zensical, lizard) export their own
+    # dependencies through PYTHONPATH, where the venv's interpreter would import
+    # them ahead of uv.lock's: click, pygments, pyyaml, pytest. Their wrapped
+    # executables carry their own paths, so the shell exports none.
+    unset PYTHONPATH
 
     if [ -t 1 ]; then
       echo "❄️  Nix Shell Loaded"
