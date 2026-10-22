@@ -74,7 +74,7 @@ from repo2ree_supervisor import (
     WsWorkbenchClient,
 )
 from repo2ree_testbed.artifacts import case_dir, service_dir
-from repo2ree_testbed.recording import TestRecorder
+from repo2ree_testbed.preservation import TestRecorder
 
 # ================================================
 # Constants

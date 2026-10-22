@@ -43,7 +43,7 @@ from api_integration_bench import (
 from websockets.asyncio.server import ServerConnection, serve
 
 from repo2ree_testbed.artifacts import case_dir
-from repo2ree_testbed.recording import TestRecorder
+from repo2ree_testbed.preservation import TestRecorder
 
 # Must be set before the in-test workbench constructs its DockerIsolation.
 os.environ.setdefault("REPO2REE_EXEC_BUNDLE", str(EXEC_BUNDLE))
@@ -167,9 +167,7 @@ def ree(client: TestClient, request: pytest.FixtureRequest, test_recording: Test
                 test_recording.workbench(container)
                 _dump_workbench_logs(container, request.node.nodeid)
             else:
-                test_recording.repositories.append(
-                    {"source": ree_id, "status": "unavailable", "reason": "REE already deleted"}
-                )
+                test_recording.unavailable(ree_id, "REE already deleted")
         finally:
             client.delete(f"/api/v1/rees/{ree_id}")
 

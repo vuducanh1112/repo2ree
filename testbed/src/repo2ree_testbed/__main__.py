@@ -6,14 +6,13 @@ import runpy
 import sys
 
 COMMANDS = {
-    "e2e": "repo2ree_testbed.stack.e2e",
+    "e2e": "repo2ree_testbed.runs.e2e",
     "images": "repo2ree_testbed.stack.images",
-    "image-suite": "repo2ree_testbed.stack.image_suite",
+    "image-suite": "repo2ree_testbed.runs.image_suite",
     "workbench-cleanup": "repo2ree_testbed.stack.workbench_cleanup",
     "inspect": "repo2ree_testbed.runs.inspect_run",
     "prune": "repo2ree_testbed.runs.prune",
     "coverage": "repo2ree_testbed.python_coverage",
-    "artifacts": "repo2ree_testbed.artifacts",
 }
 
 

@@ -1,26 +1,17 @@
-"""Check and draw every test of a per-test e2e run: ``python -m repo2ree_testbed inspect <run directory>``.
-
-For each test directory the run left (``python -m repo2ree_testbed e2e --per-test``), this judges its
-recording against the behaviour specification (``verification/``), draws its REEs'
-operation traces and provenance (``traces/``), and writes ``index.html``: the
-outcome, the behaviour verdict, the trace pages, the logs, and the screenshots
-inline. ``index.html`` at the run's root lists every test. It runs after the
-tests and never changes their outcome; rerun it any time on the same directory.
-"""
+"""Judge and draw every test of an e2e run, and write its pages; never changes a test's outcome."""
 
 from __future__ import annotations
 
 import argparse
 import html
-import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
 
 from repo2ree_testbed.artifacts import ROOT
+from repo2ree_testbed.records import Behaviour, RunRecord, RunTest, read, write
 
-VERDICTS = {0: "passed", 1: "violated", 2: "inconclusive"}
+VERDICTS: dict[int, Behaviour] = {0: "passed", 1: "violated", 2: "inconclusive"}
 
 STYLE = """
 :root { color-scheme: light dark; --fg: #1d2330; --muted: #5b6475; --line: #d9dee7; --bg: #fbfcfe;
@@ -48,45 +39,47 @@ def page(title: str, body: str) -> str:
     )
 
 
-def tool(*args: str) -> int:
-    return subprocess.run([sys.executable, "-m", *args], cwd=ROOT, check=False, capture_output=True).returncode
+def tool(log: Path, *args: str) -> int:
+    log.parent.mkdir(parents=True, exist_ok=True)
+    with log.open("wb") as output:
+        command = [sys.executable, "-m", *args]
+        return subprocess.run(command, cwd=ROOT, check=False, stdout=output, stderr=subprocess.STDOUT).returncode
 
 
-def inspect_test(directory: Path, test: dict[str, Any]) -> dict[str, Any]:
+def inspect_test(directory: Path, test: RunTest) -> RunTest:
     recording = directory / "recording"
     verification = directory / "verification"
-    traces = directory / "traces"
+    logs = directory / "logs"
+    verdict: Behaviour = "missing"
     if (recording / "manifest.json").is_file():
-        verdict = VERDICTS.get(
-            tool("repo2ree_conformance", "check", "--recording", str(recording), "-o", str(verification)), "error"
-        )
-    else:
-        verdict = "missing"
-    if (verification / "verification.json").is_file() and test.get("rees"):
-        tool("repo2ree_traceview", str(verification), "-o", str(traces), "--provenance")
-    write_test_index(directory, test, verdict)
-    return {**test, "behaviour": verdict}
+        check = ("repo2ree_conformance", "check", "--recording", str(recording), "-o", str(verification))
+        verdict = VERDICTS.get(tool(logs / "conformance.log", *check), "error")
+    if (verification / "verification.json").is_file() and test.rees:
+        draw = ("repo2ree_traceview", str(verification), "-o", str(directory / "traces"), "--provenance")
+        tool(logs / "traceview.log", *draw)
+    inspected = test.judged(verdict)
+    write_test_index(directory, inspected)
+    return inspected
 
 
 def links(directory: Path, pattern: str) -> list[Path]:
     return sorted(path.relative_to(directory) for path in directory.glob(pattern))
 
 
-def write_test_index(directory: Path, test: dict[str, Any], verdict: str) -> None:
-    outcome = str(test["outcome"])
+def write_test_index(directory: Path, test: RunTest) -> None:
     rows = [
-        ("Test outcome", f"<span class='{outcome}'>{outcome}</span> (exit {test['exit_code']})"),
-        ("Reason", html.escape(str(test.get("reason") or "")) or "<span class='muted'>none</span>"),
-        ("Behaviour", f"<span class='{verdict}'>{verdict}</span>"),
-        ("Duration", f"{test['finished'] - test['started']:.0f} s, stack start to teardown"),
+        ("Test outcome", f"<span class='{test.outcome}'>{test.outcome}</span> (exit {test.exit_code})"),
+        ("Reason", html.escape(test.reason) or "<span class='muted'>none</span>"),
+        ("Behaviour", f"<span class='{test.behaviour}'>{test.behaviour}</span>"),
+        ("Duration", f"{test.duration:.0f} s, stack start to teardown"),
         (
             "Phases",
-            html.escape(", ".join(f"{name} {seconds:.1f} s" for name, seconds in test.get("phases", {}).items()))
+            html.escape(", ".join(f"{name} {seconds:.1f} s" for name, seconds in test.phases.items()))
             or "<span class='muted'>not recorded</span>",
         ),
-        ("REEs", ", ".join(html.escape(ree) for ree in test.get("rees", [])) or "none recorded"),
+        ("REEs", ", ".join(html.escape(ree) for ree in test.rees) or "none recorded"),
     ]
-    body = [f"<h1>{html.escape(test['name'])}</h1>", "<table>"]
+    body = [f"<h1>{html.escape(test.name)}</h1>", "<table>"]
     body += [f"<tr><th>{label}</th><td>{value}</td></tr>" for label, value in rows]
     body.append("</table>")
 
@@ -100,7 +93,6 @@ def write_test_index(directory: Path, test: dict[str, Any], verdict: str) -> Non
     body += [f"<li><a href='{html.escape(str(path))}'>{html.escape(label)}</a></li>" for label, path in pages]
     body.append("</ul>")
 
-    # In the order they were taken: by step number, each step's "before" ahead of its "after".
     shots = sorted(
         links(directory, "artifacts/**/*.png"),
         key=lambda shot: (shot.parent, shot.stem.removesuffix("-after").removesuffix("-before"), "after" in shot.stem),
@@ -113,41 +105,50 @@ def write_test_index(directory: Path, test: dict[str, Any], verdict: str) -> Non
             for shot in shots
         ]
         body.append("</div>")
-    (directory / "index.html").write_text(page(str(test["name"]), "".join(body)))
+    (directory / "index.html").write_text(page(test.name, "".join(body)))
 
 
-def write_run_index(root: Path, run: dict[str, Any], tests: list[dict[str, Any]]) -> None:
+def write_run_index(root: Path, run: RunRecord) -> None:
     body = [
-        f"<h1>{html.escape(run['tier'])} run</h1>",
-        f"<p class='muted'>{html.escape(root.name)} · build {html.escape(run.get('build_revision') or '?')} · "
+        f"<h1>{html.escape(run.tier)} run</h1>",
+        f"<p class='muted'>{html.escape(root.name)} · build {html.escape(run.build_revision or '?')} · "
         f"each test on a fresh stack</p>",
         "<table><tr><th>Test</th><th>Outcome</th><th>Behaviour</th><th>Duration</th><th>REEs</th></tr>",
     ]
-    for test in tests:
-        name = html.escape(test["name"])
-        body.append(
-            f"<tr><td><a href='{html.escape(test['directory'])}/index.html'>{name}</a></td>"
-            f"<td class='{test['outcome']}'>{test['outcome']}</td>"
-            f"<td class='{test['behaviour']}'>{test['behaviour']}</td>"
-            f"<td>{test['finished'] - test['started']:.0f} s</td><td>{len(test.get('rees', []))}</td></tr>"
-        )
+    body += [
+        f"<tr><td><a href='{html.escape(test.directory)}/index.html'>{html.escape(test.name)}</a></td>"
+        f"<td class='{test.outcome}'>{test.outcome}</td><td class='{test.behaviour}'>{test.behaviour}</td>"
+        f"<td>{test.duration:.0f} s</td><td>{len(test.rees)}</td></tr>"
+        for test in run.tests
+    ]
     body.append("</table>")
-    (root / "index.html").write_text(page(f"{run['tier']} run", "".join(body)))
+    (root / "index.html").write_text(page(f"{run.tier} run", "".join(body)))
+
+
+def inspect_run(root: Path) -> RunRecord:
+    run = read(RunRecord, root / "run.json")
+    if run is None:
+        raise ValueError(f"{root}: no run record (run.json) to inspect")
+    tests = []
+    for test in run.tests:
+        inspected = inspect_test(root / test.directory, test)
+        tests.append(inspected)
+        print(f"   {inspected.outcome:<7} behaviour {inspected.behaviour or '':<12} {test.name}")
+    inspected_run = run.with_tests(tuple(tests))
+    write_run_index(root, inspected_run)
+    write(root / "run.json", inspected_run)
+    print(f">> inspection: {root / 'index.html'}")
+    return inspected_run
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("run", type=Path, help="The run directory `repo2ree_testbed e2e --per-test` wrote")
-    root = parser.parse_args().run
-    run = json.loads((root / "run.json").read_text())
-    tests = []
-    for test in run["tests"]:
-        inspected = inspect_test(root / test["directory"], test)
-        tests.append(inspected)
-        print(f"   {inspected['outcome']:<7} behaviour {inspected['behaviour']:<12} {test['name']}")
-    write_run_index(root, run, tests)
-    (root / "run.json").write_text(json.dumps({**run, "tests": tests}, indent=2) + "\n")
-    print(f">> inspection: {root / 'index.html'}")
+    parser.add_argument("run", type=Path, help="the run directory an e2e run wrote")
+    try:
+        inspect_run(parser.parse_args().run)
+    except ValueError as error:
+        print(error, file=sys.stderr)
+        return 1
     return 0
 
 

@@ -1,25 +1,13 @@
-"""Keep test-artifacts bounded: ``python -m repo2ree_testbed prune [--keep-runs N] [--keep-suite N] [--dry-run]``.
+"""Keep test-artifacts bounded; every e2e run prunes first.
 
-Every e2e run adds hundreds of megabytes and nothing removed them. This keeps:
-
-- ``e2e/<tier>-<stamp>/`` (every e2e run, per test or whole suite): the newest ``--keep-runs``
-  finished runs of each tier, the newest one of each tier with a problem (a test that failed, or passed with
-  behaviour that did not), every run the behaviour receipt names, and every run
-  still in progress (no ``run.json`` yet, and recent).
-- ``recordings/``, ``archives/``, ``telemetry/`` ``<e2e-tier-token>/``: where whole-suite runs wrote
-  before they were laid out like the others under ``e2e/``; the newest ``--keep-suite`` of each tier.
-- ``state/control/<token>/``: a stack removes its own once exported; leftovers of
-  stacks that did not are removed once stale.
-
-and removes unused bundle-store volumes older than ``--store-days``: only those. (``workbench_cleanup
---store-gc`` also removes every workbench, so it would take down stacks running beside this one.)
-The e2e stack runs it before every run, so the disk cannot creep up.
+Per tier it keeps the newest finished runs, the newest with a problem, the runs the behaviour
+receipt names, and runs still in progress; old suite folders and stale control state go, and so
+do unused bundle-store volumes (never a workbench, which a stack beside this one may hold).
 """
 
 from __future__ import annotations
 
 import argparse
-import json
 import re
 import shutil
 import subprocess
@@ -30,15 +18,14 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from repo2ree_testbed.artifacts import ROOT, run_dir
+from repo2ree_testbed.records import Receipt, RunRecord, read
 from repo2ree_testbed.stack.workbench_cleanup import live_store_volume, stale_store_volumes
 
 RECEIPT = ROOT / ".validation-certificates/behaviour-ok"
 PER_TEST_RUN = re.compile(r"^(?P<tier>.+)-(?P<stamp>\d{8}-\d{6})$")
 SUITE_TOKEN = re.compile(r"^e2e-(?P<tier>.+)-[0-9a-f]{32}$")
 SUITE_FOLDERS = ("recordings", "archives", "telemetry")
-# Younger than this, a directory may belong to a run still going (one without run.json, or a suite stack).
 IN_PROGRESS_SECONDS = 6 * 3600
-# A stack's control state outlives it only when its export failed; it is kept this long for debugging.
 STALE_CONTROL_SECONDS = 24 * 3600
 
 
@@ -57,24 +44,13 @@ def age(path: Path, now: float) -> float:
 
 
 def receipt_runs() -> set[Path]:
-    try:
-        runs = json.loads(RECEIPT.read_text()).get("runs", [])
-    except (OSError, ValueError):
-        return set()
-    return {(ROOT / run).resolve() for run in runs}
+    receipt = read(Receipt, RECEIPT)
+    return {(ROOT / run).resolve() for run in receipt.runs} if receipt else set()
 
 
 def had_problem(run: Path) -> bool:
-    """A test failed, or passed while its behaviour did not (an expected failure's verdict is its own)."""
-    try:
-        tests = json.loads((run / "run.json").read_text())["tests"]
-    except (OSError, ValueError, KeyError):
-        return False
-    return any(
-        test.get("outcome") not in {"passed", "xfailed"}
-        or (test.get("outcome") == "passed" and test.get("behaviour") != "passed")
-        for test in tests
-    )
+    record = read(RunRecord, run / "run.json")
+    return record is not None and record.problem()
 
 
 def plan_per_test_runs(root: Path, keep: int, protected: set[Path], now: float) -> Plan:
@@ -88,7 +64,6 @@ def plan_per_test_runs(root: Path, keep: int, protected: set[Path], now: float) 
     for runs in tiers.values():
         runs.sort(key=lambda run: run.name, reverse=True)
         problem = next((run for run in runs if had_problem(run)), None)
-        # The newest finished runs are counted; a run still going is kept besides them.
         finished = [run for run in runs if (run / "run.json").is_file()]
         for run in runs:
             in_progress = run not in finished and age(run, now) < IN_PROGRESS_SECONDS
@@ -125,7 +100,6 @@ def plan_control_state(root: Path, now: float) -> Plan:
 
 
 def prune_store_volumes(days: float) -> None:
-    """Unused (dangling) bundle stores older than ``days``, keeping the current bundle's; never a workbench."""
     try:
         stale = stale_store_volumes(days, live_store_volume())
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
@@ -136,6 +110,27 @@ def prune_store_volumes(days: float) -> None:
         subprocess.run(["docker", "volume", "rm", *stale], check=False, stdout=subprocess.DEVNULL)
 
 
+def prune(*, keep_runs: int = 5, keep_suite: int = 3, store_days: float = 14, dry_run: bool = False) -> None:
+    root = run_dir()
+    now = time.time()
+    plans = [
+        plan_per_test_runs(root / "e2e", keep_runs, receipt_runs(), now),
+        plan_suite_runs(root, keep_suite, now),
+        plan_control_state(root, now),
+    ]
+    remove = [path for plan in plans for path in plan.remove]
+    freed = 0
+    for path in remove:
+        freed += size(path)
+        print(f"   {'would remove' if dry_run else 'removing'} {path.relative_to(root)}")
+        if not dry_run:
+            shutil.rmtree(path, ignore_errors=True)
+    verb = "would free" if dry_run else "freed"
+    print(f">> pruned test artifacts: {len(remove)} directories, {verb} {freed / 2**20:.0f} MiB under {root}")
+    if not dry_run and shutil.which("docker"):
+        prune_store_volumes(store_days)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--keep-runs", type=int, default=5, help="per-test runs kept per tier (default 5)")
@@ -143,24 +138,7 @@ def main() -> int:
     parser.add_argument("--store-days", type=float, default=14, help="unused bundle stores kept this long (default 14)")
     parser.add_argument("--dry-run", action="store_true", help="list what would be removed and remove nothing")
     args = parser.parse_args()
-    root = run_dir()
-    now = time.time()
-    plans = [
-        plan_per_test_runs(root / "e2e", args.keep_runs, receipt_runs(), now),
-        plan_suite_runs(root, args.keep_suite, now),
-        plan_control_state(root, now),
-    ]
-    remove = [path for plan in plans for path in plan.remove]
-    freed = 0
-    for path in remove:
-        freed += size(path)
-        print(f"   {'would remove' if args.dry_run else 'removing'} {path.relative_to(root)}")
-        if not args.dry_run:
-            shutil.rmtree(path, ignore_errors=True)
-    verb = "would free" if args.dry_run else "freed"
-    print(f">> pruned test artifacts: {len(remove)} directories, {verb} {freed / 2**20:.0f} MiB under {root}")
-    if not args.dry_run and shutil.which("docker"):
-        prune_store_volumes(args.store_days)
+    prune(keep_runs=args.keep_runs, keep_suite=args.keep_suite, store_days=args.store_days, dry_run=args.dry_run)
     return 0
 
 

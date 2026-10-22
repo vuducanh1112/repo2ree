@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from repo2ree_testbed.artifacts import artifact_domain, case_key, domain_dir, execution_id, write_provenance
-from repo2ree_testbed.recording import TestRecorder
+from repo2ree_testbed.preservation import TestRecorder
 
 _OUTCOME = pytest.StashKey[str]()
 _RECORDER = pytest.StashKey[TestRecorder]()
@@ -46,7 +46,7 @@ def test_recording(request: pytest.FixtureRequest) -> Iterator[TestRecorder]:
         if chunk:
             (recorder.directory / "traces.ndjson").write_bytes(chunk)
     recorder.finish(request.node.stash.get(_OUTCOME, "completed"))
-    errors = [item for item in recorder.repositories if item["status"] == "error"]
+    errors = [item for item in recorder.repositories if item.status == "error"]
     if errors:
         warnings.warn(pytest.PytestWarning(f"REE recording errors: {errors}"), stacklevel=1)
 

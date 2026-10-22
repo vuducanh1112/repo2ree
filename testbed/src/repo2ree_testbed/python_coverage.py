@@ -1,22 +1,22 @@
-"""Render and combine backend Python coverage tiers."""
+"""Combine and render the backend's Python coverage tiers."""
 
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import shutil
 import subprocess
 import sys
 import tomllib
+from dataclasses import dataclass
 from pathlib import Path
 
 from coverage import CoverageData
+from pydantic import TypeAdapter
 
-from repo2ree_testbed.artifacts import ARTIFACTS, ROOT, run_dir, write_provenance
+from repo2ree_testbed.artifacts import ROOT, run_dir, write_provenance
+from repo2ree_testbed.records import Provenance, read
 
-DATA_DIR = run_dir() / "python/coverage/data"
-HTML_DIR = run_dir() / "python/coverage"
 TIERS = (
     "unit",
     "integration",
@@ -28,15 +28,36 @@ TIERS = (
     "demo-api",
     "demo-gui-code-ocean",
 )
+_NAMES = TypeAdapter[tuple[str, ...]](tuple[str, ...])
+
+
+@dataclass(frozen=True)
+class CoverageRoot:
+    html: Path
+
+    @classmethod
+    def current(cls) -> CoverageRoot:
+        return cls(run_dir() / "python/coverage")
+
+    @classmethod
+    def at(cls, run: Path) -> CoverageRoot:
+        return cls(run.resolve() / "python/coverage")
+
+    @property
+    def data(self) -> Path:
+        return self.html / "data"
+
+    def tier(self, tier: str) -> Path:
+        return self.data / tier / ".coverage"
 
 
 def packages() -> tuple[str, ...]:
     configuration = tomllib.loads((ROOT / "pyproject.toml").read_text())
-    return tuple(configuration["tool"]["repo2ree"]["workspace"]["backend"])
+    return _NAMES.validate_python(configuration["tool"]["repo2ree"]["workspace"]["backend"])
 
 
-UNIT_PARTS = packages()
-INTEGRATION_PARTS = tuple(package for package in UNIT_PARTS if (ROOT / package / "tests" / "integration").is_dir())
+def integration_packages() -> tuple[str, ...]:
+    return tuple(package for package in packages() if (ROOT / package / "tests" / "integration").is_dir())
 
 
 def coverage_command(coverage_file: Path, *args: str, capture: bool = False, quiet: bool = False) -> str:
@@ -52,37 +73,23 @@ def coverage_command(coverage_file: Path, *args: str, capture: bool = False, qui
     return result.stdout.strip() if capture else ""
 
 
-def render(tier: str) -> None:
-    coverage_file = DATA_DIR / tier / ".coverage"
+def render(root: CoverageRoot, tier: str) -> None:
+    coverage_file = root.tier(tier)
     if not coverage_file.is_file():
         raise RuntimeError(f"no coverage data for the {tier} tier — run it first: one of {' '.join(TIERS)}")
-    coverage_command(
-        coverage_file,
-        "html",
-        "-d",
-        str(HTML_DIR / tier),
-        "--title",
-        f"repo2ree — {tier} tier, python",
-        quiet=True,
-    )
+    title = f"repo2ree — {tier} tier, python"
+    coverage_command(coverage_file, "html", "-d", str(root.html / tier), "--title", title, quiet=True)
     print(f">> {tier} tier, by module")
     for package in packages():
-        include = f"{package}/src/*"
-        coverage_command(
-            coverage_file,
-            "html",
-            f"--include={include}",
-            "-d",
-            str(HTML_DIR / tier / "by-module" / package),
-            "--title",
-            f"repo2ree — {package} ({tier} tier, python)",
-            quiet=True,
-        )
-        total = coverage_command(coverage_file, "report", f"--include={include}", "--format=total", capture=True)
+        include = f"--include={package}/src/*"
+        output = str(root.html / tier / "by-module" / package)
+        title = f"repo2ree — {package} ({tier} tier, python)"
+        coverage_command(coverage_file, "html", include, "-d", output, "--title", title, quiet=True)
+        total = coverage_command(coverage_file, "report", include, "--format=total", capture=True)
         print(f"   {package:<15} {total}%")
     total = coverage_command(coverage_file, "report", "--format=total", capture=True)
     print(f"   {'TOTAL':<15} {total}%")
-    print(f">> {tier} reports: {HTML_DIR}/{tier} (by module: .../by-module/<package>)")
+    print(f">> {tier} reports: {root.html}/{tier} (by module: .../by-module/<package>)")
 
 
 def tier_matches_tree(directory: Path) -> bool:
@@ -97,53 +104,41 @@ def tier_matches_tree(directory: Path) -> bool:
 def coverage_identity(files: list[Path]) -> str:
     identities = set()
     for path in files:
-        metadata = path.parent / "provenance.json"
-        if not metadata.is_file():
-            # Archived run directories predate explicit provenance sidecars.
-            try:
-                archived = path.relative_to(ARTIFACTS / "runs")
-            except ValueError:
-                raise RuntimeError(f"coverage provenance missing: {path}; rerun the test aggregate") from None
-            identities.add(f"archived:{archived.parts[0]}")
-        else:
-            identities.add(json.loads(metadata.read_text())["execution_id"])
+        provenance = read(Provenance, path.parent / "provenance.json")
+        if provenance is None:
+            raise RuntimeError(f"coverage provenance missing: {path}; rerun the test aggregate")
+        identities.add(provenance.execution_id)
     if len(identities) != 1:
         raise RuntimeError("coverage belongs to different executions; rerun the tiers together")
-    return str(next(iter(identities)))
+    return identities.pop()
 
 
-def combine_parts(tier: str, parts: tuple[str, ...]) -> None:
-    parts_dir = DATA_DIR / f"{tier}-parts"
-    files = [parts_dir / part / ".coverage" for part in parts]
+def _combine(files: list[Path], destination: Path) -> Path:
+    identity = coverage_identity(files)
+    shutil.rmtree(destination, ignore_errors=True)
+    destination.mkdir(parents=True)
+    coverage_file = destination / ".coverage"
+    coverage_command(coverage_file, "combine", "--keep", *(str(path) for path in files))
+    write_provenance(destination, identity)
+    return coverage_file
+
+
+def combine_parts(root: CoverageRoot, tier: str, parts: tuple[str, ...]) -> None:
+    files = [root.data / f"{tier}-parts" / part / ".coverage" for part in parts]
     missing = [part for part, path in zip(parts, files, strict=True) if not path.is_file()]
     if missing:
         raise RuntimeError(f"{tier} coverage is incomplete; missing: {' '.join(missing)}")
-
-    identity = coverage_identity(files)
-    tier_dir = DATA_DIR / tier
-    shutil.rmtree(tier_dir, ignore_errors=True)
-    tier_dir.mkdir(parents=True)
-    coverage_file = tier_dir / ".coverage"
-    coverage_command(coverage_file, "combine", "--keep", *(str(path) for path in files))
-    write_provenance(tier_dir, identity)
+    coverage_file = _combine(files, root.data / tier)
     print(f">> combined {len(files)} {tier} coverage parts: {coverage_file.relative_to(ROOT)}")
 
 
-def combine_unit() -> None:
-    combine_parts("unit", UNIT_PARTS)
-
-
-def combine_integration() -> None:
-    combine_parts("integration", INTEGRATION_PARTS)
-
-
-def combine(tiers: tuple[str, ...] = TIERS) -> None:
+def combine(root: CoverageRoot, tiers: tuple[str, ...]) -> None:
     files: list[Path] = []
     included: list[str] = []
     missing: list[str] = []
     stale: list[str] = []
     for tier in tiers:
-        directory = DATA_DIR / tier
+        directory = root.data / tier
         found = sorted(directory.glob(".coverage*"))
         if not found:
             missing.append(tier)
@@ -159,44 +154,7 @@ def combine(tiers: tuple[str, ...] = TIERS) -> None:
         print(f">> NOT included (never measured on this tree): {' '.join(missing)}")
     if stale:
         print(f">> NOT included (measured against an older tree — re-run to refresh): {' '.join(stale)}")
-    identity = coverage_identity(files)
-    combined_dir = DATA_DIR / "combined"
-    shutil.rmtree(combined_dir, ignore_errors=True)
-    combined_dir.mkdir(parents=True)
-    coverage_file = combined_dir / ".coverage"
-    coverage_command(coverage_file, "combine", "--keep", *(str(path) for path in files))
-    write_provenance(combined_dir, identity)
-    coverage_command(coverage_file, "report")
-
-
-def select_reporting_run(tiers: tuple[str, ...], explicit: Path | None = None) -> Path:
-    """Select one recorded run; never assemble tiers from unrelated runs."""
-    if explicit is not None:
-        return explicit.resolve()
-    requested = tiers or TIERS
-    current = DATA_DIR.parents[2]
-    if any((DATA_DIR / tier / ".coverage").is_file() for tier in (*TIERS, "combined", "context")):
-        return current
-    candidates = []
-    for root in (ARTIFACTS / "runs").glob("*"):
-        files = [root / "coverage/python/data" / tier / ".coverage" for tier in requested]
-        present = [path for path in files if path.is_file()]
-        if present and (not tiers or len(present) == len(files)):
-            candidates.append((max(path.stat().st_mtime_ns for path in present), root))
-    if not candidates:
-        raise RuntimeError(
-            "no recorded run contains the requested coverage tiers; run the matching test aggregate first"
-        )
-    return max(candidates)[1]
-
-
-def use_reporting_run(root: Path) -> None:
-    global DATA_DIR, HTML_DIR
-    HTML_DIR = root / "python/coverage"
-    if not HTML_DIR.exists() and (root / "coverage/python").exists():
-        HTML_DIR = root / "coverage/python"
-    DATA_DIR = HTML_DIR / "data"
-    print(f">> coverage run: {root}")
+    coverage_command(_combine(files, root.data / "combined"), "report")
 
 
 def main() -> int:
@@ -204,40 +162,32 @@ def main() -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     render_parser = commands.add_parser("render")
     render_parser.add_argument("tier", choices=(*TIERS, "combined", "context"))
-    render_parser.add_argument(
-        "--run", type=Path, help="recorded run directory; default: current or latest suitable run"
-    )
+    render_parser.add_argument("--run", type=Path, help="run directory; default: this run's")
     combine_parser = commands.add_parser("combine")
     combine_parser.add_argument("--tiers", default="", help="comma-separated tiers; default: every measured tier")
-    combine_parser.add_argument(
-        "--run", type=Path, help="recorded run directory; default: current or latest suitable run"
-    )
+    combine_parser.add_argument("--run", type=Path, help="run directory; default: this run's")
     combine_parser.add_argument("--render", action="store_true", help="render the combined report in the same run")
     commands.add_parser("combine-unit")
     commands.add_parser("combine-integration")
     args = parser.parse_args()
+    run: Path | None = args.run if args.command in {"render", "combine"} else None
+    root = CoverageRoot.at(run) if run else CoverageRoot.current()
     try:
         if args.command == "render":
-            use_reporting_run(select_reporting_run((args.tier,), args.run))
-            render(args.tier)
+            render(root, args.tier)
         elif args.command == "combine-unit":
-            combine_unit()
+            combine_parts(root, "unit", packages())
         elif args.command == "combine-integration":
-            combine_integration()
+            combine_parts(root, "integration", integration_packages())
         else:
-            tiers = tuple(filter(None, args.tiers.split(","))) or TIERS
-            unknown = sorted(set(tiers) - set(TIERS))
-            if unknown:
-                raise RuntimeError(f"unknown coverage tier: {' '.join(unknown)}")
             required = tuple(filter(None, args.tiers.split(",")))
-            use_reporting_run(select_reporting_run(required, args.run))
-            if required and any(not (DATA_DIR / tier / ".coverage").is_file() for tier in required):
-                raise RuntimeError(
-                    "selected run is missing requested coverage tiers; refusing an incomplete combination"
-                )
-            combine(tiers)
+            if unknown := sorted(set(required) - set(TIERS)):
+                raise RuntimeError(f"unknown coverage tier: {' '.join(unknown)}")
+            if absent := [tier for tier in required if not root.tier(tier).is_file()]:
+                raise RuntimeError(f"the run is missing requested coverage tiers: {' '.join(absent)}")
+            combine(root, required or TIERS)
             if args.render:
-                render("combined")
+                render(root, "combined")
     except (RuntimeError, subprocess.CalledProcessError) as error:
         print(error, file=sys.stderr)
         return 1

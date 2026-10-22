@@ -4,25 +4,24 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
-import json
 import os
 import re
 import subprocess
 import sys
 from pathlib import Path
 
+from pydantic import BaseModel, ConfigDict, ValidationError
+
 from repo2ree_testbed.artifacts import ROOT
+from repo2ree_testbed.stack.process import capture, lines
 
 ANONYMOUS_VOLUME = re.compile(r"[0-9a-f]{64}")
 
 
-def capture(*args: str, check: bool = False) -> str:
-    result = subprocess.run(args, check=check, capture_output=True, text=True)
-    return result.stdout.strip()
+class Volume(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
-
-def lines(*args: str) -> list[str]:
-    return [line for line in capture(*args).splitlines() if line]
+    CreatedAt: dt.datetime
 
 
 def live_store_volume() -> str:
@@ -32,30 +31,30 @@ def live_store_volume() -> str:
         return ""
     tools = str(tools_bundle) if tools_bundle.is_dir() else ""
     return capture(
-        "uv",
-        "run",
-        "--package",
-        "repo2ree-provider-docker",
-        "python",
-        "-c",
-        "import sys; from repo2ree_provider_docker.injection import load_injection_bundle; "
-        "bundle = load_injection_bundle(sys.argv[1], sys.argv[2] or None); "
-        'print(bundle.volume_name if bundle else "")',
-        str(exec_bundle),
-        tools,
+        [
+            *("uv", "run", "--package", "repo2ree-provider-docker", "python", "-c"),
+            "import sys; from repo2ree_provider_docker.injection import load_injection_bundle; "
+            "bundle = load_injection_bundle(sys.argv[1], sys.argv[2] or None); "
+            'print(bundle.volume_name if bundle else "")',
+            str(exec_bundle),
+            tools,
+        ]
     )
 
 
 def stale_store_volumes(max_age_days: float, keep: str) -> list[str]:
     cutoff = dt.datetime.now(dt.UTC) - dt.timedelta(days=max_age_days)
     stale: list[str] = []
-    for name in lines("docker", "volume", "ls", "-q", "--filter", "dangling=true", "--filter", "name=^repo2ree-store-"):
+    for name in lines(
+        ["docker", "volume", "ls", "-q", "--filter", "dangling=true", "--filter", "name=^repo2ree-store-"]
+    ):
         if name == keep:
             continue
-        output = capture("docker", "volume", "inspect", name, "--format", "{{json .}}")
-        if not output:
+        output = capture(["docker", "volume", "inspect", name, "--format", "{{json .}}"])
+        try:
+            created = Volume.model_validate_json(output).CreatedAt
+        except ValidationError:
             continue
-        created = dt.datetime.fromisoformat(json.loads(output)["CreatedAt"])
         if created < cutoff:
             stale.append(name)
     return sorted(set(stale))
@@ -63,11 +62,11 @@ def stale_store_volumes(max_age_days: float, keep: str) -> list[str]:
 
 def workbench_containers(owner: str | None) -> list[str]:
     resource_filter = f"label=repo2ree.resource-owner={owner}" if owner else "name=^repo2ree-wb-"
-    return sorted(set(lines("docker", "ps", "-aq", "--filter", resource_filter)))
+    return sorted(set(lines(["docker", "ps", "-aq", "--filter", resource_filter])))
 
 
 def owned_volumes(owner: str) -> list[str]:
-    return sorted(set(lines("docker", "volume", "ls", "-q", "--filter", f"label=repo2ree.resource-owner={owner}")))
+    return sorted(set(lines(["docker", "volume", "ls", "-q", "--filter", f"label=repo2ree.resource-owner={owner}"])))
 
 
 def global_volumes(include_store: bool) -> list[str]:
@@ -75,11 +74,11 @@ def global_volumes(include_store: bool) -> list[str]:
     if include_store:
         prefixes.append("repo2ree-store-")
     volumes = {
-        name for prefix in prefixes for name in lines("docker", "volume", "ls", "-q", "--filter", f"name=^{prefix}")
+        name for prefix in prefixes for name in lines(["docker", "volume", "ls", "-q", "--filter", f"name=^{prefix}"])
     }
     volumes.update(
         name
-        for name in lines("docker", "volume", "ls", "-q", "--filter", "dangling=true")
+        for name in lines(["docker", "volume", "ls", "-q", "--filter", "dangling=true"])
         if ANONYMOUS_VOLUME.fullmatch(name)
     )
     return sorted(volumes)
@@ -124,7 +123,7 @@ def main() -> int:
     args = parser.parse_args()
     try:
         cleanup(args.owner, args.store, args.store_gc)
-    except (OSError, ValueError, json.JSONDecodeError, subprocess.CalledProcessError) as error:
+    except (OSError, ValueError, subprocess.CalledProcessError) as error:
         print(error, file=sys.stderr)
         return 1
     return 0

@@ -2135,6 +2135,7 @@ version = "0.1.0"
 source = { editable = "testbed" }
 dependencies = [
     { name = "coverage" },
+    { name = "pydantic" },
     { name = "pytest" },
     { name = "uvicorn" },
 ]
@@ -2142,6 +2143,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "coverage", specifier = "~=7.14.1" },
+    { name = "pydantic", specifier = "~=2.11.7" },
     { name = "pytest", specifier = "~=8.4.1" },
     { name = "uvicorn", specifier = "~=0.40.0" },
 ]

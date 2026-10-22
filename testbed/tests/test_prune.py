@@ -1,8 +1,8 @@
-import json
 import os
 import time
 from pathlib import Path
 
+from repo2ree_testbed.records import Behaviour, Outcome, RunRecord, RunTest
 from repo2ree_testbed.runs import prune
 
 NOW = time.time()
@@ -10,13 +10,26 @@ OLD = NOW - 30 * 24 * 3600
 
 
 def per_test_run(
-    root: Path, name: str, *, outcome: str = "passed", behaviour: str = "passed", done: bool = True
+    root: Path, name: str, *, outcome: Outcome = "passed", behaviour: Behaviour = "passed", done: bool = True
 ) -> Path:
     run = root / name
     run.mkdir(parents=True)
     if done:
-        test = {"name": "t", "outcome": outcome, "behaviour": behaviour}
-        (run / "run.json").write_text(json.dumps({"tests": [test]}))
+        test = RunTest(
+            name="t",
+            selection=(),
+            outcome=outcome,
+            reason="",
+            exit_code=0,
+            started=0,
+            finished=1,
+            rees=(),
+            phases={},
+            directory="tests/t",
+            behaviour=behaviour,
+        )
+        record = RunRecord(tier="t", suite="s", build_revision="", jobs=1, tests=(test,))
+        (run / "run.json").write_text(record.model_dump_json())
     os.utime(run, (OLD, OLD))
     return run
 

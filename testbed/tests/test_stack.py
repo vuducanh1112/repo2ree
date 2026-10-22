@@ -15,7 +15,7 @@ def test_provider_names_remain_compatible() -> None:
 def test_global_cleanup_selects_only_owned_name_families(monkeypatch: pytest.MonkeyPatch) -> None:
     anonymous = "a" * 64
 
-    def fake_lines(*args: str) -> list[str]:
+    def fake_lines(args: list[str]) -> list[str]:
         query = " ".join(args)
         if "repo2ree-ree-" in query:
             return ["repo2ree-ree-one"]

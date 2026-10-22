@@ -1,178 +1,105 @@
-"""Manage the persistent image-backed demo and test stack."""
+"""The persistent image-backed stack: compose control plane plus Docker provider containers."""
 
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import re
 import subprocess
 import sys
-import time
-import urllib.error
-import urllib.request
-from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 from repo2ree_testbed.artifacts import ROOT
+from repo2ree_testbed.stack.docker import first_network, networks, own_container
+from repo2ree_testbed.stack.process import capture, listed, reachable, run, wait_until
+from repo2ree_testbed.stack.workbench_cleanup import cleanup
 
 ATTACHMENT_FILE = ROOT / "test-artifacts/state/image-stack-caller-network"
 PROVIDER_CONTAINER = "repo2ree-provider-docker"
 
 
-def run(
-    args: list[str],
-    *,
-    env: dict[str, str] | None = None,
-    check: bool = True,
-    capture: bool = False,
-    quiet: bool = False,
-) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        args,
-        cwd=ROOT,
-        env={**os.environ, **(env or {})},
-        check=check,
-        text=True,
-        capture_output=capture,
-        stdout=subprocess.DEVNULL if quiet and not capture else None,
-        stderr=subprocess.DEVNULL if quiet and not capture else None,
-    )
+@dataclass(frozen=True)
+class Images:
+    gui: str
+    backend: str
+    provider: str
 
-
-def capture(args: list[str], *, env: dict[str, str] | None = None, check: bool = False) -> str:
-    return run(args, env=env, check=check, capture=True).stdout.strip()
-
-
-def reachable(url: str) -> bool:
-    try:
-        with urllib.request.urlopen(url, timeout=1) as response:  # noqa: S310 - caller chooses stack URL
-            return int(response.status) < 400
-    except (OSError, urllib.error.URLError):
-        return False
+    @classmethod
+    def tagged(cls, repository: str = "", tag: str = "local") -> Images:
+        prefix = f"{repository}/" if repository else ""
+        return cls(
+            os.getenv("STACK_GUI_IMAGE") or f"{prefix}repo2ree-gui:{tag}",
+            os.getenv("STACK_BACKEND_IMAGE") or f"{prefix}repo2ree-backend:{tag}",
+            os.getenv("STACK_PROVIDER_IMAGE") or f"{prefix}repo2ree-provider-docker:{tag}",
+        )
 
 
 @dataclass(frozen=True)
-class Options:
-    compute_locations: int = 1
-    image_repository: str = ""
-    image_tag: str = "local"
-    gui_image: str = ""
-    backend_image: str = ""
-    provider_image: str = ""
-    api_url: str = ""
-    gui_url: str = ""
+class Urls:
+    api: str
+    gui: str
 
 
 class ImageStack:
-    def __init__(self, options: Options) -> None:
-        self.options = options
-        prefix = f"{options.image_repository}/" if options.image_repository else ""
-        self.gui_image = (
-            options.gui_image or os.getenv("STACK_GUI_IMAGE") or f"{prefix}repo2ree-gui:{options.image_tag}"
-        )
-        self.backend_image = (
-            options.backend_image or os.getenv("STACK_BACKEND_IMAGE") or f"{prefix}repo2ree-backend:{options.image_tag}"
-        )
-        self.provider_image = (
-            options.provider_image
-            or os.getenv("STACK_PROVIDER_IMAGE")
-            or f"{prefix}repo2ree-provider-docker:{options.image_tag}"
-        )
-        self.api_url = options.api_url
-        self.gui_url = options.gui_url
+    def __init__(self, images: Images, compute_locations: int = 1) -> None:
+        self.images = images
+        self.compute_locations = compute_locations
 
-    def compose(self, *args: str, check: bool = True, capture_output: bool = False) -> str:
-        environment = {"REPO2REE_GUI_IMAGE": self.gui_image, "REPO2REE_BACKEND_IMAGE": self.backend_image}
-        if capture_output:
-            return capture(["docker", "compose", *args], env=environment, check=check)
+    def compose(self, *args: str, check: bool = True) -> None:
+        environment = {"REPO2REE_GUI_IMAGE": self.images.gui, "REPO2REE_BACKEND_IMAGE": self.images.backend}
         run(["docker", "compose", *args], env=environment, check=check)
-        return ""
 
     @staticmethod
     def provider_name(index: int) -> str:
         return PROVIDER_CONTAINER if index == 1 else f"{PROVIDER_CONTAINER}-{index}"
 
-    def provider_compose(
-        self,
-        name: str,
-        *args: str,
-        environment: dict[str, str] | None = None,
-        check: bool = True,
-        quiet: bool = False,
-    ) -> None:
+    def provider_compose(self, name: str, *args: str, environment: dict[str, str], check: bool = True) -> None:
         run(
             ["docker", "compose", "-p", name, "-f", "docker-compose.workbench.yml", *args],
             env={
-                "REPO2REE_PROVIDER_IMAGE": self.provider_image,
+                "REPO2REE_PROVIDER_IMAGE": self.images.provider,
                 "REPO2REE_PROVIDER_CONTAINER": name,
                 "REPO2REE_PROVIDER_STATE_VOLUME": f"{name}-state",
-                **(environment or {}),
+                **environment,
             },
             check=check,
-            quiet=quiet,
+            quiet=True,
         )
 
     def control_plane_network(self) -> str:
-        backend = self.compose("ps", "-q", "backend", check=False, capture_output=True).splitlines()
-        if not backend:
-            return ""
-        output = capture(["docker", "inspect", "-f", "{{json .NetworkSettings.Networks}}", backend[0]], check=False)
-        if not output:
-            return ""
-        try:
-            return next(iter(json.loads(output)), "")
-        except json.JSONDecodeError:
-            return ""
+        environment = {"REPO2REE_GUI_IMAGE": self.images.gui, "REPO2REE_BACKEND_IMAGE": self.images.backend}
+        backend = capture(["docker", "compose", "ps", "-q", "backend"], env=environment).splitlines()
+        return first_network(backend[0]) if backend else ""
 
-    def resolve_urls(self) -> None:
-        if (
-            run(["getent", "hosts", "backend"], check=False, quiet=True).returncode == 0
-            and run(["getent", "hosts", "gui"], check=False, quiet=True).returncode == 0
-        ):
-            default_api = "http://backend:8000"
-            default_gui = "http://gui:3000"
-        elif Path("/.dockerenv").is_file():
-            if run(["getent", "hosts", "host.docker.internal"], check=False, quiet=True).returncode == 0:
-                host = "host.docker.internal"
-            else:
-                hostname = os.getenv("HOSTNAME", "")
-                networks = capture(
-                    ["docker", "inspect", "-f", "{{json .NetworkSettings.Networks}}", hostname], check=False
-                )
-                try:
-                    values = json.loads(networks).values() if networks else []
-                    host = next((value.get("Gateway", "") for value in values if value.get("Gateway")), "")
-                except json.JSONDecodeError:
-                    host = ""
-            host = host or "localhost"
-            default_api = f"http://{host}:8000"
-            default_gui = f"http://{host}:3000"
+    @staticmethod
+    def resolve(overrides: Urls | None = None) -> Urls:
+        def resolves(host: str) -> bool:
+            return run(["getent", "hosts", host], check=False, quiet=True).returncode == 0
+
+        if resolves("backend") and resolves("gui"):
+            found = Urls("http://backend:8000", "http://gui:3000")
         else:
-            default_api = "http://localhost:8000"
-            default_gui = "http://localhost:3000"
-        self.api_url = self.options.api_url or default_api
-        self.gui_url = self.options.gui_url or default_gui
+            host = "localhost"
+            if Path("/.dockerenv").is_file():
+                container = own_container() or ""
+                gateways = (network.Gateway for network in networks(container).values() if network.Gateway)
+                host = "host.docker.internal" if resolves("host.docker.internal") else next(gateways, "localhost")
+            found = Urls(f"http://{host}:8000", f"http://{host}:3000")
+        if overrides is None:
+            return found
+        return Urls(overrides.api or found.api, overrides.gui or found.gui)
 
     def attach_caller(self) -> None:
-        hostname = os.getenv("HOSTNAME", "")
-        if not Path("/.dockerenv").is_file() or not hostname:
+        container = own_container()
+        attached = networks(container) if container else {}
+        network = self.control_plane_network() if attached else ""
+        if not container or not network or network in attached:
             return
-        if run(["docker", "inspect", hostname], check=False, quiet=True).returncode != 0:
-            return
-        network = self.control_plane_network()
-        if not network:
-            return
-        output = capture(["docker", "inspect", "-f", "{{json .NetworkSettings.Networks}}", hostname])
-        try:
-            if network in json.loads(output):
-                return
-        except json.JSONDecodeError:
-            return
-        run(["docker", "network", "connect", network, hostname])
+        run(["docker", "network", "connect", network, container])
         ATTACHMENT_FILE.parent.mkdir(parents=True, exist_ok=True)
-        ATTACHMENT_FILE.write_text(f"{hostname} {network}\n")
+        ATTACHMENT_FILE.write_text(f"{container} {network}\n")
         print(f">> attached calling container to {network}", file=sys.stderr)
 
     @staticmethod
@@ -184,87 +111,89 @@ class ImageStack:
             run(["docker", "network", "disconnect", fields[1], fields[0]], check=False, quiet=True)
         ATTACHMENT_FILE.unlink(missing_ok=True)
 
-    @staticmethod
-    def wait_until(description: str, probe: Callable[[], bool]) -> None:
-        for attempt in range(1, 31):
-            if probe():
-                return
-            print(f"  waiting for {description}... ({attempt}/30)")
-            time.sleep(1)
-        raise RuntimeError(f"{description} did not become ready")
-
-    def provider_count(self) -> int:
-        if not self.api_url:
-            raise RuntimeError("API URL has not been resolved")
-        try:
-            with urllib.request.urlopen(  # noqa: S310 - URL is selected by the stack caller
-                f"{self.api_url}/api/v1/providers", timeout=1
-            ) as response:
-                return len(json.load(response).get("providers", []))
-        except (OSError, ValueError, urllib.error.URLError):
-            return 0
-
-    def up(self) -> None:
-        self.resolve_urls()
-        for image in (self.gui_image, self.backend_image, self.provider_image):
+    def up(self) -> Urls:
+        for image in (self.images.gui, self.images.backend, self.images.provider):
             if "/" in image:
                 print(f">> pulling {image}")
                 run(["docker", "pull", image])
             elif run(["docker", "image", "inspect", image], check=False, quiet=True).returncode != 0:
                 raise RuntimeError(f"{image} not found — build the local images first: just build-images")
-        print(f">> starting compose control plane ({self.gui_image}, {self.backend_image})")
+        print(f">> starting compose control plane ({self.images.gui}, {self.images.backend})")
         self.compose("up", "-d", "backend", "gui")
-        count = self.options.compute_locations
-        print(f">> starting {count} Docker provider service(s) ({self.provider_image})")
+        count = self.compute_locations
+        print(f">> starting {count} Docker provider service(s) ({self.images.provider})")
         network = self.control_plane_network()
+        environment = (
+            {
+                "PROVIDER_API_WS_URL": "ws://backend:8000/provider/connect",
+                "PROVIDER_WORKBENCH_API_WS_URL": "ws://backend:8000/workbench/connect",
+                "PROVIDER_WORKBENCH_DOCKER_NETWORK": network,
+            }
+            if network
+            else {}
+        )
         for index in range(1, count + 1):
             name = self.provider_name(index)
-            environment: dict[str, str] = {}
-            if network:
-                environment = {
-                    "PROVIDER_API_WS_URL": "ws://backend:8000/provider/connect",
-                    "PROVIDER_WORKBENCH_API_WS_URL": "ws://backend:8000/workbench/connect",
-                    "PROVIDER_WORKBENCH_DOCKER_NETWORK": network,
-                }
-            self.provider_compose(name, "up", "-d", environment=environment, quiet=True)
+            self.provider_compose(name, "up", "-d", environment=environment)
             if network:
                 run(["docker", "network", "connect", network, name], check=False, quiet=True)
         self.attach_caller()
-        self.resolve_urls()
-        print(f">> probing stack endpoints — API {self.api_url}, GUI {self.gui_url}")
-        self.wait_until(f"backend at {self.api_url}", lambda: reachable(self.api_url))
-        self.wait_until(f"{count} provider service(s)", lambda: self.provider_count() >= count)
-        self.wait_until(f"gui at {self.gui_url}", lambda: reachable(self.gui_url))
-        print(f">> stack up — GUI at {self.gui_url}")
+        urls = self.resolve()
+        print(f">> probing stack endpoints — API {urls.api}, GUI {urls.gui}")
+        wait_until(f"backend at {urls.api}", lambda: reachable(urls.api))
+        wait_until(f"{count} provider service(s)", lambda: listed(f"{urls.api}/api/v1/providers", "providers") >= count)
+        wait_until(f"gui at {urls.gui}", lambda: reachable(urls.gui))
+        print(f">> stack up — GUI at {urls.gui}")
+        return urls
 
-    def down(self, volumes: bool = False) -> None:
+    def down(self, *, volumes: bool = False) -> None:
         self.detach_caller()
         args = ("down", "-v") if volumes else ("down",)
         print(">> stopping workbench service stack(s)")
-        names = capture(["docker", "ps", "-a", "--format", "{{.Names}}"], check=False).splitlines()
         pattern = re.compile(rf"{re.escape(PROVIDER_CONTAINER)}(?:-[0-9]+)?")
-        for name in names:
+        for name in capture(["docker", "ps", "-a", "--format", "{{.Names}}"]).splitlines():
             if pattern.fullmatch(name):
-                self.provider_compose(name, *args, check=False, quiet=True)
+                self.provider_compose(name, *args, environment={}, check=False)
         if volumes:
-            run([sys.executable, "-m", "repo2ree_testbed.stack.workbench_cleanup"])
+            cleanup(None, store=False, store_gc=None)
         print(">> stopping compose control plane")
         self.compose(*args)
 
-    def check(self) -> None:
+    def check(self, overrides: Urls | None = None) -> Urls:
         self.attach_caller()
-        self.resolve_urls()
-        if not reachable(self.api_url):
-            raise RuntimeError(f"backend not reachable at {self.api_url} — start the image stack first (just stack-up)")
-        if self.provider_count() < 1:
+        urls = self.resolve(overrides)
+        if not reachable(urls.api):
+            raise RuntimeError(f"backend not reachable at {urls.api} — start the image stack first (just stack-up)")
+        if listed(f"{urls.api}/api/v1/providers", "providers") < 1:
             raise RuntimeError("no provider service connected — start the provider container (just stack-up)")
-        if not reachable(self.gui_url):
-            raise RuntimeError(f"GUI not reachable at {self.gui_url} — start the image stack first (just stack-up)")
+        if not reachable(urls.gui):
+            raise RuntimeError(f"GUI not reachable at {urls.gui} — start the image stack first (just stack-up)")
+        return urls
 
 
-def parser() -> argparse.ArgumentParser:
-    result = argparse.ArgumentParser()
-    commands = result.add_subparsers(dest="command", required=True)
+@dataclass(frozen=True)
+class Up:
+    images: Images
+    compute_locations: int
+
+
+@dataclass(frozen=True)
+class Down:
+    volumes: bool
+
+
+@dataclass(frozen=True)
+class Probe:
+    command: Literal["check", "gui-url", "api-url"]
+    urls: Urls
+
+
+type Command = Up | Down | Probe
+
+
+def parse(argv: list[str] | None = None) -> Command:
+    parser = argparse.ArgumentParser(prog="repo2ree_testbed images")
+    commands = parser.add_subparsers(dest="command", required=True)
     up = commands.add_parser("up")
     up.add_argument("--compute-locations", type=int, default=1)
     up.add_argument("--image-repository", default="")
@@ -272,42 +201,40 @@ def parser() -> argparse.ArgumentParser:
     up.add_argument("--gui-image", default="")
     up.add_argument("--backend-image", default="")
     up.add_argument("--provider-image", default="")
-    down = commands.add_parser("down")
-    down.add_argument("--volumes", action="store_true")
+    commands.add_parser("down").add_argument("--volumes", action="store_true")
     for name in ("check", "gui-url", "api-url"):
-        command = commands.add_parser(name)
-        command.add_argument("--api-url", default="")
-        command.add_argument("--gui-url", default="")
-    return result
+        probe = commands.add_parser(name)
+        probe.add_argument("--api-url", default="")
+        probe.add_argument("--gui-url", default="")
+    args = parser.parse_args(argv)
+    if args.command == "up":
+        if args.compute_locations < 1:
+            parser.error("compute locations must be a positive integer")
+        tagged = Images.tagged(args.image_repository, args.image_tag)
+        images = Images(
+            args.gui_image or tagged.gui, args.backend_image or tagged.backend, args.provider_image or tagged.provider
+        )
+        return Up(images, args.compute_locations)
+    if args.command == "down":
+        return Down(args.volumes)
+    return Probe(args.command, Urls(args.api_url, args.gui_url))
 
 
 def main() -> int:
-    args = parser().parse_args()
-    if getattr(args, "compute_locations", 1) < 1:
-        print("compute locations must be a positive integer", file=sys.stderr)
-        return 2
-    options = Options(
-        compute_locations=getattr(args, "compute_locations", 1),
-        image_repository=getattr(args, "image_repository", ""),
-        image_tag=getattr(args, "image_tag", "local"),
-        gui_image=getattr(args, "gui_image", ""),
-        backend_image=getattr(args, "backend_image", ""),
-        provider_image=getattr(args, "provider_image", ""),
-        api_url=getattr(args, "api_url", ""),
-        gui_url=getattr(args, "gui_url", ""),
-    )
-    stack = ImageStack(options)
+    command = parse()
     try:
-        if args.command == "up":
-            stack.up()
-        elif args.command == "down":
-            stack.down(args.volumes)
-        elif args.command == "check":
-            stack.check()
-        else:
-            stack.attach_caller()
-            stack.resolve_urls()
-            print(stack.gui_url if args.command == "gui-url" else stack.api_url)
+        match command:
+            case Up(images, count):
+                ImageStack(images, count).up()
+            case Down(volumes):
+                ImageStack(Images.tagged()).down(volumes=volumes)
+            case Probe("check", urls):
+                ImageStack(Images.tagged()).check(urls)
+            case Probe(kind, urls):
+                stack = ImageStack(Images.tagged())
+                stack.attach_caller()
+                resolved = stack.resolve(urls)
+                print(resolved.gui if kind == "gui-url" else resolved.api)
     except (OSError, RuntimeError, subprocess.CalledProcessError) as error:
         print(error, file=sys.stderr)
         return 1

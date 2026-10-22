@@ -10,18 +10,12 @@ import uvicorn
 
 
 def main() -> None:
-    """Publish the reserved port, then serve Uvicorn through that socket."""
     if len(sys.argv) != 2:
         raise SystemExit("usage: python -m repo2ree_testbed.stack.serve_api <port-file>")
 
     port_file = Path(sys.argv[1])
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
         listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        # Provider-managed workbenches connect through host.docker.internal;
-        # external workbenches and clients still use 127.0.0.1. Binding every
-        # interface is what makes the container-side name resolvable at all, and
-        # this is an ephemeral test-stack API on an OS-assigned port, never a
-        # deployment surface.
         listener.bind(("0.0.0.0", 0))  # noqa: S104 - test stack; reachable from workbench containers by design
         listener.listen()
         listener.set_inheritable(True)

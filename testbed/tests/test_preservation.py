@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from repo2ree_testbed.artifacts import case_dir, case_key, run_dir
-from repo2ree_testbed.recording import TestRecorder
+from repo2ree_testbed.preservation import TestRecorder
 
 
 @pytest.fixture
@@ -53,14 +53,14 @@ def test_copy_does_not_follow_external_symlink(tmp_path, recorder):
     outside.write_text("private")
     (source / "link").symlink_to(outside)
     recorder.local(source)
-    saved = recorder.directory / recorder.repositories[0]["path"]
+    saved = recorder.directory / str(recorder.repositories[0].path)
     assert (saved / "link").is_symlink()
     assert not (saved / "outside").exists()
 
 
 def test_removed_source_is_explicitly_unavailable(tmp_path, recorder):
     recorder.local(tmp_path / "missing")
-    assert recorder.repositories[0]["status"] == "unavailable"
+    assert recorder.repositories[0].status == "unavailable"
 
 
 def test_failed_copy_unpauses_container(recorder, monkeypatch):
@@ -75,7 +75,7 @@ def test_failed_copy_unpauses_container(recorder, monkeypatch):
     monkeypatch.setattr(subprocess, "run", run)
     recorder.workbench("example")
     assert [args[1] for args in commands] == ["inspect", "pause", "cp", "unpause"]
-    assert recorder.repositories[0]["status"] == "error"
+    assert recorder.repositories[0].status == "error"
 
 
 def test_existing_pause_is_preserved(recorder, monkeypatch):
@@ -107,7 +107,7 @@ def test_discovery_includes_reviews_only_once(tmp_path, recorder):
         (scope / "ree.json").write_text("{}")
     recorder.discover(root)
     assert len(recorder.repositories) == 1
-    saved = recorder.directory / recorder.repositories[0]["path"]
+    saved = recorder.directory / str(recorder.repositories[0].path)
     assert (saved / "reviews/reviewer/.git").is_dir()
 
 
@@ -136,7 +136,7 @@ def test_saved_repository_remains_usable_after_source_removal(tmp_path, recorder
     )
     recorder.local(source)
     shutil.rmtree(source)
-    saved = recorder.directory / recorder.repositories[0]["path"]
+    saved = recorder.directory / str(recorder.repositories[0].path)
     result = subprocess.run(
         ["git", "-C", str(saved), "show", "HEAD:ree.json"], check=True, capture_output=True, text=True
     )
@@ -149,7 +149,7 @@ def test_busy_repository_records_error_without_blocking(tmp_path, recorder):
     with (root / ".git/repo2ree.lock").open("w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         recorder.local(root)
-    assert recorder.repositories[0]["status"] == "error"
+    assert recorder.repositories[0].status == "error"
 
 
 @pytest.mark.parametrize("failure", ["call", "teardown"])
