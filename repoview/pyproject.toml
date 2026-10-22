@@ -3,7 +3,7 @@ name = "repo2ree-repoview"
 version = "0.1.0"
 description = "Views of the repository bound to one commit: architecture, evidence, and recipe diagrams, their provenance stamps, and the overview."
 requires-python = "~=3.13.0"
-dependencies = ["grimp~=3.15", "pydantic~=2.11.7"]
+dependencies = ["grimp~=3.17", "pydantic~=2.11.7"]
 
 [build-system]
 requires = ["hatchling"]

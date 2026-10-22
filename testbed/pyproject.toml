@@ -3,7 +3,7 @@ name = "repo2ree-testbed"
 version = "0.1.0"
 description = "Stand up stacks, run the suites on them, and keep what they leave: per-test stacks, image suites, run pages, artifact pruning, coverage tiers, and the pytest artifact plugin."
 requires-python = "~=3.13.0"
-dependencies = ["coverage~=7.14.1", "pydantic~=2.11.7", "pytest~=8.4.1", "uvicorn~=0.40.0"]
+dependencies = ["coverage~=7.16", "pydantic~=2.11.7", "pytest~=9.1", "uvicorn~=0.40.0"]
 
 [build-system]
 requires = ["hatchling"]

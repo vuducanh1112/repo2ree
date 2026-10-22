@@ -16,30 +16,24 @@ dev = [
     # Architecture contracts (`just check-architecture`): the backend counterpart of the
     # GUI's dependency-cruiser rules. Neither ruff nor mypy sees the import
     # graph, so layering is only enforced here.
-    "import-linter~=2.13.0",
+    "import-linter~=2.15",
     # Validates sample journal records against the generated behaviour event schema
     # (contracts/behaviour), so the schema and the checker agree on what a record is.
-    "jsonschema~=4.26.0",
-    "types-jsonschema~=4.26.0",
+    "jsonschema~=4.26",
+    "types-jsonschema~=4.26",
     # Property-based testing (the `property`-marked tests). Resolves transitively
     # today via core's test-only `swh.model` oracle, but declared directly so the
     # property tests don't hinge on that pin.
-    "hypothesis~=6.155.7",
-    "mypy~=1.20.1",
-    "pytest~=8.4.1",
-    "pytest-cov~=7.1.0",
+    "hypothesis~=6.170",
+    "mypy~=2.4",
+    "pytest~=9.1",
+    "pytest-cov~=7.1",
     # The single ruff version for this tree: the gate, the commit hook and a
     # local `ruff` invocation all resolve to this one. It replaced a pinned
     # ruff-pre-commit hook that drifted to a newer ruff than this pin, which is
     # how an RUF043 finding reached a commit `just check-backend` had just passed.
     "ruff~=0.14.5",
-    "syrupy~=5.0.0",
-    "schemathesis~=4.32.3",
-]
-notebooks = [
-    "ipykernel~=7.2.0",
-    "notebook~=7.5.4",
-    "matplotlib~=3.10.7",
+    "schemathesis~=4.32",
 ]
 
 [tool.pytest.ini_options]

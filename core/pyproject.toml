@@ -12,7 +12,7 @@ dependencies = [
 # Test-only: the official Software Heritage CLI, used by test_swhid.py to
 # cross-check our SWHID reimplementation. The test skips when absent.
 dev = [
-    "swh.model~=8.4.1",
+    "swh.model~=8.4",
     # mypy stubs for the pyyaml runtime dependency.
     "types-pyyaml~=6.0",
 ]
