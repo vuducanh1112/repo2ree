@@ -425,6 +425,20 @@
         "type": "string"
       }
     },
+    "E2E_SYSTEM_PYTEST_ARGS": {
+      "kind": "internal",
+      "owner": "testbed",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "E2E_TEST_DIR": {
+      "kind": "internal",
+      "owner": "testbed",
+      "schema": {
+        "type": "string"
+      }
+    },
     "EXTERNAL_WORKBENCH_TOKEN": {
       "kind": "runtime",
       "owner": "api",

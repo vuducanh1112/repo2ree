@@ -10,16 +10,18 @@ import tempfile
 import threading
 import time
 import uuid
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import BinaryIO
 
 from repo2ree_testbed.artifacts import ROOT, run_dir, write_provenance
+from repo2ree_testbed.faults import FAULTS_URL
 from repo2ree_testbed.python_coverage import CoverageRoot, render
 from repo2ree_testbed.records import RecordingManifest, read
 from repo2ree_testbed.stack.clients import Client, Launch, Started
+from repo2ree_testbed.stack.injector import Injector
 from repo2ree_testbed.stack.process import listed, reachable, terminate, wait_until
 from repo2ree_testbed.stack.services import Deployment, backend_environment, locations
 from repo2ree_testbed.stack.workbench_cleanup import cleanup
@@ -93,8 +95,11 @@ class E2EStack:
         os.close(descriptor)
         self.port_file = Path(port_name)
         self.api_url = ""
+        self.port: int | None = None
         self.backend: subprocess.Popen[bytes] | None = None
         self.locations: list[subprocess.Popen[bytes]] = []
+        self.restarting = threading.Lock()
+        self.injector = Injector(self)
         self.running: Started | None = None
         self.logs: list[BinaryIO] = []
         self.stopped = False
@@ -110,9 +115,17 @@ class E2EStack:
         finally:
             self.phases[name] = round(self.phases.get(name, 0.0) + time.monotonic() - started, 2)
 
+    @property
+    def owner(self) -> str:
+        return self.layout.run_token
+
+    @property
+    def provider_managed(self) -> bool:
+        return self.deployment.mode == "provider"
+
     def log(self, path: Path) -> BinaryIO:
         path.parent.mkdir(parents=True, exist_ok=True)
-        handle = path.open("wb")
+        handle = path.open("ab")
         self.logs.append(handle)
         return handle
 
@@ -130,6 +143,7 @@ class E2EStack:
                 path.unlink()
         for index in range(1, self.deployment.compute_locations + 1):
             self.workbench_log(index).unlink(missing_ok=True)
+        (self.layout.logs / f"backend-{self.deployment.tier}.log").unlink(missing_ok=True)
 
     def start_backend(self) -> None:
         log = self.layout.logs / f"backend-{self.deployment.tier}.log"
@@ -137,8 +151,10 @@ class E2EStack:
         environment = backend_environment(
             self.control_state, self.layout.run_token, self.coverage_file, self.layout.telemetry
         )
+        command = ["coverage", "run", "--parallel-mode", "-m", "repo2ree_testbed.stack.serve_api", str(self.port_file)]
+        self.port_file.unlink(missing_ok=True)
         backend = subprocess.Popen(
-            ["coverage", "run", "--parallel-mode", "-m", "repo2ree_testbed.stack.serve_api", str(self.port_file)],
+            [*command, *([str(self.port)] if self.port else [])],
             cwd=ROOT,
             env={**self.environment, **environment},
             stdout=self.log(log),
@@ -151,16 +167,42 @@ class E2EStack:
                 tail = "\n".join(log.read_text(errors="replace").splitlines()[-50:])
                 raise RuntimeError(f"backend process exited before readiness\n{tail}")
             port = self.port_file.read_text().strip() if self.port_file.is_file() else ""
-            self.api_url = f"http://127.0.0.1:{port}" if port.isdigit() else ""
-            return bool(self.api_url) and reachable(self.api_url + "/")
+            if not port.isdigit():
+                return False
+            self.port = int(port)
+            self.api_url = f"http://127.0.0.1:{port}"
+            return reachable(self.api_url + "/")
 
         wait_until("owned backend", ready)
         print(f">> backend ready at {self.api_url} (pid {backend.pid})")
 
-    def start_locations(self) -> None:
+    def crash_api(self) -> None:
+        with self.restarting:
+            if self.backend is not None:
+                self.backend.kill()
+                self.backend.wait()
+            print(">> the API crashed (SIGKILL); restarting it on the same port")
+            self.start_backend()
+
+    def restart_locations(self, overrides: Mapping[str, str]) -> None:
+        with self.restarting:
+            for process in self.locations:
+                terminate(process)
+            self.locations = []
+            key = self.registry_key()
+            wait_until("the old compute locations to disconnect", lambda: listed(self.registry_url(), key) == 0)
+            self.start_locations(overrides)
+
+    def registry_key(self) -> str:
+        return "providers" if self.provider_managed else "workbenches"
+
+    def registry_url(self) -> str:
+        return f"{self.api_url}/api/v1/{self.registry_key()}"
+
+    def start_locations(self, overrides: Mapping[str, str] | None = None) -> None:
         services = locations(self.deployment, self.api_url, self.control_state, self.layout.run_token)
         for index, service in enumerate(services, start=1):
-            environment = dict(service.environment)
+            environment = {**service.environment, **(overrides or {})}
             if self.layout.telemetry is not None:
                 environment["TRACE_FILE"] = str(self.layout.telemetry / f"location-{index}.ndjson")
             log = self.workbench_log(index)
@@ -175,23 +217,32 @@ class E2EStack:
                     stderr=subprocess.STDOUT,
                 )
             )
-        key = "providers" if self.deployment.mode == "provider" else "workbenches"
 
         def ready() -> bool:
             if any(process.poll() is not None for process in self.locations):
                 raise RuntimeError(f"{self.deployment.mode} process exited before readiness")
-            return listed(f"{self.api_url}/api/v1/{key}", key) >= len(services)
+            return listed(self.registry_url(), self.registry_key()) >= len(services)
 
         wait_until(f"{len(services)} {self.deployment.mode} service(s)", ready)
+
+    def failed_process(self) -> subprocess.Popen[bytes] | None:
+        if not self.restarting.acquire(blocking=False):
+            return None
+        try:
+            infrastructure = [process for process in [self.backend, *self.locations] if process]
+            return next((process for process in infrastructure if process.poll() is not None), None)
+        finally:
+            self.restarting.release()
 
     def run_client(self) -> int:
         log = self.log(self.layout.client_log) if self.layout.client_log else None
         launch = Launch(self.layout.output, log, self.layout.test)
-        running = self.client.start(self.api_url, self.environment, self.selection, launch)
+        self.injector.start()
+        environment = {**self.environment, FAULTS_URL: self.injector.url}
+        running = self.client.start(self.api_url, environment, self.selection, launch)
         self.running = running
-        infrastructure = [process for process in [self.backend, *self.locations] if process]
         while (status := running.poll()) is None:
-            failed = next((process for process in infrastructure if process.poll() is not None), None)
+            failed = self.failed_process()
             if failed:
                 print(
                     f"stack process {failed.pid} exited during the client run (status {failed.returncode})",
@@ -211,6 +262,7 @@ class E2EStack:
                 return
             self.stopped = True
         terminate(self.running.process if self.running else None)
+        self.injector.stop()
         if self.api_url:
             with self.phase("collect_live"):
                 self.collect_live()

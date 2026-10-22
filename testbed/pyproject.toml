@@ -55,4 +55,4 @@ forbidden_modules = ["repo2ree_testbed"]
 name = "Testbed layers: runs over stacks over the records they leave"
 type = "layers"
 containers = ["repo2ree_testbed"]
-layers = ["runs", "stack", "python_coverage", "records : artifacts"]
+layers = ["runs", "stack", "python_coverage", "records : artifacts : faults : pytest_suite"]
