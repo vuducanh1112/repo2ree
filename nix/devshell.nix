@@ -92,11 +92,12 @@ devPkgs.mkShell {
 
     # The chromium revision directory is named for playwright's own build
     # number, which moves whenever playwright-driver does — it went 1200 ->
-    # 1228 on the nixpkgs bump that brought otel 1.43, and a hardcoded number
-    # silently points at nothing. Resolve it instead, and say so loudly if the
-    # layout ever changes shape, because the alternative is every browser suite
-    # failing on a path that looks plausible.
-    __shell=(${devPkgs.playwright-driver.browsers}/chromium_headless_shell-*/chrome-linux/headless_shell)
+    # 1228 -> 1248 — and the directory under it names the platform
+    # (chrome-headless-shell-linux-arm64 since 1.64; chrome-linux before), so a
+    # hardcoded path silently points at nothing. Resolve it instead, and say so
+    # loudly if the layout ever changes shape, because the alternative is every
+    # browser suite failing on a path that looks plausible.
+    __shell=(${devPkgs.playwright-driver.browsers}/chromium_headless_shell-*/chrome-headless-shell-linux*/chrome-headless-shell)
     if [ -x "''${__shell[0]}" ]; then
       export PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH="''${__shell[0]}"
     else
