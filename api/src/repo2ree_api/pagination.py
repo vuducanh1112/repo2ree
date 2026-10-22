@@ -1,19 +1,16 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from typing import TypeVar
 
 from fastapi import HTTPException
 
 _KEYSET_SEP = "~"
 
-# The paginated item. Generic because keyset pagination is about the *key*, not
+
+# ItemT is the paginated item. Generic because keyset pagination is about the *key*, not
 # the payload: a route that projects a typed summary before paginating should
 # not have to widen it back to a dict to get a page out.
-ItemT = TypeVar("ItemT")
-
-
-def keyset_paginate(
+def keyset_paginate[ItemT](
     items: Sequence[ItemT],
     *,
     cursor: str | None,

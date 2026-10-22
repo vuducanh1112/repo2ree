@@ -520,9 +520,11 @@ def test_observe_timeout_returns_unchanged_active_run():
         "build",
         {},
         "build",
-        lambda e, r: ActionResult(status="succeeded")
-        if release.wait(timeout=5.0)
-        else ActionResult.failed("timeout", "runner wait timed out", origin="api"),
+        lambda e, r: (
+            ActionResult(status="succeeded")
+            if release.wait(timeout=5.0)
+            else ActionResult.failed("timeout", "runner wait timed out", origin="api")
+        ),
     )
     _wait_for(registry, run["run_id"], frozenset({"running"}))
 

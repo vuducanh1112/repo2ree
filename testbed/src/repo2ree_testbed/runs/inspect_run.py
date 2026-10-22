@@ -111,8 +111,10 @@ def write_test_index(directory: Path, test: RunTest) -> None:
 def write_run_index(root: Path, run: RunRecord) -> None:
     body = [
         f"<h1>{html.escape(run.tier)} run</h1>",
-        f"<p class='muted'>{html.escape(root.name)} · build {html.escape(run.build_revision or '?')} · "
-        f"each test on a fresh stack</p>",
+        (
+            f"<p class='muted'>{html.escape(root.name)} · build {html.escape(run.build_revision or '?')} · "
+            f"each test on a fresh stack</p>"
+        ),
         "<table><tr><th>Test</th><th>Outcome</th><th>Behaviour</th><th>Duration</th><th>REEs</th></tr>",
     ]
     body += [

@@ -30,14 +30,18 @@ _CATALOG: dict[str, tuple[WarningSeverity, bool, str]] = {
     "ambiguous_build_context": (
         "error",
         True,
-        "A Dockerfile was found below the logical project root, but its build "
-        "context cannot be determined without explicit evidence.",
+        (
+            "A Dockerfile was found below the logical project root, but its build "
+            "context cannot be determined without explicit evidence."
+        ),
     ),
     "runtime_declaration_missing": (
         "warning",
         True,
-        "No runtime artifact path is declared on the REE intent; set it before "
-        "the build candidate can be considered complete.",
+        (
+            "No runtime artifact path is declared on the REE intent; set it before "
+            "the build candidate can be considered complete."
+        ),
     ),
     "runtime_outside_project_root": (
         "error",
@@ -47,8 +51,10 @@ _CATALOG: dict[str, tuple[WarningSeverity, bool, str]] = {
     "pip_environment_strategy": (
         "info",
         False,
-        "Builds a Python virtual environment from requirements.txt with pip and packs it as the "
-        "runtime artifact — no container. Confirm this strategy before writing.",
+        (
+            "Builds a Python virtual environment from requirements.txt with pip and packs it as the "
+            "runtime artifact — no container. Confirm this strategy before writing."
+        ),
     ),
     "python_version_unknown": (
         "warning",
@@ -89,22 +95,28 @@ _CATALOG: dict[str, tuple[WarningSeverity, bool, str]] = {
     "venv_restore_dir_assumed": (
         "warning",
         True,
-        "The packed venv does not record the directory it was built in, so it will be restored to the "
-        "default location; if it was built elsewhere, restoration will fail — confirm VENV_DIR in the "
-        "generated script points at the path the venv was built at before running.",
+        (
+            "The packed venv does not record the directory it was built in, so it will be restored to the "
+            "default location; if it was built elsewhere, restoration will fail — confirm VENV_DIR in the "
+            "generated script points at the path the venv was built at before running."
+        ),
     ),
     # --- activation / experiment command ---
     "activation_command_missing": (
         "warning",
         True,
-        "No activation command was selected; edit the 'set --' line to define a finite command that "
-        "proves the runtime is usable before running activation.",
+        (
+            "No activation command was selected; edit the 'set --' line to define a finite command that "
+            "proves the runtime is usable before running activation."
+        ),
     ),
     "experiment_command_missing": (
         "warning",
         True,
-        "No experiment command was selected; edit the 'set --' line to define the command whose result "
-        "you intend to preserve before running the experiment.",
+        (
+            "No experiment command was selected; edit the 'set --' line to define the command whose result "
+            "you intend to preserve before running the experiment."
+        ),
     ),
     "experiment_not_declared": (
         "error",
@@ -114,8 +126,10 @@ _CATALOG: dict[str, tuple[WarningSeverity, bool, str]] = {
     "experiment_output_declaration_missing": (
         "warning",
         True,
-        "The generated log path is not among the experiment's declared output_paths; declare it so the "
-        "result is captured and disclosed.",
+        (
+            "The generated log path is not among the experiment's declared output_paths; declare it so the "
+            "result is captured and disclosed."
+        ),
     ),
     "possibly_long_running": (
         "info",
@@ -125,8 +139,10 @@ _CATALOG: dict[str, tuple[WarningSeverity, bool, str]] = {
     "shell_required_in_runtime": (
         "info",
         False,
-        "A detected candidate is a shell-form command; it is offered verbatim and needs a shell in the "
-        "runtime (make it explicit with 'set -- sh -c ...').",
+        (
+            "A detected candidate is a shell-form command; it is offered verbatim and needs a shell in the "
+            "runtime (make it explicit with 'set -- sh -c ...')."
+        ),
     ),
 }
 

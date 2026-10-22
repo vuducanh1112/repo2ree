@@ -19,8 +19,10 @@ _CATALOG: dict[str, tuple[FindingTier, FindingSeverity, bool, str]] = {
         "contract",
         "warning",
         False,
-        "An EDIT-ME placeholder from the starter template is still in place, so the claim it "
-        "stands for has not been written yet.",
+        (
+            "An EDIT-ME placeholder from the starter template is still in place, so the claim it "
+            "stands for has not been written yet."
+        ),
     ),
     "empty_command_scaffold": (
         "contract",
@@ -32,15 +34,19 @@ _CATALOG: dict[str, tuple[FindingTier, FindingSeverity, bool, str]] = {
         "contract",
         "warning",
         False,
-        "The runtime artifact path declared on the REE does not appear anywhere in this script, "
-        "so this script may not use the runtime the REE ships.",
+        (
+            "The runtime artifact path declared on the REE does not appear anywhere in this script, "
+            "so this script may not use the runtime the REE ships."
+        ),
     ),
     "exit_status_masked_by_pipe": (
         "contract",
         "warning",
         False,
-        "The command is piped, so the exit status reported is the last stage's and a failing run "
-        "can be recorded as a pass. Redirect to a file instead.",
+        (
+            "The command is piped, so the exit status reported is the last stage's and a failing run "
+            "can be recorded as a pass. Redirect to a file instead."
+        ),
     ),
 }
 

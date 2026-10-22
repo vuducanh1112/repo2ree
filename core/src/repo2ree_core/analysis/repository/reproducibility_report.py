@@ -22,7 +22,7 @@ invariants that the type system cannot express.
 from __future__ import annotations
 
 import re
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, computed_field
@@ -34,7 +34,7 @@ from repo2ree_core.domain.dependency import Dependency, DependencyInventory
 # ================================================
 
 
-class ThreatCategory(str, Enum):
+class ThreatCategory(StrEnum):
     # Independent reproducibility dimensions, each scored on its own axis rather
     # than a single linear ladder. Dependency declaration (what software is
     # installed), environment capture (the container / declarative software
@@ -75,7 +75,7 @@ class MachineLevel(int, Enum):
         return {0: "None", 1: "Virtual machine"}[self.value]
 
 
-class Severity(str, Enum):
+class Severity(StrEnum):
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"

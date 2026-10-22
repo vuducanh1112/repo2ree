@@ -33,9 +33,11 @@ def live_store_volume() -> str:
     return capture(
         [
             *("uv", "run", "--package", "repo2ree-provider-docker", "python", "-c"),
-            "import sys; from repo2ree_provider_docker.injection import load_injection_bundle; "
-            "bundle = load_injection_bundle(sys.argv[1], sys.argv[2] or None); "
-            'print(bundle.volume_name if bundle else "")',
+            (
+                "import sys; from repo2ree_provider_docker.injection import load_injection_bundle; "
+                "bundle = load_injection_bundle(sys.argv[1], sys.argv[2] or None); "
+                'print(bundle.volume_name if bundle else "")'
+            ),
             str(exec_bundle),
             tools,
         ]
