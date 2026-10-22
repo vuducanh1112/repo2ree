@@ -53,8 +53,10 @@ def render_markdown(spec: Spec, result: CheckResult) -> str:
     lines = [
         "# Behaviour conformance",
         "",
-        f"**Verdict: {MARK[result.verdict]}** against specification `{result.spec_digest}` "
-        f"(vocabulary `{result.vocabulary_digest}`).",
+        (
+            f"**Verdict: {MARK[result.verdict]}** against specification `{result.spec_digest}` "
+            f"(vocabulary `{result.vocabulary_digest}`)."
+        ),
         "",
         "## Rules",
         "",

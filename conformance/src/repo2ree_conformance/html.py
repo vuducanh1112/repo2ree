@@ -79,9 +79,11 @@ def render_html(spec: Spec, result: CheckResult) -> str:
         "<meta name='viewport' content='width=device-width, initial-scale=1'>",
         f"<title>Behaviour Conformance</title><style>{STYLE}</style></head><body><main>",
         "<h1>Behaviour conformance</h1>",
-        f"<p>{_badge(result.verdict)} <span class='muted'>against specification "
-        f"<code>{escape(result.spec_digest)}</code>, vocabulary "
-        f"<code>{escape(result.vocabulary_digest)}</code></span></p>",
+        (
+            f"<p>{_badge(result.verdict)} <span class='muted'>against specification "
+            f"<code>{escape(result.spec_digest)}</code>, vocabulary "
+            f"<code>{escape(result.vocabulary_digest)}</code></span></p>"
+        ),
     ]
     findings = [(rule, finding) for rule in result.rules for finding in rule.findings]
     parts.append("<h2>Findings</h2>")
@@ -100,8 +102,10 @@ def render_html(spec: Spec, result: CheckResult) -> str:
     else:
         parts.append("<p class='muted'>None.</p>")
     parts += [
-        "<h2>Rules</h2><div class='scroll'><table><tr><th>Rule</th><th>Verdict</th><th>Triggered</th>"
-        "<th>Open</th><th>Summary</th></tr>"
+        (
+            "<h2>Rules</h2><div class='scroll'><table><tr><th>Rule</th><th>Verdict</th><th>Triggered</th>"
+            "<th>Open</th><th>Summary</th></tr>"
+        )
     ]
     parts += [
         f"<tr><td><code>{escape(rule.rule)}</code></td><td>{_badge(rule.verdict)}</td>"
@@ -110,8 +114,10 @@ def render_html(spec: Spec, result: CheckResult) -> str:
     ]
     parts.append("</table></div>")
     parts += [
-        "<h2>System</h2><p class='muted'>Processes, the components they host, the entities each component owns, "
-        "boundaries (thick) and cross-entity invariants (dashed). Drawn from the specification.</p>",
+        (
+            "<h2>System</h2><p class='muted'>Processes, the components they host, the entities each component owns, "
+            "boundaries (thick) and cross-entity invariants (dashed). Drawn from the specification.</p>"
+        ),
         f"<div class='card'>{_mermaid(system_map(spec))}</div>",
     ]
     parts.append(
