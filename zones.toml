@@ -44,7 +44,7 @@ protected = true
 [gates.groups.behaviour]
 summary = "Certifies a tree by its tests' outcomes, verdicts, and coverage."
 [gates.groups.behaviour.paths]
-"just/behaviour.just" = "`behaviour-gate`, the tiers it runs, `judge-e2e`, `repo-map`"
+"just/behaviour.just" = "`behaviour-gate`, the tiers it runs, and `judge-e2e`"
 "scripts/publish/behaviour_gate.py" = "Judges per-test runs and writes the behaviour receipt"
 "scripts/tests/test_behaviour_gate.py" = "Its tests"
 

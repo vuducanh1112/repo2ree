@@ -67,6 +67,11 @@ collect-behaviour control_plane output *rees:
 generate-behaviour:
     python -m repo2ree_conformance generate
 
+# Print the behaviour specification as JSON (repo2ree-behaviour-spec/1), as of a Git revision if given, or write it to output.
+[group('Assurance')]
+export-behaviour-spec rev="" output="":
+    python -m repo2ree_conformance export {{ if rev != "" { "--at " + quote(rev) } else { "" } }} {{ if output != "" { "-o " + quote(output) } else { "" } }}
+
 # Every e2e run leaves one recording per test (a whole-suite run, one for the suite) under its run directory.
 E2E_RUNS_DIR := REPO2REE_TEST_RUN_DIR + "/e2e"
 

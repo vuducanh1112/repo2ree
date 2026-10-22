@@ -66,9 +66,16 @@ generate-diagrams: generate-architecture-diagrams generate-domain-diagrams gener
     @printf '>> diagrams written under %s\n' {{ quote(DIAGRAM_DIR + "/") }}
 
 # Build the repository overview in reports/overview/<revision>/ (reports/overview/latest): zones, gates, behaviour, architecture, recipes, configuration, API.
-[group('Diagrams')]
+[group('Repository')]
 repo-overview: generate-diagrams
     python -m repo2ree_repoview overview
+
+# With paths, place each in its zone; with --export, print the zones and each tracked file's place as JSON
+# (repo2ree-zones/1). `python scripts/zones.py verify` reports unclaimed files and empty entries.
+# Draw the repository by zone: what each part is for, and which parts humans review.
+[group('Repository')]
+repo-map *paths:
+    python scripts/zones.py {{ if paths == "--export" { "export" } else { "map " + paths } }}
 
 # Generate the declared Just recipe dependency graph.
 [group('Diagrams')]

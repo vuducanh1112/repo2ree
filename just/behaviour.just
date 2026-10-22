@@ -53,9 +53,3 @@ judge-e2e *runs:
     fi
     [[ -n "${runs// /}" ]] || { echo "no per-test run under {{ REPO2REE_TEST_RUN_DIR }}/e2e" >&2; exit 2; }
     python scripts/publish/behaviour_gate.py judge $runs
-
-# With paths, place each in its zone; `python scripts/zones.py verify` reports unclaimed files and empty entries.
-# Draw the repository by zone: what each part is for, and which parts humans review.
-[group('Behaviour')]
-repo-map *paths:
-    python scripts/zones.py map {{ paths }}
