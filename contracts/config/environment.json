@@ -362,6 +362,20 @@
         "type": "string"
       }
     },
+    "CHAOS_SEEDS": {
+      "kind": "internal",
+      "owner": "chaos-suite",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "CHAOS_STEPS": {
+      "kind": "internal",
+      "owner": "chaos-suite",
+      "schema": {
+        "type": "string"
+      }
+    },
     "COVERAGE_FILE": {
       "kind": "external",
       "owner": "coverage",

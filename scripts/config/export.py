@@ -24,6 +24,8 @@ NON_SERVICE_ENVIRONMENT: dict[str, tuple[str, str]] = {
     "DEPLOY_ENV": ("protocol", "runtime"),
     "DOCKERHUB_NAMESPACE": ("publishing", "deployment"),
     "DOCKERHUB_REGISTRY": ("publishing", "deployment"),
+    "CHAOS_SEEDS": ("chaos-suite", "internal"),
+    "CHAOS_STEPS": ("chaos-suite", "internal"),
     "E2E_API_BASE_URL": ("playwright", "internal"),
     "E2E_RECORDING_DIR": ("test-recording", "internal"),
     "E2E_BASE_URL": ("playwright", "internal"),
