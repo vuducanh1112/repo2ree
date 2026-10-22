@@ -12,17 +12,16 @@ sees where it came from, and carries the full facts in a <metadata> element for 
 from __future__ import annotations
 
 import argparse
-import datetime
 import hashlib
 import html
 import json
 import re
-import subprocess
 import tempfile
 from pathlib import Path
-from typing import Any
 
-from repo2ree_repoview.repository import ROOT
+from pydantic import TypeAdapter, ValidationError
+
+from repo2ree_repoview.repository import Provenance
 
 METADATA = re.compile(r"<metadata id=\"repo2ree-provenance\">.*?</metadata>\s*", re.DOTALL)
 FOOTER = re.compile(
@@ -32,28 +31,26 @@ VIEWBOX = re.compile(r'viewBox="(?P<x>[-\d.]+) (?P<y>[-\d.]+) (?P<w>[-\d.]+) (?P
 HEIGHT = re.compile(r'\bheight="(?P<value>[\d.]+)(?P<unit>[a-z]*)"')
 
 
-def git(*args: str) -> str:
-    return subprocess.run(["git", *args], cwd=ROOT, check=True, capture_output=True, text=True).stdout.strip()
+class Stamp(Provenance):
+    """Where a generated file came from, and the recipe that generated it."""
+
+    by: str
 
 
-def provenance(recipe: str) -> dict[str, Any]:
-    status = git("status", "--porcelain")
-    working = git("diff", "HEAD", "--binary") + status
-    return {
-        "revision": git("rev-parse", "HEAD"),
-        "tree": git("rev-parse", "HEAD^{tree}"),
-        "dirty": bool(status),
-        "working_tree_sha256": hashlib.sha256(working.encode()).hexdigest() if status else None,
-        "generated": datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds"),
-        "by": recipe,
-    }
+class Recorded(Stamp):
+    """A manifest entry: the stamp, and the digest of the file as stamped."""
+
+    sha256: str
 
 
-def label(facts: dict[str, Any]) -> str:
+_MANIFEST = TypeAdapter[dict[str, Recorded]](dict[str, Recorded])
+
+
+def label(stamp: Stamp) -> str:
     """The footer's line: the commit first, since that is what a reader needs."""
-    changes = " + uncommitted changes" if facts.get("dirty") else ""
-    generated = str(facts.get("generated", "")).replace("T", " ").replace("+00:00", " UTC")
-    return f"repo2ree {str(facts['revision'])[:10]}{changes} · {generated} · {facts.get('by', '')}"
+    changes = " + uncommitted changes" if stamp.dirty else ""
+    generated = stamp.generated.replace("T", " ").replace("+00:00", " UTC")
+    return f"repo2ree {stamp.revision[:10]}{changes} · {generated} · {stamp.by}"
 
 
 def unstamp(svg: str) -> str:
@@ -72,7 +69,7 @@ def unstamp(svg: str) -> str:
     return svg[: opening.start()] + root + svg[opening.end() :]
 
 
-def stamp_svg(path: Path, facts: dict[str, Any]) -> None:
+def stamp_svg(path: Path, stamp: Stamp) -> None:
     """Add a footer strip naming the commit below the drawing, and the facts as <metadata>; replaces a stamp."""
     svg = unstamp(path.read_text(encoding="utf-8"))
     opening = re.search(r"<svg\b[^>]*>\s*", svg)
@@ -87,13 +84,14 @@ def stamp_svg(path: Path, facts: dict[str, Any]) -> None:
     if old_height:
         grown = float(old_height["value"]) * (height + strip) / height
         root = HEIGHT.sub(f'height="{grown:g}{old_height["unit"]}"', root, count=1)
-    metadata = f'<metadata id="repo2ree-provenance">{html.escape(json.dumps(facts, sort_keys=True))}</metadata>\n'
+    facts = json.dumps(stamp.model_dump(), sort_keys=True)
+    metadata = f'<metadata id="repo2ree-provenance">{html.escape(facts)}</metadata>\n'
     footer = (
         f'<g id="repo2ree-stamp" data-viewbox="{viewbox["x"]} {viewbox["y"]} {viewbox["w"]} {viewbox["h"]}" '
         f'data-height="{old_height["value"] + old_height["unit"] if old_height else ""}">'
         f'<rect x="{x:g}" y="{y + height:g}" width="{width:g}" height="{strip:g}" fill="#f8fafc"/>'
         f'<text x="{x + width - font * 0.6:g}" y="{y + height + strip * 0.68:g}" text-anchor="end" '
-        f'font-family="ui-monospace,monospace" font-size="{font:g}" fill="#475569">{html.escape(label(facts))}</text>'
+        f'font-family="ui-monospace,monospace" font-size="{font:g}" fill="#475569">{html.escape(label(stamp))}</text>'
         "</g>\n"
     )
     body = svg[opening.end() :]
@@ -103,20 +101,27 @@ def stamp_svg(path: Path, facts: dict[str, Any]) -> None:
     )
 
 
-def read_svg_stamp(path: Path) -> dict[str, Any] | None:
-    """The facts an SVG carries, or None when it was never stamped."""
+def read_svg_stamp(path: Path) -> Stamp | None:
+    """The stamp an SVG carries, or None when it carries none this version can read."""
     found = re.search(r"<metadata id=\"repo2ree-provenance\">(.*?)</metadata>", path.read_text(encoding="utf-8"))
-    return json.loads(html.unescape(found.group(1))) if found else None
+    if found is None:
+        return None
+    try:
+        return Stamp.model_validate_json(html.unescape(found.group(1)))
+    except ValidationError:
+        return None
 
 
-def record(manifest: Path, files: list[Path], facts: dict[str, Any]) -> None:
-    entries: dict[str, Any] = json.loads(manifest.read_text()) if manifest.is_file() else {}
+def record(manifest: Path, files: list[Path], stamp: Stamp) -> None:
+    entries = _MANIFEST.validate_json(manifest.read_bytes()) if manifest.is_file() else {}
     for path in files:
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
-        entries[str(path.resolve().relative_to(manifest.parent.resolve()))] = facts | {"sha256": digest}
+        entries[str(path.resolve().relative_to(manifest.parent.resolve()))] = Recorded(
+            **stamp.model_dump(), sha256=digest
+        )
     manifest.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile("w", dir=manifest.parent, delete=False) as pending:
-        pending.write(json.dumps(dict(sorted(entries.items())), indent=2) + "\n")
+    with tempfile.NamedTemporaryFile("wb", dir=manifest.parent, delete=False) as pending:
+        pending.write(_MANIFEST.dump_json(dict(sorted(entries.items())), indent=2) + b"\n")
     Path(pending.name).replace(manifest)
 
 
@@ -126,11 +131,11 @@ def main() -> int:
     parser.add_argument("--by", required=True, help="the recipe that generated the files")
     parser.add_argument("files", nargs="+", type=Path)
     args = parser.parse_args()
-    facts = provenance(args.by)
+    stamp = Stamp(**Provenance.now().model_dump(), by=args.by)
     for path in args.files:
         if path.suffix == ".svg":
-            stamp_svg(path, facts)
-    record(args.manifest, args.files, facts)
+            stamp_svg(path, stamp)
+    record(args.manifest, args.files, stamp)
     return 0
 
 

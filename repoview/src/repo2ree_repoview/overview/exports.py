@@ -2,51 +2,97 @@
 
 Both come from their owners as JSON (``python -m repo2ree_conformance export``,
 ``python scripts/zones.py export``), so the views never import the checker or the
-guard. These classes are this package's own typed view of those documents, and a
+guard. These models are this package's own typed view of those documents, and a
 document in a format they do not know is refused rather than half read.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any
+import subprocess
+import sys
+from typing import Annotated, Any, ClassVar, Literal
 
-SPEC_FORMAT = "repo2ree-behaviour-spec/1"
-ZONES_FORMAT = "repo2ree-zones/1"
+from pydantic import ConfigDict, Field, model_validator
 
+from repo2ree_repoview.documents import Document
+from repo2ree_repoview.repository import ROOT
 
-def _require(document: dict[str, Any], expected: str) -> None:
-    if document.get("format") != expected:
-        raise ValueError(f"expected a {expected} document, got {document.get('format')!r}")
-
-
-def _names(values: list[str] | None) -> tuple[str, ...]:
-    return tuple(values or ())
+# The owners' exports, and the commands that produce them.
+SPEC_EXPORT = (sys.executable, "-m", "repo2ree_conformance", "export")
+ZONES_EXPORT = (sys.executable, "scripts/zones.py", "export")
 
 
-def _named_lists(values: dict[str, list[str]] | None) -> dict[str, tuple[str, ...]]:
-    return {name: tuple(items) for name, items in (values or {}).items()}
+def exported(command: tuple[str, ...]) -> str:
+    return subprocess.run(command, cwd=ROOT, check=True, capture_output=True, text=True).stdout
+
+
+def shown(command: tuple[str, ...]) -> str:
+    """The export command as a reader would type it."""
+    return " ".join(("python", *command[1:]))
+
+
+class Export(Document):
+    FORMAT: ClassVar[str]
+
+    format: str
+
+    @model_validator(mode="before")
+    @classmethod
+    def _known_format(cls, data: Any) -> Any:
+        found = data.get("format") if isinstance(data, dict) else None
+        if found != cls.FORMAT:
+            raise ValueError(f"expected a {cls.FORMAT} document, got {found!r}")
+        return data
+
+
+# ---------------------------------------------------------------------------- conditions
+
+type Scalar = str | bool | int | float | None
+
+
+class _Condition(Document):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+
+class OneOf(_Condition):
+    """``{"in": [...]}``: the fact is one of the values."""
+
+    values: tuple[Scalar, ...] = Field(alias="in")
+
+
+class NotEqual(_Condition):
+    """``{"not": value}``: the fact is present and is not the value."""
+
+    value: Scalar = Field(alias="not")
+
+
+class PerFact(_Condition):
+    """``{"per": fact, "in": {...}}``: the values allowed depend on the trigger's ``fact``."""
+
+    fact: str = Field(alias="per")
+    cases: dict[str, tuple[Scalar, ...]] = Field(alias="in")
+
+
+type Condition = PerFact | OneOf | NotEqual | Scalar
+type Conditions = dict[str, Condition]
 
 
 # ---------------------------------------------------------------------------- specification
 
 
-@dataclass(frozen=True)
-class Component:
+class Component(Document):
     name: str
     process: str
     summary: str
 
 
-@dataclass(frozen=True)
-class Transition:
-    source: str
-    targets: tuple[str, ...]
-    why: str
+class Transition(Document):
+    source: str = Field(alias="from")
+    targets: tuple[str, ...] = Field(alias="to")
+    why: str = ""
 
 
-@dataclass(frozen=True)
-class Entity:
+class Entity(Document):
     name: str
     owner: str
     key: str
@@ -55,7 +101,7 @@ class Entity:
     summary: str
     initial: tuple[str, ...]
     terminal: tuple[str, ...]
-    settles_before_close: bool | str
+    settles_before_close: bool | Literal["final"]
     states: dict[str, str]
     facts: dict[str, str]
     required: dict[str, tuple[str, ...]]
@@ -66,25 +112,30 @@ class Entity:
     edges: dict[str, tuple[str, ...]]
 
 
-@dataclass(frozen=True)
-class Side:
-    """One side of a citation: an entity's record on reaching a state, or a boundary message."""
+class EntitySide(Document):
+    """An entity's record on reaching a state, naming (or named by) the other side in ``fact``."""
 
-    kind: str
-    entity: str = ""
-    reached: str = ""
-    message: str = ""
+    kind: Literal["entity"]
+    entity: str
+    reached: str
+    fact: str
+
+
+class MessageSide(Document):
+    kind: Literal["message"]
+    message: str
     fact: str = ""
 
 
-@dataclass(frozen=True)
-class Citation:
+type Side = Annotated[EntitySide | MessageSide, Field(discriminator="kind")]
+
+
+class Citation(Document):
     by: Side
     cited: Side
 
 
-@dataclass(frozen=True)
-class Boundary:
+class Boundary(Document):
     name: str
     sender: str
     receiver: str
@@ -99,46 +150,73 @@ class Boundary:
     cites: tuple[Citation, ...]
 
 
-@dataclass(frozen=True)
-class Trigger:
-    """``entity`` (an entity reaching ``to``, optionally ``from``) or ``message`` (a boundary message)."""
+class EntityTrigger(Document):
+    """An entity reaching one of ``to``, optionally from one of ``source``."""
 
-    kind: str
-    entity: str = ""
-    source: tuple[str, ...] = ()
-    to: tuple[str, ...] = ()
-    boundary: str = ""
-    message: str = ""
-    where: dict[str, Any] = field(default_factory=dict)
+    kind: Literal["entity"]
+    entity: str
+    source: tuple[str, ...] = Field(default=(), alias="from")
+    to: tuple[str, ...]
+    where: Conditions = Field(default_factory=dict)
 
 
-@dataclass(frozen=True)
-class Requirement:
-    """``entity``, ``message``, ``guard`` (a condition on the trigger), or ``exclusion``."""
-
-    kind: str
-    entity: str = ""
-    key_from: str = ""
-    reached: tuple[str, ...] = ()
-    order: str = "any"
-    boundary: str = ""
-    message: str = ""
-    in_states: tuple[str, ...] = ()
-    where: dict[str, Any] = field(default_factory=dict)
+class MessageTrigger(Document):
+    kind: Literal["message"]
+    boundary: str
+    message: str
+    where: Conditions = Field(default_factory=dict)
 
 
-@dataclass(frozen=True)
-class Invariant:
+type Trigger = Annotated[EntityTrigger | MessageTrigger, Field(discriminator="kind")]
+
+
+class EntityRequirement(Document):
+    kind: Literal["entity"]
+    entity: str
+    key_from: str
+    reached: tuple[str, ...]
+    where: Conditions = Field(default_factory=dict)
+    order: Literal["any", "before"] = "any"
+
+
+class MessageRequirement(Document):
+    kind: Literal["message"]
+    boundary: str
+    message: str
+    key_from: str
+    order: Literal["any", "before"] = "any"
+
+
+class GuardRequirement(Document):
+    """A condition on the trigger itself."""
+
+    kind: Literal["guard"]
+    where: Conditions
+
+
+class ExclusionRequirement(Document):
+    kind: Literal["exclusion"]
+    entity: str
+    in_states: tuple[str, ...]
+
+
+type Requirement = Annotated[
+    EntityRequirement | MessageRequirement | GuardRequirement | ExclusionRequirement, Field(discriminator="kind")
+]
+
+
+class Invariant(Document):
     id: str
     pattern: str
     summary: str
     when: Trigger
-    require: Requirement | None
-    eventually: tuple[str, ...]
+    require: Requirement | None = None
+    eventually: tuple[str, ...] = ()
 
 
-@dataclass(frozen=True)
-class Spec:
+class Spec(Export):
+    FORMAT = "repo2ree-behaviour-spec/1"
+
     digest: str
     vocabulary_digest: str
     components: dict[str, Component]
@@ -147,166 +225,41 @@ class Spec:
     invariants: tuple[Invariant, ...]
 
 
-def _side(raw: dict[str, Any]) -> Side:
-    return Side(
-        kind=raw["kind"],
-        entity=raw.get("entity", ""),
-        reached=raw.get("reached", ""),
-        message=raw.get("message", ""),
-        fact=raw.get("fact", ""),
-    )
-
-
-def _entity(raw: dict[str, Any]) -> Entity:
-    return Entity(
-        name=raw["name"],
-        owner=raw["owner"],
-        key=raw["key"],
-        partition=raw["partition"],
-        evidence=raw["evidence"],
-        summary=raw["summary"],
-        initial=_names(raw["initial"]),
-        terminal=_names(raw["terminal"]),
-        settles_before_close=raw["settles_before_close"],
-        states=dict(raw["states"]),
-        facts=dict(raw["facts"]),
-        required=_named_lists(raw["required"]),
-        allowed=_named_lists(raw["allowed"]),
-        meanings={fact: dict(values) for fact, values in raw["meanings"].items()},
-        groups={fact: _named_lists(groups) for fact, groups in raw["groups"].items()},
-        transitions=tuple(Transition(t["from"], _names(t["to"]), t.get("why", "")) for t in raw["transitions"]),
-        edges=_named_lists(raw["edges"]),
-    )
-
-
-def _boundary(raw: dict[str, Any]) -> Boundary:
-    return Boundary(
-        name=raw["name"],
-        sender=raw["sender"],
-        receiver=raw["receiver"],
-        key=raw["key"],
-        partition=raw["partition"],
-        summary=raw["summary"],
-        request=raw["request"],
-        responses=_names(raw["responses"]),
-        messages=dict(raw["messages"]),
-        facts={message: dict(facts) for message, facts in raw["facts"].items()},
-        required=_named_lists(raw["required"]),
-        cites=tuple(Citation(_side(cite["by"]), _side(cite["cited"])) for cite in raw["cites"]),
-    )
-
-
-def _trigger(raw: dict[str, Any]) -> Trigger:
-    return Trigger(
-        kind=raw["kind"],
-        entity=raw.get("entity", ""),
-        source=_names(raw.get("from")),
-        to=_names(raw.get("to")),
-        boundary=raw.get("boundary", ""),
-        message=raw.get("message", ""),
-        where=dict(raw.get("where") or {}),
-    )
-
-
-def _requirement(raw: dict[str, Any] | None) -> Requirement | None:
-    if raw is None:
-        return None
-    return Requirement(
-        kind=raw["kind"],
-        entity=raw.get("entity", ""),
-        key_from=raw.get("key_from", ""),
-        reached=_names(raw.get("reached")),
-        order=raw.get("order", "any"),
-        boundary=raw.get("boundary", ""),
-        message=raw.get("message", ""),
-        in_states=_names(raw.get("in_states")),
-        where=dict(raw.get("where") or {}),
-    )
-
-
-def read_spec(document: dict[str, Any]) -> Spec:
-    _require(document, SPEC_FORMAT)
-    return Spec(
-        digest=document["digest"],
-        vocabulary_digest=document["vocabulary_digest"],
-        components={name: Component(**raw) for name, raw in document["components"].items()},
-        entities={name: _entity(raw) for name, raw in document["entities"].items()},
-        boundaries={name: _boundary(raw) for name, raw in document["boundaries"].items()},
-        invariants=tuple(
-            Invariant(
-                id=raw["id"],
-                pattern=raw["pattern"],
-                summary=raw["summary"],
-                when=_trigger(raw["when"]),
-                require=_requirement(raw.get("require")),
-                eventually=_names(raw.get("eventually")),
-            )
-            for raw in document["invariants"]
-        ),
-    )
-
-
 # ---------------------------------------------------------------------------- zones
 
 
-@dataclass(frozen=True)
-class Entry:
+class Entry(Document):
     path: str
-    zone: str
-    group: str
     description: str
 
 
-@dataclass(frozen=True)
-class Group:
+class Group(Document):
     name: str
     summary: str
     entries: tuple[Entry, ...]
 
 
-@dataclass(frozen=True)
-class Zone:
+class Zone(Document):
     name: str
     summary: str
     protected: bool
     groups: tuple[Group, ...]
 
-
-@dataclass(frozen=True)
-class Zones:
-    zones: tuple[Zone, ...]
-    # Each tracked file and the zone it belongs to; None when no entry claims it.
-    files: dict[str, str | None]
-    problems: tuple[str, ...]
-
     @property
-    def entries(self) -> list[Entry]:
-        return [entry for zone in self.zones for group in zone.groups for entry in group.entries]
-
-    def zone(self, name: str) -> Zone:
-        return next(zone for zone in self.zones if zone.name == name)
+    def entries(self) -> tuple[Entry, ...]:
+        return tuple(entry for group in self.groups for entry in group.entries)
 
 
-def read_zones(document: dict[str, Any]) -> Zones:
-    _require(document, ZONES_FORMAT)
-    zones = tuple(
-        Zone(
-            name=zone["name"],
-            summary=zone["summary"],
-            protected=bool(zone["protected"]),
-            groups=tuple(
-                Group(
-                    group["name"],
-                    group["summary"],
-                    tuple(
-                        Entry(entry["path"], zone["name"], group["name"], entry["description"])
-                        for entry in group["entries"]
-                    ),
-                )
-                for group in zone["groups"]
-            ),
-        )
-        for zone in document["zones"]
-    )
-    files = {placed["path"]: placed["zone"] for placed in document["files"]}
-    return Zones(zones, files, tuple(document["problems"]))
+class Placed(Document):
+    """A tracked file and the zone it belongs to; None when no entry claims it."""
+
+    path: str
+    zone: str | None
+
+
+class Zones(Export):
+    FORMAT = "repo2ree-zones/1"
+
+    zones: tuple[Zone, ...]
+    files: tuple[Placed, ...]
+    problems: tuple[str, ...]

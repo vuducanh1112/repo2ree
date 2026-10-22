@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from repo2ree_repoview.overview.exports import Zones
-from repo2ree_repoview.overview.html import esc, filter_box, prose, section
+from repo2ree_repoview.overview.html import Page, esc, filter_box, prose, section
 
 
-def page_zones(declared: Zones) -> str:
+def page_zones(declared: Zones) -> Page:
     parts = []
     for zone in declared.zones:
         badge = '<span class="badge protected">protected</span>' if zone.protected else ""
@@ -29,9 +29,11 @@ def page_zones(declared: Zones) -> str:
         "Every tracked file belongs to the zone of its longest matching entry in <code>zones.toml</code>. "
         "Protected zones are what humans review; a commit touching one touches nothing else."
     )
-    return section(
+    body = section(
         "zones",
         "Zones",
         lede,
         filter_box("zone-list", "Filter paths and descriptions…") + f'<div id="zone-list">{"".join(parts)}</div>{warn}',
     )
+    protected = sum(len(zone.entries) for zone in declared.zones if zone.protected)
+    return Page("zones", "Zones", f"{len(declared.zones)} zones; {protected} protected entries humans review", body)

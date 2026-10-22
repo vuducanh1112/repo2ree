@@ -2,32 +2,27 @@
 
 from __future__ import annotations
 
-import json
-
-from repo2ree_repoview.overview.html import esc, filter_box, section, table
-from repo2ree_repoview.overview.inputs import (
-    OPENAPI,
-)
+from repo2ree_repoview.overview.contracts import OpenApi
+from repo2ree_repoview.overview.html import Page, esc, filter_box, section, table
 
 
-def page_api() -> str:
-    spec = json.loads(OPENAPI.read_text())
-    rows = []
-    for path, methods in spec["paths"].items():
-        for method, operation in methods.items():
-            rows.append(
-                [
-                    esc(", ".join(operation.get("tags", []))),
-                    f"<code>{esc(method.upper())}</code>",
-                    f"<code>{esc(path)}</code>",
-                    esc(operation.get("summary", "")),
-                ]
-            )
+def page_api(api: OpenApi) -> Page:
+    rows = [
+        [
+            esc(", ".join(operation.tags)),
+            f"<code>{esc(method.upper())}</code>",
+            f"<code>{esc(path)}</code>",
+            esc(operation.summary),
+        ]
+        for path, methods in api.paths.items()
+        for method, operation in methods.items()
+    ]
     rows.sort(key=lambda r: (r[0], r[2]))
-    lede = f"{len(rows)} operations on {len(spec['paths'])} paths, from <code>contracts/openapi.json</code>."
-    return section(
+    lede = f"{api.operations} operations on {len(api.paths)} paths, from <code>contracts/openapi.json</code>."
+    body = section(
         "api",
         "API",
         lede,
         filter_box("api-table", "Filter operations…") + table(["Tag", "Method", "Path", "Summary"], rows, "api-table"),
     )
+    return Page("api", "API", f"{api.operations} operations", body)

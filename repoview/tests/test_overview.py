@@ -7,31 +7,46 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from repo2ree_repoview.overview.build import build
-from repo2ree_repoview.overview.exports import read_spec, read_zones
-from repo2ree_repoview.overview.inputs import SPEC_EXPORT, ZONES_EXPORT, exported, sha256
+from repo2ree_repoview.overview.bundle import COMMAND, Bundle, sha256
+from repo2ree_repoview.overview.exports import SPEC_EXPORT, ZONES_EXPORT, Spec, Zones, exported
 from repo2ree_repoview.repository import ROOT
 
 
 def test_the_exports_read_as_the_owners_wrote_them() -> None:
     spec_document = json.loads(exported(SPEC_EXPORT))
-    spec = read_spec(spec_document)
+    spec = Spec.model_validate(spec_document)
     assert spec.digest == spec_document["digest"]
     assert list(spec.entities) == list(spec_document["entities"])
     assert [rule.id for rule in spec.invariants] == [rule["id"] for rule in spec_document["invariants"]]
-    assert all(rule.when.kind in {"entity", "message"} for rule in spec.invariants)
 
-    zones = read_zones(json.loads(exported(ZONES_EXPORT)))
-    assert zones.files["repoview/tests/test_overview.py"] == "tooling"
+    zones = Zones.model_validate_json(exported(ZONES_EXPORT))
+    assert {placed.path: placed.zone for placed in zones.files}["repoview/tests/test_overview.py"] == "tooling"
     assert any(zone.protected for zone in zones.zones)
 
 
 def test_a_document_in_another_format_is_refused() -> None:
-    with pytest.raises(ValueError, match="repo2ree-behaviour-spec/1"):
-        read_spec({"format": "repo2ree-behaviour-spec/0"})
-    with pytest.raises(ValueError, match="repo2ree-zones/1"):
-        read_zones({})
+    with pytest.raises(ValidationError, match=r"expected a repo2ree-behaviour-spec/1 document, got '.*/0'"):
+        Spec.model_validate({"format": "repo2ree-behaviour-spec/0"})
+    with pytest.raises(ValidationError, match="expected a repo2ree-zones/1 document, got None"):
+        Zones.model_validate({})
+
+
+def test_a_bundle_replaces_an_earlier_overview_but_nothing_else(tmp_path: Path) -> None:
+    earlier = tmp_path / "earlier"
+    earlier.mkdir()
+    (earlier / "manifest.json").write_text(json.dumps({"command": COMMAND}))
+    (earlier / "index.html").write_text("old")
+    assert not any(Bundle(earlier, "a" * 40).root.iterdir())
+
+    unrelated = tmp_path / "reports"
+    unrelated.mkdir()
+    (unrelated / "manifest.json").write_text(json.dumps({"graph.svg": {}}))
+    with pytest.raises(FileExistsError, match="refusing to replace it"):
+        Bundle(unrelated, "a" * 40)
+    assert (unrelated / "manifest.json").is_file()
 
 
 def test_the_overview_of_this_tree_is_a_whole_bundle(tmp_path: Path) -> None:

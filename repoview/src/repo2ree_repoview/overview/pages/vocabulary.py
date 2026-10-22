@@ -6,7 +6,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 
 from repo2ree_repoview.overview.exports import Spec
-from repo2ree_repoview.overview.html import esc, section, table
+from repo2ree_repoview.overview.html import Page, esc, section, table
 
 TYPES = {"str": "str", "str?": "str | None", "bool": "bool", "bool?": "bool | None", "int": "int", "int?": "int | None"}
 
@@ -124,7 +124,7 @@ def boundary_code(spec: Spec, name: str) -> str:
     return code(lines)
 
 
-def page_vocabulary(spec: Spec) -> str:
+def page_vocabulary(spec: Spec) -> Page:
     processes: dict[str, list[str]] = defaultdict(list)
     for component in spec.components.values():
         processes[component.process].append(component.name)
@@ -156,4 +156,8 @@ def page_vocabulary(spec: Spec) -> str:
         "<code>contracts/behaviour/events.schema.json</code> "
         f"(vocabulary <code>{esc(spec.vocabulary_digest[:19])}…</code>)."
     )
-    return section("vocabulary", "Vocabulary", lede, body)
+    teaser = (
+        f"{len(spec.entities)} entities and {len(spec.boundaries)} boundary owners record, "
+        f"{sum(len(e.facts) for e in spec.entities.values())} entity facts"
+    )
+    return Page("vocabulary", "Vocabulary", teaser, section("vocabulary", "Vocabulary", lede, body))

@@ -2169,10 +2169,14 @@ version = "0.1.0"
 source = { editable = "repoview" }
 dependencies = [
     { name = "grimp" },
+    { name = "pydantic" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "grimp", specifier = "~=3.15" }]
+requires-dist = [
+    { name = "grimp", specifier = "~=3.15" },
+    { name = "pydantic", specifier = "~=2.11.7" },
+]
 
 [[package]]
 name = "repo2ree-supervisor"

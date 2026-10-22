@@ -8,13 +8,16 @@ first. Recipes with no incoming execution edge share the first rank.
 from __future__ import annotations
 
 import argparse
-import json
-import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from pydantic import Field, JsonValue, ValidationError
+
+from repo2ree_repoview.diagrams import emit
+from repo2ree_repoview.documents import Document
+from repo2ree_repoview.graphviz import inline_svg, quote
 from repo2ree_repoview.repository import ROOT
 
 PALETTE = (
@@ -26,6 +29,35 @@ PALETTE = (
     "#cffafe",
     "#e2e8f0",
 )
+
+
+class _Named(Document):
+    name: str
+
+
+class _Dependency(Document):
+    recipe: str
+
+
+class _Recipe(Document):
+    attributes: tuple[JsonValue, ...] = ()
+    body: tuple[JsonValue, ...] = ()
+    dependencies: tuple[_Dependency, ...] = ()
+    doc: str | None = None
+    parameters: tuple[_Named, ...] = ()
+    priors: int | None = None
+    private: bool = False
+
+    @property
+    def group(self) -> str:
+        for attribute in self.attributes:
+            if isinstance(attribute, dict) and isinstance(attribute.get("group"), str):
+                return str(attribute["group"])
+        return "Ungrouped"
+
+
+class _Dump(Document):
+    recipes: dict[str, _Recipe] = Field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -41,47 +73,43 @@ class Recipe:
     private: bool
     has_body: bool
     dependencies: tuple[Dependency, ...]
+    doc: str = ""
+    parameters: tuple[str, ...] = ()
 
     @property
     def aggregate(self) -> bool:
         return bool(self.dependencies) and not self.has_body
 
 
-def _group(attributes: list[Any]) -> str:
-    for attribute in attributes:
-        if isinstance(attribute, dict) and isinstance(attribute.get("group"), str):
-            return str(attribute["group"])
-    return "Ungrouped"
-
-
 def parse_recipes(document: dict[str, Any]) -> dict[str, Recipe]:
-    """Convert Just's JSON dump into the small model needed for drawing."""
+    """Convert Just's JSON dump into the small model the diagram and the overview draw."""
+    return _recipes(_Dump.model_validate(document))
+
+
+def _recipes(dump: _Dump) -> dict[str, Recipe]:
     parsed: dict[str, Recipe] = {}
-    for name, raw in document.get("recipes", {}).items():
-        dependencies = raw.get("dependencies", [])
-        priors = int(raw.get("priors", len(dependencies)))
+    for name, raw in dump.recipes.items():
+        priors = len(raw.dependencies) if raw.priors is None else raw.priors
         parsed[name] = Recipe(
             name=name,
-            group=_group(raw.get("attributes", [])),
-            private=bool(raw.get("private", False)),
-            has_body=bool(raw.get("body", [])),
+            group=raw.group,
+            private=raw.private,
+            has_body=bool(raw.body),
             dependencies=tuple(
-                Dependency(str(dependency["recipe"]), subsequent=index >= priors)
-                for index, dependency in enumerate(dependencies)
+                Dependency(dependency.recipe, subsequent=index >= priors)
+                for index, dependency in enumerate(raw.dependencies)
             ),
+            doc=raw.doc or "",
+            parameters=tuple(parameter.name for parameter in raw.parameters),
         )
     return parsed
 
 
 def load_recipes() -> dict[str, Recipe]:
-    result = subprocess.run(
-        ["just", "--dump", "--dump-format", "json"],
-        cwd=ROOT,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    return parse_recipes(json.loads(result.stdout))
+    dump = subprocess.run(
+        ["just", "--dump", "--dump-format", "json"], cwd=ROOT, check=True, capture_output=True, text=True
+    ).stdout
+    return _recipes(_Dump.model_validate_json(dump))
 
 
 def dependency_closure(recipes: dict[str, Recipe], root: str) -> set[str]:
@@ -109,10 +137,6 @@ def execution_edges(recipes: dict[str, Recipe]) -> set[tuple[str, str, bool]]:
     return edges
 
 
-def _quoted(value: str) -> str:
-    return json.dumps(value)
-
-
 def render_dot(recipes: dict[str, Recipe], *, root: str = "") -> str:
     selected = dependency_closure(recipes, root) if root else set(recipes)
     visible = {name: recipe for name, recipe in recipes.items() if name in selected}
@@ -137,46 +161,26 @@ def render_dot(recipes: dict[str, Recipe], *, root: str = "") -> str:
         if recipe.private:
             styles.append("dashed")
         attributes = [
-            f"label={_quoted(name)}",
-            f"fillcolor={_quoted(colors[recipe.group])}",
-            f"style={_quoted(','.join(styles))}",
-            f"tooltip={_quoted(recipe.group)}",
+            f"label={quote(name)}",
+            f"fillcolor={quote(colors[recipe.group])}",
+            f"style={quote(','.join(styles))}",
+            f"tooltip={quote(recipe.group)}",
         ]
         if recipe.aggregate:
             attributes.append("penwidth=2.2")
         if name == root:
             attributes.extend(['color="#0f766e"', "penwidth=3.0"])
-        lines.append(f"  {_quoted(name)} [{', '.join(attributes)}];")
+        lines.append(f"  {quote(name)} [{', '.join(attributes)}];")
     if sources:
-        joined = "; ".join(_quoted(name) for name in sources)
+        joined = "; ".join(quote(name) for name in sources)
         lines.extend(["", f"  {{ rank=source; {joined}; }}"])
     if edges:
         lines.append("")
     for tail, head, subsequent in sorted(edges):
         edge_attributes = ' [style=dashed, label="after", color="#a78bfa"]' if subsequent else ""
-        lines.append(f"  {_quoted(tail)} -> {_quoted(head)}{edge_attributes};")
+        lines.append(f"  {quote(tail)} -> {quote(head)}{edge_attributes};")
     lines.append("}")
     return "\n".join(lines) + "\n"
-
-
-def render_svg(dot_source: str) -> str:
-    svg = subprocess.run(["dot", "-Tsvg"], input=dot_source, capture_output=True, text=True, check=True).stdout
-    svg = svg[svg.index("<svg") :]
-    return re.sub(
-        r'width="[\d.]+pt" height="[\d.]+pt"',
-        'class="just-recipe-graph"',
-        svg,
-        count=1,
-    )
-
-
-def emit(content: str, output: Path | None) -> None:
-    if output is None:
-        print(content, end="")
-        return
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(content, encoding="utf-8")
-    print(f"wrote {output}")
 
 
 def main() -> int:
@@ -187,8 +191,8 @@ def main() -> int:
     args = parser.parse_args()
     try:
         dot_source = render_dot(load_recipes(), root=args.root)
-        emit(render_svg(dot_source) if args.format == "svg" else dot_source, args.output)
-    except (json.JSONDecodeError, OSError, ValueError, subprocess.CalledProcessError) as error:
+        emit(inline_svg(dot_source, css_class="just-recipe-graph") if args.format == "svg" else dot_source, args.output)
+    except (OSError, ValueError, ValidationError, subprocess.CalledProcessError) as error:
         parser.exit(1, f"{error}\n")
     return 0
 

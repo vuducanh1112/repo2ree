@@ -28,14 +28,14 @@ from __future__ import annotations
 
 import argparse
 import itertools
-import subprocess
-import sys
 import tomllib
 from collections import Counter
 from pathlib import Path
 
 import grimp
 
+from repo2ree_repoview.diagrams import emit
+from repo2ree_repoview.graphviz import render
 from repo2ree_repoview.repository import ROOT
 
 PYPROJECT = ROOT / "pyproject.toml"
@@ -49,6 +49,8 @@ PALETTE = {
     "repo2ree_supervisor": "#7c3aed",
     "repo2ree_executor": "#0891b2",
     "repo2ree_workbench": "#b45309",
+    "repo2ree_docker": "#be185d",
+    "repo2ree_provider_docker": "#4d7c0f",
 }
 FALLBACK_COLOR = "#64748b"
 
@@ -118,8 +120,8 @@ def build_edges(
     one look identical in a plain arrow, and they are not the same fact about
     how entangled two packages are.
 
-    With ``collapse``, a whole root package becomes the node. Drawing all six
-    packages at module granularity is honest but unreadable — forty-odd boxes
+    With ``collapse``, a whole root package becomes the node. Drawing every
+    package at module granularity is honest but unreadable — dozens of boxes,
     wide enough that the vertical axis stops carrying the layering — and the
     question that view is for ("which package leans on which, how hard") is
     answered by the packages alone.
@@ -268,7 +270,7 @@ def render_dot_collapsed(
     roots: list[str],
     package_ranks: dict[str, int],
 ) -> str:
-    """The workspace as six boxes: no clusters, because each package *is* a box.
+    """The workspace as one box per package: no clusters, because each package *is* a box.
 
     This is the only view where the three workspace-level contracts are visible
     rather than merely asserted — every arrow points down the page exactly when
@@ -367,7 +369,7 @@ def main() -> int:
             text = render_mermaid(nodes, edges, [])
         else:
             text = render_dot_collapsed(nodes, edges, roots, package_ranks)
-        return emit(text, args, parser)
+        return write(text, args, parser)
 
     leaves = find_leaves(nodes, edges, ranks, roots)
     if args.hide_leaves:
@@ -380,25 +382,17 @@ def main() -> int:
     else:
         text = render_dot(nodes, edges, scope, ranks, leaves, package_ranks)
 
-    return emit(text, args, parser)
+    return write(text, args, parser)
 
 
-def emit(text: str, args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
-    """Write the rendered graph where the flags asked for it."""
+def write(text: str, args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
+    """Write the graph in the format the flags asked for; a rendered image only to a file."""
     if args.format in ("svg", "png"):
         if args.output is None:
             parser.error(f"--output is required for {args.format}")
-        args.output.write_bytes(
-            subprocess.run(["dot", f"-T{args.format}"], input=text.encode(), capture_output=True, check=True).stdout
-        )
-        print(f"wrote {args.output}", file=sys.stderr)
-        return 0
-
-    if args.output:
-        args.output.write_text(text, encoding="utf-8")
-        print(f"wrote {args.output}", file=sys.stderr)
+        emit(render(text, args.format), args.output)
     else:
-        sys.stdout.write(text)
+        emit(text, args.output)
     return 0
 
 

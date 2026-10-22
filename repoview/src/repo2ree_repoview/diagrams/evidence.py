@@ -10,7 +10,8 @@ digest the comparison joins on. Which makes the graph a blast radius — re-run 
 and everything downstream of it goes stale — and each step carries the size of
 its own, as the count of what its re-run invalidates.
 
-Nothing here is hand-maintained. Adding a comparison to a step adds an edge.
+Adding a comparison to a step adds an edge; only the names of the steps whose
+receipt slot differs from their function name are spelled out (``SLOT_TO_STEP``).
 
     python -m repo2ree_repoview evidence                              # SVG on stdout
     python -m repo2ree_repoview evidence -o reports/diagrams/domain/evidence.svg
@@ -22,12 +23,11 @@ from __future__ import annotations
 
 import argparse
 import ast
-import re
-import subprocess
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from repo2ree_repoview.diagrams import emit
+from repo2ree_repoview.graphviz import inline_svg
 from repo2ree_repoview.repository import ROOT
 
 AUDIT = ROOT / "core/src/repo2ree_core/domain/ree/audit.py"
@@ -188,10 +188,8 @@ class AuditExtractor:
         if not others:
             return []
         # One edge per origin, and the *named field* wins over a bare mention of
-        # it. `if receipt and source and receipt.x != source.x` mentions `source`
-        # twice — once as a None-guard, once as the comparison that matters —
-        # and walk order reaches the guard first, so taking the first hit
-        # labelled every edge with nothing.
+        # it: `if receipt and source and receipt.x != source.x` mentions `source`
+        # first as a None-guard, then in the comparison that matters.
         best: dict[Origin, str] = {}
         for origin, field in others:
             if field or origin not in best:
@@ -219,8 +217,7 @@ class AuditExtractor:
         and it appears both alone and as one half of a conjunction — so the
         inlining happens per call node rather than only at the root. Its body is
         resolved against *its own* bindings: the name ``build`` means the
-        declaration there and the receipt in most of its callers, and reading it
-        with the caller's table turned a declaration into its own evidence.
+        declaration there and the receipt in most of its callers.
         """
         origins: list[Origin] = []
         for node in ast.walk(expr):
@@ -335,11 +332,8 @@ def render_dot(edges: list[Edge]) -> str:
             decl_tier[node] = min(decl_tier.get(node, 99), depth.get(edge.step, 0))
 
     # A declaration's *own* step is the one it is compared against field by
-    # field. Everything else it informs is a secondary relation, and drawing
-    # those as edges is what produced arcs spanning three tiers: one node
-    # reaching four steps at four depths cannot be laid out without them.
-    # They become annotations on the step instead, where they read as a
-    # property of the evidence rather than as another line to trace.
+    # field. Everything else it informs is a secondary relation, written on
+    # that step as an annotation: as edges they would span several tiers.
     primary: dict[str, str] = {}
     about: dict[str, list[str]] = {}
     for edge in edges:
@@ -360,19 +354,12 @@ def render_dot(edges: list[Edge]) -> str:
         "digraph evidence {",
         "  rankdir=TB;",
         "  newrank=true;",
-        # Graphviz's default opaque canvas, as the architecture diagrams beside
-        # this one have. `bgcolor=transparent` reads as a checkerboard in every
-        # viewer that indicates transparency, and the figure's text is dark
-        # besides — it has to sit on a light ground to be legible anyway, so
-        # letting a host page choose that ground buys nothing.
-        # A same-rank edge carries its label above the line, so without pad the
-        # multi-line ones on the top tier are clipped by the canvas edge.
+        # An opaque canvas: the text is dark, so it needs a light ground anyway.
+        # The pad keeps same-rank edge labels on the top tier inside the canvas.
         '  graph [ranksep=0.85, nodesep=0.5, pad=0.4, fontname="Helvetica"];',
         '  node  [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=11,',
         '         fillcolor="#dce7ee", color="#2d6b8c", fontcolor="#16202a",',
-        # height is a floor, not a fixed size: a node carrying two annotation
-        # lines has to grow, and leaving it at the default pressed the last line
-        # against the border.
+        # height is a floor, so a node with annotation lines can grow.
         '         height=0.36, margin="0.16,0.09"];',
         '  edge  [fontname="Helvetica", fontsize=9, color="#8595a2", fontcolor="#5a6b78"];',
         "",
@@ -381,11 +368,7 @@ def render_dot(edges: list[Edge]) -> str:
         f'  "{node}" [shape=note, fillcolor="#e2ece8", color="#0f766e", fontcolor="#12312c"];'
         for node in sorted(decl_tier)
     )
-    # Blast radius belongs on the node, not in a table beside the picture: it is
-    # a property of the step, and it is the one number you want while looking at
-    # the graph. Stated once, as the count — the fill ramp that carried it a
-    # second time was the only mark here not derived from the audit rules, and
-    # it encoded a number the number already gives you.
+    # The blast radius is a property of the step, so it is written on the node.
     radius = blast_radius(edges)
     for step in sorted(depth):
         extra = about.get(step)
@@ -399,12 +382,8 @@ def render_dot(edges: list[Edge]) -> str:
         lines.append(f'  "{step}" [label=<{"<BR/>".join(label)}>];')
     lines.append("")
 
-    # Each declaration joins the rank of the step it declares, so it sits beside
-    # its step rather than floating to the top of the drawing — `build_runtime`
-    # was landing a full three tiers above the runtime it describes, and the
-    # edge between them crossed everything in between. Now that a declaration
-    # has exactly one edge, sharing a rank costs nothing and it reads as what it
-    # is: an input alongside the step, not a stage before it.
+    # Each declaration joins the rank of the step it declares: an input
+    # alongside the step, not a stage before it.
     ranked: dict[int, list[str]] = {rank: list(members) for rank, members in by_tier.items()}
     for decl, step in sorted(primary.items()):
         ranked.setdefault(depth.get(step, 0), []).append(decl)
@@ -414,26 +393,20 @@ def render_dot(edges: list[Edge]) -> str:
             lines.append(f"  {{ rank=same; {joined}; }}")
     lines.append("")
 
-    # One edge per pair. A declaration is compared field by field — origin, type
-    # and ref for a source — and drawing those as parallel edges gave four
-    # arrows between the same two boxes with their labels stacked into mush.
-    # They are one relationship; the label lists what it covers.
+    # One edge per pair: a declaration compared field by field (origin, type
+    # and ref for a source) is one relationship, labelled with what it covers.
     merged: dict[tuple[str, str, str], list[str]] = {}
     for edge in edges:
         key = (edge.source.node, edge.step, edge.kind)
         fields = merged.setdefault(key, [])
-        # Field names, not complaints. `snapshot_digest` is the join the audit
-        # actually makes, it is a third the width of the sentence about it, and
-        # the sentence adds nothing the edge does not already show. The prose
-        # stays in the text emitter, for reading rather than for looking at.
+        # Field names, not complaints: the field is the join the audit makes.
         if edge.compared and edge.compared not in fields:
             fields.append(edge.compared)
 
     for (tail, head, kind), fields in merged.items():
         if kind == "applicable":
-            # Drawn only for a declaration whose step compares nothing against
-            # it — otherwise the labelled edge already says it. Secondary
-            # relations are annotations now, so nothing here spans a tier.
+            # Drawn only for a declaration its step compares nothing against;
+            # otherwise the labelled edge already says it.
             if (tail, head, "staleness") in merged or primary.get(tail) != head:
                 continue
             lines.append(f'  "{tail}" -> "{head}" [style=dashed, color="#0f766e", arrowsize=0.7];')
@@ -441,27 +414,7 @@ def render_dot(edges: list[Edge]) -> str:
             joined = "\\n".join(fields)
             lines.append(f'  "{tail}" -> "{head}" [label="{joined}", weight=2];')
     lines.append("}")
-    return "\n".join(lines)
-
-
-def render_svg(edges: list[Edge]) -> str:
-    """Run the graph through ``dot`` and return a figure fit to embed."""
-    svg = subprocess.run(["dot", "-Tsvg"], input=render_dot(edges), capture_output=True, text=True, check=True).stdout
-    # Drop the prolog so the figure inlines into a host document, and let the
-    # container size it: a graph pinned to its own point size cannot be embedded
-    # anywhere its author did not measure first.
-    svg = svg[svg.index("<svg") :]
-    return re.sub(r'width="\d+pt" height="\d+pt"', 'class="evidence-graph"', svg, count=1)
-
-
-def _emit(text: str, output: Path | None) -> None:
-    """Write to *output* or stdout, reporting the path the way the architecture diagrams do."""
-    if output is None:
-        print(text)
-        return
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(text + "\n", encoding="utf-8")
-    print(f"wrote {output}")
+    return "\n".join(lines) + "\n"
 
 
 def main() -> int:
@@ -471,17 +424,20 @@ def main() -> int:
     args = parser.parse_args()
     edges = collect()
     if args.format == "svg":
-        _emit(render_svg(edges), args.output)
+        # Sized by the page that embeds it rather than in its own points.
+        emit(inline_svg(render_dot(edges), css_class="evidence-graph"), args.output)
     elif args.format == "dot":
-        _emit(render_dot(edges), args.output)
+        emit(render_dot(edges), args.output)
     else:
-        radius = blast_radius(edges)
-        listed = "\n".join(
-            f"{step:<18} re-run → {', '.join(downstream) or '(nothing)'}" for step, downstream in radius.items()
+        emit(
+            "".join(
+                f"{step:<18} re-run → {', '.join(downstream) or '(nothing)'}\n"
+                for step, downstream in blast_radius(edges).items()
+            ),
+            args.output,
         )
-        _emit(listed, args.output)
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())

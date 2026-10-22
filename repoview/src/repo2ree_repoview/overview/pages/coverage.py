@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-from collections import Counter
-
 from repo2ree_repoview.overview.drawing import machine_svg
 from repo2ree_repoview.overview.exports import Spec
-from repo2ree_repoview.overview.html import esc, section, table
+from repo2ree_repoview.overview.html import Page, esc, section, table
+from repo2ree_repoview.overview.receipt import Exercised, Receipt, reached
 
 
-def page_coverage(
-    spec: Spec, edges: Counter[str], rules: Counter[str], unreached: dict[str, str], extras: Counter[tuple[str, str]]
-) -> str:
+def page_coverage(spec: Spec, receipt: Receipt | None, exercised: Exercised, unreached: dict[str, str]) -> Page:
+    edges, rules, extras = exercised.edges, exercised.rules, exercised.extras
     legend = (
         '<p class="legend"><span class="ok">— reached (count)</span><span class="ex">- - excused</span>'
         '<span class="no">- - unreached, not excused</span></p>'
@@ -67,4 +65,5 @@ def page_coverage(
         "How the tests behind the last behaviour receipt exercised the specification, summed over their recordings. "
         'Excused items are listed with their reasons on the <a href="behaviour-gate.html">Behaviour gate</a> page.'
     )
-    return section("coverage", "Coverage", lede, body)
+    teaser = f"How the last receipt's tests exercised the specification: {reached(receipt)} items reached"
+    return Page("coverage", "Coverage", teaser, section("coverage", "Coverage", lede, body))

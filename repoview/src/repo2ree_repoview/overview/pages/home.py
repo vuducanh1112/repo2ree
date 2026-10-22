@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from typing import Any
 
+from repo2ree_repoview.overview.bundle import Manifest
 from repo2ree_repoview.overview.exports import Zones
 from repo2ree_repoview.overview.html import Page, esc, section
-from repo2ree_repoview.overview.inputs import (
-    Certificate,
-    Head,
-)
+from repo2ree_repoview.overview.receipt import Certificate
+from repo2ree_repoview.repository import Head
 
 
 def page_overview(now: Head, found: list[Certificate]) -> str:
@@ -38,9 +36,9 @@ def page_overview(now: Head, found: list[Certificate]) -> str:
 def file_tree(declared: Zones) -> str:
     """The repository's top level, alphabetically, each entry coloured by the zones of the files under it."""
     entries: dict[str, Counter[str]] = defaultdict(Counter)
-    for path, zone in declared.files.items():
-        top, separator, _ = path.partition("/")
-        entries[top + separator][zone or "unclaimed"] += 1
+    for placed in declared.files:
+        top, separator, _ = placed.path.partition("/")
+        entries[top + separator][placed.zone or "unclaimed"] += 1
     order = [zone.name for zone in declared.zones]
     rows = []
     names = sorted(entries, key=lambda name: name.lstrip(".").lower())
@@ -72,29 +70,35 @@ def file_tree(declared: Zones) -> str:
     )
 
 
-def landing(now: Head, found: list[Certificate], pages: list[Page], tree: str) -> str:
+def page_home(now: Head, found: list[Certificate], pages: list[Page], declared: Zones, manifest: Manifest) -> Page:
     cards = "".join(
         f'<a class="card link" href="{p.slug}.html"><div class="v">{esc(p.title)}</div>'
         f'<div class="muted">{p.teaser}</div></a>'
         for p in pages
     )
-    return page_overview(now, found) + tree + f'<section><h2>Pages</h2><div class="cards">{cards}</div></section>'
+    body = (
+        page_overview(now, found)
+        + file_tree(declared)
+        + f'<section><h2>Pages</h2><div class="cards">{cards}</div></section>'
+        + page_provenance(manifest)
+    )
+    return Page("index", "Overview", "", body)
 
 
-def page_provenance(facts: dict[str, Any]) -> str:
-    receipt = facts["receipt_revision"]
+def page_provenance(manifest: Manifest) -> str:
+    receipt = manifest.receipt_revision
     if receipt is None:
         evidence = "no behaviour receipt, so no test evidence"
-    elif receipt == facts["revision"]:
+    elif receipt == manifest.revision:
         evidence = "test evidence from the receipt for this same commit"
     else:
         evidence = (
             f'<span class="state-stale">test evidence from an older commit, <code>{esc(receipt[:10])}</code></span>'
         )
-    tree = "with uncommitted changes" if facts["dirty"] else "clean"
+    tree = "with uncommitted changes" if manifest.dirty else "clean"
     return (
         '<section><h2>Provenance</h2><p class="lede">'
-        f"Built from <code>{esc(facts['revision'][:10])}</code> ({tree}) at {esc(facts['generated'])}, "
+        f"Built from <code>{esc(manifest.revision[:10])}</code> ({tree}) at {esc(manifest.generated)}, "
         f"with {evidence}. Everything shown from outside the tree is copied into this folder; "
         'see <a href="manifest.json">manifest.json</a>.</p></section>'
     )

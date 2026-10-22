@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import runpy
+import importlib
 import sys
 
 COMMANDS = {
@@ -14,13 +14,14 @@ COMMANDS = {
 }
 
 
-def main() -> None:
+def main() -> int:
     if len(sys.argv) < 2 or sys.argv[1] not in COMMANDS:
         raise SystemExit(f"usage: python -m repo2ree_repoview {{{','.join(COMMANDS)}}} [args]")
     command = sys.argv.pop(1)
     sys.argv[0] = f"repo2ree_repoview {command}"
-    runpy.run_module(COMMANDS[command], run_name="__main__")
+    status: int = importlib.import_module(COMMANDS[command]).main()
+    return status
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

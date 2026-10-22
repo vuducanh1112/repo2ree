@@ -4,12 +4,10 @@ from __future__ import annotations
 
 from collections import defaultdict
 from pathlib import Path
-from typing import Any
 
-from repo2ree_repoview.overview.html import esc, section, table
-from repo2ree_repoview.overview.inputs import (
-    Bundle,
-)
+from repo2ree_repoview.overview.bundle import Bundle
+from repo2ree_repoview.overview.html import Page, esc, section, table
+from repo2ree_repoview.overview.receipt import Evidence, Receipt, reached
 
 
 def evidence_links(bundle: Bundle, directory: str | None) -> str:
@@ -24,13 +22,14 @@ def evidence_links(bundle: Bundle, directory: str | None) -> str:
     return " · ".join(links) or '<span class="muted">none</span>'
 
 
-def page_gates(
-    receipt: dict[str, Any] | None,
-    unreached: dict[str, str],
-    bundle: Bundle,
-    tests: dict[tuple[str, str], str],
-) -> str:
-    if not receipt:
+def page_gates(receipt: Receipt | None, unreached: dict[str, str], bundle: Bundle, evidence: Evidence) -> Page:
+    tests = len(receipt.tests) if receipt else 0
+    teaser = f"{tests} tests in the last receipt; {reached(receipt)} specified items reached"
+    return Page("behaviour-gate", "Behaviour gate", teaser, gates_section(receipt, unreached, bundle, evidence))
+
+
+def gates_section(receipt: Receipt | None, unreached: dict[str, str], bundle: Bundle, evidence: Evidence) -> str:
+    if receipt is None:
         return section(
             "behaviour-gate",
             "Behaviour gate",
@@ -39,15 +38,14 @@ def page_gates(
         )
     rows = [
         [
-            esc(t["test"]),
-            esc(t["outcome"]),
-            f'<span class="{"ok" if t["behaviour"] == "passed" else "ex"}">{esc(t["behaviour"])}</span>',
-            esc(t.get("excused", "")),
-            evidence_links(bundle, tests.get((t["run"], t["test"]))),
+            esc(t.test),
+            esc(t.outcome),
+            f'<span class="{"ok" if t.behaviour == "passed" else "ex"}">{esc(t.behaviour)}</span>',
+            esc(t.excused),
+            evidence_links(bundle, evidence.tests.get((t.run, t.test))),
         ]
-        for t in receipt.get("tests", [])
+        for t in receipt.tests
     ]
-    coverage = receipt.get("coverage", {})
     reasons: dict[str, list[str]] = defaultdict(list)
     for item, reason in unreached.items():
         reasons[reason].append(item)
@@ -55,15 +53,10 @@ def page_gates(
         [" ".join(f"<code>{esc(i)}</code>" for i in items), esc(reason)] for reason, items in reasons.items()
     ]
     body = (
-        f"<p>Receipt for <code>{esc(receipt.get('revision', '')[:10])}</code> from runs "
-        + ", ".join(f"<code>{esc(Path(r).name)}</code>" for r in receipt.get("runs", []))
+        f"<p>Receipt for <code>{esc(receipt.revision[:10])}</code> from runs "
+        + ", ".join(f"<code>{esc(Path(r).name)}</code>" for r in receipt.runs)
         + ", copied into this overview under <code>evidence/</code>"
-        + (
-            f". The suite reached {coverage.get('reached', '?')} of {coverage.get('declared', '?')} "
-            "specified rules, edges, and messages."
-            if coverage
-            else "."
-        )
+        + (f". The suite reached {reached(receipt)} specified rules, edges, and messages." if receipt.coverage else ".")
         + "</p>"
         + table(["Test", "Outcome", "Behaviour", "Excused because", "Evidence"], rows)
         + f"<h3>What a receipt does not prove ({len(unreached)} items)</h3>"

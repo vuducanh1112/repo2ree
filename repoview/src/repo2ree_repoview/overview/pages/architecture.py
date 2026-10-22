@@ -3,15 +3,12 @@
 from __future__ import annotations
 
 from repo2ree_repoview.diagrams.architecture import load_config
-from repo2ree_repoview.overview.figures import diagram
-from repo2ree_repoview.overview.html import section
-from repo2ree_repoview.overview.inputs import (
-    DIAGRAMS,
-    Bundle,
-)
+from repo2ree_repoview.overview.bundle import Bundle
+from repo2ree_repoview.overview.figures import DIAGRAMS, diagram
+from repo2ree_repoview.overview.html import Page, section
 
 
-def page_architecture(bundle: Bundle) -> str:
+def page_architecture(bundle: Bundle) -> Page:
     architecture = DIAGRAMS / "architecture"
     # The governed packages, not whatever an older run left behind.
     configured, _, _ = load_config()
@@ -36,9 +33,6 @@ def page_architecture(bundle: Bundle) -> str:
         "Evidence graph",
         "Which receipts and steps depend on which, from core's audit rules.",
     )
-    return section(
-        "architecture",
-        "Architecture",
-        "Import graphs of the backend and the GUI, and the domain's evidence graph.",
-        body,
-    )
+    lede = "Import graphs of the backend and the GUI, and the domain's evidence graph."
+    teaser = "Import graphs of the backend and the GUI"
+    return Page("architecture", "Architecture", teaser, section("architecture", "Architecture", lede, body))
