@@ -10,13 +10,18 @@ from __future__ import annotations
 
 import io
 import os
+import re
 import tarfile
 import time
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 import httpx
+import pytest
+
+from repo2ree_testbed.faults import FAULTS_URL, Fault, inject
 
 ROOT = Path(__file__).resolve().parents[3]
 PROJECT = ROOT / "examples/projects/instant_hello_world"
@@ -131,8 +136,16 @@ class Api:
         return ree_id
 
     def keep_archive(self, ree_id: str, label: str) -> Path | None:
-        """Download the REE as its owner would and keep it where the collector looks; None if refused."""
-        response = self.request("GET", f"/api/v1/rees/{ree_id}/ree-archive", expect=None, timeout=120.0)
+        """Download the REE as its owner would and keep it where the collector looks; None if refused.
+
+        A bench reconnecting after a fault answers 503 (retryable) for a few seconds; wait it out.
+        """
+        deadline = time.monotonic() + 30
+        while True:
+            response = self.request("GET", f"/api/v1/rees/{ree_id}/ree-archive", expect=None, timeout=120.0)
+            if response.status_code != 503 or time.monotonic() > deadline:
+                break
+            time.sleep(1)
         if response.status_code != 200:
             return None
         target = self.archive_dir / f"{label}-{ree_id}.zip"
@@ -221,3 +234,44 @@ class Api:
         run = self.experiment(ree_id)
         if run["status"] != "succeeded":
             raise ApiError(f"experiment ended {run['status']}\n{self.logs(ree_id, run['run_id'])}")
+
+
+def fault(injected: Fault) -> None:
+    """Ask the stack this suite runs on to inject a fault, now."""
+    inject(os.environ[FAULTS_URL], injected)
+
+
+# ---- fixtures every suite on a stack shares -----------------------------------
+
+BASE_URL = os.environ.get("E2E_API_BASE_URL", "")
+ARCHIVE_DIR = Path(os.environ.get("E2E_ARCHIVE_DIR", "test-artifacts/python/system/archives"))
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    if BASE_URL:
+        return
+    skip = pytest.mark.skip(reason="the system suite drives a running stack: run it with just test-e2e-system")
+    for item in items:
+        item.add_marker(skip)
+
+
+@pytest.fixture(scope="session")
+def api() -> Api:
+    return Api(BASE_URL.rstrip("/"), ARCHIVE_DIR)
+
+
+@pytest.fixture
+def new_ree(api: Api, request: pytest.FixtureRequest) -> Iterator[Callable[..., str]]:
+    """Create REEs on demand; each is downloaded, then released, when the test ends."""
+    created: list[str] = []
+    label = re.sub(r"[^a-z0-9]+", "-", request.node.name.lower()).strip("-")
+
+    def create(name: str = label, **kwargs: str) -> str:
+        ree_id: str = api.create(name[:60], **kwargs)
+        created.append(ree_id)
+        return ree_id
+
+    yield create
+    for ree_id in created:
+        api.keep_archive(ree_id, label)
+        api.release(ree_id)

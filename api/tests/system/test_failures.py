@@ -2,17 +2,18 @@
 
 A failure must leave no evidence behind: no receipt for what did not happen,
 and the REE as it stood before. Faults are injected by real means only: a
-script that fails, a cancel request, a killed workbench container.
+script that fails, a cancel request, a workbench container the stack kills.
 """
 
 from __future__ import annotations
 
-import subprocess
 import time
 from collections.abc import Callable
 
 import pytest
-from system_client import BUILD_SCRIPT, EXPERIMENT, RUNTIME, Api, recipe
+from system_client import BUILD_SCRIPT, EXPERIMENT, RUNTIME, Api, fault, recipe
+
+from repo2ree_testbed.faults import KillWorkbench
 
 FAILING_BUILD = "#!/usr/bin/env sh\nset -eu\necho 'resolving dependencies'\nexit 3\n"
 SILENT_BUILD = "#!/usr/bin/env sh\nset -eu\necho 'built nothing'\n"
@@ -109,8 +110,7 @@ def test_workbench_lost_during_a_build(api: Api, new_ree: Callable[..., str]) ->
     run = api.post(f"/api/v1/rees/{ree_id}/build-runtime")
     api.wait_for_status(ree_id, run["run_id"], "running")
 
-    container = f"repo2ree-wb-{allocation['request']['allocation_id']}"
-    subprocess.run(["docker", "kill", container], check=True, capture_output=True)
+    fault(KillWorkbench(allocation_id=allocation["request"]["allocation_id"]))
 
     settled = api.wait(ree_id, run, timeout=90)
     assert settled["status"] == "failed"
