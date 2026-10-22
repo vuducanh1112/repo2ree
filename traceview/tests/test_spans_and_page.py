@@ -76,17 +76,19 @@ def test_a_template_without_a_place_for_the_trace_is_refused() -> None:
 
 
 def recordings() -> list[Path]:
+    """Recordings holding journals and at least one REE's history: a test that failed early may leave none."""
     found: list[Path] = []
     for path in sorted(E2E_RUNS.glob("*/tests/*/recording")):
         try:
-            if read_recording(path).recorded("journal"):
+            recording = read_recording(path)
+            if recording.recorded("journal") and recording.recorded("git"):
                 found.append(path)
         except (OSError, ValueError):
             continue  # Not a recording in the current format.
     return found
 
 
-@pytest.mark.skipif(not recordings(), reason="needs an e2e run's recording with journals under test-artifacts/e2e")
+@pytest.mark.skipif(not recordings(), reason="needs an e2e run's recording with an REE under test-artifacts/e2e")
 def test_a_real_recording_draws_one_page_per_ree(tmp_path: Path) -> None:
     # Verification is its own step; the views read only what it wrote.
     verified = tmp_path / "verified"
