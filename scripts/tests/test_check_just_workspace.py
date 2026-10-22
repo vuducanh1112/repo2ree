@@ -37,7 +37,7 @@ def fixture(root: Path) -> tuple[dict[str, Any], dict[str, Any]]:
     config = {
         "tool": {
             "repo2ree": {
-                "workspace": {"backend": ["alpha", "beta"], "assurance": ["conformance"], "testbed": ["testbed"]}
+                "workspace": {"backend": ["alpha", "beta"], "assurance": ["conformance"], "tooling": ["testbed"]}
             },
             "uv": {"workspace": {"members": members}},
             "importlinter": {"root_packages": ["pkg_alpha", "pkg_beta"]},
@@ -86,11 +86,11 @@ def test_categories_cover_workspace_exactly_once(tmp_path: Path) -> None:
     )
 
 
-def test_testbed_required_by_global_aggregates(tmp_path: Path) -> None:
+def test_tooling_required_by_global_aggregates(tmp_path: Path) -> None:
     document, config = fixture(tmp_path)
     document["recipes"]["check"]["dependencies"].pop()
     del document["recipes"]["test-testbed"]
     assert check_just_workspace.validate(document, config, tmp_path) == [
         "check must include check-testbed",
-        "missing testbed recipe: test-testbed",
+        "missing tooling recipe: test-testbed",
     ]

@@ -9,9 +9,9 @@ generate-evidence-graph:
     set -euo pipefail
     output={{ quote(DOMAIN_DIR + "/evidence.svg") }}
     rules='core/src/repo2ree_core/domain/ree/audit.py'
-    renderer='scripts/diagrams/evidence_graph.py'
+    renderer='repoview/src/repo2ree_repoview/diagrams/evidence.py'
     if [[ ! -e "$output" || "$rules" -nt "$output" || "$renderer" -nt "$output" ]]; then
       mkdir -p {{ quote(DOMAIN_DIR) }}
-      python "$renderer" -o "$output"
+      python -m repo2ree_repoview evidence -o "$output"
       {{ STAMP_DIAGRAMS }} --by generate-evidence-graph "$output"
     fi

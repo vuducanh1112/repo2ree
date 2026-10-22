@@ -17,11 +17,11 @@ order, so a legal graph reads strictly downward and a violation would be the one
 edge pointing back up the page. ``--collapse`` applies the same idea one level
 up, ranking the packages themselves by the workspace-wide contract.
 
-    python scripts/diagrams/arch_graph.py                       # core, as DOT
-    python scripts/diagrams/arch_graph.py repo2ree_api          # one other package
-    python scripts/diagrams/arch_graph.py --collapse            # the workspace, one node
-    python scripts/diagrams/arch_graph.py --all -f svg -o g.svg # every module, rendered
-    python scripts/diagrams/arch_graph.py -f mermaid            # to paste into docs
+    python -m repo2ree_repoview architecture                       # core, as DOT
+    python -m repo2ree_repoview architecture repo2ree_api          # one other package
+    python -m repo2ree_repoview architecture --collapse            # the workspace, one node
+    python -m repo2ree_repoview architecture --all -f svg -o g.svg # every module, rendered
+    python -m repo2ree_repoview architecture -f mermaid            # to paste into docs
 """
 
 from __future__ import annotations
@@ -36,8 +36,9 @@ from pathlib import Path
 
 import grimp
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-PYPROJECT = REPO_ROOT / "pyproject.toml"
+from repo2ree_repoview.repository import ROOT
+
+PYPROJECT = ROOT / "pyproject.toml"
 
 # One hue per root package, so a cross-package edge is visible as a colour
 # change rather than something you have to trace to the cluster border.

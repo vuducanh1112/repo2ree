@@ -1,0 +1,46 @@
+[project]
+name = "repo2ree-repoview"
+version = "0.1.0"
+description = "Views of the repository bound to one commit: architecture, evidence, and recipe diagrams, their provenance stamps, and the overview."
+requires-python = "~=3.13.0"
+dependencies = ["grimp~=3.15"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/repo2ree_repoview"]
+
+
+[tool.importlinter]
+include_external_packages = true
+root_packages = [
+    "repo2ree_repoview", "repo2ree_testbed", "repo2ree_collect", "repo2ree_recording", "repo2ree_conformance",
+    "repo2ree_traceview", "repo2ree_api", "repo2ree_core", "repo2ree_docker", "repo2ree_executor",
+    "repo2ree_provider_docker", "repo2ree_protocol", "repo2ree_supervisor", "repo2ree_workbench",
+]
+
+# The views read what the repository declares as data: the specification and the zones
+# as their owners export them, import graphs and audit rules as source text. Importing
+# the checker or the code it draws would make a refactor there break a view here.
+[[tool.importlinter.contracts]]
+name = "Repoview imports no other workspace package"
+type = "forbidden"
+source_modules = ["repo2ree_repoview"]
+forbidden_modules = [
+    "repo2ree_testbed", "repo2ree_collect", "repo2ree_recording", "repo2ree_conformance", "repo2ree_traceview",
+    "repo2ree_api", "repo2ree_core", "repo2ree_docker", "repo2ree_executor", "repo2ree_provider_docker",
+    "repo2ree_protocol", "repo2ree_supervisor", "repo2ree_workbench",
+]
+
+# And nothing that ships, judges, or tests depends on how the repository is drawn.
+[[tool.importlinter.contracts]]
+name = "Nothing imports the views of the repository"
+type = "forbidden"
+source_modules = [
+    "repo2ree_testbed", "repo2ree_collect", "repo2ree_recording", "repo2ree_conformance", "repo2ree_traceview",
+    "repo2ree_api", "repo2ree_core", "repo2ree_docker", "repo2ree_executor", "repo2ree_provider_docker",
+    "repo2ree_protocol", "repo2ree_supervisor", "repo2ree_workbench",
+]
+forbidden_modules = ["repo2ree_repoview"]

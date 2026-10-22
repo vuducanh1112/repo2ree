@@ -33,8 +33,8 @@ ASSURANCE_DIR := REPO2REE_ASSURANCE_DIR
 REPORTS_DIR := "reports"
 DIAGRAM_DIR := REPORTS_DIR + "/diagrams"
 JUST_RECIPE_GRAPH := DIAGRAM_DIR + "/just-recipes.svg"
-# Records the commit each generated diagram or metric came from (scripts/diagrams/stamp.py).
-STAMP_DIAGRAMS := "python scripts/diagrams/stamp.py --manifest " + DIAGRAM_DIR + "/manifest.json"
+# Records the commit each generated diagram or metric came from (repo2ree_repoview stamp).
+STAMP_DIAGRAMS := "python -m repo2ree_repoview stamp --manifest " + DIAGRAM_DIR + "/manifest.json"
 ARCH_DIR := DIAGRAM_DIR + "/architecture"
 DOMAIN_DIR := DIAGRAM_DIR + "/domain"
 METRICS_DIR := REPORTS_DIR + "/metrics"
@@ -68,10 +68,10 @@ generate-diagrams: generate-architecture-diagrams generate-domain-diagrams gener
 # Build the repository overview in reports/overview/<revision>/ (reports/overview/latest): zones, gates, behaviour, architecture, recipes, configuration, API.
 [group('Diagrams')]
 repo-overview: generate-diagrams
-    python scripts/overview/build.py
+    python -m repo2ree_repoview overview
 
 # Generate the declared Just recipe dependency graph.
 [group('Diagrams')]
 generate-just-recipe-graph:
-    python scripts/diagrams/just_graph.py -o {{ quote(JUST_RECIPE_GRAPH) }}
+    python -m repo2ree_repoview recipes -o {{ quote(JUST_RECIPE_GRAPH) }}
     {{ STAMP_DIAGRAMS }} --by generate-just-recipe-graph {{ quote(JUST_RECIPE_GRAPH) }}

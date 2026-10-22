@@ -139,7 +139,7 @@ summary = "The task runner."
 [tooling.groups.scripts]
 summary = "What the recipes call."
 [tooling.groups.scripts.paths]
-"scripts/" = "Config contract, diagrams, image publishing, build revision"
+"scripts/" = "Config contract, image publishing, build revision, the workspace check"
 
 [tooling.groups.tests]
 summary = "Test plumbing shared across packages."
@@ -148,9 +148,10 @@ summary = "Test plumbing shared across packages."
 "conftest.py" = "Pins Hypothesis's state to the repository"
 
 [tooling.groups.views]
-summary = "Draw what was recorded and verified; never verify."
+summary = "Draw what was recorded, verified, or declared; never verify."
 [tooling.groups.views.paths]
 "traceview/" = "Operation traces and provenance from a verification"
+"repoview/" = "repo2ree_repoview: architecture, evidence, and recipe diagrams, their stamps, and the overview"
 "observability/" = "Local collector stacks for traces, metrics, and logs"
 
 [dev-env]

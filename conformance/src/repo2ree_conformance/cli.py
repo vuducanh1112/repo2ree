@@ -1,14 +1,16 @@
-"""Command line: generate the published contract, describe the spec, validate journals, or check evidence."""
+"""Command line: generate the published contract, describe or export the spec, validate journals, or check evidence."""
 
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from collections.abc import Sequence
 from pathlib import Path
 
 from repo2ree_conformance.codegen import render_schema
 from repo2ree_conformance.contract import journal_problems
+from repo2ree_conformance.export import export_spec
 from repo2ree_conformance.files import GENERATED_SCHEMA, SPEC_DIR, load_spec, load_spec_at
 from repo2ree_conformance.html import render_html
 from repo2ree_conformance.recording import load_recording
@@ -34,6 +36,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     commands.add_parser("describe", help="Validate the specification and print its digest")
     commands.add_parser("map", help="Print the system map (Mermaid) drawn from the specification")
+    exported = commands.add_parser("export", help="Write the specification as JSON, for views that compare or draw it")
+    exported.add_argument("--at", help="Git revision whose specification to export instead of --spec")
+    exported.add_argument("--git-executable", default="git")
+    exported.add_argument("--output", "-o", type=Path, help="JSON file to write")
     changes = commands.add_parser("diff", help="Render behavioural changes against the specification at a Git ref")
     changes.add_argument("--base", default="HEAD", help="Git revision holding the previous specification")
     changes.add_argument("--git-executable", default="git")
@@ -60,6 +66,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             sys.stdout.write(f"  boundary {name}: {boundary.sender} -> {boundary.receiver}\n")
         for invariant in spec.invariants:
             sys.stdout.write(f"  invariant {invariant.id} ({invariant.pattern})\n")
+        return 0
+    if args.command == "export":
+        chosen = spec if args.at is None else load_spec_at(args.at, args.git_executable)
+        document = json.dumps(export_spec(chosen), indent=2) + "\n"
+        if args.output is not None:
+            args.output.write_text(document)
+        else:
+            sys.stdout.write(document)
         return 0
     if args.command == "map":
         sys.stdout.write(system_map(spec) + "\n")

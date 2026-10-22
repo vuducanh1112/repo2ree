@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Render the declared Just recipe dependency graph.
 
 Edges follow execution order: prerequisites point to the recipe that consumes
@@ -16,7 +15,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parents[2]
+from repo2ree_repoview.repository import ROOT
+
 PALETTE = (
     "#dbeafe",
     "#dcfce7",

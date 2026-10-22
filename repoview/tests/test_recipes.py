@@ -1,9 +1,10 @@
 import pytest
-from scripts.diagrams import just_graph
+
+from repo2ree_repoview.diagrams import recipes as recipe_graph
 
 
-def recipes() -> dict[str, just_graph.Recipe]:
-    return just_graph.parse_recipes(
+def recipes() -> dict[str, recipe_graph.Recipe]:
+    return recipe_graph.parse_recipes(
         {
             "recipes": {
                 "leaf": {"attributes": [{"group": "Checks"}], "body": [["run"]], "dependencies": []},
@@ -37,7 +38,7 @@ def recipes() -> dict[str, just_graph.Recipe]:
 
 
 def test_edges_follow_execution_order() -> None:
-    edges = just_graph.execution_edges(recipes())
+    edges = recipe_graph.execution_edges(recipes())
 
     assert ("leaf", "aggregate", False) in edges
     assert ("helper", "aggregate", False) in edges
@@ -45,7 +46,7 @@ def test_edges_follow_execution_order() -> None:
 
 
 def test_dot_places_sources_first_and_distinguishes_recipe_kinds() -> None:
-    dot = just_graph.render_dot(recipes())
+    dot = recipe_graph.render_dot(recipes())
 
     assert "rankdir=LR" in dot
     assert '{ rank=source; "fix"; "helper"; "leaf"; "unrelated"; }' in dot
@@ -56,7 +57,7 @@ def test_dot_places_sources_first_and_distinguishes_recipe_kinds() -> None:
 
 
 def test_root_selects_only_the_dependency_closure() -> None:
-    dot = just_graph.render_dot(recipes(), root="aggregate")
+    dot = recipe_graph.render_dot(recipes(), root="aggregate")
 
     assert "rankdir=LR" in dot
     assert '"aggregate"' in dot
@@ -68,4 +69,4 @@ def test_root_selects_only_the_dependency_closure() -> None:
 
 def test_unknown_root_is_rejected() -> None:
     with pytest.raises(ValueError, match="unknown Just recipe: missing"):
-        just_graph.render_dot(recipes(), root="missing")
+        recipe_graph.render_dot(recipes(), root="missing")

@@ -8,7 +8,7 @@ requires-python = "~=3.13.0"
 dependencies = []
 
 [tool.uv.workspace]
-members = ["protocol", "core", "supervisor", "api", "executor", "docker-support", "provider", "workbench", "conformance", "traceview", "collect", "recording", "testbed"]
+members = ["protocol", "core", "supervisor", "api", "executor", "docker-support", "provider", "workbench", "conformance", "traceview", "collect", "recording", "testbed", "repoview"]
 
 [dependency-groups]
 dev = [
@@ -117,6 +117,7 @@ src = [
     "collect/src",
     "recording/src",
     "testbed/src",
+    "repoview/src",
 ]
 line-length = 120
 
@@ -231,6 +232,8 @@ extend-ignore = [
 "scripts/*" = ["T201", "INP001"]
 # The testbed's modules are the commands the test recipes run, and report on stdout the same way.
 "testbed/src/*" = ["T201"]
+# So are the repository views': each writes its report and says where.
+"repoview/src/*" = ["T201"]
 
 # ================================================
 # Architecture contracts (`just check-architecture`)
@@ -629,6 +632,7 @@ mypy_path = [
     "collect/src",
     "recording/src",
     "testbed/src",
+    "repoview/src",
 ]
 # Test dirs ship no __init__.py, so module names must come from file paths —
 # otherwise the per-tier conftest.py files (unit/ and integration/) collide.
@@ -680,4 +684,4 @@ no_implicit_reexport = false
 [tool.repo2ree.workspace]
 backend = ["protocol", "core", "supervisor", "api", "executor", "docker-support", "provider", "workbench"]
 assurance = ["conformance", "traceview", "collect", "recording"]
-testbed = ["testbed"]
+tooling = ["testbed", "repoview"]

@@ -9,11 +9,14 @@
   Deliberate exceptions: ``SKIP=spec-isolation git commit ...``.
 - ``map [PATH...]`` draws the repository by zone, or places each path given.
 - ``verify`` reports tracked files no entry claims and entries that claim no file.
+- ``export`` prints the zones, where each tracked file belongs, and those problems, as
+  JSON: what views read instead of importing this guard.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 import sys
 import tomllib
@@ -167,6 +170,42 @@ def verify() -> int:
     return 1 if found else 0
 
 
+# ---------------------------------------------------------------------------- export
+
+FORMAT = "repo2ree-zones/1"
+
+
+def export(zones: Zones, files: Iterable[str]) -> dict[str, object]:
+    files = list(files)
+    placed = {path: zones.entry(path) for path in files}
+    return {
+        "format": FORMAT,
+        "zones": [
+            {
+                "name": zone.name,
+                "summary": zone.summary,
+                "protected": zone.protected,
+                "groups": [
+                    {
+                        "name": group.name,
+                        "summary": group.summary,
+                        "entries": [{"path": entry.path, "description": entry.description} for entry in group.entries],
+                    }
+                    for group in zone.groups
+                ],
+            }
+            for zone in zones.zones
+        ],
+        "files": [
+            {"path": path, "zone": found.zone, "group": found.group, "entry": found.path}
+            if found
+            else {"path": path, "zone": None, "group": None, "entry": None}
+            for path, found in placed.items()
+        ],
+        "problems": problems(zones, files),
+    }
+
+
 # ---------------------------------------------------------------------------- map
 
 COLOURS = {"bold": "1", "dim": "2", "red": "31", "protected": "33", "zone": "36"}
@@ -221,12 +260,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     commands.add_parser("map", help="draw the repository by zone, or place each path").add_argument("paths", nargs="*")
     commands.add_parser("verify", help="report unclaimed files and entries that claim nothing")
+    commands.add_parser("export", help="print the zones and where each tracked file belongs, as JSON")
     args = parser.parse_args(argv)
     if args.command == "check":
         return check(args.paths)
     if args.command == "verify":
         return verify()
     zones = load()
+    if args.command == "export":
+        print(json.dumps(export(zones, tracked()), indent=2))
+        return 0
     if args.paths:
         print("\n".join(place(zones, path) for path in args.paths))
         return 0 if all(zones.entry(path.removeprefix("./")) for path in args.paths) else 1

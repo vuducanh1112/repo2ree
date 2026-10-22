@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Record the commit a generated report file was made from.
 
 Each file is entered in the manifest.json of its report folder (reports/diagrams/,
@@ -7,7 +6,7 @@ them (with a hash of the difference), when, and by which recipe. An SVG also
 shows the commit in a footer strip added below the drawing, so whoever looks at it
 sees where it came from, and carries the full facts in a <metadata> element for tools.
 
-    python scripts/diagrams/stamp.py --manifest reports/diagrams/manifest.json --by generate-gui-graph FILE...
+    python -m repo2ree_repoview stamp --manifest reports/diagrams/manifest.json --by generate-gui-graph FILE...
 """
 
 from __future__ import annotations
@@ -23,7 +22,8 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parents[2]
+from repo2ree_repoview.repository import ROOT
+
 METADATA = re.compile(r"<metadata id=\"repo2ree-provenance\">.*?</metadata>\s*", re.DOTALL)
 FOOTER = re.compile(
     r'<g id="repo2ree-stamp" data-viewbox="(?P<viewbox>[^"]*)" data-height="(?P<height>[^"]*)">.*?</g>\s*', re.DOTALL

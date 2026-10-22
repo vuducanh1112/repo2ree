@@ -12,10 +12,10 @@ its own, as the count of what its re-run invalidates.
 
 Nothing here is hand-maintained. Adding a comparison to a step adds an edge.
 
-    python scripts/diagrams/evidence_graph.py                              # SVG on stdout
-    python scripts/diagrams/evidence_graph.py -o reports/diagrams/domain/evidence.svg
-    python scripts/diagrams/evidence_graph.py -f dot                       # to pipe into dot yourself
-    python scripts/diagrams/evidence_graph.py -f blast                     # the closure, as text
+    python -m repo2ree_repoview evidence                              # SVG on stdout
+    python -m repo2ree_repoview evidence -o reports/diagrams/domain/evidence.svg
+    python -m repo2ree_repoview evidence -f dot                       # to pipe into dot yourself
+    python -m repo2ree_repoview evidence -f blast                     # the closure, as text
 """
 
 from __future__ import annotations
@@ -28,8 +28,9 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-AUDIT = REPO_ROOT / "core/src/repo2ree_core/domain/ree/audit.py"
+from repo2ree_repoview.repository import ROOT
+
+AUDIT = ROOT / "core/src/repo2ree_core/domain/ree/audit.py"
 
 # The audited step each function answers for. Derived from the function name;
 # spelled out only where the receipt slot and the step name differ.
@@ -359,7 +360,7 @@ def render_dot(edges: list[Edge]) -> str:
         "digraph evidence {",
         "  rankdir=TB;",
         "  newrank=true;",
-        # Graphviz's default opaque canvas, as the arch_graph diagrams beside
+        # Graphviz's default opaque canvas, as the architecture diagrams beside
         # this one have. `bgcolor=transparent` reads as a checkerboard in every
         # viewer that indicates transparency, and the figure's text is dark
         # besides — it has to sit on a light ground to be legible anyway, so
@@ -454,7 +455,7 @@ def render_svg(edges: list[Edge]) -> str:
 
 
 def _emit(text: str, output: Path | None) -> None:
-    """Write to *output* or stdout, reporting the path the way arch_graph does."""
+    """Write to *output* or stdout, reporting the path the way the architecture diagrams do."""
     if output is None:
         print(text)
         return

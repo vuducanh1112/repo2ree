@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from scripts.diagrams.stamp import read_svg_stamp, record, stamp_svg
+from repo2ree_repoview.stamp import read_svg_stamp, record, stamp_svg
 
 FACTS = {"revision": "a" * 40, "tree": "b" * 40, "dirty": False, "by": "generate-gui-graph"}
 

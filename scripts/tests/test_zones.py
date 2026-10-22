@@ -105,3 +105,31 @@ def test_the_map_draws_every_zone_and_places_a_path(capsys: pytest.CaptureFixtur
     assert "SPEC [protected]" in drawn
     assert "dist/" in drawn
     assert zones.place(declared, "conformance/expected-verdicts.toml").splitlines()[1] == "  spec [protected] / excuses"
+
+
+def test_the_export_places_each_file_and_carries_the_problems(tmp_path: Path) -> None:
+    path = tmp_path / "zones.toml"
+    path.write_text(
+        '[z]\nsummary = "s"\nprotected = true\n'
+        '[z.groups.g]\nsummary = "t"\n[z.groups.g.paths]\n"a/" = "d"\n"b/" = "d"\n'
+    )
+    exported = zones.export(load(path), ["a/x", "c"])
+    assert exported["zones"] == [
+        {
+            "name": "z",
+            "summary": "s",
+            "protected": True,
+            "groups": [
+                {
+                    "name": "g",
+                    "summary": "t",
+                    "entries": [{"path": "a/", "description": "d"}, {"path": "b/", "description": "d"}],
+                }
+            ],
+        }
+    ]
+    assert exported["files"] == [
+        {"path": "a/x", "zone": "z", "group": "g", "entry": "a/"},
+        {"path": "c", "zone": None, "group": None, "entry": None},
+    ]
+    assert exported["problems"] == problems(load(path), ["a/x", "c"])

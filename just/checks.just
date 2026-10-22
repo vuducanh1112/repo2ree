@@ -3,7 +3,7 @@
 # Checks below are read-only. Run `just format` to apply formatting, or
 # `just fix` to apply safe lint fixes and then format the affected sources.
 
-PYTHON_FORMAT_PATHS := "scripts protocol core supervisor api executor docker-support provider workbench conformance traceview collect recording testbed"
+PYTHON_FORMAT_PATHS := "scripts protocol core supervisor api executor docker-support provider workbench conformance traceview collect recording testbed repoview"
 GUI_FORMAT_PATHS := "src tests scripts playwright.config.ts vite.config.mjs testArtifacts.cjs testArtifacts.d.cts"
 
 [private]
@@ -43,6 +43,16 @@ check-testbed: (_check-python-package "testbed")
 [group('Script tests')]
 test-testbed:
     pytest testbed/tests
+
+# Static checks and the views' import contracts: they read exports and source text, never another package.
+[group('Checks')]
+check-repoview: (_check-python-package "repoview")
+    lint-imports --config repoview/pyproject.toml
+
+# Repoview tests: provenance stamps, the recipe graph, the export readers, and an overview of this tree.
+[group('Script tests')]
+test-repoview:
+    pytest repoview/tests
 
 # Statically check shell and Python scripts.
 [group('Checks')]
@@ -157,8 +167,8 @@ check-backend: check-protocol check-core check-supervisor check-api check-execut
 
 # Run every static analysis check.
 [group('Checks')]
-check: check-docs check-scripts check-nix check-gui check-backend check-assurance check-testbed
+check: check-docs check-scripts check-nix check-gui check-backend check-assurance check-testbed check-repoview
 
 # Run every container-free unit test suite.
 [group('Tests')]
-test-unit: test-scripts test-gui test-backend-unit test-assurance test-testbed
+test-unit: test-scripts test-gui test-backend-unit test-assurance test-testbed test-repoview

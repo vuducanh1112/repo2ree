@@ -131,4 +131,4 @@ generate-assurance-metrics:
     mkdir -p {{ quote(METRICS_DIR + "/assurance") }}
     lizard -l python -i -1 -o {{ quote(METRICS_DIR + "/assurance/complexity.html") }} {{ ASSURANCE_METRIC_PATHS }}
     lizard -l python -i -1 --csv {{ ASSURANCE_METRIC_PATHS }} > {{ quote(METRICS_DIR + "/assurance/complexity.csv") }}
-    python scripts/diagrams/stamp.py --manifest {{ quote(METRICS_DIR + "/manifest.json") }} --by generate-assurance-metrics {{ quote(METRICS_DIR + "/assurance/complexity.html") }} {{ quote(METRICS_DIR + "/assurance/complexity.csv") }}
+    python -m repo2ree_repoview stamp --manifest {{ quote(METRICS_DIR + "/manifest.json") }} --by generate-assurance-metrics {{ quote(METRICS_DIR + "/assurance/complexity.html") }} {{ quote(METRICS_DIR + "/assurance/complexity.csv") }}
