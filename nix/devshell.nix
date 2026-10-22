@@ -6,12 +6,22 @@
 # ./tools.nix): edits here are routine and must never touch the
 # reproducibility-sensitive surfaces.
 #
+# Two package sets, named as in flake.nix: `pkgs` is the pin the closures and
+# images build from (nixpkgs), used here only for the toolchains whose version
+# must match what ships; `devPkgs` (nixpkgs-dev) supplies every other tool.
+#
 # Enter with:   nix develop
 # ----------------------------------------------------------------
-{ pkgs }:
+{ pkgs, devPkgs }:
 
-pkgs.mkShell {
-  buildInputs = with pkgs; [
+devPkgs.mkShell {
+  buildInputs = [
+    # The Node the GUI image is built with, and the Python the shipped closures
+    # run on; the venv is made from this interpreter (UV_PYTHON below).
+    pkgs.nodejs_24
+    pkgs.python313
+  ]
+  ++ (with devPkgs; [
 
     # Essentials
     git
@@ -22,8 +32,7 @@ pkgs.mkShell {
     ps
 
     # Project
-    nodejs_24
-    python313Packages.uv
+    uv
     kubectl
     just
 
@@ -60,15 +69,18 @@ pkgs.mkShell {
     fontconfig
     dejavu_fonts
 
-  ];
+  ]);
 
   shellHook = ''
+    export UV_PYTHON=${pkgs.python313}/bin/python3.13
+    export UV_PYTHON_DOWNLOADS=never
+
     # Lizard is a Python application, but only its executable belongs in this
     # full-stack shell. Putting the package in buildInputs would export its
     # Python dependencies through PYTHONPATH, where they can shadow the uv
     # virtualenv (notably pathspec, which mypy also imports). The Nix wrapper
     # on the executable already carries everything Lizard itself needs.
-    export PATH="${pkgs.python313Packages.lizard}/bin:$PATH"
+    export PATH="${devPkgs.python313Packages.lizard}/bin:$PATH"
 
     if [ -t 1 ]; then
       echo "❄️  Nix Shell Loaded"
@@ -76,7 +88,7 @@ pkgs.mkShell {
       export PS1="\[\033[1;34m\][nix-shell]\[\033[0m\] \w $ " # custom the shell prompt
     fi
 
-    export PLAYWRIGHT_BROWSERS_PATH=${pkgs.playwright-driver.browsers}
+    export PLAYWRIGHT_BROWSERS_PATH=${devPkgs.playwright-driver.browsers}
 
     # The chromium revision directory is named for playwright's own build
     # number, which moves whenever playwright-driver does — it went 1200 ->
@@ -84,13 +96,13 @@ pkgs.mkShell {
     # silently points at nothing. Resolve it instead, and say so loudly if the
     # layout ever changes shape, because the alternative is every browser suite
     # failing on a path that looks plausible.
-    __shell=(${pkgs.playwright-driver.browsers}/chromium_headless_shell-*/chrome-linux/headless_shell)
+    __shell=(${devPkgs.playwright-driver.browsers}/chromium_headless_shell-*/chrome-linux/headless_shell)
     if [ -x "''${__shell[0]}" ]; then
       export PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH="''${__shell[0]}"
     else
-      echo "warning: no chromium_headless_shell under ${pkgs.playwright-driver.browsers}" >&2
+      echo "warning: no chromium_headless_shell under ${devPkgs.playwright-driver.browsers}" >&2
     fi
     unset __shell
-    export FONTCONFIG_FILE=${pkgs.makeFontsConf { fontDirectories = [ pkgs.dejavu_fonts ]; }}
+    export FONTCONFIG_FILE=${devPkgs.makeFontsConf { fontDirectories = [ devPkgs.dejavu_fonts ]; }}
   '';
 }

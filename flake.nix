@@ -2,8 +2,14 @@
   description = "Fullstack Dev Environment with Node 24, UV, and Kubectl";
 
   inputs = {
-    # Nixpkgs unstable usually carries the latest Node versions
+    # Two pins of nixos-unstable, moved independently:
+    #   nixpkgs      what ships: every package and image below, and the Node
+    #                and Python the dev shell shares with them.
+    #                `nix flake update nixpkgs`; the gates follow.
+    #   nixpkgs-dev  the dev shell's tools: linters, docs, browsers, CLIs. Ships
+    #                nothing. `nix flake update nixpkgs-dev`.
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs-dev.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
@@ -26,12 +32,15 @@
   #                           exec/tools bundles (the reproducibility surface:
   #                           every bench executes through what it injects)
   #   - gui-image.nix         the deployed web bundle behind caddy
-  # All build against the single pinned nixpkgs below, so the images and
-  # the dev env can never drift onto different package revisions.
+  # Everything that ships builds against `nixpkgs`. The dev shell takes the
+  # toolchains that must match it (Node, Python) from there too, and the
+  # rest of its tools from `nixpkgs-dev`, so updating a linter never
+  # rebuilds an image.
   outputs =
     {
       self,
       nixpkgs,
+      nixpkgs-dev,
       flake-utils,
       ...
     }:
@@ -43,6 +52,7 @@
           inherit system;
           #config.allowUnfree = true; # Needed for some kubectl plugins/drivers
         };
+        devPkgs = import nixpkgs-dev { inherit system; };
 
         # VITE_API_BASE_URL is baked into the bundle at build time. Empty
         # string => same-origin "/api", which is what the compose setup uses
@@ -55,9 +65,10 @@
         };
       in
       {
-        devShells.default = import ./nix/devshell.nix { inherit pkgs; };
+        devShells.default = import ./nix/devshell.nix { inherit pkgs devPkgs; };
 
-        formatter = pkgs.nixfmt-tree;
+        # The same nixfmt the dev shell's `just check-nix` runs.
+        formatter = devPkgs.nixfmt-tree;
 
         packages = rec {
           # The listener on its own, for a host that already has nix and
