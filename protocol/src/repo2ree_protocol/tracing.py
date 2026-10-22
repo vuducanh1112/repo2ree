@@ -112,7 +112,14 @@ def _build_resource(service_name: str, instance_id: str | None = None) -> Resour
         attrs["service.version"] = version
     if environment := os.environ.get("DEPLOY_ENV"):
         attrs["deployment.environment"] = environment
-    return Resource.create(attrs)
+    resource = Resource.create(attrs)
+    if instance_id:
+        return resource
+    # The SDK (1.45+) fills in a random service.instance.id per process. An id here
+    # names one of several identical processes; a single service gets none, rather
+    # than a new one on every restart.
+    attributes = {key: value for key, value in resource.attributes.items() if key != "service.instance.id"}
+    return Resource(attributes, resource.schema_url)
 
 
 # ================================================

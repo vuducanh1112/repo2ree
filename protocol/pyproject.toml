@@ -3,16 +3,16 @@ name = "repo2ree-protocol"
 version = "0.1.0"
 dependencies = [
     "pydantic~=2.11.7",
-    "requests~=2.32.5",
-    "opentelemetry-sdk~=1.42.1",
-    "opentelemetry-exporter-otlp-proto-http~=1.42.1",
-    "opentelemetry-instrumentation-logging~=0.63b1",
+    "requests~=2.34",
+    "opentelemetry-sdk~=1.45",
+    "opentelemetry-exporter-otlp-proto-http~=1.45",
+    "opentelemetry-instrumentation-logging~=0.66b1",
 ]
 
 [dependency-groups]
 # Type stubs for protocol's runtime dependencies (used by mypy only).
 dev = [
-    "types-requests~=2.32.0",
+    "types-requests~=2.33",
 ]
 
 [build-system]
