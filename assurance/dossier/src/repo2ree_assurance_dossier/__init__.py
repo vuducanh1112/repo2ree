@@ -12,6 +12,7 @@ one thing they share, and it knows none of them.
 
 from __future__ import annotations
 
+import tempfile
 from pathlib import Path
 from typing import Literal
 
@@ -78,8 +79,11 @@ def read_dossier(directory: Path) -> Dossier:
 
 
 def write_dossier(directory: Path, dossier: Dossier) -> None:
+    """Replace the manifest atomically: an interrupted write leaves the previous one, never half of one."""
     directory.mkdir(parents=True, exist_ok=True)
-    (directory / MANIFEST).write_text(dossier.model_dump_json(indent=2, exclude_defaults=True) + "\n")
+    with tempfile.NamedTemporaryFile("w", dir=directory, prefix=f".{MANIFEST}-", delete=False) as pending:
+        pending.write(dossier.model_dump_json(indent=2, exclude_defaults=True) + "\n")
+    Path(pending.name).replace(directory / MANIFEST)
 
 
 __all__ = [

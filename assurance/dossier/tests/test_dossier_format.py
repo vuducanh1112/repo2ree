@@ -39,3 +39,10 @@ def test_anything_else_is_refused_naming_the_directory(tmp_path: Path, manifest:
         (tmp_path / "manifest.json").write_text(manifest)
     with pytest.raises(ValueError, match=problem):
         read_dossier(tmp_path)
+
+
+def test_writing_leaves_only_the_manifest(tmp_path: Path) -> None:
+    write_dossier(tmp_path, Dossier())
+    write_dossier(tmp_path, Dossier(control_plane="http://cp"))
+    assert [path.name for path in tmp_path.iterdir()] == ["manifest.json"]
+    assert read_dossier(tmp_path).control_plane == "http://cp"
