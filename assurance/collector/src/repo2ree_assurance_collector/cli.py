@@ -27,10 +27,10 @@ from pathlib import Path
 from repo2ree_assurance_collector.client import ControlPlane
 from repo2ree_assurance_collector.collector import (
     collect_control_plane,
-    describe,
     download_archive,
     finish,
     kept_archives,
+    record_deployment,
     spans,
     start,
     stopped_owners,
@@ -72,7 +72,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         collected += kept_archives(args.directory, control_plane, args.archives_in) if args.archives_in else []
         collected += [download_archive(args.directory, control_plane, ree) for ree in args.ree]
         if args.skip_owners or args.journal_dir:
-            describe(args.directory, control_plane)
+            record_deployment(args.directory, control_plane)
         else:
             collected += collect_control_plane(args.directory, control_plane)
     if args.journal_dir is not None:

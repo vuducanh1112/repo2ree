@@ -1,22 +1,36 @@
 """Write evidence fetched through the control plane into a dossier, one source at a time.
 
-Collection never raises for a source it could not get: the source is listed
-with its problem, so the checker reports the gap instead of judging around it.
+Every source ends up listed in the manifest: recorded, or with what went wrong (``_collect``), so
+the checker reports a gap instead of judging around it. A source's files are written to a
+staging folder and moved into place only once complete, and the manifest is updated after each
+source, so an interrupted collection still lists what it finished and nothing it did not.
 """
 
 from __future__ import annotations
 
+import filecmp
 import hashlib
 import json
 import re
 import shutil
 import stat
+import tempfile
 import time
 import zipfile
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
-from typing import Any
 
-from repo2ree_assurance_collector.client import ControlPlane, UnreachableError
+from repo2ree_assurance_collector.client import (
+    SAFE_NAME,
+    BuildInfo,
+    ControlPlane,
+    ControlPlaneError,
+    Journals,
+    OwnerState,
+    ServedArchive,
+    ServedArchives,
+)
 from repo2ree_assurance_dossier import (
     Cut,
     Dossier,
@@ -28,12 +42,18 @@ from repo2ree_assurance_dossier import (
 
 JOURNAL = "journal"
 STORES = "stores"
+REES = "rees"
 TELEMETRY = "telemetry"
+BUILD_INFO = "/api/v1/system/build-info"
 JOURNALS = "/api/v1/behaviour/journals"
-# An owner's journal epoch, as the runtime names it: ``<process>-<epoch>.ndjson``.
-JOURNAL_FILE = re.compile(r"^[a-z][a-z0-9-]*-[0-9]{6}\.ndjson$")
 STATE = "/api/v1/behaviour/state"
 ARCHIVES = "/api/v1/behaviour/archives"
+# An owner's journal epoch, as the runtime names it: ``<process>-<epoch>.ndjson``.
+JOURNAL_FILE = re.compile(r"^[a-z][a-z0-9-]*-[0-9]{6}\.ndjson$")
+
+# What collecting one source can run into. Anything else is a bug in the collector, not a gap in
+# the evidence, and is raised.
+GAPS = (ControlPlaneError, OSError, ValueError, zipfile.BadZipFile)
 
 
 def start(
@@ -50,13 +70,36 @@ def start(
     write_dossier(directory, dossier)
 
 
-def _add(directory: Path, source: DossierSource) -> DossierSource:
+def _list(directory: Path, source: DossierSource) -> DossierSource:
     write_dossier(directory, read_dossier(directory).with_source(source))
     return source
 
 
-def _failed(source: DossierSource, problem: str) -> DossierSource:
-    return source.model_copy(update={"status": "error", "problem": problem})
+def _failed(source: DossierSource, problem: object) -> DossierSource:
+    return source.model_copy(update={"status": "error", "problem": str(problem)})
+
+
+def _collect(directory: Path, source: DossierSource, gather: Callable[[], DossierSource]) -> DossierSource:
+    """Collect one source and list it either way: as gathered, or failed with the reason."""
+    try:
+        gathered = gather()
+    except GAPS as exc:
+        return _list(directory, _failed(source, exc))
+    return _list(directory, gathered)
+
+
+@contextmanager
+def _staged(directory: Path, relative: str) -> Iterator[Path]:
+    """A fresh folder that replaces ``directory/relative`` only once everything was written to it."""
+    final = directory / relative
+    final.parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(prefix=f".{final.name}-", dir=final.parent))
+    try:
+        yield staging
+        shutil.rmtree(final, ignore_errors=True)
+        staging.rename(final)
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
 
 
 # ================================================
@@ -64,23 +107,23 @@ def _failed(source: DossierSource, problem: str) -> DossierSource:
 # ================================================
 
 
-def archive(directory: Path, path: Path, *, cut: Cut | None, origin: str, name: str | None = None) -> DossierSource:
-    """Record a downloaded REE archive with the cut it was built at."""
-    name = name or path.stem
-    source = DossierSource(kind="git", path=f"rees/{name}/ree", origin=origin, name=name, cut=cut)
-    destination = directory / "rees" / name
-    try:
-        extract(path, destination)
-        if not (destination / "ree" / ".git").is_dir():
-            raise ValueError("the archive holds no REE repository")
-    except (OSError, ValueError, zipfile.BadZipFile) as exc:
-        source = _failed(source, str(exc))
-    return _add(directory, source)
+def unpack_archive(directory: Path, path: Path, *, cut: Cut | None, origin: str, name: str) -> DossierSource:
+    """Unpack a downloaded REE archive into the dossier, listed with the cut it was built at."""
+    source = DossierSource(kind="git", path=f"{REES}/{name}/ree", origin=origin, name=name, cut=cut)
+
+    def gather() -> DossierSource:
+        with _staged(directory, f"{REES}/{name}") as staging:
+            extract(path, staging)
+            if not (staging / "ree" / ".git").is_dir():
+                raise ValueError("the archive holds no REE repository")
+        return source
+
+    return _collect(directory, source, gather)
 
 
-def served_archives(control_plane: ControlPlane) -> dict[str, dict[str, Any]]:
+def _served_archives(control_plane: ControlPlane) -> dict[str, ServedArchive]:
     """The archives the control plane served, by the digest of their bytes."""
-    return {served["sha256"]: served for served in control_plane.get_json(ARCHIVES)["archives"]}
+    return {served.sha256: served for served in control_plane.get(ServedArchives, ARCHIVES).archives}
 
 
 def digest(path: Path) -> str:
@@ -91,12 +134,11 @@ def digest(path: Path) -> str:
     return hashed.hexdigest()
 
 
-def _served_copy(directory: Path, control_plane: ControlPlane, path: Path, served: dict[str, Any]) -> DossierSource:
-    ree_id = str(served["ree_id"])
-    name = ree_id if not (directory / "rees" / ree_id).exists() else f"{ree_id}-{served['sha256'][:12]}"
-    cut = {journal: (int(low), int(high)) for journal, (low, high) in served["cut"].items()}
-    origin = control_plane.address(f"/api/v1/rees/{ree_id}/ree-archive")
-    return archive(directory, path, cut=cut, origin=origin, name=name)
+def _served_copy(directory: Path, control_plane: ControlPlane, path: Path, served: ServedArchive) -> DossierSource:
+    taken = (directory / REES / served.ree_id).exists()
+    name = f"{served.ree_id}-{served.sha256[:12]}" if taken else served.ree_id
+    origin = control_plane.address(f"/api/v1/rees/{served.ree_id}/ree-archive")
+    return unpack_archive(directory, path, cut=served.cut, origin=origin, name=name)
 
 
 def kept_archives(directory: Path, control_plane: ControlPlane, folders: list[Path]) -> list[DossierSource]:
@@ -106,10 +148,10 @@ def kept_archives(directory: Path, control_plane: ControlPlane, folders: list[Pa
     deployment and is passed over.
     """
     try:
-        served = served_archives(control_plane)
-    except UnreachableError as exc:
-        failed = DossierSource(kind="git", path="rees", origin=control_plane.address(ARCHIVES))
-        return [_add(directory, _failed(failed, str(exc)))]
+        served = _served_archives(control_plane)
+    except ControlPlaneError as exc:
+        failed = DossierSource(kind="git", path=REES, origin=control_plane.address(ARCHIVES))
+        return [_list(directory, _failed(failed, exc))]
     found = sorted({path for folder in folders if folder.is_dir() for path in folder.rglob("*.zip")})
     copies: dict[str, Path] = {}
     for path in found:
@@ -120,31 +162,39 @@ def kept_archives(directory: Path, control_plane: ControlPlane, folders: list[Pa
 
 
 def download_archive(directory: Path, control_plane: ControlPlane, ree_id: str) -> DossierSource:
-    """Download an REE through the control plane, as its owner would, and record it with its cut."""
+    """Download an REE through the control plane, as its owner would, and list it with its cut."""
     path = f"/api/v1/rees/{ree_id}/ree-archive"
-    failed = DossierSource(kind="git", path=f"rees/{ree_id}/ree", origin=control_plane.address(path), name=ree_id)
-    target = directory / "downloads" / f"{ree_id}.zip"
-    try:
-        control_plane.download(path, target)
-        served = served_archives(control_plane).get(digest(target))
-    except UnreachableError as exc:
-        return _add(directory, _failed(failed, str(exc)))
-    try:
+    source = DossierSource(kind="git", path=f"{REES}/{ree_id}/ree", origin=control_plane.address(path), name=ree_id)
+    if not SAFE_NAME.fullmatch(ree_id):
+        return _list(directory, _failed(source.model_copy(update={"path": REES}), f"not an REE id: {ree_id!r}"))
+    with tempfile.TemporaryDirectory(dir=directory) as scratch:
+        target = Path(scratch) / f"{ree_id}.zip"
+        try:
+            control_plane.download(path, target)
+            served = _served_archives(control_plane).get(digest(target))
+        except ControlPlaneError as exc:
+            return _list(directory, _failed(source, exc))
         if served is None:
-            return _add(directory, _failed(failed, "the control plane has no record of serving this archive"))
+            return _list(directory, _failed(source, "the control plane has no record of serving this archive"))
         return _served_copy(directory, control_plane, target, served)
-    finally:
-        target.unlink(missing_ok=True)
 
 
 def extract(path: Path, destination: Path) -> None:
-    """Unpack an REE archive, keeping its symlinks, never writing outside ``destination``."""
+    """Unpack an REE archive, keeping its symlinks as links, never writing outside ``destination``.
+
+    A link may point anywhere (a venv's interpreter does) and is never followed: a member under a
+    link the archive itself created, or at one, is refused, since writing it would go wherever the
+    link points.
+    """
     with zipfile.ZipFile(path) as bundle:
         for info in bundle.infolist():
             relative = PurePosixPath(info.filename)
             if relative.is_absolute() or ".." in relative.parts:
                 raise ValueError(f"unsafe archive member {info.filename}")
-            target = destination.joinpath(*relative.parts)
+            parts = relative.parts
+            if any(destination.joinpath(*parts[:depth]).is_symlink() for depth in range(1, len(parts) + 1)):
+                raise ValueError(f"archive member {info.filename} lies under a link the archive made")
+            target = destination.joinpath(*parts)
             if info.is_dir():
                 target.mkdir(parents=True, exist_ok=True)
                 continue
@@ -161,13 +211,13 @@ def extract(path: Path, destination: Path) -> None:
 # ================================================
 
 
-def describe(directory: Path, control_plane: ControlPlane) -> None:
-    """Name the deployment the dossier was collected from: its control plane and build."""
+def record_deployment(directory: Path, control_plane: ControlPlane) -> None:
+    """Name the deployment the dossier was collected from: its control plane and, if it says, its build."""
     dossier = read_dossier(directory)
     if dossier.build_revision is None:
         try:
-            revision = control_plane.get_json("/api/v1/system/build-info").get("revision") or None
-        except UnreachableError:
+            revision = control_plane.get(BuildInfo, BUILD_INFO).revision
+        except ControlPlaneError:
             revision = None
         dossier = dossier.model_copy(update={"build_revision": revision})
     write_dossier(directory, dossier.model_copy(update={"control_plane": control_plane.url}))
@@ -175,38 +225,38 @@ def describe(directory: Path, control_plane: ControlPlane) -> None:
 
 def collect_control_plane(directory: Path, control_plane: ControlPlane) -> list[DossierSource]:
     """The owners' persisted state, then their journals, so the journals reach past the state's cut."""
-    describe(directory, control_plane)
+    record_deployment(directory, control_plane)
     return [_state(directory, control_plane), _journals(directory, control_plane)]
 
 
 def _state(directory: Path, control_plane: ControlPlane) -> DossierSource:
     source = DossierSource(kind="state", path=STORES, origin=control_plane.address(STATE), name="api")
-    try:
-        state = control_plane.get_json(STATE)
-    except UnreachableError as exc:
-        return _add(directory, _failed(source, str(exc)))
-    stores = directory / STORES
-    for name, document in state["runs"].items():
-        target = stores / "runs" / name / "state.json"
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(json.dumps(document, indent=2))
-    stores.mkdir(parents=True, exist_ok=True)
-    if state["allocations"] is not None:
-        (stores / "allocations.json").write_text(json.dumps(state["allocations"], indent=2))
-    cut = {journal: (int(low), int(high)) for journal, (low, high) in state["cut"].items()}
-    return _add(directory, source.model_copy(update={"cut": cut}))
+
+    def gather() -> DossierSource:
+        state = control_plane.get(OwnerState, STATE)
+        with _staged(directory, STORES) as stores:
+            for name, document in state.runs.items():
+                (stores / "runs" / name).mkdir(parents=True)
+                (stores / "runs" / name / "state.json").write_text(json.dumps(document, indent=2))
+            if state.allocations is not None:
+                (stores / "allocations.json").write_text(json.dumps(state.allocations, indent=2))
+        return source.model_copy(update={"cut": state.cut})
+
+    return _collect(directory, source, gather)
 
 
 def _journals(directory: Path, control_plane: ControlPlane) -> DossierSource:
     source = DossierSource(kind="journal", path=JOURNAL, origin=control_plane.address(JOURNALS), name="api")
-    target = directory / JOURNAL
-    target.mkdir(parents=True, exist_ok=True)
-    try:
-        for journal in control_plane.get_json(JOURNALS)["journals"]:
-            (target / f"{journal['id']}.ndjson").write_bytes(control_plane.get_bytes(f"{JOURNALS}/{journal['id']}"))
-    except UnreachableError as exc:
-        return _add(directory, _failed(source, str(exc)))
-    return _add(directory, source)
+
+    def gather() -> DossierSource:
+        listed = control_plane.get(Journals, JOURNALS)
+        with _staged(directory, JOURNAL) as journals:
+            for journal in listed.journals:
+                body = control_plane.get_bytes(f"{JOURNALS}/{journal.id}")
+                (journals / f"{journal.id}.ndjson").write_bytes(body)
+        return source
+
+    return _collect(directory, source, gather)
 
 
 def stopped_owners(
@@ -220,35 +270,33 @@ def stopped_owners(
     the journals exactly. It replaces whatever was collected through the control plane.
     """
     journal = DossierSource(kind="journal", path=JOURNAL, origin=f"{journals} (after its owners stopped)", name="api")
-    target = directory / JOURNAL
-    shutil.rmtree(target, ignore_errors=True)
-    target.mkdir(parents=True)
-    try:
+
+    def copy_journals() -> DossierSource:
         # Only the owners' journals: the directory also keeps the control plane's record of serving archives.
         found = sorted(path for path in journals.glob("*.ndjson") if JOURNAL_FILE.match(path.name))
         if not found:
             raise FileNotFoundError(f"no journals in {journals}")
-        for path in found:
-            shutil.copyfile(path, target / path.name)
-    except OSError as exc:
-        journal = _failed(journal, str(exc))
-    recorded = [_add(directory, journal)]
+        with _staged(directory, JOURNAL) as target:
+            for path in found:
+                shutil.copyfile(path, target / path.name)
+        return journal
+
+    listed = [_collect(directory, journal, copy_journals)]
     if runs is None and allocations is None:
-        return recorded
+        return listed
     origins = ", ".join(str(path) for path in (runs, allocations) if path is not None)
     state = DossierSource(kind="state", path=STORES, origin=f"{origins} (after their owners stopped)", name="api")
-    stores = directory / STORES
-    shutil.rmtree(stores, ignore_errors=True)
-    stores.mkdir(parents=True)
-    try:
-        for run in sorted(runs.glob("*/state.json")) if runs is not None else []:
-            (stores / "runs" / run.parent.name).mkdir(parents=True)
-            shutil.copyfile(run, stores / "runs" / run.parent.name / "state.json")
-        if allocations is not None and allocations.is_file():
-            shutil.copyfile(allocations, stores / "allocations.json")
-    except OSError as exc:
-        state = _failed(state, str(exc))
-    return [*recorded, _add(directory, state)]
+
+    def copy_stores() -> DossierSource:
+        with _staged(directory, STORES) as stores:
+            for run in sorted(runs.glob("*/state.json")) if runs is not None else []:
+                (stores / "runs" / run.parent.name).mkdir(parents=True)
+                shutil.copyfile(run, stores / "runs" / run.parent.name / "state.json")
+            if allocations is not None and allocations.is_file():
+                shutil.copyfile(allocations, stores / "allocations.json")
+        return state
+
+    return [*listed, _collect(directory, state, copy_stores)]
 
 
 # ================================================
@@ -257,19 +305,39 @@ def stopped_owners(
 
 
 def spans(directory: Path, files: list[Path], origin: str) -> list[DossierSource]:
-    """List span files, copying in those that live outside the dossier."""
-    recorded: list[DossierSource] = []
-    for path in files:
-        if not path.is_file():
-            continue
-        inside = path.resolve().is_relative_to(directory.resolve())
+    """List span files, copying in those that live outside the dossier, each under a name of its own.
+
+    A file that is not there is listed as unavailable rather than passed over.
+    """
+    return [_span(directory, path, origin) for path in files]
+
+
+def _span(directory: Path, path: Path, origin: str) -> DossierSource:
+    inside = path.resolve().is_relative_to(directory.resolve())
+    relative = (
+        path.resolve().relative_to(directory.resolve()) if inside else Path(TELEMETRY, _free_name(directory, path))
+    )
+    source = DossierSource(kind="spans", path=relative.as_posix(), origin=origin, name=path.stem)
+    if not path.is_file():
+        return _list(directory, source.model_copy(update={"status": "unavailable", "problem": f"no file {path}"}))
+
+    def gather() -> DossierSource:
         if not inside:
-            (directory / TELEMETRY).mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(path, directory / TELEMETRY / path.name)
-        relative = path.resolve().relative_to(directory.resolve()) if inside else Path(TELEMETRY, path.name)
-        source = DossierSource(kind="spans", path=relative.as_posix(), origin=origin, name=path.stem)
-        recorded.append(_add(directory, source))
-    return recorded
+            (directory / relative).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(path, directory / relative)
+        return source
+
+    return _collect(directory, source, gather)
+
+
+def _free_name(directory: Path, path: Path) -> str:
+    """The name ``path`` gets among the dossier's span files: its own, numbered while another file holds it."""
+    name, number = path.name, 1
+    while (directory / TELEMETRY / name).exists() and not filecmp.cmp(
+        directory / TELEMETRY / name, path, shallow=False
+    ):
+        name, number = f"{path.stem}-{number}{path.suffix}", number + 1
+    return name
 
 
 def finish(directory: Path, outcome: str | None = None) -> None:

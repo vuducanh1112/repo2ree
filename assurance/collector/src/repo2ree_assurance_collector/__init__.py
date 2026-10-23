@@ -10,29 +10,6 @@ owners' journals and state exported after they stopped, the only evidence that
 carries their close (``stopped_owners``).
 """
 
-from repo2ree_assurance_collector.client import ControlPlane, UnreachableError
-from repo2ree_assurance_collector.collector import (
-    archive,
-    collect_control_plane,
-    describe,
-    download_archive,
-    finish,
-    kept_archives,
-    spans,
-    start,
-    stopped_owners,
-)
+from repo2ree_assurance_collector.client import ControlPlane, ControlPlaneError
 
-__all__ = [
-    "ControlPlane",
-    "UnreachableError",
-    "archive",
-    "collect_control_plane",
-    "describe",
-    "download_archive",
-    "finish",
-    "kept_archives",
-    "spans",
-    "start",
-    "stopped_owners",
-]
+__all__ = ["ControlPlane", "ControlPlaneError"]

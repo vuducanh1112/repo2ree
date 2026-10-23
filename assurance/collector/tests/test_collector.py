@@ -5,26 +5,28 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import stat
 import threading
 import zipfile
 from collections.abc import Iterator
+from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
 
 from repo2ree_assurance_checker import load_dossier
-from repo2ree_assurance_collector import (
-    ControlPlane,
-    archive,
+from repo2ree_assurance_collector import ControlPlane
+from repo2ree_assurance_collector.cli import main
+from repo2ree_assurance_collector.collector import (
     collect_control_plane,
     download_archive,
     kept_archives,
     spans,
     start,
     stopped_owners,
+    unpack_archive,
 )
-from repo2ree_assurance_collector.cli import main
 from repo2ree_assurance_dossier import read_dossier
 
 
@@ -46,11 +48,21 @@ JOURNAL = record(
 )
 
 
-def bundle(*members: tuple[str, str]) -> bytes:
+@dataclass(frozen=True)
+class Link:
+    target: str
+
+
+def bundle(*members: tuple[str, str | Link]) -> bytes:
     data = io.BytesIO()
     with zipfile.ZipFile(data, "w") as archive:
         for name, content in members:
-            archive.writestr(name, content)
+            if isinstance(content, Link):
+                info = zipfile.ZipInfo(name)
+                info.external_attr = (stat.S_IFLNK | 0o777) << 16
+                archive.writestr(info, content.target)
+            else:
+                archive.writestr(name, content)
     return data.getvalue()
 
 
@@ -162,6 +174,7 @@ def test_an_archive_the_control_plane_did_not_serve_is_an_error(stub: tuple[Stub
     source = download_archive(directory, ControlPlane(url), "ree-3")
     assert (source.status, source.problem) == ("error", "the control plane has no record of serving this archive")
     assert "404" in (download_archive(directory, ControlPlane(url), "ree-9").problem or "")
+    assert sorted(path.name for path in directory.iterdir()) == ["manifest.json"]  # No download left behind.
 
 
 def test_archives_a_client_kept_are_placed_by_the_control_planes_record(stub: tuple[Stub, str], tmp_path: Path) -> None:
@@ -186,9 +199,49 @@ def test_archive_members_cannot_escape_the_dossier(tmp_path: Path) -> None:
     start(directory)
     zipped = tmp_path / "evil.zip"
     zipped.write_bytes(bundle(("../outside", "x")))
-    source = archive(directory, zipped, cut=None, origin="x")
+    source = unpack_archive(directory, zipped, cut=None, origin="x", name="evil")
     assert source.problem == "unsafe archive member ../outside"
     assert not (tmp_path / "outside").exists()
+
+
+def test_a_link_in_an_archive_is_kept_but_never_written_through(tmp_path: Path) -> None:
+    directory = tmp_path / "dossier"
+    start(directory)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    venv = tmp_path / "venv.zip"
+    venv.write_bytes(bundle(("ree/.git/HEAD", "ref\n"), ("ree/.venv/bin/python", Link("/usr/bin/python3"))))
+    escaping = tmp_path / "escaping.zip"
+    escaping.write_bytes(bundle(("ree/.git/HEAD", "ref\n"), ("ree/out", Link(str(outside))), ("ree/out/x", "x")))
+
+    assert unpack_archive(directory, venv, cut=None, origin="x", name="venv").status == "recorded"
+    assert (directory / "rees/venv/ree/.venv/bin/python").is_symlink()
+    refused = unpack_archive(directory, escaping, cut=None, origin="x", name="escaping")
+    assert refused.problem == "archive member ree/out/x lies under a link the archive made"
+    assert list(outside.iterdir()) == []
+    assert not (directory / "rees/escaping").exists()  # Nothing of a refused archive stays behind.
+
+
+@pytest.mark.parametrize(
+    ("route", "body", "kind"),
+    [
+        ("/api/v1/behaviour/state", b'{"unexpected": true}', "state"),
+        ("/api/v1/behaviour/state", b'{"cut": {}, "runs": {"../escaped": {}}, "allocations": null}', "state"),
+        ("/api/v1/behaviour/journals", b'{"journals": [{"id": "../../escaped"}]}', "journal"),
+        ("/api/v1/behaviour/journals", b"<html>502 Bad Gateway</html>", "journal"),
+    ],
+)
+def test_an_answer_the_collector_cannot_use_is_listed_as_an_error(
+    stub: tuple[Stub, str], tmp_path: Path, route: str, body: bytes, kind: str
+) -> None:
+    served, url = stub
+    served.routes[route] = (200, body)
+    directory = tmp_path / "deep" / "dossier"
+    assert main([str(directory), "--control-plane", url]) == 1
+    (source,) = [source for source in read_dossier(directory).sources if source.kind == kind]
+    assert source.status == "error"
+    assert "not the expected answer" in str(source.problem)
+    assert not list(tmp_path.rglob("escaped*"))
 
 
 def test_span_files_are_listed_and_copied_in_when_outside(tmp_path: Path) -> None:
@@ -200,6 +253,24 @@ def test_span_files_are_listed_and_copied_in_when_outside(tmp_path: Path) -> Non
     listed = spans(directory, [directory / "telemetry/api.ndjson", tmp_path / "location-1.ndjson"], "local")
     assert [source.path for source in listed] == ["telemetry/api.ndjson", "telemetry/location-1.ndjson"]
     assert (directory / "telemetry/location-1.ndjson").is_file()
+
+
+def test_span_files_sharing_a_name_are_both_kept_and_a_missing_one_is_listed(tmp_path: Path) -> None:
+    directory = tmp_path / "dossier"
+    start(directory)
+    first, second = tmp_path / "a/api.ndjson", tmp_path / "b/api.ndjson"
+    for path, content in ((first, "{}\n"), (second, "[]\n")):
+        path.parent.mkdir()
+        path.write_text(content)
+    listed = spans(directory, [first, second, first, tmp_path / "missing.ndjson"], "local")
+    assert [(source.path, source.status) for source in listed] == [
+        ("telemetry/api.ndjson", "recorded"),
+        ("telemetry/api-1.ndjson", "recorded"),
+        ("telemetry/api.ndjson", "recorded"),  # The same file again keeps its name.
+        ("telemetry/missing.ndjson", "unavailable"),
+    ]
+    assert (directory / "telemetry/api-1.ndjson").read_text() == "[]\n"
+    assert len(read_dossier(directory).sources) == 3
 
 
 CLOSED = JOURNAL + record(3, kind="journal.closed", final=True)
