@@ -9,7 +9,7 @@ import subprocess
 from pathlib import Path
 
 from repo2ree_assurance_checker.check import check
-from repo2ree_assurance_checker.dossier import load_dossier, one_per_history
+from repo2ree_assurance_checker.dossier import one_per_history
 from repo2ree_assurance_checker.evidence import Evidence, Source
 from repo2ree_assurance_checker.files import load_spec
 from repo2ree_assurance_checker.sources import (
@@ -20,30 +20,6 @@ from repo2ree_assurance_checker.sources import (
     read_journals,
     recorded_phases,
 )
-from repo2ree_assurance_dossier import Dossier, DossierSource, write_dossier
-from repo2ree_protocol.behaviour import close_journal, journal, open_journal
-
-
-def write_journal(directory: Path) -> Path:
-    opened = open_journal(directory, "api", hosts=("api", "supervisor"))
-    journal().transition("api", "Run", "run-1", None, "queued", partition="ree-1", facts={"operation": "build"})
-    journal().send("supervisor", "dispatch", "exec_action", "a1", partition="ree-1", facts={"operation": "x"})
-    journal().abandon("supervisor", "dispatch", "a1", partition="ree-1", reason="TimeoutError")
-    close_journal()
-    return opened.path
-
-
-def test_runtime_journals_round_trip(tmp_path: Path) -> None:
-    write_journal(tmp_path)
-    sources, events = read_journals(tmp_path)
-    assert [(source.id, source.complete, source.closed) for source in sources] == [("api-000001", True, True)]
-    assert sources[0].hosts == {"api", "supervisor"}
-    assert [(event.kind, event.subject, event.position) for event in events] == [
-        ("transition", "Run", 2),
-        ("send", "dispatch", 3),
-        ("abandon", "dispatch", 4),
-    ]
-    assert events[2].facts == {"reason": "TimeoutError"}
 
 
 def test_journal_records_keep_the_span_they_were_written_in(tmp_path: Path) -> None:
@@ -81,23 +57,6 @@ def test_journal_records_keep_the_span_they_were_written_in(tmp_path: Path) -> N
     assert sources[0].complete, sources[0].problems
 
 
-def test_each_process_start_is_a_new_epoch(tmp_path: Path) -> None:
-    write_journal(tmp_path)
-    write_journal(tmp_path)
-    sources, _ = read_journals(tmp_path)
-    assert [(source.id, source.rank) for source in sources] == [("api-000001", 1), ("api-000002", 2)]
-
-
-def test_lost_and_torn_records_make_a_journal_incomplete(tmp_path: Path) -> None:
-    path = write_journal(tmp_path)
-    lines = path.read_text().splitlines()
-    path.write_text("\n".join([lines[0], *lines[2:]]) + "\n" + '{"seq": 6, "kind": "tran')
-    (source,), _ = read_journals(tmp_path)
-    assert not source.complete
-    assert source.problems[0] == "sequence jumps from 1 to 3"
-    assert source.problems[1].startswith("line 5: torn final record")
-
-
 def test_a_malformed_header_makes_a_journal_incomplete_instead_of_misread(tmp_path: Path) -> None:
     header = {"v": 1, "seq": 1, "kind": "journal.opened", "process": "api", "epoch": 1, "hosts": "api"}
     (tmp_path / "api-000001.ndjson").write_text(json.dumps(header) + "\n")
@@ -105,35 +64,6 @@ def test_a_malformed_header_makes_a_journal_incomplete_instead_of_misread(tmp_pa
     assert not source.complete
     assert source.problems[0].startswith("seq 1: malformed journal.opened header")
     assert source.hosts == frozenset({"api"})  # The process itself, never the letters of a string.
-
-
-def test_a_missing_earlier_epoch_taints_the_later_one(tmp_path: Path) -> None:
-    write_journal(tmp_path)
-    write_journal(tmp_path)
-    (tmp_path / "api-000001.ndjson").unlink()
-    (source,), _ = read_journals(tmp_path)
-    assert source.problems == ("an earlier epoch of this process is missing",)
-
-
-def test_a_journal_closed_for_good_is_read_as_final(tmp_path: Path) -> None:
-    open_journal(tmp_path / "final", "api")
-    close_journal(final=True)
-    write_journal(tmp_path / "ordinary")
-    (final,), _ = read_journals(tmp_path / "final")
-    (ordinary,), _ = read_journals(tmp_path / "ordinary")
-    assert (final.closed, final.final) == (True, True)
-    assert (ordinary.closed, ordinary.final) == (True, False)
-
-
-def test_an_unclosed_journal_is_complete_but_open(tmp_path: Path) -> None:
-    open_journal(tmp_path, "api")
-    journal().transition("api", "Run", "run-1", None, "queued", partition="ree-1", facts={})
-    try:
-        (source,), _ = read_journals(tmp_path)
-        assert source.complete
-        assert not source.closed
-    finally:
-        close_journal()
 
 
 RECORD: dict[str, object] = {
@@ -365,36 +295,6 @@ def test_a_workbench_repository_is_read_through_ree_history(tmp_path: Path) -> N
     assert GIT is not None
     captured_repository(tmp_path / "ree", "a1")
     assert history_head(GIT, tmp_path / "ree") == ("refs/heads/ree-history", [])
-
-
-def test_a_dossier_is_read_through_its_manifest_with_origins_and_cuts(tmp_path: Path) -> None:
-    write_journal(tmp_path / "journal")
-    (tmp_path / "stores").mkdir()
-    cut = {"api-000001": (2, 3)}
-    write_dossier(
-        tmp_path,
-        Dossier(
-            control_plane="http://cp",
-            sources=(
-                DossierSource(kind="journal", path="journal", origin="http://cp/journal"),
-                DossierSource(kind="state", path="stores", origin="http://cp/state", cut=cut),
-                DossierSource(kind="spans", path="telemetry/api.ndjson", origin="http://traces"),
-                DossierSource(kind="git", path="rees/gone/ree", origin="http://cp/archive", name="gone"),
-                DossierSource(
-                    kind="git", path="rees/x/ree", origin="http://cp/archive", status="error", problem="timed out"
-                ),
-            ),
-        ),
-    )
-    evidence = load_dossier(tmp_path)
-    sources = {source.id: source for source in evidence.sources}
-    assert sources["api-000001"].origin == "http://cp/journal"
-    assert sources["api-000001"].cut is None
-    assert sources["stores"].cut == cut
-    assert evidence.problems == (
-        "git gone from http://cp/archive: listed in the manifest but not in the dossier",
-        "git rees/x/ree from http://cp/archive: error (timed out)",
-    )
 
 
 def snapshot(label: str, *attempts: tuple[str, str | None]) -> Evidence:

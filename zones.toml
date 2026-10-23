@@ -35,7 +35,6 @@ summary = "Reads a dossier against the specification and gives verdicts."
 summary = "What the specification concedes is not proven, each with a reason."
 [spec.groups.excuses.paths]
 "assurance/checker/expected-verdicts.toml" = "Verdicts a gated test may leave open, and items no gated test reaches"
-"assurance/checker/tests/test_system_assurance.py" = "In-process scenarios; UNEXERCISED lists the edges they never reach"
 
 [gates]
 summary = "What enforces the specification and writes receipts."

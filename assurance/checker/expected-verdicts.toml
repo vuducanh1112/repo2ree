@@ -58,8 +58,7 @@ items = [
   "Attempt executing -> capture_failed",
   "Attempt completed -> capture_failed",
 ]
-reason = """Needs Git capture inside the REE to fail; only the in-process scenarios \
-inject that fault."""
+reason = """Needs Git capture inside the REE to fail; no gated tier injects that fault."""
 
 [[unreached]]
 items = ["Ree (none) -> sealed"]

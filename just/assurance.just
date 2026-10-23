@@ -23,7 +23,7 @@ check-assurance-checker: (_check-python-package "assurance/checker")
     lint-imports --config assurance/checker/pyproject.toml
     python -m repo2ree_assurance_checker generate --check
 
-# Checker tests; the system test drives the real owners and needs git.
+# Checker tests; the history tests need git.
 [group('Assurance')]
 test-assurance-checker:
     pytest assurance/checker/tests
