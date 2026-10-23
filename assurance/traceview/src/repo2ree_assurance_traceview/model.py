@@ -170,3 +170,4 @@ class BehaviourTrace(ViewModel):
     steps: tuple[str, ...]
     standings: tuple[Standing, ...]
     reviews: int = 0  # Review attempts on this REE, not drawn until reviews are specified.
+    unreadable_spans: int = 0  # Span records passed over because they could not be read.

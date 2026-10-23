@@ -10,17 +10,20 @@ from pathlib import Path
 from repo2ree_assurance_checker.dossier import history_head
 from repo2ree_assurance_dossier import Dossier
 from repo2ree_assurance_traceview.model import DossierInfo
-from repo2ree_assurance_traceview.spans import Span, parse_spans
+from repo2ree_assurance_traceview.spans import Span, SpanIndex, parse_spans
 
 
-def read_spans(directory: Path, dossier: Dossier) -> list[Span]:
+def read_spans(directory: Path, dossier: Dossier) -> SpanIndex:
     """Every spans file the manifest lists, one per process that exported them."""
     spans: list[Span] = []
+    unreadable = 0
     for source in dossier.recorded("spans"):
         path = directory / source.path
         if path.exists():
-            spans.extend(parse_spans(path.read_text()))
-    return spans
+            parsed, skipped = parse_spans(path.read_text(errors="replace"))
+            spans.extend(parsed)
+            unreadable += skipped
+    return SpanIndex(spans, unreadable)
 
 
 def describe(directory: Path, dossier: Dossier) -> DossierInfo:

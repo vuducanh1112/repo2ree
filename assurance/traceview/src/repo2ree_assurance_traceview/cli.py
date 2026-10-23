@@ -17,7 +17,6 @@ from repo2ree_assurance_traceview.files import commit_sizes, describe, read_span
 from repo2ree_assurance_traceview.operations import build_trace, rees
 from repo2ree_assurance_traceview.provenance import build_provenance, render_text
 from repo2ree_assurance_traceview.render import render_html
-from repo2ree_assurance_traceview.spans import SpanIndex
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -55,7 +54,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 2
 
     model = VerifiedModel.of(verification)
-    spans = SpanIndex(read_spans(located, dossier))
+    spans = read_spans(located, dossier)
     info = describe(located, dossier)
     sizes = commit_sizes(repositories(located, dossier), args.git_executable)
     chosen = [ree for ree in rees(model) if args.ree is None or ree.startswith(args.ree)]

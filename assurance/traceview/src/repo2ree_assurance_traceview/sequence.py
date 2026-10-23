@@ -12,6 +12,7 @@ from collections import defaultdict
 from collections.abc import Sequence as Seq
 
 from repo2ree_assurance_checker.evidence import Event
+from repo2ree_assurance_traceview import terms
 from repo2ree_assurance_traceview.model import Activation, Lane, Provenance, ReeChange, Row, Sequence, StepChange, Tone
 from repo2ree_assurance_traceview.spans import Span, SpanIndex, timestamp
 
@@ -47,7 +48,7 @@ class _Builder:
 
     def message(
         self,
-        t: float,
+        t: float | None,
         source: str,
         target: str,
         label: str,
@@ -56,11 +57,14 @@ class _Builder:
         ref: str | None = None,
         detail: str | None = None,
     ) -> None:
-        self.rows.append(Row(t=t, lane=source, to=target, label=label, provenance=provenance, ref=ref, detail=detail))
+        if t is not None:  # A record without a time cannot be placed in a sequence over time.
+            self.rows.append(
+                Row(t=t, lane=source, to=target, label=label, provenance=provenance, ref=ref, detail=detail)
+            )
 
     def note(
         self,
-        t: float,
+        t: float | None,
         lane: str,
         label: str,
         provenance: Provenance,
@@ -69,7 +73,8 @@ class _Builder:
         detail: str | None = None,
         tone: Tone | None = None,
     ) -> None:
-        self.rows.append(Row(t=t, lane=lane, label=label, provenance=provenance, ref=ref, detail=detail, tone=tone))
+        if t is not None:
+            self.rows.append(Row(t=t, lane=lane, label=label, provenance=provenance, ref=ref, detail=detail, tone=tone))
 
     def activate(self, lane: str, start: float, end: float, label: str, provenance: Provenance = "span") -> None:
         self.activations.append(Activation(lane=lane, start=start, end=end, label=label, provenance=provenance))
@@ -108,20 +113,21 @@ def build_sequence(
     request = _request(builder, spans, related)
 
     for event in runs:
-        detail = f"failure {event.facts['failure_category']}" if event.facts.get("failure_category") else None
-        label = f"{event.facts.get('action', 'action')} → {event.target_state}"
+        category = event.facts.get(terms.FAILURE_CATEGORY)
+        detail = f"failure {category}" if category else None
+        label = f"{_fact(event, terms.ACTION_NAME, 'action')} → {event.target_state}"
         builder.note(_at(event), "api", label, "journal", ref=event.ref, detail=detail)
     for event in allocations:
         builder.note(_at(event), "supervisor", f"Allocation → {event.target_state}", "journal", ref=event.ref)
     for event in exchange:
         if event.kind == "send":
-            label = f"exec_action · {event.facts.get('operation')}"
+            label = f"{terms.EXEC_ACTION} · {_fact(event, terms.OPERATION)}"
             builder.message(_at(event), "supervisor", "workbench", label, "journal", ref=event.ref)
         elif event.kind == "receive":
-            label = f"{event.message} · {event.facts.get('status')}"
+            label = f"{event.message} · {_fact(event, terms.STATUS)}"
             builder.message(_at(event), "workbench", "supervisor", label, "journal", ref=event.ref)
         else:
-            label = f"abandoned · {event.facts.get('reason')}"
+            label = f"abandoned · {_fact(event, 'reason')}"
             builder.message(_at(event), "workbench", "supervisor", label, "journal", ref=event.ref)
 
     staged: list[Span] = []
@@ -186,14 +192,20 @@ def build_sequence(
         # No command span: the dispatch exchange brackets the attempt, as it does for the checker.
         sent = next((e for e in exchange if e.kind == "send"), None)
         outcome = next((e for e in exchange if e.kind != "send"), None)
-        if sent is not None and outcome is not None:
-            _capture(builder, _Bracket(_at(sent), _at(outcome), []), None, attempt, changes, ree, commit, files)
+        start, end = _at(sent) if sent else None, _at(outcome) if outcome else None
+        if start is not None and end is not None:
+            _capture(builder, _Bracket(start, end, []), None, attempt, changes, ree, commit, files)
 
     return builder.build()
 
 
-def _at(event: Event) -> float:
-    return timestamp(event.at) if event.at else 0.0
+def _at(event: Event) -> float | None:
+    return timestamp(event.at) if event.at else None
+
+
+def _fact(event: Event, name: str, missing: str = "?") -> str:
+    value = event.facts.get(name)
+    return missing if value is None else str(value)
 
 
 def _request(builder: _Builder, spans: SpanIndex, related: list[Span]) -> Span | None:
@@ -270,19 +282,19 @@ def _capture(
     """Attempt states placed inside their bracket, and the commit that ends it."""
     m = bracket.margin
     placed = {
-        "pending": bracket.start + m / 2,
-        "executing": bracket.first - m,
-        "completed": bracket.last + m,
-        "captured": bracket.end - 2 * m,
-        "capture_failed": bracket.end - 2 * m,
+        terms.PENDING: bracket.start + m / 2,
+        terms.EXECUTING: bracket.first - m,
+        terms.COMPLETED: bracket.last + m,
+        terms.CAPTURED: bracket.end - 2 * m,
+        terms.CAPTURE_FAILED: bracket.end - 2 * m,
     }
     before = command.attribute("repo2ree.history.before_snapshot_id") if command is not None else None
     for event in attempt:
         detail = None
-        if event.target_state == "executing" and before:
+        if event.target_state == terms.EXECUTING and before:
             detail = f"before-snapshot {before[:8]}"
-        elif event.target_state == "completed":
-            detail = f"outcome {event.facts.get('outcome')}"
+        elif event.target_state == terms.COMPLETED:
+            detail = f"outcome {_fact(event, terms.OUTCOME)}"
         t = placed.get(event.target_state or "", bracket.end - 2 * m)
         builder.note(t, "core", f"Attempt → {event.target_state}", "inferred", ref=event.ref, detail=detail)
     if commit is None:

@@ -391,7 +391,9 @@ def build_spans() -> list[Span]:
     ]
 
 
-def trace_of(scenario: Scenario, spans: list[Span] | None = None, ree: str = REE) -> BehaviourTrace:
+def trace_of(
+    scenario: Scenario, spans: list[Span] | None = None, ree: str = REE, unreadable: int = 0
+) -> BehaviourTrace:
     gits: dict[str, set[str]] = {}
     for event in scenario.events:
         if event.source.startswith("git:"):
@@ -426,7 +428,7 @@ def trace_of(scenario: Scenario, spans: list[Span] | None = None, ree: str = REE
     verification = Verification.model_validate_json(verify(SPEC, evidence).model_dump_json())
     return build_trace(
         VerifiedModel.of(verification),
-        SpanIndex(spans or []),
+        SpanIndex(spans or [], unreadable),
         ree=ree,
         dossier=DossierInfo(name="synthetic"),
     )

@@ -10,6 +10,7 @@ PLACEHOLDER = "/*TRACE*/null"
 def render_html(trace: BehaviourTrace, template: str) -> str:
     if PLACEHOLDER not in template:
         raise ValueError(f"template has no {PLACEHOLDER} placeholder")
-    # "</" would end the inline script early if a label ever contained it.
-    data = trace.model_dump_json().replace("</", "<\\/")
+    # Any "<" in a label could end or derail the inline script ("</script>", "<!--<script>").
+    # JSON only has "<" inside strings, where the escape means the same.
+    data = trace.model_dump_json().replace("<", "\\u003c")
     return template.replace(PLACEHOLDER, data)

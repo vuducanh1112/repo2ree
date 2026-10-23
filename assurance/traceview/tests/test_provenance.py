@@ -19,6 +19,14 @@ def test_standings_show_evidence_going_stale_and_current_again() -> None:
     assert [column.sealed for column in standings][-2:] == [False, True]
 
 
+def test_span_records_passed_over_are_said_on_the_trace_and_the_provenance() -> None:
+    trace = trace_of(recorded(sealed=True), unreadable=2)
+    provenance = build_provenance(trace)
+    assert trace.unreadable_spans == 2
+    assert provenance is not None
+    assert "spans: 2 unreadable records passed over" in render_text(provenance)
+
+
 def test_an_unsealed_recording_has_no_provenance() -> None:
     assert build_provenance(trace_of(recorded())) is None
 

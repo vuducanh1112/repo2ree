@@ -8,11 +8,11 @@ Built from an behaviour trace alone, so it can never disagree with the other vie
 
 from __future__ import annotations
 
+from repo2ree_assurance_traceview import terms
 from repo2ree_assurance_traceview.model import BehaviourTrace, Entry, RuleHit, StepChange, ViewModel
-from repo2ree_assurance_traceview.operations import RECEIPT_SUBJECTS
 
-ABSENT = (None, "missing", "not_applicable")
-PRESENT = ("current", "stale")
+ABSENT = (None, terms.MISSING, terms.NOT_APPLICABLE)
+PRESENT = (terms.CURRENT, terms.STALE)
 
 
 class Link(ViewModel):
@@ -43,6 +43,7 @@ class Provenance(ViewModel):
     standing: dict[str, str]
     steps: tuple[StepOrigin, ...]
     after_seal: int  # Attempts after sealing; sealed is terminal, so any would be a violation.
+    unreadable_spans: int = 0  # Span records passed over, so a request link may be missing.
 
 
 def _hits(entry: Entry, subject: str, key: str | None = None) -> tuple[RuleHit, ...]:
@@ -62,7 +63,7 @@ def chain(entry: Entry) -> tuple[Link, ...]:
             Link(
                 label=f"attempt {attempt.key[:8]} {entry.name}: {' → '.join(attempt.states)}",
                 source=f"git {commit}",
-                rules=_hits(entry, "Attempt", attempt.key),
+                rules=_hits(entry, terms.ATTEMPT, attempt.key),
             )
         )
     if entry.dispatch is not None and entry.attempt is not None:
@@ -71,7 +72,7 @@ def chain(entry: Entry) -> tuple[Link, ...]:
             Link(
                 label=f"dispatch exec_action → {dispatch.outcome or 'no outcome'}",
                 source=f"journal {dispatch.sent or '?'} → {dispatch.received or '?'}",
-                rules=_hits(entry, "dispatch", entry.attempt.key),
+                rules=_hits(entry, terms.DISPATCH, entry.attempt.key),
             )
         )
     if entry.run is not None:
@@ -80,7 +81,7 @@ def chain(entry: Entry) -> tuple[Link, ...]:
             Link(
                 label=f"action {run.key}: {' → '.join(s.state for s in states)}",
                 source=f"journal {states[0].ref} → {states[-1].ref}" if states else "journal",
-                rules=_hits(entry, "AuthorApiAction", run.key),
+                rules=_hits(entry, terms.ACTION, run.key),
             )
         )
     request = _request(entry)
@@ -119,7 +120,7 @@ def build_provenance(trace: BehaviourTrace) -> Provenance | None:
                 later[change.step] = []
             elif change.step in later:
                 later[change.step].append(f"{change.before} → {change.after} by {entry.name}")
-        if entry.ree is not None and entry.ree.after == "sealed" and entry.ree.before != "sealed":
+        if entry.ree is not None and entry.ree.after == terms.SEALED and entry.ree.before != terms.SEALED:
             seal = entry
     if seal is None:
         return None
@@ -140,7 +141,7 @@ def build_provenance(trace: BehaviourTrace) -> Provenance | None:
                 change=change,
                 commit=entry.attempt.commit if entry.attempt else None,
                 rules=tuple(
-                    hit for hit in entry.rules if hit.subject in RECEIPT_SUBJECTS and hit.key.endswith(f"/{step}")
+                    hit for hit in entry.rules if hit.subject == terms.RECEIPT and hit.key.endswith(f"/{step}")
                 ),
                 later=tuple(later[step]),
                 chain=chain(entry),
@@ -152,10 +153,11 @@ def build_provenance(trace: BehaviourTrace) -> Provenance | None:
         verdict=trace.verdict,
         commit=seal.attempt.commit if seal.attempt else None,
         seal=chain(seal),
-        seal_rules=_hits(seal, "Ree"),
+        seal_rules=_hits(seal, terms.REE),
         standing=standing,
         steps=tuple(origins),
         after_seal=after,
+        unreadable_spans=trace.unreadable_spans,
     )
 
 
@@ -169,19 +171,25 @@ def _rules(hits: tuple[RuleHit, ...]) -> str:
 
 def render_text(provenance: Provenance) -> str:
     counts = {
-        state: sum(1 for s in provenance.standing.values() if s == state) for state in ("current", "stale", "missing")
+        state: sum(1 for s in provenance.standing.values() if s == state)
+        for state in (terms.CURRENT, terms.STALE, terms.MISSING)
     }
-    missing = [step for step, state in provenance.standing.items() if state == "missing"]
+    missing = [step for step, state in provenance.standing.items() if state == terms.MISSING]
     lines = [
         f"Provenance of REE {provenance.ree[:8]} · dossier {provenance.dossier}",
         f"behaviour conformance: {provenance.verdict}",
+        *(
+            [f"spans: {provenance.unreadable_spans} unreadable records passed over"]
+            if provenance.unreadable_spans
+            else []
+        ),
         "",
         f"REE {provenance.ree[:8]}  SEALED @{(provenance.commit or '?')[:8]}",
     ]
     if text := _rules(provenance.seal_rules):
         lines.append(f"│  {text}")
     lines.append(
-        f"│  at seal: {counts['current']} current · {counts['stale']} stale · {counts['missing']} missing"
+        f"│  at seal: {counts[terms.CURRENT]} current · {counts[terms.STALE]} stale · {counts[terms.MISSING]} missing"
         + (f" ({', '.join(missing)}): only stale evidence blocks sealing" if missing else "")
     )
     lines.append(
@@ -191,9 +199,8 @@ def render_text(provenance: Provenance) -> str:
     for index, origin in enumerate(provenance.steps):
         last = index == len(provenance.steps) - 1
         branch, pad = ("└─", "   ") if last else ("├─", "│  ")
-        lines.append(
-            f"{branch} {origin.step:<26} {origin.standing.upper() if origin.standing == 'current' else origin.standing}"
-        )
+        standing = origin.standing.upper() if origin.standing == terms.CURRENT else origin.standing
+        lines.append(f"{branch} {origin.step:<26} {standing}")
         if origin.change is None:
             lines += [f"{pad}   never produced: {' → '.join(origin.history)}", pad]
             continue

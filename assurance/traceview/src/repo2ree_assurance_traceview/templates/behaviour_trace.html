@@ -275,6 +275,7 @@ function header() {
     ["Duration", `<span class="v">${fmt(t.duration)}</span>`],
   ];
   if (t.reviews) facts.push(["Reviews", `<span class="v">${t.reviews} attempts not drawn</span>`]);
+  if (t.unreadable_spans) facts.push(["Spans", `<span class="v">${t.unreadable_spans} unreadable records passed over</span>`]);
   $("facts").innerHTML = facts.map(([k, v]) => `<div class="fact"><span class="eyebrow">${k}</span>${v}</div>`).join("");
   $("sources").innerHTML = t.sources.map((s) => `<span class="src" title="${s.complete ? "complete" : "incomplete"}">${esc(s.id)} · ${esc(s.kind)}${s.complete ? "" : " ⚠"}</span>`).join("")
     + `<span class="src ctx">traces.ndjson · context</span>`;
