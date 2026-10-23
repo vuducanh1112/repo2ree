@@ -4,9 +4,9 @@
 Test runs only collect; ``repo2ree_testbed inspect`` draws verdicts but never fails a run. This
 composes the two into a gate:
 
-- ``judge RUN...`` checks every test's recording again with the checker in this
+- ``judge RUN...`` checks every test's dossier again with the checker in this
   tree and accepts a test only if it passed and its behaviour passed, or the
-  test ``conformance/expected-verdicts.toml`` excuses (an xfail must be) left
+  test ``assurance/checker/expected-verdicts.toml`` excuses (an xfail must be) left
   exactly the rules it names non-passing. Exit 1 if any test is not accepted.
 - ``certify RUN...`` judges, then also requires every tier in ``TIERS`` to be among
   the runs, each built from HEAD with a clean tree that is still HEAD, and every
@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
-EXPECTATIONS = ROOT / "conformance/expected-verdicts.toml"
+EXPECTATIONS = ROOT / "assurance/checker/expected-verdicts.toml"
 RECEIPT = ROOT / ".validation-certificates/behaviour-ok"
 # The per-test tiers whose evidence a receipt stands on.
 TIERS = ("e2e-system", "e2e-gui-instant")
@@ -128,13 +128,22 @@ def coverage_problems(judgements: list[Judgement], unreached: dict[str, str]) ->
     return problems
 
 
-def check_recording(directory: Path) -> dict[str, Any] | None:
-    """The checker's report on a test's recording, from the checker in this tree; None without a recording."""
-    recording = directory / "recording"
-    if not (recording / "manifest.json").is_file():
+def check_dossier(directory: Path) -> dict[str, Any] | None:
+    """The checker's report on a test's dossier, from the checker in this tree; None without a dossier."""
+    dossier = directory / "dossier"
+    if not (dossier / "manifest.json").is_file():
         return None
     output = directory / "verification"
-    command = [sys.executable, "-m", "repo2ree_conformance", "check", "--recording", str(recording), "-o", str(output)]
+    command = [
+        sys.executable,
+        "-m",
+        "repo2ree_assurance_checker",
+        "check",
+        "--dossier",
+        str(dossier),
+        "-o",
+        str(output),
+    ]
     if subprocess.run(command, cwd=ROOT, check=False, capture_output=True).returncode not in {0, 1, 2}:
         return None
     report: dict[str, Any] = json.loads((output / "conformance.json").read_text())
@@ -146,9 +155,9 @@ def judge_test(run: str, directory: Path, test: dict[str, Any], expectations: di
     judgement = Judgement(run, name, str(test["outcome"]), "missing")
     if judgement.outcome not in ACCEPTED_OUTCOMES:
         judgement.problems.append(f"test {judgement.outcome}")
-    report = check_recording(directory)
+    report = check_dossier(directory)
     if report is None:
-        judgement.problems.append("no behaviour verdict: the recording is missing or the checker failed")
+        judgement.problems.append("no behaviour verdict: the dossier is missing or the checker failed")
         return judgement
     judgement.behaviour = str(report["verdict"])
     judgement.declared, judgement.reached = coverage(report)

@@ -16,8 +16,8 @@ packages = ["src/repo2ree_repoview"]
 [tool.importlinter]
 include_external_packages = true
 root_packages = [
-    "repo2ree_repoview", "repo2ree_testbed", "repo2ree_collect", "repo2ree_recording", "repo2ree_conformance",
-    "repo2ree_traceview", "repo2ree_api", "repo2ree_core", "repo2ree_docker", "repo2ree_executor",
+    "repo2ree_repoview", "repo2ree_testbed", "repo2ree_assurance_collector", "repo2ree_assurance_dossier", "repo2ree_assurance_checker",
+    "repo2ree_assurance_traceview", "repo2ree_api", "repo2ree_core", "repo2ree_docker", "repo2ree_executor",
     "repo2ree_provider_docker", "repo2ree_protocol", "repo2ree_supervisor", "repo2ree_workbench",
 ]
 
@@ -29,7 +29,7 @@ name = "Repoview imports no other workspace package"
 type = "forbidden"
 source_modules = ["repo2ree_repoview"]
 forbidden_modules = [
-    "repo2ree_testbed", "repo2ree_collect", "repo2ree_recording", "repo2ree_conformance", "repo2ree_traceview",
+    "repo2ree_testbed", "repo2ree_assurance_collector", "repo2ree_assurance_dossier", "repo2ree_assurance_checker", "repo2ree_assurance_traceview",
     "repo2ree_api", "repo2ree_core", "repo2ree_docker", "repo2ree_executor", "repo2ree_provider_docker",
     "repo2ree_protocol", "repo2ree_supervisor", "repo2ree_workbench",
 ]
@@ -39,7 +39,7 @@ forbidden_modules = [
 name = "Nothing imports the views of the repository"
 type = "forbidden"
 source_modules = [
-    "repo2ree_testbed", "repo2ree_collect", "repo2ree_recording", "repo2ree_conformance", "repo2ree_traceview",
+    "repo2ree_testbed", "repo2ree_assurance_collector", "repo2ree_assurance_dossier", "repo2ree_assurance_checker", "repo2ree_assurance_traceview",
     "repo2ree_api", "repo2ree_core", "repo2ree_docker", "repo2ree_executor", "repo2ree_provider_docker",
     "repo2ree_protocol", "repo2ree_supervisor", "repo2ree_workbench",
 ]

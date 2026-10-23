@@ -18,7 +18,7 @@ HEAD = "a" * 40
 
 
 def write_run(root: Path, tier: str, tests: dict[str, tuple[str, dict[str, Any] | None]], revision: str = HEAD) -> Path:
-    """A per-test run: each test's outcome, and the checker report its recording yields (None: no recording)."""
+    """A per-test run: each test's outcome, and the checker report its dossier yields (None: no dossier)."""
     root.mkdir(parents=True)
     entries = []
     for index, (name, (outcome, report)) in enumerate(tests.items()):
@@ -38,7 +38,7 @@ def checker_report(**rules: str) -> dict[str, Any]:
 
 @pytest.fixture(autouse=True)
 def recorded_reports(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(gate, "check_recording", lambda directory: json.loads((directory / "report.json").read_text()))
+    monkeypatch.setattr(gate, "check_dossier", lambda directory: json.loads((directory / "report.json").read_text()))
     monkeypatch.setattr(gate, "clean_head", lambda: (HEAD, "tree", []))
 
 

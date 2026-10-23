@@ -6,18 +6,18 @@ requires-python = "==3.13.*"
 members = [
     "repo2ree",
     "repo2ree-api",
-    "repo2ree-collect",
-    "repo2ree-conformance",
+    "repo2ree-assurance-checker",
+    "repo2ree-assurance-collector",
+    "repo2ree-assurance-dossier",
+    "repo2ree-assurance-traceview",
     "repo2ree-core",
     "repo2ree-docker-support",
     "repo2ree-executor",
     "repo2ree-protocol",
     "repo2ree-provider-docker",
-    "repo2ree-recording",
     "repo2ree-repoview",
     "repo2ree-supervisor",
     "repo2ree-testbed",
-    "repo2ree-traceview",
     "repo2ree-workbench",
 ]
 
@@ -1096,33 +1096,61 @@ requires-dist = [
 ]
 
 [[package]]
-name = "repo2ree-collect"
+name = "repo2ree-assurance-checker"
 version = "0.1.0"
-source = { editable = "collect" }
+source = { editable = "assurance/checker" }
 dependencies = [
     { name = "pydantic" },
-    { name = "repo2ree-recording" },
+    { name = "repo2ree-assurance-dossier" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "pydantic", specifier = "~=2.11.7" },
-    { name = "repo2ree-recording", editable = "recording" },
+    { name = "repo2ree-assurance-dossier", editable = "assurance/dossier" },
 ]
 
 [[package]]
-name = "repo2ree-conformance"
+name = "repo2ree-assurance-collector"
 version = "0.1.0"
-source = { editable = "conformance" }
+source = { editable = "assurance/collector" }
 dependencies = [
     { name = "pydantic" },
-    { name = "repo2ree-recording" },
+    { name = "repo2ree-assurance-dossier" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "pydantic", specifier = "~=2.11.7" },
-    { name = "repo2ree-recording", editable = "recording" },
+    { name = "repo2ree-assurance-dossier", editable = "assurance/dossier" },
+]
+
+[[package]]
+name = "repo2ree-assurance-dossier"
+version = "0.1.0"
+source = { editable = "assurance/dossier" }
+dependencies = [
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pydantic", specifier = "~=2.11.7" }]
+
+[[package]]
+name = "repo2ree-assurance-traceview"
+version = "0.1.0"
+source = { editable = "assurance/traceview" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "repo2ree-assurance-checker" },
+    { name = "repo2ree-assurance-dossier" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pydantic", specifier = "~=2.11.7" },
+    { name = "repo2ree-assurance-checker", editable = "assurance/checker" },
+    { name = "repo2ree-assurance-dossier", editable = "assurance/dossier" },
 ]
 
 [[package]]
@@ -1231,17 +1259,6 @@ requires-dist = [
 ]
 
 [[package]]
-name = "repo2ree-recording"
-version = "0.1.0"
-source = { editable = "recording" }
-dependencies = [
-    { name = "pydantic" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "pydantic", specifier = "~=2.11.7" }]
-
-[[package]]
 name = "repo2ree-repoview"
 version = "0.1.0"
 source = { editable = "repoview" }
@@ -1288,23 +1305,6 @@ requires-dist = [
     { name = "pydantic", specifier = "~=2.11.7" },
     { name = "pytest", specifier = "~=9.1" },
     { name = "uvicorn", specifier = "~=0.40.0" },
-]
-
-[[package]]
-name = "repo2ree-traceview"
-version = "0.1.0"
-source = { editable = "traceview" }
-dependencies = [
-    { name = "pydantic" },
-    { name = "repo2ree-conformance" },
-    { name = "repo2ree-recording" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "pydantic", specifier = "~=2.11.7" },
-    { name = "repo2ree-conformance", editable = "conformance" },
-    { name = "repo2ree-recording", editable = "recording" },
 ]
 
 [[package]]

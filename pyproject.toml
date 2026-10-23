@@ -8,7 +8,7 @@ requires-python = "~=3.13.0"
 dependencies = []
 
 [tool.uv.workspace]
-members = ["protocol", "core", "supervisor", "api", "executor", "docker-support", "provider", "workbench", "conformance", "traceview", "collect", "recording", "testbed", "repoview"]
+members = ["protocol", "core", "supervisor", "api", "executor", "docker-support", "provider", "workbench", "assurance/checker", "assurance/dossier", "assurance/collector", "assurance/traceview", "testbed", "repoview"]
 
 [dependency-groups]
 dev = [
@@ -106,10 +106,10 @@ src = [
     "docker-support/src",
     "provider/src",
     "workbench/src",
-    "conformance/src",
-    "traceview/src",
-    "collect/src",
-    "recording/src",
+    "assurance/checker/src",
+    "assurance/traceview/src",
+    "assurance/collector/src",
+    "assurance/dossier/src",
     "testbed/src",
     "repoview/src",
 ]
@@ -621,10 +621,10 @@ mypy_path = [
     "docker-support/src",
     "provider/src",
     "workbench/src",
-    "conformance/src",
-    "traceview/src",
-    "collect/src",
-    "recording/src",
+    "assurance/checker/src",
+    "assurance/traceview/src",
+    "assurance/collector/src",
+    "assurance/dossier/src",
     "testbed/src",
     "repoview/src",
 ]
@@ -677,5 +677,5 @@ no_implicit_reexport = false
 
 [tool.repo2ree.workspace]
 backend = ["protocol", "core", "supervisor", "api", "executor", "docker-support", "provider", "workbench"]
-assurance = ["conformance", "traceview", "collect", "recording"]
+assurance = ["assurance/checker", "assurance/dossier", "assurance/collector", "assurance/traceview"]
 tooling = ["testbed", "repoview"]

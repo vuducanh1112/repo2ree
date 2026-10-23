@@ -19,7 +19,7 @@ from typing import BinaryIO
 from repo2ree_testbed.artifacts import ROOT, run_dir, write_provenance
 from repo2ree_testbed.faults import FAULTS_URL
 from repo2ree_testbed.python_coverage import CoverageRoot, render
-from repo2ree_testbed.records import RecordingManifest, read
+from repo2ree_testbed.records import DossierManifest, read
 from repo2ree_testbed.stack.clients import Client, Launch, Started
 from repo2ree_testbed.stack.injector import Injector
 from repo2ree_testbed.stack.process import listed, reachable, terminate, wait_until
@@ -45,8 +45,8 @@ class Layout:
         return self.directory / "logs"
 
     @property
-    def recording(self) -> Path:
-        return self.directory / "recording"
+    def dossier(self) -> Path:
+        return self.directory / "dossier"
 
     @property
     def archives(self) -> Path:
@@ -58,10 +58,10 @@ class Layout:
 
     @property
     def telemetry(self) -> Path | None:
-        return None if self.collector else self.recording / "telemetry"
+        return None if self.collector else self.dossier / "telemetry"
 
     def rees(self) -> tuple[str, ...]:
-        manifest = read(RecordingManifest, self.recording / "manifest.json")
+        manifest = read(DossierManifest, self.dossier / "manifest.json")
         return manifest.rees() if manifest else ()
 
 
@@ -286,7 +286,14 @@ class E2EStack:
 
     def collect(self) -> list[str]:
         outcome = "passed" if self.client_status == 0 else "interrupted_or_failed"
-        command = [sys.executable, "-m", "repo2ree_collect", str(self.layout.recording), "--suite", self.client.suite]
+        command = [
+            sys.executable,
+            "-m",
+            "repo2ree_assurance_collector",
+            str(self.layout.dossier),
+            "--suite",
+            self.client.suite,
+        ]
         command += ["--outcome", outcome]
         return [*command, "--test", self.layout.test] if self.layout.test else command
 
@@ -305,7 +312,7 @@ class E2EStack:
             command += ["--spans", str(path)]
         collected = subprocess.run(command, cwd=ROOT, check=False)
         status = "" if collected.returncode == 0 else " (incomplete: see the sources listed above)"
-        print(f">> behaviour recording{status}: {self.layout.recording}")
+        print(f">> behaviour dossier{status}: {self.layout.dossier}")
         return collected.returncode == 0
 
     def coverage_report(self) -> None:

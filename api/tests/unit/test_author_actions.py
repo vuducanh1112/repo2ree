@@ -135,6 +135,6 @@ def test_actions_still_open_fail_before_the_journal_closes(tmp_path: Path) -> No
     records = [json.loads(line) for line in opened.path.read_text().splitlines()]
     last = next(r for r in reversed(records) if r.get("subject") == "AuthorApiAction")
     assert (last["key"], last["to"], last["facts"]["failure_category"]) == (abandoned, "failed", "abandoned")
-    command = [sys.executable, "-m", "repo2ree_conformance", "validate-journal", str(opened.path)]
+    command = [sys.executable, "-m", "repo2ree_assurance_checker", "validate-journal", str(opened.path)]
     checked = subprocess.run(command, capture_output=True, text=True, check=False)
     assert checked.returncode == 0, checked.stdout

@@ -16,7 +16,7 @@ from repo2ree_repoview.repository import ROOT, Head
 
 CERTIFICATES = ROOT / ".validation-certificates"
 RECEIPT = CERTIFICATES / "behaviour-ok"
-EXPECTATIONS = ROOT / "conformance/expected-verdicts.toml"
+EXPECTATIONS = ROOT / "assurance/checker/expected-verdicts.toml"
 
 
 class ReceiptTest(Document):
@@ -109,11 +109,11 @@ COPIED = (
     "logs",
     "verification",
     "traces",
-    "recording/manifest.json",
-    "recording/journal",
-    "recording/stores",
+    "dossier/manifest.json",
+    "dossier/journal",
+    "dossier/stores",
 )
-REFERENCED = ("recording/rees", "recording/telemetry", "artifacts")
+REFERENCED = ("dossier/rees", "dossier/telemetry", "artifacts")
 
 
 @dataclass(frozen=True)

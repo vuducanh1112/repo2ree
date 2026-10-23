@@ -1,7 +1,7 @@
 """Legal lifecycle transitions for durable allocation records.
 
 The supervisor's own table: the store refuses any other edge. The specification
-(specifications/behaviour/entities/allocation.toml) states the machine the checker
+(assurance/spec/entities/allocation.toml) states the machine the checker
 holds the journal to; keeping that and this table in agreement is the checker's job,
 so a change to the specification never changes what the supervisor does by itself.
 """

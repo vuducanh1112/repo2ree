@@ -1,6 +1,6 @@
 """The overview's reading of the two documents it draws from: the specification and the zones.
 
-Both come from their owners as JSON (``python -m repo2ree_conformance export``,
+Both come from their owners as JSON (``python -m repo2ree_assurance_checker export``,
 ``python scripts/zones.py export``), so the views never import the checker or the
 guard. These models are this package's own typed view of those documents, and a
 document in a format they do not know is refused rather than half read.
@@ -18,7 +18,7 @@ from repo2ree_repoview.documents import Document
 from repo2ree_repoview.repository import ROOT
 
 # The owners' exports, and the commands that produce them.
-SPEC_EXPORT = (sys.executable, "-m", "repo2ree_conformance", "export")
+SPEC_EXPORT = (sys.executable, "-m", "repo2ree_assurance_checker", "export")
 ZONES_EXPORT = (sys.executable, "scripts/zones.py", "export")
 
 

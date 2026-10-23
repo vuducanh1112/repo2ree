@@ -1,0 +1,80 @@
+[project]
+name = "repo2ree-assurance-traceview"
+version = "0.1.0"
+description = "Operation-level views of recorded repo2ree behaviour: checked evidence with spans as context."
+requires-python = "~=3.13.0"
+dependencies = ["pydantic~=2.11.7", "repo2ree-assurance-checker", "repo2ree-assurance-dossier"]
+
+[tool.uv.sources]
+repo2ree-assurance-checker = { workspace = true }
+repo2ree-assurance-dossier = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/repo2ree_assurance_traceview"]
+
+
+[tool.importlinter]
+include_external_packages = true
+root_packages = [
+    "repo2ree_assurance_traceview", "repo2ree_assurance_checker", "repo2ree_assurance_dossier", "repo2ree_api", "repo2ree_core", "repo2ree_docker",
+    "repo2ree_executor", "repo2ree_provider_docker", "repo2ree_protocol", "repo2ree_supervisor",
+    "repo2ree_workbench",
+]
+
+# Views read what the runtime recorded, never the code that recorded it.
+[[tool.importlinter.contracts]]
+name = "Traceview stays independent of runtime packages"
+type = "forbidden"
+source_modules = ["repo2ree_assurance_traceview"]
+forbidden_modules = [
+    "repo2ree_api", "repo2ree_core", "repo2ree_docker", "repo2ree_executor",
+    "repo2ree_provider_docker", "repo2ree_protocol", "repo2ree_supervisor", "repo2ree_workbench",
+]
+
+# Views draw a verification; they never verify. They read the verifier's artifact
+# (repo2ree_assurance_checker.verification), the dossier format, and evidence types:
+# judging or reading evidence themselves would grow a second model of what
+# happened (the retired history package) and verdicts of their own.
+[[tool.importlinter.contracts]]
+name = "Traceview draws verifications without verifying"
+type = "forbidden"
+source_modules = ["repo2ree_assurance_traceview"]
+forbidden_modules = [
+    "repo2ree_assurance_checker.check",
+    "repo2ree_assurance_checker.sources",
+    "repo2ree_assurance_checker.spec",
+    "repo2ree_assurance_checker.files",
+    "repo2ree_assurance_checker.cli",
+    "repo2ree_assurance_checker.codegen",
+    "repo2ree_assurance_checker.html",
+    "repo2ree_assurance_checker.report",
+    "repo2ree_assurance_checker.views",
+]
+# The read-side modules build on the checker's types; only direct reaches count.
+allow_indirect_imports = true
+
+# And the checker never depends on its views.
+[[tool.importlinter.contracts]]
+name = "Conformance does not depend on its views"
+type = "forbidden"
+source_modules = ["repo2ree_assurance_checker"]
+forbidden_modules = ["repo2ree_assurance_traceview"]
+
+# Building a view is pure: the same evidence and spans always draw the same page.
+[[tool.importlinter.contracts]]
+name = "Traceview builders have no I/O dependencies"
+type = "forbidden"
+source_modules = [
+    "repo2ree_assurance_traceview.spans",
+    "repo2ree_assurance_traceview.model",
+    "repo2ree_assurance_traceview.operations",
+    "repo2ree_assurance_traceview.sequence",
+    "repo2ree_assurance_traceview.provenance",
+    "repo2ree_assurance_traceview.render",
+]
+forbidden_modules = ["os", "sys", "subprocess", "socket", "http", "urllib", "tempfile", "shutil", "random", "uuid", "time"]
+allow_indirect_imports = true

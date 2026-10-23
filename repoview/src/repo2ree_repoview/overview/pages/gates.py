@@ -11,7 +11,7 @@ from repo2ree_repoview.overview.receipt import Evidence, Receipt, reached
 
 
 def evidence_links(bundle: Bundle, directory: str | None) -> str:
-    """Links to a test's bundled verdict report and operation traces."""
+    """Links to a test's bundled verdict report and behaviour traces."""
     if directory is None:
         return '<span class="muted">not bundled</span>'
     links = []

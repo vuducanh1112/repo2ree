@@ -152,7 +152,7 @@ def page_vocabulary(spec: Spec) -> Page:
         + boundaries
     )
     lede = (
-        f"What owners record, from <code>specifications/behaviour/vocabulary/</code>; published to the product as "
+        f"What owners record, from <code>assurance/spec/vocabulary/</code>; published to the product as "
         "<code>contracts/behaviour/events.schema.json</code> "
         f"(vocabulary <code>{esc(spec.vocabulary_digest[:19])}…</code>)."
     )

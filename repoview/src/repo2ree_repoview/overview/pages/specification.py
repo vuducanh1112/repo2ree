@@ -249,7 +249,7 @@ def page_specification(spec: Spec) -> Page:
         "whose trigger or requirement names each one. A value no rule names is still checked by the rules "
         "that apply to every value.</p>" + listed_values(spec)
     )
-    lede = "What the checker holds the evidence to, from <code>specifications/behaviour/</code>: no test results here."
+    lede = "What the checker holds the evidence to, from <code>assurance/spec/</code>: no test results here."
     edges = sum(len(targets) for entity in spec.entities.values() for targets in entity.edges.values())
     teaser = f"{len(spec.entities)} state machines, {edges} edges, {len(spec.invariants)} invariants"
     return Page("specification", "Specification", teaser, section("specification", "Specification", lede, body))

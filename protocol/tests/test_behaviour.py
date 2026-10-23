@@ -20,7 +20,7 @@ def records(path: Path) -> list[dict[str, object]]:
 
 def kept_contract(journals: Path) -> subprocess.CompletedProcess[str]:
     """What the published contract's own checker says about the journals written here."""
-    command = [sys.executable, "-m", "repo2ree_conformance", "validate-journal", str(journals)]
+    command = [sys.executable, "-m", "repo2ree_assurance_checker", "validate-journal", str(journals)]
     return subprocess.run(command, capture_output=True, text=True, check=False)
 
 

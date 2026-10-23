@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:repo2ree:contracts:behaviour:events",
   "title": "repo2ree behaviour journal record",
-  "description": "One line of a behaviour journal. Generated from specifications/behaviour/vocabulary by `python -m repo2ree_conformance generate`; do not edit. Sequence, epochs, and the header are checked per journal by `python -m repo2ree_conformance validate-journal`.",
+  "description": "One line of a behaviour journal. Generated from assurance/spec/vocabulary by `python -m repo2ree_assurance_checker generate`; do not edit. Sequence, epochs, and the header are checked per journal by `python -m repo2ree_assurance_checker validate-journal`.",
   "x-vocabulary": "sha256:427ecedb90c709b157456fd3533219063a36f8b3a449d3d6cd885c90693a2470",
   "type": "object",
   "properties": {

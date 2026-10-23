@@ -55,7 +55,7 @@ def test_what_the_store_journals_keeps_the_published_contract(tmp_path: Path) ->
     store.request_cancel("ree-1", "build-1")
     store.finalize("ree-1", "build-1", status="canceled", outputs={}, failure=None)
     close_journal(final=True)
-    command = [sys.executable, "-m", "repo2ree_conformance", "validate-journal", str(opened.path)]
+    command = [sys.executable, "-m", "repo2ree_assurance_checker", "validate-journal", str(opened.path)]
     checked = subprocess.run(command, capture_output=True, text=True, check=False)
     assert checked.returncode == 0, checked.stdout
 

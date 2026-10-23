@@ -24,7 +24,7 @@ _e2e-system jobs locations mode docker_mode:
     python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/api/tests/system/run_system_suite.py") }} --tier e2e-system --per-test --jobs {{ quote(jobs) }} --mode {{ quote(mode) }} --compute-locations {{ quote(locations) }} --docker-mode {{ quote(docker_mode) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
 
 # A test is accepted when it passed and its behaviour passed, or it is excused by
-# conformance/expected-verdicts.toml (as every xfail must be) and left exactly those rules open.
+# assurance/checker/expected-verdicts.toml (as every xfail must be) and left exactly those rules open.
 # The suite together must reach every specified rule, edge, and message the same file does not excuse.
 # Run the per-test e2e tiers on HEAD, judge every test's behaviour, and certify HEAD's tree.
 [group('Release gates')]

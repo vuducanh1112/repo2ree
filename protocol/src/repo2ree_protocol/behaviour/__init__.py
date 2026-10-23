@@ -2,7 +2,7 @@
 
 Owners record every state change through the typed records in ``events``; the writer
 keeps the journal rules (one file per epoch, contiguous sequence numbers, durable
-lines). ``repo2ree_conformance`` judges what they wrote. Nothing here is generated from
+lines). ``repo2ree_assurance_checker`` judges what they wrote. Nothing here is generated from
 the specification, and the specification's rules never run in the product.
 """
 

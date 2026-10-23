@@ -35,6 +35,11 @@ def expected_suites(root: Path, members: list[str], tier: str) -> list[str]:
     return suites
 
 
+def recipe_stem(member: str) -> str:
+    """A workspace member's name in its recipes: its path with "-" for "/" (assurance/checker → assurance-checker)."""
+    return member.replace("/", "-")
+
+
 def expected_test_recipes(suites: list[str], tier: str) -> list[str]:
     recipes = []
     for suite in suites:
@@ -103,13 +108,16 @@ def validate(document: dict[str, Any], config: dict[str, Any], root: Path) -> li
         if recipe not in dependency_names(document, aggregate):
             problems.append(f"{aggregate} must include {recipe} independently of backend")
     for member in tooling:
-        for aggregate, recipe in (("check", f"check-{member}"), ("test-unit", f"test-{member}")):
+        for aggregate, recipe in (
+            ("check", f"check-{recipe_stem(member)}"),
+            ("test-unit", f"test-{recipe_stem(member)}"),
+        ):
             if recipe not in document["recipes"]:
                 problems.append(f"missing tooling recipe: {recipe}")
             elif recipe not in dependency_names(document, aggregate):
                 problems.append(f"{aggregate} must include {recipe}")
     for aggregate, prefix in (("check-assurance", "check"), ("test-assurance", "test")):
-        expected = [f"{prefix}-{member}" for member in assurance]
+        expected = [f"{prefix}-{recipe_stem(member)}" for member in assurance]
         if problem := compare(f"{aggregate} dependencies", dependency_names(document, aggregate), expected):
             problems.append(problem)
         problems.extend(

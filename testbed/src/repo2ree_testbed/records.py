@@ -74,13 +74,13 @@ class Receipt(Foreign):
     runs: tuple[str, ...] = ()
 
 
-class RecordedSource(Foreign):
+class DossierSource(Foreign):
     kind: str
     name: str
 
 
-class RecordingManifest(Foreign):
-    sources: tuple[RecordedSource, ...] = ()
+class DossierManifest(Foreign):
+    sources: tuple[DossierSource, ...] = ()
 
     def rees(self) -> tuple[str, ...]:
         return tuple(sorted({source.name for source in self.sources if source.kind == "git"}))

@@ -5,13 +5,13 @@ from scripts import check_just_workspace
 
 
 def fixture(root: Path) -> tuple[dict[str, Any], dict[str, Any]]:
-    members = ["alpha", "beta", "conformance", "testbed"]
+    members = ["alpha", "beta", "assurance/checker", "testbed"]
     for path in (root / "alpha/tests/unit", root / "beta/tests", root / "beta/tests/integration"):
         path.mkdir(parents=True)
     assignments = {
-        "PYTHON_FORMAT_PATHS": {"value": "scripts alpha beta conformance testbed"},
+        "PYTHON_FORMAT_PATHS": {"value": "scripts alpha beta assurance/checker testbed"},
         "PYTHON_METRIC_PATHS": {"value": "alpha/src beta/src"},
-        "ASSURANCE_METRIC_PATHS": {"value": "conformance/src"},
+        "ASSURANCE_METRIC_PATHS": {"value": "assurance/checker/src"},
         "UNIT_SUITES": {"value": "alpha/tests/unit beta/tests"},
         "INTEGRATION_SUITES": {"value": "beta/tests/integration"},
         "BACKEND_GRAPH_PACKAGES": {"value": "pkg_alpha pkg_beta"},
@@ -23,10 +23,10 @@ def fixture(root: Path) -> tuple[dict[str, Any], dict[str, Any]]:
         },
         "check-testbed": {"dependencies": []},
         "test-testbed": {"dependencies": []},
-        "check-assurance": {"dependencies": [{"recipe": "check-conformance"}]},
-        "test-assurance": {"dependencies": [{"recipe": "test-conformance"}]},
-        "check-conformance": {"dependencies": []},
-        "test-conformance": {"dependencies": []},
+        "check-assurance": {"dependencies": [{"recipe": "check-assurance-checker"}]},
+        "test-assurance": {"dependencies": [{"recipe": "test-assurance-checker"}]},
+        "check-assurance-checker": {"dependencies": []},
+        "test-assurance-checker": {"dependencies": []},
         "check-backend": {
             "dependencies": [{"recipe": name} for name in ("check-alpha", "check-beta", "check-architecture")]
         },
@@ -37,7 +37,7 @@ def fixture(root: Path) -> tuple[dict[str, Any], dict[str, Any]]:
     config = {
         "tool": {
             "repo2ree": {
-                "workspace": {"backend": ["alpha", "beta"], "assurance": ["conformance"], "tooling": ["testbed"]}
+                "workspace": {"backend": ["alpha", "beta"], "assurance": ["assurance/checker"], "tooling": ["testbed"]}
             },
             "uv": {"workspace": {"members": members}},
             "importlinter": {"root_packages": ["pkg_alpha", "pkg_beta"]},
@@ -63,8 +63,8 @@ def test_validate_reports_a_missing_package(tmp_path: Path) -> None:
 
 def test_assurance_cannot_leak_back_into_backend(tmp_path: Path) -> None:
     document, config = fixture(tmp_path)
-    document["assignments"]["UNIT_SUITES"]["value"] += " conformance/tests"
-    document["recipes"]["check-backend"]["dependencies"].append({"recipe": "check-conformance"})
+    document["assignments"]["UNIT_SUITES"]["value"] += " assurance/checker/tests"
+    document["recipes"]["check-backend"]["dependencies"].append({"recipe": "check-assurance-checker"})
     problems = check_just_workspace.validate(document, config, tmp_path)
     assert any("UNIT_SUITES packages" in problem for problem in problems)
     assert any("check-backend dependencies" in problem for problem in problems)

@@ -47,15 +47,15 @@ def tool(log: Path, *args: str) -> int:
 
 
 def inspect_test(directory: Path, test: RunTest) -> RunTest:
-    recording = directory / "recording"
+    dossier = directory / "dossier"
     verification = directory / "verification"
     logs = directory / "logs"
     verdict: Behaviour = "missing"
-    if (recording / "manifest.json").is_file():
-        check = ("repo2ree_conformance", "check", "--recording", str(recording), "-o", str(verification))
+    if (dossier / "manifest.json").is_file():
+        check = ("repo2ree_assurance_checker", "check", "--dossier", str(dossier), "-o", str(verification))
         verdict = VERDICTS.get(tool(logs / "conformance.log", *check), "error")
     if (verification / "verification.json").is_file() and test.rees:
-        draw = ("repo2ree_traceview", str(verification), "-o", str(directory / "traces"), "--provenance")
+        draw = ("repo2ree_assurance_traceview", str(verification), "-o", str(directory / "traces"), "--provenance")
         tool(logs / "traceview.log", *draw)
     inspected = test.judged(verdict)
     write_test_index(directory, inspected)
@@ -84,11 +84,11 @@ def write_test_index(directory: Path, test: RunTest) -> None:
     body.append("</table>")
 
     pages = [("Conformance report", path) for path in links(directory, "verification/conformance.html")]
-    pages += [(f"Operation trace {path.stem}", path) for path in links(directory, "traces/*.html")]
+    pages += [(f"Behaviour trace {path.stem}", path) for path in links(directory, "traces/*.html")]
     pages += [(f"Provenance {path.name.split('.')[0]}", path) for path in links(directory, "traces/*.provenance.txt")]
     pages += [(f"Log {path.name}", path) for path in links(directory, "logs/*.log")]
     pages += [(f"Kept REE {path.name}", path) for path in links(directory, "artifacts/**/*.zip")]
-    pages += [("Recording manifest", path) for path in links(directory, "recording/manifest.json")]
+    pages += [("Dossier manifest", path) for path in links(directory, "dossier/manifest.json")]
     body.append("<h2>Artifacts</h2><ul>")
     body += [f"<li><a href='{html.escape(str(path))}'>{html.escape(label)}</a></li>" for label, path in pages]
     body.append("</ul>")

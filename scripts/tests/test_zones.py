@@ -15,10 +15,10 @@ RUNTIME = "core/src/repo2ree_core/operations/capture.py"
 
 def test_a_specification_change_with_its_generated_contract_checker_and_gate_is_allowed() -> None:
     paths = [
-        "specifications/behaviour/entities/run.toml",
+        "assurance/spec/entities/run.toml",
         "contracts/behaviour/events.schema.json",
-        "conformance/src/repo2ree_conformance/check.py",
-        "conformance/expected-verdicts.toml",
+        "assurance/checker/src/repo2ree_assurance_checker/check.py",
+        "assurance/checker/expected-verdicts.toml",
         "scripts/publish/behaviour_gate.py",
     ]
     assert check(paths) == 0
@@ -37,11 +37,11 @@ def test_unprotected_changes_alone_are_allowed() -> None:
 @pytest.mark.parametrize(
     "protected_path",
     [
-        "specifications/behaviour/invariants.toml",
-        "specifications/behaviour/vocabulary/run.toml",
+        "assurance/spec/invariants.toml",
+        "assurance/spec/vocabulary/run.toml",
         "contracts/behaviour/events.schema.json",
-        "conformance/tests/test_system_conformance.py",
-        "conformance/expected-verdicts.toml",
+        "assurance/checker/tests/test_system_conformance.py",
+        "assurance/checker/expected-verdicts.toml",
         "scripts/publish/behaviour_gate.py",
         "scripts/publish/commit_gate_stamp.py",
         "just/gates.just",
@@ -59,10 +59,11 @@ def test_a_protected_change_beside_anything_unprotected_is_refused(protected_pat
 
 def test_the_longest_entry_decides() -> None:
     declared = load()
-    assert declared.entry("conformance/expected-verdicts.toml").group == "excuses"  # type: ignore[union-attr]
-    assert declared.entry("conformance/src/repo2ree_conformance/check.py").group == "checker"  # type: ignore[union-attr]
+    assert declared.entry("assurance/checker/expected-verdicts.toml").group == "excuses"  # type: ignore[union-attr]
+    assert declared.entry("assurance/checker/src/repo2ree_assurance_checker/check.py").group == "checker"  # type: ignore[union-attr]
     assert declared.entry("api/tests/system/test_failures.py").group == "scenarios"  # type: ignore[union-attr]
     assert declared.entry("testbed/src/repo2ree_testbed/stack/e2e.py").zone == "tooling"  # type: ignore[union-attr]
+    assert declared.entry("assurance/collector/src/repo2ree_assurance_collector/cli.py").zone == "assurance"  # type: ignore[union-attr]
     assert declared.protected("contracts/behaviour/events.schema.json")
     assert not declared.protected("protocol/src/repo2ree_protocol/behaviour/writer.py")
 
@@ -103,7 +104,10 @@ def test_the_map_draws_every_zone_and_places_a_path(capsys: pytest.CaptureFixtur
     assert all(zone.name.upper() in drawn for zone in declared.zones)
     assert "SPEC [protected]" in drawn
     assert "dist/" in drawn
-    assert zones.place(declared, "conformance/expected-verdicts.toml").splitlines()[1] == "  spec [protected] / excuses"
+    assert (
+        zones.place(declared, "assurance/checker/expected-verdicts.toml").splitlines()[1]
+        == "  spec [protected] / excuses"
+    )
 
 
 def test_the_export_places_each_file_and_carries_the_problems(tmp_path: Path) -> None:
