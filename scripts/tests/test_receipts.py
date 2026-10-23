@@ -1,4 +1,6 @@
+import json
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -38,10 +40,10 @@ def test_another_gates_receipt_is_not_read_as_this_one(tmp_path: Path) -> None:
     assurance = AssuranceGateReceipt(
         revision="r", tree="t", written=receipts.now(), runs=(), tests=(), coverage=coverage
     )
-    path.write_text(assurance.model_dump_json())
+    path.write_text(json.dumps(assurance.to_document()))
 
     assert receipts.read(AssuranceGateReceipt, path) == assurance
-    with pytest.raises(ReceiptError, match="not a receipt this gate wrote"):
+    with pytest.raises(ReceiptError, match="not a commit-gate receipt"):
         receipts.read(CommitGateReceipt, path)
 
 
@@ -49,3 +51,10 @@ def test_the_receipts_directory_is_ignored_except_its_rules() -> None:
     ignored = subprocess.run(["git", "check-ignore", "-q", ".receipts/commit-gate.json"], cwd=ROOT, check=False)
     rules = subprocess.run(["git", "check-ignore", "-q", ".receipts/.gitignore"], cwd=ROOT, check=False)
     assert (ignored.returncode, rules.returncode) == (0, 1)
+
+
+@pytest.mark.parametrize("gate", ["commit_gate", "assurance_gate", "publish_gate"])
+def test_the_gates_run_on_the_standard_library_alone(gate: str) -> None:
+    """The pre-commit hook runs on pre-commit's python, which has none of the workspace's packages."""
+    bare = subprocess.run([sys.executable, "-S", "-m", f"scripts.gates.{gate}", "--help"], cwd=ROOT, check=False)
+    assert bare.returncode == 0

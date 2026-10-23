@@ -21,12 +21,12 @@ repos:
       # keeps that honest, after a pinned ruff-pre-commit hook drifted from it
       # and let an RUF043 finding through a commit the gate had just passed.
       #
-      # It runs on the workspace's interpreter, the one the gate ran on: the
-      # receipt is a typed model, and pre-commit's own `python` cannot import it.
+      # It runs on whatever `python` pre-commit finds, not the workspace's, so
+      # scripts/gates stays standard library only (test_receipts holds it there).
       - id: commit-gate-receipt
         name: commit-gate ran on this exact content
         language: system
-        entry: .venv/bin/python -m scripts.gates.commit_gate verify
+        entry: python -m scripts.gates.commit_gate verify
         always_run: true
         pass_filenames: false
 
