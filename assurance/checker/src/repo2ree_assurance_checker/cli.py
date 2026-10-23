@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from repo2ree_assurance_checker.codegen import render_schema
@@ -16,11 +16,12 @@ from repo2ree_assurance_checker.files import GENERATED_SCHEMA, SPEC_DIR, load_sp
 from repo2ree_assurance_checker.html import render_html
 from repo2ree_assurance_checker.report import render_json, render_markdown
 from repo2ree_assurance_checker.sources import combine, load_evidence
+from repo2ree_assurance_checker.spec import Spec
 from repo2ree_assurance_checker.verification import ARTIFACT, verify
 from repo2ree_assurance_checker.views import diff_specs, render_diff_markdown, system_map
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="repo2ree_assurance_checker", description=__doc__)
     parser.add_argument("--spec", type=Path, default=SPEC_DIR, help="Specification directory")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -54,65 +55,76 @@ def main(argv: Sequence[str] | None = None) -> int:
     run.add_argument(
         "--output", "-o", type=Path, help="Directory for the reports and verification.json (read by the views)"
     )
+    return parser
 
-    args = parser.parse_args(argv)
-    spec = load_spec(args.spec)
-    if args.command == "describe":
-        sys.stdout.write(f"{spec.digest}\n  vocabulary {spec.vocabulary_digest}\n")
-        for name, entity in sorted(spec.entities.items()):
-            edges = sum(len(targets) for targets in entity.edges.values())
-            sys.stdout.write(f"  entity {name}: {len(entity.states)} states, {edges} edges, owner {entity.owner}\n")
-        for name, boundary in sorted(spec.boundaries.items()):
-            sys.stdout.write(f"  boundary {name}: {boundary.sender} -> {boundary.receiver}\n")
-        for invariant in spec.invariants:
-            sys.stdout.write(f"  invariant {invariant.id} ({invariant.pattern})\n")
-        return 0
-    if args.command == "export":
-        chosen = spec if args.at is None else load_spec_at(args.at, args.git_executable)
-        document = json.dumps(export_spec(chosen), indent=2) + "\n"
-        if args.output is not None:
-            args.output.write_text(document)
-        else:
-            sys.stdout.write(document)
-        return 0
-    if args.command == "map":
-        sys.stdout.write(system_map(spec) + "\n")
-        return 0
-    if args.command == "diff":
-        base = load_spec_at(args.base, args.git_executable)
-        rendered = render_diff_markdown(diff_specs(base, spec), base.digest, spec.digest)
-        if args.output is not None:
-            args.output.write_text(rendered)
-        else:
-            sys.stdout.write(rendered)
-        return 0
-    if args.command == "generate":
-        rendered = render_schema(spec)
-        current = args.output.read_text() if args.output.exists() else None
-        if args.check:
-            if current != rendered:
-                sys.stderr.write(f"{args.output} is stale; run `python -m repo2ree_assurance_checker generate`\n")
-                return 1
-            return 0
+
+def _write(output: Path | None, text: str) -> None:
+    """To ``output`` when given, else to stdout."""
+    if output is not None:
+        output.write_text(text)
+    else:
+        sys.stdout.write(text)
+
+
+def describe(spec: Spec, _args: argparse.Namespace) -> int:
+    sys.stdout.write(f"{spec.digest}\n  vocabulary {spec.vocabulary_digest}\n")
+    for name, entity in sorted(spec.entities.items()):
+        edges = sum(len(targets) for targets in entity.edges.values())
+        sys.stdout.write(f"  entity {name}: {len(entity.states)} states, {edges} edges, owner {entity.owner}\n")
+    for name, boundary in sorted(spec.boundaries.items()):
+        sys.stdout.write(f"  boundary {name}: {boundary.sender} -> {boundary.receiver}\n")
+    for invariant in spec.invariants:
+        sys.stdout.write(f"  invariant {invariant.id} ({invariant.pattern})\n")
+    return 0
+
+
+def export(spec: Spec, args: argparse.Namespace) -> int:
+    chosen = spec if args.at is None else load_spec_at(args.at, args.git_executable)
+    _write(args.output, json.dumps(export_spec(chosen), indent=2) + "\n")
+    return 0
+
+
+def draw_map(spec: Spec, _args: argparse.Namespace) -> int:
+    sys.stdout.write(system_map(spec) + "\n")
+    return 0
+
+
+def diff(spec: Spec, args: argparse.Namespace) -> int:
+    base = load_spec_at(args.base, args.git_executable)
+    _write(args.output, render_diff_markdown(diff_specs(base, spec), base.digest, spec.digest))
+    return 0
+
+
+def generate(spec: Spec, args: argparse.Namespace) -> int:
+    rendered = render_schema(spec)
+    current = args.output.read_text() if args.output.exists() else None
+    if args.check:
         if current != rendered:
-            args.output.parent.mkdir(parents=True, exist_ok=True)
-            args.output.write_text(rendered)
-        sys.stdout.write(f"{args.output}: {spec.vocabulary_digest}\n")
-        return 0
-    if args.command == "validate-journal":
-        files = [
-            found for path in args.journals for found in (sorted(path.glob("*.ndjson")) if path.is_dir() else [path])
-        ]
-        failed = False
-        for path in files:
-            problems = journal_problems(spec, path)
-            failed = failed or bool(problems)
-            sys.stdout.write(f"{'ok' if not problems else 'broken'}: {path}\n")
-            sys.stdout.writelines(f"  {problem}\n" for problem in problems)
-        if not files:
-            sys.stderr.write("no journal files\n")
+            sys.stderr.write(f"{args.output} is stale; run `python -m repo2ree_assurance_checker generate`\n")
             return 1
-        return 1 if failed else 0
+        return 0
+    if current != rendered:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(rendered)
+    sys.stdout.write(f"{args.output}: {spec.vocabulary_digest}\n")
+    return 0
+
+
+def validate_journal(spec: Spec, args: argparse.Namespace) -> int:
+    files = [found for path in args.journals for found in (sorted(path.glob("*.ndjson")) if path.is_dir() else [path])]
+    if not files:
+        sys.stderr.write("no journal files\n")
+        return 1
+    failed = False
+    for path in files:
+        problems = journal_problems(spec, path)
+        failed = failed or bool(problems)
+        sys.stdout.write(f"{'ok' if not problems else 'broken'}: {path}\n")
+        sys.stdout.writelines(f"  {problem}\n" for problem in problems)
+    return 1 if failed else 0
+
+
+def check(spec: Spec, args: argparse.Namespace) -> int:
     try:
         dossiers = [load_dossier(dossier, args.git_executable) for dossier in args.dossier]
     except ValueError as exc:
@@ -132,3 +144,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     summary = ", ".join(f"{rule.rule}={rule.verdict}" for rule in result.rules)
     sys.stdout.write(f"{result.verdict}: {summary}\n")
     return result.exit_code
+
+
+COMMANDS: dict[str, Callable[[Spec, argparse.Namespace], int]] = {
+    "describe": describe,
+    "export": export,
+    "map": draw_map,
+    "diff": diff,
+    "generate": generate,
+    "validate-journal": validate_journal,
+    "check": check,
+}
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    args = parser().parse_args(argv)
+    return COMMANDS[args.command](load_spec(args.spec), args)
