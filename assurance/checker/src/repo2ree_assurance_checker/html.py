@@ -1,4 +1,4 @@
-"""A self-contained HTML conformance report: verdicts first, then the system and its machines drawn.
+"""A self-contained HTML assurance report: verdicts first, then the system and its machines drawn.
 
 Per-REE views of the evidence (operations, sequences, step standings) are drawn by repo2ree_assurance_traceview.
 """
@@ -77,8 +77,8 @@ def render_html(spec: Spec, result: CheckResult) -> str:
     parts: list[str] = [
         "<!doctype html><html lang='en'><head><meta charset='utf-8'>",
         "<meta name='viewport' content='width=device-width, initial-scale=1'>",
-        f"<title>Behaviour Conformance</title><style>{STYLE}</style></head><body><main>",
-        "<h1>Behaviour conformance</h1>",
+        f"<title>Behaviour Assurance</title><style>{STYLE}</style></head><body><main>",
+        "<h1>Behaviour assurance</h1>",
         (
             f"<p>{_badge(result.verdict)} <span class='muted'>against specification "
             f"<code>{escape(result.spec_digest)}</code>, vocabulary "

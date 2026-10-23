@@ -78,6 +78,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             (args.output / f"{ree}.provenance.txt").write_text(text)
         reviews = f", {trace.reviews} review attempts not drawn" if trace.reviews else ""
         sys.stdout.write(
-            f"{args.output / f'{ree}.html'}: {len(trace.entries)} entries, conformance {trace.verdict}{reviews}\n"
+            f"{args.output / f'{ree}.html'}: {len(trace.entries)} entries, assurance {trace.verdict}{reviews}\n"
         )
     return 0

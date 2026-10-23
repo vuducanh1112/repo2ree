@@ -51,7 +51,7 @@ def state_chart(spec: Spec, result: CheckResult, entity: str) -> str:
 
 def render_markdown(spec: Spec, result: CheckResult) -> str:
     lines = [
-        "# Behaviour conformance",
+        "# Behaviour assurance",
         "",
         (
             f"**Verdict: {MARK[result.verdict]}** against specification `{result.spec_digest}` "

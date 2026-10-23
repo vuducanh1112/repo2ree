@@ -177,7 +177,7 @@ def render_text(provenance: Provenance) -> str:
     missing = [step for step, state in provenance.standing.items() if state == terms.MISSING]
     lines = [
         f"Provenance of REE {provenance.ree[:8]} · dossier {provenance.dossier}",
-        f"behaviour conformance: {provenance.verdict}",
+        f"behaviour assurance: {provenance.verdict}",
         *(
             [f"spans: {provenance.unreadable_spans} unreadable records passed over"]
             if provenance.unreadable_spans

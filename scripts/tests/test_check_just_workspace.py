@@ -80,7 +80,7 @@ def test_assurance_still_required_by_global_aggregates(tmp_path: Path) -> None:
 
 def test_categories_cover_workspace_exactly_once(tmp_path: Path) -> None:
     document, config = fixture(tmp_path)
-    config["tool"]["repo2ree"]["workspace"]["backend"].append("conformance")
+    config["tool"]["repo2ree"]["workspace"]["backend"].append("unlisted")
     assert any(
         "workspace categories" in problem for problem in check_just_workspace.validate(document, config, tmp_path)
     )

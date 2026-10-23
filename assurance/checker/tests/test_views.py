@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 from test_spec import documents
-from test_system_conformance import GIT, SPEC, authoring_and_sealing, make_system
+from test_system_assurance import GIT, SPEC, authoring_and_sealing, make_system
 
 from repo2ree_assurance_checker.check import replay
 from repo2ree_assurance_checker.html import render_html

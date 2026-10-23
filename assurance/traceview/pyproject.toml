@@ -59,7 +59,7 @@ allow_indirect_imports = true
 
 # And the checker never depends on its views.
 [[tool.importlinter.contracts]]
-name = "Conformance does not depend on its views"
+name = "Checker does not depend on its views"
 type = "forbidden"
 source_modules = ["repo2ree_assurance_checker"]
 forbidden_modules = ["repo2ree_assurance_traceview"]

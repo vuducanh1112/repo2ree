@@ -136,9 +136,9 @@ def check(spec: Spec, args: argparse.Namespace) -> int:
     result = verification.result
     if args.output is not None:
         args.output.mkdir(parents=True, exist_ok=True)
-        (args.output / "conformance.md").write_text(render_markdown(spec, result))
-        (args.output / "conformance.json").write_text(render_json(result))
-        (args.output / "conformance.html").write_text(render_html(spec, result))
+        (args.output / "assurance.md").write_text(render_markdown(spec, result))
+        (args.output / "assurance.json").write_text(render_json(result))
+        (args.output / "assurance.html").write_text(render_html(spec, result))
         # What later steps (the trace views) read instead of verifying again.
         (args.output / ARTIFACT).write_text(verification.model_dump_json())
     summary = ", ".join(f"{rule.rule}={rule.verdict}" for rule in result.rules)

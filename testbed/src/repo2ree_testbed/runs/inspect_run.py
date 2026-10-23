@@ -53,7 +53,7 @@ def inspect_test(directory: Path, test: RunTest) -> RunTest:
     verdict: Behaviour = "missing"
     if (dossier / "manifest.json").is_file():
         check = ("repo2ree_assurance_checker", "check", "--dossier", str(dossier), "-o", str(verification))
-        verdict = VERDICTS.get(tool(logs / "conformance.log", *check), "error")
+        verdict = VERDICTS.get(tool(logs / "checker.log", *check), "error")
     if (verification / "verification.json").is_file() and test.rees:
         draw = ("repo2ree_assurance_traceview", str(verification), "-o", str(directory / "traces"), "--provenance")
         tool(logs / "traceview.log", *draw)
@@ -83,7 +83,7 @@ def write_test_index(directory: Path, test: RunTest) -> None:
     body += [f"<tr><th>{label}</th><td>{value}</td></tr>" for label, value in rows]
     body.append("</table>")
 
-    pages = [("Conformance report", path) for path in links(directory, "verification/conformance.html")]
+    pages = [("Assurance report", path) for path in links(directory, "verification/assurance.html")]
     pages += [(f"Behaviour trace {path.stem}", path) for path in links(directory, "traces/*.html")]
     pages += [(f"Provenance {path.name.split('.')[0]}", path) for path in links(directory, "traces/*.provenance.txt")]
     pages += [(f"Log {path.name}", path) for path in links(directory, "logs/*.log")]

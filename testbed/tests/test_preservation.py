@@ -210,8 +210,8 @@ def test_assurance_artifacts_have_an_independent_root(tmp_path, monkeypatch):
     monkeypatch.setenv("REPO2REE_ASSURANCE_DIR", str(tmp_path / "test-artifacts/assurance"))
     monkeypatch.setenv("REPO2REE_TEST_RUN_DIR", str(tmp_path))
     assert (
-        case_dir("conformance/tests/test_matrix.py::test_rows")
-        == tmp_path / "test-artifacts/assurance/tests/conformance/test_matrix/test_rows"
+        case_dir("assurance/checker/tests/test_matrix.py::test_rows")
+        == tmp_path / "test-artifacts/assurance/tests/checker/test_matrix/test_rows"
     )
     assert case_dir("api/tests/test_api.py::test_rows") == tmp_path / "python/tests/api/test_api/test_rows"
 
@@ -219,11 +219,11 @@ def test_assurance_artifacts_have_an_independent_root(tmp_path, monkeypatch):
 @pytest.mark.parametrize("mixed", [False, True])
 def test_pytest_routes_assurance_sessions_and_tests_separately(tmp_path, mixed):
     project = tmp_path / "project"
-    conformance = project / "conformance/tests"
+    checker = project / "assurance/checker/tests"
     backend = project / "core/tests"
-    conformance.mkdir(parents=True)
+    checker.mkdir(parents=True)
     backend.mkdir(parents=True)
-    (conformance / "test_conformance_probe.py").write_text("def test_conformance(): pass\n")
+    (checker / "test_checker_probe.py").write_text("def test_checker(): pass\n")
     (backend / "test_backend_probe.py").write_text("def test_backend(): pass\n")
     artifacts = tmp_path / "recordings"
     env = {key: value for key, value in os.environ.items() if key not in {"COVERAGE_FILE", "TRACE_FILE"}}
@@ -237,7 +237,7 @@ def test_pytest_routes_assurance_sessions_and_tests_separately(tmp_path, mixed):
             "--confcutdir",
             str(project),
             "-q",
-            "conformance/tests",
+            "assurance/checker/tests",
             *(["core/tests"] if mixed else []),
         ],
         cwd=project,
@@ -252,13 +252,13 @@ def test_pytest_routes_assurance_sessions_and_tests_separately(tmp_path, mixed):
         text=True,
     )
     assert completed.returncode == 0, completed.stdout + completed.stderr
-    (manifest,) = (project / "test-artifacts/assurance/tests/conformance").rglob("manifest.json")
-    assert json.loads(manifest.read_text())["nodeid"].startswith("conformance/tests/")
+    (manifest,) = (project / "test-artifacts/assurance/tests/checker").rglob("manifest.json")
+    assert json.loads(manifest.read_text())["nodeid"].startswith("assurance/checker/tests/")
     (session,) = (project / "test-artifacts/assurance/sessions").glob("*.json")
     document = json.loads(session.read_text())
     assert document["tests"] == 1
     assert document["artifact_domain"] == "assurance"
-    assert not (artifacts / "python/tests/conformance").exists()
+    assert not (artifacts / "python/tests/assurance").exists()
     if mixed:
         (backend_session,) = (artifacts / "python/sessions").glob("*.json")
         assert json.loads(backend_session.read_text())["tests"] == 1

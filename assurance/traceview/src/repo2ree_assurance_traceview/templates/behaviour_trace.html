@@ -267,7 +267,7 @@ function header() {
   $("title").textContent = t.ree ? `REE ${t.ree.slice(0, 8)}` : "No REE in this dossier";
   document.title = `${$("title").textContent} · behaviour trace`;
   const facts = [
-    ["Conformance", `<span class="pill ${t.verdict}">${esc(t.verdict)}</span>`],
+    ["Assurance", `<span class="pill ${t.verdict}">${esc(t.verdict)}</span>`],
     ["REE", `<span class="pill ${t.sealed ? "sealed" : ""}">${t.sealed ? "sealed" : "draft"}</span>`],
     ["Test", `<span class="v">${esc(r.test ?? "–")}</span>`],
     ["Test outcome", r.outcome ? `<span class="pill ${esc(r.outcome)}">${esc(r.outcome)}</span>` : `<span class="v">–</span>`],

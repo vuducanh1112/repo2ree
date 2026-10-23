@@ -15,8 +15,8 @@ def evidence_links(bundle: Bundle, directory: str | None) -> str:
     if directory is None:
         return '<span class="muted">not bundled</span>'
     links = []
-    if (bundle.root / directory / "verification/conformance.html").is_file():
-        links.append(f'<a href="{esc(directory)}/verification/conformance.html">verdicts</a>')
+    if (bundle.root / directory / "verification/assurance.html").is_file():
+        links.append(f'<a href="{esc(directory)}/verification/assurance.html">verdicts</a>')
     traces = sorted((bundle.root / directory / "traces").glob("*.html"))
     links += [f'<a href="{esc(directory)}/traces/{esc(trace.name)}">trace</a>' for trace in traces]
     return " · ".join(links) or '<span class="muted">none</span>'

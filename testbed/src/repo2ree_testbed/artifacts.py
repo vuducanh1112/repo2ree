@@ -39,7 +39,7 @@ def artifact_domain(nodeid: str) -> str:
     source = Path(nodeid.split("::", 1)[0])
     if source.is_absolute() and source.is_relative_to(ROOT):
         source = source.relative_to(ROOT)
-    return "assurance" if source.parts and source.parts[0] == "conformance" else "python"
+    return "assurance" if source.parts and source.parts[0] == "assurance" else "python"
 
 
 def domain_dir(domain: str) -> Path:
@@ -55,6 +55,8 @@ def case_dir(nodeid: str) -> Path:
         path = path.relative_to(ROOT)
     domain = artifact_domain(nodeid)
     parts = [part for part in path.with_suffix("").parts if part != "tests"]
+    if domain == "assurance":
+        parts = parts[1:]  # The domain's root already says assurance.
     return domain_dir(domain) / "tests" / Path(*(case_key(part) for part in [*parts, *test]))
 
 

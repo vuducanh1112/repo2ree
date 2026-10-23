@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     # API process; deployments using it must run a single API worker.
     RUN_REGISTRY_DIR: Path = Path(".repo2ree/runs")
     # Append-only behaviour journals (one file per API process epoch) recording
-    # Run, Allocation, and dispatch transitions for the conformance checker. They
+    # Run, Allocation, and dispatch transitions for the assurance checker. They
     # are evidence, not state: nothing here acts on them; /api/v1/behaviour
     # serves them unchanged to collectors.
     BEHAVIOUR_JOURNAL_DIR: Path = Path(".repo2ree/journal")

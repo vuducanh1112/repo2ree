@@ -40,7 +40,7 @@ def test_unprotected_changes_alone_are_allowed() -> None:
         "assurance/spec/invariants.toml",
         "assurance/spec/vocabulary/run.toml",
         "contracts/behaviour/events.schema.json",
-        "assurance/checker/tests/test_system_conformance.py",
+        "assurance/checker/tests/test_system_assurance.py",
         "assurance/checker/expected-verdicts.toml",
         "scripts/gates/assurance_gate.py",
         "scripts/gates/receipts.py",

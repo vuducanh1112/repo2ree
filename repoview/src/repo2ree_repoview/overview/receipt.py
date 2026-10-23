@@ -180,7 +180,7 @@ class _Extra(Document):
     count: int
 
 
-class ConformanceReport(Document):
+class AssuranceReport(Document):
     coverage: _Exercised = _Exercised()
     rules: tuple[_RuleCount, ...] = ()
     extras: tuple[_Extra, ...] = ()
@@ -201,8 +201,8 @@ class Exercised:
         rules: Counter[str] = Counter()
         extras: Counter[tuple[str, str]] = Counter()
         for run in evidence.runs:
-            for path in run.glob("tests/*/verification/conformance.json"):
-                report = ConformanceReport.model_validate_json(path.read_bytes())
+            for path in run.glob("tests/*/verification/assurance.json"):
+                report = AssuranceReport.model_validate_json(path.read_bytes())
                 for machine, counts in report.coverage.transitions.items():
                     edges.update({f"{machine} {edge}": count for edge, count in counts.items()})
                 for boundary, counts in report.coverage.messages.items():

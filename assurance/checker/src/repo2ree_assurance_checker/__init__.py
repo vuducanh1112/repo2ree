@@ -1,4 +1,4 @@
-"""Behaviour specification and conformance checking for repo2ree.
+"""Behaviour specification and assurance checking for repo2ree.
 
 The specification under ``assurance/spec`` declares entities with one
 owner each, the boundaries between components, and cross-entity invariants.

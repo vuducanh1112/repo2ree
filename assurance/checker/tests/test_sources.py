@@ -219,7 +219,7 @@ def test_attempt_records_become_their_proven_transitions() -> None:
 GIT = os.environ.get("REPO2REE_TOOL_GIT") or shutil.which("git")
 # Git histories are evidence under test: without git these tests would check nothing, so they fail rather than skip.
 if GIT is None:
-    raise RuntimeError("conformance tests need a git executable: put git on PATH or set REPO2REE_TOOL_GIT")
+    raise RuntimeError("checker tests need a git executable: put git on PATH or set REPO2REE_TOOL_GIT")
 
 
 def test_unreadable_capture_commits_make_git_evidence_incomplete(tmp_path: Path) -> None:

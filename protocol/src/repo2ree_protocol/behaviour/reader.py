@@ -1,7 +1,7 @@
 """Serve behaviour journals as their owners wrote them, for collection over the control plane.
 
 Records are returned byte for byte: the reader that judges them (the
-conformance checker) must see what the owner wrote, gaps and all. Only complete
+assurance checker) must see what the owner wrote, gaps and all. Only complete
 lines are served, so a read racing an append never returns a torn record.
 """
 

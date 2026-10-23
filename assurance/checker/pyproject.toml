@@ -27,7 +27,7 @@ root_packages = [
 # The checker is the oracle for code it must not share fate with: it reads the
 # specification and evidence files, never the implementation that produced them.
 [[tool.importlinter.contracts]]
-name = "Conformance stays independent of runtime packages"
+name = "Checker stays independent of runtime packages"
 type = "forbidden"
 source_modules = ["repo2ree_assurance_checker"]
 forbidden_modules = [
@@ -37,7 +37,7 @@ forbidden_modules = [
 
 # Rules are pure: the same specification and evidence always give the same verdicts.
 [[tool.importlinter.contracts]]
-name = "Conformance rules have no I/O dependencies"
+name = "Checker rules have no I/O dependencies"
 type = "forbidden"
 source_modules = [
     "repo2ree_assurance_checker.spec",

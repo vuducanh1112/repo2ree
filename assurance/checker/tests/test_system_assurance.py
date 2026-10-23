@@ -56,7 +56,7 @@ from repo2ree_supervisor import AllocationStore, WorkbenchManager, WorkbenchUnav
 GIT = os.environ.get("REPO2REE_TOOL_GIT") or shutil.which("git")
 # Git histories are evidence under test: without git these tests would check nothing, so they fail rather than skip.
 if GIT is None:
-    raise RuntimeError("conformance tests need a git executable: put git on PATH or set REPO2REE_TOOL_GIT")
+    raise RuntimeError("checker tests need a git executable: put git on PATH or set REPO2REE_TOOL_GIT")
 ARCHIVE = Path(__file__).resolve().parents[3] / "examples" / "projects" / "python-hello-world.tar.gz"
 SPEC = with_examples(load_spec())
 
@@ -370,7 +370,7 @@ def process_restart(system: System) -> CheckResult:
 
 
 # ================================================
-# Conformance of each scenario
+# Assurance of each scenario
 # ================================================
 
 

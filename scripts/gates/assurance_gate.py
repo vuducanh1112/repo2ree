@@ -148,7 +148,7 @@ def check_dossier(directory: Path) -> dict[str, Any] | None:
     ]
     if subprocess.run(command, cwd=ROOT, check=False, capture_output=True).returncode not in {0, 1, 2}:
         return None
-    report: dict[str, Any] = json.loads((output / "conformance.json").read_text())
+    report: dict[str, Any] = json.loads((output / "assurance.json").read_text())
     return report
 
 
