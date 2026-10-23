@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from pydantic import JsonValue
+from pydantic import BaseModel, ConfigDict, JsonValue, ValidationError
 
 from repo2ree_assurance_checker.evidence import Event, Evidence, Source
 
@@ -29,6 +29,17 @@ TERMINAL_OUTCOMES = {"succeeded", "failed", "canceled"}
 # ================================================
 
 
+class JournalHeader(BaseModel):
+    """What a journal.opened record says of the journal: whose it is and whom it speaks for."""
+
+    model_config = ConfigDict(extra="ignore", frozen=True)
+
+    process: str
+    epoch: int
+    hosts: tuple[str, ...] | None = None
+    vocabulary: str | None = None
+
+
 def read_journal(path: Path, epoch_gap: bool = False) -> tuple[Source, list[Event]]:
     """One process epoch. Gaps, torn lines, and unknown records make it incomplete, not unreadable."""
     match = JOURNAL_NAME.match(path.name)
@@ -37,7 +48,7 @@ def read_journal(path: Path, epoch_gap: bool = False) -> tuple[Source, list[Even
     journal_id = path.stem
     problems: list[str] = []
     events: list[Event] = []
-    header: dict[str, Any] = {}
+    header: JournalHeader | None = None
     closed = False
     final = False
     expected = 1
@@ -66,7 +77,10 @@ def read_journal(path: Path, epoch_gap: bool = False) -> tuple[Source, list[Even
         if kind == "journal.opened":
             if seq != 1:
                 problems.append(f"seq {seq}: reopened mid-journal")
-            header = record
+            try:
+                header = JournalHeader.model_validate(record)
+            except ValidationError as exc:
+                problems.append(f"seq {seq}: malformed journal.opened header ({exc.error_count()} problems)")
         elif kind == "journal.closed":
             closed = True
             final = record.get("final") is True
@@ -97,9 +111,9 @@ def read_journal(path: Path, epoch_gap: bool = False) -> tuple[Source, list[Even
                 problems.append(f"seq {seq}: malformed {kind} record ({exc})")
         else:
             problems.append(f"seq {seq}: unknown record kind {kind!r}")
-    if not header:
+    if header is None:
         problems.append("missing journal.opened header")
-    elif header.get("process") != match["process"] or header.get("epoch") != int(match["epoch"]):
+    elif header.process != match["process"] or header.epoch != int(match["epoch"]):
         problems.append("header disagrees with the file name")
     if epoch_gap:
         problems.append("an earlier epoch of this process is missing")
@@ -108,11 +122,11 @@ def read_journal(path: Path, epoch_gap: bool = False) -> tuple[Source, list[Even
         kind="journal",
         process=match["process"],
         rank=int(match["epoch"]),
-        hosts=frozenset(header.get("hosts") or [match["process"]]),
+        hosts=frozenset(header.hosts if header and header.hosts else [match["process"]]),
         complete=not problems,
         closed=closed,
         final=final,
-        vocabulary=header.get("vocabulary"),
+        vocabulary=header.vocabulary if header else None,
         problems=tuple(problems),
     )
     return source, events

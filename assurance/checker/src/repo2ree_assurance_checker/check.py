@@ -38,6 +38,7 @@ from repo2ree_assurance_checker.spec import (
     Invariant,
     MessageRequirement,
     Spec,
+    absent,
     declared_facts,
     fact_problems,
     matches,
@@ -399,20 +400,30 @@ class Model:
         return True, ""
 
     def placed(self, event: Event, cut: Cut) -> Literal["before", "while", "after"] | None:
-        """Where a journal event falls against the cut a snapshot was taken at; None when they share no journal."""
+        """Where a journal event falls against the cut a snapshot was taken at; None when they share no journal.
+
+        A cut names every journal its owner had when the snapshot was taken, earlier epochs
+        included. The event's own journal decides by position; otherwise its epoch decides
+        against the latest epoch the cut names, the one running when the snapshot was taken.
+        """
         origin = self._sources.get(event.source)
-        for journal_id, (low, high) in cut.items():
-            mark = self._sources.get(journal_id)
-            if origin is None or mark is None or origin.kind != "journal" or mark.kind != "journal":
-                continue
-            if origin.process != mark.process:
-                continue
-            if origin.rank != mark.rank:
-                return "before" if origin.rank < mark.rank else "after"
+        if origin is None or origin.kind != "journal":
+            return None
+        if event.source in cut:
+            low, high = cut[event.source]
             if event.position <= low:
                 return "before"
             return "while" if event.position <= high else "after"
-        return None
+        ranks = [
+            mark.rank
+            for journal_id in cut
+            if (mark := self._sources.get(journal_id)) is not None
+            and mark.kind == "journal"
+            and mark.process == origin.process
+        ]
+        if not ranks:
+            return None
+        return "before" if origin.rank < max(ranks) else "after"
 
     def _direct(self, a: Event, b: Event) -> bool | None:
         if a.source == b.source:
@@ -531,6 +542,12 @@ def check_requires(
                 return _ordered_requirement(model, [item.event for item in satisfying], occurrence, name)
             return None
         if reached:
+            # A fact the condition needs that the record lacks leaves it undecided, as for the machine.
+            if missing := sorted(
+                {fact for item in reached for fact in absent(require.where, item.facts, occurrence.facts)}
+            ):
+                reason = f"{name} reached {reached[-1].state} without {', '.join(missing)}"
+                return _finding("inconclusive", occurrence.subject, reason, occurrence.event, last)
             facts = {fact: reached[-1].facts.get(fact) for fact in require.where}
             reason = f"{name} reached {reached[-1].state} with {facts}"
             return _finding("violated", occurrence.subject, reason, occurrence.event, last)
@@ -583,6 +600,8 @@ def check_guard(require: GuardRequirement, occurrence: Occurrence) -> Finding | 
         return None
     reached = occurrence.instance.reached[occurrence.index] if occurrence.instance else None
     move = edge(reached.source_state, reached.state) if reached else "transition"
+    if missing := absent(require.where, occurrence.facts):
+        return _finding("inconclusive", occurrence.subject, f"{move} without {', '.join(missing)}", occurrence.event)
     facts = {name: occurrence.facts.get(name) for name in require.where}
     return _finding("violated", occurrence.subject, f"{move} with {facts}", occurrence.event)
 

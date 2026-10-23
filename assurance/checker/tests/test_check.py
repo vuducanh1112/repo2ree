@@ -734,6 +734,55 @@ def test_a_live_store_snapshot_holds_a_state_reached_around_its_cut(state: str, 
     assert findings(recorder, "reconciliation", *sources) == expected
 
 
+def test_a_live_store_snapshot_after_a_restart_is_placed_by_each_events_own_epoch() -> None:
+    """A cut names every epoch its owner had; the running one places its events by position."""
+    recorder = Recorder()
+    recorder.run("run-1", "requested", "running", "succeeded", attempt_id="a1", source="api-000002")
+    recorder.attempt("a1")
+    observed(recorder, "succeeded")
+    restarted = (journal("api-000001"), journal("api-000002", closed=False), git(REE))
+    assert (
+        findings(recorder, "reconciliation", *restarted, stores(cut={"api-000001": (9, 9), "api-000002": (2, 2)})) == []
+    )
+    # Journaled wholly in an earlier epoch than any the cut names: before the snapshot.
+    earlier = Recorder()
+    earlier.run("run-1", "requested", "running", "succeeded", attempt_id="a1")
+    earlier.attempt("a1")
+    observed(earlier, "succeeded")
+    assert findings(earlier, "reconciliation", *restarted, stores(cut={"api-000002": (1, 1)})) == []
+
+
+def without(recorder: Recorder, state: str, fact: str) -> None:
+    """Drop a fact from the Attempt transition into ``state``, as an owner that failed to record it would."""
+    recorder.events = [
+        event.model_copy(update={"facts": {k: v for k, v in event.facts.items() if k != fact}})
+        if event.subject == "Attempt" and event.target_state == state
+        else event
+        for event in recorder.events
+    ]
+
+
+def test_a_condition_on_a_fact_the_record_lacks_is_inconclusive_not_violated() -> None:
+    """A required fact that is missing proves nothing either way, in an invariant as in the machine."""
+    recorder = Recorder()
+    complete_command(recorder)
+    without(recorder, "completed", "outcome")
+    assert findings(recorder, "api-success-is-recorded") == [
+        "inconclusive: Attempt a1 reached captured without outcome"
+    ]
+    canceled = Recorder()
+    canceled.attempt("a1", "canceled")
+    without(canceled, "captured", "changed")
+    assert findings(canceled, "canceled-attempts-change-nothing") == [
+        "inconclusive: completed -> captured without changed"
+    ]
+
+
+def test_a_source_writes_its_sets_in_a_stable_order() -> None:
+    source = journal().model_copy(update={"hosts": frozenset({"supervisor", "core", "api"})})
+    assert source.model_dump(mode="json")["hosts"] == ["api", "core", "supervisor"]
+
+
 def test_a_store_snapshot_after_the_owners_stopped_must_match_exactly() -> None:
     recorder = Recorder()
     recorder.run("run-1", "requested", "running", "succeeded", attempt_id="a1")

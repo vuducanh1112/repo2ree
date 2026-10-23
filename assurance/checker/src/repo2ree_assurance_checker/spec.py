@@ -707,6 +707,17 @@ def matches(where: Condition, facts: dict[str, JsonValue], trigger: dict[str, Js
     return True
 
 
+def absent(where: Condition, facts: dict[str, JsonValue], trigger: dict[str, JsonValue] | None = None) -> list[str]:
+    """The facts ``where`` needs that the records do not carry, so it cannot be decided either way."""
+    missing = [name for name in where if facts.get(name) is None]
+    for condition in where.values():
+        if isinstance(condition, dict) and "per" in condition:
+            key = str(condition["per"])
+            if (facts if trigger is None else trigger).get(key) is None:
+                missing.append(key)
+    return missing
+
+
 def fact_problems(
     declared: dict[str, FactType],
     required: Iterable[str],

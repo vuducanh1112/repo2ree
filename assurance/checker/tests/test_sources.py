@@ -98,6 +98,15 @@ def test_lost_and_torn_records_make_a_journal_incomplete(tmp_path: Path) -> None
     assert source.problems[1].startswith("line 5: torn final record")
 
 
+def test_a_malformed_header_makes_a_journal_incomplete_instead_of_misread(tmp_path: Path) -> None:
+    header = {"v": 1, "seq": 1, "kind": "journal.opened", "process": "api", "epoch": 1, "hosts": "api"}
+    (tmp_path / "api-000001.ndjson").write_text(json.dumps(header) + "\n")
+    (source,), _ = read_journals(tmp_path)
+    assert not source.complete
+    assert source.problems[0].startswith("seq 1: malformed journal.opened header")
+    assert source.hosts == frozenset({"api"})  # The process itself, never the letters of a string.
+
+
 def test_a_missing_earlier_epoch_taints_the_later_one(tmp_path: Path) -> None:
     write_journal(tmp_path)
     write_journal(tmp_path)

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, JsonValue
+from pydantic import BaseModel, ConfigDict, JsonValue, field_serializer
 
 from repo2ree_assurance_dossier import Cut
 
@@ -48,6 +48,11 @@ class Source(EvidenceModel):
     problems: tuple[str, ...] = ()
     origin: str | None = None  # Where it was collected from: a control-plane URL, or a local path.
     cut: Cut | None = None
+
+    @field_serializer("hosts", "partitions")
+    def _sorted(self, values: frozenset[str] | None) -> list[str] | None:
+        """In a stable order, so the same evidence always writes the same report."""
+        return None if values is None else sorted(values)
 
 
 class Event(EvidenceModel):
