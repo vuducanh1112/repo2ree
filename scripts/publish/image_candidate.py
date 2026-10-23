@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import shlex
@@ -12,6 +13,8 @@ import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+
+from scripts.gates import publish_gate
 
 IMAGES = ("repo2ree-provider-docker", "repo2ree-backend", "repo2ree-gui")
 STACK_VARIABLES = {
@@ -48,22 +51,24 @@ def resolve_digest(reference: str) -> str:
 
 
 def parse_receipt(path: Path) -> CandidateReceipt:
-    revision: str | None = None
+    try:
+        document = json.loads(path.read_text())
+        revision = document["revision"]
+        rows = [(row["registry"], row["image"], row["digest"]) for row in document["images"]]
+    except (ValueError, KeyError, TypeError) as error:
+        raise RuntimeError(f"invalid candidate receipt {path}: {error}") from None
+    if set(document) != {"revision", "images"} or not isinstance(revision, str):
+        raise RuntimeError(f"invalid candidate receipt {path}: expected a revision and images")
     images: dict[tuple[str, str], str] = {}
-    for line in path.read_text().splitlines():
-        fields = line.split("\t")
-        if len(fields) == 2 and fields[0] == "revision" and revision is None:
-            revision = fields[1]
-        elif len(fields) == 4 and fields[0] == "image" and fields[2] in IMAGES:
-            key = (fields[1], fields[2])
-            if key in images:
-                raise RuntimeError(f"duplicate image row in {path}: {fields[1]}/{fields[2]}")
-            if not DIGEST.fullmatch(fields[3]):
-                raise RuntimeError(f"invalid digest in {path}: {fields[3]}")
-            images[key] = fields[3]
-        else:
-            raise RuntimeError(f"invalid candidate receipt row in {path}: {line}")
-    if revision is None or not images:
+    for registry, image, digest in rows:
+        if image not in IMAGES:
+            raise RuntimeError(f"invalid candidate receipt row in {path}: {registry}/{image}")
+        if (registry, image) in images:
+            raise RuntimeError(f"duplicate image row in {path}: {registry}/{image}")
+        if not DIGEST.fullmatch(digest):
+            raise RuntimeError(f"invalid digest in {path}: {digest}")
+        images[(registry, image)] = digest
+    if not images:
         raise RuntimeError(f"incomplete validation receipt: {path}")
     receipt = CandidateReceipt(revision, images)
     for registry in receipt.registries:
@@ -74,8 +79,11 @@ def parse_receipt(path: Path) -> CandidateReceipt:
 
 
 def serialize_receipt(receipt: CandidateReceipt) -> str:
-    rows = [f"image\t{registry}\t{image}\t{digest}" for (registry, image), digest in receipt.images.items()]
-    return f"revision\t{receipt.revision}\n" + "\n".join(sorted(rows)) + "\n"
+    rows = [
+        {"registry": registry, "image": image, "digest": digest}
+        for (registry, image), digest in sorted(receipt.images.items())
+    ]
+    return json.dumps({"revision": receipt.revision, "images": rows}, indent=2) + "\n"
 
 
 def assert_revision(revision: str) -> None:
@@ -163,26 +171,6 @@ def promote_candidate(revision: str, path: Path) -> None:
                 raise RuntimeError(f"promotion verification failed for {target}")
 
 
-def gate_images(path: Path) -> dict[str, str]:
-    images: dict[str, str] = {}
-    for line in path.read_text().splitlines():
-        fields = line.split("\t")
-        if len(fields) == 3 and fields[0] == "image" and fields[1] in IMAGES:
-            images[fields[1]] = fields[2]
-    for image in IMAGES:
-        if not DIGEST.fullmatch(images.get(image, "")):
-            raise RuntimeError(f"publish-gate receipt is missing a valid ID for {image}")
-    return images
-
-
-def verify_publish_gate(path: Path, revision: str) -> None:
-    subprocess.run(
-        [sys.executable, str(ROOT / "scripts/publish/publish_gate_receipt.py"), "verify", str(path), revision],
-        cwd=ROOT,
-        check=True,
-    )
-
-
 def push_candidate(
     revision: str,
     registries: list[str],
@@ -202,8 +190,8 @@ def push_candidate(
         if revision != current:
             raise RuntimeError(f"image candidate must name the clean tree being built ({current})")
     if gate_receipt:
-        verify_publish_gate(gate_receipt, revision)
-    certified = gate_images(gate_receipt) if gate_receipt else {}
+        publish_gate.verify_receipt(gate_receipt, revision)
+    certified = publish_gate.read_receipt(gate_receipt).images if gate_receipt else {}
     for registry in registries:
         for image in IMAGES:
             source = certified.get(image, f"{image}:local")
@@ -221,7 +209,7 @@ def push_archive(archive_dir: Path, registry_names: list[str]) -> str:
 
 
 def validate_candidate(revision: str, state_dir: Path, validation_registry: str, registry_names: list[str]) -> None:
-    receipt = state_dir / f"{revision}.validated"
+    receipt = state_dir / f"{revision}.json"
     pending = Path(f"{receipt}.pending")
     pending.unlink(missing_ok=True)
     try:
@@ -306,7 +294,7 @@ def main() -> int:
             return 0
         revision = chosen_revision(args.revision, args.configured_revision, allow_dirty=args.command == "push")
         receipt = (
-            args.state_dir / f"{revision}.validated"
+            args.state_dir / f"{revision}.json"
             if args.command in {"verify", "promote"} and args.state_dir
             else getattr(args, "receipt", None)
         )

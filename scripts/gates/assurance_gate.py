@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Judge per-test e2e runs on their behaviour, and certify the tree they ran on.
+"""The assurance gate: judge per-test e2e runs on their behaviour, and certify the tree they ran on.
 
 Test runs only collect; ``repo2ree_testbed inspect`` draws verdicts but never fails a run. This
 composes the two into a gate:
@@ -11,8 +11,8 @@ composes the two into a gate:
 - ``certify RUN...`` judges, then also requires every tier in ``TIERS`` to be among
   the runs, each built from HEAD with a clean tree that is still HEAD, and every
   expectation to have been used, and the tests together to reach every specified
-  rule, edge, and message the file does not declare unreached. It writes ``.validation-certificates/behaviour-ok``,
-  binding the verdicts to HEAD's tree.
+  rule, edge, and message the file does not declare unreached. It writes the
+  ``.receipts/assurance-gate.json`` receipt, binding the verdicts to HEAD's tree.
 - ``verify`` requires that receipt to cover HEAD's tree, and the tree to be clean.
 """
 
@@ -22,15 +22,17 @@ import argparse
 import json
 import subprocess
 import sys
-import tempfile
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from scripts.gates import receipts
+from scripts.gates.receipts import AssuranceGateReceipt, Coverage, TestVerdict
+
 ROOT = Path(__file__).resolve().parents[2]
 EXPECTATIONS = ROOT / "assurance/checker/expected-verdicts.toml"
-RECEIPT = ROOT / ".validation-certificates/behaviour-ok"
+RECEIPT = receipts.path(ROOT, "assurance-gate")
 # The per-test tiers whose evidence a receipt stands on.
 TIERS = ("e2e-system", "e2e-gui-instant")
 ACCEPTED_OUTCOMES = {"passed", "xfailed"}
@@ -207,7 +209,7 @@ def report(judgements: list[Judgement], problems: list[str]) -> None:
     for problem in problems:
         print(f"FAIL {problem}")
     accepted = sum(item.accepted for item in judgements)
-    print(f">> behaviour gate: {accepted}/{len(judgements)} tests accepted, {len(problems)} other problems")
+    print(f">> assurance gate: {accepted}/{len(judgements)} tests accepted, {len(problems)} other problems")
 
 
 def git(*args: str) -> str:
@@ -242,36 +244,37 @@ def certification_problems(
 
 def write_receipt(judgements: list[Judgement], runs: list[Path], unreached: dict[str, str]) -> None:
     revision, tree, _ = clean_head()
-    receipt = {
-        "revision": revision,
-        "tree": tree,
-        "runs": [str(root.relative_to(ROOT)) if root.is_relative_to(ROOT) else str(root) for root in runs],
-        "tests": [
-            {"run": item.run, "test": item.test, "outcome": item.outcome, "behaviour": item.behaviour}
-            | ({"excused": item.excused_by} if item.excused_by else {})
+    receipt = AssuranceGateReceipt(
+        revision=revision,
+        tree=tree,
+        written=receipts.now(),
+        runs=tuple(str(root.relative_to(ROOT)) if root.is_relative_to(ROOT) else str(root) for root in runs),
+        tests=tuple(
+            TestVerdict(
+                run=item.run,
+                test=item.test,
+                outcome=item.outcome,
+                behaviour=item.behaviour,
+                excused=item.excused_by or None,
+            )
             for item in judgements
-        ],
-        "coverage": {
-            "declared": len(frozenset().union(*(item.declared for item in judgements))),
-            "reached": len(frozenset().union(*(item.reached for item in judgements))),
-            "unreached": sorted(unreached),
-        },
-    }
-    if subprocess.run(["git", "check-ignore", "-q", str(RECEIPT)], cwd=ROOT, check=False).returncode != 0:
-        raise RuntimeError(f"{RECEIPT} is not ignored by git; a tracked receipt changes the tree it certifies")
-    RECEIPT.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile("w", dir=RECEIPT.parent, delete=False) as pending:
-        pending.write(json.dumps(receipt, indent=2) + "\n")
-    Path(pending.name).replace(RECEIPT)
+        ),
+        coverage=Coverage(
+            declared=len(frozenset().union(*(item.declared for item in judgements))),
+            reached=len(frozenset().union(*(item.reached for item in judgements))),
+            unreached=tuple(sorted(unreached)),
+        ),
+    )
+    receipts.write(RECEIPT, receipt)
 
 
 def verify() -> list[str]:
     _, tree, problems = clean_head()
-    if not RECEIPT.is_file():
-        return [*problems, "no behaviour receipt for this clone; run: just behaviour-gate"]
-    receipt = json.loads(RECEIPT.read_text())
-    if receipt.get("tree") != tree:
-        problems.append(f"the behaviour receipt covers {receipt.get('revision')}, not HEAD; run: just behaviour-gate")
+    receipt = receipts.read(AssuranceGateReceipt, RECEIPT)
+    if receipt is None:
+        return [*problems, "no assurance-gate receipt for this clone; run: just assurance-gate"]
+    if receipt.tree != tree:
+        problems.append(f"the assurance-gate receipt covers {receipt.revision}, not HEAD; run: just assurance-gate")
     return problems
 
 
@@ -281,7 +284,10 @@ def main() -> int:
     parser.add_argument("runs", nargs="*", type=Path, help="run directories `repo2ree_testbed e2e --per-test` wrote")
     args = parser.parse_args()
     if args.command == "verify":
-        problems = verify()
+        try:
+            problems = verify()
+        except receipts.ReceiptError as error:
+            problems = [str(error)]
         for problem in problems:
             print(problem, file=sys.stderr)
         return 1 if problems else 0
@@ -302,7 +308,7 @@ def main() -> int:
         return 1
     if args.command == "certify":
         write_receipt(judgements, runs, unreached)
-        print(f">> behaviour receipt written for {clean_head()[0]}")
+        print(f">> assurance-gate receipt written for {clean_head()[0]}")
     return 0
 
 

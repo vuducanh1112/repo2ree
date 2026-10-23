@@ -3,7 +3,7 @@
 # Every tracked file belongs to the zone of its longest matching entry (a directory
 # ends in `/`; anything else names one file). A protected zone is what humans review:
 # the specification decides what must hold, and the gates enforce it and issue the
-# certificates. A commit that changes a protected zone changes nothing unprotected
+# receipts. A commit that changes a protected zone changes nothing unprotected
 # (the `spec-isolation` pre-commit hook), so a rule, its reading, its excuse, or a
 # gate cannot be bent beside the code it judges. Everything else is changed freely
 # and judged by the gates.
@@ -38,28 +38,30 @@ summary = "What the specification concedes is not proven, each with a reason."
 "assurance/checker/tests/test_system_conformance.py" = "In-process scenarios; UNEXERCISED lists the edges they never reach"
 
 [gates]
-summary = "What enforces the specification and issues certificates."
+summary = "What enforces the specification and writes receipts."
 protected = true
 
 [gates.groups.recipes]
 summary = "The gates as you run them."
 [gates.groups.recipes.paths]
-"just/gates.just" = "`commit-gate`, `behaviour-gate` and the tiers it runs, `publish-gate`"
+"just/gates.just" = "`commit-gate`, `assurance-gate` and the tiers it runs, `publish-gate`"
 
-[gates.groups.behaviour]
+[gates.groups.assurance]
 summary = "Certifies a tree by its tests' outcomes, verdicts, and coverage."
-[gates.groups.behaviour.paths]
-"scripts/publish/behaviour_gate.py" = "Judges per-test runs and writes the behaviour receipt"
-"scripts/tests/test_behaviour_gate.py" = "Its tests"
+[gates.groups.assurance.paths]
+"scripts/gates/assurance_gate.py" = "Judges per-test runs and writes the assurance-gate receipt"
+"scripts/tests/test_assurance_gate.py" = "Its tests"
 
 [gates.groups.receipts]
-summary = "The commit and publish gates, and the certificates they leave."
+summary = "The commit and publish gates, and the receipts every gate writes."
 [gates.groups.receipts.paths]
-"scripts/publish/commit_gate_stamp.py" = "Binds a passing commit gate to the staged tree"
-"scripts/publish/publish_gate_receipt.py" = "Binds a passing publish gate to an image set"
-"scripts/tests/test_commit_gate_stamp.py" = "Its tests"
-"scripts/tests/test_publish_gate_receipt.py" = "Its tests"
-".validation-certificates/" = "Where certificates are written (ignored, except this directory's rules)"
+"scripts/gates/receipts.py" = "The receipt every gate writes: one header, a body per gate, never tracked"
+"scripts/gates/commit_gate.py" = "Binds a passing commit gate to the staged tree"
+"scripts/gates/publish_gate.py" = "Binds a passing publish gate to an image set"
+"scripts/tests/test_receipts.py" = "Its tests"
+"scripts/tests/test_commit_gate.py" = "Its tests"
+"scripts/tests/test_publish_gate.py" = "Its tests"
+".receipts/" = "Where receipts are written (ignored, except this directory's rules)"
 
 [gates.groups.guard]
 summary = "Keeps protected zones apart from the rest."
@@ -67,7 +69,7 @@ summary = "Keeps protected zones apart from the rest."
 "zones.toml" = "This file"
 "scripts/zones.py" = "The pre-commit check, the map, and the completeness check"
 "scripts/tests/test_zones.py" = "Its tests"
-".pre-commit-config.yaml" = "The hooks: commit-gate certificate, spec isolation"
+".pre-commit-config.yaml" = "The hooks: commit-gate receipt, spec isolation"
 
 [product]
 summary = "What ships, and the tests that exercise it."
@@ -94,7 +96,7 @@ summary = "The web app."
 "gui/" = "React app, its unit, accessibility, screenshot, demo, and e2e suites"
 
 [product.groups.scenarios]
-summary = "End-to-end tests the behaviour gate runs, each on a stack of its own."
+summary = "End-to-end tests the assurance gate runs, each on a stack of its own."
 [product.groups.scenarios.paths]
 "api/tests/system/" = "The system tier: the API driven without a browser"
 "gui/tests/e2e-instant/" = "The instant GUI tier"

@@ -1,6 +1,6 @@
 """Keep test-artifacts bounded; every e2e run prunes first.
 
-Per tier it keeps the newest finished runs, the newest with a problem, the runs the behaviour
+Per tier it keeps the newest finished runs, the newest with a problem, the runs the assurance-gate
 receipt names, and runs still in progress; old suite folders and stale control state go, and so
 do unused bundle-store volumes (never a workbench, which a stack beside this one may hold).
 """
@@ -21,7 +21,7 @@ from repo2ree_testbed.artifacts import ROOT, run_dir
 from repo2ree_testbed.records import Receipt, RunRecord, read
 from repo2ree_testbed.stack.workbench_cleanup import live_store_volume, stale_store_volumes
 
-RECEIPT = ROOT / ".validation-certificates/behaviour-ok"
+RECEIPT = ROOT / ".receipts/assurance-gate.json"
 PER_TEST_RUN = re.compile(r"^(?P<tier>.+)-(?P<stamp>\d{8}-\d{6})$")
 SUITE_TOKEN = re.compile(r"^e2e-(?P<tier>.+)-[0-9a-f]{32}$")
 SUITE_FOLDERS = ("recordings", "archives", "telemetry")

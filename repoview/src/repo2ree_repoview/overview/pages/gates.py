@@ -1,4 +1,4 @@
-"""What the last behaviour gate accepted, and what its receipt concedes."""
+"""What the last assurance gate accepted, and what its receipt concedes."""
 
 from __future__ import annotations
 
@@ -25,15 +25,15 @@ def evidence_links(bundle: Bundle, directory: str | None) -> str:
 def page_gates(receipt: Receipt | None, unreached: dict[str, str], bundle: Bundle, evidence: Evidence) -> Page:
     tests = len(receipt.tests) if receipt else 0
     teaser = f"{tests} tests in the last receipt; {reached(receipt)} specified items reached"
-    return Page("behaviour-gate", "Behaviour gate", teaser, gates_section(receipt, unreached, bundle, evidence))
+    return Page("assurance-gate", "Assurance gate", teaser, gates_section(receipt, unreached, bundle, evidence))
 
 
 def gates_section(receipt: Receipt | None, unreached: dict[str, str], bundle: Bundle, evidence: Evidence) -> str:
     if receipt is None:
         return section(
-            "behaviour-gate",
-            "Behaviour gate",
-            "No behaviour receipt in this clone yet: run <code>just behaviour-gate</code>.",
+            "assurance-gate",
+            "Assurance gate",
+            "No assurance-gate receipt in this clone yet: run <code>just assurance-gate</code>.",
             "",
         )
     rows = [
@@ -41,7 +41,7 @@ def gates_section(receipt: Receipt | None, unreached: dict[str, str], bundle: Bu
             esc(t.test),
             esc(t.outcome),
             f'<span class="{"ok" if t.behaviour == "passed" else "ex"}">{esc(t.behaviour)}</span>',
-            esc(t.excused),
+            esc(t.excused or ""),
             evidence_links(bundle, evidence.tests.get((t.run, t.test))),
         ]
         for t in receipt.tests
@@ -62,5 +62,5 @@ def gates_section(receipt: Receipt | None, unreached: dict[str, str], bundle: Bu
         + f"<h3>What a receipt does not prove ({len(unreached)} items)</h3>"
         + table(["Unreached by any gated test", "Why"], unreached_rows)
     )
-    lede = "What the last behaviour gate accepted, and what its receipt concedes."
-    return section("behaviour-gate", "Behaviour gate", lede, body)
+    lede = "What the last assurance gate accepted, and what its receipt concedes."
+    return section("assurance-gate", "Assurance gate", lede, body)

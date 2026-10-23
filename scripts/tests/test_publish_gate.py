@@ -1,11 +1,12 @@
+import json
 import os
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).parents[2]
-RECEIPT_TOOL = ROOT / "scripts/publish/publish_gate_receipt.py"
-PUSH_TOOL = ROOT / "scripts/publish/image_candidate.py"
+RECEIPT_TOOL = ["-m", "scripts.gates.publish_gate"]
+PUSH_TOOL = ["-m", "scripts.publish.image_candidate"]
 IMAGE_ID = "sha256:" + "1" * 64
 CHANGED_IMAGE_ID = "sha256:" + "2" * 64
 
@@ -48,24 +49,27 @@ fi
 
 def test_receipt_binds_revision_tree_and_local_image_ids(tmp_path: Path) -> None:
     environment = _fake_environment(tmp_path)
-    receipt = tmp_path / ".validation-certificates/publish-gate-ok"
+    receipt = tmp_path / ".receipts/publish-gate.json"
 
     subprocess.run(
-        [sys.executable, RECEIPT_TOOL, "write", receipt, "revision-1"],
+        [sys.executable, *RECEIPT_TOOL, "write", receipt, "revision-1"],
         check=True,
         env=environment,
+        cwd=ROOT,
     )
     subprocess.run(
-        [sys.executable, RECEIPT_TOOL, "verify", receipt, "revision-1"],
+        [sys.executable, *RECEIPT_TOOL, "verify", receipt, "revision-1"],
         check=True,
         env=environment,
+        cwd=ROOT,
     )
 
     environment["FAKE_IMAGE_ID"] = CHANGED_IMAGE_ID
     changed = subprocess.run(
-        [sys.executable, RECEIPT_TOOL, "verify", receipt, "revision-1"],
+        [sys.executable, *RECEIPT_TOOL, "verify", receipt, "revision-1"],
         check=False,
         env=environment,
+        cwd=ROOT,
         capture_output=True,
         text=True,
     )
@@ -76,24 +80,24 @@ def test_receipt_binds_revision_tree_and_local_image_ids(tmp_path: Path) -> None
 def test_push_uses_certified_ids_instead_of_mutable_local_tags(tmp_path: Path) -> None:
     environment = _fake_environment(tmp_path)
     environment["REGISTRIES"] = "registry.example/team"
-    receipt = tmp_path / "publish-gate-ok"
+    receipt = tmp_path / "publish-gate.json"
+    images = dict.fromkeys(("repo2ree-gui", "repo2ree-backend", "repo2ree-provider-docker"), IMAGE_ID)
     receipt.write_text(
-        "revision\trevision-1\n"
-        "tree\ttest-tree\n"
-        + "".join(
-            f"image\t{name}\t{IMAGE_ID}\n"
-            for name in (
-                "repo2ree-gui",
-                "repo2ree-backend",
-                "repo2ree-provider-docker",
-            )
+        json.dumps(
+            {
+                "gate": "publish-gate",
+                "revision": "revision-1",
+                "tree": "test-tree",
+                "written": "2026-10-23T00:00:00Z",
+                "images": images,
+            }
         )
     )
 
     subprocess.run(
         [
             sys.executable,
-            PUSH_TOOL,
+            *PUSH_TOOL,
             "push",
             "--revision",
             "revision-1",
@@ -104,6 +108,7 @@ def test_push_uses_certified_ids_instead_of_mutable_local_tags(tmp_path: Path) -
         ],
         check=True,
         env=environment,
+        cwd=ROOT,
     )
 
     calls = Path(environment["DOCKER_LOG"]).read_text().splitlines()

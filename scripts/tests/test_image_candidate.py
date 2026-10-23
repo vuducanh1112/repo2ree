@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from typing import Any
 
@@ -19,13 +20,13 @@ def test_candidate_receipt_round_trips_in_stable_order(tmp_path: Path) -> None:
     path.write_text(image_candidate.serialize_receipt(receipt))
 
     assert image_candidate.parse_receipt(path) == receipt
-    assert path.read_text().splitlines()[1].startswith("image\ta.example/team")
+    assert json.loads(path.read_text())["images"][0]["registry"] == "a.example/team"
 
 
 def test_candidate_receipt_rejects_duplicate_rows(tmp_path: Path) -> None:
-    row = f"image\tregistry/team\t{image_candidate.IMAGES[0]}\t{DIGEST_1}\n"
+    row = {"registry": "registry/team", "image": image_candidate.IMAGES[0], "digest": DIGEST_1}
     path = tmp_path / "receipt"
-    path.write_text(f"revision\trevision-1\n{row}{row}")
+    path.write_text(json.dumps({"revision": "revision-1", "images": [row, row]}))
 
     with pytest.raises(RuntimeError, match="duplicate image row"):
         image_candidate.parse_receipt(path)

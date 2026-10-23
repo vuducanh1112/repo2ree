@@ -124,7 +124,7 @@ export default defineConfig({
       name: "e2e-gui-instant",
       testDir: "./tests/e2e-instant",
       outputDir: `${testRunDir}/browser/tests/e2e-gui-instant`,
-      // The authoring spec takes ~70s alone but ~130-140s in the behaviour gate,
+      // The authoring spec takes ~70s alone but ~130-140s in the assurance gate,
       // which runs this suite beside the system tier; 120s failed it on load.
       timeout: 180 * 1000,
       expect: { timeout: 15 * 1000 },

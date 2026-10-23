@@ -104,9 +104,9 @@ just promote-candidate  # move edge to the validated digests
 `validate-candidate` resolves every component in both registries and
 requires the corresponding manifests to have identical digests. Both GUI e2e
 projects then run against explicit `@sha256` references rather than mutable
-revision tags. A successful run writes one ignored, tab-separated receipt at
-`.validation-certificates/image-candidates/<rev>.validated`. It records the
-candidate revision and one digest row for each registry/image pair. The file is
+revision tags. A successful run writes one ignored JSON receipt at
+`.receipts/image-candidates/<rev>.json`. It records the candidate revision and
+one digest for each registry/image pair. The file is
 moved into place only after both validation suites pass.
 
 `promote-candidate` requires that receipt, re-resolves every

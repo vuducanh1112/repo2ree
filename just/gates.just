@@ -1,19 +1,19 @@
-# The gates, and the tiers the behaviour gate runs. This file is protected (zones.toml, gates):
-# what runs and how it is judged decide what a certificate certifies, so it changes apart
+# The gates, and the tiers the assurance gate runs. This file is protected (zones.toml, gates):
+# what runs and how it is judged decide what a receipt covers, so it changes apart
 # from the product it judges.
 
-# The certificate records the exact tree only after every prerequisite passes;
+# The receipt records the exact tree only after every prerequisite passes;
 # the pre-commit hook performs the cheap content comparison later.
 # Run the fast checks, documentation build, and unit tests, then certify the tree.
 [group('Release gates')]
 commit-gate: check build-docs test-unit
-    python scripts/publish/commit_gate_stamp.py write
-    @echo ">> commit gate green — certificate written for the current tree"
+    python -m scripts.gates.commit_gate write
+    @echo ">> commit gate green — receipt written for the current tree"
 
 # Require the current clean content to have passed the commit gate.
 [private]
 _require-current-commit-gate:
-    python scripts/publish/commit_gate_stamp.py verify
+    python -m scripts.gates.commit_gate verify
 
 [private]
 _e2e-gui-instant jobs mode docker_mode:
@@ -28,7 +28,7 @@ _e2e-system jobs locations mode docker_mode:
 # The suite together must reach every specified rule, edge, and message the same file does not excuse.
 # Run the per-test e2e tiers on HEAD, judge every test's behaviour, and certify HEAD's tree.
 [group('Release gates')]
-behaviour-gate jobs=E2E_JOBS: _require-clean-tree build-e2e-bundles
+assurance-gate jobs=E2E_JOBS: _require-clean-tree build-e2e-bundles
     #!/usr/bin/env bash
     set -euo pipefail
     # Both tiers at once, each in a run directory of its own; each run is read from its tier's own output.
@@ -46,21 +46,21 @@ behaviour-gate jobs=E2E_JOBS: _require-clean-tree build-e2e-bundles
         [[ -n "$run" ]] || { tail -n 60 "$logs/$tier.log" >&2; echo ">> the $tier tier left no per-test run (log: $logs/$tier.log)" >&2; exit 1; }
         runs+=("$run")
     done
-    python scripts/publish/behaviour_gate.py certify "${runs[@]}"
+    python -m scripts.gates.assurance_gate certify "${runs[@]}"
 
-# Require a behaviour receipt for HEAD's clean tree.
+# Require an assurance-gate receipt for HEAD's clean tree.
 [private]
-_require-current-behaviour-receipt:
-    python scripts/publish/behaviour_gate.py verify
+_require-current-assurance-gate:
+    python -m scripts.gates.assurance_gate verify
 
 # Run the complete pre-publish gate and certify the local image set.
 [group('Release gates')]
-publish-gate: _require-clean-tree _require-current-commit-gate _require-current-behaviour-receipt test-backend-integration test-gui-accessibility test-gui-screenshots test-e2e-gui test-e2e-review build-images
+publish-gate: _require-clean-tree _require-current-commit-gate _require-current-assurance-gate test-backend-integration test-gui-accessibility test-gui-screenshots test-e2e-gui test-e2e-review build-images
     #!/usr/bin/env bash
     set -euo pipefail
     python -m repo2ree_testbed image-suite --suite e2e-gui --compute-locations {{ quote(DEFAULT_STACK_LOCATIONS) }} --images local
     python -m repo2ree_testbed image-suite --suite e2e-gui-review --compute-locations 1 --images local
     revision=$(git describe --always)
-    python scripts/publish/publish_gate_receipt.py write {{ quote(DEFAULT_PUBLISH_GATE_RECEIPT) }} "$revision"
+    python -m scripts.gates.publish_gate write {{ quote(DEFAULT_PUBLISH_GATE_RECEIPT) }} "$revision"
     echo ">> publish gate green — certified local image set for $revision"
     echo ">> publish with: just publish-candidate"

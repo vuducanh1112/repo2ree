@@ -60,7 +60,7 @@ test-assurance-collector:
 
 # Collect a running deployment's behaviour evidence through its control plane (exit 1 if any source is missing).
 [group('Assurance')]
-collect-behaviour control_plane output *rees:
+collect-dossier control_plane output *rees:
     python -m repo2ree_assurance_collector {{ quote(output) }} --control-plane {{ quote(control_plane) }} {{ prepend("--ree ", rees) }}
 
 # Regenerate the published event schema (contracts/behaviour) after editing assurance/spec.
@@ -73,7 +73,7 @@ generate-behaviour:
 export-behaviour-spec rev="" output="":
     python -m repo2ree_assurance_checker export {{ if rev != "" { "--at " + quote(rev) } else { "" } }} {{ if output != "" { "-o " + quote(output) } else { "" } }}
 
-# Judge per-test runs as the behaviour gate would (the newest of each tier by default), certifying nothing.
+# Judge per-test runs as the assurance gate would (the newest of each tier by default), certifying nothing.
 [group('E2E tests')]
 judge-e2e *runs:
     #!/usr/bin/env bash
@@ -85,7 +85,7 @@ judge-e2e *runs:
         done
     fi
     [[ -n "${runs// /}" ]] || { echo "no per-test run under {{ REPO2REE_TEST_RUN_DIR }}/e2e" >&2; exit 2; }
-    python scripts/publish/behaviour_gate.py judge $runs
+    python -m scripts.gates.assurance_gate judge $runs
 
 # Every e2e run leaves one dossier per test (a whole-suite run, one for the suite) under its run directory.
 E2E_RUNS_DIR := REPO2REE_TEST_RUN_DIR + "/e2e"
@@ -101,7 +101,7 @@ _dossier dossier:
     dirname "$latest"
 
 # Where a dossier's report and views go: beside it in its run's test directory, as the gate writes them;
-# for a dossier collected elsewhere (collect-behaviour), under the assurance directory by its name.
+# for a dossier collected elsewhere (collect-dossier), under the assurance directory by its name.
 [private]
 _beside dossier kind:
     #!/usr/bin/env bash
@@ -113,7 +113,7 @@ _beside dossier kind:
 # Judge a collected dossier against the behaviour specification, apart from the run that collected it.
 # Exit 0 passed, 1 violated, 2 inconclusive. The report goes beside, never into, the dossier.
 [group('Assurance')]
-check-behaviour dossier="" output="":
+check-dossier dossier="" output="":
     #!/usr/bin/env bash
     set -euo pipefail
     dossier=$(just _dossier {{ quote(dossier) }})
@@ -121,19 +121,19 @@ check-behaviour dossier="" output="":
     output=${output:-$(just _beside "$dossier" verification)}
     python -m repo2ree_assurance_checker check --dossier "$dossier" -o "$output"
 
-# The verification check-behaviour wrote for a dossier (the newest by default); drawing never verifies.
+# The verification check-dossier wrote for a dossier (the newest by default); drawing never verifies.
 [private]
 _verification dossier:
     #!/usr/bin/env bash
     set -euo pipefail
     dossier=$(just _dossier {{ quote(dossier) }})
     verification=$(just _beside "$dossier" verification)
-    [[ -f "$verification/verification.json" ]] || { echo "no verification of $dossier; run: just check-behaviour $dossier" >&2; exit 2; }
+    [[ -f "$verification/verification.json" ]] || { echo "no verification of $dossier; run: just check-dossier $dossier" >&2; exit 2; }
     printf '%s\n' "$verification"
 
 # Draw one behaviour trace page per REE of a verified dossier: setup, operations across components, rules triggered.
 [group('Assurance')]
-trace-behaviour dossier="" output="":
+trace-dossier dossier="" output="":
     #!/usr/bin/env bash
     set -euo pipefail
     dossier=$(just _dossier {{ quote(dossier) }})
@@ -143,7 +143,7 @@ trace-behaviour dossier="" output="":
 
 # Print why a verified dossier's sealed REE can be trusted: each step's evidence back to its request.
 [group('Assurance')]
-provenance-behaviour dossier="":
+provenance-dossier dossier="":
     python -m repo2ree_assurance_traceview "$(just _verification {{ quote(dossier) }})" --provenance
 
 [group('Assurance')]

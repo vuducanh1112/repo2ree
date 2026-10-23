@@ -1,4 +1,4 @@
-"""The gates' certificates, the last behaviour receipt, and the test evidence it names."""
+"""The gates' receipts, the last assurance-gate receipt, and the test evidence it names."""
 
 from __future__ import annotations
 
@@ -14,9 +14,17 @@ from repo2ree_repoview.documents import Document
 from repo2ree_repoview.overview.bundle import Bundle, Origin
 from repo2ree_repoview.repository import ROOT, Head
 
-CERTIFICATES = ROOT / ".validation-certificates"
-RECEIPT = CERTIFICATES / "behaviour-ok"
+RECEIPTS = ROOT / ".receipts"
+RECEIPT = RECEIPTS / "assurance-gate.json"
 EXPECTATIONS = ROOT / "assurance/checker/expected-verdicts.toml"
+
+
+class GateReceipt(Document):
+    """The header every gate's receipt shares (scripts/gates/receipts.py)."""
+
+    gate: str
+    revision: str | None = None
+    tree: str
 
 
 class ReceiptTest(Document):
@@ -24,7 +32,7 @@ class ReceiptTest(Document):
     test: str
     outcome: str
     behaviour: str
-    excused: str = ""
+    excused: str | None = None
 
 
 class ReceiptCoverage(Document):
@@ -32,12 +40,18 @@ class ReceiptCoverage(Document):
     reached: int
 
 
-class Receipt(Document):
+class Receipt(GateReceipt):
+    """The assurance gate's receipt: the runs and verdicts it certified HEAD's tree by."""
+
     revision: str
-    tree: str
     runs: tuple[str, ...]
     tests: tuple[ReceiptTest, ...]
-    coverage: ReceiptCoverage | None = None
+    coverage: ReceiptCoverage
+
+
+def read_gate_receipt(gate: str) -> GateReceipt | None:
+    path = RECEIPTS / f"{gate}.json"
+    return GateReceipt.model_validate_json(path.read_bytes()) if path.is_file() else None
 
 
 def read_receipt() -> Receipt | None:
@@ -51,44 +65,42 @@ def reached(receipt: Receipt | None) -> str:
 
 
 @dataclass(frozen=True)
-class Certificate:
+class ReceiptState:
+    """Whether one gate's receipt covers what is checked out now."""
+
     name: str
     recipe: str
     state: Literal["current", "stale", "missing"]
     detail: str
 
 
-def certificates(head: Head, receipt: Receipt | None) -> list[Certificate]:
+def receipt_states(head: Head, receipt: Receipt | None) -> list[ReceiptState]:
     never = "never run in this clone"
-    found: list[Certificate] = []
-    commit = CERTIFICATES / "commit-gate-ok"
-    if commit.is_file():
-        tree = commit.read_text().strip()
-        current = tree in {head.tree, head.index_tree}
-        found.append(
-            Certificate("Commit gate", "just commit-gate", "current" if current else "stale", f"tree {tree[:10]}")
-        )
+    found: list[ReceiptState] = []
+    commit = read_gate_receipt("commit-gate")
+    if commit is not None:
+        current = commit.tree in {head.tree, head.index_tree}
+        state: Literal["current", "stale"] = "current" if current else "stale"
+        found.append(ReceiptState("Commit gate", "just commit-gate", state, f"tree {commit.tree[:10]}"))
     else:
-        found.append(Certificate("Commit gate", "just commit-gate", "missing", never))
+        found.append(ReceiptState("Commit gate", "just commit-gate", "missing", never))
     if receipt is not None:
         detail = f"{receipt.revision[:10]}: {len(receipt.tests)} tests"
         if receipt.tree != head.tree:
-            found.append(Certificate("Behaviour gate", "just behaviour-gate", "stale", detail))
-        elif head.dirty:
-            detail += "; covers HEAD, not the uncommitted changes"
-            found.append(Certificate("Behaviour gate", "just behaviour-gate", "current", detail))
+            found.append(ReceiptState("Assurance gate", "just assurance-gate", "stale", detail))
         else:
-            found.append(Certificate("Behaviour gate", "just behaviour-gate", "current", detail))
+            if head.dirty:
+                detail += "; covers HEAD, not the uncommitted changes"
+            found.append(ReceiptState("Assurance gate", "just assurance-gate", "current", detail))
     else:
-        found.append(Certificate("Behaviour gate", "just behaviour-gate", "missing", never))
-    publish = CERTIFICATES / "publish-gate-ok"
-    if publish.is_file():
-        rows = dict(line.split("\t") for line in publish.read_text().splitlines() if line.count("\t") == 1)
-        current = rows.get("tree") == head.tree
-        detail = f"{rows.get('revision', '?')[:10]}: local image set"
-        found.append(Certificate("Publish gate", "just publish-gate", "current" if current else "stale", detail))
+        found.append(ReceiptState("Assurance gate", "just assurance-gate", "missing", never))
+    publish = read_gate_receipt("publish-gate")
+    if publish is not None:
+        state = "current" if publish.tree == head.tree else "stale"
+        detail = f"{(publish.revision or '?')[:10]}: local image set"
+        found.append(ReceiptState("Publish gate", "just publish-gate", state, detail))
     else:
-        found.append(Certificate("Publish gate", "just publish-gate", "missing", never))
+        found.append(ReceiptState("Publish gate", "just publish-gate", "missing", never))
     return found
 
 
@@ -128,7 +140,7 @@ def bundle_evidence(bundle: Bundle, receipt: Receipt | None) -> Evidence:
     """Copy the receipt and its runs' evidence into the bundle."""
     if receipt is None:
         return Evidence()
-    bundle.copy(RECEIPT, "evidence/behaviour-ok.json", Origin(kind="receipt"))
+    bundle.copy(RECEIPT, "evidence/assurance-gate.json", Origin(kind="receipt"))
     runs: list[Path] = []
     tests: dict[tuple[str, str], str] = {}
     for run in (ROOT / name for name in receipt.runs):

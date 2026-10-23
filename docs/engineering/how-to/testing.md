@@ -29,7 +29,7 @@
 | `just stack-clean` | Stop it and drop every volume it created, workbench leftovers included. |
 | `just clean-workbenches` | Just the workbench leftovers; pass `1` to also drop every bundle store volume. |
 | `just gc-bundle-store` | Evict bundle store caches unused for 14 days by default, keeping the live one. |
-| `just commit-gate` | Fast pre-commit gate: documentation, static checks, and unit tests. Certifies the tree it passed on; the pre-commit hook checks that certificate. |
+| `just commit-gate` | Fast pre-commit gate: documentation, static checks, and unit tests. Writes a receipt for the tree it passed on; the pre-commit hook checks that receipt. |
 | `just check-doc-links-external` | Manually check external documentation URLs with retries and a local response cache; intentionally excluded from deterministic gates. |
 | `just publish-gate` | The pre-publish gate: clean tree, all checks and tests, e2e source-run and image-backed. |
 | `just render-backend-coverage <tier>` | Render a tier's HTML from data already on disk. |
@@ -455,14 +455,15 @@ pushing or promoting images.
 takes about a minute when warm and leaves fresh `unit` and `node` coverage. Use
 the push gate for the integration and end-to-end suites.
 
-The pre-commit hook checks that you ran the gate. A successful gate records a
-tree hash under `.validation-certificates/`. Its `.gitignore` keeps certificates
-untracked because tracking a certificate would change the tree it measures.
-`commit_gate_stamp.py` refuses to write a certificate Git would track.
+The pre-commit hook checks that you ran the gate. A successful gate writes a
+receipt naming the tree hash, `.receipts/commit-gate.json`; every gate writes its
+receipt there in the same form (`scripts/gates/receipts.py`). The directory's
+`.gitignore` keeps receipts untracked because tracking one would change the tree
+it measures, and the gates refuse to write a receipt Git would track.
 
-The hook (`.pre-commit-config.yaml`) compares that certificate against the tree
+The hook (`.pre-commit-config.yaml`) compares that receipt against the tree
 you are about to commit. The comparison is a hash, so it costs milliseconds, and
-any edit to any staged file changes the hash: a certificate can be stale, never
+any edit to any staged file changes the hash: a receipt can be stale, never
 wrong.
 
 The split exists because pre-commit captures hook output rather than streaming
@@ -479,12 +480,12 @@ inspected that combination — re-run it against the content you actually mean t
 ship, or use `git commit --no-verify` if you know you are committing something
 the gate has not seen.
 
-What the certificate cannot see is the toolchain: a gate that passed under a
-different ruff than you have installed still produces a valid certificate. The
+What the receipt cannot see is the toolchain: a gate that passed under a
+different ruff than you have installed still produces a valid receipt. The
 pin in `pyproject.toml` is what keeps that honest.
 
 ```bash
-python scripts/publish/commit_gate_stamp.py verify   # what the hook runs
+.venv/bin/python -m scripts.gates.commit_gate verify   # what the hook runs
 ```
 
 `just publish-gate` bundles the whole pre-publish sequence: it refuses a dirty
@@ -528,7 +529,7 @@ Useful locations:
 | `test-artifacts/python/sessions/`, `tests/`, `services/` | pytest sessions, per-test output, and service logs of the pytest tiers. |
 | `test-artifacts/node/coverage/unit/` | GUI Vitest coverage (V8), from `just test-gui`. |
 | `test-artifacts/browser/tests/<project>/` | Playwright output of the browser suites that run without a stack (accessibility, screenshots). |
-| `test-artifacts/assurance/` | Output of the assurance packages' tests, and `check-behaviour` reports of dossiers collected outside an e2e run. |
+| `test-artifacts/assurance/` | Output of the assurance packages' tests, and `check-dossier` reports of dossiers collected outside an e2e run. |
 | `test-artifacts/cache/hypothesis/` | Hypothesis home: `<package>/` example databases plus its own caches. |
 | `test-artifacts/fixtures/` | Archives the suites pack on demand from `examples/`; repacked every run. |
 | `test-artifacts/state/` | Throwaway state of test stacks (control planes, providers, workbenches). State, not output, but safe to delete. |

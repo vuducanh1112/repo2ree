@@ -62,8 +62,8 @@ def page_coverage(spec: Spec, receipt: Receipt | None, exercised: Exercised, unr
         )
     )
     lede = (
-        "How the tests behind the last behaviour receipt exercised the specification, summed over their dossiers. "
-        'Excused items are listed with their reasons on the <a href="behaviour-gate.html">Behaviour gate</a> page.'
+        "How the tests behind the last assurance-gate receipt exercised the specification, summed over their dossiers. "
+        'Excused items are listed with their reasons on the <a href="assurance-gate.html">Assurance gate</a> page.'
     )
     teaser = f"How the last receipt's tests exercised the specification: {reached(receipt)} items reached"
     return Page("coverage", "Coverage", teaser, section("coverage", "Coverage", lede, body))

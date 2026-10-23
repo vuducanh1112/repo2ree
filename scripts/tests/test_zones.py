@@ -19,7 +19,7 @@ def test_a_specification_change_with_its_generated_contract_checker_and_gate_is_
         "contracts/behaviour/events.schema.json",
         "assurance/checker/src/repo2ree_assurance_checker/check.py",
         "assurance/checker/expected-verdicts.toml",
-        "scripts/publish/behaviour_gate.py",
+        "scripts/gates/assurance_gate.py",
     ]
     assert check(paths) == 0
 
@@ -42,8 +42,8 @@ def test_unprotected_changes_alone_are_allowed() -> None:
         "contracts/behaviour/events.schema.json",
         "assurance/checker/tests/test_system_conformance.py",
         "assurance/checker/expected-verdicts.toml",
-        "scripts/publish/behaviour_gate.py",
-        "scripts/publish/commit_gate_stamp.py",
+        "scripts/gates/assurance_gate.py",
+        "scripts/gates/receipts.py",
         "just/gates.just",
         "zones.toml",
         "scripts/zones.py",

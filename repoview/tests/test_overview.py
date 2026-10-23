@@ -56,7 +56,7 @@ def test_the_overview_of_this_tree_is_a_whole_bundle(tmp_path: Path) -> None:
     assert pages == {
         f"{name}.html"
         for name in (
-            *("index", "zones", "behaviour-gate", "vocabulary", "specification", "coverage"),
+            *("index", "zones", "assurance-gate", "vocabulary", "specification", "coverage"),
             *("architecture", "just-recipes", "configuration", "api"),
         )
     }

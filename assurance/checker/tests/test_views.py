@@ -41,7 +41,7 @@ def test_the_html_report_draws_every_view(sealed: tuple[object, object]) -> None
     result, _ = sealed
     page = render_html(SPEC, result)  # type: ignore[arg-type]
     assert page.count('<pre class="mermaid">') == 1 + len(SPEC.entities)  # The map, and one chart per entity.
-    assert "just trace-behaviour" in page
+    assert "just trace-dossier" in page
     assert "<script" in page
     assert "violated</span> ·" not in page
 

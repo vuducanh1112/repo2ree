@@ -1,4 +1,4 @@
-# Behaviour verdicts the behaviour gate accepts from an e2e test other than "passed".
+# Behaviour verdicts the assurance gate accepts from an e2e test other than "passed".
 #
 # This belongs to the oracle (the spec-isolation hook keeps it apart from runtime
 # code): an entry excuses evidence, so writing one beside the code it excuses
@@ -19,7 +19,7 @@ assigned when its workbench is lost, so it is still assigned when the API closes
 # Specified rules, edges, and messages no gated test reaches, and why.
 #
 # Each test's verdicts pass a rule nothing triggered, so only the suite as a whole
-# can say a rule was ever tested. The behaviour gate requires the gated tests
+# can say a rule was ever tested. The assurance gate requires the gated tests
 # together to reach everything the specification declares except what is listed
 # here: a change that stops reaching an item fails the gate, and a test that starts
 # reaching a listed item makes its entry stale, which fails the gate too until the

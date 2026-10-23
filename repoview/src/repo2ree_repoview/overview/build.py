@@ -1,8 +1,8 @@
 """Build the repository overview: one static page over what the repository already knows.
 
 It draws nothing new from the code. It reads the zones and the behaviour
-specification as their owners export them, the gates' certificates, the coverage
-and excuses of the last behaviour receipt, the generated architecture and recipe
+specification as their owners export them, the gates' receipts, the coverage
+and excuses of the last assurance-gate receipt, the generated architecture and recipe
 diagrams, the Just recipes, the environment contract, and the OpenAPI contract,
 and lays them out page by page.
 
@@ -34,7 +34,7 @@ from repo2ree_repoview.overview.pages.recipes import page_recipes
 from repo2ree_repoview.overview.pages.specification import page_specification
 from repo2ree_repoview.overview.pages.vocabulary import page_vocabulary
 from repo2ree_repoview.overview.pages.zones import page_zones
-from repo2ree_repoview.overview.receipt import Exercised, bundle_evidence, certificates, read_receipt, unreached
+from repo2ree_repoview.overview.receipt import Exercised, bundle_evidence, read_receipt, receipt_states, unreached
 from repo2ree_repoview.repository import ROOT, Head
 
 OVERVIEWS = ROOT / "reports/overview"
@@ -91,7 +91,7 @@ def build(output: Path | None) -> Path:
         page_api(OpenApi.read()),
     ]
     manifest = bundle.manifest(now.provenance, receipt.revision if receipt else None)
-    everything = [page_home(now, certificates(now, receipt), pages, zones, manifest), *pages]
+    everything = [page_home(now, receipt_states(now, receipt), pages, zones, manifest), *pages]
     for page in everything:
         (bundle.root / f"{page.slug}.html").write_text(frame(page, everything, now), encoding="utf-8")
     (bundle.root / "manifest.json").write_text(manifest.model_dump_json(indent=2) + "\n", encoding="utf-8")

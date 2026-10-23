@@ -1,18 +1,9 @@
-import importlib.util
 import json
-import sys
 from pathlib import Path
 from typing import Any
 
 import pytest
-
-ROOT = Path(__file__).parents[2]
-SPEC = importlib.util.spec_from_file_location("behaviour_gate", ROOT / "scripts/publish/behaviour_gate.py")
-assert SPEC
-assert SPEC.loader
-gate = importlib.util.module_from_spec(SPEC)
-sys.modules["behaviour_gate"] = gate
-SPEC.loader.exec_module(gate)
+from scripts.gates import assurance_gate as gate
 
 HEAD = "a" * 40
 

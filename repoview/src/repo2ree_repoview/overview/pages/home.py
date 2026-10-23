@@ -1,4 +1,4 @@
-"""The landing page: the head, the certificates, the repository by zone, and the bundle's provenance."""
+"""The landing page: the head, the gates' receipts, the repository by zone, and the bundle's provenance."""
 
 from __future__ import annotations
 
@@ -7,11 +7,11 @@ from collections import Counter, defaultdict
 from repo2ree_repoview.overview.bundle import Manifest
 from repo2ree_repoview.overview.exports import Zones
 from repo2ree_repoview.overview.html import Page, esc, section
-from repo2ree_repoview.overview.receipt import Certificate
+from repo2ree_repoview.overview.receipt import ReceiptState
 from repo2ree_repoview.repository import Head
 
 
-def page_overview(now: Head, found: list[Certificate]) -> str:
+def page_overview(now: Head, found: list[ReceiptState]) -> str:
     cards = [
         ("HEAD", f"<code>{now.revision[:10]}</code>", esc(now.subject)),
         ("Branch", esc(now.branch), "working tree dirty" if now.dirty else "working tree clean"),
@@ -70,7 +70,7 @@ def file_tree(declared: Zones) -> str:
     )
 
 
-def page_home(now: Head, found: list[Certificate], pages: list[Page], declared: Zones, manifest: Manifest) -> Page:
+def page_home(now: Head, found: list[ReceiptState], pages: list[Page], declared: Zones, manifest: Manifest) -> Page:
     cards = "".join(
         f'<a class="card link" href="{p.slug}.html"><div class="v">{esc(p.title)}</div>'
         f'<div class="muted">{p.teaser}</div></a>'
@@ -88,7 +88,7 @@ def page_home(now: Head, found: list[Certificate], pages: list[Page], declared: 
 def page_provenance(manifest: Manifest) -> str:
     receipt = manifest.receipt_revision
     if receipt is None:
-        evidence = "no behaviour receipt, so no test evidence"
+        evidence = "no assurance-gate receipt, so no test evidence"
     elif receipt == manifest.revision:
         evidence = "test evidence from the receipt for this same commit"
     else:

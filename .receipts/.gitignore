@@ -1,0 +1,16 @@
+# Receipts: what a gate proved, bound to the content it proved it on
+# (scripts/gates/receipts.py). commit-gate.json is the tree the pre-commit hook
+# checks; assurance-gate.json binds the e2e behaviour verdicts to HEAD's tree;
+# publish-gate.json binds the publish gate to exact local image IDs; and
+# image-candidates/<rev>.json records the digest set a candidate was validated
+# with, which edge promotion consumes. They describe one clone's validation
+# state, so they are never committed — but this directory is, so a fresh clone
+# has somewhere to put them and this rule is in force before the first receipt.
+#
+# The rule is load-bearing, not tidiness. A receipt names a tree hash; a
+# *tracked* receipt would be part of the tree it measures, so writing one would
+# change the answer and no receipt could ever match twice. receipts.write refuses
+# a receipt git does not ignore, so if this rule is ever edited away the gate
+# fails loudly instead of silently rejecting every commit.
+*
+!.gitignore

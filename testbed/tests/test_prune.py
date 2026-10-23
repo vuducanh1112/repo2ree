@@ -56,7 +56,7 @@ def test_per_test_runs_keep_the_newest_the_newest_problem_the_receipt_and_runs_i
         "e2e-system-20261008-120000",
         "e2e-system-20261007-120000",  # the newest two finished runs, besides the one in progress
         "e2e-system-20261002-130000",  # the newest problem: passed, but behaviour violated
-        "e2e-system-20261001-120000",  # named by the behaviour receipt
+        "e2e-system-20261001-120000",  # named by the assurance-gate receipt
         "e2e-gui-instant-20261001-120000",  # tiers are counted apart
     }
     assert "e2e-system-20261003-090000" in names(plan.remove)

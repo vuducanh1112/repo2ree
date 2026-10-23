@@ -14,16 +14,19 @@ repos:
       # Compares the tree recorded by the last passing `just commit-gate` with
       # the tree you are about to commit — a hash comparison, ~10ms. Content
       # equality is the whole check: any edit to any staged file changes the
-      # tree hash, so a certificate can be stale but never wrong.
+      # tree hash, so a receipt can be stale but never wrong.
       #
       # What it does not cover: the gate could have passed under a different
       # toolchain than you have now. The ruff pin in pyproject.toml is what
       # keeps that honest, after a pinned ruff-pre-commit hook drifted from it
       # and let an RUF043 finding through a commit the gate had just passed.
-      - id: commit-gate-certificate
+      #
+      # It runs on the workspace's interpreter, the one the gate ran on: the
+      # receipt is a typed model, and pre-commit's own `python` cannot import it.
+      - id: commit-gate-receipt
         name: commit-gate ran on this exact content
         language: system
-        entry: python scripts/publish/commit_gate_stamp.py verify
+        entry: .venv/bin/python -m scripts.gates.commit_gate verify
         always_run: true
         pass_filenames: false
 
@@ -43,7 +46,7 @@ repos:
         pass_filenames: false
 
       # The protected zones in zones.toml (spec: the specification, the checker, its
-      # excuses; gates: the gates, their certificates, and this guard) are what the
+      # excuses; gates: the gates, their receipts, and this guard) are what the
       # product is checked against, so a commit that changes them changes nothing
       # unprotected: rules, their reading, their excuses, or a gate edited alongside
       # the code they judge can be bent to fit it. The check reads the staged diff
