@@ -485,7 +485,7 @@ different ruff than you have installed still produces a valid receipt. The
 pin in `pyproject.toml` is what keeps that honest.
 
 ```bash
-.venv/bin/python -m scripts.gates.commit_gate verify   # what the hook runs
+python -m scripts.gates.commit_gate verify   # what the hook runs
 ```
 
 `just publish-gate` bundles the whole pre-publish sequence: it refuses a dirty
