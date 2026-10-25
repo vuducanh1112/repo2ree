@@ -70,6 +70,7 @@ name = "Traceview builders have no I/O dependencies"
 type = "forbidden"
 source_modules = [
     "repo2ree_assurance_traceview.spans",
+    "repo2ree_assurance_traceview.catalogue",
     "repo2ree_assurance_traceview.model",
     "repo2ree_assurance_traceview.operations",
     "repo2ree_assurance_traceview.sequence",

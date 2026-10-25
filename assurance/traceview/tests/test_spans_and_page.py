@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from repo2ree_assurance_dossier import read_dossier
+from repo2ree_assurance_traceview.catalogue import OperationCatalogue
 from repo2ree_assurance_traceview.cli import main
 from repo2ree_assurance_traceview.files import template
 from repo2ree_assurance_traceview.model import BehaviourTrace, DossierInfo, Entry
@@ -123,7 +124,7 @@ def test_a_real_recording_draws_one_page_per_ree(tmp_path: Path) -> None:
         capture_output=True,
     )
     pages_dir = tmp_path / "pages"
-    assert main([str(verified), "-o", str(pages_dir), "--json", "--provenance"]) == 0
+    assert main(["trace", str(verified), "-o", str(pages_dir), "--json", "--provenance"]) == 0
     pages = sorted(pages_dir.glob("*.html"))
     assert pages
     for page in pages:
@@ -132,12 +133,17 @@ def test_a_real_recording_draws_one_page_per_ree(tmp_path: Path) -> None:
         assert all(entry.sequence and entry.sequence.rows for entry in trace.entries if entry.kind == "operation")
         assert PLACEHOLDER not in page.read_text()
         assert page.with_suffix(".provenance.txt").exists()
+    catalogue = tmp_path / "operations.json"
+    assert main(["operations", str(verified), "-o", str(catalogue)]) == 0
+    assert OperationCatalogue.model_validate_json(catalogue.read_text()).operations
 
 
 def test_the_command_line_says_what_it_cannot_draw(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    assert main([str(tmp_path / "absent"), "--output", str(tmp_path / "out")]) == 2
+    assert main(["trace", str(tmp_path / "absent"), "--output", str(tmp_path / "out")]) == 2
     assert "not a verification" in capsys.readouterr().err
+    assert main(["trace", str(tmp_path / "absent")]) == 2
+    assert "nothing to write" in capsys.readouterr().err
+    assert main(["trace", str(tmp_path / "absent"), "--json", "--provenance"]) == 2
+    assert "--json needs --output" in capsys.readouterr().err
     with pytest.raises(SystemExit):
-        main([str(tmp_path / "absent")])  # Nothing to write.
-    with pytest.raises(SystemExit):
-        main([str(tmp_path / "absent"), "--json"])  # --json needs --output.
+        main([str(tmp_path / "absent")])  # No command.

@@ -3,8 +3,9 @@
 # evidence through its control plane into a dossier. The checker judges owner
 # journals, REE histories, and stores against assurance/spec, separately from the
 # backend it observes. Traceview draws what the checker verified (its
-# verification.json), one behaviour trace per REE, with spans as context. Each is
-# its own step on the previous one's artifact.
+# verification.json), one behaviour trace per REE, with spans as context, and folds
+# many verifications into one catalogue of operations for the overview. Each is its
+# own step on the previous one's artifact.
 
 # Static checks for every assurance package.
 [group('Assurance')]
@@ -139,12 +140,12 @@ trace-dossier dossier="" output="":
     dossier=$(just _dossier {{ quote(dossier) }})
     output={{ quote(output) }}
     output=${output:-$(just _beside "$dossier" traces)}
-    python -m repo2ree_assurance_traceview "$(just _verification "$dossier")" -o "$output"
+    python -m repo2ree_assurance_traceview trace "$(just _verification "$dossier")" -o "$output"
 
 # Print why a verified dossier's sealed REE can be trusted: each step's evidence back to its request.
 [group('Assurance')]
 provenance-dossier dossier="":
-    python -m repo2ree_assurance_traceview "$(just _verification {{ quote(dossier) }})" --provenance
+    python -m repo2ree_assurance_traceview trace "$(just _verification {{ quote(dossier) }})" --provenance
 
 [group('Assurance')]
 generate-assurance-metrics:

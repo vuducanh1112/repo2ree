@@ -55,7 +55,14 @@ def inspect_test(directory: Path, test: RunTest) -> RunTest:
         check = ("repo2ree_assurance_checker", "check", "--dossier", str(dossier), "-o", str(verification))
         verdict = VERDICTS.get(tool(logs / "checker.log", *check), "error")
     if (verification / "verification.json").is_file() and test.rees:
-        draw = ("repo2ree_assurance_traceview", str(verification), "-o", str(directory / "traces"), "--provenance")
+        draw = (
+            "repo2ree_assurance_traceview",
+            "trace",
+            str(verification),
+            "-o",
+            str(directory / "traces"),
+            "--provenance",
+        )
         tool(logs / "traceview.log", *draw)
     inspected = test.judged(verdict)
     write_test_index(directory, inspected)
