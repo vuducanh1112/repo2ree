@@ -27,6 +27,15 @@ def table(headers: list[str], rows: list[list[str]], ident: str = "") -> str:
     return f"{opening}<thead><tr>{head_row}</tr></thead><tbody>{body}</tbody></table>"
 
 
+def rule_anchor(rule: str) -> str:
+    """A rule's row on the coverage page."""
+    return f"rule-{rule}"
+
+
+def rule_link(rule: str) -> str:
+    return f'<a href="coverage.html#{esc(rule_anchor(rule))}"><code>{esc(rule)}</code></a>'
+
+
 def filter_box(target: str, placeholder: str) -> str:
     return f'<input class="filter" data-target="{target}" placeholder="{esc(placeholder)}">'
 

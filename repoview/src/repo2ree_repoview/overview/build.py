@@ -2,7 +2,8 @@
 
 It draws nothing new from the code. It reads the zones and the behaviour
 specification as their owners export them, the gates' receipts, the coverage
-and excuses of the last assurance-gate receipt, the generated architecture and recipe
+and excuses of the last assurance-gate receipt, the operations traceview folds from
+that receipt's verifications, the generated architecture and recipe
 diagrams, the Just recipes, the environment contract, and the OpenAPI contract,
 and lays them out page by page.
 
@@ -22,7 +23,16 @@ from pathlib import Path
 from repo2ree_repoview.diagrams.recipes import load_recipes
 from repo2ree_repoview.overview.bundle import Bundle, Origin
 from repo2ree_repoview.overview.contracts import Environment, OpenApi
-from repo2ree_repoview.overview.exports import SPEC_EXPORT, ZONES_EXPORT, Spec, Zones, exported, shown
+from repo2ree_repoview.overview.exports import (
+    SPEC_EXPORT,
+    ZONES_EXPORT,
+    Operations,
+    Spec,
+    Zones,
+    exported,
+    operations_export,
+    shown,
+)
 from repo2ree_repoview.overview.html import Page, esc
 from repo2ree_repoview.overview.pages.api import page_api
 from repo2ree_repoview.overview.pages.architecture import page_architecture
@@ -30,11 +40,19 @@ from repo2ree_repoview.overview.pages.configuration import page_configuration
 from repo2ree_repoview.overview.pages.coverage import page_coverage
 from repo2ree_repoview.overview.pages.gates import page_gates
 from repo2ree_repoview.overview.pages.home import page_home
+from repo2ree_repoview.overview.pages.operations import page_operations
 from repo2ree_repoview.overview.pages.recipes import page_recipes
 from repo2ree_repoview.overview.pages.specification import page_specification
 from repo2ree_repoview.overview.pages.vocabulary import page_vocabulary
 from repo2ree_repoview.overview.pages.zones import page_zones
-from repo2ree_repoview.overview.receipt import Exercised, bundle_evidence, read_receipt, receipt_states, unreached
+from repo2ree_repoview.overview.receipt import (
+    Exercised,
+    bundle_evidence,
+    decisions,
+    read_receipt,
+    receipt_states,
+    unreached,
+)
 from repo2ree_repoview.repository import ROOT, Head
 
 OVERVIEWS = ROOT / "reports/overview"
@@ -78,13 +96,20 @@ def build(output: Path | None) -> Path:
     spec = Spec.model_validate_json(kept(bundle, "inputs/spec.json", SPEC_EXPORT, "spec"))
     receipt = read_receipt()
     evidence = bundle_evidence(bundle, receipt)
+    operations_document = kept(
+        bundle, "inputs/operations.json", operations_export(evidence.verifications), "operations"
+    )
+    operations = Operations.model_validate_json(operations_document)
     excused = unreached()
     pages = [
         page_zones(zones),
         page_gates(receipt, excused, bundle, evidence),
+        page_operations(operations, receipt, bundle, evidence),
         page_vocabulary(spec),
         page_specification(spec),
-        page_coverage(spec, receipt, Exercised.over(evidence), excused),
+        page_coverage(
+            spec, receipt, Exercised.over(evidence), excused, decisions(bundle, receipt, evidence), operations
+        ),
         page_architecture(bundle),
         page_recipes(load_recipes(), bundle),
         page_configuration(Environment.read()),

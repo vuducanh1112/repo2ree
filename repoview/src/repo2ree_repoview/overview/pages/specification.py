@@ -23,7 +23,7 @@ from repo2ree_repoview.overview.exports import (
     Scalar,
     Spec,
 )
-from repo2ree_repoview.overview.html import Page, esc, section, table
+from repo2ree_repoview.overview.html import Page, esc, rule_link, section, table
 
 
 def literal(value: Scalar) -> str:
@@ -222,7 +222,7 @@ def page_specification(spec: Spec) -> Page:
             ["Rule", "When", "Then", "Meaning"],
             [
                 [
-                    f"<code>{esc(i.id)}</code>",
+                    rule_link(i.id),
                     f"<code>{esc(trigger_text(spec, i))}</code>",
                     f"<code>{esc(requirement_text(spec, i))}</code>",
                     esc(i.summary),
@@ -242,7 +242,8 @@ def page_specification(spec: Spec) -> Page:
         "after it. Without the citation, a rule that needs the order is inconclusive.</p>"
         + table(["Boundary", "Citation"], citations)
         + "<h3>Invariants</h3>"
-        '<p class="lede">Cross-entity rules, each in one fixed pattern. A condition never matches an absent fact.</p>'
+        '<p class="lede">Cross-entity rules, each in one fixed pattern. A condition never matches an absent fact. '
+        'Each links to <a href="coverage.html#rules">where it was decided</a>.</p>'
         + invariants
         + "<h3>Listed values</h3>"
         '<p class="lede">The values a fact may take, as its declaration lists and groups them, and the rules '

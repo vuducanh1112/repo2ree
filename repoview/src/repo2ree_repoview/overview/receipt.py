@@ -11,7 +11,7 @@ from typing import Literal
 from pydantic import Field
 
 from repo2ree_repoview.documents import Document
-from repo2ree_repoview.overview.bundle import Bundle, Origin
+from repo2ree_repoview.overview.bundle import Bundle, Origin, source_name
 from repo2ree_repoview.repository import ROOT, Head
 
 RECEIPTS = ROOT / ".receipts"
@@ -130,10 +130,11 @@ REFERENCED = ("dossier/rees", "dossier/telemetry", "artifacts")
 
 @dataclass(frozen=True)
 class Evidence:
-    """The receipt's runs as bundled, and where each (run, test) landed in the bundle."""
+    """The receipt's runs as bundled, and each test's bundled folder by (run, test) and by verification path."""
 
     runs: tuple[Path, ...] = ()
     tests: dict[tuple[str, str], str] = field(default_factory=dict)
+    verifications: dict[str, str] = field(default_factory=dict)
 
 
 def bundle_evidence(bundle: Bundle, receipt: Receipt | None) -> Evidence:
@@ -143,6 +144,7 @@ def bundle_evidence(bundle: Bundle, receipt: Receipt | None) -> Evidence:
     bundle.copy(RECEIPT, "evidence/assurance-gate.json", Origin(kind="receipt"))
     runs: list[Path] = []
     tests: dict[tuple[str, str], str] = {}
+    verifications: dict[str, str] = {}
     for run in (ROOT / name for name in receipt.runs):
         if not (run / "run.json").is_file():
             continue
@@ -160,8 +162,10 @@ def bundle_evidence(bundle: Bundle, receipt: Receipt | None) -> Evidence:
             for part in REFERENCED:
                 bundle.reference(run / test.directory / part, origin)
             tests[(run.name, test.name)] = target
+            if (run / test.directory / "verification/verification.json").is_file():
+                verifications[source_name(run / test.directory / "verification")] = target
         runs.append(bundle.root / "evidence" / run.name)
-    return Evidence(tuple(runs), tests)
+    return Evidence(tuple(runs), tests, verifications)
 
 
 class _Exercised(Document):
@@ -169,9 +173,18 @@ class _Exercised(Document):
     messages: dict[str, dict[str, int]] = Field(default_factory=dict)
 
 
+class Finding(Document):
+    verdict: str
+    subject: str = ""
+    reason: str = ""
+
+
 class _RuleCount(Document):
     rule: str
+    kind: str = ""
+    verdict: str = "not_triggered"
     triggered: int = 0
+    findings: tuple[Finding, ...] = ()
 
 
 class _Extra(Document):
@@ -211,6 +224,50 @@ class Exercised:
                 for extra in report.extras:
                     extras[(extra.subject, extra.fact or "")] += extra.count
         return cls(edges, rules, extras)
+
+
+@dataclass(frozen=True)
+class Decision:
+    """One test's verdict on one rule; paths are relative to the bundle."""
+
+    test: str
+    kind: str
+    verdict: str
+    triggered: int
+    findings: tuple[Finding, ...]
+    excused: str | None
+    report: str | None
+    traces: tuple[str, ...]
+
+
+def decisions(bundle: Bundle, receipt: Receipt | None, evidence: Evidence) -> dict[str, list[Decision]]:
+    """Each triggered rule with the tests that decided it, in receipt order."""
+    decided: dict[str, list[Decision]] = {}
+    for test in receipt.tests if receipt else ():
+        directory = evidence.tests.get((test.run, test.test))
+        if directory is None or not (bundle.root / directory / "verification/assurance.json").is_file():
+            continue
+        report = bundle.root / directory / "verification/assurance.json"
+        page = f"{directory}/verification/assurance.html"
+        traces = tuple(
+            f"{directory}/traces/{path.name}" for path in sorted((bundle.root / directory / "traces").glob("*.html"))
+        )
+        for rule in AssuranceReport.model_validate_json(report.read_bytes()).rules:
+            if rule.verdict == "not_triggered":
+                continue
+            decided.setdefault(rule.rule, []).append(
+                Decision(
+                    test=test.test,
+                    kind=rule.kind,
+                    verdict=rule.verdict,
+                    triggered=rule.triggered,
+                    findings=rule.findings,
+                    excused=test.excused if rule.verdict != "passed" else None,
+                    report=page if (bundle.root / page).is_file() else None,
+                    traces=traces,
+                )
+            )
+    return decided
 
 
 class _Unreached(Document):

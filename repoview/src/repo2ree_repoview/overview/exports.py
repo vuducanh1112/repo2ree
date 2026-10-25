@@ -1,15 +1,17 @@
-"""The overview's reading of the two documents it draws from: the specification and the zones.
+"""The overview's reading of the documents it draws from: the specification, the zones, and the operations.
 
-Both come from their owners as JSON (``python -m repo2ree_assurance_checker export``,
-``python scripts/zones.py export``), so the views never import the checker or the
-guard. These models are this package's own typed view of those documents, and a
-document in a format they do not know is refused rather than half read.
+Each comes from its owner as JSON (``python -m repo2ree_assurance_checker export``,
+``python scripts/zones.py export``, ``python -m repo2ree_assurance_traceview operations``),
+so the views never import the checker, the guard, or traceview. These models are this
+package's own typed view of those documents, and a document in a format they do not
+know is refused rather than half read.
 """
 
 from __future__ import annotations
 
 import subprocess
 import sys
+from collections.abc import Iterable
 from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, model_validator
@@ -20,6 +22,11 @@ from repo2ree_repoview.repository import ROOT
 # The owners' exports, and the commands that produce them.
 SPEC_EXPORT = (sys.executable, "-m", "repo2ree_assurance_checker", "export")
 ZONES_EXPORT = (sys.executable, "scripts/zones.py", "export")
+
+
+def operations_export(verifications: Iterable[str]) -> tuple[str, ...]:
+    """The catalogue of operations traceview folds from these verifications (paths from the repository root)."""
+    return (sys.executable, "-m", "repo2ree_assurance_traceview", "operations", *verifications)
 
 
 def exported(command: tuple[str, ...]) -> str:
@@ -263,3 +270,69 @@ class Zones(Export):
     zones: tuple[Zone, ...]
     files: tuple[Placed, ...]
     problems: tuple[str, ...]
+
+
+# ---------------------------------------------------------------------------- operations
+
+# Where a line comes from, from strongest to weakest, as traceview names it.
+type Provenance = Literal["journal", "git", "inferred", "span", "time", "gap"]
+# What an operation's evidence shows of one lane in every instance, strongest first.
+type Reach = Literal["checked", "exchanged", "span", "none"]
+
+
+class Lane(Document):
+    id: str
+    label: str
+    process: str
+
+
+class Line(Document):
+    lane: str
+    to: str | None = None
+    label: str
+    provenance: Provenance
+    t: float
+    seen: int
+
+
+class Instance(Document):
+    source: str
+    test: str | None
+    ree: str
+    outcome: str | None
+    duration: float | None
+    verdict: str
+
+
+class Tally(Document):
+    rule: str
+    passed: int = 0
+    violated: int = 0
+    inconclusive: int = 0
+
+
+class Operation(Document):
+    name: str
+    outcome: str | None
+    kind: Literal["setup", "operation"]
+    instances: tuple[Instance, ...]
+    representative: int
+    lines: tuple[Line, ...]
+    elsewhere: tuple[Line, ...]
+    reach: dict[str, Reach]
+    rules: tuple[Tally, ...]
+
+
+class Undrawn(Document):
+    source: str
+    test: str | None = None
+    verdict: str | None = None
+    reason: str
+
+
+class Operations(Export):
+    FORMAT = "repo2ree-operations/1"
+
+    lanes: tuple[Lane, ...]
+    operations: tuple[Operation, ...]
+    undrawn: tuple[Undrawn, ...] = ()

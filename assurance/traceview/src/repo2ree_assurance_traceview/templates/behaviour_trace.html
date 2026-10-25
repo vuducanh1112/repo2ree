@@ -146,6 +146,9 @@ summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; b
 .rules { list-style: none; padding: 0; margin: 0; font-family: var(--font-data); font-size: 12px; display: grid; gap: 2px; }
 .rules .ok { color: var(--current); }
 .rules .no { color: var(--bad); }
+.rules .focused { font-weight: 700; text-decoration: underline; }
+.focus { margin: 0 0 12px; padding: 8px 12px; border-radius: 8px; background: var(--accent-soft); font-size: 13px; }
+.entry.focused .body { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 6px; }
 .spans { display: grid; gap: 4px; font-family: var(--font-data); font-size: 11.5px; }
 .span-row { display: grid; grid-template-columns: minmax(0, 1fr) 64px; gap: 8px; align-items: center; }
 .span-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -242,6 +245,7 @@ footer p { margin: 0; }
       <h2>Operations</h2>
       <p>Setup and the operations that produce evidence, in evidence order. Authoring between them is collapsed. Expand an entry for its run, dispatch, attempt, the rules it triggered and its largest spans.</p>
     </div>
+    <p class="focus" id="focus" hidden></p>
     <div id="log"></div>
   </section>
 
@@ -405,7 +409,7 @@ function seqView(entry) {
 
 function sequences() {
   const items = TRACE.entries.filter((e) => e.sequence && e.sequence.rows.length);
-  if (!items.length) { $("seq").innerHTML = `<p class="muted" style="padding:12px 16px;margin:0">No operation in this dossier has spans or journal records to draw.</p>`; return; }
+  if (!items.length) { $("seq").innerHTML = `<p class="muted" style="padding:12px 16px;margin:0">No operation in this dossier has spans or journal records to draw.</p>`; return () => {}; }
   let current = items.find((e) => e.name === "acquire_source") ?? items[0];
   const draw = () => {
     $("seqtabs").innerHTML = items.map((e, i) => `<button class="tab" type="button" data-i="${i}" aria-pressed="${e === current}">${esc(e.name)}</button>`).join("");
@@ -416,6 +420,7 @@ function sequences() {
     if (b) { current = items[+b.dataset.i]; draw(); }
   });
   draw();
+  return (entry) => { if (items.includes(entry)) { current = entry; draw(); } };
 }
 
 function chain(states) {
@@ -433,7 +438,7 @@ function ruleSummary(rules) {
 function rulesList(by) {
   return `<ul class="rules">${Object.entries(by).sort().map(([rule, v]) => {
     const n = v.passed + v.violated + v.inconclusive, ok = !v.violated && !v.inconclusive;
-    return `<li class="${ok ? "ok" : "no"}">${ok ? "✓" : "✗"} ${esc(rule)}${n > 1 ? ` <span class="muted">×${n}</span>` : ""}</li>`;
+    return `<li class="${ok ? "ok" : "no"}" data-rule="${esc(rule)}">${ok ? "✓" : "✗"} ${esc(rule)}${n > 1 ? ` <span class="muted">×${n}</span>` : ""}</li>`;
   }).join("")}</ul>`;
 }
 
@@ -455,12 +460,12 @@ function changeChips(changes) {
 
 function log() {
   let n = 0;
-  $("log").innerHTML = TRACE.entries.map((e) => {
+  $("log").innerHTML = TRACE.entries.map((e, i) => {
     const sum = ruleSummary(e.rules);
     const checks = sum.count ? `<span class="checks ${sum.bad ? "bad" : ""}">${sum.bad ? `✗ ${sum.bad} not passed` : `✓ ${sum.count} rule${sum.count > 1 ? "s" : ""}`}</span>` : "";
     if (e.kind === "authoring") {
       const ops = Object.entries(e.operations).map(([k, v]) => `${v}× ${k}`).join(" · ");
-      return `<div class="entry authoring"><div class="node"></div><div class="body">
+      return `<div class="entry authoring" data-i="${i}"><div class="node"></div><div class="body">
         <div class="row1"><span class="name">Authoring · ${e.attempts} attempt${e.attempts > 1 ? "s" : ""}</span><span class="dur">${fmt(span(e))}</span>${e.failed ? `<span class="pill failed">${e.failed} failed</span>` : ""}${checks}</div>
         <div class="ops-list">${esc(ops)}</div>
         ${changeChips(e.changes)}
@@ -484,7 +489,7 @@ function log() {
     if (sum.count) detail += `<div><span class="eyebrow">Rules triggered</span>${rulesList(sum.by)}</div>`;
     detail += spansBlock(e.spans);
     const sealed = e.ree && e.ree.after === "sealed" && e.ree.before !== "sealed" ? `<span class="pill sealed">REE sealed</span>` : "";
-    return `<div class="entry ${e.kind}"><div class="node">${n}</div><div class="body">
+    return `<div class="entry ${e.kind}" data-i="${i}"><div class="node">${n}</div><div class="body">
       <div class="row1"><span class="name">${esc(LABEL[e.name] ?? e.name)}</span>${e.outcome ? `<span class="pill ${esc(e.outcome)}">${esc(e.outcome)}</span>` : ""}<span class="dur">${fmt(span(e))} · at ${fmt(e.start)}</span>${sealed}${checks}</div>
       ${e.kind === "operation" ? changeChips(e.changes) : ""}
       <details><summary>Evidence</summary><div class="detail">${detail}</div></details>
@@ -492,7 +497,33 @@ function log() {
   }).join("");
 }
 
-header(); lanes(); grid(); sequences(); log();
+// #rule=<id>: mark and open the entries that triggered the rule, and show the first one's sequence.
+function focusRule(showSequence) {
+  const wanted = new URLSearchParams(location.hash.slice(1)).get("rule");
+  document.querySelectorAll(".focused").forEach((el) => el.classList.remove("focused"));
+  $("focus").hidden = !wanted;
+  if (!wanted) return;
+  const hits = TRACE.entries.map((e, i) => [e, i]).filter(([e]) => e.rules.some((r) => r.rule === wanted));
+  const failed = hits.filter(([e]) => e.rules.some((r) => r.rule === wanted && r.verdict !== "passed")).length;
+  $("focus").innerHTML = hits.length
+    ? `Rule <code>${esc(wanted)}</code>: triggered by ${hits.length} entr${hits.length > 1 ? "ies" : "y"} below${failed ? `, ${failed} not passed` : ", all passed"}.`
+    : `Rule <code>${esc(wanted)}</code>: no entry of this REE triggered it, or it only reports violations and none happened here. The test's verdict report says how it was decided.`;
+  hits.forEach(([, i]) => {
+    const el = document.querySelector(`.entry[data-i="${i}"]`);
+    if (!el) return;
+    el.classList.add("focused");
+    el.querySelector("details")?.setAttribute("open", "");
+    el.querySelectorAll(".rules li").forEach((li) => li.classList.toggle("focused", li.dataset.rule === wanted));
+  });
+  if (hits.length) showSequence(hits[0][0]);
+  (document.querySelector(".entry.focused") ?? $("focus")).scrollIntoView({ block: "center" });
+}
+
+header(); lanes(); grid();
+const showSequence = sequences();
+log();
+focusRule(showSequence);
+window.addEventListener("hashchange", () => focusRule(showSequence));
 </script>
 </body>
 </html>
