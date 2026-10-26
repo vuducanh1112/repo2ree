@@ -66,9 +66,8 @@ clear = ["patch_ree_definition"]
 [fields."definition.source"]
 group = "source"
 initial = "unset"
-set = ["acquire_source", "patch_ree_definition"]
-change = ["acquire_source", "patch_ree_definition"]
-clear = ["remove_source", "patch_ree_definition"]
+set = ["acquire_source"]
+clear = ["remove_source"]
 
 [fields."definition.hardware"]
 group = "hardware"
