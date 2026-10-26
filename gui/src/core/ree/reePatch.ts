@@ -8,7 +8,6 @@ import type { Hbom, ReeCatalogMetadata, ReeExperiment, ReeSpec } from "./ReeSpec
 export interface ReeIntentPatch extends Record<string, unknown> {
   name: string;
   catalog: Record<string, unknown>;
-  source?: Record<string, unknown>;
   build_runtime: Record<string, unknown>;
   experiments: Array<Record<string, unknown>>;
   hardware: Record<string, unknown>;
@@ -82,30 +81,12 @@ function serializeHbom(hbom: Hbom): Record<string, unknown> {
   };
 }
 
-// Autosave intentionally omits the source identity fields `resolvedRevision`
-// and `swhid`. Acquisition settles both server-side and source reset clears
-// both there; serializing a stale/blank local copy would let an unrelated editor
-// save clobber evidence the backend just computed, since apply_patch merges by
-// key. Local state still carries them for display after authoritative hydration.
+// The source never rides on autosave: it changes only by acquiring or removing it,
+// and the backend refuses a definition patch that would change it.
 export function toReePatchFromSlices({ reeSpec }: ReePatchSlices): ReeIntentPatch {
   return {
     name: reeSpec.name || "",
     catalog: serializeCatalogMetadata(reeSpec.catalogMetadata),
-    // Omitted, never nulled, when nothing is authored locally. The patch merges
-    // by key, and an upload declares its source server-side (acquisition names
-    // the type from the archive), so a `source: null` here would erase a
-    // declaration the editor never held — leaving the acquisition receipt
-    // describing a source the REE no longer declares. Removing a source is its
-    // own explicit operation, not something autosave decides.
-    ...(reeSpec.sourceType
-      ? {
-          source: {
-            origin_url: reeSpec.originUrl || null,
-            source_type: reeSpec.sourceType,
-            requested_ref: null,
-          },
-        }
-      : {}),
     // The runtime destination rides on the build recipe, not beside it: the
     // script and what it produces are one declaration (as with an experiment's
     // output_paths). Sending only this key is safe — the backend rehydrates the

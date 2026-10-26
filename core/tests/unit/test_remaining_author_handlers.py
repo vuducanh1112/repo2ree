@@ -149,6 +149,31 @@ def test_definition_patch_hydrates_experiment_script_identity(
     assert layout.manifest.is_file()
 
 
+@pytest.mark.parametrize(
+    "source",
+    [{"source_type": "tarball"}, {"source_type": "git", "origin_url": "https://example.org/x.git"}, None],
+)
+def test_a_definition_patch_never_changes_the_source(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    source: dict[str, str] | None,
+) -> None:
+    acquired = SourceDefinition(source_type="zip")
+    ree = _ree()
+    definition = ree.subject.definition.model_copy(update={"source": acquired})
+    ree = ree.model_copy(update={"subject": ree.subject.model_copy(update={"definition": definition})})
+    _layout, store = _workbench(tmp_path, monkeypatch, ree)
+
+    def patch(change: dict[str, object]) -> str:
+        args = PatchReeDefinitionArgs(patch=change, expected_version=str(revision_of(store.read_ree())))
+        return handle_patch_ree_definition(args, log=lambda *args: None, is_canceled=lambda: False).status
+
+    assert patch({"source": source}) == "failed"
+    assert store.read_ree().subject.definition.source == acquired
+    # A whole definition may carry the source unchanged.
+    assert patch({"name": "renamed", "source": acquired.model_dump(mode="json")}) == "succeeded"
+
+
 def test_recipe_file_write_rehydrates_definition_and_delete_removes_component(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

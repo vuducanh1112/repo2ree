@@ -78,11 +78,6 @@ describe("toReePatchFromSlices", () => {
         contributors: [],
         corresponding_author_identifier: null,
       },
-      source: {
-        origin_url: "https://example.org/repo.git",
-        source_type: "git",
-        requested_ref: null,
-      },
       build_runtime: { runtime_path: "runtime.tar.gz" },
       experiments: [
         {
@@ -115,17 +110,17 @@ describe("toReePatchFromSlices", () => {
     });
   });
 
-  // The patch merges by key, so what it omits it preserves. An upload declares
-  // its source server-side; sending `source: null` from an editor that never
-  // held that declaration would erase it and strand the acquisition receipt.
-  it("omits an unauthored source rather than nulling the one the backend declared", () => {
-    const patch = toReePatchFromSlices({
-      reeSpec: createEmptyReeSpec(),
-      workspaceSourceState: {},
-      artifactStatus: {},
-      evaluationState: {},
-    });
-    expect(patch).not.toHaveProperty("source");
+  // The source changes only by acquiring or removing it; autosave never carries it.
+  it("never carries the source, authored locally or not", () => {
+    for (const sourceType of ["git", ""] as const) {
+      const patch = toReePatchFromSlices({
+        reeSpec: { ...createEmptyReeSpec(), sourceType, originUrl: "https://example.org/repo.git" },
+        workspaceSourceState: {},
+        artifactStatus: {},
+        evaluationState: {},
+      });
+      expect(patch).not.toHaveProperty("source");
+    }
   });
 
   // Clearing the declared runtime path must clear the declaration — but never

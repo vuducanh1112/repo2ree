@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from repo2ree_core.digests import digest_file
-from repo2ree_core.domain.ree.model import ReeDefinition
+from repo2ree_core.domain.ree.model import ReeDefinition, SourceDefinition
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.reserved_paths import (
     RESERVED_ACTIVATION_SCRIPT,
@@ -21,9 +21,16 @@ def patched_definition(current: ReeDefinition, patch: dict[str, Any], layout: Re
     unknown = sorted(set(patch) - set(ReeDefinition.model_fields))
     if unknown:
         raise ValueError(f"definition patch contains unknown fields: {unknown}")
+    # The source changes only by acquiring or removing it; a whole definition may repeat it unchanged.
+    if "source" in patch and _source(patch["source"]) != current.source:
+        raise ValueError("the source changes only by acquiring or removing it, not by a definition patch")
     payload = current.model_dump(mode="json")
     payload.update(patch)
     return hydrate_definition_payload(payload, layout)
+
+
+def _source(value: Any) -> SourceDefinition | None:
+    return None if value is None else SourceDefinition.model_validate(value)
 
 
 def rehydrate_after_file_mutation(
