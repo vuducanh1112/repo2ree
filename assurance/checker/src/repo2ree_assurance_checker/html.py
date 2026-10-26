@@ -8,7 +8,7 @@ from __future__ import annotations
 from html import escape
 
 from repo2ree_assurance_checker.check import INITIAL, CheckResult
-from repo2ree_assurance_checker.report import describe_extra, stamped
+from repo2ree_assurance_checker.report import FINDING_LIMIT, describe_aggregate, describe_extra, stamped
 from repo2ree_assurance_checker.spec import Spec
 from repo2ree_assurance_checker.views import system_map
 
@@ -160,6 +160,19 @@ def render_html(spec: Spec, result: CheckResult) -> str:
             f"<span class='muted'>{' '.join(f'<code>{escape(ref)}</code>' for ref in extra.evidence)}</span></li>"
             for extra in result.extras
         ]
+        parts.append("</ul>")
+    if result.aggregates:
+        parts.append(
+            "<h2>Aggregates</h2><p class='muted'>Every part of a committed document; reported, never part of "
+            "a verdict.</p><ul>"
+        )
+        for aggregate in result.aggregates:
+            shown = "".join(
+                f"<li>{escape(finding.subject)}: {escape(finding.reason)} "
+                f"<span class='muted'>{' '.join(f'<code>{escape(ref)}</code>' for ref in finding.evidence)}</span></li>"
+                for finding in aggregate.findings[:FINDING_LIMIT]
+            )
+            parts.append(f"<li>{escape(describe_aggregate(aggregate))}{f'<ul>{shown}</ul>' if shown else ''}</li>")
         parts.append("</ul>")
     parts += [
         "</main>",

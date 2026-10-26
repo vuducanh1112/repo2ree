@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -10,11 +11,11 @@ from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, JsonValue, ValidationError
 
-from repo2ree_assurance_checker.evidence import Event, Evidence, Source
+from repo2ree_assurance_checker.evidence import Event, Evidence, FieldChange, Source
 
 JOURNAL_NAME = re.compile(r"^(?P<process>[a-z][a-z0-9-]*)-(?P<epoch>[0-9]{6})\.ndjson$")
 HISTORY_REF = "refs/heads/ree-history"
@@ -237,13 +238,38 @@ def history_commits(executable: str, repository: Path) -> tuple[list[Commit], li
     return commits, problems
 
 
-def sealed_at(executable: str, repository: Path, commit: str) -> bool | None:
-    """Whether the ree.json committed in ``commit`` carries a seal; None when it cannot be read."""
+def committed_document(executable: str, repository: Path, commit: str) -> dict[str, Any] | None:
+    """The ree.json committed in ``commit``; None when it cannot be read."""
     try:
         document = json.loads(git(executable, repository, "show", f"{commit}:ree.json"))
     except (subprocess.CalledProcessError, ValueError):
         return None
-    return isinstance(document, dict) and document.get("seal") is not None
+    return document if isinstance(document, dict) else None
+
+
+def document_parts(value: JsonValue, path: str = "") -> dict[str, str]:
+    """Every part of a document by path, with a digest of its value; absent or empty parts are left out.
+
+    Objects are walked into, and so are lists of objects that each carry a string
+    ``name``, one ``path[name]`` per item; other lists are values. An object is empty
+    when everything in it is.
+    """
+    parts: dict[str, str] = {}
+    children: dict[str, JsonValue] = {}
+    if isinstance(value, dict):
+        children = {f"{path}.{key}" if path else key: item for key, item in value.items()}
+    elif isinstance(value, list) and value and all(_named(item) for item in value):
+        children = {f"{path}[{item['name']}]": item for item in value if isinstance(item, dict)}
+    for child, item in children.items():
+        parts |= document_parts(item, child)
+    if path and (parts or (not children and value not in (None, "", [], {}))):
+        canonical = json.dumps(value, sort_keys=True, separators=(",", ":"))
+        parts[path] = hashlib.sha256(canonical.encode()).hexdigest()[:16]
+    return parts
+
+
+def _named(item: JsonValue) -> bool:
+    return isinstance(item, dict) and isinstance(item.get("name"), str)
 
 
 def pending_records(repository: Path, published: set[str]) -> tuple[list[dict[str, Any]], list[str]]:
@@ -393,12 +419,15 @@ class StepTracker:
 
 def ree_events(
     executable: str, repository: Path, source_id: str, label: str, ree_id: str, commits: list[Commit]
-) -> tuple[list[Event], list[str], StepTracker]:
-    """Witnessed Ree transitions and recorded Receipt transitions, commit by commit."""
+) -> tuple[list[Event], list[FieldChange], list[str]]:
+    """Witnessed Ree transitions and document changes, and recorded Receipt transitions, commit by commit."""
     events: list[Event] = []
+    changes: list[FieldChange] = []
     problems: list[str] = []
     steps = StepTracker(source_id, ree_id)
     state: str | None = None
+    # The document as last read; None after one that could not be read, whose changes no operation can own.
+    parts: dict[str, str] | None = {}
     for index, commit in enumerate(commits):
         base = (index + 1) * 1000
         locator = f"git:{label}@{commit.id[:12]}"
@@ -407,24 +436,46 @@ def ree_events(
         if isinstance(record, dict):
             before, after = record.get("step_evidence_before"), record.get("step_evidence_after")
             if isinstance(before, dict):
-                cause = "external" if steps.states else "baseline"
-                events.extend(steps.observe(before, base + 100, locator, cause, None))
+                audited = "external" if steps.states else "baseline"
+                events.extend(steps.observe(before, base + 100, locator, audited, None))
             if isinstance(after, dict):
                 events.extend(steps.observe(after, base + 300, locator, "operation", record))
         changed = commit.tree != commit.parent_tree
         if state is not None and not changed:
             continue
-        sealed = sealed_at(executable, repository, commit.id)
-        if sealed is None:
+        document = committed_document(executable, repository, commit.id)
+        if document is None:
             problems.append(f"{commit.id[:12]}: committed ree.json is unreadable")
+            parts = None
             continue
-        target = "sealed" if sealed else "draft"
+        target = "sealed" if document.get("seal") is not None else "draft"
+        cause: Literal["created", "operation", "external"] = (
+            "operation" if isinstance(record, dict) else "created" if state is None else "external"
+        )
         facts: dict[str, JsonValue] = {
             "commit": commit.id,
             "operation": commit.subject,
             "attempt_id": record.get("attempt_id") if isinstance(record, dict) else None,
-            "cause": "operation" if isinstance(record, dict) else "created" if state is None else "external",
+            "cause": cause,
         }
+        now = document_parts(document.get("subject") or {})
+        if parts is not None:
+            changes.extend(
+                FieldChange(
+                    source=source_id,
+                    position=base + 900,
+                    partition=ree_id,
+                    path=path,
+                    before=parts.get(path),
+                    after=now.get(path),
+                    operation=commit.subject,
+                    cause=cause,
+                    locator=locator,
+                )
+                for path in sorted(parts.keys() | now.keys())
+                if parts.get(path) != now.get(path)
+            )
+        parts = now
         events.append(
             Event(
                 source=source_id,
@@ -441,15 +492,15 @@ def ree_events(
             )
         )
         state = target
-    return events, problems, steps
+    return events, changes, problems
 
 
-def read_git_history(
-    repository: Path, label: str, executable: str = "git", *, author: bool = True
-) -> tuple[Source, list[Event]]:
+def read_git_history(repository: Path, label: str, executable: str = "git", *, author: bool = True) -> Evidence:
+    """One REE history as one source: its attempts, and for an author's REE its document and receipts."""
     source_id = f"git:{label}"
     problems: list[str] = []
     events: list[Event] = []
+    changes: list[FieldChange] = []
     try:
         commits, found = history_commits(executable, repository)
         problems.extend(found)
@@ -477,7 +528,9 @@ def read_git_history(
         problems.extend(problem for problem in [recorded_phases(record, None)[1]] if problem)
     ree_ids = {event.partition for event in events if event.partition is not None}
     if author and len(ree_ids) == 1:
-        found_events, found, _ = ree_events(executable, repository, source_id, label, next(iter(ree_ids)), commits)
+        found_events, changes, found = ree_events(
+            executable, repository, source_id, label, next(iter(ree_ids)), commits
+        )
         events.extend(found_events)
         problems.extend(found)
     elif len(ree_ids) > 1:
@@ -493,7 +546,7 @@ def read_git_history(
         partitions=frozenset(ree_ids),
         problems=tuple(problems),
     )
-    return source, events
+    return Evidence(sources=(source,), events=tuple(events), changes=tuple(changes))
 
 
 def git_repositories(root: Path, label: str | None = None) -> Iterable[tuple[Path, str, bool]]:
@@ -604,6 +657,7 @@ def load_evidence(
     sources: list[Source] = []
     events: list[Event] = []
     problems: list[str] = []
+    histories: list[Evidence] = []
     for directory in journals:
         if not directory.is_dir():
             problems.append(f"journal directory {directory} does not exist")
@@ -615,15 +669,15 @@ def load_evidence(
         if not (root / ".git").is_dir():
             problems.append(f"{root} is not an REE repository")
             continue
-        for repository, label, author in git_repositories(root):
-            source, found = read_git_history(repository, label, git_executable, author=author)
-            sources.append(source)
-            events.extend(found)
+        histories.extend(
+            read_git_history(repository, label, git_executable, author=author)
+            for repository, label, author in git_repositories(root)
+        )
     for directory in stores:
         source, found = read_stores(directory)
         sources.append(source)
         events.extend(found)
-    return combine(Evidence(sources=tuple(sources), events=tuple(events), problems=tuple(problems)))
+    return combine(*histories, Evidence(sources=tuple(sources), events=tuple(events), problems=tuple(problems)))
 
 
 def combine(*parts: Evidence) -> Evidence:
@@ -635,4 +689,5 @@ def combine(*parts: Evidence) -> Evidence:
         sources=sources,
         events=tuple(event for part in parts for event in part.events),
         problems=tuple(problem for part in parts for problem in part.problems),
+        changes=tuple(change for part in parts for change in part.changes),
     )

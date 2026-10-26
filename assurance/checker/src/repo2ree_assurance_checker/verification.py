@@ -1,9 +1,9 @@
 """The verification of one dossier, as an artifact later steps read instead of verifying again.
 
 ``verify`` judges evidence once and keeps everything a view needs: the evidence it
-judged, the rule results, each invariant occurrence's verdict, and the replayed
-entities and exchanges. ``VerifiedModel`` reads it back with the shape views use, so
-a view draws what was verified and can never reach a verdict of its own.
+judged, the rule results, each invariant occurrence's verdict, the replayed entities and
+exchanges, and each aggregate instance's history. ``VerifiedModel`` reads it back with the
+shape views use, so a view draws what was verified and can never reach a verdict of its own.
 
 Events are referred to by their index in ``evidence.events``: references (``Event.ref``)
 are human addresses that Git events of one commit share.
@@ -15,6 +15,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from repo2ree_assurance_checker.check import CheckResult, Judgement, check, judge_occurrences, replay
+from repo2ree_assurance_checker.check.aggregates import histories
+from repo2ree_assurance_checker.check.results import AggregateHistory, Part, StateStep
 from repo2ree_assurance_checker.evidence import Event, Evidence, EvidenceModel
 from repo2ree_assurance_checker.spec import Spec
 
@@ -22,8 +24,11 @@ ARTIFACT = "verification.json"
 
 __all__ = [
     "ARTIFACT",
+    "AggregateHistory",
     "Judgement",
+    "Part",
     "Reach",
+    "StateStep",
     "Verification",
     "VerifiedEntity",
     "VerifiedExchange",
@@ -52,6 +57,7 @@ class Verification(EvidenceModel):
     evidence: Evidence
     instances: dict[str, dict[str, VerifiedInstance]]
     exchanges: dict[str, dict[str, tuple[int, ...]]]  # Each exchange's events, in owner order.
+    histories: tuple[AggregateHistory, ...] = ()
 
 
 def verify(spec: Spec, evidence: Evidence, dossier: str | None = None) -> Verification:
@@ -82,6 +88,7 @@ def verify(spec: Spec, evidence: Evidence, dossier: str | None = None) -> Verifi
             boundary: {key: tuple(index[id(event)] for event in exchange.events) for key, exchange in by_key.items()}
             for boundary, by_key in model.exchanges.items()
         },
+        histories=histories(spec, evidence),
     )
 
 
@@ -130,6 +137,10 @@ class VerifiedModel:
     judgements: tuple[Judgement, ...]
     instances: dict[str, dict[str, VerifiedEntity]] = field(default_factory=dict)
     exchanges: dict[str, dict[str, VerifiedExchange]] = field(default_factory=dict)
+    histories: tuple[AggregateHistory, ...] = ()
+
+    def history(self, aggregate: str, instance: str) -> AggregateHistory | None:
+        return next((h for h in self.histories if (h.aggregate, h.instance) == (aggregate, instance)), None)
 
     @classmethod
     def of(cls, verification: Verification) -> VerifiedModel:
@@ -153,4 +164,5 @@ class VerifiedModel:
                 boundary: {key: VerifiedExchange(tuple(events[i] for i in found)) for key, found in by_key.items()}
                 for boundary, by_key in verification.exchanges.items()
             },
+            histories=verification.histories,
         )

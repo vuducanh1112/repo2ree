@@ -4,22 +4,37 @@ It has two layers. The vocabulary (``vocabulary/*.toml``, with ``components.toml
 the contract owners emit against: each subject's owner, key, states or messages, and
 facts with their types and where they are required. The rules (``entities/*.toml``,
 ``boundaries/*.toml``, ``invariants.toml``) are what the checker holds the evidence to.
-Only the vocabulary is published to the product (``contracts/behaviour``).
+Aggregate machines (``aggregates/*.toml``) follow every part of a document an entity
+commits; they are reported, not gated. Only the vocabulary is published to the product
+(``contracts/behaviour``).
 
 The package keeps each part apart: ``base`` (what they share), ``vocabulary`` (what owners
-emit), ``rules`` (machines and exchanges), ``invariants`` (rules across entities), and
-``facts`` (recorded facts against all of them). ``Spec`` puts them together and checks that
-they agree.
+emit), ``rules`` (machines and exchanges), ``invariants`` (rules across entities), ``facts``
+(recorded facts against all of them), and ``aggregates`` (the parts of a committed
+document). ``Spec`` puts them together and checks that they agree.
 """
 
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from hashlib import sha256
 from typing import Any, Self
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 
+from repo2ree_assurance_checker.spec.aggregates import (
+    FIELD_STATES,
+    KEYED,
+    STANDINGS,
+    AggregateSpec,
+    Edge,
+    FieldMachine,
+    Lifecycle,
+    MachineKind,
+    ReceiptMachine,
+    SubMachine,
+)
 from repo2ree_assurance_checker.spec.base import CREATED, OWN_KEY, Condition, FactType, Name, SpecModel
 from repo2ree_assurance_checker.spec.facts import absent, declared_facts, fact_problems, matches
 from repo2ree_assurance_checker.spec.invariants import (
@@ -64,6 +79,7 @@ class Spec(SpecModel):
     entities: dict[Name, EntitySpec]
     boundaries: dict[Name, BoundarySpec]
     invariants: tuple[Invariant, ...]
+    aggregates: dict[Name, AggregateSpec] = Field(default_factory=dict)
 
     @property
     def digest(self) -> str:
@@ -141,7 +157,29 @@ class Spec(SpecModel):
             raise ValueError("invariant ids must be unique")
         for invariant in self.invariants:
             self._check_invariant(invariant)
+        for aggregate in self.aggregates.values():
+            self._check_aggregate(aggregate)
         return self
+
+    def _check_aggregate(self, aggregate: AggregateSpec) -> None:
+        """An aggregate watches a document its entity commits, in that entity's states and receipt kinds."""
+        entity = self.entities.get(aggregate.name)
+        if entity is None or entity.evidence != "git":
+            raise ValueError(f"aggregate {aggregate.name}: not an entity whose evidence is its committed document")
+        if unknown := set(aggregate.lifecycle.states) - set(entity.states):
+            raise ValueError(f"aggregate {aggregate.name}: lifecycle names unknown states {sorted(unknown)}")
+        receipts = self.entities.get(aggregate.receipt_entity)
+        if receipts is None or receipts.partition != entity.key:
+            raise ValueError(f"aggregate {aggregate.name}: {aggregate.receipt_entity} is not partitioned by it")
+        if set(receipts.allowed.get("kind", ())) != set(aggregate.receipts):
+            raise ValueError(
+                f"aggregate {aggregate.name}: receipts {sorted(aggregate.receipts)} are not the kinds "
+                f"{aggregate.receipt_entity} lists {sorted(receipts.allowed.get('kind', ()))}"
+            )
+        if unknown := set(STANDINGS) ^ set(receipts.states):
+            raise ValueError(
+                f"aggregate {aggregate.name}: receipt standings differ from its entity's: {sorted(unknown)}"
+            )
 
     def _check_invariant(self, invariant: Invariant) -> None:
         when = invariant.when
@@ -211,6 +249,7 @@ def parse_spec(
     boundaries: list[dict[str, Any]],
     invariants: dict[str, Any],
     components: dict[str, Any],
+    aggregates: Sequence[dict[str, Any]] = (),
 ) -> Spec:
     """Build the specification from already-parsed TOML documents: the vocabulary, then the rules."""
     component_specs = [Component.model_validate(item) for item in components.get("component", [])]
@@ -246,6 +285,9 @@ def parse_spec(
     if unexpected := set(invariants) - {"invariant"}:
         raise ValueError(f"invariants file has unexpected tables {sorted(unexpected)}")
     groups = {name: word.fact_groups() for name, word in entity_words.items()}
+    aggregate_specs = [AggregateSpec.model_validate(document) for document in aggregates]
+    if len({aggregate.name for aggregate in aggregate_specs}) != len(aggregate_specs):
+        raise ValueError("aggregate names must be unique")
     return Spec(
         components={component.name: component for component in component_specs},
         entities={entity.name: entity for entity in entity_specs},
@@ -253,12 +295,17 @@ def parse_spec(
         invariants=tuple(
             Invariant.model_validate(spell_out_groups(item, groups)) for item in invariants.get("invariant", [])
         ),
+        aggregates={aggregate.name: aggregate for aggregate in aggregate_specs},
     )
 
 
 __all__ = [
     "CREATED",
+    "FIELD_STATES",
+    "KEYED",
     "OWN_KEY",
+    "STANDINGS",
+    "AggregateSpec",
     "BoundarySpec",
     "BoundaryVocabulary",
     "Citation",
@@ -268,6 +315,7 @@ __all__ = [
     "CitingMessage",
     "Component",
     "Condition",
+    "Edge",
     "EntityRequirement",
     "EntitySpec",
     "EntityTrigger",
@@ -278,15 +326,20 @@ __all__ = [
     "FactEntry",
     "FactGroups",
     "FactType",
+    "FieldMachine",
     "GuardRequirement",
     "Invariant",
+    "Lifecycle",
+    "MachineKind",
     "MachineRules",
     "MessageRequirement",
     "MessageTrigger",
     "Name",
+    "ReceiptMachine",
     "Requirement",
     "Spec",
     "SpecModel",
+    "SubMachine",
     "Transition",
     "absent",
     "allowed_values",

@@ -49,8 +49,9 @@ def load_dossier(directory: Path, git_executable: str = "git") -> Evidence:
                 problems.append(f"{label}: not an REE repository")
                 continue
             for repository, name, author in git_repositories(path, recorded.name):
-                source, events = read_git_history(repository, name, git_executable, author=author)
-                snapshots.append(Evidence(sources=(source.model_copy(update=update),), events=tuple(events)))
+                history = read_git_history(repository, name, git_executable, author=author)
+                (source,) = history.sources
+                snapshots.append(history.model_copy(update={"sources": (source.model_copy(update=update),)}))
         else:
             source, events = read_stores(path)
             parts.append(Evidence(sources=(source.model_copy(update=update),), events=tuple(events)))

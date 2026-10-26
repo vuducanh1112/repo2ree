@@ -31,6 +31,7 @@ class Documents:
     boundaries: list[dict[str, Any]]
     invariants: dict[str, Any]
     components: dict[str, Any]
+    aggregates: list[dict[str, Any]]
 
     def words(self, name: str) -> dict[str, Any]:
         return next(document for document in self.vocabulary if document["name"] == name)
@@ -39,7 +40,9 @@ class Documents:
         return next(document for document in self.entities if document["name"] == name)
 
     def parse(self) -> Spec:
-        return parse_spec(self.vocabulary, self.entities, self.boundaries, self.invariants, self.components)
+        return parse_spec(
+            self.vocabulary, self.entities, self.boundaries, self.invariants, self.components, self.aggregates
+        )
 
 
 def documents() -> Documents:
@@ -52,6 +55,7 @@ def documents() -> Documents:
         read("boundaries"),
         tomllib.loads((SPEC_DIR / "invariants.toml").read_text()),
         tomllib.loads((SPEC_DIR / "components.toml").read_text()),
+        read("aggregates"),
     )
 
 

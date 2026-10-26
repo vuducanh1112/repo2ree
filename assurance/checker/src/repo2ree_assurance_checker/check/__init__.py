@@ -16,24 +16,28 @@ never used, and nothing is assumed about where the receiver did its work.
 
 The package is laid out by concern: ``results`` (what checking finds), ``replay`` (records
 through machines and exchanges), ``order`` (what the evidence can order and could have
-recorded), ``patterns`` (the invariants), and ``reconciliation`` (stores against journals).
+recorded), ``patterns`` (the invariants), ``reconciliation`` (stores against journals), and
+``aggregates`` (every part of a committed document, reported apart from the verdict).
 """
 
 from __future__ import annotations
 
 from collections import defaultdict
 
+from repo2ree_assurance_checker.check.aggregates import check_aggregates
 from repo2ree_assurance_checker.check.order import Model
 from repo2ree_assurance_checker.check.patterns import Occurrence, check_invariant, judge, judge_occurrences, occurrences
 from repo2ree_assurance_checker.check.reconciliation import check_reconciliation, states_around
 from repo2ree_assurance_checker.check.replay import Exchange, Instance, Reached, replay_boundary, replay_entity
 from repo2ree_assurance_checker.check.results import (
     INITIAL,
+    AggregateResult,
     CheckResult,
     Coverage,
     Extra,
     Finding,
     Judgement,
+    MoveCount,
     RuleResult,
     finding,
 )
@@ -147,11 +151,13 @@ def check(spec: Spec, evidence: Evidence) -> CheckResult:
         rules=tuple(rules),
         coverage=coverage,
         extras=extras(spec, evidence),
+        aggregates=check_aggregates(spec, evidence),
     )
 
 
 __all__ = [
     "INITIAL",
+    "AggregateResult",
     "CheckResult",
     "Coverage",
     "Exchange",
@@ -160,10 +166,12 @@ __all__ = [
     "Instance",
     "Judgement",
     "Model",
+    "MoveCount",
     "Occurrence",
     "Reached",
     "RuleResult",
     "check",
+    "check_aggregates",
     "check_invariant",
     "check_reconciliation",
     "judge",

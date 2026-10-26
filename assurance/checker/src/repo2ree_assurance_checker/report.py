@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from repo2ree_assurance_checker.check import INITIAL, CheckResult, Extra
+from repo2ree_assurance_checker.check import INITIAL, AggregateResult, CheckResult, Extra
 from repo2ree_assurance_checker.evidence import Source
 from repo2ree_assurance_checker.spec import Spec
 
@@ -28,6 +28,16 @@ def stamped(source: Source, result: CheckResult) -> str:
 
 def describe_extra(extra: Extra) -> str:
     return f"fact `{extra.fact}` of `{extra.subject}`" if extra.fact else f"subject `{extra.subject}`"
+
+
+def describe_aggregate(aggregate: AggregateResult) -> str:
+    """One line on an aggregate's moves: how many, and how many no edge allows."""
+    moved = sum(moves.count for moves in aggregate.moves)
+    return (
+        f"{aggregate.aggregate}: {aggregate.instances} instances, {moved} moves along "
+        f"{len({(m.machine, m.source, m.target) for m in aggregate.moves})} edges, "
+        f"{len(aggregate.findings)} that no edge allows"
+    )
 
 
 def state_chart(spec: Spec, result: CheckResult, entity: str) -> str:
@@ -102,6 +112,16 @@ def render_markdown(spec: Spec, result: CheckResult) -> str:
             f"- {describe_extra(extra)}: {extra.count} records ({', '.join(f'`{ref}`' for ref in extra.evidence)})"
             for extra in result.extras
         ]
+    if result.aggregates:
+        lines += ["", "## Aggregates", "", "Every part of a committed document; reported, never part of a verdict.", ""]
+        for aggregate in result.aggregates:
+            lines.append(f"- {describe_aggregate(aggregate)}")
+            lines += [
+                f"  - {finding.subject}: {finding.reason} ({', '.join(f'`{ref}`' for ref in finding.evidence)})"
+                for finding in aggregate.findings[:FINDING_LIMIT]
+            ]
+            if len(aggregate.findings) > FINDING_LIMIT:
+                lines.append(f"  - … {len(aggregate.findings) - FINDING_LIMIT} more")
     lines += ["", "## Coverage", "", "Edges labelled `0` are declared behaviour no evidence exercised.", ""]
     for entity in sorted(spec.entities):
         gaps = [edge for edge, count in result.coverage.transitions.get(entity, {}).items() if not count]

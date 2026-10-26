@@ -1,0 +1,167 @@
+# The REE document (ree.json per capture commit), one machine per part. Reported, not gated.
+
+name = "Ree"
+summary = "One author REE: what it declares, what its receipts prove, and whether it is sealed."
+created_by = "initialize_ree"
+restored_by = "load_ree_bundle"
+writes_nothing = ["generate_script_candidates", "lint_scripts"]
+receipt_entity = "Receipt"
+
+[lifecycle]
+initial = "draft"
+
+[[lifecycle.transitions]]
+from = "draft"
+to = "sealed"
+by = ["seal_ree", "load_ree_bundle"]
+why = "Loading a sealed bundle restores its seal."
+
+[fields."definition.name"]
+group = "catalog"
+initial = "set"
+change = ["patch_ree_definition"]
+
+[fields."definition.catalog.description"]
+group = "catalog"
+initial = "unset"
+set = ["patch_ree_definition"]
+change = ["patch_ree_definition"]
+clear = ["patch_ree_definition"]
+
+[fields."definition.catalog.version"]
+group = "catalog"
+initial = "unset"
+set = ["patch_ree_definition"]
+change = ["patch_ree_definition"]
+clear = ["patch_ree_definition"]
+
+[fields."definition.catalog.website"]
+group = "catalog"
+initial = "unset"
+set = ["patch_ree_definition"]
+change = ["patch_ree_definition"]
+clear = ["patch_ree_definition"]
+
+[fields."definition.catalog.keywords"]
+group = "catalog"
+initial = "unset"
+set = ["patch_ree_definition"]
+change = ["patch_ree_definition"]
+clear = ["patch_ree_definition"]
+
+[fields."definition.catalog.contributors"]
+group = "catalog"
+initial = "unset"
+set = ["patch_ree_definition"]
+change = ["patch_ree_definition"]
+clear = ["patch_ree_definition"]
+
+[fields."definition.catalog.corresponding_author_identifier"]
+group = "catalog"
+initial = "unset"
+set = ["patch_ree_definition"]
+change = ["patch_ree_definition"]
+clear = ["patch_ree_definition"]
+
+[fields."definition.source"]
+group = "source"
+initial = "unset"
+set = ["acquire_source", "patch_ree_definition"]
+change = ["acquire_source", "patch_ree_definition"]
+clear = ["remove_source", "patch_ree_definition"]
+
+[fields."definition.hardware"]
+group = "hardware"
+initial = "unset"
+set = ["patch_ree_definition"]
+change = ["patch_ree_definition"]
+clear = ["patch_ree_definition"]
+
+[fields."definition.build_runtime"]
+group = "runtime"
+initial = "set"
+set = ["patch_ree_definition"]
+change = ["patch_ree_definition", "write_file", "delete_file"]
+clear = ["patch_ree_definition"]
+
+[fields."definition.build_runtime.runtime_path"]
+group = "runtime"
+initial = "unset"
+set = ["patch_ree_definition"]
+change = ["patch_ree_definition"]
+clear = ["patch_ree_definition"]
+
+[fields."definition.test_activation"]
+group = "test_activation"
+initial = "set"
+set = ["patch_ree_definition"]
+change = ["patch_ree_definition", "write_file", "delete_file"]
+clear = ["patch_ree_definition"]
+
+[fields."definition.experiments[*]"]
+group = "experiment"
+set = ["patch_ree_definition"]
+change = ["patch_ree_definition", "write_file", "delete_file"]
+clear = ["patch_ree_definition"]
+
+[fields."contents"]
+group = "bundle"
+initial = "unset"
+set = ["seal_ree"]
+clear = ["remove_source"]
+
+[fields."capture"]
+group = "bundle"
+initial = "set"
+change = ["seal_ree"]
+
+[receipts.source]
+about = ["definition.source"]
+rests_on = ["definition.source"]
+produced_by = "acquire_source"
+cleared_by = ["remove_source"]
+
+[receipts.evaluation]
+about = ["definition.source"]
+made_from = ["source"]
+produced_by = "evaluate_dependency_score"
+cleared_by = ["remove_source"]
+
+[receipts.hardware]
+about = ["definition.hardware"]
+applies_without_declaration = true
+produced_by = "generate_hbom"
+
+[receipts.runtime]
+about = ["definition.build_runtime.runtime_path"]
+rests_on = ["definition.build_runtime"]
+made_from = ["source"]
+produced_by = "build_runtime"
+cleared_by = ["remove_source"]
+
+[receipts.sbom]
+about = ["definition.build_runtime.runtime_path"]
+made_from = ["runtime"]
+produced_by = "generate_sbom"
+cleared_by = ["remove_source"]
+
+[receipts.sbom_cross_check]
+about = ["definition.source", "definition.build_runtime.runtime_path"]
+made_from = ["sbom", "evaluation"]
+produced_by = "cross_check_sbom"
+cleared_by = ["remove_source"]
+
+[receipts.test_activation]
+about = ["definition.test_activation"]
+rests_on = ["definition.test_activation"]
+made_from = ["source", "runtime"]
+produced_by = "activation_test"
+cleared_by = ["remove_source"]
+
+[receipts.experiment]
+keyed = true
+about = ["definition.experiments[*]"]
+rests_on = ["definition.experiments[*]"]
+made_from = ["source", "runtime"]
+produced_by = "run_experiment"
+cleared_by = ["remove_source"]

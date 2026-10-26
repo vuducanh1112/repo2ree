@@ -2,9 +2,10 @@
 
 Everything the checker holds the evidence to, as the specification's own files name it
 (``from`` and ``to``), with what a reader would otherwise have to derive: each machine's
-merged ``edges``, the digests, and a ``kind`` on every part that takes one of several
-shapes (a trigger, a requirement, a citation's side). ``format`` changes when a field
-does, so a reader can refuse a document it does not know.
+merged ``edges``, each aggregate's spelled-out ``machines``, the digests, and a ``kind``
+on every part that takes one of several shapes (a trigger, a requirement, a citation's
+side). ``format`` changes when a field does, so a reader can refuse a document it does
+not know.
 """
 
 from __future__ import annotations
@@ -69,6 +70,10 @@ def export_spec(spec: Spec) -> dict[str, Any]:
         }
         for invariant in spec.invariants
     ]
+    aggregates = {
+        name: _dump(aggregate) | {"machines": [_dump(machine) for machine in aggregate.machines]}
+        for name, aggregate in spec.aggregates.items()
+    }
     return {
         "format": FORMAT,
         "digest": spec.digest,
@@ -77,4 +82,5 @@ def export_spec(spec: Spec) -> dict[str, Any]:
         "entities": entities,
         "boundaries": boundaries,
         "invariants": invariants,
+        "aggregates": aggregates,
     }

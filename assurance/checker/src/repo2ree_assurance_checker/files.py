@@ -31,6 +31,7 @@ def load_spec(directory: Path = SPEC_DIR) -> Spec:
         documents("boundaries"),
         single("invariants.toml"),
         single("components.toml"),
+        documents("aggregates"),
     )
 
 
@@ -59,6 +60,7 @@ def load_spec_at(revision: str, executable: str = "git") -> Spec:
         boundaries,
         documents.get(f"{relative}/invariants.toml", {}),
         documents.get(f"{relative}/components.toml", {}),
+        under("aggregates"),
     )
 
 

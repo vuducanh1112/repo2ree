@@ -10,7 +10,7 @@ from repo2ree_assurance_dossier import Cut
 
 type Scalar = str | int | bool | None
 
-__all__ = ["Cut", "Event", "Evidence", "EvidenceModel", "Scalar", "Source"]
+__all__ = ["Cut", "Event", "Evidence", "EvidenceModel", "FieldChange", "Scalar", "Source"]
 
 
 class EvidenceModel(BaseModel):
@@ -79,10 +79,36 @@ class Event(EvidenceModel):
         return self.locator or f"{self.source}#{self.position}"
 
 
+class FieldChange(EvidenceModel):
+    """One part of a committed document that a capture commit changed, witnessed from the documents themselves.
+
+    ``path`` is relative to the document's subject, and a list keyed by name has one path
+    per item (``definition.experiments[<name>]``). ``before`` and ``after`` are digests of
+    the part's value, None where it is absent or empty. The commit that creates the
+    document lists every part it holds.
+    """
+
+    source: str
+    position: int  # The capture commit's place in its source, as its events have it.
+    partition: str
+    path: str
+    before: str | None
+    after: str | None
+    operation: str  # The operation the capture commit names.
+    cause: Literal["created", "operation", "external"]
+    locator: str
+
+    @property
+    def ref(self) -> str:
+        return self.locator
+
+
 class Evidence(EvidenceModel):
     sources: tuple[Source, ...]
     events: tuple[Event, ...]
     problems: tuple[str, ...] = ()
+    # What each capture commit changed in its committed document: aggregate evidence, never an event.
+    changes: tuple[FieldChange, ...] = ()
 
     def source(self, source_id: str) -> Source:
         return next(source for source in self.sources if source.id == source_id)

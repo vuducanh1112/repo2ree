@@ -5,9 +5,7 @@ from __future__ import annotations
 from typing import Literal
 
 from repo2ree_assurance_checker.evidence import Event, EvidenceModel, Source
-from repo2ree_assurance_checker.spec import (
-    CREATED,
-)
+from repo2ree_assurance_checker.spec import CREATED, MachineKind
 
 type Verdict = Literal["passed", "violated", "inconclusive", "not_triggered"]
 type FindingVerdict = Literal["violated", "inconclusive"]
@@ -55,6 +53,55 @@ class Coverage(EvidenceModel):
     messages: dict[str, dict[str, int]]
 
 
+class MoveCount(EvidenceModel):
+    """How often an operation moved one part of an aggregate along one edge, and whether an edge allows it."""
+
+    kind: MachineKind
+    machine: str
+    source: str
+    target: str
+    operation: str
+    count: int
+    allowed: bool
+
+
+class AggregateResult(EvidenceModel):
+    """Every move of every part of one aggregate, and each one its machines do not allow; never gated."""
+
+    aggregate: str
+    instances: int
+    moves: tuple[MoveCount, ...] = ()
+    findings: tuple[Finding, ...] = ()
+
+
+class Part(EvidenceModel):
+    """One part of one aggregate instance: a machine, or one item of a keyed machine."""
+
+    name: str
+    machine: str
+    item: str = ""
+    kind: MachineKind
+    group: str
+
+
+class StateStep(EvidenceModel):
+    """An aggregate instance after one operation moved it: every part's state so far, and which moved."""
+
+    operation: str
+    ref: str
+    states: dict[str, str]
+    moved: tuple[str, ...]
+
+
+class AggregateHistory(EvidenceModel):
+    """One aggregate instance step by step; ``parts`` in the order views draw them."""
+
+    aggregate: str
+    instance: str
+    parts: tuple[Part, ...]
+    steps: tuple[StateStep, ...]
+
+
 class CheckResult(EvidenceModel):
     spec_digest: str
     sources: tuple[Source, ...]
@@ -63,6 +110,8 @@ class CheckResult(EvidenceModel):
     # The contract the evidence was judged against; a journal's own stamp is provenance only.
     vocabulary_digest: str = ""
     extras: tuple[Extra, ...] = ()
+    # Not part of the verdict: the aggregate machines are reported until they are gated.
+    aggregates: tuple[AggregateResult, ...] = ()
 
     @property
     def verdict(self) -> Verdict:
