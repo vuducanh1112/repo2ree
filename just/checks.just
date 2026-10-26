@@ -73,7 +73,7 @@ check-nix: _check-write-hint
     @echo "Running statix..."
     statix check .
     @echo "Running deadnix..."
-    deadnix --fail .
+    git ls-files -z --cached --others --exclude-standard -- '*.nix' | xargs -0 -r deadnix --fail
 
 # Run all GUI static checks.
 [group('Checks')]

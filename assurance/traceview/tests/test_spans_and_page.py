@@ -91,10 +91,14 @@ def test_a_template_without_a_place_for_the_trace_is_refused() -> None:
         render_html(BehaviourTrace.model_construct(), "<html></html>")
 
 
+# Tiers whose every test authors an REE; a fault test may fail before any exists.
+GATED_TIERS = ("e2e-system-*", "e2e-gui-instant-*")
+
+
 def dossiers() -> list[Path]:
-    """Dossiers holding journals and at least one REE's history: a test that failed early may leave none."""
+    """Dossiers of the gated tiers holding journals and an REE's history: a test that failed early may leave none."""
     found: list[Path] = []
-    for path in sorted(E2E_RUNS.glob("*/tests/*/dossier")):
+    for path in sorted(path for tier in GATED_TIERS for path in E2E_RUNS.glob(f"{tier}/tests/*/dossier")):
         try:
             dossier = read_dossier(path)
             if dossier.recorded("journal") and dossier.recorded("git"):
