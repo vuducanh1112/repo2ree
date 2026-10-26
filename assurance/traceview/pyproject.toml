@@ -76,6 +76,7 @@ source_modules = [
     "repo2ree_assurance_traceview.sequence",
     "repo2ree_assurance_traceview.provenance",
     "repo2ree_assurance_traceview.render",
+    "repo2ree_assurance_traceview.history",
 ]
 forbidden_modules = ["os", "sys", "subprocess", "socket", "http", "urllib", "tempfile", "shutil", "random", "uuid", "time"]
 allow_indirect_imports = true

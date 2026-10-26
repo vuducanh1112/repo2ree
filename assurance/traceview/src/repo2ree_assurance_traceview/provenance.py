@@ -104,7 +104,7 @@ def _request(entry: Entry) -> str | None:
 
 def build_provenance(trace: BehaviourTrace) -> Provenance | None:
     """None when the dossier never sealed its REE."""
-    standing = dict(trace.standings[0].states) if trace.standings else {}
+    standing = dict(trace.baseline)
     produced: dict[str, tuple[Entry, StepChange]] = {}
     later: dict[str, list[str]] = {}
     seal: Entry | None = None
@@ -129,8 +129,8 @@ def build_provenance(trace: BehaviourTrace) -> Provenance | None:
         state = standing.get(step, "not_applicable")
         if step not in produced:
             seen = [change.after for entry in trace.entries for change in entry.changes if change.step == step]
-            initial = trace.standings[0].states.get(step) if trace.standings else None
-            origins.append(StepOrigin(step=step, standing=state, history=(initial or "undeclared", *seen)))
+            initial = trace.baseline.get(step, "undeclared")
+            origins.append(StepOrigin(step=step, standing=state, history=(initial, *seen)))
             continue
         entry, change = produced[step]
         origins.append(

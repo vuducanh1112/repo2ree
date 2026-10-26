@@ -23,14 +23,8 @@ def test_operations_are_attempts_with_a_run_and_authoring_is_collapsed_between_t
     assert [(c.step, c.before, c.after) for c in trace.entries[1].changes] == [("runtime", "missing", "current")]
 
 
-def test_standings_trace_the_step_states_column_by_column() -> None:
-    standings = trace_of(recorded()).standings
-    assert [s.label for s in standings] == ["created", "build_runtime", "authoring", "generate_sbom"]
-    assert standings[0].states == {"runtime": "missing", "sbom": "missing"}
-    # The authoring column shows what authoring did, and nothing of the operation that followed it.
-    assert standings[2].states == {"runtime": "current", "sbom": "missing", "test_activation": "missing"}
-    assert standings[2].changed == ("test_activation",)
-    assert standings[3].states["sbom"] == "current"
+def test_the_baseline_is_each_steps_standing_before_the_first_capture() -> None:
+    assert trace_of(recorded()).baseline == {"runtime": "missing", "sbom": "missing"}
 
 
 def test_rules_attach_to_the_entries_whose_events_triggered_them() -> None:
@@ -122,7 +116,8 @@ def test_each_ree_gets_only_its_own_operations() -> None:
         ("setup", "provision"),
         ("operation", "build_runtime"),
     ]
-    assert second.standings[-1].states == {"runtime": "current"}
+    assert second.history is not None
+    assert second.history.steps[-1].states["runtime"] == "current"
     assert second.entries[1].run is not None
     assert second.entries[1].run.key == "act-run-build-2"
 
@@ -176,3 +171,25 @@ def test_provisioning_follows_the_supervisor_into_the_provider_by_trace() -> Non
     assert ("span", "provider", None, "docker pull") in lines
     assert ("journal", "supervisor", None, "Allocation → assigned") in lines
     assert all(row.provenance != "time" for row in sequence.rows)
+
+
+def test_the_change_history_shows_the_ree_after_each_operation_that_changed_it() -> None:
+    history = trace_of(recorded(sealed=True)).history
+    assert history is not None
+    assert [(row.label, row.group) for row in history.rows] == [
+        ("lifecycle", "lifecycle"),
+        ("receipt", "runtime"),
+        ("receipt", "sbom"),
+        ("receipt", "test_activation"),
+    ]
+    steps = [(step.operation, step.moved) for step in history.steps]
+    # Creation moves nothing yet; a new runtime makes the SBOM made from the old one stale in the same step.
+    assert steps[0] == ("initialize_ree", ())
+    assert ("build_runtime", ("runtime", "sbom")) in steps
+    assert steps[-1] == ("seal_ree", ("lifecycle",))
+    assert history.steps[-1].states == {
+        "lifecycle": "sealed",
+        "runtime": "current",
+        "sbom": "current",
+        "test_activation": "missing",
+    }

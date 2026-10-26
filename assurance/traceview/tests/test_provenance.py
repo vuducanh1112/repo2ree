@@ -11,12 +11,13 @@ def test_the_sealed_scenario_conforms() -> None:
     assert trace_of(recorded(sealed=True)).verdict == "passed"
 
 
-def test_standings_show_evidence_going_stale_and_current_again() -> None:
-    standings = trace_of(recorded(sealed=True)).standings
-    runtime = [column.states.get("runtime") for column in standings]
+def test_the_history_shows_evidence_going_stale_and_current_again() -> None:
+    history = trace_of(recorded(sealed=True)).history
+    assert history is not None
+    runtime = [step.states.get("runtime") for step in history.steps]
     assert runtime == ["missing", "current", "current", "current", "stale", "current", "current", "current"]
-    assert [column.label for column in standings][-1] == "seal_ree"
-    assert [column.sealed for column in standings][-2:] == [False, True]
+    assert [step.operation for step in history.steps][-1] == "seal_ree"
+    assert [step.states["lifecycle"] for step in history.steps][-2:] == ["draft", "sealed"]
 
 
 def test_span_records_passed_over_are_said_on_the_trace_and_the_provenance() -> None:

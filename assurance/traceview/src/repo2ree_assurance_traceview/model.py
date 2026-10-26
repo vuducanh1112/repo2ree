@@ -133,14 +133,25 @@ class Entry(ViewModel):
     failed: int = 0
 
 
-class Standing(ViewModel):
-    """Every step's evidence standing after one entry; together, the REE's state path."""
-
+class HistoryRow(ViewModel):
+    part: str
     label: str
-    kind: Literal["baseline", "operation", "authoring"]
+    kind: Literal["lifecycle", "field", "receipt"]
+    group: str
+
+
+class HistoryStep(ViewModel):
+    operation: str
+    ref: str  # The capture that made it.
     states: dict[str, str]
-    changed: tuple[str, ...]
-    sealed: bool
+    moved: tuple[str, ...]
+
+
+class ChangeHistory(ViewModel):
+    """The REE after each operation that changed it: every part's state, rows in the order they are drawn."""
+
+    rows: tuple[HistoryRow, ...]
+    steps: tuple[HistoryStep, ...]
 
 
 class SourceSummary(ViewModel):
@@ -168,6 +179,7 @@ class BehaviourTrace(ViewModel):
     sources: tuple[SourceSummary, ...]
     entries: tuple[Entry, ...]
     steps: tuple[str, ...]
-    standings: tuple[Standing, ...]
+    baseline: dict[str, str] = {}  # Each step's standing before the first capture.
+    history: ChangeHistory | None = None
     reviews: int = 0  # Review attempts on this REE, not drawn until reviews are specified.
     unreadable_spans: int = 0  # Span records passed over because they could not be read.

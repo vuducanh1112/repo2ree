@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: header facts, a wall-clock lane chart, the evidence standing grid, per-operation sequences, then the operation log. */
+/* Layout: header facts, a wall-clock lane chart, the REE change history, per-operation sequences, then the operation log. */
 :root {
   --bg: #f6f7f9;
   --surface: #ffffff;
@@ -98,15 +98,16 @@ header { display: grid; gap: 14px; }
 #grid thead th.op > div { color: var(--ink); font-weight: 500; }
 #grid tbody th { text-align: left; font-family: var(--font-data); font-weight: 500; padding: 0 14px 0 12px; white-space: nowrap; position: sticky; left: 0; background: var(--surface); }
 #grid td { width: 44px; min-width: 44px; height: 34px; border-left: 1px solid var(--line); }
-#grid td.authoring, #grid thead th.authoring { background: color-mix(in srgb, var(--author) 7%, transparent); }
 #grid tbody tr + tr td, #grid tbody tr + tr th { border-top: 1px solid var(--line); }
 .cell { display: inline-flex; width: 26px; height: 20px; border-radius: 5px; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
 .cell.current { background: var(--current-soft); color: var(--current); }
 .cell.stale { background: var(--stale-soft); color: var(--stale); }
 .cell.missing { background: var(--missing-soft); color: var(--missing); }
-.cell.not_applicable, .cell.none { color: var(--na); }
+.cell.not_applicable, .cell.none, .cell.unset { color: var(--na); }
+.cell.set, .cell.draft { color: var(--ink); }
+.cell.sealed { color: var(--accent); }
+#grid tr.group th { text-align: left; font-size: 11px; font-weight: 600; color: var(--muted); padding: 10px 12px 2px; background: var(--surface); border-top: 1px solid var(--line); }
 .cell.changed { box-shadow: 0 0 0 2px var(--accent); }
-#grid tfoot td { height: auto; padding: 8px 0 10px; font-size: 11px; color: var(--muted); border-left: 1px solid var(--line); }
 
 /* operation log */
 #log { display: grid; gap: 0; }
@@ -211,16 +212,16 @@ footer p { margin: 0; }
   </section>
 
   <section>
-    <div class="section-head">
-      <h2>Evidence standing after each step</h2>
-      <p>Core's audit of every step, read from the capture commits. Each column is the state after that operation; a ring marks what it changed. Together the columns are the REE's high-level state path.</p>
-    </div>
+    <div class="section-head"><h2>Change history</h2></div>
     <div class="panel scroll" id="grid"></div>
     <div class="legend">
       <span><i class="cell current" style="width:18px;height:14px">●</i>current</span>
       <span><i class="cell stale" style="width:18px;height:14px">◐</i>stale</span>
       <span><i class="cell missing" style="width:18px;height:14px">○</i>missing</span>
       <span><i class="cell not_applicable" style="width:18px;height:14px">–</i>not applicable</span>
+      <span><i class="cell set" style="width:18px;height:14px">■</i>set</span>
+      <span><i class="cell unset" style="width:18px;height:14px">·</i>unset</span>
+      <span><i class="cell changed" style="width:18px;height:14px"></i>changed</span>
     </div>
   </section>
 
@@ -261,6 +262,7 @@ const TRACE = /*TRACE*/null;
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const GLYPH = { current: "●", stale: "◐", missing: "○", not_applicable: "–" };
+const STATE_GLYPH = { ...GLYPH, set: "■", unset: "·", draft: "d", sealed: "S" };
 const fmt = (s) => s == null ? "–" : s < 1 ? `${Math.round(s * 1000)} ms` : s < 90 ? `${s.toFixed(1)} s` : `${Math.floor(s / 60)} m ${Math.round(s % 60)} s`;
 const span = (e) => (e.end ?? 0) - (e.start ?? 0);
 const shortStep = (s) => s.replace("experiment:", "exp:");
@@ -335,18 +337,22 @@ function lanes() {
 }
 
 function grid() {
-  const cols = TRACE.standings;
-  if (!cols.length) { $("grid").innerHTML = `<p class="muted" style="padding:12px 16px;margin:0">No capture commits in this dossier.</p>`; return; }
-  const head = cols.map((c) => `<th class="${c.kind === "operation" ? "op" : c.kind}"><div>${esc(c.kind === "authoring" ? "· authoring" : c.label)}</div></th>`).join("");
-  const body = TRACE.steps.map((s) => `<tr><th>${esc(shortStep(s))}</th>${cols.map((c) => {
-    const st = c.states[s];
-    return `<td class="${c.kind}"><span class="cell ${st ?? "none"}${c.changed.includes(s) ? " changed" : ""}" title="${esc(s)}: ${esc(st ?? "not declared")}">${st ? GLYPH[st] ?? "?" : ""}</span></td>`;
-  }).join("")}</tr>`).join("");
-  const ree = `<tr><th class="muted">REE</th>${cols.map((c, i) => {
-    const turned = c.sealed && !(cols[i - 1]?.sealed);
-    return `<td class="${c.kind}"><span class="cell${turned ? " changed" : ""}" style="color:var(--${c.sealed ? "accent" : "muted"})" title="${c.sealed ? "sealed" : "draft"}">${c.sealed ? "S" : "d"}</span></td>`;
-  }).join("")}</tr>`;
-  $("grid").innerHTML = `<table><thead><tr><th></th>${head}</tr></thead><tbody>${body}${ree}</tbody></table>`;
+  const h = TRACE.history;
+  if (!h || !h.steps.length) { $("grid").innerHTML = `<p class="muted" style="padding:12px 16px;margin:0">No capture commits in this dossier.</p>`; return; }
+  const head = h.steps.map((st) => `<th class="op" title="${esc(st.ref)}"><div>${esc(st.operation)}</div></th>`).join("");
+  const glyph = (state) => STATE_GLYPH[state] ?? (state ? "?" : "");
+  let group = null;
+  const body = h.rows.map((row) => {
+    const band = row.group !== group && row.kind !== "lifecycle" ? `<tr class="group"><th colspan="${h.steps.length + 1}">${esc(row.group)}</th></tr>` : "";
+    group = row.group;
+    const cells = h.steps.map((st) => {
+      const state = st.states[row.part];
+      const moved = st.moved.includes(row.part) ? " changed" : "";
+      return `<td><span class="cell ${state ?? "none"}${moved}" title="${esc(row.part)}: ${esc(state ?? "not yet")}">${glyph(state)}</span></td>`;
+    }).join("");
+    return `${band}<tr><th>${esc(row.label)}</th>${cells}</tr>`;
+  }).join("");
+  $("grid").innerHTML = `<table><thead><tr><th></th>${head}</tr></thead><tbody>${body}</tbody></table>`;
 }
 
 const PROV = { journal: "journal", git: "git", inferred: "inferred", span: "span", time: "span · by time", gap: "no spans" };

@@ -76,7 +76,6 @@ def test_a_rendered_page_carries_its_trace_and_cannot_be_broken_out_of() -> None
         sources=(),
         entries=(Entry(kind="operation", name="build_runtime", start=0.0, end=1.0),),
         steps=(),
-        standings=(),
     )
     page = render_html(trace, template())
     assert PLACEHOLDER not in page

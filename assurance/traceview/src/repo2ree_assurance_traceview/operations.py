@@ -15,7 +15,7 @@ of the same REE are not drawn yet (reviews are not specified); they are only cou
 
 Built in three steps: the REE's history is cut into commits (``_commits``), each commit that
 captured an attempt is read as a capture (``_Capture.of``), and a ``_Timeline`` folds them, in
-order and with the journal-only setups between them, into entries and the step standings after each.
+order and with the journal-only setups between them, into entries.
 """
 
 from __future__ import annotations
@@ -23,11 +23,11 @@ from __future__ import annotations
 from collections import Counter, defaultdict, deque
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
-from typing import Literal
 
 from repo2ree_assurance_checker.evidence import Event
 from repo2ree_assurance_checker.verification import Judgement, VerifiedModel
 from repo2ree_assurance_traceview import terms
+from repo2ree_assurance_traceview.history import change_history
 from repo2ree_assurance_traceview.model import (
     Attempt,
     BehaviourTrace,
@@ -39,7 +39,6 @@ from repo2ree_assurance_traceview.model import (
     RuleHit,
     SourceSummary,
     SpanSummary,
-    Standing,
     StateAt,
     StepChange,
 )
@@ -345,42 +344,35 @@ class _Authoring:
 
 
 class _Timeline:
-    """Folds the REE's commits, in capture order, into entries and the step standings after each."""
+    """Folds the REE's commits, in capture order, into entries; keeps each step's standing as it goes."""
 
     def __init__(self, evidence: _Evidence, setups: list[_Setup], files: Mapping[str, int]) -> None:
         self.evidence = evidence
         self.pending = deque(setups)
         self.files = files
         self.entries: list[Entry] = []
-        self.standings: list[Standing] = []
         self.standing: dict[str, str] = {}
-        self.ree_state: str | None = None
+        self.baseline: dict[str, str] | None = None  # Each step's standing before the first capture.
         self.authoring: _Authoring | None = None
 
     def add(self, commit: _Commit, capture: _Capture | None) -> None:
         for event in commit.receipts:
             if capture is None or event.facts.get(terms.CAUSE) == terms.BASELINE:
                 self.standing[_step(event)] = event.target_state or ""
-        reached = commit.ree[-1].target_state if commit.ree else self.ree_state
         if capture is None:
-            self.ree_state = reached
             return
-        if not self.standings:
-            self.standings.append(
-                Standing(label="created", kind="baseline", states=dict(self.standing), changed=(), sealed=False)
-            )
+        if self.baseline is None:
+            self.baseline = dict(self.standing)
         if capture.sent is not None:
             self.setups_before(self.evidence.position[capture.sent.ref])
         if capture.run is None:
             self._author(capture)
         else:
             self.close_authoring()
-        self.ree_state = reached
         for change in capture.changes:
             self.standing[change.step] = change.after
         if capture.run is not None:
             self.entries.append(_operation_entry(self.evidence, capture, capture.run, self.files))
-            self._stand(capture.operation, "operation", tuple(c.step for c in capture.changes))
 
     def setups_before(self, position: int | None) -> None:
         """Journal-only entries the journal places before ``position`` (all of them when None)."""
@@ -405,7 +397,6 @@ class _Timeline:
                 failed=authoring.failed,
             )
         )
-        self._stand("authoring", "authoring", tuple(dict.fromkeys(change.step for change in authoring.changes)))
 
     def _author(self, capture: _Capture) -> None:
         if self.authoring is None:
@@ -416,12 +407,6 @@ class _Timeline:
         authoring.changes += capture.changes
         authoring.events += capture.checked
         authoring.end = self.evidence.rel(capture.answered) if capture.answered else authoring.end
-
-    def _stand(self, label: str, kind: Literal["operation", "authoring"], changed: tuple[str, ...]) -> None:
-        sealed = self.ree_state == terms.SEALED
-        self.standings.append(
-            Standing(label=label, kind=kind, states=dict(self.standing), changed=changed, sealed=sealed)
-        )
 
 
 def build_trace(
@@ -450,6 +435,7 @@ def build_trace(
     standing = timeline.standing
     steps = [s for s in terms.STEP_ORDER if s in standing] + sorted(s for s in standing if s not in terms.STEP_ORDER)
     instance = model.instances.get(terms.REE, {}).get(ree)
+    replayed = model.history(terms.REE, ree)
     result = model.result
     return BehaviourTrace(
         dossier=dossier,
@@ -461,7 +447,8 @@ def build_trace(
         sources=tuple(SourceSummary(id=s.id, kind=s.kind, complete=s.complete) for s in result.sources),
         entries=tuple(timeline.entries),
         steps=tuple(steps),
-        standings=tuple(timeline.standings),
+        baseline=timeline.baseline or {},
+        history=change_history(replayed) if replayed else None,
         reviews=evidence.reviews,
         unreadable_spans=spans.unreadable,
     )
