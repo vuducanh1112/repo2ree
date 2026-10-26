@@ -61,11 +61,6 @@ items = [
 reason = """Needs Git capture inside the REE to fail; no gated tier injects that fault."""
 
 [[unreached]]
-items = ["Ree (none) -> sealed"]
-reason = """Needs a workbench that baselines an REE sealed elsewhere; loading a sealed \
-bundle starts a fresh draft."""
-
-[[unreached]]
 items = ["dispatch: error", "dispatch: abandoned"]
 reason = """Needs a workbench that answers a dispatched action with an error or never \
 answers it."""

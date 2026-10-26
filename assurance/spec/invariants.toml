@@ -53,8 +53,17 @@ require = { entity = "Attempt", key_from = "attempt_id", reached = ["captured", 
 id = "ree-changes-through-operations"
 pattern = "guard"
 summary = "The committed REE changes only through dispatched operations, never between them."
-when = { entity = "Ree", from = ["draft", "sealed"], to = ["draft", "sealed"] }
+when = { entity = "Ree", from = "draft", to = ["draft", "sealed"] }
 require = { where = { cause = "operation" } }
+
+# A Ree transition is witnessed only where the committed tree changed, so any
+# transition out of sealed is a change to a sealed REE.
+[[invariant]]
+id = "sealed-rees-are-frozen"
+pattern = "excludes"
+summary = "A sealed REE's committed tree never changes again."
+when = { entity = "Ree", to = ["draft", "sealed"] }
+require = { entity = "Ree", in_states = ["sealed"] }
 
 # Evidence an attempt brings into being is that attempt's work: it exists only if the
 # attempt succeeded, and only if it is the work that produces that kind of evidence. A

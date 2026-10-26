@@ -2,7 +2,8 @@
 #
 # Every transition is witnessed rather than claimed: the checker derives it from
 # the REE's own capture commits, reading only whether the committed tree changed
-# and whether the committed ree.json carries a seal. Its machine is entities/ree.toml.
+# and whether the committed ree.json carries a seal. It has no machine: the
+# invariants say when it may change.
 
 name = "Ree"
 kind = "entity"
