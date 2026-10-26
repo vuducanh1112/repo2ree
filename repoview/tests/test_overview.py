@@ -57,7 +57,7 @@ def test_the_overview_of_this_tree_is_a_whole_bundle(tmp_path: Path) -> None:
         f"{name}.html"
         for name in (
             *("index", "zones", "assurance-gate", "operations", "vocabulary", "specification", "coverage"),
-            *("architecture", "just-recipes", "configuration", "api"),
+            *("ree-machine", "architecture", "just-recipes", "configuration", "api"),
         )
     }
     manifest = json.loads((target / "manifest.json").read_text())

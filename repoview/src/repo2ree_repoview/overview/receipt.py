@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import tomllib
 from collections import Counter
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
@@ -193,10 +194,36 @@ class _Extra(Document):
     count: int
 
 
+class _MoveCount(Document):
+    kind: str
+    machine: str
+    source: str
+    target: str
+    operation: str
+    count: int
+    allowed: bool
+
+
+class _AggregateResult(Document):
+    aggregate: str
+    instances: int = 0
+    moves: tuple[_MoveCount, ...] = ()
+    findings: tuple[Finding, ...] = ()
+
+
 class AssuranceReport(Document):
     coverage: _Exercised = _Exercised()
     rules: tuple[_RuleCount, ...] = ()
     extras: tuple[_Extra, ...] = ()
+    # None in a report from a checker that did not report aggregates yet.
+    aggregates: tuple[_AggregateResult, ...] | None = None
+
+
+def assurance_reports(evidence: Evidence) -> Iterator[AssuranceReport]:
+    """Every test's report in the receipt's runs, as the bundle holds them."""
+    for run in evidence.runs:
+        for path in sorted(run.glob("tests/*/verification/assurance.json")):
+            yield AssuranceReport.model_validate_json(path.read_bytes())
 
 
 @dataclass(frozen=True)
@@ -213,17 +240,59 @@ class Exercised:
         edges: Counter[str] = Counter()
         rules: Counter[str] = Counter()
         extras: Counter[tuple[str, str]] = Counter()
-        for run in evidence.runs:
-            for path in run.glob("tests/*/verification/assurance.json"):
-                report = AssuranceReport.model_validate_json(path.read_bytes())
-                for machine, counts in report.coverage.transitions.items():
-                    edges.update({f"{machine} {edge}": count for edge, count in counts.items()})
-                for boundary, counts in report.coverage.messages.items():
-                    edges.update({f"{boundary}: {message}": count for message, count in counts.items()})
-                rules.update({rule.rule: rule.triggered for rule in report.rules})
-                for extra in report.extras:
-                    extras[(extra.subject, extra.fact or "")] += extra.count
+        for report in assurance_reports(evidence):
+            for machine, counts in report.coverage.transitions.items():
+                edges.update({f"{machine} {edge}": count for edge, count in counts.items()})
+            for boundary, counts in report.coverage.messages.items():
+                edges.update({f"{boundary}: {message}": count for message, count in counts.items()})
+            rules.update({rule.rule: rule.triggered for rule in report.rules})
+            for extra in report.extras:
+                extras[(extra.subject, extra.fact or "")] += extra.count
         return cls(edges, rules, extras)
+
+
+@dataclass(frozen=True)
+class Move:
+    """One part of an aggregate moving along one edge by one operation; ``machine`` is the part's name."""
+
+    machine: str
+    source: str
+    target: str
+    operation: str
+
+
+@dataclass(frozen=True)
+class AggregateMoves:
+    """Summed over the receipt's tests: how often each operation moved each part of one aggregate.
+
+    ``recorded`` is False when no report carried aggregates (a checker from before they were
+    reported), so an empty tally is never mistaken for nothing having moved.
+    """
+
+    aggregate: str
+    recorded: bool
+    instances: int
+    counts: Counter[Move]
+    disallowed: tuple[Finding, ...]
+
+    def of(self, machine: str) -> Counter[Move]:
+        return Counter({move: count for move, count in self.counts.items() if move.machine == machine})
+
+    @classmethod
+    def over(cls, evidence: Evidence, aggregate: str) -> AggregateMoves:
+        recorded, instances = False, 0
+        counts: Counter[Move] = Counter()
+        disallowed: list[Finding] = []
+        for report in assurance_reports(evidence):
+            recorded = recorded or report.aggregates is not None
+            for result in report.aggregates or ():
+                if result.aggregate != aggregate:
+                    continue
+                instances += result.instances
+                disallowed.extend(result.findings)
+                for moves in result.moves:
+                    counts[Move(moves.machine, moves.source, moves.target, moves.operation)] += moves.count
+        return cls(aggregate, recorded, instances, counts, tuple(disallowed))
 
 
 @dataclass(frozen=True)

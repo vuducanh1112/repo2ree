@@ -1,4 +1,4 @@
-"""Graphviz drawings of the specification: one machine, and the system map."""
+"""Graphviz drawings of the specification: one machine, one part of an aggregate, and the system map."""
 
 from __future__ import annotations
 
@@ -7,8 +7,13 @@ from collections import Counter, defaultdict
 
 from repo2ree_repoview.graphviz import inline_svg
 from repo2ree_repoview.graphviz import quote as q
-from repo2ree_repoview.overview.exports import Spec
+from repo2ree_repoview.overview.exports import Spec, SubMachine
 from repo2ree_repoview.overview.html import esc
+from repo2ree_repoview.overview.receipt import Move
+
+TAKEN = 'color="#0f766e", fontcolor="#0f766e", penwidth=1.5'
+NEVER = 'style=dashed, color="#dc2626"'
+DISALLOWED = 'color="#7c3aed", fontcolor="#7c3aed", penwidth=1.5'
 
 
 def dot_svg(source: str) -> str:
@@ -53,6 +58,47 @@ def machine_svg(
         lines.append(f"  {q(source)} -> {q(target)} [{style}];")
     lines.append("}")
     return dot_svg("\n".join(lines))
+
+
+def submachine_svg(machine: SubMachine, moves: Counter[Move]) -> str:
+    """One part of an aggregate: each edge with the operations that took it and how often.
+
+    An edge nothing took is dashed, unless only bulk operations allow it; a move no edge
+    allows is drawn in its own colour, marked ✗.
+    """
+    lines = [
+        "digraph part {",
+        '  rankdir=LR; bgcolor="transparent"; pad=0.1; nodesep=0.3; ranksep=0.5;',
+        '  node [shape=box, style="rounded,filled", fillcolor="#eef2f7", color="#64748b", fontsize=11, height=0.3];',
+        "  edge [fontsize=9, arrowsize=0.6];",
+        '  "(none)" [shape=point, width=0.1, color="#334155"];',
+        *(f"  {q(state)};" for state in machine.states),
+    ]
+    allowed = {(edge.source, edge.target): set(edge.by) for edge in machine.edges}
+    taken: dict[tuple[str, str], dict[str, int]] = defaultdict(dict)
+    for move, count in moves.items():
+        taken[(move.source, move.target)][move.operation] = count
+    for pair in sorted(allowed.keys() | taken.keys()):
+        ops, counts = allowed.get(pair, set()), taken.get(pair, {})
+        if not counts and ops <= set(machine.bulk):
+            continue
+        # Quoting turns each newline into DOT's own line break.
+        label = "\n".join(f"{op} {count}{'' if op in ops else ' ✗'}" for op, count in sorted(counts.items()))
+        style = DISALLOWED if set(counts) - ops else TAKEN if counts else NEVER
+        lines.append(f"  {q(pair[0])} -> {q(pair[1])} [label={q(label)}, {style}];")
+    lines.append("}")
+    return dot_svg("\n".join(lines))
+
+
+def never_taken(machine: SubMachine, moves: Counter[Move]) -> list[str]:
+    """Each edge and operation the part allows that nothing took, bulk operations aside."""
+    taken = {(move.source, move.target, move.operation) for move in moves}
+    return [
+        f"{edge.source} → {edge.target} by {op}"
+        for edge in machine.edges
+        for op in edge.by
+        if op not in machine.bulk and (edge.source, edge.target, op) not in taken
+    ]
 
 
 def system_svg(spec: Spec) -> str:

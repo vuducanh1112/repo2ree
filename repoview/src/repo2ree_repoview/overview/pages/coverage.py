@@ -5,6 +5,7 @@ from __future__ import annotations
 from repo2ree_repoview.overview.drawing import machine_svg
 from repo2ree_repoview.overview.exports import Operations, Spec
 from repo2ree_repoview.overview.html import Page, esc, rule_anchor, section, table
+from repo2ree_repoview.overview.pages.aggregate import without_machine
 from repo2ree_repoview.overview.pages.operations import anchor, title
 from repo2ree_repoview.overview.receipt import Decision, Exercised, Receipt, reached
 
@@ -85,6 +86,7 @@ def page_coverage(
         f'<div class="card"><b>{esc(name)}</b> <span class="muted">owned by {esc(entity.owner)}</span>'
         f'<div class="svgwrap">{machine_svg(spec, name, edges, unreached)}</div></div>'
         for name, entity in sorted(spec.entities.items())
+        if entity.constrained
     )
     boundary_rows = [
         [
@@ -124,6 +126,7 @@ def page_coverage(
         "<h3>State machines, with how often each edge was taken</h3>"
         + legend
         + f'<div class="machines">{machines}</div>'
+        + without_machine(spec)
         + "<h3>Boundaries, with how often each message was recorded</h3>"
         + table(["Boundary", "Messages"], boundary_rows)
         + "<h3>Rules, and where each was decided</h3>"

@@ -34,6 +34,7 @@ from repo2ree_repoview.overview.exports import (
     shown,
 )
 from repo2ree_repoview.overview.html import Page, esc
+from repo2ree_repoview.overview.pages.aggregate import page_aggregate
 from repo2ree_repoview.overview.pages.api import page_api
 from repo2ree_repoview.overview.pages.architecture import page_architecture
 from repo2ree_repoview.overview.pages.configuration import page_configuration
@@ -46,6 +47,7 @@ from repo2ree_repoview.overview.pages.specification import page_specification
 from repo2ree_repoview.overview.pages.vocabulary import page_vocabulary
 from repo2ree_repoview.overview.pages.zones import page_zones
 from repo2ree_repoview.overview.receipt import (
+    AggregateMoves,
     Exercised,
     bundle_evidence,
     decisions,
@@ -109,6 +111,10 @@ def build(output: Path | None) -> Path:
         page_specification(spec),
         page_coverage(
             spec, receipt, Exercised.over(evidence), excused, decisions(bundle, receipt, evidence), operations
+        ),
+        *(
+            page_aggregate(aggregate, AggregateMoves.over(evidence, name))
+            for name, aggregate in spec.aggregates.items()
         ),
         page_architecture(bundle),
         page_recipes(load_recipes(), bundle),

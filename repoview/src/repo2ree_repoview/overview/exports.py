@@ -117,6 +117,8 @@ class Entity(Document):
     groups: dict[str, dict[str, tuple[str, ...]]]
     transitions: tuple[Transition, ...]
     edges: dict[str, tuple[str, ...]]
+    # False for an entity without a machine: any move between its states, and no edges to draw.
+    constrained: bool = True
 
 
 class EntitySide(Document):
@@ -221,6 +223,46 @@ class Invariant(Document):
     eventually: tuple[str, ...] = ()
 
 
+class MachineEdge(Document):
+    """One edge of an aggregate's part, and the operations allowed to take it."""
+
+    source: str = Field(alias="from")
+    target: str = Field(alias="to")
+    by: tuple[str, ...]
+
+
+class SubMachine(Document):
+    """One part of an aggregate, spelled out by the checker.
+
+    ``bulk`` operations may take many edges at once; an edge only they allow is drawn
+    only where one was taken.
+    """
+
+    kind: Literal["lifecycle", "field", "receipt"]
+    name: str
+    group: str
+    states: tuple[str, ...]
+    edges: tuple[MachineEdge, ...]
+    bulk: tuple[str, ...] = ()
+    keyed: bool = False
+
+
+class AggregateReceipt(Document):
+    rests_on: tuple[str, ...] = ()
+    made_from: tuple[str, ...] = ()
+    produced_by: str
+    cleared_by: tuple[str, ...] = ()
+
+
+class Aggregate(Document):
+    """A document an entity commits, with a machine for every part; reported, not gated."""
+
+    name: str
+    receipt_entity: str
+    receipts: dict[str, AggregateReceipt]
+    machines: tuple[SubMachine, ...]
+
+
 class Spec(Export):
     FORMAT = "repo2ree-behaviour-spec/1"
 
@@ -230,6 +272,8 @@ class Spec(Export):
     entities: dict[str, Entity]
     boundaries: dict[str, Boundary]
     invariants: tuple[Invariant, ...]
+    # Absent from exports of a specification older than aggregates.
+    aggregates: dict[str, Aggregate] = Field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------- zones

@@ -17,7 +17,8 @@ def prose(value: object) -> str:
 
 
 def section(anchor: str, title: str, lede: str, body: str) -> str:
-    return f'<section id="{anchor}"><h2>{esc(title)}</h2><p class="lede">{lede}</p>{body}</section>'
+    intro = f'<p class="lede">{lede}</p>' if lede else ""
+    return f'<section id="{anchor}"><h2>{esc(title)}</h2>{intro}{body}</section>'
 
 
 def table(headers: list[str], rows: list[list[str]], ident: str = "") -> str:

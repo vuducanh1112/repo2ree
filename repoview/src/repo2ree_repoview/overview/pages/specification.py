@@ -24,6 +24,7 @@ from repo2ree_repoview.overview.exports import (
     Spec,
 )
 from repo2ree_repoview.overview.html import Page, esc, rule_link, section, table
+from repo2ree_repoview.overview.pages.aggregate import without_machine
 
 
 def literal(value: Scalar) -> str:
@@ -182,6 +183,8 @@ SETTLES: dict[bool | str, str] = {
 def page_specification(spec: Spec) -> Page:
     machines = []
     for name, entity in sorted(spec.entities.items()):
+        if not entity.constrained:
+            continue
         edges = sum(len(targets) for targets in entity.edges.values())
         facts = (
             f"starts in {' | '.join(entity.initial)} · ends in {' | '.join(entity.terminal) or 'nothing'} · "
@@ -237,6 +240,7 @@ def page_specification(spec: Spec) -> Page:
         '<p class="lede">Where an instance starts, which edges it may take, and when it must have settled. '
         "Every other edge is a violation; nothing may leave a terminal state.</p>"
         + f'<div class="machines">{"".join(machines)}</div>'
+        + without_machine(spec)
         + "<h3>Citations</h3>"
         '<p class="lede">The only order the checker trusts across sources: a record that names another was written '
         "after it. Without the citation, a rule that needs the order is inconclusive.</p>"
@@ -252,5 +256,6 @@ def page_specification(spec: Spec) -> Page:
     )
     lede = "What the checker holds the evidence to, from <code>assurance/spec/</code>: no test results here."
     edges = sum(len(targets) for entity in spec.entities.values() for targets in entity.edges.values())
-    teaser = f"{len(spec.entities)} state machines, {edges} edges, {len(spec.invariants)} invariants"
+    drawn = sum(entity.constrained for entity in spec.entities.values())
+    teaser = f"{drawn} state machines, {edges} edges, {len(spec.invariants)} invariants"
     return Page("specification", "Specification", teaser, section("specification", "Specification", lede, body))
