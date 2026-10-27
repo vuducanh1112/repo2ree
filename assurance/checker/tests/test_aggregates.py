@@ -57,7 +57,6 @@ def test_a_field_moves_only_by_its_writers_or_by_restoring_the_whole_document() 
     assert allowed("field", "definition.build_runtime", "set", "set") == {
         "patch_ree_definition",
         "write_file",
-        "delete_file",
         "load_ree_bundle",
     }
     assert allowed("field", "definition.catalog.contributors", CREATED, "unset") == {"initialize_ree"}

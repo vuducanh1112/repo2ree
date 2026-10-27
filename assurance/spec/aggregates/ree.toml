@@ -80,7 +80,8 @@ clear = ["patch_ree_definition"]
 group = "runtime"
 initial = "set"
 set = ["patch_ree_definition"]
-change = ["patch_ree_definition", "write_file", "delete_file"]
+# The build script is never deleted (only a verify script is), so only writing it changes the build.
+change = ["patch_ree_definition", "write_file"]
 clear = ["patch_ree_definition"]
 
 [fields."definition.build_runtime.runtime_path"]
