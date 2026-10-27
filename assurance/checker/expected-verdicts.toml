@@ -9,12 +9,9 @@
 
 [[expected]]
 test = "api/tests/system/test_failures.py::test_workbench_lost_during_a_build"
-violated = ["machine:Allocation", "allocation-ends"]
-# The bench is killed with the REE inside it, so no archive of its history exists:
-# the attempts its dispatches report cannot be witnessed.
 inconclusive = ["api-success-is-recorded", "dispatch-success-is-captured"]
-reason = """Product bug (the test is a strict xfail): the run fails but the allocation stays \
-assigned when its workbench is lost, so it is still assigned when the API closes for good."""
+reason = """The bench is killed with the REE inside it, so no archive of its history exists: \
+the attempts its dispatches report cannot be witnessed."""
 
 # Specified rules, edges, and messages no gated test reaches, and why.
 #
@@ -26,16 +23,10 @@ assigned when its workbench is lost, so it is still assigned when the API closes
 # entry goes. This list is what a receipt does not prove.
 
 [[unreached]]
-items = ["Allocation assigned -> lost"]
-reason = """test_workbench_lost_during_a_build is where this belongs, but the allocation \
-stays assigned when its workbench is lost (the product bug excused above)."""
-
-[[unreached]]
 items = [
   "Allocation assigned -> failed",
   "Allocation draining -> failed",
   "Allocation failed -> draining",
-  "Allocation lost -> draining",
   "Allocation provisioning -> draining",
   "Allocation provisioning -> failed",
   "Allocation provisioning -> lost",
