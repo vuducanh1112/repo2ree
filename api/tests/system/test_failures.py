@@ -10,7 +10,6 @@ from __future__ import annotations
 import time
 from collections.abc import Callable
 
-import pytest
 from system_client import BUILD_SCRIPT, EXPERIMENT, RUNTIME, Api, fault, recipe
 
 from repo2ree_testbed.faults import KillWorkbench
@@ -93,12 +92,6 @@ def test_canceling_a_running_build(api: Api, new_ree: Callable[..., str]) -> Non
     assert api.build(ree_id)["status"] == "succeeded"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="product bug: the run fails ('workbench connection closed') but the allocation stays assigned: "
-    "releasing the REE skips the teardown, because WorkbenchManager.lookup returns no handle for a bench "
-    "that is not running (api/src/repo2ree_api/control/rees.py delete_ree_route)",
-)
 def test_workbench_lost_during_a_build(api: Api, new_ree: Callable[..., str]) -> None:
     ree_id = new_ree()
     prepared(api, ree_id)
@@ -122,4 +115,8 @@ def test_workbench_lost_during_a_build(api: Api, new_ree: Callable[..., str]) ->
         if time.monotonic() > deadline:
             break
         time.sleep(1)
-    assert record["state"] in {"lost", "failed", "draining", "released"}, record
+    assert record["state"] == "lost", record
+
+    # A lost bench is still released, though there is nothing left to tear down.
+    api.request("DELETE", f"/api/v1/rees/{ree_id}")
+    assert api.get(f"/api/v1/allocations/{allocation_id}")["state"] == "released"
