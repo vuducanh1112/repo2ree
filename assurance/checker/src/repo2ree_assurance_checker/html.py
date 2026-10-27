@@ -122,7 +122,7 @@ def render_html(spec: Spec, result: CheckResult) -> str:
     ]
     parts.append(
         "<p class='muted'>Each REE's operations, how they travel across components, and its step evidence: "
-        "<code>just trace-dossier [dossier]</code>, from this check's verification.json.</p>"
+        "<code>just inspect-dossier [dossier]</code>, from this check's verification.json.</p>"
     )
     parts.append(
         "<h2>State machines</h2><p class='muted'>Edge labels count observed transitions; 0 is declared "
