@@ -19,7 +19,7 @@ from pathlib import Path
 
 from repo2ree_testbed.artifacts import ROOT, run_dir
 from repo2ree_testbed.records import Receipt, RunRecord, read
-from repo2ree_testbed.stack.workbench_cleanup import live_store_volume, stale_store_volumes
+from repo2ree_testbed.stack.workbench_cleanup import KEEP_STORES, live_store_volume, stale_store_volumes
 
 RECEIPT = ROOT / ".receipts/assurance-gate.json"
 PER_TEST_RUN = re.compile(r"^(?P<tier>.+)-(?P<stamp>\d{8}-\d{6})$")
@@ -99,18 +99,18 @@ def plan_control_state(root: Path, now: float) -> Plan:
     return Plan([path for path in base.iterdir() if path.is_dir() and age(path, now) > STALE_CONTROL_SECONDS], [])
 
 
-def prune_store_volumes(days: float) -> None:
+def prune_store_volumes(keep_newest: int) -> None:
     try:
-        stale = stale_store_volumes(days, live_store_volume())
+        stale = stale_store_volumes(live_store_volume(), keep_newest)
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
         print(f">> bundle stores not pruned: {error}", file=sys.stderr)
         return
     if stale:
-        print(f">> removing {len(stale)} bundle store volume(s) unused for {days:g}d")
+        print(f">> removing {len(stale)} bundle store volume(s), keeping the newest {keep_newest} unused")
         subprocess.run(["docker", "volume", "rm", *stale], check=False, stdout=subprocess.DEVNULL)
 
 
-def prune(*, keep_runs: int = 5, keep_suite: int = 3, store_days: float = 14, dry_run: bool = False) -> None:
+def prune(*, keep_runs: int = 5, keep_suite: int = 3, keep_stores: int = KEEP_STORES, dry_run: bool = False) -> None:
     root = run_dir()
     now = time.time()
     plans = [
@@ -128,17 +128,22 @@ def prune(*, keep_runs: int = 5, keep_suite: int = 3, store_days: float = 14, dr
     verb = "would free" if dry_run else "freed"
     print(f">> pruned test artifacts: {len(remove)} directories, {verb} {freed / 2**20:.0f} MiB under {root}")
     if not dry_run and shutil.which("docker"):
-        prune_store_volumes(store_days)
+        prune_store_volumes(keep_stores)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--keep-runs", type=int, default=5, help="per-test runs kept per tier (default 5)")
     parser.add_argument("--keep-suite", type=int, default=3, help="suite runs kept per tier (default 3)")
-    parser.add_argument("--store-days", type=float, default=14, help="unused bundle stores kept this long (default 14)")
+    parser.add_argument(
+        "--keep-stores",
+        type=int,
+        default=KEEP_STORES,
+        help=f"unused bundle stores kept besides the checkout's own (default {KEEP_STORES})",
+    )
     parser.add_argument("--dry-run", action="store_true", help="list what would be removed and remove nothing")
     args = parser.parse_args()
-    prune(keep_runs=args.keep_runs, keep_suite=args.keep_suite, store_days=args.store_days, dry_run=args.dry_run)
+    prune(keep_runs=args.keep_runs, keep_suite=args.keep_suite, keep_stores=args.keep_stores, dry_run=args.dry_run)
     return 0
 
 

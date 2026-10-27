@@ -28,7 +28,7 @@
 | `just stack-up` / `stack-down` | Start/stop the image-backed stack, keeping its volumes (`testbed/src/repo2ree_testbed/stack/images.py`). |
 | `just stack-clean` | Stop it and drop every volume it created, workbench leftovers included. |
 | `just clean-workbenches` | Just the workbench leftovers; pass `1` to also drop every bundle store volume. |
-| `just gc-bundle-store` | Evict bundle store caches unused for 14 days by default, keeping the live one. |
+| `just gc-bundle-store` | Remove every unused bundle store cache but the live one; pass a number to keep that many more. |
 | `just commit-gate` | Fast pre-commit gate: documentation, static checks, and unit tests. Writes a receipt for the tree it passed on; the pre-commit hook checks that receipt. |
 | `just check-doc-links-external` | Manually check external documentation URLs with retries and a local response cache; intentionally excluded from deterministic gates. |
 | `just publish-gate` | The pre-publish gate: clean tree, all checks and tests, e2e source-run and image-backed. |
@@ -431,13 +431,19 @@ now removes containers with `docker rm -v` so they no longer accumulate; the
 sweep is what reclaims the ones from earlier runs.
 
 Cleanup preserves `repo2ree-store-{hash}` volumes because each is a reusable
-executor/tools cache of about 450 MB. A bundle change creates a new volume and
+executor/tools cache of about 600 MB. A bundle change creates a new volume and
 leaves the old one unused.
 
-`just gc-bundle-store` removes unreferenced caches older than 14 days but
-keeps the bundle used by the current checkout. `just clean-workbenches 1`
-removes every cache, including the current one. End-to-end teardown never
-evicts these caches automatically.
+The prune at the start of every e2e run keeps the current checkout's cache and
+the two newest unused ones, and removes the rest; `just prune-test-artifacts
+--keep-stores N` keeps a different number. `just gc-bundle-store` removes every
+unused cache but the current checkout's, and `just clean-workbenches 1` removes
+every cache, including the current one.
+
+Providers that share a Docker daemon also share the cache: the first to need a
+bundle copies it into the volume while the others wait on a lock held on the
+daemon, so stacks running side by side never copy into the same volume at
+once.
 
 `test-stack-published` validates pushed images instead of local builds
 (Docker pulls the refs; nothing is built). For an ad hoc run they default to the

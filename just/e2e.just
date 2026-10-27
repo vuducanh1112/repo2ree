@@ -123,7 +123,7 @@ test-stack-existing suite:
 prune-test-artifacts *args:
     python -m repo2ree_testbed prune {{ args }}
 
-# Evict unreferenced bundle-store caches older than the requested days.
+# Remove unused bundle-store caches, keeping the current checkout's and the newest `keep` others.
 [group('Stack management')]
-gc-bundle-store days="14":
-    python -m repo2ree_testbed workbench-cleanup --store-gc {{ quote(days) }}
+gc-bundle-store keep="0":
+    python -m repo2ree_testbed workbench-cleanup --store-gc {{ quote(keep) }}

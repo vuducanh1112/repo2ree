@@ -44,9 +44,14 @@ def live_store_volume() -> str:
     )
 
 
-def stale_store_volumes(max_age_days: float, keep: str) -> list[str]:
-    cutoff = dt.datetime.now(dt.UTC) - dt.timedelta(days=max_age_days)
-    stale: list[str] = []
+# Unused bundle stores kept besides the current checkout's: one per recent bundle
+# (about 600 MB each), so switching back to a recent commit copies nothing.
+KEEP_STORES = 2
+
+
+def stale_store_volumes(keep: str, keep_newest: int) -> list[str]:
+    """Unused bundle stores beyond the newest ``keep_newest``; ``keep`` (the checkout's own) is never one."""
+    unused: list[tuple[dt.datetime, str]] = []
     for name in lines(
         ["docker", "volume", "ls", "-q", "--filter", "dangling=true", "--filter", "name=^repo2ree-store-"]
     ):
@@ -54,12 +59,11 @@ def stale_store_volumes(max_age_days: float, keep: str) -> list[str]:
             continue
         output = capture(["docker", "volume", "inspect", name, "--format", "{{json .}}"])
         try:
-            created = Volume.model_validate_json(output).CreatedAt
+            unused.append((Volume.model_validate_json(output).CreatedAt, name))
         except ValidationError:
             continue
-        if created < cutoff:
-            stale.append(name)
-    return sorted(set(stale))
+    unused.sort(reverse=True)
+    return sorted(name for _, name in unused[keep_newest:])
 
 
 def workbench_containers(owner: str | None) -> list[str]:
@@ -96,23 +100,23 @@ def remove(kind: str, values: list[str], owner: str | None) -> None:
         subprocess.run(["docker", "volume", "rm", *values], check=False, stdout=subprocess.DEVNULL)
 
 
-def cleanup(owner: str | None, store: bool, store_gc: float | None) -> None:
+def cleanup(owner: str | None, store: bool, store_gc: int | None) -> None:
     remove("containers", workbench_containers(owner), owner)
     volumes = owned_volumes(owner) if owner else global_volumes(store)
     remove("volumes", volumes, owner)
     if store_gc is not None:
         keep = live_store_volume()
-        stale = stale_store_volumes(store_gc, keep)
+        stale = stale_store_volumes(keep, store_gc)
         if stale:
-            suffix = f" (keeping {keep})" if keep else ""
-            print(f">> removing bundle store volumes unused for {store_gc:g}d{suffix}")
+            suffix = f" besides {keep}" if keep else ""
+            print(f">> removing {len(stale)} bundle store volume(s), keeping the newest {store_gc} unused{suffix}")
             subprocess.run(["docker", "volume", "rm", *stale], check=False, stdout=subprocess.DEVNULL)
 
 
-def nonnegative(value: str) -> float:
-    parsed = float(value)
-    if not (parsed >= 0 and parsed < float("inf")):
-        raise argparse.ArgumentTypeError("days must be a nonnegative finite number")
+def nonnegative(value: str) -> int:
+    parsed = int(value)
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("the number of stores kept must be nonnegative")
     return parsed
 
 
@@ -121,7 +125,7 @@ def main() -> int:
     choices = parser.add_mutually_exclusive_group()
     choices.add_argument("--owner")
     choices.add_argument("--store", action="store_true")
-    choices.add_argument("--store-gc", nargs="?", type=nonnegative, const=14.0)
+    choices.add_argument("--store-gc", nargs="?", type=nonnegative, const=KEEP_STORES)
     args = parser.parse_args()
     try:
         cleanup(args.owner, args.store, args.store_gc)

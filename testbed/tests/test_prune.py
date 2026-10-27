@@ -1,9 +1,13 @@
+import json
 import os
 import time
 from pathlib import Path
 
+import pytest
+
 from repo2ree_testbed.records import Behaviour, Outcome, RunRecord, RunTest
 from repo2ree_testbed.runs import prune
+from repo2ree_testbed.stack import workbench_cleanup
 
 NOW = time.time()
 OLD = NOW - 30 * 24 * 3600
@@ -94,3 +98,23 @@ def test_only_stale_control_state_is_removed(tmp_path: Path) -> None:
     os.utime(stale, (OLD, OLD))
     assert prune.plan_control_state(tmp_path, NOW).remove == [stale]
     assert prune.plan_control_state(tmp_path / "missing", NOW).remove == []
+
+
+def test_unused_stores_beyond_the_newest_are_removed_and_the_checkouts_never(monkeypatch: pytest.MonkeyPatch) -> None:
+    created = {
+        "repo2ree-store-live": "2026-10-01T00:00:00Z",
+        "repo2ree-store-old": "2026-10-02T00:00:00Z",
+        "repo2ree-store-older": "2026-10-01T12:00:00Z",
+        "repo2ree-store-new": "2026-10-05T00:00:00Z",
+        "repo2ree-store-newer": "2026-10-06T00:00:00Z",
+    }
+    monkeypatch.setattr(workbench_cleanup, "lines", lambda command: list(created))
+    monkeypatch.setattr(workbench_cleanup, "capture", lambda command: json.dumps({"CreatedAt": created[command[3]]}))
+
+    assert workbench_cleanup.stale_store_volumes("repo2ree-store-live", 2) == [
+        "repo2ree-store-old",
+        "repo2ree-store-older",
+    ]
+    assert workbench_cleanup.stale_store_volumes("repo2ree-store-live", 0) == sorted(
+        set(created) - {"repo2ree-store-live"}
+    )
