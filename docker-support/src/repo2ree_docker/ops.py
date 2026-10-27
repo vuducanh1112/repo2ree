@@ -142,7 +142,8 @@ def run_docker_remove(*args: str) -> None:
         if result.returncode == 0:
             return
         detail = docker_cli.failure_detail(result.stderr, result.stdout)
-        if "No such container" in detail or "No such volume" in detail:
+        # Daemons spell it "No such volume" or, quoting the lookup, "get <name>: no such volume".
+        if "no such container" in detail.lower() or "no such volume" in detail.lower():
             return
         raise RuntimeError(f"docker {args[0]} failed: {detail}")
 

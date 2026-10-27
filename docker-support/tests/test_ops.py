@@ -39,6 +39,24 @@ def test_strict_remove_rejects_unacknowledged_docker_failure(monkeypatch: pytest
         ops_mod.run_docker_remove("rm", "-f", "workbench")
 
 
+@pytest.mark.parametrize(
+    "stderr",
+    [
+        "Error response from daemon: No such container: workbench",
+        "Error response from daemon: No such volume: wb-volume",
+        "Error response from daemon: get wb-volume: no such volume",
+    ],
+)
+def test_strict_remove_accepts_what_is_already_gone(monkeypatch: pytest.MonkeyPatch, stderr: str) -> None:
+    """Releasing a bench that never came up removes nothing, and that is not a failure."""
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *args, **kwargs: subprocess.CompletedProcess(args[0], 1, stdout="", stderr=stderr),
+    )
+    ops_mod.run_docker_remove("volume", "rm", "wb-volume")
+
+
 def test_container_running_reports_confirmed_states(monkeypatch: pytest.MonkeyPatch) -> None:
     """A completed `docker inspect` is a confirmed verdict: a running or stopped
     container, or a genuinely absent one (which is a confirmed "not running")."""
