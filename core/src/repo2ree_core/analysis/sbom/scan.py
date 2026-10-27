@@ -32,8 +32,19 @@ from repo2ree_protocol.log import LogSink
 # The one format both the cross-check and the reviewer comparison parse.
 SBOM_FORMAT = "cyclonedx-json"
 
-# Scanning consumes a docker-archive tarball, never a live image.
+# Scanning consumes a tarball, never a live image. Which kind of tarball is the
+# scanner's to detect: an image archive (docker or OCI) is read as an image, and
+# anything else is unpacked and read as a filesystem.
 RUNTIME_ARCHIVE_SUFFIXES = (".tar", ".tar.gz", ".tgz")
+
+# The catalogers syft uses for images, pinned for every source: a filesystem
+# would otherwise also be read for manifests and lockfiles, which declare
+# packages rather than show them installed.
+CATALOGERS = "image"
+
+# The sources the scanner may detect, in the order it tries them; never a daemon
+# or a registry, whatever the tarball turns out to be.
+SOURCES = ("docker-archive", "oci-archive", "file")
 
 
 @dataclass(frozen=True)
@@ -48,6 +59,8 @@ class ScanOutcome:
     returncode: int | None
     tool_version: str | None = None
     canceled: bool = False
+    # What the scanner took the runtime for: CycloneDX's ``container`` or ``file``.
+    source_kind: str | None = None
 
 
 def is_runtime_archive(path: str) -> bool:
@@ -64,11 +77,15 @@ def scan_runtime_archive(
 ) -> ScanOutcome:
     """Scan a runtime tarball into a CycloneDX document at ``output_path``.
 
-    ``--scope squashed`` is pinned explicitly: "observed in the runtime" must
-    mean the squashed filesystem, and scanner defaults must not drift underneath
-    the recorded evidence. Neither a non-zero return code nor a cancel is raised
-    — both are reported, and the caller decides whether a scan that did not
-    finish is fatal or merely leaves the evidence inconclusive.
+    The scanner detects an image archive itself and falls back to unpacking any
+    other tarball; the runtime path says nothing about what a build script
+    packed. ``--scope
+    squashed`` and the catalogers are pinned explicitly: "observed in the
+    runtime" must mean the installed packages of the squashed filesystem, and
+    scanner defaults must not drift underneath the recorded evidence. Neither a
+    non-zero return code nor a cancel is raised — both are reported, and the
+    caller decides whether a scan that did not finish is fatal or merely leaves
+    the evidence inconclusive.
 
     The scanner writes ``output_path`` itself, so a run that did not succeed can
     leave a partial document there. Callers that publish the result as durable
@@ -77,9 +94,12 @@ def scan_runtime_archive(
     syft = resolve_tool("syft")
     argv = [
         syft,
-        f"docker-archive:{runtime_abs}",
+        str(runtime_abs),
+        *(arg for source in SOURCES for arg in ("--from", source)),
         "--scope",
         "squashed",
+        "--override-default-catalogers",
+        CATALOGERS,
         "-o",
         f"{SBOM_FORMAT}={output_path}",
     ]
@@ -91,7 +111,17 @@ def scan_runtime_archive(
         return ScanOutcome(returncode=result.returncode, canceled=True)
     if result.returncode != 0:
         return ScanOutcome(returncode=result.returncode)
-    return ScanOutcome(returncode=0, tool_version=read_tool_version(output_path))
+    source_kind = read_source_kind(output_path)
+    log("system", "info", f"Scanned the runtime as: {source_kind or 'unknown'}")
+    return ScanOutcome(returncode=0, tool_version=read_tool_version(output_path), source_kind=source_kind)
+
+
+def read_source_kind(sbom_path: Path) -> str | None:
+    """What the scanner took the runtime for, out of a written CycloneDX document."""
+    metadata = _metadata(sbom_path)
+    component = metadata.get("component") if metadata else None
+    kind = component.get("type") if isinstance(component, dict) else None
+    return kind if isinstance(kind, str) else None
 
 
 def read_tool_version(sbom_path: Path) -> str | None:
@@ -101,13 +131,8 @@ def read_tool_version(sbom_path: Path) -> str | None:
     and a bare list of tool objects on 1.4; absence is not an error, and neither
     is an unreadable document — the version is provenance, not a result.
     """
-    try:
-        data: Any = json.loads(sbom_path.read_text(encoding="utf-8"))
-    except Exception:  # noqa: BLE001 — the tool version is provenance, not a result — absence is not an error
-        return None
-    if not isinstance(data, dict):
-        return None
-    tools = (data.get("metadata") or {}).get("tools")
+    metadata = _metadata(sbom_path)
+    tools = metadata.get("tools") if metadata else None
     entries = tools.get("components") if isinstance(tools, dict) else tools
     if not isinstance(entries, list):
         return None
@@ -116,3 +141,12 @@ def read_tool_version(sbom_path: Path) -> str | None:
             version = entry.get("version")
             return version if isinstance(version, str) else None
     return None
+
+
+def _metadata(sbom_path: Path) -> dict[str, Any] | None:
+    try:
+        data: Any = json.loads(sbom_path.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001 — metadata is provenance, not a result — absence is not an error
+        return None
+    metadata = data.get("metadata") if isinstance(data, dict) else None
+    return metadata if isinstance(metadata, dict) else None

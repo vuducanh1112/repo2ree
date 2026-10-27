@@ -77,7 +77,7 @@ def test_scanner_process_publishes_sbom_and_commits_receipt(
     fake_syft = tmp_path / "fake-syft"
     document = '{"bomFormat":"CycloneDX","metadata":{"tools":{"components":[{"name":"syft","version":"test-1"}]}}}'
     fake_syft.write_text(
-        f"#!/bin/sh\nset -eu\noutput=${{5#cyclonedx-json=}}\nprintf '%s' '{document}' > \"$output\"\n",
+        f"#!/bin/sh\nset -eu\nfor last; do :; done\nprintf '%s' '{document}' > \"${{last#cyclonedx-json=}}\"\n",
         encoding="utf-8",
     )
     fake_syft.chmod(0o755)

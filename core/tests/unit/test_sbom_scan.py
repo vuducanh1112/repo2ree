@@ -45,6 +45,24 @@ def test_scope_stays_pinned_to_squashed(fake_syft: dict[str, Any], tmp_path: Pat
     assert cmd[cmd.index("--scope") + 1] == "squashed"
 
 
+def test_the_scanner_detects_the_kind_of_tarball_but_never_looks_beyond_it(
+    fake_syft: dict[str, Any], tmp_path: Path
+) -> None:
+    """An image archive and a packed filesystem both scan; a daemon or registry never does."""
+    runtime = tmp_path / "rt.tar.gz"
+    scan_runtime_archive(runtime, tmp_path / "sbom.json", log=lambda *_: None)
+    cmd = fake_syft["cmd"]
+    assert cmd[1] == str(runtime)
+    assert [cmd[i + 1] for i, arg in enumerate(cmd) if arg == "--from"] == ["docker-archive", "oci-archive", "file"]
+
+
+def test_catalogers_stay_pinned_to_installed_packages(fake_syft: dict[str, Any], tmp_path: Path) -> None:
+    """A packed filesystem must not report what its lockfiles merely declare."""
+    scan_runtime_archive(tmp_path / "rt.tar", tmp_path / "sbom.json", log=lambda *_: None)
+    cmd = fake_syft["cmd"]
+    assert cmd[cmd.index("--override-default-catalogers") + 1] == "image"
+
+
 def test_a_canceled_scan_is_not_reported_as_a_failed_one(fake_syft: dict[str, Any], tmp_path: Path) -> None:
     """A killed scanner exits nonzero like a broken one; only one is news."""
     fake_syft["result"] = StreamingProcessResult(returncode=-15, stdout="", stderr="", canceled=True)
@@ -77,6 +95,20 @@ def test_a_successful_scan_reads_the_tool_version_off_the_document(fake_syft: di
     outcome = scan_runtime_archive(tmp_path / "rt.tar", output, log=lambda *_: None)
     assert outcome.returncode == 0
     assert outcome.tool_version == "1.2.3"
+
+
+@pytest.mark.parametrize("kind", ["container", "file"])
+def test_a_successful_scan_reports_what_it_took_the_runtime_for(
+    fake_syft: dict[str, Any], tmp_path: Path, kind: str
+) -> None:
+    output = tmp_path / "sbom.json"
+    fake_syft["writer"] = lambda: output.write_text(
+        f'{{"metadata": {{"component": {{"type": "{kind}", "name": "rt.tar"}}}}}}', encoding="utf-8"
+    )
+    lines: list[str] = []
+    outcome = scan_runtime_archive(tmp_path / "rt.tar", output, log=lambda _s, _l, line: lines.append(line))
+    assert outcome.source_kind == kind
+    assert f"Scanned the runtime as: {kind}" in lines
 
 
 def test_scanner_output_is_streamed_not_captured_and_replayed(fake_syft: dict[str, Any], tmp_path: Path) -> None:
