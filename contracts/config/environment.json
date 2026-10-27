@@ -768,6 +768,13 @@
         "type": "string"
       }
     },
+    "REPO2REE_MACHINES": {
+      "kind": "internal",
+      "owner": "testbed",
+      "schema": {
+        "type": "string"
+      }
+    },
     "REPO2REE_NETWORK": {
       "kind": "deployment",
       "owner": "compose",
@@ -799,13 +806,6 @@
     "REPO2REE_RESOURCE_OWNER": {
       "kind": "internal",
       "owner": "provider",
-      "schema": {
-        "type": "string"
-      }
-    },
-    "REPO2REE_TARGETS": {
-      "kind": "internal",
-      "owner": "testbed",
       "schema": {
         "type": "string"
       }

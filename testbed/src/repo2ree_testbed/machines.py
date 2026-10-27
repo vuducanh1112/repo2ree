@@ -1,0 +1,55 @@
+"""Where stacks can run: this checkout, and the SSH machines a developer lists for themselves."""
+
+from __future__ import annotations
+
+import os
+import tomllib
+from pathlib import Path
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
+
+from repo2ree_testbed.artifacts import ROOT
+
+LOCAL = "local"
+# Nix on a machine, flakes switched on per command so its Nix needs no configuration.
+NIX = ("nix", "--extra-experimental-features", "nix-command flakes")
+DEFAULT_FILE = Path("~/.config/repo2ree/machines.toml")
+
+
+class MachineConfig(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    host: str | None = None
+    path: str = "repo2ree"
+    jobs: int = Field(default=4, ge=1)
+    shell: tuple[str, ...] = (*NIX, "develop", "--command")
+    fetch: Literal["slim", "full"] = "slim"
+
+
+class MachinesFile(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    machines: dict[str, MachineConfig] = {}
+
+
+def machines_file() -> Path:
+    return Path(os.environ.get("REPO2REE_MACHINES") or DEFAULT_FILE).expanduser()
+
+
+def load_machines(path: Path) -> dict[str, MachineConfig]:
+    """Every machine: ``local``, and each one the file names (a file is optional)."""
+    found: dict[str, MachineConfig] = {LOCAL: MachineConfig(path=str(ROOT), shell=())}
+    if not path.is_file():
+        return found
+    try:
+        listed = MachinesFile.model_validate(tomllib.loads(path.read_text(encoding="utf-8"))).machines
+    except (tomllib.TOMLDecodeError, ValidationError) as error:
+        raise SystemExit(f"{path}: {error}") from error
+    for name, machine in listed.items():
+        if name == LOCAL:
+            raise SystemExit(f"{path}: {LOCAL!r} is this checkout and cannot be redefined")
+        if not machine.host:
+            raise SystemExit(f"{path}: machine {name!r} needs a host")
+        found[name] = machine
+    return found

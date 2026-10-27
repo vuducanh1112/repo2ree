@@ -13,7 +13,7 @@ COMMANDS = {
     "inspect": "repo2ree_testbed.runs.inspect_run",
     "prune": "repo2ree_testbed.runs.prune",
     "coverage": "repo2ree_testbed.python_coverage",
-    "target": "repo2ree_testbed.runs.target",
+    "machine": "repo2ree_testbed.runs.machine",
 }
 
 

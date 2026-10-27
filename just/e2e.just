@@ -53,26 +53,26 @@ test-e2e-fuzz: build-e2e-bundles
 [group('E2E tests')]
 test-e2e-review mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE: build-e2e-bundles (_source-stack-playwright "e2e-gui-review" "1" mode docker_mode)
 
-# List the targets the e2e tiers can run on: `local`, and the machines in ~/.config/repo2ree/targets.toml.
+# List the machines the e2e tiers can run on: `local`, and those in ~/.config/repo2ree/machines.toml.
 [group('E2E tests')]
-targets:
-    python -m repo2ree_testbed target list
+list-e2e-machines:
+    python -m repo2ree_testbed machine list
 
-# Ship HEAD to a target and build its bundles there, so its first run starts warm.
+# Ship HEAD to an e2e machine and build its bundles there, so its first run starts warm.
 [group('E2E tests')]
-prepare-target target:
-    python -m repo2ree_testbed target prepare {{ quote(target) }}
+prepare-e2e-machine machine:
+    python -m repo2ree_testbed machine prepare {{ quote(machine) }}
 
-# Run the assurance gate on a target, bring its receipt and runs here, and check the receipt holds for HEAD.
+# Run the assurance gate on an e2e machine, bring its receipt and runs here, and check the receipt holds for HEAD.
 [group('E2E tests')]
-assurance-gate-on target="local" jobs="":
-    python -m repo2ree_testbed target gate {{ quote(target) }} {{ if jobs != "" { "--jobs " + quote(jobs) } else { "" } }}
+gate-e2e-on machine="local" jobs="":
+    python -m repo2ree_testbed machine gate {{ quote(machine) }} {{ if jobs != "" { "--jobs " + quote(jobs) } else { "" } }}
     python -m scripts.gates.assurance_gate verify
 
-# Run any recipe on a target (e.g. `just e2e-on vm test-e2e-system`) and bring back the per-test runs it made.
+# Run an e2e recipe on a machine (e.g. `just test-e2e-on vm test-e2e-system`) and bring back the per-test runs it made.
 [group('E2E tests')]
-e2e-on target +recipe:
-    python -m repo2ree_testbed target run {{ quote(target) }} {{ recipe }}
+test-e2e-on machine +recipe:
+    python -m repo2ree_testbed machine run {{ quote(machine) }} {{ recipe }}
 
 # Check and draw a per-test run again: verdicts, traces, and index pages (the newest run by default).
 [group('E2E tests')]

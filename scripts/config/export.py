@@ -57,7 +57,7 @@ NON_SERVICE_ENVIRONMENT: dict[str, tuple[str, str]] = {
     "REPO2REE_PROVIDER_IMAGE": ("compose", "deployment"),
     "REPO2REE_PROVIDER_STATE_VOLUME": ("compose", "deployment"),
     "REPO2REE_RESOURCE_OWNER": ("provider", "internal"),
-    "REPO2REE_TARGETS": ("testbed", "internal"),
+    "REPO2REE_MACHINES": ("testbed", "internal"),
     "REPO2REE_TEST_RUN_DIR": ("test-recording", "internal"),
     "REPO2REE_TEST_RUN_ID": ("test-recording", "internal"),
     "REPO2REE_TOOLS_BIN": ("executor", "internal"),
