@@ -17,7 +17,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from typing import Protocol
 
-from repo2ree_protocol.allocation import AllocationRequest
+from repo2ree_protocol.allocation import AllocationRequest, AllocationState
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import ErrorFrame, Frame, UnavailableFrame
 
@@ -70,6 +70,10 @@ class ProviderClient(Protocol):
     def release_best_effort(self, provider_id: str, allocation_id: str) -> bool: ...
 
     def is_running(self, provider_id: str, allocation_id: str) -> bool: ...
+
+    def inspect(self, provider_id: str, allocation_id: str) -> AllocationState | None:
+        """What the provider says of the allocation, or None when it could not be asked."""
+        ...
 
 
 class WorkbenchClient(Protocol):

@@ -9,7 +9,7 @@ from contextlib import suppress
 from dataclasses import dataclass, field
 from uuid import uuid4
 
-from repo2ree_protocol.allocation import AllocationRequest, WorkbenchImage
+from repo2ree_protocol.allocation import AllocationRequest, AllocationState, WorkbenchImage
 from repo2ree_protocol.build import BuildInfo
 from repo2ree_protocol.frames import AllocationStatusFrame, ErrorFrame, Frame, UnavailableFrame
 from repo2ree_protocol.provider import (
@@ -209,18 +209,31 @@ class WsProviderClient:
         return True
 
     def is_running(self, provider_id: str, allocation_id: str) -> bool:
+        state = self.inspect(provider_id, allocation_id)
+        return state is not None and state not in {
+            AllocationState.LOST,
+            AllocationState.RELEASED,
+            AllocationState.FAILED,
+        }
+
+    def inspect(self, provider_id: str, allocation_id: str) -> AllocationState | None:
+        """What the provider says of the allocation, or None when it could not be asked.
+
+        An unreachable provider is not an answer: a bench is lost only when its
+        provider says so.
+        """
         try:
             frames = self._registry.pick(provider_id).request(
                 InspectAllocationRequest(allocation_id=allocation_id), frame_gap_timeout=QUICK_OP_TIMEOUT
             )
             for frame in frames:
                 if isinstance(frame, AllocationStatusFrame):
-                    return frame.state not in {"lost", "released", "failed"}
+                    return frame.state
                 if isinstance(frame, ErrorFrame | UnavailableFrame):
-                    return False
+                    return None
         except WorkbenchUnavailableError:
-            return False
-        return False
+            return None
+        return None
 
     @staticmethod
     def _drain_void(frames: Iterator[Frame]) -> None:

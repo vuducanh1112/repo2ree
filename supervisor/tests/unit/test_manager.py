@@ -28,6 +28,9 @@ class FakeProvider:
     def __init__(self, resolved_image: str = "") -> None:
         self.released: list[str] = []
         self.resolved_image = resolved_image
+        # What inspect answers for every allocation; None is a provider that cannot be asked.
+        self.reports: AllocationState | None = AllocationState.READY
+        self.release_works = True
 
     def resolve_location(self, location_id: str, image: str) -> tuple[str, str]:
         assert location_id == "lab-1"
@@ -52,11 +55,16 @@ class FakeProvider:
         self.released.append(allocation_id)
 
     def release_best_effort(self, provider_id: str, allocation_id: str) -> bool:
+        if not self.release_works:
+            return False
         self.release(provider_id, allocation_id)
         return True
 
     def is_running(self, provider_id: str, allocation_id: str) -> bool:
         return allocation_id not in self.released
+
+    def inspect(self, provider_id: str, allocation_id: str) -> AllocationState | None:
+        return AllocationState.RELEASED if allocation_id in self.released else self.reports
 
 
 class FakeWorkbench:
@@ -173,10 +181,78 @@ def test_a_bench_that_cannot_take_an_ree_fails_and_is_released(tmp_path: Path) -
     with pytest.raises(RuntimeError, match="not writable"):
         manager.provision("ree-1", "My REE", location_id="lab-1", image=_CATALOG_IMAGE)
 
+    [allocation_id] = provider.released
+    record = store.get(allocation_id)
+    assert record is not None
+    assert record.state == AllocationState.RELEASED
+    assert store.for_ree("ree-1") is None
+
+
+def test_a_failed_provision_is_drained_and_released(tmp_path):
+    opened = open_journal(tmp_path / "journal", "api", hosts=("supervisor",))
+    manager, _, _ = _manager(tmp_path, FakeWorkbench(init_error=RuntimeError("/ree is not writable")))
+    try:
+        with pytest.raises(RuntimeError):
+            manager.provision("ree-1", "My REE", location_id="lab-1", image=_CATALOG_IMAGE)
+    finally:
+        close_journal()
+    assert _transitions(opened.path)[-3:] == [
+        ("supervisor", "ready", "failed"),
+        ("supervisor", "failed", "draining"),
+        ("supervisor", "draining", "released"),
+    ]
+
+
+def test_a_failed_provision_the_provider_cannot_release_stays_failed(tmp_path: Path) -> None:
+    """Released means removed; an environment the provider could not remove is not."""
+    provider = FakeProvider()
+    provider.release_works = False
+    manager, store, _ = _manager(tmp_path, FakeWorkbench(init_error=RuntimeError("boom")), provider)
+    with pytest.raises(RuntimeError):
+        manager.provision("ree-1", "My REE", location_id="lab-1", image=_CATALOG_IMAGE)
     record = store.for_ree("ree-1")
     assert record is not None
     assert record.state == AllocationState.FAILED
-    assert provider.released == [record.request.allocation_id]
+
+
+def test_a_bench_its_provider_reports_gone_is_lost_and_released_without_a_teardown(tmp_path: Path) -> None:
+    manager, store, provider = _manager(tmp_path)
+    handle = manager.provision("ree-1", "My REE", location_id="lab-1", image=_CATALOG_IMAGE)
+
+    provider.reports = AllocationState.LOST
+    assert manager.lookup("ree-1") is None
+    assert store.get(handle.allocation_id).state == AllocationState.LOST  # type: ignore[union-attr]
+    # The REE still has a bench, it is just not reachable.
+    assert manager.is_registered("ree-1")
+
+    assert manager.release_unreachable("ree-1") == handle.allocation_id
+    assert store.get(handle.allocation_id).state == AllocationState.RELEASED  # type: ignore[union-attr]
+    assert provider.released == [handle.allocation_id]
+    assert not manager.is_registered("ree-1")
+
+
+def test_a_provider_that_cannot_be_asked_loses_no_bench(tmp_path: Path) -> None:
+    manager, store, provider = _manager(tmp_path)
+    handle = manager.provision("ree-1", "My REE", location_id="lab-1", image=_CATALOG_IMAGE)
+
+    provider.reports = None
+    assert manager.lookup("ree-1") is None
+    assert store.get(handle.allocation_id).state == AllocationState.ASSIGNED  # type: ignore[union-attr]
+    assert manager.release_unreachable("ree-1") is None
+
+
+def test_a_dispatch_its_bench_dropped_out_of_asks_whether_the_bench_is_gone(tmp_path: Path) -> None:
+    class DroppingWorkbench(FakeWorkbench):
+        def exec_action(self, workbench_id, cmd_json, run_id, env, context=None) -> Iterator[Frame]:
+            yield UnavailableFrame(detail="workbench connection closed")
+
+    manager, store, provider = _manager(tmp_path, DroppingWorkbench())
+    handle = manager.provision("ree-1", "My REE", location_id="lab-1", image=_CATALOG_IMAGE)
+    provider.reports = AllocationState.LOST
+    command = PatchReeDefinitionCommand(args=PatchReeDefinitionArgs(patch={"name": "x"}))
+    with pytest.raises(WorkbenchUnavailableError):
+        manager.dispatch_action(handle, command, "run-1", lambda *_: None)
+    assert store.get(handle.allocation_id).state == AllocationState.LOST  # type: ignore[union-attr]
 
 
 def test_the_image_the_bench_came_up_on_wins_over_the_one_asked_for(tmp_path: Path) -> None:
@@ -315,8 +391,7 @@ def test_allocation_lifecycle_is_journaled_by_its_owner(tmp_path):
         manager.teardown(handle)
     finally:
         close_journal()
-    records = [json.loads(line) for line in opened.path.read_text().splitlines()]
-    assert [(r["owner"], r["from"], r["to"]) for r in records if r["kind"] == "transition"] == [
+    assert _transitions(opened.path) == [
         ("supervisor", None, "requested"),
         ("supervisor", "requested", "provisioning"),
         ("supervisor", "provisioning", "waiting_for_workbench"),
@@ -325,3 +400,8 @@ def test_allocation_lifecycle_is_journaled_by_its_owner(tmp_path):
         ("supervisor", "assigned", "draining"),
         ("supervisor", "draining", "released"),
     ]
+
+
+def _transitions(journal: Path) -> list[tuple[str, str | None, str]]:
+    records = [json.loads(line) for line in journal.read_text().splitlines()]
+    return [(r["owner"], r["from"], r["to"]) for r in records if r["kind"] == "transition"]

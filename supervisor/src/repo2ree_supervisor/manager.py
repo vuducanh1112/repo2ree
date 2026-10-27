@@ -56,6 +56,7 @@ from repo2ree_protocol.tracing import (
     record_result_evidence,
     record_span_facts,
 )
+from repo2ree_supervisor.allocation_state import IllegalTransitionError
 from repo2ree_supervisor.allocation_store import AllocationStore
 from repo2ree_supervisor.client import (
     ProviderClient,
@@ -209,11 +210,8 @@ class WorkbenchManager:
                 self._workbench.wait_for_workbench(workbench_id)
                 return self._assign_and_initialise(request, workbench_id, name)
             except BaseException as exc:
-                self._enrollment.discard(allocation_id)
-                record = self._registry.get(allocation_id)
-                if record and record.state != AllocationState.FAILED:
-                    self._registry.update(allocation_id, AllocationState.FAILED, detail=str(exc))
-                self._provider.release_best_effort(provider_id, allocation_id)
+                self._fail(allocation_id, exc)
+                self._release_settled(ree_id, allocation_id, provider_id)
                 raise
 
     def reserve_external(self, ree_id: str, name: str, location_id: str) -> WorkbenchHandle:
@@ -231,9 +229,8 @@ class WorkbenchManager:
             try:
                 return self._assign_and_initialise(request, workbench_id, name)
             except BaseException as exc:
-                record = self._registry.get(allocation_id)
-                if record and record.state != AllocationState.FAILED:
-                    self._registry.update(allocation_id, AllocationState.FAILED, detail=str(exc))
+                self._fail(allocation_id, exc)
+                self._release_settled(ree_id, allocation_id, None)
                 raise
 
     def _assign_and_initialise(self, request: AllocationRequest, workbench_id: str, name: str) -> WorkbenchHandle:
@@ -268,6 +265,35 @@ class WorkbenchManager:
             self._registry.update(handle.allocation_id, AllocationState.RELEASED)
             self._registry.remove_placement(handle.ree_id)
 
+    def release_unreachable(self, ree_id: str) -> str | None:
+        """Release the REE's lost or failed allocation; its id, or None if it has none.
+
+        Nothing is left to drain: the bench is gone or never came up, so the
+        provider is asked to remove what remains and the allocation settles.
+        """
+        with self._ree_lock(ree_id), tracer.start_as_current_span("workbench.release_unreachable") as span:
+            record_ree_id(span, ree_id)
+            record = self._registry.for_ree(ree_id)
+            if record is None or record.state not in {AllocationState.LOST, AllocationState.FAILED}:
+                return None
+            self._release_settled(ree_id, record.request.allocation_id, record.provider_id)
+            return record.request.allocation_id
+
+    def _fail(self, allocation_id: str, exc: BaseException) -> None:
+        record = self._registry.get(allocation_id)
+        if record and record.state != AllocationState.FAILED:
+            self._registry.update(allocation_id, AllocationState.FAILED, detail=str(exc))
+
+    def _release_settled(self, ree_id: str, allocation_id: str, provider_id: str | None) -> None:
+        """Drain and release an allocation that has failed or been lost; a release that fails leaves it failed."""
+        self._enrollment.discard(allocation_id)
+        self._registry.update(allocation_id, AllocationState.DRAINING)
+        if provider_id and not self._provider.release_best_effort(provider_id, allocation_id):
+            self._registry.update(allocation_id, AllocationState.FAILED, detail="provider release failed")
+            return
+        self._registry.update(allocation_id, AllocationState.RELEASED)
+        self._registry.remove_placement(ree_id)
+
     def _consume_lifecycle(self, frames: Iterator[Frame], log: LogSink | None) -> AllocationStatusFrame:
         status: AllocationStatusFrame | None = None
         for frame in frames:
@@ -283,9 +309,9 @@ class WorkbenchManager:
         return status
 
     def is_registered(self, ree_id: str) -> bool:
-        """True if a workbench is registered for ree_id (regardless of run state)."""
+        """True if a workbench is registered for ree_id (regardless of run state), lost ones included."""
         record = self._registry.for_ree(ree_id)
-        return record is not None and record.state == AllocationState.ASSIGNED
+        return record is not None and record.state in {AllocationState.ASSIGNED, AllocationState.LOST}
 
     def lookup(self, ree_id: str) -> WorkbenchHandle | None:
         """Return the handle for ree_id, or None if not registered or not running."""
@@ -293,11 +319,16 @@ class WorkbenchManager:
         if record is None or record.state != AllocationState.ASSIGNED:
             return None
         handle = WorkbenchHandle.from_record(record)
-        running = (
-            self._provider.is_running(handle.provider_id, handle.allocation_id)
-            if handle.mode == "provider_managed"
-            else self._workbench.is_connected(handle.workbench_id)
-        )
+        if handle.mode == "provider_managed":
+            state = self._notice_lost(handle)
+            running = state is not None and state not in {
+                AllocationState.LOST,
+                AllocationState.RELEASED,
+                AllocationState.FAILED,
+            }
+        else:
+            # An external bench that is not connected may come back; only a provider can say a bench is gone.
+            running = self._workbench.is_connected(handle.workbench_id)
         if not running:
             logger.warning(
                 "workbench allocation %s not running for %s — returning None",
@@ -306,6 +337,19 @@ class WorkbenchManager:
             )
             return None
         return handle
+
+    def _notice_lost(self, handle: WorkbenchHandle) -> AllocationState | None:
+        """Ask the provider about a provider-managed bench, and record it lost if the provider says so."""
+        if handle.mode != "provider_managed":
+            return None
+        state = self._provider.inspect(handle.provider_id, handle.allocation_id)
+        if state == AllocationState.LOST:
+            # A teardown may have moved the allocation on meanwhile; then it is not lost, it is going.
+            with suppress(IllegalTransitionError):
+                self._registry.update(
+                    handle.allocation_id, AllocationState.LOST, detail="the provider reports the bench gone"
+                )
+        return state
 
     # ------------------------------------------------
     # Action dispatch
@@ -352,7 +396,11 @@ class WorkbenchManager:
                 )
                 with tracer.start_as_current_span("workbench.execute"):
                     _t0 = time.monotonic()
-                    result, context = self._dispatch_recorded(handle, cmd, run_id, log, context)
+                    try:
+                        result, context = self._dispatch_recorded(handle, cmd, run_id, log, context)
+                    except WorkbenchUnavailableError:
+                        self._notice_lost(handle)
+                        raise
                     _exec_duration.record(
                         time.monotonic() - _t0,
                         command_metric_attrs(str(cmd.operation), status=result.status),

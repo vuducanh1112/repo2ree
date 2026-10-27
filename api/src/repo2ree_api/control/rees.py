@@ -246,17 +246,21 @@ def delete_ree_route(ree_id: str) -> DeleteReeResponse:
 
 
 def _release_workbench(ree_id: str) -> DeleteReeResponse:
-    handle = require_handle(ree_id)
-    author_actions.learn(allocation_id=handle.allocation_id)
+    handle = workbench_manager.lookup(ree_id)
     with ree_command_span("delete", ree_id):
+        if handle is None and (allocation_id := workbench_manager.release_unreachable(ree_id)) is not None:
+            # The bench is gone or never came up: there is nothing to tear down, only an allocation to settle.
+            author_actions.learn(allocation_id=allocation_id)
+            return _deleted()
+        handle = handle or require_handle(ree_id)
+        author_actions.learn(allocation_id=handle.allocation_id)
         try:
             workbench_manager.teardown(handle)
         except Exception as exc:
             _log.warning("workbench teardown failed for %s: %s", ree_id, exc)
             raise HTTPException(status_code=500, detail=f"Workbench teardown failed: {exc}") from exc
-        return DeleteReeResponse.model_validate(
-            {
-                "deleted_at": utc_now(),
-                "state": "deleted",
-            }
-        )
+        return _deleted()
+
+
+def _deleted() -> DeleteReeResponse:
+    return DeleteReeResponse.model_validate({"deleted_at": utc_now(), "state": "deleted"})
