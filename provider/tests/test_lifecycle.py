@@ -19,6 +19,7 @@ from repo2ree_protocol.frames import (
     Frame,
     LogFrame,
 )
+from repo2ree_provider_docker.injection import InjectionBundle
 from repo2ree_provider_docker.lifecycle import DockerIsolation
 
 
@@ -697,3 +698,130 @@ def test_telemetry_can_be_turned_off_for_every_bench_this_provider_starts(monkey
 
     assert _has_option_value(exec_call, "-e", "WORKBENCH_TELEMETRY=off")
     assert not any(value.startswith("OTLP_ENDPOINT=") for value in exec_call)
+
+
+class _FakeDaemon:
+    """Containers, volumes, and what was copied into them: enough of a daemon to hold the populate lock."""
+
+    def __init__(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        self.containers: dict[str, dict[str, str]] = {}
+        self.mounts: dict[str, str] = {}
+        self.volumes: dict[str, set[str]] = {}
+        self.calls: list[tuple[str, ...]] = []
+        self.fail_copy = False
+        monkeypatch.setattr(lc_mod, "run_docker", self.run)
+        monkeypatch.setattr(lc_mod, "run_docker_out", self.out)
+        monkeypatch.setattr(lc_mod, "run_docker_remove", self.remove)
+        monkeypatch.setattr(lc_mod, "run_docker_silent", self.silent)
+        monkeypatch.setattr(
+            lc_mod,
+            "_container_path_exists",
+            lambda cid, path: path.rsplit("/", 1)[-1] in self.volumes[self.mounts[cid]],
+        )
+
+    def run(self, *args: str, timeout: int = 60) -> None:
+        self.calls.append(args)
+        if args[:2] == ("volume", "create"):
+            self.volumes.setdefault(args[2], set())
+        elif args[0] == "cp":
+            if self.fail_copy:
+                raise RuntimeError("docker cp failed: disk full")
+            cid, _, target = args[2].partition(":")
+            self.volumes[self.mounts[cid]].add(target.rsplit("/", 1)[-1] if target != "/bundle-store" else args[1])
+
+    def out(self, *args: str, timeout: int = 60) -> str:
+        self.calls.append(args)
+        if args[0] == "inspect":
+            return self.containers[args[-1]][lc_mod._LOCKED_AT_LABEL]
+        assert args[0] == "create"
+        name = args[args.index("--name") + 1] if "--name" in args else f"scratch-{len(self.calls)}"
+        if name in self.containers:
+            raise RuntimeError(f'docker create failed: Conflict. The container name "/{name}" is already in use')
+        key, _, value = args[args.index("--label") + 1].partition("=") if "--label" in args else ("", "", "")
+        self.containers[name] = {key: value} if key else {}
+        if "-v" in args:
+            self.mounts[name] = args[args.index("-v") + 1].split(":", 1)[0]
+        return name
+
+    def remove(self, *args: str) -> None:
+        self.calls.append(args)
+        if args[:2] == ("volume", "rm"):
+            self.volumes.pop(args[2], None)
+
+    def silent(self, *args: str) -> None:
+        self.calls.append(args)
+        if args[:2] == ("rm", "-f"):
+            self.containers.pop(args[-1], None)
+
+    def copied(self) -> list[tuple[str, ...]]:
+        return [call for call in self.calls if call[0] == "cp" and call[1].startswith("/nix/store/")]
+
+
+_BUNDLE = InjectionBundle(
+    exec_path="/nix/store/aaa-exec/bin/repo2ree-exec",
+    workbench_path=None,
+    pause_path="/nix/store/bbb-busybox/bin/sleep",
+    store_sources=("/nix/store/aaa-exec", "/nix/store/bbb-busybox"),
+    volume_name="repo2ree-store-abc",
+    tool_env={},
+)
+_LOCK = f"{lc_mod._POPULATE_LOCK_PREFIX}{_BUNDLE.volume_name}"
+
+
+def _populate(exec_bundle_dir: str) -> list[Any]:
+    return list(DockerIsolation(exec_bundle_dir=exec_bundle_dir)._ensure_store_volume("docker:dind", _BUNDLE))
+
+
+def test_a_volume_another_provider_is_populating_is_waited_for(
+    monkeypatch: pytest.MonkeyPatch, exec_bundle_dir: str
+) -> None:
+    """Providers sharing a daemon share the volume; only one of them copies into it."""
+    daemon = _FakeDaemon(monkeypatch)
+    daemon.containers[_LOCK] = {lc_mod._LOCKED_AT_LABEL: f"{time.time():.0f}"}
+
+    def other_provider_finishes(_seconds: float) -> None:
+        daemon.volumes[_BUNDLE.volume_name] = {"aaa-exec", lc_mod._POPULATED_SENTINEL}
+        daemon.containers.pop(_LOCK)
+
+    monkeypatch.setattr(time, "sleep", other_provider_finishes)
+    frames = _populate(exec_bundle_dir)
+
+    assert any(isinstance(frame, LogFrame) and "waiting for another provider" in frame.message for frame in frames)
+    assert daemon.copied() == []
+    assert _LOCK not in daemon.containers
+
+
+def test_a_half_populated_volume_is_rebuilt_from_empty(monkeypatch: pytest.MonkeyPatch, exec_bundle_dir: str) -> None:
+    """A provider that died mid-copy left symlinks a second copy would collide with."""
+    daemon = _FakeDaemon(monkeypatch)
+    daemon.volumes[_BUNDLE.volume_name] = {"/nix/store/aaa-exec"}
+
+    _populate(exec_bundle_dir)
+
+    removed = daemon.calls.index(("volume", "rm", _BUNDLE.volume_name))
+    assert removed < daemon.calls.index(daemon.copied()[0])
+    assert lc_mod._POPULATED_SENTINEL in daemon.volumes[_BUNDLE.volume_name]
+    assert _LOCK not in daemon.containers
+
+
+def test_a_lock_its_holder_abandoned_is_broken(monkeypatch: pytest.MonkeyPatch, exec_bundle_dir: str) -> None:
+    daemon = _FakeDaemon(monkeypatch)
+    abandoned = time.time() - lc_mod._POPULATE_LOCK_STALE_SECONDS - 60
+    daemon.containers[_LOCK] = {lc_mod._LOCKED_AT_LABEL: f"{abandoned:.0f}"}
+    monkeypatch.setattr(time, "sleep", lambda _seconds: None)
+
+    _populate(exec_bundle_dir)
+
+    assert len(daemon.copied()) == len(_BUNDLE.store_sources)
+    assert _LOCK not in daemon.containers
+
+
+def test_the_lock_is_released_when_a_copy_fails(monkeypatch: pytest.MonkeyPatch, exec_bundle_dir: str) -> None:
+    daemon = _FakeDaemon(monkeypatch)
+    daemon.fail_copy = True
+
+    with pytest.raises(RuntimeError, match="disk full"):
+        _populate(exec_bundle_dir)
+
+    assert _LOCK not in daemon.containers
+    assert lc_mod._POPULATED_SENTINEL not in daemon.volumes[_BUNDLE.volume_name]

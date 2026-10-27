@@ -68,6 +68,14 @@ _STORE_MOUNT = "/nix/store"
 # Marker file at the store volume's root: present only after a populate
 # finished, so a crash mid-copy is retried rather than trusted.
 _POPULATED_SENTINEL = ".repo2ree-populated"
+# Every provider on a daemon shares a bundle's store volume, so populating it
+# is serialized on the daemon, not in one process: a container by this name is
+# the lock, since `docker create --name` succeeds for exactly one caller.
+_POPULATE_LOCK_PREFIX = "repo2ree-populate-"
+# A lock older than this belongs to a provider that died mid-populate.
+_POPULATE_LOCK_STALE_SECONDS = 1800.0
+_POPULATE_POLL_SECONDS = 1.0
+_LOCKED_AT_LABEL = "repo2ree.locked-at"
 # How long a freshly started bench must stay up before it counts as viable.
 # Long enough to catch a default command that exits at once (alpine's detached
 # /bin/sh); daemon *readiness* (dockerd accepting connections) is not gated
@@ -426,21 +434,33 @@ class DockerIsolation:
         return True
 
     def _ensure_store_volume(self, image: str, bundle: InjectionBundle) -> Iterator[Frame]:
-        """Populate the content-addressed store volume, once.
+        """Populate the content-addressed store volume, once per daemon.
 
         The copies go through a never-started scratch container from ``image``
         (just pulled, so no extra fetch) with the volume mounted — ``docker cp``
-        addresses paths inside a container, running or not.
+        addresses paths inside a container, running or not. Providers sharing
+        the daemon wait on one another (see ``_POPULATE_LOCK_PREFIX``); the one
+        holding the lock rebuilds an unpopulated volume from empty, so a copy a
+        dead provider left half done is never copied over.
         """
         if bundle.volume_name in self._populated_volumes:
             return
         with self._populate_lock:
             if bundle.volume_name in self._populated_volumes:
                 return
-            run_docker("volume", "create", bundle.volume_name)
-            scratch = run_docker_out("create", "-v", f"{bundle.volume_name}:/bundle-store", image, "/repo2ree-noop")
+            lock = f"{_POPULATE_LOCK_PREFIX}{bundle.volume_name}"
+            waiting = False
+            while not _acquire_daemon_lock(lock, image):
+                if not waiting:
+                    waiting = True
+                    yield LogFrame(
+                        stream="system",
+                        level="info",
+                        message=f"waiting for another provider to populate {bundle.volume_name}",
+                    )
+                time.sleep(_POPULATE_POLL_SECONDS)
             try:
-                if _container_path_exists(scratch, f"/bundle-store/{_POPULATED_SENTINEL}"):
+                if _volume_populated(bundle.volume_name, image):
                     self._populated_volumes.add(bundle.volume_name)
                     return
                 yield LogFrame(
@@ -449,13 +469,19 @@ class DockerIsolation:
                     message=f"populating executor volume {bundle.volume_name}"
                     f" ({len(bundle.store_sources)} closure paths)",
                 )
-                for source in bundle.store_sources:
-                    run_docker("cp", source, f"{scratch}:/bundle-store", timeout=600)
-                with tempfile.NamedTemporaryFile(prefix="repo2ree-populated-") as marker:
-                    run_docker("cp", marker.name, f"{scratch}:/bundle-store/{_POPULATED_SENTINEL}")
+                run_docker_remove("volume", "rm", bundle.volume_name)
+                run_docker("volume", "create", bundle.volume_name)
+                scratch = run_docker_out("create", "-v", f"{bundle.volume_name}:/bundle-store", image, "/repo2ree-noop")
+                try:
+                    for source in bundle.store_sources:
+                        run_docker("cp", source, f"{scratch}:/bundle-store", timeout=600)
+                    with tempfile.NamedTemporaryFile(prefix="repo2ree-populated-") as marker:
+                        run_docker("cp", marker.name, f"{scratch}:/bundle-store/{_POPULATED_SENTINEL}")
+                finally:
+                    run_docker_silent("rm", "-f", "-v", scratch)
                 self._populated_volumes.add(bundle.volume_name)
             finally:
-                run_docker_silent("rm", "-f", "-v", scratch)
+                run_docker_silent("rm", "-f", lock)
 
     def _docker_backend_args(self, allocation_id: str) -> list[str]:
         if self._docker_mode == "dind":
@@ -650,6 +676,41 @@ def _image_has_nix(image: str) -> bool:
             first_byte = proc.stdout.read(1)
             docker_cli.kill_process(proc)
             return bool(first_byte)
+    finally:
+        run_docker_silent("rm", "-f", "-v", scratch)
+
+
+def _acquire_daemon_lock(name: str, image: str) -> bool:
+    """Take the daemon-wide lock ``name``; False while another holder has it.
+
+    A lock older than ``_POPULATE_LOCK_STALE_SECONDS`` is broken, and the caller
+    tries again.
+    """
+    try:
+        run_docker_out(
+            "create", "--name", name, "--label", f"{_LOCKED_AT_LABEL}={time.time():.0f}", image, "/repo2ree-noop"
+        )
+    except RuntimeError as exc:
+        if "is already in use" not in str(exc):
+            raise
+        with suppress(RuntimeError, ValueError):
+            locked_at = run_docker_out(
+                "inspect", "--format", f'{{{{index .Config.Labels "{_LOCKED_AT_LABEL}"}}}}', name
+            )
+            age = time.time() - float(locked_at)
+            if age > _POPULATE_LOCK_STALE_SECONDS:
+                logger.warning("breaking populate lock %s held for %.0fs", name, age)
+                run_docker_silent("rm", "-f", name)
+        return False
+    return True
+
+
+def _volume_populated(volume: str, image: str) -> bool:
+    """Whether ``volume`` holds a finished populate (it is created, empty, if missing)."""
+    run_docker("volume", "create", volume)
+    scratch = run_docker_out("create", "-v", f"{volume}:/bundle-store", image, "/repo2ree-noop")
+    try:
+        return _container_path_exists(scratch, f"/bundle-store/{_POPULATED_SENTINEL}")
     finally:
         run_docker_silent("rm", "-f", "-v", scratch)
 
