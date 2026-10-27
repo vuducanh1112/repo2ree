@@ -29,6 +29,9 @@
 | `just stack-clean` | Stop it and drop every volume it created, workbench leftovers included. |
 | `just clean-workbenches` | Just the workbench leftovers; pass `1` to also drop every bundle store volume. |
 | `just gc-bundle-store` | Remove every unused bundle store cache but the live one; pass a number to keep that many more. |
+| `just assurance-gate-on [target] [jobs]` | The assurance gate on a target (`local`, or a machine of your own), its receipt and runs brought back here. |
+| `just e2e-on <target> <recipe> [args]` | Any recipe on a target, its per-test runs brought back here. |
+| `just targets` / `just prepare-target <target>` | List the targets; ship HEAD to one and build its bundles there. |
 | `just commit-gate` | Fast pre-commit gate: documentation, static checks, and unit tests. Writes a receipt for the tree it passed on; the pre-commit hook checks that receipt. |
 | `just check-doc-links-external` | Manually check external documentation URLs with retries and a local response cache; intentionally excluded from deterministic gates. |
 | `just publish-gate` | The pre-publish gate: clean tree, all checks and tests, e2e source-run and image-backed. |
@@ -515,6 +518,36 @@ stage without repeating setup.
 
 Separate specs cover only branches such as origin-URL source fetch. The shared
 fixture attempts to release the workbench after every test, including failures.
+
+## Running on another machine
+
+The e2e tiers can run on a machine other than this one: a VM, a bigger
+workstation, a CI host. Such a *target* runs the stacks itself, because a bench
+calls its API back through `host.docker.internal`, so the API, its providers,
+and Docker must share a host. `local` is always a target; others are listed in
+`~/.config/repo2ree/targets.toml` (or the file `$REPO2REE_TARGETS` names), which
+stays out of the repository since hosts and paths are your own:
+
+```toml
+[targets.vm]
+host = "vm"          # an ssh destination: an alias from ~/.ssh/config, or user@host
+path = "repo2ree"    # the clone there, relative to its home or absolute
+jobs = 6             # stacks side by side per tier
+# shell = ["nix", "develop", "--command"]   what every command runs inside
+# fetch = "slim"     # or "full"; slim leaves runtime tarballs and REE archives there
+```
+
+A target needs Git, Nix with flakes, and Docker Engine, and an SSH login that
+can reach them. Nothing else is installed by hand: the first `just
+prepare-target vm` creates the clone, pushes HEAD to it, and builds the bundles
+inside the dev shell.
+
+`just assurance-gate-on vm` pushes HEAD to the target, checks it out clean,
+runs `just assurance-gate` there, and brings back every run it made and, if it
+passed, its receipt. A receipt binds a tree, not a machine, so it holds here as
+it held there; the recipe ends by checking that. `just e2e-on vm
+test-e2e-system` runs a single tier the same way. Only a commit can be shipped,
+so both refuse a working tree with changes.
 
 ## Artifacts and logs
 

@@ -803,6 +803,13 @@
         "type": "string"
       }
     },
+    "REPO2REE_TARGETS": {
+      "kind": "internal",
+      "owner": "testbed",
+      "schema": {
+        "type": "string"
+      }
+    },
     "REPO2REE_TEST_RUN_DIR": {
       "kind": "internal",
       "owner": "test-recording",
