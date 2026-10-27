@@ -1,4 +1,9 @@
-"""Judge and draw every test of an e2e run, and write its pages; never changes a test's outcome."""
+"""Judge and draw an e2e run's tests, or one dossier, and write their pages; never changes a test's outcome.
+
+A dossier a run's test left is judged where it lies and its test's row updated; one
+collected from a live deployment (``collect-dossier``) gets its reports under the
+assurance directory, by its name.
+"""
 
 from __future__ import annotations
 
@@ -8,10 +13,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-from repo2ree_testbed.artifacts import ROOT
+from repo2ree_testbed.artifacts import ROOT, domain_dir, run_dir
 from repo2ree_testbed.records import Behaviour, RunRecord, RunTest, read, write
 
 VERDICTS: dict[int, Behaviour] = {0: "passed", 1: "violated", 2: "inconclusive"}
+EXIT_CODES = {behaviour: code for code, behaviour in VERDICTS.items()}
 
 STYLE = """
 :root { color-scheme: light dark; --fg: #1d2330; --muted: #5b6475; --line: #d9dee7; --bg: #fbfcfe;
@@ -46,24 +52,26 @@ def tool(log: Path, *args: str) -> int:
         return subprocess.run(command, cwd=ROOT, check=False, stdout=output, stderr=subprocess.STDOUT).returncode
 
 
-def inspect_test(directory: Path, test: RunTest) -> RunTest:
-    dossier = directory / "dossier"
-    verification = directory / "verification"
-    logs = directory / "logs"
+def judge(dossier: Path, verification: Path, traces: Path, logs: Path, *, draw: bool) -> Behaviour:
+    """Check a dossier into ``verification``, and draw its traces and provenance into ``traces`` if asked."""
     verdict: Behaviour = "missing"
     if (dossier / "manifest.json").is_file():
         check = ("repo2ree_assurance_checker", "check", "--dossier", str(dossier), "-o", str(verification))
         verdict = VERDICTS.get(tool(logs / "checker.log", *check), "error")
-    if (verification / "verification.json").is_file() and test.rees:
-        draw = (
-            "repo2ree_assurance_traceview",
-            "trace",
-            str(verification),
-            "-o",
-            str(directory / "traces"),
-            "--provenance",
-        )
-        tool(logs / "traceview.log", *draw)
+    if (verification / "verification.json").is_file() and draw:
+        trace = ("repo2ree_assurance_traceview", "trace", str(verification), "-o", str(traces), "--provenance")
+        tool(logs / "traceview.log", *trace)
+    return verdict
+
+
+def inspect_test(directory: Path, test: RunTest) -> RunTest:
+    verdict = judge(
+        directory / "dossier",
+        directory / "verification",
+        directory / "traces",
+        directory / "logs",
+        draw=bool(test.rees),
+    )
     inspected = test.judged(verdict)
     write_test_index(directory, inspected)
     return inspected
@@ -150,11 +158,56 @@ def inspect_run(root: Path) -> RunRecord:
     return inspected_run
 
 
+def inspect_dossier(dossier: Path) -> Behaviour:
+    """Judge and draw one dossier: in its run if a run's test left it, else under the assurance directory."""
+    directory = dossier.parent
+    root = directory.parent.parent
+    run = read(RunRecord, root / "run.json") if (directory / "test.json").is_file() else None
+    if run is not None:
+        name = str(directory.relative_to(root))
+        tests = tuple(inspect_test(directory, test) if test.directory == name else test for test in run.tests)
+        inspected_run = run.with_tests(tests)
+        write_run_index(root, inspected_run)
+        write(root / "run.json", inspected_run)
+        [inspected] = [test for test in tests if test.directory == name]
+        print(f">> {inspected.behaviour}: {directory / 'index.html'}")
+        return inspected.behaviour or "missing"
+    reports = domain_dir("assurance")
+    verdict = judge(
+        dossier,
+        reports / "verification" / dossier.name,
+        reports / "traces" / dossier.name,
+        reports / "logs" / dossier.name,
+        draw=True,
+    )
+    print(f">> {verdict}: {reports / 'verification' / dossier.name / 'assurance.html'}")
+    return verdict
+
+
+def newest(pattern: str, what: str) -> Path:
+    found = sorted((run_dir() / "e2e").glob(pattern), key=lambda path: path.stat().st_mtime)
+    if not found:
+        raise ValueError(f"no {what} under {run_dir() / 'e2e'}; run an e2e tier first")
+    return found[-1].parent
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("run", type=Path, help="the run directory an e2e run wrote")
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    chosen = parser.add_mutually_exclusive_group()
+    # Strings, not paths: a recipe passes "" for "the newest", and Path("") would be the working directory.
+    chosen.add_argument("run", nargs="?", default="", help="a run directory an e2e run wrote (default: the newest)")
+    chosen.add_argument(
+        "--dossier",
+        nargs="?",
+        const="",
+        help="judge one dossier (default: the newest any run left); exit 0 passed, 1 violated, 2 inconclusive",
+    )
+    args = parser.parse_args()
     try:
-        inspect_run(parser.parse_args().run)
+        if args.dossier is not None:
+            dossier = Path(args.dossier) if args.dossier else newest("*/tests/*/dossier/manifest.json", "dossier")
+            return EXIT_CODES.get(inspect_dossier(dossier.resolve()), 2)
+        inspect_run(Path(args.run) if args.run else newest("*/run.json", "per-test run"))
     except ValueError as error:
         print(error, file=sys.stderr)
         return 1

@@ -28,7 +28,6 @@ DEFAULT_IMAGE_CANDIDATE_STATE_DIR := ".receipts/image-candidates"
 DEFAULT_PUBLISH_GATE_RECEIPT := ".receipts/publish-gate.json"
 
 export REPO2REE_ASSURANCE_DIR := env("REPO2REE_ASSURANCE_DIR", REPO2REE_TEST_RUN_DIR + "/assurance")
-ASSURANCE_DIR := REPO2REE_ASSURANCE_DIR
 # Views of the repository, as opposed to what ships (dist/) and what tests leave (test-artifacts/).
 REPORTS_DIR := "reports"
 DIAGRAM_DIR := REPORTS_DIR + "/diagrams"

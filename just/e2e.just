@@ -77,12 +77,7 @@ test-e2e-on machine +recipe:
 # Check and draw a per-test run again: verdicts, traces, and index pages (the newest run by default).
 [group('E2E tests')]
 inspect-e2e run="":
-    #!/usr/bin/env bash
-    set -euo pipefail
-    run={{ quote(run) }}
-    run=${run:-$(ls -td {{ quote(REPO2REE_TEST_RUN_DIR + "/e2e") }}/*/ 2>/dev/null | head -n 1)}
-    [[ -n "$run" ]] || { echo "no per-test run under {{ REPO2REE_TEST_RUN_DIR }}/e2e" >&2; exit 2; }
-    python -m repo2ree_testbed inspect "$run"
+    python -m repo2ree_testbed inspect {{ quote(run) }}
 
 # Record the measured narrated browser demo.
 [group('Demos')]

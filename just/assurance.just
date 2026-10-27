@@ -88,64 +88,12 @@ judge-e2e *runs:
     [[ -n "${runs// /}" ]] || { echo "no per-test run under {{ REPO2REE_TEST_RUN_DIR }}/e2e" >&2; exit 2; }
     python -m scripts.gates.assurance_gate judge $runs
 
-# Every e2e run leaves one dossier per test (a whole-suite run, one for the suite) under its run directory.
-E2E_RUNS_DIR := REPO2REE_TEST_RUN_DIR + "/e2e"
-
-# The newest dossier any e2e run left, or the one given; never empty.
-[private]
-_dossier dossier:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if [[ -n {{ quote(dossier) }} ]]; then printf '%s\n' {{ quote(dossier) }}; exit 0; fi
-    latest=$(ls -td {{ quote(E2E_RUNS_DIR) }}/*/tests/*/dossier/manifest.json 2>/dev/null | head -n 1 || true)
-    [[ -n "$latest" ]] || { echo "no dossier under {{ E2E_RUNS_DIR }}; run an e2e suite (just demo-gui)" >&2; exit 2; }
-    dirname "$latest"
-
-# Where a dossier's report and views go: beside it in its run's test directory, as the gate writes them;
-# for a dossier collected elsewhere (collect-dossier), under the assurance directory by its name.
-[private]
-_beside dossier kind:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    parent=$(dirname {{ quote(dossier) }})
-    if [[ -f "$parent/test.json" ]]; then printf '%s\n' "$parent/{{ kind }}"; exit 0; fi
-    printf '%s\n' {{ quote(ASSURANCE_DIR) }}/{{ kind }}/"$(basename {{ quote(dossier) }})"
-
-# Judge a collected dossier against the behaviour specification, apart from the run that collected it.
-# Exit 0 passed, 1 violated, 2 inconclusive. The report goes beside, never into, the dossier.
+# Reports go into the dossier's run test directory, or for one collected elsewhere (collect-dossier) under the
+# assurance directory; exit 0 passed, 1 violated, 2 inconclusive.
+# Judge one dossier and draw its traces and provenance (the newest any e2e run left by default).
 [group('Assurance')]
-check-dossier dossier="" output="":
-    #!/usr/bin/env bash
-    set -euo pipefail
-    dossier=$(just _dossier {{ quote(dossier) }})
-    output={{ quote(output) }}
-    output=${output:-$(just _beside "$dossier" verification)}
-    python -m repo2ree_assurance_checker check --dossier "$dossier" -o "$output"
-
-# The verification check-dossier wrote for a dossier (the newest by default); drawing never verifies.
-[private]
-_verification dossier:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    dossier=$(just _dossier {{ quote(dossier) }})
-    verification=$(just _beside "$dossier" verification)
-    [[ -f "$verification/verification.json" ]] || { echo "no verification of $dossier; run: just check-dossier $dossier" >&2; exit 2; }
-    printf '%s\n' "$verification"
-
-# Draw one behaviour trace page per REE of a verified dossier: setup, operations across components, rules triggered.
-[group('Assurance')]
-trace-dossier dossier="" output="":
-    #!/usr/bin/env bash
-    set -euo pipefail
-    dossier=$(just _dossier {{ quote(dossier) }})
-    output={{ quote(output) }}
-    output=${output:-$(just _beside "$dossier" traces)}
-    python -m repo2ree_assurance_traceview trace "$(just _verification "$dossier")" -o "$output"
-
-# Print why a verified dossier's sealed REE can be trusted: each step's evidence back to its request.
-[group('Assurance')]
-provenance-dossier dossier="":
-    python -m repo2ree_assurance_traceview trace "$(just _verification {{ quote(dossier) }})" --provenance
+inspect-dossier dossier="":
+    python -m repo2ree_testbed inspect --dossier {{ quote(dossier) }}
 
 [group('Assurance')]
 generate-assurance-metrics:
