@@ -33,24 +33,8 @@ def _source(value: Any) -> SourceDefinition | None:
     return None if value is None else SourceDefinition.model_validate(value)
 
 
-def rehydrate_after_file_mutation(
-    definition: ReeDefinition,
-    changed_path: str,
-    layout: ReeLayout,
-) -> ReeDefinition:
-    payload = definition.model_dump(mode="json")
-    if changed_path == RESERVED_BUILD_SCRIPT and not layout.overlay_file(changed_path).is_file():
-        payload["build_runtime"] = None
-    if changed_path == RESERVED_ACTIVATION_SCRIPT and not layout.overlay_file(changed_path).is_file():
-        payload["test_activation"] = None
-    experiments = []
-    for experiment in payload.get("experiments") or []:
-        run_path = experiment_run_script_path(str(experiment["name"]))
-        if changed_path == run_path and not layout.overlay_file(run_path).is_file():
-            continue
-        experiments.append(experiment)
-    payload["experiments"] = experiments
-    return hydrate_definition_payload(payload, layout)
+def rehydrate_after_file_mutation(definition: ReeDefinition, layout: ReeLayout) -> ReeDefinition:
+    return hydrate_definition_payload(definition.model_dump(mode="json"), layout)
 
 
 def hydrate_definition_payload(payload: dict[str, Any], layout: ReeLayout) -> ReeDefinition:

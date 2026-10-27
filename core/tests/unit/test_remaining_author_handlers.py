@@ -174,7 +174,7 @@ def test_a_definition_patch_never_changes_the_source(
     assert patch({"name": "renamed", "source": acquired.model_dump(mode="json")}) == "succeeded"
 
 
-def test_recipe_file_write_rehydrates_definition_and_delete_removes_component(
+def test_recipe_file_write_rehydrates_definition_and_its_deletion_is_refused(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -198,8 +198,8 @@ def test_recipe_file_write_rehydrates_definition_and_delete_removes_component(
         log=lambda *args: None,
         is_canceled=lambda: False,
     )
-    assert delete_result.status == "succeeded"
-    assert store.read_ree().subject.definition.build_runtime is None
+    assert delete_result.status == "failed"
+    assert store.read_ree().subject.definition.build_runtime == updated
 
 
 def test_hardware_observation_commits_receipt_without_rewriting_declaration(

@@ -2,7 +2,8 @@
 
 Removes a path from /ree/overlay/ and either restores it from upstream
 (if the file originated there) or removes it from workspace entirely.
-Mirrors the host-side delete_file_content behaviour exactly.
+Mirrors the host-side delete_file_content behaviour exactly. A step's run
+script is refused: the step is undeclared through the definition instead.
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ from repo2ree_core.path_safety import validate_relative_path
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError, load_ree, save_ree
+from repo2ree_core.reserved_paths import is_run_script
 from repo2ree_protocol.command import DeleteFileArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
@@ -32,6 +34,11 @@ def handle_delete_file(
     except ValueError as exc:
         log("system", "error", f"invalid path: {exc}")
         return ActionResult.failed("validation", f"invalid path: {exc}")
+    if is_run_script(args.path):
+        log("system", "error", f"cannot delete a run script: {args.path}")
+        return ActionResult.failed(
+            "validation", f"{args.path} is a step's run script; undeclare the step instead of deleting it"
+        )
 
     layout = ReeLayout.in_workbench()
     store = ReeDirectory(layout)
@@ -66,7 +73,7 @@ def handle_delete_file(
             store.workspace.write_bytes(args.path, store.upstream.read_bytes(args.path))
         else:
             store.workspace.delete_if_exists(args.path)
-        definition = rehydrate_after_file_mutation(ree.subject.definition, args.path, layout)
+        definition = rehydrate_after_file_mutation(ree.subject.definition, layout)
         save_ree(
             layout,
             store,

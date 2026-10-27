@@ -58,7 +58,7 @@ def handle_write_file(
     try:
         store.overlay.write_text(args.path, args.content)
         store.workspace.write_text(args.path, args.content)
-        definition = rehydrate_after_file_mutation(ree.subject.definition, args.path, layout)
+        definition = rehydrate_after_file_mutation(ree.subject.definition, layout)
         save_ree(
             layout,
             store,

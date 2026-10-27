@@ -3,7 +3,7 @@
 The handler runs inside the workbench against the fixed ``/ree`` layout; these
 tests point ``ReeLayout.in_workbench`` at a tmp root (the same seam the other
 handler tests use) and exercise the three outcomes: restore-from-upstream,
-remove-entirely, and the guard paths.
+remove-entirely, and the guard paths, including the refused run scripts.
 """
 
 from __future__ import annotations
@@ -17,6 +17,13 @@ from repo2ree_core.domain.ree.model import Ree, ReeDefinition, ReeSubject
 from repo2ree_core.operations.handlers.author import delete_file as handler
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.reserved_paths import (
+    RESERVED_ACTIVATION_SCRIPT,
+    RESERVED_ACTIVATION_VERIFY_SCRIPT,
+    RESERVED_BUILD_SCRIPT,
+    experiment_run_script_path,
+    experiment_verify_script_path,
+)
 from repo2ree_protocol.command import DeleteFileArgs
 
 
@@ -41,6 +48,39 @@ def test_invalid_path_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
     result = handler.handle_delete_file(DeleteFileArgs(path="../escape"), log=_silent_log, is_canceled=_never_canceled)
     assert result.status == "failed"
     assert result.exit_code == 1
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        RESERVED_BUILD_SCRIPT,
+        RESERVED_ACTIVATION_SCRIPT,
+        experiment_run_script_path("hello"),
+        f"./{RESERVED_BUILD_SCRIPT}",
+    ],
+)
+def test_a_run_script_is_never_deleted(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, path: str) -> None:
+    """A step is undeclared through the definition; deleting its run script would do it silently."""
+    store = _store_at(tmp_path, monkeypatch)
+    store.overlay.write_bytes(path, b"#!/bin/sh\n")
+    store.workspace.write_bytes(path, b"#!/bin/sh\n")
+    result = handler.handle_delete_file(DeleteFileArgs(path=path), log=_silent_log, is_canceled=_never_canceled)
+    assert result.status == "failed"
+    assert result.failure is not None
+    assert result.failure.category == "validation"
+    assert store.overlay.is_file(path)
+    assert store.workspace.is_file(path)
+
+
+@pytest.mark.parametrize("path", [RESERVED_ACTIVATION_VERIFY_SCRIPT, experiment_verify_script_path("hello")])
+def test_a_verify_script_can_be_deleted(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, path: str) -> None:
+    """A verify script is optional: deleting it is how its step stops being verified."""
+    store = _store_at(tmp_path, monkeypatch)
+    store.overlay.write_bytes(path, b"#!/bin/sh\n")
+    store.workspace.write_bytes(path, b"#!/bin/sh\n")
+    result = handler.handle_delete_file(DeleteFileArgs(path=path), log=_silent_log, is_canceled=_never_canceled)
+    assert result.status == "succeeded"
+    assert not store.overlay.is_file(path)
 
 
 def test_missing_file_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

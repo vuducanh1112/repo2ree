@@ -15,6 +15,8 @@ named ``ree``: inside a tree already rooted at ``/ree`` that read as
 
 from __future__ import annotations
 
+from pathlib import PurePosixPath
+
 RESERVED_SCRIPT_DIR = "ree-scripts"
 
 # The mandatory runtime build script: produces the runtime artifact.
@@ -55,3 +57,19 @@ def experiment_run_script_path(name: str) -> str:
 def experiment_verify_script_path(name: str) -> str:
     """The reserved verify-script path for an experiment name."""
     return f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{experiment_slug(name)}.verify.sh"
+
+
+def is_run_script(path: str) -> bool:
+    """Whether a path is a step's run script: build, activation, or an experiment's.
+
+    A run script exists for as long as its step is declared; the step is
+    undeclared through the definition, never by deleting the file.
+    """
+    normalized = PurePosixPath(path)
+    if str(normalized) in (RESERVED_BUILD_SCRIPT, RESERVED_ACTIVATION_SCRIPT):
+        return True
+    return (
+        str(normalized.parent) == RESERVED_EXPERIMENT_SCRIPT_DIR
+        and normalized.suffix == ".sh"
+        and not normalized.name.endswith(".verify.sh")
+    )
