@@ -1,0 +1,19 @@
+# The dev container on an e2e machine, as `repo2ree_testbed machine prepare` starts
+# it: the dev image, the clone in a volume at /repo2ree (where the local dev container
+# mounts its checkout), and the machine's Docker socket. Compose gives it a network of
+# its own, which benches join to call its API back by name, and recreates it when this
+# file or its image changes. The project and the container are named $CONTAINER.
+services:
+  dev:
+    image: ${CONTAINER:?}
+    container_name: ${CONTAINER:?}
+    pull_policy: never
+    init: true
+    restart: unless-stopped
+    command: ["sleep", "infinity"]
+    volumes:
+      - checkout:/repo2ree
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  checkout:

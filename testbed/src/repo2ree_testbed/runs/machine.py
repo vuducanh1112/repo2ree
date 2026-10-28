@@ -12,10 +12,11 @@ machine named in the machines file (``$REPO2REE_MACHINES``, by default the untra
     # container = "repo2ree-dev"                  the container everything there runs in
     # dockerfile = "docker/dev/nix.Dockerfile"    the dev image it runs
 
-A remote machine runs nothing on itself: it needs only a Docker Engine its SSH user
-may use. `prepare` builds the dev image from HEAD there and starts it as the
-container, on the machine's Docker, with the clone in a volume at /repo2ree, where
-the local dev container has its checkout. A run then pushes
+A remote machine runs nothing on itself: it needs only a Docker Engine, with Compose,
+its SSH user may use. `prepare` builds the dev image from HEAD there, unless it has the
+image for HEAD's image inputs, and brings the container up with Compose
+(docker/dev/machine.compose.yml), with the clone in a volume at /repo2ree, where the
+local dev container has its checkout. A run then pushes
 HEAD into the container, checks it out clean, runs the recipe in its dev shell, and
 sends back every per-test run the recipe reported; the gate also sends back its
 receipt, which binds a tree rather than a machine, so it holds here as it did there.
@@ -57,24 +58,17 @@ RECEIPT = ".receipts/assurance-gate.json"
 # container mounts its checkout at, which the image's direnv trusts, so the .envrc loads.
 CONTAINER_USER = "nixuser"
 CHECKOUT = "/repo2ree"
-DOCKER_SOCKET = "/var/run/docker.sock"
 # What ssh exits with when it cannot connect or log in, as opposed to the remote command failing.
 SSH_FAILED = 255
 # What the container check exits with, beyond success.
 NOT_RUNNING = 3
 OTHER_SOURCE = 4
-# On the container: a hash of the image it runs, of the image inputs it was built from,
-# and of the options it was started with.
-IMAGE_LABEL = "repo2ree.dev-image"
+# How the container is started, read from the commit: Compose replaces it when this changes.
+COMPOSE_FILE = "docker/dev/machine.compose.yml"
+# On the dev image, and so on the container: a hash of the image inputs it was built from.
 SOURCE_LABEL = "repo2ree.dev-source"
-RUN_LABEL = "repo2ree.dev-run"
-IMAGE_FINGERPRINT = "{{json .RootFS.Layers}}{{json .Config}}"
-CONTAINER_STATE = " ".join(
-    [
-        "{{.State.Running}}",
-        *(f'{{{{index .Config.Labels "{label}"}}}}' for label in (IMAGE_LABEL, SOURCE_LABEL, RUN_LABEL)),
-    ]
-)
+IMAGE_SOURCE = f'{{{{index .Config.Labels "{SOURCE_LABEL}"}}}}'
+CONTAINER_STATE = f"{{{{.State.Running}}}} {IMAGE_SOURCE}"
 # Where a remote job keeps its command, process, log, and exit code, relative to the clone.
 JOB = "test-artifacts/machine-job"
 # The last line a job's follow prints, after the job's log: how it ended.
@@ -157,48 +151,34 @@ class Machine:
         return self.config.host is not None
 
     def provision(self, revision: str) -> None:
-        """Build the dev image from ``revision`` on the machine, and run it as the container if it is new."""
+        """Build the dev image from ``revision`` on the machine, unless it has it, and bring the container up."""
         if not self.remote:
             return
         if self._check_container() == 0:
             self._refuse_running_job("replace its container")
         name = shlex.quote(self.config.container)
         source = image_source(revision, self.config.dockerfile)
-        build = f"docker build --label {self._label} -t {name} -f {shlex.quote(self.config.dockerfile)} -"
-        print(f">> building {self.config.dockerfile} at {revision[:12]} on {self.name}")
-        # The build context is what the Dockerfile copies, not the whole tree: that is all it reads.
-        context = ["git", "archive", "--format=tar", revision, "--", *image_paths(revision, self.config.dockerfile)]
-        self._require(self.runner.pipe(context, self._on_host(build)), "build the dev image")
-        network = shlex.quote(self._network)
-        # Benches join the container's network and call its API back by its name, which only a
-        # user-defined network resolves, not Docker's bridge.
-        options = " ".join(
-            [
-                f"--network {network} --init --restart unless-stopped",
-                f"-v {DOCKER_SOCKET}:{DOCKER_SOCKET} -v {shlex.quote(self._volume)}:{CHECKOUT}",
-            ]
-        )
-        started = hashlib.sha256(options.encode()).hexdigest()[:16]
-        labels = f"--label {IMAGE_LABEL}=$built --label {SOURCE_LABEL}={source} --label {RUN_LABEL}={started}"
-        run = f"docker run -d --name {name} {options} {labels} {name} sleep infinity >/dev/null"
-        replace = f"docker rm -f {name} >/dev/null 2>&1; {run} || exit 1"
-        # Only a different image, other image inputs, or other options replace the container. Image
-        # IDs cannot tell: a rebuild from cache gets a new one, and the image a container started
-        # from loses its ID once the tag moves. Its layers and settings can, so the container
-        # carries their hash, beside those of its image inputs and its options.
+        # An image built from the same inputs is kept: a rebuild, even from cache, gets a new ID,
+        # which would make Compose replace the container for nothing.
+        has_image = f'[ "$(docker image inspect -f {shlex.quote(IMAGE_SOURCE)} {name} 2>/dev/null)" = {source} ]'
+        if self.runner.call(self._on_host(has_image)) == 0:
+            print(f">> {self.name} has the dev image for the image inputs at {revision[:12]}")
+        else:
+            labels = f"--label {self._label} --label {SOURCE_LABEL}={source}"
+            build = f"docker build {labels} -t {name} -f {shlex.quote(self.config.dockerfile)} -"
+            print(f">> building {self.config.dockerfile} at {revision[:12]} on {self.name}")
+            # The build context is what the Dockerfile copies, not the whole tree: that is all it reads.
+            context = ["git", "archive", "--format=tar", revision, "--", *image_paths(revision, self.config.dockerfile)]
+            self._require(self.runner.pipe(context, self._on_host(build)), "build the dev image")
+        # The container carries the image's labels, its source among them, which runs check.
         script = "; ".join(
             [
-                f"built=$(docker image inspect -f {shlex.quote(IMAGE_FINGERPRINT)} {name} | sha256sum)",
-                "built=${built%% *}",
-                f"docker network inspect {network} >/dev/null 2>&1 || docker network create {network} >/dev/null",
-                f"set -- $(docker container inspect -f {shlex.quote(CONTAINER_STATE)} {name} 2>/dev/null)",
-                f'if [ "$2 $3 $4" = "$built {source} {started}" ]; then :; else {replace}; fi',
-                f"docker start {name} >/dev/null || exit 1",
+                f"{self._compose} up -d --quiet-pull || exit 1",
                 f"docker exec -u root {name} chown {CONTAINER_USER}: {CHECKOUT} || exit 1",
                 f"docker image prune -f --filter label={self._label} >/dev/null",
             ]
         )
-        self._require(self.runner.call(self._on_host(script)), "start the container")
+        self._require(self.runner.pipe(self._compose_file(revision), self._on_host(script)), "start the container")
 
     def remove(self) -> None:
         """Clean up what runs left on the machine's Docker, then remove the container, its volume, and images."""
@@ -210,17 +190,13 @@ class Machine:
             shell = shlex.join([*self.config.shell, "bash", "-c", "just stack-clean; just clean-workbenches 1"])
             if self.runner.call(self._ssh(f"if test -f justfile; then {shell}; fi")) != 0:
                 print(f">> could not clean up what runs left on {self.name}; check its `docker ps -a`")
-        name = shlex.quote(container)
         script = "; ".join(
             [
-                f"docker rm -f {name} >/dev/null 2>&1",
-                f"docker volume rm {shlex.quote(self._volume)} >/dev/null 2>&1",
-                f"docker network rm {shlex.quote(self._network)} >/dev/null 2>&1",
+                f"{self._compose} down --volumes --remove-orphans || exit 1",
                 f"docker image ls -q --filter label={self._label} | xargs -r docker image rm -f >/dev/null",
-                "true",
             ]
         )
-        self._require(self.runner.call(self._on_host(script)), "remove the container")
+        self._require(self.runner.pipe(self._compose_file("HEAD"), self._on_host(script)), "remove the container")
         print(f">> removed {container}, its volume, network, and images from {self.name}")
 
     def job(self, revision: str, argv: Sequence[str]) -> tuple[int, list[Path]]:
@@ -447,12 +423,13 @@ class Machine:
         return shlex.join(["docker", "exec", "-i", "-u", CONTAINER_USER, "-w", CHECKOUT, self.config.container])
 
     @property
-    def _network(self) -> str:
-        return f"{self.config.container}-network"
+    def _compose(self) -> str:
+        """Compose on the host, for the container's project, its file read from stdin."""
+        name = shlex.quote(self.config.container)
+        return f"CONTAINER={name} docker compose --project-name {name} --file -"
 
-    @property
-    def _volume(self) -> str:
-        return f"{self.config.container}-checkout"
+    def _compose_file(self, revision: str) -> list[str]:
+        return ["git", "show", f"{revision}:{COMPOSE_FILE}"]
 
     @property
     def _label(self) -> str:
@@ -466,7 +443,7 @@ class Machine:
                 f"state=$({inspect} 2>/dev/null) || exit {NOT_RUNNING}",
                 "set -- $state",
                 f'[ "$1" = true ] || exit {NOT_RUNNING}',
-                *([f'[ "$3" = {source} ] || exit {OTHER_SOURCE}'] if source else []),
+                *([f'[ "$2" = {source} ] || exit {OTHER_SOURCE}'] if source else []),
             ]
         )
         code = self.runner.call(self._on_host(script))

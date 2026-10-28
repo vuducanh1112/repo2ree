@@ -1,4 +1,3 @@
-import hashlib
 import shlex
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -222,7 +221,7 @@ def test_a_run_refuses_a_container_that_is_down_out_of_date_or_unreachable(failu
 def test_the_check_compares_the_container_with_heads_image_inputs() -> None:
     runner = FakeRunner()
     run_recipe(Machine("vm", VM, runner), ["test-e2e-system"])
-    assert f'[ "$3" = {image_source(REVISION, "docker/dev/nix.Dockerfile")} ] || exit {OTHER_SOURCE}' in _on_host(
+    assert f'[ "$2" = {image_source(REVISION, "docker/dev/nix.Dockerfile")} ] || exit {OTHER_SOURCE}' in _on_host(
         runner.calls[0]
     )
 
@@ -245,17 +244,17 @@ def test_the_image_source_hashes_the_dockerfile_and_every_input_at_the_revision(
     assert source == image_source(REVISION, "docker/dev/nix.Dockerfile")
 
 
-def test_preparing_builds_head_there_and_replaces_the_container_only_for_another_image() -> None:
-    runner = FakeRunner()
+COMPOSE = "CONTAINER=repo2ree-dev docker compose --project-name repo2ree-dev --file -"
+IMAGE_CHECK = "docker image inspect"
 
-    assert (
-        prepare(
-            Machine("vm", VM, runner),
-        )
-        == 0
-    )
 
-    [(archive, build)] = runner.piped
+def test_preparing_builds_head_there_and_brings_the_container_up_with_compose() -> None:
+    runner = FakeRunner(codes={IMAGE_CHECK: 1})
+
+    assert prepare(Machine("vm", VM, runner)) == 0
+
+    source = image_source(REVISION, "docker/dev/nix.Dockerfile")
+    (archive, build), (compose_file, up) = runner.piped
     # Only what the Dockerfile copies goes over, not the whole tree.
     assert archive == [
         "git",
@@ -269,48 +268,54 @@ def test_preparing_builds_head_there_and_replaces_the_container_only_for_another
         "flake.nix",
         "nix",
     ]
+    # The image carries a hash of its inputs, which the container inherits and runs check.
     assert _on_host(build) == (
-        "docker build --label repo2ree.dev-container=repo2ree-dev -t repo2ree-dev -f docker/dev/nix.Dockerfile -"
+        "docker build --label repo2ree.dev-container=repo2ree-dev"
+        f" --label repo2ree.dev-source={source} -t repo2ree-dev -f docker/dev/nix.Dockerfile -"
     )
-    start = _on_host(runner.calls[2])
-    source = image_source(REVISION, "docker/dev/nix.Dockerfile")
-    # On a network of its own, which resolves its name for the benches that join it, with the clone at /repo2ree.
-    options = (
-        "--network repo2ree-dev-network --init --restart unless-stopped"
-        " -v /var/run/docker.sock:/var/run/docker.sock -v repo2ree-dev-checkout:/repo2ree"
-    )
-    started = hashlib.sha256(options.encode()).hexdigest()[:16]
-    assert "docker network create repo2ree-dev-network" in start
-    assert f"docker run -d --name repo2ree-dev {options} --label repo2ree.dev-image=$built" in start
-    assert f"--label repo2ree.dev-source={source} --label repo2ree.dev-run={started}" in start
-    # Another image, other image inputs, or other options than these replace it.
-    assert f'if [ "$2 $3 $4" = "$built {source} {started}" ]' in start
-    assert "chown nixuser: /repo2ree" in start
+    # Compose starts the container from the commit's file, and replaces it only when that or the image changed.
+    assert compose_file == ["git", "show", f"{REVISION}:docker/dev/machine.compose.yml"]
+    starting = _on_host(up)
+    assert f"{COMPOSE} up -d --quiet-pull || exit 1" in starting
+    assert "chown nixuser: /repo2ree" in starting
     # Before replacing anything it looks for a job; the container it then started passes the check a run makes.
     assert STATE in _in_container(runner.calls[1])
-    assert f'[ "$3" = {source} ] || exit {OTHER_SOURCE}' in _on_host(runner.calls[3])
+    assert f'[ "$2" = {source} ] || exit {OTHER_SOURCE}' in _on_host(runner.calls[3])
     assert "direnv exec . just build-e2e-bundles" in _in_container(runner.calls[-2])
 
 
-def test_removing_cleans_up_inside_the_container_then_removes_it_its_volume_and_images() -> None:
+def test_preparing_keeps_an_image_built_from_the_same_inputs() -> None:
+    runner = FakeRunner()
+
+    assert prepare(Machine("vm", VM, runner)) == 0
+
+    source = image_source(REVISION, "docker/dev/nix.Dockerfile")
+    assert f'repo2ree.dev-source"}}}}\' repo2ree-dev 2>/dev/null)" = {source} ]' in _on_host(runner.calls[2])
+    # Nothing is built, so Compose finds the image it started the container from and leaves the container be.
+    [(_compose_file, up)] = runner.piped
+    assert f"{COMPOSE} up -d" in _on_host(up)
+
+
+def test_removing_cleans_up_inside_the_container_then_takes_its_compose_project_and_images() -> None:
     runner = FakeRunner()
 
     Machine("vm", VM, runner).remove()
 
-    _check, _state, cleanup, removal = runner.calls
+    _check, _state, cleanup = runner.calls
     assert "just stack-clean; just clean-workbenches 1" in _in_container(cleanup)
+    [(compose_file, removal)] = runner.piped
+    assert compose_file == ["git", "show", "HEAD:docker/dev/machine.compose.yml"]
     removing = _on_host(removal)
-    assert "docker rm -f repo2ree-dev" in removing
-    assert "docker volume rm repo2ree-dev-checkout" in removing
-    assert "docker network rm repo2ree-dev-network" in removing
+    # The container, its network, and the clone's volume.
+    assert f"{COMPOSE} down --volumes --remove-orphans" in removing
     assert "--filter label=repo2ree.dev-container=repo2ree-dev" in removing
 
 
 def test_removing_a_stopped_container_skips_the_cleanup_inside_it() -> None:
     runner = FakeRunner(codes={"docker container inspect": NOT_RUNNING})
     Machine("vm", VM, runner).remove()
-    assert len(runner.calls) == 2
-    assert "docker rm -f repo2ree-dev" in _on_host(runner.calls[1])
+    assert len(runner.calls) == 1
+    assert "down --volumes" in _on_host(runner.piped[0][1])
 
 
 def test_a_machine_runs_only_commits(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -420,5 +425,5 @@ def test_preparing_or_removing_refuses_while_a_job_runs(act: Callable[[Machine],
     runner = FakeRunner(codes={STATE: OTHER_RUNNING})
     with pytest.raises(SystemExit, match="vm is running the job above, so this will not"):
         act(Machine("vm", VM, runner))
+    # Neither a build nor Compose ran: both go through a pipe.
     assert runner.piped == []
-    assert not any("docker rm" in call[-1] for call in runner.calls)

@@ -540,18 +540,19 @@ jobs = 6             # stacks side by side per tier
 # dockerfile = "docker/dev/nix.Dockerfile"    # the dev image it runs
 ```
 
-Nothing runs on the machine itself: it needs only a Docker Engine its SSH user may
-use, and keeps nothing of yours but Docker objects. `just prepare-e2e-machine vm`
-builds the dev image from HEAD there, starts it as the container on the machine's
-Docker with the clone in a volume at `/repo2ree`, the path of your own checkout in
-the dev container, and builds the bundles inside it. Paths are the same in both
-places, and the image trusts the `.envrc` there as it does yours. The container
-gets a network of its own, as Compose gives the local one: benches join it and
-reach the API inside the container by its name. It replaces
-the container only when the image changed, so the clone and the bundles carry
-over. Every command, push, and fetch then runs inside the container. `just
-remove-e2e-machine vm` cleans up the stacks and workbenches runs left, then
-removes the container, its volume, network, and images.
+Nothing runs on the machine itself: it needs only a Docker Engine with Compose that
+its SSH user may use, and keeps nothing of yours but Docker objects. `just
+prepare-e2e-machine vm` builds the dev image from HEAD there, unless it already has
+the image for HEAD's image inputs, and brings the container up with Compose from
+`docker/dev/machine.compose.yml`. The clone is in a volume at `/repo2ree`, the path
+of your own checkout in the dev container, so paths are the same in both places and
+the image trusts the `.envrc` there as it does yours. Compose gives the container a
+network of its own, as it does the local one: benches join it and reach the API
+inside the container by its name. Compose replaces the container only when its image
+or that file changed, so the clone and the bundles carry over. Every command, push,
+and fetch then runs inside the container. `just remove-e2e-machine vm` cleans up the
+stacks and workbenches runs left, then takes the container, its network and volume,
+and its images.
 
 For a VM you reach with an admin login, `tools/ssh/setup-vm.sh <admin login>`, run
 on your own computer, makes a key for it, loads it into your SSH agent, and
