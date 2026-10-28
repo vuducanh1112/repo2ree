@@ -30,6 +30,9 @@ devPkgs.mkShell {
     vim
     docker-client
     ps
+    # ssh and scp for the e2e machines (repo2ree_testbed machine); keys stay on
+    # your own computer, which VS Code lets this shell sign with.
+    openssh
 
     # Project
     uv

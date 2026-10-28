@@ -53,15 +53,20 @@ test-e2e-fuzz: build-e2e-bundles
 [group('E2E tests')]
 test-e2e-review mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE: build-e2e-bundles (_source-stack-playwright "e2e-gui-review" "1" mode docker_mode)
 
-# List the machines the e2e tiers can run on: `local`, and those in ~/.config/repo2ree/machines.toml.
+# List the machines the e2e tiers can run on: `local`, and those in .config/machines.toml (untracked).
 [group('E2E tests')]
 list-e2e-machines:
     python -m repo2ree_testbed machine list
 
-# Ship HEAD to an e2e machine and build its bundles there, so its first run starts warm.
+# Ship HEAD to an e2e machine (into its container, built from HEAD, if it has one) and build its bundles there.
 [group('E2E tests')]
 prepare-e2e-machine machine:
     python -m repo2ree_testbed machine prepare {{ quote(machine) }}
+
+# Clean up an e2e machine's container and what its runs left, then remove the container, its volume and images.
+[group('E2E tests')]
+remove-e2e-machine machine:
+    python -m repo2ree_testbed machine remove {{ quote(machine) }}
 
 # Run the assurance gate on an e2e machine, bring its receipt and runs here, and check the receipt holds for HEAD.
 [group('E2E tests')]

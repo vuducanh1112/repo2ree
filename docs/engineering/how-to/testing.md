@@ -525,31 +525,45 @@ The e2e tiers can run on a machine other than this one: a VM, a bigger
 workstation, a CI host. Such a machine runs the stacks itself, because a bench
 calls its API back through `host.docker.internal`, so the API, its providers,
 and Docker must share a host. `local` is always one; others are listed in
-`~/.config/repo2ree/machines.toml` (or the file `$REPO2REE_MACHINES` names), which
-stays out of the repository since hosts and paths are your own:
+`.config/machines.toml` in your checkout (or the file `$REPO2REE_MACHINES` names).
+Git ignores `.config/`, since hosts and paths are your own, and the file survives a
+rebuilt dev container because the checkout does:
 
 ```toml
 [machines.vm]
-host = "vm"          # an ssh destination: an alias from ~/.ssh/config, or user@host
-path = "repo2ree"    # the clone there, relative to its home or absolute
+host = "repo2ree@vm" # an ssh destination: an alias from ~/.ssh/config, or user@host
 jobs = 6             # stacks side by side per tier
-# shell = [...]    what every command runs inside; by default `nix develop`, flakes on
+# path = "repo2ree"  # the clone, in the container's home or absolute there
+# shell = [...]      # what every command runs inside; by default `nix develop`, flakes on
 # fetch = "slim"     # or "full"; slim leaves runtime tarballs and REE archives there
+# container = "repo2ree-dev"                  # the container everything there runs in
+# dockerfile = "docker/dev/nix.Dockerfile"    # the dev image it runs
 ```
 
-A machine needs Nix and a running Docker Engine (on NixOS, Nix alone:
-`virtualisation.docker.enable`), and an SSH login that can reach them. Git comes
-from Nix too, and flakes are switched on per command, so the machine's Nix needs no
-configuration. Nothing else is installed by hand: the first `just
-prepare-e2e-machine vm` creates the clone, pushes HEAD to it, and builds the bundles
-inside the dev shell.
+Nothing runs on the machine itself: it needs only a Docker Engine its SSH user may
+use, and keeps nothing of yours but Docker objects. `just prepare-e2e-machine vm`
+builds the dev image from HEAD there, starts it as the container on the machine's
+Docker with the clone in a volume, and builds the bundles inside it. It replaces
+the container only when the image changed, so the clone and the bundles carry
+over. Every command, push, and fetch then runs inside the container. `just
+remove-e2e-machine vm` cleans up the stacks and workbenches runs left, then
+removes the container, its volume, and its images.
 
-`just gate-e2e-on vm` pushes HEAD to the machine, checks it out clean,
-runs `just assurance-gate` there, and brings back every run it made and, if it
-passed, its receipt. A receipt binds a tree, not a machine, so it holds here as
-it held there; the recipe ends by checking that. `just test-e2e-on vm
-test-e2e-system` runs a single tier the same way. Only a commit can be shipped,
-so both refuse a working tree with changes.
+For a VM you reach with an admin login, `tools/ssh/setup-vm.sh <admin login>`, run
+on your own computer, makes a key for it, loads it into your SSH agent, and
+creates a `repo2ree` user there in the docker group that accepts the key; the dev
+container uses the key through the agent VS Code forwards. `--revoke` takes it
+away again.
+
+`just gate-e2e-on vm` pushes HEAD into the container, checks it out clean, runs
+`just assurance-gate` there, and brings back every run it made and, if it passed,
+its receipt. A receipt binds a tree, not a machine, so it holds here as it held
+there; the recipe ends by checking that. `just test-e2e-on vm test-e2e-system`
+runs a single tier the same way. Only a commit can be shipped, so both refuse a
+working tree with changes. Both also refuse, before shipping anything, a machine
+they cannot reach, a container that is not running, and a container built from
+other image inputs than HEAD's: the Dockerfile and every path it copies. Run
+`just prepare-e2e-machine vm` again after changing those.
 
 ## Artifacts and logs
 

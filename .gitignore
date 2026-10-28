@@ -28,6 +28,9 @@ result-*
 # Local runtime state
 .repo2ree/
 
+# Your own settings for this checkout, such as the e2e machines (.config/machines.toml)
+/.config/
+
 # Test artifacts — all coverage reports/data and observability traces live
 # under one gitignored root (see the test-artifacts layout in docs/engineering/how-to/testing.md).
 /test-artifacts/

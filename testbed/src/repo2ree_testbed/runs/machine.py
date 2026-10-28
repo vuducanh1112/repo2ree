@@ -1,8 +1,8 @@
 """``python -m repo2ree_testbed machine``: run the gate or a tier on a machine, here or over SSH.
 
 A machine is where the stacks run. ``local`` is this checkout; any other is an SSH
-machine named in the machines file (``$REPO2REE_MACHINES``, by default
-``~/.config/repo2ree/machines.toml``), since hosts and paths are a developer's own:
+machine named in the machines file (``$REPO2REE_MACHINES``, by default the untracked
+``.config/machines.toml`` of this checkout), since hosts and paths are a developer's own:
 
     [machines.vm]
     host = "vm"          # an ssh destination: an alias, or user@host
@@ -10,17 +10,27 @@ machine named in the machines file (``$REPO2REE_MACHINES``, by default
     jobs = 6             # stacks side by side per tier
     # shell = [...]      what every command runs inside; by default `nix develop`, flakes on
     # fetch = "slim"     # or "full": "slim" leaves runtime tarballs and archives behind
+    # container = "repo2ree-dev"                  the container everything there runs in
+    # dockerfile = "docker/dev/nix.Dockerfile"    the dev image it runs
 
-A remote machine gets HEAD pushed to it and checked out clean, runs the recipe in
-its dev shell, and sends back every per-test run the recipe reported; the gate
-also sends back its receipt, which binds a tree rather than a machine, so it holds
-here as it did there. The machine needs Nix and a Docker Engine; the repository
-needs to be committed, since only a commit can be shipped.
+A remote machine runs nothing on itself: it needs only a Docker Engine its SSH user
+may use. `prepare` builds the dev image from HEAD there and starts it as the
+container, on the machine's Docker, with the clone in a volume. A run then pushes
+HEAD into the container, checks it out clean, runs the recipe in its dev shell, and
+sends back every per-test run the recipe reported; the gate also sends back its
+receipt, which binds a tree rather than a machine, so it holds here as it did there.
+Only a commit can be shipped, so the repository needs to be committed. A run refuses
+a container that is not running, or that was built from other image inputs (the
+Dockerfile and what it copies) than HEAD's: `prepare` again. `remove` cleans up
+what runs left on that Docker and removes the container, its volume, and its images.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
+import re
 import shlex
 import subprocess
 import sys
@@ -43,6 +53,22 @@ RECEIVE_PACK = "bash -lc " + shlex.quote(
     shlex.join([*NIX, "shell", "nixpkgs#git", "--command", "git-receive-pack"]) + ' "$0"'
 )
 RECEIPT = ".receipts/assurance-gate.json"
+# The dev image's user, and the home a container machine's relative paths start from.
+CONTAINER_USER = "nixuser"
+CONTAINER_HOME = "/home/nixuser"
+DOCKER_SOCKET = "/var/run/docker.sock"
+# What ssh exits with when it cannot connect or log in, as opposed to the remote command failing.
+SSH_FAILED = 255
+# What the container check exits with, beyond success.
+NOT_RUNNING = 3
+OTHER_SOURCE = 4
+# On the container: a hash of the image it runs, and of the image inputs it was built from.
+IMAGE_LABEL = "repo2ree.dev-image"
+SOURCE_LABEL = "repo2ree.dev-source"
+IMAGE_FINGERPRINT = "{{json .RootFS.Layers}}{{json .Config}}"
+CONTAINER_STATE = (
+    f'{{{{.State.Running}}}} {{{{index .Config.Labels "{IMAGE_LABEL}"}}}} {{{{index .Config.Labels "{SOURCE_LABEL}"}}}}'
+)
 # What a slim fetch leaves on the machine: the bulk of a run, and nothing a verdict or a page reads.
 SLIM_EXCLUDES = ("*.tar", "*.tar.gz", "*.tgz", "*/artifacts/archives")
 
@@ -95,10 +121,70 @@ class Machine:
     def remote(self) -> bool:
         return self.config.host is not None
 
+    def provision(self, revision: str) -> None:
+        """Build the dev image from ``revision`` on the machine, and run it as the container if it is new."""
+        if not self.remote:
+            return
+        name = shlex.quote(self.config.container)
+        source = image_source(revision, self.config.dockerfile)
+        build = f"docker build --label {self._label} -t {name} -f {shlex.quote(self.config.dockerfile)} -"
+        print(f">> building {self.config.dockerfile} at {revision[:12]} on {self.name}")
+        self._require(
+            self.runner.pipe(["git", "archive", "--format=tar", revision], self._on_host(build)), "build the dev image"
+        )
+        checkout = shlex.quote(self._checkout)
+        run = " ".join(
+            [
+                f"docker run -d --name {name} --init --restart unless-stopped",
+                f"--label {IMAGE_LABEL}=$built --label {SOURCE_LABEL}={source}",
+                f"-v {DOCKER_SOCKET}:{DOCKER_SOCKET} -v {shlex.quote(self._volume)}:{checkout}",
+                f"{name} sleep infinity >/dev/null",
+            ]
+        )
+        replace = f"docker rm -f {name} >/dev/null 2>&1; {run} || exit 1"
+        # Only a different image, or other image inputs, replace the container. Image IDs cannot tell:
+        # a rebuild from cache gets a new one, and the image a container started from loses its ID
+        # once the tag moves. Its layers and settings can, so the container carries their hash.
+        script = "; ".join(
+            [
+                f"built=$(docker image inspect -f {shlex.quote(IMAGE_FINGERPRINT)} {name} | sha256sum)",
+                "built=${built%% *}",
+                f"state=$(docker container inspect -f {shlex.quote(CONTAINER_STATE)} {name} 2>/dev/null)",
+                f'if [ "${{state#* }}" != "$built {source}" ]; then {replace}; fi',
+                f"docker start {name} >/dev/null || exit 1",
+                f"docker exec -u root {name} chown {CONTAINER_USER}: {checkout} || exit 1",
+                f"docker image prune -f --filter label={self._label} >/dev/null",
+            ]
+        )
+        self._require(self.runner.call(self._on_host(script)), "start the container")
+
+    def remove(self) -> None:
+        """Clean up what runs left on the machine's Docker, then remove the container, its volume, and images."""
+        if not self.remote:
+            raise SystemExit(f">> {self.name} is this checkout; there is nothing to remove")
+        container = self.config.container
+        if self._check_container() == 0:
+            path = shlex.quote(self.config.path)
+            shell = shlex.join([*self.config.shell, "bash", "-c", "just stack-clean; just clean-workbenches 1"])
+            if self.runner.call(self._ssh(f"cd {path} && if test -f justfile; then {shell}; fi")) != 0:
+                print(f">> could not clean up what runs left on {self.name}; check its `docker ps -a`")
+        name = shlex.quote(container)
+        script = "; ".join(
+            [
+                f"docker rm -f {name} >/dev/null 2>&1",
+                f"docker volume rm {shlex.quote(self._volume)} >/dev/null 2>&1",
+                f"docker image ls -q --filter label={self._label} | xargs -r docker image rm -f >/dev/null",
+                "true",
+            ]
+        )
+        self._require(self.runner.call(self._on_host(script)), "remove the container")
+        print(f">> removed {container}, its volume and its images from {self.name}")
+
     def ship(self, revision: str) -> None:
         """Put ``revision`` on the machine, checked out clean (a local machine already has it)."""
         if not self.remote:
             return
+        self._require_current_container(revision)
         path = shlex.quote(self.config.path)
         self._require(self.runner.call(self._ssh(f"test -d {path}/.git || {GIT} init -q {path}")), "prepare the clone")
         destination = f"{self.config.host}:{self.config.path}"
@@ -109,7 +195,7 @@ class Machine:
                     "push",
                     "-q",
                     "--force",
-                    f"--receive-pack={RECEIVE_PACK}",
+                    f"--receive-pack={self._receive_pack}",
                     destination,
                     f"{revision}:refs/testbed/head",
                 ]
@@ -156,8 +242,60 @@ class Machine:
         self._require(self.runner.pipe(self._ssh(archive), ["tar", "-xf", "-", "-C", str(ROOT)]), "fetch the receipt")
 
     def _ssh(self, command: str) -> list[str]:
-        """``command`` on the machine, in a login shell: a plain ssh command sees no profile, so often no Nix."""
+        """``command`` where the machine's work happens: in a login shell in its container, from its user's home."""
+        return self._on_host(f"{self._exec} bash -lc {shlex.quote(command)}")
+
+    def _on_host(self, command: str) -> list[str]:
+        """``command`` on the host, in a login shell: a plain ssh command sees no profile, so often no Nix."""
         return ["ssh", self.config.host or "", f"bash -lc {shlex.quote(command)}"]
+
+    @property
+    def _exec(self) -> str:
+        return shlex.join(["docker", "exec", "-i", "-u", CONTAINER_USER, "-w", CONTAINER_HOME, self.config.container])
+
+    @property
+    def _receive_pack(self) -> str:
+        """What a push runs on the machine: in the container, Git's appended path passed on by ``docker exec``."""
+        return f"{self._exec} {RECEIVE_PACK}"
+
+    @property
+    def _checkout(self) -> str:
+        return self.config.path if self.config.path.startswith("/") else f"{CONTAINER_HOME}/{self.config.path}"
+
+    @property
+    def _volume(self) -> str:
+        return f"{self.config.container}-checkout"
+
+    @property
+    def _label(self) -> str:
+        return shlex.quote(f"repo2ree.dev-container={self.config.container}")
+
+    def _check_container(self, source: str | None = None) -> int:
+        """0 if the container runs (and was built from ``source``, if given); else NOT_RUNNING or OTHER_SOURCE."""
+        inspect = f"docker container inspect -f {shlex.quote(CONTAINER_STATE)} {shlex.quote(self.config.container)}"
+        script = "; ".join(
+            [
+                f"state=$({inspect} 2>/dev/null) || exit {NOT_RUNNING}",
+                f'[ "${{state%% *}}" = true ] || exit {NOT_RUNNING}',
+                *([f'[ "${{state##* }}" = {source} ] || exit {OTHER_SOURCE}'] if source else []),
+            ]
+        )
+        code = self.runner.call(self._on_host(script))
+        if code == SSH_FAILED:
+            raise SystemExit(f">> could not reach {self.name} as {self.config.host} over SSH")
+        return code
+
+    def _require_current_container(self, revision: str) -> None:
+        code = self._check_container(image_source(revision, self.config.dockerfile))
+        prepare = f"run: just prepare-e2e-machine {self.name}"
+        if code == NOT_RUNNING:
+            raise SystemExit(f">> {self.config.container} is not running on {self.name}; {prepare}")
+        if code == OTHER_SOURCE:
+            raise SystemExit(
+                f">> {self.config.container} on {self.name} was built from other image inputs than"
+                f" {self.config.dockerfile} and what it copies at {revision[:12]}; {prepare}"
+            )
+        self._require(code, "check the container")
 
     def _require(self, code: int, what: str) -> None:
         if code != 0:
@@ -170,6 +308,32 @@ def _after_test_artifacts(run: Path) -> Path:
     if "test-artifacts" not in parts:
         raise SystemExit(f">> {run} is not under a test-artifacts directory")
     return Path(*parts[len(parts) - parts[::-1].index("test-artifacts") :])
+
+
+def image_inputs(dockerfile: str) -> list[str]:
+    """What a Dockerfile copies from its context, as paths there; ``.`` for a pattern or the whole context."""
+    paths: list[str] = []
+    for line in re.sub(r"\\\n", " ", dockerfile).splitlines():
+        words = line.split()
+        if not words or words[0].upper() not in ("COPY", "ADD") or any(w.startswith("--from") for w in words):
+            continue
+        rest = line.split(None, 1)[1].strip()
+        while rest.startswith("--"):
+            rest = rest.split(None, 1)[1].strip()
+        sources = json.loads(rest)[:-1] if rest.startswith("[") else rest.split()[:-1]
+        for source in sources:
+            path = source.removeprefix("./").strip("/")
+            paths.append("." if not path or any(c in path for c in "*?[") else path)
+    return paths
+
+
+def image_source(revision: str, dockerfile: str) -> str:
+    """A hash of what the dev image is built from at ``revision``: the Dockerfile and every path it copies."""
+    objects = []
+    for path in sorted({dockerfile, *image_inputs(capture(["git", "show", f"{revision}:{dockerfile}"]))}):
+        spec = f"{revision}^{{tree}}" if path == "." else f"{revision}:{path}"
+        objects.append(f"{path} {capture(['git', 'rev-parse', spec])}")
+    return hashlib.sha256("\n".join(objects).encode()).hexdigest()[:16]
 
 
 def committed_head() -> str:
@@ -203,7 +367,9 @@ def _bring_back(machine: Machine, runs: Sequence[Path]) -> None:
 
 
 def prepare(machine: Machine) -> int:
-    machine.ship(committed_head())
+    revision = committed_head()
+    machine.provision(revision)
+    machine.ship(revision)
     code, _ = machine.run(["just", "build-e2e-bundles"])
     return code
 
@@ -212,9 +378,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="repo2ree_testbed machine", description=__doc__.split("\n\n")[0])
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("list", help="list the machines")
-    commands.add_parser("prepare", help="ship HEAD and build the bundles, so the first run starts warm").add_argument(
-        "machine"
-    )
+    commands.add_parser(
+        "prepare", help="start its container from HEAD, ship HEAD into it, and build the bundles"
+    ).add_argument("machine")
+    commands.add_parser(
+        "remove", help="clean up its container's runs, then remove the container, its volume, and images"
+    ).add_argument("machine")
     gating = commands.add_parser("gate", help="run the assurance gate there and bring its receipt and runs back")
     gating.add_argument("machine")
     gating.add_argument("--jobs", type=int, help="stacks side by side per tier (default: the machine's)")
@@ -228,13 +397,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "list":
         for name, config in machines.items():
             where = f"{config.host}:{config.path}" if config.host else config.path
-            print(f"{name:12} {where}  jobs={config.jobs}")
+            inside = f"  container={config.container}" if config.host else ""
+            print(f"{name:12} {where}  jobs={config.jobs}{inside}")
         return 0
     if args.machine not in machines:
         raise SystemExit(f">> no machine {args.machine!r}; known: {', '.join(machines)} (from {path})")
     machine = Machine(args.machine, machines[args.machine])
     if args.command == "prepare":
         return prepare(machine)
+    if args.command == "remove":
+        machine.remove()
+        return 0
     if args.command == "gate":
         return gate(machine, args.jobs)
     if not args.recipe:

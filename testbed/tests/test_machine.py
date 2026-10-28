@@ -7,22 +7,46 @@ import pytest
 from repo2ree_testbed.artifacts import ROOT
 from repo2ree_testbed.machines import LOCAL, MachineConfig, load_machines
 from repo2ree_testbed.runs import machine as machine_mod
-from repo2ree_testbed.runs.machine import GIT, RECEIPT, RECEIVE_PACK, RUN_LINE, Machine, gate, run_recipe
+from repo2ree_testbed.runs.machine import (
+    GIT,
+    NOT_RUNNING,
+    OTHER_SOURCE,
+    RECEIPT,
+    RECEIVE_PACK,
+    RUN_LINE,
+    SSH_FAILED,
+    Machine,
+    gate,
+    image_inputs,
+    image_source,
+    prepare,
+    run_recipe,
+)
 
 REVISION = "0123456789abcdef0123456789abcdef01234567"
+DOCKERFILE = """FROM nixos/nix@sha256:f159
+COPY flake.nix flake.lock ./
+COPY nix ./nix
+COPY docker/dev/nix-entrypoint.sh /usr/local/bin/dev-entrypoint.sh
+"""
+VM = MachineConfig(host="vm")
 
 
 class FakeRunner:
-    def __init__(self, *, code: int = 0, printed: Sequence[str] = ()) -> None:
+    def __init__(
+        self, *, code: int = 0, printed: Sequence[str] = (), failing: str | None = None, failure: int = 1
+    ) -> None:
         self.code = code
         self.printed = list(printed)
+        self.failing = failing
+        self.failure = failure
         self.calls: list[list[str]] = []
         self.streamed: list[list[str]] = []
         self.piped: list[tuple[list[str], list[str]]] = []
 
     def call(self, argv: Sequence[str]) -> int:
         self.calls.append(list(argv))
-        return 0
+        return self.failure if self.failing and self.failing in argv[-1] else 0
 
     def stream(self, argv: Sequence[str]) -> tuple[int, list[str]]:
         self.streamed.append(list(argv))
@@ -33,10 +57,38 @@ class FakeRunner:
         return 0
 
 
+def _git(argv: Sequence[str]) -> str:
+    """A committed checkout whose dev image is built from DOCKERFILE."""
+    match list(argv):
+        case ["git", "status", "--porcelain"]:
+            return ""
+        case ["git", "rev-parse", "HEAD"]:
+            return REVISION
+        case ["git", "show", spec]:
+            assert spec == f"{REVISION}:docker/dev/nix.Dockerfile"
+            return DOCKERFILE
+        case ["git", "rev-parse", spec]:
+            return f"object-of-{spec}"
+    raise AssertionError(argv)
+
+
 @pytest.fixture(autouse=True)
 def committed(monkeypatch: pytest.MonkeyPatch) -> None:
-    answers = {("git", "status", "--porcelain"): "", ("git", "rev-parse", "HEAD"): REVISION}
-    monkeypatch.setattr(machine_mod, "capture", lambda argv: answers[tuple(argv)])
+    monkeypatch.setattr(machine_mod, "capture", _git)
+
+
+def _on_host(call: Sequence[str]) -> str:
+    """What an ssh call runs on the host, once its login shell has unquoted it."""
+    assert call[:2] == ["ssh", "vm"]
+    return shlex.split(call[2])[-1]
+
+
+def _in_container(call: Sequence[str]) -> str:
+    """What an ssh call runs in the container, once both login shells have unquoted it."""
+    host = shlex.split(_on_host(call))
+    assert host[:8] == ["docker", "exec", "-i", "-u", "nixuser", "-w", "/home/nixuser", "repo2ree-dev"]
+    assert host[8:10] == ["bash", "-lc"]
+    return host[-1]
 
 
 def test_this_checkout_is_always_a_machine_and_the_file_adds_machines(tmp_path: Path) -> None:
@@ -46,6 +98,8 @@ def test_this_checkout_is_always_a_machine_and_the_file_adds_machines(tmp_path: 
     machines = load_machines(listed)
     assert machines[LOCAL].host is None
     assert machines["vm"] == MachineConfig(host="vm", jobs=6)
+    # Every other machine runs in a container: by default the dev image, as repo2ree-dev.
+    assert (machines["vm"].container, machines["vm"].dockerfile) == ("repo2ree-dev", "docker/dev/nix.Dockerfile")
 
 
 @pytest.mark.parametrize(
@@ -59,42 +113,39 @@ def test_a_machines_file_cannot_redefine_this_checkout_omit_a_host_or_add_settin
         load_machines(listed)
 
 
-def test_a_remote_gate_ships_the_commit_runs_in_the_dev_shell_and_brings_back_runs_and_receipt() -> None:
-    remote_run = "/home/ci/repo2ree/test-artifacts/e2e/e2e-system-20261027-120000"
+def test_a_remote_gate_runs_in_the_container_and_brings_back_runs_and_receipt() -> None:
+    remote_run = "/home/nixuser/repo2ree/test-artifacts/e2e/e2e-system-20261027-120000"
     runner = FakeRunner(printed=["building", f"{RUN_LINE}{remote_run}", ">> passed"])
-    machine = Machine("vm", MachineConfig(host="vm", path="repo2ree", jobs=6), runner)
 
-    assert gate(machine, None) == 0
+    assert gate(Machine("vm", MachineConfig(host="vm", jobs=6), runner), None) == 0
 
-    [pushed] = [call for call in runner.calls if call[:2] == ["git", "push"]]
-    assert pushed[-2:] == ["vm:repo2ree", f"{REVISION}:refs/testbed/head"]
-    # The machine needs no Git of its own: each side of the push runs Nix's.
-    assert f"--receive-pack={RECEIVE_PACK}" in pushed
-    # What each ssh call runs, once its login shell has unquoted it.
-    remote = [shlex.split(call[-1])[-1] for call in runner.calls if call[0] == "ssh"]
-    assert all(f"{GIT} " in command for command in remote)
-    assert any(f"checkout -q --detach --force {REVISION}" in command for command in remote)
+    check, init, push, checkout = runner.calls
+    assert "docker container inspect" in _on_host(check)
+    # The container's dev shell is not entered yet, so Git comes from Nix there.
+    assert f"{GIT} init -q repo2ree" in _in_container(init)
+    # Git appends the clone's path to the receive-pack command, which docker exec hands on as $0.
+    assert f"--receive-pack=docker exec -i -u nixuser -w /home/nixuser repo2ree-dev {RECEIVE_PACK}" in push
+    assert push[-2:] == ["vm:repo2ree", f"{REVISION}:refs/testbed/head"]
+    assert f"checkout -q --detach --force {REVISION}" in _in_container(checkout)
     [ran] = runner.streamed
-    assert ran[:2] == ["ssh", "vm"]
-    assert ran[2].startswith("bash -lc ")
-    assert "develop --command just assurance-gate 6" in ran[2]
+    assert "develop --command just assurance-gate 6" in _in_container(ran)
 
-    run_fetch, receipt_fetch = runner.piped
-    assert "--exclude=*.tar" in run_fetch[0][-1]
-    assert run_fetch[1] == ["tar", "-xf", "-", "-C", str(ROOT / "test-artifacts/e2e")]
-    assert RECEIPT in receipt_fetch[0][-1]
+    (run_fetch, run_unpack), (receipt_fetch, _) = runner.piped
+    assert "--exclude=*.tar" in _in_container(run_fetch)
+    assert "repo2ree/test-artifacts/e2e e2e-system-20261027-120000" in _in_container(run_fetch)
+    assert run_unpack == ["tar", "-xf", "-", "-C", str(ROOT / "test-artifacts/e2e")]
+    assert RECEIPT in _in_container(receipt_fetch)
 
 
 def test_a_failed_remote_gate_brings_back_its_runs_but_not_a_receipt() -> None:
-    remote_run = "/srv/repo2ree/test-artifacts/e2e/e2e-gui-instant-20261027-120000"
+    remote_run = "/home/nixuser/repo2ree/test-artifacts/e2e/e2e-gui-instant-20261027-120000"
     runner = FakeRunner(code=1, printed=[f"{RUN_LINE}{remote_run}"])
-    machine = Machine("vm", MachineConfig(host="vm", fetch="full"), runner)
 
-    assert gate(machine, 2) == 1
+    assert gate(Machine("vm", MachineConfig(host="vm", fetch="full"), runner), 2) == 1
 
-    [run_fetch] = runner.piped
-    assert "--exclude" not in run_fetch[0][-1]
-    assert "just assurance-gate 2" in runner.streamed[0][-1]
+    [(run_fetch, _)] = runner.piped
+    assert "--exclude" not in run_fetch[-1]
+    assert "just assurance-gate 2" in _in_container(runner.streamed[0])
 
 
 def test_the_local_machine_runs_here_and_moves_nothing() -> None:
@@ -107,9 +158,99 @@ def test_the_local_machine_runs_here_and_moves_nothing() -> None:
     assert runner.calls == []
     assert runner.piped == []
     assert runner.streamed == [["just", "assurance-gate", "4"], ["just", "test-e2e-system"]]
+    with pytest.raises(SystemExit, match="nothing to remove"):
+        machine.remove()
+
+
+@pytest.mark.parametrize(
+    ("failure", "message"),
+    [
+        (NOT_RUNNING, "repo2ree-dev is not running on vm; run: just prepare-e2e-machine vm"),
+        (OTHER_SOURCE, "built from other image inputs .* at 0123456789ab; run: just prepare-e2e-machine vm"),
+        (SSH_FAILED, "could not reach vm as vm over SSH"),
+    ],
+)
+def test_a_run_refuses_a_container_that_is_down_out_of_date_or_unreachable(failure: int, message: str) -> None:
+    runner = FakeRunner(failing="docker container inspect", failure=failure)
+    with pytest.raises(SystemExit, match=message):
+        run_recipe(Machine("vm", VM, runner), ["test-e2e-system"])
+    assert len(runner.calls) == 1
+    assert runner.streamed == []
+
+
+def test_the_check_compares_the_container_with_heads_image_inputs() -> None:
+    runner = FakeRunner()
+    run_recipe(Machine("vm", VM, runner), ["test-e2e-system"])
+    assert f"= {image_source(REVISION, 'docker/dev/nix.Dockerfile')} ] || exit {OTHER_SOURCE}" in _on_host(
+        runner.calls[0]
+    )
+
+
+def test_the_image_inputs_are_what_the_dockerfile_copies_from_its_context() -> None:
+    assert image_inputs(DOCKERFILE) == ["flake.nix", "flake.lock", "nix", "docker/dev/nix-entrypoint.sh"]
+    assert image_inputs(
+        "ADD --chown=1000:1000 ./a/ \\\n    b /x/\n"
+        'COPY ["c d", "/y"]\n'
+        "COPY --from=builder /out /out\n"
+        "copy *.toml /z/\n"
+        "COPY . /all\n"
+        "RUN echo COPY nothing\n"
+    ) == ["a", "b", "c d", ".", "."]
+
+
+def test_the_image_source_hashes_the_dockerfile_and_every_input_at_the_revision() -> None:
+    source = image_source(REVISION, "docker/dev/nix.Dockerfile")
+    assert len(source) == 16
+    assert source == image_source(REVISION, "docker/dev/nix.Dockerfile")
+
+
+def test_preparing_builds_head_there_and_replaces_the_container_only_for_another_image() -> None:
+    runner = FakeRunner()
+
+    assert (
+        prepare(
+            Machine("vm", VM, runner),
+        )
+        == 0
+    )
+
+    [(archive, build)] = runner.piped
+    assert archive == ["git", "archive", "--format=tar", REVISION]
+    assert _on_host(build) == (
+        "docker build --label repo2ree.dev-container=repo2ree-dev -t repo2ree-dev -f docker/dev/nix.Dockerfile -"
+    )
+    start = _on_host(runner.calls[0])
+    source = image_source(REVISION, "docker/dev/nix.Dockerfile")
+    assert f'if [ "${{state#* }}" != "$built {source}" ]' in start
+    assert f"--label repo2ree.dev-image=$built --label repo2ree.dev-source={source}" in start
+    assert "-v /var/run/docker.sock:/var/run/docker.sock -v repo2ree-dev-checkout:/home/nixuser/repo2ree" in start
+    assert "chown nixuser: /home/nixuser/repo2ree" in start
+    # The container it just started passes the check a run makes.
+    assert f"= {source} ] || exit {OTHER_SOURCE}" in _on_host(runner.calls[1])
+    assert "develop --command just build-e2e-bundles" in _in_container(runner.streamed[0])
+
+
+def test_removing_cleans_up_inside_the_container_then_removes_it_its_volume_and_images() -> None:
+    runner = FakeRunner()
+
+    Machine("vm", VM, runner).remove()
+
+    _check, cleanup, removal = runner.calls
+    assert "just stack-clean; just clean-workbenches 1" in _in_container(cleanup)
+    removing = _on_host(removal)
+    assert "docker rm -f repo2ree-dev" in removing
+    assert "docker volume rm repo2ree-dev-checkout" in removing
+    assert "--filter label=repo2ree.dev-container=repo2ree-dev" in removing
+
+
+def test_removing_a_stopped_container_skips_the_cleanup_inside_it() -> None:
+    runner = FakeRunner(failing="docker container inspect", failure=NOT_RUNNING)
+    Machine("vm", VM, runner).remove()
+    assert len(runner.calls) == 2
+    assert "docker rm -f repo2ree-dev" in _on_host(runner.calls[1])
 
 
 def test_a_machine_runs_only_commits(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(machine_mod, "capture", lambda argv: " M core/x.py")
     with pytest.raises(SystemExit, match="commit first"):
-        gate(Machine("vm", MachineConfig(host="vm"), FakeRunner()), None)
+        gate(Machine("vm", VM, FakeRunner()), None)

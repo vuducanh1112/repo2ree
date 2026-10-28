@@ -14,7 +14,8 @@ from repo2ree_testbed.artifacts import ROOT
 LOCAL = "local"
 # Nix on a machine, flakes switched on per command so its Nix needs no configuration.
 NIX = ("nix", "--extra-experimental-features", "nix-command flakes")
-DEFAULT_FILE = Path("~/.config/repo2ree/machines.toml")
+# In the checkout, so it outlives a rebuilt dev container; .gitignore keeps it out of the repository.
+DEFAULT_FILE = ROOT / ".config" / "machines.toml"
 
 
 class MachineConfig(BaseModel):
@@ -25,6 +26,9 @@ class MachineConfig(BaseModel):
     jobs: int = Field(default=4, ge=1)
     shell: tuple[str, ...] = (*NIX, "develop", "--command")
     fetch: Literal["slim", "full"] = "slim"
+    # Where a remote machine runs everything; `local` is this checkout, already a dev container.
+    container: str = "repo2ree-dev"
+    dockerfile: str = "docker/dev/nix.Dockerfile"
 
 
 class MachinesFile(BaseModel):
