@@ -534,7 +534,6 @@ rebuilt dev container because the checkout does:
 [machines.vm]
 host = "repo2ree@vm" # an ssh destination: an alias from ~/.ssh/config, or user@host
 jobs = 6             # stacks side by side per tier
-# path = "repo2ree"  # the clone, in the container's home or absolute there
 # shell = [...]      # what every command runs inside; by default the clone's .envrc, via direnv
 # fetch = "slim"     # or "full"; slim leaves runtime tarballs and REE archives there
 # container = "repo2ree-dev"                  # the container everything there runs in
@@ -544,7 +543,9 @@ jobs = 6             # stacks side by side per tier
 Nothing runs on the machine itself: it needs only a Docker Engine its SSH user may
 use, and keeps nothing of yours but Docker objects. `just prepare-e2e-machine vm`
 builds the dev image from HEAD there, starts it as the container on the machine's
-Docker with the clone in a volume, and builds the bundles inside it. The container
+Docker with the clone in a volume at `/repo2ree`, the path of your own checkout in
+the dev container, and builds the bundles inside it. Paths are the same in both
+places, and the image trusts the `.envrc` there as it does yours. The container
 gets a network of its own, as Compose gives the local one: benches join it and
 reach the API inside the container by its name. It replaces
 the container only when the image changed, so the clone and the bundles carry

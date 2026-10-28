@@ -1,3 +1,4 @@
+import hashlib
 import shlex
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -8,7 +9,6 @@ from repo2ree_testbed.artifacts import ROOT
 from repo2ree_testbed.machines import LOCAL, MachineConfig, load_machines
 from repo2ree_testbed.runs import machine as machine_mod
 from repo2ree_testbed.runs.machine import (
-    GIT,
     INTERRUPTED,
     JOB_EXITED,
     JOB_LOST,
@@ -18,7 +18,6 @@ from repo2ree_testbed.runs.machine import (
     OTHER_SOURCE,
     OTHER_UNFETCHED,
     RECEIPT,
-    RECEIVE_PACK,
     RECONNECT_SECONDS,
     RUN_LINE,
     SSH_FAILED,
@@ -116,7 +115,7 @@ def _on_host(call: Sequence[str]) -> str:
 def _in_container(call: Sequence[str]) -> str:
     """What an ssh call runs in the container, once both login shells have unquoted it."""
     host = shlex.split(_on_host(call))
-    assert host[:8] == ["docker", "exec", "-i", "-u", "nixuser", "-w", "/home/nixuser", "repo2ree-dev"]
+    assert host[:8] == ["docker", "exec", "-i", "-u", "nixuser", "-w", "/repo2ree", "repo2ree-dev"]
     assert host[8:10] == ["bash", "-lc"]
     return host[-1]
 
@@ -144,56 +143,55 @@ def test_a_machines_file_cannot_redefine_this_checkout_omit_a_host_or_add_settin
 
 
 def test_a_remote_gate_runs_in_the_container_and_brings_back_runs_and_receipt() -> None:
-    remote_run = "/home/nixuser/repo2ree/test-artifacts/e2e/e2e-system-20261027-120000"
+    remote_run = "/repo2ree/test-artifacts/e2e/e2e-system-20261027-120000"
     runner = FakeRunner(printed=["building", f"{RUN_LINE}{remote_run}", ">> passed"])
 
     assert gate(Machine("vm", MachineConfig(host="vm", jobs=6), runner), None) == 0
 
-    check, state, init, push, checkout, allow, start, done = runner.calls
+    check, state, init, push, checkout, start, done = runner.calls
     assert "docker container inspect" in _on_host(check)
     assert f"= {shlex.quote(REVISION + ' just assurance-gate 6')} && this=1" in _in_container(state)
-    # The container's dev shell is not entered yet, so Git comes from Nix there.
-    assert f"{GIT} init -q repo2ree" in _in_container(init)
-    # Git appends the clone's path to the receive-pack command, which docker exec hands on as $0.
-    assert f"--receive-pack=docker exec -i -u nixuser -w /home/nixuser repo2ree-dev {RECEIVE_PACK}" in push
-    assert push[-2:] == ["vm:repo2ree", f"{REVISION}:refs/testbed/head"]
+    # The clone is at /repo2ree, as the local checkout is, and Git comes with the dev image.
+    assert _in_container(init) == "test -d .git || git init -q"
+    # Git appends the clone's path to the receive-pack command, which docker exec hands on.
+    assert "--receive-pack=docker exec -i -u nixuser -w /repo2ree repo2ree-dev git-receive-pack" in push
+    assert push[-2:] == ["vm:/repo2ree", f"{REVISION}:refs/testbed/head"]
     # The push reaches the machine as every other call does: by the checkout's known hosts, never asking.
     assert push[:3] == ["git", "-c", f"core.sshCommand={shlex.join(['ssh', *SSH_OPTIONS])}"]
     assert f"UserKnownHostsFile={ROOT}/.config/known_hosts ~/.ssh/known_hosts" in SSH_OPTIONS
     assert "StrictHostKeyChecking=yes" in SSH_OPTIONS
     assert f"checkout -q --detach --force {REVISION}" in _in_container(checkout)
-    # Every command then runs in the checkout's own .envrc: the dev shell and its venv.
-    assert _in_container(allow) == "cd repo2ree && direnv allow ."
     # The gate runs detached, in its own process group, logging to the clone's test-artifacts.
     starting = _in_container(start)
     assert "set -m\nnohup bash -c" in starting
-    assert "&& direnv exec . just assurance-gate 6 >" in starting
-    assert "/home/nixuser/repo2ree/test-artifacts/machine-job/log 2>&1; echo $? >" in starting
+    # In the checkout's own .envrc, which the image trusts at /repo2ree: the dev shell and its venv.
+    assert "nohup bash -c 'direnv exec . just assurance-gate 6 >" in starting
+    assert "/repo2ree/test-artifacts/machine-job/log 2>&1; echo $? >" in starting
     [follow] = runner.streamed
     assert "tail -n +1 -f" in _in_container(follow)
-    assert "touch /home/nixuser/repo2ree/test-artifacts/machine-job/fetched" in _in_container(done)
+    assert "touch /repo2ree/test-artifacts/machine-job/fetched" in _in_container(done)
 
     (run_fetch, run_unpack), (receipt_fetch, _) = runner.piped
     assert "--exclude=*.tar" in _in_container(run_fetch)
     assert "repo2ree/test-artifacts/e2e e2e-system-20261027-120000" in _in_container(run_fetch)
     assert run_unpack == ["tar", "-xf", "-", "-C", str(ROOT / "test-artifacts/e2e")]
-    assert RECEIPT in _in_container(receipt_fetch)
+    assert _in_container(receipt_fetch) == f"tar -cf - {RECEIPT}"
 
 
 def test_a_failed_remote_gate_brings_back_its_runs_but_not_a_receipt() -> None:
-    remote_run = "/home/nixuser/repo2ree/test-artifacts/e2e/e2e-gui-instant-20261027-120000"
+    remote_run = "/repo2ree/test-artifacts/e2e/e2e-gui-instant-20261027-120000"
     runner = FakeRunner(code=1, printed=[f"{RUN_LINE}{remote_run}"])
 
     assert gate(Machine("vm", MachineConfig(host="vm", fetch="full"), runner), 2) == 1
 
     [(run_fetch, _)] = runner.piped
     assert "--exclude" not in run_fetch[-1]
-    assert "just assurance-gate 2" in _in_container(runner.calls[6])
+    assert "just assurance-gate 2" in _in_container(runner.calls[5])
 
 
 def test_the_local_machine_runs_here_and_moves_nothing() -> None:
     runner = FakeRunner(printed=[f"{RUN_LINE}{ROOT}/test-artifacts/e2e/e2e-system-20261027-120000"])
-    machine = Machine(LOCAL, MachineConfig(path=str(ROOT), shell=()), runner)
+    machine = Machine(LOCAL, MachineConfig(shell=()), runner)
 
     assert gate(machine, None) == 0
     assert run_recipe(machine, ["test-e2e-system"]) == 0
@@ -224,7 +222,7 @@ def test_a_run_refuses_a_container_that_is_down_out_of_date_or_unreachable(failu
 def test_the_check_compares_the_container_with_heads_image_inputs() -> None:
     runner = FakeRunner()
     run_recipe(Machine("vm", VM, runner), ["test-e2e-system"])
-    assert f"= {image_source(REVISION, 'docker/dev/nix.Dockerfile')} ] || exit {OTHER_SOURCE}" in _on_host(
+    assert f'[ "$3" = {image_source(REVISION, "docker/dev/nix.Dockerfile")} ] || exit {OTHER_SOURCE}' in _on_host(
         runner.calls[0]
     )
 
@@ -258,23 +256,39 @@ def test_preparing_builds_head_there_and_replaces_the_container_only_for_another
     )
 
     [(archive, build)] = runner.piped
-    assert archive == ["git", "archive", "--format=tar", REVISION]
+    # Only what the Dockerfile copies goes over, not the whole tree.
+    assert archive == [
+        "git",
+        "archive",
+        "--format=tar",
+        REVISION,
+        "--",
+        "docker/dev/nix-entrypoint.sh",
+        "docker/dev/nix.Dockerfile",
+        "flake.lock",
+        "flake.nix",
+        "nix",
+    ]
     assert _on_host(build) == (
         "docker build --label repo2ree.dev-container=repo2ree-dev -t repo2ree-dev -f docker/dev/nix.Dockerfile -"
     )
     start = _on_host(runner.calls[2])
     source = image_source(REVISION, "docker/dev/nix.Dockerfile")
-    assert f'[ "${{state#* }}" = "$built {source}" ]' in start
-    assert f"--label repo2ree.dev-image=$built --label repo2ree.dev-source={source}" in start
-    assert "-v /var/run/docker.sock:/var/run/docker.sock -v repo2ree-dev-checkout:/home/nixuser/repo2ree" in start
-    # On a network of its own, which resolves its name for the benches that join it, and only on that one.
+    # On a network of its own, which resolves its name for the benches that join it, with the clone at /repo2ree.
+    options = (
+        "--network repo2ree-dev-network --init --restart unless-stopped"
+        " -v /var/run/docker.sock:/var/run/docker.sock -v repo2ree-dev-checkout:/repo2ree"
+    )
+    started = hashlib.sha256(options.encode()).hexdigest()[:16]
     assert "docker network create repo2ree-dev-network" in start
-    assert "docker run -d --name repo2ree-dev --network repo2ree-dev-network" in start
-    assert "&& [ \"$joined\" = 'repo2ree-dev-network ' ]" in start
-    assert "chown nixuser: /home/nixuser/repo2ree" in start
+    assert f"docker run -d --name repo2ree-dev {options} --label repo2ree.dev-image=$built" in start
+    assert f"--label repo2ree.dev-source={source} --label repo2ree.dev-run={started}" in start
+    # Another image, other image inputs, or other options than these replace it.
+    assert f'if [ "$2 $3 $4" = "$built {source} {started}" ]' in start
+    assert "chown nixuser: /repo2ree" in start
     # Before replacing anything it looks for a job; the container it then started passes the check a run makes.
     assert STATE in _in_container(runner.calls[1])
-    assert f"= {source} ] || exit {OTHER_SOURCE}" in _on_host(runner.calls[3])
+    assert f'[ "$3" = {source} ] || exit {OTHER_SOURCE}' in _on_host(runner.calls[3])
     assert "direnv exec . just build-e2e-bundles" in _in_container(runner.calls[-2])
 
 
@@ -314,7 +328,7 @@ def _pushed(runner: FakeRunner) -> bool:
 
 
 def test_a_dropped_connection_reconnects_and_follows_the_log_from_where_it_left_off() -> None:
-    remote_run = "/home/nixuser/repo2ree/test-artifacts/e2e/e2e-system-20261027-120000"
+    remote_run = "/repo2ree/test-artifacts/e2e/e2e-system-20261027-120000"
     runner = FakeRunner(
         follows=[
             (SSH_FAILED, ["one", "two"]),

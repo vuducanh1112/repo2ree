@@ -22,7 +22,6 @@ class MachineConfig(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     host: str | None = None
-    path: str = "repo2ree"
     jobs: int = Field(default=4, ge=1)
     # The checkout's own .envrc, as in this one: the dev shell, and the venv it syncs and activates.
     shell: tuple[str, ...] = ("direnv", "exec", ".")
@@ -44,7 +43,7 @@ def machines_file() -> Path:
 
 def load_machines(path: Path) -> dict[str, MachineConfig]:
     """Every machine: ``local``, and each one the file names (a file is optional)."""
-    found: dict[str, MachineConfig] = {LOCAL: MachineConfig(path=str(ROOT), shell=())}
+    found: dict[str, MachineConfig] = {LOCAL: MachineConfig(shell=())}
     if not path.is_file():
         return found
     try:

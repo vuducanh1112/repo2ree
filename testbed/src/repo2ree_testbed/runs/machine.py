@@ -6,7 +6,6 @@ machine named in the machines file (``$REPO2REE_MACHINES``, by default the untra
 
     [machines.vm]
     host = "vm"          # an ssh destination: an alias, or user@host
-    path = "repo2ree"    # the clone on the machine, relative to its home or absolute
     jobs = 6             # stacks side by side per tier
     # shell = [...]      what every command runs inside; by default the clone's .envrc, via direnv
     # fetch = "slim"     # or "full": "slim" leaves runtime tarballs and archives behind
@@ -15,7 +14,8 @@ machine named in the machines file (``$REPO2REE_MACHINES``, by default the untra
 
 A remote machine runs nothing on itself: it needs only a Docker Engine its SSH user
 may use. `prepare` builds the dev image from HEAD there and starts it as the
-container, on the machine's Docker, with the clone in a volume. A run then pushes
+container, on the machine's Docker, with the clone in a volume at /repo2ree, where
+the local dev container has its checkout. A run then pushes
 HEAD into the container, checks it out clean, runs the recipe in its dev shell, and
 sends back every per-test run the recipe reported; the gate also sends back its
 receipt, which binds a tree rather than a machine, so it holds here as it did there.
@@ -48,34 +48,32 @@ from pathlib import Path
 from typing import Protocol
 
 from repo2ree_testbed.artifacts import ROOT
-from repo2ree_testbed.machines import NIX, MachineConfig, load_machines, machines_file
+from repo2ree_testbed.machines import MachineConfig, load_machines, machines_file
 from repo2ree_testbed.stack.process import capture
 
 RUN_LINE = ">> per-test run: "
-# Git on the machine comes from Nix, as everything else does: before the clone exists
-# there is no dev shell to take it from.
-GIT = shlex.join([*NIX, "shell", "nixpkgs#git", "--command", "git"])
-# What a push runs on the machine. Git appends the repository's path, which a login
-# shell receives as $0.
-RECEIVE_PACK = "bash -lc " + shlex.quote(
-    shlex.join([*NIX, "shell", "nixpkgs#git", "--command", "git-receive-pack"]) + ' "$0"'
-)
 RECEIPT = ".receipts/assurance-gate.json"
-# The dev image's user, and the home a container machine's relative paths start from.
+# The dev image's user, and where the clone is in its container: the path the local dev
+# container mounts its checkout at, which the image's direnv trusts, so the .envrc loads.
 CONTAINER_USER = "nixuser"
-CONTAINER_HOME = "/home/nixuser"
+CHECKOUT = "/repo2ree"
 DOCKER_SOCKET = "/var/run/docker.sock"
 # What ssh exits with when it cannot connect or log in, as opposed to the remote command failing.
 SSH_FAILED = 255
 # What the container check exits with, beyond success.
 NOT_RUNNING = 3
 OTHER_SOURCE = 4
-# On the container: a hash of the image it runs, and of the image inputs it was built from.
+# On the container: a hash of the image it runs, of the image inputs it was built from,
+# and of the options it was started with.
 IMAGE_LABEL = "repo2ree.dev-image"
 SOURCE_LABEL = "repo2ree.dev-source"
+RUN_LABEL = "repo2ree.dev-run"
 IMAGE_FINGERPRINT = "{{json .RootFS.Layers}}{{json .Config}}"
-CONTAINER_STATE = (
-    f'{{{{.State.Running}}}} {{{{index .Config.Labels "{IMAGE_LABEL}"}}}} {{{{index .Config.Labels "{SOURCE_LABEL}"}}}}'
+CONTAINER_STATE = " ".join(
+    [
+        "{{.State.Running}}",
+        *(f'{{{{index .Config.Labels "{label}"}}}}' for label in (IMAGE_LABEL, SOURCE_LABEL, RUN_LABEL)),
+    ]
 )
 # Where a remote job keeps its command, process, log, and exit code, relative to the clone.
 JOB = "test-artifacts/machine-job"
@@ -103,8 +101,6 @@ SSH_OPTIONS = (
     "-o",
     "StrictHostKeyChecking=yes",
 )
-# The networks a container is on, each followed by a space.
-CONTAINER_NETWORKS = "{{range $name, $_ := .NetworkSettings.Networks}}{{$name}} {{end}}"
 # What a slim fetch leaves on the machine: the bulk of a run, and nothing a verdict or a page reads.
 SLIM_EXCLUDES = ("*.tar", "*.tar.gz", "*.tgz", "*/artifacts/archives")
 
@@ -170,36 +166,35 @@ class Machine:
         source = image_source(revision, self.config.dockerfile)
         build = f"docker build --label {self._label} -t {name} -f {shlex.quote(self.config.dockerfile)} -"
         print(f">> building {self.config.dockerfile} at {revision[:12]} on {self.name}")
-        self._require(
-            self.runner.pipe(["git", "archive", "--format=tar", revision], self._on_host(build)), "build the dev image"
-        )
-        checkout = shlex.quote(self._checkout)
+        # The build context is what the Dockerfile copies, not the whole tree: that is all it reads.
+        context = ["git", "archive", "--format=tar", revision, "--", *image_paths(revision, self.config.dockerfile)]
+        self._require(self.runner.pipe(context, self._on_host(build)), "build the dev image")
         network = shlex.quote(self._network)
-        run = " ".join(
+        # Benches join the container's network and call its API back by its name, which only a
+        # user-defined network resolves, not Docker's bridge.
+        options = " ".join(
             [
-                f"docker run -d --name {name} --network {network} --init --restart unless-stopped",
-                f"--label {IMAGE_LABEL}=$built --label {SOURCE_LABEL}={source}",
-                f"-v {DOCKER_SOCKET}:{DOCKER_SOCKET} -v {shlex.quote(self._volume)}:{checkout}",
-                f"{name} sleep infinity >/dev/null",
+                f"--network {network} --init --restart unless-stopped",
+                f"-v {DOCKER_SOCKET}:{DOCKER_SOCKET} -v {shlex.quote(self._volume)}:{CHECKOUT}",
             ]
         )
+        started = hashlib.sha256(options.encode()).hexdigest()[:16]
+        labels = f"--label {IMAGE_LABEL}=$built --label {SOURCE_LABEL}={source} --label {RUN_LABEL}={started}"
+        run = f"docker run -d --name {name} {options} {labels} {name} sleep infinity >/dev/null"
         replace = f"docker rm -f {name} >/dev/null 2>&1; {run} || exit 1"
-        current = f'[ "${{state#* }}" = "$built {source}" ] && [ "$joined" = {shlex.quote(self._network + " ")} ]'
-        # Only a different image, or other image inputs, replace the container. Image IDs cannot tell:
-        # a rebuild from cache gets a new one, and the image a container started from loses its ID
-        # once the tag moves. Its layers and settings can, so the container carries their hash.
-        # So does one on other networks than its own: benches join the container's network and call
-        # its API back by its name, which only a user-defined network resolves, not Docker's bridge.
+        # Only a different image, other image inputs, or other options replace the container. Image
+        # IDs cannot tell: a rebuild from cache gets a new one, and the image a container started
+        # from loses its ID once the tag moves. Its layers and settings can, so the container
+        # carries their hash, beside those of its image inputs and its options.
         script = "; ".join(
             [
                 f"built=$(docker image inspect -f {shlex.quote(IMAGE_FINGERPRINT)} {name} | sha256sum)",
                 "built=${built%% *}",
                 f"docker network inspect {network} >/dev/null 2>&1 || docker network create {network} >/dev/null",
-                f"state=$(docker container inspect -f {shlex.quote(CONTAINER_STATE)} {name} 2>/dev/null)",
-                f"joined=$(docker container inspect -f {shlex.quote(CONTAINER_NETWORKS)} {name} 2>/dev/null)",
-                f"if {current}; then :; else {replace}; fi",
+                f"set -- $(docker container inspect -f {shlex.quote(CONTAINER_STATE)} {name} 2>/dev/null)",
+                f'if [ "$2 $3 $4" = "$built {source} {started}" ]; then :; else {replace}; fi',
                 f"docker start {name} >/dev/null || exit 1",
-                f"docker exec -u root {name} chown {CONTAINER_USER}: {checkout} || exit 1",
+                f"docker exec -u root {name} chown {CONTAINER_USER}: {CHECKOUT} || exit 1",
                 f"docker image prune -f --filter label={self._label} >/dev/null",
             ]
         )
@@ -212,9 +207,8 @@ class Machine:
         container = self.config.container
         if self._check_container() == 0:
             self._refuse_running_job("remove its container")
-            path = shlex.quote(self.config.path)
             shell = shlex.join([*self.config.shell, "bash", "-c", "just stack-clean; just clean-workbenches 1"])
-            if self.runner.call(self._ssh(f"cd {path} && if test -f justfile; then {shell}; fi")) != 0:
+            if self.runner.call(self._ssh(f"if test -f justfile; then {shell}; fi")) != 0:
                 print(f">> could not clean up what runs left on {self.name}; check its `docker ps -a`")
         name = shlex.quote(container)
         script = "; ".join(
@@ -290,9 +284,8 @@ class Machine:
 
     def _ship(self, revision: str) -> None:
         """Put ``revision`` on the machine, checked out clean."""
-        path = shlex.quote(self.config.path)
-        self._require(self.runner.call(self._ssh(f"test -d {path}/.git || {GIT} init -q {path}")), "prepare the clone")
-        destination = f"{self.config.host}:{self.config.path}"
+        self._require(self.runner.call(self._ssh("test -d .git || git init -q")), "prepare the clone")
+        destination = f"{self.config.host}:{CHECKOUT}"
         self._require(
             self.runner.call(
                 [
@@ -302,7 +295,8 @@ class Machine:
                     "push",
                     "-q",
                     "--force",
-                    f"--receive-pack={self._receive_pack}",
+                    # Git appends the clone's path, which docker exec passes on.
+                    f"--receive-pack={self._exec} git-receive-pack",
                     destination,
                     f"{revision}:refs/testbed/head",
                 ]
@@ -310,18 +304,14 @@ class Machine:
             "push the commit",
         )
         self._require(
-            self.runner.call(
-                self._ssh(f"cd {path} && {GIT} checkout -q --detach --force {revision} && {GIT} clean -fdq")
-            ),
+            self.runner.call(self._ssh(f"git checkout -q --detach --force {revision} && git clean -fdq")),
             "check the commit out",
         )
-        # The clone is ours, and so is the .envrc each commit brings: direnv runs it only once allowed.
-        self._require(self.runner.call(self._ssh(f"cd {path} && direnv allow .")), "allow the commit's .envrc")
 
     def _start(self, job: str, argv: Sequence[str]) -> None:
         """Start ``argv`` in the checkout as the machine's job, in a process group of its own, detached from SSH."""
         line = shlex.join([*self.config.shell, *argv])
-        body = f"cd {shlex.quote(self._checkout)} && {line} > {self._job}/log 2>&1; echo $? > {self._job}/exit"
+        body = f"{line} > {self._job}/log 2>&1; echo $? > {self._job}/exit"
         script = "\n".join(
             [
                 f"rm -rf {self._job} && mkdir -p {self._job} || exit 1",
@@ -413,7 +403,7 @@ class Machine:
 
     @property
     def _job(self) -> str:
-        return shlex.quote(f"{self._checkout}/{JOB}")
+        return shlex.quote(f"{CHECKOUT}/{JOB}")
 
     @property
     def _job_alive(self) -> str:
@@ -441,11 +431,11 @@ class Machine:
             return
         receipt = ROOT / RECEIPT
         receipt.parent.mkdir(parents=True, exist_ok=True)
-        archive = f"tar -cf - -C {shlex.quote(self.config.path)} {RECEIPT}"
+        archive = f"tar -cf - {RECEIPT}"
         self._require(self.runner.pipe(self._ssh(archive), ["tar", "-xf", "-", "-C", str(ROOT)]), "fetch the receipt")
 
     def _ssh(self, command: str) -> list[str]:
-        """``command`` where the machine's work happens: in a login shell in its container, from its user's home."""
+        """``command`` where the machine's work happens: in a login shell in its container, in the clone."""
         return self._on_host(f"{self._exec} bash -lc {shlex.quote(command)}")
 
     def _on_host(self, command: str) -> list[str]:
@@ -454,16 +444,7 @@ class Machine:
 
     @property
     def _exec(self) -> str:
-        return shlex.join(["docker", "exec", "-i", "-u", CONTAINER_USER, "-w", CONTAINER_HOME, self.config.container])
-
-    @property
-    def _receive_pack(self) -> str:
-        """What a push runs on the machine: in the container, Git's appended path passed on by ``docker exec``."""
-        return f"{self._exec} {RECEIVE_PACK}"
-
-    @property
-    def _checkout(self) -> str:
-        return self.config.path if self.config.path.startswith("/") else f"{CONTAINER_HOME}/{self.config.path}"
+        return shlex.join(["docker", "exec", "-i", "-u", CONTAINER_USER, "-w", CHECKOUT, self.config.container])
 
     @property
     def _network(self) -> str:
@@ -483,8 +464,9 @@ class Machine:
         script = "; ".join(
             [
                 f"state=$({inspect} 2>/dev/null) || exit {NOT_RUNNING}",
-                f'[ "${{state%% *}}" = true ] || exit {NOT_RUNNING}',
-                *([f'[ "${{state##* }}" = {source} ] || exit {OTHER_SOURCE}'] if source else []),
+                "set -- $state",
+                f'[ "$1" = true ] || exit {NOT_RUNNING}',
+                *([f'[ "$3" = {source} ] || exit {OTHER_SOURCE}'] if source else []),
             ]
         )
         code = self.runner.call(self._on_host(script))
@@ -541,10 +523,15 @@ def image_inputs(dockerfile: str) -> list[str]:
     return paths
 
 
+def image_paths(revision: str, dockerfile: str) -> list[str]:
+    """What the dev image is built from at ``revision``: the Dockerfile and every path it copies."""
+    return sorted({dockerfile, *image_inputs(capture(["git", "show", f"{revision}:{dockerfile}"]))})
+
+
 def image_source(revision: str, dockerfile: str) -> str:
-    """A hash of what the dev image is built from at ``revision``: the Dockerfile and every path it copies."""
+    """A hash of what the dev image is built from at ``revision``."""
     objects = []
-    for path in sorted({dockerfile, *image_inputs(capture(["git", "show", f"{revision}:{dockerfile}"]))}):
+    for path in image_paths(revision, dockerfile):
         spec = f"{revision}^{{tree}}" if path == "." else f"{revision}:{path}"
         objects.append(f"{path} {capture(['git', 'rev-parse', spec])}")
     return hashlib.sha256("\n".join(objects).encode()).hexdigest()[:16]
@@ -611,7 +598,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     machines = load_machines(path)
     if args.command == "list":
         for name, config in machines.items():
-            where = f"{config.host}:{config.path}" if config.host else config.path
+            where = f"{config.host}:{CHECKOUT}" if config.host else str(ROOT)
             inside = f"  container={config.container}" if config.host else ""
             print(f"{name:12} {where}  jobs={config.jobs}{inside}")
         return 0
