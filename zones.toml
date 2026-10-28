@@ -151,7 +151,7 @@ summary = "The task runner."
 [tooling.groups.scripts]
 summary = "What the recipes call."
 [tooling.groups.scripts.paths]
-"scripts/" = "Config contract, image publishing, build revision, the workspace check"
+"scripts/" = "Config contract, image publishing, build revision, the workspace's packages"
 "tools/" = "Scripts you run on your own computer or a VM, outside the dev container: SSH access to e2e machines"
 
 [tooling.groups.tests]
