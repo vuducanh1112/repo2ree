@@ -149,7 +149,7 @@ def test_a_remote_gate_runs_in_the_container_and_brings_back_runs_and_receipt() 
 
     assert gate(Machine("vm", MachineConfig(host="vm", jobs=6), runner), None) == 0
 
-    check, state, init, push, checkout, start, done = runner.calls
+    check, state, init, push, checkout, allow, start, done = runner.calls
     assert "docker container inspect" in _on_host(check)
     assert f"= {shlex.quote(REVISION + ' just assurance-gate 6')} && this=1" in _in_container(state)
     # The container's dev shell is not entered yet, so Git comes from Nix there.
@@ -158,10 +158,12 @@ def test_a_remote_gate_runs_in_the_container_and_brings_back_runs_and_receipt() 
     assert f"--receive-pack=docker exec -i -u nixuser -w /home/nixuser repo2ree-dev {RECEIVE_PACK}" in push
     assert push[-2:] == ["vm:repo2ree", f"{REVISION}:refs/testbed/head"]
     assert f"checkout -q --detach --force {REVISION}" in _in_container(checkout)
+    # Every command then runs in the checkout's own .envrc: the dev shell and its venv.
+    assert _in_container(allow) == "cd repo2ree && direnv allow ."
     # The gate runs detached, in its own process group, logging to the clone's test-artifacts.
     starting = _in_container(start)
     assert "set -m\nnohup bash -c" in starting
-    assert "develop --command just assurance-gate 6 >" in starting
+    assert "&& direnv exec . just assurance-gate 6 >" in starting
     assert "/home/nixuser/repo2ree/test-artifacts/machine-job/log 2>&1; echo $? >" in starting
     [follow] = runner.streamed
     assert "tail -n +1 -f" in _in_container(follow)
@@ -182,7 +184,7 @@ def test_a_failed_remote_gate_brings_back_its_runs_but_not_a_receipt() -> None:
 
     [(run_fetch, _)] = runner.piped
     assert "--exclude" not in run_fetch[-1]
-    assert "just assurance-gate 2" in _in_container(runner.calls[5])
+    assert "just assurance-gate 2" in _in_container(runner.calls[6])
 
 
 def test_the_local_machine_runs_here_and_moves_nothing() -> None:
@@ -265,7 +267,7 @@ def test_preparing_builds_head_there_and_replaces_the_container_only_for_another
     # Before replacing anything it looks for a job; the container it then started passes the check a run makes.
     assert STATE in _in_container(runner.calls[1])
     assert f"= {source} ] || exit {OTHER_SOURCE}" in _on_host(runner.calls[3])
-    assert "develop --command just build-e2e-bundles" in _in_container(runner.calls[-2])
+    assert "direnv exec . just build-e2e-bundles" in _in_container(runner.calls[-2])
 
 
 def test_removing_cleans_up_inside_the_container_then_removes_it_its_volume_and_images() -> None:

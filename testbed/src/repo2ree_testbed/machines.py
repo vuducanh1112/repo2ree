@@ -24,7 +24,8 @@ class MachineConfig(BaseModel):
     host: str | None = None
     path: str = "repo2ree"
     jobs: int = Field(default=4, ge=1)
-    shell: tuple[str, ...] = (*NIX, "develop", "--command")
+    # The checkout's own .envrc, as in this one: the dev shell, and the venv it syncs and activates.
+    shell: tuple[str, ...] = ("direnv", "exec", ".")
     fetch: Literal["slim", "full"] = "slim"
     # Where a remote machine runs everything; `local` is this checkout, already a dev container.
     container: str = "repo2ree-dev"

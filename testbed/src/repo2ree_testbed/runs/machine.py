@@ -8,7 +8,7 @@ machine named in the machines file (``$REPO2REE_MACHINES``, by default the untra
     host = "vm"          # an ssh destination: an alias, or user@host
     path = "repo2ree"    # the clone on the machine, relative to its home or absolute
     jobs = 6             # stacks side by side per tier
-    # shell = [...]      what every command runs inside; by default `nix develop`, flakes on
+    # shell = [...]      what every command runs inside; by default the clone's .envrc, via direnv
     # fetch = "slim"     # or "full": "slim" leaves runtime tarballs and archives behind
     # container = "repo2ree-dev"                  the container everything there runs in
     # dockerfile = "docker/dev/nix.Dockerfile"    the dev image it runs
@@ -294,6 +294,8 @@ class Machine:
             ),
             "check the commit out",
         )
+        # The clone is ours, and so is the .envrc each commit brings: direnv runs it only once allowed.
+        self._require(self.runner.call(self._ssh(f"cd {path} && direnv allow .")), "allow the commit's .envrc")
 
     def _start(self, job: str, argv: Sequence[str]) -> None:
         """Start ``argv`` in the checkout as the machine's job, in a process group of its own, detached from SSH."""
