@@ -1,6 +1,20 @@
 #!/bin/sh
-# Start the Nix daemon, give the user the Docker socket's group, and drop to the user.
+# Start the Nix daemon, give the user the checkout's owner and the Docker socket's
+# group, and drop to the user.
 set -eu
+
+# A checkout mounted from a Linux host belongs to that host's user, whose IDs need not
+# be 1000: the user takes them on, so what it writes there is the host user's too. A
+# checkout that root owns (as Docker Desktop shows a mount) leaves the user as it is.
+if [ -d /repo2ree ]; then
+    uid=$(stat -c %u /repo2ree)
+    gid=$(stat -c %g /repo2ree)
+    if [ "$uid" != 0 ] && [ "$uid" != "$(id -u nixuser)" ]; then
+        sed -i "s/^nixuser:x:[0-9]*:[0-9]*:/nixuser:x:$uid:$gid:/" /etc/passwd
+        sed -i "s/^nixuser:x:[0-9]*:/nixuser:x:$gid:/" /etc/group
+        chown -R nixuser: /home/nixuser
+    fi
+fi
 
 nix-daemon > /tmp/nix-daemon.log 2>&1 &
 for _ in 1 2 3 4 5 6 7 8 9 10; do

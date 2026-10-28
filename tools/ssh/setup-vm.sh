@@ -146,7 +146,7 @@ if [ $action = setup ]; then
   logs_in 'echo "Logged in as $(id -un) on $(hostname)"'
   share_host_key
   add_machine
-  echo ">> Done: $user@$host accepts the key in your agent. Next, in the dev container: just prepare-e2e-machine $name"
+  echo ">> Done: $user@$host accepts the key in your agent. Next, in the dev container: just gate-e2e-on $name"
 else
   [ -e "$key.pub" ] || { echo "No key $key.pub for $host." >&2; exit 1; }
   read -r _ blob _ <"$key.pub"

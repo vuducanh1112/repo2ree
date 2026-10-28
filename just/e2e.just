@@ -58,12 +58,7 @@ test-e2e-review mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_P
 list-e2e-machines:
     python -m repo2ree_testbed machine list
 
-# Ship HEAD to an e2e machine (into its container, built from HEAD, if it has one) and build its bundles there.
-[group('E2E tests')]
-prepare-e2e-machine machine:
-    python -m repo2ree_testbed machine prepare {{ quote(machine) }}
-
-# Clean up an e2e machine's container and what its runs left, then remove the container, its volume and images.
+# Clean up what runs left on an e2e machine, take its dev container down, and delete its clone.
 [group('E2E tests')]
 remove-e2e-machine machine:
     python -m repo2ree_testbed machine remove {{ quote(machine) }}

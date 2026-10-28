@@ -26,9 +26,8 @@ class MachineConfig(BaseModel):
     # The checkout's own .envrc, as in this one: the dev shell, and the venv it syncs and activates.
     shell: tuple[str, ...] = ("direnv", "exec", ".")
     fetch: Literal["slim", "full"] = "slim"
-    # Where a remote machine runs everything; `local` is this checkout, already a dev container.
+    # The Compose project of a remote machine's dev container; `local` is this checkout, already one.
     container: str = "repo2ree-dev"
-    dockerfile: str = "docker/dev/nix.Dockerfile"
 
 
 class MachinesFile(BaseModel):

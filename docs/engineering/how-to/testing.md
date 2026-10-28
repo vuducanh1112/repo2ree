@@ -31,7 +31,7 @@
 | `just gc-bundle-store` | Remove every unused bundle store cache but the live one; pass a number to keep that many more. |
 | `just gate-e2e-on [machine] [jobs]` | The assurance gate on a machine (`local`, or one of your own), its receipt and runs brought back here. |
 | `just test-e2e-on <machine> <recipe> [args]` | Any e2e recipe on a machine, its per-test runs brought back here. |
-| `just list-e2e-machines` / `just prepare-e2e-machine <machine>` | List the machines; ship HEAD to one and build its bundles there. |
+| `just list-e2e-machines` / `just remove-e2e-machine <machine>` | List the machines; take one's dev container down and delete its clone. |
 | `just cancel-e2e-on <machine>` | Stop the job running on a machine, as Ctrl-C on its run would. |
 | `just commit-gate` | Fast pre-commit gate: documentation, static checks, and unit tests. Writes a receipt for the tree it passed on; the pre-commit hook checks that receipt. |
 | `just check-doc-links-external` | Manually check external documentation URLs with retries and a local response cache; intentionally excluded from deterministic gates. |
@@ -527,7 +527,7 @@ workstation, a CI host. Such a machine runs the stacks itself, because a bench
 calls its API back through `host.docker.internal`, so the API, its providers,
 and Docker must share a host. `local` is always one; others are listed in
 `.config/machines.toml` in your checkout (or the file `$REPO2REE_MACHINES` names).
-Git ignores `.config/`, since hosts and paths are your own, and the file survives a
+Git ignores `.config/`, since hosts are your own, and the file survives a
 rebuilt dev container because the checkout does:
 
 ```toml
@@ -536,43 +536,39 @@ host = "repo2ree@vm" # an ssh destination: an alias from ~/.ssh/config, or user@
 jobs = 6             # stacks side by side per tier
 # shell = [...]      # what every command runs inside; by default the clone's .envrc, via direnv
 # fetch = "slim"     # or "full"; slim leaves runtime tarballs and REE archives there
-# container = "repo2ree-dev"                  # the container everything there runs in
-# dockerfile = "docker/dev/nix.Dockerfile"    # the dev image it runs
+# container = "repo2ree-dev"  # the Compose project of the dev container there
 ```
 
-Nothing runs on the machine itself: it needs only a Docker Engine with Compose that
-its SSH user may use, and keeps nothing of yours but Docker objects. `just
-prepare-e2e-machine vm` builds the dev image from HEAD there, unless it already has
-the image for HEAD's image inputs, and brings the container up with Compose from
-`docker/dev/machine.compose.yml`. The clone is in a volume at `/repo2ree`, the path
-of your own checkout in the dev container, so paths are the same in both places and
-the image trusts the `.envrc` there as it does yours. Compose gives the container a
-network of its own, as it does the local one: benches join it and reach the API
-inside the container by its name. Compose replaces the container only when its image
-or that file changed, so the clone and the bundles carry over. Every command, push,
-and fetch then runs inside the container. `just remove-e2e-machine vm` cleans up the
-stacks and workbenches runs left, then takes the container, its network and volume,
-and its images.
+A machine works as your own computer does: a clone, `~/repo2ree` of its SSH user,
+and the dev container brought up from it with Compose, mounting it at `/repo2ree`,
+the path of your own checkout in the dev container. It needs Git and a Docker Engine
+with Compose that its SSH user may use. Compose reads `docker-compose.dev.yml`, as
+here, with `docker/dev/machine.compose.yml` over it, which builds the Nix dev image
+(`docker/dev/nix.Dockerfile`) and keeps the container up for runs. Compose rebuilds
+the image when its inputs change and otherwise keeps the container, so the bundles
+and caches in it carry over. The container gives its user the IDs of the clone's
+owner, so what it writes there is the SSH user's. Compose gives it a network of its
+own: benches join it and reach the API inside the container by its name. `just
+remove-e2e-machine vm` cleans up the stacks and workbenches runs left, takes the
+container down, and deletes the clone.
 
 For a VM you reach with an admin login, `tools/ssh/setup-vm.sh <admin login>`, run
 on your own computer, makes a key for it, loads it into your SSH agent, and
 creates a `repo2ree` user there in the docker group that accepts the key; the dev
 container uses the key through the agent VS Code forwards. It also copies the VM host key
 into `.config/known_hosts` and names the VM in `.config/machines.toml` as
-the machine `vm` (`--name` picks another), so `just prepare-e2e-machine vm` is the
-only step left. Runs check host keys against that file and your own
+the machine `vm` (`--name` picks another), so `just gate-e2e-on vm` works from
+then on. Runs check host keys against that file and your own
 `~/.ssh/known_hosts`, and refuse a host they do not know rather than ask.
 `--revoke` takes it all away again.
 
-`just gate-e2e-on vm` pushes HEAD into the container, checks it out clean, runs
-`just assurance-gate` there, and brings back every run it made and, if it passed,
-its receipt. A receipt binds a tree, not a machine, so it holds here as it held
-there; the recipe ends by checking that. `just test-e2e-on vm test-e2e-system`
-runs a single tier the same way. Only a commit can be shipped, so both refuse a
-working tree with changes. Both also refuse, before shipping anything, a machine
-they cannot reach, a container that is not running, and a container built from
-other image inputs than HEAD's: the Dockerfile and every path it copies. Run
-`just prepare-e2e-machine vm` again after changing those.
+`just gate-e2e-on vm` pushes HEAD to the clone there, checks it out clean, brings
+the dev container up, runs `just assurance-gate` in it, and brings back every run it
+made and, if it passed, its receipt. A receipt binds a tree, not a machine, so it
+holds here as it held there; the recipe ends by checking that. `just test-e2e-on vm
+test-e2e-system` runs a single tier the same way. Only a commit can be shipped, so
+both refuse a working tree with changes. The first run on a machine, and the first
+after the dev image's inputs change, builds the image there.
 
 On another machine the recipe runs as a job detached from SSH, so a dropped
 connection does not end it. The run shows the job's log as it grows; when the
@@ -583,9 +579,8 @@ or brings back its results if it has ended, instead of starting it anew. A job's
 command, log, and exit code are in `test-artifacts/machine-job/` of the clone
 there.
 
-One job runs on a machine at a time. A different command, `just
-prepare-e2e-machine`, and `just remove-e2e-machine` refuse while one runs and name
-it. Ctrl-C on a run cancels its job there, as it would here; `just cancel-e2e-on
+One job runs on a machine at a time. A different command and `just
+remove-e2e-machine` refuse while one runs and name it. Ctrl-C on a run cancels its job there, as it would here; `just cancel-e2e-on
 vm` does the same from anywhere.
 
 ## Artifacts and logs

@@ -1,5 +1,5 @@
 import shlex
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -12,9 +12,7 @@ from repo2ree_testbed.runs.machine import (
     JOB_EXITED,
     JOB_LOST,
     LOST_JOB,
-    NOT_RUNNING,
     OTHER_RUNNING,
-    OTHER_SOURCE,
     OTHER_UNFETCHED,
     RECEIPT,
     RECONNECT_SECONDS,
@@ -24,22 +22,16 @@ from repo2ree_testbed.runs.machine import (
     THIS_JOB,
     Machine,
     gate,
-    image_inputs,
-    image_source,
-    prepare,
     run_recipe,
 )
 
 REVISION = "0123456789abcdef0123456789abcdef01234567"
-DOCKERFILE = """FROM nixos/nix@sha256:f159
-COPY flake.nix flake.lock ./
-COPY nix ./nix
-COPY docker/dev/nix-entrypoint.sh /usr/local/bin/dev-entrypoint.sh
-"""
 VM = MachineConfig(host="vm")
+COMPOSE = "docker compose --project-name repo2ree-dev -f docker-compose.dev.yml -f docker/dev/machine.compose.yml"
 
 
-# What tells the job's scripts apart: looking for a job, starting, following, and cancelling one.
+# What tells the calls apart: whether the dev container runs, looking for a job, starting, and cancelling one.
+UP = "ps --status running"
 STATE = "/fetched || exit 0"
 START = "nohup bash -c"
 CANCEL = "kill -INT"
@@ -86,17 +78,12 @@ class FakeRunner:
 
 
 def _git(argv: Sequence[str]) -> str:
-    """A committed checkout whose dev image is built from DOCKERFILE."""
+    """A committed checkout."""
     match list(argv):
         case ["git", "status", "--porcelain"]:
             return ""
         case ["git", "rev-parse", "HEAD"]:
             return REVISION
-        case ["git", "show", spec]:
-            assert spec == f"{REVISION}:docker/dev/nix.Dockerfile"
-            return DOCKERFILE
-        case ["git", "rev-parse", spec]:
-            return f"object-of-{spec}"
     raise AssertionError(argv)
 
 
@@ -111,12 +98,18 @@ def _on_host(call: Sequence[str]) -> str:
     return shlex.split(call[-1])[-1]
 
 
+def _in_clone(call: Sequence[str]) -> str:
+    """What an ssh call runs in the host's clone."""
+    host = _on_host(call)
+    assert host.startswith("cd repo2ree && ")
+    return host.removeprefix("cd repo2ree && ")
+
+
 def _in_container(call: Sequence[str]) -> str:
-    """What an ssh call runs in the container, once both login shells have unquoted it."""
-    host = shlex.split(_on_host(call))
-    assert host[:8] == ["docker", "exec", "-i", "-u", "nixuser", "-w", "/repo2ree", "repo2ree-dev"]
-    assert host[8:10] == ["bash", "-lc"]
-    return host[-1]
+    """What an ssh call runs in the dev container, as its user, once both login shells have unquoted it."""
+    words = shlex.split(_in_clone(call))
+    assert words[:-1] == [*shlex.split(COMPOSE), "exec", "-T", "--user", "nixuser", "dev", "bash", "-lc"]
+    return words[-1]
 
 
 def test_this_checkout_is_always_a_machine_and_the_file_adds_machines(tmp_path: Path) -> None:
@@ -126,8 +119,8 @@ def test_this_checkout_is_always_a_machine_and_the_file_adds_machines(tmp_path: 
     machines = load_machines(listed)
     assert machines[LOCAL].host is None
     assert machines["vm"] == MachineConfig(host="vm", jobs=6)
-    # Every other machine runs in a container: by default the dev image, as repo2ree-dev.
-    assert (machines["vm"].container, machines["vm"].dockerfile) == ("repo2ree-dev", "docker/dev/nix.Dockerfile")
+    # Every other machine runs in its dev container, the Compose project repo2ree-dev.
+    assert machines["vm"].container == "repo2ree-dev"
 
 
 @pytest.mark.parametrize(
@@ -141,25 +134,33 @@ def test_a_machines_file_cannot_redefine_this_checkout_omit_a_host_or_add_settin
         load_machines(listed)
 
 
-def test_a_remote_gate_runs_in_the_container_and_brings_back_runs_and_receipt() -> None:
+def test_a_remote_gate_runs_in_the_dev_container_of_a_clone_and_brings_back_runs_and_receipt() -> None:
     remote_run = "/repo2ree/test-artifacts/e2e/e2e-system-20261027-120000"
     runner = FakeRunner(printed=["building", f"{RUN_LINE}{remote_run}", ">> passed"])
 
     assert gate(Machine("vm", MachineConfig(host="vm", jobs=6), runner), None) == 0
 
-    check, state, init, push, checkout, start, done = runner.calls
-    assert "docker container inspect" in _on_host(check)
+    up_check, state, init, push, checkout, up, start, done = runner.calls
+    assert f'cd repo2ree 2>/dev/null && test -n "$({COMPOSE} {UP} --quiet dev 2>/dev/null)"' == _on_host(up_check)
     assert f"= {shlex.quote(REVISION + ' just assurance-gate 6')} && this=1" in _in_container(state)
-    # The clone is at /repo2ree, as the local checkout is, and Git comes with the dev image.
-    assert _in_container(init) == "test -d .git || git init -q"
-    # Git appends the clone's path to the receive-pack command, which docker exec hands on.
-    assert "--receive-pack=docker exec -i -u nixuser -w /repo2ree repo2ree-dev git-receive-pack" in push
-    assert push[-2:] == ["vm:/repo2ree", f"{REVISION}:refs/testbed/head"]
+    # A plain clone in the SSH user's home, which HEAD is pushed to by the host's Git.
+    assert _on_host(init) == "test -d repo2ree/.git || git init -q repo2ree"
+    assert push == [
+        "git",
+        "-c",
+        f"core.sshCommand={shlex.join(['ssh', *SSH_OPTIONS])}",
+        "push",
+        "-q",
+        "--force",
+        "vm:repo2ree",
+        f"{REVISION}:refs/testbed/head",
+    ]
     # The push reaches the machine as every other call does: by the checkout's known hosts, never asking.
-    assert push[:3] == ["git", "-c", f"core.sshCommand={shlex.join(['ssh', *SSH_OPTIONS])}"]
     assert f"UserKnownHostsFile={ROOT}/.config/known_hosts ~/.ssh/known_hosts" in SSH_OPTIONS
     assert "StrictHostKeyChecking=yes" in SSH_OPTIONS
-    assert f"checkout -q --detach --force {REVISION}" in _in_container(checkout)
+    assert _in_clone(checkout) == f"git checkout -q --detach --force {REVISION} && git clean -fdq"
+    # The dev container comes up from the clone as it does here, built from the Nix dev image.
+    assert _in_clone(up) == f"{COMPOSE} up -d --build --quiet-pull"
     # The gate runs detached, in its own process group, logging to the clone's test-artifacts.
     starting = _in_container(start)
     assert "set -m\nnohup bash -c" in starting
@@ -170,11 +171,14 @@ def test_a_remote_gate_runs_in_the_container_and_brings_back_runs_and_receipt() 
     assert "tail -n +1 -f" in _in_container(follow)
     assert "touch /repo2ree/test-artifacts/machine-job/fetched" in _in_container(done)
 
+    # Runs and the receipt come straight from the clone on the host.
     (run_fetch, run_unpack), (receipt_fetch, _) = runner.piped
-    assert "--exclude=*.tar" in _in_container(run_fetch)
-    assert "repo2ree/test-artifacts/e2e e2e-system-20261027-120000" in _in_container(run_fetch)
+    assert _on_host(run_fetch) == (
+        "tar -cf - --exclude=*.tar --exclude=*.tar.gz --exclude=*.tgz --exclude=*/artifacts/archives"
+        " -C repo2ree/test-artifacts/e2e e2e-system-20261027-120000"
+    )
     assert run_unpack == ["tar", "-xf", "-", "-C", str(ROOT / "test-artifacts/e2e")]
-    assert _in_container(receipt_fetch) == f"tar -cf - {RECEIPT}"
+    assert _on_host(receipt_fetch) == f"tar -cf - -C repo2ree {RECEIPT}"
 
 
 def test_a_failed_remote_gate_brings_back_its_runs_but_not_a_receipt() -> None:
@@ -185,7 +189,7 @@ def test_a_failed_remote_gate_brings_back_its_runs_but_not_a_receipt() -> None:
 
     [(run_fetch, _)] = runner.piped
     assert "--exclude" not in run_fetch[-1]
-    assert "just assurance-gate 2" in _in_container(runner.calls[5])
+    assert "just assurance-gate 2" in _in_container(runner.calls[6])
 
 
 def test_the_local_machine_runs_here_and_moves_nothing() -> None:
@@ -202,120 +206,38 @@ def test_the_local_machine_runs_here_and_moves_nothing() -> None:
         machine.remove()
 
 
-@pytest.mark.parametrize(
-    ("failure", "message"),
-    [
-        (NOT_RUNNING, "repo2ree-dev is not running on vm; run: just prepare-e2e-machine vm"),
-        (OTHER_SOURCE, "built from other image inputs .* at 0123456789ab; run: just prepare-e2e-machine vm"),
-        (SSH_FAILED, "could not reach vm as vm over SSH"),
-    ],
-)
-def test_a_run_refuses_a_container_that_is_down_out_of_date_or_unreachable(failure: int, message: str) -> None:
-    runner = FakeRunner(codes={"docker container inspect": failure})
-    with pytest.raises(SystemExit, match=message):
+def test_a_machine_without_a_running_dev_container_has_no_job_and_gets_the_container_up() -> None:
+    runner = FakeRunner(codes={UP: 1})
+    assert run_recipe(Machine("vm", VM, runner), ["test-e2e-system"]) == 0
+    assert not any(STATE in call[-1] for call in runner.calls)
+    assert any(_on_host(call).endswith("up -d --build --quiet-pull") for call in runner.calls if call[0] == "ssh")
+
+
+def test_an_unreachable_machine_is_refused_with_how_to_reach_it() -> None:
+    runner = FakeRunner(codes={UP: SSH_FAILED})
+    with pytest.raises(SystemExit, match=r"could not reach vm as vm over SSH.*tools/ssh/setup-vm.sh"):
         run_recipe(Machine("vm", VM, runner), ["test-e2e-system"])
     assert len(runner.calls) == 1
-    assert runner.streamed == []
 
 
-def test_the_check_compares_the_container_with_heads_image_inputs() -> None:
-    runner = FakeRunner()
-    run_recipe(Machine("vm", VM, runner), ["test-e2e-system"])
-    assert f'[ "$2" = {image_source(REVISION, "docker/dev/nix.Dockerfile")} ] || exit {OTHER_SOURCE}' in _on_host(
-        runner.calls[0]
-    )
-
-
-def test_the_image_inputs_are_what_the_dockerfile_copies_from_its_context() -> None:
-    assert image_inputs(DOCKERFILE) == ["flake.nix", "flake.lock", "nix", "docker/dev/nix-entrypoint.sh"]
-    assert image_inputs(
-        "ADD --chown=1000:1000 ./a/ \\\n    b /x/\n"
-        'COPY ["c d", "/y"]\n'
-        "COPY --from=builder /out /out\n"
-        "copy *.toml /z/\n"
-        "COPY . /all\n"
-        "RUN echo COPY nothing\n"
-    ) == ["a", "b", "c d", ".", "."]
-
-
-def test_the_image_source_hashes_the_dockerfile_and_every_input_at_the_revision() -> None:
-    source = image_source(REVISION, "docker/dev/nix.Dockerfile")
-    assert len(source) == 16
-    assert source == image_source(REVISION, "docker/dev/nix.Dockerfile")
-
-
-COMPOSE = "CONTAINER=repo2ree-dev docker compose --project-name repo2ree-dev --file -"
-IMAGE_CHECK = "docker image inspect"
-
-
-def test_preparing_builds_head_there_and_brings_the_container_up_with_compose() -> None:
-    runner = FakeRunner(codes={IMAGE_CHECK: 1})
-
-    assert prepare(Machine("vm", VM, runner)) == 0
-
-    source = image_source(REVISION, "docker/dev/nix.Dockerfile")
-    (archive, build), (compose_file, up) = runner.piped
-    # Only what the Dockerfile copies goes over, not the whole tree.
-    assert archive == [
-        "git",
-        "archive",
-        "--format=tar",
-        REVISION,
-        "--",
-        "docker/dev/nix-entrypoint.sh",
-        "docker/dev/nix.Dockerfile",
-        "flake.lock",
-        "flake.nix",
-        "nix",
-    ]
-    # The image carries a hash of its inputs, which the container inherits and runs check.
-    assert _on_host(build) == (
-        "docker build --label repo2ree.dev-container=repo2ree-dev"
-        f" --label repo2ree.dev-source={source} -t repo2ree-dev -f docker/dev/nix.Dockerfile -"
-    )
-    # Compose starts the container from the commit's file, and replaces it only when that or the image changed.
-    assert compose_file == ["git", "show", f"{REVISION}:docker/dev/machine.compose.yml"]
-    starting = _on_host(up)
-    assert f"{COMPOSE} up -d --quiet-pull || exit 1" in starting
-    assert "chown nixuser: /repo2ree" in starting
-    # Before replacing anything it looks for a job; the container it then started passes the check a run makes.
-    assert STATE in _in_container(runner.calls[1])
-    assert f'[ "$2" = {source} ] || exit {OTHER_SOURCE}' in _on_host(runner.calls[3])
-    assert "direnv exec . just build-e2e-bundles" in _in_container(runner.calls[-2])
-
-
-def test_preparing_keeps_an_image_built_from_the_same_inputs() -> None:
-    runner = FakeRunner()
-
-    assert prepare(Machine("vm", VM, runner)) == 0
-
-    source = image_source(REVISION, "docker/dev/nix.Dockerfile")
-    assert f'repo2ree.dev-source"}}}}\' repo2ree-dev 2>/dev/null)" = {source} ]' in _on_host(runner.calls[2])
-    # Nothing is built, so Compose finds the image it started the container from and leaves the container be.
-    [(_compose_file, up)] = runner.piped
-    assert f"{COMPOSE} up -d" in _on_host(up)
-
-
-def test_removing_cleans_up_inside_the_container_then_takes_its_compose_project_and_images() -> None:
+def test_removing_cleans_up_inside_the_container_then_takes_it_down_and_deletes_the_clone() -> None:
     runner = FakeRunner()
 
     Machine("vm", VM, runner).remove()
 
-    _check, _state, cleanup = runner.calls
+    _up_check, _state, cleanup, removal = runner.calls
     assert "just stack-clean; just clean-workbenches 1" in _in_container(cleanup)
-    [(compose_file, removal)] = runner.piped
-    assert compose_file == ["git", "show", "HEAD:docker/dev/machine.compose.yml"]
-    removing = _on_host(removal)
-    # The container, its network, and the clone's volume.
-    assert f"{COMPOSE} down --volumes --remove-orphans" in removing
-    assert "--filter label=repo2ree.dev-container=repo2ree-dev" in removing
+    assert _on_host(removal) == (
+        f"if test -d repo2ree; then (cd repo2ree && {COMPOSE} down --volumes --remove-orphans --rmi local)"
+        " || exit 1; rm -rf repo2ree; fi"
+    )
 
 
 def test_removing_a_stopped_container_skips_the_cleanup_inside_it() -> None:
-    runner = FakeRunner(codes={"docker container inspect": NOT_RUNNING})
+    runner = FakeRunner(codes={UP: 1})
     Machine("vm", VM, runner).remove()
-    assert len(runner.calls) == 1
-    assert "down --volumes" in _on_host(runner.piped[0][1])
+    _up_check, removal = runner.calls
+    assert "down --volumes" in _on_host(removal)
 
 
 def test_a_machine_runs_only_commits(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -352,7 +274,7 @@ def test_a_dropped_connection_reconnects_and_follows_the_log_from_where_it_left_
     # The wait grows while the machine stays unreachable.
     assert slept == [5, 10]
     [(run_fetch, _)] = runner.piped
-    assert "e2e-system-20261027-120000" in _in_container(run_fetch)
+    assert "e2e-system-20261027-120000" in _on_host(run_fetch)
 
 
 def test_a_machine_unreachable_for_long_leaves_the_job_to_the_same_command_again() -> None:
@@ -418,12 +340,8 @@ def test_ctrl_c_on_a_run_cancels_its_job() -> None:
     assert runner.piped == []
 
 
-@pytest.mark.parametrize(
-    "act", [lambda machine: prepare(machine), lambda machine: machine.remove()], ids=["prepare", "remove"]
-)
-def test_preparing_or_removing_refuses_while_a_job_runs(act: Callable[[Machine], object]) -> None:
+def test_removing_refuses_while_a_job_runs() -> None:
     runner = FakeRunner(codes={STATE: OTHER_RUNNING})
-    with pytest.raises(SystemExit, match="vm is running the job above, so this will not"):
-        act(Machine("vm", VM, runner))
-    # Neither a build nor Compose ran: both go through a pipe.
-    assert runner.piped == []
+    with pytest.raises(SystemExit, match="vm is running the job above, so this will not remove its container"):
+        Machine("vm", VM, runner).remove()
+    assert not any("down --volumes" in call[-1] for call in runner.calls)

@@ -61,6 +61,7 @@ case $action in
     else
       echo "No docker group yet: install Docker, then run this again." >&2
     fi
+    command -v git >/dev/null || echo "No git: install it, since e2e runs keep a clone here." >&2
     echo
     echo "Host key fingerprints, to check the first connection against:"
     for pub in /etc/ssh/ssh_host_*_key.pub; do ssh-keygen -lf "$pub"; done
