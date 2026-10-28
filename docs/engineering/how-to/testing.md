@@ -16,7 +16,7 @@
 | `just test-backend-unit` | The container-free backend `unit` tier, measured into its data directory. |
 | `just test-backend-integration` | The backend `integration` tier, measured. Builds the bundles first; Docker-gated tests skip when Docker is absent. |
 | `just test-backend` | Both backend tiers, combined into one backend coverage report. |
-| `just test-core-unit` / `test-api-unit` / … | One package's suite and isolated coverage contribution — the debugging loop. |
+| `just test-unit-package core api` / `test-integration-package core` | Those packages' suites and isolated coverage contributions — the debugging loop. |
 | `just test-e2e-gui` | Browser regression suite against a live API and GUI dev server. Measured. |
 | `just test-e2e-review` | Browser regression suite, reviewer side: the reproduction specs. Measured. |
 | `just demo-gui` | Narrated browser walkthrough with video. Measured. |
@@ -60,21 +60,18 @@ Run all Python static checks:
 just check-backend
 ```
 
-Per-package targets are available:
+Check one or more packages, any in the workspace:
 
 ```bash
-just check-protocol
-just check-core
-just check-supervisor
-just check-api
-just check-executor
-just check-docker-support
-just check-provider
-just check-workbench
+just check-package core
+just check-package api assurance/checker
 ```
 
-These targets run `ruff check`, `ruff format`, and `mypy` for their package.
-They may modify formatting.
+It runs `ruff check`, `ruff format --check`, and `mypy` for each package, and
+`lint-imports` when its `pyproject.toml` declares import contracts of its own.
+The aggregates (`check-backend`, `check-assurance`, `check-tooling`) take their
+packages from `pyproject.toml`'s `[tool.repo2ree.workspace]`, so a package added
+there is checked and tested without a recipe of its own.
 
 ## Backend Tests
 
@@ -90,13 +87,11 @@ Full backend test suite and combined unit/integration coverage report:
 just test-backend
 ```
 
-Per-package test targets:
+Per-package test targets, either tier:
 
 ```bash
-just test-core
-just test-api
-just test-supervisor
-just test-executor
+just test-unit-package core
+just test-integration-package core api
 ```
 
 Important split:
@@ -114,8 +109,8 @@ tiers intentionally run separately because OpenTelemetry's tracer provider is
 process-global. Use:
 
 ```bash
-just test-api-unit
-just test-api-integration
+just test-unit-package api
+just test-integration-package api
 ```
 
 or:
@@ -155,7 +150,7 @@ Every stack suite measures the same thing — the backend — whichever interfac
 drove it; see "The browser is not measured" below.
 
 Branch coverage adds roughly 30% to pytest runtime. Per-package targets such as
-`just test-core-unit` serve as the debugging loop and write isolated coverage
+`just test-unit-package core` serve as the debugging loop and write isolated coverage
 parts, but only the aggregate target combines every required part into the
 tier's reportable data. A partial run therefore cannot be mistaken for a
 complete tier.

@@ -2,31 +2,26 @@
 #
 # Checks below are read-only. Run `just format` to apply formatting, or
 # `just fix` to apply safe lint fixes and then format the affected sources.
+# The Python packages come from pyproject.toml (scripts/workspace.py), so a
+# package added there is formatted, checked, and tested without a recipe of its own.
 
-PYTHON_FORMAT_PATHS := "scripts protocol core supervisor api executor docker-support provider workbench assurance/checker assurance/dossier assurance/collector assurance/traceview testbed repoview"
 GUI_FORMAT_PATHS := "src tests scripts playwright.config.ts vite.config.mjs testArtifacts.cjs testArtifacts.d.cts"
 
 [private]
 _check-write-hint:
     @echo ">> checks are read-only; run 'just format' to format or 'just fix' to apply safe fixes"
 
-# Require every workspace-wide Just list and aggregate to cover the packages
-# declared by pyproject.toml rather than silently drifting when one is added.
-[private]
-_check-just-workspace:
-    python scripts/check_just_workspace.py
-
 # Apply Python, GUI, and Nix formatting.
 [group('Formatting')]
 format:
-    ruff format {{ PYTHON_FORMAT_PATHS }} conftest.py
+    ruff format scripts $(python scripts/workspace.py members) conftest.py
     cd gui && npx biome format --write {{ GUI_FORMAT_PATHS }}
     nix fmt
 
 # Apply safe Python and GUI lint fixes, then normalize formatting.
 [group('Formatting')]
 fix: && format
-    ruff check --fix {{ PYTHON_FORMAT_PATHS }} conftest.py
+    ruff check --fix scripts $(python scripts/workspace.py members) conftest.py
     cd gui && npx biome check --write {{ GUI_FORMAT_PATHS }}
 
 # Run tests for repository scripts.
@@ -34,29 +29,9 @@ fix: && format
 test-scripts:
     pytest scripts/tests
 
-# Static checks and the testbed's import contracts: it starts what it tests as processes, never importing it.
-[group('Checks')]
-check-testbed: (_check-python-package "testbed")
-    lint-imports --config testbed/pyproject.toml
-
-# Testbed tests: stack command lines, run pruning, coverage tiers, and REE preservation.
-[group('Script tests')]
-test-testbed:
-    pytest testbed/tests
-
-# Static checks and the views' import contracts: they read exports and source text, never another package.
-[group('Checks')]
-check-repoview: (_check-python-package "repoview")
-    lint-imports --config repoview/pyproject.toml
-
-# Repoview tests: provenance stamps, the recipe graph, the export readers, and an overview of this tree.
-[group('Script tests')]
-test-repoview:
-    pytest repoview/tests
-
 # Statically check shell and Python scripts.
 [group('Checks')]
-check-scripts: _check-write-hint check-config _check-just-workspace
+check-scripts: _check-write-hint check-config
     @echo "Running shellcheck..."
     find scripts -name '*.sh' -exec shellcheck {} +
     @echo "Checking python scripts..."
@@ -111,49 +86,25 @@ check-api-types: _check-write-hint
     npx openapi-typescript ../contracts/openapi.json -o "$candidate"
     diff -u "$generated" "$candidate"
 
-[private]
-_check-python-package package: _check-write-hint
+# A package with import contracts of its own declares them in its pyproject.toml: the
+# testbed and the views read what they test as processes and exports, the assurance
+# packages stay independent of the product they judge.
+# Static checks for workspace packages (e.g. `just check-package core assurance/checker`): ruff, mypy, and its own import contracts.
+[group('Checks')]
+check-package +packages: _check-write-hint
     #!/usr/bin/env bash
     set -euo pipefail
-    package={{ quote(package) }}
-    echo "Running $package checks..."
-    paths=("$package/src")
-    if [[ -d "$package/tests" ]]; then paths+=("$package/tests"); fi
-    ruff check "${paths[@]}"
-    ruff format --check "${paths[@]}"
-    mypy "${paths[@]}"
-
-# Run static checks for the protocol package.
-[group('Checks')]
-check-protocol: (_check-python-package "protocol")
-
-# Run static checks for the core package.
-[group('Checks')]
-check-core: (_check-python-package "core")
-
-# Run static checks for the supervisor package.
-[group('Checks')]
-check-supervisor: (_check-python-package "supervisor")
-
-# Run static checks for the API package.
-[group('Checks')]
-check-api: (_check-python-package "api")
-
-# Run static checks for the executor package.
-[group('Checks')]
-check-executor: (_check-python-package "executor")
-
-# Run static checks for the workbench package.
-[group('Checks')]
-check-workbench: (_check-python-package "workbench")
-
-# Run static checks for shared Docker mechanics.
-[group('Checks')]
-check-docker-support: (_check-python-package "docker-support")
-
-# Run static checks for the Docker provider package.
-[group('Checks')]
-check-provider: (_check-python-package "provider")
+    for package in {{ packages }}; do
+        echo "Running $package checks..."
+        paths=("$package/src")
+        if [[ -d "$package/tests" ]]; then paths+=("$package/tests"); fi
+        ruff check "${paths[@]}"
+        ruff format --check "${paths[@]}"
+        mypy "${paths[@]}"
+        if grep -q '^\[tool\.importlinter\]' "$package/pyproject.toml"; then
+            lint-imports --config "$package/pyproject.toml"
+        fi
+    done
 
 # Check backend import-layer contracts.
 [group('Checks')]
@@ -163,12 +114,21 @@ check-architecture: _check-write-hint
 
 # Run static checks for backend packages.
 [group('Checks')]
-check-backend: check-protocol check-core check-supervisor check-api check-executor check-docker-support check-provider check-workbench check-architecture
+check-backend: (check-package `python scripts/workspace.py backend`) check-architecture
+
+# Static checks for the testbed and the repository views.
+[group('Checks')]
+check-tooling: (check-package `python scripts/workspace.py tooling`)
+
+# Tests for the testbed and the repository views.
+[group('Script tests')]
+test-tooling:
+    for package in $(python scripts/workspace.py tooling); do pytest "$package/tests"; done
 
 # Run every static analysis check.
 [group('Checks')]
-check: check-docs check-scripts check-nix check-gui check-backend check-assurance check-testbed check-repoview
+check: check-docs check-scripts check-nix check-gui check-backend check-assurance check-tooling
 
 # Run every container-free unit test suite.
 [group('Tests')]
-test-unit: test-scripts test-gui test-backend-unit test-assurance test-testbed test-repoview
+test-unit: test-scripts test-gui test-backend-unit test-assurance test-tooling

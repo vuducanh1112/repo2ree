@@ -7,57 +7,20 @@
 # many verifications into one catalogue of operations for the overview. Each is its
 # own step on the previous one's artifact.
 
-# Static checks for every assurance package.
+# Static checks for every assurance package, each with its own import contracts, and a fresh
+# generated contract (contracts/behaviour). The checker stays independent of the product, the
+# collector reaches it only over HTTP, the views see only the checker's public surface, and the
+# dossier format, the leaf every step shares, knows none of them.
 [group('Assurance')]
-check-assurance: check-assurance-checker check-assurance-dossier check-assurance-collector check-assurance-traceview
-
-# Tests for every assurance package.
-[group('Assurance')]
-test-assurance: test-assurance-checker test-assurance-dossier test-assurance-collector test-assurance-traceview
-
-# System evidence tooling has independent checks and test artifacts.
-ASSURANCE_METRIC_PATHS := "assurance/checker/src assurance/dossier/src assurance/collector/src assurance/traceview/src"
-
-# Static checks, the checker's independence contracts, and a fresh generated contract (contracts/behaviour).
-[group('Assurance')]
-check-assurance-checker: (_check-python-package "assurance/checker")
-    lint-imports --config assurance/checker/pyproject.toml
+check-assurance: (check-package `python scripts/workspace.py assurance`)
     python -m repo2ree_assurance_checker generate --check
 
-# Checker tests; the history tests need git.
+# Tests for every assurance package. The checker's history tests need git; the collector's serve
+# the control plane's behaviour endpoints from a local stub; the traceview dossier smoke test needs
+# an e2e run's dossier under test-artifacts/e2e.
 [group('Assurance')]
-test-assurance-checker:
-    pytest assurance/checker/tests
-
-# Static checks and the views' import contracts: public checker surface only, no runtime packages.
-[group('Assurance')]
-check-assurance-traceview: (_check-python-package "assurance/traceview")
-    lint-imports --config assurance/traceview/pyproject.toml
-
-# Traceview tests; the dossier smoke test needs an e2e run's dossier under test-artifacts/e2e.
-[group('Assurance')]
-test-assurance-traceview:
-    pytest assurance/traceview/tests
-
-# Static checks and the collector's import contracts: HTTP to the control plane, no runtime packages.
-[group('Assurance')]
-check-assurance-collector: (_check-python-package "assurance/collector")
-    lint-imports --config assurance/collector/pyproject.toml
-
-# Static checks and the format's import contract: the leaf every assurance step shares, knowing none of them.
-[group('Assurance')]
-check-assurance-dossier: (_check-python-package "assurance/dossier")
-    lint-imports --config assurance/dossier/pyproject.toml
-
-# Tests of the dossier format.
-[group('Assurance')]
-test-assurance-dossier:
-    pytest assurance/dossier/tests
-
-# Collector tests; they serve the control plane's behaviour endpoints from a local stub.
-[group('Assurance')]
-test-assurance-collector:
-    pytest assurance/collector/tests
+test-assurance:
+    for package in $(python scripts/workspace.py assurance); do pytest "$package/tests"; done
 
 # Collect a running deployment's behaviour evidence through its control plane (exit 1 if any source is missing).
 [group('Assurance')]
@@ -98,6 +61,6 @@ inspect-dossier dossier="":
 [group('Assurance')]
 generate-assurance-metrics:
     mkdir -p {{ quote(METRICS_DIR + "/assurance") }}
-    lizard -l python -i -1 -o {{ quote(METRICS_DIR + "/assurance/complexity.html") }} {{ ASSURANCE_METRIC_PATHS }}
-    lizard -l python -i -1 --csv {{ ASSURANCE_METRIC_PATHS }} > {{ quote(METRICS_DIR + "/assurance/complexity.csv") }}
+    lizard -l python -i -1 -o {{ quote(METRICS_DIR + "/assurance/complexity.html") }} $(python scripts/workspace.py assurance --src)
+    lizard -l python -i -1 --csv $(python scripts/workspace.py assurance --src) > {{ quote(METRICS_DIR + "/assurance/complexity.csv") }}
     python -m repo2ree_repoview stamp --manifest {{ quote(METRICS_DIR + "/manifest.json") }} --by generate-assurance-metrics {{ quote(METRICS_DIR + "/assurance/complexity.html") }} {{ quote(METRICS_DIR + "/assurance/complexity.csv") }}

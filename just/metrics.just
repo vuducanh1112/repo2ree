@@ -1,5 +1,4 @@
 COMPLEXITY_DIR := METRICS_DIR + "/complexity"
-PYTHON_METRIC_PATHS := "protocol/src core/src supervisor/src api/src executor/src docker-support/src provider/src workbench/src"
 
 # Generate separate Python and TypeScript complexity reports.
 [group('Metrics')]
@@ -7,7 +6,7 @@ generate-metrics: generate-assurance-metrics
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p {{ quote(COMPLEXITY_DIR) }}
-    python_sources=({{ PYTHON_METRIC_PATHS }})
+    python_sources=($(python scripts/workspace.py backend --src))
     ts_excludes=(-x '*/shell/infra/api/generated/*' -x '*.test.ts' -x '*.test.tsx' -x '*.spec.ts' -x '*.spec.tsx')
     lizard -l python -i -1 -o {{ quote(COMPLEXITY_DIR + "/python.html") }} "${python_sources[@]}"
     lizard -l python -i -1 --csv "${python_sources[@]}" > {{ quote(COMPLEXITY_DIR + "/python.csv") }}

@@ -15,7 +15,7 @@ Run every command that needs the repo's tools through direnv, from the repo
 root:
 
 ```bash
-direnv exec . just test-core-unit
+direnv exec . just test-unit-package core
 direnv exec . uv run pytest core
 direnv exec . sh -c 'cd gui && npm test'
 ```
