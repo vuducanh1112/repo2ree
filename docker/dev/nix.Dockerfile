@@ -18,7 +18,9 @@ RUN echo 'nixuser:x:1000:1000:nixuser:/home/nixuser:/bin/bash' >> /etc/passwd \
 
 # The entrypoint's tools and a warm dev shell, both GC-rooted. Root builds without
 # a daemon here; at runtime the user's builds find these paths already in the store.
-WORKDIR /repo2ree
+# Built from a directory of its own: the checkout is mounted at /repo2ree, and a
+# volume mounted where the image has files starts with root's copy of them.
+WORKDIR /opt/repo2ree-devshell
 COPY flake.nix flake.lock ./
 COPY nix ./nix
 RUN nix build .#devcontainer --out-link /opt/devcontainer \
