@@ -483,6 +483,13 @@
         "type": "string"
       }
     },
+    "GIT_SSL_CAINFO": {
+      "kind": "external",
+      "owner": "git",
+      "schema": {
+        "type": "string"
+      }
+    },
     "HOSTNAME": {
       "kind": "external",
       "owner": "container-runtime",
@@ -514,6 +521,13 @@
     "LOG_LEVEL": {
       "kind": "runtime",
       "owner": "protocol",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "NIX_SSL_CERT_FILE": {
+      "kind": "external",
+      "owner": "nix",
       "schema": {
         "type": "string"
       }
@@ -881,6 +895,13 @@
     "SERVICE_VERSION": {
       "kind": "runtime",
       "owner": "protocol",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "SSL_CERT_FILE": {
+      "kind": "external",
+      "owner": "operating-system",
       "schema": {
         "type": "string"
       }

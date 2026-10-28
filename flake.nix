@@ -84,7 +84,7 @@
           workbench-image = import ./nix/workbench-image.nix { inherit pkgs buildRevision; };
           provider-image = import ./nix/provider-image.nix { inherit pkgs buildRevision; };
           gui-image = guiImage;
-          # The dev container's own tools, on top of its Nix base image.
+          # The dev container's own tools, beyond its Debian base and Nix.
           devcontainer = import ./nix/devcontainer.nix { inherit devPkgs; };
           default = provider-image;
         };
