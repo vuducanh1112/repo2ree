@@ -237,9 +237,12 @@ class Machine:
         self._require(self.runner.call(self._in_clone(checkout)), "check the commit out")
 
     def _up(self) -> None:
-        """Bring the dev container up from the clone: Compose builds what changed and keeps what did not."""
+        """Bring the dev container up from the clone and wait until its user is set up.
+
+        Compose builds what changed and keeps the rest.
+        """
         self._require(
-            self.runner.call(self._in_clone(f"{self._compose} up -d --build --quiet-pull")),
+            self.runner.call(self._in_clone(f"{self._compose} up -d --build --quiet-pull --wait")),
             "bring the dev container up",
         )
 

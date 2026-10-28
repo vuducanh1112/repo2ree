@@ -160,7 +160,8 @@ def test_a_remote_gate_runs_in_the_dev_container_of_a_clone_and_brings_back_runs
     assert "StrictHostKeyChecking=yes" in SSH_OPTIONS
     assert _in_clone(checkout) == f"git checkout -q --detach --force {REVISION} && git clean -fdq"
     # The dev container comes up from the clone as it does here, built from the Nix dev image.
-    assert _in_clone(up) == f"{COMPOSE} up -d --build --quiet-pull"
+    # Once it is healthy: its user set up, the Docker group among its groups, which a run keeps from its start.
+    assert _in_clone(up) == f"{COMPOSE} up -d --build --quiet-pull --wait"
     # The gate runs detached, in its own process group, logging to the clone's test-artifacts.
     starting = _in_container(start)
     assert "set -m\nnohup bash -c" in starting
@@ -210,7 +211,9 @@ def test_a_machine_without_a_running_dev_container_has_no_job_and_gets_the_conta
     runner = FakeRunner(codes={UP: 1})
     assert run_recipe(Machine("vm", VM, runner), ["test-e2e-system"]) == 0
     assert not any(STATE in call[-1] for call in runner.calls)
-    assert any(_on_host(call).endswith("up -d --build --quiet-pull") for call in runner.calls if call[0] == "ssh")
+    assert any(
+        _on_host(call).endswith("up -d --build --quiet-pull --wait") for call in runner.calls if call[0] == "ssh"
+    )
 
 
 def test_an_unreachable_machine_is_refused_with_how_to_reach_it() -> None:

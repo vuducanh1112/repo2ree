@@ -1,8 +1,10 @@
 # The dev container on an e2e machine, over docker-compose.dev.yml: the same service,
 # with the checkout mounted at /repo2ree, built from the Nix dev image. It reaps what
 # runs leave behind, outlives a reboot, and stays up for the runs that exec into it.
+# It is healthy once its entrypoint has set the user up, which `up --wait` waits for:
+# a run exec'd in before then would lack the user's Docker group.
 #
-#   docker compose -f docker-compose.dev.yml -f docker/dev/machine.compose.yml up -d --build
+#   docker compose -f docker-compose.dev.yml -f docker/dev/machine.compose.yml up -d --build --wait
 services:
   dev:
     build:
@@ -10,3 +12,8 @@ services:
     init: true
     restart: unless-stopped
     command: ["sleep", "infinity"]
+    healthcheck:
+      test: ["CMD", "test", "-f", "/tmp/dev-ready"]
+      interval: 30s
+      start_period: 60s
+      start_interval: 1s

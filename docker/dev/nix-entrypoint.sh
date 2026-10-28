@@ -1,7 +1,12 @@
 #!/bin/sh
 # Start the Nix daemon, give the user the checkout's owner and the Docker socket's
-# group, and drop to the user.
+# group, mark the container ready, and drop to the user.
 set -eu
+
+# Present once the user is set up: a process exec'd into the container before then
+# would keep the user's groups as they were. A restarted container sets up again.
+READY=/tmp/dev-ready
+rm -f "$READY"
 
 # A checkout mounted from a Linux host belongs to that host's user, whose IDs need not
 # be 1000: the user takes them on, so what it writes there is the host user's too. A
@@ -38,4 +43,5 @@ if [ -S /var/run/docker.sock ]; then
     fi
 fi
 
+touch "$READY"
 exec gosu nixuser "$@"
