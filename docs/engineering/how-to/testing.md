@@ -529,9 +529,6 @@ rebuilt dev container because the checkout does:
 [machines.vm]
 host = "repo2ree@vm" # an ssh destination: an alias from ~/.ssh/config, or user@host
 jobs = 6             # stacks side by side per tier
-# shell = [...]      # what every command runs inside; by default the clone's .envrc, via direnv
-# fetch = "slim"     # or "full"; slim leaves runtime tarballs and REE archives there
-# container = "repo2ree-dev"  # the Compose project of the dev container there
 ```
 
 A machine works as your own computer does: a clone, `~/repo2ree` of its SSH user,
@@ -563,8 +560,8 @@ machine, so it holds here as it held there; the recipe ends by checking that.
 `just on vm <recipe>` runs any other recipe the same way, `just on vm
 test-backend-integration` or `just on vm demo-gui` as much as a single tier: what
 comes back is every file the job wrote under `test-artifacts/` and `.receipts/`
-since it started, runs, recordings, coverage, and receipts alike, slim unless the
-machine says `fetch = "full"`. Recipes that write into the source tree (`format`,
+since it started, runs, recordings, coverage, and receipts alike; runtime tarballs
+and REE archives stay there. Recipes that write into the source tree (`format`,
 `generate-*`) change only the clone there. Only a commit can be shipped, so
 both refuse a working tree with changes. The first run on a machine, and the first
 after the dev image's inputs change, builds the image there.

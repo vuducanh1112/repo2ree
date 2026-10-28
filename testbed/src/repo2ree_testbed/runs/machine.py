@@ -7,14 +7,12 @@ machine named in the machines file (``$REPO2REE_MACHINES``, by default the untra
     [machines.vm]
     host = "vm"          # an ssh destination: an alias, or user@host
     jobs = 6             # stacks side by side per tier
-    # shell = [...]      what every command runs inside; by default the clone's .envrc, via direnv
-    # fetch = "slim"     # or "full": "slim" leaves runtime tarballs and archives behind
-    # container = "repo2ree-dev"    the Compose project of the dev container there
 
 A remote machine works as this checkout does: a clone (~/repo2ree of its SSH user) and
 the dev container brought up from it with Compose (docker-compose.dev.yml, with
-docker/dev/machine.compose.yml over it, which keeps it up for runs). It needs Git
-and a Docker Engine with Compose that its SSH user may use.
+docker/dev/machine.compose.yml over it, which keeps it up for runs), where every
+command runs in the clone's .envrc. It needs Git and a Docker Engine with Compose
+that its SSH user may use.
 
 A run pushes HEAD to the clone, checks it out, brings the container up, and starts the
 recipe in it detached, as the machine's one job: its command, log, and exit code are in
@@ -22,10 +20,10 @@ test-artifacts/machine-job/ of the clone. It shows the log until the job ends, t
 brings back what the job wrote: every file under test-artifacts/ and .receipts/ changed
 since it started, which in a clone that runs one job at a time is exactly its results,
 whatever the recipe (runs, recordings, coverage, and receipts, which bind a tree rather
-than a machine). Ctrl-C or a dropped connection only stops the showing: the job goes
-on, and the next run on that machine shows it again and brings its results back before
-starting anything of its own. `cancel` stops the job; `remove` takes the container down
-and deletes the clone.
+than a machine), but for runtime tarballs and archives, which stay there. Ctrl-C or a
+dropped connection only stops the showing: the job goes on, and the next run on that
+machine shows it again and brings its results back before starting anything of its own.
+`cancel` stops the job; `remove` takes the container down and deletes the clone.
 """
 
 from __future__ import annotations
@@ -62,6 +60,10 @@ SSH_OPTIONS = (
 )
 # What a slim fetch leaves on the machine: the bulk of a run, and nothing a verdict or a page reads.
 SLIM_EXCLUDES = ("! -name '*.tar'", "! -name '*.tar.gz'", "! -name '*.tgz'", "! -path '*/artifacts/archives/*'")
+# What every command on a remote machine runs in: the clone's .envrc, as here, with the venv it syncs.
+SHELL = ("direnv", "exec", ".")
+# The Compose project of a remote machine's dev container.
+PROJECT = "repo2ree-dev"
 
 
 class Runner(Protocol):
@@ -115,7 +117,7 @@ class Machine:
     def run(self, revision: str, argv: Sequence[str]) -> int:
         """Run ``argv`` at ``revision`` on the machine and bring its results back; its exit code."""
         if not self.remote:
-            return self.runner.call([*self.config.shell, *argv])
+            return self.runner.call(argv)
         command = f"{revision} {shlex.join(argv)}"
         job = self.job()
         if job.state == "running":
@@ -169,7 +171,7 @@ class Machine:
             print(f">> {self.name} is running no job")
             return
         print(f">> cancelling `{job.command}` on {self.name}")
-        cleanup = shlex.join([*self.config.shell, "bash", "-c", "just stack-clean; just clean-workbenches"])
+        cleanup = shlex.join([*SHELL, "bash", "-c", "just stack-clean; just clean-workbenches"])
         script = " && ".join(
             [
                 f"{self._compose} restart {SERVICE}",
@@ -187,7 +189,7 @@ class Machine:
             raise SystemExit(f">> {self.name} is this checkout; there is nothing to remove")
         if self.job().state == "running":
             raise SystemExit(f">> {self.name} is running a job; let it end, or: just machine cancel {self.name}")
-        cleanup = shlex.join([*self.config.shell, "bash", "-c", "just stack-clean; just clean-workbenches 1"])
+        cleanup = shlex.join([*SHELL, "bash", "-c", "just stack-clean; just clean-workbenches 1"])
         script = "; ".join(
             [
                 f"test -d {CLONE} || exit 0",
@@ -227,7 +229,7 @@ class Machine:
 
     def _start(self, command: str, argv: Sequence[str]) -> None:
         """Start ``argv`` in the dev container as the machine's job, detached from this connection."""
-        body = f"{shlex.join([*self.config.shell, *argv])} > {JOB}/log 2>&1; echo $? > {JOB}/exit"
+        body = f"{shlex.join([*SHELL, *argv])} > {JOB}/log 2>&1; echo $? > {JOB}/exit"
         script = " && ".join(
             [
                 f"rm -rf {JOB} && mkdir -p {JOB}",
@@ -281,14 +283,13 @@ class Machine:
     @property
     def _written(self) -> str:
         """Lists the files the job wrote: under test-artifacts/ and .receipts/, changed since it started."""
-        slim = SLIM_EXCLUDES if self.config.fetch == "slim" else ()
-        tests = " ".join(["-type f", f"-cnewer {JOB}/command", f"! -path '{JOB}/*'", *slim])
+        tests = " ".join(["-type f", f"-cnewer {JOB}/command", f"! -path '{JOB}/*'", *SLIM_EXCLUDES])
         return f"{{ find test-artifacts .receipts {tests} 2>/dev/null || true; }}"
 
     @property
     def _compose(self) -> str:
         files = " ".join(f"-f {path}" for path in COMPOSE_FILES)
-        return f"docker compose --project-name {shlex.quote(self.config.container)} {files}"
+        return f"docker compose --project-name {PROJECT} {files}"
 
     @property
     def _exec(self) -> str:
@@ -352,7 +353,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     machines = load_machines(path)
     if args.command == "list":
         for name, config in machines.items():
-            where = f"{config.host}:~/{CLONE}  project={config.container}" if config.host else str(ROOT)
+            where = f"{config.host}:~/{CLONE}" if config.host else str(ROOT)
             print(f"{name:12} {where}  jobs={config.jobs}")
         return 0
     if args.machine not in machines:

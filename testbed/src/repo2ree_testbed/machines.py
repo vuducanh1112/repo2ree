@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 import tomllib
 from pathlib import Path
-from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -23,11 +22,6 @@ class MachineConfig(BaseModel):
 
     host: str | None = None
     jobs: int = Field(default=4, ge=1)
-    # The checkout's own .envrc, as in this one: the dev shell, and the venv it syncs and activates.
-    shell: tuple[str, ...] = ("direnv", "exec", ".")
-    fetch: Literal["slim", "full"] = "slim"
-    # The Compose project of a remote machine's dev container; `local` is this checkout, already one.
-    container: str = "repo2ree-dev"
 
 
 class MachinesFile(BaseModel):
@@ -42,7 +36,7 @@ def machines_file() -> Path:
 
 def load_machines(path: Path) -> dict[str, MachineConfig]:
     """Every machine: ``local``, and each one the file names (a file is optional)."""
-    found: dict[str, MachineConfig] = {LOCAL: MachineConfig(shell=())}
+    found: dict[str, MachineConfig] = {LOCAL: MachineConfig()}
     if not path.is_file():
         return found
     try:

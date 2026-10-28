@@ -119,7 +119,6 @@ def test_this_checkout_is_always_a_machine_and_the_file_adds_machines(tmp_path: 
     machines = load_machines(listed)
     assert machines[LOCAL].host is None
     assert machines["vm"] == MachineConfig(host="vm", jobs=6)
-    assert machines["vm"].container == "repo2ree-dev"
 
 
 @pytest.mark.parametrize(
@@ -168,7 +167,7 @@ def test_a_remote_gate_runs_detached_in_the_dev_container_of_a_clone_and_brings_
     assert show.startswith("cd repo2ree || exit 1; tail -n +1 -f test-artifacts/machine-job/log & shown=$!")
     assert "while ! test -f test-artifacts/machine-job/exit && " in show
     # What it wrote since it started, its run and the receipt alike, comes straight from the clone on the
-    # host into this checkout, slim by default; then the job is fetched.
+    # host into this checkout, leaving runtime tarballs and archives there; then the job is fetched.
     [(fetch, unpack)] = runner.piped
     assert _on_host(fetch) == (
         "cd repo2ree && { find test-artifacts .receipts -type f -cnewer test-artifacts/machine-job/command"
@@ -183,11 +182,10 @@ def test_a_remote_gate_runs_detached_in_the_dev_container_of_a_clone_and_brings_
     assert "StrictHostKeyChecking=yes" in SSH_OPTIONS
 
 
-def test_a_failed_job_still_brings_back_what_it_wrote_in_full_if_asked(capsys: pytest.CaptureFixture[str]) -> None:
+def test_a_failed_job_still_brings_back_what_it_wrote(capsys: pytest.CaptureFixture[str]) -> None:
     runner = FakeRunner(("none", ""), ("ended", GATE), code=1)
-    assert gate(Machine("vm", MachineConfig(host="vm", fetch="full"), runner), None) == 1
-    [(fetch, _)] = runner.piped
-    assert "*.tar" not in fetch[-1]
+    assert gate(Machine("vm", VM, runner), None) == 1
+    assert len(runner.piped) == 1
     # Each run once, and each other file as it is.
     out = capsys.readouterr().out
     assert ">> from vm: test-artifacts/e2e/e2e-system-20261027-120000\n>> from vm: .receipts/assurance-gate.json" in out
@@ -207,7 +205,7 @@ def test_any_recipe_brings_back_what_it_wrote_and_a_job_that_wrote_nothing_moves
 
 def test_the_local_machine_runs_here_and_moves_nothing() -> None:
     runner = FakeRunner()
-    machine = Machine(LOCAL, MachineConfig(shell=()), runner)
+    machine = Machine(LOCAL, MachineConfig(), runner)
 
     assert gate(machine, None) == 0
     assert run_recipe(machine, ["test-e2e-system"]) == 0
