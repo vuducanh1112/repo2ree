@@ -9,8 +9,6 @@ from repo2ree_testbed.machines import LOCAL, MachineConfig, load_machines
 from repo2ree_testbed.runs import machine as machine_mod
 from repo2ree_testbed.runs.machine import (
     INTERRUPTED,
-    RECEIPT,
-    RUN_LINE,
     SSH_FAILED,
     SSH_OPTIONS,
     Machine,
@@ -23,32 +21,37 @@ VM = MachineConfig(host="vm")
 COMPOSE = "docker compose --project-name repo2ree-dev -f docker-compose.dev.yml -f docker/dev/machine.compose.yml"
 GATE = f"{REVISION} just assurance-gate 4"
 SYSTEM = f"{REVISION} just test-e2e-system"
-RUN = "/repo2ree/test-artifacts/e2e/e2e-system-20261027-120000"
+# What a gate writes: a run, and the receipt for the tree.
+WRITTEN = (
+    "test-artifacts/e2e/e2e-system-20261027-120000/run.json",
+    "test-artifacts/e2e/e2e-system-20261027-120000/tests/a/verdict.json",
+    ".receipts/assurance-gate.json",
+)
 
-# What tells the calls apart: asking for the job, showing it, and reading its results.
+# What tells the calls apart: asking for the job, showing it, its exit code, and what it wrote.
 STATE = "test -f test-artifacts/machine-job/command"
 SHOW = "tail -n +1 -f"
 REPORT = "cat test-artifacts/machine-job/exit"
+LIST = "find test-artifacts .receipts"
 
 
 class FakeRunner:
     """A machine whose job is in ``states`` in turn (then ``fetched``), whose job ended with
-    ``code`` and reported ``runs``, and whose calls exit as ``codes`` says by a part of what they run."""
+    ``code`` having ``written`` those files, and whose calls exit as ``codes`` says by a part of what they run."""
 
     def __init__(
         self,
         *states: tuple[str, str],
         code: int | None = 0,
-        runs: Sequence[str] = (RUN,),
+        written: Sequence[str] = WRITTEN,
         codes: dict[str, int | BaseException] | None = None,
     ) -> None:
         self.states = list(states)
         self.code = code
-        self.runs = list(runs)
+        self.written = list(written)
         self.codes = codes or {}
         self.calls: list[list[str]] = []
         self.piped: list[tuple[list[str], list[str]]] = []
-        self.streamed: list[list[str]] = []
 
     def call(self, argv: Sequence[str]) -> int:
         self.calls.append(list(argv))
@@ -66,13 +69,10 @@ class FakeRunner:
                 return SSH_FAILED, ""
             state, command = self.states.pop(0) if self.states else ("fetched", "")
             return 0, f"{state}\n{command}\n"
-        assert REPORT in argv[-1]
-        exit_line = "" if self.code is None else str(self.code)
-        return 0, "\n".join([exit_line, *(f"{RUN_LINE}{run}" for run in self.runs)]) + "\n"
-
-    def stream(self, argv: Sequence[str]) -> tuple[int, list[str]]:
-        self.streamed.append(list(argv))
-        return self.code or 0, [f"{RUN_LINE}{run}" for run in self.runs]
+        if REPORT in argv[-1]:
+            return 0, ("" if self.code is None else str(self.code)) + "\n"
+        assert LIST in argv[-1]
+        return 0, "".join(f"{path}\n" for path in self.written)
 
     def pipe(self, producer: Sequence[str], consumer: Sequence[str]) -> int:
         self.piped.append((list(producer), list(consumer)))
@@ -167,14 +167,15 @@ def test_a_remote_gate_runs_detached_in_the_dev_container_of_a_clone_and_brings_
     [show] = runner.ran(SHOW)
     assert show.startswith("cd repo2ree || exit 1; tail -n +1 -f test-artifacts/machine-job/log & shown=$!")
     assert "while ! test -f test-artifacts/machine-job/exit && " in show
-    # Its runs and the receipt come straight from the clone on the host, and the job is then fetched.
-    (run_fetch, run_unpack), (receipt_fetch, _) = runner.piped
-    assert _on_host(run_fetch) == (
-        "tar -cf - --exclude=*.tar --exclude=*.tar.gz --exclude=*.tgz --exclude=*/artifacts/archives"
-        " -C repo2ree/test-artifacts/e2e e2e-system-20261027-120000"
+    # What it wrote since it started, its run and the receipt alike, comes straight from the clone on the
+    # host into this checkout, slim by default; then the job is fetched.
+    [(fetch, unpack)] = runner.piped
+    assert _on_host(fetch) == (
+        "cd repo2ree && { find test-artifacts .receipts -type f -cnewer test-artifacts/machine-job/command"
+        " ! -path 'test-artifacts/machine-job/*' ! -name '*.tar' ! -name '*.tar.gz' ! -name '*.tgz'"
+        " ! -path '*/artifacts/archives/*' 2>/dev/null || true; } | tar -cf - -T -"
     )
-    assert run_unpack == ["tar", "-xf", "-", "-C", str(ROOT / "test-artifacts/e2e")]
-    assert _on_host(receipt_fetch) == f"tar -cf - -C repo2ree {RECEIPT}"
+    assert unpack == ["tar", "-xf", "-", "-C", str(ROOT)]
     assert runner.ran("touch") == ["cd repo2ree && touch test-artifacts/machine-job/fetched"]
     # The connection gives up within a minute, and knows the machine only by the checkout's known hosts.
     assert "ConnectTimeout=20" in SSH_OPTIONS
@@ -182,29 +183,37 @@ def test_a_remote_gate_runs_detached_in_the_dev_container_of_a_clone_and_brings_
     assert "StrictHostKeyChecking=yes" in SSH_OPTIONS
 
 
-def test_a_failed_gate_brings_back_its_runs_but_not_a_receipt() -> None:
+def test_a_failed_job_still_brings_back_what_it_wrote_in_full_if_asked(capsys: pytest.CaptureFixture[str]) -> None:
     runner = FakeRunner(("none", ""), ("ended", GATE), code=1)
     assert gate(Machine("vm", MachineConfig(host="vm", fetch="full"), runner), None) == 1
-    [(run_fetch, _)] = runner.piped
-    assert "--exclude" not in run_fetch[-1]
+    [(fetch, _)] = runner.piped
+    assert "*.tar" not in fetch[-1]
+    # Each run once, and each other file as it is.
+    out = capsys.readouterr().out
+    assert ">> from vm: test-artifacts/e2e/e2e-system-20261027-120000\n>> from vm: .receipts/assurance-gate.json" in out
 
 
-def test_a_tier_brings_back_its_runs_and_no_receipt_even_when_it_passed() -> None:
-    runner = FakeRunner(("fetched", GATE), ("ended", SYSTEM))
-    assert run_recipe(Machine("vm", VM, runner), ["test-e2e-system"]) == 0
+def test_any_recipe_brings_back_what_it_wrote_and_a_job_that_wrote_nothing_moves_nothing() -> None:
+    coverage = ["test-artifacts/python/coverage/data/integration-parts/core/.coverage"]
+    runner = FakeRunner(("fetched", GATE), ("ended", SYSTEM), written=coverage)
+    assert run_recipe(Machine("vm", VM, runner), ["test-backend-integration"]) == 0
     assert len(runner.piped) == 1
+
+    runner = FakeRunner(("fetched", GATE), ("ended", SYSTEM), written=[])
+    assert run_recipe(Machine("vm", VM, runner), ["test-e2e-system"]) == 0
+    assert runner.piped == []
+    assert runner.ran("touch")
 
 
 def test_the_local_machine_runs_here_and_moves_nothing() -> None:
-    runner = FakeRunner(runs=[f"{ROOT}/test-artifacts/e2e/e2e-system-20261027-120000"])
+    runner = FakeRunner()
     machine = Machine(LOCAL, MachineConfig(shell=()), runner)
 
     assert gate(machine, None) == 0
     assert run_recipe(machine, ["test-e2e-system"]) == 0
 
-    assert runner.calls == []
+    assert runner.calls == [["just", "assurance-gate", "4"], ["just", "test-e2e-system"]]
     assert runner.piped == []
-    assert runner.streamed == [["just", "assurance-gate", "4"], ["just", "test-e2e-system"]]
 
 
 def test_a_running_job_is_shown_and_brought_back_instead_of_starting_again() -> None:
@@ -213,7 +222,7 @@ def test_a_running_job_is_shown_and_brought_back_instead_of_starting_again() -> 
     assert not _pushed(runner)
     assert not _started(runner)
     assert runner.ran(SHOW)
-    assert len(runner.piped) == 2
+    assert len(runner.piped) == 1
 
 
 def test_another_running_job_is_shown_and_brought_back_but_does_not_start_this_one(
@@ -231,7 +240,7 @@ def test_an_ended_job_is_brought_back_and_then_done_if_it_was_this_one() -> None
     assert gate(Machine("vm", VM, runner), None) == 0
     assert not _pushed(runner)
     assert not runner.ran(SHOW)
-    assert len(runner.piped) == 2
+    assert len(runner.piped) == 1
 
 
 def test_an_ended_job_of_another_command_is_brought_back_before_this_one_starts() -> None:
@@ -239,8 +248,8 @@ def test_an_ended_job_of_another_command_is_brought_back_before_this_one_starts(
     assert gate(Machine("vm", VM, runner), None) == 0
     assert _pushed(runner)
     assert _started(runner)
-    # The tier's run, then the gate's run and receipt.
-    assert len(runner.piped) == 3
+    # What the tier wrote, then what the gate wrote.
+    assert len(runner.piped) == 2
 
 
 def test_a_dead_job_gives_way_to_a_new_one(capsys: pytest.CaptureFixture[str]) -> None:
@@ -254,7 +263,7 @@ def test_a_job_that_dies_while_shown_ends_the_run_as_failed(capsys: pytest.Captu
     runner = FakeRunner(("none", ""), ("dead", GATE), code=None)
     assert gate(Machine("vm", VM, runner), None) == 1
     assert "died on vm without an exit code" in capsys.readouterr().out
-    # Its runs come back, never a receipt.
+    # What it wrote before it died comes back.
     assert len(runner.piped) == 1
 
 
@@ -269,7 +278,7 @@ def test_ctrl_c_or_a_lost_connection_only_stops_the_showing(
     out = capsys.readouterr().out
     assert says in out
     assert "the job goes on" in out
-    assert "just cancel-e2e-on vm" in out
+    assert "just machine cancel vm" in out
     assert runner.piped == []
     assert not runner.ran("touch")
 
@@ -313,6 +322,6 @@ def test_removing_takes_the_container_down_and_deletes_the_clone() -> None:
 
 def test_removing_refuses_while_a_job_runs() -> None:
     runner = FakeRunner(("running", GATE))
-    with pytest.raises(SystemExit, match="vm is running a job; let it end, or: just cancel-e2e-on vm"):
+    with pytest.raises(SystemExit, match="vm is running a job; let it end, or: just machine cancel vm"):
         Machine("vm", VM, runner).remove()
     assert not runner.ran("down")

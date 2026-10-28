@@ -30,9 +30,9 @@
 | `just clean-workbenches` | Just the workbench leftovers; pass `1` to also drop every bundle store volume. |
 | `just gc-bundle-store` | Remove every unused bundle store cache but the live one; pass a number to keep that many more. |
 | `just gate-e2e-on [machine] [jobs]` | The assurance gate on a machine (`local`, or one of your own), its receipt and runs brought back here. |
-| `just test-e2e-on <machine> <recipe> [args]` | Any e2e recipe on a machine, its per-test runs brought back here. |
-| `just list-e2e-machines` / `just remove-e2e-machine <machine>` | List the machines; take one's dev container down and delete its clone. |
-| `just cancel-e2e-on <machine>` | Stop the job running on a machine: restart its dev container and clean up what the job left. |
+| `just on <machine> <recipe> [args]` | Any recipe on a machine, what it wrote under `test-artifacts/` and `.receipts/` brought back here. |
+| `just machine list` / `just machine remove <machine>` | List the machines; take one's dev container down and delete its clone. |
+| `just machine cancel <machine>` | Stop the job running on a machine: restart its dev container and clean up what the job left. |
 | `just commit-gate` | Fast pre-commit gate: documentation, static checks, and unit tests. Writes a receipt for the tree it passed on; the pre-commit hook checks that receipt. |
 | `just check-doc-links-external` | Manually check external documentation URLs with retries and a local response cache; intentionally excluded from deterministic gates. |
 | `just publish-gate` | The pre-publish gate: clean tree, all checks and tests, e2e source-run and image-backed. |
@@ -543,7 +543,7 @@ for runs. Compose rebuilds the image when its inputs change and otherwise keeps 
 container, so the bundles and caches in it carry over. The container gives its user
 the IDs of the clone's owner, so what it writes there is the SSH user's. Compose gives
 it a network of its own: benches join it and reach the API inside the container by
-its name. `just remove-e2e-machine vm` cleans up the stacks and workbenches runs left, takes the
+its name. `just machine remove vm` cleans up the stacks and workbenches runs left, takes the
 container down, and deletes the clone.
 
 For a VM you reach with an admin login, `tools/ssh/setup-vm.sh <admin login>`, run
@@ -557,10 +557,15 @@ then on. Runs check host keys against that file and your own
 `--revoke` takes it all away again.
 
 `just gate-e2e-on vm` pushes HEAD to the clone there, checks it out clean, brings
-the dev container up, runs `just assurance-gate` in it, and brings back every run it
-made and, if it passed, its receipt. A receipt binds a tree, not a machine, so it
-holds here as it held there; the recipe ends by checking that. `just test-e2e-on vm
-test-e2e-system` runs a single tier the same way. Only a commit can be shipped, so
+the dev container up, runs `just assurance-gate` in it, and brings back what it
+wrote: its runs and, if it passed, its receipt. A receipt binds a tree, not a
+machine, so it holds here as it held there; the recipe ends by checking that.
+`just on vm <recipe>` runs any other recipe the same way, `just on vm
+test-backend-integration` or `just on vm demo-gui` as much as a single tier: what
+comes back is every file the job wrote under `test-artifacts/` and `.receipts/`
+since it started, runs, recordings, coverage, and receipts alike, slim unless the
+machine says `fetch = "full"`. Recipes that write into the source tree (`format`,
+`generate-*`) change only the clone there. Only a commit can be shipped, so
 both refuse a working tree with changes. The first run on a machine, and the first
 after the dev image's inputs change, builds the image there.
 
@@ -574,9 +579,9 @@ Any run on the machine looks at its job first. A running job is shown and brough
 back when it ends; if it was another command, yours does not start, so run it again
 then. An ended job whose results never came here is brought back; if it was this
 command at this commit, that is all. Otherwise the run starts its own. After a drop,
-run the same command again. `just cancel-e2e-on vm` stops the job by
+run the same command again. `just machine cancel vm` stops the job by
 restarting the dev container, then cleans up the stacks it left; `just
-remove-e2e-machine vm` refuses while a job runs.
+machine remove vm` refuses while a job runs.
 
 ## Artifacts and logs
 

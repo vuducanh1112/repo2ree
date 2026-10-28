@@ -19,11 +19,13 @@ and a Docker Engine with Compose that its SSH user may use.
 A run pushes HEAD to the clone, checks it out, brings the container up, and starts the
 recipe in it detached, as the machine's one job: its command, log, and exit code are in
 test-artifacts/machine-job/ of the clone. It shows the log until the job ends, then
-brings back the per-test runs the job reported and, for the gate, its receipt, which
-binds a tree rather than a machine. Ctrl-C or a dropped connection only stops the
-showing: the job goes on, and the next run on that machine shows it again and brings
-its results back before starting anything of its own. `cancel` stops the job; `remove`
-takes the container down and deletes the clone.
+brings back what the job wrote: every file under test-artifacts/ and .receipts/ changed
+since it started, which in a clone that runs one job at a time is exactly its results,
+whatever the recipe (runs, recordings, coverage, and receipts, which bind a tree rather
+than a machine). Ctrl-C or a dropped connection only stops the showing: the job goes
+on, and the next run on that machine shows it again and brings its results back before
+starting anything of its own. `cancel` stops the job; `remove` takes the container down
+and deletes the clone.
 """
 
 from __future__ import annotations
@@ -31,7 +33,6 @@ from __future__ import annotations
 import argparse
 import shlex
 import subprocess
-import sys
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -41,8 +42,6 @@ from repo2ree_testbed.artifacts import ROOT
 from repo2ree_testbed.machines import MachineConfig, load_machines, machines_file
 from repo2ree_testbed.stack.process import capture
 
-RUN_LINE = ">> per-test run: "
-RECEIPT = ".receipts/assurance-gate.json"
 # The clone, in the SSH user's home, which the dev container mounts at /repo2ree.
 CLONE = "repo2ree"
 CONTAINER_USER = "nixuser"
@@ -62,17 +61,13 @@ SSH_OPTIONS = (
     *("-o", f"UserKnownHostsFile={KNOWN_HOSTS} ~/.ssh/known_hosts", "-o", "StrictHostKeyChecking=yes"),
 )
 # What a slim fetch leaves on the machine: the bulk of a run, and nothing a verdict or a page reads.
-SLIM_EXCLUDES = ("*.tar", "*.tar.gz", "*.tgz", "*/artifacts/archives")
+SLIM_EXCLUDES = ("! -name '*.tar'", "! -name '*.tar.gz'", "! -name '*.tgz'", "! -path '*/artifacts/archives/*'")
 
 
 class Runner(Protocol):
     def call(self, argv: Sequence[str]) -> int: ...
 
     def capture(self, argv: Sequence[str]) -> tuple[int, str]: ...
-
-    def stream(self, argv: Sequence[str]) -> tuple[int, list[str]]:
-        """Run ``argv`` showing its output as it comes; its exit code, and every line it printed."""
-        ...
 
     def pipe(self, producer: Sequence[str], consumer: Sequence[str]) -> int: ...
 
@@ -84,16 +79,6 @@ class Processes:
     def capture(self, argv: Sequence[str]) -> tuple[int, str]:
         done = subprocess.run(list(argv), cwd=ROOT, check=False, stdout=subprocess.PIPE, text=True)
         return done.returncode, done.stdout
-
-    def stream(self, argv: Sequence[str]) -> tuple[int, list[str]]:
-        printed: list[str] = []
-        with subprocess.Popen(
-            list(argv), cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
-        ) as proc:
-            for line in proc.stdout or ():
-                sys.stdout.write(line)
-                printed.append(line.rstrip("\n"))
-        return proc.returncode, printed
 
     def pipe(self, producer: Sequence[str], consumer: Sequence[str]) -> int:
         with (
@@ -130,9 +115,7 @@ class Machine:
     def run(self, revision: str, argv: Sequence[str]) -> int:
         """Run ``argv`` at ``revision`` on the machine and bring its results back; its exit code."""
         if not self.remote:
-            code, printed = self.runner.stream([*self.config.shell, *argv])
-            _bring_back(self, _reported_runs(printed))
-            return code
+            return self.runner.call([*self.config.shell, *argv])
         command = f"{revision} {shlex.join(argv)}"
         job = self.job()
         if job.state == "running":
@@ -203,7 +186,7 @@ class Machine:
         if not self.remote:
             raise SystemExit(f">> {self.name} is this checkout; there is nothing to remove")
         if self.job().state == "running":
-            raise SystemExit(f">> {self.name} is running a job; let it end, or: just cancel-e2e-on {self.name}")
+            raise SystemExit(f">> {self.name} is running a job; let it end, or: just machine cancel {self.name}")
         cleanup = shlex.join([*self.config.shell, "bash", "-c", "just stack-clean; just clean-workbenches 1"])
         script = "; ".join(
             [
@@ -266,7 +249,7 @@ class Machine:
                 "sleep 1; kill $shown",
             ]
         )
-        again = f"run it again to show the job and bring its results back, or: just cancel-e2e-on {self.name}"
+        again = f"run it again to show the job and bring its results back, or: just machine cancel {self.name}"
         try:
             code = self.runner.call(self._on_host(script))
         except KeyboardInterrupt:
@@ -278,39 +261,29 @@ class Machine:
         return True
 
     def _bring_back(self, job: Job) -> int:
-        """Bring the ended job's runs, and a passed gate's receipt, back here; the job's exit code."""
-        report = f"cat {JOB}/exit 2>/dev/null; echo; grep -F {shlex.quote(RUN_LINE)} {JOB}/log || true"
-        read, output = self.runner.capture(self._in_clone(report))
-        self._require(read, "read the job's results")
-        exit_line, _, printed = output.partition("\n")
-        _bring_back(self, _reported_runs(printed.splitlines()))
+        """Bring back what the ended job wrote; the job's exit code."""
+        read, exit_line = self.runner.capture(self._in_clone(f"cat {JOB}/exit 2>/dev/null; echo"))
+        self._require(read, "read the job's exit code")
+        read, listed = self.runner.capture(self._in_clone(self._written))
+        self._require(read, "list what the job wrote")
+        written = [line for line in listed.splitlines() if line]
+        if written:
+            archive = self._in_clone(f"{self._written} | tar -cf - -T -")
+            self._require(self.runner.pipe(archive, ["tar", "-xf", "-", "-C", str(ROOT)]), "bring back its results")
+            for result in _results(written):
+                print(f">> from {self.name}: {result}")
         code = int(exit_line) if exit_line.strip() else None
         if code is None:
             print(f">> `{job.command}` died on {self.name} without an exit code: its container restarted")
-        elif code == 0 and " just assurance-gate " in f"{job.command} ":
-            self.fetch_receipt()
-            print(f">> assurance-gate receipt from {self.name}: {RECEIPT}")
         self._require(self.runner.call(self._in_clone(f"touch {JOB}/fetched")), "record the job fetched")
         return 1 if code is None else code
 
-    def fetch_run(self, run: Path) -> Path:
-        """Bring a run the machine wrote into this checkout's test-artifacts; where it now is."""
-        if not self.remote:
-            return run
-        below = _after_test_artifacts(run)
-        local = ROOT / "test-artifacts" / below
-        local.parent.mkdir(parents=True, exist_ok=True)
-        excludes = [f"--exclude={pattern}" for pattern in SLIM_EXCLUDES] if self.config.fetch == "slim" else []
-        there = shlex.quote(f"{CLONE}/test-artifacts/{below.parent}")
-        archive = " ".join(["tar", "-cf", "-", *excludes, "-C", there, shlex.quote(below.name)])
-        unpack = ["tar", "-xf", "-", "-C", str(local.parent)]
-        self._require(self.runner.pipe(self._on_host(archive), unpack), f"fetch {run.name}")
-        return local
-
-    def fetch_receipt(self) -> None:
-        (ROOT / RECEIPT).parent.mkdir(parents=True, exist_ok=True)
-        archive = self._on_host(f"tar -cf - -C {CLONE} {RECEIPT}")
-        self._require(self.runner.pipe(archive, ["tar", "-xf", "-", "-C", str(ROOT)]), "fetch the receipt")
+    @property
+    def _written(self) -> str:
+        """Lists the files the job wrote: under test-artifacts/ and .receipts/, changed since it started."""
+        slim = SLIM_EXCLUDES if self.config.fetch == "slim" else ()
+        tests = " ".join(["-type f", f"-cnewer {JOB}/command", f"! -path '{JOB}/*'", *slim])
+        return f"{{ find test-artifacts .receipts {tests} 2>/dev/null || true; }}"
 
     @property
     def _compose(self) -> str:
@@ -338,21 +311,9 @@ class Machine:
 _ALIVE = f"grep -qs {shlex.quote(JOB.replace('job', 'jo[b]') + '/exit')} /proc/[0-9]*/cmdline"
 
 
-def _reported_runs(printed: Sequence[str]) -> list[Path]:
-    return [Path(line.removeprefix(RUN_LINE).strip()) for line in printed if line.startswith(RUN_LINE)]
-
-
-def _bring_back(machine: Machine, runs: Sequence[Path]) -> None:
-    for run in runs:
-        print(f">> run from {machine.name}: {machine.fetch_run(run).relative_to(ROOT)}")
-
-
-def _after_test_artifacts(run: Path) -> Path:
-    """A run's path below test-artifacts/, wherever the machine keeps its checkout."""
-    parts = run.parts
-    if "test-artifacts" not in parts:
-        raise SystemExit(f">> {run} is not under a test-artifacts directory")
-    return Path(*parts[len(parts) - parts[::-1].index("test-artifacts") :])
+def _results(written: Sequence[str]) -> list[str]:
+    """What the written files amount to: each run's directory (test-artifacts/<kind>/<run>), or the file."""
+    return list(dict.fromkeys(str(Path(*Path(path).parts[:3])) for path in written))
 
 
 def committed_head() -> str:
@@ -382,7 +343,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     gating = commands.add_parser("gate", help="run the assurance gate there and bring its receipt and runs back")
     gating.add_argument("machine")
     gating.add_argument("--jobs", type=int, help="stacks side by side per tier (default: the machine's)")
-    running = commands.add_parser("run", help="run a just recipe there and bring back the per-test runs it made")
+    running = commands.add_parser("run", help="run a just recipe there and bring back what it wrote")
     running.add_argument("machine")
     running.add_argument("recipe", nargs=argparse.REMAINDER)
     args = parser.parse_args(argv)

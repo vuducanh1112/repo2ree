@@ -53,31 +53,24 @@ test-e2e-fuzz: build-e2e-bundles
 [group('E2E tests')]
 test-e2e-review mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE: build-e2e-bundles (_source-stack-playwright "e2e-gui-review" "1" mode docker_mode)
 
-# List the machines the e2e tiers can run on: `local`, and those in .config/machines.toml (untracked).
-[group('E2E tests')]
-list-e2e-machines:
-    python -m repo2ree_testbed machine list
+# A machine is where a recipe runs: `local`, or one in .config/machines.toml (untracked), whose
+# dev container runs one job at a time from a clone of HEAD and hands back what the job wrote.
 
-# Clean up what runs left on an e2e machine, take its dev container down, and delete its clone.
-[group('E2E tests')]
-remove-e2e-machine machine:
-    python -m repo2ree_testbed machine remove {{ quote(machine) }}
+# Run a recipe on a machine (e.g. `just on vm test-backend-integration`) and bring back what it wrote under test-artifacts/ and .receipts/.
+[group('Machines')]
+on machine +recipe:
+    python -m repo2ree_testbed machine run {{ quote(machine) }} {{ recipe }}
 
-# Stop the job running on an e2e machine: restart its dev container and clean up the stacks the job left.
-[group('E2E tests')]
-cancel-e2e-on machine:
-    python -m repo2ree_testbed machine cancel {{ quote(machine) }}
-
-# Run the assurance gate on an e2e machine, bring its receipt and runs here, and check the receipt holds for HEAD.
-[group('E2E tests')]
+# Run the assurance gate on a machine with that machine's jobs, and check its receipt holds for HEAD.
+[group('Machines')]
 gate-e2e-on machine="local" jobs="":
     python -m repo2ree_testbed machine gate {{ quote(machine) }} {{ if jobs != "" { "--jobs " + quote(jobs) } else { "" } }}
     python -m scripts.gates.assurance_gate verify
 
-# Run an e2e recipe on a machine (e.g. `just test-e2e-on vm test-e2e-system`) and bring back the per-test runs it made.
-[group('E2E tests')]
-test-e2e-on machine +recipe:
-    python -m repo2ree_testbed machine run {{ quote(machine) }} {{ recipe }}
+# Manage the machines: `list`; `cancel <machine>` stops its job and cleans up after it; `remove <machine>` takes its dev container down and deletes its clone.
+[group('Machines')]
+machine +args:
+    python -m repo2ree_testbed machine {{ args }}
 
 # Check and draw a per-test run again: verdicts, traces, and index pages (the newest run by default).
 [group('E2E tests')]
