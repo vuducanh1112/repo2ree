@@ -32,7 +32,7 @@
 | `just gate-e2e-on [machine] [jobs]` | The assurance gate on a machine (`local`, or one of your own), its receipt and runs brought back here. |
 | `just test-e2e-on <machine> <recipe> [args]` | Any e2e recipe on a machine, its per-test runs brought back here. |
 | `just list-e2e-machines` / `just remove-e2e-machine <machine>` | List the machines; take one's dev container down and delete its clone. |
-| `just cancel-e2e-on <machine>` | Stop the job running on a machine, as Ctrl-C on its run would. |
+| `just cancel-e2e-on <machine>` | Stop the job running on a machine: restart its dev container and clean up what the job left. |
 | `just commit-gate` | Fast pre-commit gate: documentation, static checks, and unit tests. Writes a receipt for the tree it passed on; the pre-commit hook checks that receipt. |
 | `just check-doc-links-external` | Manually check external documentation URLs with retries and a local response cache; intentionally excluded from deterministic gates. |
 | `just publish-gate` | The pre-publish gate: clean tree, all checks and tests, e2e source-run and image-backed. |
@@ -570,18 +570,19 @@ test-e2e-system` runs a single tier the same way. Only a commit can be shipped, 
 both refuse a working tree with changes. The first run on a machine, and the first
 after the dev image's inputs change, builds the image there.
 
-On another machine the recipe runs as a job detached from SSH, so a dropped
-connection does not end it. The run shows the job's log as it grows; when the
-connection drops it says so and reconnects, continuing where the log left off,
-for up to 30 minutes. After that, or once your computer was asleep or the run
-killed, run the same command again at the same commit: it picks the job back up,
-or brings back its results if it has ended, instead of starting it anew. A job's
-command, log, and exit code are in `test-artifacts/machine-job/` of the clone
-there.
+On another machine the recipe runs as the machine's one job, detached in its dev
+container, so neither the connection nor this terminal keeps it alive. Its command,
+log, and exit code are in `test-artifacts/machine-job/` of the clone there. The run
+shows the log until the job ends, then brings its results back. Ctrl-C, a dropped
+connection, or a computer gone to sleep only stop the showing: the job goes on.
 
-One job runs on a machine at a time. A different command and `just
-remove-e2e-machine` refuse while one runs and name it. Ctrl-C on a run cancels its job there, as it would here; `just cancel-e2e-on
-vm` does the same from anywhere.
+Any run on the machine looks at its job first. A running job is shown and brought
+back when it ends; if it was another command, yours does not start, so run it again
+then. An ended job whose results never came here is brought back; if it was this
+command at this commit, that is all. Otherwise the run starts its own. After a drop,
+run the same command again. `just cancel-e2e-on vm` stops the job by
+restarting the dev container, then cleans up the stacks it left; `just
+remove-e2e-machine vm` refuses while a job runs.
 
 ## Artifacts and logs
 

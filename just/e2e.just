@@ -63,7 +63,7 @@ list-e2e-machines:
 remove-e2e-machine machine:
     python -m repo2ree_testbed machine remove {{ quote(machine) }}
 
-# Stop the job running on an e2e machine, as Ctrl-C on the run that started it would.
+# Stop the job running on an e2e machine: restart its dev container and clean up the stacks the job left.
 [group('E2E tests')]
 cancel-e2e-on machine:
     python -m repo2ree_testbed machine cancel {{ quote(machine) }}
