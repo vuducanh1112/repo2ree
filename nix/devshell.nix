@@ -117,6 +117,16 @@ devPkgs.mkShell {
       echo "warning: no chromium_headless_shell under ${devPkgs.playwright-driver.browsers}" >&2
     fi
     unset __shell
+
+    # Only Chromium can be pointed at another revision; ffmpeg, which records
+    # video, is looked up under the revision @playwright/test was built for. So
+    # gui's @playwright/test must be this playwright-driver's version, or every
+    # recording suite fails (a nixpkgs-dev bump moved it to 1.64 under 1.59).
+    __npm=$(${devPkgs.jq}/bin/jq -r '.packages["node_modules/@playwright/test"].version // empty' gui/package-lock.json 2>/dev/null)
+    if [ -n "$__npm" ] && [ "$__npm" != "${devPkgs.playwright-driver.version}" ]; then
+      echo "warning: gui pins @playwright/test $__npm, the dev shell's browsers are ${devPkgs.playwright-driver.version}; pin it to match" >&2
+    fi
+    unset __npm
     export FONTCONFIG_FILE=${devPkgs.makeFontsConf { fontDirectories = [ devPkgs.dejavu_fonts ]; }}
   '';
 }
