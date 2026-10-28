@@ -36,6 +36,8 @@ devPkgs.mkShell {
 
     # Project
     uv
+    # flock, which serializes .envrc's `npm ci` across direnv reloads that race
+    util-linux
     kubectl
     just
 

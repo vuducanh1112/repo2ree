@@ -29,7 +29,9 @@ direnv allow .
 
 `.envrc` enters the flake, installs the git hooks (`pre-commit install`, with
 the shell's pre-commit), creates `.venv` when needed, runs
-`uv sync --all-packages`, and activates the virtualenv.
+`uv sync --all-packages`, and activates the virtualenv. It also runs `npm ci` in
+`gui/` whenever `gui/package-lock.json` changed since the last install, so the
+browser tiers find their dependencies in a fresh clone too.
 
 Without Nix, install equivalent tools yourself:
 

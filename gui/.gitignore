@@ -16,3 +16,4 @@ dist/
 # See tests/artifacts.ts and the outputDir values in playwright.config.ts.
 
 *.tsbuildinfo
+.npm-ci.lock
