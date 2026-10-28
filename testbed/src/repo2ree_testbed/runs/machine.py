@@ -93,6 +93,16 @@ RECONNECT_SECONDS = 30 * 60
 INTERRUPTED = 130
 # A dropped connection shows within a minute instead of whenever TCP gives up.
 KEEPALIVE = ("-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=4")
+# The machines' host keys, kept beside the machines file by tools/ssh/setup-vm.sh, so they outlive a
+# rebuilt dev container; a machine whose key is in neither file is refused, not asked about.
+KNOWN_HOSTS = ROOT / ".config" / "known_hosts"
+SSH_OPTIONS = (
+    *KEEPALIVE,
+    "-o",
+    f"UserKnownHostsFile={KNOWN_HOSTS} ~/.ssh/known_hosts",
+    "-o",
+    "StrictHostKeyChecking=yes",
+)
 # The networks a container is on, each followed by a space.
 CONTAINER_NETWORKS = "{{range $name, $_ := .NetworkSettings.Networks}}{{$name}} {{end}}"
 # What a slim fetch leaves on the machine: the bulk of a run, and nothing a verdict or a page reads.
@@ -287,6 +297,8 @@ class Machine:
             self.runner.call(
                 [
                     "git",
+                    "-c",
+                    f"core.sshCommand={shlex.join(['ssh', *SSH_OPTIONS])}",
                     "push",
                     "-q",
                     "--force",
@@ -438,7 +450,7 @@ class Machine:
 
     def _on_host(self, command: str) -> list[str]:
         """``command`` on the host, in a login shell: a plain ssh command sees no profile, so often no Nix."""
-        return ["ssh", *KEEPALIVE, self.config.host or "", f"bash -lc {shlex.quote(command)}"]
+        return ["ssh", *SSH_OPTIONS, self.config.host or "", f"bash -lc {shlex.quote(command)}"]
 
     @property
     def _exec(self) -> str:
@@ -477,7 +489,10 @@ class Machine:
         )
         code = self.runner.call(self._on_host(script))
         if code == SSH_FAILED:
-            raise SystemExit(f">> could not reach {self.name} as {self.config.host} over SSH")
+            raise SystemExit(
+                f">> could not reach {self.name} as {self.config.host} over SSH; is your key in the agent"
+                f" (ssh-add -l), and its host key in {KNOWN_HOSTS.relative_to(ROOT)}? tools/ssh/setup-vm.sh puts both"
+            )
         return code
 
     def _require_current_container(self, revision: str) -> None:

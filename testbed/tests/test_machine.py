@@ -12,7 +12,6 @@ from repo2ree_testbed.runs.machine import (
     INTERRUPTED,
     JOB_EXITED,
     JOB_LOST,
-    KEEPALIVE,
     LOST_JOB,
     NOT_RUNNING,
     OTHER_RUNNING,
@@ -23,6 +22,7 @@ from repo2ree_testbed.runs.machine import (
     RECONNECT_SECONDS,
     RUN_LINE,
     SSH_FAILED,
+    SSH_OPTIONS,
     THIS_JOB,
     Machine,
     gate,
@@ -109,7 +109,7 @@ def committed(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def _on_host(call: Sequence[str]) -> str:
     """What an ssh call runs on the host, once its login shell has unquoted it."""
-    assert call[:-1] == ["ssh", *KEEPALIVE, "vm"]
+    assert call[:-1] == ["ssh", *SSH_OPTIONS, "vm"]
     return shlex.split(call[-1])[-1]
 
 
@@ -157,6 +157,10 @@ def test_a_remote_gate_runs_in_the_container_and_brings_back_runs_and_receipt() 
     # Git appends the clone's path to the receive-pack command, which docker exec hands on as $0.
     assert f"--receive-pack=docker exec -i -u nixuser -w /home/nixuser repo2ree-dev {RECEIVE_PACK}" in push
     assert push[-2:] == ["vm:repo2ree", f"{REVISION}:refs/testbed/head"]
+    # The push reaches the machine as every other call does: by the checkout's known hosts, never asking.
+    assert push[:3] == ["git", "-c", f"core.sshCommand={shlex.join(['ssh', *SSH_OPTIONS])}"]
+    assert f"UserKnownHostsFile={ROOT}/.config/known_hosts ~/.ssh/known_hosts" in SSH_OPTIONS
+    assert "StrictHostKeyChecking=yes" in SSH_OPTIONS
     assert f"checkout -q --detach --force {REVISION}" in _in_container(checkout)
     # Every command then runs in the checkout's own .envrc: the dev shell and its venv.
     assert _in_container(allow) == "cd repo2ree && direnv allow ."
@@ -306,7 +310,7 @@ def _started(runner: FakeRunner) -> bool:
 
 
 def _pushed(runner: FakeRunner) -> bool:
-    return any(call[:2] == ["git", "push"] for call in runner.calls)
+    return any(call[:4:3] == ["git", "push"] for call in runner.calls)
 
 
 def test_a_dropped_connection_reconnects_and_follows_the_log_from_where_it_left_off() -> None:

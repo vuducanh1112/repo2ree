@@ -555,8 +555,12 @@ removes the container, its volume, network, and images.
 For a VM you reach with an admin login, `tools/ssh/setup-vm.sh <admin login>`, run
 on your own computer, makes a key for it, loads it into your SSH agent, and
 creates a `repo2ree` user there in the docker group that accepts the key; the dev
-container uses the key through the agent VS Code forwards. `--revoke` takes it
-away again.
+container uses the key through the agent VS Code forwards. It also copies the VM host key
+into `.config/known_hosts` and names the VM in `.config/machines.toml` as
+the machine `vm` (`--name` picks another), so `just prepare-e2e-machine vm` is the
+only step left. Runs check host keys against that file and your own
+`~/.ssh/known_hosts`, and refuse a host they do not know rather than ask.
+`--revoke` takes it all away again.
 
 `just gate-e2e-on vm` pushes HEAD into the container, checks it out clean, runs
 `just assurance-gate` there, and brings back every run it made and, if it passed,
