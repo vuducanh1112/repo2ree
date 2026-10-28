@@ -260,9 +260,13 @@ def test_preparing_builds_head_there_and_replaces_the_container_only_for_another
     )
     start = _on_host(runner.calls[2])
     source = image_source(REVISION, "docker/dev/nix.Dockerfile")
-    assert f'if [ "${{state#* }}" != "$built {source}" ]' in start
+    assert f'[ "${{state#* }}" = "$built {source}" ]' in start
     assert f"--label repo2ree.dev-image=$built --label repo2ree.dev-source={source}" in start
     assert "-v /var/run/docker.sock:/var/run/docker.sock -v repo2ree-dev-checkout:/home/nixuser/repo2ree" in start
+    # On a network of its own, which resolves its name for the benches that join it, and only on that one.
+    assert "docker network create repo2ree-dev-network" in start
+    assert "docker run -d --name repo2ree-dev --network repo2ree-dev-network" in start
+    assert "&& [ \"$joined\" = 'repo2ree-dev-network ' ]" in start
     assert "chown nixuser: /home/nixuser/repo2ree" in start
     # Before replacing anything it looks for a job; the container it then started passes the check a run makes.
     assert STATE in _in_container(runner.calls[1])
@@ -280,6 +284,7 @@ def test_removing_cleans_up_inside_the_container_then_removes_it_its_volume_and_
     removing = _on_host(removal)
     assert "docker rm -f repo2ree-dev" in removing
     assert "docker volume rm repo2ree-dev-checkout" in removing
+    assert "docker network rm repo2ree-dev-network" in removing
     assert "--filter label=repo2ree.dev-container=repo2ree-dev" in removing
 
 

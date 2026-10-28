@@ -544,11 +544,13 @@ jobs = 6             # stacks side by side per tier
 Nothing runs on the machine itself: it needs only a Docker Engine its SSH user may
 use, and keeps nothing of yours but Docker objects. `just prepare-e2e-machine vm`
 builds the dev image from HEAD there, starts it as the container on the machine's
-Docker with the clone in a volume, and builds the bundles inside it. It replaces
+Docker with the clone in a volume, and builds the bundles inside it. The container
+gets a network of its own, as Compose gives the local one: benches join it and
+reach the API inside the container by its name. It replaces
 the container only when the image changed, so the clone and the bundles carry
 over. Every command, push, and fetch then runs inside the container. `just
 remove-e2e-machine vm` cleans up the stacks and workbenches runs left, then
-removes the container, its volume, and its images.
+removes the container, its volume, network, and images.
 
 For a VM you reach with an admin login, `tools/ssh/setup-vm.sh <admin login>`, run
 on your own computer, makes a key for it, loads it into your SSH agent, and

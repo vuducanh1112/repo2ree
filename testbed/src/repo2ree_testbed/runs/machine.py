@@ -22,7 +22,7 @@ receipt, which binds a tree rather than a machine, so it holds here as it did th
 Only a commit can be shipped, so the repository needs to be committed. A run refuses
 a container that is not running, or that was built from other image inputs (the
 Dockerfile and what it copies) than HEAD's: `prepare` again. `remove` cleans up
-what runs left on that Docker and removes the container, its volume, and its images.
+what runs left on that Docker and removes the container, its volume, network, and images.
 
 On a remote machine the recipe runs as a job detached from SSH: its output goes to a
 log in the clone's test-artifacts, which the run follows. A dropped connection only
@@ -93,6 +93,8 @@ RECONNECT_SECONDS = 30 * 60
 INTERRUPTED = 130
 # A dropped connection shows within a minute instead of whenever TCP gives up.
 KEEPALIVE = ("-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=4")
+# The networks a container is on, each followed by a space.
+CONTAINER_NETWORKS = "{{range $name, $_ := .NetworkSettings.Networks}}{{$name}} {{end}}"
 # What a slim fetch leaves on the machine: the bulk of a run, and nothing a verdict or a page reads.
 SLIM_EXCLUDES = ("*.tar", "*.tar.gz", "*.tgz", "*/artifacts/archives")
 
@@ -162,24 +164,30 @@ class Machine:
             self.runner.pipe(["git", "archive", "--format=tar", revision], self._on_host(build)), "build the dev image"
         )
         checkout = shlex.quote(self._checkout)
+        network = shlex.quote(self._network)
         run = " ".join(
             [
-                f"docker run -d --name {name} --init --restart unless-stopped",
+                f"docker run -d --name {name} --network {network} --init --restart unless-stopped",
                 f"--label {IMAGE_LABEL}=$built --label {SOURCE_LABEL}={source}",
                 f"-v {DOCKER_SOCKET}:{DOCKER_SOCKET} -v {shlex.quote(self._volume)}:{checkout}",
                 f"{name} sleep infinity >/dev/null",
             ]
         )
         replace = f"docker rm -f {name} >/dev/null 2>&1; {run} || exit 1"
+        current = f'[ "${{state#* }}" = "$built {source}" ] && [ "$joined" = {shlex.quote(self._network + " ")} ]'
         # Only a different image, or other image inputs, replace the container. Image IDs cannot tell:
         # a rebuild from cache gets a new one, and the image a container started from loses its ID
         # once the tag moves. Its layers and settings can, so the container carries their hash.
+        # So does one on other networks than its own: benches join the container's network and call
+        # its API back by its name, which only a user-defined network resolves, not Docker's bridge.
         script = "; ".join(
             [
                 f"built=$(docker image inspect -f {shlex.quote(IMAGE_FINGERPRINT)} {name} | sha256sum)",
                 "built=${built%% *}",
+                f"docker network inspect {network} >/dev/null 2>&1 || docker network create {network} >/dev/null",
                 f"state=$(docker container inspect -f {shlex.quote(CONTAINER_STATE)} {name} 2>/dev/null)",
-                f'if [ "${{state#* }}" != "$built {source}" ]; then {replace}; fi',
+                f"joined=$(docker container inspect -f {shlex.quote(CONTAINER_NETWORKS)} {name} 2>/dev/null)",
+                f"if {current}; then :; else {replace}; fi",
                 f"docker start {name} >/dev/null || exit 1",
                 f"docker exec -u root {name} chown {CONTAINER_USER}: {checkout} || exit 1",
                 f"docker image prune -f --filter label={self._label} >/dev/null",
@@ -203,12 +211,13 @@ class Machine:
             [
                 f"docker rm -f {name} >/dev/null 2>&1",
                 f"docker volume rm {shlex.quote(self._volume)} >/dev/null 2>&1",
+                f"docker network rm {shlex.quote(self._network)} >/dev/null 2>&1",
                 f"docker image ls -q --filter label={self._label} | xargs -r docker image rm -f >/dev/null",
                 "true",
             ]
         )
         self._require(self.runner.call(self._on_host(script)), "remove the container")
-        print(f">> removed {container}, its volume and its images from {self.name}")
+        print(f">> removed {container}, its volume, network, and images from {self.name}")
 
     def job(self, revision: str, argv: Sequence[str]) -> tuple[int, list[Path]]:
         """Run ``argv`` at ``revision`` in the machine's checkout; its exit code, and the per-test runs it reported.
@@ -443,6 +452,10 @@ class Machine:
     @property
     def _checkout(self) -> str:
         return self.config.path if self.config.path.startswith("/") else f"{CONTAINER_HOME}/{self.config.path}"
+
+    @property
+    def _network(self) -> str:
+        return f"{self.config.container}-network"
 
     @property
     def _volume(self) -> str:
