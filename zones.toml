@@ -152,6 +152,7 @@ summary = "The task runner."
 summary = "What the recipes call."
 [tooling.groups.scripts.paths]
 "scripts/" = "Config contract, image publishing, build revision, the workspace check"
+"tools/" = "Scripts you run on your own computer or a VM, outside the dev container: SSH access to e2e machines"
 
 [tooling.groups.tests]
 summary = "Test plumbing shared across packages."
@@ -174,6 +175,7 @@ summary = "Toolchains and dependencies."
 "flake.nix" = "The flake: devshell, packages, images"
 "flake.lock" = "Its pinned inputs"
 "nix/devshell.nix" = "The devshell"
+"nix/devcontainer.nix" = "The dev container's tools on its Nix base image"
 "nix/tools.nix" = "Tools on the devshell's PATH"
 "pyproject.toml" = "The Python workspace, linters, and test configuration"
 "uv.lock" = "Pinned Python dependencies"
