@@ -19,7 +19,7 @@ RUN ln -s /nix/var/nix/profiles/default /root/.nix-profile \
     && echo 'experimental-features = nix-command flakes' >> /etc/nix/nix.conf \
     && groupadd -g 30000 nixbld \
     && for i in $(seq 1 32); do \
-        useradd -r -M -N -u $((30000 + i)) -g nixbld -G nixbld -s /usr/sbin/nologin "nixbld$i"; \
+        useradd -M -N -u $((30000 + i)) -g nixbld -G nixbld -s /usr/sbin/nologin "nixbld$i"; \
     done
 ENV PATH=/root/.nix-profile/bin:/nix/var/nix/profiles/default/bin:/nix/var/nix/profiles/default/sbin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
     NIX_SSL_CERT_FILE=/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt \
@@ -39,6 +39,9 @@ COPY nix ./nix
 RUN nix build .#devcontainer --out-link /opt/devcontainer \
     && nix develop --profile /nix/var/nix/profiles/repo2ree-devshell --command true
 ENV PATH="/opt/devcontainer/bin:${PATH}"
+# Debian's /etc/profile sets PATH anew for every login shell, which runs use; the
+# image's PATH comes back after it, from profile.d.
+RUN echo "export PATH=\"$PATH\"" > /etc/profile.d/dev-path.sh
 
 # direnv trusts the mounted repo as a whole, so its .envrc loads without `direnv allow`,
 # edits included. After the dev shell, so changing it rebuilds nothing heavy.
