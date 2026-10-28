@@ -1,57 +1,55 @@
-FROM debian:bookworm-slim
+# The dev container: Debian with Nix, both pinned by digest. Debian is the base so that
+# VS Code's server runs in it (it needs glibc's loader at /lib64, libstdc++, and the
+# libssl its extension signature check loads, which trixie's apt already depends on);
+# Nix, with its store, settings, and CA bundle, comes from the official image, so there
+# is no installer script and no apt. flake.lock fixes everything installed on top. Bump
+# the digests deliberately:
+#   docker buildx imagetools inspect nixos/nix:latest
+#   docker buildx imagetools inspect debian:trixie-slim
+FROM nixos/nix:latest@sha256:f159a58f390677f41e8e900a74b6e2f9c7f27b364122ae6acf7a652ce6c551c0 AS nix
 
-############### INSTALL NIX ###############
+FROM debian:trixie-slim@sha256:89c1ea91e897f0fe0a3731595330bc45b8bdef4047464a07116f891a94054b31
 
-# Install necessary dependencies for the Nix installer (+ direnv for development convenience)
-RUN apt-get update && apt-get install -y \
-    curl \
-    xz-utils \
-    sudo \
-    ca-certificates \
-    direnv \
-    gosu \
-    && rm -rf /var/lib/apt/lists/*
+# Nix as the official image has it: the store with its database and profiles, its
+# settings (build users, no sandbox in a container), and the users it builds as. /nix
+# belongs to root: the entrypoint starts the Nix daemon and the user builds through it,
+# so /nix is never chowned (which would copy the whole store into a new layer).
+COPY --from=nix /nix /nix
+COPY --from=nix /etc/nix /etc/nix
+RUN ln -s /nix/var/nix/profiles/default /root/.nix-profile \
+    && echo 'experimental-features = nix-command flakes' >> /etc/nix/nix.conf \
+    && groupadd -g 30000 nixbld \
+    && for i in $(seq 1 32); do \
+        useradd -M -N -u $((30000 + i)) -g nixbld -G nixbld -s /usr/sbin/nologin "nixbld$i"; \
+    done
+ENV PATH=/nix/var/nix/profiles/default/bin:/nix/var/nix/profiles/default/sbin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+    NIX_SSL_CERT_FILE=/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt \
+    SSL_CERT_FILE=/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt \
+    GIT_SSL_CAINFO=/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt
 
-# Create a non-root user (Nix requires a home directory and non-root is best practice)
-ENV USER=nixuser
-RUN useradd -m -s /bin/bash $USER && \
-    echo "$USER ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
-USER $USER
+RUN useradd -m -u 1000 -s /bin/bash nixuser \
+    && echo 'eval "$(direnv hook bash)"' >> /home/nixuser/.bashrc
 
-# Install Nix in single-user mode
-# --no-daemon is used because Docker containers lack systemd
-RUN curl -L https://nixos.org/nix/install | sh -s -- --no-daemon
-
-# Set up the environment
-ENV PATH="/home/$USER/.nix-profile/bin:$PATH"
-
-# Verify installation
-RUN nix-env --version
-
-##############################################
-
-WORKDIR /repo2ree
+# The entrypoint's tools and a warm dev shell, both GC-rooted. Root builds without
+# a daemon here; at runtime the user's builds find these paths already in the store.
+# Built from a directory of its own: the checkout is mounted at /repo2ree, and a
+# volume mounted where the image has files starts with root's copy of them.
+WORKDIR /opt/repo2ree-devshell
 COPY flake.nix flake.lock ./
 COPY nix ./nix
+RUN nix build .#devcontainer --out-link /opt/devcontainer \
+    && nix develop --profile /nix/var/nix/profiles/repo2ree-devshell --command true
+ENV PATH="/opt/devcontainer/bin:${PATH}"
+# Debian's /etc/profile sets PATH anew for every login shell, which runs use; the
+# image's PATH comes back after it, from profile.d.
+RUN echo "export PATH=\"$PATH\"" > /etc/profile.d/dev-path.sh
 
-# Enable experimental features (nix-command and flakes)
-RUN mkdir -p /home/$USER/.config/nix && \
-    echo "experimental-features = nix-command flakes" >> /home/$USER/.config/nix/nix.conf
+# direnv trusts the mounted repo as a whole, so its .envrc loads without `direnv allow`,
+# edits included. After the dev shell, so changing it rebuilds nothing heavy.
+RUN mkdir -p /home/nixuser/.config/direnv \
+    && printf '[whitelist]\nprefix = ["/repo2ree"]\n' > /home/nixuser/.config/direnv/direnv.toml \
+    && chown -R nixuser: /home/nixuser/.config
 
-# Pre-build the dev shell
-RUN nix develop --command true
-
-# Set up direnv for the user (optional, but convenient for development)
-RUN echo 'eval "$(direnv hook bash)"' >> /home/$USER/.bashrc
-
-# Set up direnv
-COPY .envrc ./
-RUN echo 'eval "$(direnv hook bash)"' >> /home/$USER/.bashrc && \
-    direnv allow .
-
-USER root
-COPY docker/dev/dev-entrypoint.sh /usr/local/bin/dev-entrypoint.sh
-RUN chmod +x /usr/local/bin/dev-entrypoint.sh
-
+COPY docker/dev/entrypoint.sh /usr/local/bin/dev-entrypoint.sh
 ENTRYPOINT ["/usr/local/bin/dev-entrypoint.sh"]
 CMD ["bash"]

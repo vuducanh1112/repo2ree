@@ -543,13 +543,12 @@ A machine works as your own computer does: a clone, `~/repo2ree` of its SSH user
 and the dev container brought up from it with Compose, mounting it at `/repo2ree`,
 the path of your own checkout in the dev container. It needs Git and a Docker Engine
 with Compose that its SSH user may use. Compose reads `docker-compose.dev.yml`, as
-here, with `docker/dev/machine.compose.yml` over it, which builds the Nix dev image
-(`docker/dev/nix.Dockerfile`) and keeps the container up for runs. Compose rebuilds
-the image when its inputs change and otherwise keeps the container, so the bundles
-and caches in it carry over. The container gives its user the IDs of the clone's
-owner, so what it writes there is the SSH user's. Compose gives it a network of its
-own: benches join it and reach the API inside the container by its name. `just
-remove-e2e-machine vm` cleans up the stacks and workbenches runs left, takes the
+here, with `docker/dev/machine.compose.yml` over it, which keeps the container up
+for runs. Compose rebuilds the image when its inputs change and otherwise keeps the
+container, so the bundles and caches in it carry over. The container gives its user
+the IDs of the clone's owner, so what it writes there is the SSH user's. Compose gives
+it a network of its own: benches join it and reach the API inside the container by
+its name. `just remove-e2e-machine vm` cleans up the stacks and workbenches runs left, takes the
 container down, and deletes the clone.
 
 For a VM you reach with an admin login, `tools/ssh/setup-vm.sh <admin login>`, run

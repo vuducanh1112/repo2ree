@@ -13,7 +13,7 @@ machine named in the machines file (``$REPO2REE_MACHINES``, by default the untra
 
 A remote machine works as this checkout does: a clone (~/repo2ree of its SSH user) and
 the dev container brought up from it with Compose (docker-compose.dev.yml, with
-docker/dev/machine.compose.yml over it, which builds the Nix dev image). It needs Git
+docker/dev/machine.compose.yml over it, which keeps it up for runs). It needs Git
 and a Docker Engine with Compose that its SSH user may use.
 
 A run pushes HEAD to the clone, checks it out, brings the container up, and starts the
