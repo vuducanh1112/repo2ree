@@ -23,6 +23,13 @@ Only a commit can be shipped, so the repository needs to be committed. A run ref
 a container that is not running, or that was built from other image inputs (the
 Dockerfile and what it copies) than HEAD's: `prepare` again. `remove` cleans up
 what runs left on that Docker and removes the container, its volume, and its images.
+
+On a remote machine the recipe runs as a job detached from SSH: its output goes to a
+log in the clone's test-artifacts, which the run follows. A dropped connection only
+stops the following; the run reconnects for a while, and after that the same command
+again, at the same commit, picks the job back up, or its results once it ended. One
+job runs at a time: anything else that would touch the clone or the container refuses
+while one does. Ctrl-C cancels the job; `cancel` does so from anywhere.
 """
 
 from __future__ import annotations
@@ -34,7 +41,8 @@ import re
 import shlex
 import subprocess
 import sys
-from collections.abc import Sequence
+import time
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
@@ -69,6 +77,22 @@ IMAGE_FINGERPRINT = "{{json .RootFS.Layers}}{{json .Config}}"
 CONTAINER_STATE = (
     f'{{{{.State.Running}}}} {{{{index .Config.Labels "{IMAGE_LABEL}"}}}} {{{{index .Config.Labels "{SOURCE_LABEL}"}}}}'
 )
+# Where a remote job keeps its command, process, log, and exit code, relative to the clone.
+JOB = "test-artifacts/machine-job"
+# The last line a job's follow prints, after the job's log: how it ended.
+JOB_EXITED = ">> machine job exited: "
+JOB_LOST = ">> machine job lost"
+# What the job check exits with: the job asked for is there, running or not yet fetched;
+# another one runs; another one ended but was never fetched; or one died without an exit code.
+THIS_JOB = 10
+OTHER_RUNNING = 11
+OTHER_UNFETCHED = 12
+LOST_JOB = 13
+# How long a run keeps reconnecting to its job before it leaves the job to a rerun.
+RECONNECT_SECONDS = 30 * 60
+INTERRUPTED = 130
+# A dropped connection shows within a minute instead of whenever TCP gives up.
+KEEPALIVE = ("-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=4")
 # What a slim fetch leaves on the machine: the bulk of a run, and nothing a verdict or a page reads.
 SLIM_EXCLUDES = ("*.tar", "*.tar.gz", "*.tgz", "*/artifacts/archives")
 
@@ -77,7 +101,7 @@ class Runner(Protocol):
     def call(self, argv: Sequence[str]) -> int: ...
 
     def stream(self, argv: Sequence[str]) -> tuple[int, list[str]]:
-        """Run ``argv`` showing its output as it comes; its exit code, and every line it printed."""
+        """Run ``argv`` showing its output as it comes; its exit code, and every complete line it printed."""
         ...
 
     def pipe(self, producer: Sequence[str], consumer: Sequence[str]) -> int: ...
@@ -94,7 +118,9 @@ class Processes:
         ) as proc:
             for line in proc.stdout or ():
                 sys.stdout.write(line)
-                printed.append(line.rstrip("\n"))
+                # A line cut off by a dropped connection is not counted: following again shows it whole.
+                if line.endswith("\n"):
+                    printed.append(line.removesuffix("\n"))
         return proc.returncode, printed
 
     def pipe(self, producer: Sequence[str], consumer: Sequence[str]) -> int:
@@ -116,6 +142,7 @@ class Machine:
     name: str
     config: MachineConfig
     runner: Runner = field(default_factory=Processes)
+    sleep: Callable[[float], None] = time.sleep
 
     @property
     def remote(self) -> bool:
@@ -125,6 +152,8 @@ class Machine:
         """Build the dev image from ``revision`` on the machine, and run it as the container if it is new."""
         if not self.remote:
             return
+        if self._check_container() == 0:
+            self._refuse_running_job("replace its container")
         name = shlex.quote(self.config.container)
         source = image_source(revision, self.config.dockerfile)
         build = f"docker build --label {self._label} -t {name} -f {shlex.quote(self.config.dockerfile)} -"
@@ -164,6 +193,7 @@ class Machine:
             raise SystemExit(f">> {self.name} is this checkout; there is nothing to remove")
         container = self.config.container
         if self._check_container() == 0:
+            self._refuse_running_job("remove its container")
             path = shlex.quote(self.config.path)
             shell = shlex.join([*self.config.shell, "bash", "-c", "just stack-clean; just clean-workbenches 1"])
             if self.runner.call(self._ssh(f"cd {path} && if test -f justfile; then {shell}; fi")) != 0:
@@ -180,11 +210,67 @@ class Machine:
         self._require(self.runner.call(self._on_host(script)), "remove the container")
         print(f">> removed {container}, its volume and its images from {self.name}")
 
-    def ship(self, revision: str) -> None:
-        """Put ``revision`` on the machine, checked out clean (a local machine already has it)."""
+    def job(self, revision: str, argv: Sequence[str]) -> tuple[int, list[Path]]:
+        """Run ``argv`` at ``revision`` in the machine's checkout; its exit code, and the per-test runs it reported.
+
+        On a remote machine, a job already there for the same commit and command is picked
+        back up instead of started again.
+        """
         if not self.remote:
-            return
+            code, printed = self.runner.stream([*self.config.shell, *argv])
+            return code, _reported_runs(printed)
         self._require_current_container(revision)
+        command = shlex.join(argv)
+        state = self._job_state(f"{revision} {command}")
+        if state == THIS_JOB:
+            print(f">> picking up `{command}` at {revision[:12]} on {self.name}")
+        else:
+            if state == OTHER_RUNNING:
+                raise SystemExit(
+                    f">> {self.name} is running the job above; rerun its command at its commit to follow it,"
+                    f" or stop it: just cancel-e2e-on {self.name}"
+                )
+            if state == OTHER_UNFETCHED:
+                print(
+                    f">> the job above was never brought back from {self.name}; its runs stay in test-artifacts there"
+                )
+            if state == LOST_JOB:
+                print(
+                    f">> the job above died on {self.name} without an exit code: its container or the machine restarted"
+                )
+            self._ship(revision)
+            self._start(f"{revision} {command}", argv)
+        code, printed = self._follow()
+        return code, _reported_runs(printed)
+
+    def done(self) -> None:
+        """Record that the job's results are here, so the same command starts it anew."""
+        if self.remote:
+            self._require(self.runner.call(self._ssh(f"touch {self._job}/fetched")), "record the job fetched")
+
+    def cancel(self) -> None:
+        """Interrupt the machine's job as Ctrl-C would, and kill what is left of it after two minutes."""
+        if not self.remote:
+            raise SystemExit(f">> {self.name} is this checkout; Ctrl-C stops its runs")
+        if self._check_container() != 0:
+            print(f">> {self.config.container} is not running on {self.name}, so neither is a job")
+            return
+        script = "; ".join(
+            [
+                self._job_alive,
+                "alive || { echo '>> no job is running'; exit 0; }",
+                f'pid=$(cat {self._job}/pid); echo ">> cancelling $(cat {self._job}/job)"',
+                'kill -INT -- "-$pid"',
+                'for _ in $(seq 120); do kill -0 -- "-$pid" 2>/dev/null || break; sleep 1; done',
+                'kill -KILL -- "-$pid" 2>/dev/null',
+                f"test -f {self._job}/exit || echo {INTERRUPTED} > {self._job}/exit",
+                f"touch {self._job}/fetched",
+            ]
+        )
+        self._require(self.runner.call(self._ssh(script)), "cancel the job")
+
+    def _ship(self, revision: str) -> None:
+        """Put ``revision`` on the machine, checked out clean."""
         path = shlex.quote(self.config.path)
         self._require(self.runner.call(self._ssh(f"test -d {path}/.git || {GIT} init -q {path}")), "prepare the clone")
         destination = f"{self.config.host}:{self.config.path}"
@@ -209,16 +295,110 @@ class Machine:
             "check the commit out",
         )
 
-    def run(self, argv: Sequence[str]) -> tuple[int, list[Path]]:
-        """Run ``argv`` in the machine's checkout; its exit code, and the per-test runs it reported."""
-        command = [*self.config.shell, *argv]
-        if self.remote:
-            line = " ".join(shlex.quote(part) for part in command)
-            code, printed = self.runner.stream(self._ssh(f"cd {shlex.quote(self.config.path)} && {line}"))
-        else:
-            code, printed = self.runner.stream(command)
-        runs = [Path(line.removeprefix(RUN_LINE).strip()) for line in printed if line.startswith(RUN_LINE)]
-        return code, runs
+    def _start(self, job: str, argv: Sequence[str]) -> None:
+        """Start ``argv`` in the checkout as the machine's job, in a process group of its own, detached from SSH."""
+        line = shlex.join([*self.config.shell, *argv])
+        body = f"cd {shlex.quote(self._checkout)} && {line} > {self._job}/log 2>&1; echo $? > {self._job}/exit"
+        script = "\n".join(
+            [
+                f"rm -rf {self._job} && mkdir -p {self._job} || exit 1",
+                f"printf '%s\\n' {shlex.quote(job)} > {self._job}/job",
+                f": > {self._job}/log",
+                # Job control gives the job its own process group, which cancelling interrupts as a whole.
+                "set -m",
+                f"nohup bash -c {shlex.quote(body)} </dev/null >/dev/null 2>&1 &",
+                f"echo $! > {self._job}/pid",
+                # With its pid, its start time: a restarted container can hand the pid to another process.
+                f"cut -d' ' -f22 /proc/$!/stat > {self._job}/started",
+            ]
+        )
+        self._require(self.runner.call(self._ssh(script)), "start the job")
+
+    def _follow(self) -> tuple[int, list[str]]:
+        """Show the job's log until it ends, reconnecting while the machine is unreachable; its exit code and lines."""
+        printed: list[str] = []
+        delay, unreachable = 5, 0
+        while True:
+            try:
+                code, lines = self.runner.stream(self._ssh(self._follow_script(len(printed))))
+            except KeyboardInterrupt:
+                print(f"\n>> cancelling the job on {self.name}")
+                self.cancel()
+                return INTERRUPTED, []
+            if lines and lines[-1].startswith(JOB_EXITED):
+                return int(lines[-1].removeprefix(JOB_EXITED)), [*printed, *lines[:-1]]
+            if lines and lines[-1] == JOB_LOST:
+                raise SystemExit(
+                    f">> the job on {self.name} died without an exit code: its container or the machine restarted"
+                )
+            printed += lines
+            if code != SSH_FAILED:
+                raise SystemExit(
+                    f">> lost the job's output on {self.name} (exit {code}); it may still run there:"
+                    " rerun the same command to pick it back up"
+                )
+            if lines:
+                delay, unreachable = 5, 0
+            if unreachable >= RECONNECT_SECONDS:
+                raise SystemExit(
+                    f">> could not reach {self.name} for {RECONNECT_SECONDS // 60} minutes; the job keeps running"
+                    " there: rerun the same command to pick it back up"
+                )
+            print(f">> lost the connection to {self.name}; the job keeps running there, reconnecting in {delay}s")
+            self.sleep(delay)
+            unreachable += delay
+            delay = min(delay * 2, 60)
+
+    def _follow_script(self, seen: int) -> str:
+        """The job's log after its first ``seen`` lines, as it grows while the job runs, then how it ended."""
+        job, after = self._job, f"-n +{seen + 1}"
+        return "; ".join(
+            [
+                self._job_alive,
+                f'if alive; then tail {after} -f --pid="$(cat {job}/pid)" {job}/log; else tail {after} {job}/log; fi',
+                f'if test -f {job}/exit; then echo "{JOB_EXITED}$(cat {job}/exit)"',
+                f"else echo {shlex.quote(JOB_LOST)}; fi",
+            ]
+        )
+
+    def _job_state(self, job: str) -> int:
+        """0 if no job is there to pick up or wait for; else THIS_JOB, OTHER_RUNNING, OTHER_UNFETCHED, or LOST_JOB."""
+        script = "; ".join(
+            [
+                self._job_alive,
+                f"test -f {self._job}/job && ! test -f {self._job}/fetched || exit 0",
+                f'test "$(cat {self._job}/job)" = {shlex.quote(job)} && this=1',
+                f'if test -f {self._job}/exit || alive; then test -n "$this" && exit {THIS_JOB}',
+                f'echo ">> on {self.name}: $(cat {self._job}/job)"',
+                f"test -f {self._job}/exit && exit {OTHER_UNFETCHED}",
+                f"exit {OTHER_RUNNING}; fi",
+                f'echo ">> on {self.name}: $(cat {self._job}/job)"',
+                f"exit {LOST_JOB}",
+            ]
+        )
+        code = self.runner.call(self._ssh(script))
+        if code not in (0, THIS_JOB, OTHER_RUNNING, OTHER_UNFETCHED, LOST_JOB):
+            self._require(code, "look for a job")
+        return code
+
+    def _refuse_running_job(self, what: str) -> None:
+        if self._job_state("") == OTHER_RUNNING:
+            raise SystemExit(
+                f">> {self.name} is running the job above, so this will not {what};"
+                f" let it end, or stop it: just cancel-e2e-on {self.name}"
+            )
+
+    @property
+    def _job(self) -> str:
+        return shlex.quote(f"{self._checkout}/{JOB}")
+
+    @property
+    def _job_alive(self) -> str:
+        """A shell function: whether the job's process still runs (and is the job's, by its start time)."""
+        return (
+            f'alive() {{ pid=$(cat {self._job}/pid 2>/dev/null) && test -n "$pid"'
+            f' && test "$(cut -d" " -f22 /proc/$pid/stat 2>/dev/null)" = "$(cat {self._job}/started)"; }}'
+        )
 
     def fetch_run(self, run: Path) -> Path:
         """Bring a run the machine wrote into this checkout's test-artifacts; where it now is."""
@@ -247,7 +427,7 @@ class Machine:
 
     def _on_host(self, command: str) -> list[str]:
         """``command`` on the host, in a login shell: a plain ssh command sees no profile, so often no Nix."""
-        return ["ssh", self.config.host or "", f"bash -lc {shlex.quote(command)}"]
+        return ["ssh", *KEEPALIVE, self.config.host or "", f"bash -lc {shlex.quote(command)}"]
 
     @property
     def _exec(self) -> str:
@@ -302,6 +482,10 @@ class Machine:
             raise SystemExit(f">> could not {what} on {self.name} (exit {code})")
 
 
+def _reported_runs(printed: Sequence[str]) -> list[Path]:
+    return [Path(line.removeprefix(RUN_LINE).strip()) for line in printed if line.startswith(RUN_LINE)]
+
+
 def _after_test_artifacts(run: Path) -> Path:
     """A run's path below test-artifacts/, wherever the machine keeps its checkout."""
     parts = run.parts
@@ -344,20 +528,20 @@ def committed_head() -> str:
 
 
 def gate(machine: Machine, jobs: int | None) -> int:
-    machine.ship(committed_head())
-    code, runs = machine.run(["just", "assurance-gate", str(jobs or machine.config.jobs)])
+    code, runs = machine.job(committed_head(), ["just", "assurance-gate", str(jobs or machine.config.jobs)])
     _bring_back(machine, runs)
     if code == 0:
         machine.fetch_receipt()
         print(f">> assurance-gate receipt from {machine.name}: {RECEIPT}")
+    machine.done()
     return code
 
 
 def run_recipe(machine: Machine, recipe: Sequence[str]) -> int:
-    if machine.remote:
-        machine.ship(committed_head())
-    code, runs = machine.run(["just", *recipe])
+    revision = committed_head() if machine.remote else "HEAD"
+    code, runs = machine.job(revision, ["just", *recipe])
     _bring_back(machine, runs)
+    machine.done()
     return code
 
 
@@ -369,8 +553,8 @@ def _bring_back(machine: Machine, runs: Sequence[Path]) -> None:
 def prepare(machine: Machine) -> int:
     revision = committed_head()
     machine.provision(revision)
-    machine.ship(revision)
-    code, _ = machine.run(["just", "build-e2e-bundles"])
+    code, _ = machine.job(revision, ["just", "build-e2e-bundles"])
+    machine.done()
     return code
 
 
@@ -384,6 +568,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     commands.add_parser(
         "remove", help="clean up its container's runs, then remove the container, its volume, and images"
     ).add_argument("machine")
+    commands.add_parser("cancel", help="stop the job running there, as Ctrl-C on its run would").add_argument("machine")
     gating = commands.add_parser("gate", help="run the assurance gate there and bring its receipt and runs back")
     gating.add_argument("machine")
     gating.add_argument("--jobs", type=int, help="stacks side by side per tier (default: the machine's)")
@@ -407,6 +592,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         return prepare(machine)
     if args.command == "remove":
         machine.remove()
+        return 0
+    if args.command == "cancel":
+        machine.cancel()
         return 0
     if args.command == "gate":
         return gate(machine, args.jobs)

@@ -68,6 +68,11 @@ prepare-e2e-machine machine:
 remove-e2e-machine machine:
     python -m repo2ree_testbed machine remove {{ quote(machine) }}
 
+# Stop the job running on an e2e machine, as Ctrl-C on the run that started it would.
+[group('E2E tests')]
+cancel-e2e-on machine:
+    python -m repo2ree_testbed machine cancel {{ quote(machine) }}
+
 # Run the assurance gate on an e2e machine, bring its receipt and runs here, and check the receipt holds for HEAD.
 [group('E2E tests')]
 gate-e2e-on machine="local" jobs="":

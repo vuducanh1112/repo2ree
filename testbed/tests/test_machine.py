@@ -1,5 +1,5 @@
 import shlex
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 import pytest
@@ -9,12 +9,21 @@ from repo2ree_testbed.machines import LOCAL, MachineConfig, load_machines
 from repo2ree_testbed.runs import machine as machine_mod
 from repo2ree_testbed.runs.machine import (
     GIT,
+    INTERRUPTED,
+    JOB_EXITED,
+    JOB_LOST,
+    KEEPALIVE,
+    LOST_JOB,
     NOT_RUNNING,
+    OTHER_RUNNING,
     OTHER_SOURCE,
+    OTHER_UNFETCHED,
     RECEIPT,
     RECEIVE_PACK,
+    RECONNECT_SECONDS,
     RUN_LINE,
     SSH_FAILED,
+    THIS_JOB,
     Machine,
     gate,
     image_inputs,
@@ -32,25 +41,46 @@ COPY docker/dev/nix-entrypoint.sh /usr/local/bin/dev-entrypoint.sh
 VM = MachineConfig(host="vm")
 
 
+# What tells the job's scripts apart: looking for a job, starting, following, and cancelling one.
+STATE = "/fetched || exit 0"
+START = "nohup bash -c"
+CANCEL = "kill -INT"
+
+
 class FakeRunner:
+    """A machine whose calls exit as ``codes`` says, by a substring of what they run, and whose
+    follows answer with ``follows`` in turn: then with ``printed`` and a job that exits ``code``."""
+
     def __init__(
-        self, *, code: int = 0, printed: Sequence[str] = (), failing: str | None = None, failure: int = 1
+        self,
+        *,
+        code: int = 0,
+        printed: Sequence[str] = (),
+        codes: dict[str, int] | None = None,
+        follows: Sequence[tuple[int, list[str]] | BaseException] = (),
     ) -> None:
         self.code = code
         self.printed = list(printed)
-        self.failing = failing
-        self.failure = failure
+        self.codes = codes or {}
+        self.follows = list(follows)
         self.calls: list[list[str]] = []
         self.streamed: list[list[str]] = []
         self.piped: list[tuple[list[str], list[str]]] = []
 
     def call(self, argv: Sequence[str]) -> int:
         self.calls.append(list(argv))
-        return self.failure if self.failing and self.failing in argv[-1] else 0
+        return next((code for part, code in self.codes.items() if part in argv[-1]), 0)
 
     def stream(self, argv: Sequence[str]) -> tuple[int, list[str]]:
         self.streamed.append(list(argv))
-        return self.code, self.printed
+        if argv[0] != "ssh":
+            return self.code, self.printed
+        if self.follows:
+            follow = self.follows.pop(0)
+            if isinstance(follow, BaseException):
+                raise follow
+            return follow
+        return 0, [*self.printed, f"{JOB_EXITED}{self.code}"]
 
     def pipe(self, producer: Sequence[str], consumer: Sequence[str]) -> int:
         self.piped.append((list(producer), list(consumer)))
@@ -79,8 +109,8 @@ def committed(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def _on_host(call: Sequence[str]) -> str:
     """What an ssh call runs on the host, once its login shell has unquoted it."""
-    assert call[:2] == ["ssh", "vm"]
-    return shlex.split(call[2])[-1]
+    assert call[:-1] == ["ssh", *KEEPALIVE, "vm"]
+    return shlex.split(call[-1])[-1]
 
 
 def _in_container(call: Sequence[str]) -> str:
@@ -119,16 +149,23 @@ def test_a_remote_gate_runs_in_the_container_and_brings_back_runs_and_receipt() 
 
     assert gate(Machine("vm", MachineConfig(host="vm", jobs=6), runner), None) == 0
 
-    check, init, push, checkout = runner.calls
+    check, state, init, push, checkout, start, done = runner.calls
     assert "docker container inspect" in _on_host(check)
+    assert f"= {shlex.quote(REVISION + ' just assurance-gate 6')} && this=1" in _in_container(state)
     # The container's dev shell is not entered yet, so Git comes from Nix there.
     assert f"{GIT} init -q repo2ree" in _in_container(init)
     # Git appends the clone's path to the receive-pack command, which docker exec hands on as $0.
     assert f"--receive-pack=docker exec -i -u nixuser -w /home/nixuser repo2ree-dev {RECEIVE_PACK}" in push
     assert push[-2:] == ["vm:repo2ree", f"{REVISION}:refs/testbed/head"]
     assert f"checkout -q --detach --force {REVISION}" in _in_container(checkout)
-    [ran] = runner.streamed
-    assert "develop --command just assurance-gate 6" in _in_container(ran)
+    # The gate runs detached, in its own process group, logging to the clone's test-artifacts.
+    starting = _in_container(start)
+    assert "set -m\nnohup bash -c" in starting
+    assert "develop --command just assurance-gate 6 >" in starting
+    assert "/home/nixuser/repo2ree/test-artifacts/machine-job/log 2>&1; echo $? >" in starting
+    [follow] = runner.streamed
+    assert "tail -n +1 -f" in _in_container(follow)
+    assert "touch /home/nixuser/repo2ree/test-artifacts/machine-job/fetched" in _in_container(done)
 
     (run_fetch, run_unpack), (receipt_fetch, _) = runner.piped
     assert "--exclude=*.tar" in _in_container(run_fetch)
@@ -145,7 +182,7 @@ def test_a_failed_remote_gate_brings_back_its_runs_but_not_a_receipt() -> None:
 
     [(run_fetch, _)] = runner.piped
     assert "--exclude" not in run_fetch[-1]
-    assert "just assurance-gate 2" in _in_container(runner.streamed[0])
+    assert "just assurance-gate 2" in _in_container(runner.calls[5])
 
 
 def test_the_local_machine_runs_here_and_moves_nothing() -> None:
@@ -171,7 +208,7 @@ def test_the_local_machine_runs_here_and_moves_nothing() -> None:
     ],
 )
 def test_a_run_refuses_a_container_that_is_down_out_of_date_or_unreachable(failure: int, message: str) -> None:
-    runner = FakeRunner(failing="docker container inspect", failure=failure)
+    runner = FakeRunner(codes={"docker container inspect": failure})
     with pytest.raises(SystemExit, match=message):
         run_recipe(Machine("vm", VM, runner), ["test-e2e-system"])
     assert len(runner.calls) == 1
@@ -219,15 +256,16 @@ def test_preparing_builds_head_there_and_replaces_the_container_only_for_another
     assert _on_host(build) == (
         "docker build --label repo2ree.dev-container=repo2ree-dev -t repo2ree-dev -f docker/dev/nix.Dockerfile -"
     )
-    start = _on_host(runner.calls[0])
+    start = _on_host(runner.calls[2])
     source = image_source(REVISION, "docker/dev/nix.Dockerfile")
     assert f'if [ "${{state#* }}" != "$built {source}" ]' in start
     assert f"--label repo2ree.dev-image=$built --label repo2ree.dev-source={source}" in start
     assert "-v /var/run/docker.sock:/var/run/docker.sock -v repo2ree-dev-checkout:/home/nixuser/repo2ree" in start
     assert "chown nixuser: /home/nixuser/repo2ree" in start
-    # The container it just started passes the check a run makes.
-    assert f"= {source} ] || exit {OTHER_SOURCE}" in _on_host(runner.calls[1])
-    assert "develop --command just build-e2e-bundles" in _in_container(runner.streamed[0])
+    # Before replacing anything it looks for a job; the container it then started passes the check a run makes.
+    assert STATE in _in_container(runner.calls[1])
+    assert f"= {source} ] || exit {OTHER_SOURCE}" in _on_host(runner.calls[3])
+    assert "develop --command just build-e2e-bundles" in _in_container(runner.calls[-2])
 
 
 def test_removing_cleans_up_inside_the_container_then_removes_it_its_volume_and_images() -> None:
@@ -235,7 +273,7 @@ def test_removing_cleans_up_inside_the_container_then_removes_it_its_volume_and_
 
     Machine("vm", VM, runner).remove()
 
-    _check, cleanup, removal = runner.calls
+    _check, _state, cleanup, removal = runner.calls
     assert "just stack-clean; just clean-workbenches 1" in _in_container(cleanup)
     removing = _on_host(removal)
     assert "docker rm -f repo2ree-dev" in removing
@@ -244,7 +282,7 @@ def test_removing_cleans_up_inside_the_container_then_removes_it_its_volume_and_
 
 
 def test_removing_a_stopped_container_skips_the_cleanup_inside_it() -> None:
-    runner = FakeRunner(failing="docker container inspect", failure=NOT_RUNNING)
+    runner = FakeRunner(codes={"docker container inspect": NOT_RUNNING})
     Machine("vm", VM, runner).remove()
     assert len(runner.calls) == 2
     assert "docker rm -f repo2ree-dev" in _on_host(runner.calls[1])
@@ -254,3 +292,108 @@ def test_a_machine_runs_only_commits(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(machine_mod, "capture", lambda argv: " M core/x.py")
     with pytest.raises(SystemExit, match="commit first"):
         gate(Machine("vm", VM, FakeRunner()), None)
+
+
+def _started(runner: FakeRunner) -> bool:
+    return any(START in call[-1] for call in runner.calls)
+
+
+def _pushed(runner: FakeRunner) -> bool:
+    return any(call[:2] == ["git", "push"] for call in runner.calls)
+
+
+def test_a_dropped_connection_reconnects_and_follows_the_log_from_where_it_left_off() -> None:
+    remote_run = "/home/nixuser/repo2ree/test-artifacts/e2e/e2e-system-20261027-120000"
+    runner = FakeRunner(
+        follows=[
+            (SSH_FAILED, ["one", "two"]),
+            (SSH_FAILED, []),
+            (0, ["three", f"{RUN_LINE}{remote_run}", f"{JOB_EXITED}1"]),
+        ]
+    )
+    slept: list[float] = []
+
+    assert run_recipe(Machine("vm", VM, runner, sleep=slept.append), ["test-e2e-system"]) == 1
+
+    assert _started(runner)
+    assert "tail -n +1 -f" in _in_container(runner.streamed[0])
+    assert "tail -n +3 -f" in _in_container(runner.streamed[1])
+    assert "tail -n +3 -f" in _in_container(runner.streamed[2])
+    # The wait grows while the machine stays unreachable.
+    assert slept == [5, 10]
+    [(run_fetch, _)] = runner.piped
+    assert "e2e-system-20261027-120000" in _in_container(run_fetch)
+
+
+def test_a_machine_unreachable_for_long_leaves_the_job_to_the_same_command_again() -> None:
+    runner = FakeRunner(follows=[(SSH_FAILED, [])] * 100)
+    with pytest.raises(SystemExit, match="the job keeps running there: rerun the same command"):
+        run_recipe(Machine("vm", VM, runner, sleep=lambda _: None), ["test-e2e-system"])
+    assert 5 < len(runner.streamed) < 100
+    assert RECONNECT_SECONDS == 30 * 60
+
+
+def test_the_output_lost_otherwise_is_not_waited_for() -> None:
+    runner = FakeRunner(follows=[(1, ["one"])])
+    with pytest.raises(SystemExit, match=r"lost the job's output on vm \(exit 1\)"):
+        run_recipe(Machine("vm", VM, runner, sleep=lambda _: pytest.fail("slept")), ["test-e2e-system"])
+
+
+def test_the_same_command_again_picks_its_job_back_up_without_shipping_or_starting() -> None:
+    runner = FakeRunner(codes={STATE: THIS_JOB}, printed=["three"])
+
+    assert run_recipe(Machine("vm", VM, runner), ["test-e2e-system"]) == 0
+
+    assert not _pushed(runner)
+    assert not _started(runner)
+    # From the log's first line, since nothing of it was shown here yet.
+    assert "tail -n +1 -f" in _in_container(runner.streamed[0])
+
+
+def test_another_running_job_is_refused_before_anything_is_shipped() -> None:
+    runner = FakeRunner(codes={STATE: OTHER_RUNNING})
+    with pytest.raises(SystemExit, match=r"vm is running the job above.*just cancel-e2e-on vm"):
+        run_recipe(Machine("vm", VM, runner), ["test-e2e-system"])
+    assert not _pushed(runner)
+    assert runner.streamed == []
+
+
+@pytest.mark.parametrize(
+    ("state", "note"), [(OTHER_UNFETCHED, "never brought back"), (LOST_JOB, "without an exit code")]
+)
+def test_an_ended_or_lost_job_gives_way_to_a_new_one(state: int, note: str, capsys: pytest.CaptureFixture[str]) -> None:
+    runner = FakeRunner(codes={STATE: state})
+    assert run_recipe(Machine("vm", VM, runner), ["test-e2e-system"]) == 0
+    assert note in capsys.readouterr().out
+    assert _pushed(runner)
+    assert _started(runner)
+
+
+def test_a_job_that_died_without_an_exit_code_ends_the_run() -> None:
+    runner = FakeRunner(follows=[(0, ["one", JOB_LOST])])
+    with pytest.raises(SystemExit, match="died without an exit code"):
+        run_recipe(Machine("vm", VM, runner), ["test-e2e-system"])
+
+
+def test_ctrl_c_on_a_run_cancels_its_job() -> None:
+    runner = FakeRunner(follows=[KeyboardInterrupt()])
+
+    assert run_recipe(Machine("vm", VM, runner), ["test-e2e-system"]) == INTERRUPTED
+
+    [cancel] = [call for call in runner.calls if CANCEL in call[-1]]
+    cancelling = _in_container(cancel)
+    # The whole process group, as Ctrl-C would, then whatever outlives two minutes.
+    assert 'kill -INT -- "-$pid"' in cancelling
+    assert 'kill -KILL -- "-$pid"' in cancelling
+    assert runner.piped == []
+
+
+@pytest.mark.parametrize(
+    "act", [lambda machine: prepare(machine), lambda machine: machine.remove()], ids=["prepare", "remove"]
+)
+def test_preparing_or_removing_refuses_while_a_job_runs(act: Callable[[Machine], object]) -> None:
+    runner = FakeRunner(codes={STATE: OTHER_RUNNING})
+    with pytest.raises(SystemExit, match="vm is running the job above, so this will not"):
+        act(Machine("vm", VM, runner))
+    assert runner.piped == []
+    assert not any("docker rm" in call[-1] for call in runner.calls)

@@ -32,6 +32,7 @@
 | `just gate-e2e-on [machine] [jobs]` | The assurance gate on a machine (`local`, or one of your own), its receipt and runs brought back here. |
 | `just test-e2e-on <machine> <recipe> [args]` | Any e2e recipe on a machine, its per-test runs brought back here. |
 | `just list-e2e-machines` / `just prepare-e2e-machine <machine>` | List the machines; ship HEAD to one and build its bundles there. |
+| `just cancel-e2e-on <machine>` | Stop the job running on a machine, as Ctrl-C on its run would. |
 | `just commit-gate` | Fast pre-commit gate: documentation, static checks, and unit tests. Writes a receipt for the tree it passed on; the pre-commit hook checks that receipt. |
 | `just check-doc-links-external` | Manually check external documentation URLs with retries and a local response cache; intentionally excluded from deterministic gates. |
 | `just publish-gate` | The pre-publish gate: clean tree, all checks and tests, e2e source-run and image-backed. |
@@ -564,6 +565,20 @@ working tree with changes. Both also refuse, before shipping anything, a machine
 they cannot reach, a container that is not running, and a container built from
 other image inputs than HEAD's: the Dockerfile and every path it copies. Run
 `just prepare-e2e-machine vm` again after changing those.
+
+On another machine the recipe runs as a job detached from SSH, so a dropped
+connection does not end it. The run shows the job's log as it grows; when the
+connection drops it says so and reconnects, continuing where the log left off,
+for up to 30 minutes. After that, or once your computer was asleep or the run
+killed, run the same command again at the same commit: it picks the job back up,
+or brings back its results if it has ended, instead of starting it anew. A job's
+command, log, and exit code are in `test-artifacts/machine-job/` of the clone
+there.
+
+One job runs on a machine at a time. A different command, `just
+prepare-e2e-machine`, and `just remove-e2e-machine` refuse while one runs and name
+it. Ctrl-C on a run cancels its job there, as it would here; `just cancel-e2e-on
+vm` does the same from anywhere.
 
 ## Artifacts and logs
 
