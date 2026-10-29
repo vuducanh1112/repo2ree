@@ -58,6 +58,14 @@
         # string => same-origin "/api", which is what the compose setup uses
         # (caddy and the API share an origin via the compose network / proxy).
         # For a non-same-origin backend, set viteApiBaseUrl here.
+        apiClosure = import ./nix/python-closure.nix {
+          inherit pkgs;
+          name = "api";
+        };
+        providerClosure = import ./nix/python-closure.nix {
+          inherit pkgs;
+          name = "provider";
+        };
         guiImage = import ./nix/gui-image.nix {
           inherit pkgs;
           inherit buildRevision;
@@ -84,6 +92,12 @@
           workbench-image = import ./nix/workbench-image.nix { inherit pkgs buildRevision; };
           provider-image = import ./nix/provider-image.nix { inherit pkgs buildRevision; };
           gui-image = guiImage;
+          api-env = apiClosure.env;
+          provider-env = providerClosure.env;
+          closure-imports = pkgs.linkFarm "repo2ree-closure-imports" {
+            api = apiClosure.imports;
+            provider = providerClosure.imports;
+          };
           # The dev container's own tools, beyond its Debian base and Nix.
           devcontainer = import ./nix/devcontainer.nix { inherit devPkgs; };
           default = provider-image;

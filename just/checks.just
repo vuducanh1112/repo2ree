@@ -106,6 +106,11 @@ check-package +packages: _check-write-hint
         fi
     done
 
+# Build every shipped Python closure from nix/closures.json, require it to be exactly uv.lock's, and import every module.
+[group('Checks')]
+check-closures: _check-write-hint _stage-nix-sources
+    nix build --no-link .#closure-imports
+
 # Check backend import-layer contracts.
 [group('Checks')]
 check-architecture: _check-write-hint
@@ -127,7 +132,7 @@ test-tooling:
 
 # Run every static analysis check.
 [group('Checks')]
-check: check-docs check-scripts check-nix check-gui check-backend check-assurance check-tooling
+check: check-docs check-scripts check-nix check-gui check-backend check-assurance check-tooling check-closures
 
 # Run every container-free unit test suite.
 [group('Tests')]

@@ -87,7 +87,18 @@ def best_wheel(package: dict[str, Any], tags: list[Tag]) -> dict[str, Any] | Non
     return best[1] if best else None
 
 
-def closure(packages: dict[str, dict[str, Any]], root: str) -> dict[str, Any]:
+def member(root: Path, name: str, path: str) -> dict[str, Any]:
+    pyproject = tomllib.loads((root / path / "pyproject.toml").read_text(encoding="utf-8"))
+    modules = pyproject["tool"]["hatch"]["build"]["targets"]["wheel"]["packages"]
+    return {
+        "name": name,
+        "path": path,
+        "version": pyproject["project"]["version"],
+        "modules": sorted(Path(module).name for module in modules),
+    }
+
+
+def closure(packages: dict[str, dict[str, Any]], root: str, base: Path = ROOT) -> dict[str, Any]:
     workspace: set[str] = set()
     systems: dict[str, list[dict[str, Any]]] = {}
     for system, machine in SYSTEMS.items():
@@ -114,7 +125,7 @@ def closure(packages: dict[str, dict[str, Any]], root: str) -> dict[str, Any]:
         systems[system] = wheels
     return {
         "root": root,
-        "workspace": [{"name": name, "path": packages[name]["source"]["editable"]} for name in sorted(workspace)],
+        "workspace": [member(base, name, packages[name]["source"]["editable"]) for name in sorted(workspace)],
         "systems": systems,
     }
 
@@ -126,7 +137,7 @@ def render(root: Path = ROOT) -> str:
     document = {
         "schema": SCHEMA,
         "python": f"{PYTHON[0]}.{PYTHON[1]}",
-        "closures": {name: closure(packages, package) for name, package in sorted(roots.items())},
+        "closures": {name: closure(packages, package, root) for name, package in sorted(roots.items())},
     }
     return json.dumps(document, indent=2) + "\n"
 

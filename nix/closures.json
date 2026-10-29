@@ -7,23 +7,43 @@
       "workspace": [
         {
           "name": "repo2ree-api",
-          "path": "api"
+          "path": "api",
+          "version": "0.1.0",
+          "modules": [
+            "repo2ree_api"
+          ]
         },
         {
           "name": "repo2ree-authoring",
-          "path": "authoring"
+          "path": "authoring",
+          "version": "0.1.0",
+          "modules": [
+            "repo2ree_authoring"
+          ]
         },
         {
           "name": "repo2ree-protocol",
-          "path": "protocol"
+          "path": "protocol",
+          "version": "0.1.0",
+          "modules": [
+            "repo2ree_protocol"
+          ]
         },
         {
           "name": "repo2ree-ree",
-          "path": "ree"
+          "path": "ree",
+          "version": "0.1.0",
+          "modules": [
+            "repo2ree_ree"
+          ]
         },
         {
           "name": "repo2ree-supervisor",
-          "path": "supervisor"
+          "path": "supervisor",
+          "version": "0.1.0",
+          "modules": [
+            "repo2ree_supervisor"
+          ]
         }
       ],
       "systems": {
@@ -612,19 +632,35 @@
       "workspace": [
         {
           "name": "repo2ree-docker-support",
-          "path": "docker-support"
+          "path": "docker-support",
+          "version": "0.1.0",
+          "modules": [
+            "repo2ree_docker"
+          ]
         },
         {
           "name": "repo2ree-protocol",
-          "path": "protocol"
+          "path": "protocol",
+          "version": "0.1.0",
+          "modules": [
+            "repo2ree_protocol"
+          ]
         },
         {
           "name": "repo2ree-provider-docker",
-          "path": "provider"
+          "path": "provider",
+          "version": "0.1.0",
+          "modules": [
+            "repo2ree_provider_docker"
+          ]
         },
         {
           "name": "repo2ree-ree",
-          "path": "ree"
+          "path": "ree",
+          "version": "0.1.0",
+          "modules": [
+            "repo2ree_ree"
+          ]
         }
       ],
       "systems": {

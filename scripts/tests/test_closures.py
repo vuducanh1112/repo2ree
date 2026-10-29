@@ -1,6 +1,7 @@
 import json
 import re
 import subprocess
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -87,7 +88,7 @@ def test_a_dependency_for_another_platform_is_not_reached() -> None:
     assert closures.reached(packages, "app", "x86_64") == {"app", "rich", "ipywidgets"}
 
 
-def test_a_package_without_a_wheel_for_a_system_is_refused() -> None:
+def test_a_package_without_a_wheel_for_a_system_is_refused(tmp_path: Path) -> None:
     packages = lock(
         {"name": "app", "source": {"editable": "app"}, "dependencies": [{"name": "native"}]},
         {
@@ -99,4 +100,4 @@ def test_a_package_without_a_wheel_for_a_system_is_refused() -> None:
     )
 
     with pytest.raises(ValueError, match=re.escape("native 1.0 has no wheel for aarch64-linux")):
-        closures.closure(packages, "app")
+        closures.closure(packages, "app", tmp_path)
