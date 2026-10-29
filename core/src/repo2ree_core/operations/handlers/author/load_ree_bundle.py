@@ -49,6 +49,11 @@ def handle_load_ree_bundle(
     is_canceled: CancelCheck,
 ) -> ActionResult:
     layout = ReeLayout.in_workbench()
+    # Loading replaces everything the REE holds, so a sealed REE refuses it as it refuses any edit.
+    store = ReeDirectory(layout)
+    if store.manifest_exists() and store.read_ree().seal is not None:
+        log("system", "error", "a sealed REE cannot load a bundle")
+        return ActionResult.failed("precondition", "a sealed REE cannot load a bundle")
     staged = layout.upload_staging_file(args.upload_token)
     if not staged.exists():
         log("system", "error", f"staged bundle not found: {staged}")
