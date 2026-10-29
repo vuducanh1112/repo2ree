@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import pytest
 
-from repo2ree_core.author_recipes.lint import lint_script
-from repo2ree_core.author_recipes.lint.catalog import catalog_codes, make_finding
-from repo2ree_core.author_recipes.lint.lint import CONTRACT_ONLY
+from repo2ree_authoring.lint import lint_script
+from repo2ree_authoring.lint.catalog import catalog_codes, make_finding
+from repo2ree_authoring.lint.lint import CONTRACT_ONLY
 from repo2ree_protocol.command import ScriptTarget
 
 

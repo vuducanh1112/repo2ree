@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from repo2ree_core.author_recipes.lint.shellwords import ScriptWords
+from repo2ree_authoring.lint.shellwords import ScriptWords
 from repo2ree_protocol.command import ScriptTarget
 from repo2ree_protocol.lint import ScriptDeclarations
 

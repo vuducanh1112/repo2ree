@@ -11,7 +11,7 @@ import json
 
 import pytest
 
-from repo2ree_core.author_recipes.lint.shellcheck_json import parse_json1
+from repo2ree_authoring.lint.shellcheck_json import parse_json1
 
 # One real `shellcheck --shell sh --format=json1` document, trimmed to the
 # fields the parser reads plus the `fix` block it deliberately ignores.

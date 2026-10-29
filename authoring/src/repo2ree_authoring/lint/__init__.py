@@ -11,7 +11,7 @@ you wrote agree with what the REE declares".
 
 from __future__ import annotations
 
-from repo2ree_core.author_recipes.lint.lint import (
+from repo2ree_authoring.lint.lint import (
     ALL_TIERS,
     CONTRACT_ONLY,
     ENGINE_VERSION,

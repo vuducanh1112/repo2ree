@@ -12,8 +12,9 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.author_recipes.inference import ScriptTargetSelector, infer_scripts
-from repo2ree_core.author_recipes.targets import resolve_target
+from repo2ree_authoring.targets import resolve_target
+from repo2ree_core.author_recipes.inference import infer_scripts
+from repo2ree_protocol.command import ScriptTargetSelectorArg
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATION_SCRIPT,
     RESERVED_ACTIVATION_VERIFY_SCRIPT,
@@ -24,14 +25,14 @@ from repo2ree_ree.reserved_paths import (
 
 
 def test_resolve_target_reserved_paths() -> None:
-    assert resolve_target(ScriptTargetSelector(kind="build")).path == RESERVED_BUILD_SCRIPT
-    assert resolve_target(ScriptTargetSelector(kind="activation_run")).path == RESERVED_ACTIVATION_SCRIPT
-    assert resolve_target(ScriptTargetSelector(kind="activation_verify")).path == RESERVED_ACTIVATION_VERIFY_SCRIPT
+    assert resolve_target(ScriptTargetSelectorArg(kind="build")).path == RESERVED_BUILD_SCRIPT
+    assert resolve_target(ScriptTargetSelectorArg(kind="activation_run")).path == RESERVED_ACTIVATION_SCRIPT
+    assert resolve_target(ScriptTargetSelectorArg(kind="activation_verify")).path == RESERVED_ACTIVATION_VERIFY_SCRIPT
 
 
 def test_resolve_target_experiment_paths_use_the_slug() -> None:
-    run = resolve_target(ScriptTargetSelector(kind="experiment_run", experiment_name="My Exp"))
-    verify = resolve_target(ScriptTargetSelector(kind="experiment_verify", experiment_name="My Exp"))
+    run = resolve_target(ScriptTargetSelectorArg(kind="experiment_run", experiment_name="My Exp"))
+    verify = resolve_target(ScriptTargetSelectorArg(kind="experiment_verify", experiment_name="My Exp"))
     assert run.path == experiment_run_script_path("My Exp")
     assert verify.path == experiment_verify_script_path("My Exp")
     assert run.experiment_name == "My Exp"
@@ -39,12 +40,12 @@ def test_resolve_target_experiment_paths_use_the_slug() -> None:
 
 def test_resolve_target_rejects_experiment_name_on_non_experiment() -> None:
     with pytest.raises(ValueError, match="must not carry an experiment_name"):
-        resolve_target(ScriptTargetSelector(kind="build", experiment_name="oops"))
+        resolve_target(ScriptTargetSelectorArg(kind="build", experiment_name="oops"))
 
 
 def test_resolve_target_requires_experiment_name_for_experiment() -> None:
     with pytest.raises(ValueError, match="requires an experiment_name"):
-        resolve_target(ScriptTargetSelector(kind="experiment_run"))
+        resolve_target(ScriptTargetSelectorArg(kind="experiment_run"))
 
 
 def test_unregistered_target_kinds_return_wellformed_not_inferred(tmp_path: Path) -> None:
@@ -53,8 +54,8 @@ def test_unregistered_target_kinds_return_wellformed_not_inferred(tmp_path: Path
     report = infer_scripts(
         tmp_path,
         [
-            ScriptTargetSelector(kind="activation_verify"),
-            ScriptTargetSelector(kind="experiment_verify", experiment_name="e1"),
+            ScriptTargetSelectorArg(kind="activation_verify"),
+            ScriptTargetSelectorArg(kind="experiment_verify", experiment_name="e1"),
         ],
     )
     for result in report.results:
@@ -67,12 +68,12 @@ def test_unregistered_target_kinds_return_wellformed_not_inferred(tmp_path: Path
 
 def test_infer_scripts_rejects_a_missing_source_directory(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="must be an existing directory"):
-        infer_scripts(tmp_path / "does-not-exist", [ScriptTargetSelector(kind="build")])
+        infer_scripts(tmp_path / "does-not-exist", [ScriptTargetSelectorArg(kind="build")])
 
 
 def test_report_ships_the_static_dag_executed(tmp_path: Path) -> None:
     (tmp_path / "Dockerfile").write_text("FROM x\n")
-    report = infer_scripts(tmp_path, [ScriptTargetSelector(kind="build")])
+    report = infer_scripts(tmp_path, [ScriptTargetSelectorArg(kind="build")])
     # The full static graph for the build target travels alongside the trace.
     keys = {dag.key for dag in report.dags}
     assert keys == {"build-inference"}
@@ -90,14 +91,14 @@ def test_report_deduplicates_dags_across_targets(tmp_path: Path) -> None:
     # Two build requests share one DAG; it must appear once.
     report = infer_scripts(
         tmp_path,
-        [ScriptTargetSelector(kind="build"), ScriptTargetSelector(kind="build")],
+        [ScriptTargetSelectorArg(kind="build"), ScriptTargetSelectorArg(kind="build")],
     )
     assert [dag.key for dag in report.dags] == ["build-inference"]
 
 
 def test_unregistered_targets_contribute_no_dag(tmp_path: Path) -> None:
     (tmp_path / "main.py").write_text("x")
-    report = infer_scripts(tmp_path, [ScriptTargetSelector(kind="activation_verify")])
+    report = infer_scripts(tmp_path, [ScriptTargetSelectorArg(kind="activation_verify")])
     assert report.dags == []
 
 
@@ -105,7 +106,7 @@ def test_report_carries_snapshot_digest(tmp_path: Path) -> None:
     (tmp_path / "main.py").write_text("x")
     report = infer_scripts(
         tmp_path,
-        [ScriptTargetSelector(kind="build")],
+        [ScriptTargetSelectorArg(kind="build")],
         source_snapshot_digest="sha256:abc",
     )
     assert report.source_snapshot_digest == "sha256:abc"

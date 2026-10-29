@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict
-
-from repo2ree_protocol.command import ScriptTarget, TargetKind
+from repo2ree_protocol.command import ScriptTarget, ScriptTargetSelectorArg
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATION_SCRIPT,
     RESERVED_ACTIVATION_VERIFY_SCRIPT,
@@ -14,16 +12,7 @@ from repo2ree_ree.reserved_paths import (
 )
 
 
-class ScriptTargetSelector(BaseModel):
-    """A script kind whose reserved path is resolved server-side."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    kind: TargetKind
-    experiment_name: str | None = None
-
-
-def resolve_target(selector: ScriptTargetSelector) -> ScriptTarget:
+def resolve_target(selector: ScriptTargetSelectorArg) -> ScriptTarget:
     """Resolve a selector, rejecting misplaced or missing experiment names."""
     kind = selector.kind
     name = selector.experiment_name
@@ -43,4 +32,4 @@ def resolve_target(selector: ScriptTargetSelector) -> ScriptTarget:
     return ScriptTarget(kind=kind, path=path)
 
 
-__all__ = ["ScriptTargetSelector", "resolve_target"]
+__all__ = ["resolve_target"]

@@ -10,6 +10,7 @@ members = [
     "repo2ree-assurance-collector",
     "repo2ree-assurance-dossier",
     "repo2ree-assurance-traceview",
+    "repo2ree-authoring",
     "repo2ree-core",
     "repo2ree-docker-support",
     "repo2ree-executor",
@@ -1155,12 +1156,30 @@ requires-dist = [
 ]
 
 [[package]]
+name = "repo2ree-authoring"
+version = "0.1.0"
+source = { editable = "authoring" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "repo2ree-protocol" },
+    { name = "repo2ree-ree" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pydantic", specifier = "~=2.11.7" },
+    { name = "repo2ree-protocol", editable = "protocol" },
+    { name = "repo2ree-ree", editable = "ree" },
+]
+
+[[package]]
 name = "repo2ree-core"
 version = "0.1.0"
 source = { editable = "core" }
 dependencies = [
     { name = "pydantic" },
     { name = "pyyaml" },
+    { name = "repo2ree-authoring" },
     { name = "repo2ree-protocol" },
     { name = "repo2ree-ree" },
 ]
@@ -1175,6 +1194,7 @@ dev = [
 requires-dist = [
     { name = "pydantic", specifier = "~=2.11.7" },
     { name = "pyyaml", specifier = "~=6.0" },
+    { name = "repo2ree-authoring", editable = "authoring" },
     { name = "repo2ree-protocol", editable = "protocol" },
     { name = "repo2ree-ree", editable = "ree" },
 ]

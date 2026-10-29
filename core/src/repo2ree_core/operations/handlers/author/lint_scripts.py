@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from repo2ree_core.author_recipes.lint import ScriptDeclarations, lint_script
-from repo2ree_core.author_recipes.targets import ScriptTargetSelector, resolve_target
+from repo2ree_authoring.lint import ScriptDeclarations, lint_script
+from repo2ree_authoring.targets import resolve_target
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.persistence.directory import ReeDirectory
@@ -33,7 +33,7 @@ def handle_lint_scripts(
     missing: list[str] = []
     try:
         for selector in args.targets:
-            target = resolve_target(ScriptTargetSelector(kind=selector.kind, experiment_name=selector.experiment_name))
+            target = resolve_target(selector)
             script = layout.overlay_file(target.path)
             if not script.is_file():
                 missing.append(target.path)

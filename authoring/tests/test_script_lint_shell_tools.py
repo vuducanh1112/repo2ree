@@ -11,8 +11,8 @@ from collections.abc import Callable
 
 import pytest
 
-from repo2ree_core.author_recipes.lint import lint_script, shell_tools
-from repo2ree_core.author_recipes.lint.shell_tools import run_shellcheck, run_syntax_check
+from repo2ree_authoring.lint import lint_script, shell_tools
+from repo2ree_authoring.lint.shell_tools import run_shellcheck, run_syntax_check
 from repo2ree_protocol.command import ScriptTarget
 from repo2ree_protocol.lint import Finding, LintReport, TierStatus
 

@@ -22,7 +22,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from repo2ree_core.author_recipes.templates import reserved_script_template
+from repo2ree_authoring.templates import reserved_script_template
 from repo2ree_core.persistence.files import write_atomic, write_json_atomic
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.ree_manifest import parse_ree_manifest, ree_manifest_bytes

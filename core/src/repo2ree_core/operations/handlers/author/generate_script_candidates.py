@@ -10,13 +10,13 @@ writes no files — turning a candidate into a script stays on the existing
 
 from __future__ import annotations
 
-from repo2ree_core.author_recipes.inference import ScriptTargetSelector, infer_scripts
+from repo2ree_core.author_recipes.inference import infer_scripts
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.operations.handlers.author._script_inference_inputs import build_runtime_inputs
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_protocol.command import GenerateScriptCandidatesArgs
+from repo2ree_protocol.command import GenerateScriptCandidatesArgs, ScriptTargetSelectorArg
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
 
@@ -46,7 +46,7 @@ def handle_generate_script_candidates(
     runtime_inputs = build_runtime_inputs(layout, definition)
 
     selectors = [
-        ScriptTargetSelector(kind=target.kind, experiment_name=target.experiment_name) for target in args.targets
+        ScriptTargetSelectorArg(kind=target.kind, experiment_name=target.experiment_name) for target in args.targets
     ]
 
     try:

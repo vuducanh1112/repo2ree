@@ -6,7 +6,7 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
-from repo2ree_core.author_recipes.templates import (
+from repo2ree_authoring.templates import (
     activation_templates,
     build_templates,
     experiment_run_templates,

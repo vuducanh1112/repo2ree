@@ -23,7 +23,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 from scriptinfer_helpers import MemoryAccessor, docker_archive, venv_archive
 
-from repo2ree_core.author_recipes.inference import ScriptTargetSelector, infer_scripts
+from repo2ree_core.author_recipes.inference import infer_scripts
 from repo2ree_core.author_recipes.inference.artifact_inspection import (
     VenvArchiveInspection,
     inspect_runtime_artifact,
@@ -33,6 +33,7 @@ from repo2ree_core.author_recipes.inference.renderers._common import runtime_ima
 from repo2ree_core.author_recipes.inference.repository_facts import resolve_logical_root
 from repo2ree_core.author_recipes.inference.resolvers import ScoreFreeViabilityResolver
 from repo2ree_core.author_recipes.inference.runtime_inputs import RuntimeInputs
+from repo2ree_protocol.command import ScriptTargetSelectorArg
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.model import ExperimentDefinition, ReeDefinition
 from repo2ree_ree.primitives import ReePath, WorkspacePath
@@ -181,7 +182,7 @@ def test_build_inference_is_deterministic_and_automatic_is_safe(has_docker: bool
         _make_build_tree(dir_a, has_docker=has_docker, has_req=has_req, wrapped=wrapped)
         _make_build_tree(dir_b, has_docker=has_docker, has_req=has_req, wrapped=wrapped)
         definition = ReeDefinition(name="Demo REE")
-        selectors = [ScriptTargetSelector(kind="build")]
+        selectors = [ScriptTargetSelectorArg(kind="build")]
         result_a = infer_scripts(dir_a, selectors, definition=definition).results[0]
         result_b = infer_scripts(dir_b, selectors, definition=definition).results[0]
 
@@ -231,7 +232,7 @@ def _docker_activation_body(root: Path, runtime_path: str, image_tag: str) -> st
     )
     report = infer_scripts(
         root,
-        [ScriptTargetSelector(kind="activation_run")],
+        [ScriptTargetSelectorArg(kind="activation_run")],
         definition=definition,
         runtime_inputs=inputs,
     )
@@ -270,7 +271,7 @@ def test_adversarial_declared_runtime_cannot_break_the_build_script(tmp_path: Pa
     runtime_path = f".repo2ree/{suffix}.tar"
     report = infer_scripts(
         tmp_path,
-        [ScriptTargetSelector(kind="build")],
+        [ScriptTargetSelectorArg(kind="build")],
         definition=ReeDefinition(name="Demo"),
         runtime_inputs=RuntimeInputs(declared_runtime_path=runtime_path),
     )
@@ -293,7 +294,7 @@ def test_every_run_scaffold_is_fail_closed(kind: Literal["activation_run", "expe
         inputs = RuntimeInputs(
             declared_runtime_path=runtime, experiments=experiments, accessor=MemoryAccessor({runtime: archive})
         )
-        selector = ScriptTargetSelector(kind=kind, experiment_name="run" if experiments else None)
+        selector = ScriptTargetSelectorArg(kind=kind, experiment_name="run" if experiments else None)
         result = infer_scripts(root, [selector], definition=definition, runtime_inputs=inputs).results[0]
         body = result.candidates[0].body
         assert body is not None

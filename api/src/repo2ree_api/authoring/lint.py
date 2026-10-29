@@ -9,13 +9,13 @@ from repo2ree_api.authoring.inference import ScriptTargetSelectorPayload
 from repo2ree_api.contracts import ERROR_RESPONSES
 from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import dispatch_or_fail, ree_command_span, require_handle
-from repo2ree_core.author_recipes.lint import (
+from repo2ree_authoring.lint import (
     CONTRACT_ONLY,
     LintReport,
     ScriptDeclarations,
     lint_script,
 )
-from repo2ree_core.author_recipes.targets import ScriptTargetSelector, resolve_target
+from repo2ree_authoring.targets import resolve_target
 from repo2ree_protocol.command import LintScriptsArgs, LintScriptsCommand, ScriptTargetSelectorArg
 
 lint_router = APIRouter(tags=["files"])
@@ -86,7 +86,7 @@ def check_script_draft_route(payload: ScriptDraftPayload) -> LintReport:
     """Run process-free contract checks against unsaved source."""
     try:
         target = resolve_target(
-            ScriptTargetSelector(
+            ScriptTargetSelectorArg(
                 kind=payload.target.kind,
                 experiment_name=payload.target.experiment_name,
             )

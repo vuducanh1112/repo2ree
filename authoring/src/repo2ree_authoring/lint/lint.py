@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from repo2ree_core.author_recipes.lint.models import ScriptContext
-from repo2ree_core.author_recipes.lint.rules import RULES
-from repo2ree_core.author_recipes.lint.shell_tools import run_shellcheck, run_syntax_check
-from repo2ree_core.author_recipes.lint.shellwords import tokenize
+from repo2ree_authoring.lint.models import ScriptContext
+from repo2ree_authoring.lint.rules import RULES
+from repo2ree_authoring.lint.shell_tools import run_shellcheck, run_syntax_check
+from repo2ree_authoring.lint.shellwords import tokenize
 from repo2ree_protocol.command import ScriptTarget
 from repo2ree_protocol.lint import Finding, FindingTier, LintReport, ScriptDeclarations, TierStatus
 

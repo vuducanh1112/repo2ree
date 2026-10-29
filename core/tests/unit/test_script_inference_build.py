@@ -11,11 +11,11 @@ from pathlib import Path
 import pytest
 
 from repo2ree_core.author_recipes.inference import (
-    ScriptTargetSelector,
     TargetInferenceResult,
     infer_scripts,
 )
 from repo2ree_core.author_recipes.inference.runtime_inputs import RuntimeInputs
+from repo2ree_protocol.command import ScriptTargetSelectorArg
 from repo2ree_protocol.inference import LogicalRootObservation
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.model import BuildRuntimeDefinition, ReeDefinition
@@ -48,7 +48,7 @@ def _build(root: Path, **intent_kwargs: object) -> TargetInferenceResult:
     )
     report = infer_scripts(
         root,
-        [ScriptTargetSelector(kind="build")],
+        [ScriptTargetSelectorArg(kind="build")],
         definition=definition,
         # The declared runtime path reaches inference on the runtime inputs, not
         # on the definition — the handler builds it there. Passing only the

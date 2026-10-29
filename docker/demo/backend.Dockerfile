@@ -28,6 +28,7 @@ RUN useradd --create-home --shell /bin/bash appuser \
 COPY pyproject.toml uv.lock ./
 COPY ree ./ree
 COPY protocol ./protocol
+COPY authoring ./authoring
 COPY core ./core
 COPY supervisor ./supervisor
 COPY api ./api

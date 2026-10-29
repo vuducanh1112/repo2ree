@@ -7,8 +7,9 @@ from pathlib import Path
 import pytest
 from scriptinfer_helpers import MemoryAccessor, docker_archive, not_an_archive, oci_archive, venv_archive
 
-from repo2ree_core.author_recipes.inference import ScriptTargetSelector, TargetInferenceResult, infer_scripts
+from repo2ree_core.author_recipes.inference import TargetInferenceResult, infer_scripts
 from repo2ree_core.author_recipes.inference.runtime_inputs import RuntimeInputs
+from repo2ree_protocol.command import ScriptTargetSelectorArg
 from repo2ree_ree.model import ReeDefinition
 
 _DOCKER_RUNTIME = ".repo2ree/artifacts/runtime.tar"
@@ -30,7 +31,7 @@ def _activation(
     inputs = RuntimeInputs(declared_runtime_path=runtime, accessor=MemoryAccessor(files))
     report = infer_scripts(
         root,
-        [ScriptTargetSelector(kind="activation_run")],
+        [ScriptTargetSelectorArg(kind="activation_run")],
         definition=definition,
         runtime_inputs=inputs,
     )

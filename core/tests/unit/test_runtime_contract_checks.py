@@ -11,7 +11,7 @@ from pathlib import Path
 
 from scriptinfer_helpers import MemoryAccessor, docker_archive
 
-from repo2ree_core.author_recipes.inference import ScriptTargetSelector, infer_scripts
+from repo2ree_core.author_recipes.inference import infer_scripts
 from repo2ree_core.author_recipes.inference.build_regeneration import (
     ExpectedBuild,
     expected_builds_for_runtime,
@@ -20,6 +20,7 @@ from repo2ree_core.author_recipes.inference.models import DecisionContext
 from repo2ree_core.author_recipes.inference.policy import default_policy
 from repo2ree_core.author_recipes.inference.repository_facts import scan_repository
 from repo2ree_core.author_recipes.inference.runtime_inputs import RuntimeInputs
+from repo2ree_protocol.command import ScriptTargetSelectorArg
 from repo2ree_ree.model import ReeDefinition
 from repo2ree_ree.reserved_paths import RESERVED_BUILD_SCRIPT
 
@@ -70,7 +71,7 @@ def test_unchanged_generated_docker_build_resolves_before_the_artifact_exists(tm
     )
     result = infer_scripts(
         tmp_path,
-        [ScriptTargetSelector(kind="activation_run")],
+        [ScriptTargetSelectorArg(kind="activation_run")],
         definition=ReeDefinition(name="Demo"),
         runtime_inputs=inputs,
     ).results[0]
@@ -88,7 +89,7 @@ def test_unchanged_generated_venv_build_resolves_before_the_artifact_exists(tmp_
     )
     result = infer_scripts(
         tmp_path,
-        [ScriptTargetSelector(kind="activation_run")],
+        [ScriptTargetSelectorArg(kind="activation_run")],
         definition=ReeDefinition(name="Demo"),
         runtime_inputs=inputs,
     ).results[0]
@@ -104,7 +105,7 @@ def test_edited_build_script_does_not_resolve(tmp_path: Path) -> None:
     )
     result = infer_scripts(
         tmp_path,
-        [ScriptTargetSelector(kind="activation_run")],
+        [ScriptTargetSelectorArg(kind="activation_run")],
         definition=ReeDefinition(name="Demo"),
         runtime_inputs=inputs,
     ).results[0]
@@ -122,7 +123,7 @@ def test_docker_entrypoint_and_cmd_combine_into_one_argv_example(tmp_path: Path)
     )
     result = infer_scripts(
         tmp_path,
-        [ScriptTargetSelector(kind="activation_run")],
+        [ScriptTargetSelectorArg(kind="activation_run")],
         definition=ReeDefinition(name="Demo"),
         runtime_inputs=inputs,
     ).results[0]
@@ -145,7 +146,7 @@ def test_two_viable_strategies_resolve_by_the_written_script_not_by_path(tmp_pat
 
     result = infer_scripts(
         tmp_path,
-        [ScriptTargetSelector(kind="activation_run")],
+        [ScriptTargetSelectorArg(kind="activation_run")],
         definition=ReeDefinition(name="Demo"),
         runtime_inputs=RuntimeInputs(
             declared_runtime_path=declared,

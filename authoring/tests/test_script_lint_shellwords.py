@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from repo2ree_core.author_recipes.lint.shellwords import tokenize
+from repo2ree_authoring.lint.shellwords import tokenize
 
 
 def _words(source: str) -> list[tuple[str, int]]:

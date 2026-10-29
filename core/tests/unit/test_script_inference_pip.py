@@ -13,10 +13,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from repo2ree_core.author_recipes.inference import (
-    ScriptTargetSelector,
     TargetInferenceResult,
     infer_scripts,
 )
+from repo2ree_protocol.command import ScriptTargetSelectorArg
 
 
 def _tree(root: Path, files: dict[str, str]) -> Path:
@@ -28,7 +28,7 @@ def _tree(root: Path, files: dict[str, str]) -> Path:
 
 
 def _build(root: Path) -> TargetInferenceResult:
-    return infer_scripts(root, [ScriptTargetSelector(kind="build")]).results[0]
+    return infer_scripts(root, [ScriptTargetSelectorArg(kind="build")]).results[0]
 
 
 def _pip_candidate(result: TargetInferenceResult):

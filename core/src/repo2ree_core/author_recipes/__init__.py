@@ -5,6 +5,7 @@ scripts that live in ``overlay/`` and say how this particular work is built and
 run. repo2ree never authors them; it proposes them, two ways:
 
     templates   hand-written starters, offered as a catalog to pick from
+                (repo2ree_authoring.templates)
     inference   proposals derived from the repository's own evidence
 
 Both answer one question, which is why they are siblings rather than strangers

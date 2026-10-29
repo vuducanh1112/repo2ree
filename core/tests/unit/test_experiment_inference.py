@@ -6,8 +6,9 @@ from pathlib import Path
 
 from scriptinfer_helpers import MemoryAccessor, docker_archive, venv_archive
 
-from repo2ree_core.author_recipes.inference import ScriptTargetSelector, TargetInferenceResult, infer_scripts
+from repo2ree_core.author_recipes.inference import TargetInferenceResult, infer_scripts
 from repo2ree_core.author_recipes.inference.runtime_inputs import RuntimeInputs
+from repo2ree_protocol.command import ScriptTargetSelectorArg
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.model import ExperimentDefinition, ReeDefinition
 from repo2ree_ree.primitives import ReePath, WorkspacePath
@@ -37,7 +38,7 @@ def _experiment(
     inputs = RuntimeInputs(declared_runtime_path=runtime, experiments=experiments, accessor=MemoryAccessor(files))
     report = infer_scripts(
         root,
-        [ScriptTargetSelector(kind="experiment_run", experiment_name=name)],
+        [ScriptTargetSelectorArg(kind="experiment_run", experiment_name=name)],
         definition=definition,
         runtime_inputs=inputs,
     )
