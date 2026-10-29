@@ -15,17 +15,19 @@ commit-gate: check build-docs test-unit
 _require-current-commit-gate:
     python -m scripts.gates.commit_gate verify
 
+# Each tier, run per test. With `select` (parts of test ids) it runs only those tests, which the
+# gate never asks for and never certifies.
 [private]
-_e2e-gui-instant jobs mode docker_mode:
-    python -m repo2ree_testbed e2e --project e2e-gui-instant --per-test --jobs {{ quote(jobs) }} --mode {{ quote(mode) }} --compute-locations 1 --docker-mode {{ quote(docker_mode) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
+_e2e-gui-instant jobs mode docker_mode *select:
+    python -m repo2ree_testbed e2e --project e2e-gui-instant --per-test --jobs {{ quote(jobs) }} --mode {{ quote(mode) }} --compute-locations 1 --docker-mode {{ quote(docker_mode) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
 
 [private]
-_e2e-system jobs locations mode docker_mode:
-    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/api/tests/system/run_system_suite.py") }} --tier e2e-system --per-test --jobs {{ quote(jobs) }} --mode {{ quote(mode) }} --compute-locations {{ quote(locations) }} --docker-mode {{ quote(docker_mode) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
+_e2e-system jobs locations mode docker_mode *select:
+    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/api/tests/system/run_system_suite.py") }} --tier e2e-system --per-test --jobs {{ quote(jobs) }} --mode {{ quote(mode) }} --compute-locations {{ quote(locations) }} --docker-mode {{ quote(docker_mode) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
 
 [private]
-_e2e-faults jobs:
-    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/api/tests/faults/run_fault_suite.py") }} --tier e2e-faults --per-test --jobs {{ quote(jobs) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
+_e2e-faults jobs *select:
+    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/api/tests/faults/run_fault_suite.py") }} --tier e2e-faults --per-test --jobs {{ quote(jobs) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
 
 # A test is accepted when it passed and its behaviour passed, or it is excused by
 # assurance/checker/expected-verdicts.toml (as every xfail must be) and left exactly those rules open.
