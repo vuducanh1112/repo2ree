@@ -13,7 +13,7 @@ from repo2ree_core.persistence.history import HISTORY_REF, GitHistory, HistoryCa
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.lfs import LfsPointer, copy_object
 from repo2ree_core.persistence.ree_manifest import parse_ree_manifest
-from repo2ree_core.tooling import find_tool
+from repo2ree_protocol.tools import find_tool
 from repo2ree_ree.digest import digest_bytes
 
 

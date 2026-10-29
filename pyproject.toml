@@ -502,7 +502,7 @@ layers = [
     "persistence",
     "author_recipes",
     "domain",
-    "digests : failures : path_safety : time_utils : tooling",
+    "digests : failures : path_safety : time_utils",
 ]
 
 # The capabilities the spine calls into. They are deliberately *not* placed in
@@ -597,8 +597,6 @@ source_modules = [
     # dragging the other's world in.
     "repo2ree_core.reproduction.commands",
     "repo2ree_core.time_utils",
-    # Shared leaf for external-tool lookup across core layers.
-    "repo2ree_core.tooling",
 ]
 forbidden_modules = [
     "repo2ree_core.analysis",

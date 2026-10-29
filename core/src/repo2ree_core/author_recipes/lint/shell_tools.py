@@ -7,7 +7,7 @@ import subprocess
 from repo2ree_core.author_recipes.lint.catalog import make_finding
 from repo2ree_core.author_recipes.lint.models import Finding, FindingTier, TierStatus
 from repo2ree_core.author_recipes.lint.shellcheck_json import parse_json1
-from repo2ree_core.tooling import find_tool
+from repo2ree_protocol.tools import find_tool
 
 _TIMEOUT_SECONDS = 5.0
 

@@ -10,8 +10,8 @@ from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.persistence.history import open_history
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.operation_history import read_operation_history
-from repo2ree_core.tooling import find_tool
 from repo2ree_protocol.command import PatchReeDefinitionArgs, PatchReeDefinitionCommand
+from repo2ree_protocol.tools import find_tool
 
 
 def _patch(name):

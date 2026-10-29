@@ -14,10 +14,10 @@ from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.history import GitHistory, HistoryCaptureError
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.operation_history import read_operation_history
-from repo2ree_core.tooling import find_tool
 from repo2ree_protocol.command import Command, PatchReeDefinitionArgs, PatchReeDefinitionCommand
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.result import ActionResult
+from repo2ree_protocol.tools import find_tool
 
 
 def git(layout, *args):

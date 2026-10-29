@@ -7,7 +7,8 @@ path through a ``REPO2REE_TOOL_<NAME>`` environment variable set on the bench
 container (see the tools manifest in nix/tools.nix). Handlers resolve through
 here so both worlds work without the handler knowing which one it is in.
 
-This dependency-free module is shared across core layers that invoke tools.
+This dependency-free module is shared by the provider that advertises the tools and the
+handlers that invoke them.
 """
 
 from __future__ import annotations

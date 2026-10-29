@@ -15,8 +15,8 @@ from repo2ree_core.persistence.history import open_history
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.lfs import LfsPointer
 from repo2ree_core.persistence.operation_history import read_operation_history
-from repo2ree_core.tooling import find_tool
 from repo2ree_protocol.command import LoadReeBundleArgs, LoadReeBundleCommand, SealReeArgs, SealReeCommand
+from repo2ree_protocol.tools import find_tool
 from repo2ree_ree.model import CapturePolicy
 
 

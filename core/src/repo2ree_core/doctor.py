@@ -23,7 +23,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from repo2ree_core.tooling import find_tool
+from repo2ree_protocol.tools import find_tool
 
 # Tools core handlers and lifecycle scripts shell out to; each is reported as
 # its resolved path or null. Extend alongside nix/tools.nix.

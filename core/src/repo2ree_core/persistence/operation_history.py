@@ -10,9 +10,9 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from repo2ree_core.persistence.files import write_json_atomic
 from repo2ree_core.persistence.history import SELECTION_VERSION, GitHistory, HistoryCaptureError
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
-from repo2ree_core.tooling import find_tool
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.result import ActionResult, ActionStatus, Failure
+from repo2ree_protocol.tools import find_tool
 
 
 class OperationRecord(BaseModel):

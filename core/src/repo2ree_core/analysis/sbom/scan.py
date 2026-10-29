@@ -26,8 +26,8 @@ from pathlib import Path
 from typing import Any
 
 from repo2ree_core.execution.process import CancelCheck, format_command, run_streaming_process
-from repo2ree_core.tooling import resolve_tool
 from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.tools import resolve_tool
 
 # The one format both the cross-check and the reviewer comparison parse.
 SBOM_FORMAT = "cyclonedx-json"

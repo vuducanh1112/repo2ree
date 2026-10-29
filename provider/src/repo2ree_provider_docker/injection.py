@@ -7,6 +7,8 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+from repo2ree_protocol.tools import tool_env_var
+
 
 @dataclass(frozen=True)
 class InjectionBundle:
@@ -42,7 +44,7 @@ def load_injection_bundle(exec_bundle_dir: str | None, tools_bundle_dir: str | N
         digest.update(tools_manifest_bytes)
         tools_manifest = json.loads(tools_manifest_bytes)
         for name, path in tools_manifest.get("tools", {}).items():
-            tool_env[f"REPO2REE_TOOL_{name.upper().replace('-', '_')}"] = path
+            tool_env[tool_env_var(name)] = path
         if bin_dir := tools_manifest.get("bin_dir"):
             tool_env["REPO2REE_TOOLS_BIN"] = bin_dir
         tool_env.update(tools_manifest.get("env", {}))

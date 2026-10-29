@@ -4,7 +4,7 @@
     experiment/spec     projecting a portable definition into an executable plan
     experiment/run      executing it and capturing what it produced
 
-External-tool lookup lives in the shared leaf module ``repo2ree_core.tooling``.
+External-tool lookup lives in the shared leaf module ``repo2ree_protocol.tools``.
 
 Handlers coordinate execution; execution never reaches back into them.
 Runnable definitions live in the portable REE domain; execution consumes only

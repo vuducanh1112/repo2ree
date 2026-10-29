@@ -6,7 +6,7 @@ import subprocess
 import pytest
 
 from repo2ree_core.persistence.lfs import LfsPointer, store_payload
-from repo2ree_core.tooling import find_tool
+from repo2ree_protocol.tools import find_tool
 from repo2ree_ree.digest import digest_json
 from repo2ree_ree.model import ReeSubject, canonical_subject_digest
 

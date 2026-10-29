@@ -11,7 +11,7 @@
 #
 # Two consumption forms, both advertised through the manifest:
 #   - per-tool absolute paths (``tools``) → REPO2REE_TOOL_<NAME> env,
-#     for handlers that resolve explicitly (repo2ree_core.tooling);
+#     for handlers that resolve explicitly (repo2ree_protocol.tools);
 #   - a symlink-farm ``binDir`` → prepended to PATH by the *executor*
 #     at startup (not by the container env, which would clobber the
 #     image's own PATH), so lifecycle scripts calling bare ``git`` /
