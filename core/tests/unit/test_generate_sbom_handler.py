@@ -5,27 +5,18 @@ from pathlib import Path
 import pytest
 
 from repo2ree_core.analysis.sbom.scan import ScanOutcome
-from repo2ree_core.digests import digest_bytes
-from repo2ree_core.domain.primitives import ReePath, RunId, WorkspacePath, parse_utc_instant
-from repo2ree_core.domain.ree.model import (
-    BuildRuntimeDefinition,
-    Ree,
-    ReeDefinition,
-    ReeSubject,
-)
-from repo2ree_core.domain.ree.receipt import (
-    AcquireSourceReceipt,
-    BuildRuntimeReceipt,
-    ReceiptEnvelopeFields,
-    WorkspaceDrift,
-)
+from repo2ree_core.domain.ree.envelope import ReceiptEnvelopeFields
 from repo2ree_core.domain.ree.transitions import commit_receipt, record_seal
 from repo2ree_core.operations.handlers.author import generate_sbom
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError
-from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_protocol.result import ActionResult
+from repo2ree_ree.digest import digest_bytes
+from repo2ree_ree.model import BuildRuntimeDefinition, Ree, ReeDefinition, ReeSubject
+from repo2ree_ree.primitives import ReePath, RunId, WorkspacePath, parse_utc_instant
+from repo2ree_ree.receipt import AcquireSourceReceipt, BuildRuntimeReceipt, WorkspaceDrift
+from repo2ree_ree.reserved_paths import RESERVED_BUILD_SCRIPT
 
 _NOW = parse_utc_instant("2026-08-03T00:00:00Z")
 _SNAPSHOT = digest_bytes(b"snapshot")

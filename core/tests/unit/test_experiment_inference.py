@@ -8,10 +8,10 @@ from scriptinfer_helpers import MemoryAccessor, docker_archive, venv_archive
 
 from repo2ree_core.author_recipes.inference import ScriptTargetSelector, TargetInferenceResult, infer_scripts
 from repo2ree_core.author_recipes.inference.runtime_inputs import RuntimeInputs
-from repo2ree_core.digests import digest_bytes
-from repo2ree_core.domain.primitives import ReePath, WorkspacePath
-from repo2ree_core.domain.ree.model import ExperimentDefinition, ReeDefinition
-from repo2ree_core.reserved_paths import experiment_run_script_path
+from repo2ree_ree.digest import digest_bytes
+from repo2ree_ree.model import ExperimentDefinition, ReeDefinition
+from repo2ree_ree.primitives import ReePath, WorkspacePath
+from repo2ree_ree.reserved_paths import experiment_run_script_path
 
 _DOCKER_RUNTIME = ".repo2ree/artifacts/runtime.tar"
 _VENV_RUNTIME = ".repo2ree/artifacts/runtime-venv.tar.gz"

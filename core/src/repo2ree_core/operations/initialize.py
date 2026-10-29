@@ -7,7 +7,11 @@ from typing import Literal
 
 from repo2ree_core.bundle.repository_files import prepare_reproducer
 from repo2ree_core.digests import digest_file
-from repo2ree_core.domain.ree.model import (
+from repo2ree_core.persistence.capture_policy import write_capture_controls
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.history import open_history
+from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_ree.model import (
     BuildRuntimeDefinition,
     CapturePolicy,
     Ree,
@@ -15,11 +19,7 @@ from repo2ree_core.domain.ree.model import (
     ReeSubject,
     TestActivationDefinition,
 )
-from repo2ree_core.persistence.capture_policy import write_capture_controls
-from repo2ree_core.persistence.directory import ReeDirectory
-from repo2ree_core.persistence.history import open_history
-from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_core.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BUILD_SCRIPT
+from repo2ree_ree.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BUILD_SCRIPT
 
 
 @dataclass(frozen=True)

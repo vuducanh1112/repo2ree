@@ -35,7 +35,7 @@ from threading import RLock
 from pydantic import BaseModel, ConfigDict, Field
 
 from repo2ree_api.deposit.models import ArchiveBindingAttestation
-from repo2ree_core.domain.ree.model import Ree, ReeCatalogMetadata
+from repo2ree_ree.model import Ree, ReeCatalogMetadata
 
 # ================================================
 # Data Models

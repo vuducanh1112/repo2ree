@@ -14,10 +14,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.digests import Digest, digest_file_if_exists, digest_output_paths
-from repo2ree_core.domain.primitives import ReePath, WorkspacePath
-from repo2ree_core.domain.ree.model import ReeDefinition
-from repo2ree_core.domain.ree.receipt import RunExperimentReceipt
+from repo2ree_core.digests import digest_file_if_exists, digest_output_paths
 from repo2ree_core.evidence.review.comparison import compare_experiment_results
 from repo2ree_core.evidence.review.models import (
     EvidenceBasis,
@@ -40,6 +37,10 @@ from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import ReviewRunExperimentArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
+from repo2ree_ree.digest import Digest
+from repo2ree_ree.model import ReeDefinition
+from repo2ree_ree.primitives import ReePath, WorkspacePath
+from repo2ree_ree.receipt import RunExperimentReceipt
 
 
 class ReviewRunExperimentOutputs(BaseModel):

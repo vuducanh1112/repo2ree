@@ -7,8 +7,8 @@ from repo2ree_core.analysis.hbom.gpu_profiler import profile_gpus
 from repo2ree_core.analysis.hbom.memory_profiler import profile_memory
 from repo2ree_core.analysis.hbom.network_profiler import profile_network
 from repo2ree_core.analysis.hbom.storage_profiler import profile_storage
-from repo2ree_core.domain.hbom import HBOM
 from repo2ree_protocol.tracing import get_tracer
+from repo2ree_ree.hbom import HBOM
 
 tracer = get_tracer(__name__)
 

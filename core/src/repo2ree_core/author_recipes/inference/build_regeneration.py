@@ -35,7 +35,7 @@ from repo2ree_core.author_recipes.inference.models import (
 )
 from repo2ree_core.author_recipes.inference.renderers._common import runtime_image_ref
 from repo2ree_core.author_recipes.targets import ScriptTarget
-from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
+from repo2ree_ree.reserved_paths import RESERVED_BUILD_SCRIPT
 
 
 class ExpectedBuild(BaseModel):

@@ -31,7 +31,7 @@ from repo2ree_core.author_recipes.inference.registry import (
 from repo2ree_core.author_recipes.inference.repository_facts import scan_repository
 from repo2ree_core.author_recipes.inference.runtime_inputs import RuntimeInputs
 from repo2ree_core.author_recipes.targets import ScriptTarget, ScriptTargetSelector, resolve_target
-from repo2ree_core.domain.ree.model import ReeDefinition
+from repo2ree_ree.model import ReeDefinition
 
 ENGINE_VERSION = "1"
 

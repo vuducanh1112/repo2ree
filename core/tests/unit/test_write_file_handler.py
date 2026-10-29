@@ -11,11 +11,11 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.domain.ree.model import Ree, ReeDefinition, ReeSubject
 from repo2ree_core.operations.handlers.author import write_file as handler
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import WriteFileArgs
+from repo2ree_ree.model import Ree, ReeDefinition, ReeSubject
 
 
 def _never_canceled() -> bool:

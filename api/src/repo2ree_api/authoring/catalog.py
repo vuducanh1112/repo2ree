@@ -33,7 +33,7 @@ from repo2ree_core.author_recipes.templates import (
     verify_templates,
 )
 from repo2ree_core.evidence.step_graph import ree_step_catalog
-from repo2ree_core.reserved_paths import (
+from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATION_SCRIPT,
     RESERVED_ACTIVATION_VERIFY_SCRIPT,
     RESERVED_BUILD_SCRIPT,

@@ -21,8 +21,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.domain.primitives import Digest, RunId
-from repo2ree_core.domain.ree.model import Ree, ReeDefinition, ReeReceipts
+from repo2ree_ree.model import Ree, ReeDefinition, ReeReceipts
+from repo2ree_ree.primitives import Digest, RunId
 
 # ================================================
 # Vocabulary

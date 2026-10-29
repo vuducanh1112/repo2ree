@@ -5,27 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.digests import digest_bytes
-from repo2ree_core.domain.hbom import HBOM, CPUDefinition
-from repo2ree_core.domain.primitives import ArtifactPath, ReePath, RunId, WorkspacePath, parse_utc_instant
-from repo2ree_core.domain.ree.model import (
-    BuildRuntimeDefinition,
-    Ree,
-    ReeDefinition,
-    ReeSubject,
-    SourceDefinition,
-)
-from repo2ree_core.domain.ree.model import (
-    TestActivationDefinition as ActivationDefinition,
-)
-from repo2ree_core.domain.ree.receipt import (
-    AcquireSourceReceipt,
-    BuildRuntimeReceipt,
-    EvaluateReproducibilityReceipt,
-    GenerateSbomReceipt,
-    ReceiptEnvelopeFields,
-    WorkspaceDrift,
-)
+from repo2ree_core.domain.ree.envelope import ReceiptEnvelopeFields
 from repo2ree_core.domain.ree.transitions import commit_receipt, revision_of
 from repo2ree_core.operations.handlers.author import cross_check_sbom, generate_hbom
 from repo2ree_core.operations.handlers.author.delete_file import handle_delete_file
@@ -33,12 +13,20 @@ from repo2ree_core.operations.handlers.author.patch_ree_definition import handle
 from repo2ree_core.operations.handlers.author.write_file import handle_write_file
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_core.reserved_paths import (
-    RESERVED_ACTIVATION_SCRIPT,
-    RESERVED_BUILD_SCRIPT,
-    experiment_run_script_path,
-)
 from repo2ree_protocol.command import DeleteFileArgs, PatchReeDefinitionArgs, WriteFileArgs
+from repo2ree_ree.digest import digest_bytes
+from repo2ree_ree.hbom import HBOM, CPUDefinition
+from repo2ree_ree.model import BuildRuntimeDefinition, Ree, ReeDefinition, ReeSubject, SourceDefinition
+from repo2ree_ree.model import TestActivationDefinition as ActivationDefinition
+from repo2ree_ree.primitives import ArtifactPath, ReePath, RunId, WorkspacePath, parse_utc_instant
+from repo2ree_ree.receipt import (
+    AcquireSourceReceipt,
+    BuildRuntimeReceipt,
+    EvaluateReproducibilityReceipt,
+    GenerateSbomReceipt,
+    WorkspaceDrift,
+)
+from repo2ree_ree.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BUILD_SCRIPT, experiment_run_script_path
 
 _NOW = parse_utc_instant("2026-08-03T00:00:00Z")
 _BUILD = b"#!/bin/sh\nexit 0\n"

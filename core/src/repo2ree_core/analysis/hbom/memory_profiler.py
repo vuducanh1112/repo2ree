@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from repo2ree_core.analysis.hbom.profiler_utils import round_gib
-from repo2ree_core.domain.hbom import MemoryDefinition
+from repo2ree_ree.hbom import MemoryDefinition
 
 
 def profile_memory(meminfo_path: Path = Path("/proc/meminfo")) -> dict[str, MemoryDefinition]:

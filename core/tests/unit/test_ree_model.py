@@ -5,20 +5,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from repo2ree_core.digests import digest_bytes
-from repo2ree_core.domain.primitives import ReePath, RunId, WorkspacePath, parse_utc_instant
 from repo2ree_core.domain.ree.audit import audit
-from repo2ree_core.domain.ree.model import (
-    BuildRuntimeDefinition,
-    BundleContents,
-    BundleEntry,
-    ExperimentDefinition,
-    Ree,
-    ReeDefinition,
-    ReeSubject,
-    SourceDefinition,
-)
-from repo2ree_core.domain.ree.receipt import AcquireSourceReceipt, BuildRuntimeReceipt, WorkspaceDrift
 from repo2ree_core.domain.ree.transitions import (
     clear_source,
     commit_receipt,
@@ -28,7 +15,20 @@ from repo2ree_core.domain.ree.transitions import (
 )
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_core.reserved_paths import experiment_run_script_path
+from repo2ree_ree.digest import digest_bytes
+from repo2ree_ree.model import (
+    BuildRuntimeDefinition,
+    BundleContents,
+    BundleEntry,
+    ExperimentDefinition,
+    Ree,
+    ReeDefinition,
+    ReeSubject,
+    SourceDefinition,
+)
+from repo2ree_ree.primitives import ReePath, RunId, WorkspacePath, parse_utc_instant
+from repo2ree_ree.receipt import AcquireSourceReceipt, BuildRuntimeReceipt, WorkspaceDrift
+from repo2ree_ree.reserved_paths import experiment_run_script_path
 
 _DIGEST = digest_bytes(b"content")
 _OTHER_DIGEST = digest_bytes(b"other")

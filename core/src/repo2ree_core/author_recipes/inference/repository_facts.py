@@ -27,7 +27,7 @@ from pathlib import Path, PurePosixPath
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from repo2ree_core.digests import digest_bytes
+from repo2ree_ree.digest import digest_bytes
 
 SCANNER_VERSION = 1
 

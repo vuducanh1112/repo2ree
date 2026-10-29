@@ -16,7 +16,6 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict, Field
 
 from repo2ree_core.domain.ree.audit import ReeAudit, audit
-from repo2ree_core.domain.ree.model import Ree, ReeStatus, ree_status
 from repo2ree_core.operations.read_models.files import (
     ReeFile,
     WorkspaceFile,
@@ -26,6 +25,7 @@ from repo2ree_core.operations.read_models.files import (
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import load_ree
+from repo2ree_ree.model import Ree, ReeStatus, ree_status
 
 
 class ReeDocument(BaseModel):

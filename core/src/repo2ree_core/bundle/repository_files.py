@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from pathlib import PurePosixPath
 
-from repo2ree_core.domain.ree.model import Ree
 from repo2ree_core.persistence.files import write_atomic
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.reproduction.reproducer import reproducer_entries
+from repo2ree_ree.model import Ree
 
 
 def prepare_reproducer(layout: ReeLayout, ree: Ree) -> None:

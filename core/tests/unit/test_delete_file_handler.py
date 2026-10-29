@@ -13,18 +13,18 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.domain.ree.model import Ree, ReeDefinition, ReeSubject
 from repo2ree_core.operations.handlers.author import delete_file as handler
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_core.reserved_paths import (
+from repo2ree_protocol.command import DeleteFileArgs
+from repo2ree_ree.model import Ree, ReeDefinition, ReeSubject
+from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATION_SCRIPT,
     RESERVED_ACTIVATION_VERIFY_SCRIPT,
     RESERVED_BUILD_SCRIPT,
     experiment_run_script_path,
     experiment_verify_script_path,
 )
-from repo2ree_protocol.command import DeleteFileArgs
 
 
 def _never_canceled() -> bool:

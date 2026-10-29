@@ -9,7 +9,7 @@ That is why the encoding lives here rather than at either call site: two
 spellings of one document is exactly the drift this module exists to prevent.
 The bytes are indented and key-sorted because an REE is meant to be read by the
 people auditing it and diffed between runs. They are deliberately *not* the
-digest encoding — :func:`repo2ree_core.digests.digest_json` canonicalizes
+digest encoding — :func:`repo2ree_ree.digest.digest_json` canonicalizes
 compactly for hashing, and the seal digest is taken over the model rather than
 over these bytes, so how this file is spelled can change without invalidating a
 seal.
@@ -20,9 +20,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from repo2ree_core.domain.ree.model import Ree
 from repo2ree_core.domain.ree.transitions import validate_seal
 from repo2ree_core.persistence.files import json_document_bytes
+from repo2ree_ree.model import Ree
 
 
 def ree_manifest_payload(ree: Ree) -> dict[str, Any]:

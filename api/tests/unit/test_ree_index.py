@@ -15,7 +15,7 @@ import pytest
 
 from repo2ree_api.deposit.models import ArchiveBindingAttestation
 from repo2ree_api.ree_index import ReeIndex, ReeIndexEntry, entry_from_ree
-from repo2ree_core.domain.ree.model import Ree, ReeCatalogMetadata, ReeDefinition, ReeSeal, ReeSubject
+from repo2ree_ree.model import Ree, ReeCatalogMetadata, ReeDefinition, ReeSeal, ReeSubject
 
 # ================================================
 # Helpers

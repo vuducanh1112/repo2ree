@@ -21,12 +21,6 @@ from pydantic import BaseModel, ConfigDict
 from repo2ree_core.analysis.sbom.cyclonedx import ObservedPackage, parse_cyclonedx
 from repo2ree_core.analysis.sbom.scan import is_runtime_archive, scan_runtime_archive
 from repo2ree_core.digests import digest_file_if_exists
-from repo2ree_core.domain.primitives import ReePath, WorkspacePath
-from repo2ree_core.domain.ree.model import Ree
-from repo2ree_core.domain.ree.receipt import (
-    BuildRuntimeReceipt,
-    GenerateSbomReceipt,
-)
 from repo2ree_core.evidence.review.comparison import compare_build_runtimes
 from repo2ree_core.evidence.review.models import (
     BuildComparison,
@@ -54,11 +48,14 @@ from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import write_atomic
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
 from repo2ree_core.reproduction.materialize_workspace import build_materialize_sh
-from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_core.time_utils import OperationTimer
 from repo2ree_protocol.command import ReviewBasis, ReviewBuildRuntimeArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
+from repo2ree_ree.model import Ree
+from repo2ree_ree.primitives import ReePath, WorkspacePath
+from repo2ree_ree.receipt import BuildRuntimeReceipt, GenerateSbomReceipt
+from repo2ree_ree.reserved_paths import RESERVED_BUILD_SCRIPT
 
 
 class ReviewBuildRuntimeOutputs(BaseModel):

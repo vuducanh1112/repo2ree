@@ -9,9 +9,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from repo2ree_api.contracts.runs import RunSummary
 from repo2ree_api.ree_index import ReeIndexEntry
 from repo2ree_core.domain.ree.audit import ReeAudit
-from repo2ree_core.domain.ree.model import Ree, ReeStatus
 from repo2ree_core.operations.read_models.files import ReeFile, WorkspaceFile
 from repo2ree_protocol.build import BuildInfo
+from repo2ree_ree.model import Ree, ReeStatus
 
 
 class ReeDocument(BaseModel):

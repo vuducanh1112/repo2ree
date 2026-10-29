@@ -8,9 +8,9 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
-from repo2ree_core.domain.ree.model import Ree
 from repo2ree_core.persistence.files import write_atomic
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
+from repo2ree_ree.model import Ree
 
 
 class CaptureEntry(BaseModel):

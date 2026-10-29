@@ -8,12 +8,13 @@ import shutil
 from pathlib import Path, PurePosixPath
 
 from repo2ree_core.bundle.export_format import ScopeExport
-from repo2ree_core.digests import digest_bytes, digest_file
+from repo2ree_core.digests import digest_file
 from repo2ree_core.persistence.history import HISTORY_REF, GitHistory, HistoryCaptureError
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.lfs import LfsPointer, copy_object
 from repo2ree_core.persistence.ree_manifest import parse_ree_manifest
 from repo2ree_core.tooling import find_tool
+from repo2ree_ree.digest import digest_bytes
 
 
 def safe_relative(path: str) -> str:

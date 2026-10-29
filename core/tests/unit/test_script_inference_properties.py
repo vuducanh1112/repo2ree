@@ -33,10 +33,10 @@ from repo2ree_core.author_recipes.inference.renderers._common import runtime_ima
 from repo2ree_core.author_recipes.inference.repository_facts import resolve_logical_root
 from repo2ree_core.author_recipes.inference.resolvers import ScoreFreeViabilityResolver
 from repo2ree_core.author_recipes.inference.runtime_inputs import RuntimeInputs
-from repo2ree_core.digests import digest_bytes
-from repo2ree_core.domain.primitives import ReePath, WorkspacePath
-from repo2ree_core.domain.ree.model import ExperimentDefinition, ReeDefinition
-from repo2ree_core.reserved_paths import experiment_run_script_path
+from repo2ree_ree.digest import digest_bytes
+from repo2ree_ree.model import ExperimentDefinition, ReeDefinition
+from repo2ree_ree.primitives import ReePath, WorkspacePath
+from repo2ree_ree.reserved_paths import experiment_run_script_path
 
 pytestmark = pytest.mark.property
 

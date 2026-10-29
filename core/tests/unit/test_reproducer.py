@@ -24,7 +24,7 @@ from repo2ree_core.reproduction.reproducer import (
     build_reproducer_sh,
     reproducer_entries,
 )
-from repo2ree_core.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BUILD_SCRIPT
+from repo2ree_ree.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BUILD_SCRIPT
 
 
 def test_reproducer_entries_are_run_sh_scripts_and_readme():

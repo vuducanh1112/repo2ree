@@ -20,7 +20,7 @@ from typing import BinaryIO, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from repo2ree_core.domain.ree.model import ExperimentDefinition
+from repo2ree_ree.model import ExperimentDefinition
 
 
 class ArtifactFile(BaseModel):

@@ -7,7 +7,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.analysis.hbom.generate_hbom import generate_hbom
-from repo2ree_core.domain.ree.receipt import ObserveHardwareReceipt, receipt_envelope
+from repo2ree_core.domain.ree.envelope import receipt_envelope
 from repo2ree_core.domain.ree.transitions import ReePreconditionError, commit_receipt, revision_of
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.failures import failed_from_exception
@@ -17,6 +17,7 @@ from repo2ree_core.persistence.repository import ReeRevisionConflictError, load_
 from repo2ree_core.time_utils import OperationTimer
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
+from repo2ree_ree.receipt import ObserveHardwareReceipt
 
 
 class GenerateHbomOutputs(BaseModel):

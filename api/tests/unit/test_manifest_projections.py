@@ -21,14 +21,8 @@ from fastapi.testclient import TestClient
 
 from repo2ree_api.deps import workbench_manager
 from repo2ree_api.workbench.archives import archive_download_filename
-from repo2ree_core.domain.ree.model import (
-    Ree,
-    ReeDefinition,
-    ReeSeal,
-    ReeSubject,
-    canonical_subject_digest,
-)
 from repo2ree_core.time_utils import utc_now_instant
+from repo2ree_ree.model import Ree, ReeDefinition, ReeSeal, ReeSubject, canonical_subject_digest
 from repo2ree_supervisor import WorkbenchHandle
 
 

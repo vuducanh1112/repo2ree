@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from repo2ree_core.domain.primitives import Digest
-from repo2ree_core.domain.ree.model import Ree
 from repo2ree_core.domain.ree.transitions import revision_of, validate_seal
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_ree.model import Ree
+from repo2ree_ree.primitives import Digest
 
 
 class ReeRevisionConflictError(RuntimeError):

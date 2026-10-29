@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.author_recipes.lint.shellwords import ScriptWords
 from repo2ree_core.author_recipes.targets import ScriptTarget
-from repo2ree_core.domain.ree.model import ReeDefinition
+from repo2ree_ree.model import ReeDefinition
 
 FindingTier = Literal["syntax", "shell", "contract"]
 

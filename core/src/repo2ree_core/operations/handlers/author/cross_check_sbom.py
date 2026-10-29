@@ -12,8 +12,7 @@ from repo2ree_core.analysis.sbom.crosscheck import cross_check
 from repo2ree_core.analysis.sbom.cyclonedx import parse_cyclonedx
 from repo2ree_core.digests import digest_file
 from repo2ree_core.domain.ree.audit import audit
-from repo2ree_core.domain.ree.model import Ree
-from repo2ree_core.domain.ree.receipt import CrossCheckSbomReceipt, receipt_envelope
+from repo2ree_core.domain.ree.envelope import receipt_envelope
 from repo2ree_core.domain.ree.transitions import ReePreconditionError, commit_receipt, revision_of
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.failures import failed_from_exception
@@ -23,6 +22,8 @@ from repo2ree_core.persistence.repository import ReeRevisionConflictError, load_
 from repo2ree_core.time_utils import OperationTimer, utc_now
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
+from repo2ree_ree.model import Ree
+from repo2ree_ree.receipt import CrossCheckSbomReceipt
 
 
 class CrossCheckSbomOutputs(BaseModel):

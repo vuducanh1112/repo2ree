@@ -9,11 +9,11 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.domain.ree.model import Ree
 from repo2ree_core.operations.handlers.author import acquire_source, remove_source
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import AcquireSourceArgs
+from repo2ree_ree.model import Ree
 
 
 def _workbench(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[ReeLayout, ReeDirectory]:

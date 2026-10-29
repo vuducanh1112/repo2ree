@@ -20,7 +20,8 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from repo2ree_core.digests import Digest, HashingWriter
+from repo2ree_core.digests import HashingWriter
+from repo2ree_ree.digest import Digest
 
 # ================================================
 # Durable writes
@@ -89,7 +90,7 @@ def json_document_bytes(payload: Any) -> bytes:
 
     Indented and key-sorted: these files are read by humans auditing an REE and
     diffed between runs, and sorted keys are what keep a diff about the values
-    that changed. Distinct from :func:`repo2ree_core.digests.digest_json`, which
+    that changed. Distinct from :func:`repo2ree_ree.digest.digest_json`, which
     canonicalizes for *hashing* (compact, no whitespace) — the two must not be
     merged, because changing the persisted spelling here would change every
     digest there.

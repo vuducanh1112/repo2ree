@@ -7,7 +7,7 @@ from collections.abc import Iterator
 from typing import IO
 
 from repo2ree_api.deps import workbench_manager
-from repo2ree_core.domain.ree.model import Ree
+from repo2ree_ree.model import Ree
 from repo2ree_supervisor import WorkbenchHandle
 
 

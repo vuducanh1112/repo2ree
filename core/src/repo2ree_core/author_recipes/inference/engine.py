@@ -40,7 +40,8 @@ from repo2ree_core.author_recipes.inference.models import (
 )
 from repo2ree_core.author_recipes.inference.warnings import is_known_code, make_warning
 from repo2ree_core.author_recipes.targets import ScriptTarget
-from repo2ree_core.digests import digest_bytes, short_hash
+from repo2ree_core.digests import short_hash
+from repo2ree_ree.digest import digest_bytes
 
 
 class DagValidationError(ValueError):

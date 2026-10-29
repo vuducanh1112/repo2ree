@@ -6,30 +6,23 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.digests import digest_bytes
-from repo2ree_core.domain.primitives import ReePath, RunId, WorkspacePath, parse_utc_instant
-from repo2ree_core.domain.ree.model import (
-    ExperimentDefinition,
-    Ree,
-    ReeDefinition,
-    ReeSubject,
-)
-from repo2ree_core.domain.ree.model import (
-    TestActivationDefinition as ActivationDefinition,
-)
-from repo2ree_core.domain.ree.receipt import AcquireSourceReceipt
 from repo2ree_core.domain.ree.transitions import commit_receipt
 from repo2ree_core.operations.handlers.author.activation_test import handle_activation_test
 from repo2ree_core.operations.handlers.author.run_experiment import handle_run_experiment
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_core.reserved_paths import (
+from repo2ree_protocol.command import RunExperimentArgs
+from repo2ree_ree.digest import digest_bytes
+from repo2ree_ree.model import ExperimentDefinition, Ree, ReeDefinition, ReeSubject
+from repo2ree_ree.model import TestActivationDefinition as ActivationDefinition
+from repo2ree_ree.primitives import ReePath, RunId, WorkspacePath, parse_utc_instant
+from repo2ree_ree.receipt import AcquireSourceReceipt
+from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATION_SCRIPT,
     RESERVED_ACTIVATION_VERIFY_SCRIPT,
     experiment_run_script_path,
     experiment_verify_script_path,
 )
-from repo2ree_protocol.command import RunExperimentArgs
 
 _NOW = parse_utc_instant("2026-08-03T00:00:00Z")
 

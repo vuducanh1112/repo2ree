@@ -18,7 +18,7 @@ from repo2ree_core.author_recipes.inference.models import (
     ShellCommandCandidate,
 )
 from repo2ree_core.author_recipes.inference.renderers._common import sh_comment, sh_quote
-from repo2ree_core.reserved_paths import experiment_slug
+from repo2ree_ree.reserved_paths import experiment_slug
 
 EXIT_UNCONFIGURED = 64
 

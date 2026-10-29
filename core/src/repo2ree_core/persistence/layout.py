@@ -33,7 +33,7 @@ from pathlib import Path, PurePosixPath
 # Canonical lexical path checks live in the dependency-free leaf module so the
 # domain and experiment layers can share them without an import cycle. Import
 # them from there, never from here: one spelling per primitive.
-from repo2ree_core.path_safety import validate_path_segment, validate_relative_path
+from repo2ree_ree.paths import validate_path_segment, validate_relative_path
 
 # ================================================
 # Constants
@@ -88,10 +88,6 @@ REVIEWS_DIRNAME = "reviews"
 # files: the attempt record, and the directory its verdicts land in.
 REVIEW_RECORD_FILENAME = "review.json"
 COMPARISONS_DIRNAME = "comparisons"
-
-# Reserved, REE-owned overlay scripts are defined in the leaf
-# ``repo2ree_core.reserved_paths`` module so domain, experiment, and storage
-# layers can share them without an import cycle.
 
 # Fixed mount point inside every REE workbench container.
 WORKBENCH_ROOT = Path(os.environ.get("REPO2REE_WORKBENCH_ROOT", "/ree"))

@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from repo2ree_core.digests import digest_bytes
-from repo2ree_core.domain.hbom import HBOM
-from repo2ree_core.domain.primitives import Digest, ReePath, RunId, WorkspacePath, parse_utc_instant
 from repo2ree_core.domain.ree.audit import _STEP_FIELDS, ReeAudit, _evidence_standing, audit
-from repo2ree_core.domain.ree.model import (
+from repo2ree_core.domain.ree.transitions import commit_receipt, replace_definition
+from repo2ree_ree.digest import digest_bytes
+from repo2ree_ree.hbom import HBOM
+from repo2ree_ree.model import (
     BuildRuntimeDefinition,
     ExperimentDefinition,
     Ree,
@@ -16,7 +16,8 @@ from repo2ree_core.domain.ree.model import (
     ReeSubject,
     SourceDefinition,
 )
-from repo2ree_core.domain.ree.receipt import (
+from repo2ree_ree.primitives import Digest, ReePath, RunId, WorkspacePath, parse_utc_instant
+from repo2ree_ree.receipt import (
     AcquireSourceReceipt,
     BuildRuntimeReceipt,
     CrossCheckSbomReceipt,
@@ -26,8 +27,7 @@ from repo2ree_core.domain.ree.receipt import (
     RunExperimentReceipt,
     WorkspaceDrift,
 )
-from repo2ree_core.domain.ree.transitions import commit_receipt, replace_definition
-from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT, experiment_run_script_path
+from repo2ree_ree.reserved_paths import RESERVED_BUILD_SCRIPT, experiment_run_script_path
 
 _DIGEST = digest_bytes(b"content")
 _OTHER_DIGEST = digest_bytes(b"other")

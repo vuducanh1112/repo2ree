@@ -19,8 +19,6 @@ import shutil
 
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.domain.primitives import Swhid
-from repo2ree_core.domain.ree.model import Ree, SourceDefinition
 from repo2ree_core.evidence.review.comparison import compare_source_swhids
 from repo2ree_core.evidence.review.models import (
     EvidenceBasis,
@@ -37,10 +35,13 @@ from repo2ree_core.persistence.files import write_atomic
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
 from repo2ree_core.reproduction.acquire_source import build_acquire_sh
 from repo2ree_core.source_repo.swhid import directory_swhid
-from repo2ree_core.time_utils import OperationTimer, format_utc_instant
+from repo2ree_core.time_utils import OperationTimer
 from repo2ree_protocol.command import ReviewAcquireSourceArgs, ReviewBasis
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
+from repo2ree_ree.instant import format_utc_instant
+from repo2ree_ree.model import Ree, SourceDefinition
+from repo2ree_ree.primitives import Swhid
 
 
 class ReviewAcquireSourceOutputs(BaseModel):

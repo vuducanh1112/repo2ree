@@ -6,20 +6,15 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.digests import digest_bytes
-from repo2ree_core.domain.primitives import ReePath, RunId, WorkspacePath, parse_utc_instant
-from repo2ree_core.domain.ree.model import (
-    BuildRuntimeDefinition,
-    Ree,
-    ReeDefinition,
-    ReeSubject,
-)
-from repo2ree_core.domain.ree.receipt import AcquireSourceReceipt, BuildRuntimeReceipt, WorkspaceDrift
 from repo2ree_core.domain.ree.transitions import commit_receipt
 from repo2ree_core.operations.handlers.author.generate_sbom import handle_generate_sbom
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
+from repo2ree_ree.digest import digest_bytes
+from repo2ree_ree.model import BuildRuntimeDefinition, Ree, ReeDefinition, ReeSubject
+from repo2ree_ree.primitives import ReePath, RunId, WorkspacePath, parse_utc_instant
+from repo2ree_ree.receipt import AcquireSourceReceipt, BuildRuntimeReceipt, WorkspaceDrift
+from repo2ree_ree.reserved_paths import RESERVED_BUILD_SCRIPT
 
 _NOW = parse_utc_instant("2026-08-03T00:00:00Z")
 

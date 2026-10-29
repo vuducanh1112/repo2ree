@@ -16,7 +16,6 @@ from typing import Any, cast
 import pytest
 from pydantic import BaseModel
 
-from repo2ree_core.domain.primitives import RunId
 from repo2ree_core.operations import dispatch as rc
 from repo2ree_protocol.command import (
     AcquireSourceCommand,
@@ -39,6 +38,7 @@ from repo2ree_protocol.command import (
 )
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
+from repo2ree_ree.primitives import RunId
 
 # (Command class, name of the handler in dispatch it must route to).
 _ROUTES: list[tuple[type[BaseModel], str]] = [

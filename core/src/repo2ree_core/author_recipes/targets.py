@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.reserved_paths import (
+from repo2ree_protocol.command import TargetKind
+from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATION_SCRIPT,
     RESERVED_ACTIVATION_VERIFY_SCRIPT,
     RESERVED_BUILD_SCRIPT,
     experiment_run_script_path,
     experiment_verify_script_path,
 )
-from repo2ree_protocol.command import TargetKind
 
 
 class ScriptTargetSelector(BaseModel):

@@ -354,9 +354,9 @@ def test_every_command_records_inputs_and_selected_scope(ree, monkeypatch, comma
 
 
 def test_restoring_a_snapshot_brings_back_lfs_payloads_and_removes_new_recorded_files(ree):
-    from repo2ree_core.domain.primitives import ReePath
-    from repo2ree_core.domain.ree.model import CapturePolicy
     from repo2ree_core.persistence.history import open_history
+    from repo2ree_ree.model import CapturePolicy
+    from repo2ree_ree.primitives import ReePath
 
     runtime = ree.workspace / "runtime.tar"
     runtime.parent.mkdir(parents=True, exist_ok=True)

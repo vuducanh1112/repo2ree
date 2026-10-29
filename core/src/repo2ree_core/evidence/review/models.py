@@ -23,17 +23,9 @@ from typing import Literal, TypedDict
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from repo2ree_core.domain.primitives import (
-    Digest,
-    ReePath,
-    RunId,
-    SourceType,
-    Swhid,
-    UtcInstant,
-    WorkspacePath,
-)
 from repo2ree_core.time_utils import OperationTiming
 from repo2ree_protocol.command import ReviewBasis
+from repo2ree_ree.primitives import Digest, ReePath, RunId, SourceType, Swhid, UtcInstant, WorkspacePath
 
 ReviewStatus = Literal["running", "completed", "failed", "canceled"]
 ReviewStepKey = Literal["source", "build", "activation", "experiments"]

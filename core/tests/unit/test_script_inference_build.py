@@ -17,9 +17,9 @@ from repo2ree_core.author_recipes.inference import (
 )
 from repo2ree_core.author_recipes.inference.models import LogicalRootObservation
 from repo2ree_core.author_recipes.inference.runtime_inputs import RuntimeInputs
-from repo2ree_core.digests import digest_bytes
-from repo2ree_core.domain.primitives import WorkspacePath
-from repo2ree_core.domain.ree.model import BuildRuntimeDefinition, ReeDefinition
+from repo2ree_ree.digest import digest_bytes
+from repo2ree_ree.model import BuildRuntimeDefinition, ReeDefinition
+from repo2ree_ree.primitives import WorkspacePath
 
 
 def _tree(root: Path, files: dict[str, str]) -> Path:

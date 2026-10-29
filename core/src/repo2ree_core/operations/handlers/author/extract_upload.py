@@ -17,10 +17,10 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-from repo2ree_core.digests import Digest
 from repo2ree_core.persistence.files import pack_directory_tar_gz, safe_extract_tar, safe_extract_zip
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.log import LogSink
+from repo2ree_ree.digest import Digest
 
 
 def freeze_upload(layout: ReeLayout, *, upload_token: str, archive_name: str, log: LogSink) -> Digest:

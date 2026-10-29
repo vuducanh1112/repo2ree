@@ -5,7 +5,7 @@ import math
 from typing import Literal
 
 from repo2ree_core.analysis.hbom.profiler_utils import round_gib, run_command
-from repo2ree_core.domain.hbom import StorageDefinition
+from repo2ree_ree.hbom import StorageDefinition
 
 StorageType = Literal["HDD", "SSD", "NVMe", "eMMC", "SD"]
 

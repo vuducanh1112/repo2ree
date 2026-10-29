@@ -28,7 +28,6 @@ from repo2ree_api.deps import workbench_manager
 from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import require_handle
 from repo2ree_core.analysis.repository.reproducibility_report import ReproducibilityReport
-from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_protocol import ActivationTestCommand, GenerateHbomCommand
 from repo2ree_protocol.command import (
     ActivationTestArgs,
@@ -41,6 +40,7 @@ from repo2ree_protocol.command import (
     RunExperimentArgs,
     RunExperimentCommand,
 )
+from repo2ree_ree.reserved_paths import RESERVED_BUILD_SCRIPT
 
 stages_router = APIRouter(tags=["runs"])
 

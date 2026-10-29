@@ -32,7 +32,7 @@ from repo2ree_core.analysis.hbom.storage_profiler import (
     _storage_type_for_device,
     profile_storage,
 )
-from repo2ree_core.domain.hbom import HBOM
+from repo2ree_ree.hbom import HBOM
 
 
 def _completed(stdout: str, returncode: int = 0) -> subprocess.CompletedProcess[str]:

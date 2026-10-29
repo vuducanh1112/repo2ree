@@ -15,11 +15,7 @@ import hashlib
 from pathlib import Path
 from typing import IO
 
-from repo2ree_ree.digest import DIGEST_PREFIX as DIGEST_PREFIX
-from repo2ree_ree.digest import Digest as Digest
-from repo2ree_ree.digest import digest_bytes as digest_bytes
-from repo2ree_ree.digest import digest_json as digest_json
-from repo2ree_ree.digest import is_canonical_digest as is_canonical_digest
+from repo2ree_ree.digest import DIGEST_PREFIX, Digest, is_canonical_digest
 
 _CHUNK_SIZE = 1024 * 1024
 

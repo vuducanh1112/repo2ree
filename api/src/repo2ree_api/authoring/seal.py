@@ -37,9 +37,9 @@ from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.archives import archive_download_filename, spool_chunks
 from repo2ree_api.workbench.commands import ree_command_span, require_handle
 from repo2ree_api.workbench.uploads import mint_upload_token, stage_upload_bytes
-from repo2ree_core.domain.ree.model import Ree
 from repo2ree_protocol import ActionResult, LoadReeBundleCommand, SealReeCommand
 from repo2ree_protocol.command import LoadReeBundleArgs, SealReeArgs
+from repo2ree_ree.model import Ree
 from repo2ree_supervisor import WorkbenchHandle
 
 _log = logging.getLogger(__name__)

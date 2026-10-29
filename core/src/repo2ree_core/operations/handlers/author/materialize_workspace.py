@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from repo2ree_core.digests import Digest
 from repo2ree_core.execution.process import (
     CancelCheck,
     format_command,
@@ -23,6 +22,7 @@ from repo2ree_core.reproduction.materialize_workspace import build_materialize_s
 from repo2ree_core.workspace.materialization import record_materialization
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
+from repo2ree_ree.digest import Digest
 
 
 def _write_materialize_script(*, log: LogSink, layout: ReeLayout) -> Path:

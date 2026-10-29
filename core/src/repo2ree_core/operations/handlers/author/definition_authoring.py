@@ -6,9 +6,9 @@ from pathlib import Path
 from typing import Any
 
 from repo2ree_core.digests import digest_file
-from repo2ree_core.domain.ree.model import ReeDefinition, SourceDefinition
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_core.reserved_paths import (
+from repo2ree_ree.model import ReeDefinition, SourceDefinition
+from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATION_SCRIPT,
     RESERVED_ACTIVATION_VERIFY_SCRIPT,
     RESERVED_BUILD_SCRIPT,

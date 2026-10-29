@@ -8,15 +8,9 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.digests import Digest, digest_file, digest_output_paths
-from repo2ree_core.domain.primitives import WorkspacePath
+from repo2ree_core.digests import digest_file, digest_output_paths
 from repo2ree_core.domain.ree.audit import audit
-from repo2ree_core.domain.ree.model import ExperimentDefinition, Ree, TestActivationDefinition
-from repo2ree_core.domain.ree.receipt import (
-    RunExperimentReceipt,
-    TestActivationReceipt,
-    receipt_envelope,
-)
+from repo2ree_core.domain.ree.envelope import receipt_envelope
 from repo2ree_core.domain.ree.transitions import ReePreconditionError, commit_receipt, revision_of
 from repo2ree_core.execution.experiment.run import ExperimentRunOutcome, run_runnable
 from repo2ree_core.execution.experiment.spec import RunnableSpec
@@ -28,6 +22,10 @@ from repo2ree_core.persistence.repository import ReeRevisionConflictError, load_
 from repo2ree_core.time_utils import OperationTimer, OperationTiming, format_duration_ms
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
+from repo2ree_ree.digest import Digest
+from repo2ree_ree.model import ExperimentDefinition, Ree, TestActivationDefinition
+from repo2ree_ree.primitives import WorkspacePath
+from repo2ree_ree.receipt import RunExperimentReceipt, TestActivationReceipt
 
 RunnableKind = Literal["test_activation", "run_experiment"]
 RunnableDefinition = TestActivationDefinition | ExperimentDefinition

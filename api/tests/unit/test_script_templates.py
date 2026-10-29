@@ -12,7 +12,7 @@ from repo2ree_core.author_recipes.templates import (
     experiment_run_templates,
     verify_templates,
 )
-from repo2ree_core.reserved_paths import (
+from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATION_SCRIPT,
     RESERVED_ACTIVATION_VERIFY_SCRIPT,
     RESERVED_BUILD_SCRIPT,

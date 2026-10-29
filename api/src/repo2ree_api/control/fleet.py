@@ -30,9 +30,9 @@ from pydantic import BaseModel
 from repo2ree_api.contracts import ERROR_RESPONSES
 from repo2ree_api.deps import provider_connections, span_sink, workbench_connections, workbench_enrollments
 from repo2ree_api.settings import service_settings
-from repo2ree_core.time_utils import iso_utc
 from repo2ree_protocol.provider import provider_hello_adapter
 from repo2ree_protocol.workbench import WorkbenchHello, workbench_hello_adapter
+from repo2ree_ree.instant import iso_utc
 from repo2ree_supervisor import ProviderConnection, WorkbenchConnection
 
 logger = logging.getLogger(__name__)

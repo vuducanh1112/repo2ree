@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Literal
 
 from repo2ree_core.analysis.hbom.profiler_utils import read_optional_int, read_optional_text
-from repo2ree_core.domain.hbom import NetworkDefinition
+from repo2ree_ree.hbom import NetworkDefinition
 
 NetworkType = Literal["ethernet", "infiniband", "wifi", "cellular"]
 

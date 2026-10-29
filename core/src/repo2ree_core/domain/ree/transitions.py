@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from repo2ree_core.domain.primitives import Digest, UtcInstant
-from repo2ree_core.domain.ree.model import (
+from repo2ree_ree.model import (
     BundleContents,
     Ree,
     ReeDefinition,
@@ -13,7 +12,8 @@ from repo2ree_core.domain.ree.model import (
     Signature,
     canonical_subject_digest,
 )
-from repo2ree_core.domain.ree.receipt import (
+from repo2ree_ree.primitives import Digest, UtcInstant
+from repo2ree_ree.receipt import (
     AcquireSourceReceipt,
     BuildRuntimeReceipt,
     CrossCheckSbomReceipt,

@@ -8,7 +8,6 @@ import pytest
 
 from repo2ree_core.bundle.download import materialized_ree_download
 from repo2ree_core.bundle.repository_restore import restore_repository
-from repo2ree_core.domain.ree.model import CapturePolicy
 from repo2ree_core.operations.dispatch import run_command
 from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.persistence.directory import ReeDirectory
@@ -18,6 +17,7 @@ from repo2ree_core.persistence.lfs import LfsPointer
 from repo2ree_core.persistence.operation_history import read_operation_history
 from repo2ree_core.tooling import find_tool
 from repo2ree_protocol.command import LoadReeBundleArgs, LoadReeBundleCommand, SealReeArgs, SealReeCommand
+from repo2ree_ree.model import CapturePolicy
 
 
 def _sealed(tmp_path, monkeypatch):
@@ -127,10 +127,10 @@ def test_invalid_export_does_not_modify_destination(tmp_path, monkeypatch):
 
 def test_legacy_sealed_archive_keeps_original_identity_and_bytes(tmp_path):
     from repo2ree_core.bundle.restore import restore_ree_bundle
-    from repo2ree_core.domain.ree.model import Ree, ReeSubject
     from repo2ree_core.domain.ree.transitions import record_seal
     from repo2ree_core.persistence.ree_manifest import ree_manifest_bytes
     from repo2ree_core.time_utils import utc_now_instant
+    from repo2ree_ree.model import Ree, ReeSubject
 
     legacy = record_seal(Ree(subject=ReeSubject()), sealed_at=utc_now_instant())
     extracted = tmp_path / "legacy"

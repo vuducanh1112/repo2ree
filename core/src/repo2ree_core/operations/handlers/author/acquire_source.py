@@ -9,10 +9,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.digests import Digest
-from repo2ree_core.domain.primitives import Swhid
-from repo2ree_core.domain.ree.model import Ree, SourceDefinition
-from repo2ree_core.domain.ree.receipt import AcquireSourceReceipt, receipt_envelope
+from repo2ree_core.domain.ree.envelope import receipt_envelope
 from repo2ree_core.domain.ree.transitions import (
     ReePreconditionError,
     commit_receipt,
@@ -34,6 +31,10 @@ from repo2ree_core.time_utils import OperationTimer, format_duration_ms
 from repo2ree_protocol.command import AcquireSourceArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
+from repo2ree_ree.digest import Digest
+from repo2ree_ree.model import Ree, SourceDefinition
+from repo2ree_ree.primitives import Swhid
+from repo2ree_ree.receipt import AcquireSourceReceipt
 
 
 class AcquireSourceOutputs(BaseModel):

@@ -10,8 +10,6 @@ from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.bundle.repository_restore import restore_repository
 from repo2ree_core.digests import digest_file
-from repo2ree_core.domain.primitives import ReePath
-from repo2ree_core.domain.ree.model import BundleContents, BundleEntry, CapturePolicy
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import list_tree_relpaths
 from repo2ree_core.persistence.layout import (
@@ -23,6 +21,8 @@ from repo2ree_core.persistence.layout import (
     ReeLayout,
 )
 from repo2ree_core.persistence.ree_manifest import parse_ree_manifest
+from repo2ree_ree.model import BundleContents, BundleEntry, CapturePolicy
+from repo2ree_ree.primitives import ReePath
 
 
 class BundleLoadOutputs(BaseModel):

@@ -20,8 +20,8 @@ from repo2ree_core.author_recipes.inference.models import DecisionContext
 from repo2ree_core.author_recipes.inference.policy import default_policy
 from repo2ree_core.author_recipes.inference.repository_facts import scan_repository
 from repo2ree_core.author_recipes.inference.runtime_inputs import RuntimeInputs
-from repo2ree_core.domain.ree.model import ReeDefinition
-from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
+from repo2ree_ree.model import ReeDefinition
+from repo2ree_ree.reserved_paths import RESERVED_BUILD_SCRIPT
 
 _DOCKER_RUNTIME = ".repo2ree/artifacts/runtime.tar"
 _VENV_RUNTIME = ".repo2ree/artifacts/runtime-venv.tar.gz"

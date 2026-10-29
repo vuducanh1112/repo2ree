@@ -9,8 +9,8 @@ from fastapi.testclient import TestClient
 
 from repo2ree_api.deps import workbench_manager
 from repo2ree_core.domain.ree.audit import audit
-from repo2ree_core.domain.ree.model import Ree, ReeDefinition
 from repo2ree_protocol import ActionResult
+from repo2ree_ree.model import Ree, ReeDefinition
 from repo2ree_supervisor import WorkbenchHandle
 
 

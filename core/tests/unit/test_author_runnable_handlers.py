@@ -4,33 +4,26 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.digests import digest_bytes, digest_output_paths
-from repo2ree_core.domain.primitives import ReePath, RunId, WorkspacePath, parse_utc_instant
-from repo2ree_core.domain.ree.model import (
-    BuildRuntimeDefinition,
-    ExperimentDefinition,
-    Ree,
-    ReeDefinition,
-    ReeSubject,
-)
-from repo2ree_core.domain.ree.model import (
-    TestActivationDefinition as ActivationDefinition,
-)
-from repo2ree_core.domain.ree.receipt import AcquireSourceReceipt, BuildRuntimeReceipt, WorkspaceDrift
+from repo2ree_core.digests import digest_output_paths
 from repo2ree_core.domain.ree.transitions import commit_receipt, record_seal
 from repo2ree_core.execution.experiment.run import ExperimentRunOutcome, RunnableRunOutputs
 from repo2ree_core.operations.handlers.author import activation_test, run_experiment, runnable
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError
-from repo2ree_core.reserved_paths import (
+from repo2ree_protocol.command import RunExperimentArgs
+from repo2ree_ree.digest import digest_bytes
+from repo2ree_ree.model import BuildRuntimeDefinition, ExperimentDefinition, Ree, ReeDefinition, ReeSubject
+from repo2ree_ree.model import TestActivationDefinition as ActivationDefinition
+from repo2ree_ree.primitives import ReePath, RunId, WorkspacePath, parse_utc_instant
+from repo2ree_ree.receipt import AcquireSourceReceipt, BuildRuntimeReceipt, WorkspaceDrift
+from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATION_SCRIPT,
     RESERVED_ACTIVATION_VERIFY_SCRIPT,
     RESERVED_BUILD_SCRIPT,
     experiment_run_script_path,
     experiment_verify_script_path,
 )
-from repo2ree_protocol.command import RunExperimentArgs
 
 _NOW = parse_utc_instant("2026-08-03T00:00:00Z")
 _SNAPSHOT = digest_bytes(b"snapshot")

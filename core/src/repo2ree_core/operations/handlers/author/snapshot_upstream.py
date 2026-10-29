@@ -11,10 +11,10 @@ from __future__ import annotations
 
 import tarfile
 
-from repo2ree_core.digests import Digest
 from repo2ree_core.persistence.files import pack_directory_tar_gz
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.log import LogSink
+from repo2ree_ree.digest import Digest
 
 # Packing walks and reads an arbitrary source tree: an unreadable file, a broken
 # link, a device node tarfile refuses. All of it is a fact about that tree rather

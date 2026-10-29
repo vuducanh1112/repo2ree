@@ -15,8 +15,8 @@ from pathlib import Path
 from typing import BinaryIO
 
 from repo2ree_core.author_recipes.inference.runtime_inputs import ArtifactFile, RuntimeInputs
-from repo2ree_core.domain.ree.model import ReeDefinition
 from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_ree.model import ReeDefinition
 
 _DIGEST_CHUNK = 1024 * 1024
 

@@ -16,7 +16,7 @@ from repo2ree_api.deposit.models import ArchiveBindingAttestation
 from repo2ree_api.deps import ree_index
 from repo2ree_api.ree_index import entry_from_ree
 from repo2ree_api.settings import service_settings
-from repo2ree_core.domain.ree.model import Ree, ReeCatalogMetadata, ReeDefinition, ReeSeal, ReeSubject
+from repo2ree_ree.model import Ree, ReeCatalogMetadata, ReeDefinition, ReeSeal, ReeSubject
 
 
 @pytest.fixture(autouse=True)

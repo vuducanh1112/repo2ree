@@ -5,10 +5,8 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.digests import digest_file_if_exists
-from repo2ree_core.domain.primitives import WorkspacePath
 from repo2ree_core.domain.ree.audit import audit
-from repo2ree_core.domain.ree.model import BuildRuntimeDefinition, Ree
-from repo2ree_core.domain.ree.receipt import BuildRuntimeReceipt, receipt_envelope
+from repo2ree_core.domain.ree.envelope import receipt_envelope
 from repo2ree_core.domain.ree.transitions import ReePreconditionError, commit_receipt, revision_of
 from repo2ree_core.execution.process import CancelCheck, run_workspace_script
 from repo2ree_core.failures import failed_from_exception
@@ -19,6 +17,9 @@ from repo2ree_core.time_utils import OperationTimer, format_duration_ms
 from repo2ree_core.workspace.drift import check_workspace_drift
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
+from repo2ree_ree.model import BuildRuntimeDefinition, Ree
+from repo2ree_ree.primitives import WorkspacePath
+from repo2ree_ree.receipt import BuildRuntimeReceipt
 
 
 class BuildRuntimeOutputs(BaseModel):

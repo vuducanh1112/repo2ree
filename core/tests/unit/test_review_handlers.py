@@ -6,19 +6,6 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.digests import digest_bytes
-from repo2ree_core.domain.primitives import ReePath, RunId, Swhid, WorkspacePath
-from repo2ree_core.domain.ree.model import (
-    BuildRuntimeDefinition,
-    ExperimentDefinition,
-    Ree,
-    ReeDefinition,
-    ReeReceipts,
-    ReeSubject,
-    SourceDefinition,
-)
-from repo2ree_core.domain.ree.model import TestActivationDefinition as ActivationDefinition
-from repo2ree_core.domain.ree.receipt import AcquireSourceReceipt, RunExperimentReceipt
 from repo2ree_core.evidence.review.models import (
     BuildComparison,
     ReviewBuildRuntimeReceipt,
@@ -31,19 +18,32 @@ from repo2ree_core.evidence.review.store import load_reviews, read_review_record
 from repo2ree_core.operations.handlers.review import acquire_source, activation_test, build_runtime, run_experiment
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_core.reserved_paths import (
-    RESERVED_ACTIVATION_SCRIPT,
-    RESERVED_ACTIVATION_VERIFY_SCRIPT,
-    experiment_run_script_path,
-    experiment_verify_script_path,
-)
 from repo2ree_core.source_repo.swhid import directory_swhid
-from repo2ree_core.time_utils import parse_utc_instant
 from repo2ree_protocol.command import (
     ReviewAcquireSourceArgs,
     ReviewActivationTestArgs,
     ReviewBuildRuntimeArgs,
     ReviewRunExperimentArgs,
+)
+from repo2ree_ree.digest import digest_bytes
+from repo2ree_ree.instant import parse_utc_instant
+from repo2ree_ree.model import (
+    BuildRuntimeDefinition,
+    ExperimentDefinition,
+    Ree,
+    ReeDefinition,
+    ReeReceipts,
+    ReeSubject,
+    SourceDefinition,
+)
+from repo2ree_ree.model import TestActivationDefinition as ActivationDefinition
+from repo2ree_ree.primitives import ReePath, RunId, Swhid, WorkspacePath
+from repo2ree_ree.receipt import AcquireSourceReceipt, RunExperimentReceipt
+from repo2ree_ree.reserved_paths import (
+    RESERVED_ACTIVATION_SCRIPT,
+    RESERVED_ACTIVATION_VERIFY_SCRIPT,
+    experiment_run_script_path,
+    experiment_verify_script_path,
 )
 
 _NOW = parse_utc_instant("2026-08-03T00:00:00Z")

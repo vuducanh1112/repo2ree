@@ -16,8 +16,8 @@ from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.operations.read_models.files import list_ree_files, list_workspace_files, read_ree_file_bytes
 from repo2ree_core.persistence.history import GitHistory, HistoryCaptureError
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_core.tooling import find_tool
+from repo2ree_ree.reserved_paths import RESERVED_BUILD_SCRIPT
 
 
 def git(layout: ReeLayout, *args: str) -> bytes:

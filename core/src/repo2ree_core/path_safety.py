@@ -21,8 +21,7 @@ from __future__ import annotations
 
 from pathlib import Path, PurePosixPath
 
-from repo2ree_ree.paths import validate_path_segment as validate_path_segment
-from repo2ree_ree.paths import validate_relative_path as validate_relative_path
+from repo2ree_ree.paths import validate_relative_path
 
 # Leaf-file basename prefixes reserved for workspace control files
 # (".workspace*", ".upload.*"). They name files, never directories, so callers

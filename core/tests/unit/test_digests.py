@@ -2,15 +2,9 @@ from __future__ import annotations
 
 import hashlib
 
-from repo2ree_core.digests import (
-    digest_bytes,
-    digest_file,
-    digest_file_if_exists,
-    digest_json,
-    digest_output_paths,
-    digest_tree,
-)
+from repo2ree_core.digests import digest_file, digest_file_if_exists, digest_output_paths, digest_tree
 from repo2ree_core.persistence.files import pack_directory_tar_gz
+from repo2ree_ree.digest import digest_bytes, digest_json
 
 
 def test_digest_bytes_is_prefixed_sha256():

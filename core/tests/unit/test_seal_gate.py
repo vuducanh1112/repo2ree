@@ -7,21 +7,15 @@ from pathlib import Path
 import pytest
 
 from repo2ree_core.bundle.seal import BundleProgress, BundleSealCanceledError, seal_ree
-from repo2ree_core.digests import digest_bytes
-from repo2ree_core.domain.primitives import Digest, ReePath, RunId, WorkspacePath, parse_utc_instant
-from repo2ree_core.domain.ree.model import (
-    BuildRuntimeDefinition,
-    Ree,
-    ReeDefinition,
-    ReeSubject,
-    SourceDefinition,
-)
-from repo2ree_core.domain.ree.receipt import AcquireSourceReceipt, BuildRuntimeReceipt, WorkspaceDrift
 from repo2ree_core.domain.ree.transitions import ReePreconditionError, commit_receipt, replace_definition
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import load_ree
-from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
+from repo2ree_ree.digest import digest_bytes
+from repo2ree_ree.model import BuildRuntimeDefinition, Ree, ReeDefinition, ReeSubject, SourceDefinition
+from repo2ree_ree.primitives import Digest, ReePath, RunId, WorkspacePath, parse_utc_instant
+from repo2ree_ree.receipt import AcquireSourceReceipt, BuildRuntimeReceipt, WorkspaceDrift
+from repo2ree_ree.reserved_paths import RESERVED_BUILD_SCRIPT
 
 _REE_ID = "ree-1"
 _NOW = parse_utc_instant("2026-08-03T00:00:00Z")

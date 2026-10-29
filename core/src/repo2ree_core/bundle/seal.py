@@ -12,10 +12,8 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.bundle.repository_files import prepare_reproducer
-from repo2ree_core.digests import digest_bytes, digest_file
-from repo2ree_core.domain.primitives import Digest, ReePath, UtcInstant
+from repo2ree_core.digests import digest_file
 from repo2ree_core.domain.ree.audit import audit
-from repo2ree_core.domain.ree.model import BundleContents, BundleEntry, CapturePolicy, Ree
 from repo2ree_core.domain.ree.transitions import ReePreconditionError, record_seal, replace_contents, revision_of
 from repo2ree_core.persistence.capture_policy import capture_plan, write_capture_controls
 from repo2ree_core.persistence.directory import ReeDirectory
@@ -25,6 +23,9 @@ from repo2ree_core.persistence.layout import (
 )
 from repo2ree_core.persistence.lfs import store_payload
 from repo2ree_core.persistence.repository import save_ree
+from repo2ree_ree.digest import digest_bytes
+from repo2ree_ree.model import BundleContents, BundleEntry, CapturePolicy, Ree
+from repo2ree_ree.primitives import Digest, ReePath, UtcInstant
 
 
 class SealOutputs(BaseModel):

@@ -36,9 +36,9 @@ from repo2ree_core.author_recipes.inference.models import (
     VenvRuntimeContract,
 )
 from repo2ree_core.author_recipes.inference.warnings import make_warning
-from repo2ree_core.digests import digest_bytes
-from repo2ree_core.path_safety import validate_relative_path
-from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
+from repo2ree_ree.digest import digest_bytes
+from repo2ree_ree.paths import validate_relative_path
+from repo2ree_ree.reserved_paths import RESERVED_BUILD_SCRIPT
 
 
 def _declared_path(context: DecisionContext) -> str | None:

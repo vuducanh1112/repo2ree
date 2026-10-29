@@ -15,7 +15,7 @@ from repo2ree_core.analysis.repository.reproducibility_report import (
     MachineLevel,
     ReproducibilityReport,
 )
-from repo2ree_core.domain.ree.model import Ree
+from repo2ree_ree.model import Ree
 from repo2ree_supervisor import WorkbenchHandle
 
 

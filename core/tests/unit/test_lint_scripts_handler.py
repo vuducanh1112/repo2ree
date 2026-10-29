@@ -14,9 +14,9 @@ import pytest
 from repo2ree_core.operations.handlers.author import lint_scripts as handler
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_protocol.command import LintScriptsArgs, ScriptTargetSelectorArg
 from repo2ree_protocol.result import ActionResult
+from repo2ree_ree.reserved_paths import RESERVED_BUILD_SCRIPT
 
 
 def _silent_log(*_: object) -> None:

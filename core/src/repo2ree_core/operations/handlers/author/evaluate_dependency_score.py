@@ -8,8 +8,7 @@ from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.analysis.repository.profiler import AnalysisError, analyze_repo
 from repo2ree_core.digests import digest_file, digest_tree
-from repo2ree_core.domain.primitives import ArtifactPath
-from repo2ree_core.domain.ree.receipt import EvaluateReproducibilityReceipt, receipt_envelope
+from repo2ree_core.domain.ree.envelope import receipt_envelope
 from repo2ree_core.domain.ree.transitions import commit_receipt, revision_of
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.failures import failed_from_exception
@@ -21,6 +20,8 @@ from repo2ree_core.time_utils import OperationTimer
 from repo2ree_protocol.command import EvaluateDependencyScoreArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
+from repo2ree_ree.primitives import ArtifactPath
+from repo2ree_ree.receipt import EvaluateReproducibilityReceipt
 
 _ANALYZER_VERSION = "1"
 _REPORT_PATH = ArtifactPath(f"{ARTIFACTS_DIRNAME}/{REPRODUCIBILITY_REPORT_FILENAME}")

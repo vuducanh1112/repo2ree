@@ -6,10 +6,10 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.digests import digest_bytes
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
+from repo2ree_ree.digest import digest_bytes
 
 
 class VersionConflictOutputs(BaseModel):

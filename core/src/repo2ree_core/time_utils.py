@@ -4,10 +4,7 @@ import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from repo2ree_ree.instant import UtcInstant as UtcInstant
-from repo2ree_ree.instant import format_utc_instant as format_utc_instant
-from repo2ree_ree.instant import iso_utc as iso_utc
-from repo2ree_ree.instant import parse_utc_instant as parse_utc_instant
+from repo2ree_ree.instant import UtcInstant, iso_utc
 
 
 def utc_now() -> str:

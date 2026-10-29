@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from repo2ree_core.path_safety import validate_relative_path
+from repo2ree_ree.paths import validate_relative_path
 
 
 @dataclass(frozen=True)

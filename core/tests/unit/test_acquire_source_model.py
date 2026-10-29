@@ -4,8 +4,6 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.digests import digest_bytes
-from repo2ree_core.domain.ree.model import Ree, SourceDefinition
 from repo2ree_core.operations.handlers.author import acquire_source
 from repo2ree_core.operations.handlers.author.acquire_source import (
     _acquisition_from,
@@ -16,6 +14,8 @@ from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import AcquireSourceArgs
 from repo2ree_protocol.result import ActionResult
+from repo2ree_ree.digest import digest_bytes
+from repo2ree_ree.model import Ree, SourceDefinition
 
 
 def _workbench(

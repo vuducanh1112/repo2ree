@@ -15,9 +15,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.digests import Digest, digest_file_if_exists
-from repo2ree_core.domain.primitives import ReePath, WorkspacePath
-from repo2ree_core.domain.ree.model import ReeDefinition
+from repo2ree_core.digests import digest_file_if_exists
 from repo2ree_core.evidence.review.models import (
     ActivationOutcome,
     ActivationVerdict,
@@ -36,6 +34,9 @@ from repo2ree_core.operations.steps.review import (
 from repo2ree_protocol.command import ReviewActivationTestArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
+from repo2ree_ree.digest import Digest
+from repo2ree_ree.model import ReeDefinition
+from repo2ree_ree.primitives import ReePath, WorkspacePath
 
 
 class ReviewActivationTestOutputs(BaseModel):

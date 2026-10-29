@@ -24,11 +24,11 @@ import repo2ree_core.persistence.layout as layout_mod
 import repo2ree_executor.cli as cli_module
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.operation_history import read_operation_history
-from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_executor.cli import cli
 from repo2ree_protocol.command import WriteFileArgs, WriteFileCommand
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.result import ActionResult
+from repo2ree_ree.reserved_paths import RESERVED_BUILD_SCRIPT
 
 # ================================================
 # Fixtures / helpers

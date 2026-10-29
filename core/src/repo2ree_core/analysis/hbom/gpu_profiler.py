@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from repo2ree_core.analysis.hbom.profiler_utils import run_command
-from repo2ree_core.domain.hbom import GPUDefinition
+from repo2ree_ree.hbom import GPUDefinition
 
 
 def profile_gpus() -> dict[str, GPUDefinition]:

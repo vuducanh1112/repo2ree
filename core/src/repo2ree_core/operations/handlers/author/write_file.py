@@ -11,13 +11,13 @@ from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.operations.handlers.author.definition_authoring import rehydrate_after_file_mutation
 from repo2ree_core.operations.handlers.author.file_concurrency import check_expected_etag
-from repo2ree_core.path_safety import validate_relative_path
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError, load_ree, save_ree
 from repo2ree_protocol.command import WriteFileArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
+from repo2ree_ree.paths import validate_relative_path
 
 
 def handle_write_file(

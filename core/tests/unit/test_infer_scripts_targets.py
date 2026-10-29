@@ -14,7 +14,7 @@ import pytest
 
 from repo2ree_core.author_recipes.inference import ScriptTargetSelector, infer_scripts
 from repo2ree_core.author_recipes.targets import resolve_target
-from repo2ree_core.reserved_paths import (
+from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATION_SCRIPT,
     RESERVED_ACTIVATION_VERIFY_SCRIPT,
     RESERVED_BUILD_SCRIPT,

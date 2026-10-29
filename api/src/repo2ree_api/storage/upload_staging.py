@@ -29,7 +29,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from repo2ree_api.settings import service_settings
-from repo2ree_core.time_utils import iso_utc
+from repo2ree_ree.instant import iso_utc
 
 # Minted tokens are uuid hex; accept a slightly wider single-path-component
 # charset so the format is not load-bearing, but nothing that can traverse.
