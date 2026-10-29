@@ -21,6 +21,8 @@ from repo2ree_testbed.stack.stack import E2EStack, Layout
 @dataclass(frozen=True)
 class PerTest:
     jobs: int
+    # Parts of test ids; empty runs every test the suite lists.
+    select: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -66,6 +68,7 @@ class SuiteRun:
             build_revision=self.revision,
             jobs=self.schedule.jobs if isinstance(self.schedule, PerTest) else 1,
             whole_suite=isinstance(self.schedule, WholeSuite),
+            selected=self.schedule.select if isinstance(self.schedule, PerTest) else (),
             tests=tuple(tests),
         )
         write(self.root / "run.json", record)
@@ -150,6 +153,8 @@ class SuiteRun:
         cases = self.client.tests()
         if not cases:
             raise RuntimeError(f"the {self.deployment.tier} suite lists no tests")
+        if isinstance(self.schedule, PerTest) and self.schedule.select:
+            cases = selected(cases, self.schedule.select, self.deployment.tier)
         durations = self.previous_durations()
         known = sorted(cases, key=lambda case: durations.get(case.name, float("inf")))
         first, rest = known[0], sorted(known[1:], key=lambda case: -durations.get(case.name, float("inf")))
@@ -168,3 +173,12 @@ class SuiteRun:
         self.finish(ordered)
         print(f">> per-test run: {self.root}")
         return 0 if all(test.exit_code == 0 for test in ordered) else 1
+
+
+def selected(cases: list[TestCase], select: tuple[str, ...], tier: str) -> list[TestCase]:
+    """The cases whose id contains any of ``select``: a whole id, a file, or a test's name."""
+    chosen = [case for case in cases if any(part in case.name for part in select)]
+    if not chosen:
+        raise RuntimeError(f"no test of the {tier} suite matches {' or '.join(select)}")
+    print(f">> selected {len(chosen)} of {len(cases)} tests: {' or '.join(select)}")
+    return chosen

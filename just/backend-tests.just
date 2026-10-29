@@ -12,15 +12,31 @@ INTEGRATION_COVERAGE_PARTS := COVERAGE_DATA + "/integration-parts"
 # and their suites come from pyproject.toml (scripts/workspace.py).
 
 # Run backend packages' unit suites, each into its own unit coverage part (e.g. `just test-unit-package core api`).
+# The packages run side by side, each into a log of its own, shown in order once it ends.
 [group('Backend tests')]
 test-unit-package +packages:
     #!/usr/bin/env bash
     set -euo pipefail
     rm -f {{ quote(COVERAGE_DATA + "/unit/.coverage") }}
+    logs=$(mktemp -d)
+    pids=()
     for package in {{ packages }}; do
         mkdir -p {{ quote(UNIT_COVERAGE_PARTS) }}/"$package"
-        COVERAGE_FILE={{ quote(UNIT_COVERAGE_PARTS) }}/"$package"/.coverage pytest $(python scripts/workspace.py suites unit "$package") --cov --cov-report=
+        COVERAGE_FILE={{ quote(UNIT_COVERAGE_PARTS) }}/"$package"/.coverage pytest $(python scripts/workspace.py suites unit "$package") --cov --cov-report= > "$logs/${package//\//-}.log" 2>&1 &
+        pids+=($!)
     done
+    failed=()
+    index=0
+    for package in {{ packages }}; do
+        status=0
+        wait "${pids[$index]}" || status=$?
+        index=$((index + 1))
+        echo ">> $package unit tests"
+        cat "$logs/${package//\//-}.log"
+        [[ $status -eq 0 ]] || failed+=("$package")
+    done
+    rm -r "$logs"
+    [[ ${#failed[@]} -eq 0 ]] || { echo ">> unit tests failed in: ${failed[*]}" >&2; exit 1; }
 
 # Run backend packages' integration suites, each into its own integration coverage part; packages without one are skipped.
 [group('Backend tests')]

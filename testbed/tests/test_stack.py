@@ -35,6 +35,7 @@ def test_stack_clis_reject_invalid_combinations() -> None:
         ["images", "up", "--compute-locations", "0"],
         ["e2e", "--script", "walkthrough.py"],
         ["e2e", "--script", "suite.py", "--tier", "t", "--jobs", "2"],
+        ["e2e", "--script", "suite.py", "--tier", "t", "--select", "test_x"],
         [
             "image-suite",
             "--suite",

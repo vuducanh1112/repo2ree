@@ -26,17 +26,20 @@ _source-stack-playwright project locations mode docker_mode:
 [group('E2E tests')]
 test-e2e-gui locations=DEFAULT_E2E_LOCATIONS mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE: build-e2e-bundles (_source-stack-playwright "e2e-gui" locations mode docker_mode)
 
+# The per-test tiers below take trailing parts of test ids, and then run only the tests whose id
+# contains one (e.g. `just test-e2e-faults 4 test_a_paused`); a run limited so certifies nothing.
+
 # Run the instant GUI tier: each test on a fresh stack, into test-artifacts/e2e/<run>/tests/<test>/.
 [group('E2E tests')]
-test-e2e-gui-instant mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE jobs=E2E_JOBS: build-e2e-bundles (_e2e-gui-instant jobs mode docker_mode)
+test-e2e-gui-instant mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE jobs=E2E_JOBS *select: build-e2e-bundles (_e2e-gui-instant jobs mode docker_mode select)
 
 # Run the system tier, no browser: each test on a fresh stack, into test-artifacts/e2e/<run>/tests/<test>/.
 [group('E2E tests')]
-test-e2e-system locations="1" mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE jobs=E2E_JOBS: build-e2e-bundles (_e2e-system jobs locations mode docker_mode)
+test-e2e-system locations="1" mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE jobs=E2E_JOBS *select: build-e2e-bundles (_e2e-system jobs locations mode docker_mode select)
 
 # Run the fault suite, a tier of the assurance gate: each test on a fresh stack that injects the faults it asks for.
 [group('E2E tests')]
-test-e2e-faults jobs=E2E_JOBS: build-e2e-bundles (_e2e-faults jobs)
+test-e2e-faults jobs=E2E_JOBS *select: build-e2e-bundles (_e2e-faults jobs select)
 
 # Run seeded random author sessions with faults between steps, not gated: each seed on a fresh stack, replayable.
 [group('E2E tests')]
@@ -59,6 +62,11 @@ test-e2e-review mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_P
 [group('Machines')]
 on machine +recipe:
     python -m repo2ree_testbed machine run {{ quote(machine) }} {{ recipe }}
+
+# Run a recipe on a machine against the working tree, committed beside the branch (e.g. `just on-wip vm test-e2e-faults 8 test_a_paused`).
+[group('Machines')]
+on-wip machine +recipe:
+    python -m repo2ree_testbed machine run --wip {{ quote(machine) }} {{ recipe }}
 
 # Run the assurance gate on a machine with that machine's jobs, and check its receipt holds for HEAD.
 [group('Machines')]

@@ -58,6 +58,8 @@ class RunRecord(Record):
     build_revision: str
     jobs: int
     whole_suite: bool = False
+    # What a per-test run was limited to; empty when it ran every test its suite lists.
+    selected: tuple[str, ...] = ()
     tests: tuple[RunTest, ...]
 
     def with_tests(self, tests: tuple[RunTest, ...]) -> RunRecord:

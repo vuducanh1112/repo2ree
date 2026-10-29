@@ -29,8 +29,10 @@ machine shows it again and brings its results back before starting anything of i
 from __future__ import annotations
 
 import argparse
+import os
 import shlex
 import subprocess
+import tempfile
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -320,17 +322,50 @@ def _results(written: Sequence[str]) -> list[str]:
 def committed_head() -> str:
     """HEAD, refusing uncommitted changes: what a machine runs is a commit, so nothing else may count."""
     if capture(["git", "status", "--porcelain"]):
-        raise SystemExit(">> the working tree is not clean; commit first, since a machine runs a commit")
+        raise SystemExit(
+            ">> the working tree is not clean; commit first, since a machine runs a commit"
+            " (or `just on-wip` to run the working tree as a commit of its own)"
+        )
     return capture(["git", "rev-parse", "HEAD"])
+
+
+# The author of a working-tree commit when the developer has configured none.
+WIP_IDENTITY = {
+    "GIT_AUTHOR_NAME": "repo2ree testbed",
+    "GIT_AUTHOR_EMAIL": "testbed@invalid",
+    "GIT_COMMITTER_NAME": "repo2ree testbed",
+    "GIT_COMMITTER_EMAIL": "testbed@invalid",
+}
+
+
+def working_tree_commit() -> str:
+    """The working tree as a commit on HEAD, made beside the branch: neither HEAD nor the index moves.
+
+    It holds what ``git add -A`` would stage, untracked files included and ignored ones not.
+    Nothing but the machine's ``refs/testbed/head`` reaches it, and a receipt it earns binds
+    its tree, which only a commit of exactly that content can claim. A clean tree is HEAD.
+    """
+    if not capture(["git", "status", "--porcelain"]):
+        return capture(["git", "rev-parse", "HEAD"])
+    with tempfile.TemporaryDirectory() as scratch:
+        index = {**os.environ, "GIT_INDEX_FILE": str(Path(scratch) / "index")}
+        capture(["git", "read-tree", "HEAD"], env=index, check=True)
+        capture(["git", "add", "-A"], env=index, check=True)
+        tree = capture(["git", "write-tree"], env=index, check=True)
+    author = {} if capture(["git", "config", "user.email"]) else WIP_IDENTITY
+    message = "work in progress, run on a machine"
+    return capture(["git", "commit-tree", tree, "-p", "HEAD", "-m", message], env={**os.environ, **author}, check=True)
 
 
 def gate(machine: Machine, jobs: int | None) -> int:
     return run_recipe(machine, ["assurance-gate", str(jobs or machine.config.jobs)])
 
 
-def run_recipe(machine: Machine, recipe: Sequence[str]) -> int:
-    revision = committed_head() if machine.remote else "HEAD"
-    return machine.run(revision, ["just", *recipe])
+def run_recipe(machine: Machine, recipe: Sequence[str], *, wip: bool = False) -> int:
+    """Run ``recipe`` there: HEAD, or with ``wip`` the working tree as a commit of its own."""
+    if not machine.remote:
+        return machine.run("HEAD", ["just", *recipe])
+    return machine.run(working_tree_commit() if wip else committed_head(), ["just", *recipe])
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -345,6 +380,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     gating.add_argument("machine")
     gating.add_argument("--jobs", type=int, help="stacks side by side per tier (default: the machine's)")
     running = commands.add_parser("run", help="run a just recipe there and bring back what it wrote")
+    running.add_argument("--wip", action="store_true", help="run the working tree, committed beside the branch")
     running.add_argument("machine")
     running.add_argument("recipe", nargs=argparse.REMAINDER)
     args = parser.parse_args(argv)
@@ -369,7 +405,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return gate(machine, args.jobs)
     if not args.recipe:
         parser.error("run needs a recipe")
-    return run_recipe(machine, args.recipe)
+    return run_recipe(machine, args.recipe, wip=args.wip)
 
 
 if __name__ == "__main__":

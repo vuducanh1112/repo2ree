@@ -41,6 +41,12 @@ def parse(argv: list[str] | None = None) -> Invocation:
     parser.add_argument("--per-test", action="store_true", help="run each test on a fresh stack of its own")
     parser.add_argument("--compute-locations", type=positive, default=1)
     parser.add_argument("--jobs", type=positive, default=1, help="with --per-test: stacks run side by side")
+    parser.add_argument(
+        "--select",
+        action="append",
+        default=None,
+        help="with --per-test: run only the tests whose id contains one of these space-separated parts (repeatable)",
+    )
     parser.add_argument("--mode", choices=get_args(Mode.__value__), default="provider")
     parser.add_argument("--docker-mode", choices=get_args(DockerMode.__value__), default="dind")
     parser.add_argument("--state-root", type=Path, default=ROOT / "test-artifacts/state")
@@ -55,6 +61,9 @@ def parse(argv: list[str] | None = None) -> Invocation:
         parser.error("--jobs runs stacks side by side; it needs --per-test")
     if args.record and args.per_test:
         parser.error("--record records one session; it does not combine with --per-test")
+    select = tuple(part for value in args.select or () for part in value.split())
+    if select and not args.per_test:
+        parser.error("--select picks tests to run each on a stack of its own; it needs --per-test")
     if args.script and not args.tier:
         parser.error("--script needs --tier <name> to say which tier it measures")
     client: Client
@@ -75,7 +84,7 @@ def parse(argv: list[str] | None = None) -> Invocation:
         exec_bundle=args.exec_bundle,
         tools_bundle=args.tools_bundle,
     )
-    return Invocation(deployment, client, PerTest(args.jobs) if args.per_test else WholeSuite())
+    return Invocation(deployment, client, PerTest(args.jobs, select) if args.per_test else WholeSuite())
 
 
 def main() -> int:

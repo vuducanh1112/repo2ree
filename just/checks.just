@@ -131,4 +131,5 @@ check: check-docs check-scripts check-nix check-gui check-backend check-assuranc
 
 # Run every container-free unit test suite.
 [group('Tests')]
+[parallel]
 test-unit: test-scripts test-gui test-backend-unit test-assurance test-tooling

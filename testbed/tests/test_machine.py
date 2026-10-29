@@ -1,5 +1,5 @@
 import shlex
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import pytest
@@ -11,6 +11,7 @@ from repo2ree_testbed.runs.machine import (
     INTERRUPTED,
     SSH_FAILED,
     SSH_OPTIONS,
+    WIP_IDENTITY,
     Machine,
     gate,
     run_recipe,
@@ -292,6 +293,74 @@ def test_a_machine_runs_only_commits(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(machine_mod, "capture", lambda argv: " M core/x.py")
     with pytest.raises(SystemExit, match="commit first"):
         gate(Machine("vm", VM, FakeRunner()), None)
+
+
+WIP = "fedcba9876543210fedcba9876543210fedcba98"
+
+
+class WorkingTree:
+    """A checkout with uncommitted changes: what each git call was given, and its answer."""
+
+    def __init__(self, *, email: str = "") -> None:
+        self.email = email
+        self.calls: list[tuple[list[str], dict[str, str]]] = []
+
+    def __call__(self, argv: Sequence[str], *, env: Mapping[str, str] | None = None, check: bool = False) -> str:
+        self.calls.append((list(argv), dict(env or {})))
+        match list(argv):
+            case ["git", "status", "--porcelain"]:
+                return " M core/x.py\n?? notes.txt"
+            case ["git", "write-tree"]:
+                return "tree-of-the-working-tree"
+            case ["git", "config", "user.email"]:
+                return self.email
+            case ["git", "commit-tree", *_]:
+                return WIP
+        return ""
+
+    def env_of(self, *argv: str) -> dict[str, str]:
+        return next(env for call, env in self.calls if call == list(argv))
+
+
+def _shipped(runner: FakeRunner) -> list[str]:
+    return [call[-1].removesuffix(":refs/testbed/head") for call in runner.calls if "push" in call]
+
+
+def test_a_working_tree_runs_as_a_commit_beside_the_branch(monkeypatch: pytest.MonkeyPatch) -> None:
+    tree = WorkingTree()
+    monkeypatch.setattr(machine_mod, "capture", tree)
+    runner = FakeRunner(("fetched", ""), ("ended", f"{WIP} just test-e2e-system"))
+
+    assert run_recipe(Machine("vm", VM, runner), ["test-e2e-system"], wip=True) == 0
+
+    assert _shipped(runner) == [WIP]
+    # Staged into an index of its own, so neither the branch nor the developer's index moves.
+    index = tree.env_of("git", "add", "-A")["GIT_INDEX_FILE"]
+    assert index == tree.env_of("git", "read-tree", "HEAD")["GIT_INDEX_FILE"]
+    assert index == tree.env_of("git", "write-tree")["GIT_INDEX_FILE"]
+    assert not index.startswith(str(ROOT))
+    commit = next(call for call, _env in tree.calls if call[:2] == ["git", "commit-tree"])
+    assert commit[2:5] == ["tree-of-the-working-tree", "-p", "HEAD"]
+    assert not any(call[:2] in (["git", "commit"], ["git", "stash"]) for call, _env in tree.calls)
+
+
+def test_a_working_tree_commit_is_authored_by_the_developer_or_else_the_testbed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def author(email: str) -> dict[str, str]:
+        tree = WorkingTree(email=email)
+        monkeypatch.setattr(machine_mod, "capture", tree)
+        run_recipe(Machine("vm", VM, FakeRunner(("fetched", ""))), ["test-e2e-system"], wip=True)
+        return next(env for call, env in tree.calls if call[:2] == ["git", "commit-tree"])
+
+    assert WIP_IDENTITY.items() <= author("").items()
+    assert author("someone@example.org").get("GIT_AUTHOR_EMAIL") != WIP_IDENTITY["GIT_AUTHOR_EMAIL"]
+
+
+def test_a_clean_working_tree_runs_as_head() -> None:
+    runner = FakeRunner(("fetched", ""), ("ended", SYSTEM))
+    assert run_recipe(Machine("vm", VM, runner), ["test-e2e-system"], wip=True) == 0
+    assert _shipped(runner) == [REVISION]
 
 
 def test_cancelling_restarts_the_container_and_cleans_up_what_the_job_left() -> None:
