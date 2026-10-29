@@ -1,0 +1,267 @@
+{
+  "seal": {
+    "ree_digest": "sha256:4d62210faeba8488e4d0915ae212d4ea59a1128c755d111755fd1c2884588042",
+    "sealed_at": "2026-10-29T19:59:49.052140Z"
+  },
+  "subject": {
+    "capture": {
+      "lfs_paths": [
+        "results/python-hello/result.txt",
+        "snapshot.tar.gz"
+      ],
+      "version": 2
+    },
+    "contents": {
+      "entries": [
+        {
+          "digest": "sha256:d106f60f34d89316fa0280332859cef814e8fe02c35fcd5375c41b3b800f945b",
+          "path": ".gitattributes",
+          "size": 126
+        },
+        {
+          "digest": "sha256:795b31c5262bab1d4fcfbdc514ce5bc85171cc30c3a524aa8f6ed6cddd45c00b",
+          "path": ".gitignore",
+          "size": 159
+        },
+        {
+          "digest": "sha256:0c7bfd72262a97d37d39df1763ea731fb84f1e4acd410f38c2b7dcb2bd6174c9",
+          "path": ".workspace.materialized.json",
+          "size": 866
+        },
+        {
+          "digest": "sha256:467d36d953956d7a4dda1a40f1f7ad0c5d40d8f13181abb4410f4189f3bd8f20",
+          "path": "REPRODUCING.md",
+          "size": 3749
+        },
+        {
+          "digest": "sha256:a5497f9e702d9c21404b0a1914e7d6528c50b4a70be492277194defe08053850",
+          "path": "acquire_source.sh",
+          "size": 2711
+        },
+        {
+          "digest": "sha256:43323c8082cdc452d6814cd424f8d4c962ceac2ae97e4ce94662d78db7bc0030",
+          "path": "artifacts/reproducibility-report.json",
+          "size": 3010
+        },
+        {
+          "digest": "sha256:b2d07a7248c66d2711ef139db350d1e02738449b5f04c3873fd2a2b0e6ac95de",
+          "path": "artifacts/sbom.json",
+          "size": 1080162
+        },
+        {
+          "digest": "sha256:357cba6997f3310ee936f8187ddc74ed83d765d0e68ff9e21350573236483e8e",
+          "path": "materialize_workspace.sh",
+          "size": 1161
+        },
+        {
+          "digest": "sha256:886591272876dfb3d2019886d7ec5bcb1c54f09a8d632c0c6d225c96e334ea5d",
+          "path": "overlay/ree-scripts/activation.sh",
+          "size": 340
+        },
+        {
+          "digest": "sha256:36d9b99cf89568e0e1ac80877e1f012ea85ee8f76ba605050da0ca2bb207c755",
+          "path": "overlay/ree-scripts/build_script.sh",
+          "size": 338
+        },
+        {
+          "digest": "sha256:e63d4aa9b560be489698b757c2034c9de57fd797a5a01b1a6b004cf332eddc0d",
+          "path": "overlay/ree-scripts/experiments/python-hello.sh",
+          "size": 357
+        },
+        {
+          "digest": "sha256:fec9ba1071e73fb662045a1f0225a1d298b9548db3c8edf1b78154b9933400b1",
+          "path": "overlay/ree-scripts/experiments/python-hello.verify.sh",
+          "size": 170
+        },
+        {
+          "digest": "sha256:eb350ba0bd51631d3dd35c6a78db5984b24dd6c59bbb896d673bab666f0943c5",
+          "path": "results/python-hello/result.txt",
+          "size": 425
+        },
+        {
+          "digest": "sha256:f300a016407f4f0753aba9ec5870b314cf9ab684ca0c301bcc846bc721447071",
+          "path": "run.sh",
+          "size": 7974
+        },
+        {
+          "digest": "sha256:ea32e97889dea3b8f75ef8d17bf1d99e0bf071c7cac1fad111e24fd15c98e86b",
+          "path": "snapshot.tar.gz",
+          "size": 743
+        }
+      ]
+    },
+    "definition": {
+      "build_runtime": {
+        "build_runtime_script_digest": "sha256:36d9b99cf89568e0e1ac80877e1f012ea85ee8f76ba605050da0ca2bb207c755",
+        "build_runtime_script_path": "ree-scripts/build_script.sh",
+        "build_runtime_script_size": 338,
+        "runtime_path": "python_hello_world/runtime.tar"
+      },
+      "catalog": {
+        "contributors": [],
+        "description": "A reusable execution environment for the Python hello world archive.",
+        "keywords": [],
+        "version": "1.0.0",
+        "website": ""
+      },
+      "experiments": [
+        {
+          "name": "python-hello",
+          "output_paths": [
+            "result.txt"
+          ],
+          "run_script_digest": "sha256:e63d4aa9b560be489698b757c2034c9de57fd797a5a01b1a6b004cf332eddc0d",
+          "run_script_path": "ree-scripts/experiments/python-hello.sh",
+          "run_script_size": 357,
+          "verify_script_digest": "sha256:fec9ba1071e73fb662045a1f0225a1d298b9548db3c8edf1b78154b9933400b1",
+          "verify_script_path": "ree-scripts/experiments/python-hello.verify.sh",
+          "verify_script_size": 170
+        }
+      ],
+      "hardware": {
+        "cpus": {
+          "Intel Core i9-14900K": {
+            "architecture": "",
+            "cores_per_cpu": 1,
+            "extra_info": {},
+            "quantity": 1,
+            "threads_per_core": 1,
+            "vendor": ""
+          }
+        },
+        "extra_info": {},
+        "gpus": {},
+        "memory": {},
+        "network": {},
+        "storage": {}
+      },
+      "name": "ree-hello-world",
+      "source": {
+        "source_type": "tarball"
+      },
+      "test_activation": {
+        "run_script_digest": "sha256:886591272876dfb3d2019886d7ec5bcb1c54f09a8d632c0c6d225c96e334ea5d",
+        "run_script_path": "ree-scripts/activation.sh",
+        "run_script_size": 340
+      }
+    },
+    "receipts": {
+      "build": {
+        "build_runtime_script_digest": "sha256:36d9b99cf89568e0e1ac80877e1f012ea85ee8f76ba605050da0ca2bb207c755",
+        "build_runtime_script_path": "ree-scripts/build_script.sh",
+        "duration_ms": 19187,
+        "finished_at": "2026-08-31T10:11:36.665378Z",
+        "operation": "build_runtime",
+        "produced_runtime_digest": "sha256:0ca3996df3011074fb51d01391911b691f7497a393e0173ac16d02950dafd9f2",
+        "recorded_at": "2026-08-31T10:11:36.665378Z",
+        "run_id": "build-27d8640efe5248f4a769d7363625fe1c",
+        "runtime_path": "python_hello_world/runtime.tar",
+        "schema_version": 1,
+        "snapshot_digest": "sha256:ea32e97889dea3b8f75ef8d17bf1d99e0bf071c7cac1fad111e24fd15c98e86b",
+        "started_at": "2026-08-31T10:11:17.477642Z",
+        "workspace_drift": {
+          "changed_path_count": 0,
+          "changed_paths": [],
+          "status": "clean"
+        }
+      },
+      "evaluation": {
+        "analyzer_version": "1",
+        "dependency_count": 1,
+        "dependency_level": 2,
+        "duration_ms": 0,
+        "environment_level": 1,
+        "finished_at": "2026-08-31T10:10:53.614433Z",
+        "machine_level": 0,
+        "manifest_count": 1,
+        "operation": "evaluate_reproducibility",
+        "overlay_digest": "sha256:bdb2e28261abfa524839c2b9d52542d671b18c1b065d189546c81e591ebcfdfd",
+        "recorded_at": "2026-08-31T10:10:53.614433Z",
+        "report_digest": "sha256:43323c8082cdc452d6814cd424f8d4c962ceac2ae97e4ce94662d78db7bc0030",
+        "report_path": "artifacts/reproducibility-report.json",
+        "run_id": "evaluate-1b41b25796af481286072bb753c16707",
+        "schema_version": 1,
+        "snapshot_digest": "sha256:ea32e97889dea3b8f75ef8d17bf1d99e0bf071c7cac1fad111e24fd15c98e86b",
+        "started_at": "2026-08-31T10:10:53.613492Z",
+        "strict": false
+      },
+      "experiments": {
+        "python-hello": {
+          "duration_ms": 712,
+          "experiment_name": "python-hello",
+          "finished_at": "2026-08-31T10:12:46.835830Z",
+          "operation": "run_experiment",
+          "produced_output_digest": "sha256:8413a8c8bd8aaf94d7404d59c4c62734fcd0cd5577e22efc5c19b43c4bc32e14",
+          "recorded_at": "2026-08-31T10:12:46.835830Z",
+          "run_exit_code": 0,
+          "run_id": "experiment-91945998ff924b439f810dea1f412592",
+          "run_script_digest": "sha256:e63d4aa9b560be489698b757c2034c9de57fd797a5a01b1a6b004cf332eddc0d",
+          "runtime_digest": "sha256:0ca3996df3011074fb51d01391911b691f7497a393e0173ac16d02950dafd9f2",
+          "schema_version": 1,
+          "snapshot_digest": "sha256:ea32e97889dea3b8f75ef8d17bf1d99e0bf071c7cac1fad111e24fd15c98e86b",
+          "started_at": "2026-08-31T10:12:46.122870Z",
+          "verify_exit_code": 0,
+          "verify_script_digest": "sha256:fec9ba1071e73fb662045a1f0225a1d298b9548db3c8edf1b78154b9933400b1"
+        }
+      },
+      "sbom": {
+        "duration_ms": 1221,
+        "finished_at": "2026-08-31T10:11:45.434075Z",
+        "operation": "generate_sbom",
+        "recorded_at": "2026-08-31T10:11:45.434075Z",
+        "run_id": "sbom-384f0df285864ba1bc9e18f952a26c19",
+        "runtime_digest": "sha256:0ca3996df3011074fb51d01391911b691f7497a393e0173ac16d02950dafd9f2",
+        "runtime_path": "python_hello_world/runtime.tar",
+        "sbom_digest": "sha256:b2d07a7248c66d2711ef139db350d1e02738449b5f04c3873fd2a2b0e6ac95de",
+        "sbom_format": "cyclonedx-json",
+        "sbom_path": "artifacts/sbom.json",
+        "schema_version": 1,
+        "started_at": "2026-08-31T10:11:44.212172Z",
+        "tool_version": "1.51.0"
+      },
+      "sbom_cross_check": {
+        "declared_direct_total": 1,
+        "duration_ms": 11,
+        "finished_at": "2026-08-31T10:11:53.681916Z",
+        "observed_matched": 1,
+        "observed_total": 2853,
+        "operation": "cross_check_sbom",
+        "recorded_at": "2026-08-31T10:11:53.681916Z",
+        "report_digest": "sha256:43323c8082cdc452d6814cd424f8d4c962ceac2ae97e4ce94662d78db7bc0030",
+        "run_id": "crosscheck-c4737fd855d746bc947f615ecc6aac34",
+        "sbom_digest": "sha256:b2d07a7248c66d2711ef139db350d1e02738449b5f04c3873fd2a2b0e6ac95de",
+        "schema_version": 1,
+        "started_at": "2026-08-31T10:11:53.670494Z",
+        "undeclared_same_ecosystem": 23,
+        "version_mismatches": 0
+      },
+      "source": {
+        "duration_ms": 106,
+        "finished_at": "2026-08-31T10:10:22.483546Z",
+        "observed_swhid": "swh:1:dir:74737de6eb3cce57672e6a193df8a372f1d98928",
+        "operation": "acquire_source",
+        "recorded_at": "2026-08-31T10:10:22.483546Z",
+        "run_id": "source-f69645136bdb4b0ca3356d5e5cc4b52b",
+        "schema_version": 1,
+        "snapshot_digest": "sha256:ea32e97889dea3b8f75ef8d17bf1d99e0bf071c7cac1fad111e24fd15c98e86b",
+        "source_type": "tarball",
+        "started_at": "2026-08-31T10:10:22.377344Z"
+      },
+      "test_activation": {
+        "duration_ms": 305,
+        "finished_at": "2026-08-31T10:12:13.044751Z",
+        "operation": "test_activation",
+        "recorded_at": "2026-08-31T10:12:13.044751Z",
+        "run_exit_code": 0,
+        "run_id": "activation-10778839f2094ad4ac7d71d26ace4a92",
+        "run_script_digest": "sha256:886591272876dfb3d2019886d7ec5bcb1c54f09a8d632c0c6d225c96e334ea5d",
+        "runtime_digest": "sha256:0ca3996df3011074fb51d01391911b691f7497a393e0173ac16d02950dafd9f2",
+        "runtime_path": "python_hello_world/runtime.tar",
+        "schema_version": 1,
+        "snapshot_digest": "sha256:ea32e97889dea3b8f75ef8d17bf1d99e0bf071c7cac1fad111e24fd15c98e86b",
+        "started_at": "2026-08-31T10:12:12.739603Z"
+      }
+    },
+    "schema_version": 1
+  }
+}

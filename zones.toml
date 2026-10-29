@@ -140,7 +140,7 @@ summary = "How the product is built, deployed, and described to clients."
 "docker-compose.yml" = "The deployment stack"
 "docker-compose.dev.yml" = "Dev overrides"
 "docker-compose.workbench.yml" = "A standalone workbench"
-"contracts/" = "OpenAPI, the environment-variable contract, experiment slugs, the REE schema"
+"contracts/" = "OpenAPI, the environment-variable contract, experiment slugs, the REE and protocol schemas"
 
 [assurance]
 summary = "Evidence about the product, gathered and drawn from outside it; nothing here ships."
