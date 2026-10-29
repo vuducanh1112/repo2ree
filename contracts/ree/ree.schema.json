@@ -1,0 +1,1831 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:repo2ree:ree:1",
+  "$defs": {
+    "AcquireSourceReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "run_id": {
+          "title": "Run Id",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "finished_at": {
+          "format": "date-time",
+          "title": "Finished At",
+          "type": "string"
+        },
+        "duration_ms": {
+          "minimum": 0,
+          "title": "Duration Ms",
+          "type": "integer"
+        },
+        "recorded_at": {
+          "format": "date-time",
+          "title": "Recorded At",
+          "type": "string"
+        },
+        "operation": {
+          "const": "acquire_source",
+          "default": "acquire_source",
+          "title": "Operation",
+          "type": "string"
+        },
+        "origin_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Origin Url"
+        },
+        "source_type": {
+          "enum": [
+            "",
+            "git",
+            "hg",
+            "svn",
+            "cvs",
+            "bzr",
+            "tarball",
+            "zip"
+          ],
+          "title": "Source Type",
+          "type": "string"
+        },
+        "requested_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Requested Ref"
+        },
+        "resolved_revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resolved Revision"
+        },
+        "observed_swhid": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observed Swhid"
+        },
+        "snapshot_digest": {
+          "title": "Snapshot Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "started_at",
+        "finished_at",
+        "duration_ms",
+        "recorded_at",
+        "source_type",
+        "snapshot_digest"
+      ],
+      "title": "AcquireSourceReceipt",
+      "type": "object"
+    },
+    "BuildRuntimeDefinition": {
+      "additionalProperties": false,
+      "description": "The build recipe: the script that runs, and what running it must leave.\n\n``runtime_path`` is where the build is expected to write its runtime, and it\nis optional only because a fresh REE is seeded with this script before it\nhas a source — there is nothing yet to say where the artifact will land.\nDeclaring it is an authoring act, and the build step refuses to run until it\nhappens; a build with nowhere to look produces no evidence anyone can check.",
+      "properties": {
+        "build_runtime_script_path": {
+          "default": "ree-scripts/build_script.sh",
+          "title": "Build Runtime Script Path",
+          "type": "string"
+        },
+        "build_runtime_script_digest": {
+          "title": "Build Runtime Script Digest",
+          "type": "string"
+        },
+        "build_runtime_script_size": {
+          "minimum": 0,
+          "title": "Build Runtime Script Size",
+          "type": "integer"
+        },
+        "runtime_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Runtime Path"
+        }
+      },
+      "required": [
+        "build_runtime_script_digest",
+        "build_runtime_script_size"
+      ],
+      "title": "BuildRuntimeDefinition",
+      "type": "object"
+    },
+    "BuildRuntimeReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "run_id": {
+          "title": "Run Id",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "finished_at": {
+          "format": "date-time",
+          "title": "Finished At",
+          "type": "string"
+        },
+        "duration_ms": {
+          "minimum": 0,
+          "title": "Duration Ms",
+          "type": "integer"
+        },
+        "recorded_at": {
+          "format": "date-time",
+          "title": "Recorded At",
+          "type": "string"
+        },
+        "operation": {
+          "const": "build_runtime",
+          "default": "build_runtime",
+          "title": "Operation",
+          "type": "string"
+        },
+        "snapshot_digest": {
+          "title": "Snapshot Digest",
+          "type": "string"
+        },
+        "build_runtime_script_path": {
+          "title": "Build Runtime Script Path",
+          "type": "string"
+        },
+        "build_runtime_script_digest": {
+          "title": "Build Runtime Script Digest",
+          "type": "string"
+        },
+        "workspace_drift": {
+          "$ref": "#/$defs/WorkspaceDrift"
+        },
+        "runtime_path": {
+          "title": "Runtime Path",
+          "type": "string"
+        },
+        "produced_runtime_digest": {
+          "title": "Produced Runtime Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "started_at",
+        "finished_at",
+        "duration_ms",
+        "recorded_at",
+        "snapshot_digest",
+        "build_runtime_script_path",
+        "build_runtime_script_digest",
+        "workspace_drift",
+        "runtime_path",
+        "produced_runtime_digest"
+      ],
+      "title": "BuildRuntimeReceipt",
+      "type": "object"
+    },
+    "BundleContents": {
+      "additionalProperties": false,
+      "description": "Materialized payload inventory bound by the seal.\n\nCapture-policy version 2 uses repository-relative paths and actual LFS\npayload digests, excluding Git storage and the self-containing manifest.\nLegacy inventories retain their original portable-archive path semantics.\nDraft inventories are historical observations, not availability guarantees.",
+      "properties": {
+        "entries": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/BundleEntry"
+          },
+          "title": "Entries",
+          "type": "array"
+        }
+      },
+      "title": "BundleContents",
+      "type": "object"
+    },
+    "BundleEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "digest": {
+          "title": "Digest",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "digest",
+        "size"
+      ],
+      "title": "BundleEntry",
+      "type": "object"
+    },
+    "CPUDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "vendor": {
+          "default": "",
+          "description": "CPU manufacturer, for example Intel or AMD.",
+          "title": "Vendor",
+          "type": "string"
+        },
+        "quantity": {
+          "default": 1,
+          "description": "Number of identical CPU packages installed in the machine.",
+          "minimum": 1,
+          "title": "Quantity",
+          "type": "integer"
+        },
+        "cores_per_cpu": {
+          "default": 1,
+          "description": "Number of physical CPU cores provided by one CPU package.",
+          "minimum": 1,
+          "title": "Cores Per Cpu",
+          "type": "integer"
+        },
+        "threads_per_core": {
+          "default": 1,
+          "description": "Hardware threads exposed by each physical CPU core.",
+          "minimum": 1,
+          "title": "Threads Per Core",
+          "type": "integer"
+        },
+        "architecture": {
+          "default": "",
+          "description": "Instruction set architecture, for example x86_64 or arm64.",
+          "title": "Architecture",
+          "type": "string"
+        },
+        "extra_info": {
+          "additionalProperties": true,
+          "description": "Additional CPU metadata that does not fit the structured CPU schema.",
+          "title": "Extra Info",
+          "type": "object"
+        }
+      },
+      "title": "CPUDefinition",
+      "type": "object"
+    },
+    "CapturePolicy": {
+      "additionalProperties": false,
+      "description": "Versioned payload inclusion, independent of a transient Git index.",
+      "properties": {
+        "version": {
+          "const": 2,
+          "default": 2,
+          "title": "Version",
+          "type": "integer"
+        },
+        "lfs_paths": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Lfs Paths",
+          "type": "array"
+        }
+      },
+      "title": "CapturePolicy",
+      "type": "object"
+    },
+    "Contributor": {
+      "additionalProperties": false,
+      "properties": {
+        "identifier": {
+          "default": "",
+          "title": "Identifier",
+          "type": "string"
+        },
+        "name": {
+          "default": "",
+          "title": "Name",
+          "type": "string"
+        },
+        "affiliation_name": {
+          "default": "",
+          "title": "Affiliation Name",
+          "type": "string"
+        },
+        "affiliation_identifier": {
+          "default": "",
+          "title": "Affiliation Identifier",
+          "type": "string"
+        }
+      },
+      "title": "Contributor",
+      "type": "object"
+    },
+    "CrossCheckSbomReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "run_id": {
+          "title": "Run Id",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "finished_at": {
+          "format": "date-time",
+          "title": "Finished At",
+          "type": "string"
+        },
+        "duration_ms": {
+          "minimum": 0,
+          "title": "Duration Ms",
+          "type": "integer"
+        },
+        "recorded_at": {
+          "format": "date-time",
+          "title": "Recorded At",
+          "type": "string"
+        },
+        "operation": {
+          "const": "cross_check_sbom",
+          "default": "cross_check_sbom",
+          "title": "Operation",
+          "type": "string"
+        },
+        "sbom_digest": {
+          "title": "Sbom Digest",
+          "type": "string"
+        },
+        "report_digest": {
+          "title": "Report Digest",
+          "type": "string"
+        },
+        "declared_direct_total": {
+          "minimum": 0,
+          "title": "Declared Direct Total",
+          "type": "integer"
+        },
+        "observed_matched": {
+          "minimum": 0,
+          "title": "Observed Matched",
+          "type": "integer"
+        },
+        "version_mismatches": {
+          "minimum": 0,
+          "title": "Version Mismatches",
+          "type": "integer"
+        },
+        "undeclared_same_ecosystem": {
+          "minimum": 0,
+          "title": "Undeclared Same Ecosystem",
+          "type": "integer"
+        },
+        "observed_total": {
+          "minimum": 0,
+          "title": "Observed Total",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "run_id",
+        "started_at",
+        "finished_at",
+        "duration_ms",
+        "recorded_at",
+        "sbom_digest",
+        "report_digest",
+        "declared_direct_total",
+        "observed_matched",
+        "version_mismatches",
+        "undeclared_same_ecosystem",
+        "observed_total"
+      ],
+      "title": "CrossCheckSbomReceipt",
+      "type": "object"
+    },
+    "EvaluateReproducibilityReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "run_id": {
+          "title": "Run Id",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "finished_at": {
+          "format": "date-time",
+          "title": "Finished At",
+          "type": "string"
+        },
+        "duration_ms": {
+          "minimum": 0,
+          "title": "Duration Ms",
+          "type": "integer"
+        },
+        "recorded_at": {
+          "format": "date-time",
+          "title": "Recorded At",
+          "type": "string"
+        },
+        "operation": {
+          "const": "evaluate_reproducibility",
+          "default": "evaluate_reproducibility",
+          "title": "Operation",
+          "type": "string"
+        },
+        "snapshot_digest": {
+          "title": "Snapshot Digest",
+          "type": "string"
+        },
+        "overlay_digest": {
+          "title": "Overlay Digest",
+          "type": "string"
+        },
+        "strict": {
+          "title": "Strict",
+          "type": "boolean"
+        },
+        "dependency_level": {
+          "minimum": 0,
+          "title": "Dependency Level",
+          "type": "integer"
+        },
+        "environment_level": {
+          "minimum": 0,
+          "title": "Environment Level",
+          "type": "integer"
+        },
+        "machine_level": {
+          "minimum": 0,
+          "title": "Machine Level",
+          "type": "integer"
+        },
+        "dependency_count": {
+          "minimum": 0,
+          "title": "Dependency Count",
+          "type": "integer"
+        },
+        "manifest_count": {
+          "minimum": 0,
+          "title": "Manifest Count",
+          "type": "integer"
+        },
+        "report_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Report Path"
+        },
+        "report_digest": {
+          "title": "Report Digest",
+          "type": "string"
+        },
+        "analyzer_version": {
+          "minLength": 1,
+          "title": "Analyzer Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "started_at",
+        "finished_at",
+        "duration_ms",
+        "recorded_at",
+        "snapshot_digest",
+        "overlay_digest",
+        "strict",
+        "dependency_level",
+        "environment_level",
+        "machine_level",
+        "dependency_count",
+        "manifest_count",
+        "report_digest",
+        "analyzer_version"
+      ],
+      "title": "EvaluateReproducibilityReceipt",
+      "type": "object"
+    },
+    "ExperimentDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "run_script_path": {
+          "title": "Run Script Path",
+          "type": "string"
+        },
+        "run_script_digest": {
+          "title": "Run Script Digest",
+          "type": "string"
+        },
+        "run_script_size": {
+          "minimum": 0,
+          "title": "Run Script Size",
+          "type": "integer"
+        },
+        "verify_script_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Verify Script Path"
+        },
+        "verify_script_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Verify Script Digest"
+        },
+        "verify_script_size": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Verify Script Size"
+        },
+        "output_paths": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Output Paths",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "run_script_path",
+        "run_script_digest",
+        "run_script_size"
+      ],
+      "title": "ExperimentDefinition",
+      "type": "object"
+    },
+    "GPUDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "vendor": {
+          "default": "",
+          "description": "GPU manufacturer, for example NVIDIA or AMD.",
+          "title": "Vendor",
+          "type": "string"
+        },
+        "quantity": {
+          "default": 1,
+          "description": "Number of identical GPUs installed in the machine.",
+          "minimum": 1,
+          "title": "Quantity",
+          "type": "integer"
+        },
+        "memory_gb": {
+          "default": 0,
+          "description": "On-board memory capacity of one GPU in gibibytes/gigabytes as recorded.",
+          "minimum": 0,
+          "title": "Memory Gb",
+          "type": "number"
+        },
+        "interface": {
+          "default": "",
+          "description": "Host interconnect used by the GPU, for example PCIe 4.0 x16 or SXM4.",
+          "title": "Interface",
+          "type": "string"
+        },
+        "extra_info": {
+          "additionalProperties": true,
+          "description": "Additional GPU metadata that does not fit the structured GPU schema.",
+          "title": "Extra Info",
+          "type": "object"
+        }
+      },
+      "title": "GPUDefinition",
+      "type": "object"
+    },
+    "GenerateSbomReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "run_id": {
+          "title": "Run Id",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "finished_at": {
+          "format": "date-time",
+          "title": "Finished At",
+          "type": "string"
+        },
+        "duration_ms": {
+          "minimum": 0,
+          "title": "Duration Ms",
+          "type": "integer"
+        },
+        "recorded_at": {
+          "format": "date-time",
+          "title": "Recorded At",
+          "type": "string"
+        },
+        "operation": {
+          "const": "generate_sbom",
+          "default": "generate_sbom",
+          "title": "Operation",
+          "type": "string"
+        },
+        "runtime_path": {
+          "title": "Runtime Path",
+          "type": "string"
+        },
+        "runtime_digest": {
+          "title": "Runtime Digest",
+          "type": "string"
+        },
+        "sbom_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sbom Path"
+        },
+        "sbom_digest": {
+          "title": "Sbom Digest",
+          "type": "string"
+        },
+        "sbom_format": {
+          "minLength": 1,
+          "title": "Sbom Format",
+          "type": "string"
+        },
+        "tool_version": {
+          "minLength": 1,
+          "title": "Tool Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "started_at",
+        "finished_at",
+        "duration_ms",
+        "recorded_at",
+        "runtime_path",
+        "runtime_digest",
+        "sbom_digest",
+        "sbom_format",
+        "tool_version"
+      ],
+      "title": "GenerateSbomReceipt",
+      "type": "object"
+    },
+    "HBOM": {
+      "additionalProperties": false,
+      "properties": {
+        "cpus": {
+          "additionalProperties": {
+            "$ref": "#/$defs/CPUDefinition"
+          },
+          "propertyNames": {
+            "minLength": 1
+          },
+          "title": "Cpus",
+          "type": "object"
+        },
+        "gpus": {
+          "additionalProperties": {
+            "$ref": "#/$defs/GPUDefinition"
+          },
+          "propertyNames": {
+            "minLength": 1
+          },
+          "title": "Gpus",
+          "type": "object"
+        },
+        "memory": {
+          "additionalProperties": {
+            "$ref": "#/$defs/MemoryDefinition"
+          },
+          "propertyNames": {
+            "minLength": 1
+          },
+          "title": "Memory",
+          "type": "object"
+        },
+        "storage": {
+          "additionalProperties": {
+            "$ref": "#/$defs/StorageDefinition"
+          },
+          "propertyNames": {
+            "minLength": 1
+          },
+          "title": "Storage",
+          "type": "object"
+        },
+        "network": {
+          "additionalProperties": {
+            "$ref": "#/$defs/NetworkDefinition"
+          },
+          "propertyNames": {
+            "minLength": 1
+          },
+          "title": "Network",
+          "type": "object"
+        },
+        "extra_info": {
+          "additionalProperties": true,
+          "description": "Additional machine-level metadata that does not fit the structured HBOM schema.",
+          "title": "Extra Info",
+          "type": "object"
+        }
+      },
+      "title": "HBOM",
+      "type": "object"
+    },
+    "HardwareDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "cpus": {
+          "additionalProperties": {
+            "$ref": "#/$defs/CPUDefinition"
+          },
+          "propertyNames": {
+            "minLength": 1
+          },
+          "title": "Cpus",
+          "type": "object"
+        },
+        "gpus": {
+          "additionalProperties": {
+            "$ref": "#/$defs/GPUDefinition"
+          },
+          "propertyNames": {
+            "minLength": 1
+          },
+          "title": "Gpus",
+          "type": "object"
+        },
+        "memory": {
+          "additionalProperties": {
+            "$ref": "#/$defs/MemoryDefinition"
+          },
+          "propertyNames": {
+            "minLength": 1
+          },
+          "title": "Memory",
+          "type": "object"
+        },
+        "storage": {
+          "additionalProperties": {
+            "$ref": "#/$defs/StorageDefinition"
+          },
+          "propertyNames": {
+            "minLength": 1
+          },
+          "title": "Storage",
+          "type": "object"
+        },
+        "network": {
+          "additionalProperties": {
+            "$ref": "#/$defs/NetworkDefinition"
+          },
+          "propertyNames": {
+            "minLength": 1
+          },
+          "title": "Network",
+          "type": "object"
+        },
+        "extra_info": {
+          "additionalProperties": true,
+          "description": "Additional machine-level metadata that does not fit the structured HBOM schema.",
+          "title": "Extra Info",
+          "type": "object"
+        }
+      },
+      "title": "HardwareDefinition",
+      "type": "object"
+    },
+    "MemoryDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "vendor": {
+          "default": "",
+          "description": "Memory module manufacturer, for example Samsung or Micron.",
+          "title": "Vendor",
+          "type": "string"
+        },
+        "quantity": {
+          "default": 1,
+          "description": "Number of identical memory modules installed in the machine.",
+          "minimum": 1,
+          "title": "Quantity",
+          "type": "integer"
+        },
+        "capacity_gb": {
+          "default": 0,
+          "description": "Capacity of one memory module in gibibytes/gigabytes as recorded.",
+          "minimum": 0,
+          "title": "Capacity Gb",
+          "type": "number"
+        },
+        "memory_type": {
+          "default": "DDR5",
+          "description": "Memory technology used by the module.",
+          "enum": [
+            "DDR3",
+            "DDR4",
+            "DDR5",
+            "LPDDR4",
+            "LPDDR5",
+            "HBM2",
+            "HBM2e",
+            "HBM3"
+          ],
+          "title": "Memory Type",
+          "type": "string"
+        },
+        "speed_mt_s": {
+          "default": 0,
+          "description": "Rated transfer speed of one memory module in MT/s.",
+          "minimum": 0,
+          "title": "Speed Mt S",
+          "type": "integer"
+        },
+        "extra_info": {
+          "additionalProperties": true,
+          "description": "Additional memory metadata that does not fit the structured memory schema.",
+          "title": "Extra Info",
+          "type": "object"
+        }
+      },
+      "title": "MemoryDefinition",
+      "type": "object"
+    },
+    "NetworkDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "vendor": {
+          "default": "",
+          "description": "Network interface manufacturer, for example Intel, Broadcom, or Mellanox.",
+          "title": "Vendor",
+          "type": "string"
+        },
+        "quantity": {
+          "default": 1,
+          "description": "Number of identical network interfaces installed in the machine.",
+          "minimum": 1,
+          "title": "Quantity",
+          "type": "integer"
+        },
+        "bandwidth_gbps": {
+          "default": 0,
+          "description": "Nominal bandwidth of one interface in gigabits per second.",
+          "minimum": 0,
+          "title": "Bandwidth Gbps",
+          "type": "number"
+        },
+        "network_type": {
+          "default": "ethernet",
+          "description": "Network technology implemented by the interface.",
+          "enum": [
+            "ethernet",
+            "infiniband",
+            "wifi",
+            "cellular"
+          ],
+          "title": "Network Type",
+          "type": "string"
+        },
+        "interface": {
+          "default": "",
+          "description": "Connector or bus used by the interface, for example PCIe 4.0 x8 or M.2 E-key.",
+          "title": "Interface",
+          "type": "string"
+        },
+        "extra_info": {
+          "additionalProperties": true,
+          "description": "Additional network metadata that does not fit the structured network schema.",
+          "title": "Extra Info",
+          "type": "object"
+        }
+      },
+      "title": "NetworkDefinition",
+      "type": "object"
+    },
+    "ObserveHardwareReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "run_id": {
+          "title": "Run Id",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "finished_at": {
+          "format": "date-time",
+          "title": "Finished At",
+          "type": "string"
+        },
+        "duration_ms": {
+          "minimum": 0,
+          "title": "Duration Ms",
+          "type": "integer"
+        },
+        "recorded_at": {
+          "format": "date-time",
+          "title": "Recorded At",
+          "type": "string"
+        },
+        "operation": {
+          "const": "observe_hardware",
+          "default": "observe_hardware",
+          "title": "Operation",
+          "type": "string"
+        },
+        "observation": {
+          "$ref": "#/$defs/HBOM"
+        },
+        "observer_version": {
+          "minLength": 1,
+          "title": "Observer Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "started_at",
+        "finished_at",
+        "duration_ms",
+        "recorded_at",
+        "observation",
+        "observer_version"
+      ],
+      "title": "ObserveHardwareReceipt",
+      "type": "object"
+    },
+    "ReeCatalogMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        },
+        "version": {
+          "default": "",
+          "title": "Version",
+          "type": "string"
+        },
+        "website": {
+          "default": "",
+          "title": "Website",
+          "type": "string"
+        },
+        "keywords": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Keywords",
+          "type": "array"
+        },
+        "contributors": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Contributor"
+          },
+          "title": "Contributors",
+          "type": "array"
+        },
+        "corresponding_author_identifier": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Corresponding Author Identifier"
+        }
+      },
+      "title": "ReeCatalogMetadata",
+      "type": "object"
+    },
+    "ReeDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "default": "",
+          "title": "Name",
+          "type": "string"
+        },
+        "catalog": {
+          "$ref": "#/$defs/ReeCatalogMetadata"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SourceDefinition"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "build_runtime": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BuildRuntimeDefinition"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "test_activation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TestActivationDefinition"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "hardware": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HardwareDefinition"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "experiments": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ExperimentDefinition"
+          },
+          "title": "Experiments",
+          "type": "array"
+        }
+      },
+      "title": "ReeDefinition",
+      "type": "object"
+    },
+    "ReeReceipts": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AcquireSourceReceipt"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "evaluation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EvaluateReproducibilityReceipt"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "hardware_observation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ObserveHardwareReceipt"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "build": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BuildRuntimeReceipt"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "sbom": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GenerateSbomReceipt"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "sbom_cross_check": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CrossCheckSbomReceipt"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "test_activation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TestActivationReceipt"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "experiments": {
+          "additionalProperties": {
+            "$ref": "#/$defs/RunExperimentReceipt"
+          },
+          "title": "Experiments",
+          "type": "object"
+        }
+      },
+      "title": "ReeReceipts",
+      "type": "object"
+    },
+    "ReeSeal": {
+      "additionalProperties": false,
+      "properties": {
+        "sealed_at": {
+          "format": "date-time",
+          "title": "Sealed At",
+          "type": "string"
+        },
+        "ree_digest": {
+          "title": "Ree Digest",
+          "type": "string"
+        },
+        "signature": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Signature"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "sealed_at",
+        "ree_digest"
+      ],
+      "title": "ReeSeal",
+      "type": "object"
+    },
+    "ReeSubject": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "definition": {
+          "$ref": "#/$defs/ReeDefinition"
+        },
+        "receipts": {
+          "$ref": "#/$defs/ReeReceipts"
+        },
+        "contents": {
+          "$ref": "#/$defs/BundleContents"
+        },
+        "capture": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CapturePolicy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "ReeSubject",
+      "type": "object"
+    },
+    "RunExperimentReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "run_id": {
+          "title": "Run Id",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "finished_at": {
+          "format": "date-time",
+          "title": "Finished At",
+          "type": "string"
+        },
+        "duration_ms": {
+          "minimum": 0,
+          "title": "Duration Ms",
+          "type": "integer"
+        },
+        "recorded_at": {
+          "format": "date-time",
+          "title": "Recorded At",
+          "type": "string"
+        },
+        "operation": {
+          "const": "run_experiment",
+          "default": "run_experiment",
+          "title": "Operation",
+          "type": "string"
+        },
+        "experiment_name": {
+          "minLength": 1,
+          "title": "Experiment Name",
+          "type": "string"
+        },
+        "snapshot_digest": {
+          "title": "Snapshot Digest",
+          "type": "string"
+        },
+        "runtime_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Runtime Digest"
+        },
+        "run_script_digest": {
+          "title": "Run Script Digest",
+          "type": "string"
+        },
+        "verify_script_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Verify Script Digest"
+        },
+        "run_exit_code": {
+          "const": 0,
+          "default": 0,
+          "title": "Run Exit Code",
+          "type": "integer"
+        },
+        "verify_exit_code": {
+          "anyOf": [
+            {
+              "const": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Verify Exit Code"
+        },
+        "produced_output_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Produced Output Digest"
+        }
+      },
+      "required": [
+        "run_id",
+        "started_at",
+        "finished_at",
+        "duration_ms",
+        "recorded_at",
+        "experiment_name",
+        "snapshot_digest",
+        "run_script_digest"
+      ],
+      "title": "RunExperimentReceipt",
+      "type": "object"
+    },
+    "Signature": {
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": {
+          "minLength": 1,
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "verification_material": {
+          "minLength": 1,
+          "title": "Verification Material",
+          "type": "string"
+        },
+        "value": {
+          "minLength": 1,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "algorithm",
+        "verification_material",
+        "value"
+      ],
+      "title": "Signature",
+      "type": "object"
+    },
+    "SourceDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "origin_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Origin Url"
+        },
+        "source_type": {
+          "enum": [
+            "",
+            "git",
+            "hg",
+            "svn",
+            "cvs",
+            "bzr",
+            "tarball",
+            "zip"
+          ],
+          "title": "Source Type",
+          "type": "string"
+        },
+        "requested_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Requested Ref"
+        }
+      },
+      "required": [
+        "source_type"
+      ],
+      "title": "SourceDefinition",
+      "type": "object"
+    },
+    "StorageDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "vendor": {
+          "default": "",
+          "description": "Storage device manufacturer, for example Samsung or Seagate.",
+          "title": "Vendor",
+          "type": "string"
+        },
+        "quantity": {
+          "default": 1,
+          "description": "Number of identical storage devices installed in the machine.",
+          "minimum": 1,
+          "title": "Quantity",
+          "type": "integer"
+        },
+        "capacity_gb": {
+          "default": 0,
+          "description": "Capacity of one storage device in gibibytes/gigabytes as recorded.",
+          "minimum": 0,
+          "title": "Capacity Gb",
+          "type": "number"
+        },
+        "storage_type": {
+          "default": "NVMe",
+          "description": "Storage technology used by the device.",
+          "enum": [
+            "HDD",
+            "SSD",
+            "NVMe",
+            "eMMC",
+            "SD"
+          ],
+          "title": "Storage Type",
+          "type": "string"
+        },
+        "interface": {
+          "default": "",
+          "description": "Physical or logical interface, for example SATA III, U.2, or PCIe 5.0 x4.",
+          "title": "Interface",
+          "type": "string"
+        },
+        "extra_info": {
+          "additionalProperties": true,
+          "description": "Additional storage metadata that does not fit the structured storage schema.",
+          "title": "Extra Info",
+          "type": "object"
+        }
+      },
+      "title": "StorageDefinition",
+      "type": "object"
+    },
+    "TestActivationDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "run_script_path": {
+          "default": "ree-scripts/activation.sh",
+          "title": "Run Script Path",
+          "type": "string"
+        },
+        "run_script_digest": {
+          "title": "Run Script Digest",
+          "type": "string"
+        },
+        "run_script_size": {
+          "minimum": 0,
+          "title": "Run Script Size",
+          "type": "integer"
+        },
+        "verify_script_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Verify Script Path"
+        },
+        "verify_script_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Verify Script Digest"
+        },
+        "verify_script_size": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Verify Script Size"
+        }
+      },
+      "required": [
+        "run_script_digest",
+        "run_script_size"
+      ],
+      "title": "TestActivationDefinition",
+      "type": "object"
+    },
+    "TestActivationReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "run_id": {
+          "title": "Run Id",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "finished_at": {
+          "format": "date-time",
+          "title": "Finished At",
+          "type": "string"
+        },
+        "duration_ms": {
+          "minimum": 0,
+          "title": "Duration Ms",
+          "type": "integer"
+        },
+        "recorded_at": {
+          "format": "date-time",
+          "title": "Recorded At",
+          "type": "string"
+        },
+        "operation": {
+          "const": "test_activation",
+          "default": "test_activation",
+          "title": "Operation",
+          "type": "string"
+        },
+        "snapshot_digest": {
+          "title": "Snapshot Digest",
+          "type": "string"
+        },
+        "runtime_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Runtime Path"
+        },
+        "runtime_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Runtime Digest"
+        },
+        "run_script_digest": {
+          "title": "Run Script Digest",
+          "type": "string"
+        },
+        "verify_script_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Verify Script Digest"
+        },
+        "run_exit_code": {
+          "const": 0,
+          "default": 0,
+          "title": "Run Exit Code",
+          "type": "integer"
+        },
+        "verify_exit_code": {
+          "anyOf": [
+            {
+              "const": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Verify Exit Code"
+        }
+      },
+      "required": [
+        "run_id",
+        "started_at",
+        "finished_at",
+        "duration_ms",
+        "recorded_at",
+        "snapshot_digest",
+        "run_script_digest"
+      ],
+      "title": "TestActivationReceipt",
+      "type": "object"
+    },
+    "WorkspaceDrift": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": [
+            "clean",
+            "modified",
+            "unknown"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "changed_paths": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Changed Paths",
+          "type": "array"
+        },
+        "changed_path_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Changed Path Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "WorkspaceDrift",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "subject": {
+      "$ref": "#/$defs/ReeSubject"
+    },
+    "seal": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ReeSeal"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "title": "Ree",
+  "type": "object"
+}
