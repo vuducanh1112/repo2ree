@@ -26,20 +26,22 @@ _source-stack-playwright project locations mode docker_mode:
 [group('E2E tests')]
 test-e2e-gui locations=DEFAULT_E2E_LOCATIONS mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE: build-e2e-bundles (_source-stack-playwright "e2e-gui" locations mode docker_mode)
 
-# The per-test tiers below take trailing parts of test ids, and then run only the tests whose id
-# contains one (e.g. `just test-e2e-faults 4 test_a_paused`); a run limited so certifies nothing.
+# The per-test tiers below run as the assurance gate runs them, with `jobs` stacks side by side.
+# Trailing parts of test ids run only the tests whose id contains one (e.g. `just test-e2e-faults 4
+# test_a_paused`); a run limited so certifies nothing. The modes are the justfile's
+# (`just DEFAULT_E2E_PROVIDER_DOCKER_MODE=host test-e2e-system` overrides one).
 
 # Run the instant GUI tier: each test on a fresh stack, into test-artifacts/e2e/<run>/tests/<test>/.
 [group('E2E tests')]
-test-e2e-gui-instant mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE jobs=E2E_JOBS *select: build-e2e-bundles (_e2e-gui-instant jobs mode docker_mode "tests" select)
+test-e2e-gui-instant jobs=E2E_JOBS *select: build-e2e-bundles (_tier-gui-instant jobs "tests" select)
 
 # Run the system tier, no browser: each test on a fresh stack, into test-artifacts/e2e/<run>/tests/<test>/.
 [group('E2E tests')]
-test-e2e-system locations="1" mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE jobs=E2E_JOBS *select: build-e2e-bundles (_e2e-system jobs locations mode docker_mode "tests" select)
+test-e2e-system jobs=E2E_JOBS *select: build-e2e-bundles (_tier-system jobs "tests" select)
 
 # Run the fault suite, a tier of the assurance gate: each test on a fresh stack that injects the faults it asks for.
 [group('E2E tests')]
-test-e2e-faults jobs=E2E_JOBS *select: build-e2e-bundles (_e2e-faults jobs "tests" select)
+test-e2e-faults jobs=E2E_JOBS *select: build-e2e-bundles (_tier-faults jobs "tests" select)
 
 # Run seeded random author sessions with faults between steps, not gated: each seed on a fresh stack, replayable.
 [group('E2E tests')]
