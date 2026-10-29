@@ -64,6 +64,11 @@ _require-clean-tree:
 generate-diagrams: generate-architecture-diagrams generate-domain-diagrams generate-just-recipe-graph
     @printf '>> diagrams written under %s\n' {{ quote(DIAGRAM_DIR + "/") }}
 
+# Run every generated tree's own prune and list what no one owns (scripts/generated.toml); `--dry-run`, `--remove-unclaimed`.
+[group('Housekeeping')]
+prune *args:
+    python scripts/prune.py {{ args }}
+
 # Build the repository overview in reports/overview/<revision>/ (reports/overview/latest): zones, gates, behaviour, architecture, recipes, configuration, API.
 [group('Repository')]
 repo-overview: generate-diagrams

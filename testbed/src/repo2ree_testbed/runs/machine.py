@@ -66,6 +66,10 @@ SLIM_EXCLUDES = ("! -name '*.tar'", "! -name '*.tar.gz'", "! -name '*.tgz'", "! 
 SHELL = ("direnv", "exec", ".")
 # The Compose project of a remote machine's dev container.
 PROJECT = "repo2ree-dev"
+# What `gc` leaves Docker's build cache, which the dev image and the stacks' images rebuild from.
+BUILD_CACHE_KEPT = "10GB"
+# How long `gc` keeps an image nothing runs: a week of rebuilds stays warm.
+IMAGES_KEPT_FOR = "168h"
 
 
 class Runner(Protocol):
@@ -203,6 +207,31 @@ class Machine:
         )
         self._require(self.runner.call(self._on_host(script)), "remove the container")
         print(f">> removed the dev container, its images, and the clone from {self.name}")
+
+    def gc(self) -> None:
+        """Bound what the machine keeps: the clone's generated trees, Docker's build cache, unused images.
+
+        In the clone, the stacks runs left and every generated tree's own prune (`just prune`); on
+        the host, the build cache down to BUILD_CACHE_KEPT and images nothing runs that are older
+        than IMAGES_KEPT_FOR. The running dev container and its image stay, and so do the bundle
+        stores, which the testbed prunes itself.
+        """
+        if not self.remote:
+            raise SystemExit(f">> {self.name} is this checkout; run `just prune` here")
+        if self.job().state == "running":
+            raise SystemExit(f">> {self.name} is running a job; let it end, or: just machine cancel {self.name}")
+        clone = shlex.join([*SHELL, "bash", "-c", "just stack-clean; just clean-workbenches; just prune"])
+        script = "; ".join(
+            [
+                "df -h / | tail -n 1",
+                f"(test -d {CLONE} && cd {CLONE} && {self._exec} bash -lc {shlex.quote(clone)})",
+                f"docker builder prune -f --max-used-space {BUILD_CACHE_KEPT} > /dev/null",
+                f"docker image prune -a -f --filter until={IMAGES_KEPT_FOR} > /dev/null",
+                "docker system df",
+                "df -h / | tail -n 1",
+            ]
+        )
+        self._require(self.runner.call(self._on_host(script)), "collect garbage")
 
     def _ship(self, revision: str) -> None:
         """Put ``revision`` in the machine's clone, checked out clean."""
@@ -380,6 +409,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         "remove", help="clean up its container's runs, take the container down, and delete the clone"
     ).add_argument("machine")
     commands.add_parser("cancel", help="stop the job running there").add_argument("machine")
+    commands.add_parser(
+        "gc", help="prune the clone's generated trees, Docker's build cache, and unused images there"
+    ).add_argument("machine")
     gating = commands.add_parser("gate", help="run the assurance gate there and bring its receipt and runs back")
     gating.add_argument("machine")
     gating.add_argument("--jobs", type=int, help="stacks side by side per tier (default: the machine's)")
@@ -404,6 +436,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
     if args.command == "cancel":
         machine.cancel()
+        return 0
+    if args.command == "gc":
+        machine.gc()
         return 0
     if args.command == "gate":
         return gate(machine, args.jobs)

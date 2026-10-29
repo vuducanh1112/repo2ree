@@ -1,0 +1,83 @@
+# Every tree a checkout generates and git ignores, who writes it, and how it stays bounded.
+#
+# Each owner keeps what it writes bounded itself: a `prune` command (which takes --dry-run) when
+# it accumulates, or nothing when every run rewrites it in place. `just prune` runs the commands,
+# then lists whatever lies under a root that no entry claims: output that nothing writes any
+# more, from a renamed or retired producer, which no owner will ever clean. A new generated tree
+# needs an entry here, or `just prune` reports it as unclaimed.
+#
+# A claim covers its path and everything under it. Files git tracks under a root (a directory's
+# own .gitignore) are never unclaimed.
+
+roots = ["test-artifacts", "reports", "logs", "dist", "sites", ".receipts"]
+# Names that are no one's output: never reported, never removed.
+ignore = [".DS_Store"]
+
+[owners.testbed]
+summary = "Per-test e2e runs, suite recordings, stack state, test case recordings and sessions"
+retention = "The newest runs per tier, problems, and the receipt's; a month for recordings and sessions"
+prune = ["python", "-m", "repo2ree_testbed", "prune"]
+claims = [
+  "test-artifacts/e2e",
+  "test-artifacts/recordings",
+  "test-artifacts/archives",
+  "test-artifacts/telemetry",
+  "test-artifacts/state",
+  "test-artifacts/python/tests",
+  "test-artifacts/python/sessions",
+  "test-artifacts/assurance/tests",
+  "test-artifacts/assurance/sessions",
+]
+
+[owners.testbed-rewritten]
+summary = "Coverage, service logs, fixtures, Hypothesis' examples, and a machine job's state"
+retention = "Rewritten by each run"
+claims = [
+  "test-artifacts/python/coverage",
+  "test-artifacts/python/services",
+  "test-artifacts/fixtures",
+  "test-artifacts/cache",
+  "test-artifacts/machine-job",
+]
+
+[owners.inspect-dossier]
+summary = "Verdicts, traces, and logs of a dossier collected from a deployment"
+retention = "Rewritten per dossier label"
+claims = ["test-artifacts/assurance/verification", "test-artifacts/assurance/traces", "test-artifacts/assurance/logs"]
+
+[owners.gui]
+summary = "Vitest coverage and Playwright output"
+retention = "Rewritten by each run; Playwright empties a project's folder before it runs"
+claims = ["test-artifacts/node", "test-artifacts/browser"]
+
+[owners.overview]
+summary = "Repository overviews, one per commit"
+retention = "The newest three, and the one `latest` points to"
+prune = ["python", "-m", "repo2ree_repoview", "prune"]
+claims = ["reports/overview"]
+
+[owners.repoview-rewritten]
+summary = "Diagrams and metrics, stamped with the commit they came from"
+retention = "Rewritten by each run"
+claims = ["reports/diagrams", "reports/metrics"]
+
+[owners.just-timing]
+summary = "How long each recipe of every `just` run took"
+retention = "Thirty days"
+prune = ["python", "scripts/just_timing.py", "--prune"]
+claims = ["logs/just"]
+
+[owners.builds]
+summary = "Images, bundles, presentations, and the documentation site"
+retention = "Rewritten by each build"
+claims = ["dist/images", "dist/bundles", "dist/presentations", "sites/docs"]
+
+[owners.gates]
+summary = "Receipts: what a gate proved, bound to the content it proved it on"
+retention = "Rewritten by each gate"
+claims = [
+  ".receipts/commit-gate.json",
+  ".receipts/assurance-gate.json",
+  ".receipts/publish-gate.json",
+  ".receipts/image-candidates",
+]

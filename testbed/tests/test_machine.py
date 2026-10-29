@@ -393,3 +393,22 @@ def test_removing_refuses_while_a_job_runs() -> None:
     with pytest.raises(SystemExit, match="vm is running a job; let it end, or: just machine cancel vm"):
         Machine("vm", VM, runner).remove()
     assert not runner.ran("down")
+
+
+def test_collecting_garbage_prunes_the_clone_then_bounds_dockers_cache_and_images() -> None:
+    runner = FakeRunner(("fetched", GATE))
+    Machine("vm", VM, runner).gc()
+    [collection] = runner.ran("builder prune")
+    clone, cache, images = (collection.index(part) for part in ("just prune", "builder prune", "image prune"))
+    assert clone < cache < images
+    assert "docker builder prune -f --max-used-space 10GB" in collection
+    assert "docker image prune -a -f --filter until=168h" in collection
+
+
+def test_collecting_garbage_refuses_while_a_job_runs_and_here() -> None:
+    runner = FakeRunner(("running", GATE))
+    with pytest.raises(SystemExit, match="vm is running a job"):
+        Machine("vm", VM, runner).gc()
+    assert not runner.ran("builder prune")
+    with pytest.raises(SystemExit, match="run `just prune` here"):
+        Machine(LOCAL, MachineConfig(), FakeRunner()).gc()
