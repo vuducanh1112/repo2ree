@@ -44,7 +44,7 @@ judge-e2e *runs:
     set -euo pipefail
     runs="{{ runs }}"
     if [[ -z "$runs" ]]; then
-        for tier in e2e-system e2e-gui-instant; do
+        for tier in e2e-system e2e-gui-instant e2e-faults; do
             runs+=" $(ls -td {{ quote(REPO2REE_TEST_RUN_DIR + "/e2e") }}/"$tier"-*/ 2>/dev/null | head -n 1)"
         done
     fi
