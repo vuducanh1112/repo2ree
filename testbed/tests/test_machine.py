@@ -401,7 +401,7 @@ def test_collecting_garbage_prunes_the_clone_then_bounds_dockers_cache_and_image
     [collection] = runner.ran("builder prune")
     clone, cache, images = (collection.index(part) for part in ("just prune", "builder prune", "image prune"))
     assert clone < cache < images
-    assert "docker builder prune -f --max-used-space 10GB" in collection
+    assert "docker builder prune -a -f --filter until=24h" in collection
     assert "docker image prune -a -f --filter until=168h" in collection
 
 

@@ -66,8 +66,9 @@ SLIM_EXCLUDES = ("! -name '*.tar'", "! -name '*.tar.gz'", "! -name '*.tgz'", "! 
 SHELL = ("direnv", "exec", ".")
 # The Compose project of a remote machine's dev container.
 PROJECT = "repo2ree-dev"
-# What `gc` leaves Docker's build cache, which the dev image and the stacks' images rebuild from.
-BUILD_CACHE_KEPT = "10GB"
+# How long `gc` keeps build cache nothing used: what the dev image and the stacks' images rebuild from
+# today. By age, not size: most of the cache is shared with images, and a size cap removes nothing.
+CACHE_KEPT_FOR = "24h"
 # How long `gc` keeps an image nothing runs: a week of rebuilds stays warm.
 IMAGES_KEPT_FOR = "168h"
 
@@ -212,8 +213,8 @@ class Machine:
         """Bound what the machine keeps: the clone's generated trees, Docker's build cache, unused images.
 
         In the clone, the stacks runs left and every generated tree's own prune (`just prune`); on
-        the host, the build cache down to BUILD_CACHE_KEPT and images nothing runs that are older
-        than IMAGES_KEPT_FOR. The running dev container and its image stay, and so do the bundle
+        the host, build cache unused for CACHE_KEPT_FOR and images nothing runs that are older than
+        IMAGES_KEPT_FOR. The running dev container and its image stay, and so do the bundle
         stores, which the testbed prunes itself.
         """
         if not self.remote:
@@ -225,7 +226,7 @@ class Machine:
             [
                 "df -h / | tail -n 1",
                 f"(test -d {CLONE} && cd {CLONE} && {self._exec} bash -lc {shlex.quote(clone)})",
-                f"docker builder prune -f --max-used-space {BUILD_CACHE_KEPT} > /dev/null",
+                f"docker builder prune -a -f --filter until={CACHE_KEPT_FOR} > /dev/null",
                 f"docker image prune -a -f --filter until={IMAGES_KEPT_FOR} > /dev/null",
                 "docker system df",
                 "df -h / | tail -n 1",

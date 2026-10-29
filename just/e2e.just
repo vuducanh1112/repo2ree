@@ -74,7 +74,7 @@ gate-e2e-on machine="local" jobs="":
     python -m repo2ree_testbed machine gate {{ quote(machine) }} {{ if jobs != "" { "--jobs " + quote(jobs) } else { "" } }}
     python -m scripts.gates.assurance_gate verify
 
-# Manage the machines: `list`; `cancel <machine>` stops its job and cleans up after it; `gc <machine>` prunes its clone, Docker build cache, and unused images; `remove <machine>` takes its dev container down and deletes its clone.
+# Manage the machines: `list`; `cancel <machine>` stops its job and cleans up after it; `gc <machine>` prunes its clone, Docker build cache unused for a day, and images unused for a week; `remove <machine>` takes its dev container down and deletes its clone.
 [group('Machines')]
 machine +args:
     python -m repo2ree_testbed machine {{ args }}
