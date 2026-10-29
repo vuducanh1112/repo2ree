@@ -14,10 +14,10 @@ from pathlib import Path
 from threading import RLock
 from typing import Any
 
+from repo2ree_api.clock import utc_now
 from repo2ree_api.contracts import RunLogEntry, RunStatus
 from repo2ree_api.storage import author_actions
 from repo2ree_api.storage.run_store import IdempotencyConflictError, StoredRun
-from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.result import Failure, HistoryReference
 

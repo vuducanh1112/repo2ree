@@ -297,6 +297,18 @@ forbidden_modules = [
 ]
 
 [[tool.importlinter.contracts]]
+name = "API speaks only protocol"
+type = "forbidden"
+source_modules = ["repo2ree_api"]
+forbidden_modules = [
+    "repo2ree_core",
+    "repo2ree_docker",
+    "repo2ree_executor",
+    "repo2ree_provider_docker",
+    "repo2ree_workbench",
+]
+
+[[tool.importlinter.contracts]]
 name = "Authoring imports no plane"
 type = "forbidden"
 source_modules = ["repo2ree_authoring"]
@@ -463,6 +475,7 @@ layers = [
     "ree_index",
     "deposit",
     "settings",
+    "clock",
 ]
 
 # The author's step graph and the reviewer's mirror it. They deliberately look

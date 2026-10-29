@@ -2,9 +2,10 @@
 name = "repo2ree-api"
 version = "0.1.0"
 dependencies = [
+    "repo2ree-authoring",
     "repo2ree-protocol",
+    "repo2ree-ree",
     "repo2ree-supervisor",
-    "repo2ree-core",
     "fastapi~=0.160.0",
     "pydantic-settings~=2.16",
     "uvicorn~=0.40.0",
@@ -18,10 +19,17 @@ dependencies = [
     "opentelemetry-instrumentation-fastapi~=0.66b1",
 ]
 
+[dependency-groups]
+dev = [
+    "repo2ree-core",
+]
+
 [tool.uv.sources]
-repo2ree-protocol = { workspace = true }
-repo2ree-supervisor = { workspace = true }
+repo2ree-authoring = { workspace = true }
 repo2ree-core = { workspace = true }
+repo2ree-protocol = { workspace = true }
+repo2ree-ree = { workspace = true }
+repo2ree-supervisor = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

@@ -13,6 +13,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
+from repo2ree_api.clock import utc_now
 from repo2ree_api.contracts import (
     ERROR_RESPONSES,
     DeleteReeResponse,
@@ -37,7 +38,6 @@ from repo2ree_api.pagination import keyset_paginate
 from repo2ree_api.storage import author_actions
 from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import ree_command_span, require_handle
-from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol import ActionResult, BuildInfo
 from repo2ree_ree.model import Ree, ree_status
 from repo2ree_supervisor import WorkbenchHandle

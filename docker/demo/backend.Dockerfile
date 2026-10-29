@@ -29,7 +29,6 @@ COPY pyproject.toml uv.lock ./
 COPY ree ./ree
 COPY protocol ./protocol
 COPY authoring ./authoring
-COPY core ./core
 COPY supervisor ./supervisor
 COPY api ./api
 COPY docker/demo/backend-entrypoint.sh /usr/local/bin/backend-entrypoint.sh

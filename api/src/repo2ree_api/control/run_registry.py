@@ -12,10 +12,10 @@ from uuid import uuid4
 
 from fastapi import HTTPException
 
+from repo2ree_api.clock import utc_now
 from repo2ree_api.contracts import RunOperation, RunStatus
 from repo2ree_api.storage import author_actions
 from repo2ree_api.storage.run_store import IdempotencyConflictError, RunStore, StoredRun
-from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol.behaviour.events import AuthorApiActionName
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.log import emit_run_log

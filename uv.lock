@@ -1074,12 +1074,18 @@ dependencies = [
     { name = "opentelemetry-instrumentation-fastapi" },
     { name = "pydantic-settings" },
     { name = "python-multipart" },
-    { name = "repo2ree-core" },
+    { name = "repo2ree-authoring" },
     { name = "repo2ree-protocol" },
+    { name = "repo2ree-ree" },
     { name = "repo2ree-supervisor" },
     { name = "requests" },
     { name = "uvicorn" },
     { name = "websockets" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "repo2ree-core" },
 ]
 
 [package.metadata]
@@ -1089,13 +1095,17 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-fastapi", specifier = "~=0.66b1" },
     { name = "pydantic-settings", specifier = "~=2.16" },
     { name = "python-multipart", specifier = "~=0.0.32" },
-    { name = "repo2ree-core", editable = "core" },
+    { name = "repo2ree-authoring", editable = "authoring" },
     { name = "repo2ree-protocol", editable = "protocol" },
+    { name = "repo2ree-ree", editable = "ree" },
     { name = "repo2ree-supervisor", editable = "supervisor" },
     { name = "requests", specifier = "~=2.34" },
     { name = "uvicorn", specifier = "~=0.40.0" },
     { name = "websockets", specifier = "~=15.0" },
 ]
+
+[package.metadata.requires-dev]
+dev = [{ name = "repo2ree-core", editable = "core" }]
 
 [[package]]
 name = "repo2ree-assurance-checker"

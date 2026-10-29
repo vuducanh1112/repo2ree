@@ -14,6 +14,7 @@ from typing import Any
 
 from fastapi import HTTPException, Request
 
+from repo2ree_api.clock import utc_now
 from repo2ree_api.contracts import UploadInitPayload
 from repo2ree_api.settings import service_settings
 from repo2ree_api.storage import author_actions
@@ -29,7 +30,6 @@ from repo2ree_api.storage.upload_staging import (
     validate_upload_owner,
 )
 from repo2ree_api.workbench.commands import require_handle
-from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol.behaviour.events import AuthorApiActionName
 
 
