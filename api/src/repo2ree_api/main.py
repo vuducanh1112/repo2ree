@@ -158,7 +158,7 @@ ROUTERS = (
     # Control plane — the REE and its runs exist before any step does.
     rees_router,
     runs_router,
-    # Authoring, in the order of repo2ree_core.evidence.step_graph.REE_STEPS.
+    # Authoring, in the order of repo2ree_ree.steps.REE_STEPS.
     ree_steps_router,
     script_templates_router,
     source_router,

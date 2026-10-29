@@ -7,7 +7,6 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.analysis.repository.reproducibility_report import ReproducibilityReport
 from repo2ree_core.analysis.sbom.crosscheck import cross_check
 from repo2ree_core.analysis.sbom.cyclonedx import parse_cyclonedx
 from repo2ree_core.digests import digest_file
@@ -24,6 +23,7 @@ from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.model import Ree
 from repo2ree_ree.receipt import CrossCheckSbomReceipt
+from repo2ree_ree.reproducibility import ReproducibilityReport
 
 
 class CrossCheckSbomOutputs(BaseModel):

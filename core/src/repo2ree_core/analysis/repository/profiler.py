@@ -13,9 +13,10 @@ import contextlib
 from collections.abc import Callable
 from pathlib import Path
 
+from repo2ree_ree.reproducibility import ReproducibilityReport
+
 from .reproducibility_report import (
     FileSignals,
-    ReproducibilityReport,
     build_report,
     is_dockerfile_filename,
     is_manifest_filename,

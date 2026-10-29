@@ -502,7 +502,7 @@ layers = [
     "persistence",
     "author_recipes",
     "domain",
-    "digests : failures : path_safety : time_utils",
+    "digests : failures : time_utils",
 ]
 
 # The capabilities the spine calls into. They are deliberately *not* placed in
@@ -581,17 +581,14 @@ forbidden_modules = [
 
 # The leaf primitives every layer is allowed to use precisely because they use
 # nothing back. Each already says so in its own docstring; this is what keeps
-# that claim true. None of them imports another — `path_safety` duplicates the
-# one constant it shares with `reserved_paths` rather than depending on it — so
-# the sibling row in "Core layers" holds too; this contract is the one that
-# explains the direction.
+# that claim true. None of them imports another, so the sibling row in "Core
+# layers" holds too; this contract is the one that explains the direction.
 [[tool.importlinter.contracts]]
 name = "Leaf primitives depend on no package"
 type = "forbidden"
 source_modules = [
     "repo2ree_core.digests",
     "repo2ree_core.failures",
-    "repo2ree_core.path_safety",
     # The verb vocabulary the executor CLI and the generated run.sh both expose.
     # It depends on nothing so that both can spell the same verbs without either
     # dragging the other's world in.

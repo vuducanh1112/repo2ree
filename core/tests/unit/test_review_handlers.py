@@ -6,14 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.evidence.review.models import (
-    BuildComparison,
-    ReviewBuildRuntimeReceipt,
-    SourceComparison,
-    new_review_record,
-    step_state,
-    with_step,
-)
+from repo2ree_core.evidence.review.records import new_review_record, step_state, with_step
 from repo2ree_core.evidence.review.store import load_reviews, read_review_record, write_review_record
 from repo2ree_core.operations.handlers.review import acquire_source, activation_test, build_runtime, run_experiment
 from repo2ree_core.persistence.directory import ReeDirectory
@@ -45,6 +38,7 @@ from repo2ree_ree.reserved_paths import (
     experiment_run_script_path,
     experiment_verify_script_path,
 )
+from repo2ree_ree.review import BuildComparison, ReviewBuildRuntimeReceipt, SourceComparison
 
 _NOW = parse_utc_instant("2026-08-03T00:00:00Z")
 _REVIEW_ID = "review-one"

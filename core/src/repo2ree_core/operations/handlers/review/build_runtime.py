@@ -22,13 +22,7 @@ from repo2ree_core.analysis.sbom.cyclonedx import ObservedPackage, parse_cyclone
 from repo2ree_core.analysis.sbom.scan import is_runtime_archive, scan_runtime_archive
 from repo2ree_core.digests import digest_file_if_exists
 from repo2ree_core.evidence.review.comparison import compare_build_runtimes
-from repo2ree_core.evidence.review.models import (
-    BuildComparison,
-    EvidenceBasis,
-    ReviewBuildRuntimeReceipt,
-    resolve_basis,
-    review_receipt_envelope,
-)
+from repo2ree_core.evidence.review.records import resolve_basis, review_receipt_envelope
 from repo2ree_core.evidence.review.store import write_review_build_evidence
 from repo2ree_core.execution.process import (
     CancelCheck,
@@ -56,6 +50,7 @@ from repo2ree_ree.model import Ree
 from repo2ree_ree.primitives import ReePath, WorkspacePath
 from repo2ree_ree.receipt import BuildRuntimeReceipt, GenerateSbomReceipt
 from repo2ree_ree.reserved_paths import RESERVED_BUILD_SCRIPT
+from repo2ree_ree.review import BuildComparison, EvidenceBasis, ReviewBuildRuntimeReceipt
 
 
 class ReviewBuildRuntimeOutputs(BaseModel):

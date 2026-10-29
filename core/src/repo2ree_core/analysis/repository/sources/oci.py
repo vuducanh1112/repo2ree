@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 
 from repo2ree_core.analysis.repository.reproducibility_report import is_dockerfile_filename
-from repo2ree_core.domain.dependency import Dependency
+from repo2ree_ree.dependency import Dependency
 
 from .base import SourceParser
 

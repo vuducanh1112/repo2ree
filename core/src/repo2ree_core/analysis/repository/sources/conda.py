@@ -10,7 +10,7 @@ import re
 
 import yaml
 
-from repo2ree_core.domain.dependency import Dependency
+from repo2ree_ree.dependency import Dependency
 
 from ._common import dependency_from_pep508, make_dependency
 from .base import SourceParser

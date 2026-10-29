@@ -20,7 +20,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from repo2ree_core.analysis.repository.reproducibility_report import _CATALOG, FileSignals, build_report
-from repo2ree_core.domain.dependency import Dependency, DependencyInventory
+from repo2ree_ree.dependency import Dependency, DependencyInventory
 
 pytestmark = pytest.mark.property
 

@@ -32,13 +32,13 @@ from repo2ree_core.author_recipes.templates import (
     experiment_run_templates,
     verify_templates,
 )
-from repo2ree_core.evidence.step_graph import ree_step_catalog
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATION_SCRIPT,
     RESERVED_ACTIVATION_VERIFY_SCRIPT,
     RESERVED_BUILD_SCRIPT,
     RESERVED_EXPERIMENT_SCRIPT_DIR,
 )
+from repo2ree_ree.steps import ree_step_catalog
 
 # ================================================
 # The step catalog

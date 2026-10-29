@@ -20,7 +20,7 @@ from repo2ree_core.analysis.sbom.equivalence import (
     closure_verdict,
     compare_sbom_closures,
 )
-from repo2ree_core.evidence.review.models import (
+from repo2ree_ree.review import (
     BuildComparison,
     BuildVerdict,
     ComparisonVerdict,

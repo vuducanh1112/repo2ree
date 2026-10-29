@@ -29,7 +29,7 @@ from repo2ree_core.analysis.repository.sources.pypi import (
     parse_requirements_txt,
     parse_uv_lock,
 )
-from repo2ree_core.domain.dependency import Dependency, normalize_package_name
+from repo2ree_ree.dependency import Dependency, normalize_package_name
 
 pytestmark = pytest.mark.property
 

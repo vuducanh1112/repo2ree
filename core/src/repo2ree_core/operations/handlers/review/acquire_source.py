@@ -20,14 +20,7 @@ import shutil
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.evidence.review.comparison import compare_source_swhids
-from repo2ree_core.evidence.review.models import (
-    EvidenceBasis,
-    ReviewAcquireSourceReceipt,
-    SourceComparison,
-    new_review_record,
-    resolve_basis,
-    review_receipt_envelope,
-)
+from repo2ree_core.evidence.review.records import new_review_record, resolve_basis, review_receipt_envelope
 from repo2ree_core.evidence.review.store import write_review_source_evidence
 from repo2ree_core.execution.process import CancelCheck, format_command, run_streaming_process
 from repo2ree_core.operations.steps.review import begin_review_step, require_ree_baseline
@@ -42,6 +35,7 @@ from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.instant import format_utc_instant
 from repo2ree_ree.model import Ree, SourceDefinition
 from repo2ree_ree.primitives import Swhid
+from repo2ree_ree.review import EvidenceBasis, ReviewAcquireSourceReceipt, SourceComparison
 
 
 class ReviewAcquireSourceOutputs(BaseModel):

@@ -8,14 +8,14 @@ import pytest
 from fastapi.testclient import TestClient
 
 from repo2ree_api.deps import workbench_manager
-from repo2ree_core.analysis.repository.reproducibility_report import (
+from repo2ree_ree.model import Ree
+from repo2ree_ree.reproducibility import (
     DependencyLevel,
     DependencySummary,
     EnvironmentLevel,
     MachineLevel,
     ReproducibilityReport,
 )
-from repo2ree_ree.model import Ree
 from repo2ree_supervisor import WorkbenchHandle
 
 

@@ -6,10 +6,4 @@ it except the layers that compose — ``bundle``, which publishes evidence into
 the archive, and ``operations``, which serves it.
 
     review/     a reviewer's independent re-execution and its comparisons
-    step_graph  the static authoring checklist
-
-``step_graph`` rather than ``steps``: ``operations.steps`` is the machinery a
-handler is built out of, and this is the checklist a client navigates by. The
-two share a word and nothing else, which is exactly the pair worth keeping
-un-alike in an import line.
 """

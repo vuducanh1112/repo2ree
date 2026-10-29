@@ -11,7 +11,10 @@ from __future__ import annotations
 
 from contextlib import suppress
 
-from repo2ree_core.evidence.review.models import (
+from repo2ree_core.persistence.files import json_document_bytes, write_atomic, write_json_atomic
+from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
+from repo2ree_ree.reserved_paths import experiment_slug
+from repo2ree_ree.review import (
     ActivationOutcome,
     BuildComparison,
     ExperimentComparison,
@@ -24,9 +27,6 @@ from repo2ree_core.evidence.review.models import (
     ReviewStepKey,
     SourceComparison,
 )
-from repo2ree_core.persistence.files import json_document_bytes, write_atomic, write_json_atomic
-from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
-from repo2ree_ree.reserved_paths import experiment_slug
 
 
 def write_review_record(layout: ReviewLayout, record: ReviewRecord) -> None:

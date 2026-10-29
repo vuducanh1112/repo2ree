@@ -16,14 +16,7 @@ from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.digests import digest_file_if_exists, digest_output_paths
 from repo2ree_core.evidence.review.comparison import compare_experiment_results
-from repo2ree_core.evidence.review.models import (
-    EvidenceBasis,
-    ExperimentComparison,
-    ReviewExperimentReceipt,
-    ReviewRecord,
-    review_receipt_envelope,
-    with_experiment,
-)
+from repo2ree_core.evidence.review.records import review_receipt_envelope, with_experiment
 from repo2ree_core.evidence.review.store import write_review_experiment_evidence
 from repo2ree_core.execution.experiment.spec import RunnableSpec
 from repo2ree_core.execution.process import CancelCheck
@@ -41,6 +34,7 @@ from repo2ree_ree.digest import Digest
 from repo2ree_ree.model import ReeDefinition
 from repo2ree_ree.primitives import ReePath, WorkspacePath
 from repo2ree_ree.receipt import RunExperimentReceipt
+from repo2ree_ree.review import EvidenceBasis, ExperimentComparison, ReviewExperimentReceipt, ReviewRecord
 
 
 class ReviewRunExperimentOutputs(BaseModel):

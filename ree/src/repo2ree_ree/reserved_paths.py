@@ -69,3 +69,9 @@ def is_run_script(path: str) -> bool:
         and normalized.suffix == ".sh"
         and not normalized.name.endswith(".verify.sh")
     )
+
+
+# Leaf-file basename prefixes reserved for workspace control files
+# (".workspace*", ".upload.*"). They name files, never directories, so callers
+# guard only the leaf segment of a candidate path against them.
+WORKSPACE_CONTROL_PREFIXES = (".workspace", ".upload.")

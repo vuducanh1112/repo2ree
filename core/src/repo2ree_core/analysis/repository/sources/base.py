@@ -19,7 +19,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
 
-from repo2ree_core.domain.dependency import Dependency
+from repo2ree_ree.dependency import Dependency
 
 # Which side of the lock-merge the parser's rows land on: ``declared`` rows
 # come from manifests, ``locked`` rows from lockfiles (and arrive direct=False).

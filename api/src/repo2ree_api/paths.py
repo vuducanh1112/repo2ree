@@ -4,7 +4,8 @@ from pathlib import Path
 
 from fastapi import HTTPException
 
-from repo2ree_core.path_safety import WORKSPACE_CONTROL_PREFIXES, resolve_within
+from repo2ree_ree.paths import resolve_within
+from repo2ree_ree.reserved_paths import WORKSPACE_CONTROL_PREFIXES
 
 __all__ = [
     "WORKSPACE_CONTROL_PREFIXES",
@@ -29,7 +30,7 @@ def resolve_relative_path(
 ) -> Path:
     """HTTP-facing wrapper around the shared containment check.
 
-    The escape rule itself is ``path_safety.resolve_within`` — one definition
+    The escape rule itself is ``repo2ree_ree.paths.resolve_within`` — one definition
     for both trust boundaries, so the API cannot drift from what the workbench
     enforces. This layer only maps "unsafe" onto a 400 and adds the
     control-file basename guard the HTTP surface needs.

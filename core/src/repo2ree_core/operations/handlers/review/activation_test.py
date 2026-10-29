@@ -16,13 +16,7 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.digests import digest_file_if_exists
-from repo2ree_core.evidence.review.models import (
-    ActivationOutcome,
-    ActivationVerdict,
-    ReviewActivationReceipt,
-    ReviewRecord,
-    review_receipt_envelope,
-)
+from repo2ree_core.evidence.review.records import review_receipt_envelope
 from repo2ree_core.evidence.review.store import write_review_activation_evidence
 from repo2ree_core.execution.experiment.spec import RunnableSpec
 from repo2ree_core.execution.process import CancelCheck
@@ -37,6 +31,7 @@ from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.digest import Digest
 from repo2ree_ree.model import ReeDefinition
 from repo2ree_ree.primitives import ReePath, WorkspacePath
+from repo2ree_ree.review import ActivationOutcome, ActivationVerdict, ReviewActivationReceipt, ReviewRecord
 
 
 class ReviewActivationTestOutputs(BaseModel):

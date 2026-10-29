@@ -13,7 +13,7 @@ import json
 from dataclasses import dataclass
 from urllib.parse import unquote
 
-from repo2ree_core.domain.dependency import Ecosystem, normalize_package_name
+from repo2ree_ree.dependency import Ecosystem, normalize_package_name
 
 # purl type -> our ecosystem. Unlisted types (apk, rpm, golang, ...) map to
 # ``other``: they can still be counted, but never joined against manifests.

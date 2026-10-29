@@ -1,6 +1,6 @@
 """The run-starting authoring steps, in step order.
 
-One route per step of ``repo2ree_core.evidence.step_graph.REE_STEPS`` that advances by
+One route per step of ``repo2ree_ree.steps.REE_STEPS`` that advances by
 *running something in the workbench*: hbom, evaluate, build, sbom, crosscheck,
 activation, experiments. They are one family and differ only in the command they
 dispatch and the words their run logs carry, so they live together — the shape
@@ -27,7 +27,6 @@ from repo2ree_api.control.run_orchestration import run_summary, start_single_com
 from repo2ree_api.deps import workbench_manager
 from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import require_handle
-from repo2ree_core.analysis.repository.reproducibility_report import ReproducibilityReport
 from repo2ree_protocol import ActivationTestCommand, GenerateHbomCommand
 from repo2ree_protocol.command import (
     ActivationTestArgs,
@@ -40,6 +39,7 @@ from repo2ree_protocol.command import (
     RunExperimentArgs,
     RunExperimentCommand,
 )
+from repo2ree_ree.reproducibility import ReproducibilityReport
 from repo2ree_ree.reserved_paths import RESERVED_BUILD_SCRIPT
 
 stages_router = APIRouter(tags=["runs"])

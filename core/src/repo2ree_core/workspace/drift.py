@@ -6,11 +6,11 @@ import json
 from pathlib import Path, PurePosixPath
 
 from repo2ree_core.digests import digest_file
-from repo2ree_core.path_safety import WORKSPACE_CONTROL_PREFIXES
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.workspace.materialization import stat_table
 from repo2ree_ree.primitives import ReePath
 from repo2ree_ree.receipt import WorkspaceDrift
+from repo2ree_ree.reserved_paths import WORKSPACE_CONTROL_PREFIXES
 
 _DRIFT_PATHS_CAP = 20
 

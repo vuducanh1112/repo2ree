@@ -29,7 +29,7 @@ from typing import Literal
 
 from repo2ree_core.analysis.sbom.cyclonedx import ObservedPackage
 from repo2ree_core.analysis.sbom.versions import versions_match
-from repo2ree_core.domain.dependency import Ecosystem
+from repo2ree_ree.dependency import Ecosystem
 
 ClosureVerdict = Literal["equivalent", "different", "inconclusive"]
 

@@ -1,12 +1,11 @@
 from repo2ree_core.analysis.repository.reproducibility_report import (
     FileSignals,
-    Severity,
-    ThreatCategory,
     _apt_install_is_unpinned,
     _classify,
     build_report,
 )
-from repo2ree_core.domain.dependency import Dependency, DependencyInventory
+from repo2ree_ree.dependency import Dependency, DependencyInventory
+from repo2ree_ree.reproducibility import Severity, ThreatCategory
 
 # --------------------------------------------------------------------------- #
 # inventory builders

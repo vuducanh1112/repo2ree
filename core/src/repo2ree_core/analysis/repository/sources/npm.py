@@ -11,7 +11,7 @@ import json
 from collections.abc import Iterator
 from typing import Any
 
-from repo2ree_core.domain.dependency import Dependency, normalize_package_name
+from repo2ree_ree.dependency import Dependency, normalize_package_name
 
 from ._common import make_dependency, make_locked_dependency
 from .base import SourceParser

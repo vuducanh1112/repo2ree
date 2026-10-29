@@ -6,7 +6,7 @@ import re
 import tomllib
 from typing import Any
 
-from repo2ree_core.domain.dependency import Dependency, Ecosystem, normalize_package_name
+from repo2ree_ree.dependency import Dependency, Ecosystem, normalize_package_name
 
 # PEP 508-ish: name, optional extras, then whatever constraint text follows.
 _PEP508_RE = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]*)\s*(?:\[[^\]]*\])?\s*(.*)$")

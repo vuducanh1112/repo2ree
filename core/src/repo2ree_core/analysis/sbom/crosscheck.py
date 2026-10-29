@@ -18,15 +18,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from repo2ree_core.analysis.repository.reproducibility_report import (
-    EvaluatedDependency,
-    RuntimePresence,
-    SbomCrossCheckSummary,
-    UndeclaredPackage,
-)
 from repo2ree_core.analysis.sbom.cyclonedx import ObservedPackage
 from repo2ree_core.analysis.sbom.versions import versions_match
-from repo2ree_core.domain.dependency import Dependency, Ecosystem
+from repo2ree_ree.dependency import Dependency, Ecosystem
+from repo2ree_ree.reproducibility import EvaluatedDependency, RuntimePresence, SbomCrossCheckSummary, UndeclaredPackage
 
 # The listed undeclared packages are capped so a pathological image cannot
 # balloon the report; the count carries the truth.

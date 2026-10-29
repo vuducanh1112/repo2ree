@@ -18,20 +18,7 @@ from pathlib import Path, PurePosixPath
 from typing import Protocol
 
 from repo2ree_core.digests import digest_file_if_exists
-from repo2ree_core.evidence.review.models import (
-    ActivationVerdict,
-    BuildVerdict,
-    ComparisonVerdict,
-    EvidenceBasis,
-    ExperimentVerdict,
-    ReviewBuildRuntimeReceipt,
-    ReviewRecord,
-    ReviewStatus,
-    ReviewStepKey,
-    attempt_basis,
-    step_state,
-    with_step,
-)
+from repo2ree_core.evidence.review.records import attempt_basis, step_state, with_step
 from repo2ree_core.evidence.review.store import read_review_record, write_review_record
 from repo2ree_core.execution.experiment.run import ExperimentRunOutcome, run_runnable
 from repo2ree_core.execution.experiment.spec import RunnableSpec
@@ -44,6 +31,17 @@ from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.tracing import ReviewStepAttrs
 from repo2ree_ree.instant import format_utc_instant
 from repo2ree_ree.model import Ree, ReeDefinition
+from repo2ree_ree.review import (
+    ActivationVerdict,
+    BuildVerdict,
+    ComparisonVerdict,
+    EvidenceBasis,
+    ExperimentVerdict,
+    ReviewBuildRuntimeReceipt,
+    ReviewRecord,
+    ReviewStatus,
+    ReviewStepKey,
+)
 
 # Signature of the per-handler early exit: a terminal status and why.
 ReviewHalt = Callable[[ReviewStatus, str], ActionResult]

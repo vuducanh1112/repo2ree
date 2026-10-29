@@ -19,11 +19,7 @@ import os
 from collections.abc import Iterator
 from pathlib import Path
 
-from repo2ree_core.domain.dependency import (
-    Dependency,
-    DependencyInventory,
-    normalize_package_name,
-)
+from repo2ree_ree.dependency import Dependency, DependencyInventory, normalize_package_name
 
 from . import conda, npm, oci, pypi
 from .base import SourceParser

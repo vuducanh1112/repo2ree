@@ -20,7 +20,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import IO, Literal
 
-from repo2ree_core.path_safety import resolve_within
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionStatus
 from repo2ree_protocol.tracing import (
@@ -31,6 +30,7 @@ from repo2ree_protocol.tracing import (
     record_exec_outcome,
     record_span_facts,
 )
+from repo2ree_ree.paths import resolve_within
 
 tracer = get_tracer(__name__)
 

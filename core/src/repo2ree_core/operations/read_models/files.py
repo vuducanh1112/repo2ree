@@ -13,9 +13,9 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.path_safety import resolve_within
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_ree.paths import resolve_within
 
 MAX_INLINE_TEXT_BYTES = 1024 * 1024
 MAX_INLINE_SBOM_BYTES = 8 * 1024 * 1024

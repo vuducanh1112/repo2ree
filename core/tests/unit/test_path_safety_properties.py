@@ -14,8 +14,7 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from repo2ree_core.path_safety import resolve_within
-from repo2ree_ree.paths import validate_relative_path
+from repo2ree_ree.paths import resolve_within, validate_relative_path
 
 pytestmark = pytest.mark.property
 

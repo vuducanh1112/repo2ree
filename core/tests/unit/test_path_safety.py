@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from repo2ree_core.path_safety import resolve_within
+from repo2ree_ree.paths import resolve_within
 
 
 def test_symlink_escaping_base_is_rejected(tmp_path: Path) -> None:
