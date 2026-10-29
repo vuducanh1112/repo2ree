@@ -35,7 +35,8 @@
 | `just machine cancel <machine>` | Stop the job running on a machine: restart its dev container and clean up what the job left. |
 | `just commit-gate` | Fast pre-commit gate: documentation, static checks, and unit tests. Writes a receipt for the tree it passed on; the pre-commit hook checks that receipt. |
 | `just check-doc-links-external` | Manually check external documentation URLs with retries and a local response cache; intentionally excluded from deterministic gates. |
-| `just publish-gate` | The pre-publish gate: clean tree, all checks and tests, e2e source-run and image-backed. |
+| `just publish-gate` | The pre-publish gate: clean tree, all checks and tests, e2e source-run and image-backed, and the zones gate. |
+| `just zones-gate` | On HEAD's clean tree, every tracked file has a zone in `zones.toml` and every zone entry claims a file. Never on a staged tree: a zone entry lands in its own commit, so the tree between that commit and its files' commit disagrees. |
 | `just render-backend-coverage <tier>` | Render a tier's HTML from data already on disk. |
 | `just combine-backend-coverage` | Union of whichever backend tiers have been measured on this checkout. |
 | `just attribute-backend-coverage` | Per-test coverage attribution over the two pytest tiers. |
@@ -494,7 +495,8 @@ python -m scripts.gates.commit_gate verify   # what the hook runs
 ```
 
 `just publish-gate` bundles the whole pre-publish sequence: it refuses a dirty
-tree (pushed images must correspond to a commit), then runs the static
+tree (pushed images must correspond to a commit), checks that the zones claim
+exactly the tracked files (`just zones-gate`), then runs the static
 checks, builds the executor/tools bundles so the docker-gated test tiers
 don't skip, runs the unit/integration suites, the source-run e2e suite, and
 finally runs both browser projects against local images. When it passes, the `:local` images it built are
