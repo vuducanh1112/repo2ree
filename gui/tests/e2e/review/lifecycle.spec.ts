@@ -46,10 +46,6 @@ const EXPERIMENT = "python-hello";
  */
 test.describe("Review lifecycle", () => {
   test("reproduces another author's source, runtime, activation and result", async ({ page }) => {
-    // One cold DinD rebuild of the author's runtime, a scan, and two container
-    // runs — all on the reviewer's side. No authoring at all.
-    test.setTimeout(20 * 60 * 1000);
-
     await test.step("seat someone else's REE on a fresh workbench", async () => {
       await startReeCreation(page);
       await provisionFromBundle(page, authoredRee());

@@ -27,7 +27,6 @@ import hashlib
 import json
 import shutil
 import subprocess
-import time
 import zipfile
 from io import BytesIO
 from typing import Any
@@ -36,8 +35,7 @@ import pytest
 from api_integration_bench import ReeFilmstrip, bundles_present
 from fastapi.testclient import TestClient
 
-RUN_TIMEOUT_SECONDS = 240
-TERMINAL_RUN_STATUSES = frozenset({"succeeded", "failed", "canceled"})
+from repo2ree_testbed.run_watch import NETWORK_RUN, client_getter, settle_run
 
 BUILD_SCRIPT = "ree-scripts/build_script.sh"
 ACTIVATION_SCRIPT = "ree-scripts/activation.sh"
@@ -101,20 +99,11 @@ def _await_run(client: TestClient, ree_id: str, run: dict[str, Any], *, what: st
     no longer exists.
     """
     run_id = run["run_id"]
-    deadline = time.monotonic() + RUN_TIMEOUT_SECONDS
-    status = ""
-    while time.monotonic() < deadline:
-        response = client.get(f"/api/v1/rees/{ree_id}/runs/{run_id}")
-        assert response.status_code == 200, response.text
-        status = response.json()["status"]
-        if status in TERMINAL_RUN_STATUSES:
-            break
-        time.sleep(0.5)
+    settled = settle_run(client_getter(client), ree_id, run_id, NETWORK_RUN)
+    status = settled.run["status"]
     if status != "succeeded":
-        logs = client.get(f"/api/v1/rees/{ree_id}/runs/{run_id}/logs")
-        tail = logs.json().get("entries", [])[-25:] if logs.status_code == 200 else []
-        rendered = "\n".join(f"  [{entry.get('level')}] {entry.get('message')}" for entry in tail)
-        pytest.fail(f"{what} run {run_id} ended {status or 'pending'}\n{rendered}")
+        rendered = "\n".join(f"  {line}" for line in settled.tail)
+        pytest.fail(f"{what} run {run_id} ended {status}\n{rendered}")
 
 
 def _stage(client: TestClient, ree_id: str, path: str, payload: dict[str, Any], *, what: str) -> None:

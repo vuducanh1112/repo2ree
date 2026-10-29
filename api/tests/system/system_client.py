@@ -22,6 +22,7 @@ import httpx
 import pytest
 
 from repo2ree_testbed.faults import FAULTS_URL, Fault, inject
+from repo2ree_testbed.run_watch import INSTANT_RUN, NETWORK_RUN, RunWatch, settle_run
 
 ROOT = Path(__file__).resolve().parents[3]
 PROJECT = ROOT / "examples/projects/instant_hello_world"
@@ -43,7 +44,6 @@ LIGHTWEIGHT_IMAGE = os.environ.get(
     "docker.io/library/python:3.11-slim@sha256:9534e5a8e315485d4061ed659af0fd78a284c015f9b73661b41d6bab25604534",
 )
 TERMINAL = frozenset({"succeeded", "failed", "canceled"})
-RUN_TIMEOUT = 180.0
 
 
 def recipe(name: str) -> str:
@@ -85,16 +85,23 @@ class Api:
 
     # ---- runs ---------------------------------------------------------------
 
-    def wait(self, ree_id: str, run: dict[str, Any] | str, timeout: float = RUN_TIMEOUT) -> dict[str, Any]:
-        """Poll a background run until it settles; return the settled run."""
+    def wait(
+        self,
+        ree_id: str,
+        run: dict[str, Any] | str,
+        timeout: float | None = None,
+        *,
+        watch: RunWatch = INSTANT_RUN,
+    ) -> dict[str, Any]:
+        """Wait for a background run to settle and return it; see :func:`settle_run`.
+
+        An explicit ``timeout`` is for a run expected to go quiet, a frozen or lost
+        workbench above all: it bounds the whole wait and nothing else.
+        """
         run_id = run if isinstance(run, str) else run["run_id"]
-        deadline = time.monotonic() + timeout
-        while time.monotonic() < deadline:
-            settled = self.get(f"/api/v1/rees/{ree_id}/runs/{run_id}")
-            if settled["status"] in TERMINAL:
-                return dict(settled)
-            time.sleep(0.2)
-        raise ApiError(f"run {run_id} did not settle within {timeout:.0f}s")
+        if timeout is not None:
+            watch = RunWatch.silent(timeout)
+        return settle_run(lambda path, params: self.get(path, params=params), ree_id, run_id, watch).run
 
     def wait_for_status(self, ree_id: str, run_id: str, *statuses: str, timeout: float = 60.0) -> dict[str, Any]:
         deadline = time.monotonic() + timeout
@@ -130,7 +137,7 @@ class Api:
     def create(self, name: str, *, image: str = LIGHTWEIGHT_IMAGE, location: str | None = None) -> str:
         created = self.post("/api/v1/rees", {"name": name, "location_id": location or self.location(), "image": image})
         ree_id = str(created["ree_id"])
-        provisioned = self.wait(ree_id, created)
+        provisioned = self.wait(ree_id, created, watch=NETWORK_RUN)
         if provisioned["status"] != "succeeded":
             raise ApiError(f"provisioning ended {provisioned['status']}\n{self.logs(ree_id, created['run_id'])}")
         return ree_id

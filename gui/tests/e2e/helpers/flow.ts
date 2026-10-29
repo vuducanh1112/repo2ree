@@ -3,6 +3,14 @@ import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { expect, type Locator, type Page } from "@playwright/test";
 import { FIXTURES_DIR } from "../../artifacts";
+import {
+  NETWORK_RUN,
+  quiet,
+  runToEnd,
+  type SettleOptions,
+  StartedRuns,
+  settleRun,
+} from "../../runs";
 import { stepShot } from "../../screenshot";
 
 /**
@@ -354,13 +362,12 @@ export async function provisionWorkbench(
     // a metacharacter would break.
     await setup.getByRole("button", { name: options.imageLabel }).click();
   }
-  await setup.getByRole("button", { name: /Provision workbench/i }).click();
-  // A real provision: bench container start, nested dockerd boot, doctor
-  // probe. ~15-20s depending on the lab's environment — well past the
-  // project's default expect timeout.
-  await expect(nav(page).getByRole("button", { name: "Source", exact: true })).toBeVisible({
-    timeout: 90000,
+  // A network run in every project: the host pulls the bench image the first time it sees it.
+  await runToEnd(page, () => setup.getByRole("button", { name: /Provision workbench/i }).click(), {
+    watch: NETWORK_RUN,
+    succeed: true,
   });
+  await expect(nav(page).getByRole("button", { name: "Source", exact: true })).toBeVisible();
   await openPort(page, "Source");
   await expect(
     page.getByRole("region", { name: "Source Acquisition" }).getByText("Source Acquisition", {
@@ -386,12 +393,16 @@ export async function provisionFromBundle(page: Page, bundlePath: string) {
   // The control renames itself once a bundle is chosen — provisioning and
   // loading are one action here, so waiting for "Provision workbench" would
   // wait for a button this screen no longer has.
-  await page.getByRole("button", { name: /Provision and load REE/i }).click();
-  // Provisioning plus the load itself: bench container start, nested dockerd
-  // boot, doctor probe, then unpacking the bundle's evidence into the REE.
-  await expect(nav(page).getByRole("button", { name: "Source", exact: true })).toBeVisible({
-    timeout: 120000,
-  });
+  // Two runs: provisioning, then, once it succeeds, the load of the bundle onto the bench.
+  const runs = new StartedRuns(page);
+  try {
+    await page.getByRole("button", { name: /Provision and load REE/i }).click();
+    await settleRun(page, await runs.next(), { watch: NETWORK_RUN, succeed: true });
+    await settleRun(page, await runs.next(), { watch: NETWORK_RUN, succeed: true });
+  } finally {
+    runs.stop();
+  }
+  await expect(nav(page).getByRole("button", { name: "Source", exact: true })).toBeVisible();
   await stepShot(page, "provision-from-bundle", "after");
 }
 
@@ -402,7 +413,9 @@ export async function uploadSource(page: Page, archivePath: string) {
   await page
     .locator('input[type="file"][accept=".zip,.tar,.gz,.tgz,.tar.gz"]')
     .setInputFiles(archivePath);
-  await page.getByRole("button", { name: /Add to workspace/i }).click();
+  await runToEnd(page, () => page.getByRole("button", { name: /Add to workspace/i }).click(), {
+    succeed: true,
+  });
 
   // The clear-source action lives in the source hub panel header (top-right).
   const clearSource = page
@@ -430,11 +443,13 @@ export async function downloadSource(
   if (origin.revision) {
     await page.getByPlaceholder(/Revision \(commit, branch, or tag\)/).fill(origin.revision);
   }
-  await region.getByRole("button", { name: /Download source to workspace/i }).click();
-
-  // A real git fetch against a remote (cold, no cache) — allow a generous budget.
+  await runToEnd(
+    page,
+    () => region.getByRole("button", { name: /Download source to workspace/i }).click(),
+    { succeed: true },
+  );
   const clearSource = region.getByRole("button", { name: /Clear source/i });
-  await expect(clearSource).toBeVisible({ timeout: 90000 });
+  await expect(clearSource).toBeVisible();
   await stepShot(page, "download-source", "after");
   return clearSource;
 }
@@ -460,12 +475,15 @@ export async function runEvaluate(page: Page) {
   await expect(
     main(page).getByRole("heading", { name: "Reproducibility Readiness", exact: true }),
   ).toBeVisible();
-  await main(page)
-    .getByRole("button", { name: /^Run Evaluate$/ })
-    .click();
-  await expect(main(page).getByRole("button", { name: /Re-run Evaluate/ })).toBeVisible({
-    timeout: 20000,
-  });
+  await runToEnd(
+    page,
+    () =>
+      main(page)
+        .getByRole("button", { name: /^Run Evaluate$/ })
+        .click(),
+    { succeed: true },
+  );
+  await expect(main(page).getByRole("button", { name: /Re-run Evaluate/ })).toBeVisible();
   await stepShot(page, "run-evaluate", "after");
 }
 
@@ -496,11 +514,8 @@ export async function buildRuntime(
   options: { rebuild?: boolean } = {},
 ) {
   await stepShot(page, "build-runtime", "before");
-  await runBuild(page, buildScript, producedRuntimePath, options);
-  // Re-build appears for failed runs too. The earned-outcome badge
-  // (role="status") renders only for a succeeded run, so a failed build fails
-  // this step with its log on screen instead of surfacing 20s later as an
-  // artifact-picker timeout.
+  // A failed build fails here, with its failure and the end of its log.
+  await runBuild(page, buildScript, producedRuntimePath, { ...options, succeed: true });
   await expect(main(page).getByRole("status", { name: "Built" })).toBeVisible();
   await stepShot(page, "build-runtime", "after");
 }
@@ -513,7 +528,7 @@ export async function runBuild(
   page: Page,
   buildScript: string,
   producedRuntimePath: string,
-  { rebuild = false }: { rebuild?: boolean } = {},
+  { rebuild = false, succeed = false }: { rebuild?: boolean; succeed?: boolean } = {},
 ) {
   await openPort(page, "Build");
   await expect(
@@ -531,28 +546,17 @@ export async function runBuild(
   // path changes nothing, so no PATCH would fire to wait on.
   if (!rebuild) await declareRuntimeArtifact(page, producedRuntimePath);
 
-  const started = page.waitForResponse(
-    (res) => res.url().endsWith("/build-runtime") && res.request().method() === "POST",
-  );
-  await main(page)
-    .getByRole("button", { name: rebuild ? /Re-build/ : /Run build/ })
-    .click();
-  // The API names it run_id; read it as a key rather than declare a snake_case property.
-  const runId = ((await (await started).json()) as Record<string, string>).run_id;
-  // Wait for this run's own end, as the page's poll reports it. Re-build is no
-  // signal for a rebuild: it is already on screen from the run before, so a wait
-  // on it passed at once and left the caller's badge wait to time the whole build.
-  // DinD: each workbench daemon starts with an empty image cache, so the first
-  // build is a cold pull + install (~30s+), not a warm shared-cache build.
-  await page.waitForResponse(
-    async (res) => {
-      if (res.request().method() !== "GET" || !res.url().endsWith(`/runs/${runId}`)) return false;
-      const run = (await res.json()) as { status?: string };
-      return ["succeeded", "failed", "canceled"].includes(run.status ?? "");
-    },
-    { timeout: 90000 },
+  // Settled whatever its outcome unless asked: a caller may be building to watch it fail.
+  const run = await runToEnd(
+    page,
+    () =>
+      main(page)
+        .getByRole("button", { name: rebuild ? /Re-build/ : /Run build/ })
+        .click(),
+    { succeed },
   );
   await expect(main(page).getByRole("button", { name: /Re-build/ })).toBeVisible();
+  return run;
 }
 
 /**
@@ -629,13 +633,12 @@ export async function generateSbom(page: Page) {
   await openPort(page, "SBOM");
   const content = main(page);
   await expect(content.getByRole("button", { name: /^Generate$/ })).toBeVisible();
-  await content.getByRole("button", { name: /^Generate$/ }).click();
-  await expect(content.getByRole("button", { name: /^Regenerate$/ })).toBeVisible({
-    timeout: 20000,
+  await runToEnd(page, () => content.getByRole("button", { name: /^Generate$/ }).click(), {
+    watch: quiet(),
+    succeed: true,
   });
-  await expect(content.getByText("SBOM ready", { exact: true }).first()).toBeVisible({
-    timeout: 20000,
-  });
+  await expect(content.getByRole("button", { name: /^Regenerate$/ })).toBeVisible();
+  await expect(content.getByText("SBOM ready", { exact: true }).first()).toBeVisible();
   // "Ready" means the declared path resolved to a real file. Asserting the path
   // pins where that file is: the REE's artifacts, not the materialized tree.
   await expect(content.getByText(SBOM_ARTIFACT_PATH, { exact: true }).first()).toBeVisible();
@@ -654,11 +657,11 @@ export async function crossCheckSbom(page: Page) {
   await expect(content.getByRole("button", { name: /^Cross-check$/ })).toBeEnabled({
     timeout: 20000,
   });
-  await content.getByRole("button", { name: /^Cross-check$/ }).click();
-  // The card flips to Re-check once the run lands and the report refreshes.
-  await expect(content.getByRole("button", { name: /^Re-check$/ })).toBeVisible({
-    timeout: 30000,
+  await runToEnd(page, () => content.getByRole("button", { name: /^Cross-check$/ }).click(), {
+    succeed: true,
   });
+  // The card flips to Re-check once the report refreshes.
+  await expect(content.getByRole("button", { name: /^Re-check$/ })).toBeVisible();
   await expect(content.getByText("Cross-checked", { exact: true })).toBeVisible();
   await expect(content.getByText(/declared deps in runtime/)).toBeVisible();
   await stepShot(page, "cross-check-sbom", "after");
@@ -678,11 +681,12 @@ export async function testActivation(page: Page, runScript: string) {
     main(page).getByRole("textbox", { name: "Activation run script", exact: true }),
     runScript,
   );
-  await main(page)
-    .getByRole("button", { name: /Run activation/ })
-    .click();
-  // DinD: cold `docker load` of the runtime image + run (no shared cache).
-  await expect(main(page).getByRole("button", { name: /Re-run/ })).toBeVisible({ timeout: 90000 });
+  await runToEnd(page, () =>
+    main(page)
+      .getByRole("button", { name: /Run activation/ })
+      .click(),
+  );
+  await expect(main(page).getByRole("button", { name: /Re-run/ })).toBeVisible();
   // Re-run appears for failed runs too; the earned-outcome badge is
   // success-only.
   await expect(main(page).getByRole("status", { name: "Activation passed" })).toBeVisible();
@@ -772,17 +776,11 @@ export async function runExperiment(
   await main(page).getByRole("textbox", { name: "Output files" }).fill(EXPERIMENT_OUTPUT_FILE);
   await outputDeclared;
 
-  await main(page).getByRole("button", { name: /^Run$/ }).click();
-  // Fail fast with a clear signal if the click was still dropped: a started
-  // run flips the header button to Running…/Re-run within moments.
-  await expect(main(page).getByRole("button", { name: /Running…|Re-run/ })).toBeVisible({
-    timeout: 10000,
+  await runToEnd(page, () => main(page).getByRole("button", { name: /^Run$/ }).click(), {
+    succeed: true,
   });
   const runResult = main(page).getByRole("region", { name: "Run result" });
-  // DinD: cold runtime-image load + container run on the per-REE daemon —
-  // the heaviest wait in the suite, and the first to blow its budget when
-  // the host is under load. Keep it roomier than the other 90s steps.
-  await expect(runResult.getByText("pass", { exact: true })).toBeVisible({ timeout: 180000 });
+  await expect(runResult.getByText("pass", { exact: true })).toBeVisible();
   await expect(runResult.getByText(/declared validation passed/)).toBeVisible();
   await stepShot(page, "run-experiment", "after");
 }
@@ -843,7 +841,7 @@ export async function selectReviewBasis(
  * verdict the comparison settled on, as shown on the step.
  */
 export async function reproduceSource(page: Page) {
-  return reproduceReviewStep(page, "Source", 180000);
+  return reproduceReviewStep(page, "Source");
 }
 
 /**
@@ -856,7 +854,8 @@ export async function reproduceSource(page: Page) {
  * so matching dependency closures is what a faithful rebuild earns.
  */
 export async function reproduceBuild(page: Page) {
-  return reproduceReviewStep(page, "Build", 600000);
+  // A rebuild, then an SBOM scan that prints nothing while it works.
+  return reproduceReviewStep(page, "Build", { watch: quiet() });
 }
 
 /**
@@ -868,7 +867,7 @@ export async function reproduceBuild(page: Page) {
  * which is a finding the step completed with rather than a step that broke.
  */
 export async function reproduceActivation(page: Page) {
-  return reproduceReviewStep(page, "Test Activation", 600000);
+  return reproduceReviewStep(page, "Test Activation");
 }
 
 /**
@@ -883,11 +882,7 @@ export async function reproduceActivation(page: Page) {
  * out byte for byte the same, which most experiments will not manage and none
  * are required to.
  */
-export async function reproduceExperiment(
-  page: Page,
-  experimentName: string,
-  timeout = 600000,
-): Promise<string> {
+export async function reproduceExperiment(page: Page, experimentName: string): Promise<string> {
   const console = reviewConsole(page);
   const slug = `reproduce-experiment-${experimentName.toLowerCase().replace(/\s+/g, "-")}`;
   await stepShot(page, slug, "before");
@@ -896,20 +891,21 @@ export async function reproduceExperiment(
     .locator("xpath=..");
   const verdict = row.getByText(/^(IDENTICAL|REPRODUCED|DIFFERENT|INCONCLUSIVE|FAILED)$/);
   await expect(verdict).toHaveCount(0);
-  await console.getByRole("button", { name: `Reproduce experiment ${experimentName}` }).click();
-  await expect(verdict).toBeVisible({ timeout });
+  await runToEnd(page, () =>
+    console.getByRole("button", { name: `Reproduce experiment ${experimentName}` }).click(),
+  );
+  await expect(verdict).toBeVisible();
   await stepShot(page, slug, "after");
   return (await verdict.textContent()) ?? "";
 }
 
 /** Click one review step and read back the verdict it settles on. */
-async function reproduceReviewStep(page: Page, label: string, timeout: number) {
+async function reproduceReviewStep(page: Page, label: string, options: SettleOptions = {}) {
   const console = reviewConsole(page);
   const slug = `reproduce-${label.toLowerCase().replace(/\s+/g, "-")}`;
   await stepShot(page, slug, "before");
   const step = console.getByRole("button", { name: `Reproduce ${label}` });
   await expect(step).toBeEnabled();
-  await step.click();
   // The run key and the verdict are separate controls on one card — reading a
   // verdict and dispatching a rebuild do not share a hitbox — so the verdict is
   // read from the card the run key sits on.
@@ -918,13 +914,18 @@ async function reproduceReviewStep(page: Page, label: string, timeout: number) {
     .getByText(
       /^(IDENTICAL|EQUIVALENT|REPRODUCED|DIFFERENT|INCONCLUSIVE|COMPLETE|DID NOT ACTIVATE|FAILED)$/,
     );
-  // A re-run starts from the badge the previous attempt left on the step, and
-  // that stale verdict would satisfy the wait below immediately. Clicking marks
-  // the step queued in the same render, so the badge clears client-side before
-  // the run is even dispatched — a first run has no badge and passes straight
-  // through.
-  await expect(verdict).toHaveCount(0);
-  await expect(verdict).toBeVisible({ timeout });
+  // A re-run starts from the badge the previous attempt left on the step.
+  // Clicking clears it client-side in the same render, so a badge seen after the
+  // run settles is this run's, never the one before.
+  await runToEnd(
+    page,
+    async () => {
+      await step.click();
+      await expect(verdict).toHaveCount(0);
+    },
+    options,
+  );
+  await expect(verdict).toBeVisible();
   await stepShot(page, slug, "after");
   return (await verdict.textContent()) ?? "";
 }
@@ -946,12 +947,10 @@ export async function sealRee(page: Page) {
     .getByRole("button", { name: /Seal (REE|anyway)/ })
     .first();
   await expect(sealButton).toBeVisible();
-  await sealButton.click();
+  await runToEnd(page, () => sealButton.click(), { succeed: true });
   // By role rather than by text: the badge carries an icon, whose <title>
   // counts as text even though `aria-hidden` keeps it out of the name.
-  await expect(sealPanel(page).getByRole("status", { name: "REE sealed" })).toBeVisible({
-    timeout: 30000,
-  });
+  await expect(sealPanel(page).getByRole("status", { name: "REE sealed" })).toBeVisible();
   await stepShot(page, "seal-ree", "after");
 }
 

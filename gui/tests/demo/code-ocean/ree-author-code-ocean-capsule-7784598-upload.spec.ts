@@ -1,6 +1,7 @@
 import path from "node:path";
 import { expect, test } from "@playwright/test";
 import { AVAILABLE_LAB, openPort, openWorkbenchConsole } from "../../e2e/helpers/flow";
+import { runToEnd } from "../../runs";
 import { createDemoKit } from "../helpers/demo";
 
 const { demoStep, clickDemo, showcasePanel } = createDemoKit({
@@ -17,8 +18,6 @@ const { demoStep, clickDemo, showcasePanel } = createDemoKit({
 const CAPSULE_ARCHIVE = "capsule-7784598.zip";
 
 test("upload Code Ocean capsule 7784598", async ({ page }) => {
-  test.setTimeout(900000);
-
   const sourceArchive = path.resolve(
     __dirname,
     `../../../../examples/code-ocean/${CAPSULE_ARCHIVE}`,
@@ -67,14 +66,17 @@ test("upload Code Ocean capsule 7784598", async ({ page }) => {
     await page
       .locator('input[type="file"][accept=".zip,.tar,.gz,.tgz,.tar.gz"]')
       .setInputFiles(sourceArchive);
-    await clickDemo(
+    await runToEnd(
       page,
-      page.getByRole("button", { name: /Add to workspace/i }),
-      `Extract ${CAPSULE_ARCHIVE} into the REE workspace`,
+      () =>
+        clickDemo(
+          page,
+          page.getByRole("button", { name: /Add to workspace/i }),
+          `Extract ${CAPSULE_ARCHIVE} into the REE workspace`,
+        ),
+      { succeed: true },
     );
-    await expect(page.getByText(CAPSULE_ARCHIVE, { exact: true }).first()).toBeVisible({
-      timeout: 60000,
-    });
+    await expect(page.getByText(CAPSULE_ARCHIVE, { exact: true }).first()).toBeVisible();
   });
 
   // NOTE: intentionally no file-browser step here. The upload itself completes

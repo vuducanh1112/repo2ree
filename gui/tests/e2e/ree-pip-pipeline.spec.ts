@@ -86,10 +86,6 @@ fi
 
 test.describe("REE pip pipeline", () => {
   test("docker-less workbench: pip venv as the runtime artifact", async ({ page }) => {
-    // Provisioning pulls python:slim cold and the build pip-installs pandas
-    // over the network; both are the dominant costs here.
-    test.setTimeout(10 * 60 * 1000);
-
     await test.step("provision a python:slim workbench", async () => {
       await startReeCreation(page);
       await provisionWorkbench(page, { imageRef: LIGHTWEIGHT_WORKBENCH_IMAGE });

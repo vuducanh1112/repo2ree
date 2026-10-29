@@ -17,6 +17,10 @@ const apiBaseURL = process.env.E2E_API_BASE_URL ?? "http://localhost:8000";
 const ownGuiPort = process.env.E2E_GUI_PORT;
 const guiPort = ownGuiPort ?? "4173";
 
+// Per-test backstop for projects whose runs pull, fetch, or build over the network.
+// Each run is bounded by its own stall window (tests/runs.ts), not by this.
+const NETWORK_TEST_TIMEOUT = 45 * 60 * 1000;
+
 const baseUse = {
   baseURL: externalBaseURL ?? `http://127.0.0.1:${guiPort}`,
   browserName: "chromium" as const,
@@ -106,9 +110,9 @@ export default defineConfig({
       // does not also run them.
       testIgnore: ["**/review/**"],
       outputDir: `${testRunDir}/browser/tests/e2e-gui`,
-      // Generous per-test budget: with DinD, each workbench builds against a
-      // cold (empty) image cache, so a test that builds + runs can need ~60s+.
-      timeout: 180 * 1000,
+      // A backstop only: every run is watched (tests/runs.ts), and fails when it
+      // goes quiet, so a slow network costs time rather than a failure.
+      timeout: NETWORK_TEST_TIMEOUT,
       expect: { timeout: 15 * 1000 },
       use: {
         ...baseUse,
@@ -123,6 +127,7 @@ export default defineConfig({
       // stage. Screenshots before and after each step are kept for inspection.
       name: "e2e-gui-instant",
       testDir: "./tests/e2e-instant",
+      metadata: { runWatch: "instant" },
       outputDir: `${testRunDir}/browser/tests/e2e-gui-instant`,
       // The authoring spec takes ~70s alone but ~130-140s in the assurance gate,
       // which runs this suite beside the system tier; 120s failed it on load.
@@ -148,7 +153,7 @@ export default defineConfig({
       name: "e2e-gui-review",
       testDir: "./tests/e2e/review",
       outputDir: `${testRunDir}/browser/tests/e2e-gui-review`,
-      timeout: 420 * 1000,
+      timeout: NETWORK_TEST_TIMEOUT,
       expect: { timeout: 15 * 1000 },
       use: {
         ...baseUse,
@@ -165,7 +170,7 @@ export default defineConfig({
       testDir: "./tests/demo",
       testIgnore: ["**/code-ocean/**"],
       outputDir: `${testRunDir}/browser/tests/demo-gui`,
-      timeout: 300 * 1000,
+      timeout: NETWORK_TEST_TIMEOUT,
       expect: { timeout: 10 * 1000 },
       use: {
         ...baseUse,
@@ -179,7 +184,7 @@ export default defineConfig({
       name: "demo-gui-code-ocean",
       testDir: "./tests/demo/code-ocean",
       outputDir: `${testRunDir}/browser/tests/demo-gui-code-ocean`,
-      timeout: 900 * 1000,
+      timeout: NETWORK_TEST_TIMEOUT,
       expect: { timeout: 10 * 1000 },
       use: {
         ...baseUse,

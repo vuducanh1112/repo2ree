@@ -9,6 +9,7 @@ import {
   openWorkbenchConsole,
   stdoutContainsVerifyScript,
 } from "../e2e/helpers/flow";
+import { quiet, runToEnd, settleRun, startRun } from "../runs";
 import { createDemoKit } from "./helpers/demo";
 
 const PYTHON_RUNTIME_PATH = "python_hello_world/runtime.tar";
@@ -25,13 +26,6 @@ const {
 } = createDemoKit({ stepDelayMs: 350, narrationDelayMs: 900 });
 
 test("author, seal, and download a Python hello-world REE", async ({ page }) => {
-  // DinD: every workbench builds against a cold (empty) image cache, so the
-  // build/activation/experiment steps are full cold pulls + installs. Combined
-  // with the narration delays — and the three script-generation chapters, each a
-  // real inference round-trip plus dwell time — this needs a much larger budget
-  // than warm runs.
-  test.setTimeout(540000);
-
   const sourceArchive = path.resolve(
     __dirname,
     "../../../examples/projects/python-hello-world.tar.gz",
@@ -96,19 +90,21 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
 
   await demoStep(page, "Provision the workbench", async () => {
     const setup = page.getByRole("region", { name: "Set up the workbench" });
-    await clickDemo(
+    await runToEnd(
       page,
-      setup.getByRole("button", { name: /Provision workbench/i }),
-      "Provision the workbench",
+      () =>
+        clickDemo(
+          page,
+          setup.getByRole("button", { name: /Provision workbench/i }),
+          "Provision the workbench",
+        ),
+      { succeed: true },
     );
-    // Generous budget: the lean bench path pulls the image, starts the bench,
-    // and runs the doctor probe (which waits for the in-bench dockerd) —
-    // ~20s warm, longer on a cold registry pull.
     await expect(
       page
         .getByRole("navigation", { name: "Workspace pages" })
         .getByRole("button", { name: "Source", exact: true }),
-    ).toBeVisible({ timeout: 120000 });
+    ).toBeVisible();
     await showcasePanel(
       page,
       page
@@ -258,14 +254,17 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
     await expect(
       main.getByRole("heading", { name: "Reproducibility Readiness", exact: true }),
     ).toBeVisible();
-    await clickDemo(
+    await runToEnd(
       page,
-      main.getByRole("button", { name: /^Run Evaluate$/ }),
-      "Assess the source declarations and surface reproducibility risks",
+      () =>
+        clickDemo(
+          page,
+          main.getByRole("button", { name: /^Run Evaluate$/ }),
+          "Assess the source declarations and surface reproducibility risks",
+        ),
+      { succeed: true },
     );
-    await expect(main.getByRole("button", { name: /Re-run Evaluate/ })).toBeVisible({
-      timeout: 60000,
-    });
+    await expect(main.getByRole("button", { name: /Re-run Evaluate/ })).toBeVisible();
     // The earned-outcome badge (role=status) renders only for a succeeded run.
     await expect(main.getByRole("status", { name: "Evaluated" })).toBeVisible();
     await showcasePanel(page, main.getByText("Run Log").first(), "Review output logs");
@@ -326,16 +325,18 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
 
     // The build page has no shared execution lifecycle — each
     // experiment and the activation own their own run script (authored later).
-    await clickDemo(page, main.getByRole("button", { name: /Run build/ }), "Run runtime build");
-    // Dwell on the build log while it streams live (the cold DinD build runs
-    // for ~30s, so there is plenty to show). The panel tails new lines itself.
+    const build = await startRun(page, () =>
+      clickDemo(page, main.getByRole("button", { name: /Run build/ }), "Run runtime build"),
+    );
+    // Dwell on the build log while it streams live. The panel tails new lines itself.
     await showcasePanel(
       page,
       main.getByText(/Build log/i).first(),
       "Watch the build log stream live",
     );
     await page.waitForTimeout(5000);
-    await expect(main.getByRole("button", { name: /Re-build/ })).toBeVisible({ timeout: 90000 });
+    await settleRun(page, build, { succeed: true });
+    await expect(main.getByRole("button", { name: /Re-build/ })).toBeVisible();
     // Re-build appears for failed runs too; the "Built" outcome badge is
     // success-only, so a failed build stops the demo here with its log visible.
     await showcasePanel(
@@ -354,15 +355,15 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
         .getByRole("button", { name: "SBOM", exact: true }),
       "Open the SBOM page — a full step page like Build Runtime",
     );
-    await clickDemo(page, main.getByRole("button", { name: /^Generate$/ }), "Run SBOM scan");
-    await expect(main.getByRole("button", { name: /^Regenerate$/ })).toBeVisible({
-      timeout: 60000,
-    });
+    await runToEnd(
+      page,
+      () => clickDemo(page, main.getByRole("button", { name: /^Generate$/ }), "Run SBOM scan"),
+      { watch: quiet(), succeed: true },
+    );
+    await expect(main.getByRole("button", { name: /^Regenerate$/ })).toBeVisible();
     // The status chip and the earned-outcome badge share the "SBOM ready" text;
     // the role=status badge is the success-only signal.
-    await expect(main.getByRole("status", { name: "SBOM ready" })).toBeVisible({
-      timeout: 60000,
-    });
+    await expect(main.getByRole("status", { name: "SBOM ready" })).toBeVisible();
     await showcasePanel(page, main.getByText(/SBOM log/i).first(), "Review SBOM logs");
   });
 
@@ -372,14 +373,17 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
     // built runtime, and what runs in it that no manifest declared.
     const crossCheckButton = main.getByRole("button", { name: /^Cross-check$/ });
     await expect(crossCheckButton).toBeEnabled({ timeout: 30000 });
-    await clickDemo(
+    await runToEnd(
       page,
-      crossCheckButton,
-      "Cross-check the SBOM against the scanned dependency inventory",
+      () =>
+        clickDemo(
+          page,
+          crossCheckButton,
+          "Cross-check the SBOM against the scanned dependency inventory",
+        ),
+      { succeed: true },
     );
-    await expect(main.getByRole("button", { name: /^Re-check$/ })).toBeVisible({
-      timeout: 60000,
-    });
+    await expect(main.getByRole("button", { name: /^Re-check$/ })).toBeVisible();
     // pandas==2.2.1 is the only declared dep and it is in the runtime; its
     // transitive installs (numpy, pytz, ...) surface as undeclared packages.
     await showcasePanel(
@@ -419,12 +423,13 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
       dockerRunScript("python -c \"import sys; print('ok')\"", PYTHON_RUNTIME_PATH),
       "The author supplies the missing piece: a finite command that proves the image starts, in a self-contained docker run",
     );
-    await clickDemo(
+    await runToEnd(
       page,
-      main.getByRole("button", { name: /Run activation/ }),
-      "Execute activation",
+      () =>
+        clickDemo(page, main.getByRole("button", { name: /Run activation/ }), "Execute activation"),
+      { succeed: true },
     );
-    await expect(main.getByRole("button", { name: /Re-run/ })).toBeVisible({ timeout: 90000 });
+    await expect(main.getByRole("button", { name: /Re-run/ })).toBeVisible();
     // Success-only outcome badge — a failed activation stops the demo here.
     await showcasePanel(
       page,
@@ -496,13 +501,16 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
       EXPERIMENT_OUTPUT_FILE,
       "Declare the result file the run produces — captured after every run and, once opted in on the Seal page, shipped as the author baseline",
     );
-    await clickDemo(page, main.getByRole("button", { name: /^Run$/ }), "Run the experiment");
+    const experiment = await startRun(page, () =>
+      clickDemo(page, main.getByRole("button", { name: /^Run$/ }), "Run the experiment"),
+    );
     await page.waitForTimeout(5000);
     await showcaseScroll(page, 800);
     await showcaseScroll(page, 800);
     await page.waitForTimeout(5000);
     const runResultPanel = main.getByRole("region", { name: "Run result" });
-    await expect(runResultPanel.getByText("pass", { exact: true })).toBeVisible({ timeout: 90000 });
+    await settleRun(page, experiment, { succeed: true });
+    await expect(runResultPanel.getByText("pass", { exact: true })).toBeVisible();
     await expect(runResultPanel.getByText(/declared validation passed/)).toBeVisible();
   });
 
@@ -531,21 +539,18 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
     // The seal panel shows source/runtime bundle toggles inline before sealing.
     await expect(sealPanel.getByText("Bundle contents", { exact: true })).toBeVisible();
 
-    await clickDemo(
-      page,
-      sealPanel.getByRole("button", { name: /Seal (REE|anyway)/ }),
-      "Seal — locks the REE with the chosen bundle contents",
+    const seal = await startRun(page, () =>
+      clickDemo(
+        page,
+        sealPanel.getByRole("button", { name: /Seal (REE|anyway)/ }),
+        "Seal — locks the REE with the chosen bundle contents",
+      ),
     );
-    // Sealing is a heavy synchronous round-trip (the backend assembles the
-    // bundle twice — a digest pre-pass plus the final stamped build — then
-    // re-enumerates the workspace), so allow the same budget as the other
-    // backend-bound steps rather than the tighter 20s that flaked under load.
     // Addressed by role, like every other earned outcome in this demo: the
     // badge carries an icon, and an icon's <title> joins the element's text
     // even while `aria-hidden` keeps it out of the accessible name.
-    await expect(sealPanel.getByRole("status", { name: "REE sealed" })).toBeVisible({
-      timeout: 60000,
-    });
+    await settleRun(page, seal, { succeed: true });
+    await expect(sealPanel.getByRole("status", { name: "REE sealed" })).toBeVisible();
 
     // Capture this run's content identity from the sealed record. The REE index is
     // host-side and outlives every workbench, so a host that has run this demo

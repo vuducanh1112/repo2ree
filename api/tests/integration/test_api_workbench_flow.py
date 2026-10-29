@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import shutil
 import subprocess
-import time
 import zipfile
 from io import BytesIO
 from typing import Any
@@ -29,13 +28,11 @@ import pytest
 from api_integration_bench import bundles_present
 from fastapi.testclient import TestClient
 
+from repo2ree_testbed.run_watch import NETWORK_RUN, client_getter, settle_run
+
 # ================================================
 # Constants
 # ================================================
-
-
-RUN_TIMEOUT_SECONDS = 180
-TERMINAL_RUN_STATUSES = frozenset({"succeeded", "failed", "canceled"})
 
 
 # ================================================
@@ -71,16 +68,8 @@ def _project_zip() -> bytes:
 
 
 def _wait_for_run(client: TestClient, ree_id: str, run_id: str) -> str:
-    """Poll the run endpoint until the background run reaches a terminal status."""
-    deadline = time.monotonic() + RUN_TIMEOUT_SECONDS
-    while time.monotonic() < deadline:
-        resp = client.get(f"/api/v1/rees/{ree_id}/runs/{run_id}")
-        assert resp.status_code == 200, resp.text
-        status = resp.json()["status"]
-        if status in TERMINAL_RUN_STATUSES:
-            return str(status)
-        time.sleep(1.0)
-    pytest.fail(f"run {run_id} did not reach a terminal status within {RUN_TIMEOUT_SECONDS}s")
+    """Wait for the background run to settle; return its status."""
+    return str(settle_run(client_getter(client), ree_id, run_id, NETWORK_RUN).run["status"])
 
 
 def _upload_source(client: TestClient, ree_id: str, data: bytes, archive_name: str) -> dict[str, Any]:

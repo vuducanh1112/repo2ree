@@ -45,11 +45,6 @@ const RUNTIME_PATH = "python_hello_world/runtime.tar";
 
 test.describe("REE pipeline", () => {
   test("golden path: provision through seal and release on one workbench", async ({ page }) => {
-    // The whole pipeline in one test: provisioning + a cold DinD build +
-    // activation + experiment each carry a 90-180s worst case of their own,
-    // so the per-test budget must cover their sum.
-    test.setTimeout(12 * 60 * 1000);
-
     await test.step("provision workbench", async () => {
       await startReeCreation(page);
       const setup = page.getByRole("region", { name: "Set up the workbench" });

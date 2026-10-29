@@ -40,9 +40,6 @@ export async function twoConcurrentCreations(
   browser: Browser,
   options: { labIndexes: [number, number]; sameLab: boolean },
 ) {
-  // Two provisions (~20-90s each) plus two evaluates and two seals.
-  test.setTimeout(10 * 60 * 1000);
-
   if (!options.sameLab) {
     test.skip(
       (await connectedLabCount(page)) < 2,

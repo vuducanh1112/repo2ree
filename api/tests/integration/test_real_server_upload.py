@@ -32,6 +32,7 @@ import httpx
 import pytest
 
 from repo2ree_testbed.artifacts import case_dir, service_dir
+from repo2ree_testbed.run_watch import NETWORK_RUN, client_getter, settle_run
 
 # ================================================
 # Constants
@@ -40,8 +41,6 @@ from repo2ree_testbed.artifacts import case_dir, service_dir
 TEST_RESULTS_DIR = service_dir("api-real-server")
 
 STARTUP_TIMEOUT_SECONDS = 30
-RUN_TIMEOUT_SECONDS = 180
-TERMINAL_RUN_STATUSES = frozenset({"succeeded", "failed", "canceled"})
 
 # Hard per-request deadline. Every route this test touches answers in well
 # under a second when healthy; a stalled event loop blows this bound fast.
@@ -151,15 +150,8 @@ def _project_zip() -> bytes:
 
 
 def _wait_for_run(client: httpx.Client, ree_id: str, run_id: str) -> str:
-    deadline = time.monotonic() + RUN_TIMEOUT_SECONDS
-    while time.monotonic() < deadline:
-        resp = client.get(f"/api/v1/rees/{ree_id}/runs/{run_id}")
-        assert resp.status_code == 200, resp.text
-        status = resp.json()["status"]
-        if status in TERMINAL_RUN_STATUSES:
-            return str(status)
-        time.sleep(1.0)
-    pytest.fail(f"run {run_id} did not reach a terminal status within {RUN_TIMEOUT_SECONDS}s")
+    """Wait for the background run to settle; return its status."""
+    return str(settle_run(client_getter(client), ree_id, run_id, NETWORK_RUN).run["status"])
 
 
 # ================================================

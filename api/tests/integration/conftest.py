@@ -102,6 +102,7 @@ from repo2ree_supervisor import (  # noqa: E402
     WorkbenchConnection,
     WorkbenchUnavailableError,
 )
+from repo2ree_testbed.run_watch import NETWORK_RUN, client_getter, settle_run  # noqa: E402
 
 # The in-test provider and the compute location it publishes. Every REE this
 # tier creates is placed there, so a test picks a location the same way a real
@@ -173,18 +174,9 @@ def ree(client: TestClient, request: pytest.FixtureRequest, test_recording: Test
             client.delete(f"/api/v1/rees/{ree_id}")
 
 
-def _wait_for_provision(client: TestClient, ree_id: str, run_id: str, timeout_seconds: int = 180) -> str:
-    """Poll the provisioning run until it reaches a terminal status."""
-    terminal = frozenset({"succeeded", "failed", "canceled"})
-    deadline = time.monotonic() + timeout_seconds
-    while time.monotonic() < deadline:
-        resp = client.get(f"/api/v1/rees/{ree_id}/runs/{run_id}")
-        assert resp.status_code == 200, resp.text
-        status = resp.json()["status"]
-        if status in terminal:
-            return str(status)
-        time.sleep(1.0)
-    raise AssertionError(f"provisioning run {run_id} did not finish within {timeout_seconds}s")
+def _wait_for_provision(client: TestClient, ree_id: str, run_id: str) -> str:
+    """Wait for the provisioning run to settle; return its status."""
+    return str(settle_run(client_getter(client), ree_id, run_id, NETWORK_RUN).run["status"])
 
 
 # ================================================

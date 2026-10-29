@@ -6,6 +6,7 @@ import {
   openPort,
   openWorkbenchConsole,
 } from "../../e2e/helpers/flow";
+import { runToEnd } from "../../runs";
 import { createDemoKit } from "../helpers/demo";
 
 const { demoStep, clickDemo, fillDemo, saveRunScript, showDemoFocus, showcasePanel } =
@@ -109,8 +110,6 @@ async function addExperiment(
 }
 
 test("author Code Ocean capsule 7784598 inputs", async ({ page }) => {
-  test.setTimeout(900000);
-
   const sourceArchive = path.resolve(
     __dirname,
     "../../../../examples/code-ocean/capsule-7784598.zip",
@@ -160,14 +159,17 @@ test("author Code Ocean capsule 7784598 inputs", async ({ page }) => {
     await page
       .locator('input[type="file"][accept=".zip,.tar,.gz,.tgz,.tar.gz"]')
       .setInputFiles(sourceArchive);
-    await clickDemo(
+    await runToEnd(
       page,
-      page.getByRole("button", { name: /Add to workspace/i }),
-      "Extract capsule-7784598.zip into the REE workspace",
+      () =>
+        clickDemo(
+          page,
+          page.getByRole("button", { name: /Add to workspace/i }),
+          "Extract capsule-7784598.zip into the REE workspace",
+        ),
+      { succeed: true },
     );
-    await expect(page.getByText("capsule-7784598.zip", { exact: true }).first()).toBeVisible({
-      timeout: 60000,
-    });
+    await expect(page.getByText("capsule-7784598.zip", { exact: true }).first()).toBeVisible();
   });
 
   await demoStep(page, "Review extracted capsule shape", async () => {
