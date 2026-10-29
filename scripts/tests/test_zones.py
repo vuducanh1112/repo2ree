@@ -65,7 +65,7 @@ def test_the_longest_entry_decides() -> None:
     assert declared.entry("testbed/src/repo2ree_testbed/stack/e2e.py").zone == "tooling"  # type: ignore[union-attr]
     assert declared.entry("assurance/collector/src/repo2ree_assurance_collector/cli.py").zone == "assurance"  # type: ignore[union-attr]
     assert declared.protected("contracts/behaviour/events.schema.json")
-    assert not declared.protected("protocol/src/repo2ree_protocol/behaviour/writer.py")
+    assert not declared.protected("telemetry/src/repo2ree_telemetry/behaviour/writer.py")
 
 
 def test_unclaimed_files_and_entries_that_claim_nothing_are_problems(tmp_path: Path) -> None:

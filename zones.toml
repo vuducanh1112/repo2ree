@@ -37,7 +37,6 @@ summary = "What a sealed REE document must keep meaning, in any implementation."
 "contracts/ree/sealed/" = "Sealed documents whose seals must keep verifying"
 "contracts/ree/canonical.json" = "Canonical JSON and instant encodings with their digests"
 "contracts/ree/invalid.json" = "Documents the format refuses, as patches of a sealed one"
-"contracts/ree/v1-extensions.json" = "Fields added after v1 that its digest drops when absent"
 "ree/tests/test_contract.py" = "Reads every format fixture against the implementation"
 
 [spec.groups.excuses]
@@ -96,7 +95,8 @@ summary = "The processes of a deployment."
 summary = "Shared by the services."
 [product.groups.libraries.paths]
 "core/" = "The REE: layout, operations, capture into Git, audit"
-"protocol/" = "Wire types and the behaviour journal writer shared by every process"
+"protocol/" = "Wire types shared by every process"
+"telemetry/" = "Tracing, metrics, logging, and the behaviour journal writer"
 "ree/" = "The REE document format: models, canonical digest, reserved paths"
 "authoring/" = "Script lint, target resolution, and templates, shared by the bench and the API"
 
