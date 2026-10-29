@@ -4,7 +4,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanE
 
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.result import ActionResult, HistoryReference
-from repo2ree_telemetry.tracing import record_result_evidence, record_span_facts
+from repo2ree_telemetry.spans import record_result_evidence, record_span_facts
 
 
 def test_result_evidence_survives_wire_and_bounded_span_facts():

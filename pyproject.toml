@@ -224,7 +224,9 @@ extend-ignore = [
 "*/operations/handlers/*" = ["BLE001"]
 # The OTLP exporters and `requests` are imported only where a host exports, so
 # the executor's closure can leave them out.
-"*/repo2ree_telemetry/tracing.py" = ["PLC0415"]
+"*/repo2ree_telemetry/bootstrap.py" = ["PLC0415"]
+"*/repo2ree_telemetry/relay.py" = ["PLC0415"]
+"*/repo2ree_telemetry/relayed_json.py" = ["PLC0415"]
 # `scripts/` holds developer tools invoked as `python scripts/x.py`, not an
 # importable package (`just check-scripts` lints it separately from the six
 # workspace packages). A command-line tool with no stdout is useless, and the

@@ -63,9 +63,9 @@ from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import validate_outputs
 from repo2ree_protocol.result import ActionResult
-from repo2ree_telemetry.tracing import (
+from repo2ree_telemetry.bootstrap import get_tracer
+from repo2ree_telemetry.spans import (
     CommandSpanAttrs,
-    get_tracer,
     record_command_status,
     record_exit_code,
     record_failure,

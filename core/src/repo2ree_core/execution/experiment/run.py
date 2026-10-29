@@ -32,12 +32,8 @@ from repo2ree_core.execution.process import (
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionStatus
 from repo2ree_ree.paths import validate_relative_path
-from repo2ree_telemetry.tracing import (
-    ScriptSpanAttrs,
-    get_tracer,
-    record_current_span_facts,
-    record_exit_code,
-)
+from repo2ree_telemetry.bootstrap import get_tracer
+from repo2ree_telemetry.spans import ScriptSpanAttrs, record_current_span_facts, record_exit_code
 
 tracer = get_tracer(__name__)
 

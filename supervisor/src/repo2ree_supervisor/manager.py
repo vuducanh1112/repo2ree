@@ -66,13 +66,12 @@ from repo2ree_supervisor.client import (
 )
 from repo2ree_supervisor.enrollment import EnrollmentRegistry
 from repo2ree_telemetry.behaviour import events
-from repo2ree_telemetry.tracing import (
+from repo2ree_telemetry.bootstrap import get_meter, get_tracer
+from repo2ree_telemetry.relay import SpanSink
+from repo2ree_telemetry.spans import (
     CommandSpanAttrs,
-    SpanSink,
     WorkbenchSpanAttrs,
     command_metric_attrs,
-    get_meter,
-    get_tracer,
     record_command_status,
     record_exit_code,
     record_failure,

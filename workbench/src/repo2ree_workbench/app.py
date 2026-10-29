@@ -6,15 +6,9 @@ import asyncio
 from collections.abc import Sequence
 
 from repo2ree_protocol.build import current_build
+from repo2ree_telemetry.bootstrap import TracerProvider, otlp_log_handler, setup_logs, setup_metrics, setup_tracing
 from repo2ree_telemetry.log import configure_logging
-from repo2ree_telemetry.tracing import (
-    TracerProvider,
-    otlp_log_handler,
-    setup_logs,
-    setup_metrics,
-    setup_relayed_span_export,
-    setup_tracing,
-)
+from repo2ree_telemetry.relay import setup_relayed_span_export
 from repo2ree_workbench.config import load_config
 from repo2ree_workbench.connection import SpanRelay, run_workbench
 from repo2ree_workbench.executor_process import LocalExecutor

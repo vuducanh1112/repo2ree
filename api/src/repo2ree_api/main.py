@@ -41,8 +41,8 @@ from repo2ree_api.storage.init_storage import create_upload_staging_if_not_exist
 from repo2ree_protocol.build import BuildInfo, current_build
 from repo2ree_supervisor import WorkbenchUnavailableError
 from repo2ree_telemetry.behaviour import close_journal, open_journal
+from repo2ree_telemetry.bootstrap import otlp_log_handler, setup_logs, setup_metrics, setup_tracing
 from repo2ree_telemetry.log import configure_logging, configure_run_log_export
-from repo2ree_telemetry.tracing import otlp_log_handler, setup_logs, setup_metrics, setup_tracing
 
 # ================================================
 # App Setup

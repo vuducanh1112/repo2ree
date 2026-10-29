@@ -21,13 +21,8 @@ from repo2ree_api.storage import author_actions
 from repo2ree_protocol.command import Command
 from repo2ree_protocol.result import ActionResult
 from repo2ree_supervisor import WorkbenchHandle
-from repo2ree_telemetry.tracing import (
-    CommandSpanAttrs,
-    command_metric_attrs,
-    get_meter,
-    get_tracer,
-    record_command_status,
-)
+from repo2ree_telemetry.bootstrap import get_meter, get_tracer
+from repo2ree_telemetry.spans import CommandSpanAttrs, command_metric_attrs, record_command_status
 
 # ================================================
 # Observability

@@ -23,7 +23,7 @@ from repo2ree_supervisor import (
     WsWorkbenchClient,
 )
 from repo2ree_supervisor.enrollment import EnrollmentRegistry
-from repo2ree_telemetry.tracing import build_span_sink
+from repo2ree_telemetry.relay import build_span_sink
 
 allocation_store = AllocationStore(service_settings.ALLOCATION_STORE_FILE)
 

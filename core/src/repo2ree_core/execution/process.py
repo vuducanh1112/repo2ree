@@ -23,10 +23,10 @@ from typing import IO, Literal
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionStatus
 from repo2ree_ree.paths import resolve_within
-from repo2ree_telemetry.tracing import (
+from repo2ree_telemetry.bootstrap import get_tracer
+from repo2ree_telemetry.spans import (
     ExecSpanAttrs,
     ScriptSpanAttrs,
-    get_tracer,
     record_command_status,
     record_exec_outcome,
     record_span_facts,

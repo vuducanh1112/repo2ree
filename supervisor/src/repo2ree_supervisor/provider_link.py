@@ -30,7 +30,7 @@ from repo2ree_supervisor.workbench_link import (
     WorkbenchConnection,
     WorkbenchConnectionRegistry,
 )
-from repo2ree_telemetry.tracing import current_traceparent
+from repo2ree_telemetry.spans import current_traceparent
 
 logger = logging.getLogger(__name__)
 

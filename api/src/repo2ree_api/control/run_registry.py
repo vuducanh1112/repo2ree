@@ -19,13 +19,12 @@ from repo2ree_api.storage.run_store import IdempotencyConflictError, RunStore, S
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.result import ActionResult, Failure, FailureCategory, HistoryReference
 from repo2ree_telemetry.behaviour.events import AuthorApiActionName
+from repo2ree_telemetry.bootstrap import get_meter, get_tracer
 from repo2ree_telemetry.log import emit_run_log
-from repo2ree_telemetry.tracing import (
+from repo2ree_telemetry.spans import (
     CommandSpanAttrs,
     command_metric_attrs,
     current_span_link,
-    get_meter,
-    get_tracer,
     record_command_status,
     record_failure,
     record_result_boundary,

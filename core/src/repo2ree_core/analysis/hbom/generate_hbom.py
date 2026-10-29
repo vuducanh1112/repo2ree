@@ -8,7 +8,7 @@ from repo2ree_core.analysis.hbom.memory_profiler import profile_memory
 from repo2ree_core.analysis.hbom.network_profiler import profile_network
 from repo2ree_core.analysis.hbom.storage_profiler import profile_storage
 from repo2ree_ree.hbom import HBOM
-from repo2ree_telemetry.tracing import get_tracer
+from repo2ree_telemetry.bootstrap import get_tracer
 
 tracer = get_tracer(__name__)
 

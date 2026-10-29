@@ -7,7 +7,7 @@ import logging
 import os
 from datetime import UTC, datetime
 
-from repo2ree_telemetry.tracing import current_trace_context
+from repo2ree_telemetry.spans import current_trace_context
 
 # ================================================
 # Formatters

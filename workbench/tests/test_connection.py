@@ -430,7 +430,7 @@ def test_a_relayed_span_is_sent_uncorrelated() -> None:
 
 
 def test_pump_preserves_trace_context_without_leaking_to_caller():
-    from repo2ree_telemetry.tracing import attach_remote_context, current_traceparent, detach_context
+    from repo2ree_telemetry.spans import attach_remote_context, current_traceparent, detach_context
 
     parent = "00-" + "a" * 32 + "-" + "b" * 16 + "-01"
     token = attach_remote_context(parent)

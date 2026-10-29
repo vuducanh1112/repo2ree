@@ -64,7 +64,8 @@ from repo2ree_protocol.workbench import (
     workbench_ws_message_adapter,
 )
 from repo2ree_supervisor.client import WorkbenchUnavailableError, raise_for_terminal_error
-from repo2ree_telemetry.tracing import SpanSink, current_traceparent
+from repo2ree_telemetry.relay import SpanSink
+from repo2ree_telemetry.spans import current_traceparent
 
 logger = logging.getLogger(__name__)
 

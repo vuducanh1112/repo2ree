@@ -150,6 +150,6 @@ def test_emit_run_log_without_export_is_a_noop() -> None:
 
 
 def test_setup_logs_is_noop_without_endpoint() -> None:
-    from repo2ree_telemetry.tracing import setup_logs
+    from repo2ree_telemetry.bootstrap import setup_logs
 
     assert setup_logs("repo2ree-test") is None

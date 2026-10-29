@@ -51,18 +51,18 @@ from repo2ree_protocol.queries import (
     READ_REE_FILE_PATH,
 )
 from repo2ree_protocol.result import ActionResult
+from repo2ree_telemetry.bootstrap import get_tracer
 from repo2ree_telemetry.log import configure_logging as _configure_logging
-from repo2ree_telemetry.tracing import (
+from repo2ree_telemetry.relay import setup_relay_tracing
+from repo2ree_telemetry.spans import (
     CommandSpanAttrs,
     attach_remote_context,
     detach_context,
-    get_tracer,
     record_command_status,
     record_exit_code,
     record_failure,
     record_result_boundary,
     record_result_evidence,
-    setup_relay_tracing,
 )
 
 tracer = get_tracer(__name__)

@@ -35,27 +35,29 @@ from opentelemetry.trace import (
 )
 
 from repo2ree_protocol.result import Failure
-from repo2ree_telemetry import tracing
-from repo2ree_telemetry.tracing import (
+from repo2ree_telemetry import relay, relayed_json
+from repo2ree_telemetry.bootstrap import build_resource, otlp_log_handler, setup_logs, setup_metrics, setup_tracing
+from repo2ree_telemetry.relay import (
+    _BackgroundSpanForwarder,
+    _relayed_console_sink,
+    _RelaySpanExporter,
+    build_span_sink,
+    forward_relayed_spans,
+    setup_relay_tracing,
+    setup_relayed_span_export,
+)
+from repo2ree_telemetry.relayed_json import _anyvalue, relayed_span_json
+from repo2ree_telemetry.spans import (
     CommandSpanAttrs,
     ExecSpanAttrs,
     ScriptSpanAttrs,
     WorkbenchSpanAttrs,
-    _anyvalue,
-    _BackgroundSpanForwarder,
-    _build_resource,
-    _relayed_console_sink,
-    _relayed_span_json,
-    _RelaySpanExporter,
     _SpanFactCarrier,
     attach_remote_context,
-    build_span_sink,
     command_metric_attrs,
     current_trace_context,
     current_traceparent,
     detach_context,
-    forward_relayed_spans,
-    otlp_log_handler,
     record_command_status,
     record_current_span_facts,
     record_exec_outcome,
@@ -64,11 +66,6 @@ from repo2ree_telemetry.tracing import (
     record_ree_id,
     record_span_facts,
     remote_context,
-    setup_logs,
-    setup_metrics,
-    setup_relay_tracing,
-    setup_relayed_span_export,
-    setup_tracing,
 )
 
 
@@ -236,31 +233,31 @@ def test_typed_carriers_own_the_key_vocabulary() -> None:
 
 
 def test_build_resource_records_instance_id_only_when_given() -> None:
-    plain = _build_resource("repo2ree-workbench")
+    plain = build_resource("repo2ree-workbench")
     assert plain.attributes["service.name"] == "repo2ree-workbench"
     assert "service.instance.id" not in plain.attributes
 
-    instanced = _build_resource("repo2ree-workbench", "host-a1b2c3")
+    instanced = build_resource("repo2ree-workbench", "host-a1b2c3")
     assert instanced.attributes["service.instance.id"] == "host-a1b2c3"
 
 
 def test_build_resource_carries_deploy_identity_from_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("SERVICE_VERSION", raising=False)
     monkeypatch.delenv("DEPLOY_ENV", raising=False)
-    local = _build_resource("repo2ree-api")
+    local = build_resource("repo2ree-api")
     # Unset in local dev, so a dashboard never has to filter on an empty slice.
     assert "service.version" not in local.attributes
     assert "deployment.environment" not in local.attributes
 
     monkeypatch.setenv("SERVICE_VERSION", "1.4.2")
     monkeypatch.setenv("DEPLOY_ENV", "staging")
-    deployed = _build_resource("repo2ree-api")
+    deployed = build_resource("repo2ree-api")
     assert deployed.attributes["service.version"] == "1.4.2"
     assert deployed.attributes["deployment.environment"] == "staging"
 
 
 def test_otlp_headers_from_env_parses_pairs_and_ignores_junk(monkeypatch) -> None:
-    from repo2ree_telemetry.tracing import _otlp_headers_from_env
+    from repo2ree_telemetry.relay import _otlp_headers_from_env
 
     monkeypatch.delenv("OTEL_EXPORTER_OTLP_HEADERS", raising=False)
     assert _otlp_headers_from_env() == {}
@@ -359,7 +356,7 @@ def test_relayed_span_json_renders_scalar_attributes() -> None:
     resource = PbResource()
     resource.attributes.add(key="service.name", value=AnyValue(string_value="repo2ree-exec"))
 
-    rendered = _relayed_span_json(span, resource)
+    rendered = relayed_span_json(span, resource)
 
     # Ids carry the SDK's ``0x`` prefix so both writers spell them one way.
     assert rendered["context"] == {"trace_id": "0x" + "0f" * 16, "span_id": "0x" + "1e" * 8, "trace_state": "[]"}
@@ -379,14 +376,14 @@ def test_relayed_span_json_renders_scalar_attributes() -> None:
 def test_relayed_span_json_uses_none_for_missing_parent() -> None:
     span = PbSpan(name="root", trace_id=bytes.fromhex("01" * 16), span_id=bytes.fromhex("02" * 8))
 
-    assert _relayed_span_json(span, PbResource())["parent_id"] is None
+    assert relayed_span_json(span, PbResource())["parent_id"] is None
 
 
 def test_relayed_span_json_reports_an_unset_status_without_a_description() -> None:
     """The SDK omits ``description`` when there is no message; so must this."""
     span = PbSpan(name="root", trace_id=bytes.fromhex("01" * 16), span_id=bytes.fromhex("02" * 8))
 
-    assert _relayed_span_json(span, PbResource())["status"] == {"status_code": "UNSET"}
+    assert relayed_span_json(span, PbResource())["status"] == {"status_code": "UNSET"}
 
 
 def test_anyvalue_falls_back_for_non_scalar_values() -> None:
@@ -465,7 +462,7 @@ def _no_global_providers(monkeypatch: pytest.MonkeyPatch) -> None:
     provider too, so the registration is captured instead of performed.
     """
     # Patched on the OpenTelemetry modules themselves — the same module objects
-    # tracing.py holds its references to.
+    # bootstrap.py holds its references to.
     monkeypatch.setattr(trace_api, "set_tracer_provider", lambda provider: None)
     monkeypatch.setattr(metrics_api, "set_meter_provider", lambda provider: None)
 
@@ -745,7 +742,7 @@ def test_build_span_sink_forwards_to_the_configured_endpoint(monkeypatch: pytest
         forwarded.append((payloads, endpoint))
         seen.set()
 
-    monkeypatch.setattr(tracing, "forward_relayed_spans", _forward)
+    monkeypatch.setattr(relay, "forward_relayed_spans", _forward)
 
     sink = build_span_sink("http://collector:4318")
     assert sink is not None
@@ -857,7 +854,7 @@ def _finished_spans(span_name: str) -> list[ReadableSpan]:
 
 
 def _span_names(payload: str) -> list[str]:
-    return [span.name for _resource, span in tracing._decode_relayed_spans([payload])]
+    return [span.name for _resource, span in relayed_json.decode_relayed_spans([payload])]
 
 
 class _Wire:
@@ -876,7 +873,7 @@ class _Wire:
 
 def test_callback_exporter_buffers_until_there_is_a_connection() -> None:
     wire = _Wire(connected=False)
-    exporter = tracing._CallbackSpanExporter(wire.send)
+    exporter = relay._CallbackSpanExporter(wire.send)
 
     assert exporter.export(_finished_spans("workbench.dial")) is SpanExportResult.SUCCESS
     # Nothing is lost while unbound: this is the dial span, and the connection it
@@ -892,7 +889,7 @@ def test_callback_exporter_buffers_until_there_is_a_connection() -> None:
 
 def test_callback_exporter_drains_oldest_first() -> None:
     wire = _Wire(connected=False)
-    exporter = tracing._CallbackSpanExporter(wire.send)
+    exporter = relay._CallbackSpanExporter(wire.send)
     for name in ("first", "second"):
         exporter.export(_finished_spans(name))
 
@@ -905,7 +902,7 @@ def test_callback_exporter_drains_oldest_first() -> None:
 
 def test_callback_exporter_sheds_the_oldest_when_it_never_connects() -> None:
     wire = _Wire(connected=False)
-    exporter = tracing._CallbackSpanExporter(wire.send, max_buffer=2)
+    exporter = relay._CallbackSpanExporter(wire.send, max_buffer=2)
     for name in ("first", "second", "third"):
         exporter.export(_finished_spans(name))
 
@@ -938,7 +935,7 @@ def test_result_boundary_records_local_observation_with_identity():
 
     from repo2ree_protocol.execution import ExecutionContext
     from repo2ree_protocol.result import ActionResult
-    from repo2ree_telemetry.tracing import record_result_boundary
+    from repo2ree_telemetry.spans import record_result_boundary
 
     provider = TracerProvider()
     with provider.get_tracer(__name__).start_as_current_span("receiver") as span:

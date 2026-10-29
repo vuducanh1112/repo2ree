@@ -41,7 +41,7 @@ from repo2ree_ree.review import (
     ReviewStatus,
     ReviewStepKey,
 )
-from repo2ree_telemetry.tracing import ReviewStepAttrs
+from repo2ree_telemetry.spans import ReviewStepAttrs
 
 # Signature of the per-handler early exit: a terminal status and why.
 ReviewHalt = Callable[[ReviewStatus, str], ActionResult]

@@ -50,12 +50,11 @@ from repo2ree_protocol.workbench import (
     WorkbenchWsMessage,
     workbench_ws_request_adapter,
 )
-from repo2ree_telemetry.tracing import (
+from repo2ree_telemetry.bootstrap import get_meter, get_tracer
+from repo2ree_telemetry.spans import (
     CommandSpanAttrs,
     WorkbenchSpanAttrs,
     command_metric_attrs,
-    get_meter,
-    get_tracer,
     record_command_status,
     record_exit_code,
     record_failure,

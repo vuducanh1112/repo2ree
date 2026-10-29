@@ -26,7 +26,7 @@ let
   # encoded (proto-common) and streamed over stderr for the supervisor to
   # forward. The executor never talks to a collector itself, so the OTLP
   # HTTP exporter and `requests` are deliberately absent — those stay
-  # behind the host-side functions in repo2ree_telemetry.tracing.
+  # behind the host-side functions in repo2ree_telemetry.bootstrap and .relay.
   python = pkgs.python313.withPackages (
     ps: with ps; [
       click

@@ -73,7 +73,7 @@ from repo2ree_supervisor import (
     WsProviderClient,
     WsWorkbenchClient,
 )
-from repo2ree_telemetry.tracing import build_span_sink
+from repo2ree_telemetry.relay import build_span_sink
 from repo2ree_testbed.artifacts import case_dir, service_dir
 from repo2ree_testbed.preservation import TestRecorder
 
