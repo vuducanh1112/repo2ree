@@ -52,9 +52,17 @@ let
 
   # `repo2ree-exec` entrypoint script. Adds the source dirs to PYTHONPATH
   # and dispatches through the executor's __main__.
+  pythonPath = [
+    srcs.ree
+    srcs.protocol
+    srcs.authoring
+    srcs.core
+    srcs.executor
+  ];
+
   bin = pkgs.writeShellScriptBin "repo2ree-exec" ''
     export REPO2REE_BUILD_REVISION=${pkgs.lib.escapeShellArg buildRevision}
-    export PYTHONPATH="${srcs.ree}:${srcs.protocol}:${srcs.authoring}:${srcs.core}:${srcs.executor}''${PYTHONPATH:+:$PYTHONPATH}"
+    export PYTHONPATH="${pkgs.lib.concatStringsSep ":" pythonPath}''${PYTHONPATH:+:$PYTHONPATH}"
     exec ${python}/bin/python -m repo2ree_executor "$@"
   '';
 
@@ -85,6 +93,7 @@ in
   inherit
     python
     srcs
+    pythonPath
     bin
     pause
     closure

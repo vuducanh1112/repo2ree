@@ -66,6 +66,7 @@
           inherit pkgs;
           name = "provider";
         };
+        benchChecks = import ./nix/bench-checks.nix { inherit pkgs buildRevision; };
         guiImage = import ./nix/gui-image.nix {
           inherit pkgs;
           inherit buildRevision;
@@ -98,7 +99,9 @@
           closure-imports = pkgs.linkFarm "repo2ree-closure-imports" {
             api = apiClosure.imports;
             provider = providerClosure.imports;
+            bench = benchChecks.imports;
           };
+          bench-distributions = benchChecks.distributions;
           # The dev container's own tools, beyond its Debian base and Nix.
           devcontainer = import ./nix/devcontainer.nix { inherit devPkgs; };
           default = provider-image;

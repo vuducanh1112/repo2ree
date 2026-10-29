@@ -52,6 +52,11 @@ build-images: build-gui-image build-backend-image build-provider-image
 generate-closures:
     python scripts/closures.py generate
 
+# List where the bench interpreters' packages differ from uv.lock; informational, the bench closures are not built from it yet.
+[group('Images')]
+report-bench-drift: _stage-nix-sources
+    python scripts/closures.py bench-drift "$(nix build --no-link --print-out-paths .#bench-distributions)"
+
 # Regenerate the pinned GUI npm dependency hash.
 [group('Images')]
 update-gui-npm-hash:

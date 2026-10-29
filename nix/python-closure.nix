@@ -46,34 +46,8 @@ let
     )
   );
 
-  importEveryModule = pkgs.writeText "import-every-module.py" ''
-    import importlib
-    import importlib.metadata
-    import json
-    import pkgutil
-    import re
-    import sys
-
-    expected = json.load(open(sys.argv[1]))
-    installed = {
-        re.sub(r"[-_.]+", "-", dist.metadata["Name"]).lower(): dist.version
-        for dist in importlib.metadata.distributions()
-    }
-    if installed != expected:
-        missing = sorted(set(expected) - set(installed))
-        extra = sorted(set(installed) - set(expected))
-        differ = sorted(n for n in set(expected) & set(installed) if expected[n] != installed[n])
-        sys.exit(f"closure differs from uv.lock: missing={missing} extra={extra} versions={differ}")
-    for root in sys.argv[2:]:
-        package = importlib.import_module(root)
-        for module in pkgutil.walk_packages(package.__path__, f"{root}."):
-            if not module.name.endswith(".__main__"):
-                importlib.import_module(module.name)
-        print(root)
-  '';
-
   imports = pkgs.runCommand "repo2ree-${name}-closure-imports" { } ''
-    ${env}/bin/python -I ${importEveryModule} ${expected} ${lib.escapeShellArgs modules} > $out
+    ${env}/bin/python -I ${./import-modules.py} --expect ${expected} ${lib.escapeShellArgs modules} > $out
   '';
 in
 {

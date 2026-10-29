@@ -3,6 +3,8 @@
 
 - ``generate`` writes the file; ``check`` exits 1 when it is stale.
 - ``stage-paths`` prints the workspace package directories the closures build from.
+- ``bench-drift DIR`` compares the bench interpreters' distributions (``nix build .#bench-distributions``)
+  with uv.lock, without failing: the bench closures do not come from uv.lock yet.
 
 A closure is a root package declared in ``[tool.repo2ree.closures]``: its workspace packages, and,
 per system, one wheel of every third-party package it reaches, with the URL and hash uv locked.
@@ -12,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import tomllib
 from pathlib import Path
@@ -146,10 +149,36 @@ def stage_paths(document: dict[str, Any]) -> list[str]:
     return sorted({entry["path"] for value in document["closures"].values() for entry in value["workspace"]})
 
 
+def normalized(name: str) -> str:
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+
+def bench_drift(directory: Path, root: Path = ROOT) -> list[str]:
+    lock = tomllib.loads((root / "uv.lock").read_text(encoding="utf-8"))
+    locked = {package["name"]: package["version"] for package in lock["package"] if "version" in package}
+    lines = []
+    for path in sorted(directory.glob("*.json")):
+        shipped = {normalized(name): version for name, version in json.loads(path.read_text()).items()}
+        for name, version in sorted(shipped.items()):
+            if name not in locked:
+                lines.append(f"{path.stem}: {name} {version} is not in uv.lock")
+            elif locked[name] != version:
+                lines.append(f"{path.stem}: {name} {version}, uv.lock {locked[name]}")
+    return lines
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("command", choices=("generate", "check", "stage-paths"))
+    parser.add_argument("command", choices=("generate", "check", "stage-paths", "bench-drift"))
+    parser.add_argument("directory", nargs="?", type=Path)
     args = parser.parse_args(argv)
+    if args.command == "bench-drift":
+        if args.directory is None:
+            parser.error("bench-drift needs the directory nix build .#bench-distributions printed")
+        lines = bench_drift(args.directory)
+        print(*lines, sep="\n")
+        print(f">> {len(lines)} bench distributions differ from uv.lock")
+        return 0
     if args.command == "stage-paths":
         print(*stage_paths(json.loads(OUTPUT.read_text(encoding="utf-8"))))
         return 0

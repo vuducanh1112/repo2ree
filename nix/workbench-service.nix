@@ -57,9 +57,15 @@ let
   protocolSource = cleanPySrc ../protocol/src;
   workbenchSource = cleanPySrc ../workbench/src;
 
+  pythonPath = [
+    reeSource
+    protocolSource
+    workbenchSource
+  ];
+
   bin = pkgs.writeShellScriptBin "repo2ree-workbench" ''
     export REPO2REE_BUILD_REVISION=${pkgs.lib.escapeShellArg buildRevision}
-    export PYTHONPATH="${reeSource}:${protocolSource}:${workbenchSource}''${PYTHONPATH:+:$PYTHONPATH}"
+    export PYTHONPATH="${pkgs.lib.concatStringsSep ":" pythonPath}''${PYTHONPATH:+:$PYTHONPATH}"
     exec ${python}/bin/python -m repo2ree_workbench "$@"
   '';
 in
@@ -68,6 +74,7 @@ in
     bin
     python
     pythonPackages
+    pythonPath
     protocolSource
     workbenchSource
     ;
