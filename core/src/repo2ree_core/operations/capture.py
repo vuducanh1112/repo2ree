@@ -19,12 +19,7 @@ from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import write_json_atomic
 from repo2ree_core.persistence.history import HistoryCaptureError, open_history
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_core.persistence.operation_history import (
-    CompletedOperation,
-    OperationRecord,
-    next_operation_sequence,
-    read_operation_history,
-)
+from repo2ree_core.persistence.operation_history import next_operation_sequence, read_operation_history
 from repo2ree_protocol.command import (
     Command,
     ReviewAcquireSourceCommand,
@@ -33,6 +28,7 @@ from repo2ree_protocol.command import (
     ReviewRunExperimentCommand,
 )
 from repo2ree_protocol.execution import ExecutionContext
+from repo2ree_protocol.history import CompletedOperation, OperationRecord
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult, HistoryReference
 

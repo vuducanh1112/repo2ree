@@ -53,12 +53,13 @@ let
 
   python = pkgs.python313.withPackages pythonPackages;
 
+  reeSource = cleanPySrc ../ree/src;
   protocolSource = cleanPySrc ../protocol/src;
   workbenchSource = cleanPySrc ../workbench/src;
 
   bin = pkgs.writeShellScriptBin "repo2ree-workbench" ''
     export REPO2REE_BUILD_REVISION=${pkgs.lib.escapeShellArg buildRevision}
-    export PYTHONPATH="${protocolSource}:${workbenchSource}''${PYTHONPATH:+:$PYTHONPATH}"
+    export PYTHONPATH="${reeSource}:${protocolSource}:${workbenchSource}''${PYTHONPATH:+:$PYTHONPATH}"
     exec ${python}/bin/python -m repo2ree_workbench "$@"
   '';
 in

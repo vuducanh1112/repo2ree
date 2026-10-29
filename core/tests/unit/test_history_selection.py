@@ -4,8 +4,9 @@ import json
 
 from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.persistence.directory import ReeDirectory
-from repo2ree_core.persistence.history import INITIAL_REF, SELECTION_VERSION, open_history
+from repo2ree_core.persistence.history import INITIAL_REF, open_history
 from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_protocol.history import SELECTION_VERSION
 
 
 def test_layout_selection_and_declared_root_artifact(tmp_path):

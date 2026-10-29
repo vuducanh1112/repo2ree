@@ -2,6 +2,7 @@
 name = "repo2ree-protocol"
 version = "0.1.0"
 dependencies = [
+    "repo2ree-ree",
     "pydantic~=2.11.7",
     "requests~=2.34",
     "opentelemetry-sdk~=1.45",
@@ -14,6 +15,9 @@ dependencies = [
 dev = [
     "types-requests~=2.33",
 ]
+
+[tool.uv.sources]
+repo2ree-ree = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

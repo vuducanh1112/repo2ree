@@ -9,42 +9,14 @@ read-only. They are named for the trees they project (``workspace_files``,
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
-
-from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_protocol.files import ReeFile, WorkspaceFile, WorkspaceFileKind
 from repo2ree_ree.paths import resolve_within
 
 MAX_INLINE_TEXT_BYTES = 1024 * 1024
 MAX_INLINE_SBOM_BYTES = 8 * 1024 * 1024
-
-WorkspaceFileKind = Literal["source", "generated"]
-
-
-class WorkspaceFile(BaseModel):
-    """One file projected from the materialized workspace subtree."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    path: str
-    kind: WorkspaceFileKind
-    size: int
-    content: str | None = None
-
-
-class ReeFile(BaseModel):
-    """One file under the REE root (upstream/overlay/artifacts/…)."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    path: str
-    kind: Literal["ree"] = "ree"
-    tag: str
-    size: int
-    content: str | None = None
-
 
 _REE_SUBTREE_TAGS: dict[str, str] = {
     "upstream": "Upstream",

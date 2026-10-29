@@ -6,7 +6,7 @@ from repo2ree_api.contracts import ERROR_RESPONSES
 from repo2ree_api.deps import workbench_manager
 from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import require_handle
-from repo2ree_core.persistence.operation_history import OperationHistory
+from repo2ree_protocol.history import OperationHistory
 
 history_router = APIRouter(tags=["history"])
 

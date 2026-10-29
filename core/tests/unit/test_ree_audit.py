@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from repo2ree_core.domain.ree.audit import _STEP_FIELDS, ReeAudit, _evidence_standing, audit
+from repo2ree_core.domain.ree.audit import _evidence_standing, audit
 from repo2ree_core.domain.ree.transitions import commit_receipt, replace_definition
+from repo2ree_protocol.audit import _STEP_FIELDS, ReeAudit
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.hbom import HBOM
 from repo2ree_ree.model import (

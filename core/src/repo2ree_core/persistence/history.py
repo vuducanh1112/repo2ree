@@ -25,11 +25,11 @@ from repo2ree_core.persistence.capture_policy import capture_plan
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
 from repo2ree_core.persistence.lfs import LfsPointer, store_payload
+from repo2ree_protocol.history import SELECTION_VERSION
 from repo2ree_protocol.tools import find_tool
 
 INITIAL_REF = "refs/repo2ree/initial"
 HISTORY_REF = "refs/heads/ree-history"
-SELECTION_VERSION = 2
 
 
 class HistoryCaptureError(RuntimeError):

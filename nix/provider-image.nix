@@ -50,14 +50,14 @@ let
   );
 
   srcs = {
-    inherit (workbench.executor.srcs) protocol;
+    inherit (workbench.executor.srcs) ree protocol;
     dockerSupport = cleanPySrc ../docker-support/src;
     provider = cleanPySrc ../provider/src;
   };
 
   providerBin = pkgs.writeShellScriptBin "repo2ree-provider-docker" ''
     export REPO2REE_BUILD_REVISION=${pkgs.lib.escapeShellArg buildRevision}
-    export PYTHONPATH="${srcs.protocol}:${srcs.dockerSupport}:${srcs.provider}''${PYTHONPATH:+:$PYTHONPATH}"
+    export PYTHONPATH="${srcs.ree}:${srcs.protocol}:${srcs.dockerSupport}:${srcs.provider}''${PYTHONPATH:+:$PYTHONPATH}"
     exec ${providerPython}/bin/python -m repo2ree_provider_docker "$@"
   '';
 

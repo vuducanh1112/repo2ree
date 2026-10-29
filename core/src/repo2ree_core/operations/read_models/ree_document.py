@@ -13,37 +13,21 @@ supervisor that knows it.
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
-
-from repo2ree_core.domain.ree.audit import ReeAudit, audit
-from repo2ree_core.operations.read_models.files import (
-    ReeFile,
-    WorkspaceFile,
-    list_ree_files,
-    list_workspace_files,
-)
+from repo2ree_core.domain.ree.audit import audit
+from repo2ree_core.operations.read_models.files import list_ree_files, list_workspace_files
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import load_ree
-from repo2ree_ree.model import Ree, ReeStatus, ree_status
+from repo2ree_protocol.document import WorkbenchReeDocument
+from repo2ree_ree.model import ree_status
 
 
-class ReeDocument(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    ree: Ree
-    status: ReeStatus
-    audit: ReeAudit
-    workspace_files: list[WorkspaceFile] = Field(default_factory=list)
-    ree_files: list[ReeFile] = Field(default_factory=list)
-
-
-def get_ree_document(layout: ReeLayout, *, include_content: bool = True) -> ReeDocument:
+def get_ree_document(layout: ReeLayout, *, include_content: bool = True) -> WorkbenchReeDocument:
     directory = ReeDirectory(layout)
     if not directory.manifest_exists():
         raise FileNotFoundError(f"REE not found at {layout.root}")
     ree = load_ree(layout, directory)
-    return ReeDocument(
+    return WorkbenchReeDocument(
         ree=ree,
         status=ree_status(ree),
         audit=audit(ree),
