@@ -1,0 +1,187 @@
+{
+  "base": "sealed/maximal.json",
+  "cases": [
+    {
+      "name": "a seal that does not match its subject",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/subject/definition/name",
+          "value": "renamed"
+        }
+      ],
+      "error": "REE seal digest does not match its subject"
+    },
+    {
+      "name": "a build script outside its reserved path",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/seal"
+        },
+        {
+          "op": "replace",
+          "path": "/subject/definition/build_runtime/build_runtime_script_path",
+          "value": "ree-scripts/other.sh"
+        }
+      ],
+      "error": "build runtime script path must be"
+    },
+    {
+      "name": "two experiments with one slug",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/seal"
+        },
+        {
+          "op": "add",
+          "path": "/subject/definition/experiments/-",
+          "value": {
+            "name": "train  model",
+            "run_script_path": "ree-scripts/experiments/train-model.sh",
+            "run_script_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "run_script_size": 1
+          }
+        }
+      ],
+      "error": "experiment slugs must be unique"
+    },
+    {
+      "name": "bundle entries out of order",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/seal"
+        },
+        {
+          "op": "move",
+          "from": "/subject/contents/entries/0",
+          "path": "/subject/contents/entries/-"
+        }
+      ],
+      "error": "bundle entries must be sorted by path"
+    },
+    {
+      "name": "an LFS path inside .git",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/seal"
+        },
+        {
+          "op": "replace",
+          "path": "/subject/capture/lfs_paths",
+          "value": [
+            "data/.git/objects"
+          ]
+        }
+      ],
+      "error": "Unsafe LFS path"
+    },
+    {
+      "name": "an activation verify script without its size",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/seal"
+        },
+        {
+          "op": "remove",
+          "path": "/subject/definition/test_activation/verify_script_size"
+        }
+      ],
+      "error": "activation verification path, digest, and size must be present together"
+    },
+    {
+      "name": "an experiment receipt under another name",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/seal"
+        },
+        {
+          "op": "move",
+          "from": "/subject/receipts/experiments/train model",
+          "path": "/subject/receipts/experiments/other"
+        }
+      ],
+      "error": "experiment receipt key must equal receipt experiment_name"
+    },
+    {
+      "name": "a receipt that finishes before it starts",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/seal"
+        },
+        {
+          "op": "replace",
+          "path": "/subject/receipts/build/finished_at",
+          "value": "2026-10-01T08:02:00Z"
+        }
+      ],
+      "error": "receipt finished_at must not precede started_at"
+    },
+    {
+      "name": "a field the format does not declare",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/seal"
+        },
+        {
+          "op": "add",
+          "path": "/subject/definition/license",
+          "value": "MIT"
+        }
+      ],
+      "error": "Extra inputs are not permitted"
+    },
+    {
+      "name": "a digest that is not sha256",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/seal"
+        },
+        {
+          "op": "replace",
+          "path": "/subject/receipts/build/produced_runtime_digest",
+          "value": "md5:0123"
+        }
+      ],
+      "error": "Digest must use the sha256:<value> form"
+    },
+    {
+      "name": "a path that leaves the REE",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/seal"
+        },
+        {
+          "op": "replace",
+          "path": "/subject/definition/build_runtime/runtime_path",
+          "value": "../runtime"
+        }
+      ],
+      "error": "relative path must not contain '..'"
+    },
+    {
+      "name": "a timestamp without a zone",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/seal"
+        },
+        {
+          "op": "replace",
+          "path": "/subject/receipts/source/started_at",
+          "value": "2026-10-01T08:00:00"
+        }
+      ],
+      "error": "timestamp must be timezone-aware"
+    }
+  ]
+}

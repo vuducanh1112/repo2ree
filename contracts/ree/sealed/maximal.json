@@ -1,0 +1,365 @@
+{
+  "seal": {
+    "ree_digest": "sha256:7000f92ede5ed6f3084de94007f029c717c7d3f89009059b5ce5d55447dfae7c",
+    "sealed_at": "2026-10-01T09:30:00.123456Z",
+    "signature": {
+      "algorithm": "ed25519",
+      "value": "c2lnbmF0dXJl",
+      "verification_material": "maximal-key"
+    }
+  },
+  "subject": {
+    "capture": {
+      "lfs_paths": [
+        "data/weights.bin"
+      ],
+      "version": 2
+    },
+    "contents": {
+      "entries": [
+        {
+          "digest": "sha256:44575cf5b28512d75644bf54a517dcef304ff809fd511747621b4d64f19aac66",
+          "path": "ree/ree-scripts/build_script.sh",
+          "size": 128
+        },
+        {
+          "digest": "sha256:9a129038d9a00aed0cf6a7ea059ca50a813449061ab87848cf1a13eafdf33b2c",
+          "path": "ree/workspace/data/weights.bin",
+          "size": 1048576
+        }
+      ]
+    },
+    "definition": {
+      "build_runtime": {
+        "build_runtime_script_digest": "sha256:44575cf5b28512d75644bf54a517dcef304ff809fd511747621b4d64f19aac66",
+        "build_runtime_script_path": "ree-scripts/build_script.sh",
+        "build_runtime_script_size": 128,
+        "runtime_path": "runtime"
+      },
+      "catalog": {
+        "contributors": [
+          {
+            "affiliation_identifier": "https://ror.org/01y9bpm73",
+            "affiliation_name": "Universit\u00e4t G\u00f6ttingen",
+            "identifier": "https://orcid.org/0000-0002-1825-0097",
+            "name": "J\u00fcrgen M\u00fcller"
+          }
+        ],
+        "corresponding_author_identifier": "https://orcid.org/0000-0002-1825-0097",
+        "description": "An REE that sets every field the v1 format declares.",
+        "keywords": [
+          "reproducibility",
+          "\u00fcberall"
+        ],
+        "version": "1.2.3",
+        "website": "https://example.org/maximal"
+      },
+      "experiments": [
+        {
+          "name": "train model",
+          "output_paths": [
+            "outputs/metrics.json",
+            "outputs/model"
+          ],
+          "run_script_digest": "sha256:a530c507fd893f520b973f7410ca587b02d26954cba99c2857cb9446a9c900d3",
+          "run_script_path": "ree-scripts/experiments/train-model.sh",
+          "run_script_size": 256,
+          "verify_script_digest": "sha256:9d857334e6e25dcf53029f53c78c2ace419ade06f7eea07957e2002931ea6b38",
+          "verify_script_path": "ree-scripts/experiments/train-model.verify.sh",
+          "verify_script_size": 16
+        }
+      ],
+      "hardware": {
+        "cpus": {
+          "AMD EPYC 9654": {
+            "architecture": "x86_64",
+            "cores_per_cpu": 96,
+            "extra_info": {
+              "base_clock_ghz": 2.4,
+              "flags": [
+                "avx512f",
+                "sha_ni"
+              ]
+            },
+            "quantity": 2,
+            "threads_per_core": 2,
+            "vendor": "AMD"
+          }
+        },
+        "extra_info": {
+          "rack_power_w": 1e+16,
+          "site": "G\u00f6ttingen",
+          "tolerance": 1e-07
+        },
+        "gpus": {
+          "NVIDIA H100": {
+            "extra_info": {
+              "driver": "550.54",
+              "ecc": true
+            },
+            "interface": "SXM5",
+            "memory_gb": 79.6,
+            "quantity": 4,
+            "vendor": "NVIDIA"
+          }
+        },
+        "memory": {
+          "Samsung M321R8GA0BB0": {
+            "capacity_gb": 64.0,
+            "extra_info": {
+              "rank": 2
+            },
+            "memory_type": "DDR5",
+            "quantity": 24,
+            "speed_mt_s": 4800,
+            "vendor": "Samsung"
+          }
+        },
+        "network": {
+          "Mellanox ConnectX-7": {
+            "bandwidth_gbps": 400.0,
+            "extra_info": {
+              "ports": 1
+            },
+            "interface": "PCIe 5.0 x16",
+            "network_type": "infiniband",
+            "quantity": 1,
+            "vendor": "Mellanox"
+          }
+        },
+        "storage": {
+          "Micron 7450": {
+            "capacity_gb": 3840.0,
+            "extra_info": {
+              "endurance_dwpd": 0.1
+            },
+            "interface": "PCIe 4.0 x4",
+            "quantity": 2,
+            "storage_type": "NVMe",
+            "vendor": "Micron"
+          }
+        }
+      },
+      "name": "maximal",
+      "source": {
+        "origin_url": "https://example.org/maximal.git",
+        "requested_ref": "v1.0",
+        "source_type": "git"
+      },
+      "test_activation": {
+        "run_script_digest": "sha256:b15526c9c0e75acea3d1f8055de216c85f0330baf8604e13d8c6ce90fb90d6d7",
+        "run_script_path": "ree-scripts/activation.sh",
+        "run_script_size": 64,
+        "verify_script_digest": "sha256:52921383caa538702b3e3fc76ef400f3fe5129319aa02908a68bb718220c47d7",
+        "verify_script_path": "ree-scripts/activation.verify.sh",
+        "verify_script_size": 32
+      }
+    },
+    "receipts": {
+      "build": {
+        "build_runtime_script_digest": "sha256:44575cf5b28512d75644bf54a517dcef304ff809fd511747621b4d64f19aac66",
+        "build_runtime_script_path": "ree-scripts/build_script.sh",
+        "duration_ms": 600000,
+        "finished_at": "2026-10-01T08:13:00Z",
+        "operation": "build_runtime",
+        "produced_runtime_digest": "sha256:d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
+        "recorded_at": "2026-10-01T08:13:00Z",
+        "run_id": "run-build",
+        "runtime_path": "runtime",
+        "schema_version": 1,
+        "snapshot_digest": "sha256:16a0eeb0791b6c92451fd284dd9f599e0a7dbe7f6ebea6e2d2d06c7f74aec112",
+        "started_at": "2026-10-01T08:03:00Z",
+        "workspace_drift": {
+          "changed_path_count": 1,
+          "changed_paths": [
+            "setup.py"
+          ],
+          "status": "modified"
+        }
+      },
+      "evaluation": {
+        "analyzer_version": "1.4.0",
+        "dependency_count": 42,
+        "dependency_level": 3,
+        "duration_ms": 2000,
+        "environment_level": 2,
+        "finished_at": "2026-10-01T08:01:02Z",
+        "machine_level": 1,
+        "manifest_count": 2,
+        "operation": "evaluate_reproducibility",
+        "overlay_digest": "sha256:b4b33d2441645d4dd0a0694b5989a0a14a5cc22fe9865e6b7b7eae966e0de36c",
+        "recorded_at": "2026-10-01T08:01:02Z",
+        "report_digest": "sha256:845e91831319e89c4d656bdb80c278ac09a7230d61e5dfd2e1b1fbb436ac8917",
+        "report_path": "artifacts/reproducibility-report.json",
+        "run_id": "run-evaluate",
+        "schema_version": 1,
+        "snapshot_digest": "sha256:16a0eeb0791b6c92451fd284dd9f599e0a7dbe7f6ebea6e2d2d06c7f74aec112",
+        "started_at": "2026-10-01T08:01:00Z",
+        "strict": true
+      },
+      "experiments": {
+        "train model": {
+          "duration_ms": 3600000,
+          "experiment_name": "train model",
+          "finished_at": "2026-10-01T09:17:00Z",
+          "operation": "run_experiment",
+          "produced_output_digest": "sha256:7b8c56be0a5f71be141f0cfaa9195e2ff8d1ef89e380560b579a82fd841429c1",
+          "recorded_at": "2026-10-01T09:17:00Z",
+          "run_exit_code": 0,
+          "run_id": "run-experiment",
+          "run_script_digest": "sha256:a530c507fd893f520b973f7410ca587b02d26954cba99c2857cb9446a9c900d3",
+          "runtime_digest": "sha256:d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
+          "schema_version": 1,
+          "snapshot_digest": "sha256:16a0eeb0791b6c92451fd284dd9f599e0a7dbe7f6ebea6e2d2d06c7f74aec112",
+          "started_at": "2026-10-01T08:17:00Z",
+          "verify_exit_code": 0,
+          "verify_script_digest": "sha256:9d857334e6e25dcf53029f53c78c2ace419ade06f7eea07957e2002931ea6b38"
+        }
+      },
+      "hardware_observation": {
+        "duration_ms": 999,
+        "finished_at": "2026-10-01T08:02:00.999999Z",
+        "observation": {
+          "cpus": {
+            "AMD EPYC 9654": {
+              "architecture": "x86_64",
+              "cores_per_cpu": 96,
+              "extra_info": {
+                "base_clock_ghz": 2.4,
+                "flags": [
+                  "avx512f",
+                  "sha_ni"
+                ]
+              },
+              "quantity": 2,
+              "threads_per_core": 2,
+              "vendor": "AMD"
+            }
+          },
+          "extra_info": {
+            "rack_power_w": 1e+16,
+            "site": "G\u00f6ttingen",
+            "tolerance": 1e-07
+          },
+          "gpus": {
+            "NVIDIA H100": {
+              "extra_info": {
+                "driver": "550.54",
+                "ecc": true
+              },
+              "interface": "SXM5",
+              "memory_gb": 79.6,
+              "quantity": 4,
+              "vendor": "NVIDIA"
+            }
+          },
+          "memory": {
+            "Samsung M321R8GA0BB0": {
+              "capacity_gb": 64.0,
+              "extra_info": {
+                "rank": 2
+              },
+              "memory_type": "DDR5",
+              "quantity": 24,
+              "speed_mt_s": 4800,
+              "vendor": "Samsung"
+            }
+          },
+          "network": {
+            "Mellanox ConnectX-7": {
+              "bandwidth_gbps": 400.0,
+              "extra_info": {
+                "ports": 1
+              },
+              "interface": "PCIe 5.0 x16",
+              "network_type": "infiniband",
+              "quantity": 1,
+              "vendor": "Mellanox"
+            }
+          },
+          "storage": {
+            "Micron 7450": {
+              "capacity_gb": 3840.0,
+              "extra_info": {
+                "endurance_dwpd": 0.1
+              },
+              "interface": "PCIe 4.0 x4",
+              "quantity": 2,
+              "storage_type": "NVMe",
+              "vendor": "Micron"
+            }
+          }
+        },
+        "observer_version": "0.9.0",
+        "operation": "observe_hardware",
+        "recorded_at": "2026-10-01T08:02:00.999999Z",
+        "run_id": "run-hardware",
+        "schema_version": 1,
+        "started_at": "2026-10-01T08:02:00.000001Z"
+      },
+      "sbom": {
+        "duration_ms": 30000,
+        "finished_at": "2026-10-01T08:14:30Z",
+        "operation": "generate_sbom",
+        "recorded_at": "2026-10-01T08:14:30Z",
+        "run_id": "run-sbom",
+        "runtime_digest": "sha256:d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
+        "runtime_path": "runtime",
+        "sbom_digest": "sha256:98f3ae1ef67113d8140d4f6cb8d2830070e21ea48f091be519659846c771a374",
+        "sbom_format": "spdx-json",
+        "sbom_path": "artifacts/sbom.spdx.json",
+        "schema_version": 1,
+        "started_at": "2026-10-01T08:14:00Z",
+        "tool_version": "syft 1.20.0"
+      },
+      "sbom_cross_check": {
+        "declared_direct_total": 10,
+        "duration_ms": 1000,
+        "finished_at": "2026-10-01T08:15:01Z",
+        "observed_matched": 9,
+        "observed_total": 40,
+        "operation": "cross_check_sbom",
+        "recorded_at": "2026-10-01T08:15:01Z",
+        "report_digest": "sha256:845e91831319e89c4d656bdb80c278ac09a7230d61e5dfd2e1b1fbb436ac8917",
+        "run_id": "run-cross-check",
+        "sbom_digest": "sha256:98f3ae1ef67113d8140d4f6cb8d2830070e21ea48f091be519659846c771a374",
+        "schema_version": 1,
+        "started_at": "2026-10-01T08:15:00Z",
+        "undeclared_same_ecosystem": 3,
+        "version_mismatches": 1
+      },
+      "source": {
+        "duration_ms": 1250,
+        "finished_at": "2026-10-01T08:00:01.250000Z",
+        "observed_swhid": "swh:1:rev:0123456789abcdef0123456789abcdef01234567",
+        "operation": "acquire_source",
+        "origin_url": "https://example.org/maximal.git",
+        "recorded_at": "2026-10-01T08:00:01.250000Z",
+        "requested_ref": "v1.0",
+        "resolved_revision": "0123456789abcdef0123456789abcdef01234567",
+        "run_id": "run-source",
+        "schema_version": 1,
+        "snapshot_digest": "sha256:16a0eeb0791b6c92451fd284dd9f599e0a7dbe7f6ebea6e2d2d06c7f74aec112",
+        "source_type": "git",
+        "started_at": "2026-10-01T08:00:00Z"
+      },
+      "test_activation": {
+        "duration_ms": 5000,
+        "finished_at": "2026-10-01T08:16:05Z",
+        "operation": "test_activation",
+        "recorded_at": "2026-10-01T08:16:05Z",
+        "run_exit_code": 0,
+        "run_id": "run-activation",
+        "run_script_digest": "sha256:b15526c9c0e75acea3d1f8055de216c85f0330baf8604e13d8c6ce90fb90d6d7",
+        "runtime_digest": "sha256:d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
+        "runtime_path": "runtime",
+        "schema_version": 1,
+        "snapshot_digest": "sha256:16a0eeb0791b6c92451fd284dd9f599e0a7dbe7f6ebea6e2d2d06c7f74aec112",
+        "started_at": "2026-10-01T08:16:00Z",
+        "verify_exit_code": 0,
+        "verify_script_digest": "sha256:52921383caa538702b3e3fc76ef400f3fe5129319aa02908a68bb718220c47d7"
+      }
+    },
+    "schema_version": 1
+  }
+}

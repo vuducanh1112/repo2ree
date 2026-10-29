@@ -1,0 +1,120 @@
+{
+  "digests": [
+    {
+      "name": "key order",
+      "value": {
+        "b": 1,
+        "a": {
+          "d": 2,
+          "c": 3
+        }
+      },
+      "canonical": "{\"a\":{\"c\":3,\"d\":2},\"b\":1}",
+      "digest": "sha256:78d48859c3252943aab7306f76c80f3f07783582e05ab8f944ce0696f2dbfc67"
+    },
+    {
+      "name": "non-ascii",
+      "value": {
+        "name": "Jürgen Müller",
+        "city": "東京"
+      },
+      "canonical": "{\"city\":\"\\u6771\\u4eac\",\"name\":\"J\\u00fcrgen M\\u00fcller\"}",
+      "digest": "sha256:41d31d36f4c140da5f466c721b027b81cf11e6061558ee6f7431fd2479d91e57"
+    },
+    {
+      "name": "floats",
+      "value": [
+        1.0,
+        0.1,
+        1e-07,
+        1e+16,
+        79.6,
+        2.5e-05,
+        123456789.123
+      ],
+      "canonical": "[1.0,0.1,1e-07,1e+16,79.6,2.5e-05,123456789.123]",
+      "digest": "sha256:3b3e1cacac9d2bbcb131f7ceab73ad291bc3b28b4b105f4bc68c6d79d49e6111"
+    },
+    {
+      "name": "int and float",
+      "value": {
+        "int": 1,
+        "float": 1.0,
+        "zero": 0,
+        "negative": -0.0
+      },
+      "canonical": "{\"float\":1.0,\"int\":1,\"negative\":-0.0,\"zero\":0}",
+      "digest": "sha256:20ef5858f6cd15127412fe54f372e8e9a7828eb09a07b123904c3f3357397811"
+    },
+    {
+      "name": "empty containers",
+      "value": {
+        "list": [],
+        "object": {},
+        "nested": [
+          [],
+          {}
+        ]
+      },
+      "canonical": "{\"list\":[],\"nested\":[[],{}],\"object\":{}}",
+      "digest": "sha256:2fc0eecc347cc28e4be32b52b091789519904e913173196642fd34c6655083ba"
+    },
+    {
+      "name": "literals",
+      "value": {
+        "true": true,
+        "false": false,
+        "null": null
+      },
+      "canonical": "{\"false\":false,\"null\":null,\"true\":true}",
+      "digest": "sha256:53738299ec37f4ace8cbfc30738ad03bfdc4ea019d2ad7a9376cd3e274a6625d"
+    },
+    {
+      "name": "escapes",
+      "value": {
+        "quote": "\"",
+        "backslash": "\\",
+        "newline": "\n",
+        "tab": "\t",
+        "control": "\u0001"
+      },
+      "canonical": "{\"backslash\":\"\\\\\",\"control\":\"\\u0001\",\"newline\":\"\\n\",\"quote\":\"\\\"\",\"tab\":\"\\t\"}",
+      "digest": "sha256:cd059286b794db7675574049eadea0843f9a1c6b8a37707a12612c843cfd0f04"
+    },
+    {
+      "name": "emoji",
+      "value": {
+        "text": "seal 🔏"
+      },
+      "canonical": "{\"text\":\"seal \\ud83d\\udd0f\"}",
+      "digest": "sha256:5faa5a852211a8f3706c2ed5e327af795a051648ec20466896b60737304087c1"
+    }
+  ],
+  "instants": [
+    {
+      "name": "microseconds",
+      "value": "2026-08-31T10:13:06.400354Z",
+      "canonical": "2026-08-31T10:13:06.400354Z"
+    },
+    {
+      "name": "zero microseconds",
+      "value": "2026-08-31T10:13:06.000000Z",
+      "canonical": "2026-08-31T10:13:06Z"
+    },
+    {
+      "name": "no fraction",
+      "value": "2026-08-31T10:13:06Z",
+      "canonical": "2026-08-31T10:13:06Z"
+    },
+    {
+      "name": "offset",
+      "value": "2026-08-31T12:13:06+02:00",
+      "canonical": "2026-08-31T10:13:06Z"
+    },
+    {
+      "name": "millisecond fraction",
+      "value": "2026-08-31T10:13:06.5Z",
+      "canonical": "2026-08-31T10:13:06.500000Z"
+    }
+  ]
+}
