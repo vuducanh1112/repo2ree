@@ -10,6 +10,7 @@ deleted test's recording leaves; so do session files as old.
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import shutil
 import subprocess
@@ -109,18 +110,20 @@ def plan_control_state(root: Path, now: float) -> Plan:
 def plan_case_recordings(base: Path, now: float) -> Plan:
     """Each test case recording under ``base`` whose test last finished over a month ago.
 
-    A case is the directory of a manifest the pytest plugin wrote; the copies it holds (an REE's own
-    files) are part of it, never cases of their own.
+    A case is the directory of a manifest the pytest plugin wrote. The walk stops there: what a case
+    holds (an REE's own files, its copies) is part of it, and walking it would cost minutes.
     """
-    cases: list[tuple[Path, float]] = []
-    for manifest in sorted(base.rglob("manifest.json")) if base.is_dir() else []:
-        case = manifest.parent
-        if any(case.is_relative_to(known) for known, _ in cases):
+    keep: list[Path] = []
+    remove: list[Path] = []
+    for directory, subdirectories, files in os.walk(base):
+        if "manifest.json" not in files:
             continue
-        if (recorded := read(PreservationManifest, manifest)) is not None:
-            cases.append((case, recorded.finished))
-    stale = [case for case, finished in cases if now - finished > STALE_RECORDING_SECONDS]
-    return Plan(stale, [case for case, _ in cases if case not in stale])
+        recorded = read(PreservationManifest, Path(directory) / "manifest.json")
+        if recorded is None:
+            continue
+        subdirectories.clear()
+        (remove if now - recorded.finished > STALE_RECORDING_SECONDS else keep).append(Path(directory))
+    return Plan(sorted(remove), sorted(keep))
 
 
 def plan_session_files(base: Path, now: float) -> Plan:
