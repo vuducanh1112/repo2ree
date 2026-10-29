@@ -31,6 +31,15 @@ summary = "Reads a dossier against the specification and gives verdicts."
 [spec.groups.checker.paths]
 "assurance/checker/" = "repo2ree_assurance_checker: evidence, replay, verdicts, and their views"
 
+[spec.groups.format]
+summary = "What a sealed REE document must keep meaning, in any implementation."
+[spec.groups.format.paths]
+"contracts/ree/sealed/" = "Sealed documents whose seals must keep verifying"
+"contracts/ree/canonical.json" = "Canonical JSON and instant encodings with their digests"
+"contracts/ree/invalid.json" = "Documents the format refuses, as patches of a sealed one"
+"contracts/ree/v1-extensions.json" = "Fields added after v1 that its digest drops when absent"
+"ree/tests/test_contract.py" = "Reads every format fixture against the implementation"
+
 [spec.groups.excuses]
 summary = "What the specification concedes is not proven, each with a reason."
 [spec.groups.excuses.paths]
@@ -88,6 +97,7 @@ summary = "Shared by the services."
 [product.groups.libraries.paths]
 "core/" = "The REE: layout, operations, capture into Git, audit"
 "protocol/" = "Wire types and the behaviour journal writer shared by every process"
+"ree/" = "The REE document format: models, canonical digest, reserved paths"
 
 [product.groups.gui]
 summary = "The web app."
@@ -124,7 +134,7 @@ summary = "How the product is built, deployed, and described to clients."
 "docker-compose.yml" = "The deployment stack"
 "docker-compose.dev.yml" = "Dev overrides"
 "docker-compose.workbench.yml" = "A standalone workbench"
-"contracts/" = "OpenAPI, the environment-variable contract, experiment slugs"
+"contracts/" = "OpenAPI, the environment-variable contract, experiment slugs, the REE schema"
 
 [assurance]
 summary = "Evidence about the product, gathered and drawn from outside it; nothing here ships."
