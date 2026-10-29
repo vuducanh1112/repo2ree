@@ -4,8 +4,8 @@ It draws nothing new from the code. It reads the zones and the behaviour
 specification as their owners export them, the gates' receipts, the coverage
 and excuses of the last assurance-gate receipt, the operations traceview folds from
 that receipt's verifications, the generated architecture and recipe
-diagrams, the Just recipes, the environment contract, and the OpenAPI contract,
-and lays them out page by page.
+diagrams, the Just recipes and how long they took (logs/just/), the environment
+contract, and the OpenAPI contract, and lays them out page by page.
 
 The overview is a bundle bound to one commit: whatever it shows from outside the tree
 (test evidence, diagrams) is copied into it, and what is too large to copy (REE Git
@@ -55,6 +55,7 @@ from repo2ree_repoview.overview.receipt import (
     receipt_states,
     unreached,
 )
+from repo2ree_repoview.overview.timings import LOGS, read_invocations, summarize
 from repo2ree_repoview.repository import ROOT, Head
 
 OVERVIEWS = ROOT / "reports/overview"
@@ -103,6 +104,11 @@ def build(output: Path | None) -> Path:
     )
     operations = Operations.model_validate_json(operations_document)
     excused = unreached()
+    # What logs/just/ held when the overview was built, kept as the overview read it.
+    timings = summarize(read_invocations())
+    bundle.write(
+        "inputs/timings.json", timings.model_dump_json(indent=2), str(LOGS.relative_to(ROOT)), Origin(kind="timings")
+    )
     pages = [
         page_zones(zones),
         page_gates(receipt, excused, bundle, evidence),
@@ -117,7 +123,7 @@ def build(output: Path | None) -> Path:
             for name, aggregate in spec.aggregates.items()
         ),
         page_architecture(bundle),
-        page_recipes(load_recipes(), bundle),
+        page_recipes(load_recipes(), bundle, timings),
         page_configuration(Environment.read()),
         page_api(OpenApi.read()),
     ]
