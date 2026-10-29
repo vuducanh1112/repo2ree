@@ -43,6 +43,7 @@ let
   cleanPySrc = import ./clean-py-src.nix { inherit pkgs; };
 
   srcs = {
+    ree = cleanPySrc ../ree/src;
     protocol = cleanPySrc ../protocol/src;
     core = cleanPySrc ../core/src;
     executor = cleanPySrc ../executor/src;
@@ -52,7 +53,7 @@ let
   # and dispatches through the executor's __main__.
   bin = pkgs.writeShellScriptBin "repo2ree-exec" ''
     export REPO2REE_BUILD_REVISION=${pkgs.lib.escapeShellArg buildRevision}
-    export PYTHONPATH="${srcs.protocol}:${srcs.core}:${srcs.executor}''${PYTHONPATH:+:$PYTHONPATH}"
+    export PYTHONPATH="${srcs.ree}:${srcs.protocol}:${srcs.core}:${srcs.executor}''${PYTHONPATH:+:$PYTHONPATH}"
     exec ${python}/bin/python -m repo2ree_executor "$@"
   '';
 

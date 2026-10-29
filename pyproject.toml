@@ -8,7 +8,7 @@ requires-python = "~=3.13.0"
 dependencies = []
 
 [tool.uv.workspace]
-members = ["protocol", "core", "supervisor", "api", "executor", "docker-support", "provider", "workbench", "assurance/checker", "assurance/dossier", "assurance/collector", "assurance/traceview", "testbed", "repoview"]
+members = ["ree", "protocol", "core", "supervisor", "api", "executor", "docker-support", "provider", "workbench", "assurance/checker", "assurance/dossier", "assurance/collector", "assurance/traceview", "testbed", "repoview"]
 
 [dependency-groups]
 dev = [
@@ -79,6 +79,7 @@ data_file = "${REPO2REE_TEST_RUN_DIR-test-artifacts}/python/coverage/data/adhoc/
 sigterm = true
 source = [
     "docker-support/src/repo2ree_docker",
+    "ree/src/repo2ree_ree",
     "protocol/src/repo2ree_protocol",
     "core/src/repo2ree_core",
     "supervisor/src/repo2ree_supervisor",
@@ -98,6 +99,7 @@ skip_covered = false
 
 [tool.ruff]
 src = [
+    "ree/src",
     "protocol/src",
     "core/src",
     "supervisor/src",
@@ -247,6 +249,7 @@ root_packages = [
     "repo2ree_executor",
     "repo2ree_provider_docker",
     "repo2ree_protocol",
+    "repo2ree_ree",
     "repo2ree_supervisor",
     "repo2ree_workbench",
 ]
@@ -267,6 +270,7 @@ layers = [
     "repo2ree_docker",
     "repo2ree_core",
     "repo2ree_protocol",
+    "repo2ree_ree",
 ]
 
 # The same argument as "The wire contract imports no implementation", one level
@@ -283,6 +287,21 @@ forbidden_modules = [
     "repo2ree_core",
     "repo2ree_docker",
     "repo2ree_executor",
+    "repo2ree_provider_docker",
+    "repo2ree_supervisor",
+    "repo2ree_workbench",
+]
+
+[[tool.importlinter.contracts]]
+name = "The REE format imports no workspace package"
+type = "forbidden"
+source_modules = ["repo2ree_ree"]
+forbidden_modules = [
+    "repo2ree_api",
+    "repo2ree_core",
+    "repo2ree_docker",
+    "repo2ree_executor",
+    "repo2ree_protocol",
     "repo2ree_provider_docker",
     "repo2ree_supervisor",
     "repo2ree_workbench",
@@ -613,6 +632,7 @@ forbidden_modules = [
 
 [tool.mypy]
 mypy_path = [
+    "ree/src",
     "protocol/src",
     "core/src",
     "supervisor/src",
@@ -676,6 +696,6 @@ no_implicit_reexport = false
 
 
 [tool.repo2ree.workspace]
-backend = ["protocol", "core", "supervisor", "api", "executor", "docker-support", "provider", "workbench"]
+backend = ["ree", "protocol", "core", "supervisor", "api", "executor", "docker-support", "provider", "workbench"]
 assurance = ["assurance/checker", "assurance/dossier", "assurance/collector", "assurance/traceview"]
 tooling = ["testbed", "repoview"]

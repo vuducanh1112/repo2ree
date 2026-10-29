@@ -26,6 +26,7 @@ RUN useradd --create-home --shell /bin/bash appuser \
     && chown -R appuser:appuser /app
 
 COPY pyproject.toml uv.lock ./
+COPY ree ./ree
 COPY protocol ./protocol
 COPY core ./core
 COPY supervisor ./supervisor

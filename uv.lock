@@ -15,6 +15,7 @@ members = [
     "repo2ree-executor",
     "repo2ree-protocol",
     "repo2ree-provider-docker",
+    "repo2ree-ree",
     "repo2ree-repoview",
     "repo2ree-supervisor",
     "repo2ree-testbed",
@@ -1161,6 +1162,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "pyyaml" },
     { name = "repo2ree-protocol" },
+    { name = "repo2ree-ree" },
 ]
 
 [package.dev-dependencies]
@@ -1174,6 +1176,7 @@ requires-dist = [
     { name = "pydantic", specifier = "~=2.11.7" },
     { name = "pyyaml", specifier = "~=6.0" },
     { name = "repo2ree-protocol", editable = "protocol" },
+    { name = "repo2ree-ree", editable = "ree" },
 ]
 
 [package.metadata.requires-dev]
@@ -1257,6 +1260,17 @@ requires-dist = [
     { name = "repo2ree-protocol", editable = "protocol" },
     { name = "websockets", specifier = "~=15.0" },
 ]
+
+[[package]]
+name = "repo2ree-ree"
+version = "0.1.0"
+source = { editable = "ree" }
+dependencies = [
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pydantic", specifier = "~=2.11.7" }]
 
 [[package]]
 name = "repo2ree-repoview"

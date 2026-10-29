@@ -14,14 +14,14 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.reserved_paths import (
+from repo2ree_ree.reserved_paths import (
     RESERVED_EXPERIMENT_SCRIPT_DIR,
     experiment_run_script_path,
     experiment_slug,
     experiment_verify_script_path,
 )
 
-_FIXTURE = Path(__file__).resolve().parents[3] / "contracts" / "experiment-slugs.json"
+_FIXTURE = Path(__file__).resolve().parents[2] / "contracts" / "experiment-slugs.json"
 _CASES = json.loads(_FIXTURE.read_text(encoding="utf-8"))["cases"]
 
 

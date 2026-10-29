@@ -2,12 +2,11 @@
 
 Leaf module: it imports nothing from ``repo2ree_core`` so the storage, domain,
 and experiment layers can all share one definition of "is this a safe relative
-path" without closing an import cycle (the same reason
-``repo2ree_core.reserved_paths`` exists).
+path" without closing an import cycle.
 
 Two layers, used at different trust boundaries:
 
-- :func:`validate_relative_path` is a *lexical* check — it rejects absolute
+- :func:`repo2ree_ree.paths.validate_relative_path` is a *lexical* check — it rejects absolute
   paths and ``..`` traversal. The storage layer (``ReeLayout``, ``SubtreeStore``)
   relies on this alone: its subtrees hold REE-controlled content, so a lexical
   guard is sufficient there.
@@ -21,6 +20,9 @@ Two layers, used at different trust boundaries:
 from __future__ import annotations
 
 from pathlib import Path, PurePosixPath
+
+from repo2ree_ree.paths import validate_path_segment as validate_path_segment
+from repo2ree_ree.paths import validate_relative_path as validate_relative_path
 
 # Leaf-file basename prefixes reserved for workspace control files
 # (".workspace*", ".upload.*"). They name files, never directories, so callers
@@ -55,38 +57,3 @@ def resolve_within(base: Path, rel: str | PurePosixPath) -> Path | None:
     assert candidate.is_relative_to(base_resolved), f"resolve_within escaped base: {candidate}"  # noqa: S101
     # ───────────────────
     return candidate
-
-
-def validate_relative_path(rel: str | PurePosixPath) -> None:
-    """Reject absolute paths and parent traversals.
-
-    Pure validator intended to run before any path is handed to the shell.
-    """
-    if not isinstance(rel, str | PurePosixPath):
-        raise TypeError(f"relative path must be str or PurePosixPath, got {type(rel).__name__}")
-    text = str(rel)
-    if text == "":
-        raise ValueError("relative path must not be empty")
-    pure = PurePosixPath(text)
-    if pure.is_absolute() or text.startswith(("/", "\\")):
-        raise ValueError(f"relative path must not be absolute: {text!r}")
-    if any(part == ".." for part in pure.parts):
-        raise ValueError(f"relative path must not contain '..': {text!r}")
-
-
-def validate_path_segment(value: str, *, kind: str) -> str:
-    """Reject anything that is not a single, safe path segment.
-
-    The guard for the *identifiers* an REE layout keys directories and files by
-    — run ids, review ids, upload tokens. They are stricter than a relative path
-    because they may never be one: a separator would let a caller name a sibling
-    tree, and a leading dot would collide with the reserved control files that
-    file enumeration deliberately skips.
-
-    ``kind`` names the identifier in the error, so a rejection says which of them
-    was malformed. Returns *value* so a caller can validate in the expression
-    that consumes it.
-    """
-    if not value or "/" in value or "\\" in value or value.startswith("."):
-        raise ValueError(f"invalid {kind}: {value!r}")
-    return value
