@@ -8,7 +8,8 @@ composes the two into a gate:
   tree and accepts a test only if it passed and its behaviour passed, or the
   test ``assurance/checker/expected-verdicts.toml`` excuses (an xfail must be) left
   exactly the rules it names non-passing. Exit 1 if any test is not accepted.
-- ``certify RUN...`` judges, then also requires every tier in ``TIERS`` to be among
+- ``certify RUN... [--invocation ID]`` judges the runs, and those that name the
+  invocation, then also requires every tier in ``TIERS`` to be among
   the runs, each built from HEAD with a clean tree that is still HEAD, and every
   expectation to have been used, and the tests together to reach every specified
   rule, edge, and message the file does not declare unreached. A run limited to
@@ -21,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import tomllib
@@ -34,6 +36,8 @@ from scripts.gates.receipts import AssuranceGateReceipt, Coverage, TestVerdict
 ROOT = Path(__file__).resolve().parents[2]
 EXPECTATIONS = ROOT / "assurance/checker/expected-verdicts.toml"
 RECEIPT = receipts.path(ROOT, "assurance-gate")
+# Where per-test runs are written; certify --invocation looks for its runs here.
+RUNS = Path(os.environ.get("REPO2REE_TEST_RUN_DIR") or ROOT / "test-artifacts") / "e2e"
 # The per-test tiers whose evidence a receipt stands on.
 TIERS = ("e2e-system", "e2e-gui-instant", "e2e-faults")
 ACCEPTED_OUTCOMES = {"passed", "xfailed"}
@@ -223,6 +227,19 @@ def clean_head() -> tuple[str, str, list[str]]:
     return git("rev-parse", "HEAD"), git("rev-parse", "HEAD^{tree}"), problems
 
 
+def runs_of(invocation: str, directory: Path = RUNS) -> list[Path]:
+    """The per-test runs one aggregate invocation left: those whose run.json names it."""
+    found = []
+    for record in sorted(directory.glob("*/run.json")):
+        try:
+            named = json.loads(record.read_text()).get("invocation")
+        except (OSError, ValueError):
+            continue
+        if named == invocation:
+            found.append(record.parent)
+    return found
+
+
 def certification_problems(
     runs: list[Path], judgements: list[Judgement], expectations: dict[str, Expectation]
 ) -> list[str]:
@@ -285,6 +302,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("command", choices=("judge", "certify", "verify"))
     parser.add_argument("runs", nargs="*", type=Path, help="run directories `repo2ree_testbed e2e --per-test` wrote")
+    parser.add_argument("--invocation", help="also every run that names this invocation (REPO2REE_TEST_RUN_ID)")
     args = parser.parse_args()
     if args.command == "verify":
         try:
@@ -294,9 +312,11 @@ def main() -> int:
         for problem in problems:
             print(problem, file=sys.stderr)
         return 1 if problems else 0
-    if not args.runs:
-        parser.error(f"{args.command} needs at least one run directory")
     runs = [root.resolve() for root in args.runs]
+    if args.invocation:
+        runs += [root for root in runs_of(args.invocation) if root not in runs]
+    if not runs:
+        parser.error(f"{args.command} needs at least one run directory, or an invocation that left some")
     expectations = load_expectations()
     unreached = load_unreached()
     judgements = judge_runs(runs, expectations)

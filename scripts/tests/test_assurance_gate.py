@@ -173,3 +173,20 @@ def test_unreached_entries_need_items_and_a_reason_and_name_each_item_once(tmp_p
 
 def test_the_committed_unreached_items_load() -> None:
     assert all(reason.strip() for reason in gate.load_unreached().values())
+
+
+def test_an_invocation_finds_the_runs_that_name_it(tmp_path: Path) -> None:
+    def run(name: str, record: str) -> Path:
+        (tmp_path / name).mkdir()
+        (tmp_path / name / "run.json").write_text(record)
+        return tmp_path / name
+
+    system = run("e2e-system-1", json.dumps({"tier": "e2e-system", "invocation": "this"}))
+    faults = run("e2e-faults-1", json.dumps({"tier": "e2e-faults", "invocation": "this"}))
+    run("e2e-system-0", json.dumps({"tier": "e2e-system", "invocation": "earlier"}))
+    run("e2e-gui-instant-0", json.dumps({"tier": "e2e-gui-instant"}))
+    run("e2e-faults-0", "{not json")
+    (tmp_path / "e2e-system-2").mkdir()  # still running: no run.json yet
+
+    assert gate.runs_of("this", tmp_path) == [faults, system]
+    assert gate.runs_of("never", tmp_path) == []
