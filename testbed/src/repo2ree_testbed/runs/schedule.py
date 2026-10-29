@@ -9,7 +9,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 
-from repo2ree_testbed.artifacts import ROOT, run_dir
+from repo2ree_testbed.artifacts import ROOT, execution_id, run_dir
 from repo2ree_testbed.records import RunRecord, RunTest, TestResult, read, write
 from repo2ree_testbed.runs.inspect_run import inspect_run
 from repo2ree_testbed.stack.clients import Client, TestCase, reported_outcome
@@ -69,6 +69,7 @@ class SuiteRun:
             jobs=self.schedule.jobs if isinstance(self.schedule, PerTest) else 1,
             whole_suite=isinstance(self.schedule, WholeSuite),
             selected=self.schedule.select if isinstance(self.schedule, PerTest) else (),
+            invocation=execution_id(),
             tests=tuple(tests),
         )
         write(self.root / "run.json", record)
@@ -79,6 +80,11 @@ class SuiteRun:
         except (OSError, ValueError) as error:
             print(f"inspection failed: {error}", file=sys.stderr)
         return record
+
+    @property
+    def completed(self) -> bool:
+        """Whether the run got as far as recording itself, whatever its tests did."""
+        return (self.root / "run.json").is_file()
 
     def run(self) -> int:
         if isinstance(self.schedule, WholeSuite):

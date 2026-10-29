@@ -60,6 +60,8 @@ class RunRecord(Record):
     whole_suite: bool = False
     # What a per-test run was limited to; empty when it ran every test its suite lists.
     selected: tuple[str, ...] = ()
+    # The aggregate invocation it ran in (REPO2REE_TEST_RUN_ID), which the assurance gate finds its runs by.
+    invocation: str = ""
     tests: tuple[RunTest, ...]
 
     def with_tests(self, tests: tuple[RunTest, ...]) -> RunRecord:

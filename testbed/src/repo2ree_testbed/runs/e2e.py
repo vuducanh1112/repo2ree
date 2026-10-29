@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import argparse
+import io
 import signal
 import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import get_args
+from typing import IO, Literal, get_args
 
 from repo2ree_testbed.artifacts import ROOT
 from repo2ree_testbed.runs.prune import prune
@@ -16,12 +17,33 @@ from repo2ree_testbed.runs.schedule import PerTest, Schedule, SuiteRun, WholeSui
 from repo2ree_testbed.stack.clients import Client, Playwright, Script
 from repo2ree_testbed.stack.services import Deployment, DockerMode, Mode
 
+type ExitOn = Literal["tests", "run"]
+
 
 @dataclass(frozen=True)
 class Invocation:
     deployment: Deployment
     client: Client
     schedule: Schedule
+    # tests: fail when a test did; run: fail only when the run broke, leaving its tests to whoever judges them.
+    exit_on: ExitOn = "tests"
+
+
+class Tee(io.TextIOBase):
+    """A console stream that also writes to the run's own log."""
+
+    def __init__(self, console: IO[str], log: IO[str]) -> None:
+        self.console = console
+        self.log = log
+
+    def write(self, text: str) -> int:
+        self.console.write(text)
+        self.log.write(text)
+        return len(text)
+
+    def flush(self) -> None:
+        self.console.flush()
+        self.log.flush()
 
 
 def positive(value: str) -> int:
@@ -46,6 +68,12 @@ def parse(argv: list[str] | None = None) -> Invocation:
         action="append",
         default=None,
         help="with --per-test: run only the tests whose id contains one of these space-separated parts (repeatable)",
+    )
+    parser.add_argument(
+        "--exit-on",
+        choices=get_args(ExitOn.__value__),
+        default="tests",
+        help="tests: exit 1 when a test failed; run: only when the run broke (the assurance gate judges the tests)",
     )
     parser.add_argument("--mode", choices=get_args(Mode.__value__), default="provider")
     parser.add_argument("--docker-mode", choices=get_args(DockerMode.__value__), default="dind")
@@ -84,7 +112,13 @@ def parse(argv: list[str] | None = None) -> Invocation:
         exec_bundle=args.exec_bundle,
         tools_bundle=args.tools_bundle,
     )
-    return Invocation(deployment, client, PerTest(args.jobs, select) if args.per_test else WholeSuite())
+    schedule = PerTest(args.jobs, select) if args.per_test else WholeSuite()
+    return Invocation(deployment, client, schedule, args.exit_on)
+
+
+def exit_status(status: int, exit_on: ExitOn, completed: bool) -> int:
+    """The process's exit code: a run that completed passes ``exit_on="run"`` whatever its tests did."""
+    return 0 if exit_on == "run" and completed else status
 
 
 def main() -> int:
@@ -99,8 +133,12 @@ def main() -> int:
 
     signal.signal(signal.SIGTERM, interrupted)
     signal.signal(signal.SIGINT, interrupted)
+    # What this process prints is kept beside the run; its stacks' own processes log to the tests' directories.
+    run.root.mkdir(parents=True, exist_ok=True)
+    log = (run.root / "tier.log").open("a", encoding="utf-8", buffering=1)
+    sys.stdout, sys.stderr = Tee(sys.stdout, log), Tee(sys.stderr, log)
     try:
-        return run.run()
+        return exit_status(run.run(), invocation.exit_on, run.completed)
     except KeyboardInterrupt:
         return 130
     except (OSError, RuntimeError, subprocess.CalledProcessError) as error:
@@ -108,6 +146,8 @@ def main() -> int:
         return 1
     finally:
         run.stop()
+        sys.stdout, sys.stderr = sys.__stdout__, sys.__stderr__
+        log.close()
 
 
 if __name__ == "__main__":

@@ -1,7 +1,9 @@
+import io
+
 import pytest
 
 from repo2ree_testbed.records import RunRecord
-from repo2ree_testbed.runs.e2e import parse
+from repo2ree_testbed.runs.e2e import Tee, exit_status, parse
 from repo2ree_testbed.runs.schedule import PerTest, selected
 from repo2ree_testbed.stack.clients import TestCase
 
@@ -39,3 +41,28 @@ def test_a_run_records_what_it_was_limited_to() -> None:
     whole = RunRecord(tier="e2e-system", suite="s", build_revision="r", jobs=1, tests=())
     assert whole.selected == ()
     assert RunRecord.model_validate_json(whole.but(selected=("test_a",)).model_dump_json()).selected == ("test_a",)
+
+
+def test_a_run_records_the_invocation_it_ran_in() -> None:
+    record = RunRecord(tier="e2e-system", suite="s", build_revision="r", jobs=1, tests=(), invocation="abc")
+    assert RunRecord.model_validate_json(record.model_dump_json()).invocation == "abc"
+    assert RunRecord(tier="t", suite="s", build_revision="r", jobs=1, tests=()).invocation == ""
+
+
+def test_a_run_that_completed_passes_when_only_the_run_decides() -> None:
+    command = ["--script", "suite.py", "--tier", "e2e-system", "--per-test"]
+    assert parse(command).exit_on == "tests"
+    assert parse([*command, "--exit-on", "run"]).exit_on == "run"
+    # Failing tests fail a tier run on its own, but not one whose tests the gate judges.
+    assert exit_status(1, "tests", completed=True) == 1
+    assert exit_status(1, "run", completed=True) == 0
+    # A run that broke before recording itself fails either way.
+    assert exit_status(1, "run", completed=False) == 1
+    assert exit_status(0, "tests", completed=True) == 0
+
+
+def test_the_console_is_also_written_to_the_runs_log() -> None:
+    console, log = io.StringIO(), io.StringIO()
+    tee = Tee(console, log)
+    print(">> passed in 3 s: t", file=tee)
+    assert console.getvalue() == log.getvalue() == ">> passed in 3 s: t\n"
