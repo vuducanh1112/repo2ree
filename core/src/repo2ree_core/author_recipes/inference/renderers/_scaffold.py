@@ -12,12 +12,8 @@ no accidental word-splitting, and assumes no shell in the runtime image.
 
 from __future__ import annotations
 
-from repo2ree_core.author_recipes.inference.models import (
-    ArgvCommandCandidate,
-    ScriptCommandCandidate,
-    ShellCommandCandidate,
-)
 from repo2ree_core.author_recipes.inference.renderers._common import sh_comment, sh_quote
+from repo2ree_protocol.inference import ArgvCommandCandidate, ScriptCommandCandidate, ShellCommandCandidate
 from repo2ree_ree.reserved_paths import experiment_slug
 
 EXIT_UNCONFIGURED = 64

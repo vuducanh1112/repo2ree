@@ -15,12 +15,8 @@ the trace explains why the resolver saw no viable strategy.
 
 from __future__ import annotations
 
-from repo2ree_core.author_recipes.inference.models import (
-    ResolverResult,
-    StrategyOutcome,
-    StrategyOutcomeObservation,
-    StrategyOutcomesObservation,
-)
+from repo2ree_core.author_recipes.inference.models import ResolverResult, StrategyOutcome
+from repo2ree_protocol.inference import StrategyOutcomeObservation, StrategyOutcomesObservation
 
 
 class ScoreFreeViabilityResolver:

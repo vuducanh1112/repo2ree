@@ -22,11 +22,12 @@ from repo2ree_core.author_recipes.inference.decision_graphs.activation_run impor
 from repo2ree_core.author_recipes.inference.decision_graphs.build import BUILD_INFERENCE_DAG
 from repo2ree_core.author_recipes.inference.decision_graphs.experiment_run import EXPERIMENT_RUN_DAG
 from repo2ree_core.author_recipes.inference.engine import validate_dag
-from repo2ree_core.author_recipes.inference.models import Check, DecisionDag, Renderer, Resolver
+from repo2ree_core.author_recipes.inference.models import Check, Renderer, Resolver
 from repo2ree_core.author_recipes.inference.renderers.docker_activation import DockerActivationRenderer
 from repo2ree_core.author_recipes.inference.renderers.docker_experiment import DockerExperimentRenderer
 from repo2ree_core.author_recipes.inference.renderers.venv_activation import VenvActivationRenderer
 from repo2ree_core.author_recipes.inference.renderers.venv_experiment import VenvExperimentRenderer
+from repo2ree_protocol.inference import DecisionDag
 
 # The build wiring is shared with ``build_regeneration`` (see ``build_wiring``) so
 # the two can never drift; the run-side checks/renderers are layered on top here.

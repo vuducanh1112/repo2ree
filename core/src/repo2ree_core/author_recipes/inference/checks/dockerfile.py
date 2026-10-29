@@ -12,14 +12,8 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from repo2ree_core.author_recipes.inference.models import (
-    BindingKind,
-    CheckResult,
-    DecisionContext,
-    DockerfileBinding,
-    PathMatchesObservation,
-    ProjectRootBinding,
-)
+from repo2ree_core.author_recipes.inference.models import BindingKind, CheckResult, DecisionContext
+from repo2ree_protocol.inference import DockerfileBinding, PathMatchesObservation, ProjectRootBinding
 
 
 def _project_root(context: DecisionContext) -> str:

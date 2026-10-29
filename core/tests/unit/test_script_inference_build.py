@@ -15,8 +15,8 @@ from repo2ree_core.author_recipes.inference import (
     TargetInferenceResult,
     infer_scripts,
 )
-from repo2ree_core.author_recipes.inference.models import LogicalRootObservation
 from repo2ree_core.author_recipes.inference.runtime_inputs import RuntimeInputs
+from repo2ree_protocol.inference import LogicalRootObservation
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.model import BuildRuntimeDefinition, ReeDefinition
 from repo2ree_ree.primitives import WorkspacePath

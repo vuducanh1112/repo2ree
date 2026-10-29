@@ -16,13 +16,13 @@ from pydantic import BaseModel, ConfigDict
 from repo2ree_api.contracts import ERROR_RESPONSES
 from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import dispatch_or_fail, ree_command_span, require_handle
-from repo2ree_core.author_recipes.inference.models import InferenceReport
 from repo2ree_protocol.command import (
     GenerateScriptCandidatesArgs,
     GenerateScriptCandidatesCommand,
     ScriptTargetSelectorArg,
     TargetKind,
 )
+from repo2ree_protocol.inference import InferenceReport
 
 # ================================================
 # Router

@@ -6,7 +6,7 @@ remain advisory because their vocabulary and policy are external.
 
 from __future__ import annotations
 
-from repo2ree_core.author_recipes.lint.models import Finding, FindingSeverity, FindingTier
+from repo2ree_protocol.lint import Finding, FindingSeverity, FindingTier
 
 _CATALOG: dict[str, tuple[FindingTier, FindingSeverity, bool, str]] = {
     "shell_syntax_error": (

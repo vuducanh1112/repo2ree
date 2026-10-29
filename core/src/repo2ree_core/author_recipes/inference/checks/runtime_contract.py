@@ -22,11 +22,10 @@ from repo2ree_core.author_recipes.inference.artifact_inspection import (
     inspect_runtime_artifact,
 )
 from repo2ree_core.author_recipes.inference.build_regeneration import expected_builds_for_runtime
-from repo2ree_core.author_recipes.inference.models import (
+from repo2ree_core.author_recipes.inference.models import BindingKind, CheckResult, DecisionContext
+from repo2ree_core.author_recipes.inference.warnings import make_warning
+from repo2ree_protocol.inference import (
     DEFAULT_VENV_RESTORE_DIR,
-    BindingKind,
-    CheckResult,
-    DecisionContext,
     DockerRuntimeContract,
     ImageCommandBinding,
     ProjectRootBinding,
@@ -35,7 +34,6 @@ from repo2ree_core.author_recipes.inference.models import (
     RuntimeDeclarationBinding,
     VenvRuntimeContract,
 )
-from repo2ree_core.author_recipes.inference.warnings import make_warning
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.paths import validate_relative_path
 from repo2ree_ree.reserved_paths import RESERVED_BUILD_SCRIPT

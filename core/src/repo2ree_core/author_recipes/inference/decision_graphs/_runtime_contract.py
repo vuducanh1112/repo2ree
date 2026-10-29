@@ -14,14 +14,7 @@ reuse the same ids without collision.
 
 from __future__ import annotations
 
-from repo2ree_core.author_recipes.inference.models import (
-    CheckNode,
-    DecisionNode,
-    ForkNode,
-    ResolveNode,
-    ResultNode,
-    StrategyLeafNode,
-)
+from repo2ree_protocol.inference import CheckNode, DecisionNode, ForkNode, ResolveNode, ResultNode, StrategyLeafNode
 
 # Shared node ids.
 ENTRY = "declared-runtime"

@@ -378,6 +378,16 @@ class ScriptTargetSelectorArg(BaseModel):
     experiment_name: str | None = None
 
 
+class ScriptTarget(BaseModel):
+    """A resolved executable target. ``path`` is output-only."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: TargetKind
+    experiment_name: str | None = None
+    path: str
+
+
 class GenerateScriptCandidatesArgs(BaseModel):
     """Read-only inference of author-facing shell scripts.
 

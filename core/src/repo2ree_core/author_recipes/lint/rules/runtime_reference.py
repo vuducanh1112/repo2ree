@@ -5,8 +5,9 @@ from __future__ import annotations
 from typing import ClassVar
 
 from repo2ree_core.author_recipes.lint.catalog import make_finding
-from repo2ree_core.author_recipes.lint.models import Finding, ScriptContext
+from repo2ree_core.author_recipes.lint.models import ScriptContext
 from repo2ree_protocol.command import TargetKind
+from repo2ree_protocol.lint import Finding
 
 
 class RuntimeReferenceRule:

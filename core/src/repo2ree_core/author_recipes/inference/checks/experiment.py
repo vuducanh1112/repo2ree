@@ -12,14 +12,9 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from repo2ree_core.author_recipes.inference.models import (
-    BindingKind,
-    CheckResult,
-    DecisionContext,
-    ExperimentBinding,
-    ExperimentGateObservation,
-)
+from repo2ree_core.author_recipes.inference.models import BindingKind, CheckResult, DecisionContext
 from repo2ree_core.author_recipes.inference.warnings import make_warning
+from repo2ree_protocol.inference import ExperimentBinding, ExperimentGateObservation
 
 
 class RequestedExperimentCheck:

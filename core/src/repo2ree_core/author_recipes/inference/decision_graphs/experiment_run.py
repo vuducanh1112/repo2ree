@@ -14,7 +14,7 @@ from repo2ree_core.author_recipes.inference.decision_graphs._runtime_contract im
     NOT_INFERRED,
     runtime_contract_and_command_nodes,
 )
-from repo2ree_core.author_recipes.inference.models import CheckNode, DecisionDag
+from repo2ree_protocol.inference import CheckNode, DecisionDag
 
 EXPERIMENT_RUN_DAG = DecisionDag(
     key="experiment-run-inference",

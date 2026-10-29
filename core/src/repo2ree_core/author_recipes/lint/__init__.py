@@ -17,14 +17,7 @@ from repo2ree_core.author_recipes.lint.lint import (
     ENGINE_VERSION,
     lint_script,
 )
-from repo2ree_core.author_recipes.lint.models import (
-    Finding,
-    FindingSeverity,
-    FindingTier,
-    LintReport,
-    ScriptDeclarations,
-    TierStatus,
-)
+from repo2ree_protocol.lint import Finding, FindingSeverity, FindingTier, LintReport, ScriptDeclarations, TierStatus
 
 __all__ = [
     "ALL_TIERS",

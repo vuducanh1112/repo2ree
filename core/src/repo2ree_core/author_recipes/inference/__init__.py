@@ -9,12 +9,9 @@ control-flow authority (see ``engine`` and ``registry``). Design overview:
 from __future__ import annotations
 
 from repo2ree_core.author_recipes.inference.inference import ENGINE_VERSION, infer_scripts
-from repo2ree_core.author_recipes.inference.models import (
-    InferenceReport,
-    ScriptCandidate,
-    TargetInferenceResult,
-)
-from repo2ree_core.author_recipes.targets import ScriptTarget, ScriptTargetSelector, resolve_target
+from repo2ree_core.author_recipes.targets import ScriptTargetSelector, resolve_target
+from repo2ree_protocol.command import ScriptTarget
+from repo2ree_protocol.inference import InferenceReport, ScriptCandidate, TargetInferenceResult
 
 __all__ = [
     "ENGINE_VERSION",

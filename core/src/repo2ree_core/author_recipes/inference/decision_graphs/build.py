@@ -17,14 +17,7 @@ the two strategies an explicit decision.
 
 from __future__ import annotations
 
-from repo2ree_core.author_recipes.inference.models import (
-    CheckNode,
-    DecisionDag,
-    ForkNode,
-    ResolveNode,
-    ResultNode,
-    StrategyLeafNode,
-)
+from repo2ree_protocol.inference import CheckNode, DecisionDag, ForkNode, ResolveNode, ResultNode, StrategyLeafNode
 
 # The build-strategy rule ids the leaves below emit. They are the authority:
 # ``build_regeneration`` imports these to map a regenerated build candidate back

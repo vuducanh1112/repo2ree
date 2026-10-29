@@ -12,14 +12,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from repo2ree_core.author_recipes.inference.engine import evaluate_target
-from repo2ree_core.author_recipes.inference.models import (
-    DecisionContext,
-    DecisionDag,
-    DecisionTrace,
-    InferenceEngineInfo,
-    InferenceReport,
-    TargetInferenceResult,
-)
+from repo2ree_core.author_recipes.inference.models import DecisionContext
 from repo2ree_core.author_recipes.inference.policy import InferencePolicy, default_policy
 from repo2ree_core.author_recipes.inference.registry import (
     CHECKS,
@@ -30,7 +23,15 @@ from repo2ree_core.author_recipes.inference.registry import (
 )
 from repo2ree_core.author_recipes.inference.repository_facts import scan_repository
 from repo2ree_core.author_recipes.inference.runtime_inputs import RuntimeInputs
-from repo2ree_core.author_recipes.targets import ScriptTarget, ScriptTargetSelector, resolve_target
+from repo2ree_core.author_recipes.targets import ScriptTargetSelector, resolve_target
+from repo2ree_protocol.command import ScriptTarget
+from repo2ree_protocol.inference import (
+    DecisionDag,
+    DecisionTrace,
+    InferenceEngineInfo,
+    InferenceReport,
+    TargetInferenceResult,
+)
 from repo2ree_ree.model import ReeDefinition
 
 ENGINE_VERSION = "1"

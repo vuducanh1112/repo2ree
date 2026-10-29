@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import ClassVar, Protocol
 
 from repo2ree_core.author_recipes.lint.catalog import catalog_codes
-from repo2ree_core.author_recipes.lint.models import Finding, ScriptContext
+from repo2ree_core.author_recipes.lint.models import ScriptContext
 from repo2ree_core.author_recipes.lint.rules.exit_status import PipeMaskingRule
 from repo2ree_core.author_recipes.lint.rules.placeholders import (
     EmptyCommandScaffoldRule,
@@ -13,6 +13,7 @@ from repo2ree_core.author_recipes.lint.rules.placeholders import (
 )
 from repo2ree_core.author_recipes.lint.rules.runtime_reference import RuntimeReferenceRule
 from repo2ree_protocol.command import TargetKind
+from repo2ree_protocol.lint import Finding
 
 
 class LintRule(Protocol):

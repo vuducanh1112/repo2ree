@@ -15,9 +15,8 @@ import pytest
 
 from repo2ree_core.author_recipes.lint import lint_script
 from repo2ree_core.author_recipes.lint.lint import CONTRACT_ONLY
-from repo2ree_core.author_recipes.lint.models import ScriptDeclarations
-from repo2ree_core.author_recipes.targets import ScriptTarget
-from repo2ree_protocol.command import TargetKind
+from repo2ree_protocol.command import ScriptTarget, TargetKind
+from repo2ree_protocol.lint import ScriptDeclarations
 
 _TEMPLATES = Path(__file__).resolve().parents[3] / "core/src/repo2ree_core/author_recipes/templates"
 

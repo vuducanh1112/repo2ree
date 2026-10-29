@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_protocol.command import TargetKind
+from repo2ree_protocol.command import ScriptTarget, TargetKind
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATION_SCRIPT,
     RESERVED_ACTIVATION_VERIFY_SCRIPT,
@@ -21,16 +21,6 @@ class ScriptTargetSelector(BaseModel):
 
     kind: TargetKind
     experiment_name: str | None = None
-
-
-class ScriptTarget(BaseModel):
-    """A resolved executable target. ``path`` is output-only."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    kind: TargetKind
-    experiment_name: str | None = None
-    path: str
 
 
 def resolve_target(selector: ScriptTargetSelector) -> ScriptTarget:
@@ -53,4 +43,4 @@ def resolve_target(selector: ScriptTargetSelector) -> ScriptTarget:
     return ScriptTarget(kind=kind, path=path)
 
 
-__all__ = ["ScriptTarget", "ScriptTargetSelector", "resolve_target"]
+__all__ = ["ScriptTargetSelector", "resolve_target"]

@@ -18,16 +18,7 @@ artifact.
 
 from __future__ import annotations
 
-from repo2ree_core.author_recipes.inference.models import (
-    DEFAULT_VENV_RESTORE_DIR,
-    BindingKind,
-    CandidateDependency,
-    DecisionContext,
-    InferenceEvidence,
-    ProjectRootBinding,
-    RenderedScript,
-    RequirementsProjectBinding,
-)
+from repo2ree_core.author_recipes.inference.models import BindingKind, DecisionContext, RenderedScript
 from repo2ree_core.author_recipes.inference.renderers._common import (
     VENV_RUNTIME_ARTIFACT_SUFFIX,
     build_runtime_artifact_path,
@@ -35,7 +26,14 @@ from repo2ree_core.author_recipes.inference.renderers._common import (
     sh_quote,
 )
 from repo2ree_core.author_recipes.inference.warnings import make_warning
-from repo2ree_core.author_recipes.targets import ScriptTarget
+from repo2ree_protocol.command import ScriptTarget
+from repo2ree_protocol.inference import (
+    DEFAULT_VENV_RESTORE_DIR,
+    CandidateDependency,
+    InferenceEvidence,
+    ProjectRootBinding,
+    RequirementsProjectBinding,
+)
 
 # Where the venv is built inside the bench — deliberately outside the workspace
 # (see module docstring). Shared with the run scaffolds via one constant so the

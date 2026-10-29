@@ -18,29 +18,31 @@ from __future__ import annotations
 from repo2ree_core.author_recipes.inference.models import (
     BindingKind,
     Check,
-    CheckNode,
     DecisionContext,
+    RenderedScript,
+    Renderer,
+    Resolver,
+    StrategyOutcome,
+)
+from repo2ree_core.author_recipes.inference.warnings import is_known_code, make_warning
+from repo2ree_core.digests import short_hash
+from repo2ree_protocol.command import ScriptTarget
+from repo2ree_protocol.inference import (
+    CheckNode,
     DecisionDag,
     DecisionNode,
     DecisionStep,
     DecisionTrace,
     ForkNode,
     InferenceWarning,
-    RenderedScript,
-    Renderer,
     ResolveNode,
-    Resolver,
     ResultNode,
     ScriptCandidate,
     ScriptValidation,
     StrategyLeafNode,
-    StrategyOutcome,
     TargetInferenceResult,
     TraversedEdge,
 )
-from repo2ree_core.author_recipes.inference.warnings import is_known_code, make_warning
-from repo2ree_core.author_recipes.targets import ScriptTarget
-from repo2ree_core.digests import short_hash
 from repo2ree_ree.digest import digest_bytes
 
 

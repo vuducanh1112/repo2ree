@@ -10,13 +10,8 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from repo2ree_core.author_recipes.inference.models import (
-    BindingKind,
-    CheckResult,
-    DecisionContext,
-    LogicalRootObservation,
-    ProjectRootBinding,
-)
+from repo2ree_core.author_recipes.inference.models import BindingKind, CheckResult, DecisionContext
+from repo2ree_protocol.inference import LogicalRootObservation, ProjectRootBinding
 
 
 class LogicalProjectRootCheck:

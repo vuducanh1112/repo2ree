@@ -8,16 +8,7 @@ verdict), and cat it back.
 
 from __future__ import annotations
 
-from repo2ree_core.author_recipes.inference.models import (
-    BindingKind,
-    CandidateDependency,
-    DecisionContext,
-    ExperimentBinding,
-    InferenceEvidence,
-    RenderedScript,
-    RuntimeContractBinding,
-    VenvRuntimeContract,
-)
+from repo2ree_core.author_recipes.inference.models import BindingKind, DecisionContext, RenderedScript
 from repo2ree_core.author_recipes.inference.renderers._scaffold import (
     candidate_examples_block,
     experiment_log_path,
@@ -25,7 +16,14 @@ from repo2ree_core.author_recipes.inference.renderers._scaffold import (
     unconfigured_guard,
 )
 from repo2ree_core.author_recipes.inference.warnings import make_warning
-from repo2ree_core.author_recipes.targets import ScriptTarget
+from repo2ree_protocol.command import ScriptTarget
+from repo2ree_protocol.inference import (
+    CandidateDependency,
+    ExperimentBinding,
+    InferenceEvidence,
+    RuntimeContractBinding,
+    VenvRuntimeContract,
+)
 
 
 def _bindings(context: DecisionContext) -> tuple[VenvRuntimeContract, str, ExperimentBinding]:

@@ -8,17 +8,7 @@ never inferred in Phase 1; image-declared commands are commented suggestions.
 
 from __future__ import annotations
 
-from repo2ree_core.author_recipes.inference.models import (
-    BindingKind,
-    CandidateDependency,
-    CommandCandidatesBinding,
-    DecisionContext,
-    DockerRuntimeContract,
-    ExperimentBinding,
-    InferenceEvidence,
-    RenderedScript,
-    RuntimeContractBinding,
-)
+from repo2ree_core.author_recipes.inference.models import BindingKind, DecisionContext, RenderedScript
 from repo2ree_core.author_recipes.inference.renderers._scaffold import (
     candidate_examples_block,
     experiment_log_path,
@@ -26,7 +16,15 @@ from repo2ree_core.author_recipes.inference.renderers._scaffold import (
     unconfigured_guard,
 )
 from repo2ree_core.author_recipes.inference.warnings import make_warning
-from repo2ree_core.author_recipes.targets import ScriptTarget
+from repo2ree_protocol.command import ScriptTarget
+from repo2ree_protocol.inference import (
+    CandidateDependency,
+    CommandCandidatesBinding,
+    DockerRuntimeContract,
+    ExperimentBinding,
+    InferenceEvidence,
+    RuntimeContractBinding,
+)
 
 
 def _bindings(context: DecisionContext) -> tuple[DockerRuntimeContract, str, ExperimentBinding]:

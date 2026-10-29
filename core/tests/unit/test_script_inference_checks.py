@@ -14,15 +14,15 @@ from repo2ree_core.author_recipes.inference.checks.dockerfile import (
     NestedDockerfilesCheck,
 )
 from repo2ree_core.author_recipes.inference.checks.project_root import LogicalProjectRootCheck
-from repo2ree_core.author_recipes.inference.models import (
-    DecisionContext,
+from repo2ree_core.author_recipes.inference.models import DecisionContext
+from repo2ree_core.author_recipes.inference.policy import default_policy
+from repo2ree_core.author_recipes.inference.repository_facts import DockerfileFact, RepositoryFacts
+from repo2ree_protocol.inference import (
     DockerfileBinding,
     LogicalRootObservation,
     PathMatchesObservation,
     ProjectRootBinding,
 )
-from repo2ree_core.author_recipes.inference.policy import default_policy
-from repo2ree_core.author_recipes.inference.repository_facts import DockerfileFact, RepositoryFacts
 
 
 def _context(facts: RepositoryFacts, *, project_root: str | None = None) -> DecisionContext:

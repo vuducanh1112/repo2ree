@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from repo2ree_core.author_recipes.inference.models import InferenceWarning, WarningSeverity
+from repo2ree_protocol.inference import InferenceWarning, WarningSeverity
 
 _CATALOG: dict[str, tuple[WarningSeverity, bool, str]] = {
     "execution_not_validated": (

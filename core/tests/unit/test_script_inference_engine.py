@@ -13,13 +13,8 @@ from repo2ree_core.author_recipes.inference.decision_graphs.activation_run impor
 from repo2ree_core.author_recipes.inference.decision_graphs.build import BUILD_INFERENCE_DAG
 from repo2ree_core.author_recipes.inference.decision_graphs.experiment_run import EXPERIMENT_RUN_DAG
 from repo2ree_core.author_recipes.inference.engine import DagValidationError, validate_dag
-from repo2ree_core.author_recipes.inference.models import (
-    CheckNode,
-    DecisionDag,
-    ResultNode,
-    StrategyLeafNode,
-)
 from repo2ree_core.author_recipes.inference.registry import CHECKS, RENDERERS, RESOLVERS
+from repo2ree_protocol.inference import CheckNode, DecisionDag, ResultNode, StrategyLeafNode
 
 
 def _validate(dag: DecisionDag) -> None:

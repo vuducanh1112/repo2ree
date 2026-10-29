@@ -12,7 +12,7 @@ from repo2ree_core.author_recipes.inference.decision_graphs._runtime_contract im
     ENTRY,
     runtime_contract_and_command_nodes,
 )
-from repo2ree_core.author_recipes.inference.models import CheckNode, DecisionDag
+from repo2ree_protocol.inference import CheckNode, DecisionDag
 
 ACTIVATION_RUN_DAG = DecisionDag(
     key="activation-run-inference",

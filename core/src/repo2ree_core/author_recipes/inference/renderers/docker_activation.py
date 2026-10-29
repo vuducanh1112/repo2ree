@@ -8,23 +8,21 @@ with any image-declared commands offered as commented examples.
 
 from __future__ import annotations
 
-from repo2ree_core.author_recipes.inference.models import (
-    BindingKind,
-    CandidateDependency,
-    CommandCandidatesBinding,
-    DecisionContext,
-    DockerRuntimeContract,
-    InferenceEvidence,
-    RenderedScript,
-    RuntimeContractBinding,
-)
+from repo2ree_core.author_recipes.inference.models import BindingKind, DecisionContext, RenderedScript
 from repo2ree_core.author_recipes.inference.renderers._scaffold import (
     candidate_examples_block,
     sh_quote,
     unconfigured_guard,
 )
 from repo2ree_core.author_recipes.inference.warnings import make_warning
-from repo2ree_core.author_recipes.targets import ScriptTarget
+from repo2ree_protocol.command import ScriptTarget
+from repo2ree_protocol.inference import (
+    CandidateDependency,
+    CommandCandidatesBinding,
+    DockerRuntimeContract,
+    InferenceEvidence,
+    RuntimeContractBinding,
+)
 
 
 def _docker_contract(context: DecisionContext) -> tuple[DockerRuntimeContract, str]:

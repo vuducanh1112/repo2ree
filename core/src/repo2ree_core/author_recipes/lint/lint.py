@@ -2,18 +2,12 @@
 
 from __future__ import annotations
 
-from repo2ree_core.author_recipes.lint.models import (
-    Finding,
-    FindingTier,
-    LintReport,
-    ScriptContext,
-    ScriptDeclarations,
-    TierStatus,
-)
+from repo2ree_core.author_recipes.lint.models import ScriptContext
 from repo2ree_core.author_recipes.lint.rules import RULES
 from repo2ree_core.author_recipes.lint.shell_tools import run_shellcheck, run_syntax_check
 from repo2ree_core.author_recipes.lint.shellwords import tokenize
-from repo2ree_core.author_recipes.targets import ScriptTarget
+from repo2ree_protocol.command import ScriptTarget
+from repo2ree_protocol.lint import Finding, FindingTier, LintReport, ScriptDeclarations, TierStatus
 
 ENGINE_VERSION = "1"
 

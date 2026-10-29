@@ -13,14 +13,8 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from repo2ree_core.author_recipes.inference.models import (
-    BindingKind,
-    CheckResult,
-    DecisionContext,
-    PathMatchesObservation,
-    ProjectRootBinding,
-    RequirementsProjectBinding,
-)
+from repo2ree_core.author_recipes.inference.models import BindingKind, CheckResult, DecisionContext
+from repo2ree_protocol.inference import PathMatchesObservation, ProjectRootBinding, RequirementsProjectBinding
 
 
 def _require_project_root(context: DecisionContext) -> None:

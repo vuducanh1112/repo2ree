@@ -27,14 +27,10 @@ from repo2ree_core.author_recipes.inference.decision_graphs.build import (
     PIP_BUILD_RULE,
 )
 from repo2ree_core.author_recipes.inference.engine import evaluate_target
-from repo2ree_core.author_recipes.inference.models import (
-    DecisionContext,
-    DockerRuntimeContract,
-    RuntimeContract,
-    VenvRuntimeContract,
-)
+from repo2ree_core.author_recipes.inference.models import DecisionContext
 from repo2ree_core.author_recipes.inference.renderers._common import runtime_image_ref
-from repo2ree_core.author_recipes.targets import ScriptTarget
+from repo2ree_protocol.command import ScriptTarget
+from repo2ree_protocol.inference import DockerRuntimeContract, RuntimeContract, VenvRuntimeContract
 from repo2ree_ree.reserved_paths import RESERVED_BUILD_SCRIPT
 
 

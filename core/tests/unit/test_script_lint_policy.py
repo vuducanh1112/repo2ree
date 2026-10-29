@@ -13,7 +13,7 @@ import pytest
 from repo2ree_core.author_recipes.lint import lint_script
 from repo2ree_core.author_recipes.lint.catalog import catalog_codes, make_finding
 from repo2ree_core.author_recipes.lint.lint import CONTRACT_ONLY
-from repo2ree_core.author_recipes.targets import ScriptTarget
+from repo2ree_protocol.command import ScriptTarget
 
 
 def test_only_a_syntax_error_blocks() -> None:

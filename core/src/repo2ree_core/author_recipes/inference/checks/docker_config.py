@@ -19,20 +19,18 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from repo2ree_core.author_recipes.inference.models import (
+from repo2ree_core.author_recipes.inference.models import BindingKind, CheckResult, DecisionContext
+from repo2ree_core.author_recipes.inference.warnings import make_warning
+from repo2ree_core.digests import short_hash
+from repo2ree_protocol.inference import (
     ArgvCommandCandidate,
-    BindingKind,
-    CheckResult,
     CommandCandidatesBinding,
     CommandCandidatesObservation,
-    DecisionContext,
     ImageCommandBinding,
     InferenceWarning,
     ScriptCommandCandidate,
     ShellCommandCandidate,
 )
-from repo2ree_core.author_recipes.inference.warnings import make_warning
-from repo2ree_core.digests import short_hash
 
 # Substrings that mark a plausibly persistent command (server / daemon).
 _LONG_RUNNING_HINTS = ("serve", "server", "runserver", "gunicorn", "uvicorn", "daemon", "http.server")

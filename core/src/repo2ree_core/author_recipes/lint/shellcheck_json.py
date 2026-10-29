@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from repo2ree_core.author_recipes.lint.models import Finding, FindingSeverity
+from repo2ree_protocol.lint import Finding, FindingSeverity
 
 _LEVELS: dict[str, FindingSeverity] = {
     "error": "error",

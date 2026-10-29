@@ -9,22 +9,20 @@ inferred in Phase 1.
 
 from __future__ import annotations
 
-from repo2ree_core.author_recipes.inference.models import (
-    BindingKind,
-    CandidateDependency,
-    DecisionContext,
-    InferenceEvidence,
-    RenderedScript,
-    RuntimeContractBinding,
-    VenvRuntimeContract,
-)
+from repo2ree_core.author_recipes.inference.models import BindingKind, DecisionContext, RenderedScript
 from repo2ree_core.author_recipes.inference.renderers._scaffold import (
     candidate_examples_block,
     sh_quote,
     unconfigured_guard,
 )
 from repo2ree_core.author_recipes.inference.warnings import make_warning
-from repo2ree_core.author_recipes.targets import ScriptTarget
+from repo2ree_protocol.command import ScriptTarget
+from repo2ree_protocol.inference import (
+    CandidateDependency,
+    InferenceEvidence,
+    RuntimeContractBinding,
+    VenvRuntimeContract,
+)
 
 
 def _venv_contract(context: DecisionContext) -> tuple[VenvRuntimeContract, str]:
