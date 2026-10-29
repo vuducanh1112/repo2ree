@@ -4,7 +4,7 @@ import json
 import logging
 import sys
 
-from repo2ree_protocol import log
+from repo2ree_telemetry import log
 
 
 def test_json_formatter_includes_trace_context(monkeypatch) -> None:
@@ -150,6 +150,6 @@ def test_emit_run_log_without_export_is_a_noop() -> None:
 
 
 def test_setup_logs_is_noop_without_endpoint() -> None:
-    from repo2ree_protocol.tracing import setup_logs
+    from repo2ree_telemetry.tracing import setup_logs
 
     assert setup_logs("repo2ree-test") is None

@@ -1,9 +1,3 @@
-"""RFC 8785 JSON Canonicalization Scheme, for the JSON values the REE format seals.
-
-The format carries no floating-point numbers, so the encoder refuses them rather than settle how
-one would be spelled, and integers stay within the range every JSON implementation reads exactly.
-"""
-
 from __future__ import annotations
 
 import json

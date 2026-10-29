@@ -122,7 +122,6 @@
     },
     "BuildRuntimeDefinition": {
       "additionalProperties": false,
-      "description": "The build recipe: the script that runs, and what running it must leave.\n\n``runtime_path`` is where the build is expected to write its runtime, and it\nis optional only because a fresh REE is seeded with this script before it\nhas a source — there is nothing yet to say where the artifact will land.\nDeclaring it is an authoring act, and the build step refuses to run until it\nhappens; a build with nowhere to look produces no evidence anyone can check.",
       "properties": {
         "build_runtime_script_path": {
           "default": "ree-scripts/build_script.sh",
@@ -239,7 +238,6 @@
     },
     "BundleContents": {
       "additionalProperties": false,
-      "description": "Materialized payload inventory bound by the seal.\n\nPaths are repository-relative and digests are the actual LFS payloads,\nexcluding Git storage and the self-containing manifest. Draft inventories are\nhistorical observations, not availability guarantees.",
       "properties": {
         "entries": {
           "default": [],
@@ -341,7 +339,6 @@
     },
     "CapturePolicy": {
       "additionalProperties": false,
-      "description": "Versioned payload inclusion, independent of a transient Git index.",
       "properties": {
         "version": {
           "const": 2,

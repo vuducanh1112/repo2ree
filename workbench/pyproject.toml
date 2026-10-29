@@ -3,12 +3,14 @@ name = "repo2ree-workbench"
 version = "0.1.0"
 dependencies = [
     "repo2ree-protocol",
+    "repo2ree-telemetry",
     "pydantic-settings~=2.16",
     "websockets~=15.0",
 ]
 
 [tool.uv.sources]
 repo2ree-protocol = { workspace = true }
+repo2ree-telemetry = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

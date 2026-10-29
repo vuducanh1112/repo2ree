@@ -14,7 +14,6 @@ from __future__ import annotations
 
 from repo2ree_api.ree_index import ReeIndex
 from repo2ree_api.settings import service_settings
-from repo2ree_protocol.tracing import build_span_sink
 from repo2ree_supervisor import (
     AllocationStore,
     ProviderConnectionRegistry,
@@ -24,6 +23,7 @@ from repo2ree_supervisor import (
     WsWorkbenchClient,
 )
 from repo2ree_supervisor.enrollment import EnrollmentRegistry
+from repo2ree_telemetry.tracing import build_span_sink
 
 allocation_store = AllocationStore(service_settings.ALLOCATION_STORE_FILE)
 

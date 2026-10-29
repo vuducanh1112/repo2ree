@@ -26,7 +26,7 @@ from repo2ree_core.operations.steps.review import (
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import ReviewRunExperimentArgs
-from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import ReviewRunExperimentOutputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.digest import Digest

@@ -13,8 +13,8 @@ from threading import RLock
 from pydantic import ValidationError
 
 from repo2ree_protocol.allocation import AllocationRecord, AllocationRequest, AllocationState
-from repo2ree_protocol.behaviour import events
 from repo2ree_supervisor.allocation_state import require_transition
+from repo2ree_telemetry.behaviour import events
 
 logger = logging.getLogger(__name__)
 

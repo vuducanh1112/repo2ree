@@ -19,6 +19,7 @@ members = [
     "repo2ree-ree",
     "repo2ree-repoview",
     "repo2ree-supervisor",
+    "repo2ree-telemetry",
     "repo2ree-testbed",
     "repo2ree-workbench",
 ]
@@ -1019,7 +1020,6 @@ version = "0.1.0"
 source = { editable = "api" }
 dependencies = [
     { name = "fastapi" },
-    { name = "opentelemetry-exporter-otlp-proto-http" },
     { name = "opentelemetry-instrumentation-fastapi" },
     { name = "pydantic-settings" },
     { name = "python-multipart" },
@@ -1027,7 +1027,7 @@ dependencies = [
     { name = "repo2ree-protocol" },
     { name = "repo2ree-ree" },
     { name = "repo2ree-supervisor" },
-    { name = "requests" },
+    { name = "repo2ree-telemetry" },
     { name = "uvicorn" },
     { name = "websockets" },
 ]
@@ -1040,7 +1040,6 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = "~=0.160.0" },
-    { name = "opentelemetry-exporter-otlp-proto-http", specifier = "~=1.45" },
     { name = "opentelemetry-instrumentation-fastapi", specifier = "~=0.66b1" },
     { name = "pydantic-settings", specifier = "~=2.16" },
     { name = "python-multipart", specifier = "~=0.0.32" },
@@ -1048,7 +1047,7 @@ requires-dist = [
     { name = "repo2ree-protocol", editable = "protocol" },
     { name = "repo2ree-ree", editable = "ree" },
     { name = "repo2ree-supervisor", editable = "supervisor" },
-    { name = "requests", specifier = "~=2.34" },
+    { name = "repo2ree-telemetry", editable = "telemetry" },
     { name = "uvicorn", specifier = "~=0.40.0" },
     { name = "websockets", specifier = "~=15.0" },
 ]
@@ -1141,6 +1140,7 @@ dependencies = [
     { name = "repo2ree-authoring" },
     { name = "repo2ree-protocol" },
     { name = "repo2ree-ree" },
+    { name = "repo2ree-telemetry" },
 ]
 
 [package.dev-dependencies]
@@ -1156,6 +1156,7 @@ requires-dist = [
     { name = "repo2ree-authoring", editable = "authoring" },
     { name = "repo2ree-protocol", editable = "protocol" },
     { name = "repo2ree-ree", editable = "ree" },
+    { name = "repo2ree-telemetry", editable = "telemetry" },
 ]
 
 [package.metadata.requires-dev]
@@ -1170,10 +1171,14 @@ version = "0.1.0"
 source = { editable = "docker-support" }
 dependencies = [
     { name = "repo2ree-protocol" },
+    { name = "repo2ree-telemetry" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "repo2ree-protocol", editable = "protocol" }]
+requires-dist = [
+    { name = "repo2ree-protocol", editable = "protocol" },
+    { name = "repo2ree-telemetry", editable = "telemetry" },
+]
 
 [[package]]
 name = "repo2ree-executor"
@@ -1182,12 +1187,14 @@ source = { editable = "executor" }
 dependencies = [
     { name = "click" },
     { name = "repo2ree-core" },
+    { name = "repo2ree-telemetry" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "click", specifier = "~=8.2.1" },
     { name = "repo2ree-core", editable = "core" },
+    { name = "repo2ree-telemetry", editable = "telemetry" },
 ]
 
 [[package]]
@@ -1195,31 +1202,15 @@ name = "repo2ree-protocol"
 version = "0.1.0"
 source = { editable = "protocol" }
 dependencies = [
-    { name = "opentelemetry-exporter-otlp-proto-http" },
-    { name = "opentelemetry-instrumentation-logging" },
-    { name = "opentelemetry-sdk" },
     { name = "pydantic" },
     { name = "repo2ree-ree" },
-    { name = "requests" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "types-requests" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "opentelemetry-exporter-otlp-proto-http", specifier = "~=1.45" },
-    { name = "opentelemetry-instrumentation-logging", specifier = "~=0.66b1" },
-    { name = "opentelemetry-sdk", specifier = "~=1.45" },
     { name = "pydantic", specifier = "~=2.11.7" },
     { name = "repo2ree-ree", editable = "ree" },
-    { name = "requests", specifier = "~=2.34" },
 ]
-
-[package.metadata.requires-dev]
-dev = [{ name = "types-requests", specifier = "~=2.33" }]
 
 [[package]]
 name = "repo2ree-provider-docker"
@@ -1230,6 +1221,7 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "repo2ree-docker-support" },
     { name = "repo2ree-protocol" },
+    { name = "repo2ree-telemetry" },
     { name = "websockets" },
 ]
 
@@ -1239,6 +1231,7 @@ requires-dist = [
     { name = "pydantic-settings", specifier = "~=2.16" },
     { name = "repo2ree-docker-support", editable = "docker-support" },
     { name = "repo2ree-protocol", editable = "protocol" },
+    { name = "repo2ree-telemetry", editable = "telemetry" },
     { name = "websockets", specifier = "~=15.0" },
 ]
 
@@ -1273,15 +1266,44 @@ name = "repo2ree-supervisor"
 version = "0.1.0"
 source = { editable = "supervisor" }
 dependencies = [
-    { name = "httpx" },
     { name = "repo2ree-protocol" },
+    { name = "repo2ree-telemetry" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "httpx", specifier = "~=0.28.1" },
     { name = "repo2ree-protocol", editable = "protocol" },
+    { name = "repo2ree-telemetry", editable = "telemetry" },
 ]
+
+[[package]]
+name = "repo2ree-telemetry"
+version = "0.1.0"
+source = { editable = "telemetry" }
+dependencies = [
+    { name = "opentelemetry-exporter-otlp-proto-http" },
+    { name = "opentelemetry-instrumentation-logging" },
+    { name = "opentelemetry-sdk" },
+    { name = "repo2ree-protocol" },
+    { name = "requests" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "types-requests" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "opentelemetry-exporter-otlp-proto-http", specifier = "~=1.45" },
+    { name = "opentelemetry-instrumentation-logging", specifier = "~=0.66b1" },
+    { name = "opentelemetry-sdk", specifier = "~=1.45" },
+    { name = "repo2ree-protocol", editable = "protocol" },
+    { name = "requests", specifier = "~=2.34" },
+]
+
+[package.metadata.requires-dev]
+dev = [{ name = "types-requests", specifier = "~=2.33" }]
 
 [[package]]
 name = "repo2ree-testbed"
@@ -1309,6 +1331,7 @@ source = { editable = "workbench" }
 dependencies = [
     { name = "pydantic-settings" },
     { name = "repo2ree-protocol" },
+    { name = "repo2ree-telemetry" },
     { name = "websockets" },
 ]
 
@@ -1316,6 +1339,7 @@ dependencies = [
 requires-dist = [
     { name = "pydantic-settings", specifier = "~=2.16" },
     { name = "repo2ree-protocol", editable = "protocol" },
+    { name = "repo2ree-telemetry", editable = "telemetry" },
     { name = "websockets", specifier = "~=15.0" },
 ]
 

@@ -9,8 +9,8 @@ from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import LintScriptsArgs
+from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.lint import LintReport
-from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.outputs import LintScriptsOutputs
 from repo2ree_protocol.result import ActionResult
 

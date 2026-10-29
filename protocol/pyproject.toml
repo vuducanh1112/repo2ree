@@ -4,16 +4,6 @@ version = "0.1.0"
 dependencies = [
     "repo2ree-ree",
     "pydantic~=2.11.7",
-    "requests~=2.34",
-    "opentelemetry-sdk~=1.45",
-    "opentelemetry-exporter-otlp-proto-http~=1.45",
-    "opentelemetry-instrumentation-logging~=0.66b1",
-]
-
-[dependency-groups]
-# Type stubs for protocol's runtime dependencies (used by mypy only).
-dev = [
-    "types-requests~=2.33",
 ]
 
 [tool.uv.sources]

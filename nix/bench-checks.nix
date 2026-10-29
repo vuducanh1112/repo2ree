@@ -13,6 +13,7 @@ let
       modules = [
         "repo2ree_ree"
         "repo2ree_protocol"
+        "repo2ree_telemetry"
         "repo2ree_authoring"
         "repo2ree_core"
         "repo2ree_executor"
@@ -23,6 +24,7 @@ let
       modules = [
         "repo2ree_ree"
         "repo2ree_protocol"
+        "repo2ree_telemetry"
         "repo2ree_workbench"
       ];
     };

@@ -3,7 +3,7 @@ from __future__ import annotations
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.operations.handlers.author.runnable import handle_runnable_operation
 from repo2ree_protocol.command import RunExperimentArgs
-from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionResult
 
 

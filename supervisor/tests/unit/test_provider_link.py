@@ -5,17 +5,9 @@ from collections.abc import Callable
 
 import pytest
 
-from repo2ree_protocol import (
-    AllocationRequest,
-    AllocationState,
-    AllocationStatusFrame,
-    EnsureAllocationRequest,
-    Frame,
-    ProviderHello,
-    ProviderWsMessage,
-    ProviderWsRequest,
-    WorkbenchImage,
-)
+from repo2ree_protocol.allocation import AllocationRequest, AllocationState, WorkbenchImage
+from repo2ree_protocol.frames import AllocationStatusFrame, Frame
+from repo2ree_protocol.provider import EnsureAllocationRequest, ProviderHello, ProviderWsMessage, ProviderWsRequest
 from repo2ree_supervisor.client import WorkbenchUnavailableError
 from repo2ree_supervisor.provider_link import ProviderConnection, ProviderConnectionRegistry, WsProviderClient
 

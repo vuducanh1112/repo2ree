@@ -30,7 +30,7 @@ from repo2ree_api.storage.upload_staging import (
     validate_upload_owner,
 )
 from repo2ree_api.workbench.commands import require_handle
-from repo2ree_protocol.behaviour.events import AuthorApiActionName
+from repo2ree_telemetry.behaviour.events import AuthorApiActionName
 
 
 def mint_upload_token(

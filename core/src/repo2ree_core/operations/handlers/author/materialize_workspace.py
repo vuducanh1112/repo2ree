@@ -20,7 +20,7 @@ from repo2ree_core.persistence.files import write_atomic
 from repo2ree_core.persistence.layout import MATERIALIZE_SCRIPT_FILENAME, ReeLayout
 from repo2ree_core.reproduction.materialize_workspace import build_materialize_sh
 from repo2ree_core.workspace.materialization import record_materialization
-from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.digest import Digest
 

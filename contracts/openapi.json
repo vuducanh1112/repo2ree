@@ -7704,8 +7704,7 @@
           "basis",
           "verdict"
         ],
-        "title": "ActivationOutcome",
-        "description": "Whether the runtime this attempt certified is inhabitable.\n\nDeliberately not a ``*Comparison``: nothing here is diffed against the\nauthor (see the module docstring). What the pass is *worth* is carried by\n``basis``, which activation inherits rather than chooses \u2014 it runs in the\nworkspace the build left behind and cannot tell whether the runtime there\nwas rebuilt or unpacked from the bundle.\n\n``runtime_digest`` is what the pass is *about*: the artifact actually\nprobed, which the step requires to equal the one the build step certified.\nWithout it a re-run build would silently leave a pass attached to a runtime\nthat no longer exists \u2014 the same binding the aggregate audit applies\nwhen it evaluates activation against the runtime that was built.\n\nThe exit codes separate the two failures that read alike but are not: a\nruntime that would not come up, and one that came up and was rejected by\nthe author's own verify script."
+        "title": "ActivationOutcome"
       },
       "ActivationScriptTemplates": {
         "properties": {
@@ -8310,8 +8309,7 @@
         "required": [
           "verdict"
         ],
-        "title": "BuildComparison",
-        "description": "How a reviewer's rebuilt runtime compares to the author's.\n\nCarries both tiers of evidence: the runtime digests (which settle\n``identical`` when a build happens to be bit-reproducible) and the SBOM\nclosure delta (which settles the rest). The listed deltas are capped\nsamples \u2014 the ``*_count`` fields are the whole truth."
+        "title": "BuildComparison"
       },
       "BuildInfo": {
         "properties": {
@@ -8364,8 +8362,7 @@
           "build_runtime_script_digest",
           "build_runtime_script_size"
         ],
-        "title": "BuildRuntimeDefinition",
-        "description": "The build recipe: the script that runs, and what running it must leave.\n\n``runtime_path`` is where the build is expected to write its runtime, and it\nis optional only because a fresh REE is seeded with this script before it\nhas a source \u2014 there is nothing yet to say where the artifact will land.\nDeclaring it is an authoring act, and the build step refuses to run until it\nhappens; a build with nowhere to look produces no evidence anyone can check."
+        "title": "BuildRuntimeDefinition"
       },
       "BuildRuntimeReceipt": {
         "properties": {
@@ -8478,8 +8475,7 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "BundleContents",
-        "description": "Materialized payload inventory bound by the seal.\n\nPaths are repository-relative and digests are the actual LFS payloads,\nexcluding Git storage and the self-containing manifest. Draft inventories are\nhistorical observations, not availability guarantees."
+        "title": "BundleContents"
       },
       "BundleEntry": {
         "properties": {
@@ -8654,8 +8650,7 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "CapturePolicy",
-        "description": "Versioned payload inclusion, independent of a transient Git index."
+        "title": "CapturePolicy"
       },
       "CheckNode": {
         "properties": {
@@ -9945,8 +9940,7 @@
           "name",
           "status"
         ],
-        "title": "EvaluatedDependency",
-        "description": "A ``Dependency`` row plus the report's classification of it.\n\nThe status is computed here \u2014 the single classifier that also feeds the\nsummary buckets \u2014 so presentation layers never re-derive it. The same\nholds for ``runtime_presence``, filled by the SBOM cross-check step."
+        "title": "EvaluatedDependency"
       },
       "ExecutionContext": {
         "properties": {
@@ -10183,8 +10177,7 @@
           "verdict",
           "experiment_name"
         ],
-        "title": "ExperimentComparison",
-        "description": "Whether one experiment's result reproduced, by the author's own criterion.\n\nA comparison rather than an outcome, unlike activation: the author *does*\nhave a recorded baseline here \u2014 their own run's verify verdict and output\ndigest \u2014 so there is something to disagree with. What is compared is the\ncriterion rather than the artifact, which is why both the author's expected\nverify-script digest and the reviewer's observed digest are carried:\n``reproduced`` is worth exactly as much as the script that granted it, and a\nreader who cannot establish that the same script ran cannot audit the\nverdict.\n\n``basis`` is inherited from the steps before, for the same reason activation\ninherits it: the experiment runs in the workspace the build left behind and\ncannot tell whether the runtime there was rebuilt or unpacked."
+        "title": "ExperimentComparison"
       },
       "ExperimentDefinition": {
         "properties": {
@@ -11753,8 +11746,7 @@
           "ecosystem",
           "name"
         ],
-        "title": "PackageDeltaRecord",
-        "description": "One package the author's and the reviewer's runtimes disagree about."
+        "title": "PackageDeltaRecord"
       },
       "PathMatchesObservation": {
         "properties": {
@@ -13522,8 +13514,7 @@
           "updated_at",
           "status"
         ],
-        "title": "ReviewRecord",
-        "description": "One independent review attempt: its lifecycle plus its evidence.\n\n``status`` and ``failure`` are derived from ``steps`` \u2014 write through\n:func:`with_step` rather than setting them."
+        "title": "ReviewRecord"
       },
       "ReviewSet": {
         "properties": {
@@ -13589,8 +13580,7 @@
           "started_at",
           "updated_at"
         ],
-        "title": "ReviewStepState",
-        "description": "The lifecycle state of one step within a review attempt."
+        "title": "ReviewStepState"
       },
       "RunExperimentReceipt": {
         "properties": {
@@ -14169,8 +14159,7 @@
           }
         },
         "type": "object",
-        "title": "SbomCrossCheckSummary",
-        "description": "Aggregates of the runtime-SBOM cross-check, mirrored into the receipt.\n\n``undeclared`` is capped (the counts carry the truth) and holds only\necosystems the declared inventory uses \u2014 base-image OS packages are\ncounted in ``observed_total`` but never listed."
+        "title": "SbomCrossCheckSummary"
       },
       "ScriptCandidate": {
         "properties": {
@@ -15385,8 +15374,7 @@
           "ecosystem",
           "name"
         ],
-        "title": "UndeclaredPackage",
-        "description": "One runtime package no manifest declared (same-ecosystem only)."
+        "title": "UndeclaredPackage"
       },
       "UploadInitPayload": {
         "properties": {

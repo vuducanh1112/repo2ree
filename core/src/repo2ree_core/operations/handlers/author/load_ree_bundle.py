@@ -29,7 +29,7 @@ from repo2ree_core.reproduction.acquire_source import build_acquire_sh
 from repo2ree_core.reproduction.materialize_workspace import build_materialize_sh
 from repo2ree_core.workspace.materialization import record_materialization
 from repo2ree_protocol.command import LoadReeBundleArgs
-from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import LoadReeBundleOutputs
 from repo2ree_protocol.result import ActionResult
 

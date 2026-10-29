@@ -28,7 +28,7 @@ from repo2ree_core.reproduction.commands import (
     MATERIALIZE_WORKSPACE,
     TEST_ACTIVATION,
 )
-from repo2ree_protocol import ActionResult, command_adapter, current_build
+from repo2ree_protocol.build import current_build
 from repo2ree_protocol.command import (
     ActivationTestArgs,
     ActivationTestCommand,
@@ -36,10 +36,10 @@ from repo2ree_protocol.command import (
     MaterializeWorkspaceCommand,
     RunExperimentArgs,
     RunExperimentCommand,
+    command_adapter,
 )
 from repo2ree_protocol.execution import ExecutionContext
-from repo2ree_protocol.log import LogSink
-from repo2ree_protocol.log import configure_logging as _configure_logging
+from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.queries import (
     BUILD_ARCHIVE,
     GET_HISTORY,
@@ -50,7 +50,9 @@ from repo2ree_protocol.queries import (
     READ_REE_FILE,
     READ_REE_FILE_PATH,
 )
-from repo2ree_protocol.tracing import (
+from repo2ree_protocol.result import ActionResult
+from repo2ree_telemetry.log import configure_logging as _configure_logging
+from repo2ree_telemetry.tracing import (
     CommandSpanAttrs,
     attach_remote_context,
     detach_context,

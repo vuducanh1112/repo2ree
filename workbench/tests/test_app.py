@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 import repo2ree_workbench.app as app_module
-from repo2ree_protocol import BuildInfo
+from repo2ree_protocol.build import BuildInfo
 from repo2ree_workbench.config import WorkbenchConfig
 
 

@@ -28,8 +28,7 @@ from repo2ree_api.deps import workbench_manager
 from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import dispatch_or_fail, ree_command_span, require_handle
 from repo2ree_api.workbench.uploads import mint_upload_token, stage_upload_bytes
-from repo2ree_protocol import AcquireSourceCommand, RemoveSourceCommand
-from repo2ree_protocol.command import AcquireSourceArgs
+from repo2ree_protocol.command import AcquireSourceArgs, AcquireSourceCommand, RemoveSourceCommand
 
 source_router = APIRouter()
 

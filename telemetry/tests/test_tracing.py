@@ -34,9 +34,9 @@ from opentelemetry.trace import (
     set_span_in_context,
 )
 
-from repo2ree_protocol import tracing
 from repo2ree_protocol.result import Failure
-from repo2ree_protocol.tracing import (
+from repo2ree_telemetry import tracing
+from repo2ree_telemetry.tracing import (
     CommandSpanAttrs,
     ExecSpanAttrs,
     ScriptSpanAttrs,
@@ -260,7 +260,7 @@ def test_build_resource_carries_deploy_identity_from_the_environment(monkeypatch
 
 
 def test_otlp_headers_from_env_parses_pairs_and_ignores_junk(monkeypatch) -> None:
-    from repo2ree_protocol.tracing import _otlp_headers_from_env
+    from repo2ree_telemetry.tracing import _otlp_headers_from_env
 
     monkeypatch.delenv("OTEL_EXPORTER_OTLP_HEADERS", raising=False)
     assert _otlp_headers_from_env() == {}
@@ -938,7 +938,7 @@ def test_result_boundary_records_local_observation_with_identity():
 
     from repo2ree_protocol.execution import ExecutionContext
     from repo2ree_protocol.result import ActionResult
-    from repo2ree_protocol.tracing import record_result_boundary
+    from repo2ree_telemetry.tracing import record_result_boundary
 
     provider = TracerProvider()
     with provider.get_tracer(__name__).start_as_current_span("receiver") as span:

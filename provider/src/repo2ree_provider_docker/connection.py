@@ -29,8 +29,8 @@ from repo2ree_protocol.provider import (
     ReleaseAllocationRequest,
     provider_ws_request_adapter,
 )
-from repo2ree_protocol.tracing import get_tracer, record_command_status, remote_context
 from repo2ree_provider_docker.provisioner import ProvisionerService
+from repo2ree_telemetry.tracing import get_tracer, record_command_status, remote_context
 
 logger = logging.getLogger(__name__)
 tracer = get_tracer(__name__)

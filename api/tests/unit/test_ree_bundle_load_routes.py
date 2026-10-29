@@ -16,8 +16,8 @@ from fastapi.testclient import TestClient
 
 from repo2ree_api.deps import workbench_manager
 from repo2ree_api.storage.upload_staging import staged_upload_path
-from repo2ree_protocol import ActionResult
 from repo2ree_protocol.command import LoadReeBundleCommand
+from repo2ree_protocol.result import ActionResult
 from repo2ree_supervisor import WorkbenchHandle
 
 RUN_TIMEOUT_SECONDS = 10

@@ -1,22 +1,13 @@
-"""Log-streaming contract and process-level logging configuration.
-
-``LogSink`` is the streaming callback shared across the command boundary.
-``configure_logging`` is the one-shot bootstrap called by each process
-entry point (api lifespan, executor main).
-"""
+"""Process logging: the root handler and the run-log export."""
 
 from __future__ import annotations
 
 import json
 import logging
 import os
-from collections.abc import Callable
 from datetime import UTC, datetime
 
-from repo2ree_protocol.tracing import current_trace_context
-
-LogSink = Callable[[str, str, str], None]
-
+from repo2ree_telemetry.tracing import current_trace_context
 
 # ================================================
 # Formatters

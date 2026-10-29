@@ -6,8 +6,8 @@ import asyncio
 from collections.abc import Sequence
 
 from repo2ree_protocol.build import current_build
-from repo2ree_protocol.log import configure_logging
-from repo2ree_protocol.tracing import (
+from repo2ree_telemetry.log import configure_logging
+from repo2ree_telemetry.tracing import (
     TracerProvider,
     otlp_log_handler,
     setup_logs,

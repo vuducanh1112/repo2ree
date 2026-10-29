@@ -1108,26 +1108,7 @@ export interface components {
             context?: components["schemas"]["ExecutionContext"] | null;
             history?: components["schemas"]["HistoryReference"] | null;
         };
-        /**
-         * ActivationOutcome
-         * @description Whether the runtime this attempt certified is inhabitable.
-         *
-         *     Deliberately not a ``*Comparison``: nothing here is diffed against the
-         *     author (see the module docstring). What the pass is *worth* is carried by
-         *     ``basis``, which activation inherits rather than chooses — it runs in the
-         *     workspace the build left behind and cannot tell whether the runtime there
-         *     was rebuilt or unpacked from the bundle.
-         *
-         *     ``runtime_digest`` is what the pass is *about*: the artifact actually
-         *     probed, which the step requires to equal the one the build step certified.
-         *     Without it a re-run build would silently leave a pass attached to a runtime
-         *     that no longer exists — the same binding the aggregate audit applies
-         *     when it evaluates activation against the runtime that was built.
-         *
-         *     The exit codes separate the two failures that read alike but are not: a
-         *     runtime that would not come up, and one that came up and was rejected by
-         *     the author's own verify script.
-         */
+        /** ActivationOutcome */
         ActivationOutcome: {
             /**
              * Policy
@@ -1398,15 +1379,7 @@ export interface components {
                 [key: string]: unknown;
             } | null;
         };
-        /**
-         * BuildComparison
-         * @description How a reviewer's rebuilt runtime compares to the author's.
-         *
-         *     Carries both tiers of evidence: the runtime digests (which settle
-         *     ``identical`` when a build happens to be bit-reproducible) and the SBOM
-         *     closure delta (which settles the rest). The listed deltas are capped
-         *     samples — the ``*_count`` fields are the whole truth.
-         */
+        /** BuildComparison */
         BuildComparison: {
             /**
              * Policy
@@ -1498,16 +1471,7 @@ export interface components {
              */
             revision: string;
         };
-        /**
-         * BuildRuntimeDefinition
-         * @description The build recipe: the script that runs, and what running it must leave.
-         *
-         *     ``runtime_path`` is where the build is expected to write its runtime, and it
-         *     is optional only because a fresh REE is seeded with this script before it
-         *     has a source — there is nothing yet to say where the artifact will land.
-         *     Declaring it is an authoring act, and the build step refuses to run until it
-         *     happens; a build with nowhere to look produces no evidence anyone can check.
-         */
+        /** BuildRuntimeDefinition */
         BuildRuntimeDefinition: {
             /**
              * Build Runtime Script Path
@@ -1570,14 +1534,7 @@ export interface components {
             /** Templates */
             templates: components["schemas"]["ScriptTemplateEntry"][];
         };
-        /**
-         * BundleContents
-         * @description Materialized payload inventory bound by the seal.
-         *
-         *     Paths are repository-relative and digests are the actual LFS payloads,
-         *     excluding Git storage and the self-containing manifest. Draft inventories are
-         *     historical observations, not availability guarantees.
-         */
+        /** BundleContents */
         BundleContents: {
             /**
              * Entries
@@ -1659,10 +1616,7 @@ export interface components {
             /** Role */
             role: string;
         };
-        /**
-         * CapturePolicy
-         * @description Versioned payload inclusion, independent of a transient Git index.
-         */
+        /** CapturePolicy */
         CapturePolicy: {
             /**
              * Version
@@ -2162,14 +2116,7 @@ export interface components {
             /** Analyzer Version */
             analyzer_version: string;
         };
-        /**
-         * EvaluatedDependency
-         * @description A ``Dependency`` row plus the report's classification of it.
-         *
-         *     The status is computed here — the single classifier that also feeds the
-         *     summary buckets — so presentation layers never re-derive it. The same
-         *     holds for ``runtime_presence``, filled by the SBOM cross-check step.
-         */
+        /** EvaluatedDependency */
         EvaluatedDependency: {
             /**
              * Ecosystem
@@ -2245,23 +2192,7 @@ export interface components {
             /** Output Paths */
             output_paths?: string[];
         };
-        /**
-         * ExperimentComparison
-         * @description Whether one experiment's result reproduced, by the author's own criterion.
-         *
-         *     A comparison rather than an outcome, unlike activation: the author *does*
-         *     have a recorded baseline here — their own run's verify verdict and output
-         *     digest — so there is something to disagree with. What is compared is the
-         *     criterion rather than the artifact, which is why both the author's expected
-         *     verify-script digest and the reviewer's observed digest are carried:
-         *     ``reproduced`` is worth exactly as much as the script that granted it, and a
-         *     reader who cannot establish that the same script ran cannot audit the
-         *     verdict.
-         *
-         *     ``basis`` is inherited from the steps before, for the same reason activation
-         *     inherits it: the experiment runs in the workspace the build left behind and
-         *     cannot tell whether the runtime there was rebuilt or unpacked.
-         */
+        /** ExperimentComparison */
         ExperimentComparison: {
             /**
              * Policy
@@ -2949,10 +2880,7 @@ export interface components {
             /** Phases */
             phases?: ("pending" | "executing" | "completed" | "captured" | "capture_failed")[];
         };
-        /**
-         * PackageDeltaRecord
-         * @description One package the author's and the reviewer's runtimes disagree about.
-         */
+        /** PackageDeltaRecord */
         PackageDeltaRecord: {
             /** Ecosystem */
             ecosystem: string;
@@ -3594,13 +3522,7 @@ export interface components {
             /** Produced Output Digest */
             produced_output_digest?: string | null;
         };
-        /**
-         * ReviewRecord
-         * @description One independent review attempt: its lifecycle plus its evidence.
-         *
-         *     ``status`` and ``failure`` are derived from ``steps`` — write through
-         *     :func:`with_step` rather than setting them.
-         */
+        /** ReviewRecord */
         ReviewRecord: {
             /** Review Id */
             review_id: string;
@@ -3633,10 +3555,7 @@ export interface components {
             /** Reviews */
             reviews?: components["schemas"]["ReviewRecord"][];
         };
-        /**
-         * ReviewStepState
-         * @description The lifecycle state of one step within a review attempt.
-         */
+        /** ReviewStepState */
         ReviewStepState: {
             /**
              * Step
@@ -3843,14 +3762,7 @@ export interface components {
             kind: "runtime_plan";
             plan: components["schemas"]["DockerRuntimePlan"];
         };
-        /**
-         * SbomCrossCheckSummary
-         * @description Aggregates of the runtime-SBOM cross-check, mirrored into the receipt.
-         *
-         *     ``undeclared`` is capped (the counts carry the truth) and holds only
-         *     ecosystems the declared inventory uses — base-image OS packages are
-         *     counted in ``observed_total`` but never listed.
-         */
+        /** SbomCrossCheckSummary */
         SbomCrossCheckSummary: {
             /** Sbom Digest */
             sbom_digest?: string | null;
@@ -4368,10 +4280,7 @@ export interface components {
             /** Target */
             target: string;
         };
-        /**
-         * UndeclaredPackage
-         * @description One runtime package no manifest declared (same-ecosystem only).
-         */
+        /** UndeclaredPackage */
         UndeclaredPackage: {
             /** Ecosystem */
             ecosystem: string;

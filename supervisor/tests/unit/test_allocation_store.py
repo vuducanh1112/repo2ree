@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_protocol import AllocationRequest, AllocationState
+from repo2ree_protocol.allocation import AllocationRequest, AllocationState
 from repo2ree_supervisor import AllocationStore
 from repo2ree_supervisor.allocation_state import EDGES, IllegalTransitionError, require_transition
 

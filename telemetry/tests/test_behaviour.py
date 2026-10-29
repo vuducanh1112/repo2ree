@@ -10,8 +10,8 @@ from pathlib import Path
 import pytest
 
 from repo2ree_protocol.allocation import AllocationState
-from repo2ree_protocol.behaviour import VOCABULARY, events
-from repo2ree_protocol.behaviour.writer import FileJournal, Journal, close_journal, journal, open_journal
+from repo2ree_telemetry.behaviour import VOCABULARY, events
+from repo2ree_telemetry.behaviour.writer import FileJournal, Journal, close_journal, journal, open_journal
 
 
 def records(path: Path) -> list[dict[str, object]]:

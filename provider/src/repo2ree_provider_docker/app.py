@@ -6,12 +6,12 @@ import asyncio
 
 from repo2ree_protocol.allocation import WorkbenchImage
 from repo2ree_protocol.build import current_build
-from repo2ree_protocol.log import configure_logging
-from repo2ree_protocol.tracing import otlp_log_handler, setup_logs, setup_metrics, setup_tracing
 from repo2ree_provider_docker.config import load_config
 from repo2ree_provider_docker.connection import run_provider
 from repo2ree_provider_docker.lifecycle import DockerIsolation
 from repo2ree_provider_docker.provisioner import ProvisionerService
+from repo2ree_telemetry.log import configure_logging
+from repo2ree_telemetry.tracing import otlp_log_handler, setup_logs, setup_metrics, setup_tracing
 
 
 def main() -> None:

@@ -36,7 +36,7 @@ from repo2ree_protocol.command import (
     SealReeCommand,
     WriteFileCommand,
 )
-from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.primitives import RunId
 

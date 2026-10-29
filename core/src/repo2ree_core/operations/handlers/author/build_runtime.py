@@ -13,7 +13,7 @@ from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError, load_ree, save_ree
 from repo2ree_core.time_utils import OperationTimer, format_duration_ms
 from repo2ree_core.workspace.drift import check_workspace_drift
-from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import BuildRuntimeFailureOutputs, BuildRuntimeOutputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.model import BuildRuntimeDefinition, Ree

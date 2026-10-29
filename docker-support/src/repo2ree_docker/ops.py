@@ -14,7 +14,7 @@ from contextlib import contextmanager
 
 from repo2ree_docker import cli as docker_cli
 from repo2ree_docker.errors import WorkbenchGoneError
-from repo2ree_protocol.tracing import command_metric_attrs, get_meter, get_tracer, record_command_status
+from repo2ree_telemetry.tracing import command_metric_attrs, get_meter, get_tracer, record_command_status
 
 tracer = get_tracer(__name__)
 _meter = get_meter(__name__)

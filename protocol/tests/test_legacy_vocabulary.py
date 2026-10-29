@@ -9,6 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).parents[2]
 SCAN_ROOTS = (
     "api",
+    "authoring/src",
     "core",
     "executor",
     "gui/src",
@@ -16,8 +17,10 @@ SCAN_ROOTS = (
     "just",
     "nix",
     "protocol/src",
+    "ree/src",
     "scripts",
     "supervisor",
+    "telemetry/src",
     "workbench",
 )
 SCAN_FILES = (

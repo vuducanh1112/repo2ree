@@ -40,7 +40,17 @@ from repo2ree_protocol.frames import (
     UnavailableFrame,
 )
 from repo2ree_protocol.result import Failure
-from repo2ree_protocol.tracing import (
+from repo2ree_protocol.workbench import (
+    CancelRequest,
+    CancelRunRequest,
+    DrainWorkbenchRequest,
+    ExecActionRequest,
+    WorkbenchHello,
+    WorkbenchRequest,
+    WorkbenchWsMessage,
+    workbench_ws_request_adapter,
+)
+from repo2ree_telemetry.tracing import (
     CommandSpanAttrs,
     WorkbenchSpanAttrs,
     command_metric_attrs,
@@ -51,16 +61,6 @@ from repo2ree_protocol.tracing import (
     record_failure,
     record_result_boundary,
     remote_context,
-)
-from repo2ree_protocol.workbench import (
-    CancelRequest,
-    CancelRunRequest,
-    DrainWorkbenchRequest,
-    ExecActionRequest,
-    WorkbenchHello,
-    WorkbenchRequest,
-    WorkbenchWsMessage,
-    workbench_ws_request_adapter,
 )
 from repo2ree_workbench.dispatcher import dispatch_workbench_request
 from repo2ree_workbench.service import WorkbenchService

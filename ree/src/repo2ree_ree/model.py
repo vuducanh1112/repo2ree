@@ -1,11 +1,3 @@
-"""The portable REE aggregate.
-
-Only what an REE *is*: its declaration, the receipts that back it, the bundle
-inventory, and the seal over all three. What that adds up to right now — which
-evidence still holds and which the tree has moved out from under — is derived,
-never stored, and lives in :mod:`repo2ree_core.domain.ree.audit`.
-"""
-
 from __future__ import annotations
 
 from typing import Literal
@@ -41,6 +33,11 @@ class _DomainModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
+def _all_or_none(*values: object) -> bool:
+    present = [value is not None for value in values]
+    return all(present) or not any(present)
+
+
 class Contributor(_DomainModel):
     identifier: str = ""
     name: str = ""
@@ -70,15 +67,6 @@ class SourceDefinition(_DomainModel):
 
 
 class BuildRuntimeDefinition(_DomainModel):
-    """The build recipe: the script that runs, and what running it must leave.
-
-    ``runtime_path`` is where the build is expected to write its runtime, and it
-    is optional only because a fresh REE is seeded with this script before it
-    has a source — there is nothing yet to say where the artifact will land.
-    Declaring it is an authoring act, and the build step refuses to run until it
-    happens; a build with nowhere to look produces no evidence anyone can check.
-    """
-
     build_runtime_script_path: ReePath = ReePath(RESERVED_BUILD_SCRIPT)
     build_runtime_script_digest: Digest
     build_runtime_script_size: int = Field(ge=0)
@@ -104,8 +92,7 @@ class TestActivationDefinition(_DomainModel):
     def _complete_scripts(self) -> TestActivationDefinition:
         if self.run_script_path != RESERVED_ACTIVATION_SCRIPT:
             raise ValueError(f"activation script path must be {RESERVED_ACTIVATION_SCRIPT!r}")
-        verification = (self.verify_script_path, self.verify_script_digest, self.verify_script_size)
-        if any(item is not None for item in verification) and not all(item is not None for item in verification):
+        if not _all_or_none(self.verify_script_path, self.verify_script_digest, self.verify_script_size):
             raise ValueError("activation verification path, digest, and size must be present together")
         if self.verify_script_path is not None and self.verify_script_path != RESERVED_ACTIVATION_VERIFY_SCRIPT:
             raise ValueError(f"activation verification path must be {RESERVED_ACTIVATION_VERIFY_SCRIPT!r}")
@@ -126,8 +113,7 @@ class ExperimentDefinition(_DomainModel):
     def _conventional_paths(self) -> ExperimentDefinition:
         if self.run_script_path != experiment_run_script_path(self.name):
             raise ValueError("experiment run script path must be derived from its name")
-        verification = (self.verify_script_path, self.verify_script_digest, self.verify_script_size)
-        if any(item is not None for item in verification) and not all(item is not None for item in verification):
+        if not _all_or_none(self.verify_script_path, self.verify_script_digest, self.verify_script_size):
             raise ValueError("experiment verification path, digest, and size must be present together")
         if self.verify_script_path is not None and self.verify_script_path != experiment_verify_script_path(self.name):
             raise ValueError("experiment verification script path must be derived from its name")
@@ -185,13 +171,6 @@ class BundleEntry(_DomainModel):
 
 
 class BundleContents(_DomainModel):
-    """Materialized payload inventory bound by the seal.
-
-    Paths are repository-relative and digests are the actual LFS payloads,
-    excluding Git storage and the self-containing manifest. Draft inventories are
-    historical observations, not availability guarantees.
-    """
-
     entries: tuple[BundleEntry, ...] = ()
 
     @model_validator(mode="after")
@@ -205,19 +184,16 @@ class BundleContents(_DomainModel):
 
 
 class CapturePolicy(_DomainModel):
-    """Versioned payload inclusion, independent of a transient Git index."""
-
     version: Literal[2] = 2
     lfs_paths: tuple[ReePath, ...] = ()
 
     @model_validator(mode="after")
-    def canonical_paths(self) -> CapturePolicy:
+    def _canonical_paths(self) -> CapturePolicy:
         paths = [str(path) for path in self.lfs_paths]
         if paths != sorted(set(paths)):
             raise ValueError("LFS paths must be unique and sorted")
-        for path in paths:
-            if any(part in {".git", ".", ".."} for part in path.split("/")) or path.startswith("/"):
-                raise ValueError("Unsafe LFS path")
+        if any(part in {".git", "."} for path in paths for part in path.split("/")):
+            raise ValueError("Unsafe LFS path")
         return self
 
 

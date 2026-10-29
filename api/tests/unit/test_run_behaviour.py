@@ -14,8 +14,8 @@ import pytest
 from repo2ree_api.storage import author_actions
 from repo2ree_api.storage.json_run_store import JsonRunStore
 from repo2ree_api.storage.run_store import StoredRun
-from repo2ree_protocol.behaviour import close_journal, open_journal
 from repo2ree_protocol.result import Failure
+from repo2ree_telemetry.behaviour import close_journal, open_journal
 
 
 def _run(operation: str = "build", action: str | None = "build_runtime") -> StoredRun:

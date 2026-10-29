@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from repo2ree_protocol import AllocationRequest, ComputeLocation, LifecycleMode, WorkbenchImage
+from repo2ree_protocol.allocation import AllocationRequest, ComputeLocation, LifecycleMode, WorkbenchImage
 
 
 def test_allocation_request_names_a_place_and_an_image_and_nothing_else() -> None:

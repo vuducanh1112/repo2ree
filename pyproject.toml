@@ -8,7 +8,7 @@ requires-python = "~=3.13.0"
 dependencies = []
 
 [tool.uv.workspace]
-members = ["ree", "protocol", "authoring", "core", "supervisor", "api", "executor", "docker-support", "provider", "workbench", "assurance/checker", "assurance/dossier", "assurance/collector", "assurance/traceview", "testbed", "repoview"]
+members = ["ree", "protocol", "telemetry", "authoring", "core", "supervisor", "api", "executor", "docker-support", "provider", "workbench", "assurance/checker", "assurance/dossier", "assurance/collector", "assurance/traceview", "testbed", "repoview"]
 
 [dependency-groups]
 dev = [
@@ -82,6 +82,7 @@ source = [
     "docker-support/src/repo2ree_docker",
     "ree/src/repo2ree_ree",
     "protocol/src/repo2ree_protocol",
+    "telemetry/src/repo2ree_telemetry",
     "authoring/src/repo2ree_authoring",
     "core/src/repo2ree_core",
     "supervisor/src/repo2ree_supervisor",
@@ -103,6 +104,7 @@ skip_covered = false
 src = [
     "ree/src",
     "protocol/src",
+    "telemetry/src",
     "authoring/src",
     "core/src",
     "supervisor/src",
@@ -220,10 +222,9 @@ extend-ignore = [
 # it is stated once here rather than as a `noqa` on each of sixteen handlers.
 # Blind catches *outside* this directory still have to justify themselves.
 "*/operations/handlers/*" = ["BLE001"]
-# The OpenTelemetry SDK and OTLP exporters are optional at runtime: tracing is a
-# no-op when unconfigured, and importing them at module scope would make the
-# whole protocol package depend on packages the workbench need not install.
-"*/repo2ree_protocol/tracing.py" = ["PLC0415"]
+# The OTLP exporters and `requests` are imported only where a host exports, so
+# the executor's closure can leave them out.
+"*/repo2ree_telemetry/tracing.py" = ["PLC0415"]
 # `scripts/` holds developer tools invoked as `python scripts/x.py`, not an
 # importable package (`just check-scripts` lints it separately from the six
 # workspace packages). A command-line tool with no stdout is useless, and the
@@ -255,15 +256,16 @@ root_packages = [
     "repo2ree_protocol",
     "repo2ree_ree",
     "repo2ree_supervisor",
+    "repo2ree_telemetry",
     "repo2ree_workbench",
 ]
+include_external_packages = true
 
 # ---- The workspace itself -----------------------------------------------
 #
-# The six packages, high to low. Until these three contracts existed the graph
-# *between* packages was governed only from core's side ("Core imports no
-# application tier"), so nothing stopped a lower tier from growing an upward
-# edge as long as core was not the one growing it.
+# High to low; siblings on one row may not import each other. This alone keeps
+# the REE format, the protocol, the authoring rules, and telemetry below every
+# plane, and core out of the processes that drive it.
 [[tool.importlinter.contracts]]
 name = "Workspace layers"
 type = "layers"
@@ -271,30 +273,27 @@ layers = [
     "repo2ree_api",
     "repo2ree_supervisor",
     "repo2ree_provider_docker : repo2ree_workbench : repo2ree_executor",
-    "repo2ree_docker",
-    "repo2ree_core",
-    "repo2ree_authoring",
+    "repo2ree_docker : repo2ree_core",
+    "repo2ree_authoring : repo2ree_telemetry",
     "repo2ree_protocol",
     "repo2ree_ree",
 ]
 
-# The same argument as "The wire contract imports no implementation", one level
-# up: `repo2ree_protocol` is the vocabulary all five other packages speak, so it
-# describes the conversation and can never depend on either end of it. It is the
-# only package every other package imports, which is exactly why an edge out of
-# it would be load-bearing everywhere at once.
+# The REE format and the protocol are data a second implementation generates
+# from their schemas: no transport, no telemetry, no process concerns.
 [[tool.importlinter.contracts]]
-name = "Protocol imports no workspace package"
+name = "The format and the protocol are data"
 type = "forbidden"
-source_modules = ["repo2ree_protocol"]
+source_modules = ["repo2ree_ree", "repo2ree_protocol"]
 forbidden_modules = [
-    "repo2ree_api",
-    "repo2ree_core",
-    "repo2ree_docker",
-    "repo2ree_executor",
-    "repo2ree_provider_docker",
-    "repo2ree_supervisor",
-    "repo2ree_workbench",
+    "anyio",
+    "click",
+    "fastapi",
+    "httpx",
+    "opentelemetry",
+    "requests",
+    "websockets",
+    "yaml",
 ]
 
 [[tool.importlinter.contracts]]
@@ -309,41 +308,8 @@ forbidden_modules = [
     "repo2ree_workbench",
 ]
 
-[[tool.importlinter.contracts]]
-name = "Authoring imports no plane"
-type = "forbidden"
-source_modules = ["repo2ree_authoring"]
-forbidden_modules = [
-    "repo2ree_api",
-    "repo2ree_core",
-    "repo2ree_docker",
-    "repo2ree_executor",
-    "repo2ree_provider_docker",
-    "repo2ree_supervisor",
-    "repo2ree_workbench",
-]
-
-[[tool.importlinter.contracts]]
-name = "The REE format imports no workspace package"
-type = "forbidden"
-source_modules = ["repo2ree_ree"]
-forbidden_modules = [
-    "repo2ree_api",
-    "repo2ree_authoring",
-    "repo2ree_core",
-    "repo2ree_docker",
-    "repo2ree_executor",
-    "repo2ree_protocol",
-    "repo2ree_provider_docker",
-    "repo2ree_supervisor",
-    "repo2ree_workbench",
-]
-
-# The two protocol vocabularies with different authority must stay disjoint:
-# a process holding only capacity vocabulary cannot form an execution request,
-# and vice versa. `frames` (shared streaming frames + WorkbenchRef) is the one
-# module both may import; an edge between the vocabularies themselves would
-# quietly re-merge what the split exists to separate.
+# Capacity and execution are separate authorities: a process holding one
+# vocabulary cannot form a request of the other. Both share `frames`.
 [[tool.importlinter.contracts]]
 name = "Capacity and execution vocabularies are independent"
 type = "independence"
@@ -352,21 +318,16 @@ modules = [
     "repo2ree_protocol.workbench",
 ]
 
-# The workbench and the supervisor move frames; neither performs operations,
-# so neither may import core or the executor. That is what lets the same
-# workbench run against a core it was never built with. The supervisor
-# additionally never imports the workbench package — it is the far end of its
-# wire, not a caller of its code.
+# The workbench runs inside whatever environment its provider chose, so it
+# carries no operation, no substrate, and no capacity vocabulary.
 [[tool.importlinter.contracts]]
 name = "Workbench speaks only protocol"
 type = "forbidden"
 source_modules = ["repo2ree_workbench"]
 forbidden_modules = [
-    "repo2ree_api",
     "repo2ree_core",
-    "repo2ree_executor",
-    "repo2ree_provider_docker",
-    "repo2ree_supervisor",
+    "repo2ree_docker",
+    "repo2ree_protocol.provider",
 ]
 
 [[tool.importlinter.contracts]]
@@ -374,21 +335,11 @@ name = "Supervisor speaks only protocol"
 type = "forbidden"
 source_modules = ["repo2ree_supervisor"]
 forbidden_modules = [
-    "repo2ree_api",
     "repo2ree_core",
     "repo2ree_docker",
     "repo2ree_executor",
     "repo2ree_provider_docker",
     "repo2ree_workbench",
-]
-
-[[tool.importlinter.contracts]]
-name = "Workbench never provisions"
-type = "forbidden"
-source_modules = ["repo2ree_workbench"]
-forbidden_modules = [
-    "repo2ree_protocol.provider",
-    "repo2ree_provider_docker",
 ]
 
 [[tool.importlinter.contracts]]
@@ -396,38 +347,8 @@ name = "Provider never executes"
 type = "forbidden"
 source_modules = ["repo2ree_provider_docker"]
 forbidden_modules = [
-    "repo2ree_protocol.workbench",
-    "repo2ree_workbench",
-]
-
-[[tool.importlinter.contracts]]
-name = "Docker support has no process authority"
-type = "forbidden"
-source_modules = ["repo2ree_docker"]
-forbidden_modules = [
-    "repo2ree_api",
     "repo2ree_core",
-    "repo2ree_executor",
-    "repo2ree_provider_docker",
-    "repo2ree_supervisor",
-    "repo2ree_workbench",
-]
-
-# The resident workbench executes locally inside the boundary supplied by its
-# provider.  It has no backend-selection or substrate implementation layer.
-[[tool.importlinter.contracts]]
-name = "The execution service is substrate-free"
-type = "forbidden"
-source_modules = [
-    "repo2ree_workbench.dispatcher",
-    "repo2ree_workbench.executor_frames",
-    "repo2ree_workbench.executor_process",
-    "repo2ree_workbench.service",
-    "repo2ree_workbench.transfers",
-]
-forbidden_modules = [
-    "repo2ree_docker",
-    "repo2ree_provider_docker",
+    "repo2ree_protocol.workbench",
 ]
 
 # ---- Inside the API ------------------------------------------------------
@@ -516,11 +437,7 @@ forbidden_modules = [
 # owns the materialized mutable execution tree; `persistence` owns the durable
 # REE tree and record; `domain` is the vocabulary all of them are written in.
 #
-# Marked `exhaustive`, so a new top-level package in core has to declare where
-# it sits rather than joining ungoverned. The capabilities and the leaf
-# primitives appear here as sibling rows only to satisfy that: the two contracts
-# below are what actually describe them, and are kept because a `forbidden`
-# contract says *why* a direction is wrong in a way a row in a list cannot.
+# Exhaustive: a new top-level package in core has to declare its row.
 [[tool.importlinter.contracts]]
 name = "Core layers"
 type = "layers"
@@ -536,31 +453,6 @@ layers = [
     "author_recipes",
     "domain",
     "digests : failures : time_utils",
-]
-
-# The capabilities the spine calls into. They are deliberately *not* placed in
-# one total order with each other — they are independent, and forcing a rank
-# between "profiles a repository" and "acquires a source" would invent a
-# dependency nobody needs. What they share is a direction: a capability is
-# something a handler reaches for, so none of them may reach back up into the
-# composing layers. `evidence` is on the forbidden list because it already
-# depends on `analysis` (a build verdict is an SBOM closure comparison), so an
-# import the other way would close a loop.
-[[tool.importlinter.contracts]]
-name = "Capabilities never import what composes them"
-type = "forbidden"
-source_modules = [
-    "repo2ree_core.analysis",
-    "repo2ree_core.author_recipes",
-    "repo2ree_core.doctor",
-    "repo2ree_core.execution",
-    "repo2ree_core.reproduction",
-    "repo2ree_core.source_repo",
-]
-forbidden_modules = [
-    "repo2ree_core.operations",
-    "repo2ree_core.bundle",
-    "repo2ree_core.evidence",
 ]
 
 # The core counterpart of the API's authoring/review independence rule, and the
@@ -591,43 +483,12 @@ forbidden_modules = [
     "repo2ree_core.operations.dispatch",
 ]
 
-# The domain vocabulary describes what an REE *is*, which has to stay true
-# independently of where it is stored, how it is executed, or what was observed
-# about it. A domain model that imported persistence would make the meaning of
-# `Ree` a function of the directory it happens to live in.
+# The verbs the executor CLI and the generated run.sh both spell; it sits in
+# `reproduction` but imports nothing of core.
 [[tool.importlinter.contracts]]
-name = "The domain vocabulary imports no capability"
+name = "The reproduction verbs depend on no package"
 type = "forbidden"
-source_modules = ["repo2ree_core.domain"]
-forbidden_modules = [
-    "repo2ree_core.analysis",
-    "repo2ree_core.author_recipes",
-    "repo2ree_core.reproduction",
-    "repo2ree_core.bundle",
-    "repo2ree_core.evidence",
-    "repo2ree_core.execution",
-    "repo2ree_core.operations",
-    "repo2ree_core.persistence",
-    "repo2ree_core.source_repo",
-    "repo2ree_core.workspace",
-]
-
-# The leaf primitives every layer is allowed to use precisely because they use
-# nothing back. Each already says so in its own docstring; this is what keeps
-# that claim true. None of them imports another, so the sibling row in "Core
-# layers" holds too; this contract is the one that explains the direction.
-[[tool.importlinter.contracts]]
-name = "Leaf primitives depend on no package"
-type = "forbidden"
-source_modules = [
-    "repo2ree_core.digests",
-    "repo2ree_core.failures",
-    # The verb vocabulary the executor CLI and the generated run.sh both expose.
-    # It depends on nothing so that both can spell the same verbs without either
-    # dragging the other's world in.
-    "repo2ree_core.reproduction.commands",
-    "repo2ree_core.time_utils",
-]
+source_modules = ["repo2ree_core.reproduction.commands"]
 forbidden_modules = [
     "repo2ree_core.analysis",
     "repo2ree_core.author_recipes",
@@ -637,30 +498,15 @@ forbidden_modules = [
     "repo2ree_core.execution",
     "repo2ree_core.operations",
     "repo2ree_core.persistence",
-    "repo2ree_core.reproduction",
     "repo2ree_core.source_repo",
     "repo2ree_core.workspace",
-]
-
-# Core runs inside the workbench and knows nothing of what drives it. The
-# executor CLI, the supervisor, and the API all import core; core importing any
-# of them would mean the code that performs an operation depends on the process
-# that asked for it, and the same core could no longer run under a different one.
-[[tool.importlinter.contracts]]
-name = "Core imports no application tier"
-type = "forbidden"
-source_modules = ["repo2ree_core"]
-forbidden_modules = [
-    "repo2ree_api",
-    "repo2ree_executor",
-    "repo2ree_supervisor",
-    "repo2ree_workbench",
 ]
 
 [tool.mypy]
 mypy_path = [
     "ree/src",
     "protocol/src",
+    "telemetry/src",
     "authoring/src",
     "core/src",
     "supervisor/src",
@@ -724,7 +570,7 @@ no_implicit_reexport = false
 
 
 [tool.repo2ree.workspace]
-backend = ["ree", "protocol", "authoring", "core", "supervisor", "api", "executor", "docker-support", "provider", "workbench"]
+backend = ["ree", "protocol", "telemetry", "authoring", "core", "supervisor", "api", "executor", "docker-support", "provider", "workbench"]
 assurance = ["assurance/checker", "assurance/dossier", "assurance/collector", "assurance/traceview"]
 tooling = ["testbed", "repoview"]
 

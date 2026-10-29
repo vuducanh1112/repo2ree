@@ -22,7 +22,6 @@ from repo2ree_protocol.provider import (
     ReleaseAllocationRequest,
     provider_ws_message_adapter,
 )
-from repo2ree_protocol.tracing import current_traceparent
 from repo2ree_supervisor.client import WorkbenchUnavailableError, raise_for_terminal_error
 from repo2ree_supervisor.workbench_link import (
     DEFAULT_FRAME_GAP_TIMEOUT,
@@ -31,6 +30,7 @@ from repo2ree_supervisor.workbench_link import (
     WorkbenchConnection,
     WorkbenchConnectionRegistry,
 )
+from repo2ree_telemetry.tracing import current_traceparent
 
 logger = logging.getLogger(__name__)
 

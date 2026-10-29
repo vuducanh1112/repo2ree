@@ -1,58 +1,22 @@
-"""Nominal scalar value types shared by the REE domain.
-
-The string-backed types deliberately retain scalar JSON representations while
-remaining distinct to static type checkers. Host filesystem locations use
-``pathlib.Path`` elsewhere; these path types name portable POSIX locations
-inside an REE.
-"""
-
 from __future__ import annotations
 
-from typing import Any, Literal, Self
-
-from pydantic import GetCoreSchemaHandler
-from pydantic_core import core_schema
+from typing import Literal
 
 from repo2ree_ree.digest import Digest
 from repo2ree_ree.instant import UtcInstant, format_utc_instant, parse_utc_instant
 from repo2ree_ree.paths import validate_path_segment, validate_relative_path
+from repo2ree_ree.scalar import StringValue
 
 SourceType = Literal["", "git", "hg", "svn", "cvs", "bzr", "tarball", "zip"]
 
 
-class _StringValue(str):
-    """A validated nominal string that remains a JSON string on the wire."""
-
-    def __new__(cls, value: str) -> Self:
-        text = cls.validate(str(value))
-        return str.__new__(cls, text)
-
-    @classmethod
-    def validate(cls, value: str) -> str:
-        if not value:
-            raise ValueError(f"{cls.__name__} must not be empty")
-        return value
-
-    @classmethod
-    def __get_pydantic_core_schema__(
-        cls,
-        _source_type: Any,
-        _handler: GetCoreSchemaHandler,
-    ) -> core_schema.CoreSchema:
-        return core_schema.no_info_after_validator_function(
-            cls,
-            core_schema.str_schema(),
-            serialization=core_schema.to_string_ser_schema(),
-        )
-
-
-class RunId(_StringValue):
+class RunId(StringValue):
     @classmethod
     def validate(cls, value: str) -> str:
         return validate_path_segment(value, kind="run_id")
 
 
-class ReePath(_StringValue):
+class ReePath(StringValue):
     @classmethod
     def validate(cls, value: str) -> str:
         validate_relative_path(value)
@@ -60,26 +24,26 @@ class ReePath(_StringValue):
 
 
 class WorkspacePath(ReePath):
-    """A portable path resolved relative to the materialized workspace."""
+    pass
 
 
 class ArtifactPath(ReePath):
-    """A portable path naming machine-produced REE content."""
+    pass
 
 
 class ScriptPath(WorkspacePath):
-    """A workspace path expected to contain an executable recipe script."""
+    pass
 
 
 class ReeRevision(Digest):
-    """Content identity of one authored REE head."""
+    pass
 
 
-class GitRevision(_StringValue):
-    """A source-control revision, distinct from an REE content revision."""
+class GitRevision(StringValue):
+    pass
 
 
-class Swhid(_StringValue):
+class Swhid(StringValue):
     @classmethod
     def validate(cls, value: str) -> str:
         if not value.startswith("swh:1:"):

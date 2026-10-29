@@ -17,7 +17,7 @@ from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError, load_ree, save_ree
 from repo2ree_protocol.command import DeleteFileArgs
-from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.paths import validate_relative_path
 from repo2ree_ree.reserved_paths import is_run_script

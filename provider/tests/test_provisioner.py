@@ -4,7 +4,8 @@ from collections.abc import Iterator
 
 import pytest
 
-from repo2ree_protocol import AllocationRequest, DoneFrame, Frame
+from repo2ree_protocol.allocation import AllocationRequest
+from repo2ree_protocol.frames import DoneFrame, Frame
 from repo2ree_provider_docker.provisioner import ProvisionerService
 
 

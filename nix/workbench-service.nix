@@ -6,8 +6,8 @@
 # this closure into each bench it allocates (./provider-image.nix), and
 # ./exec-bundle.nix carries it for hosts that provision by hand.
 #
-# It is deliberately substrate-free — repo2ree_protocol and nothing else,
-# no docker, no core, no executor — which is what lets the same binary run
+# It is deliberately substrate-free — the protocol and telemetry and nothing
+# else, no docker, no core, no executor — which is what lets the same binary run
 # inside an arbitrary selected environment image.
 # ----------------------------------------------------------------
 {
@@ -21,13 +21,13 @@ let
   # Everything `repo2ree_workbench` reaches at import time: pydantic for the
   # repo2ree_protocol frame models, pydantic-settings for its typed process
   # environment, websockets for the outbound control link, and the otel set
-  # that repo2ree_protocol.tracing pulls in via .log. The OTLP HTTP exporter
+  # repo2ree_telemetry needs. The OTLP HTTP exporter
   # backs the workbench's own trace/metric export when OTLP_ENDPOINT is set
   # (executor spans still relay through the backend without it).
   #
   # Two entries are load-bearing in a way the dependency metadata does not
   # show, each found by a startup crash rather than by reading it:
-  #   opentelemetry-instrumentation-logging — protocol/pyproject.toml declares
+  #   opentelemetry-instrumentation-logging — telemetry/pyproject.toml declares
   #     it and tracing.otlp_log_handler imports from it. Adding it only became
   #     a fix once the nixpkgs bump brought 0.64b0; the 0.55b0 this pin used to
   #     carry has no `handler` submodule at all.
@@ -55,11 +55,13 @@ let
 
   reeSource = cleanPySrc ../ree/src;
   protocolSource = cleanPySrc ../protocol/src;
+  telemetrySource = cleanPySrc ../telemetry/src;
   workbenchSource = cleanPySrc ../workbench/src;
 
   pythonPath = [
     reeSource
     protocolSource
+    telemetrySource
     workbenchSource
   ];
 

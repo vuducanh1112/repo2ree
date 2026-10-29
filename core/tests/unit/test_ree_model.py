@@ -10,7 +10,6 @@ from repo2ree_core.domain.ree.transitions import (
     clear_source,
     commit_receipt,
     record_seal,
-    subject_digest,
     validate_seal,
 )
 from repo2ree_core.persistence.directory import ReeDirectory
@@ -25,6 +24,7 @@ from repo2ree_ree.model import (
     ReeDefinition,
     ReeSubject,
     SourceDefinition,
+    canonical_subject_digest,
 )
 from repo2ree_ree.primitives import ReePath, RunId, WorkspacePath, parse_utc_instant
 from repo2ree_ree.receipt import AcquireSourceReceipt, BuildRuntimeReceipt, WorkspaceDrift
@@ -88,7 +88,7 @@ def test_experiment_slug_collisions_are_rejected() -> None:
 
 def test_committed_receipt_is_audited_and_contributes_to_subject_identity() -> None:
     ree = Ree(subject=ReeSubject(definition=ReeDefinition()))
-    before = subject_digest(ree.subject)
+    before = canonical_subject_digest(ree.subject)
     receipt = BuildRuntimeReceipt(
         run_id=RunId("run-1"),
         started_at=_NOW,
@@ -106,7 +106,7 @@ def test_committed_receipt_is_audited_and_contributes_to_subject_identity() -> N
     updated = commit_receipt(ree, receipt)
 
     assert updated.subject.receipts.build == receipt
-    assert subject_digest(updated.subject) != before
+    assert canonical_subject_digest(updated.subject) != before
     # The build definition is intentionally absent, so this receipt attests a
     # recipe the REE does not declare. Present and unbacked is stale, not
     # not_applicable — the latter would keep it out of the seal gate's reach.

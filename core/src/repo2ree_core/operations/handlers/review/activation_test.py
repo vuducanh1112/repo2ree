@@ -24,7 +24,7 @@ from repo2ree_core.operations.steps.review import (
     open_review_run,
 )
 from repo2ree_protocol.command import ReviewActivationTestArgs
-from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import ReviewActivationTestOutputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.digest import Digest

@@ -26,7 +26,7 @@ let
   # encoded (proto-common) and streamed over stderr for the supervisor to
   # forward. The executor never talks to a collector itself, so the OTLP
   # HTTP exporter and `requests` are deliberately absent — those stay
-  # behind the host-side functions in repo2ree_protocol.tracing.
+  # behind the host-side functions in repo2ree_telemetry.tracing.
   python = pkgs.python313.withPackages (
     ps: with ps; [
       click
@@ -45,6 +45,7 @@ let
   srcs = {
     ree = cleanPySrc ../ree/src;
     protocol = cleanPySrc ../protocol/src;
+    telemetry = cleanPySrc ../telemetry/src;
     authoring = cleanPySrc ../authoring/src;
     core = cleanPySrc ../core/src;
     executor = cleanPySrc ../executor/src;
@@ -55,6 +56,7 @@ let
   pythonPath = [
     srcs.ree
     srcs.protocol
+    srcs.telemetry
     srcs.authoring
     srcs.core
     srcs.executor

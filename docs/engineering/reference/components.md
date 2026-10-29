@@ -45,79 +45,84 @@ service** are a third kind: deployables that sit on the execution-plane host,
 one holding the runtime socket and one living inside the bench.
 
 ```
-                              protocol      ← the contract (Command / ActionResult / LogFrame)
-                 ┌───────────┬────┴────┬────────────┐
-              core        provider  workbench    supervisor
-                │        (capacity) (execution)  /        \
-          ┌─────┴────┐                      ┌───┴────┐  ┌──┴───┐
-          │ executor │                      │repo2ree│  │ api  │   ← surfaces
-          │ (in bench)                      │(future │  │(http,│
-          │          │                      │  cli)  │  │ opt.)│
-          └──────────┘                      └────────┘  └──────┘
+  layer (imports only downward; packages on one row never import each other)
 
-  LIBRARIES (logic)             SURFACES (entry points)      COMPUTE SIDE
-  ─────────────────             ───────────────────────      ────────────
-  protocol   the wire contract  executor  in-bench, one-shot  provider  holds the docker
-  core       does the work      repo2ree  future host cli               socket, creates
-  supervisor placement+dispatch api       host http, optional           benches, injects
-                                                              workbench runs one executor
-                                                                        per command
+  api                                      SURFACE    host HTTP, what the GUI talks to
+  supervisor                               LIBRARY    placement + dispatch (control plane)
+  provider  │  workbench  │  executor      COMPUTE    provisions │ resident in the bench │ one-shot
+  docker-support  │  core                  LIBRARY    docker mechanics │ does the work
+  authoring  │  telemetry                  LIBRARY    script rules │ traces, metrics, logs, journals
+  protocol                                 CONTRACT   commands, results, frames, both wires
+  ree                                      CONTRACT   the REE document format and its seal
 ```
+
+`ree` and `protocol` are data: each publishes a JSON Schema
+(`contracts/ree/`, `contracts/protocol/`) a second implementation can generate
+from, and neither imports a transport or telemetry.
 
 ### Libraries
 
 | package | responsibility | depends on | deployed |
 |---|---|---|---|
-| **protocol** | the typed `Command` / `ActionResult` / `LogFrame` envelope + (de)serialization (`command_adapter`), **and** the two wire schemas: execution (`WorkbenchWsRequest` / `WorkbenchWsMessage` / `WorkbenchRef`) and capacity (`ProviderWsRequest` / `ProviderWsMessage`). The things the sides must agree on. | — | host, provider **and** bench |
-| **core** | does the actual work — the command handlers (`build-runtime`, `generate-sbom`, `evaluate`, `run-experiment`), the `doctor` bench probe, the tool resolver (`execution/tools.py`), and the workspace/REE/`/ree`-tree operations. Pure library; **no CLI framework deps**. | protocol | **bench only** |
-| **supervisor** | the control plane: REE **lifecycle** (provision / teardown) expressed as capacity calls, the **registry** (`ree_id → workbench + opaque location`), single-use **enrollment**, and the **dispatch** that sends commands to a workbench and streams logs/results back. Two seams with different authority — `ProviderClient` and `WorkbenchClient`. Never executes a command, and never touches a container runtime, itself. | protocol | host only |
+| **ree** | the REE document: definition, receipts, bundle inventory, seal (RFC 8785 over the subject), and the review records. Schema in `contracts/ree/`. | — | everywhere |
+| **protocol** | the typed `Command` / `ActionResult` / `LogFrame` envelope + (de)serialization (`command_adapter`), each operation's outputs and each executor query, **and** the two wire schemas: execution (`WorkbenchWsRequest` / `WorkbenchWsMessage` / `WorkbenchRef`) and capacity (`ProviderWsRequest` / `ProviderWsMessage`). Schema in `contracts/protocol/`. | ree | everywhere |
+| **telemetry** | tracing, metrics, and logging bootstrap; the executor and workbench span relays; the behaviour journals the assurance checker reads. | protocol | everywhere |
+| **authoring** | script lint, target resolution, script templates, and the authoring step catalog. The bench lints saved scripts with it; the API lints drafts with no bench to ask. | protocol, ree | host **and** bench |
+| **core** | does the actual work — the command handlers (`build-runtime`, `generate-sbom`, `evaluate`, `run-experiment`), the `doctor` bench probe, and the workspace/REE/`/ree`-tree operations. Pure library; **no CLI framework deps**. | ree, protocol, authoring, telemetry | **bench only** |
+| **supervisor** | the control plane: REE **lifecycle** (provision / teardown) expressed as capacity calls, the **registry** (`ree_id → workbench + opaque location`), single-use **enrollment**, and the **dispatch** that sends commands to a workbench and streams logs/results back. Two seams with different authority — `ProviderClient` and `WorkbenchClient`. Never executes a command, and never touches a container runtime, itself. | ree, protocol, telemetry | host only |
 
 ### The compute side (two deployables)
 
 | package | responsibility | depends on | deployed |
 |---|---|---|---|
-| **provider** (`repo2ree-provider-docker`) | owns the container runtime on its host (`DockerIsolation` behind an `IsolationBackend` protocol). Dials the control plane on a **capacity-only** socket. Creates volumes and benches, injects the executor + tools closures, mints the opaque `WorkbenchRef`, runs the `doctor` probe, and starts `repo2ree-workbench` inside each bench with a single-use enrollment token. Never receives an REE command. | protocol, docker-support | its own host (holds the docker socket) |
-| **workbench** (`repo2ree-workbench`) | the service resident *inside* each bench. Dials the control plane on its own **execution-only** socket, enrolls against one allocation, decodes typed commands, starts one short-lived executor per command (`LocalExecutor`), streams frames, and moves files. Deliberately substrate-free; cannot create or destroy anything. | protocol | inside each bench |
-| **docker-support** | the shared Docker CLI wrapper and reference encoding. No process authority of its own. | protocol | with the provider |
+| **provider** (`repo2ree-provider-docker`) | owns the container runtime on its host (`DockerIsolation` behind an `IsolationBackend` protocol). Dials the control plane on a **capacity-only** socket. Creates volumes and benches, injects the executor + tools closures, mints the opaque `WorkbenchRef`, runs the `doctor` probe, and starts `repo2ree-workbench` inside each bench with a single-use enrollment token. Never receives an REE command. | protocol, telemetry, docker-support | its own host (holds the docker socket) |
+| **workbench** (`repo2ree-workbench`) | the service resident *inside* each bench. Dials the control plane on its own **execution-only** socket, enrolls against one allocation, decodes typed commands, starts one short-lived executor per command (`LocalExecutor`), streams frames, and moves files. Deliberately substrate-free; cannot create or destroy anything. | protocol, telemetry | inside each bench |
+| **docker-support** | the shared Docker CLI wrapper and reference encoding. No process authority of its own. | protocol, telemetry | with the provider |
 
 ### Surfaces
 
 | surface | over | role | deployed |
 |---|---|---|---|
-| **executor** (`repo2ree-exec`) | core + protocol | one-shot: read a `Command` on stdin, run it via core, stream `LogFrame`s on stderr, emit `ActionResult` on stdout, exit. **No listening server.** Injected by the provider, so it ships with the provider — not baked into the bench image. | **bench only** |
+| **executor** (`repo2ree-exec`) | core + protocol + telemetry | one-shot: read a `Command` on stdin, run it via core, stream `LogFrame`s on stderr, emit `ActionResult` on stdout, exit. **No listening server.** Injected by the provider, so it ships with the provider — not baked into the bench image. | **bench only** |
 | **`repo2ree`** (supervisor cli) | supervisor + protocol | **target host surface.** Drive the pipeline against a bench, stream logs, pull artifacts, tear down. | host — *not implemented yet* |
-| **api** (http) | supervisor + protocol | **optional** hosted UX over the supervisor (what the GUI talks to; remote/multi-user access). | host |
+| **api** (http) | supervisor + protocol + ree + authoring + telemetry | **optional** hosted UX over the supervisor (what the GUI talks to; remote/multi-user access). | host |
 
 ## Dependency rules (the invariants that keep the seam clean)
 
-These are the rules a dependency-cruiser / import-linter config should enforce
-as the migration finishes:
+`just check-architecture` enforces these with the import-linter contracts in
+`pyproject.toml`:
 
-1. **The host should not import effectful `core`.** `supervisor` and the future
-   host CLI depend on `protocol` only. `api` still imports a few `core` domain
-   and storage helpers today; keep shrinking that surface until execution logic
-   lives exclusively in the bench.
-2. **Surfaces import their library, never each other.** `api` and `repo2ree`
-   are sibling surfaces over `supervisor`. No `cli -> api` or `api -> cli` edge.
-3. **`protocol` depends on nothing.** It is the seam; it must stay importable by
-   every side without dragging any side's logic along.
+1. **The workspace is layered** as drawn above ("Workspace layers"): a package
+   imports only rows below it, and packages on one row never import each other.
+2. **The host never imports effectful `core`.** `api` and `supervisor` reach
+   the bench only through `protocol` ("API speaks only protocol", "Supervisor
+   speaks only protocol").
+3. **`ree` and `protocol` are data** ("The format and the protocol are data"):
+   no transport, telemetry, or CLI package, so either can be read without
+   dragging any side's logic along.
 4. **`core` carries no CLI/HTTP framework deps.** It is a pure library so it can
    also be imported by the in-process *test* transport (below) without cost.
 5. **Neither compute-side package imports `core`.** The provider places benches
    and *injects* the executor closure; the workbench service starts that
-   executor. Neither runs command logic itself, which keeps execution logic on
-   the far side of the bench boundary.
-6. **The provider never executes and the workbench never provisions.** These are
-   not conventions: `pyproject.toml`'s import-linter contracts fail the build on
-   either edge, alongside "Capacity and execution vocabularies are independent".
+   executor ("Provider never executes", "Workbench speaks only protocol").
+6. **The provider never executes and the workbench never provisions**, and
+   "Capacity and execution vocabularies are independent" keeps the two wires
+   from re-merging inside `protocol`.
 
-Resulting DAG (acyclic, and the only cross-boundary edge is the protocol):
+What each package imports (acyclic; the bench and the host meet only at
+`protocol`):
 
 ```
-protocol ← core ← executor                       (execution plane, in the bench)
-protocol ← workbench                             (in the bench; runs the executor)
-protocol ← docker-support ← provider             (runtime host; creates benches)
-protocol ← supervisor ← { repo2ree(cli), api }   (control plane)
+protocol        → ree
+telemetry       → protocol
+authoring       → protocol, ree
+core            → authoring, telemetry, protocol, ree
+executor        → core, telemetry, protocol              in the bench, one-shot
+workbench       → telemetry, protocol                    in the bench, resident
+docker-support  → telemetry, protocol
+provider        → docker-support, telemetry, protocol    runtime host
+supervisor      → telemetry, protocol, ree               control plane
+api             → supervisor, authoring, telemetry, protocol, ree
 ```
 
 ## Call graph — what is and isn't a process boundary
@@ -245,7 +250,7 @@ should import the supervisor library, not reimplement it.
 
 ## The service tier — multi-user, persistence, auth (hosted only)
 
-The base is **3 libraries + 3 surfaces**. A multi-user *hosted* deployment adds
+The base is **six libraries + three surfaces**. A multi-user *hosted* deployment adds
 one library tier **on top of** the supervisor — strictly additive, and the cli
 path never touches it. Identity/tenancy is **neither a `core` nor a `supervisor`
 concern**: core executes commands, the supervisor places a workbench *for an
@@ -304,8 +309,8 @@ content.
 
 | audience | installs / pulls |
 |---|---|
-| control-plane host | `api` (and the GUI it serves) + `supervisor` + `protocol` |
-| runtime host | the **provider image** (`repo2ree-provider-docker`): the provider process plus the workbench, executor, and tools closures it injects (`protocol` + `core` + `executor` + `workbench`, bundled — never `supervisor` / `api`) |
+| control-plane host | `api` (and the GUI it serves) + `supervisor` + `authoring` + `telemetry` + `protocol` + `ree` |
+| runtime host | the **provider image** (`repo2ree-provider-docker`): the provider process plus the workbench, executor, and tools closures it injects (`ree` + `protocol` + `telemetry` + `authoring` + `core` + `executor` + `workbench`, bundled — never `supervisor` / `api`) |
 | env image (the bench) | any image that keeps a process alive with a writable `/ree`; **zero repo2ree content** — the default is upstream `docker:dind`, pinned by digest in the catalog |
 
 Because the workbench, executor, and tools **version with the provider, not the
@@ -337,7 +342,10 @@ Unit suites use those seams for fast, daemon-free checks. Integration and GUI
 e2e suites deliberately exercise the real provider and Docker bench path.
 
 ```
-protocol/tests/      unit: envelope + frame (de)serialization round-trips
+ree/tests/           unit: format fixtures, canonical JSON, seals, the schema
+protocol/tests/      unit: envelope + frame (de)serialization round-trips, the schema
+telemetry/tests/     unit: tracing, span relay, logging, behaviour journals
+authoring/tests/     unit: script lint rules, templates, the step catalog
 core/tests/          unit + integration: command handlers, /ree ops, doctor, tooling
 provider/tests/      unit: DockerIsolation lifecycle, injection, and probe logic
 workbench/tests/     unit: connection, dispatch, executor frames, transfers
@@ -356,8 +364,8 @@ the same sequence (acquire → build → evaluate → experiment → seal).
 
 The package split is now largely real:
 
-- **Done:** `protocol/` holds the typed command/result/log/tracing contract
-  **and** both wire schemas — execution (`workbench.py`) and capacity
+- **Done:** `ree/` holds the REE format and `protocol/` the typed
+  command/result/log contract **and** both wire schemas — execution (`workbench.py`) and capacity
   (`provider.py`) — kept independent by contract.
 - **Done:** `supervisor/` holds `WorkbenchManager`, the persisted registry,
   single-use enrollment, and the separate `ProviderClient` / `WorkbenchClient`

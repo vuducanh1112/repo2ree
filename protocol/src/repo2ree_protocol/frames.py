@@ -19,6 +19,7 @@ piece of addressing both vocabularies speak.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
@@ -57,6 +58,10 @@ class LogFrame(BaseModel):
     stream: str
     level: str
     message: str
+
+
+# stream, level, message: a LogFrame before it is framed.
+LogSink = Callable[[str, str, str], None]
 
 
 class SpanFrame(BaseModel):

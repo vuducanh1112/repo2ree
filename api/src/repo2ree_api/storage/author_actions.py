@@ -27,10 +27,10 @@ from uuid import uuid4
 
 from fastapi import HTTPException
 
-from repo2ree_protocol.behaviour import events
-from repo2ree_protocol.behaviour.events import AuthorApiActionFacts, AuthorApiActionName, AuthorApiActionState
 from repo2ree_protocol.result import ActionResult
 from repo2ree_supervisor import WorkbenchUnavailableError
+from repo2ree_telemetry.behaviour import events
+from repo2ree_telemetry.behaviour.events import AuthorApiActionFacts, AuthorApiActionName, AuthorApiActionState
 
 TERMINAL: frozenset[AuthorApiActionState] = frozenset({"succeeded", "failed", "canceled"})
 ACTION_NAMES: frozenset[str] = frozenset(get_args(AuthorApiActionName))

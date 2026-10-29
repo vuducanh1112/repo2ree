@@ -19,7 +19,7 @@ from pathlib import Path
 
 from repo2ree_core.persistence.files import pack_directory_tar_gz, safe_extract_tar, safe_extract_zip
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.frames import LogSink
 from repo2ree_ree.digest import Digest
 
 

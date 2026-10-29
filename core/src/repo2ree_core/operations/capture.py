@@ -28,8 +28,8 @@ from repo2ree_protocol.command import (
     ReviewRunExperimentCommand,
 )
 from repo2ree_protocol.execution import ExecutionContext
+from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.history import CompletedOperation, OperationRecord
-from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult, HistoryReference
 
 

@@ -26,7 +26,7 @@ from repo2ree_api.contracts import (
     BehaviourState,
 )
 from repo2ree_api.settings import service_settings
-from repo2ree_protocol.behaviour import journal_file, journal_files, positions, records_after
+from repo2ree_telemetry.behaviour import journal_file, journal_files, positions, records_after
 
 behaviour_router = APIRouter(tags=["behaviour"])
 

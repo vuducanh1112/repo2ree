@@ -46,7 +46,6 @@ from repo2ree_protocol.frames import (
     TransferFrame,
     UnavailableFrame,
 )
-from repo2ree_protocol.tracing import SpanSink, current_traceparent
 from repo2ree_protocol.workbench import (
     AssignAllocationRequest,
     CancelRequest,
@@ -65,6 +64,7 @@ from repo2ree_protocol.workbench import (
     workbench_ws_message_adapter,
 )
 from repo2ree_supervisor.client import WorkbenchUnavailableError, raise_for_terminal_error
+from repo2ree_telemetry.tracing import SpanSink, current_traceparent
 
 logger = logging.getLogger(__name__)
 

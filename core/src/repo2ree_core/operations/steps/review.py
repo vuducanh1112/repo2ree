@@ -26,9 +26,8 @@ from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.persistence.directory import UNREADABLE_DOCUMENT, ReeDirectory
 from repo2ree_core.persistence.layout import ARTIFACTS_DIRNAME, ReeLayout, ReviewLayout
 from repo2ree_core.time_utils import OperationTimer, OperationTiming, format_duration_ms
-from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionResult
-from repo2ree_protocol.tracing import ReviewStepAttrs
 from repo2ree_ree.instant import format_utc_instant
 from repo2ree_ree.model import Ree, ReeDefinition
 from repo2ree_ree.review import (
@@ -42,6 +41,7 @@ from repo2ree_ree.review import (
     ReviewStatus,
     ReviewStepKey,
 )
+from repo2ree_telemetry.tracing import ReviewStepAttrs
 
 # Signature of the per-handler early exit: a terminal status and why.
 ReviewHalt = Callable[[ReviewStatus, str], ActionResult]

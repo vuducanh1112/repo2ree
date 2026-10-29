@@ -16,7 +16,7 @@ from pathlib import Path, PurePosixPath
 from repo2ree_protocol.build import BuildInfo
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import Frame, ResultFrame
-from repo2ree_protocol.tracing import current_traceparent
+from repo2ree_telemetry.tracing import current_traceparent
 from repo2ree_workbench import executor_frames
 
 # How long a canceled executor gets to stop by itself — stop its script, roll the REE back,

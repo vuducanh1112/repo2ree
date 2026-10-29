@@ -8,7 +8,7 @@ from repo2ree_core.digests import digest_tree
 from repo2ree_core.persistence.files import write_json_atomic
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.time_utils import utc_now
-from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.frames import LogSink
 
 
 def stat_table(workspace: Path) -> dict[str, list[int]]:

@@ -42,7 +42,7 @@ from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
 from repo2ree_core.reproduction.materialize_workspace import build_materialize_sh
 from repo2ree_core.time_utils import OperationTimer
 from repo2ree_protocol.command import ReviewBasis, ReviewBuildRuntimeArgs
-from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import ReviewBuildRuntimeOutputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.model import Ree

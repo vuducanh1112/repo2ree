@@ -17,7 +17,7 @@ from collections.abc import Iterator
 
 import pytest
 
-from repo2ree_protocol.tracing import setup_tracing
+from repo2ree_telemetry.tracing import setup_tracing
 from repo2ree_testbed.artifacts import service_dir
 
 TRACE_DIR = service_dir("supervisor-e2e")

@@ -20,14 +20,14 @@ from repo2ree_api.deps import workbench_manager
 from repo2ree_api.storage import author_actions
 from repo2ree_protocol.command import Command
 from repo2ree_protocol.result import ActionResult
-from repo2ree_protocol.tracing import (
+from repo2ree_supervisor import WorkbenchHandle
+from repo2ree_telemetry.tracing import (
     CommandSpanAttrs,
     command_metric_attrs,
     get_meter,
     get_tracer,
     record_command_status,
 )
-from repo2ree_supervisor import WorkbenchHandle
 
 # ================================================
 # Observability

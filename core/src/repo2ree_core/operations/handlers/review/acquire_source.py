@@ -28,7 +28,7 @@ from repo2ree_core.reproduction.acquire_source import build_acquire_sh
 from repo2ree_core.source_repo.swhid import directory_swhid
 from repo2ree_core.time_utils import OperationTimer
 from repo2ree_protocol.command import ReviewAcquireSourceArgs, ReviewBasis
-from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import ReviewAcquireSourceOutputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.instant import format_utc_instant

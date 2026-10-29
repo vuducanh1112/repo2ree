@@ -14,9 +14,9 @@ from fastapi import HTTPException
 from repo2ree_api.storage import author_actions
 from repo2ree_api.storage.json_run_store import JsonRunStore
 from repo2ree_api.storage.run_store import StoredRun
-from repo2ree_protocol.behaviour import close_journal, open_journal
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.result import ActionResult, HistoryReference
+from repo2ree_telemetry.behaviour import close_journal, open_journal
 
 Records = typing.Callable[[], list[tuple[object, ...]]]
 

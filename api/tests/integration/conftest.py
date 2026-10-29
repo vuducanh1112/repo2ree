@@ -91,7 +91,8 @@ from repo2ree_api.deps import (  # noqa: E402
     workbench_manager,
 )
 from repo2ree_api.main import app  # noqa: E402
-from repo2ree_protocol import ProviderHello, WorkbenchImage  # noqa: E402
+from repo2ree_protocol.allocation import WorkbenchImage  # noqa: E402
+from repo2ree_protocol.provider import ProviderHello  # noqa: E402
 from repo2ree_protocol.workbench import workbench_hello_adapter  # noqa: E402
 from repo2ree_provider_docker.connection import run_provider  # noqa: E402
 from repo2ree_provider_docker.lifecycle import DockerIsolation  # noqa: E402

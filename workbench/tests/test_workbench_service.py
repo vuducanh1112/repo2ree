@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_protocol import AllocationRequest
+from repo2ree_protocol.allocation import AllocationRequest
 from repo2ree_protocol.frames import DoneFrame, Frame
 from repo2ree_workbench.service import WorkbenchService
 

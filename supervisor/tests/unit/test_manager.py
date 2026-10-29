@@ -6,21 +6,14 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_protocol import (
-    ActionResult,
-    AllocationRequest,
-    AllocationState,
-    AllocationStatusFrame,
-    Frame,
-    ResultFrame,
-)
-from repo2ree_protocol.behaviour import close_journal, open_journal
+from repo2ree_protocol.allocation import AllocationRequest, AllocationState
 from repo2ree_protocol.command import PatchReeDefinitionArgs, PatchReeDefinitionCommand
 from repo2ree_protocol.execution import ExecutionContext
-from repo2ree_protocol.frames import UnavailableFrame
-from repo2ree_protocol.result import HistoryReference
+from repo2ree_protocol.frames import AllocationStatusFrame, Frame, ResultFrame, UnavailableFrame
+from repo2ree_protocol.result import ActionResult, HistoryReference
 from repo2ree_ree.model import Ree, ReeDefinition, ReeSubject
 from repo2ree_supervisor import AllocationStore, WorkbenchManager, WorkbenchUnavailableError
+from repo2ree_telemetry.behaviour import close_journal, open_journal
 
 _CATALOG_IMAGE = "docker.io/library/docker:29-dind"
 

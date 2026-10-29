@@ -1,10 +1,3 @@
-"""Successful, immutable operation receipts carried by an REE subject.
-
-Attempts which fail or are cancelled are operational run records.  They are
-deliberately not representable by this module: a value in :class:`ReeReceipts`
-is evidence that the named operation completed successfully.
-"""
-
 from __future__ import annotations
 
 from typing import Annotated, Literal
@@ -28,6 +21,11 @@ RECEIPT_SCHEMA_VERSION: Literal[1] = 1
 
 class _ReceiptModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
+
+
+def _require_verification_pair(digest: Digest | None, exit_code: int | None) -> None:
+    if (digest is None) != (exit_code is None):
+        raise ValueError("verification script digest and exit code must be present together")
 
 
 DriftStatus = Literal["clean", "modified", "unknown"]
@@ -110,10 +108,6 @@ class GenerateSbomReceipt(ReceiptEnvelope):
 class CrossCheckSbomReceipt(ReceiptEnvelope):
     operation: Literal["cross_check_sbom"] = "cross_check_sbom"
     sbom_digest: Digest
-    # The reconciliation is a statement about a *pair* of documents, so it has
-    # to name both. Without the report digest a re-run evaluation would leave
-    # these counts describing a comparison that was never made, with nothing in
-    # the receipt able to say so.
     report_digest: Digest
     declared_direct_total: int = Field(ge=0)
     observed_matched: int = Field(ge=0)
@@ -134,8 +128,7 @@ class TestActivationReceipt(ReceiptEnvelope):
 
     @model_validator(mode="after")
     def _verification_pair(self) -> TestActivationReceipt:
-        if (self.verify_script_digest is None) != (self.verify_exit_code is None):
-            raise ValueError("verification script digest and exit code must be present together")
+        _require_verification_pair(self.verify_script_digest, self.verify_exit_code)
         return self
 
 
@@ -152,8 +145,7 @@ class RunExperimentReceipt(ReceiptEnvelope):
 
     @model_validator(mode="after")
     def _verification_pair(self) -> RunExperimentReceipt:
-        if (self.verify_script_digest is None) != (self.verify_exit_code is None):
-            raise ValueError("verification script digest and exit code must be present together")
+        _require_verification_pair(self.verify_script_digest, self.verify_exit_code)
         return self
 
 

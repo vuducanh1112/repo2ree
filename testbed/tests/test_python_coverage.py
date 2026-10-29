@@ -15,7 +15,7 @@ def measured(path: Path, execution: str = "same-run") -> Path:
 
 
 def test_packages_come_from_backend_workspace_category() -> None:
-    assert python_coverage.packages()[:3] == ("ree", "protocol", "authoring")
+    assert python_coverage.packages()[:3] == ("ree", "protocol", "telemetry")
 
 
 def test_tier_matches_tree_rejects_missing_sources(tmp_path: Path) -> None:

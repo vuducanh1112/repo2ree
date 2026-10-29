@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from repo2ree_api.contracts import ERROR_RESPONSES
 from repo2ree_api.deps import allocation_store, provider_connections, workbench_connections
-from repo2ree_protocol import AllocationRecord, ComputeLocation, ConnectedComponent, LifecycleMode
+from repo2ree_protocol.allocation import AllocationRecord, ComputeLocation, ConnectedComponent, LifecycleMode
 
 compute_router = APIRouter(tags=["compute"])
 

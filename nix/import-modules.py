@@ -15,7 +15,8 @@ if args.expect:
     with open(args.expect) as handle:
         expected = json.load(handle)
     installed = {
-        re.sub(r"[-_.]+", "-", dist.metadata["Name"]).lower(): dist.version for dist in importlib.metadata.distributions()
+        re.sub(r"[-_.]+", "-", dist.metadata["Name"]).lower(): dist.version
+        for dist in importlib.metadata.distributions()
     }
     if installed != expected:
         missing = sorted(set(expected) - set(installed))

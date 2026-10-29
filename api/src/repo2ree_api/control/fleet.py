@@ -32,7 +32,7 @@ from repo2ree_api.deps import provider_connections, span_sink, workbench_connect
 from repo2ree_api.settings import service_settings
 from repo2ree_protocol.provider import provider_hello_adapter
 from repo2ree_protocol.workbench import WorkbenchHello, workbench_hello_adapter
-from repo2ree_ree.instant import iso_utc
+from repo2ree_ree.instant import format_utc_instant
 from repo2ree_supervisor import ProviderConnection, WorkbenchConnection
 
 logger = logging.getLogger(__name__)
@@ -199,7 +199,7 @@ def list_workbenches() -> WorkbenchList:
             hostname=info.hostname,
             version=info.version,
             image=info.image,
-            connected_at=iso_utc(datetime.fromtimestamp(info.connected_at, tz=UTC)),
+            connected_at=format_utc_instant(datetime.fromtimestamp(info.connected_at, tz=UTC)),
         )
         for info in workbench_connections.list_workbenches()
     ]
@@ -221,7 +221,7 @@ def list_providers() -> ProviderList:
                 hostname=info.hostname,
                 version=info.version,
                 location_id=info.location_id,
-                connected_at=iso_utc(datetime.fromtimestamp(info.connected_at, tz=UTC)),
+                connected_at=format_utc_instant(datetime.fromtimestamp(info.connected_at, tz=UTC)),
             )
             for info in provider_connections.list_providers()
         ]

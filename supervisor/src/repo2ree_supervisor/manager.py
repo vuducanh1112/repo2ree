@@ -29,7 +29,6 @@ from uuid import uuid4
 from pydantic import ValidationError
 
 from repo2ree_protocol.allocation import AllocationRecord, AllocationRequest, AllocationState
-from repo2ree_protocol.behaviour import events
 from repo2ree_protocol.command import Command
 from repo2ree_protocol.document import WorkbenchReeDocument
 from repo2ree_protocol.execution import ExecutionContext
@@ -38,12 +37,12 @@ from repo2ree_protocol.frames import (
     ErrorFrame,
     Frame,
     LogFrame,
+    LogSink,
     ResultFrame,
     SpanFrame,
     UnavailableFrame,
 )
 from repo2ree_protocol.history import OperationHistory
-from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.queries import (
     BUILD_ARCHIVE,
     GET_HISTORY,
@@ -55,7 +54,19 @@ from repo2ree_protocol.queries import (
     READ_REE_FILE_PATH,
 )
 from repo2ree_protocol.result import ActionResult
-from repo2ree_protocol.tracing import (
+from repo2ree_ree.model import Ree
+from repo2ree_ree.review import ReviewSet
+from repo2ree_supervisor.allocation_state import IllegalTransitionError
+from repo2ree_supervisor.allocation_store import AllocationStore
+from repo2ree_supervisor.client import (
+    ProviderClient,
+    WorkbenchClient,
+    WorkbenchUnavailableError,
+    raise_for_terminal_error,
+)
+from repo2ree_supervisor.enrollment import EnrollmentRegistry
+from repo2ree_telemetry.behaviour import events
+from repo2ree_telemetry.tracing import (
     CommandSpanAttrs,
     SpanSink,
     WorkbenchSpanAttrs,
@@ -70,17 +81,6 @@ from repo2ree_protocol.tracing import (
     record_result_evidence,
     record_span_facts,
 )
-from repo2ree_ree.model import Ree
-from repo2ree_ree.review import ReviewSet
-from repo2ree_supervisor.allocation_state import IllegalTransitionError
-from repo2ree_supervisor.allocation_store import AllocationStore
-from repo2ree_supervisor.client import (
-    ProviderClient,
-    WorkbenchClient,
-    WorkbenchUnavailableError,
-    raise_for_terminal_error,
-)
-from repo2ree_supervisor.enrollment import EnrollmentRegistry
 
 __all__ = [
     "WorkbenchHandle",

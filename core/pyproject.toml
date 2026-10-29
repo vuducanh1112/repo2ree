@@ -5,6 +5,7 @@ dependencies = [
     "repo2ree-authoring",
     "repo2ree-protocol",
     "repo2ree-ree",
+    "repo2ree-telemetry",
     "pydantic~=2.11.7",
     # environment.yml parsing in repo_profiler.sources.manifests.
     "pyyaml~=6.0",
@@ -23,6 +24,7 @@ dev = [
 repo2ree-authoring = { workspace = true }
 repo2ree-protocol = { workspace = true }
 repo2ree-ree = { workspace = true }
+repo2ree-telemetry = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

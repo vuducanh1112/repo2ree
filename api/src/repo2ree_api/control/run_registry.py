@@ -16,11 +16,11 @@ from repo2ree_api.clock import utc_now
 from repo2ree_api.contracts import RunOperation, RunStatus
 from repo2ree_api.storage import author_actions
 from repo2ree_api.storage.run_store import IdempotencyConflictError, RunStore, StoredRun
-from repo2ree_protocol.behaviour.events import AuthorApiActionName
 from repo2ree_protocol.execution import ExecutionContext
-from repo2ree_protocol.log import emit_run_log
 from repo2ree_protocol.result import ActionResult, Failure, FailureCategory, HistoryReference
-from repo2ree_protocol.tracing import (
+from repo2ree_telemetry.behaviour.events import AuthorApiActionName
+from repo2ree_telemetry.log import emit_run_log
+from repo2ree_telemetry.tracing import (
     CommandSpanAttrs,
     command_metric_attrs,
     current_span_link,

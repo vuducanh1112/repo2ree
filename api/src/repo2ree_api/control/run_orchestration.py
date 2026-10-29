@@ -19,10 +19,10 @@ from repo2ree_api.deps import workbench_manager
 from repo2ree_api.settings import service_settings
 from repo2ree_api.storage.json_run_store import JsonRunStore
 from repo2ree_api.workbench.commands import require_handle
-from repo2ree_protocol.behaviour.events import AuthorApiActionName
 from repo2ree_protocol.command import Command
 from repo2ree_protocol.result import ActionResult
 from repo2ree_supervisor import WorkbenchHandle
+from repo2ree_telemetry.behaviour.events import AuthorApiActionName
 
 # ================================================
 # Registry

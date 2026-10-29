@@ -14,8 +14,7 @@ from repo2ree_api.contracts import ERROR_RESPONSES, FileMutationResponse, Worksp
 from repo2ree_api.deps import workbench_manager
 from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import dispatch_or_fail, ree_command_span, require_handle
-from repo2ree_protocol import DeleteFileCommand, WriteFileCommand
-from repo2ree_protocol.command import DeleteFileArgs, WriteFileArgs
+from repo2ree_protocol.command import DeleteFileArgs, DeleteFileCommand, WriteFileArgs, WriteFileCommand
 from repo2ree_protocol.outputs import NoOutputs
 from repo2ree_ree.digest import digest_bytes
 

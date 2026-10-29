@@ -13,8 +13,9 @@ import pytest
 
 import repo2ree_provider_docker.lifecycle as lc_mod
 from repo2ree_docker.ops import ContainerStateUnknownError
-from repo2ree_protocol import AllocationRequest, AllocationStatusFrame
+from repo2ree_protocol.allocation import AllocationRequest
 from repo2ree_protocol.frames import (
+    AllocationStatusFrame,
     ErrorFrame,
     Frame,
     LogFrame,

@@ -13,8 +13,7 @@ from repo2ree_api.contracts import (
 from repo2ree_api.deps import workbench_manager
 from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import dispatch_or_fail, ree_command_span, require_handle
-from repo2ree_protocol import PatchReeDefinitionCommand
-from repo2ree_protocol.command import PatchReeDefinitionArgs
+from repo2ree_protocol.command import PatchReeDefinitionArgs, PatchReeDefinitionCommand
 
 definition_router = APIRouter(tags=["rees"])
 

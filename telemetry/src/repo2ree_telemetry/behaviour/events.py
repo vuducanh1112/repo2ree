@@ -16,7 +16,7 @@ from collections.abc import Mapping
 from typing import Literal, NotRequired, TypedDict, cast
 
 from repo2ree_protocol.allocation import AllocationState
-from repo2ree_protocol.behaviour.writer import Fact, journal
+from repo2ree_telemetry.behaviour.writer import Fact, journal
 
 DispatchResponse = Literal["result", "unavailable", "error"]
 AuthorApiActionState = Literal["requested", "running", "canceling", "succeeded", "failed", "canceled"]

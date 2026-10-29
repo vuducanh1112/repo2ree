@@ -29,15 +29,15 @@ from repo2ree_core.execution.process import (
     StepOutcome,
     run_workspace_script,
 )
-from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionStatus
-from repo2ree_protocol.tracing import (
+from repo2ree_ree.paths import validate_relative_path
+from repo2ree_telemetry.tracing import (
     ScriptSpanAttrs,
     get_tracer,
     record_current_span_facts,
     record_exit_code,
 )
-from repo2ree_ree.paths import validate_relative_path
 
 tracer = get_tracer(__name__)
 

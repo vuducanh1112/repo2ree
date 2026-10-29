@@ -46,7 +46,7 @@ from uuid import uuid4
 import pytest
 from websockets.asyncio.server import ServerConnection, serve
 
-from repo2ree_protocol import ProviderHello, WorkbenchImage
+from repo2ree_protocol.allocation import WorkbenchImage
 from repo2ree_protocol.command import (
     AcquireSourceArgs,
     AcquireSourceCommand,
@@ -57,7 +57,7 @@ from repo2ree_protocol.command import (
     WriteFileArgs,
     WriteFileCommand,
 )
-from repo2ree_protocol.tracing import build_span_sink
+from repo2ree_protocol.provider import ProviderHello
 from repo2ree_provider_docker.connection import run_provider
 from repo2ree_provider_docker.lifecycle import DockerIsolation
 from repo2ree_provider_docker.provisioner import ProvisionerService
@@ -73,6 +73,7 @@ from repo2ree_supervisor import (
     WsProviderClient,
     WsWorkbenchClient,
 )
+from repo2ree_telemetry.tracing import build_span_sink
 from repo2ree_testbed.artifacts import case_dir, service_dir
 from repo2ree_testbed.preservation import TestRecorder
 

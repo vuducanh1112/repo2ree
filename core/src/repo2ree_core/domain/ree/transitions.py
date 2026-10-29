@@ -8,7 +8,6 @@ from repo2ree_ree.model import (
     ReeDefinition,
     ReeReceipts,
     ReeSeal,
-    ReeSubject,
     Signature,
     canonical_subject_digest,
 )
@@ -29,14 +28,9 @@ class ReePreconditionError(ValueError):
     """The requested transition is not legal for the current aggregate."""
 
 
-def subject_digest(subject: ReeSubject) -> Digest:
-    """Versioned, domain-separated identity of one portable REE subject."""
-    return canonical_subject_digest(subject)
-
-
 def revision_of(ree: Ree) -> Digest:
     """Optimistic-concurrency identity of the mutable REE head."""
-    return subject_digest(ree.subject)
+    return canonical_subject_digest(ree.subject)
 
 
 def replace_definition(ree: Ree, definition: ReeDefinition) -> Ree:
@@ -106,10 +100,10 @@ def record_seal(
 ) -> Ree:
     if ree.seal is not None:
         raise ReePreconditionError("REE is already sealed")
-    seal = ReeSeal(sealed_at=sealed_at, ree_digest=subject_digest(ree.subject), signature=signature)
+    seal = ReeSeal(sealed_at=sealed_at, ree_digest=canonical_subject_digest(ree.subject), signature=signature)
     return ree.model_copy(update={"seal": seal})
 
 
 def validate_seal(ree: Ree) -> None:
-    if ree.seal is not None and ree.seal.ree_digest != subject_digest(ree.subject):
+    if ree.seal is not None and ree.seal.ree_digest != canonical_subject_digest(ree.subject):
         raise ValueError("REE seal digest does not match its subject")

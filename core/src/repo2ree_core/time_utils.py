@@ -4,12 +4,12 @@ import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from repo2ree_ree.instant import UtcInstant, iso_utc
+from repo2ree_ree.instant import UtcInstant, format_utc_instant
 
 
 def utc_now() -> str:
     """Return the current UTC time as an ISO-8601 string with a trailing 'Z'."""
-    return iso_utc(datetime.now(UTC))
+    return format_utc_instant(datetime.now(UTC))
 
 
 def utc_now_instant() -> UtcInstant:

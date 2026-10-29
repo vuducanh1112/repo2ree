@@ -9,18 +9,15 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-from repo2ree_protocol import (
-    AllocationRequest,
-    AllocationState,
-    AllocationStatusFrame,
-    DoneFrame,
+from repo2ree_protocol.allocation import AllocationRequest, AllocationState
+from repo2ree_protocol.frames import AllocationStatusFrame, DoneFrame, Frame
+from repo2ree_protocol.provider import (
     EnsureAllocationRequest,
-    Frame,
     InspectAllocationRequest,
     ProviderWsRequest,
     ReleaseAllocationRequest,
+    provider_ws_message_adapter,
 )
-from repo2ree_protocol.provider import provider_ws_message_adapter
 from repo2ree_provider_docker import connection
 from repo2ree_provider_docker.connection import _serve
 from repo2ree_provider_docker.provisioner import ProvisionerService

@@ -40,11 +40,11 @@ from repo2ree_api.storage.upload_staging import (
     validate_upload_owner,
 )
 from repo2ree_api.workbench.commands import require_handle
-from repo2ree_protocol.behaviour.events import AuthorApiActionName
 from repo2ree_protocol.command import Command
-from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionResult
 from repo2ree_supervisor import WorkbenchHandle
+from repo2ree_telemetry.behaviour.events import AuthorApiActionName
 
 
 @dataclass(frozen=True)

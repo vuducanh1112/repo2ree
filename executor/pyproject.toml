@@ -3,11 +3,13 @@ name = "repo2ree-executor"
 version = "0.1.0"
 dependencies = [
     "repo2ree-core",
+    "repo2ree-telemetry",
     "click~=8.2.1",
 ]
 
 [tool.uv.sources]
 repo2ree-core = { workspace = true }
+repo2ree-telemetry = { workspace = true }
 
 [project.scripts]
 repo2ree-exec = "repo2ree_executor.__main__:main"

@@ -17,7 +17,7 @@ from repo2ree_core.operations.handlers.author._script_inference_inputs import bu
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import GenerateScriptCandidatesArgs, ScriptTargetSelectorArg
-from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionResult
 
 

@@ -6,6 +6,7 @@ dependencies = [
     "repo2ree-protocol",
     "repo2ree-ree",
     "repo2ree-supervisor",
+    "repo2ree-telemetry",
     "fastapi~=0.160.0",
     "pydantic-settings~=2.16",
     "uvicorn~=0.40.0",
@@ -14,8 +15,6 @@ dependencies = [
     # must declare the transport dependency directly.
     "websockets~=15.0",
     "python-multipart~=0.0.32",
-    "requests~=2.34",
-    "opentelemetry-exporter-otlp-proto-http~=1.45",
     "opentelemetry-instrumentation-fastapi~=0.66b1",
 ]
 
@@ -30,6 +29,7 @@ repo2ree-core = { workspace = true }
 repo2ree-protocol = { workspace = true }
 repo2ree-ree = { workspace = true }
 repo2ree-supervisor = { workspace = true }
+repo2ree-telemetry = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

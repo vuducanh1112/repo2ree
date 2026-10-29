@@ -9,21 +9,16 @@ from repo2ree_ree.dependency import Dependency
 
 
 class ThreatCategory(StrEnum):
-    # Independent reproducibility dimensions, each scored on its own axis rather
-    # than a single linear ladder. Dependency declaration (what software is
-    # installed), environment capture (the container / declarative software
-    # stack), and machine capture (a VM pinning the whole machine + OS) are
-    # orthogonal — the ideal setup is a VM *and* a container/Nix environment.
     DEPENDENCY = "dependency"
     ENVIRONMENT = "environment"
     MACHINE = "machine"
 
 
 class DependencyLevel(int, Enum):
-    NONE = 0  # no manifest
-    DECLARED = 1  # manifest, but unpinned / range-only
-    PINNED = 2  # exact top-level pins
-    LOCKED = 3  # lockfile present
+    NONE = 0
+    DECLARED = 1
+    PINNED = 2
+    LOCKED = 3
 
     @property
     def label(self) -> str:
@@ -31,9 +26,9 @@ class DependencyLevel(int, Enum):
 
 
 class EnvironmentLevel(int, Enum):
-    NONE = 0  # no container / Nix
-    CONTAINER = 1  # container image, but not declarative
-    DECLARATIVE = 2  # declarative system spec (e.g. Nix)
+    NONE = 0
+    CONTAINER = 1
+    DECLARATIVE = 2
 
     @property
     def label(self) -> str:
@@ -41,8 +36,8 @@ class EnvironmentLevel(int, Enum):
 
 
 class MachineLevel(int, Enum):
-    NONE = 0  # no VM image
-    VM = 1  # a virtual machine image / definition is provided
+    NONE = 0
+    VM = 1
 
     @property
     def label(self) -> str:
@@ -82,47 +77,23 @@ class DependencySummary(BaseModel):
     locked: int = 0
 
 
-# Per-dependency reproducibility rung. ``locked`` means a lockfile resolved it;
-# ``pinned``/``ranged``/``unpinned`` classify the declared constraint;
-# ``undeclared`` marks an SBOM-only row the cross-check found in the runtime
-# with no manifest declaring it (always ``direct=False``, so it stays out of
-# the declaration summary buckets).
 DependencyStatus = Literal["locked", "pinned", "ranged", "unpinned", "undeclared"]
 
-# Verdict of the runtime-SBOM cross-check for a declared row. ``None`` until a
-# cross-check ran. ``not-observed`` is not a defect: dev- and build-only
-# dependencies legitimately never reach the runtime.
 RuntimePresence = Literal["observed", "version-mismatch", "not-observed"]
 
 
 class EvaluatedDependency(Dependency):
-    """A ``Dependency`` row plus the report's classification of it.
-
-    The status is computed here — the single classifier that also feeds the
-    summary buckets — so presentation layers never re-derive it. The same
-    holds for ``runtime_presence``, filled by the SBOM cross-check step.
-    """
-
     status: DependencyStatus
     runtime_presence: RuntimePresence | None = None
 
 
 class UndeclaredPackage(BaseModel):
-    """One runtime package no manifest declared (same-ecosystem only)."""
-
     ecosystem: str
     name: str
     version: str | None = None
 
 
 class SbomCrossCheckSummary(BaseModel):
-    """Aggregates of the runtime-SBOM cross-check, mirrored into the receipt.
-
-    ``undeclared`` is capped (the counts carry the truth) and holds only
-    ecosystems the declared inventory uses — base-image OS packages are
-    counted in ``observed_total`` but never listed.
-    """
-
     sbom_digest: str | None = None
     checked_at: str = ""
     declared_direct_total: int = 0
@@ -134,26 +105,14 @@ class SbomCrossCheckSummary(BaseModel):
 
 
 class ReproducibilityReport(BaseModel):
-    # Three orthogonal axes — the model evaluate actually reasons about. The levels
-    # are int-enums, so they serialize to their integer value on the wire.
     dependency_level: DependencyLevel
     environment_level: EnvironmentLevel
     machine_level: MachineLevel
     dependency_summary: DependencySummary
-    # The normalized backend inventory is the sole data source for dependency
-    # presentation.  It includes lock-only closure rows and OCI images so later
-    # report consumers can choose their own view without re-parsing manifests.
     dependencies: list[EvaluatedDependency] = Field(default_factory=list)
-    # Filled by the cross_check_sbom step, which rewrites the report artifact;
-    # ``None`` until a cross-check ran (and again after evaluate re-runs).
     sbom_cross_check: SbomCrossCheckSummary | None = None
     threats: list[Threat]
 
-    # Labels are derived from their level, never set independently, so they can
-    # never drift out of sync. They are still serialized (computed fields) so the
-    # wire contract keeps `dependency_level_label` etc.
-    # mypy does not support decorators on properties (python/mypy#1362), so the
-    # @computed_field lines need an explicit ignore.
     @computed_field  # type: ignore[prop-decorator]
     @property
     def dependency_level_label(self) -> str:

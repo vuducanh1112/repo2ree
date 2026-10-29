@@ -25,6 +25,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict, Field
 
 from repo2ree_api.contracts import ERROR_RESPONSES
+from repo2ree_authoring.steps import ree_step_catalog
 from repo2ree_authoring.templates import (
     ScriptTemplate,
     activation_templates,
@@ -38,7 +39,6 @@ from repo2ree_ree.reserved_paths import (
     RESERVED_BUILD_SCRIPT,
     RESERVED_EXPERIMENT_SCRIPT_DIR,
 )
-from repo2ree_ree.steps import ree_step_catalog
 
 # ================================================
 # The step catalog

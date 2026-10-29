@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from repo2ree_api.control.compute import list_allocations, list_compute_locations
-from repo2ree_protocol import ComputeLocation
+from repo2ree_protocol.allocation import ComputeLocation
 
 
 def test_compute_catalog_is_empty_without_connected_capacity() -> None:

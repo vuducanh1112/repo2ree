@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from repo2ree_ree.steps import REE_STEPS, ree_step_catalog
+from repo2ree_authoring.steps import REE_STEPS, ree_step_catalog
 
 
 def test_catalog_is_acyclic_and_references_known_steps() -> None:

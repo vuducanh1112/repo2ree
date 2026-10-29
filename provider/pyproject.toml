@@ -5,6 +5,7 @@ dependencies = [
     "anyio~=4.15",
     "repo2ree-docker-support",
     "repo2ree-protocol",
+    "repo2ree-telemetry",
     "pydantic-settings~=2.16",
     "websockets~=15.0",
 ]
@@ -15,6 +16,7 @@ repo2ree-provider-docker = "repo2ree_provider_docker.app:main"
 [tool.uv.sources]
 repo2ree-docker-support = { workspace = true }
 repo2ree-protocol = { workspace = true }
+repo2ree-telemetry = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

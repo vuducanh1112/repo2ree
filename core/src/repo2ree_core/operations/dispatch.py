@@ -60,10 +60,10 @@ from repo2ree_protocol.command import (
     WriteFileCommand,
 )
 from repo2ree_protocol.execution import ExecutionContext
-from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import validate_outputs
 from repo2ree_protocol.result import ActionResult
-from repo2ree_protocol.tracing import (
+from repo2ree_telemetry.tracing import (
     CommandSpanAttrs,
     get_tracer,
     record_command_status,

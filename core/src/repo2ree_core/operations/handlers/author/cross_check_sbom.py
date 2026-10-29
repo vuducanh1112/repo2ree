@@ -16,7 +16,7 @@ from repo2ree_core.persistence.directory import UNREADABLE_DOCUMENT, ReeDirector
 from repo2ree_core.persistence.layout import REPRODUCIBILITY_REPORT_FILENAME, SBOM_ARTIFACT_PATH, ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError, load_ree, save_ree
 from repo2ree_core.time_utils import OperationTimer, utc_now
-from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import CrossCheckSbomOutputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.model import Ree
