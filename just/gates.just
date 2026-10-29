@@ -51,9 +51,17 @@ assurance-gate jobs=E2E_JOBS: _require-clean-tree build-e2e-bundles (_gated-tier
 _require-current-assurance-gate:
     python -m scripts.gates.assurance_gate verify
 
+# Never on a staged tree: a zone entry lands in a commit of its own beside the files it claims, so
+# the tree between the two disagrees by design. Milliseconds, so no receipt: publish-gate runs it.
+# Require every tracked file on HEAD to have a zone and every zone entry to claim a file.
+[group('Release gates')]
+zones-gate: _require-clean-tree
+    python scripts/zones.py verify
+    @echo ">> zones gate green — every file has a zone and every zone entry a file"
+
 # Run the complete pre-publish gate and certify the local image set.
 [group('Release gates')]
-publish-gate: _require-clean-tree _require-current-commit-gate _require-current-assurance-gate test-backend-integration test-gui-accessibility test-gui-screenshots test-e2e-gui test-e2e-review build-images
+publish-gate: _require-clean-tree _require-current-commit-gate _require-current-assurance-gate zones-gate test-backend-integration test-gui-accessibility test-gui-screenshots test-e2e-gui test-e2e-review build-images
     #!/usr/bin/env bash
     set -euo pipefail
     python -m repo2ree_testbed image-suite --suite e2e-gui --compute-locations {{ quote(DEFAULT_STACK_LOCATIONS) }} --images local
