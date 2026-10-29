@@ -10,6 +10,8 @@ and hands over to the real one at once: its lines reach the outermost one throug
 share, so every recipe is recorded once. Commands that run no recipe (--list, --dump, ...) are
 not recorded.
 
+``just_timing.py --prune [--dry-run]`` removes what is older than KEPT_DAYS without running anything.
+
 Recording never changes what just does: the exit code is just's own, and a record that cannot be
 written is warned about once and given up.
 """
@@ -125,12 +127,13 @@ class Recorder:
             self.stream = None
 
 
-def prune(logs: Path, today: datetime) -> None:
+def prune(logs: Path, today: datetime, *, dry_run: bool = False) -> list[Path]:
     """Remove the day directories older than KEPT_DAYS; whatever cannot be removed stays."""
     oldest = (today - timedelta(days=KEPT_DAYS)).date().isoformat()
-    for day in logs.glob("????-??-??"):
-        if day.name < oldest:
-            shutil.rmtree(day, ignore_errors=True)
+    stale = sorted(day for day in logs.glob("????-??-??") if day.name < oldest)
+    for day in stale if not dry_run else ():
+        shutil.rmtree(day, ignore_errors=True)
+    return stale
 
 
 class Chunked(Protocol):
@@ -215,6 +218,16 @@ def run_plainly(real: str, args: list[str]) -> NoReturn:
 
 
 def main(argv: list[str]) -> int:
+    if argv[1:2] == ["--prune"]:
+        # The registry's way in (scripts/generated.toml), as for every owner of a generated tree.
+        dry_run = "--dry-run" in argv[2:]
+        stale = prune(LOGS, datetime.now(UTC), dry_run=dry_run)
+        for day in stale:
+            print(f"   {'would remove' if dry_run else 'removing'} {day.name}")
+        print(
+            f">> pruned just timings: {len(stale)} days {'would go' if dry_run else 'removed'}, {KEPT_DAYS} days kept"
+        )
+        return 0
     real, args = argv[1], argv[2:]
     if os.environ.get(MARKER) or not runs_recipes(args):
         run_plainly(real, args)

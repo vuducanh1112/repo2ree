@@ -2,7 +2,9 @@
 
 Per tier it keeps the newest finished runs, the newest with a problem, the runs the assurance-gate
 receipt names, and runs still in progress; old suite folders and stale control state go, and so
-do unused bundle-store volumes (never a workbench, which a stack beside this one may hold).
+do unused bundle-store volumes (never a workbench, which a stack beside this one may hold). A test
+case's recording goes once its test has not finished for a month, which is how a renamed or
+deleted test's recording leaves; so do session files as old.
 """
 
 from __future__ import annotations
@@ -17,7 +19,8 @@ from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
-from repo2ree_testbed.artifacts import ROOT, run_dir
+from repo2ree_testbed.artifacts import ROOT, domain_dir, run_dir
+from repo2ree_testbed.preservation import PreservationManifest
 from repo2ree_testbed.records import Receipt, RunRecord, read
 from repo2ree_testbed.stack.workbench_cleanup import KEEP_STORES, live_store_volume, stale_store_volumes
 
@@ -27,6 +30,8 @@ SUITE_TOKEN = re.compile(r"^e2e-(?P<tier>.+)-[0-9a-f]{32}$")
 SUITE_FOLDERS = ("recordings", "archives", "telemetry")
 IN_PROGRESS_SECONDS = 6 * 3600
 STALE_CONTROL_SECONDS = 24 * 3600
+# A test case recording, or a session file, nothing has rewritten for this long belongs to no live test.
+STALE_RECORDING_SECONDS = 30 * 24 * 3600
 
 
 @dataclass(frozen=True)
@@ -36,6 +41,8 @@ class Plan:
 
 
 def size(path: Path) -> int:
+    if path.is_file():
+        return path.stat().st_size
     return sum(item.stat().st_size for item in path.rglob("*") if item.is_file() and not item.is_symlink())
 
 
@@ -99,6 +106,35 @@ def plan_control_state(root: Path, now: float) -> Plan:
     return Plan([path for path in base.iterdir() if path.is_dir() and age(path, now) > STALE_CONTROL_SECONDS], [])
 
 
+def plan_case_recordings(base: Path, now: float) -> Plan:
+    """Each test case recording under ``base`` whose test last finished over a month ago.
+
+    A case is the directory of a manifest the pytest plugin wrote; the copies it holds (an REE's own
+    files) are part of it, never cases of their own.
+    """
+    cases: list[tuple[Path, float]] = []
+    for manifest in sorted(base.rglob("manifest.json")) if base.is_dir() else []:
+        case = manifest.parent
+        if any(case.is_relative_to(known) for known, _ in cases):
+            continue
+        if (recorded := read(PreservationManifest, manifest)) is not None:
+            cases.append((case, recorded.finished))
+    stale = [case for case, finished in cases if now - finished > STALE_RECORDING_SECONDS]
+    return Plan(stale, [case for case, _ in cases if case not in stale])
+
+
+def plan_session_files(base: Path, now: float) -> Plan:
+    files = sorted(base.glob("*.json")) if base.is_dir() else []
+    return Plan([path for path in files if age(path, now) > STALE_RECORDING_SECONDS], [])
+
+
+def remove_empty_directories(base: Path) -> None:
+    """The directories under ``base`` a removal left empty, deepest first."""
+    for directory in sorted((path for path in base.rglob("*") if path.is_dir()), key=lambda p: -len(p.parts)):
+        if not any(directory.iterdir()):
+            directory.rmdir()
+
+
 def prune_store_volumes(keep_newest: int) -> None:
     try:
         stale = stale_store_volumes(live_store_volume(), keep_newest)
@@ -113,18 +149,31 @@ def prune_store_volumes(keep_newest: int) -> None:
 def prune(*, keep_runs: int = 5, keep_suite: int = 3, keep_stores: int = KEEP_STORES, dry_run: bool = False) -> None:
     root = run_dir()
     now = time.time()
+    recordings = [domain_dir(domain) / "tests" for domain in ("python", "assurance")]
+    sessions = [domain_dir(domain) / "sessions" for domain in ("python", "assurance")]
     plans = [
         plan_per_test_runs(root / "e2e", keep_runs, receipt_runs(), now),
         plan_suite_runs(root, keep_suite, now),
         plan_control_state(root, now),
+        *(plan_case_recordings(base, now) for base in recordings),
+        *(plan_session_files(base, now) for base in sessions),
     ]
     remove = [path for plan in plans for path in plan.remove]
     freed = 0
     for path in remove:
         freed += size(path)
-        print(f"   {'would remove' if dry_run else 'removing'} {path.relative_to(root)}")
-        if not dry_run:
+        shown = path.relative_to(root) if path.is_relative_to(root) else path
+        print(f"   {'would remove' if dry_run else 'removing'} {shown}")
+        if dry_run:
+            continue
+        if path.is_dir():
             shutil.rmtree(path, ignore_errors=True)
+        else:
+            path.unlink(missing_ok=True)
+    if not dry_run:
+        for base in recordings:
+            if base.is_dir():
+                remove_empty_directories(base)
     verb = "would free" if dry_run else "freed"
     print(f">> pruned test artifacts: {len(remove)} directories, {verb} {freed / 2**20:.0f} MiB under {root}")
     if not dry_run and shutil.which("docker"):

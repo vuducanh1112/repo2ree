@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from repo2ree_testbed.preservation import PreservationManifest
 from repo2ree_testbed.records import Behaviour, Outcome, RunRecord, RunTest
 from repo2ree_testbed.runs import prune
 from repo2ree_testbed.stack import workbench_cleanup
@@ -118,3 +119,45 @@ def test_unused_stores_beyond_the_newest_are_removed_and_the_checkouts_never(mon
     assert workbench_cleanup.stale_store_volumes("repo2ree-store-live", 0) == sorted(
         set(created) - {"repo2ree-store-live"}
     )
+
+
+def recorded_case(base: Path, path: str, finished: float) -> Path:
+    case = base / path
+    case.mkdir(parents=True)
+    manifest = PreservationManifest(
+        execution_id="e", nodeid=path, started=finished, finished=finished, outcome="passed", repositories=()
+    )
+    (case / "manifest.json").write_text(manifest.model_dump_json())
+    return case
+
+
+def test_a_case_recording_goes_once_its_test_has_not_finished_for_a_month(tmp_path: Path) -> None:
+    live = recorded_case(tmp_path, "core/unit/test_x/test_still_here", NOW - 3600)
+    gone = recorded_case(tmp_path, "core/unit/test_x/test_renamed_away", NOW - 31 * 24 * 3600)
+    # What a case holds is part of it, even a file named like a manifest; and an unreadable one is no case.
+    (gone / "ree" / "manifest.json").parent.mkdir()
+    (gone / "ree" / "manifest.json").write_text("{}")
+    (tmp_path / "core" / "stray").mkdir()
+    (tmp_path / "core" / "stray" / "manifest.json").write_text("not a manifest")
+
+    plan = prune.plan_case_recordings(tmp_path, NOW)
+
+    assert plan.remove == [gone]
+    assert plan.keep == [live]
+    assert prune.plan_case_recordings(tmp_path / "missing", NOW).remove == []
+
+
+def test_old_session_files_go_and_emptied_directories_with_them(tmp_path: Path) -> None:
+    sessions = tmp_path / "sessions"
+    sessions.mkdir()
+    old, new = sessions / "old.json", sessions / "new.json"
+    for path in (old, new):
+        path.write_text("{}")
+    os.utime(old, (NOW - 31 * 24 * 3600,) * 2)
+    assert prune.plan_session_files(sessions, NOW).remove == [old]
+
+    (tmp_path / "tests" / "a" / "b").mkdir(parents=True)
+    (tmp_path / "tests" / "c").mkdir()
+    (tmp_path / "tests" / "c" / "kept.txt").write_text("")
+    prune.remove_empty_directories(tmp_path / "tests")
+    assert sorted(path.name for path in (tmp_path / "tests").rglob("*")) == ["c", "kept.txt"]

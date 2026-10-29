@@ -92,7 +92,10 @@ def test_days_older_than_kept_are_removed(tmp_path: Path) -> None:
     for day in ("2026-09-28", "2026-09-29", "2026-10-29"):
         (tmp_path / day).mkdir()
     (tmp_path / "notes").mkdir()
-    timing.prune(tmp_path, datetime(2026, 10, 29, tzinfo=UTC))
+    today = datetime(2026, 10, 29, tzinfo=UTC)
+    assert timing.prune(tmp_path, today, dry_run=True) == [tmp_path / "2026-09-28"]
+    assert (tmp_path / "2026-09-28").exists()
+    timing.prune(tmp_path, today)
     assert sorted(path.name for path in tmp_path.iterdir()) == ["2026-09-29", "2026-10-29", "notes"]
 
 

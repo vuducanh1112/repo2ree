@@ -11,7 +11,8 @@ The overview is a bundle bound to one commit: whatever it shows from outside the
 (test evidence, diagrams) is copied into it, and what is too large to copy (REE Git
 archives, spans) is listed by sha256. manifest.json records the commit, whether the
 working tree was dirty, and every input. `just repo-overview` regenerates the diagrams
-and writes reports/overview/<revision>/, with reports/overview/latest pointing at it.
+and writes reports/overview/<revision>/, with reports/overview/latest pointing at it, and keeps
+the newest few (overview/prune.py).
 """
 
 from __future__ import annotations
@@ -46,6 +47,7 @@ from repo2ree_repoview.overview.pages.recipes import page_recipes
 from repo2ree_repoview.overview.pages.specification import page_specification
 from repo2ree_repoview.overview.pages.vocabulary import page_vocabulary
 from repo2ree_repoview.overview.pages.zones import page_zones
+from repo2ree_repoview.overview.prune import OVERVIEWS, prune
 from repo2ree_repoview.overview.receipt import (
     AggregateMoves,
     Exercised,
@@ -57,8 +59,6 @@ from repo2ree_repoview.overview.receipt import (
 )
 from repo2ree_repoview.overview.timings import LOGS, read_invocations, summarize
 from repo2ree_repoview.repository import ROOT, Head
-
-OVERVIEWS = ROOT / "reports/overview"
 
 # The page's look and its filter boxes, inlined so the page is one file.
 STYLE = (Path(__file__).with_name("overview.css")).read_text()
@@ -136,6 +136,7 @@ def build(output: Path | None) -> Path:
         latest = OVERVIEWS / "latest"
         latest.unlink(missing_ok=True)
         latest.symlink_to(bundle.root.name)
+        prune(OVERVIEWS)
     copied = sum((bundle.root / entry.path).stat().st_size for entry in manifest.copied)
     print(
         f"wrote {bundle.root} ({len(everything)} pages; {len(manifest.copied)} files copied, {copied / 1e6:.1f} MB; "
