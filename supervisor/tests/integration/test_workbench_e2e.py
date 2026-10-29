@@ -316,16 +316,11 @@ def test_workbench_lifecycle_e2e(workbench: tuple[WorkbenchManager, WorkbenchHan
         events.append((stream, level, message))
 
     # --- init produced metadata on the real /ree volume ----------------
-    # The manifest is the portable aggregate and nothing else: no handle (that
-    # is the control plane's) and no status (that is derived from the seal).
     manifest = manager.get_ree_manifest(handle)
-    assert sorted(manifest) == ["subject"]
-    assert manifest["subject"]["definition"]["name"]
-    # Both of those reach the API through the composed document, where the
-    # manager stamps the handle it alone knows and core derives the status.
+    assert manifest.seal is None
+    assert manifest.subject.definition.name
     document = manager.get_ree_document(handle)
-    assert document["ree_id"] == handle.ree_id
-    assert document["status"] == "draft"
+    assert document.status == "draft"
 
     # --- acquire_source: the REE gets something to build from ----------
     # Building requires acquired source: a runtime built from nothing attests to
@@ -369,7 +364,7 @@ def test_workbench_lifecycle_e2e(workbench: tuple[WorkbenchManager, WorkbenchHan
     # read it back through the real read-ree-file query — full round-trip
     assert manager.read_ree_file_bytes(handle, f"workspace/{build_script}") == build_body.encode()
     workspace = manager.get_ree_document(handle)
-    assert any(f.get("path") == build_script for f in workspace["workspace_files"])
+    assert any(f.path == build_script for f in workspace.workspace_files)
 
     # --- declare where the build leaves its runtime --------------------
     # Nothing infers this: the author says which artifact is the runtime, and

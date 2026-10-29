@@ -8,6 +8,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from repo2ree_api.deps import workbench_manager
+from repo2ree_core.domain.ree.audit import audit
+from repo2ree_protocol.document import WorkbenchReeDocument
 from repo2ree_ree.model import Ree
 from repo2ree_ree.reproducibility import (
     DependencyLevel,
@@ -53,7 +55,7 @@ def test_author_receipts_cross_as_a_typed_document(
     monkeypatch.setattr(
         workbench_manager,
         "get_ree_state",
-        lambda handle: {"ree": ree.model_dump(mode="json")},
+        lambda handle: WorkbenchReeDocument(ree=ree, status="draft", audit=audit(ree)),
     )
 
     response = client.get(f"/api/v1/rees/{online_ree.ree_id}/receipts/author")

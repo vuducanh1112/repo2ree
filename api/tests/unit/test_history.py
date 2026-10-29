@@ -3,6 +3,7 @@
 from typing import Any
 
 from repo2ree_api.deps import workbench_manager
+from repo2ree_protocol.history import OperationHistory
 
 
 def test_history_endpoint_includes_failed_and_pending_attempts(client, online_ree, monkeypatch):
@@ -25,7 +26,9 @@ def test_history_endpoint_includes_failed_and_pending_attempts(client, online_re
             "capture_status": "pending",
         },
     ]
-    monkeypatch.setattr(workbench_manager, "get_history", lambda handle: {"operations": records})
+    monkeypatch.setattr(
+        workbench_manager, "get_history", lambda handle: OperationHistory.model_validate({"operations": records})
+    )
     response = client.get(f"/api/v1/rees/{online_ree.ree_id}/history")
     assert response.status_code == 200
     assert response.json()["operations"][0]["command"] == records[0]["command"]

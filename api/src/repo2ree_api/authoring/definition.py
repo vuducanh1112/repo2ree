@@ -45,7 +45,7 @@ def _patch_definition(ree_id: str, payload: ReeDefinitionPatchPayload) -> ReeDoc
             "patch-definition",
             "Workbench patch_ree_definition failed",
         )
-        return ReeDocument.model_validate(workbench_manager.get_ree_document(handle))
+        return ReeDocument.of(handle.ree_id, workbench_manager.get_ree_document(handle))
 
 
 @definition_router.put(

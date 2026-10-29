@@ -10,6 +10,7 @@ from repo2ree_api.contracts.runs import RunSummary
 from repo2ree_api.ree_index import ReeIndexEntry
 from repo2ree_protocol.audit import ReeAudit
 from repo2ree_protocol.build import BuildInfo
+from repo2ree_protocol.document import WorkbenchReeDocument
 from repo2ree_protocol.files import ReeFile, WorkspaceFile
 from repo2ree_ree.model import Ree, ReeStatus
 
@@ -28,6 +29,28 @@ class ReeDocument(BaseModel):
     image: str | None = None
     workspace_files: list[WorkspaceFile] = Field(default_factory=list)
     ree_files: list[ReeFile] = Field(default_factory=list)
+
+    @classmethod
+    def of(
+        cls,
+        ree_id: str,
+        document: WorkbenchReeDocument,
+        *,
+        allocation_id: str | None = None,
+        location_id: str | None = None,
+        image: str | None = None,
+    ) -> ReeDocument:
+        return cls(
+            ree_id=ree_id,
+            ree=document.ree,
+            status=document.status,
+            audit=document.audit,
+            allocation_id=allocation_id,
+            location_id=location_id,
+            image=image,
+            workspace_files=document.workspace_files,
+            ree_files=document.ree_files,
+        )
 
 
 class ReeSummary(BaseModel):

@@ -19,6 +19,7 @@ from repo2ree_protocol.command import PatchReeDefinitionArgs, PatchReeDefinition
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import UnavailableFrame
 from repo2ree_protocol.result import HistoryReference
+from repo2ree_ree.model import Ree, ReeDefinition, ReeSubject
 from repo2ree_supervisor import AllocationStore, WorkbenchManager, WorkbenchUnavailableError
 
 _CATALOG_IMAGE = "docker.io/library/docker:29-dind"
@@ -405,3 +406,26 @@ def test_allocation_lifecycle_is_journaled_by_its_owner(tmp_path):
 def _transitions(journal: Path) -> list[tuple[str, str | None, str]]:
     records = [json.loads(line) for line in journal.read_text().splitlines()]
     return [(r["owner"], r["from"], r["to"]) for r in records if r["kind"] == "transition"]
+
+
+def test_a_document_that_does_not_parse_drops_out_of_the_listing(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    answers: dict[str, bytes] = {}
+
+    class ListingWorkbench(FakeWorkbench):
+        def exec_query(self, workbench_id: str, argv: list[str], timeout: int = 30) -> bytes:
+            return answers[workbench_id]
+
+    manager, _store, _provider = _manager(tmp_path, ListingWorkbench())
+    good = manager.provision("ree-good", "Good", location_id="lab-1", image=_CATALOG_IMAGE)
+    bad = manager.provision("ree-bad", "Bad", location_id="lab-1", image=_CATALOG_IMAGE)
+    answers[good.workbench_id] = (
+        Ree(subject=ReeSubject(definition=ReeDefinition(name="Good"))).model_dump_json().encode()
+    )
+    answers[bad.workbench_id] = b'{"subject": {"definition": {"nope": 1}}}'
+
+    listed = manager.list_all_manifests()
+
+    assert [(handle.ree_id, ree.subject.definition.name) for handle, ree in listed] == [("ree-good", "Good")]
+    assert "ree-bad" in caplog.text

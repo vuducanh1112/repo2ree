@@ -1,20 +1,6 @@
-"""Routes that read meaning out of a workbench's REE document.
-
-The workbench hands its document back as JSON and the supervisor relays it
-unparsed — deliberately, since that package may not know the domain shape. That
-makes the control plane the first place the bytes mean anything, and these
-tests pin that it *parses* them rather than indexing them.
-
-The distinction is not stylistic. ``dict.get`` answers ``None`` for a path that
-has stopped existing, so a projection reading the document by key degrades into
-a plausible wrong answer instead of an error — which is exactly how every
-downloaded bundle came to be named ``ree.zip`` while three refactors renamed the
-source of that dict and nobody noticed the path into it had gone dead.
-"""
+"""Routes that read meaning out of a workbench's REE."""
 
 from __future__ import annotations
-
-from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -26,10 +12,10 @@ from repo2ree_ree.model import Ree, ReeDefinition, ReeSeal, ReeSubject, canonica
 from repo2ree_supervisor import WorkbenchHandle
 
 
-def _manifest(name: str, *, sealed: bool = False) -> dict[str, Any]:
+def _manifest(name: str, *, sealed: bool = False) -> Ree:
     subject = ReeSubject(definition=ReeDefinition(name=name))
     seal = ReeSeal(sealed_at=utc_now_instant(), ree_digest=canonical_subject_digest(subject)) if sealed else None
-    return Ree(subject=subject, seal=seal).model_dump(mode="json", exclude_none=True)
+    return Ree(subject=subject, seal=seal)
 
 
 # ================================================
@@ -62,7 +48,7 @@ def test_an_unnamed_ree_still_downloads(online_ree: WorkbenchHandle, monkeypatch
 # ================================================
 
 
-def _staged(monkeypatch: pytest.MonkeyPatch, entries: list[tuple[str, dict[str, Any]]]) -> None:
+def _staged(monkeypatch: pytest.MonkeyPatch, entries: list[tuple[str, Ree]]) -> None:
     manifests = [
         (
             WorkbenchHandle(
@@ -101,20 +87,3 @@ def test_status_filter_reads_the_derived_status(client: TestClient, monkeypatch:
     items = client.get("/api/v1/rees", params={"status": "sealed"}).json()["items"]
 
     assert [item["name"] for item in items] == ["Beta"]
-
-
-def test_an_unparsable_document_drops_out_instead_of_failing_the_listing(
-    client: TestClient, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """One workbench this node cannot read must not empty the whole list.
-
-    The same treatment an unreachable bench already gets: to a caller the two
-    are one event — a workbench this control plane cannot report on. It matters
-    because the document may come from a bench running a core this node was
-    never built against (see the workbench image catalog).
-    """
-    _staged(monkeypatch, [("a1", _manifest("Alpha")), ("bad", {"subject": {"definition": {"nope": 1}}})])
-
-    items = client.get("/api/v1/rees").json()["items"]
-
-    assert [item["name"] for item in items] == ["Alpha"]

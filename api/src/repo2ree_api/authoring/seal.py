@@ -12,8 +12,6 @@ from __future__ import annotations
 import hashlib
 import logging
 import tempfile
-from collections.abc import Mapping
-from typing import Any
 from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException, Request
@@ -39,7 +37,7 @@ from repo2ree_api.workbench.commands import ree_command_span, require_handle
 from repo2ree_api.workbench.uploads import mint_upload_token, stage_upload_bytes
 from repo2ree_protocol import ActionResult, LoadReeBundleCommand, SealReeCommand
 from repo2ree_protocol.command import LoadReeBundleArgs, SealReeArgs
-from repo2ree_ree.model import Ree
+from repo2ree_protocol.document import WorkbenchReeDocument
 from repo2ree_supervisor import WorkbenchHandle
 
 _log = logging.getLogger(__name__)
@@ -142,7 +140,7 @@ def seal_ree_route(ree_id: str, payload: ReeSealPayload) -> RunSummary:
     return RunSummary.model_validate(run_summary(run_state))
 
 
-def _record_in_ree_index(ree_id: str, document: Mapping[str, Any]) -> None:
+def _record_in_ree_index(ree_id: str, document: WorkbenchReeDocument) -> None:
     """File the freshly sealed REE in the index, host-side.
 
     This is the write that makes a seal outlive its workbench: ``deleteRee``
@@ -157,7 +155,7 @@ def _record_in_ree_index(ree_id: str, document: Mapping[str, Any]) -> None:
     before anyone notices — hence the error-level log.
     """
     try:
-        ree_index.record_seal(entry_from_ree(Ree.model_validate(document["ree"])))
+        ree_index.record_seal(entry_from_ree(document.ree))
     except Exception:  # noqa: BLE001 — the seal itself succeeded; indexing must not undo that
         _log.exception("REE %s sealed but could not be recorded in the index; re-seal to repair", ree_id)
 

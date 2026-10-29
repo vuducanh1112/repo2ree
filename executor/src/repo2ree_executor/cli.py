@@ -40,6 +40,16 @@ from repo2ree_protocol.command import (
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.log import configure_logging as _configure_logging
+from repo2ree_protocol.queries import (
+    BUILD_ARCHIVE,
+    GET_HISTORY,
+    GET_REE_DOCUMENT,
+    GET_REE_DOCUMENT_SUMMARY,
+    GET_REE_MANIFEST,
+    GET_REVIEWS,
+    READ_REE_FILE,
+    READ_REE_FILE_PATH,
+)
 from repo2ree_protocol.tracing import (
     CommandSpanAttrs,
     attach_remote_context,
@@ -380,7 +390,7 @@ def doctor_cmd() -> None:
     click.echo(json.dumps(run_doctor()))
 
 
-@cli.command("get-ree-manifest")
+@cli.command(GET_REE_MANIFEST)
 def get_ree_manifest_cmd() -> None:
     """Emit the persisted REE record as JSON.
 
@@ -396,8 +406,8 @@ def get_ree_manifest_cmd() -> None:
     click.echo(json.dumps(store.read_manifest_json()))
 
 
-@cli.command("get-ree-document")
-@click.option("--summary", is_flag=True, help="Omit inline file content from the REE document.")
+@cli.command(GET_REE_DOCUMENT)
+@click.option(GET_REE_DOCUMENT_SUMMARY, "summary", is_flag=True, help="Omit inline file content from the REE document.")
 def get_ree_document_cmd(summary: bool) -> None:
     """Emit the composed REE document as JSON.
 
@@ -414,19 +424,19 @@ def get_ree_document_cmd(summary: bool) -> None:
     click.echo(result.model_dump_json())
 
 
-@cli.command("get-reviews")
+@cli.command(GET_REVIEWS)
 def get_reviews_cmd() -> None:
     """Emit persisted review attempts, newest first."""
     click.echo(load_reviews(ReeLayout.in_workbench()).model_dump_json())
 
 
-@cli.command("get-history")
+@cli.command(GET_HISTORY)
 def get_history_cmd() -> None:
     """Read operation records from author and review histories."""
     click.echo(read_operation_history(ReeLayout.in_workbench()).model_dump_json())
 
 
-@cli.command("build-archive")
+@cli.command(BUILD_ARCHIVE)
 def build_archive_cmd() -> None:
     """Write a portable REE bundle and Git histories in one download."""
     try:
@@ -440,8 +450,8 @@ def build_archive_cmd() -> None:
         sys.exit(1)
 
 
-@cli.command("read-ree-file")
-@click.option("--path", "file_path", required=True, help="Path relative to the REE root")
+@cli.command(READ_REE_FILE)
+@click.option(READ_REE_FILE_PATH, "file_path", required=True, help="Path relative to the REE root")
 def read_ree_file_cmd(file_path: str) -> None:
     """Write raw bytes of any regular file inside the REE."""
     try:

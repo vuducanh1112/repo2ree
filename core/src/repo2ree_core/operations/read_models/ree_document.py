@@ -7,8 +7,8 @@ the name a control plane files it under is that control plane's, owned by
 whoever resolved it. Echoing one back as a field would publish an address as
 though it were content: inside a workbench the volume is always mounted at
 ``/ree``, so the only value this layer could supply is identical for every
-REE. The API's own ``ReeDocument`` carries the real handle, stamped by the
-supervisor that knows it.
+REE. The API's own ``ReeDocument`` carries the real handle, which the control
+plane alone knows.
 """
 
 from __future__ import annotations

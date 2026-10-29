@@ -13,6 +13,7 @@ from repo2ree_protocol.command import (
     ReviewBuildRuntimeCommand,
     ReviewRunExperimentCommand,
 )
+from repo2ree_ree.review import ReviewSet
 from repo2ree_supervisor import WorkbenchHandle
 
 
@@ -24,22 +25,24 @@ def test_list_reviews_returns_persisted_attempts(
     monkeypatch.setattr(
         workbench_manager,
         "get_reviews",
-        lambda handle: {
-            "reviews": [
-                {
-                    "review_id": "review-one",
-                    "created_at": "2026-07-24T10:00:00Z",
-                    "updated_at": "2026-07-24T10:00:01Z",
-                    "status": "completed",
-                    "source_comparison": {
-                        "policy": "swhid",
-                        "expected_swhid": "swh:1:dir:" + "1" * 40,
-                        "observed_swhid": "swh:1:dir:" + "1" * 40,
-                        "verdict": "identical",
-                    },
-                }
-            ]
-        },
+        lambda handle: ReviewSet.model_validate(
+            {
+                "reviews": [
+                    {
+                        "review_id": "review-one",
+                        "created_at": "2026-07-24T10:00:00Z",
+                        "updated_at": "2026-07-24T10:00:01Z",
+                        "status": "completed",
+                        "source_comparison": {
+                            "policy": "swhid",
+                            "expected_swhid": "swh:1:dir:" + "1" * 40,
+                            "observed_swhid": "swh:1:dir:" + "1" * 40,
+                            "verdict": "identical",
+                        },
+                    }
+                ]
+            }
+        ),
     )
 
     response = client.get(f"/api/v1/rees/{online_ree.ree_id}/reviews")
@@ -240,25 +243,27 @@ def test_get_review_returns_one_attempt_and_404s_for_the_rest(
     monkeypatch.setattr(
         workbench_manager,
         "get_reviews",
-        lambda handle: {
-            "reviews": [
-                {
-                    "review_id": "review-one",
-                    "created_at": "2026-07-24T10:00:00Z",
-                    "updated_at": "2026-07-24T10:00:01Z",
-                    "status": "completed",
-                    "steps": [
-                        {
-                            "step": "build",
-                            "status": "completed",
-                            "started_at": "2026-07-24T10:00:00Z",
-                            "updated_at": "2026-07-24T10:00:01Z",
-                        }
-                    ],
-                    "build_comparison": {"policy": "sbom-closure", "verdict": "equivalent"},
-                }
-            ]
-        },
+        lambda handle: ReviewSet.model_validate(
+            {
+                "reviews": [
+                    {
+                        "review_id": "review-one",
+                        "created_at": "2026-07-24T10:00:00Z",
+                        "updated_at": "2026-07-24T10:00:01Z",
+                        "status": "completed",
+                        "steps": [
+                            {
+                                "step": "build",
+                                "status": "completed",
+                                "started_at": "2026-07-24T10:00:00Z",
+                                "updated_at": "2026-07-24T10:00:01Z",
+                            }
+                        ],
+                        "build_comparison": {"policy": "sbom-closure", "verdict": "equivalent"},
+                    }
+                ]
+            }
+        ),
     )
 
     found = client.get(f"/api/v1/rees/{online_ree.ree_id}/reviews/review-one")

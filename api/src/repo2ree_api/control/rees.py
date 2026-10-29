@@ -12,7 +12,6 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import ValidationError
 
 from repo2ree_api.contracts import (
     ERROR_RESPONSES,
@@ -96,9 +95,9 @@ def create_ree_route(payload: ReeCreatePayload) -> RunSummary:
 
         if is_cancel_requested(rid, run_id):
             _log_run("system", "warn", "Provisioning canceled after workbench startup")
-            return ActionResult(status="canceled", outputs={"ree": workbench_manager.get_ree_document(handle)})
+            return ActionResult(status="canceled", outputs={"ree": _provisioned_document(handle)})
 
-        return ActionResult(status="succeeded", outputs={"ree": workbench_manager.get_ree_document(handle)})
+        return ActionResult(status="succeeded", outputs={"ree": _provisioned_document(handle)})
 
     run_state = start_provisioning_run(
         ree_id=ree_id,
@@ -106,6 +105,10 @@ def create_ree_route(payload: ReeCreatePayload) -> RunSummary:
         runner=_runner,
     )
     return RunSummary.model_validate(run_summary(run_state))
+
+
+def _provisioned_document(handle: WorkbenchHandle) -> dict[str, Any]:
+    return {**workbench_manager.get_ree_document(handle).model_dump(mode="json"), "ree_id": handle.ree_id}
 
 
 @rees_router.get(
@@ -119,11 +122,7 @@ def list_rees_route(
     limit: int | None = Query(None, ge=1),
     status: str | None = Query(None),
 ) -> ReeList:
-    items = [
-        summary
-        for handle, manifest in workbench_manager.list_all_manifests()
-        if (summary := _summarize(handle, manifest)) is not None
-    ]
+    items = [_summarize(handle, ree) for handle, ree in workbench_manager.list_all_manifests()]
     if status:
         items = [m for m in items if m.status == status]
     items.sort(key=_ree_page_key, reverse=True)
@@ -131,25 +130,7 @@ def list_rees_route(
     return ReeList.model_validate({"items": page, "next_cursor": next_cursor})
 
 
-def _summarize(handle: WorkbenchHandle, manifest: dict[str, Any]) -> ReeSummary | None:
-    """Project one workbench's REE document onto its listing entry.
-
-    Parsed, not indexed. The projection used to read the document as a dict
-    (``ree["subject"]["definition"]["name"]``) in the supervisor, where a shape
-    change answers ``""`` instead of raising — the same silent-wrong-answer that
-    made every downloaded bundle ``ree.zip``. Here the shape is checked once and
-    ``status`` comes from core's own ``ree_status`` rather than a second reading
-    of what a seal means.
-
-    A document this control plane cannot parse drops out of the listing rather
-    than failing it, matching how an unreachable bench is already treated: the
-    two are the same event to a caller — a workbench this node cannot report on.
-    """
-    try:
-        ree = Ree.model_validate(manifest)
-    except ValidationError:
-        _log.warning("REE %s has a document this control plane cannot parse; omitting it", handle.ree_id)
-        return None
+def _summarize(handle: WorkbenchHandle, ree: Ree) -> ReeSummary:
     return ReeSummary(
         ree_id=handle.ree_id,
         name=ree.subject.definition.name,
@@ -173,11 +154,13 @@ def _ree_page_key(summary: ReeSummary) -> tuple[str, str]:
 def get_ree_route(ree_id: str) -> ReeDocument:
     with author_api_action("view_ree", ree_id):
         handle = require_handle(ree_id)
-        document = workbench_manager.get_ree_document(handle)
-        document["allocation_id"] = handle.allocation_id
-        document["location_id"] = handle.location_id
-        document["image"] = handle.image
-        return ReeDocument.model_validate(document)
+        return ReeDocument.of(
+            handle.ree_id,
+            workbench_manager.get_ree_document(handle),
+            allocation_id=handle.allocation_id,
+            location_id=handle.location_id,
+            image=handle.image,
+        )
 
 
 @rees_router.get(
@@ -201,7 +184,7 @@ def _ree_state(ree_id: str) -> ReeState:
     # could typecheck. It also mixed a raising read (`document["ree"]`) with a
     # defaulting one (`document.get("workspace_files", [])`) over the same
     # document; the model's own defaults now settle what may be absent.
-    document = ReeDocument.model_validate(workbench_manager.get_ree_state(handle))
+    document = ReeDocument.of(handle.ree_id, workbench_manager.get_ree_state(handle))
     # Runs are this process's own records, not a workbench's, so they are parsed
     # strictly: a summary that will not validate is a bug here rather than a peer
     # speaking a version we do not know, and it should say so loudly.

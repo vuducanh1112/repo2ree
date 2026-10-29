@@ -26,9 +26,12 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import uuid4
 
+from pydantic import ValidationError
+
 from repo2ree_protocol.allocation import AllocationRecord, AllocationRequest, AllocationState
 from repo2ree_protocol.behaviour import events
 from repo2ree_protocol.command import Command
+from repo2ree_protocol.document import WorkbenchReeDocument
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import (
     AllocationStatusFrame,
@@ -39,7 +42,18 @@ from repo2ree_protocol.frames import (
     SpanFrame,
     UnavailableFrame,
 )
+from repo2ree_protocol.history import OperationHistory
 from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.queries import (
+    BUILD_ARCHIVE,
+    GET_HISTORY,
+    GET_REE_DOCUMENT,
+    GET_REE_DOCUMENT_SUMMARY,
+    GET_REE_MANIFEST,
+    GET_REVIEWS,
+    READ_REE_FILE,
+    READ_REE_FILE_PATH,
+)
 from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.tracing import (
     CommandSpanAttrs,
@@ -56,6 +70,8 @@ from repo2ree_protocol.tracing import (
     record_result_evidence,
     record_span_facts,
 )
+from repo2ree_ree.model import Ree
+from repo2ree_ree.review import ReviewSet
 from repo2ree_supervisor.allocation_state import IllegalTransitionError
 from repo2ree_supervisor.allocation_store import AllocationStore
 from repo2ree_supervisor.client import (
@@ -572,37 +588,25 @@ class WorkbenchManager:
         parsed: dict[str, Any] = json.loads(self.dispatch_query(handle, *argv))
         return parsed
 
-    def get_ree_manifest(self, handle: WorkbenchHandle) -> dict[str, Any]:
-        return self._query_json(handle, "get-ree-manifest")
+    def get_ree_manifest(self, handle: WorkbenchHandle) -> Ree:
+        return Ree.model_validate(self._query_json(handle, GET_REE_MANIFEST))
 
-    def get_ree_document(self, handle: WorkbenchHandle) -> dict[str, Any]:
-        return self._with_handle(handle, self._query_json(handle, "get-ree-document"))
+    def get_ree_document(self, handle: WorkbenchHandle) -> WorkbenchReeDocument:
+        return WorkbenchReeDocument.model_validate(self._query_json(handle, GET_REE_DOCUMENT))
 
-    def get_ree_state(self, handle: WorkbenchHandle) -> dict[str, Any]:
+    def get_ree_state(self, handle: WorkbenchHandle) -> WorkbenchReeDocument:
         """Return composed REE state without embedding text file contents."""
-        return self._with_handle(handle, self._query_json(handle, "get-ree-document", "--summary"))
+        return WorkbenchReeDocument.model_validate(self._query_json(handle, GET_REE_DOCUMENT, GET_REE_DOCUMENT_SUMMARY))
 
-    @staticmethod
-    def _with_handle(handle: WorkbenchHandle, document: dict[str, Any]) -> dict[str, Any]:
-        """Add the control-plane handle the workbench has no way to know.
+    def get_history(self, handle: WorkbenchHandle) -> OperationHistory:
+        return OperationHistory.model_validate(self._query_json(handle, GET_HISTORY))
 
-        ``ree_id`` names a registry entry and the container and volume built
-        from it — all of it host-side. A workbench sees only its own volume,
-        mounted at the same ``/ree`` in every REE, so the document it returns
-        carries no identity of its own and this is where one is supplied.
-        """
-        document["ree_id"] = handle.ree_id
-        return document
-
-    def get_history(self, handle: WorkbenchHandle) -> dict[str, Any]:
-        return self._query_json(handle, "get-history")
-
-    def get_reviews(self, handle: WorkbenchHandle) -> dict[str, Any]:
-        return self._query_json(handle, "get-reviews")
+    def get_reviews(self, handle: WorkbenchHandle) -> ReviewSet:
+        return ReviewSet.model_validate(self._query_json(handle, GET_REVIEWS))
 
     def read_ree_file_bytes(self, handle: WorkbenchHandle, path: str) -> bytes:
         # REE files can include large runtime and result artifacts.
-        return self.dispatch_query(handle, "read-ree-file", "--path", path, timeout=120)
+        return self.dispatch_query(handle, READ_REE_FILE, READ_REE_FILE_PATH, path, timeout=120)
 
     def build_archive(self, handle: WorkbenchHandle) -> bytes:
         return b"".join(self.build_archive_stream(handle))
@@ -610,19 +614,17 @@ class WorkbenchManager:
     def build_archive_stream(self, handle: WorkbenchHandle) -> Iterator[bytes]:
         # Zipping a sealed REE scales with its size, hence the generous timeout;
         # the per-REE lock stays held until the caller finishes consuming.
-        return self.dispatch_query_stream(handle, "build-archive", locked=True, timeout=180)
+        return self.dispatch_query_stream(handle, BUILD_ARCHIVE, locked=True, timeout=180)
 
-    def list_all_manifests(self) -> list[tuple[WorkbenchHandle, dict[str, Any]]]:
-        """Every reachable workbench, paired with its REE document as it arrived.
-
-        The document stays unparsed on purpose: the "Supervisor speaks only
-        protocol" contract forbids this package from knowing the domain shape,
-        so the control plane, which ships with core, parses it instead.
+    def list_all_manifests(self) -> list[tuple[WorkbenchHandle, Ree]]:
+        """Every reachable workbench, paired with its REE.
 
         Unreachable or unreadable workbenches are skipped rather than raised:
-        this backs a listing, and one sick bench must not empty it.
+        this backs a listing, and one sick bench must not empty it. A document
+        that does not parse is skipped too, with a warning, since it is the
+        same event to a caller: a workbench this node cannot report on.
         """
-        manifests: list[tuple[WorkbenchHandle, dict[str, Any]]] = []
+        manifests: list[tuple[WorkbenchHandle, Ree]] = []
         for record in self._registry.list():
             if record.state != AllocationState.ASSIGNED:
                 continue
@@ -635,7 +637,10 @@ class WorkbenchManager:
             if not running:
                 continue
             with suppress(Exception):
-                manifests.append((handle, self.get_ree_manifest(handle)))
+                try:
+                    manifests.append((handle, self.get_ree_manifest(handle)))
+                except ValidationError:
+                    logger.warning("REE %s has a document this control plane cannot parse; omitting it", handle.ree_id)
         return manifests
 
     def copy_to_workbench(self, handle: WorkbenchHandle, host_path: str, workbench_path: str) -> None:

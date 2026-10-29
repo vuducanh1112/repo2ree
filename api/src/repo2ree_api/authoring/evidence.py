@@ -8,7 +8,7 @@ from repo2ree_api.contracts import ERROR_RESPONSES
 from repo2ree_api.deps import workbench_manager
 from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import require_handle
-from repo2ree_ree.model import Ree, ReeReceipts
+from repo2ree_ree.model import ReeReceipts
 
 receipts_router = APIRouter(tags=["receipts"])
 
@@ -24,7 +24,6 @@ def list_author_receipts(ree_id: str) -> ReeReceipts:
     with author_api_action("list_receipts", ree_id):
         handle = require_handle(ree_id)
         try:
-            document = workbench_manager.get_ree_state(handle)
-            return Ree.model_validate(document["ree"]).subject.receipts
+            return workbench_manager.get_ree_state(handle).ree.subject.receipts
         except Exception as exc:
             raise HTTPException(status_code=502, detail=f"Workbench receipt query failed: {exc}") from exc

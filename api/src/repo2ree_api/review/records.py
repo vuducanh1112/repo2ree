@@ -16,7 +16,7 @@ def reviews_for(ree_id: str) -> ReviewSet:
     """Every persisted attempt for an REE, or the workbench failure to report."""
     handle = require_handle(ree_id)
     try:
-        return ReviewSet.model_validate(workbench_manager.get_reviews(handle))
+        return workbench_manager.get_reviews(handle)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Workbench review query failed: {exc}") from exc
 

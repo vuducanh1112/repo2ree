@@ -21,6 +21,6 @@ def list_operation_history(ree_id: str) -> OperationHistory:
     with author_api_action("view_history", ree_id):
         handle = require_handle(ree_id)
         try:
-            return OperationHistory.model_validate(workbench_manager.get_history(handle))
+            return workbench_manager.get_history(handle)
         except Exception as exc:
             raise HTTPException(status_code=502, detail=f"Workbench history query failed: {exc}") from exc
