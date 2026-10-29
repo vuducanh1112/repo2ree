@@ -48,6 +48,11 @@ build-provider-image: _stage-nix-sources
 [group('Images')]
 build-images: build-gui-image build-backend-image build-provider-image
 
+# Regenerate nix/closures.json, the Python closures nix ships, from uv.lock.
+[group('Images')]
+generate-closures:
+    python scripts/closures.py generate
+
 # Regenerate the pinned GUI npm dependency hash.
 [group('Images')]
 update-gui-npm-hash:

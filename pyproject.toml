@@ -26,6 +26,7 @@ dev = [
     # property tests don't hinge on that pin.
     "hypothesis~=6.170",
     "mypy~=2.4",
+    "packaging~=25.0",
     "pytest~=9.1",
     "pytest-cov~=7.1",
     # The single ruff version for this tree: the gate and a local `ruff`
@@ -726,3 +727,7 @@ no_implicit_reexport = false
 backend = ["ree", "protocol", "authoring", "core", "supervisor", "api", "executor", "docker-support", "provider", "workbench"]
 assurance = ["assurance/checker", "assurance/dossier", "assurance/collector", "assurance/traceview"]
 tooling = ["testbed", "repoview"]
+
+[tool.repo2ree.closures]
+api = "repo2ree-api"
+provider = "repo2ree-provider-docker"
