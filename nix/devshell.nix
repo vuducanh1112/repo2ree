@@ -14,12 +14,34 @@
 # ----------------------------------------------------------------
 { pkgs, devPkgs }:
 
+let
+  # `just` that records how long each recipe of every run took, in logs/just/
+  # (scripts/just_timing.py, run by the shipped Python, isolated). Outside a checkout
+  # that holds the recorder, the real one runs unrecorded; completions and the man
+  # page are the real one's.
+  timedJust = devPkgs.writeShellScript "just" ''
+    root=$(${devPkgs.git}/bin/git rev-parse --show-toplevel 2>/dev/null) || root=
+    if [ -n "$root" ] && [ -f "$root/scripts/just_timing.py" ]; then
+      exec ${pkgs.python313}/bin/python3 -I "$root/scripts/just_timing.py" ${devPkgs.just}/bin/just "$@"
+    fi
+    exec ${devPkgs.just}/bin/just "$@"
+  '';
+  just = devPkgs.symlinkJoin {
+    name = "just-with-timings";
+    paths = [ devPkgs.just ];
+    postBuild = ''
+      rm "$out/bin/just"
+      ln -s ${timedJust} "$out/bin/just"
+    '';
+  };
+in
 devPkgs.mkShell {
   buildInputs = [
     # The Node the GUI image is built with, and the Python the shipped closures
     # run on; the venv is made from this interpreter (UV_PYTHON below).
     pkgs.nodejs_24
     pkgs.python313
+    just
   ]
   ++ (with devPkgs; [
 
@@ -39,7 +61,6 @@ devPkgs.mkShell {
     # flock, which serializes .envrc's `npm ci` across direnv reloads that race
     util-linux
     kubectl
-    just
 
     # graphviz for generating graphs with dependency cruiser
     graphviz

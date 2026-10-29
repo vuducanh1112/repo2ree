@@ -34,6 +34,8 @@ result-*
 # Test artifacts — all coverage reports/data and observability traces live
 # under one gitignored root (see the test-artifacts layout in docs/engineering/how-to/testing.md).
 /test-artifacts/
+# What ran and how long it took (scripts/just_timing.py), kept apart from what tests leave.
+/logs/
 
 # Coverage data files, in case a run lands one at the repo root rather than the
 # configured data_file path.

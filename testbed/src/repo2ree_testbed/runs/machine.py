@@ -17,7 +17,7 @@ that its SSH user may use.
 A run pushes HEAD to the clone, checks it out, brings the container up, and starts the
 recipe in it detached, as the machine's one job: its command, log, and exit code are in
 test-artifacts/machine-job/ of the clone. It shows the log until the job ends, then
-brings back what the job wrote: every file under test-artifacts/ and .receipts/ changed
+brings back what the job wrote: every file under test-artifacts/, .receipts/, and logs/ changed
 since it started, which in a clone that runs one job at a time is exactly its results,
 whatever the recipe (runs, recordings, coverage, and receipts, which bind a tree rather
 than a machine), but for runtime tarballs and archives, which stay there. Ctrl-C or a
@@ -230,8 +230,12 @@ class Machine:
         self._require(self.runner.call(self._in_clone(up)), "bring the dev container up")
 
     def _start(self, command: str, argv: Sequence[str]) -> None:
-        """Start ``argv`` in the dev container as the machine's job, detached from this connection."""
-        body = f"{shlex.join([*SHELL, *argv])} > {JOB}/log 2>&1; echo $? > {JOB}/exit"
+        """Start ``argv`` in the dev container as the machine's job, detached from this connection.
+
+        The job knows the machine by name, so what it records (logs/just/) says where it ran.
+        """
+        machine = f"REPO2REE_MACHINE={shlex.quote(self.name)}"
+        body = f"{machine} {shlex.join([*SHELL, *argv])} > {JOB}/log 2>&1; echo $? > {JOB}/exit"
         script = " && ".join(
             [
                 f"rm -rf {JOB} && mkdir -p {JOB}",
@@ -284,9 +288,9 @@ class Machine:
 
     @property
     def _written(self) -> str:
-        """Lists the files the job wrote: under test-artifacts/ and .receipts/, changed since it started."""
+        """Lists the files the job wrote: under test-artifacts/, .receipts/, and logs/, changed since it started."""
         tests = " ".join(["-type f", f"-cnewer {JOB}/command", f"! -path '{JOB}/*'", *SLIM_EXCLUDES])
-        return f"{{ find test-artifacts .receipts {tests} 2>/dev/null || true; }}"
+        return f"{{ find test-artifacts .receipts logs {tests} 2>/dev/null || true; }}"
 
     @property
     def _compose(self) -> str:

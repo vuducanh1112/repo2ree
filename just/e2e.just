@@ -58,7 +58,7 @@ test-e2e-review mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_P
 # A machine is where a recipe runs: `local`, or one in .config/machines.toml (untracked), whose
 # dev container runs one job at a time from a clone of HEAD and hands back what the job wrote.
 
-# Run a recipe on a machine (e.g. `just on vm test-backend-integration`) and bring back what it wrote under test-artifacts/ and .receipts/.
+# Run a recipe on a machine (e.g. `just on vm test-backend-integration`) and bring back what it wrote under test-artifacts/, .receipts/, and logs/.
 [group('Machines')]
 on machine +recipe:
     python -m repo2ree_testbed machine run {{ quote(machine) }} {{ recipe }}

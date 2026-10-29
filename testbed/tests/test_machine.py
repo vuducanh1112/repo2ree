@@ -155,11 +155,12 @@ def test_a_remote_gate_runs_detached_in_the_dev_container_of_a_clone_and_brings_
     assert runner.ran("checkout") == [f"cd repo2ree && git checkout -q --detach --force {REVISION} && git clean -fdq"]
     # The dev container comes up from the clone as it does here, once its user is set up.
     assert runner.ran(" up -d") == [f"cd repo2ree && {COMPOSE} up -d --build --quiet-pull --wait"]
-    # The job runs detached in it, in the clone's .envrc, its log and exit code in the clone.
+    # The job runs detached in it, in the clone's .envrc and knowing the machine's name, its log
+    # and exit code in the clone.
     [start] = runner.ran("exec -d")
     assert f"printf '%s\\n' {shlex.quote(GATE)} > test-artifacts/machine-job/command" in start
     body = (
-        "direnv exec . just assurance-gate 4 > test-artifacts/machine-job/log 2>&1;"
+        "REPO2REE_MACHINE=vm direnv exec . just assurance-gate 4 > test-artifacts/machine-job/log 2>&1;"
         " echo $? > test-artifacts/machine-job/exit"
     )
     assert f"{COMPOSE} exec -d --user nixuser dev bash -lc {shlex.quote(body)}" in start
@@ -167,11 +168,11 @@ def test_a_remote_gate_runs_detached_in_the_dev_container_of_a_clone_and_brings_
     [show] = runner.ran(SHOW)
     assert show.startswith("cd repo2ree || exit 1; tail -n +1 -f test-artifacts/machine-job/log & shown=$!")
     assert "while ! test -f test-artifacts/machine-job/exit && " in show
-    # What it wrote since it started, its run and the receipt alike, comes straight from the clone on the
+    # What it wrote since it started, its run, the receipt, and its timings alike, comes straight from the clone on the
     # host into this checkout, leaving runtime tarballs and archives there; then the job is fetched.
     [(fetch, unpack)] = runner.piped
     assert _on_host(fetch) == (
-        "cd repo2ree && { find test-artifacts .receipts -type f -cnewer test-artifacts/machine-job/command"
+        "cd repo2ree && { find test-artifacts .receipts logs -type f -cnewer test-artifacts/machine-job/command"
         " ! -path 'test-artifacts/machine-job/*' ! -name '*.tar' ! -name '*.tar.gz' ! -name '*.tgz'"
         " ! -path '*/artifacts/archives/*' 2>/dev/null || true; } | tar -cf - -T -"
     )

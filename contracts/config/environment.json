@@ -518,6 +518,13 @@
         "type": "string"
       }
     },
+    "JUST_TIME": {
+      "kind": "external",
+      "owner": "just",
+      "schema": {
+        "type": "string"
+      }
+    },
     "LOG_LEVEL": {
       "kind": "runtime",
       "owner": "protocol",
@@ -778,6 +785,20 @@
     "REPO2REE_GUI_IMAGE": {
       "kind": "deployment",
       "owner": "compose",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REPO2REE_JUST_TIMING": {
+      "kind": "internal",
+      "owner": "just-timing",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REPO2REE_MACHINE": {
+      "kind": "internal",
+      "owner": "testbed",
       "schema": {
         "type": "string"
       }
