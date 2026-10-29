@@ -98,6 +98,7 @@ summary = "Shared by the services."
 "core/" = "The REE: layout, operations, capture into Git, audit"
 "protocol/" = "Wire types and the behaviour journal writer shared by every process"
 "ree/" = "The REE document format: models, canonical digest, reserved paths"
+"authoring/" = "Script lint, target resolution, and templates, shared by the bench and the API"
 
 [product.groups.gui]
 summary = "The web app."
