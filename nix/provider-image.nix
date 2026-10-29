@@ -32,33 +32,15 @@
 }:
 
 let
-  cleanPySrc = import ./clean-py-src.nix { inherit pkgs; };
   workbench = import ./workbench.nix { inherit pkgs buildRevision; };
-
-  # The provider's own interpreter: the workbench listener's runtime — the two
-  # speak the same repo2ree_protocol frames, so they need the same imports —
-  # plus anyio for the provider's connection pump. Extending that list rather
-  # than restating it keeps a fix to either process from missing the other; see
-  # the comments on it in ./workbench-service.nix. Note that the *injected*
-  # listener runs on the interpreter from that module, not on this one.
-  #
-  # The provider deliberately reaches only repo2ree_protocol and
-  # repo2ree_docker — it provisions, it never executes — so core's import
-  # graph stays out of this image.
-  providerPython = pkgs.python313.withPackages (
-    ps: workbench.service.pythonPackages ps ++ [ ps.anyio ]
-  );
-
-  srcs = {
-    inherit (workbench.executor.srcs) ree protocol;
-    dockerSupport = cleanPySrc ../docker-support/src;
-    provider = cleanPySrc ../provider/src;
+  provider = import ./python-closure.nix {
+    inherit pkgs;
+    name = "provider";
   };
 
   providerBin = pkgs.writeShellScriptBin "repo2ree-provider-docker" ''
     export REPO2REE_BUILD_REVISION=${pkgs.lib.escapeShellArg buildRevision}
-    export PYTHONPATH="${srcs.ree}:${srcs.protocol}:${srcs.dockerSupport}:${srcs.provider}''${PYTHONPATH:+:$PYTHONPATH}"
-    exec ${providerPython}/bin/python -m repo2ree_provider_docker "$@"
+    exec ${provider.env}/bin/python -m repo2ree_provider_docker "$@"
   '';
 
 in
@@ -85,6 +67,8 @@ pkgs.dockerTools.buildLayeredImage {
     # TLS roots for the outbound wss:// control link.
     pkgs.cacert
   ];
+
+  extraCommands = "test -s ${provider.imports}";
 
   config = {
     Labels = {
