@@ -80,15 +80,19 @@ def test_an_expectation_excuses_exactly_the_rules_it_names(tmp_path: Path) -> No
 def test_certification_needs_every_tier_from_a_clean_head_and_no_unused_expectation(tmp_path: Path) -> None:
     system = write_run(tmp_path / "system", "e2e-system", {"t": ("passed", checker_report(a="passed"))})
     gui = write_run(tmp_path / "gui", "e2e-gui-instant", {"g": ("passed", checker_report(a="passed"))})
+    faults = write_run(tmp_path / "faults", "e2e-faults", {"f": ("passed", checker_report(a="passed"))})
     stale = write_run(tmp_path / "stale", "e2e-gui-instant", {"g": ("passed", None)}, revision=HEAD + "-dirty")
-    judgements = gate.judge_runs([system, gui], {})
+    judgements = gate.judge_runs([system, gui, faults], {})
 
-    assert gate.certification_problems([system, gui], judgements, {}) == []
-    assert gate.certification_problems([system], judgements, {}) == ["no e2e-gui-instant run among the runs certified"]
-    assert gate.certification_problems([system, stale], judgements, {}) == [
+    assert gate.certification_problems([system, gui, faults], judgements, {}) == []
+    assert gate.certification_problems([system, faults], judgements, {}) == [
+        "no e2e-gui-instant run among the runs certified"
+    ]
+    assert gate.certification_problems([system, gui], judgements, {}) == ["no e2e-faults run among the runs certified"]
+    assert gate.certification_problems([system, stale, faults], judgements, {}) == [
         f"stale ran on {HEAD}-dirty, not HEAD {HEAD}"
     ]
-    assert gate.certification_problems([system, gui], judgements, expectation("gone")) == [
+    assert gate.certification_problems([system, gui, faults], judgements, expectation("gone")) == [
         "expected-verdicts.toml excuses gone, which no run ran"
     ]
 

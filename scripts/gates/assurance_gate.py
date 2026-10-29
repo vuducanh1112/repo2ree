@@ -34,7 +34,7 @@ ROOT = Path(__file__).resolve().parents[2]
 EXPECTATIONS = ROOT / "assurance/checker/expected-verdicts.toml"
 RECEIPT = receipts.path(ROOT, "assurance-gate")
 # The per-test tiers whose evidence a receipt stands on.
-TIERS = ("e2e-system", "e2e-gui-instant")
+TIERS = ("e2e-system", "e2e-gui-instant", "e2e-faults")
 ACCEPTED_OUTCOMES = {"passed", "xfailed"}
 NON_PASSING = ("violated", "inconclusive")
 

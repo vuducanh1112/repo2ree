@@ -99,6 +99,7 @@ summary = "End-to-end tests the assurance gate runs, each on a stack of its own.
 [product.groups.scenarios.paths]
 "api/tests/system/" = "The system tier: the API driven without a browser"
 "gui/tests/e2e-instant/" = "The instant GUI tier"
+"api/tests/faults/" = "The faults tier: faults injected by real means, at the step a test chooses"
 
 [product.groups.examples]
 summary = "Inputs shared by the suites, demos, and manual tries."

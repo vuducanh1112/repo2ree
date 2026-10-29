@@ -23,6 +23,10 @@ _e2e-gui-instant jobs mode docker_mode:
 _e2e-system jobs locations mode docker_mode:
     python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/api/tests/system/run_system_suite.py") }} --tier e2e-system --per-test --jobs {{ quote(jobs) }} --mode {{ quote(mode) }} --compute-locations {{ quote(locations) }} --docker-mode {{ quote(docker_mode) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
 
+[private]
+_e2e-faults jobs:
+    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/api/tests/faults/run_fault_suite.py") }} --tier e2e-faults --per-test --jobs {{ quote(jobs) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
+
 # A test is accepted when it passed and its behaviour passed, or it is excused by
 # assurance/checker/expected-verdicts.toml (as every xfail must be) and left exactly those rules open.
 # The suite together must reach every specified rule, edge, and message the same file does not excuse.
@@ -31,16 +35,19 @@ _e2e-system jobs locations mode docker_mode:
 assurance-gate jobs=E2E_JOBS: _require-clean-tree build-e2e-bundles
     #!/usr/bin/env bash
     set -euo pipefail
-    # Both tiers at once, each in a run directory of its own; each run is read from its tier's own output.
+    # Every tier at once, each in a run directory of its own; each run is read from its tier's own output.
     logs=$(mktemp -d)
     just _e2e-system {{ quote(jobs) }} 1 {{ quote(DEFAULT_E2E_COMPUTE_LOCATION_MODE) }} {{ quote(DEFAULT_E2E_PROVIDER_DOCKER_MODE) }} > "$logs/system.log" 2>&1 &
     system=$!
     just _e2e-gui-instant {{ quote(jobs) }} {{ quote(DEFAULT_E2E_COMPUTE_LOCATION_MODE) }} {{ quote(DEFAULT_E2E_PROVIDER_DOCKER_MODE) }} > "$logs/gui.log" 2>&1 &
     gui=$!
+    just _e2e-faults {{ quote(jobs) }} > "$logs/faults.log" 2>&1 &
+    faults=$!
     wait "$system" || true
     wait "$gui" || true
+    wait "$faults" || true
     runs=()
-    for tier in system gui; do
+    for tier in system gui faults; do
         grep -E '^>> (\[|passed|failed|xfailed|skipped|per-test run)' "$logs/$tier.log" || true
         run=$(sed -n 's/^>> per-test run: //p' "$logs/$tier.log" | tail -n 1)
         [[ -n "$run" ]] || { tail -n 60 "$logs/$tier.log" >&2; echo ">> the $tier tier left no per-test run (log: $logs/$tier.log)" >&2; exit 1; }

@@ -13,6 +13,19 @@ inconclusive = ["api-success-is-recorded", "dispatch-success-is-captured"]
 reason = """The bench is killed with the REE inside it, so no archive of its history exists: \
 the attempts its dispatches report cannot be witnessed."""
 
+[[expected]]
+test = "api/tests/faults/test_faults.py::test_a_partitioned_workbench_fails_its_build"
+inconclusive = ["api-success-is-recorded", "dispatch-success-is-captured"]
+reason = """The healed bench does not dial back in within the 30 s the test waits to download \
+the REE, so no archive of its history exists and its attempts cannot be witnessed. Why it \
+stays away is not known yet."""
+
+[[expected]]
+test = "api/tests/faults/test_faults.py::test_an_api_crash_fails_the_build_in_flight_and_the_ree_builds_after"
+inconclusive = ["api-success-is-recorded", "dispatch-success-is-captured"]
+reason = """A product bug, the test's own xfail: workbench enrollments live only in the API's \
+memory, so the restarted API refuses the bench and no archive of the REE's history exists."""
+
 # Specified rules, edges, and messages no gated test reaches, and why.
 #
 # Each test's verdicts pass a rule nothing triggered, so only the suite as a whole
@@ -26,9 +39,7 @@ the attempts its dispatches report cannot be witnessed."""
 items = [
   "Allocation assigned -> failed",
   "Allocation draining -> failed",
-  "Allocation failed -> draining",
   "Allocation provisioning -> draining",
-  "Allocation provisioning -> failed",
   "Allocation provisioning -> lost",
   "Allocation ready -> draining",
   "Allocation ready -> failed",
@@ -37,11 +48,10 @@ items = [
   "Allocation requested -> failed",
   "Allocation requested -> waiting_for_workbench",
   "Allocation waiting_for_workbench -> draining",
-  "Allocation waiting_for_workbench -> failed",
   "Allocation waiting_for_workbench -> lost",
 ]
-reason = """Needs a provider that fails, loses, or drains a bench before it is assigned; \
-the stacks' provider never does."""
+reason = """Needs a provider that fails, loses, or drains a bench at a step the faults tier \
+does not stage: it fails provisioning only while the provider provisions or waits for the bench."""
 
 [[unreached]]
 items = [
@@ -52,9 +62,9 @@ items = [
 reason = """Needs Git capture inside the REE to fail; no gated tier injects that fault."""
 
 [[unreached]]
-items = ["dispatch: error", "dispatch: abandoned"]
-reason = """Needs a workbench that answers a dispatched action with an error or never \
-answers it."""
+items = ["dispatch: error"]
+reason = """Needs a workbench that answers a dispatched action with a transport or protocol \
+error; no tier makes one."""
 
 [[unreached]]
 items = [
