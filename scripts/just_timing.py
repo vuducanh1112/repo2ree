@@ -10,8 +10,6 @@ and hands over to the real one at once: its lines reach the outermost one throug
 share, so every recipe is recorded once. Commands that run no recipe (--list, --dump, ...) are
 not recorded.
 
-``just_timing.py --prune [--dry-run]`` removes what is older than KEPT_DAYS without running anything.
-
 Recording never changes what just does: the exit code is just's own, and a record that cannot be
 written is warned about once and given up.
 """
@@ -108,8 +106,11 @@ class Recorder:
     def __init__(self, path: Path) -> None:
         self.path = path
         self.stream: IO[str] | None = None
+        self.failed = False
 
     def write(self, record: dict[str, Any]) -> None:
+        if self.failed:
+            return
         try:
             if self.stream is None:
                 self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -118,8 +119,8 @@ class Recorder:
             self.stream.flush()
         except OSError as error:
             sys.stderr.write(f">> just timings are not recorded ({error})\n")
+            self.failed = True
             self.close()
-            self.write = lambda record: None  # type: ignore[method-assign]
 
     def close(self) -> None:
         if self.stream is not None:
@@ -127,13 +128,12 @@ class Recorder:
             self.stream = None
 
 
-def prune(logs: Path, today: datetime, *, dry_run: bool = False) -> list[Path]:
+def prune(logs: Path, today: datetime) -> None:
     """Remove the day directories older than KEPT_DAYS; whatever cannot be removed stays."""
     oldest = (today - timedelta(days=KEPT_DAYS)).date().isoformat()
-    stale = sorted(day for day in logs.glob("????-??-??") if day.name < oldest)
-    for day in stale if not dry_run else ():
-        shutil.rmtree(day, ignore_errors=True)
-    return stale
+    for day in logs.glob("????-??-??"):
+        if day.name < oldest:
+            shutil.rmtree(day, ignore_errors=True)
 
 
 class Chunked(Protocol):
@@ -170,7 +170,6 @@ def record(real: str, args: list[str]) -> int:
     path = LOGS / started.date().isoformat() / f"{started:%H%M%S}-{uuid4().hex[:8]}.jsonl"
     prune(LOGS, started)
     recorder = Recorder(path)
-    status = git("status", "--porcelain")
     recorder.write(
         {
             "schema": SCHEMA,
@@ -179,7 +178,6 @@ def record(real: str, args: list[str]) -> int:
             "argv": args,
             "cwd": os.path.relpath(Path.cwd(), ROOT),
             "revision": git("rev-parse", "HEAD"),
-            "dirty": bool(status) if status is not None else None,
             "machine": os.environ.get("REPO2REE_MACHINE") or "local",
             "host": socket.gethostname(),
             "cpus": os.cpu_count(),
@@ -218,16 +216,6 @@ def run_plainly(real: str, args: list[str]) -> NoReturn:
 
 
 def main(argv: list[str]) -> int:
-    if argv[1:2] == ["--prune"]:
-        # The registry's way in (scripts/generated.toml), as for every owner of a generated tree.
-        dry_run = "--dry-run" in argv[2:]
-        stale = prune(LOGS, datetime.now(UTC), dry_run=dry_run)
-        for day in stale:
-            print(f"   {'would remove' if dry_run else 'removing'} {day.name}")
-        print(
-            f">> pruned just timings: {len(stale)} days {'would go' if dry_run else 'removed'}, {KEPT_DAYS} days kept"
-        )
-        return 0
     real, args = argv[1], argv[2:]
     if os.environ.get(MARKER) or not runs_recipes(args):
         run_plainly(real, args)

@@ -11,7 +11,6 @@ COMMANDS = {
     "evidence": "repo2ree_repoview.diagrams.evidence",
     "recipes": "repo2ree_repoview.diagrams.recipes",
     "stamp": "repo2ree_repoview.stamp",
-    "prune": "repo2ree_repoview.overview.prune",
 }
 
 

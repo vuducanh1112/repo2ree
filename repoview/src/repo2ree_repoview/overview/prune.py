@@ -1,12 +1,11 @@
 """Keep reports/overview/ bounded: the newest overviews, and the one `latest` points to.
 
-Only a folder whose manifest says the overview wrote it is ever removed; anything else in
-reports/overview/ is left alone. Every overview build prunes after it writes.
+Every overview build prunes after it writes. Only a folder whose manifest says the overview
+wrote it is ever removed; anything else in reports/overview/ is left alone.
 """
 
 from __future__ import annotations
 
-import argparse
 import shutil
 from pathlib import Path
 
@@ -36,12 +35,3 @@ def prune(overviews: Path, *, keep: int = KEEP, dry_run: bool = False) -> list[P
             shutil.rmtree(path, ignore_errors=True)
     print(f">> pruned overviews: {len(stale)} {'would go' if dry_run else 'removed'}, the newest {keep} kept")
     return stale
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--keep", type=int, default=KEEP, help=f"overviews kept besides `latest` (default {KEEP})")
-    parser.add_argument("--dry-run", action="store_true", help="list what would be removed and remove nothing")
-    args = parser.parse_args()
-    prune(OVERVIEWS, keep=args.keep, dry_run=args.dry_run)
-    return 0

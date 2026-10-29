@@ -1,7 +1,8 @@
 # Every tree a checkout generates and git ignores, who writes it, and how it stays bounded.
 #
-# Each owner keeps what it writes bounded itself: a `prune` command (which takes --dry-run) when
-# it accumulates, or nothing when every run rewrites it in place. `just prune` runs the commands,
+# Each owner keeps what it writes bounded itself, best as it writes: every run rewrites it, or the
+# producer drops the oldest when it adds. Only an owner with output no write of its own bounds names
+# a `prune` command (which takes --dry-run). `just prune` runs those commands,
 # then lists whatever lies under a root that no entry claims: output that nothing writes any
 # more, from a renamed or retired producer, which no owner will ever clean. A new generated tree
 # needs an entry here, or `just prune` reports it as unclaimed.
@@ -30,15 +31,19 @@ claims = [
 ]
 
 [owners.testbed-rewritten]
-summary = "Coverage, service logs, fixtures, Hypothesis' examples, and a machine job's state"
+summary = "Coverage, service logs, fixtures, and a machine job's state"
 retention = "Rewritten by each run"
 claims = [
   "test-artifacts/python/coverage",
   "test-artifacts/python/services",
   "test-artifacts/fixtures",
-  "test-artifacts/cache",
   "test-artifacts/machine-job",
 ]
+
+[owners.hypothesis]
+summary = "Hypothesis' example database, pinned to the repository (conftest.py)"
+retention = "Unbounded but slow: it keeps the examples that once failed; removing it loses only those"
+claims = ["test-artifacts/cache"]
 
 [owners.inspect-dossier]
 summary = "Verdicts, traces, and logs of a dossier collected from a deployment"
@@ -52,8 +57,7 @@ claims = ["test-artifacts/node", "test-artifacts/browser"]
 
 [owners.overview]
 summary = "Repository overviews, one per commit"
-retention = "The newest three, and the one `latest` points to"
-prune = ["python", "-m", "repo2ree_repoview", "prune"]
+retention = "The newest three, and the one `latest` points to, kept by every build"
 claims = ["reports/overview"]
 
 [owners.repoview-rewritten]
@@ -63,8 +67,7 @@ claims = ["reports/diagrams", "reports/metrics"]
 
 [owners.just-timing]
 summary = "How long each recipe of every `just` run took"
-retention = "Thirty days"
-prune = ["python", "scripts/just_timing.py", "--prune"]
+retention = "Thirty days, kept by every recorded run"
 claims = ["logs/just"]
 
 [owners.builds]

@@ -221,7 +221,9 @@ class Machine:
             raise SystemExit(f">> {self.name} is this checkout; run `just prune` here")
         if self.job().state == "running":
             raise SystemExit(f">> {self.name} is running a job; let it end, or: just machine cancel {self.name}")
-        clone = shlex.join([*SHELL, "bash", "-c", "just stack-clean; just clean-workbenches; just prune"])
+        # A clone of a commit before `just prune` existed skips it rather than failing on it.
+        steps = "just stack-clean; just clean-workbenches; just --show prune >/dev/null 2>&1 && just prune"
+        clone = shlex.join([*SHELL, "bash", "-c", steps])
         script = "; ".join(
             [
                 "df -h / | tail -n 1",
