@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-from pydantic import BaseModel, ConfigDict
-
 from repo2ree_core.analysis.repository.profiler import AnalysisError, analyze_repo
 from repo2ree_core.digests import digest_file, digest_tree
 from repo2ree_core.domain.ree.envelope import receipt_envelope
@@ -19,24 +15,13 @@ from repo2ree_core.persistence.repository import load_ree, save_ree
 from repo2ree_core.time_utils import OperationTimer
 from repo2ree_protocol.command import EvaluateDependencyScoreArgs
 from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.outputs import EvaluateOutputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.primitives import ArtifactPath
 from repo2ree_ree.receipt import EvaluateReproducibilityReceipt
 
 _ANALYZER_VERSION = "1"
 _REPORT_PATH = ArtifactPath(f"{ARTIFACTS_DIRNAME}/{REPRODUCIBILITY_REPORT_FILENAME}")
-
-
-class EvaluateOutputs(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    dependency_count: int
-    manifest_count: int
-    dependency_level: int
-    environment_level: int
-    machine_level: int
-    detected_dependencies: str
-    report: dict[str, Any]
 
 
 def handle_evaluate_dependency_score(

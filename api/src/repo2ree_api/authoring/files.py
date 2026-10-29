@@ -16,6 +16,7 @@ from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import dispatch_or_fail, ree_command_span, require_handle
 from repo2ree_protocol import DeleteFileCommand, WriteFileCommand
 from repo2ree_protocol.command import DeleteFileArgs, WriteFileArgs
+from repo2ree_protocol.outputs import NoOutputs
 from repo2ree_ree.digest import digest_bytes
 
 files_router = APIRouter(tags=["rees", "files"])
@@ -63,16 +64,11 @@ def _write_file(ree_id: str, payload: WorkspaceFileContentPayload) -> FileMutati
         cmd = WriteFileCommand(
             args=WriteFileArgs(path=payload.path, content=payload.content, expected_etag=payload.if_match or "")
         )
-        wb_result = dispatch_or_fail(handle, cmd, "write-file", "Workbench write_file failed")
-        # Command metadata remains in the run result and traces; this route
-        # publishes only its declared file-mutation response fields.
-        result = {key: value for key, value in wb_result.outputs.items() if key in FileMutationResponse.model_fields}
+        NoOutputs.model_validate(dispatch_or_fail(handle, cmd, "write-file", "Workbench write_file failed").outputs)
         # The workbench validates a later ``if_match`` against
         # ``workspace_content_etag``, which digests the stored bytes the same
         # way — one shared helper so the compare cannot drift across processes.
-        result["etag"] = digest_bytes(payload.content.encode())
-        result.setdefault("updated_at", None)
-        return FileMutationResponse.model_validate(result)
+        return FileMutationResponse(etag=digest_bytes(payload.content.encode()))
 
 
 @files_router.delete(
@@ -90,7 +86,7 @@ def delete_workspace_file_content_route(
         handle = require_handle(ree_id)
         with ree_command_span("delete-file", ree_id):
             cmd = DeleteFileCommand(args=DeleteFileArgs(path=path, expected_etag=if_match or ""))
-            wb_result = dispatch_or_fail(handle, cmd, "delete-file", "Workbench delete_file failed")
-            return FileMutationResponse.model_validate(
-                {key: value for key, value in wb_result.outputs.items() if key in FileMutationResponse.model_fields}
+            NoOutputs.model_validate(
+                dispatch_or_fail(handle, cmd, "delete-file", "Workbench delete_file failed").outputs
             )
+            return FileMutationResponse()

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Never, NoReturn
 from uuid import uuid4
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.operations.capture import capture_command
@@ -61,6 +61,7 @@ from repo2ree_protocol.command import (
 )
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.outputs import validate_outputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.tracing import (
     CommandSpanAttrs,
@@ -116,6 +117,12 @@ def run_command(
             execute=lambda: _run_unless_canceled(cmd, log=log, run_id=resolved_run_id, cancel=cancel),
         )
         result = result.model_copy(update={"context": context})
+        try:
+            validate_outputs(cmd.operation, result)
+        except ValidationError as exc:
+            result = ActionResult.failed(
+                "internal", f"{cmd.operation} returned outputs the protocol does not declare: {exc}"
+            ).model_copy(update={"context": context})
         record_exit_code(span, result.exit_code)
         record_span_facts(span, result.outputs, namespace="output")
         record_failure(span, result.failure)

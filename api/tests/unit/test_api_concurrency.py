@@ -119,9 +119,7 @@ def test_file_write_returns_new_content_etag(
     monkeypatch.setattr(
         workbench_manager,
         "dispatch_action",
-        lambda handle, command, run_id, log: ActionResult(
-            status="succeeded", exit_code=0, outputs={"history": {"capture_status": "captured"}}
-        ),
+        lambda handle, command, run_id, log: ActionResult(status="succeeded", exit_code=0),
     )
 
     resp = client.put(
@@ -134,18 +132,11 @@ def test_file_write_returns_new_content_etag(
     assert "history" not in resp.json()
 
 
-def test_file_delete_projects_response_with_capture_metadata(client, online_ree, monkeypatch):
-    monkeypatch.setattr(
-        workbench_manager,
-        "dispatch_action",
-        lambda *args: ActionResult(
-            status="succeeded", outputs={"deleted_at": "now", "history": {"capture_status": "captured"}}
-        ),
-    )
+def test_file_delete_answers_the_mutation_and_nothing_else(client, online_ree, monkeypatch):
+    monkeypatch.setattr(workbench_manager, "dispatch_action", lambda *args: ActionResult(status="succeeded"))
     resp = client.delete(f"/api/v1/rees/{online_ree.ree_id}/files/content", params={"path": "build.sh"})
     assert resp.status_code == 200
-    assert resp.json()["deleted_at"] == "now"
-    assert "history" not in resp.json()
+    assert resp.json() == {"updated_at": None, "deleted_at": None, "etag": None}
 
 
 def test_workbench_command_failure_maps_to_400_with_operation_code(

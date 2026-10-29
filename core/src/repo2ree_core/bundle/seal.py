@@ -9,8 +9,6 @@ from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
-
 from repo2ree_core.bundle.repository_files import prepare_reproducer
 from repo2ree_core.digests import digest_file
 from repo2ree_core.domain.ree.audit import audit
@@ -23,18 +21,10 @@ from repo2ree_core.persistence.layout import (
 )
 from repo2ree_core.persistence.lfs import store_payload
 from repo2ree_core.persistence.repository import save_ree
+from repo2ree_protocol.outputs import SealOutputs
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.model import BundleContents, BundleEntry, CapturePolicy, Ree
 from repo2ree_ree.primitives import Digest, ReePath, UtcInstant
-
-
-class SealOutputs(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    sealed_at: UtcInstant
-    ree_digest: Digest
-    input_bytes: int
-    entry_count: int
 
 
 @dataclass(frozen=True)

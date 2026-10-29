@@ -6,8 +6,6 @@ import shutil
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
-
 from repo2ree_core.digests import digest_file, digest_output_paths
 from repo2ree_core.domain.ree.audit import audit
 from repo2ree_core.domain.ree.envelope import receipt_envelope
@@ -21,6 +19,7 @@ from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError, load_ree, save_ree
 from repo2ree_core.time_utils import OperationTimer, OperationTiming, format_duration_ms
 from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.outputs import RunnableOperationOutputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.digest import Digest
 from repo2ree_ree.model import ExperimentDefinition, Ree, TestActivationDefinition
@@ -29,17 +28,6 @@ from repo2ree_ree.receipt import RunExperimentReceipt, TestActivationReceipt
 
 RunnableKind = Literal["test_activation", "run_experiment"]
 RunnableDefinition = TestActivationDefinition | ExperimentDefinition
-
-
-class RunnableOperationOutputs(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    subject_name: str
-    exit_code: int | None = None
-    verify_exit_code: int | None = None
-    verdict: Literal["pass", "fail"] | None = None
-    runtime_path: str = ""
-    receipt: TestActivationReceipt | RunExperimentReceipt | None = None
 
 
 def handle_runnable_operation(

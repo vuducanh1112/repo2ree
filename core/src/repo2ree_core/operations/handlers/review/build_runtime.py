@@ -16,8 +16,6 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict
-
 from repo2ree_core.analysis.sbom.cyclonedx import ObservedPackage, parse_cyclonedx
 from repo2ree_core.analysis.sbom.scan import is_runtime_archive, scan_runtime_archive
 from repo2ree_core.digests import digest_file_if_exists
@@ -45,20 +43,13 @@ from repo2ree_core.reproduction.materialize_workspace import build_materialize_s
 from repo2ree_core.time_utils import OperationTimer
 from repo2ree_protocol.command import ReviewBasis, ReviewBuildRuntimeArgs
 from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.outputs import ReviewBuildRuntimeOutputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.model import Ree
 from repo2ree_ree.primitives import ReePath, WorkspacePath
 from repo2ree_ree.receipt import BuildRuntimeReceipt, GenerateSbomReceipt
 from repo2ree_ree.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_ree.review import BuildComparison, EvidenceBasis, ReviewBuildRuntimeReceipt
-
-
-class ReviewBuildRuntimeOutputs(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    review_id: str
-    receipt: ReviewBuildRuntimeReceipt
-    comparison: BuildComparison
 
 
 def handle_review_build_runtime(

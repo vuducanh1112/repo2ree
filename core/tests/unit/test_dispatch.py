@@ -72,6 +72,7 @@ def test_routes_to_its_handler(
     command_cls: type[BaseModel], handler_name: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     called: list[str] = []
+    monkeypatch.setattr(rc, "validate_outputs", lambda *_args: None)
 
     def recorder(name: str) -> Any:
         def _handler(*_args: object, **_kwargs: object) -> ActionResult:

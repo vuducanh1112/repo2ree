@@ -97,7 +97,4 @@ def _suggest(ree_id: str, payload: GenerateScriptCandidatesPayload) -> Inference
             )
         )
         result = dispatch_or_fail(handle, cmd, "generate-script-candidates", "Workbench inference failed")
-        # Capture metadata belongs to operation history, outside the report contract.
-        return InferenceReport.model_validate(
-            {key: value for key, value in result.outputs.items() if key in InferenceReport.model_fields}
-        )
+        return InferenceReport.model_validate(result.outputs)

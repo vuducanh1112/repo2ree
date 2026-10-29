@@ -6,12 +6,12 @@ from repo2ree_core.domain.ree.transitions import ReePreconditionError, replace_d
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.operations.handlers.author.definition_authoring import patched_definition
-from repo2ree_core.operations.handlers.author.file_concurrency import VersionConflictOutputs
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError, load_ree, save_ree
 from repo2ree_protocol.command import PatchReeDefinitionArgs
 from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.outputs import PatchReeDefinitionOutputs, VersionConflictOutputs
 from repo2ree_protocol.result import ActionResult
 
 
@@ -57,5 +57,7 @@ def handle_patch_ree_definition(
     return ActionResult(
         status="succeeded",
         exit_code=0,
-        outputs={"revision": str(revision_of(updated)), "definition": definition.model_dump(mode="json")},
+        outputs=PatchReeDefinitionOutputs(revision=str(revision_of(updated)), definition=definition).model_dump(
+            mode="json"
+        ),
     )

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict
-
 from repo2ree_core.digests import digest_file_if_exists
 from repo2ree_core.domain.ree.audit import audit
 from repo2ree_core.domain.ree.envelope import receipt_envelope
@@ -16,18 +14,11 @@ from repo2ree_core.persistence.repository import ReeRevisionConflictError, load_
 from repo2ree_core.time_utils import OperationTimer, format_duration_ms
 from repo2ree_core.workspace.drift import check_workspace_drift
 from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.outputs import BuildRuntimeFailureOutputs, BuildRuntimeOutputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.model import BuildRuntimeDefinition, Ree
 from repo2ree_ree.primitives import WorkspacePath
 from repo2ree_ree.receipt import BuildRuntimeReceipt
-
-
-class BuildRuntimeOutputs(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    build_runtime_script_path: str
-    container_exit_code: int
-    receipt: BuildRuntimeReceipt
 
 
 def handle_build_runtime(
@@ -75,10 +66,10 @@ def handle_build_runtime(
             "execution",
             "build_runtime failed",
             exit_code=outcome.exit_code or 1,
-            outputs={
-                "build_runtime_script_path": str(build.build_runtime_script_path),
-                "container_exit_code": outcome.exit_code,
-            },
+            outputs=BuildRuntimeFailureOutputs(
+                build_runtime_script_path=str(build.build_runtime_script_path),
+                container_exit_code=outcome.exit_code,
+            ).model_dump(mode="json"),
         )
 
     produced_runtime_digest = digest_file_if_exists(layout.workspace / str(runtime_path))

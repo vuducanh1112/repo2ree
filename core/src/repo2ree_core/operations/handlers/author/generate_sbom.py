@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict
-
 from repo2ree_core.analysis.sbom.scan import SBOM_FORMAT, is_runtime_archive, scan_runtime_archive
 from repo2ree_core.digests import digest_file
 from repo2ree_core.domain.ree.audit import audit
@@ -17,19 +15,11 @@ from repo2ree_core.persistence.layout import SBOM_ARTIFACT_PATH, ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError, load_ree, save_ree
 from repo2ree_core.time_utils import OperationTimer, format_duration_ms
 from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.outputs import GenerateSbomOutputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.model import Ree
 from repo2ree_ree.primitives import ArtifactPath, WorkspacePath
 from repo2ree_ree.receipt import GenerateSbomReceipt
-
-
-class GenerateSbomOutputs(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    sbom_relative_path: str
-    runtime_relative_path: str
-    format: str
-    receipt: GenerateSbomReceipt
 
 
 def handle_generate_sbom(

@@ -20,9 +20,7 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict
-
-from repo2ree_core.bundle.restore import BundleLoadOutputs, restore_ree_bundle
+from repo2ree_core.bundle.restore import restore_ree_bundle
 from repo2ree_core.execution.process import CancelCheck, format_command, run_streaming_process
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import safe_extract_zip, write_atomic
@@ -32,14 +30,8 @@ from repo2ree_core.reproduction.materialize_workspace import build_materialize_s
 from repo2ree_core.workspace.materialization import record_materialization
 from repo2ree_protocol.command import LoadReeBundleArgs
 from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.outputs import LoadReeBundleOutputs
 from repo2ree_protocol.result import ActionResult
-
-
-class LoadReeBundleOutputs(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    archive_name: str
-    loaded: BundleLoadOutputs
 
 
 def handle_load_ree_bundle(

@@ -6,8 +6,6 @@ import json
 import shutil
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict
-
 from repo2ree_core.bundle.repository_restore import restore_repository
 from repo2ree_core.digests import digest_file
 from repo2ree_core.persistence.directory import ReeDirectory
@@ -21,20 +19,9 @@ from repo2ree_core.persistence.layout import (
     ReeLayout,
 )
 from repo2ree_core.persistence.ree_manifest import parse_ree_manifest
+from repo2ree_protocol.outputs import BundleLoadOutputs
 from repo2ree_ree.model import BundleContents, BundleEntry
 from repo2ree_ree.primitives import ReePath
-
-
-class BundleLoadOutputs(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    name: str
-    imported_heads: dict[str, str] = {}
-    sealed: bool
-    ree_digest: str | None
-    source_restored: bool
-    overlay_files: int
-    artifact_files: int
 
 
 def _actual_inventory(bundle_root: Path) -> BundleContents:

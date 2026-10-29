@@ -13,8 +13,6 @@ fail the step. See ``docs/engineering/explanation/review-evidence.md``.
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict
-
 from repo2ree_core.digests import digest_file_if_exists
 from repo2ree_core.evidence.review.records import review_receipt_envelope
 from repo2ree_core.evidence.review.store import write_review_activation_evidence
@@ -27,19 +25,12 @@ from repo2ree_core.operations.steps.review import (
 )
 from repo2ree_protocol.command import ReviewActivationTestArgs
 from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.outputs import ReviewActivationTestOutputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.digest import Digest
 from repo2ree_ree.model import ReeDefinition
 from repo2ree_ree.primitives import ReePath, WorkspacePath
 from repo2ree_ree.review import ActivationOutcome, ActivationVerdict, ReviewActivationReceipt, ReviewRecord
-
-
-class ReviewActivationTestOutputs(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    review_id: str
-    receipt: ReviewActivationReceipt
-    outcome: ActivationOutcome
 
 
 def _select(definition: ReeDefinition) -> tuple[RunnableSpec, str]:

@@ -7,8 +7,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
-
 from repo2ree_core.domain.ree.envelope import receipt_envelope
 from repo2ree_core.domain.ree.transitions import (
     ReePreconditionError,
@@ -30,25 +28,12 @@ from repo2ree_core.source_repo import directory_swhid, resolved_git_head
 from repo2ree_core.time_utils import OperationTimer, format_duration_ms
 from repo2ree_protocol.command import AcquireSourceArgs
 from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.outputs import AcquireSourceOutputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.digest import Digest
 from repo2ree_ree.model import Ree, SourceDefinition
 from repo2ree_ree.primitives import Swhid
 from repo2ree_ree.receipt import AcquireSourceReceipt
-
-
-class AcquireSourceOutputs(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    mode: Literal["download", "upload"]
-    origin_url: str | None = None
-    source_type: str
-    requested_ref: str | None = None
-    resolved_revision: str | None = None
-    upload_token: str | None = None
-    archive_name: str | None = None
-    snapshot_digest: str
-    swhid: str | None = None
 
 
 @dataclass(frozen=True)

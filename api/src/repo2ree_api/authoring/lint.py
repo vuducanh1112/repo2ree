@@ -70,10 +70,7 @@ def _lint(ree_id: str, payload: LintScriptsPayload) -> LintScriptsResponse:
             )
         )
         result = dispatch_or_fail(handle, cmd, "lint-scripts", "Workbench lint failed")
-        # Capture metadata belongs to operation history, outside the report contract.
-        return LintScriptsResponse.model_validate(
-            {key: value for key, value in result.outputs.items() if key in LintScriptsResponse.model_fields}
-        )
+        return LintScriptsResponse.model_validate(result.outputs)
 
 
 @lint_router.post(

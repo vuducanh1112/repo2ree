@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-from pydantic import BaseModel, ConfigDict
-
 from repo2ree_core.analysis.hbom.generate_hbom import generate_hbom
 from repo2ree_core.domain.ree.envelope import receipt_envelope
 from repo2ree_core.domain.ree.transitions import ReePreconditionError, commit_receipt, revision_of
@@ -16,16 +12,9 @@ from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError, load_ree, save_ree
 from repo2ree_core.time_utils import OperationTimer
 from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.outputs import GenerateHbomOutputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.receipt import ObserveHardwareReceipt
-
-
-class GenerateHbomOutputs(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    observation: dict[str, Any]
-    component_counts: dict[str, int]
-    receipt: ObserveHardwareReceipt
 
 
 def handle_generate_hbom(

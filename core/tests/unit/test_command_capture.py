@@ -345,6 +345,7 @@ def test_every_command_records_inputs_and_selected_scope(ree, monkeypatch, comma
         return ActionResult(status="succeeded")
 
     monkeypatch.setattr(dispatch, "_dispatch", execute)
+    monkeypatch.setattr(dispatch, "validate_outputs", lambda *_args: None)
     result = dispatch.run_command(cmd, log=lambda *args: None)
     assert result.status == "succeeded"
     assert operation_record(ree, result)["command"] == cmd.model_dump(mode="json")

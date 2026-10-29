@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import json
-from typing import Any
-
-from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.analysis.sbom.crosscheck import cross_check
 from repo2ree_core.analysis.sbom.cyclonedx import parse_cyclonedx
@@ -20,19 +17,11 @@ from repo2ree_core.persistence.layout import REPRODUCIBILITY_REPORT_FILENAME, SB
 from repo2ree_core.persistence.repository import ReeRevisionConflictError, load_ree, save_ree
 from repo2ree_core.time_utils import OperationTimer, utc_now
 from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.outputs import CrossCheckSbomOutputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.model import Ree
 from repo2ree_ree.receipt import CrossCheckSbomReceipt
 from repo2ree_ree.reproducibility import ReproducibilityReport
-
-
-class CrossCheckSbomOutputs(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    report_relative_path: str
-    sbom_relative_path: str
-    cross_check: dict[str, Any]
-    receipt: CrossCheckSbomReceipt
 
 
 def handle_cross_check_sbom(

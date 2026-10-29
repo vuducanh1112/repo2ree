@@ -12,8 +12,6 @@ completed. See ``docs/engineering/explanation/review-evidence.md``.
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict
-
 from repo2ree_core.digests import digest_file_if_exists, digest_output_paths
 from repo2ree_core.evidence.review.comparison import compare_experiment_results
 from repo2ree_core.evidence.review.records import review_receipt_envelope, with_experiment
@@ -29,21 +27,13 @@ from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import ReviewRunExperimentArgs
 from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.outputs import ReviewRunExperimentOutputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.digest import Digest
 from repo2ree_ree.model import ReeDefinition
 from repo2ree_ree.primitives import ReePath, WorkspacePath
 from repo2ree_ree.receipt import RunExperimentReceipt
 from repo2ree_ree.review import EvidenceBasis, ExperimentComparison, ReviewExperimentReceipt, ReviewRecord
-
-
-class ReviewRunExperimentOutputs(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    review_id: str
-    experiment_name: str
-    receipt: ReviewExperimentReceipt
-    comparison: ExperimentComparison
 
 
 def _admit(record: ReviewRecord, _certified: CertifiedRuntime) -> str | None:

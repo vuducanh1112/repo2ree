@@ -17,8 +17,6 @@ from __future__ import annotations
 
 import shutil
 
-from pydantic import BaseModel, ConfigDict
-
 from repo2ree_core.evidence.review.comparison import compare_source_swhids
 from repo2ree_core.evidence.review.records import new_review_record, resolve_basis, review_receipt_envelope
 from repo2ree_core.evidence.review.store import write_review_source_evidence
@@ -31,19 +29,12 @@ from repo2ree_core.source_repo.swhid import directory_swhid
 from repo2ree_core.time_utils import OperationTimer
 from repo2ree_protocol.command import ReviewAcquireSourceArgs, ReviewBasis
 from repo2ree_protocol.log import LogSink
+from repo2ree_protocol.outputs import ReviewAcquireSourceOutputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.instant import format_utc_instant
 from repo2ree_ree.model import Ree, SourceDefinition
 from repo2ree_ree.primitives import Swhid
-from repo2ree_ree.review import EvidenceBasis, ReviewAcquireSourceReceipt, SourceComparison
-
-
-class ReviewAcquireSourceOutputs(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    review_id: str
-    receipt: ReviewAcquireSourceReceipt
-    comparison: SourceComparison
+from repo2ree_ree.review import EvidenceBasis, ReviewAcquireSourceReceipt
 
 
 def handle_review_acquire_source(
