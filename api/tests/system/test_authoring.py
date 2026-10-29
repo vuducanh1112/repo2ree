@@ -52,6 +52,42 @@ def test_sealed_ree_is_frozen(api: Api, new_ree: Callable[..., str]) -> None:
     assert api.ree(ree_id)["seal"]["ree_digest"] == digest
 
 
+def test_a_bundle_never_loads_into_a_sealed_ree(api: Api, new_ree: Callable[..., str]) -> None:
+    ree_id = new_ree()
+    api.author(ree_id)
+    draft = api.keep_archive(ree_id, "draft")
+    assert draft is not None
+    assert api.seal(ree_id)["status"] == "succeeded"
+    digest = api.ree(ree_id)["seal"]["ree_digest"]
+
+    # The REE's own draft, loaded back over its seal: either step may refuse it.
+    data = draft.read_bytes()
+    upload = api.request(
+        "POST",
+        f"/api/v1/rees/{ree_id}/ree:upload-init",
+        json={"file_name": "ree.zip", "size": len(data), "content_type": "application/zip"},
+        expect=None,
+    )
+    if upload.status_code == 200:
+        api.request("PUT", upload.json()["upload_url"], content=data)
+        loading = api.request(
+            "POST",
+            f"/api/v1/rees/{ree_id}/ree:load",
+            json={"upload_token": upload.json()["upload_token"], "archive_name": "ree.zip"},
+            expect=None,
+        )
+        if loading.status_code == 200:
+            assert api.wait(ree_id, loading.json())["status"] == "failed"
+        else:
+            assert loading.status_code >= 400
+    else:
+        assert upload.status_code >= 400
+
+    seal = api.ree(ree_id).get("seal")
+    assert seal is not None, "the load unsealed the REE"
+    assert seal["ree_digest"] == digest, seal
+
+
 def test_stale_evidence_blocks_seal_until_rebuilt(api: Api, new_ree: Callable[..., str]) -> None:
     ree_id = new_ree()
     api.author(ree_id)

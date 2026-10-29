@@ -42,6 +42,18 @@ def slow_build(api: Api, ree_id: str) -> dict[str, Any]:
     return run
 
 
+def disconnected(api: Api, ree_id: str, timeout: float = 60.0) -> bool:
+    """Whether the REE's workbench leaves the control plane's list of connected ones within ``timeout``."""
+    allocations = api.get("/api/v1/allocations")["allocations"]
+    workbench = next(item for item in allocations if item["request"]["ree_id"] == ree_id)["workbench_id"]
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if workbench not in {item["workbench_id"] for item in api.get("/api/v1/workbenches")["workbenches"]}:
+            return True
+        time.sleep(1)
+    return False
+
+
 def answers_again(api: Api, ree_id: str, timeout: float = 60.0) -> bool:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -100,6 +112,20 @@ def test_a_partitioned_workbench_fails_its_build(api: Api, new_ree: Callable[...
     finally:
         fault(HealWorkbench(allocation_id=bench))
     assert settled["status"] == "failed"
+
+
+def test_a_command_for_a_bench_that_lost_its_connection_is_refused(api: Api, new_ree: Callable[..., str]) -> None:
+    ree_id = new_ree()
+    bench = allocation(api, ree_id)
+
+    # The control plane must already know the bench is gone, so the command is sent to no one.
+    fault(PartitionWorkbench(allocation_id=bench))
+    try:
+        assert disconnected(api, ree_id), "the control plane still lists the partitioned workbench"
+        answer = api.write(ree_id, "notes.txt", "written while the bench is away\n", expect=None)
+    finally:
+        fault(HealWorkbench(allocation_id=bench))
+    assert answer.status_code == 503, answer.text
 
 
 def test_provisioning_an_image_nobody_has_fails(api: Api) -> None:
