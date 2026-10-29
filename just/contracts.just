@@ -1,6 +1,6 @@
 # Regenerate the committed API contract and its GUI TypeScript view.
 [group('Contracts')]
-generate-contracts: generate-api-types generate-ree-schema
+generate-contracts: generate-api-types generate-ree-schema generate-protocol-schema
 
 # Regenerate the committed OpenAPI contract.
 [group('Contracts')]
@@ -16,3 +16,8 @@ generate-api-types: generate-openapi
 [group('Contracts')]
 generate-ree-schema:
     python -m repo2ree_ree.export_schema
+
+# Regenerate the committed protocol schema: messages, per-operation outputs, and queries.
+[group('Contracts')]
+generate-protocol-schema:
+    python -m repo2ree_protocol.export_schema
