@@ -27,13 +27,12 @@ build-gui-image:
 
 # Build and load the backend image.
 [group('Images')]
-build-backend-image:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    echo "Building backend image..."
-    revision=$(scripts/build-revision.sh)
-    docker build --provenance=false --build-arg REPO2REE_BUILD_REVISION="$revision" -f docker/demo/backend.Dockerfile -t repo2ree-backend:local .
-    echo "Done: repo2ree-backend:local"
+build-backend-image: _stage-nix-sources
+    @echo "Building backend image..."
+    nix build .#backend-image
+    @echo "Loading into docker..."
+    docker load < result
+    @echo "Done: repo2ree-backend:local"
 
 # Build and load the self-contained Docker provider image.
 [group('Images')]
@@ -76,8 +75,10 @@ archive-gui-image archive_dir=DEFAULT_IMAGE_ARCHIVE_DIR: (_create-image-archive-
 
 # Save the loaded backend image as an archive.
 [group('Image archives')]
-archive-backend-image archive_dir=DEFAULT_IMAGE_ARCHIVE_DIR: build-backend-image (_create-image-archive-dir archive_dir)
-    docker save repo2ree-backend:local -o {{ quote(archive_dir + "/repo2ree-backend-local.tar") }}
+archive-backend-image archive_dir=DEFAULT_IMAGE_ARCHIVE_DIR: _stage-nix-sources (_create-image-archive-dir archive_dir)
+    @echo "Building backend image archive..."
+    nix build .#backend-image
+    cp -fL result {{ quote(archive_dir + "/repo2ree-backend-local.tar") }}
     @printf 'Wrote %s\n' {{ quote(archive_dir + "/repo2ree-backend-local.tar") }}
 
 # Build a loadable provider image archive.

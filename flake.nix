@@ -91,6 +91,7 @@
           # store volume — not a bench you can run: it carries no toolchain.
           workbench-image = import ./nix/workbench-image.nix { inherit pkgs buildRevision; };
           provider-image = import ./nix/provider-image.nix { inherit pkgs buildRevision; };
+          backend-image = import ./nix/backend-image.nix { inherit pkgs buildRevision; };
           gui-image = guiImage;
           api-env = apiClosure.env;
           provider-env = providerClosure.env;
