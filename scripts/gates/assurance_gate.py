@@ -11,7 +11,8 @@ composes the two into a gate:
 - ``certify RUN...`` judges, then also requires every tier in ``TIERS`` to be among
   the runs, each built from HEAD with a clean tree that is still HEAD, and every
   expectation to have been used, and the tests together to reach every specified
-  rule, edge, and message the file does not declare unreached. It writes the
+  rule, edge, and message the file does not declare unreached. A run limited to
+  selected tests (``--select``) certifies nothing. It writes the
   ``.receipts/assurance-gate.json`` receipt, binding the verdicts to HEAD's tree.
 - ``verify`` requires that receipt to cover HEAD's tree, and the tree to be clean.
 """
@@ -232,6 +233,8 @@ def certification_problems(
         built = run.get("build_revision") or "an unknown build"
         if built != revision:
             problems.append(f"{root.name} ran on {built}, not HEAD {revision}")
+        if selected := run.get("selected"):
+            problems.append(f"{root.name} ran only the tests matching {' or '.join(selected)}, not its whole tier")
         if run["tier"] in tiers:
             problems.append(f"{root.name} and {tiers[run['tier']].name} are both {run['tier']} runs")
         tiers[run["tier"]] = root

@@ -8,7 +8,13 @@ from scripts.gates import assurance_gate as gate
 HEAD = "a" * 40
 
 
-def write_run(root: Path, tier: str, tests: dict[str, tuple[str, dict[str, Any] | None]], revision: str = HEAD) -> Path:
+def write_run(
+    root: Path,
+    tier: str,
+    tests: dict[str, tuple[str, dict[str, Any] | None]],
+    revision: str = HEAD,
+    selected: tuple[str, ...] = (),
+) -> Path:
     """A per-test run: each test's outcome, and the checker report its dossier yields (None: no dossier)."""
     root.mkdir(parents=True)
     entries = []
@@ -17,7 +23,8 @@ def write_run(root: Path, tier: str, tests: dict[str, tuple[str, dict[str, Any] 
         (root / directory).mkdir(parents=True)
         (root / directory / "report.json").write_text(json.dumps(report))
         entries.append({"name": name, "outcome": outcome, "directory": directory})
-    (root / "run.json").write_text(json.dumps({"tier": tier, "build_revision": revision, "tests": entries}))
+    record = {"tier": tier, "build_revision": revision, "selected": list(selected), "tests": entries}
+    (root / "run.json").write_text(json.dumps(record))
     return root
 
 
@@ -91,6 +98,10 @@ def test_certification_needs_every_tier_from_a_clean_head_and_no_unused_expectat
     assert gate.certification_problems([system, gui], judgements, {}) == ["no e2e-faults run among the runs certified"]
     assert gate.certification_problems([system, stale, faults], judgements, {}) == [
         f"stale ran on {HEAD}-dirty, not HEAD {HEAD}"
+    ]
+    partial = write_run(tmp_path / "partial", "e2e-faults", {"f": ("passed", None)}, selected=("test_x",))
+    assert gate.certification_problems([system, gui, partial], judgements, {}) == [
+        "partial ran only the tests matching test_x, not its whole tier"
     ]
     assert gate.certification_problems([system, gui, faults], judgements, expectation("gone")) == [
         "expected-verdicts.toml excuses gone, which no run ran"
