@@ -31,15 +31,15 @@ test-e2e-gui locations=DEFAULT_E2E_LOCATIONS mode=DEFAULT_E2E_COMPUTE_LOCATION_M
 
 # Run the instant GUI tier: each test on a fresh stack, into test-artifacts/e2e/<run>/tests/<test>/.
 [group('E2E tests')]
-test-e2e-gui-instant mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE jobs=E2E_JOBS *select: build-e2e-bundles (_e2e-gui-instant jobs mode docker_mode select)
+test-e2e-gui-instant mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE jobs=E2E_JOBS *select: build-e2e-bundles (_e2e-gui-instant jobs mode docker_mode "tests" select)
 
 # Run the system tier, no browser: each test on a fresh stack, into test-artifacts/e2e/<run>/tests/<test>/.
 [group('E2E tests')]
-test-e2e-system locations="1" mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE jobs=E2E_JOBS *select: build-e2e-bundles (_e2e-system jobs locations mode docker_mode select)
+test-e2e-system locations="1" mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE jobs=E2E_JOBS *select: build-e2e-bundles (_e2e-system jobs locations mode docker_mode "tests" select)
 
 # Run the fault suite, a tier of the assurance gate: each test on a fresh stack that injects the faults it asks for.
 [group('E2E tests')]
-test-e2e-faults jobs=E2E_JOBS *select: build-e2e-bundles (_e2e-faults jobs select)
+test-e2e-faults jobs=E2E_JOBS *select: build-e2e-bundles (_e2e-faults jobs "tests" select)
 
 # Run seeded random author sessions with faults between steps, not gated: each seed on a fresh stack, replayable.
 [group('E2E tests')]
