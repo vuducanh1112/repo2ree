@@ -41,7 +41,7 @@ def materialize(history: GitHistory, head: str, source_git: Path) -> tuple[LfsPo
     objects: dict[str, LfsPointer] = {}
     manifest = history.git("show", f"{head}:ree.json", check=False)
     ree = parse_ree_manifest(json.loads(manifest.stdout)) if manifest.returncode == 0 else None
-    required = set(ree.subject.capture.lfs_paths) if ree and ree.subject.capture else set()
+    required = set(ree.subject.capture.lfs_paths) if ree else set()
     seen: set[str] = set()
     entries = history.git("ls-tree", "-rz", head).stdout.split(b"\0")
     for entry in entries:
@@ -118,7 +118,7 @@ def verify_inventory(root: Path) -> None:
     if not manifest.is_file():
         return  # An uninitialized review may contain evidence but no subject yet.
     ree = parse_ree_manifest(json.loads(manifest.read_text()))
-    if ree.seal is None or ree.subject.capture is None:
+    if ree.seal is None:
         return
     actual: set[str] = set()
     for directory, dirs, files in root.walk():

@@ -10,6 +10,7 @@ from typing import Any, Union, get_args, get_origin
 import pytest
 from pydantic import BaseModel, ValidationError
 
+from repo2ree_ree.canonical import canonical_json
 from repo2ree_ree.digest import digest_bytes, digest_json
 from repo2ree_ree.instant import format_utc_instant, parse_utc_instant
 from repo2ree_ree.model import Ree, canonical_subject_digest
@@ -18,7 +19,6 @@ CONTRACT = Path(__file__).resolve().parents[2] / "contracts" / "ree"
 SEALED = sorted((CONTRACT / "sealed").glob("*.json"))
 CANONICAL = json.loads((CONTRACT / "canonical.json").read_text(encoding="utf-8"))
 INVALID = json.loads((CONTRACT / "invalid.json").read_text(encoding="utf-8"))
-EXTENSIONS = frozenset(json.loads((CONTRACT / "v1-extensions.json").read_text(encoding="utf-8"))["extensions"])
 
 
 def load(path: Path) -> Any:
@@ -67,7 +67,7 @@ def missing(annotation: Any, value: Any, path: str) -> list[str]:
             child = f"{path}.{name}" if path else name
             if name in value:
                 found += missing(field.annotation, value[name], child)
-            elif child not in EXTENSIONS:
+            else:
                 found.append(child)
         return found
     origin = get_origin(annotation)
@@ -95,14 +95,21 @@ def test_a_sealed_document_keeps_its_seal(path: Path) -> None:
     assert ree.model_dump(mode="json", exclude_none=True) == document
 
 
-def test_the_maximal_document_sets_every_field_but_the_extensions() -> None:
+def test_the_maximal_document_sets_every_field() -> None:
     assert missing(Ree, load(CONTRACT / "sealed" / "maximal.json"), "") == []
 
 
 @pytest.mark.parametrize("vector", CANONICAL["digests"], ids=lambda vector: vector["name"])
 def test_canonical_json_digest(vector: dict[str, Any]) -> None:
+    assert canonical_json(vector["value"]) == vector["canonical"].encode("utf-8")
     assert digest_json(vector["value"]) == vector["digest"]
     assert digest_bytes(vector["canonical"].encode("utf-8")) == vector["digest"]
+
+
+@pytest.mark.parametrize("vector", CANONICAL["refused"], ids=lambda vector: vector["name"])
+def test_canonical_json_refuses_what_it_cannot_represent_exactly(vector: dict[str, Any]) -> None:
+    with pytest.raises((TypeError, ValueError)):
+        canonical_json(vector["value"])
 
 
 @pytest.mark.parametrize("vector", CANONICAL["instants"], ids=lambda vector: vector["name"])

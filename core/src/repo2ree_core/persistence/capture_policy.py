@@ -53,7 +53,7 @@ def capture_plan(layout: ReeLayout, ree: Ree | None) -> CapturePlan:
                 paths.update(directory / name for name in files)
     if isinstance(layout, ReviewLayout) and layout.runs.exists():
         paths.update(layout.runs.glob("*.receipt.json"))
-    lfs = {str(path) for path in ree.subject.capture.lfs_paths} if ree and ree.subject.capture else set()
+    lfs = {str(path) for path in ree.subject.capture.lfs_paths} if ree else set()
     paths.update(layout.root / path for path in lfs)
     entries = []
     for path in sorted(paths):
@@ -72,12 +72,11 @@ def _raise(error: OSError) -> None:
 
 def write_capture_controls(layout: ReeLayout, ree: Ree) -> None:
     """Ordinary Git commands share the recorder's optional-payload policy."""
-    paths = ree.subject.capture.lfs_paths if ree.subject.capture else ()
+    paths = ree.subject.capture.lfs_paths
     attributes = "".join(f"{json.dumps('/' + str(path))} filter=lfs diff=lfs merge=lfs -text\n" for path in paths)
     write_atomic(layout.root / ".gitattributes", attributes.encode())
     ignored = (
-        "/upstream/\n/workspace/\n/results/\n/artifacts/*\n/snapshot.tar.gz\n"
-        "/sealed.zip\n/upload-staging/\n/reviews/\n/runs/\n"
+        "/upstream/\n/workspace/\n/results/\n/artifacts/*\n/snapshot.tar.gz\n/upload-staging/\n/reviews/\n/runs/\n"
     )
     for path in (layout.sbom, layout.reproducibility_report):
         ignored += f"!/{path.relative_to(layout.root).as_posix()}\n"

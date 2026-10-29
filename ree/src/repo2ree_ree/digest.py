@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import hashlib
-import json
 from typing import Any, Self
 
 from pydantic import GetCoreSchemaHandler
 from pydantic_core import core_schema
+
+from repo2ree_ree.canonical import canonical_json
 
 DIGEST_PREFIX = "sha256:"
 
@@ -52,11 +53,5 @@ def digest_bytes(data: bytes) -> Digest:
 
 
 def digest_json(payload: Any) -> Digest:
-    """Digest of a JSON-serializable value under a canonical serialization.
-
-    Canonical form: sorted keys, no whitespace. Used for spec-shaped inputs
-    that live inside the manifest rather than as files (e.g. an experiment's
-    expected-output spec).
-    """
-    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
-    return digest_bytes(canonical.encode("utf-8"))
+    """Digest of a JSON value in its RFC 8785 canonical form (:mod:`repo2ree_ree.canonical`)."""
+    return digest_bytes(canonical_json(payload))

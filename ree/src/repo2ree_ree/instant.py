@@ -13,7 +13,7 @@ def _normalize_utc(value: datetime) -> datetime:
 
 
 def _serialize_utc(value: datetime) -> str:
-    return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
+    return value.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
 
 UtcInstant = Annotated[
@@ -40,4 +40,4 @@ def iso_utc(moment: datetime) -> str:
     computed from a future instant (an expiry, say) cannot end up shaped
     differently from one taken now.
     """
-    return moment.astimezone(UTC).isoformat().replace("+00:00", "Z")
+    return moment.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")

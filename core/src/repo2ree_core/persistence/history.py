@@ -139,7 +139,7 @@ class GitHistory:
             self.git("read-tree", "--empty", index=index)
             entries = bytearray()
             ree = ReeDirectory(self.layout).read_ree() if self.layout.manifest.is_file() else None
-            lfs_paths = set(ree.subject.capture.lfs_paths) if ree and ree.subject.capture else set()
+            lfs_paths = set(ree.subject.capture.lfs_paths) if ree else set()
             for path in self._selected_files():
                 relative = path.relative_to(self.layout.root)
                 info = path.lstat()
@@ -201,7 +201,7 @@ class GitHistory:
             target.chmod(0o755 if mode == "100755" else 0o644)
             if relative == manifest:
                 ree = ReeDirectory(self.layout).read_ree()
-                lfs_paths = set(ree.subject.capture.lfs_paths) if ree.subject.capture else set()
+                lfs_paths = set(ree.subject.capture.lfs_paths)
 
     def _commit(
         self,

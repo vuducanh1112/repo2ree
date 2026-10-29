@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import tempfile
 import zipfile
 from collections.abc import Iterator
@@ -26,19 +25,6 @@ def materialized_ree_download(layout: ReeLayout) -> Iterator[Path]:
         raise FileNotFoundError(f"REE not found at {layout.root}")
     with tempfile.TemporaryDirectory() as temporary:
         staging = Path(temporary)
-        with open_history(layout):
-            legacy = ReeDirectory(layout).read_ree()
-            if legacy.seal is not None and legacy.subject.capture is None:
-                # Preserve old seal bytes without inventing a new signed inventory.
-                if not layout.sealed_archive.is_file():
-                    raise HistoryCaptureError("Legacy sealed archive is unavailable")
-                destination = staging / "legacy.zip"
-                shutil.copyfile(layout.sealed_archive, destination)
-            else:
-                destination = None
-        if destination is not None:
-            yield destination
-            return
         root = staging / "export"
         exports: list[ScopeExport] = []
         with ExitStack() as locks:
@@ -49,7 +35,7 @@ def materialized_ree_download(layout: ReeLayout) -> Iterator[Path]:
                     raise HistoryCaptureError("REE has no captured snapshot to export")
                 if scope == layout:
                     ree = ReeDirectory(layout).read_ree()
-                    if ree.seal and ree.subject.capture:
+                    if ree.seal:
                         # The seal commit is immutable even if review operations follow it.
                         found = None
                         for commit, record in history.completed_operations():

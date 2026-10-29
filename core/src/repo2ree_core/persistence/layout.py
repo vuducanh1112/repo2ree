@@ -8,7 +8,6 @@ path arithmetic, but performs no filesystem I/O. The imperative shell —
 Layout under ``<storage_root>/<ree_id>/`` (host) or ``/ree/`` (workbench):
 
     ree.json              the REE document (a bundle carries the same file)
-    sealed.zip            legacy portable archive cache (legacy imports only)
     snapshot.tar.gz       frozen upstream archive
     upload-staging/       staging area for in-flight source uploads
     upstream/             extracted snapshot, treated as read-only
@@ -46,7 +45,6 @@ from repo2ree_ree.paths import validate_path_segment, validate_relative_path
 # the manifest the workbench keeps — nothing is copied from one name to another.
 REE_MANIFEST_FILENAME = "ree.json"
 _MATERIALIZE_MARKER_FILENAME = ".workspace.materialized.json"
-_SEALED_ARCHIVE_FILENAME = "sealed.zip"
 _UPLOAD_STAGING_DIRNAME = "upload-staging"
 
 # Public names: shared with the bundle layout (run.sh calls the same scripts).
@@ -203,10 +201,6 @@ class ReeLayout:
     def manifest(self) -> Path:
         """This REE's manifest: what it declares, and what a bundle of it holds."""
         return self.root / REE_MANIFEST_FILENAME
-
-    @property
-    def sealed_archive(self) -> Path:
-        return self.root / _SEALED_ARCHIVE_FILENAME
 
     @property
     def materialize_marker(self) -> Path:

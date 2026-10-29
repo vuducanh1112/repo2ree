@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+
+ExtraValue = str | bool | int | None
 
 DeviceModel = Annotated[
     str,
@@ -36,7 +38,7 @@ class CPUDefinition(BaseModel):
         default="",
         description="Instruction set architecture, for example x86_64 or arm64.",
     )
-    extra_info: dict[str, Any] = Field(
+    extra_info: dict[str, ExtraValue] = Field(
         default_factory=dict,
         description="Additional CPU metadata that does not fit the structured CPU schema.",
     )
@@ -54,16 +56,16 @@ class GPUDefinition(BaseModel):
         ge=1,
         description="Number of identical GPUs installed in the machine.",
     )
-    memory_gb: float = Field(
+    memory_bytes: int = Field(
         default=0,
         ge=0,
-        description="On-board memory capacity of one GPU in gibibytes/gigabytes as recorded.",
+        description="On-board memory capacity of one GPU in bytes.",
     )
     interface: str = Field(
         default="",
         description="Host interconnect used by the GPU, for example PCIe 4.0 x16 or SXM4.",
     )
-    extra_info: dict[str, Any] = Field(
+    extra_info: dict[str, ExtraValue] = Field(
         default_factory=dict,
         description="Additional GPU metadata that does not fit the structured GPU schema.",
     )
@@ -81,10 +83,10 @@ class MemoryDefinition(BaseModel):
         ge=1,
         description="Number of identical memory modules installed in the machine.",
     )
-    capacity_gb: float = Field(
+    capacity_bytes: int = Field(
         default=0,
         ge=0,
-        description="Capacity of one memory module in gibibytes/gigabytes as recorded.",
+        description="Capacity of one memory module in bytes.",
     )
     memory_type: Literal["DDR3", "DDR4", "DDR5", "LPDDR4", "LPDDR5", "HBM2", "HBM2e", "HBM3"] = Field(
         default="DDR5", description="Memory technology used by the module."
@@ -94,7 +96,7 @@ class MemoryDefinition(BaseModel):
         ge=0,
         description="Rated transfer speed of one memory module in MT/s.",
     )
-    extra_info: dict[str, Any] = Field(
+    extra_info: dict[str, ExtraValue] = Field(
         default_factory=dict,
         description="Additional memory metadata that does not fit the structured memory schema.",
     )
@@ -112,10 +114,10 @@ class StorageDefinition(BaseModel):
         ge=1,
         description="Number of identical storage devices installed in the machine.",
     )
-    capacity_gb: float = Field(
+    capacity_bytes: int = Field(
         default=0,
         ge=0,
-        description="Capacity of one storage device in gibibytes/gigabytes as recorded.",
+        description="Capacity of one storage device in bytes.",
     )
     storage_type: Literal["HDD", "SSD", "NVMe", "eMMC", "SD"] = Field(
         default="NVMe", description="Storage technology used by the device."
@@ -124,7 +126,7 @@ class StorageDefinition(BaseModel):
         default="",
         description="Physical or logical interface, for example SATA III, U.2, or PCIe 5.0 x4.",
     )
-    extra_info: dict[str, Any] = Field(
+    extra_info: dict[str, ExtraValue] = Field(
         default_factory=dict,
         description="Additional storage metadata that does not fit the structured storage schema.",
     )
@@ -142,10 +144,10 @@ class NetworkDefinition(BaseModel):
         ge=1,
         description="Number of identical network interfaces installed in the machine.",
     )
-    bandwidth_gbps: float = Field(
+    bandwidth_mbps: int = Field(
         default=0,
         ge=0,
-        description="Nominal bandwidth of one interface in gigabits per second.",
+        description="Nominal bandwidth of one interface in megabits per second.",
     )
     network_type: Literal["ethernet", "infiniband", "wifi", "cellular"] = Field(
         default="ethernet",
@@ -155,7 +157,7 @@ class NetworkDefinition(BaseModel):
         default="",
         description="Connector or bus used by the interface, for example PCIe 4.0 x8 or M.2 E-key.",
     )
-    extra_info: dict[str, Any] = Field(
+    extra_info: dict[str, ExtraValue] = Field(
         default_factory=dict,
         description="Additional network metadata that does not fit the structured network schema.",
     )
@@ -169,7 +171,7 @@ class HBOM(BaseModel):
     memory: dict[DeviceModel, MemoryDefinition] = Field(default_factory=dict)
     storage: dict[DeviceModel, StorageDefinition] = Field(default_factory=dict)
     network: dict[DeviceModel, NetworkDefinition] = Field(default_factory=dict)
-    extra_info: dict[str, Any] = Field(
+    extra_info: dict[str, ExtraValue] = Field(
         default_factory=dict,
         description="Additional machine-level metadata that does not fit the structured HBOM schema.",
     )

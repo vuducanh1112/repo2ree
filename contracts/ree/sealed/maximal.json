@@ -1,6 +1,6 @@
 {
   "seal": {
-    "ree_digest": "sha256:7000f92ede5ed6f3084de94007f029c717c7d3f89009059b5ce5d55447dfae7c",
+    "ree_digest": "sha256:88bcfbbb293e4e674361b74148bd16d74fa00ea0626340b7359daaceee607386",
     "sealed_at": "2026-10-01T09:30:00.123456Z",
     "signature": {
       "algorithm": "ed25519",
@@ -75,11 +75,8 @@
             "architecture": "x86_64",
             "cores_per_cpu": 96,
             "extra_info": {
-              "base_clock_ghz": 2.4,
-              "flags": [
-                "avx512f",
-                "sha_ni"
-              ]
+              "base_clock_mhz": 2400,
+              "flags": "avx512f sha_ni"
             },
             "quantity": 2,
             "threads_per_core": 2,
@@ -87,9 +84,9 @@
           }
         },
         "extra_info": {
-          "rack_power_w": 1e+16,
-          "site": "G\u00f6ttingen",
-          "tolerance": 1e-07
+          "rack": "R-07",
+          "rack_power_w": 16000,
+          "site": "G\u00f6ttingen"
         },
         "gpus": {
           "NVIDIA H100": {
@@ -98,14 +95,14 @@
               "ecc": true
             },
             "interface": "SXM5",
-            "memory_gb": 79.6,
+            "memory_bytes": 85469036544,
             "quantity": 4,
             "vendor": "NVIDIA"
           }
         },
         "memory": {
           "Samsung M321R8GA0BB0": {
-            "capacity_gb": 64.0,
+            "capacity_bytes": 68719476736,
             "extra_info": {
               "rank": 2
             },
@@ -117,7 +114,7 @@
         },
         "network": {
           "Mellanox ConnectX-7": {
-            "bandwidth_gbps": 400.0,
+            "bandwidth_mbps": 400000,
             "extra_info": {
               "ports": 1
             },
@@ -129,9 +126,11 @@
         },
         "storage": {
           "Micron 7450": {
-            "capacity_gb": 3840.0,
+            "capacity_bytes": 3840755982336,
             "extra_info": {
-              "endurance_dwpd": 0.1
+              "endurance": "1 DWPD",
+              "hot_swap": false,
+              "slot": null
             },
             "interface": "PCIe 4.0 x4",
             "quantity": 2,
@@ -160,15 +159,15 @@
         "build_runtime_script_digest": "sha256:44575cf5b28512d75644bf54a517dcef304ff809fd511747621b4d64f19aac66",
         "build_runtime_script_path": "ree-scripts/build_script.sh",
         "duration_ms": 600000,
-        "finished_at": "2026-10-01T08:13:00Z",
+        "finished_at": "2026-10-01T08:13:00.000000Z",
         "operation": "build_runtime",
         "produced_runtime_digest": "sha256:d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
-        "recorded_at": "2026-10-01T08:13:00Z",
+        "recorded_at": "2026-10-01T08:13:00.000000Z",
         "run_id": "run-build",
         "runtime_path": "runtime",
         "schema_version": 1,
         "snapshot_digest": "sha256:16a0eeb0791b6c92451fd284dd9f599e0a7dbe7f6ebea6e2d2d06c7f74aec112",
-        "started_at": "2026-10-01T08:03:00Z",
+        "started_at": "2026-10-01T08:03:00.000000Z",
         "workspace_drift": {
           "changed_path_count": 1,
           "changed_paths": [
@@ -183,35 +182,35 @@
         "dependency_level": 3,
         "duration_ms": 2000,
         "environment_level": 2,
-        "finished_at": "2026-10-01T08:01:02Z",
+        "finished_at": "2026-10-01T08:01:02.000000Z",
         "machine_level": 1,
         "manifest_count": 2,
         "operation": "evaluate_reproducibility",
         "overlay_digest": "sha256:b4b33d2441645d4dd0a0694b5989a0a14a5cc22fe9865e6b7b7eae966e0de36c",
-        "recorded_at": "2026-10-01T08:01:02Z",
+        "recorded_at": "2026-10-01T08:01:02.000000Z",
         "report_digest": "sha256:845e91831319e89c4d656bdb80c278ac09a7230d61e5dfd2e1b1fbb436ac8917",
         "report_path": "artifacts/reproducibility-report.json",
         "run_id": "run-evaluate",
         "schema_version": 1,
         "snapshot_digest": "sha256:16a0eeb0791b6c92451fd284dd9f599e0a7dbe7f6ebea6e2d2d06c7f74aec112",
-        "started_at": "2026-10-01T08:01:00Z",
+        "started_at": "2026-10-01T08:01:00.000000Z",
         "strict": true
       },
       "experiments": {
         "train model": {
           "duration_ms": 3600000,
           "experiment_name": "train model",
-          "finished_at": "2026-10-01T09:17:00Z",
+          "finished_at": "2026-10-01T09:17:00.000000Z",
           "operation": "run_experiment",
           "produced_output_digest": "sha256:7b8c56be0a5f71be141f0cfaa9195e2ff8d1ef89e380560b579a82fd841429c1",
-          "recorded_at": "2026-10-01T09:17:00Z",
+          "recorded_at": "2026-10-01T09:17:00.000000Z",
           "run_exit_code": 0,
           "run_id": "run-experiment",
           "run_script_digest": "sha256:a530c507fd893f520b973f7410ca587b02d26954cba99c2857cb9446a9c900d3",
           "runtime_digest": "sha256:d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
           "schema_version": 1,
           "snapshot_digest": "sha256:16a0eeb0791b6c92451fd284dd9f599e0a7dbe7f6ebea6e2d2d06c7f74aec112",
-          "started_at": "2026-10-01T08:17:00Z",
+          "started_at": "2026-10-01T08:17:00.000000Z",
           "verify_exit_code": 0,
           "verify_script_digest": "sha256:9d857334e6e25dcf53029f53c78c2ace419ade06f7eea07957e2002931ea6b38"
         }
@@ -225,11 +224,8 @@
               "architecture": "x86_64",
               "cores_per_cpu": 96,
               "extra_info": {
-                "base_clock_ghz": 2.4,
-                "flags": [
-                  "avx512f",
-                  "sha_ni"
-                ]
+                "base_clock_mhz": 2400,
+                "flags": "avx512f sha_ni"
               },
               "quantity": 2,
               "threads_per_core": 2,
@@ -237,9 +233,9 @@
             }
           },
           "extra_info": {
-            "rack_power_w": 1e+16,
-            "site": "G\u00f6ttingen",
-            "tolerance": 1e-07
+            "rack": "R-07",
+            "rack_power_w": 16000,
+            "site": "G\u00f6ttingen"
           },
           "gpus": {
             "NVIDIA H100": {
@@ -248,14 +244,14 @@
                 "ecc": true
               },
               "interface": "SXM5",
-              "memory_gb": 79.6,
+              "memory_bytes": 85469036544,
               "quantity": 4,
               "vendor": "NVIDIA"
             }
           },
           "memory": {
             "Samsung M321R8GA0BB0": {
-              "capacity_gb": 64.0,
+              "capacity_bytes": 68719476736,
               "extra_info": {
                 "rank": 2
               },
@@ -267,7 +263,7 @@
           },
           "network": {
             "Mellanox ConnectX-7": {
-              "bandwidth_gbps": 400.0,
+              "bandwidth_mbps": 400000,
               "extra_info": {
                 "ports": 1
               },
@@ -279,9 +275,11 @@
           },
           "storage": {
             "Micron 7450": {
-              "capacity_gb": 3840.0,
+              "capacity_bytes": 3840755982336,
               "extra_info": {
-                "endurance_dwpd": 0.1
+                "endurance": "1 DWPD",
+                "hot_swap": false,
+                "slot": null
               },
               "interface": "PCIe 4.0 x4",
               "quantity": 2,
@@ -299,9 +297,9 @@
       },
       "sbom": {
         "duration_ms": 30000,
-        "finished_at": "2026-10-01T08:14:30Z",
+        "finished_at": "2026-10-01T08:14:30.000000Z",
         "operation": "generate_sbom",
-        "recorded_at": "2026-10-01T08:14:30Z",
+        "recorded_at": "2026-10-01T08:14:30.000000Z",
         "run_id": "run-sbom",
         "runtime_digest": "sha256:d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
         "runtime_path": "runtime",
@@ -309,22 +307,22 @@
         "sbom_format": "spdx-json",
         "sbom_path": "artifacts/sbom.spdx.json",
         "schema_version": 1,
-        "started_at": "2026-10-01T08:14:00Z",
+        "started_at": "2026-10-01T08:14:00.000000Z",
         "tool_version": "syft 1.20.0"
       },
       "sbom_cross_check": {
         "declared_direct_total": 10,
         "duration_ms": 1000,
-        "finished_at": "2026-10-01T08:15:01Z",
+        "finished_at": "2026-10-01T08:15:01.000000Z",
         "observed_matched": 9,
         "observed_total": 40,
         "operation": "cross_check_sbom",
-        "recorded_at": "2026-10-01T08:15:01Z",
+        "recorded_at": "2026-10-01T08:15:01.000000Z",
         "report_digest": "sha256:845e91831319e89c4d656bdb80c278ac09a7230d61e5dfd2e1b1fbb436ac8917",
         "run_id": "run-cross-check",
         "sbom_digest": "sha256:98f3ae1ef67113d8140d4f6cb8d2830070e21ea48f091be519659846c771a374",
         "schema_version": 1,
-        "started_at": "2026-10-01T08:15:00Z",
+        "started_at": "2026-10-01T08:15:00.000000Z",
         "undeclared_same_ecosystem": 3,
         "version_mismatches": 1
       },
@@ -341,13 +339,13 @@
         "schema_version": 1,
         "snapshot_digest": "sha256:16a0eeb0791b6c92451fd284dd9f599e0a7dbe7f6ebea6e2d2d06c7f74aec112",
         "source_type": "git",
-        "started_at": "2026-10-01T08:00:00Z"
+        "started_at": "2026-10-01T08:00:00.000000Z"
       },
       "test_activation": {
         "duration_ms": 5000,
-        "finished_at": "2026-10-01T08:16:05Z",
+        "finished_at": "2026-10-01T08:16:05.000000Z",
         "operation": "test_activation",
-        "recorded_at": "2026-10-01T08:16:05Z",
+        "recorded_at": "2026-10-01T08:16:05.000000Z",
         "run_exit_code": 0,
         "run_id": "run-activation",
         "run_script_digest": "sha256:b15526c9c0e75acea3d1f8055de216c85f0330baf8604e13d8c6ce90fb90d6d7",
@@ -355,7 +353,7 @@
         "runtime_path": "runtime",
         "schema_version": 1,
         "snapshot_digest": "sha256:16a0eeb0791b6c92451fd284dd9f599e0a7dbe7f6ebea6e2d2d06c7f74aec112",
-        "started_at": "2026-10-01T08:16:00Z",
+        "started_at": "2026-10-01T08:16:00.000000Z",
         "verify_exit_code": 0,
         "verify_script_digest": "sha256:52921383caa538702b3e3fc76ef400f3fe5129319aa02908a68bb718220c47d7"
       }

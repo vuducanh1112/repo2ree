@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from repo2ree_core.analysis.hbom.profiler_utils import round_gib
 from repo2ree_ree.hbom import MemoryDefinition
 
 
@@ -20,11 +19,10 @@ def profile_memory(meminfo_path: Path = Path("/proc/meminfo")) -> dict[str, Memo
                     mem_total_kib = 0
             break
 
-    capacity_gb = round_gib(mem_total_kib * 1024)
     return {
         "Installed Memory": MemoryDefinition(
             quantity=1,
-            capacity_gb=capacity_gb,
+            capacity_bytes=max(mem_total_kib, 0) * 1024,
             memory_type="DDR5",
             speed_mt_s=0,
             extra_info={

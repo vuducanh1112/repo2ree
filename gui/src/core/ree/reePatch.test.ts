@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ArtifactStatus } from "../artifact/ArtifactStatus";
 import type { EvaluationState } from "../evaluate/EvaluationState";
+import { normalizeHBOM } from "../hbom/HbomSummary";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 import { createEmptyReeSpec } from "./ReeSpec";
 import { toReePatchFromSlices } from "./reePatch";
@@ -133,5 +134,28 @@ describe("toReePatchFromSlices", () => {
       evaluationState: {},
     });
     expect(patch.build_runtime).toEqual({ runtime_path: null });
+  });
+
+  it("sends sizes in bytes and bandwidth in Mbps, as the sealed format records them", () => {
+    const empty = createEmptyReeSpec();
+    const hbom = normalizeHBOM({
+      gpus: { "GPU X": { memory_bytes: 24 * 1024 ** 3 } },
+      memory: { DIMM: { capacity_bytes: 32 * 1024 ** 3 } },
+      storage: { Disk: { capacity_bytes: 1024 ** 4 } },
+      network: { NIC: { bandwidth_mbps: 25_000 } },
+    });
+    const patch = toReePatchFromSlices({
+      reeSpec: { ...empty, hardwareDescription: hbom },
+      workspaceSourceState: {},
+      artifactStatus: {},
+      evaluationState: {},
+    });
+    expect(patch.hardware).toMatchObject({
+      gpus: { "GPU X": { memory_bytes: 24 * 1024 ** 3 } },
+      memory: { DIMM: { capacity_bytes: 32 * 1024 ** 3 } },
+      storage: { Disk: { capacity_bytes: 1024 ** 4 } },
+      network: { NIC: { bandwidth_mbps: 25_000 } },
+    });
+    expect(JSON.stringify(patch.hardware)).not.toMatch(/_gb"|_gbps"/);
   });
 });

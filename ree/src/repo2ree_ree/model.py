@@ -187,10 +187,9 @@ class BundleEntry(_DomainModel):
 class BundleContents(_DomainModel):
     """Materialized payload inventory bound by the seal.
 
-    Capture-policy version 2 uses repository-relative paths and actual LFS
-    payload digests, excluding Git storage and the self-containing manifest.
-    Legacy inventories retain their original portable-archive path semantics.
-    Draft inventories are historical observations, not availability guarantees.
+    Paths are repository-relative and digests are the actual LFS payloads,
+    excluding Git storage and the self-containing manifest. Draft inventories are
+    historical observations, not availability guarantees.
     """
 
     entries: tuple[BundleEntry, ...] = ()
@@ -227,7 +226,7 @@ class ReeSubject(_DomainModel):
     definition: ReeDefinition = Field(default_factory=ReeDefinition)
     receipts: ReeReceipts = Field(default_factory=ReeReceipts)
     contents: BundleContents = Field(default_factory=BundleContents)
-    capture: CapturePolicy | None = None
+    capture: CapturePolicy = Field(default_factory=CapturePolicy)
 
 
 class Signature(_DomainModel):
@@ -243,15 +242,10 @@ class ReeSeal(_DomainModel):
 
 
 def canonical_subject_digest(subject: ReeSubject) -> Digest:
-    # Preserve the exact legacy digest encoding for documents predating capture policy.
-    document = subject.model_dump(mode="json")
-    if subject.capture is None:
-        document.pop("capture")
     return digest_json(
         {
             "domain": "org.repo2ree.ree-subject",
-            "version": subject.schema_version,
-            "subject": document,
+            "subject": subject.model_dump(mode="json", exclude_none=True),
         }
     )
 

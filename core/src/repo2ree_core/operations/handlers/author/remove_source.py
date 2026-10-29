@@ -45,7 +45,6 @@ def handle_remove_source(
             layout.snapshot_archive,
             layout.acquire_script,
             layout.materialize_script,
-            layout.sealed_archive,
         ):
             path.unlink(missing_ok=True)
         save_ree(layout, store, updated, expected_revision=before_revision)

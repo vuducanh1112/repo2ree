@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import json
-import math
 from typing import Literal
 
-from repo2ree_core.analysis.hbom.profiler_utils import round_gib, run_command
+from repo2ree_core.analysis.hbom.profiler_utils import run_command
 from repo2ree_ree.hbom import StorageDefinition
 
 StorageType = Literal["HDD", "SSD", "NVMe", "eMMC", "SD"]
@@ -72,12 +71,7 @@ def _parse_lsblk_devices(stdout: str) -> dict[str, StorageDefinition]:
             model_name=model_name,
         )
         key = model_name
-        if key in result and math.isclose(
-            result[key].capacity_gb,
-            round_gib(size_bytes),
-            rel_tol=0,
-            abs_tol=0.01,
-        ):
+        if key in result and result[key].capacity_bytes == max(size_bytes, 0):
             result[key].quantity += 1
             continue
 
@@ -87,7 +81,7 @@ def _parse_lsblk_devices(stdout: str) -> dict[str, StorageDefinition]:
         result[key] = StorageDefinition(
             vendor=vendor,
             quantity=1,
-            capacity_gb=round_gib(size_bytes),
+            capacity_bytes=max(size_bytes, 0),
             storage_type=storage_type,
             interface=interface,
             extra_info={

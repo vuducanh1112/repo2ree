@@ -8479,7 +8479,7 @@
         "additionalProperties": false,
         "type": "object",
         "title": "BundleContents",
-        "description": "Materialized payload inventory bound by the seal.\n\nCapture-policy version 2 uses repository-relative paths and actual LFS\npayload digests, excluding Git storage and the self-containing manifest.\nLegacy inventories retain their original portable-archive path semantics.\nDraft inventories are historical observations, not availability guarantees."
+        "description": "Materialized payload inventory bound by the seal.\n\nPaths are repository-relative and digests are the actual LFS payloads,\nexcluding Git storage and the self-containing manifest. Draft inventories are\nhistorical observations, not availability guarantees."
       },
       "BundleEntry": {
         "properties": {
@@ -8542,7 +8542,22 @@
             "default": ""
           },
           "extra_info": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "type": "object",
             "title": "Extra Info",
             "description": "Additional CPU metadata that does not fit the structured CPU schema."
@@ -10531,11 +10546,11 @@
             "description": "Number of identical GPUs installed in the machine.",
             "default": 1
           },
-          "memory_gb": {
-            "type": "number",
+          "memory_bytes": {
+            "type": "integer",
             "minimum": 0.0,
-            "title": "Memory Gb",
-            "description": "On-board memory capacity of one GPU in gibibytes/gigabytes as recorded.",
+            "title": "Memory Bytes",
+            "description": "On-board memory capacity of one GPU in bytes.",
             "default": 0
           },
           "interface": {
@@ -10545,7 +10560,22 @@
             "default": ""
           },
           "extra_info": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "type": "object",
             "title": "Extra Info",
             "description": "Additional GPU metadata that does not fit the structured GPU schema."
@@ -10710,7 +10740,22 @@
             "title": "Network"
           },
           "extra_info": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "type": "object",
             "title": "Extra Info",
             "description": "Additional machine-level metadata that does not fit the structured HBOM schema."
@@ -10773,7 +10818,22 @@
             "title": "Network"
           },
           "extra_info": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "type": "object",
             "title": "Extra Info",
             "description": "Additional machine-level metadata that does not fit the structured HBOM schema."
@@ -11250,11 +11310,11 @@
             "description": "Number of identical memory modules installed in the machine.",
             "default": 1
           },
-          "capacity_gb": {
-            "type": "number",
+          "capacity_bytes": {
+            "type": "integer",
             "minimum": 0.0,
-            "title": "Capacity Gb",
-            "description": "Capacity of one memory module in gibibytes/gigabytes as recorded.",
+            "title": "Capacity Bytes",
+            "description": "Capacity of one memory module in bytes.",
             "default": 0
           },
           "memory_type": {
@@ -11281,7 +11341,22 @@
             "default": 0
           },
           "extra_info": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "type": "object",
             "title": "Extra Info",
             "description": "Additional memory metadata that does not fit the structured memory schema."
@@ -11306,11 +11381,11 @@
             "description": "Number of identical network interfaces installed in the machine.",
             "default": 1
           },
-          "bandwidth_gbps": {
-            "type": "number",
+          "bandwidth_mbps": {
+            "type": "integer",
             "minimum": 0.0,
-            "title": "Bandwidth Gbps",
-            "description": "Nominal bandwidth of one interface in gigabits per second.",
+            "title": "Bandwidth Mbps",
+            "description": "Nominal bandwidth of one interface in megabits per second.",
             "default": 0
           },
           "network_type": {
@@ -11332,7 +11407,22 @@
             "default": ""
           },
           "extra_info": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "type": "object",
             "title": "Extra Info",
             "description": "Additional network metadata that does not fit the structured network schema."
@@ -12608,14 +12698,7 @@
             "$ref": "#/components/schemas/BundleContents"
           },
           "capture": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/CapturePolicy"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/CapturePolicy"
           }
         },
         "additionalProperties": false,
@@ -14734,11 +14817,11 @@
             "description": "Number of identical storage devices installed in the machine.",
             "default": 1
           },
-          "capacity_gb": {
-            "type": "number",
+          "capacity_bytes": {
+            "type": "integer",
             "minimum": 0.0,
-            "title": "Capacity Gb",
-            "description": "Capacity of one storage device in gibibytes/gigabytes as recorded.",
+            "title": "Capacity Bytes",
+            "description": "Capacity of one storage device in bytes.",
             "default": 0
           },
           "storage_type": {
@@ -14761,7 +14844,22 @@
             "default": ""
           },
           "extra_info": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "type": "object",
             "title": "Extra Info",
             "description": "Additional storage metadata that does not fit the structured storage schema."

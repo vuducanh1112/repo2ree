@@ -7,16 +7,6 @@ import pytest
 
 from repo2ree_core.persistence.lfs import LfsPointer, store_payload
 from repo2ree_protocol.tools import find_tool
-from repo2ree_ree.digest import digest_json
-from repo2ree_ree.model import ReeSubject, canonical_subject_digest
-
-
-def test_legacy_subject_digest_is_unchanged():
-    subject = ReeSubject()
-    original = subject.model_dump(mode="json", exclude={"capture"})
-    assert canonical_subject_digest(subject) == digest_json(
-        {"domain": "org.repo2ree.ree-subject", "version": 1, "subject": original}
-    )
 
 
 def test_pointer_matches_git_lfs_and_verifies_payload(tmp_path):

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 from pathlib import Path
 from typing import Literal
 
@@ -40,13 +39,11 @@ def profile_network(net_root: Path = Path("/sys/class/net")) -> dict[str, Networ
         elif infiniband or iface_type == "32":
             network_type = "infiniband"
 
-        bandwidth_gbps = 0.0
-        if speed_mbps and speed_mbps > 0:
-            bandwidth_gbps = round(speed_mbps / 1000, 2)
+        bandwidth_mbps = speed_mbps if speed_mbps and speed_mbps > 0 else 0
 
         model_name = driver_name or interface_name
         key = model_name
-        if key in result and math.isclose(result[key].bandwidth_gbps, bandwidth_gbps, rel_tol=0, abs_tol=0.01):
+        if key in result and result[key].bandwidth_mbps == bandwidth_mbps:
             result[key].quantity += 1
             continue
         if key in result:
@@ -54,7 +51,7 @@ def profile_network(net_root: Path = Path("/sys/class/net")) -> dict[str, Networ
 
         result[key] = NetworkDefinition(
             quantity=1,
-            bandwidth_gbps=bandwidth_gbps,
+            bandwidth_mbps=bandwidth_mbps,
             network_type=network_type,
             interface=driver_name,
             extra_info={

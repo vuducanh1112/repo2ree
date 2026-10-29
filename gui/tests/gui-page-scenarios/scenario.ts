@@ -70,7 +70,7 @@ const visualRee = {
             "DDR4 ECC 32GB": {
               vendor: "Micron",
               quantity: 8,
-              capacity_gb: 32,
+              capacity_bytes: 34359738368,
               memory_type: "DDR4 ECC",
               speed_mt_s: 3200,
             },
@@ -79,7 +79,7 @@ const visualRee = {
             "PM9A3 NVMe": {
               vendor: "Samsung",
               quantity: 1,
-              capacity_gb: 1920,
+              capacity_bytes: 2061584302080,
               storage_type: "NVMe SSD",
               interface: "PCIe 4.0",
             },

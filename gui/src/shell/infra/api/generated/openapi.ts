@@ -1574,10 +1574,9 @@ export interface components {
          * BundleContents
          * @description Materialized payload inventory bound by the seal.
          *
-         *     Capture-policy version 2 uses repository-relative paths and actual LFS
-         *     payload digests, excluding Git storage and the self-containing manifest.
-         *     Legacy inventories retain their original portable-archive path semantics.
-         *     Draft inventories are historical observations, not availability guarantees.
+         *     Paths are repository-relative and digests are the actual LFS payloads,
+         *     excluding Git storage and the self-containing manifest. Draft inventories are
+         *     historical observations, not availability guarantees.
          */
         BundleContents: {
             /**
@@ -1632,7 +1631,7 @@ export interface components {
              * @description Additional CPU metadata that does not fit the structured CPU schema.
              */
             extra_info?: {
-                [key: string]: unknown;
+                [key: string]: string | boolean | number | null;
             };
         };
         /** CancelRunResponse */
@@ -2470,11 +2469,11 @@ export interface components {
              */
             quantity: number;
             /**
-             * Memory Gb
-             * @description On-board memory capacity of one GPU in gibibytes/gigabytes as recorded.
+             * Memory Bytes
+             * @description On-board memory capacity of one GPU in bytes.
              * @default 0
              */
-            memory_gb: number;
+            memory_bytes: number;
             /**
              * Interface
              * @description Host interconnect used by the GPU, for example PCIe 4.0 x16 or SXM4.
@@ -2486,7 +2485,7 @@ export interface components {
              * @description Additional GPU metadata that does not fit the structured GPU schema.
              */
             extra_info?: {
-                [key: string]: unknown;
+                [key: string]: string | boolean | number | null;
             };
         };
         /** GenerateSbomReceipt */
@@ -2558,7 +2557,7 @@ export interface components {
              * @description Additional machine-level metadata that does not fit the structured HBOM schema.
              */
             extra_info?: {
-                [key: string]: unknown;
+                [key: string]: string | boolean | number | null;
             };
         };
         /** HardwareDefinition */
@@ -2588,7 +2587,7 @@ export interface components {
              * @description Additional machine-level metadata that does not fit the structured HBOM schema.
              */
             extra_info?: {
-                [key: string]: unknown;
+                [key: string]: string | boolean | number | null;
             };
         };
         /** HealthResponse */
@@ -2787,11 +2786,11 @@ export interface components {
              */
             quantity: number;
             /**
-             * Capacity Gb
-             * @description Capacity of one memory module in gibibytes/gigabytes as recorded.
+             * Capacity Bytes
+             * @description Capacity of one memory module in bytes.
              * @default 0
              */
-            capacity_gb: number;
+            capacity_bytes: number;
             /**
              * Memory Type
              * @description Memory technology used by the module.
@@ -2810,7 +2809,7 @@ export interface components {
              * @description Additional memory metadata that does not fit the structured memory schema.
              */
             extra_info?: {
-                [key: string]: unknown;
+                [key: string]: string | boolean | number | null;
             };
         };
         /** NetworkDefinition */
@@ -2828,11 +2827,11 @@ export interface components {
              */
             quantity: number;
             /**
-             * Bandwidth Gbps
-             * @description Nominal bandwidth of one interface in gigabits per second.
+             * Bandwidth Mbps
+             * @description Nominal bandwidth of one interface in megabits per second.
              * @default 0
              */
-            bandwidth_gbps: number;
+            bandwidth_mbps: number;
             /**
              * Network Type
              * @description Network technology implemented by the interface.
@@ -2851,7 +2850,7 @@ export interface components {
              * @description Additional network metadata that does not fit the structured network schema.
              */
             extra_info?: {
-                [key: string]: unknown;
+                [key: string]: string | boolean | number | null;
             };
         };
         /** ObserveHardwareReceipt */
@@ -3321,7 +3320,7 @@ export interface components {
             definition?: components["schemas"]["ReeDefinition-Output"];
             receipts?: components["schemas"]["ReeReceipts"];
             contents?: components["schemas"]["BundleContents"];
-            capture?: components["schemas"]["CapturePolicy"] | null;
+            capture?: components["schemas"]["CapturePolicy"];
         };
         /** ReeSummary */
         ReeSummary: {
@@ -4155,11 +4154,11 @@ export interface components {
              */
             quantity: number;
             /**
-             * Capacity Gb
-             * @description Capacity of one storage device in gibibytes/gigabytes as recorded.
+             * Capacity Bytes
+             * @description Capacity of one storage device in bytes.
              * @default 0
              */
-            capacity_gb: number;
+            capacity_bytes: number;
             /**
              * Storage Type
              * @description Storage technology used by the device.
@@ -4178,7 +4177,7 @@ export interface components {
              * @description Additional storage metadata that does not fit the structured storage schema.
              */
             extra_info?: {
-                [key: string]: unknown;
+                [key: string]: string | boolean | number | null;
             };
         };
         /** StrategyLeafNode */

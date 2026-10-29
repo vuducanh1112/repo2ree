@@ -6,6 +6,7 @@ import type {
   NetworkDefinition,
   StorageDefinition,
 } from "../ree/ReeSpec";
+import { gbpsFromMbps, gibFromBytes } from "./hbomUnits";
 
 export function emptyHBOM(): Hbom {
   return {
@@ -62,7 +63,7 @@ function normalizeGPUMap(raw: unknown): Record<string, GPUDefinition> {
           {
             vendor: String(item.vendor ?? ""),
             quantity: asNumber(item.quantity, 1),
-            memoryGb: asNumber(item.memory_gb, 0),
+            memoryGb: gibFromBytes(asNumber(item.memory_bytes, 0)),
             interface: String(item.interface ?? ""),
             extraInfo: asRecord(item.extra_info),
           },
@@ -83,7 +84,7 @@ function normalizeMemoryMap(raw: unknown): Record<string, MemoryDefinition> {
           {
             vendor: String(item.vendor ?? ""),
             quantity: asNumber(item.quantity, 1),
-            capacityGb: asNumber(item.capacity_gb, 0),
+            capacityGb: gibFromBytes(asNumber(item.capacity_bytes, 0)),
             memoryType: String(item.memory_type ?? "DDR5"),
             speedMtS: asNumber(item.speed_mt_s, 1),
             extraInfo: asRecord(item.extra_info),
@@ -105,7 +106,7 @@ function normalizeStorageMap(raw: unknown): Record<string, StorageDefinition> {
           {
             vendor: String(item.vendor ?? ""),
             quantity: asNumber(item.quantity, 1),
-            capacityGb: asNumber(item.capacity_gb, 0),
+            capacityGb: gibFromBytes(asNumber(item.capacity_bytes, 0)),
             storageType: String(item.storage_type ?? "NVMe"),
             interface: String(item.interface ?? ""),
             extraInfo: asRecord(item.extra_info),
@@ -127,7 +128,7 @@ function normalizeNetworkMap(raw: unknown): Record<string, NetworkDefinition> {
           {
             vendor: String(item.vendor ?? ""),
             quantity: asNumber(item.quantity, 1),
-            bandwidthGbps: asNumber(item.bandwidth_gbps, 0),
+            bandwidthGbps: gbpsFromMbps(asNumber(item.bandwidth_mbps, 0)),
             networkType: String(item.network_type ?? "ethernet"),
             interface: String(item.interface ?? ""),
             extraInfo: asRecord(item.extra_info),

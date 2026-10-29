@@ -125,28 +125,6 @@ def test_invalid_export_does_not_modify_destination(tmp_path, monkeypatch):
     assert json.loads(destination.manifest.read_text())["subject"]["definition"]["name"] == "untouched"
 
 
-def test_legacy_sealed_archive_keeps_original_identity_and_bytes(tmp_path):
-    from repo2ree_core.bundle.restore import restore_ree_bundle
-    from repo2ree_core.domain.ree.transitions import record_seal
-    from repo2ree_core.persistence.ree_manifest import ree_manifest_bytes
-    from repo2ree_core.time_utils import utc_now_instant
-    from repo2ree_ree.model import Ree, ReeSubject
-
-    legacy = record_seal(Ree(subject=ReeSubject()), sealed_at=utc_now_instant())
-    extracted = tmp_path / "legacy"
-    (extracted / "ree").mkdir(parents=True)
-    (extracted / "ree/ree.json").write_bytes(ree_manifest_bytes(legacy))
-    archive = tmp_path / "legacy.zip"
-    with zipfile.ZipFile(archive, "w") as zipped:
-        zipped.write(extracted / "ree/ree.json", "ree/ree.json")
-    destination = ReeLayout(root=tmp_path / "destination")
-    initialize_ree(destination, name="blank")
-    restore_ree_bundle(destination, bundle_root=extracted, archive_path=archive)
-    assert ReeDirectory(destination).read_ree().seal == legacy.seal
-    with materialized_ree_download(destination) as download:
-        assert download.read_bytes() == archive.read_bytes()
-
-
 def test_import_ignores_uploaded_git_configuration(tmp_path, monkeypatch):
     layout, _pointer, _payload = _sealed(tmp_path, monkeypatch)
     with materialized_ree_download(layout) as archive, zipfile.ZipFile(archive) as zipped:

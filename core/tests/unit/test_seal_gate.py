@@ -97,8 +97,6 @@ def test_a_consistent_ree_seals_and_carries_its_inventory(tmp_path: Path) -> Non
     from repo2ree_core.bundle.repository_export import verify_inventory
 
     verify_inventory(store.layout.root)
-    assert not store.layout.sealed_archive.exists()
-    assert sealed.subject.capture is not None
 
 
 def test_sealing_is_refused_while_a_receipt_is_stale(tmp_path: Path) -> None:
@@ -127,7 +125,6 @@ def test_sealing_is_refused_while_a_receipt_is_stale(tmp_path: Path) -> None:
         )
 
     assert load_ree(store.layout, store).seal is None
-    assert not store.layout.sealed_archive.exists()
 
 
 def test_missing_evidence_still_seals(tmp_path: Path) -> None:
@@ -172,7 +169,6 @@ def test_sealing_streams_runtime_without_reading_the_whole_file(
     )
 
     assert outputs.input_bytes >= runtime.stat().st_size
-    assert not store.layout.sealed_archive.exists()
     assert [update.phase for update in progress][-2:] == ["manifest", "publishing"]
     assert progress[-1].bytes_processed == progress[-1].bytes_total
 
@@ -195,8 +191,6 @@ def test_canceling_a_streamed_seal_does_not_publish_partial_state(tmp_path: Path
         )
 
     assert load_ree(store.layout, store).seal is None
-    assert not store.layout.sealed_archive.exists()
-    assert not list(store.layout.sealed_archive.parent.glob(f".{store.layout.sealed_archive.name}.*.tmp"))
 
 
 def test_sealing_is_refused_while_a_receipt_outlives_its_declaration(tmp_path: Path) -> None:
@@ -219,7 +213,6 @@ def test_sealing_is_refused_while_a_receipt_outlives_its_declaration(tmp_path: P
         )
 
     assert load_ree(store.layout, store).seal is None
-    assert not store.layout.sealed_archive.exists()
 
 
 def test_download_refuses_seal_without_published_operation(tmp_path):

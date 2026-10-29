@@ -19,23 +19,9 @@ from hypothesis import strategies as st
 
 from repo2ree_core.analysis.hbom.cpu_profiler import _parse_cpuinfo_text
 from repo2ree_core.analysis.hbom.gpu_profiler import _parse_lspci_output, _parse_nvidia_smi_csv
-from repo2ree_core.analysis.hbom.profiler_utils import round_gib
 from repo2ree_core.analysis.hbom.storage_profiler import _parse_lsblk_devices, _storage_type_for_device
 
 pytestmark = pytest.mark.property
-
-
-class TestRoundGib:
-    @given(st.floats(min_value=-1e18, max_value=1e18, allow_nan=False, allow_infinity=False))
-    def test_never_negative(self, value: float) -> None:
-        """The in-function postcondition: a capacity is never negative."""
-        assert round_gib(value) >= 0.0
-
-    @given(st.integers(min_value=0, max_value=2**60), st.integers(min_value=0, max_value=2**60))
-    def test_monotonic(self, a: int, b: int) -> None:
-        """More bytes never rounds to a smaller GiB figure."""
-        lo, hi = sorted((a, b))
-        assert round_gib(lo) <= round_gib(hi)
 
 
 class TestParseCpuinfo:
@@ -82,7 +68,7 @@ class TestCommandParsersAreRobust:
     @given(st.text(max_size=200))
     def test_nvidia_never_raises(self, stdout: str) -> None:
         for definition in _parse_nvidia_smi_csv(stdout).values():
-            assert definition.memory_gb >= 0.0
+            assert definition.memory_bytes >= 0
             assert definition.quantity >= 1
 
     @given(st.text(max_size=200))
@@ -113,4 +99,4 @@ class TestCommandParsersAreRobust:
         parsed = _parse_lsblk_devices(json.dumps({"blockdevices": devices}))
         for definition in parsed.values():
             assert definition.quantity >= 1
-            assert definition.capacity_gb >= 0.0
+            assert definition.capacity_bytes >= 0

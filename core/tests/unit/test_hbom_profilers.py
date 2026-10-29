@@ -24,7 +24,6 @@ from repo2ree_core.analysis.hbom.network_profiler import profile_network
 from repo2ree_core.analysis.hbom.profiler_utils import (
     read_optional_int,
     read_optional_text,
-    round_gib,
     run_command,
 )
 from repo2ree_core.analysis.hbom.storage_profiler import (
@@ -63,19 +62,6 @@ physical id\t: 1
 siblings\t: 8
 cpu cores\t: 4
 """
-
-
-class TestRoundGib:
-    def test_converts_bytes_to_gib(self) -> None:
-        assert round_gib(1024**3) == 1.0
-        assert round_gib(3 * 1024**3) == 3.0
-
-    def test_non_positive_is_zero(self) -> None:
-        assert round_gib(0) == 0.0
-        assert round_gib(-5) == 0.0
-
-    def test_rounds_to_two_places(self) -> None:
-        assert round_gib(1536 * 1024**2) == 1.5
 
 
 class TestReadHelpers:
@@ -162,17 +148,17 @@ class TestProfileMemory:
         memory = profile_memory(meminfo)
         definition = memory["Installed Memory"]
         # 16384000 KiB = 15.62 GiB.
-        assert definition.capacity_gb == round_gib(16384000 * 1024)
+        assert definition.capacity_bytes == 16384000 * 1024
         assert definition.extra_info["aggregate"] is True
 
     def test_missing_file_is_zero_capacity(self, tmp_path: Path) -> None:
         memory = profile_memory(tmp_path / "absent")
-        assert memory["Installed Memory"].capacity_gb == 0.0
+        assert memory["Installed Memory"].capacity_bytes == 0
 
     def test_malformed_memtotal_is_zero(self, tmp_path: Path) -> None:
         meminfo = tmp_path / "meminfo"
         meminfo.write_text("MemTotal:       notanumber kB\n")
-        assert profile_memory(meminfo)["Installed Memory"].capacity_gb == 0.0
+        assert profile_memory(meminfo)["Installed Memory"].capacity_bytes == 0
 
 
 class TestStorageTypeForDevice:
@@ -210,7 +196,7 @@ class TestParseLsblkDevices:
         definition = devices["Samsung 990"]
         assert definition.storage_type == "NVMe"
         assert definition.vendor == "Samsung"
-        assert definition.capacity_gb == round_gib(1000204886016)
+        assert definition.capacity_bytes == 1000204886016
 
     def test_partitions_are_skipped(self) -> None:
         stdout = """
@@ -254,7 +240,7 @@ class TestParseNvidiaSmi:
         gpus = _parse_nvidia_smi_csv(stdout)
         definition = gpus["NVIDIA A100-SXM4-40GB"]
         assert definition.vendor == "NVIDIA"
-        assert definition.memory_gb == round(40960 / 1024, 2)
+        assert definition.memory_bytes == 40960 * 1024 * 1024
         assert definition.extra_info["driver_version"] == "535.104.05"
 
     def test_identical_gpus_counted(self) -> None:
@@ -267,7 +253,7 @@ class TestParseNvidiaSmi:
 
     def test_bad_memory_is_zero(self) -> None:
         gpus = _parse_nvidia_smi_csv("NVIDIA X, N/A, 1.0, bus\n")
-        assert gpus["NVIDIA X"].memory_gb == 0.0
+        assert gpus["NVIDIA X"].memory_bytes == 0
 
 
 class TestParseLspci:
@@ -389,7 +375,7 @@ class TestProfileNetwork:
         assert "ixgbe" in network
         definition = network["ixgbe"]
         assert definition.network_type == "ethernet"
-        assert definition.bandwidth_gbps == 10.0
+        assert definition.bandwidth_mbps == 10000
         assert definition.extra_info["speed_mbps"] == 10000
 
     def test_loopback_skipped(self, tmp_path: Path) -> None:

@@ -1,5 +1,6 @@
 import type { ArtifactStatus } from "../artifact/ArtifactStatus";
 import type { EvaluationState } from "../evaluate/EvaluationState";
+import { bytesFromGib, mbpsFromGbps } from "../hbom/hbomUnits";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 import type { Hbom, ReeCatalogMetadata, ReeExperiment, ReeSpec } from "./ReeSpec";
 
@@ -50,20 +51,28 @@ function serializeDeviceMap(
   return Object.fromEntries(
     Object.entries(devices).map(([model, device]) => [
       model,
-      Object.fromEntries(Object.entries(device).map(([key, value]) => [fields[key] ?? key, value])),
+      Object.fromEntries(
+        Object.entries(device).map(([key, value]) => {
+          const unit = DEVICE_WIRE_UNITS[key];
+          return unit ? [unit.field, unit.convert(value)] : [fields[key] ?? key, value];
+        }),
+      ),
     ]),
   );
 }
 
+const DEVICE_WIRE_UNITS: Record<string, { field: string; convert: (value: unknown) => number }> = {
+  memoryGb: { field: "memory_bytes", convert: bytesFromGib },
+  capacityGb: { field: "capacity_bytes", convert: bytesFromGib },
+  bandwidthGbps: { field: "bandwidth_mbps", convert: mbpsFromGbps },
+};
+
 const DEVICE_WIRE_FIELDS: Record<string, string> = {
   coresPerCpu: "cores_per_cpu",
   threadsPerCore: "threads_per_core",
-  memoryGb: "memory_gb",
-  capacityGb: "capacity_gb",
   memoryType: "memory_type",
   speedMtS: "speed_mt_s",
   storageType: "storage_type",
-  bandwidthGbps: "bandwidth_gbps",
   networkType: "network_type",
   extraInfo: "extra_info",
 };

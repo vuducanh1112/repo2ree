@@ -28,7 +28,7 @@ describe("HBOM normalization", () => {
         "GPU X": {
           vendor: "Acme",
           quantity: Number.NaN,
-          memory_gb: 24,
+          memory_bytes: 25769803776,
           interface: "PCIe",
           extra_info: [],
         },
@@ -37,7 +37,7 @@ describe("HBOM normalization", () => {
         DIMM: {
           vendor: "Acme",
           quantity: 4,
-          capacity_gb: 32,
+          capacity_bytes: 34359738368,
           memory_type: "DDR4",
           speed_mt_s: 3200,
         },
@@ -46,7 +46,7 @@ describe("HBOM normalization", () => {
         Disk: {
           vendor: "Acme",
           quantity: 2,
-          capacity_gb: 1024,
+          capacity_bytes: 1099511627776,
           storage_type: "SSD",
           interface: "NVMe",
         },
@@ -55,7 +55,7 @@ describe("HBOM normalization", () => {
         NIC: {
           vendor: "Acme",
           quantity: 1,
-          bandwidth_gbps: 100,
+          bandwidth_mbps: 100000,
           network_type: "ethernet",
           interface: "PCIe",
         },

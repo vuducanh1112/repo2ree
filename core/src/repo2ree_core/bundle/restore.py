@@ -21,7 +21,7 @@ from repo2ree_core.persistence.layout import (
     ReeLayout,
 )
 from repo2ree_core.persistence.ree_manifest import parse_ree_manifest
-from repo2ree_ree.model import BundleContents, BundleEntry, CapturePolicy
+from repo2ree_ree.model import BundleContents, BundleEntry
 from repo2ree_ree.primitives import ReePath
 
 
@@ -84,27 +84,7 @@ def restore_ree_bundle(
     overlay_files = _restore_tree(bundle_root / BUNDLE_OVERLAY_PREFIX, layout.overlay)
     artifact_files = _restore_tree(bundle_root / BUNDLE_ARTIFACTS_PREFIX, layout.artifacts)
     _restore_tree(bundle_root / BUNDLE_RESULTS_PREFIX, layout.results)
-    if ree.seal is None and ree.subject.capture is None:
-        # A legacy draft has no immutable seal. Preserve explicitly shipped bytes
-        # as the initial new-format inclusion policy instead of silently dropping them.
-        paths = sorted(
-            str(entry.path).removeprefix("ree/")
-            for entry in actual.entries
-            if str(entry.path) == BUNDLE_SNAPSHOT_ENTRY_PATH
-            or str(entry.path).startswith((BUNDLE_ARTIFACTS_PREFIX, BUNDLE_RESULTS_PREFIX))
-        )
-        ree = ree.model_copy(
-            update={
-                "subject": ree.subject.model_copy(
-                    update={"capture": CapturePolicy(lfs_paths=tuple(ReePath(path) for path in paths))}
-                )
-            }
-        )
     store.write_ree(ree)
-    if ree.seal is not None:
-        shutil.copyfile(archive_path, layout.sealed_archive)
-    else:
-        layout.sealed_archive.unlink(missing_ok=True)
     return BundleLoadOutputs(
         name=ree.subject.definition.name,
         sealed=ree.seal is not None,

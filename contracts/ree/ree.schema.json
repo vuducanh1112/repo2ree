@@ -239,7 +239,7 @@
     },
     "BundleContents": {
       "additionalProperties": false,
-      "description": "Materialized payload inventory bound by the seal.\n\nCapture-policy version 2 uses repository-relative paths and actual LFS\npayload digests, excluding Git storage and the self-containing manifest.\nLegacy inventories retain their original portable-archive path semantics.\nDraft inventories are historical observations, not availability guarantees.",
+      "description": "Materialized payload inventory bound by the seal.\n\nPaths are repository-relative and digests are the actual LFS payloads,\nexcluding Git storage and the self-containing manifest. Draft inventories are\nhistorical observations, not availability guarantees.",
       "properties": {
         "entries": {
           "default": [],
@@ -315,7 +315,22 @@
           "type": "string"
         },
         "extra_info": {
-          "additionalProperties": true,
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "description": "Additional CPU metadata that does not fit the structured CPU schema.",
           "title": "Extra Info",
           "type": "object"
@@ -673,12 +688,12 @@
           "title": "Quantity",
           "type": "integer"
         },
-        "memory_gb": {
+        "memory_bytes": {
           "default": 0,
-          "description": "On-board memory capacity of one GPU in gibibytes/gigabytes as recorded.",
+          "description": "On-board memory capacity of one GPU in bytes.",
           "minimum": 0,
-          "title": "Memory Gb",
-          "type": "number"
+          "title": "Memory Bytes",
+          "type": "integer"
         },
         "interface": {
           "default": "",
@@ -687,7 +702,22 @@
           "type": "string"
         },
         "extra_info": {
-          "additionalProperties": true,
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "description": "Additional GPU metadata that does not fit the structured GPU schema.",
           "title": "Extra Info",
           "type": "object"
@@ -839,7 +869,22 @@
           "type": "object"
         },
         "extra_info": {
-          "additionalProperties": true,
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "description": "Additional machine-level metadata that does not fit the structured HBOM schema.",
           "title": "Extra Info",
           "type": "object"
@@ -902,7 +947,22 @@
           "type": "object"
         },
         "extra_info": {
-          "additionalProperties": true,
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "description": "Additional machine-level metadata that does not fit the structured HBOM schema.",
           "title": "Extra Info",
           "type": "object"
@@ -927,12 +987,12 @@
           "title": "Quantity",
           "type": "integer"
         },
-        "capacity_gb": {
+        "capacity_bytes": {
           "default": 0,
-          "description": "Capacity of one memory module in gibibytes/gigabytes as recorded.",
+          "description": "Capacity of one memory module in bytes.",
           "minimum": 0,
-          "title": "Capacity Gb",
-          "type": "number"
+          "title": "Capacity Bytes",
+          "type": "integer"
         },
         "memory_type": {
           "default": "DDR5",
@@ -958,7 +1018,22 @@
           "type": "integer"
         },
         "extra_info": {
-          "additionalProperties": true,
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "description": "Additional memory metadata that does not fit the structured memory schema.",
           "title": "Extra Info",
           "type": "object"
@@ -983,12 +1058,12 @@
           "title": "Quantity",
           "type": "integer"
         },
-        "bandwidth_gbps": {
+        "bandwidth_mbps": {
           "default": 0,
-          "description": "Nominal bandwidth of one interface in gigabits per second.",
+          "description": "Nominal bandwidth of one interface in megabits per second.",
           "minimum": 0,
-          "title": "Bandwidth Gbps",
-          "type": "number"
+          "title": "Bandwidth Mbps",
+          "type": "integer"
         },
         "network_type": {
           "default": "ethernet",
@@ -1009,7 +1084,22 @@
           "type": "string"
         },
         "extra_info": {
-          "additionalProperties": true,
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "description": "Additional network metadata that does not fit the structured network schema.",
           "title": "Extra Info",
           "type": "object"
@@ -1336,15 +1426,7 @@
           "$ref": "#/$defs/BundleContents"
         },
         "capture": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/CapturePolicy"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
+          "$ref": "#/$defs/CapturePolicy"
         }
       },
       "title": "ReeSubject",
@@ -1562,12 +1644,12 @@
           "title": "Quantity",
           "type": "integer"
         },
-        "capacity_gb": {
+        "capacity_bytes": {
           "default": 0,
-          "description": "Capacity of one storage device in gibibytes/gigabytes as recorded.",
+          "description": "Capacity of one storage device in bytes.",
           "minimum": 0,
-          "title": "Capacity Gb",
-          "type": "number"
+          "title": "Capacity Bytes",
+          "type": "integer"
         },
         "storage_type": {
           "default": "NVMe",
@@ -1589,7 +1671,22 @@
           "type": "string"
         },
         "extra_info": {
-          "additionalProperties": true,
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "description": "Additional storage metadata that does not fit the structured storage schema.",
           "title": "Extra Info",
           "type": "object"

@@ -63,15 +63,14 @@ def _parse_nvidia_smi_csv(stdout: str) -> dict[str, GPUDefinition]:
         if model_name in result:
             result[model_name].quantity += 1
             continue
-        memory_gb = 0.0
         try:
-            memory_gb = round(float(memory_mb) / 1024, 2)
+            memory_bytes = max(int(memory_mb), 0) * 1024 * 1024
         except ValueError:
-            memory_gb = 0.0
+            memory_bytes = 0
         result[model_name] = GPUDefinition(
             vendor="NVIDIA",
             quantity=1,
-            memory_gb=memory_gb,
+            memory_bytes=memory_bytes,
             interface="PCIe",
             extra_info={
                 "driver_version": driver_version,
