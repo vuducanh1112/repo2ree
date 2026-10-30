@@ -74,4 +74,23 @@ describe("mapRunLogsToLines", () => {
       { type: "ok", msg: "done", ts: common.ts, stream: "system" },
     ]);
   });
+
+  it("shows command output by stream, standing out only stderr lines that report an error", () => {
+    const common = { seq: 1, ts: "2026-01-01T00:00:00Z" };
+    const stderr = (level: "info" | "warn", message: string) => ({
+      ...common,
+      level,
+      stream: "stderr" as const,
+      message,
+    });
+    expect(
+      mapRunLogsToLines([
+        stderr("info", "#5 [1/5] FROM docker.io/library/python:3.11-slim"),
+        // Runs recorded before stderr stopped being called a warning read the same.
+        stderr("warn", "89.12 WARNING: Retrying (Retry(total=0))"),
+        stderr("info", "#8 105.1 ERROR: No matching distribution found for pandas==2.2.1"),
+        stderr("info", "fatal: not a git repository"),
+      ]).map((line) => line.type),
+    ).toEqual(["out", "out", "err", "err"]);
+  });
 });

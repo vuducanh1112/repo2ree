@@ -18,7 +18,7 @@ def test_run_streaming_process_logs_and_captures_stdout_stderr():
     assert result.stdout == "out\n"
     assert result.stderr == "err\n"
     assert ("stdout", "info", "out") in logged
-    assert ("stderr", "warn", "err") in logged
+    assert ("stderr", "info", "err") in logged
 
 
 def _pid_alive(pid: int) -> bool:

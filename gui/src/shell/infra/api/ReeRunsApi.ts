@@ -127,6 +127,11 @@ export class ReeRunsApi {
   }
 }
 
+// A command's own output carries no severity: its stream is not one (BuildKit,
+// pip and apt print progress on stderr). Only a stderr line that plainly
+// reports an error stands out from the rest.
+const REPORTS_ERROR = /\bERROR\b|(^|\s)(error|fatal):/;
+
 export function mapRunLogsToLines(lines: RunLogEntry[]): Array<{
   type: "info" | "ok" | "warn" | "err" | "out";
   msg: string;
@@ -137,11 +142,14 @@ export function mapRunLogsToLines(lines: RunLogEntry[]): Array<{
     if (line.level === "error") {
       return { type: "err", msg: line.message, ts: line.ts, stream: line.stream };
     }
+    if (line.stream === "stderr" && REPORTS_ERROR.test(line.message)) {
+      return { type: "err", msg: line.message, ts: line.ts, stream: line.stream };
+    }
+    if (line.stream === "stdout" || line.stream === "stderr") {
+      return { type: "out", msg: line.message, ts: line.ts, stream: line.stream };
+    }
     if (line.level === "warn") {
       return { type: "warn", msg: line.message, ts: line.ts, stream: line.stream };
-    }
-    if (line.stream === "stdout") {
-      return { type: "out", msg: line.message, ts: line.ts, stream: line.stream };
     }
     if (line.level === "debug") {
       return { type: "info", msg: line.message, ts: line.ts, stream: line.stream };

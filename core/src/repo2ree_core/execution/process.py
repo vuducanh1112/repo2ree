@@ -171,7 +171,7 @@ def _stream_process(
     def _reader(
         pipe: IO[str] | None,
         stream: Literal["stdout", "stderr"],
-        level: Literal["info", "warn"],
+        level: Literal["info"],
         sink: list[str],
     ) -> None:
         if pipe is None:
@@ -187,9 +187,11 @@ def _stream_process(
         args=(proc.stdout, "stdout", "info", stdout_lines),
         daemon=True,
     )
+    # stderr is a stream, not a severity: BuildKit, pip and apt print their
+    # progress there, so calling every line a warning buries the one error.
     stderr_reader = threading.Thread(
         target=_reader,
-        args=(proc.stderr, "stderr", "warn", stderr_lines),
+        args=(proc.stderr, "stderr", "info", stderr_lines),
         daemon=True,
     )
     stdout_reader.start()
