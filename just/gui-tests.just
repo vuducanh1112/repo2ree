@@ -8,12 +8,12 @@ test-gui:
 # Run browser-rendered accessibility checks against deterministic fixtures.
 [group('GUI tests')]
 test-gui-accessibility:
-    cd gui && npm exec -- playwright test -c playwright.config.ts --project=gui-accessibility-tests
+    python -m repo2ree_testbed record --tier gui-accessibility -- sh -c 'cd gui && npm exec -- playwright test -c playwright.config.ts --project=gui-accessibility-tests'
 
 # Run GUI screenshot regression tests.
 [group('GUI tests')]
 test-gui-screenshots:
-    cd gui && npm exec -- playwright test -c playwright.config.ts --project=gui-screenshot-tests
+    python -m repo2ree_testbed record --tier gui-screenshots -- sh -c 'cd gui && npm exec -- playwright test -c playwright.config.ts --project=gui-screenshot-tests'
 
 # Update intentional GUI screenshot baselines.
 [group('GUI tests')]

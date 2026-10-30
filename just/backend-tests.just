@@ -48,7 +48,10 @@ test-integration-package +packages:
         suite=$(python scripts/workspace.py suites integration "$package")
         [[ -n "$suite" ]] || { echo ">> $package has no integration suite"; continue; }
         mkdir -p {{ quote(INTEGRATION_COVERAGE_PARTS) }}/"$package"
-        COVERAGE_FILE={{ quote(INTEGRATION_COVERAGE_PARTS) }}/"$package"/.coverage pytest "$suite" --cov --cov-report=
+        # Under `repo2ree_testbed record`, each package's outcomes also go to a JUnit report for the run's record.
+        junit=()
+        [[ -n "${REPO2REE_JUNIT_DIR:-}" ]] && junit=(--junitxml "$REPO2REE_JUNIT_DIR/$package.xml")
+        COVERAGE_FILE={{ quote(INTEGRATION_COVERAGE_PARTS) }}/"$package"/.coverage pytest "$suite" --cov --cov-report= "${junit[@]}"
     done
 
 # Run and merge the complete measured, container-free backend unit tier.
@@ -58,7 +61,8 @@ test-backend-unit: (test-unit-package `python scripts/workspace.py backend`)
 
 # Run and merge the complete measured backend integration tier.
 [group('Backend tests')]
-test-backend-integration: build-e2e-bundles (test-integration-package `python scripts/workspace.py backend`)
+test-backend-integration: build-e2e-bundles
+    python -m repo2ree_testbed record --tier integration -- just --justfile {{ quote(ROOT + "/justfile") }} test-integration-package `python scripts/workspace.py backend`
     python -m repo2ree_testbed coverage combine-integration
 
 # Run both measured backend tiers concurrently.

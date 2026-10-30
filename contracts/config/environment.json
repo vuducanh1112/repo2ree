@@ -593,6 +593,13 @@
         "type": "string"
       }
     },
+    "PLAYWRIGHT_JUNIT_OUTPUT_FILE": {
+      "kind": "internal",
+      "owner": "testbed",
+      "schema": {
+        "type": "string"
+      }
+    },
     "PROVIDER_ACCEPTS_CUSTOM_IMAGE": {
       "kind": "runtime",
       "owner": "provider",
@@ -827,6 +834,13 @@
     "REPO2REE_GUI_IMAGE": {
       "kind": "deployment",
       "owner": "compose",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REPO2REE_JUNIT_DIR": {
+      "kind": "internal",
+      "owner": "testbed",
       "schema": {
         "type": "string"
       }

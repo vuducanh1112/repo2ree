@@ -66,6 +66,8 @@ NON_SERVICE_ENVIRONMENT: dict[str, tuple[str, str]] = {
     "REPO2REE_RESOURCE_OWNER": ("provider", "internal"),
     "REPO2REE_JUST_TIMING": ("just-timing", "internal"),
     "REPO2REE_MACHINE": ("testbed", "internal"),
+    "REPO2REE_JUNIT_DIR": ("testbed", "internal"),
+    "PLAYWRIGHT_JUNIT_OUTPUT_FILE": ("testbed", "internal"),
     "REPO2REE_MACHINES": ("testbed", "internal"),
     "REPO2REE_TEST_RUN_DIR": ("test-recording", "internal"),
     "REPO2REE_TEST_RUN_ID": ("test-recording", "internal"),

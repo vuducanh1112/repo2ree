@@ -44,7 +44,9 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: 0,
-  reporter: "list",
+  // A testbed-recorded run (repo2ree_testbed record) also asks for a JUnit report, which it
+  // turns into the run's record; the list stays what a person watching sees.
+  reporter: process.env.PLAYWRIGHT_JUNIT_OUTPUT_FILE ? [["list"], ["junit"]] : "list",
   webServer: externalBaseURL
     ? undefined
     : {
