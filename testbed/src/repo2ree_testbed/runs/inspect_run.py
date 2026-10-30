@@ -15,6 +15,7 @@ from pathlib import Path
 
 from repo2ree_testbed.artifacts import ROOT, domain_dir, run_dir
 from repo2ree_testbed.records import Behaviour, RunRecord, RunTest, read, write
+from repo2ree_testbed.runs.failed_command import FailedCommand, last_failed_command
 
 VERDICTS: dict[int, Behaviour] = {0: "passed", 1: "violated", 2: "inconclusive"}
 EXIT_CODES = {behaviour: code for code, behaviour in VERDICTS.items()}
@@ -34,6 +35,7 @@ td, th { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: lef
 .shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
 figure { margin: 0; } figure img { width: 100%; border: 1px solid var(--line); border-radius: 6px; }
 figcaption { font-size: 13px; color: var(--muted); } a { color: inherit; }
+pre { font-size: 13px; white-space: pre-wrap; border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
 """
 
 
@@ -73,7 +75,10 @@ def inspect_test(directory: Path, test: RunTest) -> RunTest:
         draw=bool(test.rees),
     )
     inspected = test.judged(verdict)
-    write_test_index(directory, inspected)
+    failed = last_failed_command(directory / "dossier" / "telemetry") if test.outcome == "failed" else None
+    if failed is not None:
+        inspected = inspected.but(last_failed_command=failed.summary())
+    write_test_index(directory, inspected, failed)
     return inspected
 
 
@@ -81,10 +86,15 @@ def links(directory: Path, pattern: str) -> list[Path]:
     return sorted(path.relative_to(directory) for path in directory.glob(pattern))
 
 
-def write_test_index(directory: Path, test: RunTest) -> None:
+def write_test_index(directory: Path, test: RunTest, failed: FailedCommand | None = None) -> None:
     rows = [
         ("Test outcome", f"<span class='{test.outcome}'>{test.outcome}</span> (exit {test.exit_code})"),
         ("Reason", html.escape(test.reason) or "<span class='muted'>none</span>"),
+        *(
+            [("Last failed command", f"<code>{html.escape(test.last_failed_command)}</code>")]
+            if test.last_failed_command
+            else []
+        ),
         ("Behaviour", f"<span class='{test.behaviour}'>{test.behaviour}</span>"),
         ("Duration", f"{test.duration:.0f} s, stack start to teardown"),
         (
@@ -97,6 +107,14 @@ def write_test_index(directory: Path, test: RunTest) -> None:
     body = [f"<h1>{html.escape(test.name)}</h1>", "<table>"]
     body += [f"<tr><th>{label}</th><td>{value}</td></tr>" for label, value in rows]
     body.append("</table>")
+    if failed is not None:
+        body.append("<h2>Last failed command</h2>")
+        body.append(
+            "<p class='muted'>What execution recorded, beside the test outcome; the behaviour verdict judges the"
+            " dossier against the spec and does not rest on it.</p>"
+        )
+        body.append(f"<p><code>{html.escape(failed.argv)}</code> exited {html.escape(str(failed.exit_code))}</p>")
+        body.append(f"<pre>{html.escape(failed.stderr_tail)}</pre>")
 
     pages = [("Assurance report", path) for path in links(directory, "verification/assurance.html")]
     pages += [(f"Behaviour trace {path.stem}", path) for path in links(directory, "traces/*.html")]
@@ -134,7 +152,13 @@ def write_run_index(root: Path, run: RunRecord) -> None:
     ]
     body += [
         f"<tr><td><a href='{html.escape(test.directory)}/index.html'>{html.escape(test.name)}</a></td>"
-        f"<td class='{test.outcome}'>{test.outcome}</td><td class='{test.behaviour}'>{test.behaviour}</td>"
+        f"<td><span class='{test.outcome}'>{test.outcome}</span>"
+        + (
+            f"<br><span class='muted'>last failed command: {html.escape(test.last_failed_command)}</span>"
+            if test.last_failed_command
+            else ""
+        )
+        + f"</td><td class='{test.behaviour}'>{test.behaviour}</td>"
         f"<td>{test.duration:.0f} s</td><td>{len(test.rees)}</td></tr>"
         for test in run.tests
     ]
@@ -151,6 +175,8 @@ def inspect_run(root: Path) -> RunRecord:
         inspected = inspect_test(root / test.directory, test)
         tests.append(inspected)
         print(f"   {inspected.outcome:<7} behaviour {inspected.behaviour or '':<12} {test.name}")
+        if inspected.last_failed_command:
+            print(f"           outcome {inspected.outcome}, last failed command: {inspected.last_failed_command}")
     inspected_run = run.with_tests(tuple(tests))
     write_run_index(root, inspected_run)
     write(root / "run.json", inspected_run)

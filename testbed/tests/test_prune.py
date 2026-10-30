@@ -1,5 +1,6 @@
 import json
 import os
+import subprocess
 import time
 from pathlib import Path
 
@@ -119,6 +120,26 @@ def test_unused_stores_beyond_the_newest_are_removed_and_the_checkouts_never(mon
     assert workbench_cleanup.stale_store_volumes("repo2ree-store-live", 0) == sorted(
         set(created) - {"repo2ree-store-live"}
     )
+
+
+def test_each_owned_bench_leaves_its_daemon_log_before_cleanup(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    listed: list[list[str]] = []
+
+    def logs(command: list[str], **_: object) -> subprocess.CompletedProcess[bytes]:
+        return subprocess.CompletedProcess(command, 0, f"out of {command[-1]}\n".encode(), b"dockerd said\n")
+
+    def containers(command: list[str]) -> list[str]:
+        listed.append(command)
+        return ["repo2ree-wb-a1"]
+
+    monkeypatch.setattr(workbench_cleanup, "lines", containers)
+    monkeypatch.setattr(subprocess, "run", logs)
+
+    saved = workbench_cleanup.save_bench_logs("run-token", tmp_path / "logs")
+
+    assert "label=repo2ree.resource-owner=run-token" in listed[0]
+    assert saved == [tmp_path / "logs" / "bench-a1.log"]
+    assert saved[0].read_text() == "out of repo2ree-wb-a1\ndockerd said\n"
 
 
 def recorded_case(base: Path, path: str, finished: float) -> Path:

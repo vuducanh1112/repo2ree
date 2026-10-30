@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 
@@ -68,6 +69,43 @@ def test_a_dossier_a_run_left_is_judged_in_place_and_its_test_row_updated(
     assert [test.behaviour for test in record.tests] == ["violated", None]
     assert (run / "index.html").is_file()
     assert (run / "tests/judged/index.html").is_file()
+
+
+def test_a_failed_test_records_its_last_failed_command_beside_its_outcome(
+    tmp_path: Path, tools: list[tuple[str, ...]]
+) -> None:
+    run = tmp_path / "e2e-gui-1"
+    failed = run_test("tests/suite").but(outcome="failed", exit_code=1)
+    (run / "tests/suite").mkdir(parents=True)
+    (run / "run.json").write_text(
+        RunRecord(tier="t", suite="s", build_revision="", jobs=1, tests=(failed,)).model_dump_json()
+    )
+    telemetry = dossier_at(run / "tests/suite/dossier") / "telemetry"
+    telemetry.mkdir()
+    attributes = {
+        "repo2ree.exec.argv": "sh build.sh",
+        "repo2ree.exit_code": 1,
+        "repo2ree.exec.stderr_tail": "Temporary failure in name resolution\nERROR: failed to build\n",
+    }
+    (telemetry / "api.ndjson").write_text(
+        json.dumps(
+            {"name": "process.exec", "end_time": "t", "status": {"status_code": "ERROR"}, "attributes": attributes}
+        )
+    )
+
+    inspect_run.inspect_run(run)
+
+    record = read(RunRecord, run / "run.json")
+    assert record is not None
+    [test] = record.tests
+    assert (
+        test.last_failed_command
+        == "`sh build.sh` exited 1: Temporary failure in name resolution … ERROR: failed to build"
+    )
+    page = (run / "tests/suite/index.html").read_text()
+    assert "Last failed command" in page
+    assert "ERROR: failed to build" in page
+    assert "Temporary failure in name resolution" in (run / "index.html").read_text()
 
 
 def test_a_dossier_collected_elsewhere_reports_under_the_assurance_directory(

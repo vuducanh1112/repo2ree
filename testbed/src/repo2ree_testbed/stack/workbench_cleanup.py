@@ -71,6 +71,25 @@ def workbench_containers(owner: str | None) -> list[str]:
     return sorted(set(lines(["docker", "ps", "-aq", "--filter", resource_filter])))
 
 
+def save_bench_logs(owner: str, directory: Path) -> list[Path]:
+    """Keep what each bench still alive at teardown printed: its own daemon's log.
+
+    A bench's main process is the env image's default command — for docker:dind,
+    the nested dockerd — and what it prints exists only in ``docker logs``, which
+    the cleanup that follows deletes with the container. Benches a test released
+    are gone already; the provider logs their tail on release.
+    """
+    saved = []
+    listing = ["docker", "ps", "-a", "--format", "{{.Names}}", "--filter", f"label=repo2ree.resource-owner={owner}"]
+    for name in sorted(set(lines(listing))):
+        result = subprocess.run(["docker", "logs", "--timestamps", name], check=False, capture_output=True)
+        path = directory / f"bench-{name.removeprefix('repo2ree-wb-')}.log"
+        directory.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(result.stdout + result.stderr)
+        saved.append(path)
+    return saved
+
+
 def owned_volumes(owner: str) -> list[str]:
     return sorted(set(lines(["docker", "volume", "ls", "-q", "--filter", f"label=repo2ree.resource-owner={owner}"])))
 

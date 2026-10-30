@@ -43,6 +43,11 @@ class TestResult(Record):
 class RunTest(TestResult):
     directory: str
     behaviour: Behaviour | None = None
+    # An execution fact beside the outcome, not part of the behaviour verdict (which
+    # judges the dossier against the spec): the last workbench command that failed
+    # in a failed test, as its dossier's spans recorded it. Where to look first, not
+    # why the test failed — a test may fail commands on purpose, or fail without one.
+    last_failed_command: str = ""
 
     @classmethod
     def of(cls, result: TestResult, directory: str) -> RunTest:

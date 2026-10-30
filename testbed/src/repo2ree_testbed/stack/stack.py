@@ -24,7 +24,7 @@ from repo2ree_testbed.stack.clients import Client, Launch, Started
 from repo2ree_testbed.stack.injector import Injector
 from repo2ree_testbed.stack.process import listed, reachable, terminate, wait_until
 from repo2ree_testbed.stack.services import Deployment, backend_environment, locations
-from repo2ree_testbed.stack.workbench_cleanup import cleanup
+from repo2ree_testbed.stack.workbench_cleanup import cleanup, save_bench_logs
 
 
 @dataclass(frozen=True)
@@ -277,6 +277,7 @@ class E2EStack:
                 shutil.rmtree(self.control_state, ignore_errors=True)
         with self.phase("cleanup"):
             try:
+                save_bench_logs(self.layout.run_token, self.layout.logs)
                 cleanup(self.layout.run_token, store=False, store_gc=None)
             except OSError as error:
                 print(f"workbench cleanup failed: {error}", file=sys.stderr)
