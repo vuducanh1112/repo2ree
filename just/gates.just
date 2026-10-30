@@ -61,11 +61,10 @@ zones-gate: _require-clean-tree
 
 # Run the complete pre-publish gate and certify the local image set.
 [group('Release gates')]
-publish-gate: _require-clean-tree _require-current-commit-gate _require-current-assurance-gate zones-gate test-backend-integration test-gui-accessibility test-gui-screenshots test-e2e-gui test-e2e-review build-images
+publish-gate: _require-clean-tree _require-current-commit-gate _require-current-assurance-gate zones-gate test-backend-integration test-gui-accessibility test-gui-screenshots test-showcase build-images
     #!/usr/bin/env bash
     set -euo pipefail
-    python -m repo2ree_testbed image-suite --suite e2e-gui --compute-locations {{ quote(DEFAULT_STACK_LOCATIONS) }} --images local
-    python -m repo2ree_testbed image-suite --suite e2e-gui-review --compute-locations 1 --images local
+    python -m repo2ree_testbed image-suite --suite showcase --compute-locations {{ quote(DEFAULT_STACK_LOCATIONS) }} --images local
     revision=$(git describe --always)
     python -m scripts.gates.publish_gate write {{ quote(DEFAULT_PUBLISH_GATE_RECEIPT) }} "$revision"
     echo ">> publish gate green — certified local image set for $revision"
