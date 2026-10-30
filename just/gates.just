@@ -59,11 +59,36 @@ zones-gate: _require-clean-tree
     python scripts/zones.py verify
     @echo ">> zones gate green — every file has a zone and every zone entry a file"
 
-# Run the complete pre-publish gate and certify the local image set for this machine's platform.
-[group('Release gates')]
-publish-gate: _require-clean-tree _require-current-commit-gate _require-current-assurance-gate zones-gate test-backend-integration test-gui-accessibility test-gui-screenshots test-showcase build-images
+# Run each tier a gate needs that this machine can prove and has no current receipt for, certifying each run.
+[private]
+_run-missing-tiers gate:
     #!/usr/bin/env bash
     set -euo pipefail
+    missing=$(python -m scripts.gates.tiers missing {{ quote(gate) }} --platforms {{ quote(PUBLISH_PLATFORMS) }})
+    while read -r tier recipe; do
+        [[ -n "$tier" ]] || continue
+        echo ">> {{ gate }} needs a current $tier receipt: just $recipe"
+        just --justfile {{ quote(ROOT + "/justfile") }} "$recipe"
+        python -m scripts.gates.tiers certify --tier "$tier"
+    done <<< "$missing"
+
+# Show what a gate needs for HEAD, what proves each part already, and the command for each gap.
+[group('Release gates')]
+gate-plan gate="publish-gate":
+    python -m scripts.gates.tiers plan {{ quote(gate) }} --platforms {{ quote(PUBLISH_PLATFORMS) }}
+
+# Prove the showcase tier on every platform in PUBLISH_PLATFORMS: run it here unless this platform has a current receipt, then require them all.
+[group('Release gates')]
+showcase-gate: _require-clean-tree (_run-missing-tiers "showcase-gate")
+    python -m scripts.gates.tiers require showcase-gate --platforms {{ quote(PUBLISH_PLATFORMS) }}
+    @echo ">> showcase gate green on {{ PUBLISH_PLATFORMS }}"
+
+# Run the complete pre-publish gate and certify the local image set for this machine's platform: tiers with a current receipt are not run again.
+[group('Release gates')]
+publish-gate: _require-clean-tree _require-current-commit-gate _require-current-assurance-gate zones-gate (_run-missing-tiers "publish-gate") build-images
+    #!/usr/bin/env bash
+    set -euo pipefail
+    python -m scripts.gates.tiers require publish-gate --platforms {{ quote(PUBLISH_PLATFORMS) }}
     python -m repo2ree_testbed image-suite --suite showcase --compute-locations {{ quote(DEFAULT_STACK_LOCATIONS) }} --images local
     revision=$(git describe --always)
     receipt=$(python -m scripts.gates.publish_gate path .receipts)

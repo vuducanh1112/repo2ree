@@ -25,7 +25,7 @@ DIRECTORY = ".receipts"
 DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
 PLATFORM = re.compile(r"[a-z0-9]+/[a-z0-9]+")
 
-type Gate = Literal["commit-gate", "assurance-gate", "publish-gate"]
+type Gate = Literal["commit-gate", "assurance-gate", "publish-gate", "tier"]
 type Document = dict[str, Any]
 
 
@@ -153,6 +153,49 @@ class PublishGateReceipt(Receipt):
     def body(cls, document: Document) -> Document:
         images = _object(document, "images")
         return {"images": {image: _str(images, image) for image in images}, "platform": _str(document, "platform")}
+
+
+@dataclass(frozen=True)
+class TierReceipt(Receipt):
+    """One gated tier passed, whole, on this tree and platform, with the deployment the policy asks.
+
+    Written by ``scripts/gates/tiers.py`` from the run's own record, never by the tier itself,
+    at ``.receipts/tiers/<tier>/<tree>-<os>-<arch>.json``: a receipt per tree and platform, so
+    one for another branch's tree counts again when that tree is checked out again.
+    """
+
+    GATE: ClassVar[Gate] = "tier"
+
+    tier: str
+    platform: str
+    machine: str
+    run: str  # The run directory its record is in.
+    tests: int
+    skipped: int
+    judged: bool  # Whether every test's behaviour was checked too, and passed or was excused.
+
+    def __post_init__(self) -> None:
+        if not PLATFORM.fullmatch(self.platform):
+            raise ValueError(f"invalid platform: {self.platform!r}")
+
+    @classmethod
+    def body(cls, document: Document) -> Document:
+        judged = document.get("judged")
+        if not isinstance(judged, bool):
+            raise ValueError("judged is not a boolean")
+        return {
+            "tier": _str(document, "tier"),
+            "platform": _str(document, "platform"),
+            "machine": _str(document, "machine"),
+            "run": _str(document, "run"),
+            "tests": _int(document, "tests"),
+            "skipped": _int(document, "skipped"),
+            "judged": judged,
+        }
+
+
+def tier_path(root: Path, tier: str, tree: str, platform: str) -> Path:
+    return root / DIRECTORY / "tiers" / tier / f"{tree}-{platform.replace('/', '-')}.json"
 
 
 def path(root: Path, gate: Gate) -> Path:

@@ -51,13 +51,20 @@ protected = true
 [gates.groups.recipes]
 summary = "The gates as you run them."
 [gates.groups.recipes.paths]
-"just/gates.just" = "`commit-gate`, `assurance-gate` and the tiers it runs, `publish-gate`"
+"just/gates.just" = "`commit-gate`, `assurance-gate` and the tiers it runs, `showcase-gate`, `publish-gate`, `gate-plan`"
 
 [gates.groups.assurance]
 summary = "Certifies a tree by its tests' outcomes, verdicts, and coverage."
 [gates.groups.assurance.paths]
 "scripts/gates/assurance_gate.py" = "Judges per-test runs and writes the assurance-gate receipt"
 "scripts/tests/test_assurance_gate.py" = "Its tests"
+
+[gates.groups.tiers]
+summary = "Certifies each gated tier's runs, and composes gates of the receipts."
+[gates.groups.tiers.paths]
+"scripts/gates/tiers.py" = "Turns a tier's run record into a tier receipt; plans and requires a gate's receipts"
+"scripts/gates/policy.toml" = "What each tier must run with, and what each gate requires of them"
+"scripts/tests/test_tiers.py" = "Its tests"
 
 [gates.groups.receipts]
 summary = "The commit and publish gates, and the receipts every gate writes."

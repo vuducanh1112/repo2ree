@@ -1,0 +1,36 @@
+# What a tier receipt certifies, and what each gate requires of them (scripts/gates/tiers.py).
+#
+# Protected, like the gates: whether a run counts is decided here, apart from the tiers it judges.
+# A tier's `parameters` are the deployment its run must record (run.json); a tier left `judged`
+# is checked on behaviour too, by the checker in the tree being certified; `skips` says whether a
+# skipped test may stand in a certified run.
+#
+# A gate's `tiers` maps each tier to where it must have passed: `any` platform, `here` (the
+# platform of the machine running the gate), or `each` platform the gate is asked for (just passes
+# PUBLISH_PLATFORMS). Its `gates` are other gates whose own proof it requires as it stands.
+
+[tiers.integration]
+recipe = "test-backend-integration"
+# Docker-gated tests skip where there is no Docker; the receipt records how many skipped.
+skips = true
+
+[tiers.gui-accessibility]
+recipe = "test-gui-accessibility"
+
+[tiers.gui-screenshots]
+recipe = "test-gui-screenshots"
+
+[tiers.showcase]
+recipe = "test-showcase"
+parameters = { compute_locations = 2, mode = "provider", docker_mode = "dind" }
+judged = true
+
+[gates.showcase-gate]
+# Real projects behave differently by platform (wheels, base-image variants): each published one.
+tiers = { showcase = "each" }
+
+[gates.publish-gate]
+# Each machine's publish gate certifies its own platform's images (the pushing host requires every
+# published platform's: scripts/publish/image_candidate.py), so the showcase must hold here.
+gates = ["commit-gate", "assurance-gate", "zones-gate"]
+tiers = { showcase = "here", integration = "any", gui-accessibility = "any", gui-screenshots = "any" }
