@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from pathlib import Path
 
 from repo2ree_protocol.allocation import AllocationRequest
 from repo2ree_protocol.execution import ExecutionContext
@@ -48,6 +49,10 @@ class WorkbenchService:
     def exec_query_stream(self, argv: list[str], timeout: int = 30) -> Iterator[bytes]:
         self._require_bound()
         return self._executor.exec_query_stream(argv, timeout)
+
+    def exec_query_to_file(self, argv: list[str], target: Path, timeout: int = 600) -> None:
+        self._require_bound()
+        self._executor.exec_query_to_file(argv, target, timeout)
 
     def cancel_run(self, run_id: str) -> None:
         self._executor.cancel_run(run_id)

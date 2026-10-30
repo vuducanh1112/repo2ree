@@ -39,12 +39,16 @@ import time
 import zipfile
 from collections.abc import Iterator
 from contextlib import suppress
-from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
 
 import pytest
-from websockets.asyncio.server import ServerConnection, serve
+import uvicorn
+from starlette.applications import Starlette
+from starlette.requests import Request
+from starlette.responses import FileResponse, Response
+from starlette.routing import Route, WebSocketRoute
+from starlette.websockets import WebSocket, WebSocketDisconnect
 
 from repo2ree_protocol.allocation import WorkbenchImage
 from repo2ree_protocol.command import (
@@ -73,6 +77,7 @@ from repo2ree_supervisor import (
     WsProviderClient,
     WsWorkbenchClient,
 )
+from repo2ree_supervisor.transfers import TRANSFER_PATH_PREFIX, TransferError, Transfers
 from repo2ree_telemetry.relay import build_span_sink
 from repo2ree_testbed.artifacts import case_dir, service_dir
 from repo2ree_testbed.preservation import TestRecorder
@@ -128,6 +133,11 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+# Files the workbench uploads beside its control socket (an REE archive), shared
+# by the in-test control plane's transfer route and the manager's client.
+TRANSFERS = Transfers()
+
+
 # ================================================
 # Fixtures
 # ================================================
@@ -138,11 +148,12 @@ def service_connections() -> Iterator[tuple[ProviderConnectionRegistry, Workbenc
     """Run the real outbound workbench dialing an in-test control-plane socket.
 
     Mirrors production: the workbench dials ``/workbench/connect``, holds one WebSocket,
-    and the manager drives it through ``WsWorkbenchClient``. A raw ``websockets``
-    server stands in for the API's route (same bridge: ``send_text`` schedules on
-    the loop, inbound frames feed ``on_message``), so the test needs no HTTP app.
-    The event loop runs in a background thread while the synchronous manager
-    blocks on it from the test thread.
+    and the manager drives it through ``WsWorkbenchClient``. A small Starlette app
+    under uvicorn stands in for the API's routes (same bridge: ``send_text``
+    schedules on the loop, inbound frames feed ``on_message``), including the
+    transfer route a workbench uploads an archive to (``TRANSFERS``). The event
+    loop runs in a background thread while the synchronous manager blocks on it
+    from the test thread.
     """
     port = _free_port()
     control_host, workbench_network = _container_control_endpoint()
@@ -150,11 +161,13 @@ def service_connections() -> Iterator[tuple[ProviderConnectionRegistry, Workbenc
     workbench_registry = WorkbenchConnectionRegistry()
     loop = asyncio.new_event_loop()
 
-    async def handler(ws: ServerConnection) -> None:
-        def send_text(text: str) -> None:
-            asyncio.run_coroutine_threadsafe(ws.send(text), loop)
+    async def handler(ws: WebSocket) -> None:
+        await ws.accept()
 
-        hello = json.loads(await ws.recv())
+        def send_text(text: str) -> None:
+            asyncio.run_coroutine_threadsafe(ws.send_text(text), loop)
+
+        hello = json.loads(await ws.receive_text())
         provider_id = hello.get("provider_id")
         workbench_id = hello.get("workbench_id", "default")
         connection: ProviderConnection | WorkbenchConnection
@@ -165,8 +178,10 @@ def service_connections() -> Iterator[tuple[ProviderConnectionRegistry, Workbenc
             connection = WorkbenchConnection(send_text=send_text)
             workbench_registry.register(workbench_id, connection)
         try:
-            async for message in ws:
-                connection.on_message(message if isinstance(message, str) else message.decode())
+            while True:
+                connection.on_message(await ws.receive_text())
+        except WebSocketDisconnect:
+            pass
         finally:
             connection.close()
             if provider_id:
@@ -176,8 +191,38 @@ def service_connections() -> Iterator[tuple[ProviderConnectionRegistry, Workbenc
                 assert isinstance(connection, WorkbenchConnection)
                 workbench_registry.unregister(workbench_id, connection)
 
+    async def offered(request: Request) -> Response:
+        try:
+            return FileResponse(TRANSFERS.serve(request.path_params["token"]))
+        except TransferError:
+            return Response(status_code=404)
+
+    async def transfer(request: Request) -> Response:
+        length = request.headers.get("content-length", "")
+        try:
+            await TRANSFERS.receive(
+                request.path_params["token"], request.stream(), int(length) if length.isdigit() else None
+            )
+        except TransferError:
+            return Response(status_code=404)
+        return Response(status_code=204)
+
+    app = Starlette(
+        routes=[
+            WebSocketRoute("/workbench/connect", handler),
+            WebSocketRoute("/provider/connect", handler),
+            Route(TRANSFER_PATH_PREFIX + "{token}", transfer, methods=["PUT"]),
+            Route(TRANSFER_PATH_PREFIX + "{token}", offered, methods=["GET"]),
+        ]
+    )
+    # Sibling test containers must connect, so it listens on every interface.
+    server = uvicorn.Server(uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning"))  # noqa: S104
+
     async def serve_and_dial() -> None:
-        async with serve(handler, "0.0.0.0", port):  # noqa: S104 -- sibling test containers must connect
+        serving = asyncio.create_task(server.serve())
+        while not server.started:  # noqa: ASYNC110 - uvicorn exposes readiness only as this flag
+            await asyncio.sleep(0.05)
+        try:
             isolation = DockerIsolation(
                 "dind",
                 workbench_api_ws_url=f"ws://{control_host}:{port}/workbench/connect",
@@ -191,6 +236,9 @@ def service_connections() -> Iterator[tuple[ProviderConnectionRegistry, Workbenc
                 location_label="E2E lab",
                 images=(WorkbenchImage(ref=WORKBENCH_IMAGE, id="standard", label="Standard"),),
             )
+        finally:
+            server.should_exit = True
+            await serving
 
     task_holder: list[asyncio.Task[None]] = []
 
@@ -236,7 +284,7 @@ def workbench(
     manager = WorkbenchManager(
         registry=registry,
         provider=WsProviderClient(provider_connections),
-        workbench=WsWorkbenchClient(workbench_connections),
+        workbench=WsWorkbenchClient(workbench_connections, TRANSFERS),
         span_sink=build_span_sink(None, console_fallback=True),
     )
     ree_id = uuid4().hex[:12]
@@ -402,10 +450,13 @@ def test_workbench_lifecycle_e2e(workbench: tuple[WorkbenchManager, WorkbenchHan
     assert result.status == "succeeded", result.failure
     assert result.outputs["ree_digest"].startswith("sha256:")
 
-    # --- build-archive: real sealed zip streamed back over the wire ----
+    # --- build-archive: a real sealed zip, uploaded beside the control socket ----
     archive = manager.build_archive(handle)
-    with zipfile.ZipFile(BytesIO(archive)) as zf:
-        assert zf.namelist()  # a valid, non-empty zip
+    try:
+        with zipfile.ZipFile(archive.path) as zf:
+            assert zf.namelist()  # a valid, non-empty zip
+    finally:
+        archive.path.unlink()
 
     # the real NDJSON log relay carried events back from the container
     assert events

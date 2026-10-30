@@ -24,16 +24,24 @@ import logging
 from concurrent.futures import Future
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Request, Response, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from repo2ree_api.contracts import ERROR_RESPONSES
-from repo2ree_api.deps import provider_connections, span_sink, workbench_connections, workbench_enrollments
+from repo2ree_api.deps import (
+    provider_connections,
+    span_sink,
+    workbench_connections,
+    workbench_enrollments,
+    workbench_transfers,
+)
 from repo2ree_api.settings import service_settings
 from repo2ree_protocol.provider import provider_hello_adapter
 from repo2ree_protocol.workbench import WorkbenchHello, workbench_hello_adapter
 from repo2ree_ree.instant import format_utc_instant
-from repo2ree_supervisor import ProviderConnection, WorkbenchConnection
+from repo2ree_supervisor import ProviderConnection, TransferError, WorkbenchConnection
+from repo2ree_supervisor.transfers import TRANSFER_PATH_PREFIX
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +92,37 @@ async def provider_connect(websocket: WebSocket) -> None:
     finally:
         connection.close()
         provider_connections.unregister(hello.provider_id, connection)
+
+
+@workbench_ws_router.put(TRANSFER_PATH_PREFIX + "{token}", name="receiveWorkbenchTransfer", include_in_schema=False)
+async def receive_workbench_transfer(token: str, request: Request) -> Response:
+    """A file a workbench uploads for a request waiting on it (``ExecUploadRequest``).
+
+    Not part of the public API: the token in the path is a single-use credential the
+    control plane minted for one request, and nothing else is accepted here.
+    """
+    length = request.headers.get("content-length", "")
+    try:
+        await workbench_transfers.receive(token, request.stream(), int(length) if length.isdigit() else None)
+    except TransferError as exc:
+        logger.warning("refused a workbench transfer: %s", exc)
+        return Response(status_code=404 if "no such" in str(exc) else 400)
+    return Response(status_code=204)
+
+
+@workbench_ws_router.get(TRANSFER_PATH_PREFIX + "{token}", name="serveWorkbenchTransfer", include_in_schema=False)
+async def serve_workbench_transfer(token: str) -> Response:
+    """A file the control plane offered a workbench for a request waiting on it (``FetchFileRequest``).
+
+    Not part of the public API, and served once: the token in the path is a
+    single-use credential minted for one request.
+    """
+    try:
+        path = workbench_transfers.serve(token)
+    except TransferError as exc:
+        logger.warning("refused a workbench transfer: %s", exc)
+        return Response(status_code=404)
+    return FileResponse(path, media_type="application/octet-stream")
 
 
 @workbench_ws_router.websocket("/workbench/connect", name="connectWorkbench")

@@ -65,6 +65,7 @@ from repo2ree_supervisor.client import (
     raise_for_terminal_error,
 )
 from repo2ree_supervisor.enrollment import EnrollmentRegistry
+from repo2ree_supervisor.transfers import ReceivedFile
 from repo2ree_telemetry.behaviour import events
 from repo2ree_telemetry.bootstrap import get_meter, get_tracer
 from repo2ree_telemetry.relay import SpanSink
@@ -607,13 +608,15 @@ class WorkbenchManager:
         # REE files can include large runtime and result artifacts.
         return self.dispatch_query(handle, READ_REE_FILE, READ_REE_FILE_PATH, path, timeout=120)
 
-    def build_archive(self, handle: WorkbenchHandle) -> bytes:
-        return b"".join(self.build_archive_stream(handle))
+    def build_archive(self, handle: WorkbenchHandle) -> ReceivedFile:
+        """The REE's archive as a file on the control plane; the caller removes it.
 
-    def build_archive_stream(self, handle: WorkbenchHandle) -> Iterator[bytes]:
-        # Zipping a sealed REE scales with its size, hence the generous timeout;
-        # the per-REE lock stays held until the caller finishes consuming.
-        return self.dispatch_query_stream(handle, BUILD_ARCHIVE, locked=True, timeout=180)
+        Built and uploaded beside the control socket (``exec_upload``), under the
+        per-REE lock, which is released once the file has arrived — never held for
+        as long as a client takes to download it. Zipping and sending scale with
+        the REE's size, hence the generous timeout."""
+        with self._ree_lock(handle.ree_id):
+            return self._workbench.exec_upload(handle.workbench_id, [BUILD_ARCHIVE], timeout=600)
 
     def list_all_manifests(self) -> list[tuple[WorkbenchHandle, Ree]]:
         """Every reachable workbench, paired with its REE.

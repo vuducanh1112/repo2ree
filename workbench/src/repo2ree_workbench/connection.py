@@ -63,7 +63,6 @@ from repo2ree_telemetry.spans import (
 )
 from repo2ree_workbench.dispatcher import dispatch_workbench_request
 from repo2ree_workbench.service import WorkbenchService
-from repo2ree_workbench.transfers import TransferStore
 
 logger = logging.getLogger(__name__)
 tracer = get_tracer(__name__)
@@ -228,7 +227,7 @@ async def run_workbench(
                 if span_relay is not None:
                     span_relay.bind(asyncio.get_running_loop(), ws)
                 try:
-                    drained = await _serve(ws, service)
+                    drained = await _serve(ws, service, api_ws_url)
                 finally:
                     if span_relay is not None:
                         span_relay.unbind()
@@ -254,10 +253,7 @@ class _RequestId(BaseModel):
     id: str
 
 
-async def _serve(ws: ClientConnection, service: WorkbenchService) -> bool:
-    # Chunked copy-in transfers are scoped to this connection; if it drops with
-    # any still open, their partial temp files are discarded rather than leaked.
-    transfers = TransferStore()
+async def _serve(ws: ClientConnection, service: WorkbenchService, api_ws_url: str = "") -> bool:
     # Hold a strong reference to every in-flight handler: the event loop only
     # keeps a weak one, so a task dropped here could be garbage-collected
     # mid-request — silently losing its response and hanging the caller. Keyed
@@ -297,11 +293,10 @@ async def _serve(ws: ClientConnection, service: WorkbenchService) -> bool:
                 await _send(ws, req.id, DoneFrame())
                 return True
             # One task per request so a long build never blocks other calls.
-            task = asyncio.create_task(_handle(ws, service, transfers, req.id, req.request, req.traceparent))
+            task = asyncio.create_task(_handle(ws, service, req.id, req.request, req.traceparent, api_ws_url))
             inflight[req.id] = task
             task.add_done_callback(partial(_forget_inflight, inflight, req.id))
     finally:
-        transfers.abort_all()
         if inflight:
             await asyncio.gather(*inflight.values(), return_exceptions=True)
     return False
@@ -338,10 +333,10 @@ class _RequestOutcome:
 async def _handle(
     ws: ClientConnection,
     service: WorkbenchService,
-    transfers: TransferStore,
     req_id: str,
     req: WorkbenchRequest,
     traceparent: str | None = None,
+    api_ws_url: str = "",
 ) -> None:
     operation = str(req.op)
     metric_attrs = command_metric_attrs(operation)
@@ -377,11 +372,11 @@ async def _handle(
             await dispatch_workbench_request(
                 req,
                 service,
-                transfers,
                 send=send_frame,
                 pump=lambda factory: _pump(send_frame, factory),
                 pump_bytes=lambda factory: _pump_bytes(send_frame, factory),
                 record_received=lambda size: _bytes_received_counter.add(size, metric_attrs),
+                api_ws_url=api_ws_url,
             )
         except asyncio.CancelledError:
             outcome.status = "canceled"

@@ -9,9 +9,11 @@ happen concurrently, exactly like production.
 
 from __future__ import annotations
 
+import asyncio
 import base64
+import hashlib
 import threading
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Iterator
 from typing import Any, Protocol, cast
 
 import pytest
@@ -23,19 +25,22 @@ from repo2ree_protocol.frames import (
     LogFrame,
     ResultFrame,
     SpanFrame,
-    TransferFrame,
     UnavailableFrame,
 )
 from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.workbench import (
-    CopyChunkRequest,
     ExecActionRequest,
     ExecSimpleRequest,
+    ExecUploadRequest,
+    FetchFileRequest,
     WorkbenchWsMessage,
     WorkbenchWsRequest,
     workbench_ws_request_adapter,
 )
 from repo2ree_supervisor import (
+    ReceivedFile,
+    TransferError,
+    Transfers,
     WorkbenchConnection,
     WorkbenchConnectionRegistry,
     WorkbenchUnavailableError,
@@ -178,73 +183,28 @@ def test_cancel_run_sends_cancel_run_request() -> None:
     join()
 
 
-def test_copy_in_streams_open_chunks_then_close(tmp_path) -> None:
+def test_copy_in_offers_the_file_for_one_fetch_beside_the_socket(tmp_path) -> None:
     socket = FakeSocket()
     registry = WorkbenchConnectionRegistry()
     registry.register("a1", socket.connection)
-    client = WsWorkbenchClient(registry)
-
+    transfers = Transfers(tmp_path)
+    client = WsWorkbenchClient(registry, transfers)
     source = tmp_path / "archive.bin"
-    source.write_bytes(b"streamed-archive-bytes")
+    source.write_bytes(b"0123456789")
 
     join = _run_in_thread(lambda: client.copy_in("a1", str(source), "/ree/dest.bin"))
-
-    open_req = socket.wait_for_nth_request(1).request
-    assert open_req.op == "copy_open"
-    assert open_req.workbench_path == "/ree/dest.bin"
-    socket.respond_to(0, TransferFrame(transfer_id="t1"))
-
-    # Payload is smaller than one chunk, so a single copy_chunk carries it all.
-    chunk_req = socket.wait_for_nth_request(2).request
-    assert chunk_req.op == "copy_chunk"
-    assert chunk_req.transfer_id == "t1"
-    assert chunk_req.offset == 0
-    assert base64.b64decode(chunk_req.data_b64) == b"streamed-archive-bytes"
-    socket.respond_to(1, DoneFrame())
-
-    close_req = socket.wait_for_nth_request(3).request
-    assert close_req.op == "copy_close"
-    assert close_req.transfer_id == "t1"
-    socket.respond_to(2, DoneFrame())
-
+    request = socket.wait_for_request().request
+    assert isinstance(request, FetchFileRequest)
+    assert request.workbench_path == "/ree/dest.bin"
+    # What the API's route hands the workbench for that path: the file, once.
+    token = request.transfer_path.removeprefix("/workbench/transfers/")
+    assert transfers.serve(token) == source
+    with pytest.raises(TransferError):
+        transfers.serve(token)
+    socket.respond(DoneFrame())
     join()
-    assert [req.request.op for req in socket.sent] == ["copy_open", "copy_chunk", "copy_close"]
 
-
-def test_copy_in_pipelines_chunks_within_the_window(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
-    # Every chunk of a windowed transfer rides the wire before the first ack
-    # comes back — throughput must not be one round trip per chunk. Offsets
-    # address the writes so the workbench can apply them in any order.
-    import repo2ree_supervisor.workbench_link as workbench_link_module
-
-    monkeypatch.setattr(workbench_link_module, "COPY_CHUNK_BYTES", 4)
-    socket = FakeSocket()
-    registry = WorkbenchConnectionRegistry()
-    registry.register("a1", socket.connection)
-    client = WsWorkbenchClient(registry)
-
-    source = tmp_path / "archive.bin"
-    source.write_bytes(b"0123456789")  # 3 chunks: 4 + 4 + 2 bytes
-
-    join = _run_in_thread(lambda: client.copy_in("a1", str(source), "/ree/dest.bin"))
-    socket.wait_for_nth_request(1)
-    socket.respond_to(0, TransferFrame(transfer_id="t1"))
-
-    # All three chunks arrive with no ack sent yet (window is larger than 3).
-    socket.wait_for_nth_request(4)
-    raw_chunk_reqs = [req.request for req in socket.sent[1:4]]
-    assert [req.op for req in raw_chunk_reqs] == ["copy_chunk"] * 3
-    assert all(isinstance(req, CopyChunkRequest) for req in raw_chunk_reqs)
-    chunk_reqs = cast("list[CopyChunkRequest]", raw_chunk_reqs)
-    assert [req.offset for req in chunk_reqs] == [0, 4, 8]
-    assert b"".join(base64.b64decode(req.data_b64) for req in chunk_reqs) == b"0123456789"
-
-    for index in (1, 2, 3):
-        socket.respond_to(index, DoneFrame())
-    close_req = socket.wait_for_nth_request(5).request
-    assert close_req.op == "copy_close"
-    socket.respond_to(4, DoneFrame())
-    join()
+    assert source.read_bytes() == b"0123456789"  # the caller's file stays
 
 
 def test_abandoned_stream_sends_cancel_to_the_workbench() -> None:
@@ -271,30 +231,24 @@ def test_abandoned_stream_sends_cancel_to_the_workbench() -> None:
     assert cancel_req.request.request_id == query_req.id
 
 
-def test_copy_in_aborts_transfer_on_chunk_error(tmp_path) -> None:
+def test_a_failed_fetch_closes_its_transfer_and_raises(tmp_path) -> None:
     socket = FakeSocket()
     registry = WorkbenchConnectionRegistry()
     registry.register("a1", socket.connection)
-    client = WsWorkbenchClient(registry)
-
+    transfers = Transfers(tmp_path)
+    client = WsWorkbenchClient(registry, transfers)
     source = tmp_path / "archive.bin"
     source.write_bytes(b"some-bytes")
 
     join = _run_in_thread(lambda: client.copy_in("a1", str(source), "/ree/dest.bin"))
-
-    socket.wait_for_nth_request(1)
-    socket.respond_to(0, TransferFrame(transfer_id="t9"))
-    socket.wait_for_nth_request(2)
-    # The workbench rejects a chunk: the client must abort the transfer and re-raise.
-    socket.respond_to(1, ErrorFrame(detail="disk full"))
-
-    abort_req = socket.wait_for_nth_request(3).request
-    assert abort_req.op == "copy_abort"
-    assert abort_req.transfer_id == "t9"
-    socket.respond_to(2, DoneFrame())
+    request = socket.wait_for_request().request
+    assert isinstance(request, FetchFileRequest)
+    socket.respond(ErrorFrame(detail="disk full"))
 
     with pytest.raises(RuntimeError, match="disk full"):
         join()
+    with pytest.raises(TransferError):
+        transfers.serve(request.transfer_path.removeprefix("/workbench/transfers/"))
 
 
 def test_resolve_workbench_pins_empty_placement_to_a_concrete_workbench() -> None:
@@ -384,3 +338,81 @@ def test_correlated_frames_still_reach_their_caller_when_a_sink_is_set() -> None
 
     assert [frame.type for frame in pending.frames()] == ["done"]
     assert relayed == []
+
+
+async def _body(*chunks: bytes) -> AsyncIterator[bytes]:
+    for chunk in chunks:
+        yield chunk
+
+
+def test_an_upload_arrives_beside_the_socket_and_is_collected_on_done(tmp_path) -> None:
+    socket = FakeSocket()
+    registry = WorkbenchConnectionRegistry()
+    registry.register("a1", socket.connection)
+    inbox = Transfers(tmp_path)
+    client = WsWorkbenchClient(registry, inbox)
+    received: list[ReceivedFile] = []
+
+    join = _run_in_thread(lambda: received.append(client.exec_upload("a1", ["build-archive"])))
+    request = socket.wait_for_request().request
+    assert isinstance(request, ExecUploadRequest)
+    assert request.argv == ["build-archive"]
+    # What the workbench PUTs to the path it was given, as the API's route receives it.
+    token = request.transfer_path.removeprefix("/workbench/transfers/")
+    asyncio.run(inbox.receive(token, _body(b"PK", b"zip-bytes"), 11))
+    socket.respond(DoneFrame())
+    join()
+
+    [archive] = received
+    assert archive.path.read_bytes() == b"PKzip-bytes"
+    assert archive.size == 11
+    assert archive.sha256 == hashlib.sha256(b"PKzip-bytes").hexdigest()
+
+
+def test_done_without_an_upload_is_an_error_and_leaves_no_file(tmp_path) -> None:
+    socket = FakeSocket()
+    registry = WorkbenchConnectionRegistry()
+    registry.register("a1", socket.connection)
+    client = WsWorkbenchClient(registry, Transfers(tmp_path))
+    errors: list[Exception] = []
+
+    def call() -> None:
+        try:
+            client.exec_upload("a1", ["build-archive"])
+        except TransferError as exc:
+            errors.append(exc)
+
+    join = _run_in_thread(call)
+    socket.wait_for_request()
+    socket.respond(DoneFrame())
+    join()
+
+    assert errors
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_a_failed_upload_request_discards_its_transfer(tmp_path) -> None:
+    socket = FakeSocket()
+    registry = WorkbenchConnectionRegistry()
+    registry.register("a1", socket.connection)
+    inbox = Transfers(tmp_path)
+    client = WsWorkbenchClient(registry, inbox)
+    errors: list[Exception] = []
+
+    def call() -> None:
+        try:
+            client.exec_upload("a1", ["build-archive"])
+        except RuntimeError as exc:
+            errors.append(exc)
+
+    join = _run_in_thread(call)
+    request = socket.wait_for_request().request
+    assert isinstance(request, ExecUploadRequest)
+    socket.respond(ErrorFrame(detail="executor query failed"))
+    join()
+
+    assert [str(error) for error in errors] == ["executor query failed"]
+    assert list(tmp_path.iterdir()) == []
+    token = request.transfer_path.removeprefix("/workbench/transfers/")
+    with pytest.raises(TransferError, match="no such open transfer"):
+        asyncio.run(inbox.receive(token, _body(b"late"), 4))

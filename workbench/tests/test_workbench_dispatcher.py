@@ -1,26 +1,24 @@
 from __future__ import annotations
 
 import asyncio
-import base64
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
 from repo2ree_protocol.allocation import AllocationRequest
-from repo2ree_protocol.frames import DoneFrame, Frame, TransferFrame
+from repo2ree_protocol.frames import DoneFrame, Frame
 from repo2ree_protocol.workbench import (
     AssignAllocationRequest,
     CancelRunRequest,
-    CopyAbortRequest,
-    CopyChunkRequest,
-    CopyCloseRequest,
-    CopyOpenRequest,
     ExecActionRequest,
     ExecQueryRequest,
     ExecSimpleRequest,
+    ExecUploadRequest,
+    FetchFileRequest,
 )
 from repo2ree_workbench.dispatcher import dispatch_workbench_request
 from repo2ree_workbench.service import WorkbenchService
-from repo2ree_workbench.transfers import TransferStore
 
 
 class _Service:
@@ -39,6 +37,10 @@ class _Service:
         self.calls.append(("exec_query", argv, timeout))
         yield b"query-result"
 
+    def exec_query_to_file(self, argv: list[str], target: Path, timeout: int) -> None:
+        self.calls.append(("exec_query_to_file", argv, timeout))
+        target.write_bytes(b"archive-bytes")
+
     def cancel_run(self, run_id: str) -> None:
         self.calls.append(("cancel_run", run_id))
 
@@ -53,12 +55,11 @@ class _Service:
 class _Harness:
     def __init__(self) -> None:
         self.service = _Service()
-        self.transfers = TransferStore()
         self.frames: list[Frame] = []
         self.byte_results: list[bytes] = []
         self.received: list[int] = []
 
-    async def dispatch(self, request: Any) -> None:
+    async def dispatch(self, request: Any, api_ws_url: str = "") -> None:
         async def send(frame: Frame) -> None:
             self.frames.append(frame)
 
@@ -71,11 +72,11 @@ class _Harness:
         await dispatch_workbench_request(
             request,
             cast(WorkbenchService, self.service),
-            self.transfers,
             send=send,
             pump=pump,
             pump_bytes=pump_bytes,
             record_received=self.received.append,
+            api_ws_url=api_ws_url,
         )
 
 
@@ -106,29 +107,6 @@ def test_dispatcher_routes_simple_requests_and_terminal_frames() -> None:
     assert [frame.type for frame in harness.frames] == ["done", "done"]
 
 
-def test_dispatcher_reassembles_close_and_aborts_copy_transfers() -> None:
-    harness = _Harness()
-
-    async def scenario() -> None:
-        await harness.dispatch(CopyOpenRequest(workbench_path="/ree/input.bin"))
-        transfer = cast(TransferFrame, harness.frames.pop()).transfer_id
-        payload = b"transferred"
-        await harness.dispatch(
-            CopyChunkRequest(transfer_id=transfer, offset=0, data_b64=base64.b64encode(payload).decode())
-        )
-        await harness.dispatch(CopyCloseRequest(transfer_id=transfer))
-
-        await harness.dispatch(CopyOpenRequest(workbench_path="/ree/aborted.bin"))
-        aborted = cast(TransferFrame, harness.frames.pop()).transfer_id
-        await harness.dispatch(CopyAbortRequest(transfer_id=aborted))
-
-    asyncio.run(scenario())
-
-    assert harness.service.copied == b"transferred"
-    assert harness.received == [len(b"transferred")]
-    assert [frame.type for frame in harness.frames] == ["done", "done", "done"]
-
-
 def test_dispatcher_routes_assignment_before_any_execution() -> None:
     # Assignment is an ordinary request on the execution connection: it reaches
     # the service and is acknowledged like any other terminal operation.
@@ -143,4 +121,71 @@ def test_dispatcher_routes_assignment_before_any_execution() -> None:
     asyncio.run(harness.dispatch(AssignAllocationRequest(allocation=allocation)))
 
     assert harness.service.calls == [("assign", "alloc-1")]
+    assert [frame.type for frame in harness.frames] == ["done"]
+
+
+class _Receiver(BaseHTTPRequestHandler):
+    """A control plane's transfer route: keeps each PUT body by path, serves each offered file once."""
+
+    received: ClassVar[dict[str, bytes]] = {}
+    offered: ClassVar[dict[str, bytes]] = {}
+
+    def do_GET(self) -> None:
+        content = self.offered.pop(self.path, None)
+        if content is None:
+            self.send_response(404)
+            self.end_headers()
+            return
+        self.send_response(200)
+        self.send_header("Content-Length", str(len(content)))
+        self.end_headers()
+        self.wfile.write(content)
+
+    def do_PUT(self) -> None:
+        length = int(self.headers["Content-Length"])
+        self.received[self.path] = self.rfile.read(length)
+        self.send_response(204)
+        self.end_headers()
+
+    def log_message(self, format: str, *args: object) -> None:  # noqa: A002 - the http.server signature
+        return
+
+
+def test_an_upload_request_sends_the_query_output_to_the_address_the_workbench_dialed(tmp_path: Path) -> None:
+    server = HTTPServer(("127.0.0.1", 0), _Receiver)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    harness = _Harness()
+    try:
+        asyncio.run(
+            harness.dispatch(
+                ExecUploadRequest(argv=["build-archive"], transfer_path="/workbench/transfers/t1", timeout=30),
+                api_ws_url=f"ws://127.0.0.1:{server.server_port}/workbench/connect",
+            )
+        )
+    finally:
+        server.shutdown()
+
+    assert harness.service.calls == [("exec_query_to_file", ["build-archive"], 30)]
+    assert _Receiver.received == {"/workbench/transfers/t1": b"archive-bytes"}
+    assert [frame.type for frame in harness.frames] == ["done"]
+
+
+def test_a_fetch_request_lands_the_offered_file_in_the_bench_and_counts_its_bytes() -> None:
+    server = HTTPServer(("127.0.0.1", 0), _Receiver)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    _Receiver.offered["/workbench/transfers/t2"] = b"source-archive"
+    harness = _Harness()
+    try:
+        asyncio.run(
+            harness.dispatch(
+                FetchFileRequest(transfer_path="/workbench/transfers/t2", workbench_path="/ree/upload.tar.gz"),
+                api_ws_url=f"ws://127.0.0.1:{server.server_port}/workbench/connect",
+            )
+        )
+    finally:
+        server.shutdown()
+
+    assert harness.service.calls == [("copy_in", "/ree/upload.tar.gz")]
+    assert harness.service.copied == b"source-archive"
+    assert harness.received == [len(b"source-archive")]
     assert [frame.type for frame in harness.frames] == ["done"]

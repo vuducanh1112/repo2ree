@@ -90,6 +90,27 @@ class ExecQueryRequest(BaseModel):
     timeout: int = 30
 
 
+class ExecUploadRequest(BaseModel):
+    """Run an executor subcommand in the bench and upload its stdout as a file.
+
+    For output too large for the control socket (an REE archive): the workbench
+    writes the subcommand's stdout to a file in the bench, then sends that file
+    over HTTP — ``PUT`` to ``transfer_path`` on the same address it dialed for
+    this socket, so the workbench still only ever dials out — and answers
+    ``done`` once the control plane has taken it. Bulk bytes never share the
+    socket that carries keepalive pings and every other request.
+
+    ``transfer_path`` is an absolute path naming a single-use transfer the
+    control plane opened for this request; it is the transfer's only credential."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    op: Literal["exec_upload"] = "exec_upload"
+    argv: list[str]
+    transfer_path: str
+    timeout: int = 600
+
+
 class ExecActionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -108,50 +129,21 @@ class CancelRunRequest(BaseModel):
     run_id: str
 
 
-class CopyOpenRequest(BaseModel):
-    """Begin a chunked copy into ``workbench_path``; the workbench replies with
-    a ``transfer`` handle that later chunks reference."""
+class FetchFileRequest(BaseModel):
+    """Fetch a file the control plane offers and land it in the bench at ``workbench_path``.
+
+    The counterpart of ``ExecUploadRequest`` for bytes going into the bench (an
+    uploaded source archive, a bundle to load): the workbench ``GET``s
+    ``transfer_path`` on the address it dialed for this socket, lands the file,
+    and answers ``done``. ``transfer_path`` names a single-use transfer the
+    control plane opened for this request; it is the transfer's only credential."""
 
     model_config = ConfigDict(extra="forbid")
 
-    op: Literal["copy_open"] = "copy_open"
+    op: Literal["fetch_file"] = "fetch_file"
+    transfer_path: str
     workbench_path: str
-
-
-class CopyChunkRequest(BaseModel):
-    """Write one bounded, base64-encoded slice of the file to an open transfer.
-
-    ``offset`` is the slice's byte position in the assembled file. The control
-    plane pipelines chunks (several in flight before the first ack), and the
-    workbench handles each request concurrently — so chunks may *apply* out of
-    order; the offset makes the write position explicit rather than relying on
-    arrival order."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    op: Literal["copy_chunk"] = "copy_chunk"
-    transfer_id: str
-    offset: int
-    data_b64: str
-
-
-class CopyCloseRequest(BaseModel):
-    """Finish a transfer: the workbench lands the assembled file in the bench."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    op: Literal["copy_close"] = "copy_close"
-    transfer_id: str
-
-
-class CopyAbortRequest(BaseModel):
-    """Drop a transfer without landing it (a mid-stream failure); the workbench
-    discards the partial file."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    op: Literal["copy_abort"] = "copy_abort"
-    transfer_id: str
+    timeout: int = 600
 
 
 class CancelRequest(BaseModel):
@@ -190,12 +182,10 @@ class AssignAllocationRequest(BaseModel):
 WorkbenchRequest = Annotated[
     ExecSimpleRequest
     | ExecQueryRequest
+    | ExecUploadRequest
     | ExecActionRequest
     | CancelRunRequest
-    | CopyOpenRequest
-    | CopyChunkRequest
-    | CopyCloseRequest
-    | CopyAbortRequest
+    | FetchFileRequest
     | CancelRequest
     | DrainWorkbenchRequest
     | AssignAllocationRequest,

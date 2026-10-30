@@ -52,6 +52,19 @@ def test_local_executor_runs_actions_and_queries(fake_executor: Path, tmp_path: 
     assert b"".join(executor.exec_query_stream(["query"])) == b"query-result"
 
 
+def test_a_query_written_to_a_file_never_passes_through_memory_and_fails_loudly(
+    fake_executor: Path, tmp_path: Path
+) -> None:
+    executor = LocalExecutor(tmp_path / "ree", str(fake_executor))
+    target = tmp_path / "out.bin"
+
+    executor.exec_query_to_file(["query"], target)
+    assert target.read_bytes() == b"query-result"
+
+    with pytest.raises(RuntimeError, match="exit 7"):
+        executor.exec_query_to_file(["fail"], tmp_path / "failed.bin")
+
+
 def test_local_executor_reports_simple_failure(fake_executor: Path, tmp_path: Path) -> None:
     executor = LocalExecutor(tmp_path / "ree", str(fake_executor))
     with pytest.raises(RuntimeError, match="exit 7"):

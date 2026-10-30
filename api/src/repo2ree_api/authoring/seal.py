@@ -9,9 +9,7 @@ not an upstream snapshot.
 
 from __future__ import annotations
 
-import hashlib
 import logging
-import tempfile
 from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException, Request
@@ -38,7 +36,7 @@ from repo2ree_api.workbench.uploads import mint_upload_token, stage_upload_bytes
 from repo2ree_protocol.command import LoadReeBundleArgs, LoadReeBundleCommand, SealReeArgs, SealReeCommand
 from repo2ree_protocol.document import WorkbenchReeDocument
 from repo2ree_protocol.result import ActionResult
-from repo2ree_supervisor import WorkbenchHandle
+from repo2ree_supervisor import WorkbenchHandle, WorkbenchUnavailableError
 
 _log = logging.getLogger(__name__)
 
@@ -185,33 +183,28 @@ def download_ree_archive_route(ree_id: str) -> StreamingResponse:
 def _download_ree_archive(ree_id: str) -> StreamingResponse:
     handle = require_handle(ree_id)
     archive_filename = archive_download_filename(handle)
-    # Spool the archive to a control-plane temp file before responding. The
-    # per-REE lock (and the workbench's exec) is held only while the workbench
-    # streams to us — never for as long as the client takes to download — so a
-    # slow client cannot block other operations on the REE.
-    spool = tempfile.TemporaryFile()  # noqa: SIM115 — the spool outlives this frame — it is closed by the streaming response below
+    # The workbench uploads the archive beside its control socket into a file on
+    # this host (``build_archive``); the per-REE lock is held only until it has
+    # arrived, never for as long as the client takes to download it.
     before = journal_positions()
-    digest = hashlib.sha256()
     try:
         with ree_command_span("ree-archive", ree_id):
-            for chunk in workbench_manager.build_archive_stream(handle):
-                spool.write(chunk)
-                digest.update(chunk)
-            if spool.tell() == 0:
-                raise HTTPException(status_code=502, detail="workbench returned an empty archive")
-        size = spool.tell()
-        spool.seek(0)
-        # Lets a collector place the copy the client keeps against the behaviour journals.
-        record_archive(ree_id, digest.hexdigest(), size, before)
-    except HTTPException:
-        spool.close()
+            received = workbench_manager.build_archive(handle)
+    except (HTTPException, WorkbenchUnavailableError):
+        # A workbench that went away mid-transfer is the retryable 503 every route
+        # answers for it (main.workbench_unavailable_handler), not the author's 400.
         raise
     except RuntimeError as exc:
-        spool.close()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except BaseException:
-        spool.close()
-        raise
+    if received.size == 0:
+        received.path.unlink(missing_ok=True)
+        raise HTTPException(status_code=502, detail="workbench returned an empty archive")
+    # Lets a collector place the copy the client keeps against the behaviour journals.
+    record_archive(ree_id, received.sha256, received.size, before)
+    spool = received.path.open("rb")
+    # Unlinked while open: the response streams the file, and nothing is left behind.
+    received.path.unlink()
+    size = received.size
     return StreamingResponse(
         spool_chunks(spool),
         media_type="application/zip",

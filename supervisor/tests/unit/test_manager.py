@@ -13,6 +13,7 @@ from repo2ree_protocol.frames import AllocationStatusFrame, Frame, ResultFrame, 
 from repo2ree_protocol.result import ActionResult, HistoryReference
 from repo2ree_ree.model import Ree, ReeDefinition, ReeSubject
 from repo2ree_supervisor import AllocationStore, WorkbenchManager, WorkbenchUnavailableError
+from repo2ree_supervisor.transfers import ReceivedFile
 from repo2ree_telemetry.behaviour import close_journal, open_journal
 
 _CATALOG_IMAGE = "docker.io/library/docker:29-dind"
@@ -103,6 +104,9 @@ class FakeWorkbench:
 
     def exec_query_stream(self, workbench_id: str, argv: list[str], timeout: int = 30) -> Iterator[bytes]:
         yield b"{}"
+
+    def exec_upload(self, workbench_id: str, argv: list[str], timeout: int = 600) -> ReceivedFile:
+        raise AssertionError("no test here uploads")
 
     def copy_in(self, workbench_id: str, source_path: str, workbench_path: str) -> None:
         return None

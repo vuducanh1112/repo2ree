@@ -164,6 +164,20 @@ def test_transport_failure_mid_request_yields_503_envelope(
     assert resp.json()["error"]["code"] == "workbench_unavailable"
 
 
+def test_a_workbench_lost_while_sending_the_archive_yields_503_not_400(
+    client: TestClient, online_ree: WorkbenchHandle, monkeypatch: pytest.MonkeyPatch
+):
+    """The download a client would retry: the bench dropped its connection mid-archive."""
+
+    def _gone(handle: Any) -> Any:
+        raise WorkbenchUnavailableError("workbench connection closed")
+
+    monkeypatch.setattr(workbench_manager, "build_archive", _gone)
+    resp = client.get(f"/api/v1/rees/{online_ree.ree_id}/ree-archive")
+    assert resp.status_code == 503
+    assert resp.json()["error"]["retryable"] is True
+
+
 # Every read route that resolves an REE before answering. Each of these once
 # resolved it its own way, so the same condition read differently depending on
 # which one a client called.

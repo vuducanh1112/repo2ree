@@ -141,8 +141,9 @@ class AllocationStatusFrame(BaseModel):
     detail: str = ""
 
 
-# Raw bytes per streamed chunk, in both directions (bytes_chunk frames out,
-# copy_chunk requests in). Base64 inflates the payload ~4/3, so a chunk frame
+# Raw bytes per streamed chunk of a byte-returning query (bytes_chunk frames).
+# Files too large for the control socket go beside it instead (exec_upload,
+# fetch_file in repo2ree_protocol.workbench). Base64 inflates the payload ~4/3, so a chunk frame
 # stays well under the transport's default receive cap (websockets: 1 MiB)
 # while the receiver holds at most one chunk in memory at a time.
 COPY_CHUNK_BYTES = 256 * 1024
@@ -151,22 +152,13 @@ COPY_CHUNK_BYTES = 256 * 1024
 class BytesChunkFrame(BaseModel):
     """One bounded slice of a byte-returning query's result (exec_query).
 
-    Incremental, like ``log``; a terminal ``done`` ends the stream. The read
-    twin of the chunked copy-in (see ``repo2ree_protocol.workbench``)."""
+    Incremental, like ``log``; a terminal ``done`` ends the stream. For small
+    results only: a file goes beside the socket (``exec_upload``)."""
 
     model_config = ConfigDict(extra="forbid")
 
     type: Literal["bytes_chunk"] = "bytes_chunk"
     data_b64: str
-
-
-class TransferFrame(BaseModel):
-    """Terminal frame of ``copy_open``: the handle for a byte transfer."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    type: Literal["transfer"] = "transfer"
-    transfer_id: str
 
 
 # Tagged union discriminated on 'type'.
@@ -180,8 +172,7 @@ Frame = Annotated[
     | ErrorFrame
     | RunningFrame
     | AllocationStatusFrame
-    | BytesChunkFrame
-    | TransferFrame,
+    | BytesChunkFrame,
     Field(discriminator="type"),
 ]
 
@@ -190,5 +181,5 @@ frame_adapter: TypeAdapter[Frame] = TypeAdapter(Frame)
 # Frame types that terminate a request's response stream. Everything else
 # (log, span, bytes_chunk) is incremental and more frames follow.
 TERMINAL_FRAME_TYPES = frozenset(
-    {"workbench_ref", "result", "done", "unavailable", "error", "running", "allocation_status", "transfer"}
+    {"workbench_ref", "result", "done", "unavailable", "error", "running", "allocation_status"}
 )

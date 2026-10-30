@@ -17,6 +17,7 @@ from repo2ree_api.settings import service_settings
 from repo2ree_supervisor import (
     AllocationStore,
     ProviderConnectionRegistry,
+    Transfers,
     WorkbenchConnectionRegistry,
     WorkbenchManager,
     WsProviderClient,
@@ -44,7 +45,9 @@ workbench_enrollments = EnrollmentRegistry()
 # One combined-workbench client serves both manager seams today: the legacy workbench
 # multiplexes capacity and execution over one socket. When the two roles get
 # separate transports, only this composition changes.
-_workbench_client = WsWorkbenchClient(workbench_connections)
+# Files workbenches upload beside their control socket (an REE archive), by single-use token.
+workbench_transfers = Transfers()
+_workbench_client = WsWorkbenchClient(workbench_connections, workbench_transfers)
 _provider_client = WsProviderClient(provider_connections)
 
 # Where relayed spans go. Two sources feed it: executor spans, which the manager

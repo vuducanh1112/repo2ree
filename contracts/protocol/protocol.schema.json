@@ -109,7 +109,6 @@
           "result": "#/$defs/ResultFrame",
           "running": "#/$defs/RunningFrame",
           "span": "#/$defs/SpanFrame",
-          "transfer": "#/$defs/TransferFrame",
           "unavailable": "#/$defs/UnavailableFrame",
           "workbench_ref": "#/$defs/WorkbenchRefFrame"
         },
@@ -145,9 +144,6 @@
         },
         {
           "$ref": "#/$defs/BytesChunkFrame"
-        },
-        {
-          "$ref": "#/$defs/TransferFrame"
         }
       ]
     },
@@ -1363,7 +1359,7 @@
     },
     "BytesChunkFrame": {
       "additionalProperties": false,
-      "description": "One bounded slice of a byte-returning query's result (exec_query).\n\nIncremental, like ``log``; a terminal ``done`` ends the stream. The read\ntwin of the chunked copy-in (see ``repo2ree_protocol.workbench``).",
+      "description": "One bounded slice of a byte-returning query's result (exec_query).\n\nIncremental, like ``log``; a terminal ``done`` ends the stream. For small\nresults only: a file goes beside the socket (``exec_upload``).",
       "properties": {
         "type": {
           "const": "bytes_chunk",
@@ -1670,100 +1666,6 @@
         }
       },
       "title": "Contributor",
-      "type": "object"
-    },
-    "CopyAbortRequest": {
-      "additionalProperties": false,
-      "description": "Drop a transfer without landing it (a mid-stream failure); the workbench\ndiscards the partial file.",
-      "properties": {
-        "op": {
-          "const": "copy_abort",
-          "default": "copy_abort",
-          "title": "Op",
-          "type": "string"
-        },
-        "transfer_id": {
-          "title": "Transfer Id",
-          "type": "string"
-        }
-      },
-      "required": [
-        "transfer_id"
-      ],
-      "title": "CopyAbortRequest",
-      "type": "object"
-    },
-    "CopyChunkRequest": {
-      "additionalProperties": false,
-      "description": "Write one bounded, base64-encoded slice of the file to an open transfer.\n\n``offset`` is the slice's byte position in the assembled file. The control\nplane pipelines chunks (several in flight before the first ack), and the\nworkbench handles each request concurrently — so chunks may *apply* out of\norder; the offset makes the write position explicit rather than relying on\narrival order.",
-      "properties": {
-        "op": {
-          "const": "copy_chunk",
-          "default": "copy_chunk",
-          "title": "Op",
-          "type": "string"
-        },
-        "transfer_id": {
-          "title": "Transfer Id",
-          "type": "string"
-        },
-        "offset": {
-          "title": "Offset",
-          "type": "integer"
-        },
-        "data_b64": {
-          "title": "Data B64",
-          "type": "string"
-        }
-      },
-      "required": [
-        "transfer_id",
-        "offset",
-        "data_b64"
-      ],
-      "title": "CopyChunkRequest",
-      "type": "object"
-    },
-    "CopyCloseRequest": {
-      "additionalProperties": false,
-      "description": "Finish a transfer: the workbench lands the assembled file in the bench.",
-      "properties": {
-        "op": {
-          "const": "copy_close",
-          "default": "copy_close",
-          "title": "Op",
-          "type": "string"
-        },
-        "transfer_id": {
-          "title": "Transfer Id",
-          "type": "string"
-        }
-      },
-      "required": [
-        "transfer_id"
-      ],
-      "title": "CopyCloseRequest",
-      "type": "object"
-    },
-    "CopyOpenRequest": {
-      "additionalProperties": false,
-      "description": "Begin a chunked copy into ``workbench_path``; the workbench replies with\na ``transfer`` handle that later chunks reference.",
-      "properties": {
-        "op": {
-          "const": "copy_open",
-          "default": "copy_open",
-          "title": "Op",
-          "type": "string"
-        },
-        "workbench_path": {
-          "title": "Workbench Path",
-          "type": "string"
-        }
-      },
-      "required": [
-        "workbench_path"
-      ],
-      "title": "CopyOpenRequest",
       "type": "object"
     },
     "CrossCheckSbomArgs": {
@@ -2682,6 +2584,40 @@
       "title": "ExecSimpleRequest",
       "type": "object"
     },
+    "ExecUploadRequest": {
+      "additionalProperties": false,
+      "description": "Run an executor subcommand in the bench and upload its stdout as a file.\n\nFor output too large for the control socket (an REE archive): the workbench\nwrites the subcommand's stdout to a file in the bench, then sends that file\nover HTTP — ``PUT`` to ``transfer_path`` on the same address it dialed for\nthis socket, so the workbench still only ever dials out — and answers\n``done`` once the control plane has taken it. Bulk bytes never share the\nsocket that carries keepalive pings and every other request.\n\n``transfer_path`` is an absolute path naming a single-use transfer the\ncontrol plane opened for this request; it is the transfer's only credential.",
+      "properties": {
+        "op": {
+          "const": "exec_upload",
+          "default": "exec_upload",
+          "title": "Op",
+          "type": "string"
+        },
+        "argv": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Argv",
+          "type": "array"
+        },
+        "transfer_path": {
+          "title": "Transfer Path",
+          "type": "string"
+        },
+        "timeout": {
+          "default": 600,
+          "title": "Timeout",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "argv",
+        "transfer_path"
+      ],
+      "title": "ExecUploadRequest",
+      "type": "object"
+    },
     "ExecutionContext": {
       "additionalProperties": false,
       "properties": {
@@ -3094,6 +3030,37 @@
         "origin"
       ],
       "title": "Failure",
+      "type": "object"
+    },
+    "FetchFileRequest": {
+      "additionalProperties": false,
+      "description": "Fetch a file the control plane offers and land it in the bench at ``workbench_path``.\n\nThe counterpart of ``ExecUploadRequest`` for bytes going into the bench (an\nuploaded source archive, a bundle to load): the workbench ``GET``s\n``transfer_path`` on the address it dialed for this socket, lands the file,\nand answers ``done``. ``transfer_path`` names a single-use transfer the\ncontrol plane opened for this request; it is the transfer's only credential.",
+      "properties": {
+        "op": {
+          "const": "fetch_file",
+          "default": "fetch_file",
+          "title": "Op",
+          "type": "string"
+        },
+        "transfer_path": {
+          "title": "Transfer Path",
+          "type": "string"
+        },
+        "workbench_path": {
+          "title": "Workbench Path",
+          "type": "string"
+        },
+        "timeout": {
+          "default": 600,
+          "title": "Timeout",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "transfer_path",
+        "workbench_path"
+      ],
+      "title": "FetchFileRequest",
       "type": "object"
     },
     "Finding": {
@@ -4937,7 +4904,6 @@
               "result": "#/$defs/ResultFrame",
               "running": "#/$defs/RunningFrame",
               "span": "#/$defs/SpanFrame",
-              "transfer": "#/$defs/TransferFrame",
               "unavailable": "#/$defs/UnavailableFrame",
               "workbench_ref": "#/$defs/WorkbenchRefFrame"
             },
@@ -4973,9 +4939,6 @@
             },
             {
               "$ref": "#/$defs/BytesChunkFrame"
-            },
-            {
-              "$ref": "#/$defs/TransferFrame"
             }
           ],
           "title": "Frame"
@@ -7973,27 +7936,6 @@
       "title": "TierStatus",
       "type": "object"
     },
-    "TransferFrame": {
-      "additionalProperties": false,
-      "description": "Terminal frame of ``copy_open``: the handle for a byte transfer.",
-      "properties": {
-        "type": {
-          "const": "transfer",
-          "default": "transfer",
-          "title": "Type",
-          "type": "string"
-        },
-        "transfer_id": {
-          "title": "Transfer Id",
-          "type": "string"
-        }
-      },
-      "required": [
-        "transfer_id"
-      ],
-      "title": "TransferFrame",
-      "type": "object"
-    },
     "TraversedEdge": {
       "additionalProperties": false,
       "properties": {
@@ -8318,7 +8260,6 @@
               "result": "#/$defs/ResultFrame",
               "running": "#/$defs/RunningFrame",
               "span": "#/$defs/SpanFrame",
-              "transfer": "#/$defs/TransferFrame",
               "unavailable": "#/$defs/UnavailableFrame",
               "workbench_ref": "#/$defs/WorkbenchRefFrame"
             },
@@ -8354,9 +8295,6 @@
             },
             {
               "$ref": "#/$defs/BytesChunkFrame"
-            },
-            {
-              "$ref": "#/$defs/TransferFrame"
             }
           ],
           "title": "Frame"
@@ -8382,14 +8320,12 @@
               "assign_allocation": "#/$defs/AssignAllocationRequest",
               "cancel": "#/$defs/CancelRequest",
               "cancel_run": "#/$defs/CancelRunRequest",
-              "copy_abort": "#/$defs/CopyAbortRequest",
-              "copy_chunk": "#/$defs/CopyChunkRequest",
-              "copy_close": "#/$defs/CopyCloseRequest",
-              "copy_open": "#/$defs/CopyOpenRequest",
               "drain": "#/$defs/DrainWorkbenchRequest",
               "exec_action": "#/$defs/ExecActionRequest",
               "exec_query": "#/$defs/ExecQueryRequest",
-              "exec_simple": "#/$defs/ExecSimpleRequest"
+              "exec_simple": "#/$defs/ExecSimpleRequest",
+              "exec_upload": "#/$defs/ExecUploadRequest",
+              "fetch_file": "#/$defs/FetchFileRequest"
             },
             "propertyName": "op"
           },
@@ -8401,22 +8337,16 @@
               "$ref": "#/$defs/ExecQueryRequest"
             },
             {
+              "$ref": "#/$defs/ExecUploadRequest"
+            },
+            {
               "$ref": "#/$defs/ExecActionRequest"
             },
             {
               "$ref": "#/$defs/CancelRunRequest"
             },
             {
-              "$ref": "#/$defs/CopyOpenRequest"
-            },
-            {
-              "$ref": "#/$defs/CopyChunkRequest"
-            },
-            {
-              "$ref": "#/$defs/CopyCloseRequest"
-            },
-            {
-              "$ref": "#/$defs/CopyAbortRequest"
+              "$ref": "#/$defs/FetchFileRequest"
             },
             {
               "$ref": "#/$defs/CancelRequest"

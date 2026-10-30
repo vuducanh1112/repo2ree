@@ -20,6 +20,7 @@ from typing import Protocol
 from repo2ree_protocol.allocation import AllocationRequest, AllocationState
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import ErrorFrame, Frame, UnavailableFrame
+from repo2ree_supervisor.transfers import ReceivedFile
 
 
 class WorkbenchUnavailableError(RuntimeError):
@@ -93,6 +94,14 @@ class WorkbenchClient(Protocol):
     def exec_query(self, workbench_id: str, argv: list[str], timeout: int = 30) -> bytes: ...
 
     def exec_query_stream(self, workbench_id: str, argv: list[str], timeout: int = 30) -> Iterator[bytes]: ...
+
+    def exec_upload(self, workbench_id: str, argv: list[str], timeout: int = 600) -> ReceivedFile:
+        """Run an executor subcommand in the bench and receive its stdout as a file.
+
+        The bytes travel over HTTP beside the control socket (see
+        ``repo2ree_supervisor.transfers``), never as frames on it; the caller owns
+        the returned file and removes it."""
+        ...
 
     def exec_action(
         self,

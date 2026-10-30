@@ -97,6 +97,21 @@ class LocalExecutor:
         for offset in range(0, len(view), 256 * 1024):
             yield bytes(view[offset : offset + 256 * 1024])
 
+    def exec_query_to_file(self, argv: list[str], target: Path, timeout: int = 600) -> None:
+        """Run an executor query with its stdout written straight to ``target``, never held in memory."""
+        with target.open("wb") as output:
+            result = subprocess.run(
+                [self.exec_path, *argv],
+                check=False,
+                stdout=output,
+                stderr=subprocess.PIPE,
+                timeout=timeout,
+                env=self._environment(),
+            )
+        if result.returncode:
+            detail = result.stderr.decode(errors="replace").strip() or "(no stderr)"
+            raise RuntimeError(f"executor query {argv!r} failed (exit {result.returncode}): {detail}")
+
     def exec_action(
         self, cmd_json: str, run_id: str, env: dict[str, str], context: ExecutionContext | None = None
     ) -> Iterator[Frame]:

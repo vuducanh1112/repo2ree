@@ -26,7 +26,6 @@ import logging
 import queue
 import threading
 import time
-from collections import deque
 from collections.abc import Callable, Iterator
 from contextlib import suppress
 from dataclasses import dataclass, field
@@ -37,33 +36,30 @@ from repo2ree_protocol.allocation import AllocationRequest
 from repo2ree_protocol.build import BuildInfo
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import (
-    COPY_CHUNK_BYTES,
     TERMINAL_FRAME_TYPES,
     BytesChunkFrame,
     DoneFrame,
     Frame,
     SpanFrame,
-    TransferFrame,
     UnavailableFrame,
 )
 from repo2ree_protocol.workbench import (
     AssignAllocationRequest,
     CancelRequest,
     CancelRunRequest,
-    CopyAbortRequest,
-    CopyChunkRequest,
-    CopyCloseRequest,
-    CopyOpenRequest,
     DrainWorkbenchRequest,
     ExecActionRequest,
     ExecQueryRequest,
     ExecSimpleRequest,
+    ExecUploadRequest,
+    FetchFileRequest,
     WorkbenchHello,
     WorkbenchRequest,
     WorkbenchWsRequest,
     workbench_ws_message_adapter,
 )
 from repo2ree_supervisor.client import WorkbenchUnavailableError, raise_for_terminal_error
+from repo2ree_supervisor.transfers import ReceivedFile, Transfers
 from repo2ree_telemetry.relay import SpanSink
 from repo2ree_telemetry.spans import current_traceparent
 
@@ -84,10 +80,8 @@ DEFAULT_FRAME_GAP_TIMEOUT = 900.0
 # wedged workbench into a fast, visible failure instead of a blocked worker thread.
 QUICK_OP_TIMEOUT = 30.0
 
-# Copy chunks in flight before the oldest ack is drained: enough to hide the
-# per-chunk round trip on a remote workbench (throughput would otherwise be one
-# chunk per RTT) while bounding what queues in the socket's send path.
-COPY_IN_WINDOW = 8
+# A file fetched into the bench, landed there with `docker cp`: no frame until done.
+COPY_IN_TIMEOUT = 600.0
 
 
 # ================================================
@@ -174,7 +168,7 @@ class WorkbenchConnection:
         """Send ``request`` without waiting for its reply.
 
         The reply arrives on the returned handle; issuing several requests
-        before draining the first lets a caller pipeline (see ``copy_in``).
+        before draining the first lets a caller pipeline them.
         """
         req_id = uuid4().hex
         q: queue.Queue[Frame] = queue.Queue()
@@ -403,8 +397,9 @@ class WorkbenchConnectionRegistry:
 class WsWorkbenchClient:
     """Execution client backed by a resident workbench connection."""
 
-    def __init__(self, registry: WorkbenchConnectionRegistry):
+    def __init__(self, registry: WorkbenchConnectionRegistry, transfers: Transfers | None = None):
         self._registry = registry
+        self._transfers = transfers if transfers is not None else Transfers()
 
     def resolve_workbench(self, workbench_id: str) -> str:
         return self._registry.resolve(workbench_id)
@@ -502,53 +497,37 @@ class WsWorkbenchClient:
                 raise_for_terminal_error(frame)
         raise RuntimeError("workbench exec_query ended without a result")
 
-    def copy_in(self, workbench_id: str, source_path: str, workbench_path: str) -> None:
-        # Chunked copy-in over the workbench protocol, read straight from disk.
-        # Chunks are pipelined: up to COPY_IN_WINDOW ride the wire before the
-        # oldest ack is drained, so throughput is bound by bandwidth, not by one
-        # round trip per chunk. Each chunk carries its offset, so the workbench can
-        # apply them in whatever order they land.
-        # On any failure, tell the workbench to drop its partial temp file.
+    def exec_upload(self, workbench_id: str, argv: list[str], timeout: int = 600) -> ReceivedFile:
+        # The socket carries the request and its one ``done``; the bytes arrive
+        # over HTTP into the transfer, so no frame waits on them.
         conn = self._registry.pick(workbench_id)
-        transfer_id = self._open_transfer(conn, workbench_path)
-        in_flight: deque[PendingReply] = deque()
+        transfer_path = self._transfers.open_upload()
         try:
-            with Path(source_path).open("rb") as source:
-                offset = 0
-                while chunk := source.read(COPY_CHUNK_BYTES):
-                    in_flight.append(
-                        conn.start(
-                            CopyChunkRequest(
-                                transfer_id=transfer_id,
-                                offset=offset,
-                                data_b64=base64.b64encode(chunk).decode(),
-                            )
-                        )
-                    )
-                    offset += len(chunk)
-                    if len(in_flight) >= COPY_IN_WINDOW:
-                        self._drain_void(in_flight.popleft().frames(frame_gap_timeout=QUICK_OP_TIMEOUT))
-            while in_flight:
-                self._drain_void(in_flight.popleft().frames(frame_gap_timeout=QUICK_OP_TIMEOUT))
-            # copy_close runs `docker cp` of the assembled file on the workbench;
-            # give it more room than the per-chunk acks.
-            self._drain_void(conn.request(CopyCloseRequest(transfer_id=transfer_id), frame_gap_timeout=180.0))
-        except BaseException:
-            while in_flight:
-                in_flight.popleft().discard()
-            with suppress(Exception):
-                self._drain_void(
-                    conn.request(CopyAbortRequest(transfer_id=transfer_id), frame_gap_timeout=QUICK_OP_TIMEOUT)
-                )
-            raise
+            for frame in conn.request(
+                ExecUploadRequest(argv=argv, transfer_path=transfer_path, timeout=timeout),
+                frame_gap_timeout=timeout + QUICK_OP_TIMEOUT,
+            ):
+                if isinstance(frame, DoneFrame):
+                    return self._transfers.collect(transfer_path)
+                raise_for_terminal_error(frame)
+            raise RuntimeError("workbench exec_upload ended without a result")
+        finally:
+            self._transfers.discard(transfer_path)
 
-    def _open_transfer(self, conn: WorkbenchConnection, workbench_path: str) -> str:
-        req = CopyOpenRequest(workbench_path=workbench_path)
-        for frame in conn.request(req, frame_gap_timeout=QUICK_OP_TIMEOUT):
-            if isinstance(frame, TransferFrame):
-                return frame.transfer_id
-            raise_for_terminal_error(frame)
-        raise RuntimeError("workbench copy_open ended without a transfer id")
+    def copy_in(self, workbench_id: str, source_path: str, workbench_path: str) -> None:
+        # The bench fetches the file over HTTP beside its control socket; the socket
+        # carries only the request and its ``done``. The file stays the caller's.
+        conn = self._registry.pick(workbench_id)
+        transfer_path = self._transfers.offer(Path(source_path))
+        try:
+            self._drain_void(
+                conn.request(
+                    FetchFileRequest(transfer_path=transfer_path, workbench_path=workbench_path),
+                    frame_gap_timeout=COPY_IN_TIMEOUT,
+                )
+            )
+        finally:
+            self._transfers.close(transfer_path)
 
     def _drain_void(self, frames: Iterator[Frame]) -> None:
         """Consume a stream whose only meaningful outcome is success or error."""
