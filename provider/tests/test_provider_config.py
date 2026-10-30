@@ -23,6 +23,7 @@ _PROVIDER_ENV = (
     "PROVIDER_DOCKER_MODE",
     "PROVIDER_WORKBENCH_DOCKER_NETWORK",
     "PROVIDER_WORKBENCH_DNS",
+    "PROVIDER_WORKBENCH_REGISTRY_MIRROR",
     "PROVIDER_ACCEPTS_CUSTOM_IMAGE",
     "WORKBENCH_IMAGE_CATALOG",
     "OTLP_ENDPOINT",
@@ -81,6 +82,7 @@ def test_load_config_persists_identity_when_not_explicit(monkeypatch: pytest.Mon
     assert config.docker_mode == "dind"
     assert config.workbench_network == ""
     assert config.workbench_dns == "auto"
+    assert config.workbench_registry_mirror == ""
     assert config.otlp_endpoint is None
 
 
@@ -91,6 +93,16 @@ def test_bench_dns_is_auto_off_or_addresses_and_nothing_else(monkeypatch: pytest
 
     monkeypatch.setenv("PROVIDER_WORKBENCH_DNS", "resolver.lan")
     with pytest.raises(ValueError, match="not an IP address"):
+        config_module.load_config()
+
+
+def test_the_registry_mirror_is_an_http_or_https_registry(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PROVIDER_ID", "docker-provider-explicit")
+    monkeypatch.setenv("PROVIDER_WORKBENCH_REGISTRY_MIRROR", "http://mirror.lan:5000/")
+    assert config_module.load_config().workbench_registry_mirror == "http://mirror.lan:5000"
+
+    monkeypatch.setenv("PROVIDER_WORKBENCH_REGISTRY_MIRROR", "mirror.lan:5000")
+    with pytest.raises(ValueError, match="not an http"):
         config_module.load_config()
 
 

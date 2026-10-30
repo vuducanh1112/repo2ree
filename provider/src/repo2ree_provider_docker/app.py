@@ -37,6 +37,7 @@ def main() -> None:
         workbench_api_ws_url=config.workbench_api_ws_url,
         workbench_network=config.workbench_network,
         workbench_dns=config.workbench_dns,
+        workbench_registry_mirror=config.workbench_registry_mirror,
         workbench_telemetry=config.workbench_telemetry,
         workbench_otlp_endpoint=config.workbench_otlp_endpoint,
     )

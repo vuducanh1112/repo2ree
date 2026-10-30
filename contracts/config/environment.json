@@ -190,6 +190,11 @@
           "default": null,
           "title": "Provider Workbench Otlp Endpoint"
         },
+        "PROVIDER_WORKBENCH_REGISTRY_MIRROR": {
+          "default": "",
+          "title": "Provider Workbench Registry Mirror",
+          "type": "string"
+        },
         "PROVIDER_WORKBENCH_TELEMETRY": {
           "default": "relay",
           "enum": [
@@ -711,6 +716,15 @@
         ],
         "default": null,
         "title": "Provider Workbench Otlp Endpoint"
+      }
+    },
+    "PROVIDER_WORKBENCH_REGISTRY_MIRROR": {
+      "kind": "runtime",
+      "owner": "provider",
+      "schema": {
+        "default": "",
+        "title": "Provider Workbench Registry Mirror",
+        "type": "string"
       }
     },
     "PROVIDER_WORKBENCH_TELEMETRY": {

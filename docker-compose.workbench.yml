@@ -32,6 +32,10 @@ services:
       # addresses (comma-separated) on networks whose resolvers it cannot see;
       # off leaves bench daemons on their fallback, public DNS.
       PROVIDER_WORKBENCH_DNS: ${PROVIDER_WORKBENCH_DNS:-}
+      # Optional pull-through registry (http(s)://host[:port]) the bench daemons
+      # pull Docker Hub images through, so each base image is fetched once per
+      # machine instead of once per bench.
+      PROVIDER_WORKBENCH_REGISTRY_MIRROR: ${PROVIDER_WORKBENCH_REGISTRY_MIRROR:-}
       # Optional OTLP collector for *this provider's* own logs. Headers (e.g.
       # ClickStack's ingestion API key) ride the standard OTLP env var alongside
       # it. This endpoint is never handed to the benches this provider starts:

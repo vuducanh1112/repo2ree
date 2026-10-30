@@ -1,4 +1,4 @@
-"""The resolvers a dind bench's own daemon hands its containers and build steps.
+"""What a dind bench's own daemon is configured with: its resolvers, and a registry mirror.
 
 A bench on a user-defined network resolves through Docker's embedded
 ``127.0.0.11``. The nested ``dockerd`` cannot pass a loopback resolver on to
@@ -14,6 +14,10 @@ non-loopback resolvers, systemd-resolved handled — which holds even when the
 provider itself runs in a container on a user-defined network and sees only
 ``127.0.0.11``. ``off`` leaves benches as they were; anything else is a
 comma-separated list of resolver addresses.
+
+``PROVIDER_WORKBENCH_REGISTRY_MIRROR`` names a pull-through registry every bench
+daemon pulls Docker Hub images through, so base images are fetched once per
+machine rather than once per bench (each bench's image store starts empty).
 """
 
 from __future__ import annotations
@@ -24,6 +28,7 @@ import json
 import subprocess
 import tarfile
 from dataclasses import dataclass
+from urllib.parse import urlsplit
 
 from repo2ree_docker.ops import docker_op
 
@@ -106,8 +111,30 @@ def discover(image: str) -> tuple[str, ...]:
     return discovered(result.stdout)
 
 
-def merged_daemon_json(existing: bytes | None, resolvers: tuple[str, ...]) -> bytes:
-    """The image's own daemon.json, if any, with ``dns`` set; every other setting kept."""
+def registry_mirror_settings(mirror: str) -> dict[str, object]:
+    """``registry-mirrors`` for a mirror URL, and ``insecure-registries`` too when it is plain HTTP."""
+    if not mirror:
+        return {}
+    parsed = urlsplit(mirror)
+    settings: dict[str, object] = {"registry-mirrors": [mirror]}
+    if parsed.scheme == "http":
+        settings["insecure-registries"] = [parsed.netloc]
+    return settings
+
+
+def parse_registry_mirror(value: str) -> str:
+    """A registry mirror URL, validated: http or https, with a host; "" for none."""
+    mirror = value.strip().rstrip("/")
+    if not mirror:
+        return ""
+    parsed = urlsplit(mirror)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc or parsed.path or parsed.query:
+        raise ValueError(f"PROVIDER_WORKBENCH_REGISTRY_MIRROR: {value!r} is not an http(s)://host[:port] URL")
+    return mirror
+
+
+def merged_daemon_json(existing: bytes | None, settings: dict[str, object]) -> bytes:
+    """The image's own daemon.json, if any, with ``settings`` set; every other setting kept."""
     config: dict[str, object] = {}
     if existing:
         try:
@@ -116,7 +143,7 @@ def merged_daemon_json(existing: bytes | None, resolvers: tuple[str, ...]) -> by
             parsed = None
         if isinstance(parsed, dict):
             config = parsed
-    config["dns"] = list(resolvers)
+    config.update(settings)
     return (json.dumps(config, indent=2, sort_keys=True) + "\n").encode()
 
 
@@ -148,15 +175,15 @@ def _daemon_json_archive(content: bytes) -> bytes:
     return buffer.getvalue()
 
 
-def write_daemon_dns(container: str, resolvers: tuple[str, ...]) -> None:
-    """Set ``dns`` in a created, not yet started, container's daemon.json.
+def write_daemon_settings(container: str, settings: dict[str, object]) -> None:
+    """Set ``settings`` in a created, not yet started, container's daemon.json.
 
     ``docker cp`` addresses the container's filesystem through the daemon, so
     this needs no path shared between the provider and the daemon's host — a
     provider in a container, with the host's socket mounted, works the same.
     """
     with docker_op("docker.write_daemon_json"):
-        content = merged_daemon_json(_read_daemon_json(container), resolvers)
+        content = merged_daemon_json(_read_daemon_json(container), settings)
         result = subprocess.run(
             ["docker", "cp", "-", f"{container}:/etc"],
             input=_daemon_json_archive(content),

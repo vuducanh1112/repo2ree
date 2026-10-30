@@ -32,11 +32,23 @@ def test_dockers_own_fallback_is_not_a_discovery() -> None:
 def test_the_image_s_own_daemon_settings_survive_the_merge() -> None:
     existing = json.dumps({"dns": ["1.1.1.1"], "registry-mirrors": ["http://mirror:5000"]}).encode()
 
-    merged = json.loads(bench_dns.merged_daemon_json(existing, ("10.0.0.53",)))
+    merged = json.loads(bench_dns.merged_daemon_json(existing, {"dns": ["10.0.0.53"]}))
 
     assert merged == {"dns": ["10.0.0.53"], "registry-mirrors": ["http://mirror:5000"]}
-    assert json.loads(bench_dns.merged_daemon_json(None, ("10.0.0.53",))) == {"dns": ["10.0.0.53"]}
-    assert json.loads(bench_dns.merged_daemon_json(b"not json", ("10.0.0.53",))) == {"dns": ["10.0.0.53"]}
+    assert json.loads(bench_dns.merged_daemon_json(None, {"dns": ["10.0.0.53"]})) == {"dns": ["10.0.0.53"]}
+    assert json.loads(bench_dns.merged_daemon_json(b"not json", {"dns": ["10.0.0.53"]})) == {"dns": ["10.0.0.53"]}
+
+
+def test_a_plain_http_mirror_is_also_an_insecure_registry() -> None:
+    assert bench_dns.registry_mirror_settings("") == {}
+    assert bench_dns.registry_mirror_settings("https://mirror.lan") == {"registry-mirrors": ["https://mirror.lan"]}
+    assert bench_dns.registry_mirror_settings("http://mirror:5000") == {
+        "registry-mirrors": ["http://mirror:5000"],
+        "insecure-registries": ["mirror:5000"],
+    }
+    assert bench_dns.parse_registry_mirror(" http://mirror:5000/ ") == "http://mirror:5000"
+    with pytest.raises(ValueError, match="not an http"):
+        bench_dns.parse_registry_mirror("http://mirror:5000/v2")
 
 
 def test_the_archive_unpacks_at_etc_into_docker_daemon_json() -> None:

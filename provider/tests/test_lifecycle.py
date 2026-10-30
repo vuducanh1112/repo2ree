@@ -45,7 +45,7 @@ def _instant_viable_bench(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(lc_mod, "_probe_bench", lambda name, exec_path, image: iter(()))
     monkeypatch.setattr(lc_mod, "_resolved_image", lambda image: image)
     monkeypatch.setattr(lc_mod, "discover", lambda image: ())
-    monkeypatch.setattr(lc_mod, "write_daemon_dns", lambda container, resolvers: None)
+    monkeypatch.setattr(lc_mod, "write_daemon_settings", lambda container, settings: None)
     monkeypatch.setattr(lc_mod, "_bench_log_tail", lambda container, lines: "")
 
 
@@ -849,7 +849,9 @@ def _dns_plumbing(monkeypatch: pytest.MonkeyPatch, discovered: tuple[str, ...] =
 
     monkeypatch.setattr(lc_mod, "discover", discover)
     monkeypatch.setattr(
-        lc_mod, "write_daemon_dns", lambda container, resolvers: calls.append(("daemon.json", container, *resolvers))
+        lc_mod,
+        "write_daemon_settings",
+        lambda container, settings: calls.append(("daemon.json", container, *settings.get("dns", []))),
     )
     return calls
 
@@ -942,6 +944,21 @@ def test_a_failed_discovery_is_retried_on_the_next_bench(monkeypatch: pytest.Mon
     assert _only_status(first).allocation_id == "ree1"
     assert [call[1] for call in calls if call[0] == "discover"] == ["distroless", "docker:dind"]
     assert ("daemon.json", "repo2ree-wb-ree2", "10.0.0.53") in calls
+
+
+def test_a_registry_mirror_reaches_every_dind_bench_daemon(monkeypatch: pytest.MonkeyPatch) -> None:
+    _dns_plumbing(monkeypatch)
+    written: list[dict[str, object]] = []
+    monkeypatch.setattr(lc_mod, "write_daemon_settings", lambda container, settings: written.append(settings))
+
+    frames = list(
+        _provision(
+            DockerIsolation(workbench_dns="off", workbench_registry_mirror="http://mirror:5000"), "ree1", "docker:dind"
+        )
+    )
+
+    assert written == [{"registry-mirrors": ["http://mirror:5000"], "insecure-registries": ["mirror:5000"]}]
+    assert "bench registry mirror: http://mirror:5000" in _log_messages(frames)
 
 
 def test_a_failed_provision_shows_the_bench_s_own_log(monkeypatch: pytest.MonkeyPatch) -> None:

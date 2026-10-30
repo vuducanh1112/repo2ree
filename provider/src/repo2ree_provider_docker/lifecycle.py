@@ -44,7 +44,14 @@ from repo2ree_docker.ops import (
 )
 from repo2ree_protocol.allocation import AllocationRequest, AllocationState
 from repo2ree_protocol.frames import AllocationStatusFrame, ErrorFrame, Frame, LogFrame
-from repo2ree_provider_docker.bench_dns import BenchDns, discover, parse_setting, write_daemon_dns
+from repo2ree_provider_docker.bench_dns import (
+    BenchDns,
+    discover,
+    parse_registry_mirror,
+    parse_setting,
+    registry_mirror_settings,
+    write_daemon_settings,
+)
 from repo2ree_provider_docker.injection import InjectionBundle, load_injection_bundle
 
 __all__ = ["DockerIsolation"]
@@ -106,6 +113,7 @@ class DockerIsolation:
         workbench_telemetry: str = "relay",
         workbench_otlp_endpoint: str | None = None,
         workbench_dns: str = "auto",
+        workbench_registry_mirror: str = "",
     ):
         if docker_mode not in _WORKBENCH_DOCKER_MODES:
             modes = ", ".join(sorted(_WORKBENCH_DOCKER_MODES))
@@ -124,6 +132,7 @@ class DockerIsolation:
         # Why benches get no resolvers, once settled: said on every bench, not just the first.
         self._dns_shortfall: str | None = None
         self._dns_settled = False
+        self._registry_mirror = parse_registry_mirror(workbench_registry_mirror)
         # Test stacks set this to a unique run token. Labels let their teardown
         # select only resources that run created, while ordinary deployments
         # leave resources unlabelled and retain their existing lifecycle.
@@ -336,7 +345,14 @@ class DockerIsolation:
             exec_path = bundle.exec_path
 
         dns = yield from self._bench_dns(image)
-        resolvers = dns.resolvers if dns is not None else ()
+        daemon_settings: dict[str, object] = {}
+        if self._docker_mode == "dind":
+            daemon_settings = {
+                **({"dns": list(dns.resolvers)} if dns is not None else {}),
+                **registry_mirror_settings(self._registry_mirror),
+            }
+            if self._registry_mirror:
+                yield LogFrame(stream="system", level="info", message=f"bench registry mirror: {self._registry_mirror}")
 
         run_args = [
             *self._docker_backend_args(allocation.allocation_id),
@@ -367,7 +383,7 @@ class DockerIsolation:
         # forcing a keep-alive command of our own would boot it daemon-dead).
         # A pause command is strictly the rescue for images whose default exits
         # immediately (alpine's detached /bin/sh, distroless with no CMD).
-        if not self._start_bench(container_name, run_args, image, command=[], resolvers=resolvers):
+        if not self._start_bench(container_name, run_args, image, command=[], daemon_settings=daemon_settings):
             # The duration is not optional: the bundle's pause binary is busybox
             # `sleep`, which prints its usage and exits 1 when given no operand —
             # a pause command that pauses for nothing at all. `infinity` parses
@@ -384,7 +400,7 @@ class DockerIsolation:
             message = f"image {image} default command did not stay running; holding the bench open with {pause[0]}"
             logger.warning(message)
             yield LogFrame(stream="system", level="warn", message=message)
-            if not self._start_bench(container_name, run_args, image, command=pause, resolvers=resolvers):
+            if not self._start_bench(container_name, run_args, image, command=pause, daemon_settings=daemon_settings):
                 raise RuntimeError(
                     f"bench container from {image} would not stay running "
                     "(its default command and the pause command both exited)"
@@ -443,7 +459,11 @@ class DockerIsolation:
 
     @staticmethod
     def _start_bench(
-        container_name: str, run_args: list[str], image: str, command: list[str], resolvers: tuple[str, ...] = ()
+        container_name: str,
+        run_args: list[str],
+        image: str,
+        command: list[str],
+        daemon_settings: dict[str, object] | None = None,
     ) -> bool:
         """Start the bench and report whether it stayed up past the grace window.
 
@@ -452,13 +472,13 @@ class DockerIsolation:
         default command into a silent crash loop instead of a falsifiable check.
         A failed attempt is removed so the retry can reuse the name.
 
-        Created, then started, so the bench daemon's resolvers are in its
-        daemon.json before that daemon first reads it.
+        Created, then started, so the bench daemon's settings (resolvers, a
+        registry mirror) are in its daemon.json before that daemon first reads it.
         """
         run_docker("create", *run_args, image, *command, timeout=120)
-        if resolvers:
+        if daemon_settings:
             try:
-                write_daemon_dns(container_name, resolvers)
+                write_daemon_settings(container_name, daemon_settings)
             except RuntimeError:
                 run_docker_silent("rm", "-f", "-v", container_name)
                 raise

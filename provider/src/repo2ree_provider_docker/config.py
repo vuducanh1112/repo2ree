@@ -10,7 +10,7 @@ from typing import Literal
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from repo2ree_provider_docker.bench_dns import parse_setting
+from repo2ree_provider_docker.bench_dns import parse_registry_mirror, parse_setting
 from repo2ree_provider_docker.identity import load_or_create_provider_id
 
 _DEFAULT_IMAGE = (
@@ -58,6 +58,8 @@ class ProviderConfig:
     # The resolvers dind bench daemons hand their containers and build steps:
     # "auto" (discovered from the host daemon), "off", or addresses.
     workbench_dns: str = "auto"
+    # A pull-through registry dind bench daemons pull Docker Hub images through; "" for none.
+    workbench_registry_mirror: str = ""
     otlp_endpoint: str | None = None
     # What the benches this provider starts do with their own spans. They inherit
     # neither this process's OTLP_ENDPOINT nor its reachability: a bench may sit
@@ -87,6 +89,7 @@ class ProviderEnvironment(BaseSettings):
     PROVIDER_DOCKER_MODE: Literal["dind", "host-socket"] = "dind"
     PROVIDER_WORKBENCH_DOCKER_NETWORK: str = ""
     PROVIDER_WORKBENCH_DNS: str = "auto"
+    PROVIDER_WORKBENCH_REGISTRY_MIRROR: str = ""
     PROVIDER_WORKBENCH_TELEMETRY: Literal["relay", "direct", "local", "off"] = "relay"
     PROVIDER_WORKBENCH_OTLP_ENDPOINT: str | None = None
     WORKBENCH_IMAGE_CATALOG: str | None = None
@@ -102,6 +105,11 @@ class ProviderEnvironment(BaseSettings):
     def _dns_is_auto_off_or_addresses(cls, value: str) -> str:
         parse_setting(value)
         return value
+
+    @field_validator("PROVIDER_WORKBENCH_REGISTRY_MIRROR")
+    @classmethod
+    def _mirror_is_a_registry_url(cls, value: str) -> str:
+        return parse_registry_mirror(value)
 
     @field_validator("PROVIDER_WORKBENCH_TELEMETRY", mode="before")
     @classmethod
@@ -152,6 +160,7 @@ def load_config() -> ProviderConfig:
         docker_mode=environment.PROVIDER_DOCKER_MODE,
         workbench_network=environment.PROVIDER_WORKBENCH_DOCKER_NETWORK,
         workbench_dns=environment.PROVIDER_WORKBENCH_DNS,
+        workbench_registry_mirror=environment.PROVIDER_WORKBENCH_REGISTRY_MIRROR,
         otlp_endpoint=environment.OTLP_ENDPOINT,
         workbench_telemetry=environment.PROVIDER_WORKBENCH_TELEMETRY,
         workbench_otlp_endpoint=environment.PROVIDER_WORKBENCH_OTLP_ENDPOINT,
