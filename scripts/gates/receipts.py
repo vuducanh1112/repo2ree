@@ -23,6 +23,7 @@ from typing import Any, ClassVar, Literal, Self
 
 DIRECTORY = ".receipts"
 DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
+PLATFORM = re.compile(r"[a-z0-9]+/[a-z0-9]+")
 
 type Gate = Literal["commit-gate", "assurance-gate", "publish-gate"]
 type Document = dict[str, Any]
@@ -129,21 +130,29 @@ class AssuranceGateReceipt(Receipt):
 
 @dataclass(frozen=True)
 class PublishGateReceipt(Receipt):
-    """The publish gate passed on this revision with these local images."""
+    """The publish gate passed on this revision with these local images, built for this platform.
+
+    One per platform: each published platform's image set is built and gated on a machine of
+    its own (``.receipts/publish-gate-<os>-<arch>.json``), so one never overwrites another when
+    a machine's receipts are brought back.
+    """
 
     GATE: ClassVar[Gate] = "publish-gate"
 
     images: dict[str, str]  # Each image's local ID.
+    platform: str  # The os/arch of the daemon holding them, as an image platform names it.
 
     def __post_init__(self) -> None:
         for image, digest in self.images.items():
             if not DIGEST.fullmatch(digest):
                 raise ValueError(f"invalid local image ID for {image}: {digest}")
+        if not PLATFORM.fullmatch(self.platform):
+            raise ValueError(f"invalid platform: {self.platform!r}")
 
     @classmethod
     def body(cls, document: Document) -> Document:
         images = _object(document, "images")
-        return {"images": {image: _str(images, image) for image in images}}
+        return {"images": {image: _str(images, image) for image in images}, "platform": _str(document, "platform")}
 
 
 def path(root: Path, gate: Gate) -> Path:

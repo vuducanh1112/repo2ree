@@ -59,13 +59,14 @@ zones-gate: _require-clean-tree
     python scripts/zones.py verify
     @echo ">> zones gate green — every file has a zone and every zone entry a file"
 
-# Run the complete pre-publish gate and certify the local image set.
+# Run the complete pre-publish gate and certify the local image set for this machine's platform.
 [group('Release gates')]
 publish-gate: _require-clean-tree _require-current-commit-gate _require-current-assurance-gate zones-gate test-backend-integration test-gui-accessibility test-gui-screenshots test-showcase build-images
     #!/usr/bin/env bash
     set -euo pipefail
     python -m repo2ree_testbed image-suite --suite showcase --compute-locations {{ quote(DEFAULT_STACK_LOCATIONS) }} --images local
     revision=$(git describe --always)
-    python -m scripts.gates.publish_gate write {{ quote(DEFAULT_PUBLISH_GATE_RECEIPT) }} "$revision"
-    echo ">> publish gate green — certified local image set for $revision"
-    echo ">> publish with: just publish-candidate"
+    receipt=$(python -m scripts.gates.publish_gate path .receipts)
+    python -m scripts.gates.publish_gate write "$receipt" "$revision"
+    echo ">> publish gate green — certified the local image set for $revision ($receipt)"
+    echo ">> on the pushing host: just publish-candidate; elsewhere: just archive-images, then on the pushing host just machine fetch-archives <machine>"

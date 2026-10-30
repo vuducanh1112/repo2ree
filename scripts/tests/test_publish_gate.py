@@ -6,7 +6,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).parents[2]
 RECEIPT_TOOL = ["-m", "scripts.gates.publish_gate"]
-PUSH_TOOL = ["-m", "scripts.publish.image_candidate"]
 IMAGE_ID = "sha256:" + "1" * 64
 CHANGED_IMAGE_ID = "sha256:" + "2" * 64
 
@@ -34,6 +33,8 @@ esac
         """#!/usr/bin/env bash
 if [[ "$1 $2" == "image inspect" ]]; then
     printf '%s\n' "$FAKE_IMAGE_ID"
+elif [[ "$1" == "version" ]]; then
+    printf '%s\n' "${FAKE_PLATFORM:-linux/amd64}"
 else
     printf '%s\n' "$*" >>"$DOCKER_LOG"
 fi
@@ -77,42 +78,32 @@ def test_receipt_binds_revision_tree_and_local_image_ids(tmp_path: Path) -> None
     assert "changed after publish-gate" in changed.stderr
 
 
-def test_push_uses_certified_ids_instead_of_mutable_local_tags(tmp_path: Path) -> None:
+def test_a_receipt_names_its_platform_and_holds_only_on_a_daemon_of_that_platform(tmp_path: Path) -> None:
     environment = _fake_environment(tmp_path)
-    environment["REGISTRIES"] = "registry.example/team"
-    receipt = tmp_path / "publish-gate.json"
-    images = dict.fromkeys(("repo2ree-gui", "repo2ree-backend", "repo2ree-provider-docker"), IMAGE_ID)
-    receipt.write_text(
-        json.dumps(
-            {
-                "gate": "publish-gate",
-                "revision": "revision-1",
-                "tree": "test-tree",
-                "written": "2026-10-23T00:00:00Z",
-                "images": images,
-            }
-        )
-    )
-
-    subprocess.run(
-        [
-            sys.executable,
-            *PUSH_TOOL,
-            "push",
-            "--revision",
-            "revision-1",
-            "--registries",
-            "registry.example/team",
-            "--gate-receipt",
-            receipt,
-        ],
+    directory = tmp_path / ".receipts"
+    receipt = subprocess.run(
+        [sys.executable, *RECEIPT_TOOL, "path", directory],
         check=True,
         env=environment,
         cwd=ROOT,
-    )
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    assert receipt == str(directory / "publish-gate-linux-amd64.json")
 
-    calls = Path(environment["DOCKER_LOG"]).read_text().splitlines()
-    tag_calls = calls[::2]
-    assert len(tag_calls) == 3
-    assert all(call.startswith(f"tag {IMAGE_ID} ") for call in tag_calls)
-    assert all(":local" not in call for call in tag_calls)
+    subprocess.run(
+        [sys.executable, *RECEIPT_TOOL, "write", receipt, "revision-1"], check=True, env=environment, cwd=ROOT
+    )
+    assert json.loads(Path(receipt).read_text())["platform"] == "linux/amd64"
+
+    environment["FAKE_PLATFORM"] = "linux/arm64"
+    elsewhere = subprocess.run(
+        [sys.executable, *RECEIPT_TOOL, "verify", receipt, "revision-1"],
+        check=False,
+        env=environment,
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    assert elsewhere.returncode == 1
+    assert "certifies linux/amd64 images; this daemon holds linux/arm64" in elsewhere.stderr
