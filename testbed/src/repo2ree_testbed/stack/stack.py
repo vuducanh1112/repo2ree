@@ -20,10 +20,12 @@ from repo2ree_testbed.artifacts import ROOT, run_dir, write_provenance
 from repo2ree_testbed.faults import FAULTS_URL
 from repo2ree_testbed.python_coverage import CoverageRoot, render
 from repo2ree_testbed.records import DossierManifest, read
+from repo2ree_testbed.stack import mirror as registry_mirror
 from repo2ree_testbed.stack.clients import Client, Launch, Started
 from repo2ree_testbed.stack.injector import Injector
+from repo2ree_testbed.stack.origins import Origins
 from repo2ree_testbed.stack.process import listed, reachable, terminate, wait_until
-from repo2ree_testbed.stack.services import Deployment, backend_environment, locations
+from repo2ree_testbed.stack.services import Deployment, backend_environment, locations, workbench_host
 from repo2ree_testbed.stack.workbench_cleanup import cleanup, save_bench_logs
 
 
@@ -100,6 +102,7 @@ class E2EStack:
         self.locations: list[subprocess.Popen[bytes]] = []
         self.restarting = threading.Lock()
         self.injector = Injector(self)
+        self.origins = Origins(self.control_state / "origins", workbench_host()[0])
         self.running: Started | None = None
         self.logs: list[BinaryIO] = []
         self.stopped = False
@@ -200,7 +203,8 @@ class E2EStack:
         return f"{self.api_url}/api/v1/{self.registry_key()}"
 
     def start_locations(self, overrides: Mapping[str, str] | None = None) -> None:
-        services = locations(self.deployment, self.api_url, self.control_state, self.layout.run_token)
+        mirror = registry_mirror.ensure() if self.provider_managed else ""
+        services = locations(self.deployment, self.api_url, self.control_state, self.layout.run_token, mirror)
         for index, service in enumerate(services, start=1):
             environment = {**service.environment, **(overrides or {})}
             if self.layout.telemetry is not None:
@@ -238,7 +242,8 @@ class E2EStack:
         log = self.log(self.layout.client_log) if self.layout.client_log else None
         launch = Launch(self.layout.output, log, self.layout.test)
         self.injector.start()
-        environment = {**self.environment, FAULTS_URL: self.injector.url}
+        served = self.origins.start(self.layout.logs / "origins.log")
+        environment = {**self.environment, **served.environment(), FAULTS_URL: self.injector.url}
         running = self.client.start(self.api_url, environment, self.selection, launch)
         self.running = running
         while (status := running.poll()) is None:
@@ -263,6 +268,7 @@ class E2EStack:
             self.stopped = True
         terminate(self.running.process if self.running else None)
         self.injector.stop()
+        self.origins.stop()
         if self.api_url:
             with self.phase("collect_live"):
                 self.collect_live()

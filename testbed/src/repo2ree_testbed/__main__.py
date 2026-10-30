@@ -14,6 +14,7 @@ COMMANDS = {
     "prune": "repo2ree_testbed.runs.prune",
     "coverage": "repo2ree_testbed.python_coverage",
     "machine": "repo2ree_testbed.runs.machine",
+    "mirror": "repo2ree_testbed.stack.mirror",
 }
 
 

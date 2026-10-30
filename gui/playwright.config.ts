@@ -101,15 +101,15 @@ export default defineConfig({
       },
     },
     {
-      // Lean regression tests: no narration, no artificial delays.
-      // No video (avoids the ffmpeg dependency + per-test recording cost);
-      // a trace is kept only for failures, which is cheap and debuggable.
-      name: "e2e-gui",
-      testDir: "./tests/e2e",
-      // The review specs are their own project (below), so the authoring suite
-      // does not also run them.
-      testIgnore: ["**/review/**"],
-      outputDir: `${testRunDir}/browser/tests/e2e-gui`,
+      // Real projects through the whole lifecycle, one scenario per spec: their
+      // own toolchains (pip, a Dockerfile, Maven), base images pinned by digest
+      // and pulled through the machine's registry mirror, packages pinned by
+      // hash, origins served by the stack itself. Run per test, each on a fresh
+      // stack whose behaviour is judged like the assurance tiers'. No video;
+      // a trace only for failures.
+      name: "showcase",
+      testDir: "./tests/showcase",
+      outputDir: `${testRunDir}/browser/tests/showcase`,
       // A backstop only: every run is watched (tests/runs.ts), and fails when it
       // goes quiet, so a slow network costs time rather than a failure.
       timeout: NETWORK_TEST_TIMEOUT,
@@ -141,49 +141,14 @@ export default defineConfig({
       },
     },
     {
-      // The reviewer side of the lifecycle: a golden path that loads an REE
-      // this repo authored earlier (examples/rees/) and reproduces all four
-      // steps against its evidence, plus one narrow spec for the case it cannot
-      // reach — re-fetching a live origin, which that REE does not have. Same
-      // lean setup as the e2e-gui project — a regression suite, not a recording —
-      // but its own
-      // project so a reviewer-facing change can be validated on its own, and
-      // with a larger budget: a review re-runs work the author already did, on
-      // top of doing it once to have something to review.
-      name: "e2e-gui-review",
-      testDir: "./tests/e2e/review",
-      outputDir: `${testRunDir}/browser/tests/e2e-gui-review`,
-      timeout: NETWORK_TEST_TIMEOUT,
-      expect: { timeout: 15 * 1000 },
-      use: {
-        ...baseUse,
-        video: "off",
-        trace: "retain-on-failure",
-        screenshot: "only-on-failure",
-      },
-    },
-    {
-      // Showcase walkthrough: full narration + always-on video recording.
-      // The video is the artifact, so no trace; separate outputDir so its
-      // videos never collide with the e2e-gui suite.
+      // The recorded walkthrough: the Python Docker showcase scenario itself,
+      // narrated (tests/showcase/narration.ts draws its captions only here) and
+      // paced, with video on. The video is the artifact, so no trace.
       name: "demo-gui",
-      testDir: "./tests/demo",
-      testIgnore: ["**/code-ocean/**"],
+      testDir: "./tests/showcase",
+      testMatch: "python-docker.spec.ts",
+      metadata: { narrated: true },
       outputDir: `${testRunDir}/browser/tests/demo-gui`,
-      timeout: NETWORK_TEST_TIMEOUT,
-      expect: { timeout: 10 * 1000 },
-      use: {
-        ...baseUse,
-        video: { mode: "on", size: { width: 1920, height: 1080 } },
-        screenshot: "only-on-failure",
-      },
-    },
-    {
-      // Long-running, external-image demos. Kept out of `just demo-gui` so the
-      // ordinary narrated demo remains quick and self-contained.
-      name: "demo-gui-code-ocean",
-      testDir: "./tests/demo/code-ocean",
-      outputDir: `${testRunDir}/browser/tests/demo-gui-code-ocean`,
       timeout: NETWORK_TEST_TIMEOUT,
       expect: { timeout: 10 * 1000 },
       use: {

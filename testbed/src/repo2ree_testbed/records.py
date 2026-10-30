@@ -67,6 +67,15 @@ class RunRecord(Record):
     selected: tuple[str, ...] = ()
     # The aggregate invocation it ran in (REPO2REE_TEST_RUN_ID), which the assurance gate finds its runs by.
     invocation: str = ""
+    # The clean tree it was built from, unchanged until it ended; "" for a dirty or moving tree.
+    tree: str = ""
+    # What the tier's stacks were deployed with: compute locations, location mode, Docker mode.
+    parameters: dict[str, str | int] = {}
+    # The Docker server's os/arch and the machine (`local`, or a machines.toml name) it ran on.
+    platform: str = ""
+    machine: str = ""
+    # For a suite against built images: each image's local ID.
+    images: dict[str, str] = {}
     tests: tuple[RunTest, ...]
 
     def with_tests(self, tests: tuple[RunTest, ...]) -> RunRecord:

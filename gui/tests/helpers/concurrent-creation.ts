@@ -43,7 +43,7 @@ export async function twoConcurrentCreations(
   if (!options.sameLab) {
     test.skip(
       (await connectedLabCount(page)) < 2,
-      "needs a stack with at least 2 connected labs (just test-e2e-gui locations=2)",
+      "needs a stack with at least 2 connected labs (just test-showcase)",
     );
   }
 

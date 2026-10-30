@@ -1,15 +1,15 @@
 # Examples
 
 Shared example inputs. Everything here is read by more than one place — the
-GUI e2e and demo suites, the API walkthrough, and by hand when trying the
-app — so it lives at the repository root rather than inside one suite.
+GUI showcase and instant suites, the system tier, the API walkthrough, and by
+hand when trying the app — so it lives at the repository root rather than inside one suite.
 
 ## `projects/`
 
 Small source projects the suites author REEs from. They are ordinary source
-trees: no REE metadata, no receipts. `python-hello-world.tar.gz` is the packed
-form of `python_hello_world/`, uploaded as-is by the specs that exercise the
-upload path.
+trees: no REE metadata, no receipts. The suites pack a project as an upload
+when they run. The real-world projects pin what they fetch: base images by
+digest, Python packages by hash.
 
 ### `instant_hello_world/`
 
@@ -29,13 +29,29 @@ build pulls a base image and installs pandas and takes 40 s or more.
 The SBOM steps are not covered yet: the scanner reads only `docker-archive:`
 runtimes, and this runtime is a packed venv.
 
+### `instant_docker_hello_world/`
+
+The instant project for a bench with its own Docker daemon, the product's
+default. Its Dockerfile builds `FROM scratch`: the recipe's build copies the
+bench's busybox and musl loader into the build context, so the bench's daemon
+runs a real `docker build` (with a `RUN` step) and `docker run`, pulling and
+downloading nothing. It prints the same output as `instant_hello_world/`.
+
+## `origins/`
+
+`ree-e2e-fixture/` is the project the suites fetch from an origin URL. Each
+test stack serves it itself, by git and as a tarball, with a fixed commit
+author and date (`repo2ree_testbed.stack.origins`), so the fetch needs no
+internet and always yields the same commit.
+
 ## `recipes/`
 
 The REE scripts that run a project, kept beside it rather than in it so the
 project stays an ordinary source tree. `recipes/instant_hello_world/` holds
 the build (what inference generates for the project), activation, experiment
 and verify scripts that both the system suite (`api/tests/system`) and the
-instant GUI suite (`gui/tests/e2e-instant`) author.
+instant GUI suite (`gui/tests/e2e-instant`) author;
+`recipes/instant_docker_hello_world/` does the same for the Docker project.
 
 ## `rees/`
 
@@ -67,15 +83,10 @@ upload-acquired source, and the reason a review fixture with a URL origin is
 still worth adding.
 
 It is the baseline the reviewer suite reviews
-(`gui/tests/e2e/review/lifecycle.spec.ts`). That is what its two omissions
+(`gui/tests/showcase/review.spec.ts`). That is what its two omissions
 buy: with no runtime artifact the build step has to genuinely rebuild from the
 author's recipe, and unsealed means the review runs against an ordinary REE
 rather than a frozen one. Because its receipts come from a real earlier run,
 they also exercise evidence the current code did not write — one of them
 predates the `verify_exit_code` field, and the experiment review has to read the
 author's claim out of `status` instead.
-
-## `code-ocean/`
-
-Downloaded third-party capsules, fetched on demand and gitignored (they are
-large and not ours to redistribute). See `docs/research/code-ocean.md`.

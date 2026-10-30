@@ -1,9 +1,10 @@
-import { expect, test } from "../e2e/helpers/fixtures";
+import { expect, test } from "../helpers/fixtures";
 import {
   buildRuntime,
   INSTANT_RUNTIME_PATH,
   instantHelloWorld,
   instantRecipe,
+  keepReeArchive,
   LIGHTWEIGHT_WORKBENCH_IMAGE,
   main,
   provisionWorkbench,
@@ -12,9 +13,8 @@ import {
   runEvaluate,
   startReeCreation,
   uploadSource,
-} from "../e2e/helpers/flow";
+} from "../helpers/flow";
 import { stepShot } from "../screenshot";
-import { keepReeArchive } from "./keepArchive";
 
 const FAILING_BUILD = `#!/usr/bin/env sh
 set -eu

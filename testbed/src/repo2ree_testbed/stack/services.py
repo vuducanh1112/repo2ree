@@ -47,14 +47,17 @@ def backend_environment(control_state: Path, token: str, coverage_file: Path, te
     return environment
 
 
-def _workbench_host() -> tuple[str, str]:
+def workbench_host() -> tuple[str, str]:
+    """How a bench reaches this process: (host, the Docker network it must join, or "")."""
     container = own_container()
     network = first_network(container) if container else ""
     return (container, network) if container and network else ("host.docker.internal", "")
 
 
-def locations(deployment: Deployment, api_url: str, control_state: Path, token: str) -> list[Service]:
-    host, network = _workbench_host()
+def locations(
+    deployment: Deployment, api_url: str, control_state: Path, token: str, registry_mirror: str = ""
+) -> list[Service]:
+    host, network = workbench_host()
     ws = "ws:" + api_url.removeprefix("http:")
     port = api_url.rsplit(":", 1)[1]
     services = []
@@ -69,6 +72,7 @@ def locations(deployment: Deployment, api_url: str, control_state: Path, token: 
                     "PROVIDER_WORKBENCH_API_WS_URL": f"ws://{host}:{port}/workbench/connect",
                     "PROVIDER_WORKBENCH_DOCKER_NETWORK": network,
                     "PROVIDER_DOCKER_MODE": deployment.docker_mode,
+                    "PROVIDER_WORKBENCH_REGISTRY_MIRROR": registry_mirror,
                     "PROVIDER_LOCATION_ID": f"lab-{index}",
                     "PROVIDER_LOCATION_LABEL": f"Lab {index}",
                     "PROVIDER_STATE_DIR": str(control_state / f"provider-{index}"),

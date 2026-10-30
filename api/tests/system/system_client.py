@@ -25,37 +25,97 @@ from repo2ree_testbed.faults import FAULTS_URL, Fault, inject
 from repo2ree_testbed.run_watch import INSTANT_RUN, NETWORK_RUN, RunWatch, settle_run
 
 ROOT = Path(__file__).resolve().parents[3]
-PROJECT = ROOT / "examples/projects/instant_hello_world"
-RECIPES = ROOT / "examples/recipes/instant_hello_world"
-PROJECT_DIR = PROJECT.name
-RUNTIME = f"{PROJECT_DIR}/runtime-venv.tar.gz"
-EXPERIMENT = "instant-hello"
 RESULT = "result.txt"
-
 BUILD_SCRIPT = "ree-scripts/build_script.sh"
 ACTIVATION_SCRIPT = "ree-scripts/activation.sh"
-EXPERIMENT_SCRIPT = f"ree-scripts/experiments/{EXPERIMENT}.sh"
-EXPERIMENT_VERIFY = f"ree-scripts/experiments/{EXPERIMENT}.verify.sh"
 
 # A bench without a Docker daemon: the base image is the runtime environment.
-# Same pin as the GUI suite's lightweight bench (gui/tests/e2e/helpers/flow.ts).
+# Same pin as the GUI suite's lightweight bench (gui/tests/helpers/flow.ts).
 LIGHTWEIGHT_IMAGE = os.environ.get(
     "PYTHON_SLIM_IMAGE",
     "docker.io/library/python:3.11-slim@sha256:9534e5a8e315485d4061ed659af0fd78a284c015f9b73661b41d6bab25604534",
 )
+# A bench with its own Docker daemon: the provider's default image.
+DIND_IMAGE = os.environ.get(
+    "DIND_IMAGE",
+    "docker.io/library/docker:29-dind@sha256:66d292e5c26bd33a6f6f61cacb880de2186339a524ecba1ce098dbbaceed6515",
+)
 TERMINAL = frozenset({"succeeded", "failed", "canceled"})
 
 
+@dataclass(frozen=True)
+class Fixture:
+    """A project an REE is authored from: its recipes, what its build produces, and the bench it needs.
+
+    Both fixtures need nothing downloaded. ``INSTANT`` runs on a bench without a Docker
+    daemon, its runtime a packed venv; ``INSTANT_DOCKER`` runs on a dind bench, its
+    runtime an image the bench's own daemon builds FROM scratch.
+    """
+
+    project: Path
+    runtime: str
+    experiment: str
+    image: str
+    # Whether the build script is the one script inference proposes, or the recipe's.
+    infer_build: bool
+
+    @property
+    def name(self) -> str:
+        return self.project.name
+
+    @property
+    def experiment_script(self) -> str:
+        return f"ree-scripts/experiments/{self.experiment}.sh"
+
+    @property
+    def experiment_verify(self) -> str:
+        return f"ree-scripts/experiments/{self.experiment}.verify.sh"
+
+    def recipe(self, name: str) -> str:
+        return (ROOT / "examples/recipes" / self.name / name).read_text()
+
+    def archive(self) -> bytes:
+        """The project packed as an upload, without interpreter caches."""
+        buffer = io.BytesIO()
+        with tarfile.open(fileobj=buffer, mode="w:gz") as archive:
+            archive.add(
+                self.project, arcname=self.name, filter=lambda info: None if "__pycache__" in info.name else info
+            )
+        return buffer.getvalue()
+
+
+INSTANT = Fixture(
+    project=ROOT / "examples/projects/instant_hello_world",
+    runtime="instant_hello_world/runtime-venv.tar.gz",
+    experiment="instant-hello",
+    image=LIGHTWEIGHT_IMAGE,
+    infer_build=True,
+)
+INSTANT_DOCKER = Fixture(
+    project=ROOT / "examples/projects/instant_docker_hello_world",
+    runtime="instant_docker_hello_world/runtime-image.tar",
+    experiment="instant-docker-hello",
+    image=DIND_IMAGE,
+    # Inference proposes `docker build` of the project as it stands; the recipe also
+    # brings the bench's busybox into the build context, which a FROM scratch image needs.
+    infer_build=False,
+)
+
+# The instant fixture's names, as most suites use it.
+PROJECT = INSTANT.project
+PROJECT_DIR = INSTANT.name
+RUNTIME = INSTANT.runtime
+EXPERIMENT = INSTANT.experiment
+EXPERIMENT_SCRIPT = INSTANT.experiment_script
+EXPERIMENT_VERIFY = INSTANT.experiment_verify
+
+
 def recipe(name: str) -> str:
-    return (RECIPES / name).read_text()
+    return INSTANT.recipe(name)
 
 
 def project_archive() -> bytes:
-    """The project packed as an upload, without interpreter caches."""
-    buffer = io.BytesIO()
-    with tarfile.open(fileobj=buffer, mode="w:gz") as archive:
-        archive.add(PROJECT, arcname=PROJECT_DIR, filter=lambda info: None if "__pycache__" in info.name else info)
-    return buffer.getvalue()
+    return INSTANT.archive()
 
 
 class ApiError(AssertionError):
@@ -203,42 +263,47 @@ class Api:
         payload = {"include_source": True, "include_runtime": True, "include_results": True}
         return self.stage(ree_id, "ree:seal", payload)
 
-    # ---- the instant project, step by step ----------------------------------
+    # ---- a fixture project, step by step ------------------------------------
 
-    def acquire(self, ree_id: str) -> None:
-        run = self.upload_source(ree_id, project_archive())
+    def acquire(self, ree_id: str, fixture: Fixture = INSTANT) -> None:
+        run = self.upload_source(ree_id, fixture.archive(), f"{fixture.name.replace('_', '-')}.tar.gz")
         if run["status"] != "succeeded":
             raise ApiError(f"source ended {run['status']}\n{self.logs(ree_id, run['run_id'])}")
 
-    def build(self, ree_id: str, script: str | None = None) -> dict[str, Any]:
-        """Declare the runtime, author the build (inferred unless given), and run it."""
-        self.patch(ree_id, {"build_runtime": {"runtime_path": RUNTIME}})
+    def build(self, ree_id: str, script: str | None = None, fixture: Fixture = INSTANT) -> dict[str, Any]:
+        """Declare the runtime, author the build (inferred unless given or the fixture brings one), and run it."""
+        self.patch(ree_id, {"build_runtime": {"runtime_path": fixture.runtime}})
+        if script is None and not fixture.infer_build:
+            script = fixture.recipe("build_script.sh")
         if script is None:
             result = self.infer(ree_id, "build")
             script = str(result["candidates"][0]["body"])
         self.write(ree_id, BUILD_SCRIPT, script)
         return self.stage(ree_id, "build-runtime")
 
-    def activate(self, ree_id: str, script: str | None = None) -> dict[str, Any]:
-        self.write(ree_id, ACTIVATION_SCRIPT, script or recipe("activation.sh"))
+    def activate(self, ree_id: str, script: str | None = None, fixture: Fixture = INSTANT) -> dict[str, Any]:
+        self.write(ree_id, ACTIVATION_SCRIPT, script or fixture.recipe("activation.sh"))
         self.patch(ree_id, {"test_activation": {}})
         return self.stage(ree_id, "activation-test")
 
-    def experiment(self, ree_id: str, *, run: str | None = None, verify: str | None = None) -> dict[str, Any]:
-        self.write(ree_id, EXPERIMENT_SCRIPT, run or recipe("experiment.sh"))
-        self.write(ree_id, EXPERIMENT_VERIFY, verify or recipe("experiment.verify.sh"))
-        self.patch(ree_id, {"experiments": [{"name": EXPERIMENT, "output_paths": [RESULT]}]})
-        return self.stage(ree_id, f"experiments/{EXPERIMENT}:run")
+    def experiment(
+        self, ree_id: str, *, run: str | None = None, verify: str | None = None, fixture: Fixture = INSTANT
+    ) -> dict[str, Any]:
+        self.write(ree_id, fixture.experiment_script, run or fixture.recipe("experiment.sh"))
+        self.write(ree_id, fixture.experiment_verify, verify or fixture.recipe("experiment.verify.sh"))
+        self.patch(ree_id, {"experiments": [{"name": fixture.experiment, "output_paths": [RESULT]}]})
+        return self.stage(ree_id, f"experiments/{fixture.experiment}:run")
 
-    def author(self, ree_id: str) -> None:
-        """Every authoring stage of the instant project, each required to succeed."""
-        self.acquire(ree_id)
+    def author(self, ree_id: str, fixture: Fixture = INSTANT) -> None:
+        """Every authoring stage of a fixture project, each required to succeed."""
+        self.acquire(ree_id, fixture)
         self.succeed(ree_id, "evaluate")
         self.succeed(ree_id, "generate-hbom")
-        for label, run in (("build", self.build(ree_id)), ("activation", self.activate(ree_id))):
+        steps = (("build", self.build(ree_id, fixture=fixture)), ("activation", self.activate(ree_id, fixture=fixture)))
+        for label, run in steps:
             if run["status"] != "succeeded":
                 raise ApiError(f"{label} ended {run['status']}\n{self.logs(ree_id, run['run_id'])}")
-        run = self.experiment(ree_id)
+        run = self.experiment(ree_id, fixture=fixture)
         if run["status"] != "succeeded":
             raise ApiError(f"experiment ended {run['status']}\n{self.logs(ree_id, run['run_id'])}")
 

@@ -1,17 +1,10 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { expect, type Locator, type Page } from "@playwright/test";
-import { FIXTURES_DIR } from "../../artifacts";
-import {
-  NETWORK_RUN,
-  quiet,
-  runToEnd,
-  type SettleOptions,
-  StartedRuns,
-  settleRun,
-} from "../../runs";
-import { stepShot } from "../../screenshot";
+import { expect, type Locator, type Page, test } from "@playwright/test";
+import { FIXTURES_DIR } from "../artifacts";
+import { NETWORK_RUN, quiet, runToEnd, type SettleOptions, StartedRuns, settleRun } from "../runs";
+import { stepShot } from "../screenshot";
 
 /**
  * Lean, reusable steps for driving the REE creation pipeline against a real
@@ -30,7 +23,7 @@ import { stepShot } from "../../screenshot";
 
 // Example inputs are shared across suites (and the API walkthrough), so they
 // live at the repository root rather than under this suite.
-const EXAMPLES_DIR = path.resolve(__dirname, "../../../../examples");
+const EXAMPLES_DIR = path.resolve(__dirname, "../../../examples");
 
 /**
  * Fast provider-managed bench for scenarios that do not need a Docker daemon.
@@ -42,7 +35,7 @@ export const LIGHTWEIGHT_WORKBENCH_IMAGE =
 
 /** Absolute path to the bundled Python hello-world source archive. */
 export function pythonHelloWorld(): string {
-  return path.join(EXAMPLES_DIR, "projects/python-hello-world.tar.gz");
+  return packedProject("python_hello_world");
 }
 
 /**
@@ -88,22 +81,41 @@ export const INSTANT_RUNTIME_PATH = "instant_hello_world/runtime-venv.tar.gz";
  * a Docker daemon. Packed on demand like {@link pythonPipHelloWorld}.
  */
 export function instantHelloWorld(): string {
+  return packedProject("instant_hello_world");
+}
+
+export const INSTANT_DOCKER_RUNTIME_PATH = "instant_docker_hello_world/runtime-image.tar";
+
+/**
+ * Absolute path to the instant Docker project's source archive: a Dockerfile the
+ * bench's own daemon builds FROM scratch, so a dind bench builds and runs it with
+ * nothing pulled or downloaded.
+ */
+export function instantDockerHelloWorld(): string {
+  return packedProject("instant_docker_hello_world");
+}
+
+/** An example project packed as an upload, `<project>/…` inside, as an author would pack it. */
+export function packedProject(project: string): string {
   mkdirSync(FIXTURES_DIR, { recursive: true });
-  const archive = path.join(FIXTURES_DIR, "instant-hello-world.tar.gz");
+  const archive = path.join(FIXTURES_DIR, `${project.replaceAll("_", "-")}.tar.gz`);
   execFileSync("tar", [
     "-czf",
     archive,
     "--exclude=__pycache__",
     "-C",
     path.join(EXAMPLES_DIR, "projects"),
-    "instant_hello_world",
+    project,
   ]);
   return archive;
 }
 
 /** One of the scripts that run the instant project (`examples/recipes/instant_hello_world/`). */
-export function instantRecipe(name: "build_script.sh" | "activation.sh" | "experiment.sh"): string {
-  return readFileSync(path.join(EXAMPLES_DIR, "recipes/instant_hello_world", name), "utf8");
+export function instantRecipe(
+  name: "build_script.sh" | "activation.sh" | "experiment.sh",
+  project: "instant_hello_world" | "instant_docker_hello_world" = "instant_hello_world",
+): string {
+  return readFileSync(path.join(EXAMPLES_DIR, "recipes", project, name), "utf8");
 }
 
 /**
@@ -116,13 +128,18 @@ export function instantRecipe(name: "build_script.sh" | "activation.sh" | "exper
  * workspace-relative file with a redirect so a verify script can read it back.
  * The script prints the file afterwards without masking the command's status.
  */
-export function dockerRunScript(command: string, runtimePath: string, outputFile?: string): string {
+export function dockerRunScript(
+  command: string,
+  runtimePath: string,
+  outputFile?: string,
+  imageName = "pandas-hello",
+): string {
   const capture = outputFile ? ` > ${JSON.stringify(outputFile)}` : "";
   const replay = outputFile ? `\ncat ${JSON.stringify(outputFile)}` : "";
   return `#!/usr/bin/env sh
 set -eu
 
-IMAGE_NAME="pandas-hello"
+IMAGE_NAME=${JSON.stringify(imageName)}
 TAG="latest"
 RUNTIME_FILE=${JSON.stringify(runtimePath)}
 
@@ -155,7 +172,7 @@ export function main(page: Page) {
  * any of them is how a spec knows the inference round-trip settled — the status
  * line renders only once the mutation resolves.
  */
-export const GENERATE_STATUS = /Loaded a generated|could be inferred yet|Generation failed/;
+const GENERATE_STATUS = /Loaded a generated|could be inferred yet|Generation failed/;
 
 /**
  * Run read-only script inference from the generate control in its workspace drawer,
@@ -289,7 +306,7 @@ export async function openFilesConsole(page: Page) {
  * unavailable bay is named "… — unavailable" and is a disabled button, so a
  * loose /available/ would select one and then wait forever for a click.
  */
-export const AVAILABLE_LAB = /— available$/;
+const AVAILABLE_LAB = /— available$/;
 
 /**
  * How many available labs the lab-location picker offers. Specs that need
@@ -493,11 +510,15 @@ export async function runEvaluate(page: Page) {
  * {@link declareRuntimeArtifact}, which must happen first: the build refuses to
  * run until the produced path is declared.
  */
-export function dockerBuildScript(projectDir: string, producedRuntimePath: string): string {
+export function dockerBuildScript(
+  projectDir: string,
+  producedRuntimePath: string,
+  imageName = "pandas-hello",
+): string {
   return `#!/usr/bin/env sh
 set -eu
 
-IMAGE_NAME="pandas-hello"
+IMAGE_NAME=${JSON.stringify(imageName)}
 TAG="latest"
 PROJECT_DIR=${JSON.stringify(projectDir)}
 RUNTIME_FILE=${JSON.stringify(producedRuntimePath)}
@@ -575,7 +596,7 @@ async function saveVerifyScript(page: Page, editor: Locator, content: string) {
   await main(page).getByRole("button", { name: "Save verify script", exact: true }).first().click();
 }
 
-export function stdoutContainsVerifyScript(expectedStdout: string): string {
+function stdoutContainsVerifyScript(expectedStdout: string): string {
   return `#!/usr/bin/env sh
 set -eu
 
@@ -955,7 +976,46 @@ export async function sealRee(page: Page) {
 }
 
 /** Release (tear down) the workbench container; returns to the landing view. */
+/** Pages whose REE this test already kept, so a release does not download it twice. */
+const keptPages = new WeakSet<Page>();
+
+/**
+ * Download the REE as its author would and keep it in this test's output
+ * directory. The stack's collector finds kept archives there and records each
+ * REE's Git history as behaviour evidence: without it the checker cannot see a
+ * single attempt captured, and every rule about attempts is inconclusive. A
+ * release keeps the archive itself when the spec did not (see
+ * {@link releaseWorkbench}); a spec calls this to read the archive.
+ */
+export async function keepReeArchive(page: Page, name = "ree.zip") {
+  await stepShot(page, "download-ree", "before");
+  const download = page.getByRole("banner").getByRole("button", { name: /Download REE/ });
+  await expect(download).toBeEnabled();
+  // A download that never starts (the API refused it) fails here, not at the test's backstop.
+  const [file] = await Promise.all([
+    page.waitForEvent("download", { timeout: 120_000 }),
+    download.click(),
+  ]);
+  let target = test.info().outputPath(name);
+  for (let copy = 2; existsSync(target); copy += 1) {
+    target = test.info().outputPath(name.replace(/(\.zip)?$/, `-${copy}$1`));
+  }
+  await file.saveAs(target);
+  keptPages.add(page);
+  await stepShot(page, "download-ree", "after");
+  return target;
+}
+
 export async function releaseWorkbench(page: Page) {
+  if (!keptPages.has(page)) {
+    // Best effort: a release after a failed step must still happen, archive or not.
+    await keepReeArchive(page).catch((error: unknown) => {
+      test.info().annotations.push({
+        type: "warning",
+        description: `released without keeping the REE's archive: ${String(error)}`,
+      });
+    });
+  }
   await stepShot(page, "release-workbench", "before");
   await openWorkbenchConsole(page);
   const releaseButton = page.getByRole("button", { name: /Release workbench/i }).first();
@@ -967,7 +1027,7 @@ export async function releaseWorkbench(page: Page) {
 }
 
 /** Open the workbench console from the persistent footer status bar. */
-export async function openWorkbenchConsole(page: Page) {
+async function openWorkbenchConsole(page: Page) {
   const footer = page.getByRole("region", { name: "Workbench status" });
   const trigger = footer.getByRole("button", { name: /^Workbench/ });
   if ((await trigger.getAttribute("aria-pressed")) !== "true") await trigger.click();

@@ -9,6 +9,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 
+from repo2ree_testbed import provenance
 from repo2ree_testbed.artifacts import ROOT, execution_id, run_dir
 from repo2ree_testbed.records import RunRecord, RunTest, TestResult, read, write
 from repo2ree_testbed.runs.inspect_run import inspect_run
@@ -40,6 +41,7 @@ class SuiteRun:
         self.schedule = schedule
         self.root = run_dir() / "e2e" / f"{deployment.tier}-{time.strftime('%Y%m%d-%H%M%S')}"
         self.revision = os.environ.get("REPO2REE_BUILD_REVISION") or capture([str(ROOT / "scripts/build-revision.sh")])
+        self.tree = provenance.clean_tree()
         self.collector = bool(os.environ.get("OTLP_ENDPOINT"))
         self.lock = threading.Lock()
         self.active: set[E2EStack] = set()
@@ -70,6 +72,14 @@ class SuiteRun:
             whole_suite=isinstance(self.schedule, WholeSuite),
             selected=self.schedule.select if isinstance(self.schedule, PerTest) else (),
             invocation=execution_id(),
+            tree=self.tree if self.tree and provenance.clean_tree() == self.tree else "",
+            parameters={
+                "compute_locations": self.deployment.compute_locations,
+                "mode": self.deployment.mode,
+                "docker_mode": self.deployment.docker_mode,
+            },
+            platform=provenance.platform(),
+            machine=provenance.machine(),
             tests=tuple(tests),
         )
         write(self.root / "run.json", record)

@@ -178,7 +178,7 @@ export async function settleRun(
 }
 
 /** Perform `action` and return the run it started, to be settled later with {@link settleRun}. */
-export async function startRun(page: Page, action: () => Promise<unknown>): Promise<StartedRun> {
+async function startRun(page: Page, action: () => Promise<unknown>): Promise<StartedRun> {
   const runs = new StartedRuns(page);
   try {
     await action();

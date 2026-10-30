@@ -20,16 +20,14 @@ from repo2ree_testbed.records import Provenance, read
 TIERS = (
     "unit",
     "integration",
-    "e2e-gui",
+    "showcase",
     "e2e-gui-instant",
-    "e2e-gui-review",
     "e2e-system",
     "e2e-faults",
     "e2e-chaos",
     "e2e-fuzz",
     "demo-gui",
     "demo-api",
-    "demo-gui-code-ocean",
 )
 _NAMES = TypeAdapter[tuple[str, ...]](tuple[str, ...])
 

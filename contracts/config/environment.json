@@ -456,6 +456,13 @@
         "type": "string"
       }
     },
+    "E2E_TARBALL_ORIGIN_URL": {
+      "kind": "internal",
+      "owner": "playwright",
+      "schema": {
+        "type": "string"
+      }
+    },
     "E2E_TEST_DIR": {
       "kind": "internal",
       "owner": "testbed",
@@ -862,6 +869,20 @@
     "REPO2REE_PROVIDER_STATE_VOLUME": {
       "kind": "deployment",
       "owner": "compose",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REPO2REE_REGISTRY_MIRROR": {
+      "kind": "internal",
+      "owner": "testbed",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REPO2REE_REGISTRY_MIRROR_PORT": {
+      "kind": "internal",
+      "owner": "testbed",
       "schema": {
         "type": "string"
       }

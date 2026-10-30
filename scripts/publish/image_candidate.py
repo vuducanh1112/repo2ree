@@ -215,7 +215,7 @@ def validate_candidate(revision: str, state_dir: Path, validation_registry: str,
     try:
         write_receipt(pending, resolve_candidate(revision, registry_names))
         environment = {**os.environ, **image_environment(parse_receipt(pending), validation_registry)}
-        for name, locations in (("e2e-gui", "2"), ("e2e-gui-review", "1")):
+        for name, locations in (("showcase", "2"),):
             subprocess.run(
                 [
                     sys.executable,

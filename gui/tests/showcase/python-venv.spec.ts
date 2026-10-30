@@ -1,4 +1,4 @@
-import { expect, test } from "./helpers/fixtures";
+import { expect, test } from "../helpers/fixtures";
 import {
   buildRuntime,
   EXPERIMENT_OUTPUT_FILE,
@@ -15,7 +15,7 @@ import {
   startReeCreation,
   testActivation,
   uploadSource,
-} from "./helpers/flow";
+} from "../helpers/flow";
 
 /**
  * The docker-less branch of the pipeline: the workbench base image *is* the

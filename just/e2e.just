@@ -22,10 +22,6 @@ build-e2e-bundles: _stage-nix-sources
 _source-stack-playwright project locations mode docker_mode:
     python -m repo2ree_testbed e2e --project {{ quote(project) }} --mode {{ quote(mode) }} --compute-locations {{ quote(locations) }} --docker-mode {{ quote(docker_mode) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
 
-# Run the measured author-side browser E2E tier.
-[group('E2E tests')]
-test-e2e-gui locations=DEFAULT_E2E_LOCATIONS mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE: build-e2e-bundles (_source-stack-playwright "e2e-gui" locations mode docker_mode)
-
 # The per-test tiers below run as the assurance gate runs them, with `jobs` stacks side by side.
 # Trailing parts of test ids run only the tests whose id contains one (e.g. `just test-e2e-faults 4
 # test_a_paused`); a run limited so certifies nothing. The modes are the justfile's
@@ -53,9 +49,23 @@ test-e2e-chaos seeds="4" steps="12" jobs=E2E_JOBS: build-e2e-bundles
 test-e2e-fuzz: build-e2e-bundles
     python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/api/tests/fuzz/run_fuzz_suite.py") }} --tier e2e-fuzz --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
 
-# Run the measured reviewer-side browser E2E tier.
+# Retired: the showcase tier replaced it (test-showcase). Kept until publish-gate names test-showcase.
+[private]
+test-e2e-gui locations=DEFAULT_E2E_LOCATIONS mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE: build-e2e-bundles test-showcase
+
+# Retired: the showcase tier replaced it (test-showcase). Kept until publish-gate names test-showcase.
+[private]
+test-e2e-review mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE: build-e2e-bundles
+
+# Run the showcase tier, real projects end to end: each scenario on a fresh stack of two compute locations, judged like the assurance tiers. `just fetch-showcase` first keeps its pulls off Docker Hub.
 [group('E2E tests')]
-test-e2e-review mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE: build-e2e-bundles (_source-stack-playwright "e2e-gui-review" "1" mode docker_mode)
+test-showcase jobs=E2E_JOBS *select: build-e2e-bundles
+    python -m repo2ree_testbed e2e --project showcase --per-test --exit-on tests --jobs {{ quote(jobs) }} --mode {{ quote(DEFAULT_E2E_COMPUTE_LOCATION_MODE) }} --compute-locations 2 --docker-mode {{ quote(DEFAULT_E2E_PROVIDER_DOCKER_MODE) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
+
+# Fetch every base image the example projects pin by digest through this machine's registry mirror (all platforms with --all-platforms), so their builds pull nothing from Docker Hub during a run.
+[group('E2E tests')]
+fetch-showcase *args:
+    python -m repo2ree_testbed mirror warm {{ args }}
 
 # A machine is where a recipe runs: `local`, or one in .config/machines.toml (untracked), whose
 # dev container runs one job at a time from a clone of HEAD and hands back what the job wrote.
@@ -86,13 +96,9 @@ machine +args:
 inspect-e2e run="":
     python -m repo2ree_testbed inspect {{ quote(run) }}
 
-# Record the measured narrated browser demo.
+# Record the narrated browser demo: the Python Docker showcase scenario, captioned and paced, with video.
 [group('Demos')]
 demo-gui mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE: build-e2e-bundles (_source-stack-playwright "demo-gui" "1" mode docker_mode)
-
-# Record the measured external-capsule browser demo.
-[group('Demos')]
-demo-gui-code-ocean mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE: build-e2e-bundles (_source-stack-playwright "demo-gui-code-ocean" "1" mode docker_mode)
 
 # Record the measured pure-API walkthrough and render its transcript.
 [group('Demos')]

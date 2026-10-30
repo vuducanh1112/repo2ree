@@ -39,7 +39,7 @@ def test_stack_clis_reject_invalid_combinations() -> None:
         [
             "image-suite",
             "--suite",
-            "e2e-gui",
+            "showcase",
             "--compute-locations",
             "1",
             "--images",
@@ -48,7 +48,7 @@ def test_stack_clis_reject_invalid_combinations() -> None:
         [
             "image-suite",
             "--suite",
-            "e2e-gui",
+            "showcase",
             "--compute-locations",
             "1",
             "--images",

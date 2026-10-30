@@ -1,11 +1,12 @@
 import { readFileSync } from "node:fs";
-import { expect, test } from "../e2e/helpers/fixtures";
+import { expect, test } from "../helpers/fixtures";
 import {
   buildRuntime,
   generateScript,
   INSTANT_RUNTIME_PATH,
   instantHelloWorld,
   instantRecipe,
+  keepReeArchive,
   LIGHTWEIGHT_WORKBENCH_IMAGE,
   main,
   openPort,
@@ -17,8 +18,7 @@ import {
   startReeCreation,
   testActivation,
   uploadSource,
-} from "../e2e/helpers/flow";
-import { keepReeArchive } from "./keepArchive";
+} from "../helpers/flow";
 
 /**
  * The authoring golden path on the instant project: every stage from an empty
