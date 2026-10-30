@@ -24,7 +24,8 @@ DEFAULT_STACK_LOCATIONS := "2"
 DEFAULT_STACK_IMAGE_REPO := DOCKERHUB_REGISTRY + "/" + DOCKERHUB_NAMESPACE
 DEFAULT_STACK_IMAGE_TAG := IMAGE_TAG
 DEFAULT_IMAGE_CANDIDATE_STATE_DIR := ".receipts/image-candidates"
-DEFAULT_PUBLISH_GATE_RECEIPT := ".receipts/publish-gate.json"
+# Every platform a published image set carries; each is built and gated on a machine of its own.
+PUBLISH_PLATFORMS := env("PUBLISH_PLATFORMS", "linux/amd64 linux/arm64")
 
 export REPO2REE_ASSURANCE_DIR := env("REPO2REE_ASSURANCE_DIR", REPO2REE_TEST_RUN_DIR + "/assurance")
 # Views of the repository, as opposed to what ships (dist/) and what tests leave (test-artifacts/).

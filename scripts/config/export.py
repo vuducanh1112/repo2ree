@@ -40,6 +40,7 @@ NON_SERVICE_ENVIRONMENT: dict[str, tuple[str, str]] = {
     "GIT_SSL_CAINFO": ("git", "external"),
     "HOSTNAME": ("container-runtime", "external"),
     "IMAGE_CANDIDATE_REV": ("publishing", "deployment"),
+    "PUBLISH_PLATFORMS": ("publishing", "deployment"),
     "IMAGE_TAG": ("publishing", "deployment"),
     "IMAGE_VALIDATION_REGISTRY": ("publishing", "deployment"),
     "JUST_TIME": ("just", "external"),

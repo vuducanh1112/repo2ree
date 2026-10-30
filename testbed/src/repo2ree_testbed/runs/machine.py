@@ -31,6 +31,7 @@ from __future__ import annotations
 import argparse
 import os
 import shlex
+import shutil
 import subprocess
 import tempfile
 from collections.abc import Sequence
@@ -50,6 +51,8 @@ SERVICE = "dev"
 # The machine's one job, in the clone: what it runs, its log, its exit code, and whether
 # its results were brought back.
 JOB = "test-artifacts/machine-job"
+# Where a machine's image archive sets are (just archive-images): one directory per platform.
+ARCHIVES = "dist/images"
 SSH_FAILED = 255
 INTERRUPTED = 130
 # The machines' host keys, kept beside the machines file by tools/ssh/setup-vm.sh, so they
@@ -355,6 +358,30 @@ class Machine:
         """``command`` on the host, in a login shell from its user's home: a plain ssh command sees no profile."""
         return ["ssh", *SSH_OPTIONS, self.config.host or "", f"bash -lc {shlex.quote(command)}"]
 
+    def fetch_archives(self) -> int:
+        """Bring the machine's image archive sets here, replacing this checkout's set for each platform it has."""
+        if not self.remote:
+            raise SystemExit(f">> {self.name} is this checkout; its archives are in {ARCHIVES} already")
+        listed, names = self.runner.capture(self._in_clone(f"ls {ARCHIVES} 2>/dev/null; true"))
+        self._require(listed, "list its image archives")
+        platforms = [name for name in names.split() if not name.startswith(".")]
+        if not platforms:
+            print(f">> {self.name} has no image archives: run just archive-images there after its publish gate")
+            return 1
+        (ROOT / ARCHIVES).mkdir(parents=True, exist_ok=True)
+        staging = Path(tempfile.mkdtemp(prefix=".fetching-", dir=ROOT / ARCHIVES))
+        try:
+            archive = self._in_clone(f"tar -cf - -C {ARCHIVES} {shlex.join(platforms)}")
+            self._require(self.runner.pipe(archive, ["tar", "-xf", "-", "-C", str(staging)]), "bring back its archives")
+            for platform in platforms:
+                target = ROOT / ARCHIVES / platform
+                shutil.rmtree(target, ignore_errors=True)
+                (staging / platform).rename(target)
+                print(f">> from {self.name}: {ARCHIVES}/{platform}")
+        finally:
+            shutil.rmtree(staging, ignore_errors=True)
+        return 0
+
     def _require(self, code: int, what: str) -> None:
         if code != 0:
             raise SystemExit(f">> could not {what} on {self.name} (exit {code})")
@@ -430,6 +457,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     commands.add_parser(
         "gc", help="prune the clone's generated trees, Docker's build cache, and unused images there"
     ).add_argument("machine")
+    commands.add_parser(
+        "fetch-archives", help="bring its image archive sets (just archive-images) here, for publish-candidate"
+    ).add_argument("machine")
     gating = commands.add_parser("gate", help="run the assurance gate there and bring its receipt and runs back")
     gating.add_argument("machine")
     gating.add_argument("--jobs", type=int, help="stacks side by side per tier (default: the machine's)")
@@ -460,6 +490,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
     if args.command == "gate":
         return gate(machine, args.jobs)
+    if args.command == "fetch-archives":
+        return machine.fetch_archives()
     if not args.recipe:
         parser.error("run needs a recipe")
     return run_recipe(machine, args.recipe, wip=args.wip)

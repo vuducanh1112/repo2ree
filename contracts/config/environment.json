@@ -749,6 +749,13 @@
         "type": "string"
       }
     },
+    "PUBLISH_PLATFORMS": {
+      "kind": "deployment",
+      "owner": "publishing",
+      "schema": {
+        "type": "string"
+      }
+    },
     "PYTHONPATH": {
       "kind": "external",
       "owner": "python",

@@ -46,7 +46,9 @@ class FakeRunner:
         code: int | None = 0,
         written: Sequence[str] = WRITTEN,
         codes: dict[str, int | BaseException] | None = None,
+        archives: Sequence[str] = (),
     ) -> None:
+        self.archives = list(archives)
         self.states = list(states)
         self.code = code
         self.written = list(written)
@@ -70,6 +72,8 @@ class FakeRunner:
                 return SSH_FAILED, ""
             state, command = self.states.pop(0) if self.states else ("fetched", "")
             return 0, f"{state}\n{command}\n"
+        if "ls dist/images" in argv[-1]:
+            return 0, "".join(f"{name}\n" for name in self.archives)
         if REPORT in argv[-1]:
             return 0, ("" if self.code is None else str(self.code)) + "\n"
         assert LIST in argv[-1]
@@ -77,6 +81,11 @@ class FakeRunner:
 
     def pipe(self, producer: Sequence[str], consumer: Sequence[str]) -> int:
         self.piped.append((list(producer), list(consumer)))
+        if "dist/images" in producer[-1]:
+            # What the archive sets unpack to: one directory per platform, under the consumer's -C.
+            for name in self.archives:
+                (Path(consumer[-1]) / name).mkdir(parents=True)
+                (Path(consumer[-1]) / name / "manifest.json").write_text(f"{name}\n")
         return 0
 
     def ran(self, part: str) -> list[str]:
@@ -426,3 +435,27 @@ def test_results_another_run_is_already_bringing_back_are_not_copied_twice() -> 
     assert code == 0
     assert runner.piped == []
     assert runner.ran("touch") == []
+
+
+def test_a_machines_archive_sets_replace_this_checkouts_set_for_each_platform_it_has(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(machine_mod, "ROOT", tmp_path)
+    stale = tmp_path / "dist/images/linux-amd64"
+    stale.mkdir(parents=True)
+    (stale / "old.tar").write_text("old")
+    kept = tmp_path / "dist/images/linux-arm64"
+    kept.mkdir()
+    runner = FakeRunner(archives=["linux-amd64"])
+
+    assert Machine("vm", VM, runner).fetch_archives() == 0
+
+    [(producer, _)] = runner.piped
+    assert _on_host(producer) == "cd repo2ree && tar -cf - -C dist/images linux-amd64"
+    assert sorted(path.name for path in stale.iterdir()) == ["manifest.json"]
+    assert kept.is_dir()
+    assert sorted(path.name for path in (tmp_path / "dist/images").iterdir()) == ["linux-amd64", "linux-arm64"]
+
+
+def test_a_machine_without_archive_sets_says_so() -> None:
+    assert Machine("vm", VM, FakeRunner(archives=[])).fetch_archives() == 1

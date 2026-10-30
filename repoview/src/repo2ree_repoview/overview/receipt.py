@@ -26,6 +26,8 @@ class GateReceipt(Document):
     gate: str
     revision: str | None = None
     tree: str
+    # A publish-gate receipt's: the platform of the images it certifies.
+    platform: str = ""
 
 
 class ReceiptTest(Document):
@@ -95,12 +97,15 @@ def receipt_states(head: Head, receipt: Receipt | None) -> list[ReceiptState]:
             found.append(ReceiptState("Assurance gate", "just assurance-gate", "current", detail))
     else:
         found.append(ReceiptState("Assurance gate", "just assurance-gate", "missing", never))
-    publish = read_gate_receipt("publish-gate")
-    if publish is not None:
+    # One per platform, each from a machine of that platform (scripts/gates/publish_gate.py).
+    published = [
+        GateReceipt.model_validate_json(path.read_bytes()) for path in sorted(RECEIPTS.glob("publish-gate-*.json"))
+    ]
+    for publish in published:
         state = "current" if publish.tree == head.tree else "stale"
-        detail = f"{(publish.revision or '?')[:10]}: local image set"
-        found.append(ReceiptState("Publish gate", "just publish-gate", state, detail))
-    else:
+        detail = f"{(publish.revision or '?')[:10]}: {publish.platform or 'local'} image set"
+        found.append(ReceiptState(f"Publish gate ({publish.platform})", "just publish-gate", state, detail))
+    if not published:
         found.append(ReceiptState("Publish gate", "just publish-gate", "missing", never))
     return found
 

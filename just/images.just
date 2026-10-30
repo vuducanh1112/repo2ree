@@ -1,13 +1,7 @@
-# Normal image recipes build and load :local images. Archive recipes are an
-# explicit credential-free handoff: build tarballs in the development
-# container, then load and publish them on a host with registry credentials.
-# The complete archive set is installed from staging with a manifest binding
-# each tarball to its clean Git revision and digest.
-
-# Create archive output directory.
-[private]
-_create-image-archive-dir archive_dir:
-    @mkdir -p {{ quote(archive_dir) }}
+# Normal image recipes build and load :local images. Archives are the
+# credential-free handoff from a machine of another platform to the host that
+# pushes: the images that machine's publish gate certified, saved by image ID
+# with a manifest binding them to the revision, tree, and platform.
 
 # Make untracked Python sources visible to Nix source filtering.
 # Nix only includes Git-visible sources, so intent-to-add lets local builds see
@@ -70,56 +64,7 @@ update-gui-npm-hash:
     mv "$candidate" nix/gui-npm-deps.hash
     echo "Wrote nix/gui-npm-deps.hash: $(cat nix/gui-npm-deps.hash)"
 
-# Build a loadable GUI image archive.
-[group('Image archives')]
-archive-gui-image archive_dir=DEFAULT_IMAGE_ARCHIVE_DIR: (_create-image-archive-dir archive_dir)
-    @echo "Building GUI image archive..."
-    nix build .#gui-image
-    cp -fL result {{ quote(archive_dir + "/repo2ree-gui-local.tar") }}
-    @printf 'Wrote %s\n' {{ quote(archive_dir + "/repo2ree-gui-local.tar") }}
-
-# Save the loaded backend image as an archive.
-[group('Image archives')]
-archive-backend-image archive_dir=DEFAULT_IMAGE_ARCHIVE_DIR: _stage-nix-sources (_create-image-archive-dir archive_dir)
-    @echo "Building backend image archive..."
-    nix build .#backend-image
-    cp -fL result {{ quote(archive_dir + "/repo2ree-backend-local.tar") }}
-    @printf 'Wrote %s\n' {{ quote(archive_dir + "/repo2ree-backend-local.tar") }}
-
-# Build a loadable provider image archive.
-[group('Image archives')]
-archive-provider-image archive_dir=DEFAULT_IMAGE_ARCHIVE_DIR: _stage-nix-sources (_create-image-archive-dir archive_dir)
-    @echo "Building provider image archive..."
-    nix build .#provider-image
-    cp -fL result {{ quote(archive_dir + "/repo2ree-provider-docker-local.tar") }}
-    @printf 'Wrote %s\n' {{ quote(archive_dir + "/repo2ree-provider-docker-local.tar") }}
-
-# Build the complete clean-tree image set in staging, bind every archive to its
-# revision by digest, then replace the published directory only after success.
+# Save the images this machine's publish gate certified, by image ID, as its platform's archive set for the pushing host (dist/images/<os>-<arch>/).
 [group('Image archives')]
 archive-images archive_dir=DEFAULT_IMAGE_ARCHIVE_DIR: _require-clean-tree
-    #!/usr/bin/env bash
-    set -euo pipefail
-    archive_dir={{ quote(archive_dir) }}
-    archive_parent=$(dirname "$archive_dir")
-    archive_name=$(basename "$archive_dir")
-    mkdir -p "$archive_parent"
-    pending=$(mktemp -d "$archive_parent/.${archive_name}.pending.XXXXXX")
-    trap 'rm -rf "$pending"' EXIT
-    just --justfile {{ quote(ROOT + "/justfile") }} archive-gui-image "$pending"
-    just --justfile {{ quote(ROOT + "/justfile") }} archive-backend-image "$pending"
-    just --justfile {{ quote(ROOT + "/justfile") }} archive-provider-image "$pending"
-    revision=$(git describe --always)
-    python scripts/publish/image_archive_set.py seal "$pending" "$revision"
-    python scripts/replace_generated_directory.py "$pending" "$archive_dir"
-    echo ">> sealed image candidate: $revision"
-
-# Load every image from an archive set.
-[group('Image archives')]
-load-image-archives archive_dir=DEFAULT_IMAGE_ARCHIVE_DIR:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    python scripts/publish/image_archive_set.py verify {{ quote(archive_dir) }}
-    for image in repo2ree-gui repo2ree-backend repo2ree-provider-docker; do
-      docker load -i {{ quote(archive_dir) }}/"$image"-local.tar
-    done
+    python -m scripts.publish.image_archive_set export --receipts .receipts --archive-dir {{ quote(archive_dir) }}
