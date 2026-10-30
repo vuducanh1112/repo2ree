@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import tomllib
 from collections import Counter
 from collections.abc import Iterator
@@ -17,6 +18,9 @@ from repo2ree_repoview.repository import ROOT, Head
 
 RECEIPTS = ROOT / ".receipts"
 RECEIPT = RECEIPTS / "assurance-gate.json"
+POLICY = ROOT / "scripts/gates/policy.toml"
+# The platforms a published image set carries, as the justfile defaults them.
+PUBLISH_PLATFORMS = tuple(os.environ.get("PUBLISH_PLATFORMS", "linux/amd64 linux/arm64").split())
 EXPECTATIONS = ROOT / "assurance/checker/expected-verdicts.toml"
 
 
@@ -77,6 +81,52 @@ class ReceiptState:
     detail: str
 
 
+class TierReceipt(GateReceipt):
+    """A tier receipt (scripts/gates/tiers.py): one tier's run, certified on a tree and platform."""
+
+    tier: str
+    machine: str = ""
+    run: str = ""
+    tests: int = 0
+    skipped: int = 0
+    judged: bool = False
+    written: str = ""
+
+
+def tier_receipts() -> list[TierReceipt]:
+    """Every tier receipt in this clone, for any tree."""
+    return [TierReceipt.model_validate_json(path.read_bytes()) for path in sorted(RECEIPTS.glob("tiers/*/*.json"))]
+
+
+@dataclass(frozen=True)
+class TierNeed:
+    """One tier receipt a gate needs, where (a platform, ``any``, or ``here``), and what meets it for HEAD."""
+
+    tier: str
+    place: str
+    recipe: str
+    current: TierReceipt | None
+    last: TierReceipt | None
+
+
+def gate_needs(head: Head, found: list[TierReceipt]) -> dict[str, list[TierNeed]]:
+    """For each gate the policy names, the tier receipts it needs and the ones that meet them."""
+    policy = tomllib.loads(POLICY.read_text()) if POLICY.is_file() else {}
+    recipes = {name: str(entry.get("recipe", "")) for name, entry in policy.get("tiers", {}).items()}
+    needs: dict[str, list[TierNeed]] = {}
+    for gate, entry in policy.get("gates", {}).items():
+        needs[gate] = []
+        for tier, where in entry.get("tiers", {}).items():
+            places = PUBLISH_PLATFORMS if where in {"each", "here"} else ("any",)
+            for place in places:
+                matching = [r for r in found if r.tier == tier and place in {"any", r.platform}]
+                current = next((r for r in matching if r.tree == head.tree), None)
+                last = max(matching, key=lambda r: r.written, default=None)
+                label = {"each": place, "here": f"{place}, gated there", "any": "any platform"}[where]
+                needs[gate].append(TierNeed(tier, label, recipes.get(tier, ""), current, last))
+    return needs
+
+
 def receipt_states(head: Head, receipt: Receipt | None) -> list[ReceiptState]:
     never = "never run in this clone"
     found: list[ReceiptState] = []
@@ -97,6 +147,18 @@ def receipt_states(head: Head, receipt: Receipt | None) -> list[ReceiptState]:
             found.append(ReceiptState("Assurance gate", "just assurance-gate", "current", detail))
     else:
         found.append(ReceiptState("Assurance gate", "just assurance-gate", "missing", never))
+    showcase = gate_needs(head, tier_receipts()).get("showcase-gate", [])
+    if showcase:
+        proven = [need for need in showcase if need.current is not None]
+        showcase_state: Literal["current", "stale", "missing"] = (
+            "current"
+            if len(proven) == len(showcase)
+            else ("stale" if proven or any(n.last for n in showcase) else "missing")
+        )
+        detail = f"{len(proven)} of {len(showcase)} platforms proven: " + ", ".join(
+            f"{need.place} {'ok' if need.current else 'needed'}" for need in showcase
+        )
+        found.append(ReceiptState("Showcase gate", "just showcase-gate", showcase_state, detail))
     # One per platform, each from a machine of that platform (scripts/gates/publish_gate.py).
     published = [
         GateReceipt.model_validate_json(path.read_bytes()) for path in sorted(RECEIPTS.glob("publish-gate-*.json"))

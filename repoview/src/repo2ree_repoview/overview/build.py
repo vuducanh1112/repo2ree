@@ -43,6 +43,7 @@ from repo2ree_repoview.overview.pages.coverage import page_coverage
 from repo2ree_repoview.overview.pages.gates import page_gates
 from repo2ree_repoview.overview.pages.home import page_home
 from repo2ree_repoview.overview.pages.operations import page_operations
+from repo2ree_repoview.overview.pages.receipts import page_receipts
 from repo2ree_repoview.overview.pages.recipes import page_recipes
 from repo2ree_repoview.overview.pages.specification import page_specification
 from repo2ree_repoview.overview.pages.vocabulary import page_vocabulary
@@ -112,6 +113,7 @@ def build(output: Path | None) -> Path:
     pages = [
         page_zones(zones),
         page_gates(receipt, excused, bundle, evidence),
+        page_receipts(now),
         page_operations(operations, receipt, bundle, evidence),
         page_vocabulary(spec),
         page_specification(spec),

@@ -53,6 +53,7 @@ test-e2e-fuzz: build-e2e-bundles
 [group('E2E tests')]
 test-showcase jobs=E2E_JOBS *select: build-e2e-bundles
     python -m repo2ree_testbed e2e --project showcase --per-test --exit-on tests --jobs {{ quote(jobs) }} --mode {{ quote(DEFAULT_E2E_COMPUTE_LOCATION_MODE) }} --compute-locations 2 --docker-mode {{ quote(DEFAULT_E2E_PROVIDER_DOCKER_MODE) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
+    python -m scripts.gates.tiers certify --tier showcase --if-eligible
 
 # Fetch every base image the example projects pin by digest through this machine's registry mirror (all platforms with --all-platforms), so their builds pull nothing from Docker Hub during a run.
 [group('E2E tests')]

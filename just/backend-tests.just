@@ -64,6 +64,7 @@ test-backend-unit: (test-unit-package `python scripts/workspace.py backend`)
 test-backend-integration: build-e2e-bundles
     python -m repo2ree_testbed record --tier integration -- just --justfile {{ quote(ROOT + "/justfile") }} test-integration-package `python scripts/workspace.py backend`
     python -m repo2ree_testbed coverage combine-integration
+    python -m scripts.gates.tiers certify --tier integration --if-eligible
 
 # Run both measured backend tiers concurrently.
 [group('Backend tests')]

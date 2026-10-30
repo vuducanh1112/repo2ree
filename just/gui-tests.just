@@ -9,11 +9,13 @@ test-gui:
 [group('GUI tests')]
 test-gui-accessibility:
     python -m repo2ree_testbed record --tier gui-accessibility -- sh -c 'cd gui && npm exec -- playwright test -c playwright.config.ts --project=gui-accessibility-tests'
+    python -m scripts.gates.tiers certify --tier gui-accessibility --if-eligible
 
 # Run GUI screenshot regression tests.
 [group('GUI tests')]
 test-gui-screenshots:
     python -m repo2ree_testbed record --tier gui-screenshots -- sh -c 'cd gui && npm exec -- playwright test -c playwright.config.ts --project=gui-screenshot-tests'
+    python -m scripts.gates.tiers certify --tier gui-screenshots --if-eligible
 
 # Update intentional GUI screenshot baselines.
 [group('GUI tests')]
