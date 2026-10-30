@@ -61,7 +61,15 @@ SSH_OPTIONS = (
     *("-o", f"UserKnownHostsFile={KNOWN_HOSTS} ~/.ssh/known_hosts", "-o", "StrictHostKeyChecking=yes"),
 )
 # What a slim fetch leaves on the machine: the bulk of a run, and nothing a verdict or a page reads.
-SLIM_EXCLUDES = ("! -name '*.tar'", "! -name '*.tar.gz'", "! -name '*.tgz'", "! -path '*/artifacts/archives/*'")
+SLIM_EXCLUDES = (
+    "! -name '*.tar'",
+    "! -name '*.tar.gz'",
+    "! -name '*.tgz'",
+    "! -path '*/artifacts/archives/*'",
+    # The REE archives a GUI test kept (helpers/flow.ts keepReeArchive): their histories are in the
+    # dossier already, and the machine keeps the archives, which carry every runtime payload.
+    "! -path '*/artifacts/*/ree*.zip'",
+)
 # What every command on a remote machine runs in: the clone's .envrc, as here, with the venv it syncs.
 SHELL = ("direnv", "exec", ".")
 # The Compose project of a remote machine's dev container.
@@ -301,9 +309,17 @@ class Machine:
         return True
 
     def _bring_back(self, job: Job) -> int:
-        """Bring back what the ended job wrote; the job's exit code."""
+        """Bring back what the ended job wrote; the job's exit code.
+
+        A run claims the results first (``mkdir`` succeeds for one caller only), so a second run
+        started meanwhile does not copy the same files again beside it.
+        """
         read, exit_line = self.runner.capture(self._in_clone(f"cat {JOB}/exit 2>/dev/null; echo"))
         self._require(read, "read the job's exit code")
+        code = int(exit_line) if exit_line.strip() else None
+        if self.runner.call(self._in_clone(f"mkdir {JOB}/fetching 2>/dev/null")) != 0:
+            print(f">> another run is already bringing back `{job.command}` from {self.name}; not copying it twice")
+            return 1 if code is None else code
         read, listed = self.runner.capture(self._in_clone(self._written))
         self._require(read, "list what the job wrote")
         written = [line for line in listed.splitlines() if line]
@@ -312,7 +328,6 @@ class Machine:
             self._require(self.runner.pipe(archive, ["tar", "-xf", "-", "-C", str(ROOT)]), "bring back its results")
             for result in _results(written):
                 print(f">> from {self.name}: {result}")
-        code = int(exit_line) if exit_line.strip() else None
         if code is None:
             print(f">> `{job.command}` died on {self.name} without an exit code: its container restarted")
         self._require(self.runner.call(self._in_clone(f"touch {JOB}/fetched")), "record the job fetched")

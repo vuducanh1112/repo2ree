@@ -174,8 +174,12 @@ def test_a_remote_gate_runs_detached_in_the_dev_container_of_a_clone_and_brings_
     assert _on_host(fetch) == (
         "cd repo2ree && { find test-artifacts .receipts logs -type f -cnewer test-artifacts/machine-job/command"
         " ! -path 'test-artifacts/machine-job/*' ! -name '*.tar' ! -name '*.tar.gz' ! -name '*.tgz'"
-        " ! -path '*/artifacts/archives/*' 2>/dev/null || true; } | tar -cf - -T -"
+        " ! -path '*/artifacts/archives/*' ! -path '*/artifacts/*/ree*.zip' 2>/dev/null || true; }"
+        " | tar -cf - -T -"
     )
+    assert runner.ran("mkdir test-artifacts/machine-job/fetching") == [
+        "cd repo2ree && mkdir test-artifacts/machine-job/fetching 2>/dev/null"
+    ]
     assert unpack == ["tar", "-xf", "-", "-C", str(ROOT)]
     assert runner.ran("touch") == ["cd repo2ree && touch test-artifacts/machine-job/fetched"]
     # The connection gives up within a minute, and knows the machine only by the checkout's known hosts.
@@ -412,3 +416,13 @@ def test_collecting_garbage_refuses_while_a_job_runs_and_here() -> None:
     assert not runner.ran("builder prune")
     with pytest.raises(SystemExit, match="run `just prune` here"):
         Machine(LOCAL, MachineConfig(), FakeRunner()).gc()
+
+
+def test_results_another_run_is_already_bringing_back_are_not_copied_twice() -> None:
+    runner = FakeRunner(("ended", SYSTEM), codes={"mkdir test-artifacts/machine-job/fetching": 1})
+
+    code = Machine("vm", VM, runner).run(REVISION, ["just", "test-e2e-system"])
+
+    assert code == 0
+    assert runner.piped == []
+    assert runner.ran("touch") == []

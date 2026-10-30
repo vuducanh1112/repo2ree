@@ -222,6 +222,32 @@ def test_a_link_in_an_archive_is_kept_but_never_written_through(tmp_path: Path) 
     assert not (directory / "rees/escaping").exists()  # Nothing of a refused archive stays behind.
 
 
+def test_lfs_payloads_stay_out_of_the_dossier_and_their_pointers_stand_in(tmp_path: Path) -> None:
+    directory = tmp_path / "dossier"
+    start(directory)
+    payload = "a runtime image, gigabytes in a real REE"
+    pointer = (
+        "version https://git-lfs.github.com/spec/v1\n"
+        f"oid sha256:{hashlib.sha256(payload.encode()).hexdigest()}\nsize {len(payload)}\n"
+    )
+    archive = tmp_path / "ree.zip"
+    archive.write_bytes(
+        bundle(
+            ("ree/.git/HEAD", "ref\n"),
+            ("ree/.gitattributes", '"/artifacts/runtime.tar" filter=lfs diff=lfs merge=lfs -text\n'),
+            ("ree/.git/lfs/objects/ab/cd/abcd", payload),
+            ("ree/artifacts/runtime.tar", payload),
+            ("ree/ree.json", "{}"),
+        )
+    )
+
+    assert unpack_archive(directory, archive, cut=None, origin="x", name="lfs").status == "recorded"
+    ree = directory / "rees/lfs/ree"
+    assert not (ree / ".git/lfs").exists()
+    assert (ree / "artifacts/runtime.tar").read_text() == pointer
+    assert (ree / "ree.json").read_text() == "{}"
+
+
 @pytest.mark.parametrize(
     ("route", "body", "kind"),
     [

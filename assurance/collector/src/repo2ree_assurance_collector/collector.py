@@ -20,6 +20,7 @@ import zipfile
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
+from typing import IO
 
 from repo2ree_assurance_collector.client import (
     SAFE_NAME,
@@ -179,18 +180,51 @@ def download_archive(directory: Path, control_plane: ControlPlane, ree_id: str) 
         return _served_copy(directory, control_plane, target, served)
 
 
+# Where a REE keeps its Git LFS payloads, and how it marks a path as one (repo2ree_core's capture
+# controls write one exact, JSON-quoted path per line).
+_LFS_OBJECTS = "ree/.git/lfs/objects/"
+_LFS_ATTRIBUTE = re.compile(r'^("(?:[^"\\]|\\.)*")\s.*\bfilter=lfs\b', re.MULTILINE)
+
+
+def _lfs_paths(bundle: zipfile.ZipFile) -> frozenset[str]:
+    """The archive members the REE stores in Git LFS, from its ``.gitattributes``."""
+    try:
+        attributes = bundle.read("ree/.gitattributes").decode()
+    except KeyError:
+        return frozenset()
+    return frozenset(f"ree{json.loads(quoted)}" for quoted in _LFS_ATTRIBUTE.findall(attributes))
+
+
+def _lfs_pointer(member: IO[bytes]) -> bytes:
+    """The Git LFS pointer of a payload: what the REE's history commits in its place."""
+    hashed = hashlib.sha256()
+    size = 0
+    while chunk := member.read(1 << 20):
+        hashed.update(chunk)
+        size += len(chunk)
+    return f"version https://git-lfs.github.com/spec/v1\noid sha256:{hashed.hexdigest()}\nsize {size}\n".encode()
+
+
 def extract(path: Path, destination: Path) -> None:
-    """Unpack an REE archive, keeping its symlinks as links, never writing outside ``destination``.
+    """Unpack an REE archive as evidence, keeping its symlinks as links, never writing outside ``destination``.
 
     A link may point anywhere (a venv's interpreter does) and is never followed: a member under a
     link the archive itself created, or at one, is refused, since writing it would go wherever the
     link points.
+
+    LFS payloads stay out (a runtime image can be gigabytes, copied at every collection and every
+    fetch of a run): the payload store is skipped, and each file the REE keeps in LFS is written
+    as the pointer its history commits. What the checker reads, the history and the operation
+    records, is complete without them; the payloads remain in the archive the test kept.
     """
     with zipfile.ZipFile(path) as bundle:
+        lfs = _lfs_paths(bundle)
         for info in bundle.infolist():
             relative = PurePosixPath(info.filename)
             if relative.is_absolute() or ".." in relative.parts:
                 raise ValueError(f"unsafe archive member {info.filename}")
+            if info.filename.startswith(_LFS_OBJECTS):
+                continue
             parts = relative.parts
             if any(destination.joinpath(*parts[:depth]).is_symlink() for depth in range(1, len(parts) + 1)):
                 raise ValueError(f"archive member {info.filename} lies under a link the archive made")
@@ -201,6 +235,9 @@ def extract(path: Path, destination: Path) -> None:
             target.parent.mkdir(parents=True, exist_ok=True)
             if stat.S_ISLNK(info.external_attr >> 16):
                 target.symlink_to(bundle.read(info).decode())
+            elif relative.as_posix() in lfs:
+                with bundle.open(info) as member:
+                    target.write_bytes(_lfs_pointer(member))
             else:
                 with bundle.open(info) as member, target.open("wb") as output:
                     shutil.copyfileobj(member, output, 1 << 20)
