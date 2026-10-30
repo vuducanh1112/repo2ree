@@ -49,14 +49,6 @@ test-e2e-chaos seeds="4" steps="12" jobs=E2E_JOBS: build-e2e-bundles
 test-e2e-fuzz: build-e2e-bundles
     python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/api/tests/fuzz/run_fuzz_suite.py") }} --tier e2e-fuzz --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
 
-# Retired: the showcase tier replaced it (test-showcase). Kept until publish-gate names test-showcase.
-[private]
-test-e2e-gui locations=DEFAULT_E2E_LOCATIONS mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE: build-e2e-bundles test-showcase
-
-# Retired: the showcase tier replaced it (test-showcase). Kept until publish-gate names test-showcase.
-[private]
-test-e2e-review mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE: build-e2e-bundles
-
 # Run the showcase tier, real projects end to end: each scenario on a fresh stack of two compute locations, judged like the assurance tiers. `just fetch-showcase` first keeps its pulls off Docker Hub.
 [group('E2E tests')]
 test-showcase jobs=E2E_JOBS *select: build-e2e-bundles
