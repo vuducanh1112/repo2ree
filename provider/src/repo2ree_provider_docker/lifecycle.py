@@ -44,6 +44,7 @@ from repo2ree_docker.ops import (
 )
 from repo2ree_protocol.allocation import AllocationRequest, AllocationState
 from repo2ree_protocol.frames import AllocationStatusFrame, ErrorFrame, Frame, LogFrame
+from repo2ree_provider_docker.bench_dns import BenchDns, discover, parse_setting, write_daemon_dns
 from repo2ree_provider_docker.injection import InjectionBundle, load_injection_bundle
 
 __all__ = ["DockerIsolation"]
@@ -72,6 +73,11 @@ _POPULATED_SENTINEL = ".repo2ree-populated"
 # is serialized on the daemon, not in one process: a container by this name is
 # the lock, since `docker create --name` succeeds for exactly one caller.
 _POPULATE_LOCK_PREFIX = "repo2ree-populate-"
+# How much of a bench's own log (its daemon's, for docker:dind) is kept when the
+# bench goes: on release, into this provider's log; when provisioning failed,
+# into the allocation's log as well.
+_RELEASED_BENCH_LOG_LINES = 200
+_FAILED_BENCH_LOG_LINES = 40
 # A lock older than this belongs to a provider that died mid-populate.
 _POPULATE_LOCK_STALE_SECONDS = 1800.0
 _POPULATE_POLL_SECONDS = 1.0
@@ -99,6 +105,7 @@ class DockerIsolation:
         workbench_network: str = "",
         workbench_telemetry: str = "relay",
         workbench_otlp_endpoint: str | None = None,
+        workbench_dns: str = "auto",
     ):
         if docker_mode not in _WORKBENCH_DOCKER_MODES:
             modes = ", ".join(sorted(_WORKBENCH_DOCKER_MODES))
@@ -109,6 +116,14 @@ class DockerIsolation:
         self._workbench_path = workbench_path or os.environ.get("REPO2REE_WORKBENCH_PATH")
         self._workbench_telemetry = workbench_telemetry
         self._workbench_otlp_endpoint = workbench_otlp_endpoint
+        # None: discover on the first dind bench, once per process (resolvers
+        # are the host's, not the image's); () : leave bench daemons alone.
+        self._dns_setting = parse_setting(workbench_dns)
+        self._dns_lock = threading.Lock()
+        self._dns: BenchDns | None = None
+        # Why benches get no resolvers, once settled: said on every bench, not just the first.
+        self._dns_shortfall: str | None = None
+        self._dns_settled = False
         # Test stacks set this to a unique run token. Labels let their teardown
         # select only resources that run created, while ordinary deployments
         # leave resources unlabelled and retain their existing lifecycle.
@@ -194,6 +209,11 @@ class DockerIsolation:
                 )
             except RuntimeError as exc:
                 op.status = "failed"
+                tail = _bench_log_tail(container_name, _FAILED_BENCH_LOG_LINES)
+                if tail:
+                    logger.warning("bench %s's own log before its removal:\n%s", container_name, tail)
+                    for line in tail.splitlines():
+                        yield LogFrame(stream="system", level="warn", message=f"bench log: {line}")
                 # Provision has not emitted a reference yet, so the supervisor
                 # cannot compensate this partial creation. Reclaim every
                 # deterministic resource here before returning the error frame.
@@ -211,13 +231,22 @@ class DockerIsolation:
             )
 
     def release(self, allocation_id: str) -> None:
+        container_name = self._container_name(allocation_id)
+        # What the bench's own main process printed — for docker:dind, the
+        # nested dockerd, which names problems no command output does (storage
+        # driver trouble, a failed network setup) — exists only until the rm
+        # below. Its "No non-localhost DNS nameservers" line is not one: BuildKit
+        # logs it even when daemon.json's dns is what the build steps get.
+        tail = _bench_log_tail(container_name, _RELEASED_BENCH_LOG_LINES)
+        if tail:
+            logger.info("bench %s's own log before its removal:\n%s", container_name, tail)
         with docker_op("remove"):
             # -v drops the anonymous volumes the image declared (docker:dind
             # declares /var/lib/docker and /certs, so every bench would leave
             # unreclaimable hex-named volumes behind). Named volumes — ours,
             # below — are never touched by it, which is why every `rm` here
             # carries it.
-            run_docker_remove("rm", "-f", "-v", self._container_name(allocation_id))
+            run_docker_remove("rm", "-f", "-v", container_name)
             run_docker_remove("volume", "rm", self._volume_name(allocation_id))
             if self._docker_mode == "dind":
                 run_docker_remove("volume", "rm", self._dind_volume_name(allocation_id))
@@ -306,6 +335,9 @@ class DockerIsolation:
                 injection_args += ["-e", f"{key}={value}"]
             exec_path = bundle.exec_path
 
+        dns = yield from self._bench_dns(image)
+        resolvers = dns.resolvers if dns is not None else ()
+
         run_args = [
             *self._docker_backend_args(allocation.allocation_id),
             *injection_args,
@@ -335,7 +367,7 @@ class DockerIsolation:
         # forcing a keep-alive command of our own would boot it daemon-dead).
         # A pause command is strictly the rescue for images whose default exits
         # immediately (alpine's detached /bin/sh, distroless with no CMD).
-        if not self._start_bench(container_name, run_args, image, command=[]):
+        if not self._start_bench(container_name, run_args, image, command=[], resolvers=resolvers):
             # The duration is not optional: the bundle's pause binary is busybox
             # `sleep`, which prints its usage and exits 1 when given no operand —
             # a pause command that pauses for nothing at all. `infinity` parses
@@ -352,7 +384,7 @@ class DockerIsolation:
             message = f"image {image} default command did not stay running; holding the bench open with {pause[0]}"
             logger.warning(message)
             yield LogFrame(stream="system", level="warn", message=message)
-            if not self._start_bench(container_name, run_args, image, command=pause):
+            if not self._start_bench(container_name, run_args, image, command=pause, resolvers=resolvers):
                 raise RuntimeError(
                     f"bench container from {image} would not stay running "
                     "(its default command and the pause command both exited)"
@@ -410,15 +442,27 @@ class DockerIsolation:
         run_docker("exec", "-d", *env_args, container_name, workbench_path, timeout=120)
 
     @staticmethod
-    def _start_bench(container_name: str, run_args: list[str], image: str, command: list[str]) -> bool:
+    def _start_bench(
+        container_name: str, run_args: list[str], image: str, command: list[str], resolvers: tuple[str, ...] = ()
+    ) -> bool:
         """Start the bench and report whether it stayed up past the grace window.
 
         The restart policy is applied only *after* the container proves viable —
         starting with ``--restart unless-stopped`` would turn an exits-immediately
         default command into a silent crash loop instead of a falsifiable check.
         A failed attempt is removed so the retry can reuse the name.
+
+        Created, then started, so the bench daemon's resolvers are in its
+        daemon.json before that daemon first reads it.
         """
-        run_docker("run", "-d", *run_args, image, *command, timeout=120)
+        run_docker("create", *run_args, image, *command, timeout=120)
+        if resolvers:
+            try:
+                write_daemon_dns(container_name, resolvers)
+            except RuntimeError:
+                run_docker_silent("rm", "-f", "-v", container_name)
+                raise
+        run_docker("start", container_name)
         time.sleep(_STARTUP_GRACE_SECONDS)
         # The grace check is a falsifiable "did it stay up"; an indeterminate
         # probe is not proof it did, so treat it as this attempt not being
@@ -432,6 +476,51 @@ class DockerIsolation:
             return False
         run_docker("update", "--restart", "unless-stopped", container_name)
         return True
+
+    def _bench_dns(self, image: str) -> Generator[Frame, None, BenchDns | None]:
+        """The resolvers this provider's dind benches get, settled once per process.
+
+        Discovery failing is reported, never fatal: the bench then starts as it
+        always did, and a build that cannot resolve names says so itself.
+        """
+        if self._docker_mode != "dind" or self._dns_setting == ():
+            return None
+        warning = None
+        with self._dns_lock:
+            if not self._dns_settled:
+                if self._dns_setting is not None:
+                    self._dns = BenchDns(self._dns_setting, "PROVIDER_WORKBENCH_DNS")
+                    self._dns_settled = True
+                else:
+                    try:
+                        found = discover(image)
+                    except RuntimeError as exc:
+                        # Not settled: the next bench's image may carry the cat this one lacked.
+                        warning = (
+                            f"bench dns: not discovered ({exc});"
+                            " set PROVIDER_WORKBENCH_DNS if builds cannot resolve names"
+                        )
+                    else:
+                        self._dns_settled = True
+                        if found:
+                            self._dns = BenchDns(found, "auto")
+                        else:
+                            self._dns_shortfall = (
+                                "bench dns: the host offers only loopback resolvers, so bench daemons fall back to"
+                                " public DNS; set PROVIDER_WORKBENCH_DNS if this network blocks it"
+                            )
+                            logger.warning(self._dns_shortfall)
+                if self._dns is not None:
+                    logger.info("bench dns: %s", self._dns.describe())
+            dns = self._dns
+            warning = warning or self._dns_shortfall
+        if warning is not None:
+            if warning is not self._dns_shortfall:
+                logger.warning(warning)
+            yield LogFrame(stream="system", level="warn", message=warning)
+        if dns is not None:
+            yield LogFrame(stream="system", level="info", message=f"bench dns: {dns.describe()}")
+        return dns
 
     def _ensure_store_volume(self, image: str, bundle: InjectionBundle) -> Iterator[Frame]:
         """Populate the content-addressed store volume, once per daemon.
@@ -653,6 +742,24 @@ def _probe_bench(container_name: str, exec_path: str, image: str) -> Iterator[Fr
                 level="warn",
                 message="bench has no reachable docker daemon — runtime builds and experiment runs will fail here",
             )
+
+
+def _bench_log_tail(container_name: str, lines: int) -> str:
+    """The last ``lines`` lines a bench's main process printed, or "" when there is no such bench (or no log)."""
+    try:
+        result = subprocess.run(
+            ["docker", "logs", "--timestamps", "--tail", str(lines), container_name],
+            check=False,
+            capture_output=True,
+            text=True,
+            errors="replace",
+            timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    if result.returncode != 0:
+        return ""
+    return "\n".join(line for line in (result.stdout + result.stderr).splitlines() if line.strip())
 
 
 def _image_has_nix(image: str) -> bool:

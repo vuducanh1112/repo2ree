@@ -10,6 +10,7 @@ from typing import Literal
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from repo2ree_provider_docker.bench_dns import parse_setting
 from repo2ree_provider_docker.identity import load_or_create_provider_id
 
 _DEFAULT_IMAGE = (
@@ -54,6 +55,9 @@ class ProviderConfig:
     accepts_custom_image: bool = True
     docker_mode: str = "dind"
     workbench_network: str = ""
+    # The resolvers dind bench daemons hand their containers and build steps:
+    # "auto" (discovered from the host daemon), "off", or addresses.
+    workbench_dns: str = "auto"
     otlp_endpoint: str | None = None
     # What the benches this provider starts do with their own spans. They inherit
     # neither this process's OTLP_ENDPOINT nor its reachability: a bench may sit
@@ -82,6 +86,7 @@ class ProviderEnvironment(BaseSettings):
     PROVIDER_ACCEPTS_CUSTOM_IMAGE: bool = True
     PROVIDER_DOCKER_MODE: Literal["dind", "host-socket"] = "dind"
     PROVIDER_WORKBENCH_DOCKER_NETWORK: str = ""
+    PROVIDER_WORKBENCH_DNS: str = "auto"
     PROVIDER_WORKBENCH_TELEMETRY: Literal["relay", "direct", "local", "off"] = "relay"
     PROVIDER_WORKBENCH_OTLP_ENDPOINT: str | None = None
     WORKBENCH_IMAGE_CATALOG: str | None = None
@@ -91,6 +96,12 @@ class ProviderEnvironment(BaseSettings):
     @classmethod
     def _blank_boolean_uses_default(cls, value: object) -> object:
         return True if value == "" else value
+
+    @field_validator("PROVIDER_WORKBENCH_DNS")
+    @classmethod
+    def _dns_is_auto_off_or_addresses(cls, value: str) -> str:
+        parse_setting(value)
+        return value
 
     @field_validator("PROVIDER_WORKBENCH_TELEMETRY", mode="before")
     @classmethod
@@ -140,6 +151,7 @@ def load_config() -> ProviderConfig:
         accepts_custom_image=environment.PROVIDER_ACCEPTS_CUSTOM_IMAGE,
         docker_mode=environment.PROVIDER_DOCKER_MODE,
         workbench_network=environment.PROVIDER_WORKBENCH_DOCKER_NETWORK,
+        workbench_dns=environment.PROVIDER_WORKBENCH_DNS,
         otlp_endpoint=environment.OTLP_ENDPOINT,
         workbench_telemetry=environment.PROVIDER_WORKBENCH_TELEMETRY,
         workbench_otlp_endpoint=environment.PROVIDER_WORKBENCH_OTLP_ENDPOINT,

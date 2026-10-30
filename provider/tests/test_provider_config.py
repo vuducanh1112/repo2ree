@@ -22,6 +22,7 @@ _PROVIDER_ENV = (
     "PROVIDER_WORKBENCH_API_WS_URL",
     "PROVIDER_DOCKER_MODE",
     "PROVIDER_WORKBENCH_DOCKER_NETWORK",
+    "PROVIDER_WORKBENCH_DNS",
     "PROVIDER_ACCEPTS_CUSTOM_IMAGE",
     "WORKBENCH_IMAGE_CATALOG",
     "OTLP_ENDPOINT",
@@ -79,7 +80,18 @@ def test_load_config_persists_identity_when_not_explicit(monkeypatch: pytest.Mon
     assert config.workbench_api_ws_url == "ws://localhost:8000/workbench/connect"
     assert config.docker_mode == "dind"
     assert config.workbench_network == ""
+    assert config.workbench_dns == "auto"
     assert config.otlp_endpoint is None
+
+
+def test_bench_dns_is_auto_off_or_addresses_and_nothing_else(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PROVIDER_ID", "docker-provider-explicit")
+    monkeypatch.setenv("PROVIDER_WORKBENCH_DNS", "10.168.68.254")
+    assert config_module.load_config().workbench_dns == "10.168.68.254"
+
+    monkeypatch.setenv("PROVIDER_WORKBENCH_DNS", "resolver.lan")
+    with pytest.raises(ValueError, match="not an IP address"):
+        config_module.load_config()
 
 
 def test_blank_otlp_endpoint_reads_as_no_collector(monkeypatch: pytest.MonkeyPatch) -> None:

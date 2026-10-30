@@ -168,6 +168,11 @@
           "title": "Provider Workbench Api Ws Url",
           "type": "string"
         },
+        "PROVIDER_WORKBENCH_DNS": {
+          "default": "auto",
+          "title": "Provider Workbench Dns",
+          "type": "string"
+        },
         "PROVIDER_WORKBENCH_DOCKER_NETWORK": {
           "default": "",
           "title": "Provider Workbench Docker Network",
@@ -671,6 +676,15 @@
       "schema": {
         "default": "ws://localhost:8000/workbench/connect",
         "title": "Provider Workbench Api Ws Url",
+        "type": "string"
+      }
+    },
+    "PROVIDER_WORKBENCH_DNS": {
+      "kind": "runtime",
+      "owner": "provider",
+      "schema": {
+        "default": "auto",
+        "title": "Provider Workbench Dns",
         "type": "string"
       }
     },

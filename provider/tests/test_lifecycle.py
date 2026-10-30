@@ -44,6 +44,9 @@ def _instant_viable_bench(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(lc_mod, "container_running", lambda name: True)
     monkeypatch.setattr(lc_mod, "_probe_bench", lambda name, exec_path, image: iter(()))
     monkeypatch.setattr(lc_mod, "_resolved_image", lambda image: image)
+    monkeypatch.setattr(lc_mod, "discover", lambda image: ())
+    monkeypatch.setattr(lc_mod, "write_daemon_dns", lambda container, resolvers: None)
+    monkeypatch.setattr(lc_mod, "_bench_log_tail", lambda container, lines: "")
 
 
 def test_dind_mode_uses_per_ree_docker_daemon(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -182,7 +185,7 @@ def _only_status(frames: list[Frame]) -> AllocationStatusFrame:
 
 
 def _only_run_call(calls: list[tuple[str, ...]]) -> tuple[str, ...]:
-    run_calls = [call for call in calls if call[:2] == ("run", "-d")]
+    run_calls = [call for call in calls if call[:1] == ("create",) and "--init" in call]
     assert len(run_calls) == 1
     return run_calls[0]
 
@@ -322,13 +325,13 @@ def test_a_default_command_that_exits_is_rescued_by_the_pause_binary(
     monkeypatch.setattr(
         lc_mod,
         "container_running",
-        lambda name: len([call for call in docker_calls if call[:2] == ("run", "-d")]) >= 2,
+        lambda name: len([call for call in docker_calls if call[:1] == ("create",) and "--init" in call]) >= 2,
     )
 
     isolation = DockerIsolation(exec_bundle_dir=exec_bundle_dir)
     frames = list(_provision(isolation, "ree1", _spec("alpine")))
 
-    run_calls = [call for call in docker_calls if call[:2] == ("run", "-d")]
+    run_calls = [call for call in docker_calls if call[:1] == ("create",) and "--init" in call]
     assert len(run_calls) == 2
     assert run_calls[0][-1] == "alpine"
     # The duration matters: busybox `sleep` with no operand prints usage and
@@ -469,7 +472,7 @@ def test_probe_helpers_record_failure_on_timeout(monkeypatch: pytest.MonkeyPatch
 
 
 def _run_calls(calls: list[tuple[str, ...]]) -> list[tuple[str, ...]]:
-    return [call for call in calls if call[:2] == ("run", "-d")]
+    return [call for call in calls if call[:1] == ("create",) and "--init" in call]
 
 
 def _exits_immediately(monkeypatch: pytest.MonkeyPatch, *, viable_after: int) -> list[tuple[str, ...]]:
@@ -826,3 +829,145 @@ def test_the_lock_is_released_when_a_copy_fails(monkeypatch: pytest.MonkeyPatch,
 
     assert _LOCK not in daemon.containers
     assert lc_mod._POPULATED_SENTINEL not in daemon.volumes[_BUNDLE.volume_name]
+
+
+# ================================================
+# Bench DNS and the bench's own log
+# ================================================
+
+
+def _dns_plumbing(monkeypatch: pytest.MonkeyPatch, discovered: tuple[str, ...] = ()) -> list[tuple[str, ...]]:
+    """Docker calls in order, with the daemon.json write and each discovery recorded among them."""
+    calls: list[tuple[str, ...]] = []
+    monkeypatch.setattr(lc_mod, "run_docker", lambda *args, timeout=60: calls.append(args))
+    monkeypatch.setattr(lc_mod, "_image_present", lambda image: False)
+    monkeypatch.setattr(lc_mod, "_docker_stream_lines", lambda *args, timeout=600: iter(()))
+
+    def discover(image: str) -> tuple[str, ...]:
+        calls.append(("discover", image))
+        return discovered
+
+    monkeypatch.setattr(lc_mod, "discover", discover)
+    monkeypatch.setattr(
+        lc_mod, "write_daemon_dns", lambda container, resolvers: calls.append(("daemon.json", container, *resolvers))
+    )
+    return calls
+
+
+def _log_messages(frames: list[Frame]) -> list[str]:
+    return [frame.message for frame in frames if isinstance(frame, LogFrame)]
+
+
+def test_discovered_resolvers_are_in_the_bench_daemon_json_before_the_bench_starts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = _dns_plumbing(monkeypatch, discovered=("10.168.68.254",))
+
+    frames = list(_provision(DockerIsolation(), "ree1", "docker:dind"))
+
+    steps = [call[0] for call in calls if call[0] in {"create", "daemon.json", "start"}]
+    assert steps == ["create", "daemon.json", "start"]
+    assert ("daemon.json", "repo2ree-wb-ree1", "10.168.68.254") in calls
+    assert "bench dns: 10.168.68.254 (auto)" in _log_messages(frames)
+
+
+def test_discovery_runs_once_per_provider_not_once_per_bench(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = _dns_plumbing(monkeypatch, discovered=("10.0.0.53",))
+    isolation = DockerIsolation()
+
+    list(_provision(isolation, "ree1", "docker:dind"))
+    list(_provision(isolation, "ree2", "docker:dind"))
+
+    assert [call for call in calls if call[0] == "discover"] == [("discover", "docker:dind")]
+    assert ("daemon.json", "repo2ree-wb-ree2", "10.0.0.53") in calls
+
+
+def test_configured_resolvers_are_used_without_discovery(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = _dns_plumbing(monkeypatch, discovered=("10.0.0.53",))
+
+    frames = list(_provision(DockerIsolation(workbench_dns="192.0.2.1, 192.0.2.2"), "ree1", "docker:dind"))
+
+    assert not [call for call in calls if call[0] == "discover"]
+    assert ("daemon.json", "repo2ree-wb-ree1", "192.0.2.1", "192.0.2.2") in calls
+    assert "bench dns: 192.0.2.1, 192.0.2.2 (PROVIDER_WORKBENCH_DNS)" in _log_messages(frames)
+
+
+@pytest.mark.parametrize(
+    ("isolation_args"), [{"workbench_dns": "off"}, {"docker_mode": "host-socket"}], ids=["off", "host-socket"]
+)
+def test_bench_daemons_are_left_alone_when_off_or_without_one(
+    monkeypatch: pytest.MonkeyPatch, isolation_args: dict[str, str]
+) -> None:
+    calls = _dns_plumbing(monkeypatch, discovered=("10.0.0.53",))
+
+    list(_provision(DockerIsolation(**isolation_args), "ree1", "docker:dind"))
+
+    assert not [call for call in calls if call[0] in {"discover", "daemon.json"}]
+
+
+def test_finding_only_docker_fallback_warns_on_every_bench_and_starts_it_as_before(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = _dns_plumbing(monkeypatch, discovered=())
+    isolation = DockerIsolation()
+
+    first = list(_provision(isolation, "ree1", "docker:dind"))
+    second = list(_provision(isolation, "ree2", "docker:dind"))
+
+    assert not [call for call in calls if call[0] == "daemon.json"]
+    assert len([call for call in calls if call[0] == "discover"]) == 1
+    for frames in (first, second):
+        warnings = [frame.message for frame in frames if isinstance(frame, LogFrame) and frame.level == "warn"]
+        assert any("PROVIDER_WORKBENCH_DNS" in message for message in warnings)
+    assert _only_status(first).allocation_id == "ree1"
+
+
+def test_a_failed_discovery_is_retried_on_the_next_bench(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = _dns_plumbing(monkeypatch)
+    attempts = iter([None, ("10.0.0.53",)])
+
+    def discover(image: str) -> tuple[str, ...]:
+        calls.append(("discover", image))
+        found = next(attempts)
+        if found is None:
+            raise RuntimeError("no cat in this image")
+        return found
+
+    monkeypatch.setattr(lc_mod, "discover", discover)
+    isolation = DockerIsolation()
+
+    first = list(_provision(isolation, "ree1", "distroless"))
+    list(_provision(isolation, "ree2", "docker:dind"))
+
+    assert _only_status(first).allocation_id == "ree1"
+    assert [call[1] for call in calls if call[0] == "discover"] == ["distroless", "docker:dind"]
+    assert ("daemon.json", "repo2ree-wb-ree2", "10.0.0.53") in calls
+
+
+def test_a_failed_provision_shows_the_bench_s_own_log(monkeypatch: pytest.MonkeyPatch) -> None:
+    _dns_plumbing(monkeypatch)
+    monkeypatch.setattr(lc_mod, "_bench_log_tail", lambda container, lines: "dockerd: failed to mount overlay")
+    monkeypatch.setattr(lc_mod, "container_running", lambda name: False)
+
+    frames = list(_provision(DockerIsolation(), "ree1", "docker:dind"))
+
+    assert "bench log: dockerd: failed to mount overlay" in _log_messages(frames)
+    assert any(isinstance(frame, ErrorFrame) for frame in frames)
+
+
+def test_release_keeps_the_bench_s_own_log_in_the_provider_log(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    removed: list[tuple[str, ...]] = []
+    monkeypatch.setattr(lc_mod, "run_docker_remove", lambda *args: removed.append(args))
+    monkeypatch.setattr(
+        lc_mod,
+        "_bench_log_tail",
+        lambda container, lines: 'msg="No non-localhost DNS nameservers are left in resolv.conf"',
+    )
+
+    with caplog.at_level("INFO", logger=lc_mod.__name__):
+        DockerIsolation().release("ree1")
+
+    assert "No non-localhost DNS nameservers" in caplog.text
+    assert removed[0] == ("rm", "-f", "-v", "repo2ree-wb-ree1")

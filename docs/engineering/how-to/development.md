@@ -203,6 +203,7 @@ Provider variables:
 | `PROVIDER_ID` | generated | Explicit stable provider identity override. |
 | `PROVIDER_STATE_DIR` | `~/.repo2ree-provider` | Storage used to persist a generated provider identity. |
 | `PROVIDER_DOCKER_MODE` | `dind` | `dind` for a nested daemon or `host-socket` for trusted local iteration. |
+| `PROVIDER_WORKBENCH_DNS` | `auto` | Resolvers a `dind` bench's daemon hands its containers and build steps. `auto` asks the host daemon for the host's own; set comma-separated addresses where it cannot see them; `off` leaves the nested daemon on its public-DNS fallback, which networks that allow only their own resolver block. |
 
 Workbench variables, normally set by the provider rather than by hand:
 
