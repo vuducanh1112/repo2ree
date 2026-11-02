@@ -17,6 +17,7 @@ from repo2ree_protocol.frames import DoneFrame, ErrorFrame, Frame
 from repo2ree_protocol.workbench import (
     AssignAllocationRequest,
     CancelRunRequest,
+    DeleteReeRequest,
     ExecActionRequest,
     ExecQueryRequest,
     ExecSimpleRequest,
@@ -49,24 +50,31 @@ async def dispatch_workbench_request(
         service.assign(req.allocation)
         await send(DoneFrame())
     elif isinstance(req, ExecActionRequest):
-        try:
-            await pump(lambda: service.exec_action(req.cmd_json, req.run_id, req.env, req.context))
-        except asyncio.CancelledError:
-            # Its caller is gone, by a transport cancel or a lost connection, and no one will read the
-            # result: stop the run, so its executor rolls the attempt back instead of finishing it.
-            service.cancel_run(req.run_id)
-            raise
+        # An action waits for one of the workbench's slots; a cancel while it waits ends the wait.
+        async with service.action_slots:
+            try:
+                await pump(
+                    lambda: service.exec_action(req.cmd_json, req.run_id, req.env, req.context, ree_id=req.ree_id)
+                )
+            except asyncio.CancelledError:
+                # Its caller is gone, by a transport cancel or a lost connection, and no one will read the
+                # result: stop the run, so its executor rolls the attempt back instead of finishing it.
+                service.cancel_run(req.run_id, ree_id=req.ree_id)
+                raise
     elif isinstance(req, CancelRunRequest):
-        service.cancel_run(req.run_id)
+        service.cancel_run(req.run_id, ree_id=req.ree_id)
+        await send(DoneFrame())
+    elif isinstance(req, DeleteReeRequest):
+        await asyncio.to_thread(service.delete_ree, req.ree_id)
         await send(DoneFrame())
     elif isinstance(req, ExecQueryRequest):
-        await pump_bytes(lambda: service.exec_query_stream(req.argv, req.timeout))
+        await pump_bytes(lambda: service.exec_query_stream(req.argv, req.timeout, ree_id=req.ree_id))
     elif isinstance(req, ExecUploadRequest):
         url = transfer_url(api_ws_url, req.transfer_path)
         await asyncio.to_thread(_upload_query, service, req, url)
         await send(DoneFrame())
     elif isinstance(req, ExecSimpleRequest):
-        service.exec_simple(req.argv, req.timeout)
+        service.exec_simple(req.argv, req.timeout, ree_id=req.ree_id)
         await send(DoneFrame())
     elif isinstance(req, FetchFileRequest):
         url = transfer_url(api_ws_url, req.transfer_path)
@@ -82,7 +90,7 @@ def _upload_query(service: WorkbenchService, req: ExecUploadRequest, url: str) -
     os.close(handle)
     path = Path(name)
     try:
-        service.exec_query_to_file(req.argv, path, req.timeout)
+        service.exec_query_to_file(req.argv, path, req.timeout, ree_id=req.ree_id)
         upload_file(path, url, timeout=req.timeout)
     finally:
         path.unlink(missing_ok=True)
@@ -95,7 +103,7 @@ def _fetch_into_bench(service: WorkbenchService, req: FetchFileRequest, url: str
     path = Path(name)
     try:
         download_file(url, path, timeout=req.timeout)
-        service.copy_in(str(path), req.workbench_path)
+        service.copy_in(str(path), req.workbench_path, ree_id=req.ree_id)
         return path.stat().st_size
     finally:
         path.unlink(missing_ok=True)

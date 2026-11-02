@@ -80,22 +80,29 @@ class ProviderClient(Protocol):
 class WorkbenchClient(Protocol):
     """The verbs the control plane needs to drive REE commands in a workbench.
 
-    The ``workbench_id`` routes directly to the resident process. Provider-private
-    references never cross this boundary.
+    The ``workbench_id`` routes directly to the resident process; ``ree_id`` names the REE in
+    a workbench that serves a store (a managed bench checks it against its one REE).
+    Provider-private references never cross this boundary.
     """
 
-    def exec_simple(self, workbench_id: str, argv: list[str], timeout: int = 60) -> None:
+    def exec_simple(self, workbench_id: str, argv: list[str], timeout: int = 60, *, ree_id: str | None = None) -> None:
         """Run an executor subcommand in the bench, discarding output.
 
         ``argv`` is the ``repo2ree-exec`` subcommand argv *without* the executor
         binary — the serving backend prepends the bench's entry point."""
         ...
 
-    def exec_query(self, workbench_id: str, argv: list[str], timeout: int = 30) -> bytes: ...
+    def exec_query(
+        self, workbench_id: str, argv: list[str], timeout: int = 30, *, ree_id: str | None = None
+    ) -> bytes: ...
 
-    def exec_query_stream(self, workbench_id: str, argv: list[str], timeout: int = 30) -> Iterator[bytes]: ...
+    def exec_query_stream(
+        self, workbench_id: str, argv: list[str], timeout: int = 30, *, ree_id: str | None = None
+    ) -> Iterator[bytes]: ...
 
-    def exec_upload(self, workbench_id: str, argv: list[str], timeout: int = 600) -> ReceivedFile:
+    def exec_upload(
+        self, workbench_id: str, argv: list[str], timeout: int = 600, *, ree_id: str | None = None
+    ) -> ReceivedFile:
         """Run an executor subcommand in the bench and receive its stdout as a file.
 
         The bytes travel over HTTP beside the control socket (see
@@ -110,11 +117,13 @@ class WorkbenchClient(Protocol):
         run_id: str,
         env: dict[str, str],
         context: ExecutionContext | None = None,
+        *,
+        ree_id: str | None = None,
     ) -> Iterator[Frame]: ...
 
-    def cancel_run(self, workbench_id: str, run_id: str) -> None: ...
+    def cancel_run(self, workbench_id: str, run_id: str, *, ree_id: str | None = None) -> None: ...
 
-    def copy_in(self, workbench_id: str, source_path: str, workbench_path: str) -> None:
+    def copy_in(self, workbench_id: str, source_path: str, workbench_path: str, *, ree_id: str | None = None) -> None:
         """Stream a control-plane-local file into the bench at ``workbench_path``.
 
         ``source_path`` need only exist on the control plane; the bytes travel

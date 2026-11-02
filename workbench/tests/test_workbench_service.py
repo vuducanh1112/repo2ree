@@ -15,21 +15,23 @@ class _Backend:
         self.calls: list[str] = []
         self.root = root or Path("/nonexistent-test-root")
 
-    def exec_action(self, cmd_json: str, run_id: str, env: dict[str, str], context=None) -> Iterator[Frame]:
+    def exec_action(
+        self, cmd_json: str, run_id: str, env: dict[str, str], context=None, *, ree_id: str | None = None
+    ) -> Iterator[Frame]:
         self.calls.append("exec_action")
         yield DoneFrame()
 
-    def exec_simple(self, argv: list[str], timeout: int = 60) -> None:
+    def exec_simple(self, argv: list[str], timeout: int = 60, *, ree_id: str | None = None) -> None:
         self.calls.append("exec_simple")
 
-    def exec_query_stream(self, argv: list[str], timeout: int = 30) -> Iterator[bytes]:
+    def exec_query_stream(self, argv: list[str], timeout: int = 30, *, ree_id: str | None = None) -> Iterator[bytes]:
         self.calls.append("exec_query")
         yield b"result"
 
-    def cancel_run(self, run_id: str) -> None:
+    def cancel_run(self, run_id: str, *, ree_id: str | None = None) -> None:
         self.calls.append("cancel_run")
 
-    def copy_in(self, source_path: str, workbench_path: str) -> None:
+    def copy_in(self, source_path: str, workbench_path: str, *, ree_id: str | None = None) -> None:
         self.calls.append("copy_in")
 
 
@@ -80,6 +82,37 @@ def test_service_assigns_a_root_that_does_not_exist_yet(tmp_path: Path) -> None:
 
     service.assign(_allocation())
     service.exec_simple(["init-ree", "--name", "demo"])
+
+
+def test_a_managed_bench_refuses_a_request_for_another_ree(tmp_path: Path) -> None:
+    service = WorkbenchService(_Backend(tmp_path))  # type: ignore[arg-type]
+    service.assign(_allocation())
+
+    service.exec_simple(["doctor"], ree_id="ree-1")
+    with pytest.raises(RuntimeError, match="not 'ree-2'"):
+        service.exec_simple(["doctor"], ree_id="ree-2")
+
+
+def test_a_store_runs_only_requests_that_name_their_ree_and_takes_no_allocation(tmp_path: Path) -> None:
+    service = WorkbenchService(_Backend(tmp_path), store_id="lab-a", slots=2)  # type: ignore[arg-type]
+
+    with pytest.raises(RuntimeError, match="named REE"):
+        service.exec_simple(["doctor"])
+    with pytest.raises(RuntimeError, match="takes no allocation"):
+        service.assign(_allocation())
+    service.exec_simple(["doctor"], ree_id="ree-1")
+
+
+def test_a_store_creates_an_ree_only_where_none_is(tmp_path: Path) -> None:
+    backend = _Backend(tmp_path)
+    backend.ree_root = lambda ree_id: tmp_path / str(ree_id)  # type: ignore[attr-defined]
+    service = WorkbenchService(backend, store_id="lab-a")  # type: ignore[arg-type]
+    (tmp_path / "ree-1").mkdir()
+    (tmp_path / "ree-1" / "ree.json").write_text("{}")
+
+    with pytest.raises(RuntimeError, match="already exists"):
+        service.exec_simple(["init-ree", "--name", "demo"], ree_id="ree-1")
+    service.exec_simple(["init-ree", "--name", "demo"], ree_id="ree-2")
 
 
 def _allocation(allocation_id: str = "alloc-1", ree_id: str = "ree-1") -> AllocationRequest:

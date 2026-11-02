@@ -208,6 +208,30 @@ def test_cancel_run_sends_cancel_run_request() -> None:
     join()
 
 
+@pytest.mark.parametrize(
+    "call",
+    [
+        lambda client: client.exec_simple("a1", ["doctor"], ree_id="ree-1"),
+        lambda client: client.cancel_run("a1", "run-7", ree_id="ree-1"),
+        lambda client: list(client.exec_action("a1", "{}", "run-1", {}, ree_id="ree-1")),
+        lambda client: client.exec_query("a1", ["get-ree-manifest"], ree_id="ree-1"),
+    ],
+)
+def test_every_request_names_the_ree_it_is_for(call: Any) -> None:
+    # A workbench serving a store runs each request in the directory of the REE it names.
+    socket = FakeSocket()
+    registry = WorkbenchConnectionRegistry()
+    registry.register("a1", socket.connection)
+    client = WsWorkbenchClient(registry)
+
+    join = _run_in_thread(lambda: call(client))
+    request = socket.wait_for_request().request
+    socket.respond(ResultFrame(result=ActionResult(status="succeeded")) if request.op == "exec_action" else DoneFrame())
+    join()
+
+    assert getattr(request, "ree_id", None) == "ree-1"
+
+
 def test_copy_in_offers_the_file_for_one_fetch_beside_the_socket(tmp_path) -> None:
     socket = FakeSocket()
     registry = WorkbenchConnectionRegistry()

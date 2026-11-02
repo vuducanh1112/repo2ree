@@ -85,7 +85,7 @@ def test_load_dispatches_the_bundle_command_to_the_workbench(
     assert run["status"] == "succeeded"
     assert run["outputs"]["archive_name"] == "author.zip"
 
-    assert copied["container_path"] == f"/ree/upload-staging/{token}.bin"
+    assert copied["container_path"] == f"upload-staging/{token}.bin"
     command = dispatched["command"]
     assert isinstance(command, LoadReeBundleCommand)
     assert command.args.upload_token == token

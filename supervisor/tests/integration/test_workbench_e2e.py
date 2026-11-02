@@ -380,7 +380,7 @@ def test_workbench_lifecycle_e2e(workbench: tuple[WorkbenchManager, WorkbenchHan
     source_zip = tmp_path / "source.zip"
     with zipfile.ZipFile(source_zip, "w") as source_archive:
         source_archive.writestr("main.py", "print('hello from upstream')\n")
-    manager.copy_to_workbench(handle, str(source_zip), f"/ree/upload-staging/{_UPLOAD_TOKEN}.bin")
+    manager.copy_to_workbench(handle, str(source_zip), f"upload-staging/{_UPLOAD_TOKEN}.bin")
     result = manager.dispatch_action(
         handle,
         AcquireSourceCommand(

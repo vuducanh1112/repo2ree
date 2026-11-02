@@ -43,7 +43,7 @@ def test_main_composes_telemetry_runtime_and_control_connection(monkeypatch: pyt
         def build_info(self) -> BuildInfo:
             return BuildInfo(revision="executor-test-revision")
 
-    monkeypatch.setattr(app_module, "LocalExecutor", lambda *args: Executor())
+    monkeypatch.setattr(app_module, "LocalExecutor", lambda *args, **kwargs: Executor())
 
     async def run_workbench(*args: object, **kwargs: object) -> None:
         workbench_args.extend([*args, kwargs])

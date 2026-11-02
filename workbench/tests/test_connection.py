@@ -98,14 +98,14 @@ class FakeExec:
         self._root = tempfile.TemporaryDirectory()
         self.root = Path(self._root.name)
 
-    def exec_query_stream(self, argv: list[str], timeout: int = 30):
+    def exec_query_stream(self, argv: list[str], timeout: int = 30, *, ree_id: str | None = None):
         for offset in range(0, len(self.query_result), COPY_CHUNK_BYTES):
             yield self.query_result[offset : offset + COPY_CHUNK_BYTES]
 
-    def exec_simple(self, argv: list[str], timeout: int = 60) -> None:
+    def exec_simple(self, argv: list[str], timeout: int = 60, *, ree_id: str | None = None) -> None:
         return None
 
-    def cancel_run(self, run_id: str) -> None:
+    def cancel_run(self, run_id: str, *, ree_id: str | None = None) -> None:
         self.canceled_runs.append(run_id)
 
 
@@ -225,7 +225,7 @@ def test_cancel_stops_an_inflight_request() -> None:
     release = threading.Event()
 
     class BlockingExec(FakeExec):
-        def exec_query_stream(self, argv: list[str], timeout: int = 30):
+        def exec_query_stream(self, argv: list[str], timeout: int = 30, *, ree_id: str | None = None):
             release.wait(0.5)
             yield b"too late"
 
@@ -251,11 +251,13 @@ def test_a_lost_connection_stops_the_runs_it_was_waiting_for() -> None:
     canceled = threading.Event()
 
     class RunningExec(FakeExec):
-        def exec_action(self, cmd_json: str, run_id: str, env: dict[str, str], context: object = None):
+        def exec_action(
+            self, cmd_json: str, run_id: str, env: dict[str, str], context: object = None, *, ree_id: str | None = None
+        ):
             canceled.wait(5.0)
             yield ResultFrame(result=ActionResult(status="canceled"))
 
-        def cancel_run(self, run_id: str) -> None:
+        def cancel_run(self, run_id: str, *, ree_id: str | None = None) -> None:
             super().cancel_run(run_id)
             canceled.set()
 
@@ -285,7 +287,9 @@ def test_stream_terminal_frame_drives_request_telemetry(
     monkeypatch.setattr(connection._request_duration, "record", lambda value, attrs: durations.append(attrs))
 
     class TerminalExec(FakeExec):
-        def exec_action(self, cmd_json: str, run_id: str, env: dict[str, str], context=None):
+        def exec_action(
+            self, cmd_json: str, run_id: str, env: dict[str, str], context=None, *, ree_id: str | None = None
+        ):
             yield ResultFrame(result=ActionResult.failed("execution", "command failed", origin="workbench"))
 
     request = ExecActionRequest(cmd_json="{}", run_id="run-1")

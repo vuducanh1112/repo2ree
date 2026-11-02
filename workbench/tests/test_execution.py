@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import stat
+import subprocess
 import threading
 import time
 from pathlib import Path
@@ -91,8 +92,35 @@ def test_copy_in_is_atomic_and_confined(fake_executor: Path, tmp_path: Path) -> 
 def test_action_receives_configured_root(fake_executor: Path, tmp_path: Path) -> None:
     root = tmp_path / "custom-root"
     executor = LocalExecutor(root, str(fake_executor))
-    observed = executor._environment()
-    assert observed["REPO2REE_WORKBENCH_ROOT"] == os.fspath(root.resolve())
+    assert executor.ree_root(None) == root.resolve()
+    # A managed bench's root is its one REE, whatever a request names.
+    assert executor.ree_root("ree-1") == root.resolve()
+
+
+def test_a_store_runs_each_command_against_the_ree_it_names(fake_executor: Path, tmp_path: Path) -> None:
+    executor = LocalExecutor(tmp_path / "store", str(fake_executor), store=True)
+
+    assert executor.ree_root("ree-1") == (tmp_path / "store" / "ree-1").resolve()
+    observed = executor._environment(executor.ree_root("ree-1"))
+    assert observed["REPO2REE_WORKBENCH_ROOT"] == os.fspath((tmp_path / "store" / "ree-1").resolve())
+    for refused in (None, "..", "a/b", "", "-x"):
+        with pytest.raises(ValueError):
+            executor.ree_root(refused)
+
+
+def test_a_store_deletes_an_ree_only_when_none_of_its_runs_is_active(fake_executor: Path, tmp_path: Path) -> None:
+    executor = LocalExecutor(tmp_path / "store", str(fake_executor), store=True)
+    (tmp_path / "store" / "ree-1" / "workspace").mkdir(parents=True)
+    executor._runs["run-1"] = (subprocess.Popen(["sleep", "5"], text=True), executor.ree_root("ree-1"))
+    try:
+        with pytest.raises(RuntimeError, match="in progress"):
+            executor.delete_ree("ree-1")
+    finally:
+        executor._runs.pop("run-1")[0].kill()
+
+    executor.delete_ree("ree-1")
+    executor.delete_ree("ree-2")  # Nothing there is nothing to delete.
+    assert not (tmp_path / "store" / "ree-1").exists()
 
 
 def cancellable_executor(tmp_path: Path, on_term: str) -> Path:

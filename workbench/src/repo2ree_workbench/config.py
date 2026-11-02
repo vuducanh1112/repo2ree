@@ -33,6 +33,11 @@ class WorkbenchConfig:
     mode: Literal["managed", "external"] = "managed"
     otlp_endpoint: str | None = None
     telemetry: TelemetryMode = "off"
+    # The store this workbench serves (blank: it serves its root as one REE), and where it is.
+    store_id: str = ""
+    store_root: Path | None = None
+    backend: Literal["host"] = "host"
+    slots: int = 1
 
 
 class WorkbenchEnvironment(BaseSettings):
@@ -53,6 +58,9 @@ class WorkbenchEnvironment(BaseSettings):
     REPO2REE_EXEC_PATH: str = "repo2ree-exec"
     OTLP_ENDPOINT: str | None = None
     TRACE_FILE: str | None = None
+    # "ID=PATH": serve the store ID, a directory of REEs at PATH.
+    WORKBENCH_STORE: str = ""
+    WORKBENCH_SLOTS: int = 1
 
     @field_validator("WORKBENCH_MODE", "WORKBENCH_TELEMETRY", mode="before")
     @classmethod
@@ -98,6 +106,15 @@ def _resolve_telemetry(
     return "relay" if mode == "managed" else "off"
 
 
+def _store(value: str) -> tuple[str, Path | None]:
+    if not value:
+        return "", None
+    store_id, separator, path = value.partition("=")
+    if not separator or not store_id.strip() or not path.strip():
+        raise SystemExit(f"repo2ree-workbench: --store takes ID=PATH, not {value!r}")
+    return store_id.strip(), Path(path.strip()).expanduser()
+
+
 def load_config(argv: Sequence[str] = ()) -> WorkbenchConfig:
     environment = WorkbenchEnvironment()
     parser = argparse.ArgumentParser(prog="repo2ree-workbench")
@@ -107,7 +124,18 @@ def load_config(argv: Sequence[str] = ()) -> WorkbenchConfig:
     parser.add_argument("--name", default=environment.WORKBENCH_ID)
     default_mode = environment.WORKBENCH_MODE or ("external" if not environment.WORKBENCH_ALLOCATION_ID else "managed")
     parser.add_argument("--mode", choices=("managed", "external"), default=default_mode)
+    parser.add_argument(
+        "--store", default=environment.WORKBENCH_STORE, help="ID=PATH: serve the store ID, a directory of REEs"
+    )
+    # Where the author's scripts run. Only on this host for now; in a container is still to come.
+    parser.add_argument("--backend", choices=("host",), default="host")
+    parser.add_argument("--slots", type=int, default=environment.WORKBENCH_SLOTS, help="actions run at once")
     args = parser.parse_args(list(argv))
+    store_id, store_root = _store(args.store)
+    if store_id and args.mode == "managed":
+        parser.error("a managed bench serves the REE it was provisioned for, not a store")
+    if args.slots < 1:
+        parser.error("--slots must be at least 1")
     explicit_id = args.name
     if explicit_id:
         workbench_id = explicit_id
@@ -125,6 +153,10 @@ def load_config(argv: Sequence[str] = ()) -> WorkbenchConfig:
         exec_path=environment.REPO2REE_EXEC_PATH,
         location_id=environment.WORKBENCH_LOCATION_ID,
         image=environment.WORKBENCH_IMAGE,
+        store_id=store_id,
+        store_root=store_root,
+        backend=args.backend,
+        slots=args.slots,
         otlp_endpoint=otlp_endpoint,
         telemetry=_resolve_telemetry(
             args.mode,

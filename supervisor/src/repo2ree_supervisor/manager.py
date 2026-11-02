@@ -260,7 +260,7 @@ class WorkbenchManager:
         """
         self._registry.update(request.allocation_id, AllocationState.READY)
         self._workbench.assign(workbench_id, request)
-        self._workbench.exec_simple(workbench_id, ["init-ree", "--name", name])
+        self._workbench.exec_simple(workbench_id, ["init-ree", "--name", name], ree_id=request.ree_id)
         record = self._registry.update(request.allocation_id, AllocationState.ASSIGNED)
         return WorkbenchHandle.from_record(record)
 
@@ -476,7 +476,7 @@ class WorkbenchManager:
         This deliberately does not take the per-REE dispatch lock: the command we
         are canceling is usually the one holding that lock.
         """
-        self._workbench.cancel_run(handle.workbench_id, run_id)
+        self._workbench.cancel_run(handle.workbench_id, run_id, ree_id=handle.ree_id)
 
     def _dispatch_recorded(
         self,
@@ -543,7 +543,9 @@ class WorkbenchManager:
         # is non-blocking (it enqueues for a background forwarder), so export never
         # sits on this loop, the per-REE lock, or the measured execute window.
         result: ActionResult | None = None
-        for frame in self._workbench.exec_action(handle.workbench_id, cmd_json, run_id, env, context):
+        for frame in self._workbench.exec_action(
+            handle.workbench_id, cmd_json, run_id, env, context, ree_id=handle.ree_id
+        ):
             if isinstance(frame, LogFrame):
                 log(frame.stream, frame.level, frame.message)
             elif isinstance(frame, SpanFrame):
@@ -597,8 +599,8 @@ class WorkbenchManager:
         exec_argv = list(argv)
         if locked:
             with self._ree_lock(handle.ree_id):
-                return self._workbench.exec_query(handle.workbench_id, exec_argv, timeout=timeout)
-        return self._workbench.exec_query(handle.workbench_id, exec_argv, timeout=timeout)
+                return self._workbench.exec_query(handle.workbench_id, exec_argv, timeout=timeout, ree_id=handle.ree_id)
+        return self._workbench.exec_query(handle.workbench_id, exec_argv, timeout=timeout, ree_id=handle.ree_id)
 
     def dispatch_query_stream(
         self, handle: WorkbenchHandle, *argv: str, locked: bool = False, timeout: int = 30
@@ -607,7 +609,9 @@ class WorkbenchManager:
         exec_argv = list(argv)
 
         def query() -> Iterator[bytes]:
-            return self._workbench.exec_query_stream(handle.workbench_id, exec_argv, timeout=timeout)
+            return self._workbench.exec_query_stream(
+                handle.workbench_id, exec_argv, timeout=timeout, ree_id=handle.ree_id
+            )
 
         def stream() -> Iterator[bytes]:
             if locked:
@@ -656,7 +660,7 @@ class WorkbenchManager:
         as long as a client takes to download it. Zipping and sending scale with
         the REE's size, hence the generous timeout."""
         with self._ree_lock(handle.ree_id):
-            return self._workbench.exec_upload(handle.workbench_id, [BUILD_ARCHIVE], timeout=600)
+            return self._workbench.exec_upload(handle.workbench_id, [BUILD_ARCHIVE], timeout=600, ree_id=handle.ree_id)
 
     def list_all_manifests(self) -> list[tuple[WorkbenchHandle, Ree]]:
         """Every reachable workbench, paired with its REE.
@@ -690,4 +694,4 @@ class WorkbenchManager:
 
         ``host_path`` need only exist here; the workbench may share no filesystem
         with us (see ``WorkbenchClient.copy_in``)."""
-        self._workbench.copy_in(handle.workbench_id, host_path, workbench_path)
+        self._workbench.copy_in(handle.workbench_id, host_path, workbench_path, ree_id=handle.ree_id)

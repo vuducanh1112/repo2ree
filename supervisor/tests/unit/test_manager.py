@@ -74,7 +74,7 @@ class FakeWorkbench:
     def assign(self, workbench_id: str, allocation: AllocationRequest) -> None:
         self.assigned = allocation
 
-    def exec_simple(self, workbench_id: str, argv: list[str], timeout: int = 60) -> None:
+    def exec_simple(self, workbench_id: str, argv: list[str], timeout: int = 60, *, ree_id: str | None = None) -> None:
         self.simple_calls.append(argv)
         if self.init_error is not None:
             raise self.init_error
@@ -92,23 +92,34 @@ class FakeWorkbench:
         return True
 
     def exec_action(
-        self, workbench_id: str, cmd_json: str, run_id: str, env: dict[str, str], context=None
+        self,
+        workbench_id: str,
+        cmd_json: str,
+        run_id: str,
+        env: dict[str, str],
+        context=None,
+        *,
+        ree_id: str | None = None,
     ) -> Iterator[Frame]:
         yield ResultFrame(result=ActionResult(status="succeeded"))
 
-    def cancel_run(self, workbench_id: str, run_id: str) -> None:
+    def cancel_run(self, workbench_id: str, run_id: str, *, ree_id: str | None = None) -> None:
         return None
 
-    def exec_query(self, workbench_id: str, argv: list[str], timeout: int = 30) -> bytes:
+    def exec_query(self, workbench_id: str, argv: list[str], timeout: int = 30, *, ree_id: str | None = None) -> bytes:
         return b"{}"
 
-    def exec_query_stream(self, workbench_id: str, argv: list[str], timeout: int = 30) -> Iterator[bytes]:
+    def exec_query_stream(
+        self, workbench_id: str, argv: list[str], timeout: int = 30, *, ree_id: str | None = None
+    ) -> Iterator[bytes]:
         yield b"{}"
 
-    def exec_upload(self, workbench_id: str, argv: list[str], timeout: int = 600) -> ReceivedFile:
+    def exec_upload(
+        self, workbench_id: str, argv: list[str], timeout: int = 600, *, ree_id: str | None = None
+    ) -> ReceivedFile:
         raise AssertionError("no test here uploads")
 
-    def copy_in(self, workbench_id: str, source_path: str, workbench_path: str) -> None:
+    def copy_in(self, workbench_id: str, source_path: str, workbench_path: str, *, ree_id: str | None = None) -> None:
         return None
 
 
@@ -142,7 +153,7 @@ def test_dispatch_mints_distinct_attempts_and_preserves_explicit_retry_context(t
     contexts = []
 
     class RecordingWorkbench(FakeWorkbench):
-        def exec_action(self, workbench_id, cmd_json, run_id, env, context=None):
+        def exec_action(self, workbench_id, cmd_json, run_id, env, context=None, *, ree_id: str | None = None):
             assert "TRACE_RELAY" not in env
             contexts.append(context)
             yield ResultFrame(result=ActionResult(status="succeeded", context=context))
@@ -294,7 +305,9 @@ def test_a_provider_that_cannot_be_asked_loses_no_bench(tmp_path: Path) -> None:
 
 def test_a_dispatch_its_bench_dropped_out_of_asks_whether_the_bench_is_gone(tmp_path: Path) -> None:
     class DroppingWorkbench(FakeWorkbench):
-        def exec_action(self, workbench_id, cmd_json, run_id, env, context=None) -> Iterator[Frame]:
+        def exec_action(
+            self, workbench_id, cmd_json, run_id, env, context=None, *, ree_id: str | None = None
+        ) -> Iterator[Frame]:
             yield UnavailableFrame(detail="workbench connection closed")
 
     manager, store, provider = _manager(tmp_path, DroppingWorkbench())
@@ -364,7 +377,7 @@ def test_dispatch_journals_one_request_and_what_came_back(tmp_path, frames, expe
     sent_contexts = []
 
     class ScriptedWorkbench(FakeWorkbench):
-        def exec_action(self, workbench_id, cmd_json, run_id, env, context=None):
+        def exec_action(self, workbench_id, cmd_json, run_id, env, context=None, *, ree_id: str | None = None):
             sent_contexts.append(context)
             yield from frames
 
@@ -407,7 +420,7 @@ def test_a_result_names_what_recorded_the_attempt(tmp_path, capture, named):
     status = "succeeded" if capture["capture_status"] == "captured" else "failed"
 
     class CapturingWorkbench(FakeWorkbench):
-        def exec_action(self, workbench_id, cmd_json, run_id, env, context=None):
+        def exec_action(self, workbench_id, cmd_json, run_id, env, context=None, *, ree_id: str | None = None):
             cited = history.model_copy(update={"attempt_id": context.attempt_id})
             result = ActionResult(status="succeeded") if status == "succeeded" else ActionResult.failed("internal", "x")
             yield ResultFrame(result=result.model_copy(update={"history": cited}))
@@ -426,7 +439,7 @@ def test_a_result_names_what_recorded_the_attempt(tmp_path, capture, named):
 
 def test_dispatch_that_raises_is_journaled_as_abandoned(tmp_path):
     class BrokenWorkbench(FakeWorkbench):
-        def exec_action(self, workbench_id, cmd_json, run_id, env, context=None):
+        def exec_action(self, workbench_id, cmd_json, run_id, env, context=None, *, ree_id: str | None = None):
             raise TimeoutError("socket stalled")
             yield  # pragma: no cover
 
@@ -472,7 +485,9 @@ def test_a_document_that_does_not_parse_drops_out_of_the_listing(
     answers: dict[str, bytes] = {}
 
     class ListingWorkbench(FakeWorkbench):
-        def exec_query(self, workbench_id: str, argv: list[str], timeout: int = 30) -> bytes:
+        def exec_query(
+            self, workbench_id: str, argv: list[str], timeout: int = 30, *, ree_id: str | None = None
+        ) -> bytes:
             return answers[workbench_id]
 
     manager, _store, _provider = _manager(tmp_path, ListingWorkbench())

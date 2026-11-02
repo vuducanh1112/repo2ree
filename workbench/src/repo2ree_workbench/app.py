@@ -9,6 +9,7 @@ from repo2ree_protocol.build import current_build
 from repo2ree_telemetry.bootstrap import TracerProvider, otlp_log_handler, setup_logs, setup_metrics, setup_tracing
 from repo2ree_telemetry.log import configure_logging
 from repo2ree_telemetry.relay import setup_relayed_span_export
+from repo2ree_workbench.capabilities import detect_capabilities
 from repo2ree_workbench.config import load_config
 from repo2ree_workbench.connection import SpanRelay, run_workbench
 from repo2ree_workbench.executor_process import LocalExecutor
@@ -40,8 +41,9 @@ def main(argv: Sequence[str] = ()) -> None:
             instance_id=config.workbench_id,
         )
     meter_provider = setup_metrics("repo2ree-workbench", endpoint=config.otlp_endpoint, instance_id=config.workbench_id)
-    executor = LocalExecutor(config.root, config.exec_path)
-    service = WorkbenchService(executor)
+    store = config.store_root is not None
+    executor = LocalExecutor(config.store_root or config.root, config.exec_path, store=store)
+    service = WorkbenchService(executor, store_id=config.store_id, slots=config.slots)
     try:
         asyncio.run(
             run_workbench(
@@ -56,6 +58,7 @@ def main(argv: Sequence[str] = ()) -> None:
                 span_relay=span_relay,
                 build=current_build("repo2ree-workbench"),
                 executor_build=executor.build_info(),
+                capabilities=detect_capabilities(),
             )
         )
     finally:

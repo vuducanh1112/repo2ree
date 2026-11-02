@@ -31,6 +31,19 @@ from repo2ree_protocol.frames import Frame
 # ================================================
 
 
+class WorkbenchCapabilities(BaseModel):
+    """What a workbench offers the scripts it runs, so REEs that need it can be sent there."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    arch: str = ""
+    # Whether a container engine is installed beside the workbench.
+    container_engine: bool = False
+    # The engine a script can reach: none, the host's (its socket), or one nested in the bench.
+    script_engine: Literal["none", "socket", "nested"] = "none"
+    gpus: int = Field(default=0, ge=0)
+
+
 class WorkbenchHello(BaseModel):
     """The workbench's first message after dialing in: its identity plus the
     self-reported facts the control plane surfaces in its fleet view. Kept small
@@ -53,6 +66,14 @@ class WorkbenchHello(BaseModel):
     # The base image this bench was provisioned from; blank for an externally
     # managed bench, which this control plane did not build.
     image: str = ""
+    # The store this workbench serves: a directory of REEs, one per ree_id. Blank for a managed
+    # bench, whose root is the one REE it was provisioned for.
+    store_id: str = ""
+    # Where it runs the author's scripts: on its own host, or in a container from the REE's image.
+    backend: Literal["host", "container"] = "host"
+    # How many actions it runs at once; queries do not count.
+    slots: int = Field(default=1, ge=1)
+    capabilities: WorkbenchCapabilities = Field(default_factory=WorkbenchCapabilities)
     # Random per-process token: the same workbench_id arriving with a different
     # nonce is a distinct workbench *instance* (a duplicate or takeover), not a
     # reconnect of the one already known.
@@ -74,6 +95,8 @@ class ExecSimpleRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     op: Literal["exec_simple"] = "exec_simple"
+    # The REE this addresses in the workbench's store; None on a managed bench, whose root is its one REE.
+    ree_id: str | None = None
     argv: list[str]
     timeout: int = 60
 
@@ -86,6 +109,8 @@ class ExecQueryRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     op: Literal["exec_query"] = "exec_query"
+    # The REE this addresses in the workbench's store; None on a managed bench, whose root is its one REE.
+    ree_id: str | None = None
     argv: list[str]
     timeout: int = 30
 
@@ -106,6 +131,8 @@ class ExecUploadRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     op: Literal["exec_upload"] = "exec_upload"
+    # The REE this addresses in the workbench's store; None on a managed bench, whose root is its one REE.
+    ree_id: str | None = None
     argv: list[str]
     transfer_path: str
     timeout: int = 600
@@ -115,6 +142,8 @@ class ExecActionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     op: Literal["exec_action"] = "exec_action"
+    # The REE this addresses in the workbench's store; None on a managed bench, whose root is its one REE.
+    ree_id: str | None = None
     cmd_json: str
     context: ExecutionContext | None = None
     run_id: str
@@ -126,6 +155,8 @@ class CancelRunRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     op: Literal["cancel_run"] = "cancel_run"
+    # The REE this addresses in the workbench's store; None on a managed bench, whose root is its one REE.
+    ree_id: str | None = None
     run_id: str
 
 
@@ -141,6 +172,8 @@ class FetchFileRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     op: Literal["fetch_file"] = "fetch_file"
+    # The REE this addresses in the workbench's store; None on a managed bench, whose root is its one REE.
+    ree_id: str | None = None
     transfer_path: str
     workbench_path: str
     timeout: int = 600
@@ -157,6 +190,18 @@ class CancelRequest(BaseModel):
 
     op: Literal["cancel"] = "cancel"
     request_id: str
+
+
+class DeleteReeRequest(BaseModel):
+    """Delete an REE and everything in its directory from this workbench's store.
+
+    Refused while a run of that REE is active. Only a workbench serving a store has
+    REEs to delete: a managed bench's one REE goes with the bench."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    op: Literal["delete_ree"] = "delete_ree"
+    ree_id: str
 
 
 class DrainWorkbenchRequest(BaseModel):
@@ -187,6 +232,7 @@ WorkbenchRequest = Annotated[
     | CancelRunRequest
     | FetchFileRequest
     | CancelRequest
+    | DeleteReeRequest
     | DrainWorkbenchRequest
     | AssignAllocationRequest,
     Field(discriminator="op"),

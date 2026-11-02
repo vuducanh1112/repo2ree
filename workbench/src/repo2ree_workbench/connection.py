@@ -45,6 +45,7 @@ from repo2ree_protocol.workbench import (
     CancelRunRequest,
     DrainWorkbenchRequest,
     ExecActionRequest,
+    WorkbenchCapabilities,
     WorkbenchHello,
     WorkbenchRequest,
     WorkbenchWsMessage,
@@ -189,8 +190,12 @@ async def run_workbench(
     span_relay: SpanRelay | None = None,
     build: BuildInfo | None = None,
     executor_build: BuildInfo | None = None,
+    capabilities: WorkbenchCapabilities | None = None,
 ) -> None:
     """Dial the control plane and serve requests, reconnecting on drop.
+
+    The hello carries what the service serves (its store, its slots) and what it offers the
+    scripts it runs (``capabilities``).
 
     ``span_relay``, when given, is pointed at each live socket so this
     workbench's own spans leave over the connection it already holds.
@@ -207,6 +212,10 @@ async def run_workbench(
         executor_build=executor_build or BuildInfo(),
         location_id=location_id,
         image=image,
+        store_id=service.store_id,
+        backend="host",
+        slots=service.slots,
+        capabilities=capabilities or WorkbenchCapabilities(),
         # Minted once per process: reconnects reuse it, so the control plane can
         # tell this instance reconnecting from another instance claiming its id.
         nonce=uuid4().hex,

@@ -1480,6 +1480,18 @@
           "title": "Op",
           "type": "string"
         },
+        "ree_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ree Id"
+        },
         "run_id": {
           "title": "Run Id",
           "type": "string"
@@ -2119,6 +2131,27 @@
       "title": "DeleteFileCommand",
       "type": "object"
     },
+    "DeleteReeRequest": {
+      "additionalProperties": false,
+      "description": "Delete an REE and everything in its directory from this workbench's store.\n\nRefused while a run of that REE is active. Only a workbench serving a store has\nREEs to delete: a managed bench's one REE goes with the bench.",
+      "properties": {
+        "op": {
+          "const": "delete_ree",
+          "default": "delete_ree",
+          "title": "Op",
+          "type": "string"
+        },
+        "ree_id": {
+          "title": "Ree Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ree_id"
+      ],
+      "title": "DeleteReeRequest",
+      "type": "object"
+    },
     "DockerRuntimeContract": {
       "additionalProperties": false,
       "properties": {
@@ -2601,6 +2634,18 @@
           "title": "Op",
           "type": "string"
         },
+        "ree_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ree Id"
+        },
         "cmd_json": {
           "title": "Cmd Json",
           "type": "string"
@@ -2646,6 +2691,18 @@
           "title": "Op",
           "type": "string"
         },
+        "ree_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ree Id"
+        },
         "argv": {
           "items": {
             "type": "string"
@@ -2675,6 +2732,18 @@
           "title": "Op",
           "type": "string"
         },
+        "ree_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ree Id"
+        },
         "argv": {
           "items": {
             "type": "string"
@@ -2703,6 +2772,18 @@
           "default": "exec_upload",
           "title": "Op",
           "type": "string"
+        },
+        "ree_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ree Id"
         },
         "argv": {
           "items": {
@@ -3151,6 +3232,18 @@
           "default": "fetch_file",
           "title": "Op",
           "type": "string"
+        },
+        "ree_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ree Id"
         },
         "transfer_path": {
           "title": "Transfer Path",
@@ -8242,6 +8335,39 @@
       "title": "VersionConflictOutputs",
       "type": "object"
     },
+    "WorkbenchCapabilities": {
+      "description": "What a workbench offers the scripts it runs, so REEs that need it can be sent there.",
+      "properties": {
+        "arch": {
+          "default": "",
+          "title": "Arch",
+          "type": "string"
+        },
+        "container_engine": {
+          "default": false,
+          "title": "Container Engine",
+          "type": "boolean"
+        },
+        "script_engine": {
+          "default": "none",
+          "enum": [
+            "none",
+            "socket",
+            "nested"
+          ],
+          "title": "Script Engine",
+          "type": "string"
+        },
+        "gpus": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Gpus",
+          "type": "integer"
+        }
+      },
+      "title": "WorkbenchCapabilities",
+      "type": "object"
+    },
     "WorkbenchHello": {
       "description": "The workbench's first message after dialing in: its identity plus the\nself-reported facts the control plane surfaces in its fleet view. Kept small\nand additive — new fields must default so an older workbench still parses,\nand unknown fields are *ignored* (unlike the frames) so an older control\nplane still accepts a newer workbench's hello.",
       "properties": {
@@ -8293,6 +8419,29 @@
           "default": "",
           "title": "Image",
           "type": "string"
+        },
+        "store_id": {
+          "default": "",
+          "title": "Store Id",
+          "type": "string"
+        },
+        "backend": {
+          "default": "host",
+          "enum": [
+            "host",
+            "container"
+          ],
+          "title": "Backend",
+          "type": "string"
+        },
+        "slots": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Slots",
+          "type": "integer"
+        },
+        "capabilities": {
+          "$ref": "#/$defs/WorkbenchCapabilities"
         },
         "nonce": {
           "default": "",
@@ -8506,6 +8655,7 @@
               "assign_allocation": "#/$defs/AssignAllocationRequest",
               "cancel": "#/$defs/CancelRequest",
               "cancel_run": "#/$defs/CancelRunRequest",
+              "delete_ree": "#/$defs/DeleteReeRequest",
               "drain": "#/$defs/DrainWorkbenchRequest",
               "exec_action": "#/$defs/ExecActionRequest",
               "exec_query": "#/$defs/ExecQueryRequest",
@@ -8536,6 +8686,9 @@
             },
             {
               "$ref": "#/$defs/CancelRequest"
+            },
+            {
+              "$ref": "#/$defs/DeleteReeRequest"
             },
             {
               "$ref": "#/$defs/DrainWorkbenchRequest"

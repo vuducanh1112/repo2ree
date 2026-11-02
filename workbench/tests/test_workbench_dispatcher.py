@@ -11,6 +11,7 @@ from repo2ree_protocol.frames import DoneFrame, Frame
 from repo2ree_protocol.workbench import (
     AssignAllocationRequest,
     CancelRunRequest,
+    DeleteReeRequest,
     ExecActionRequest,
     ExecQueryRequest,
     ExecSimpleRequest,
@@ -25,29 +26,33 @@ class _Service:
     def __init__(self) -> None:
         self.calls: list[tuple[Any, ...]] = []
         self.copied = b""
+        self.action_slots = asyncio.Semaphore(1)
+
+    def delete_ree(self, ree_id: str) -> None:
+        self.calls.append(("delete_ree", ree_id))
 
     def assign(self, allocation: AllocationRequest) -> None:
         self.calls.append(("assign", allocation.allocation_id))
 
-    def exec_action(self, cmd_json: str, run_id: str, env: dict[str, str], context=None):
+    def exec_action(self, cmd_json: str, run_id: str, env: dict[str, str], context=None, *, ree_id: str | None = None):
         self.calls.append(("exec_action", cmd_json, run_id, env))
         yield DoneFrame()
 
-    def exec_query_stream(self, argv: list[str], timeout: int):
+    def exec_query_stream(self, argv: list[str], timeout: int, *, ree_id: str | None = None):
         self.calls.append(("exec_query", argv, timeout))
         yield b"query-result"
 
-    def exec_query_to_file(self, argv: list[str], target: Path, timeout: int) -> None:
+    def exec_query_to_file(self, argv: list[str], target: Path, timeout: int, *, ree_id: str | None = None) -> None:
         self.calls.append(("exec_query_to_file", argv, timeout))
         target.write_bytes(b"archive-bytes")
 
-    def cancel_run(self, run_id: str) -> None:
+    def cancel_run(self, run_id: str, *, ree_id: str | None = None) -> None:
         self.calls.append(("cancel_run", run_id))
 
-    def exec_simple(self, argv: list[str], timeout: int) -> None:
+    def exec_simple(self, argv: list[str], timeout: int, *, ree_id: str | None = None) -> None:
         self.calls.append(("exec_simple", argv, timeout))
 
-    def copy_in(self, source_path: str, workbench_path: str) -> None:
+    def copy_in(self, source_path: str, workbench_path: str, *, ree_id: str | None = None) -> None:
         self.calls.append(("copy_in", workbench_path))
         self.copied = Path(source_path).read_bytes()
 
@@ -105,6 +110,55 @@ def test_dispatcher_routes_simple_requests_and_terminal_frames() -> None:
 
     assert [call[0] for call in harness.service.calls] == ["cancel_run", "exec_simple"]
     assert [frame.type for frame in harness.frames] == ["done", "done"]
+
+
+def test_a_delete_reaches_the_service_and_is_acknowledged() -> None:
+    harness = _Harness()
+
+    asyncio.run(harness.dispatch(DeleteReeRequest(ree_id="ree-1")))
+
+    assert harness.service.calls == [("delete_ree", "ree-1")]
+    assert [frame.type for frame in harness.frames] == ["done"]
+
+
+def test_an_action_waits_for_a_slot_while_a_query_does_not() -> None:
+    harness = _Harness()
+    order: list[str] = []
+    release = asyncio.Event()
+
+    async def scenario() -> None:
+        async def pump(factory: Any) -> None:
+            order.append("action starts")
+            await release.wait()
+            harness.frames.extend(factory())
+
+        async def no_bytes(factory: Any) -> None:
+            order.append("query runs")
+
+        async def send(frame: Frame) -> None:
+            harness.frames.append(frame)
+
+        def request(req: Any, **pumps: Any) -> Any:
+            return dispatch_workbench_request(
+                req,
+                cast(WorkbenchService, harness.service),
+                send=send,
+                pump=pumps.get("pump", pump),
+                pump_bytes=no_bytes,
+                record_received=harness.received.append,
+            )
+
+        first = asyncio.create_task(request(ExecActionRequest(cmd_json="{}", run_id="run-1")))
+        second = asyncio.create_task(request(ExecActionRequest(cmd_json="{}", run_id="run-2")))
+        await asyncio.sleep(0.01)
+        await request(ExecQueryRequest(argv=["archive"]))
+        assert order == ["action starts", "query runs"]  # One slot: the second action waits.
+        release.set()
+        await asyncio.gather(first, second)
+
+    asyncio.run(scenario())
+
+    assert order == ["action starts", "query runs", "action starts"]
 
 
 def test_dispatcher_routes_assignment_before_any_execution() -> None:

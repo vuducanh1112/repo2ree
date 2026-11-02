@@ -452,18 +452,21 @@ class WsWorkbenchClient:
         run_id: str,
         env: dict[str, str],
         context: ExecutionContext | None = None,
+        *,
+        ree_id: str | None = None,
     ) -> Iterator[Frame]:
         # No frame gap: a script may run quietly for hours. The connection's pings decide whether the
         # workbench is still there, and an author's cancel or a lost connection ends the run.
         return self._registry.pick(workbench_id).request(
-            ExecActionRequest(cmd_json=cmd_json, run_id=run_id, env=env, context=context), frame_gap_timeout=None
+            ExecActionRequest(cmd_json=cmd_json, run_id=run_id, env=env, context=context, ree_id=ree_id),
+            frame_gap_timeout=None,
         )
 
-    def cancel_run(self, workbench_id: str, run_id: str) -> None:
+    def cancel_run(self, workbench_id: str, run_id: str, *, ree_id: str | None = None) -> None:
         conn = self._registry.pick(workbench_id)
         self._drain_void(
             conn.request(
-                CancelRunRequest(run_id=run_id),
+                CancelRunRequest(run_id=run_id, ree_id=ree_id),
                 frame_gap_timeout=QUICK_OP_TIMEOUT,
             )
         )
@@ -476,22 +479,24 @@ class WsWorkbenchClient:
     # Request/response — materialise the terminal frame.
     # ------------------------------------------------
 
-    def exec_simple(self, workbench_id: str, argv: list[str], timeout: int = 60) -> None:
+    def exec_simple(self, workbench_id: str, argv: list[str], timeout: int = 60, *, ree_id: str | None = None) -> None:
         conn = self._registry.pick(workbench_id)
-        req = ExecSimpleRequest(argv=argv, timeout=timeout)
+        req = ExecSimpleRequest(argv=argv, timeout=timeout, ree_id=ree_id)
         # The workbench enforces ``timeout`` on the exec itself; the frame gap only
         # needs to cover it plus transport slack.
         self._drain_void(conn.request(req, frame_gap_timeout=timeout + QUICK_OP_TIMEOUT))
 
-    def exec_query(self, workbench_id: str, argv: list[str], timeout: int = 30) -> bytes:
-        return b"".join(self.exec_query_stream(workbench_id, argv, timeout))
+    def exec_query(self, workbench_id: str, argv: list[str], timeout: int = 30, *, ree_id: str | None = None) -> bytes:
+        return b"".join(self.exec_query_stream(workbench_id, argv, timeout, ree_id=ree_id))
 
-    def exec_query_stream(self, workbench_id: str, argv: list[str], timeout: int = 30) -> Iterator[bytes]:
+    def exec_query_stream(
+        self, workbench_id: str, argv: list[str], timeout: int = 30, *, ree_id: str | None = None
+    ) -> Iterator[bytes]:
         # The result arrives as bounded chunks ending in ``done``; yield each
         # decoded chunk so large archives do not materialise in control-plane RAM.
         conn = self._registry.pick(workbench_id)
         for frame in conn.request(
-            ExecQueryRequest(argv=argv, timeout=timeout),
+            ExecQueryRequest(argv=argv, timeout=timeout, ree_id=ree_id),
             frame_gap_timeout=timeout + QUICK_OP_TIMEOUT,
         ):
             if isinstance(frame, BytesChunkFrame):
@@ -502,14 +507,16 @@ class WsWorkbenchClient:
                 raise_for_terminal_error(frame)
         raise RuntimeError("workbench exec_query ended without a result")
 
-    def exec_upload(self, workbench_id: str, argv: list[str], timeout: int = 600) -> ReceivedFile:
+    def exec_upload(
+        self, workbench_id: str, argv: list[str], timeout: int = 600, *, ree_id: str | None = None
+    ) -> ReceivedFile:
         # The socket carries the request and its one ``done``; the bytes arrive
         # over HTTP into the transfer, so no frame waits on them.
         conn = self._registry.pick(workbench_id)
         transfer_path = self._transfers.open_upload()
         try:
             for frame in conn.request(
-                ExecUploadRequest(argv=argv, transfer_path=transfer_path, timeout=timeout),
+                ExecUploadRequest(argv=argv, transfer_path=transfer_path, timeout=timeout, ree_id=ree_id),
                 frame_gap_timeout=timeout + QUICK_OP_TIMEOUT,
             ):
                 if isinstance(frame, DoneFrame):
@@ -519,7 +526,7 @@ class WsWorkbenchClient:
         finally:
             self._transfers.discard(transfer_path)
 
-    def copy_in(self, workbench_id: str, source_path: str, workbench_path: str) -> None:
+    def copy_in(self, workbench_id: str, source_path: str, workbench_path: str, *, ree_id: str | None = None) -> None:
         # The bench fetches the file over HTTP beside its control socket; the socket
         # carries only the request and its ``done``. The file stays the caller's.
         conn = self._registry.pick(workbench_id)
@@ -527,7 +534,7 @@ class WsWorkbenchClient:
         try:
             self._drain_void(
                 conn.request(
-                    FetchFileRequest(transfer_path=transfer_path, workbench_path=workbench_path),
+                    FetchFileRequest(transfer_path=transfer_path, workbench_path=workbench_path, ree_id=ree_id),
                     frame_gap_timeout=COPY_IN_TIMEOUT,
                 )
             )

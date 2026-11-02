@@ -1,9 +1,15 @@
-"""Native executor supervision inside one supplied workbench environment."""
+"""Native executor supervision inside one supplied workbench environment.
+
+A managed bench runs every command against its one root, the REE it was provisioned for. A
+workbench serving a store keeps one directory per REE beneath its root and runs each command
+against the directory of the REE the request names.
+"""
 
 from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -24,29 +30,64 @@ from repo2ree_workbench import executor_frames
 CANCEL_GRACE_SECONDS = 10.0
 # How long a signalled executor gets after SIGTERM (which it also treats as a cancel) before SIGKILL.
 CANCEL_KILL_SECONDS = 5.0
+# An REE id names a directory in the store: one path segment, nothing a shell or a path could misread.
+_REE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
+
+
+def ree_directory(store: Path, ree_id: str) -> Path:
+    """The directory of ``ree_id`` in ``store``; refuses an id that is not one plain path segment."""
+    if not _REE_ID.fullmatch(ree_id) or ree_id in {".", ".."}:
+        raise ValueError(f"not an REE id: {ree_id!r}")
+    return store / ree_id
 
 
 class LocalExecutor:
-    """Run short-lived executor processes locally against one configured root."""
+    """Run short-lived executor processes locally, against one root or one REE of a store."""
 
     def __init__(
         self,
         root: Path,
         exec_path: str = "repo2ree-exec",
         *,
+        store: bool = False,
         cancel_grace: float = CANCEL_GRACE_SECONDS,
         cancel_kill: float = CANCEL_KILL_SECONDS,
     ) -> None:
         self.root = root.resolve()
         self.exec_path = exec_path
+        self.store = store
         self.cancel_grace = cancel_grace
         self.cancel_kill = cancel_kill
-        self._runs: dict[str, subprocess.Popen[str]] = {}
+        # Each active run, with the REE root it runs against: a cancel is marked there.
+        self._runs: dict[str, tuple[subprocess.Popen[str], Path]] = {}
         self._runs_lock = threading.Lock()
 
-    def _environment(self, extra: dict[str, str] | None = None) -> dict[str, str]:
+    def ree_root(self, ree_id: str | None) -> Path:
+        """The root an REE's commands run against: its directory in the store, or the one root."""
+        if not self.store:
+            return self.root
+        if ree_id is None:
+            raise ValueError("a workbench serving a store runs a command only for a named REE")
+        return ree_directory(self.root, ree_id)
+
+    def is_running(self, ree_id: str) -> bool:
+        root = self.ree_root(ree_id)
+        with self._runs_lock:
+            return any(run_root == root for _, run_root in self._runs.values())
+
+    def delete_ree(self, ree_id: str) -> None:
+        """Remove an REE's directory from the store; refused while one of its runs is active."""
+        if not self.store:
+            raise RuntimeError("only a workbench serving a store deletes REEs")
+        if self.is_running(ree_id):
+            raise RuntimeError(f"REE {ree_id!r} has a run in progress")
+        root = self.ree_root(ree_id)
+        if root.exists():
+            shutil.rmtree(root)
+
+    def _environment(self, root: Path, extra: dict[str, str] | None = None) -> dict[str, str]:
         environment = dict(os.environ)
-        environment["REPO2REE_WORKBENCH_ROOT"] = str(self.root)
+        environment["REPO2REE_WORKBENCH_ROOT"] = str(root)
         environment.update(extra or {})
         if traceparent := current_traceparent():
             environment["TRACEPARENT"] = traceparent
@@ -61,7 +102,7 @@ class LocalExecutor:
                 capture_output=True,
                 text=True,
                 timeout=10,
-                env=self._environment(),
+                env=self._environment(self.root),
             )
             if result.returncode == 0:
                 return BuildInfo.model_validate(json.loads(result.stdout))
@@ -69,26 +110,29 @@ class LocalExecutor:
             pass
         return BuildInfo()
 
-    def exec_simple(self, argv: list[str], timeout: int = 60) -> None:
+    def exec_simple(self, argv: list[str], timeout: int = 60, *, ree_id: str | None = None) -> None:
+        self._run_simple(self.ree_root(ree_id), argv, timeout)
+
+    def _run_simple(self, root: Path, argv: list[str], timeout: int) -> None:
         result = subprocess.run(
             [self.exec_path, *argv],
             check=False,
             capture_output=True,
             text=True,
             timeout=timeout,
-            env=self._environment(),
+            env=self._environment(root),
         )
         if result.returncode:
             detail = result.stderr.strip() or result.stdout.strip() or "(no output)"
             raise RuntimeError(f"executor {argv[0]!r} failed (exit {result.returncode}): {detail}")
 
-    def exec_query_stream(self, argv: list[str], timeout: int = 30) -> Iterator[bytes]:
+    def exec_query_stream(self, argv: list[str], timeout: int = 30, *, ree_id: str | None = None) -> Iterator[bytes]:
         result = subprocess.run(
             [self.exec_path, *argv],
             check=False,
             capture_output=True,
             timeout=timeout,
-            env=self._environment(),
+            env=self._environment(self.ree_root(ree_id)),
         )
         if result.returncode:
             detail = result.stderr.decode(errors="replace").strip() or "(no stderr)"
@@ -97,7 +141,9 @@ class LocalExecutor:
         for offset in range(0, len(view), 256 * 1024):
             yield bytes(view[offset : offset + 256 * 1024])
 
-    def exec_query_to_file(self, argv: list[str], target: Path, timeout: int = 600) -> None:
+    def exec_query_to_file(
+        self, argv: list[str], target: Path, timeout: int = 600, *, ree_id: str | None = None
+    ) -> None:
         """Run an executor query with its stdout written straight to ``target``, never held in memory."""
         with target.open("wb") as output:
             result = subprocess.run(
@@ -106,15 +152,22 @@ class LocalExecutor:
                 stdout=output,
                 stderr=subprocess.PIPE,
                 timeout=timeout,
-                env=self._environment(),
+                env=self._environment(self.ree_root(ree_id)),
             )
         if result.returncode:
             detail = result.stderr.decode(errors="replace").strip() or "(no stderr)"
             raise RuntimeError(f"executor query {argv!r} failed (exit {result.returncode}): {detail}")
 
     def exec_action(
-        self, cmd_json: str, run_id: str, env: dict[str, str], context: ExecutionContext | None = None
+        self,
+        cmd_json: str,
+        run_id: str,
+        env: dict[str, str],
+        context: ExecutionContext | None = None,
+        *,
+        ree_id: str | None = None,
     ) -> Iterator[Frame]:
+        root = self.ree_root(ree_id)
         proc = subprocess.Popen(
             [
                 self.exec_path,
@@ -130,7 +183,7 @@ class LocalExecutor:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            env=self._environment(env),
+            env=self._environment(root, env),
             start_new_session=True,
         )
         if proc.stdin is None or proc.stdout is None or proc.stderr is None:
@@ -141,7 +194,7 @@ class LocalExecutor:
             if run_id in self._runs:
                 proc.kill()
                 raise RuntimeError(f"run {run_id!r} is already active")
-            self._runs[run_id] = proc
+            self._runs[run_id] = (proc, root)
         try:
             proc.stdin.write(cmd_json)
             proc.stdin.close()
@@ -160,7 +213,7 @@ class LocalExecutor:
             with self._runs_lock:
                 self._runs.pop(run_id, None)
 
-    def cancel_run(self, run_id: str) -> None:
+    def cancel_run(self, run_id: str, *, ree_id: str | None = None) -> None:
         """Ask the run's executor to stop, and only force it if it does not.
 
         The cancel marker is cooperative: the executor stops its script, rolls the REE back,
@@ -168,9 +221,11 @@ class LocalExecutor:
         attempt mid-execution, or mid-capture. An executor still running after the grace
         period is signalled (SIGTERM, which it treats as a cancel too), then killed.
         """
-        self.exec_simple(["cancel-run", "--run-id", run_id], timeout=10)
         with self._runs_lock:
-            proc = self._runs.get(run_id)
+            active = self._runs.get(run_id)
+        # The marker goes where the run reads it: its REE's root, known from the run once it started.
+        self._run_simple(active[1] if active else self.ree_root(ree_id), ["cancel-run", "--run-id", run_id], 10)
+        proc = active[0] if active else None
         if proc is not None and proc.poll() is None:
             threading.Thread(target=self._escalate, args=(proc,), name=f"cancel-{run_id}", daemon=True).start()
 
@@ -185,8 +240,8 @@ class LocalExecutor:
                 proc.wait(timeout=wait)
                 return
 
-    def copy_in(self, source_path: str, workbench_path: str) -> None:
-        destination = self._resolve_destination(workbench_path)
+    def copy_in(self, source_path: str, workbench_path: str, *, ree_id: str | None = None) -> None:
+        destination = self._resolve_destination(self.ree_root(ree_id), workbench_path)
         destination.parent.mkdir(parents=True, exist_ok=True)
         fd, temporary = tempfile.mkstemp(prefix=f".{destination.name}.", dir=destination.parent)
         os.close(fd)
@@ -196,7 +251,8 @@ class LocalExecutor:
         finally:
             Path(temporary).unlink(missing_ok=True)
 
-    def _resolve_destination(self, requested: str) -> Path:
+    @staticmethod
+    def _resolve_destination(root: Path, requested: str) -> Path:
         path = PurePosixPath(requested)
         if ".." in path.parts:
             raise ValueError("workbench path must not contain '..'")
@@ -207,8 +263,8 @@ class LocalExecutor:
                 raise ValueError("absolute workbench paths must be below /ree") from exc
         else:
             relative = path
-        destination = self.root.joinpath(*relative.parts)
+        destination = root.joinpath(*relative.parts)
         resolved_parent = destination.parent.resolve()
-        if not resolved_parent.is_relative_to(self.root):
+        if not resolved_parent.is_relative_to(root):
             raise ValueError("workbench path escapes the configured root")
         return resolved_parent / destination.name

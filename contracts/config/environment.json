@@ -306,10 +306,20 @@
           "title": "Workbench Root",
           "type": "string"
         },
+        "WORKBENCH_SLOTS": {
+          "default": 1,
+          "title": "Workbench Slots",
+          "type": "integer"
+        },
         "WORKBENCH_STATE_DIR": {
           "default": "~/.repo2ree",
           "format": "path",
           "title": "Workbench State Dir",
+          "type": "string"
+        },
+        "WORKBENCH_STORE": {
+          "default": "",
+          "title": "Workbench Store",
           "type": "string"
         },
         "WORKBENCH_TELEMETRY": {
@@ -1213,6 +1223,15 @@
         "type": "string"
       }
     },
+    "WORKBENCH_SLOTS": {
+      "kind": "runtime",
+      "owner": "workbench",
+      "schema": {
+        "default": 1,
+        "title": "Workbench Slots",
+        "type": "integer"
+      }
+    },
     "WORKBENCH_STATE_DIR": {
       "kind": "runtime",
       "owner": "workbench",
@@ -1220,6 +1239,15 @@
         "default": "~/.repo2ree",
         "format": "path",
         "title": "Workbench State Dir",
+        "type": "string"
+      }
+    },
+    "WORKBENCH_STORE": {
+      "kind": "runtime",
+      "owner": "workbench",
+      "schema": {
+        "default": "",
+        "title": "Workbench Store",
         "type": "string"
       }
     },
