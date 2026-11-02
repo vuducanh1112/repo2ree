@@ -37,10 +37,6 @@ items = ["Allocation ready -> failed"]
 reason = """Needs init-ree to fail on a bench that came up and called home; no tier stages that."""
 
 [[unreached]]
-items = ["Allocation draining -> failed"]
-reason = """Needs the provider to fail to release a bench; no gated tier stages that."""
-
-[[unreached]]
 items = [
   "Attempt pending -> capture_failed",
   "Attempt executing -> capture_failed",
