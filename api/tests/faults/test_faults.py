@@ -15,12 +15,14 @@ from system_client import BUILD_SCRIPT, LIGHTWEIGHT_IMAGE, RUNTIME, TERMINAL, Ap
 from repo2ree_testbed.faults import (
     CrashApi,
     HealWorkbench,
+    LockHistory,
     MisdirectProviders,
     PartitionWorkbench,
     PauseWorkbench,
     RestoreProviders,
     ResumeWorkbench,
     StopProviders,
+    UnlockHistory,
 )
 
 SLOW_BUILD = "#!/usr/bin/env sh\nset -eu\necho 'building slowly'\nsleep 120\n"
@@ -199,3 +201,34 @@ def test_a_bench_its_provider_cannot_release_stays_failed_until_released_again(a
     assert (record["state"], record["detail"]) == ("failed", "provider release failed"), record
     api.release(ree_id)
     assert settled_allocation(api, allocation_id)["state"] == "released"
+
+
+def test_a_build_whose_capture_fails_leaves_nothing_behind_and_the_ree_builds_after(
+    api: Api, new_ree: Callable[..., str]
+) -> None:
+    ree_id = new_ree()
+    api.acquire(ree_id)
+    api.patch(ree_id, {"build_runtime": {"runtime_path": RUNTIME}})
+    inferred = str(api.infer(ree_id, "build")["candidates"][0]["body"])
+    shebang, _, body = inferred.partition("\n")
+    # A build that works, slowly enough for the history to be locked while it runs.
+    api.write(ree_id, BUILD_SCRIPT, f"{shebang}\nsleep 20\n{body}")
+    run: dict[str, Any] = api.post(f"/api/v1/rees/{ree_id}/build-runtime")
+    api.wait_for_status(ree_id, run["run_id"], "running")
+    bench = allocation(api, ree_id)
+
+    fault(LockHistory(allocation_id=bench))
+    try:
+        settled = api.wait(ree_id, run, timeout=120)
+        # An edit meanwhile cannot be recorded either, and is not kept.
+        refused = api.write(ree_id, "notes.txt", "written while the history is locked\n", expect=None)
+    finally:
+        fault(UnlockHistory(allocation_id=bench))
+
+    # The author is told the build failed, and the REE shows nothing of it: no runtime evidence.
+    assert settled["status"] == "failed", settled
+    assert api.audit(ree_id)["runtime"]["evidence"] == "missing"
+    assert refused.status_code >= 400, refused.text
+    unwritten = api.request("GET", f"/api/v1/rees/{ree_id}/files/raw", params={"path": "notes.txt"}, expect=None)
+    assert unwritten.status_code == 404, unwritten.text
+    assert api.stage(ree_id, "build-runtime")["status"] == "succeeded"

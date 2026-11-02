@@ -38,6 +38,18 @@ class HealWorkbench(Record):
     allocation_id: str
 
 
+class LockHistory(Record):
+    """A stale lock on the REE's history ref, as a crashed git process leaves one: no attempt can publish."""
+
+    kind: Literal["lock_history"] = "lock_history"
+    allocation_id: str
+
+
+class UnlockHistory(Record):
+    kind: Literal["unlock_history"] = "unlock_history"
+    allocation_id: str
+
+
 class CrashApi(Record):
     kind: Literal["crash_api"] = "crash_api"
 
@@ -62,6 +74,8 @@ type Fault = Annotated[
     | ResumeWorkbench
     | PartitionWorkbench
     | HealWorkbench
+    | LockHistory
+    | UnlockHistory
     | CrashApi
     | MisdirectProviders
     | RestoreProviders

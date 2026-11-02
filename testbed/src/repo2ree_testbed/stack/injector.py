@@ -16,18 +16,22 @@ from repo2ree_testbed.faults import (
     Fault,
     HealWorkbench,
     KillWorkbench,
+    LockHistory,
     MisdirectProviders,
     PartitionWorkbench,
     PauseWorkbench,
     RestoreProviders,
     ResumeWorkbench,
     StopProviders,
+    UnlockHistory,
 )
 from repo2ree_testbed.stack.docker import networks
 from repo2ree_testbed.stack.process import capture, run
 
 OWNER_LABEL = "repo2ree.resource-owner"
 UNANSWERED = "ws://127.0.0.1:9/workbench/connect"
+# What git takes for another process updating the REE's history ref (core's HISTORY_REF).
+HISTORY_LOCK = "/ree/.git/refs/heads/ree-history.lock"
 _LABELS = TypeAdapter[dict[str, str] | None](dict[str, str] | None)
 
 
@@ -129,6 +133,10 @@ class Injector:
                     name = self.container(allocation)
                     for network in self.partitions.pop(allocation, ()):
                         self.docker("network", "connect", network, name)
+                case LockHistory(allocation_id=allocation):
+                    self.docker("exec", self.container(allocation), "touch", HISTORY_LOCK)
+                case UnlockHistory(allocation_id=allocation):
+                    self.docker("exec", self.container(allocation), "rm", "-f", HISTORY_LOCK)
                 case CrashApi():
                     self.target.crash_api()
                 case MisdirectProviders():
