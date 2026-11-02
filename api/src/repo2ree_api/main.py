@@ -33,6 +33,7 @@ from repo2ree_api.control.fleet import (
 from repo2ree_api.control.rees import rees_router
 from repo2ree_api.control.run_orchestration import shutdown_runs, startup_runs
 from repo2ree_api.control.runs import runs_router
+from repo2ree_api.deps import workbench_manager
 from repo2ree_api.ree_index_routes import ree_index_router
 from repo2ree_api.review.records import review_records_router
 from repo2ree_api.review.stages import review_stages_router
@@ -65,6 +66,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # journaled too; closed only after the worker pool has drained.
     open_journal(service_settings.BEHAVIOUR_JOURNAL_DIR, "api", hosts=("api", "supervisor"))
     startup_runs()
+    # Nothing resumes a provision the previous process was carrying out: its allocation fails.
+    if interrupted := workbench_manager.fail_interrupted():
+        _log.warning("failed %d allocation(s) the previous API process was still setting up", len(interrupted))
     try:
         yield
     finally:

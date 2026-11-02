@@ -302,6 +302,32 @@ class WorkbenchManager:
             self._release_settled(ree_id, record.request.allocation_id, record.provider_id)
             return record.request.allocation_id
 
+    def fail_interrupted(self) -> list[str]:
+        """Fail every allocation a previous API process was still setting up; their ids.
+
+        The process that was provisioning them is gone and nothing resumes a provision,
+        so each would otherwise stay where it stopped. An assigned allocation is kept: its
+        bench dials back in. Releasing the REE then settles a failed one as any other.
+        """
+        interrupted = {
+            AllocationState.REQUESTED,
+            AllocationState.PROVISIONING,
+            AllocationState.WAITING_FOR_WORKBENCH,
+            AllocationState.READY,
+        }
+        failed: list[str] = []
+        for record in self._registry.list():
+            if record.state not in interrupted:
+                continue
+            allocation_id = record.request.allocation_id
+            with self._ree_lock(record.request.ree_id):
+                self._enrollment.discard(allocation_id)
+                self._registry.update(
+                    allocation_id, AllocationState.FAILED, detail="the API restarted while setting it up"
+                )
+            failed.append(allocation_id)
+        return failed
+
     def _fail(self, allocation_id: str, exc: BaseException) -> None:
         record = self._registry.get(allocation_id)
         if record and record.state != AllocationState.FAILED:

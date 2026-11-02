@@ -237,6 +237,35 @@ def test_a_teardown_the_provider_cannot_carry_out_fails_and_releasing_again_sett
     assert provider.released == [handle.allocation_id]
 
 
+def test_a_restart_fails_what_was_still_being_set_up_and_keeps_what_was_assigned(tmp_path: Path) -> None:
+    manager, store, _ = _manager(tmp_path)
+    assigned = manager.provision("ree-assigned", "My REE", location_id="lab-1", image=_CATALOG_IMAGE)
+    path = [
+        AllocationState.REQUESTED,
+        AllocationState.PROVISIONING,
+        AllocationState.WAITING_FOR_WORKBENCH,
+        AllocationState.READY,
+    ]
+    for index in range(len(path)):
+        request = AllocationRequest(allocation_id=f"alloc-{index}", ree_id=f"ree-{index}", location_id="lab-1")
+        store.create(request, provider_id="provider-1", workbench_id=f"wb-{index}")
+        for state in path[1 : index + 1]:
+            store.update(request.allocation_id, state)
+
+    restarted, _, provider = _manager(tmp_path)
+    assert sorted(restarted.fail_interrupted()) == [f"alloc-{index}" for index in range(len(path))]
+
+    for index in range(len(path)):
+        record = store.get(f"alloc-{index}")
+        assert record is not None
+        assert (record.state, record.detail) == (AllocationState.FAILED, "the API restarted while setting it up")
+        # The author's release settles it as it settles any failed allocation.
+        assert restarted.release_unreachable(f"ree-{index}") == f"alloc-{index}"
+    assert provider.released == [f"alloc-{index}" for index in range(len(path))]
+    assert store.get(assigned.allocation_id).state == AllocationState.ASSIGNED  # type: ignore[union-attr]
+    assert restarted.fail_interrupted() == []
+
+
 def test_a_bench_its_provider_reports_gone_is_lost_and_released_without_a_teardown(tmp_path: Path) -> None:
     manager, store, provider = _manager(tmp_path)
     handle = manager.provision("ree-1", "My REE", location_id="lab-1", image=_CATALOG_IMAGE)
