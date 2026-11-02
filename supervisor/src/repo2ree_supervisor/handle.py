@@ -14,6 +14,7 @@ class WorkbenchHandle:
     workbench_id: str = ""
     allocation_id: str = ""
     provider_id: str = ""
+    # provider_managed, external, or store (an REE served by a store: location_id names the store).
     mode: str = "provider_managed"
     location_id: str = ""
     image: str = ""

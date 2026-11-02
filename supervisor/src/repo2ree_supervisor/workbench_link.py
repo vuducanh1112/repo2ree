@@ -262,6 +262,10 @@ class PendingReply:
 # ================================================
 
 
+class StoreClaimedError(RuntimeError):
+    """Another workbench already serves the store a workbench claimed."""
+
+
 class WorkbenchConnectionRegistry:
     """Tracks connected workbenches and resolves placement requests to one of them."""
 
@@ -278,8 +282,14 @@ class WorkbenchConnectionRegistry:
         If the id is already held by a different connection — a reconnecting
         workbench whose old socket still lingers — the old one is displaced and
         closed so its waiters unblock and it can't later evict its successor.
+
+        A store is served by one workbench at a time: another workbench claiming a
+        store one already serves is refused (``StoreClaimedError``), never displacing it.
         """
+        store_id = connection.hello.store_id if connection.hello else ""
         with self._lock:
+            if store_id and (holder := self._store_holder_locked(store_id)) not in {None, workbench_id}:
+                raise StoreClaimedError(f"store {store_id!r} is already served by workbench {holder!r}")
             displaced = self._workbenches.get(workbench_id)
             self._workbenches[workbench_id] = connection
             self._connected_at[workbench_id] = time.time()
@@ -306,6 +316,21 @@ class WorkbenchConnectionRegistry:
                 old_nonce or "<none>",
                 new_nonce or "<none>",
             )
+
+    def store_workbench(self, store_id: str) -> str | None:
+        """The connected workbench serving ``store_id``, if one is."""
+        with self._lock:
+            return self._store_holder_locked(store_id)
+
+    def _store_holder_locked(self, store_id: str) -> str | None:
+        return next(
+            (
+                workbench_id
+                for workbench_id, connection in self._workbenches.items()
+                if connection.hello is not None and connection.hello.store_id == store_id
+            ),
+            None,
+        )
 
     def unregister(self, workbench_id: str, connection: WorkbenchConnection) -> None:
         """Drop ``workbench_id`` only if ``connection`` still owns it.
