@@ -24,6 +24,7 @@ from repo2ree_core.reproduction.reproducer import (
     build_reproducer_sh,
     reproducer_entries,
 )
+from repo2ree_ree.environment import EnvironmentDefinition
 from repo2ree_ree.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BUILD_SCRIPT
 
 
@@ -49,6 +50,20 @@ def test_reproducer_entries_are_run_sh_scripts_and_readme():
     # Defaults fall back to the reserved script paths.
     assert RESERVED_BUILD_SCRIPT.encode() in entries["run.sh"]
     assert RESERVED_ACTIVATION_SCRIPT.encode() in entries["run.sh"]
+
+
+def test_the_readme_says_what_the_scripts_ran_in():
+    def readme(environment: EnvironmentDefinition | None) -> str:
+        return dict(reproducer_entries(environment=environment))["REPRODUCING.md"].decode()
+
+    assert "declared no environment" in readme(None)
+    pinned = EnvironmentDefinition(kind="image", image="python:3.12@sha256:" + "a" * 64, needs_container_engine=True)
+    text = readme(pinned)
+    assert f"`{pinned.image}`" in text
+    assert "not pinned" not in text
+    assert "container engine" in text
+    assert "not pinned" in readme(EnvironmentDefinition(kind="image", image="python:3.12"))
+    assert "directly on their machine" in readme(EnvironmentDefinition(kind="host"))
 
 
 def test_reproducer_sh_is_deterministic_for_equal_inputs():

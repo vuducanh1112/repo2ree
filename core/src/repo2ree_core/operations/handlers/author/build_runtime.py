@@ -6,6 +6,7 @@ from repo2ree_core.digests import digest_file_if_exists
 from repo2ree_core.domain.ree.audit import audit
 from repo2ree_core.domain.ree.envelope import receipt_envelope
 from repo2ree_core.domain.ree.transitions import ReePreconditionError, commit_receipt, revision_of
+from repo2ree_core.execution.environment import observe_environment
 from repo2ree_core.execution.process import CancelCheck, run_workspace_script
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.persistence.directory import ReeDirectory
@@ -90,6 +91,7 @@ def handle_build_runtime(
         workspace_drift=workspace_drift,
         runtime_path=runtime_path,
         produced_runtime_digest=produced_runtime_digest,
+        environment=observe_environment(ree.subject.definition.environment),
     )
     try:
         save_ree(

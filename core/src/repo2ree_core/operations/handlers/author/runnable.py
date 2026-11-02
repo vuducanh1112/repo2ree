@@ -10,6 +10,7 @@ from repo2ree_core.digests import digest_file, digest_output_paths
 from repo2ree_core.domain.ree.audit import audit
 from repo2ree_core.domain.ree.envelope import receipt_envelope
 from repo2ree_core.domain.ree.transitions import ReePreconditionError, commit_receipt, revision_of
+from repo2ree_core.execution.environment import observe_environment
 from repo2ree_core.execution.experiment.run import ExperimentRunOutcome, run_runnable
 from repo2ree_core.execution.experiment.spec import RunnableSpec
 from repo2ree_core.execution.process import CancelCheck
@@ -22,6 +23,7 @@ from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import RunnableOperationOutputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.digest import Digest
+from repo2ree_ree.environment import EnvironmentObservation
 from repo2ree_ree.model import ExperimentDefinition, Ree, TestActivationDefinition
 from repo2ree_ree.primitives import WorkspacePath
 from repo2ree_ree.receipt import RunExperimentReceipt, TestActivationReceipt
@@ -100,6 +102,7 @@ def handle_runnable_operation(
         runtime_path=runtime_path,
         runtime_digest=runtime_digest,
         produced_output_digest=produced_output_digest,
+        environment=observe_environment(ree.subject.definition.environment),
     )
     try:
         save_ree(
@@ -224,6 +227,7 @@ def _successful_receipt(
     runtime_path: WorkspacePath | None,
     runtime_digest: Digest | None,
     produced_output_digest: Digest | None,
+    environment: EnvironmentObservation,
 ) -> TestActivationReceipt | RunExperimentReceipt:
     envelope = receipt_envelope(run_id, timing)
     if isinstance(definition, TestActivationDefinition):
@@ -236,6 +240,7 @@ def _successful_receipt(
             verify_script_digest=definition.verify_script_digest,
             run_exit_code=0,
             verify_exit_code=0 if definition.verify_script_path is not None else None,
+            environment=environment,
         )
     return RunExperimentReceipt(
         **envelope,
@@ -247,6 +252,7 @@ def _successful_receipt(
         run_exit_code=0,
         verify_exit_code=0 if definition.verify_script_path is not None else None,
         produced_output_digest=produced_output_digest,
+        environment=environment,
     )
 
 

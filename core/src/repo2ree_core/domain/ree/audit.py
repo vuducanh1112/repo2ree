@@ -19,6 +19,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 
 from repo2ree_protocol.audit import EvidenceStatus, ExperimentAudit, PayloadStatus, ReeAudit, StepAudit
+from repo2ree_ree.environment import EnvironmentObservation
 from repo2ree_ree.model import Ree, ReeDefinition, ReeReceipts
 from repo2ree_ree.primitives import Digest, RunId
 
@@ -202,12 +203,23 @@ def _audit_runtime_step(subject: _Subject) -> StepAudit:
                 reasons.append("runtime build script changed")
             if receipt.runtime_path != build.runtime_path:
                 reasons.append("runtime path changed")
+        if _environment_changed(subject, receipt.environment):
+            reasons.append("environment changed")
     return _step(
         receipt.run_id if receipt else None,
         reasons or (() if receipt else ("runtime has not been built",)),
         applicable=_runtime_is_declared(subject),
         payload=subject.payload(receipt.produced_runtime_digest if receipt else None),
     )
+
+
+def _environment_changed(subject: _Subject, observed: EnvironmentObservation | None) -> bool:
+    """Whether the environment the REE declares is not the one the step ran under.
+
+    A receipt from before environments were recorded ran under no declaration, so it
+    stays current until one is made.
+    """
+    return (observed.declared if observed else None) != subject.definition.environment
 
 
 def _runtime_is_declared(subject: _Subject) -> bool:
@@ -278,6 +290,8 @@ def _audit_test_activation_step(subject: _Subject) -> StepAudit:
                 reasons.append("activation script changed")
             if receipt.verify_script_digest != declared.verify_script_digest:
                 reasons.append("activation verification script changed")
+        if _environment_changed(subject, receipt.environment):
+            reasons.append("environment changed")
         if subject.receipts.build and receipt.runtime_digest != subject.receipts.build.produced_runtime_digest:
             reasons.append("runtime changed")
     return _step(
@@ -299,6 +313,8 @@ def _audit_experiments_step(subject: _Subject) -> tuple[ExperimentAudit, ...]:
                 reasons.append("experiment run script changed")
             if receipt.verify_script_digest != experiment.verify_script_digest:
                 reasons.append("experiment verification script changed")
+            if _environment_changed(subject, receipt.environment):
+                reasons.append("environment changed")
             if subject.receipts.build and receipt.runtime_digest != subject.receipts.build.produced_runtime_digest:
                 reasons.append("runtime changed")
         audits.append(

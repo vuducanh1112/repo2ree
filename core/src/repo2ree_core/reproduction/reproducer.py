@@ -62,6 +62,7 @@ from repo2ree_core.reproduction.commands import (
 )
 from repo2ree_core.reproduction.materialize_workspace import build_materialize_sh
 from repo2ree_core.reproduction.shell import assert_no_placeholders, shell_single_quote, shell_text
+from repo2ree_ree.environment import EnvironmentDefinition
 from repo2ree_ree.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BUILD_SCRIPT
 
 # ================================================
@@ -182,6 +183,7 @@ def reproducer_entries(
     source_type: str = "",
     revision: str = "",
     swhid: str = "",
+    environment: EnvironmentDefinition | None = None,
 ) -> list[tuple[str, bytes]]:
     """Return the ``(path, bytes)`` bundle entries for the reproducer.
 
@@ -201,7 +203,7 @@ def reproducer_entries(
     )
     acquire_sh = build_acquire_sh(origin_url=origin_url, source_type=source_type, revision=revision, swhid=swhid)
     materialize_sh = build_materialize_sh()
-    reproducing_md = _replace_layout_tokens(_REPRODUCING_MD)
+    reproducing_md = _replace_layout_tokens(_REPRODUCING_MD).replace("@@ENVIRONMENT@@", _environment_text(environment))
     reproducing_md = assert_no_placeholders(reproducing_md, artifact=BUNDLE_REPRODUCER_README_ENTRY_PATH)
     return [
         (BUNDLE_REPRODUCER_SCRIPT_ENTRY_PATH, run_sh),
@@ -209,6 +211,21 @@ def reproducer_entries(
         (BUNDLE_MATERIALIZE_ENTRY_PATH, materialize_sh),
         (BUNDLE_REPRODUCER_README_ENTRY_PATH, reproducing_md.encode("utf-8")),
     ]
+
+
+def _environment_text(environment: EnvironmentDefinition | None) -> str:
+    """What the REE says its scripts run in, for a reader about to run them."""
+    if environment is None:
+        return "The author declared no environment: the scripts run in whatever shell runs `run.sh`."
+    engine = (
+        " The scripts call a container engine, so it must be reachable from there."
+        if (environment.needs_container_engine)
+        else ""
+    )
+    if environment.kind == "host":
+        return "The author ran the scripts directly on their machine; no image describes it." + engine
+    pin = "" if environment.pinned else " It is not pinned by digest, so what it names may have moved since."
+    return f"The author's scripts ran in the container image `{environment.image}`.{pin}{engine}"
 
 
 # ================================================
@@ -447,6 +464,10 @@ _REPRODUCING_MD = shell_text("""
       `curl`, `unzip`) and, optionally, the `swh` CLI to verify source identity
       against the recorded SWHID. Without `swh` the source is still fetched; it just
       cannot be cryptographically verified.
+
+    ## Environment
+
+    @@ENVIRONMENT@@
 
     ## Layout
 

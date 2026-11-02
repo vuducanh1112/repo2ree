@@ -97,6 +97,9 @@ def test_successful_build_commits_one_inline_receipt(
     assert receipt.runtime_path == "runtime.tar"
     assert receipt.produced_runtime_digest == digest_bytes(b"runtime")
     assert receipt.workspace_drift.status == "unknown"
+    # What the build ran in: here no workbench states it, so the executor's own host.
+    assert receipt.environment is not None
+    assert receipt.environment.backend == "host"
 
 
 def test_failed_build_process_commits_no_receipt(
