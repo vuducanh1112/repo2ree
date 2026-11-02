@@ -51,6 +51,7 @@ WHOLE = {
     "boundary": "every exchange; traces show only violations",
     "evidence": "the dossier's sources",
     "reconciliation": "the persisted stores against the journal",
+    "aggregate": "every move of every part of the committed document",
 }
 
 
