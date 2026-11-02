@@ -203,11 +203,12 @@ class Scenario:
 def recorded(*, sealed: bool = False, scenario: Scenario | None = None) -> Scenario:
     s = scenario or Scenario()
     s.provision("run-provision", 0.0, PROVISION)
+    # The author declares where the runtime goes, then builds it.
+    s.dispatch("a-patch", "patch_ree_definition", "patch-definition", 8.0, 8.2)
     s.run("run-build", [(10.0, "requested")], REQUEST, action="build_runtime")
     s.action(10.1, "run-build", "requested", "running", WORKER, action="build_runtime")
     s.dispatch("a-build", "build_runtime", "run-build", 10.2, 12.0, WORKER)
     s.action(12.1, "run-build", "running", "succeeded", WORKER, action="build_runtime", attempt_id="a-build")
-    s.dispatch("a-patch", "patch_ree_definition", "patch-definition", 13.0, 13.2)
     s.run("run-sbom", [(20.0, "requested"), (20.1, "running")], action="generate_sbom")
     s.dispatch("a-sbom", "generate_sbom", "run-sbom", 20.2, 21.0)
     s.action(21.1, "run-sbom", "running", "succeeded", action="generate_sbom", attempt_id="a-sbom")
@@ -219,26 +220,20 @@ def recorded(*, sealed: bool = False, scenario: Scenario | None = None) -> Scena
         s.operation("run-seal", "seal_ree", "a-seal", "seal_ree", 50.0)
     s.allocation([(60.0, "draining"), (60.5, "released")], start="assigned")
 
-    s.commit(1, None, "initialize_ree", "", [], (None, "draft"))
+    # A new REE declares its activation, and no runtime yet: as core's first audit finds it.
+    created = [
+        ("runtime", None, "not_applicable", "baseline"),
+        ("sbom", None, "not_applicable", "baseline"),
+        ("test_activation", None, "missing", "baseline"),
+    ]
+    s.commit(1, None, "initialize_ree", "", created, (None, "draft"))
+    declared = [
+        ("runtime", "not_applicable", "missing", "operation"),
+        ("sbom", "not_applicable", "missing", "operation"),
+    ]
+    s.commit(2, "a-patch", "patch_ree_definition", "patch-definition", declared, ("draft", "draft"))
     s.commit(
-        2,
-        "a-build",
-        "build_runtime",
-        "run-build",
-        [
-            ("runtime", None, "missing", "baseline"),
-            ("sbom", None, "missing", "baseline"),
-            ("runtime", "missing", "current", "operation"),
-        ],
-        ("draft", "draft"),
-    )
-    s.commit(
-        3,
-        "a-patch",
-        "patch_ree_definition",
-        "patch-definition",
-        [("test_activation", None, "missing", "operation")],
-        ("draft", "draft"),
+        3, "a-build", "build_runtime", "run-build", [("runtime", "missing", "current", "operation")], ("draft", "draft")
     )
     s.commit(
         4, "a-sbom", "generate_sbom", "run-sbom", [("sbom", "missing", "current", "operation")], ("draft", "draft")

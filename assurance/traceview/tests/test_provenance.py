@@ -15,7 +15,7 @@ def test_the_history_shows_evidence_going_stale_and_current_again() -> None:
     history = trace_of(recorded(sealed=True)).history
     assert history is not None
     runtime = [step.states.get("runtime") for step in history.steps]
-    assert runtime == ["missing", "current", "current", "current", "stale", "current", "current", "current"]
+    assert runtime == ["not_applicable", "missing", "current", "current", "stale", "current", "current", "current"]
     assert [step.operation for step in history.steps][-1] == "seal_ree"
     assert [step.states["lifecycle"] for step in history.steps][-2:] == ["draft", "sealed"]
 
@@ -41,7 +41,8 @@ def test_each_step_is_traced_to_the_operation_that_last_produced_it() -> None:
     assert origins["runtime"].produced_by == "build_runtime"
     assert origins["runtime"].later == ("current → stale by authoring", "stale → current by build_runtime")
     assert origins["test_activation"].change is None
-    assert origins["test_activation"].history == ("undeclared", "missing")
+    # Declared from the start, and never run.
+    assert origins["test_activation"].history == ("missing",)
     assert provenance.after_seal == 0
 
 
@@ -74,6 +75,6 @@ def test_provenance_renders_as_a_tree() -> None:
     text = render_text(provenance)
     assert "SEALED @c8000000" in text
     assert "└─ test_activation" in text
-    assert "never produced: undeclared → missing" in text
+    assert "never produced: missing" in text
     tree = text.split("\n[git]")[0]  # Above the legend.
     assert "✗" not in tree

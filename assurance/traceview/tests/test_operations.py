@@ -13,22 +13,26 @@ def test_operations_are_attempts_with_a_run_and_authoring_is_collapsed_between_t
     trace = trace_of(recorded())
     assert [(entry.kind, entry.name) for entry in trace.entries] == [
         ("setup", "provision"),
-        ("operation", "build_runtime"),
         ("authoring", "authoring"),
+        ("operation", "build_runtime"),
         ("operation", "generate_sbom"),
         ("setup", "release"),
     ]
-    authoring = trace.entries[2]
+    authoring = trace.entries[1]
     assert (authoring.operations, authoring.attempts, authoring.failed) == ({"patch_ree_definition": 1}, 1, 0)
-    assert [(c.step, c.before, c.after) for c in trace.entries[1].changes] == [("runtime", "missing", "current")]
+    assert [(c.step, c.before, c.after) for c in trace.entries[2].changes] == [("runtime", "missing", "current")]
 
 
 def test_the_baseline_is_each_steps_standing_before_the_first_capture() -> None:
-    assert trace_of(recorded()).baseline == {"runtime": "missing", "sbom": "missing"}
+    assert trace_of(recorded()).baseline == {
+        "runtime": "not_applicable",
+        "sbom": "not_applicable",
+        "test_activation": "missing",
+    }
 
 
 def test_rules_attach_to_the_entries_whose_events_triggered_them() -> None:
-    build = trace_of(recorded()).entries[1]
+    build = trace_of(recorded()).entries[2]
     assert {(hit.rule, hit.verdict) for hit in build.rules} >= {
         ("api-success-is-recorded", "passed"),
         ("dispatch-success-is-captured", "passed"),
@@ -41,7 +45,7 @@ def test_spans_annotate_but_never_change_what_was_checked() -> None:
     for left, right in zip(plain.entries, annotated.entries, strict=True):
         assert (left.name, left.rules, left.changes) == (right.name, right.rules, right.changes)
     # The longest spans of the operation's traces, in start order; the 60 ms request is not among them.
-    assert [s.name for s in annotated.entries[1].spans] == [
+    assert [s.name for s in annotated.entries[2].spans] == [
         "run.build",
         "workbench.dispatch_action",
         "workbench.request",
@@ -52,19 +56,19 @@ def test_spans_annotate_but_never_change_what_was_checked() -> None:
 
 
 def test_a_sequence_follows_one_operation_across_components() -> None:
-    sequence = trace_of(recorded(), build_spans()).entries[1].sequence
+    sequence = trace_of(recorded(), build_spans()).entries[2].sequence
     assert sequence is not None
     assert [lane.id for lane in sequence.lanes] == ["client", "api", "supervisor", "workbench", "executor", "core"]
     lines = [(row.provenance, row.lane, row.to, row.label) for row in sequence.rows]
     assert lines[0] == ("span", "client", "api", "POST /rees/{id}/build-runtime")
     assert ("journal", "supervisor", "workbench", "exec_action · build_runtime") in lines
     assert ("journal", "workbench", "supervisor", "result · succeeded") in lines
-    assert ("git", "core", None, "commit c2000000") in lines
+    assert ("git", "core", None, "commit c3000000") in lines
     assert any(row.tone == "gap" and row.label == "350 ms without spans" for row in sequence.rows)
 
 
 def test_attempt_states_are_placed_inside_the_command_span_and_marked_inferred() -> None:
-    sequence = trace_of(recorded(), build_spans()).entries[1].sequence
+    sequence = trace_of(recorded(), build_spans()).entries[2].sequence
     assert sequence is not None
     command = next(a for a in sequence.activations if a.lane == "core")
     attempt = [row for row in sequence.rows if row.label.startswith("Attempt")]
@@ -77,7 +81,7 @@ def test_attempt_states_are_placed_inside_the_command_span_and_marked_inferred()
 
 
 def test_without_spans_the_attempt_sits_inside_its_dispatch_bracket() -> None:
-    sequence = trace_of(recorded()).entries[1].sequence
+    sequence = trace_of(recorded()).entries[2].sequence
     assert sequence is not None
     assert {row.provenance for row in sequence.rows} == {"journal", "inferred", "git"}
     sent = next(row.t for row in sequence.rows if row.label.startswith("exec_action"))
