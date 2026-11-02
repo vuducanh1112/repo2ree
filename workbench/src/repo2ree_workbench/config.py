@@ -38,6 +38,8 @@ class WorkbenchConfig:
     store_root: Path | None = None
     backend: Literal["host"] = "host"
     slots: int = 1
+    # The tools bundle the executor takes git, curl, syft and the rest from, when not the host's.
+    tools_bundle: Path | None = None
 
 
 class WorkbenchEnvironment(BaseSettings):
@@ -61,6 +63,7 @@ class WorkbenchEnvironment(BaseSettings):
     # "ID=PATH": serve the store ID, a directory of REEs at PATH.
     WORKBENCH_STORE: str = ""
     WORKBENCH_SLOTS: int = 1
+    WORKBENCH_TOOLS_BUNDLE: Path | None = None
 
     @field_validator("WORKBENCH_MODE", "WORKBENCH_TELEMETRY", mode="before")
     @classmethod
@@ -130,6 +133,9 @@ def load_config(argv: Sequence[str] = ()) -> WorkbenchConfig:
     # Where the author's scripts run. Only on this host for now; in a container is still to come.
     parser.add_argument("--backend", choices=("host",), default="host")
     parser.add_argument("--slots", type=int, default=environment.WORKBENCH_SLOTS, help="actions run at once")
+    parser.add_argument(
+        "--tools-bundle", type=Path, default=environment.WORKBENCH_TOOLS_BUNDLE, help="the tools the executor runs"
+    )
     args = parser.parse_args(list(argv))
     store_id, store_root = _store(args.store)
     if store_id and args.mode == "managed":
@@ -157,6 +163,7 @@ def load_config(argv: Sequence[str] = ()) -> WorkbenchConfig:
         store_root=store_root,
         backend=args.backend,
         slots=args.slots,
+        tools_bundle=args.tools_bundle,
         otlp_endpoint=otlp_endpoint,
         telemetry=_resolve_telemetry(
             args.mode,

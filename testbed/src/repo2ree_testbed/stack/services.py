@@ -8,7 +8,9 @@ from typing import Literal
 
 from repo2ree_testbed.stack.docker import first_network, own_container
 
-type Mode = Literal["provider", "external"]
+# provider: each location is a Docker provider setting a workbench up per REE.
+# store: each location is a workbench serving a store of REEs, admitted with that store's token.
+type Mode = Literal["provider", "store"]
 type DockerMode = Literal["dind", "host-socket"]
 
 
@@ -55,8 +57,18 @@ def workbench_host() -> tuple[str, str]:
     return (container, network) if container and network else ("host.docker.internal", "")
 
 
+def store_id(index: int) -> str:
+    """The store compute location ``index`` serves, in store mode."""
+    return f"lab-{index}"
+
+
 def locations(
-    deployment: Deployment, api_url: str, control_state: Path, token: str, registry_mirror: str = ""
+    deployment: Deployment,
+    api_url: str,
+    control_state: Path,
+    token: str,
+    registry_mirror: str = "",
+    store_tokens: dict[int, str] | None = None,
 ) -> list[Service]:
     host, network = workbench_host()
     ws = "ws:" + api_url.removeprefix("http:")
@@ -85,15 +97,17 @@ def locations(
         else:
             state = control_state / f"workbench-{index}"
             service = Service(
-                "external workbench",
+                "store workbench",
                 "repo2ree-workbench",
                 "repo2ree_workbench",
                 {
                     "WORKBENCH_API_WS_URL": f"{ws}/workbench/connect",
                     "WORKBENCH_MODE": "external",
-                    "WORKBENCH_AUTH_TOKEN": token,
-                    "WORKBENCH_LOCATION_ID": f"lab-{index}",
-                    "WORKBENCH_ROOT": str(state / "root"),
+                    "WORKBENCH_AUTH_TOKEN": (store_tokens or {}).get(index, ""),
+                    "WORKBENCH_STORE": f"{store_id(index)}={state / 'store'}",
+                    "WORKBENCH_SLOTS": "2",
+                    "WORKBENCH_TOOLS_BUNDLE": str(deployment.tools_bundle),
+                    "WORKBENCH_LOCATION_ID": store_id(index),
                     "WORKBENCH_STATE_DIR": str(state),
                     "REPO2REE_EXEC_PATH": "repo2ree-exec",
                 },

@@ -19,6 +19,7 @@ artifact.
 from __future__ import annotations
 
 from repo2ree_core.author_recipes.inference.models import BindingKind, DecisionContext, RenderedScript
+from repo2ree_core.author_recipes.inference.naming import venv_build_dir
 from repo2ree_core.author_recipes.inference.renderers._common import (
     VENV_RUNTIME_ARTIFACT_SUFFIX,
     build_runtime_artifact_path,
@@ -28,17 +29,11 @@ from repo2ree_core.author_recipes.inference.renderers._common import (
 from repo2ree_core.author_recipes.inference.warnings import make_warning
 from repo2ree_protocol.command import ScriptTarget
 from repo2ree_protocol.inference import (
-    DEFAULT_VENV_RESTORE_DIR,
     CandidateDependency,
     InferenceEvidence,
     ProjectRootBinding,
     RequirementsProjectBinding,
 )
-
-# Where the venv is built inside the bench — deliberately outside the workspace
-# (see module docstring). Shared with the run scaffolds via one constant so the
-# build location and the restore location can never drift apart.
-_VENV_DIR = DEFAULT_VENV_RESTORE_DIR
 
 
 def _bindings(context: DecisionContext) -> tuple[ProjectRootBinding, RequirementsProjectBinding]:
@@ -62,6 +57,10 @@ class PipVenvBuildRenderer:
             requirements_path=requirements.requirements_path,
             runtime_artifact=runtime_artifact,
             digest=requirements.digest,
+            # Outside the workspace (see module docstring), and the REE's own: REEs built side
+            # by side on one machine must not share it. The run scaffolds restore it to the same
+            # place, read back from the built venv.
+            venv_dir=venv_build_dir(context.ree_name),
         )
 
         dependencies = [
@@ -105,6 +104,7 @@ def _render_body(
     requirements_path: str,
     runtime_artifact: str,
     digest: str,
+    venv_dir: str,
 ) -> str:
     return f"""#!/usr/bin/env sh
 set -eu
@@ -124,7 +124,7 @@ set -eu
 
 REQUIREMENTS={sh_quote(requirements_path)}
 RUNTIME_ARTIFACT={sh_quote(runtime_artifact)}
-VENV_DIR={sh_quote(_VENV_DIR)}
+VENV_DIR={sh_quote(venv_dir)}
 
 python -m venv "$VENV_DIR"
 "$VENV_DIR/bin/pip" install --no-cache-dir --requirement "$REQUIREMENTS"

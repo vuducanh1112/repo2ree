@@ -6,9 +6,10 @@ import threading
 from collections.abc import Mapping
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Protocol
+from pathlib import Path
+from typing import Literal, Protocol
 
-from pydantic import TypeAdapter, ValidationError
+from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
 
 from repo2ree_testbed.faults import (
     FAULT,
@@ -26,17 +27,48 @@ from repo2ree_testbed.faults import (
     UnlockHistory,
 )
 from repo2ree_testbed.stack.docker import networks
-from repo2ree_testbed.stack.process import capture, run
+from repo2ree_testbed.stack.process import capture, fetch_as, run
 
 OWNER_LABEL = "repo2ree.resource-owner"
 UNANSWERED = "ws://127.0.0.1:9/workbench/connect"
-# What git takes for another process updating the REE's history ref (core's HISTORY_REF).
-HISTORY_LOCK = "/ree/.git/refs/heads/ree-history.lock"
+# What git takes for another process updating the REE's history ref (core's HISTORY_REF), in an
+# REE's directory; a provider's bench mounts its one REE at /ree.
+HISTORY_LOCK_IN_REE = Path(".git/refs/heads/ree-history.lock")
+HISTORY_LOCK = f"/ree/{HISTORY_LOCK_IN_REE}"
+# What a fault does to the workbench serving an REE's store.
+type WorkbenchFault = Literal["kill", "pause", "resume", "partition", "heal", "lock_history", "unlock_history"]
+
+
+class _Request(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    allocation_id: str
+    ree_id: str
+
+
+class _Allocation(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    request: _Request
+
+
+_ALLOCATIONS = TypeAdapter(dict[str, list[_Allocation]])
 _LABELS = TypeAdapter[dict[str, str] | None](dict[str, str] | None)
 
 
 class FaultUnavailableError(RuntimeError):
     pass
+
+
+_STORE_ACTIONS: dict[str, WorkbenchFault] = {
+    "kill_workbench": "kill",
+    "pause_workbench": "pause",
+    "resume_workbench": "resume",
+    "partition_workbench": "partition",
+    "heal_workbench": "heal",
+    "lock_history": "lock_history",
+    "unlock_history": "unlock_history",
+}
 
 
 class Target(Protocol):
@@ -51,6 +83,11 @@ class Target(Protocol):
     def restart_locations(self, overrides: Mapping[str, str]) -> None: ...
 
     def stop_locations(self) -> None: ...
+
+    @property
+    def api_url(self) -> str: ...
+
+    def workbench_fault(self, ree_id: str, action: WorkbenchFault) -> None: ...
 
 
 class Injector:
@@ -99,9 +136,14 @@ class Injector:
             self.server.shutdown()
         self.server.server_close()
 
-    def container(self, allocation_id: str) -> str:
-        if not self.target.provider_managed:
-            raise FaultUnavailableError("workbench faults need provider-managed benches")
+    def container(self, ree_id: str) -> str:
+        """The bench a provider set up for ``ree_id``, as its allocation names it."""
+        listed = fetch_as(f"{self.target.api_url}/api/v1/allocations", _ALLOCATIONS, timeout=30) or {"allocations": []}
+        allocation_id = next(
+            (item.request.allocation_id for item in listed["allocations"] if item.request.ree_id == ree_id), None
+        )
+        if allocation_id is None:
+            raise FaultUnavailableError(f"{ree_id} has no allocation in this stack")
         name = f"repo2ree-wb-{allocation_id}"
         labels = _LABELS.validate_json(capture(["docker", "inspect", "-f", "{{json .Config.Labels}}", name]) or "null")
         if not labels or labels.get(OWNER_LABEL) != self.target.owner:
@@ -116,26 +158,29 @@ class Injector:
     def apply(self, fault: Fault) -> None:
         print(f">> injecting {fault.kind}")
         with self.lock:
+            if not self.target.provider_managed and (action := _STORE_ACTIONS.get(fault.kind)):
+                self.target.workbench_fault(fault.ree_id, action)  # type: ignore[union-attr]
+                return
             match fault:
-                case KillWorkbench(allocation_id=allocation):
+                case KillWorkbench(ree_id=allocation):
                     self.docker("kill", self.container(allocation))
-                case PauseWorkbench(allocation_id=allocation):
+                case PauseWorkbench(ree_id=allocation):
                     self.docker("pause", self.container(allocation))
-                case ResumeWorkbench(allocation_id=allocation):
+                case ResumeWorkbench(ree_id=allocation):
                     self.docker("unpause", self.container(allocation))
-                case PartitionWorkbench(allocation_id=allocation):
+                case PartitionWorkbench(ree_id=allocation):
                     name = self.container(allocation)
                     attached = tuple(networks(name))
                     for network in attached:
                         self.docker("network", "disconnect", network, name)
                     self.partitions[allocation] = attached
-                case HealWorkbench(allocation_id=allocation):
+                case HealWorkbench(ree_id=allocation):
                     name = self.container(allocation)
                     for network in self.partitions.pop(allocation, ()):
                         self.docker("network", "connect", network, name)
-                case LockHistory(allocation_id=allocation):
+                case LockHistory(ree_id=allocation):
                     self.docker("exec", self.container(allocation), "touch", HISTORY_LOCK)
-                case UnlockHistory(allocation_id=allocation):
+                case UnlockHistory(ree_id=allocation):
                     self.docker("exec", self.container(allocation), "rm", "-f", HISTORY_LOCK)
                 case CrashApi():
                     self.target.crash_api()

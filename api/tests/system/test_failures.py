@@ -10,7 +10,17 @@ from __future__ import annotations
 import time
 from collections.abc import Callable
 
-from system_client import BUILD_SCRIPT, EXPERIMENT, RUNTIME, Api, fault, recipe
+import pytest
+from system_client import (
+    BUILD_SCRIPT,
+    COMPUTE_MODE,
+    EXPERIMENT,
+    RECONNECT_BOUND,
+    RUNTIME,
+    Api,
+    fault,
+    recipe,
+)
 
 from repo2ree_testbed.faults import KillWorkbench
 
@@ -92,6 +102,7 @@ def test_canceling_a_running_build(api: Api, new_ree: Callable[..., str]) -> Non
     assert api.build(ree_id)["status"] == "succeeded"
 
 
+@pytest.mark.skipif(COMPUTE_MODE != "provider", reason="needs providers; this stack runs stores")
 def test_workbench_lost_during_a_build(api: Api, new_ree: Callable[..., str]) -> None:
     ree_id = new_ree()
     prepared(api, ree_id)
@@ -103,7 +114,7 @@ def test_workbench_lost_during_a_build(api: Api, new_ree: Callable[..., str]) ->
     run = api.post(f"/api/v1/rees/{ree_id}/build-runtime")
     api.wait_for_status(ree_id, run["run_id"], "running")
 
-    fault(KillWorkbench(allocation_id=allocation["request"]["allocation_id"]))
+    fault(KillWorkbench(ree_id=ree_id))
 
     settled = api.wait(ree_id, run, timeout=90)
     assert settled["status"] == "failed"
@@ -120,3 +131,26 @@ def test_workbench_lost_during_a_build(api: Api, new_ree: Callable[..., str]) ->
     # A lost bench is still released, though there is nothing left to tear down.
     api.request("DELETE", f"/api/v1/rees/{ree_id}")
     assert api.get(f"/api/v1/allocations/{allocation_id}")["state"] == "released"
+
+
+@pytest.mark.skipif(COMPUTE_MODE != "store", reason="needs stores; this stack runs providers")
+def test_a_store_outlives_its_workbench_killed_during_a_build(api: Api, new_ree: Callable[..., str]) -> None:
+    ree_id = new_ree()
+    prepared(api, ree_id)
+    api.patch(ree_id, {"build_runtime": {"runtime_path": RUNTIME}})
+    api.write(ree_id, BUILD_SCRIPT, SLOW_BUILD)
+    run = api.post(f"/api/v1/rees/{ree_id}/build-runtime")
+    api.wait_for_status(ree_id, run["run_id"], "running")
+
+    # Killed as a crash, and started again as its service manager would.
+    fault(KillWorkbench(ree_id=ree_id))
+
+    settled = api.wait(ree_id, run, timeout=90)
+    assert settled["status"] == "failed"
+    # The REE lives in the store, not in the workbench: it is there, as it was, once its workbench is back.
+    deadline = time.monotonic() + RECONNECT_BOUND
+    while (answer := api.request("GET", f"/api/v1/rees/{ree_id}", expect=None)).status_code == 503:
+        assert time.monotonic() < deadline, answer.text
+        time.sleep(1)
+    assert answer.status_code == 200, answer.text
+    assert api.audit(ree_id)["runtime"]["evidence"] == "missing"

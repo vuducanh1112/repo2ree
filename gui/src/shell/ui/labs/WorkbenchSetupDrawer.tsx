@@ -51,6 +51,8 @@ export function WorkbenchSetupDrawer({ lab, loadRequested }: WorkbenchSetupDrawe
   // An externally managed lab was provisioned outside this control plane, so
   // there is no image left to choose.
   const choosesImage = lab.lifecycleMode === "provider_managed";
+  // A store's workbench is already there and serves every REE in the store; the REE is kept there.
+  const inStore = lab.lifecycleMode === "store";
   const chosenRef = choosesImage ? resolveWorkbenchImage(imageSelection, lab.images) : "";
   // Custom picked but left blank would silently provision the lab default —
   // the one case where the button must wait for the author.
@@ -72,7 +74,9 @@ export function WorkbenchSetupDrawer({ lab, loadRequested }: WorkbenchSetupDrawe
         type: "out",
         msg: choosesImage
           ? `Image: ${chosenRef || "lab default"}`
-          : "Environment: operator managed",
+          : inStore
+            ? "Environment: the lab's own machine, until the REE declares another"
+            : "Environment: operator managed",
         ts: startedTs,
       },
       { type: "out", msg: `Location: ${lab.label}`, ts: startedTs },
@@ -83,7 +87,9 @@ export function WorkbenchSetupDrawer({ lab, loadRequested }: WorkbenchSetupDrawe
       // neutral default and let the user rename it there. Provisioning runs in
       // the background so the image pull streams live — observeReeRun tails the
       // run's log feed into this drawer until it finishes.
-      const { reeId, run } = await runsClient.createWorkspace("REE", lab.id, chosenRef);
+      const { reeId, run } = inStore
+        ? await runsClient.createWorkspace("REE", "", "", lab.id)
+        : await runsClient.createWorkspace("REE", lab.id, chosenRef);
       const result = await observeReeRun(queryClient, runsClient, {
         reeId,
         runId: run.runId,

@@ -40,6 +40,8 @@ LIGHTWEIGHT_IMAGE = os.environ.get(
 # A bench with its own Docker daemon: the provider's default image.
 DIND_IMAGE = os.environ.get("DIND_IMAGE", DEFAULT_IMAGE)
 TERMINAL = frozenset({"succeeded", "failed", "canceled"})
+# The compute the stack runs: providers setting a bench up per REE, or workbenches serving stores.
+COMPUTE_MODE = os.environ.get("E2E_COMPUTE_MODE", "provider")
 
 
 @dataclass(frozen=True)
@@ -192,6 +194,11 @@ class Api:
 
     # ---- REE lifecycle ------------------------------------------------------
 
+    def store(self) -> str | None:
+        """The first store a workbench serves now, when the stack runs stores."""
+        served = [store["store_id"] for store in self.get("/api/v1/stores")["stores"] if store["connected"]]
+        return str(served[0]) if served else None
+
     def location(self) -> str:
         locations = self.get("/api/v1/compute-locations")["locations"]
         if not locations:
@@ -199,7 +206,14 @@ class Api:
         return str(locations[0]["id"])
 
     def create(self, name: str, *, image: str = LIGHTWEIGHT_IMAGE, location: str | None = None) -> str:
-        created = self.post("/api/v1/rees", {"name": name, "location_id": location or self.location(), "image": image})
+        """A new REE: in a store when the stack runs stores (its host is what the scripts run in), else on
+        a bench the location sets up from ``image``."""
+        if COMPUTE_MODE == "store":
+            created = self.post("/api/v1/rees", {"name": name, "store_id": location or self.store()})
+        else:
+            created = self.post(
+                "/api/v1/rees", {"name": name, "location_id": location or self.location(), "image": image}
+            )
         ree_id = str(created["ree_id"])
         provisioned = self.wait(ree_id, created, watch=NETWORK_RUN)
         if provisioned["status"] != "succeeded":

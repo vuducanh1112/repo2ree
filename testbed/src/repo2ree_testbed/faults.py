@@ -1,4 +1,8 @@
-"""Faults a test asks its stack to inject, by real means, at the step it chooses."""
+"""Faults a test asks its stack to inject, by real means, at the step it chooses.
+
+A workbench fault names the REE whose workbench it hits: the bench a provider set up for it, or
+the workbench serving its store.
+"""
 
 from __future__ import annotations
 
@@ -15,39 +19,39 @@ FAULTS_URL = "E2E_FAULTS_URL"
 
 class KillWorkbench(Record):
     kind: Literal["kill_workbench"] = "kill_workbench"
-    allocation_id: str
+    ree_id: str
 
 
 class PauseWorkbench(Record):
     kind: Literal["pause_workbench"] = "pause_workbench"
-    allocation_id: str
+    ree_id: str
 
 
 class ResumeWorkbench(Record):
     kind: Literal["resume_workbench"] = "resume_workbench"
-    allocation_id: str
+    ree_id: str
 
 
 class PartitionWorkbench(Record):
     kind: Literal["partition_workbench"] = "partition_workbench"
-    allocation_id: str
+    ree_id: str
 
 
 class HealWorkbench(Record):
     kind: Literal["heal_workbench"] = "heal_workbench"
-    allocation_id: str
+    ree_id: str
 
 
 class LockHistory(Record):
     """A stale lock on the REE's history ref, as a crashed git process leaves one: no attempt can publish."""
 
     kind: Literal["lock_history"] = "lock_history"
-    allocation_id: str
+    ree_id: str
 
 
 class UnlockHistory(Record):
     kind: Literal["unlock_history"] = "unlock_history"
-    allocation_id: str
+    ree_id: str
 
 
 class CrashApi(Record):

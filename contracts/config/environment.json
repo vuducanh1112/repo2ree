@@ -345,6 +345,19 @@
           ],
           "default": null,
           "title": "Workbench Telemetry"
+        },
+        "WORKBENCH_TOOLS_BUNDLE": {
+          "anyOf": [
+            {
+              "format": "path",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Workbench Tools Bundle"
         }
       },
       "title": "WorkbenchEnvironment",
@@ -1287,6 +1300,23 @@
         ],
         "default": null,
         "title": "Workbench Telemetry"
+      }
+    },
+    "WORKBENCH_TOOLS_BUNDLE": {
+      "kind": "runtime",
+      "owner": "workbench",
+      "schema": {
+        "anyOf": [
+          {
+            "format": "path",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Workbench Tools Bundle"
       }
     }
   },

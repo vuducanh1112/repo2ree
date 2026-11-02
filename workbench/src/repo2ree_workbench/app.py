@@ -14,6 +14,7 @@ from repo2ree_workbench.config import load_config
 from repo2ree_workbench.connection import SpanRelay, run_workbench
 from repo2ree_workbench.executor_process import LocalExecutor
 from repo2ree_workbench.service import WorkbenchService
+from repo2ree_workbench.tools import tool_environment
 
 
 def main(argv: Sequence[str] = ()) -> None:
@@ -42,7 +43,12 @@ def main(argv: Sequence[str] = ()) -> None:
         )
     meter_provider = setup_metrics("repo2ree-workbench", endpoint=config.otlp_endpoint, instance_id=config.workbench_id)
     store = config.store_root is not None
-    executor = LocalExecutor(config.store_root or config.root, config.exec_path, store=store)
+    executor = LocalExecutor(
+        config.store_root or config.root,
+        config.exec_path,
+        store=store,
+        environment=tool_environment(config.tools_bundle),
+    )
     service = WorkbenchService(executor, store_id=config.store_id, slots=config.slots)
     try:
         asyncio.run(

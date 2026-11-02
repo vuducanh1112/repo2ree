@@ -10,7 +10,8 @@ import time
 from collections.abc import Callable
 from typing import Any
 
-from system_client import BUILD_SCRIPT, LIGHTWEIGHT_IMAGE, RUNTIME, TERMINAL, Api, fault
+import pytest
+from system_client import BUILD_SCRIPT, COMPUTE_MODE, LIGHTWEIGHT_IMAGE, RUNTIME, TERMINAL, Api, fault
 
 from repo2ree_testbed.faults import (
     CrashApi,
@@ -27,11 +28,6 @@ from repo2ree_testbed.faults import (
 
 SLOW_BUILD = "#!/usr/bin/env sh\nset -eu\necho 'building slowly'\nsleep 120\n"
 NO_SUCH_IMAGE = "docker.io/library/repo2ree-no-such-image:never"
-
-
-def allocation(api: Api, ree_id: str) -> str:
-    allocations = api.get("/api/v1/allocations")["allocations"]
-    return str(next(item for item in allocations if item["request"]["ree_id"] == ree_id)["request"]["allocation_id"])
 
 
 def slow_build(api: Api, ree_id: str) -> dict[str, Any]:
@@ -114,43 +110,41 @@ def test_an_api_crash_fails_the_build_in_flight_and_the_ree_builds_after(api: Ap
 def test_a_paused_workbench_does_not_leave_its_build_running(api: Api, new_ree: Callable[..., str]) -> None:
     ree_id = new_ree()
     run = slow_build(api, ree_id)
-    bench = allocation(api, ree_id)
 
-    fault(PauseWorkbench(allocation_id=bench))
+    fault(PauseWorkbench(ree_id=ree_id))
     try:
         settled = api.wait(ree_id, run, timeout=90)
     finally:
-        fault(ResumeWorkbench(allocation_id=bench))
+        fault(ResumeWorkbench(ree_id=ree_id))
     assert settled["status"] in TERMINAL - {"succeeded"}
 
 
 def test_a_partitioned_workbench_fails_its_build(api: Api, new_ree: Callable[..., str]) -> None:
     ree_id = new_ree()
     run = slow_build(api, ree_id)
-    bench = allocation(api, ree_id)
 
-    fault(PartitionWorkbench(allocation_id=bench))
+    fault(PartitionWorkbench(ree_id=ree_id))
     try:
         settled = api.wait(ree_id, run, timeout=90)
     finally:
-        fault(HealWorkbench(allocation_id=bench))
+        fault(HealWorkbench(ree_id=ree_id))
     assert settled["status"] == "failed"
 
 
 def test_a_command_for_a_bench_that_lost_its_connection_is_refused(api: Api, new_ree: Callable[..., str]) -> None:
     ree_id = new_ree()
-    bench = allocation(api, ree_id)
 
     # The control plane must already know the bench is gone, so the command is sent to no one.
-    fault(PartitionWorkbench(allocation_id=bench))
+    fault(PartitionWorkbench(ree_id=ree_id))
     try:
         assert disconnected(api, ree_id), "the control plane still lists the partitioned workbench"
         answer = api.write(ree_id, "notes.txt", "written while the bench is away\n", expect=None)
     finally:
-        fault(HealWorkbench(allocation_id=bench))
+        fault(HealWorkbench(ree_id=ree_id))
     assert answer.status_code == 503, answer.text
 
 
+@pytest.mark.skipif(COMPUTE_MODE != "provider", reason="needs providers; this stack runs stores")
 def test_provisioning_an_image_nobody_has_fails(api: Api) -> None:
     provisioned = provision(api, NO_SUCH_IMAGE)
     api.release(str(provisioned["ree_id"]))
@@ -159,6 +153,7 @@ def test_provisioning_an_image_nobody_has_fails(api: Api) -> None:
     assert all(item["state"] != "assigned" for item in api.get("/api/v1/allocations")["allocations"])
 
 
+@pytest.mark.skipif(COMPUTE_MODE != "provider", reason="needs providers; this stack runs stores")
 def test_a_bench_that_cannot_call_home_fails_provisioning_and_the_next_one_works(
     api: Api, new_ree: Callable[..., str]
 ) -> None:
@@ -173,6 +168,7 @@ def test_a_bench_that_cannot_call_home_fails_provisioning_and_the_next_one_works
     assert new_ree()
 
 
+@pytest.mark.skipif(COMPUTE_MODE != "provider", reason="needs providers; this stack runs stores")
 def test_an_api_restarted_while_a_bench_is_set_up_fails_its_allocation_and_releasing_settles_it(api: Api) -> None:
     fault(MisdirectProviders())
     try:
@@ -189,6 +185,7 @@ def test_an_api_restarted_while_a_bench_is_set_up_fails_its_allocation_and_relea
     assert allocation_record(api, allocation_id)["state"] == "released"
 
 
+@pytest.mark.skipif(COMPUTE_MODE != "provider", reason="needs providers; this stack runs stores")
 def test_a_bench_its_provider_cannot_release_stays_failed_until_released_again(api: Api) -> None:
     fault(MisdirectProviders())
     try:
@@ -219,15 +216,14 @@ def test_a_build_whose_capture_fails_leaves_nothing_behind_and_the_ree_builds_af
     api.write(ree_id, BUILD_SCRIPT, f"{shebang}\nsleep 20\n{body}")
     run: dict[str, Any] = api.post(f"/api/v1/rees/{ree_id}/build-runtime")
     api.wait_for_status(ree_id, run["run_id"], "running")
-    bench = allocation(api, ree_id)
 
-    fault(LockHistory(allocation_id=bench))
+    fault(LockHistory(ree_id=ree_id))
     try:
         settled = api.wait(ree_id, run, timeout=120)
         # An edit meanwhile cannot be recorded either, and is not kept.
         refused = api.write(ree_id, "notes.txt", "written while the history is locked\n", expect=None)
     finally:
-        fault(UnlockHistory(allocation_id=bench))
+        fault(UnlockHistory(ree_id=ree_id))
 
     # The author is told the build failed, and the REE shows nothing of it: no runtime evidence.
     assert settled["status"] == "failed", settled

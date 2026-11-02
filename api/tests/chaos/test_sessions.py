@@ -94,9 +94,12 @@ class Session:
         self.call("PATCH", self.ree("definition"), json={"definition_patch": patch})
 
     def bench(self) -> str | None:
+        """The REE whose workbench a fault can hit now: its bench is assigned, or its store answers."""
         allocations = self.call("GET", "/api/v1/allocations").json()["allocations"]
         found = [item for item in allocations if item["request"]["ree_id"] == self.ree_id]
-        return str(found[0]["request"]["allocation_id"]) if found and found[0]["state"] == "assigned" else None
+        if found:
+            return self.ree_id if found[0]["state"] == "assigned" else None
+        return self.ree_id if self.call("GET", f"/api/v1/rees/{self.ree_id}").status_code == 200 else None
 
     # ---- authoring --------------------------------------------------------------
 
@@ -163,7 +166,7 @@ class Session:
         bench = self.bench()
         if bench is None:
             return "no bench"
-        fault(KillWorkbench(allocation_id=bench))
+        fault(KillWorkbench(ree_id=bench))
         self.dead = True
         return "injected"
 
@@ -194,15 +197,11 @@ class Session:
             "download": (1, self.download),
             "pause": (
                 1,
-                lambda: self.interrupt(
-                    lambda b: PauseWorkbench(allocation_id=b), lambda b: ResumeWorkbench(allocation_id=b)
-                ),
+                lambda: self.interrupt(lambda b: PauseWorkbench(ree_id=b), lambda b: ResumeWorkbench(ree_id=b)),
             ),
             "partition": (
                 1,
-                lambda: self.interrupt(
-                    lambda b: PartitionWorkbench(allocation_id=b), lambda b: HealWorkbench(allocation_id=b)
-                ),
+                lambda: self.interrupt(lambda b: PartitionWorkbench(ree_id=b), lambda b: HealWorkbench(ree_id=b)),
             ),
             "kill": (1, self.kill),
             "crash api": (1, self.crash_api),

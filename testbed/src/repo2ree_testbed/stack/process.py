@@ -76,9 +76,18 @@ def free_port() -> int:
         return int(probe.getsockname()[1])
 
 
-def fetch_json(url: str) -> JsonValue:
+def fetch_as[T](url: str, shape: TypeAdapter[T], timeout: float = 1) -> T | None:
+    """The document at ``url`` read as ``shape``; None when it cannot be fetched or has another shape."""
+    document = fetch_json(url, timeout)
     try:
-        with urllib.request.urlopen(url, timeout=1) as response:  # noqa: S310 - a stack this process owns
+        return shape.validate_python(document) if document is not None else None
+    except ValidationError:
+        return None
+
+
+def fetch_json(url: str, timeout: float = 1) -> JsonValue:
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as response:  # noqa: S310 - a stack this process owns
             return _JSON.validate_python(json.load(response))
     except (OSError, ValueError, urllib.error.URLError, ValidationError):
         return None

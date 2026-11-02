@@ -13,6 +13,7 @@ import pytest
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import ResultFrame
 from repo2ree_workbench.executor_process import LocalExecutor
+from repo2ree_workbench.tools import tool_environment
 
 
 def test_local_executor_passes_explicit_context_over_process_boundary(tmp_path):
@@ -111,12 +112,12 @@ def test_a_store_runs_each_command_against_the_ree_it_names(fake_executor: Path,
 def test_a_store_deletes_an_ree_only_when_none_of_its_runs_is_active(fake_executor: Path, tmp_path: Path) -> None:
     executor = LocalExecutor(tmp_path / "store", str(fake_executor), store=True)
     (tmp_path / "store" / "ree-1" / "workspace").mkdir(parents=True)
-    executor._runs["run-1"] = (subprocess.Popen(["sleep", "5"], text=True), executor.ree_root("ree-1"))
+    executor._runs[(executor.ree_root("ree-1"), "run-1")] = subprocess.Popen(["sleep", "5"], text=True)
     try:
         with pytest.raises(RuntimeError, match="in progress"):
             executor.delete_ree("ree-1")
     finally:
-        executor._runs.pop("run-1")[0].kill()
+        executor._runs.pop((executor.ree_root("ree-1"), "run-1")).kill()
 
     executor.delete_ree("ree-1")
     executor.delete_ree("ree-2")  # Nothing there is nothing to delete.
@@ -151,7 +152,7 @@ def cancel_while_running(executor: LocalExecutor) -> tuple[list[object], float]:
     frames: list[object] = []
     running = threading.Thread(target=lambda: frames.extend(executor.exec_action("{}", "run-1", {})))
     running.start()
-    while "run-1" not in executor._runs:
+    while (executor.root, "run-1") not in executor._runs:
         time.sleep(0.01)
     started = time.monotonic()
     executor.cancel_run("run-1")
@@ -173,3 +174,40 @@ def test_cancel_lets_the_executor_stop_itself_and_forces_only_one_that_does_not(
         assert result.result.status == "failed"  # Killed: it could not report.
     else:
         assert result.result.status == "canceled"
+
+
+def test_the_tools_a_bundle_names_reach_every_executor(fake_executor: Path, tmp_path: Path) -> None:
+    bundle = tmp_path / "tools"
+    bundle.mkdir()
+    (bundle / "manifest.json").write_text(
+        json.dumps({"tools": {"git-lfs": "/nix/store/x/bin/git-lfs"}, "bin_dir": "/nix/store/y/bin", "env": {"A": "1"}})
+    )
+    executor = LocalExecutor(tmp_path / "root", str(fake_executor), environment=tool_environment(bundle))
+
+    observed = executor._environment(executor.root)
+
+    assert observed["REPO2REE_TOOL_GIT_LFS"] == "/nix/store/x/bin/git-lfs"
+    assert observed["REPO2REE_TOOLS_BIN"] == "/nix/store/y/bin"
+    assert observed["A"] == "1"
+    assert tool_environment(None) == {}
+
+
+def test_two_rees_in_a_store_run_the_same_run_id_side_by_side(tmp_path: Path) -> None:
+    # The API's quick commands share fixed run ids (patch-definition); a run id names a run within one REE.
+    executor = LocalExecutor(tmp_path / "store", str(cancellable_executor(tmp_path, "cooperative")), store=True)
+    for ree_id in ("ree-1", "ree-2"):
+        executor.ree_root(ree_id).mkdir(parents=True)
+    threads = [
+        threading.Thread(target=lambda ree_id=ree_id: list(executor.exec_action("{}", "patch", {}, ree_id=ree_id)))
+        for ree_id in ("ree-1", "ree-2")
+    ]
+    for thread in threads:
+        thread.start()
+    deadline = time.monotonic() + 5
+    while len(executor._runs) < 2 and time.monotonic() < deadline:
+        time.sleep(0.01)
+
+    assert set(executor._runs) == {(executor.ree_root("ree-1"), "patch"), (executor.ree_root("ree-2"), "patch")}
+    (tmp_path / "marker").touch()
+    for thread in threads:
+        thread.join(timeout=5)

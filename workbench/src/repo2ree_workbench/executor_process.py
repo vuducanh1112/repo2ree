@@ -50,16 +50,20 @@ class LocalExecutor:
         exec_path: str = "repo2ree-exec",
         *,
         store: bool = False,
+        environment: dict[str, str] | None = None,
         cancel_grace: float = CANCEL_GRACE_SECONDS,
         cancel_kill: float = CANCEL_KILL_SECONDS,
     ) -> None:
         self.root = root.resolve()
         self.exec_path = exec_path
         self.store = store
+        # What every executor is started with besides this process's own environment (the tools).
+        self.environment = environment or {}
         self.cancel_grace = cancel_grace
         self.cancel_kill = cancel_kill
-        # Each active run, with the REE root it runs against: a cancel is marked there.
-        self._runs: dict[str, tuple[subprocess.Popen[str], Path]] = {}
+        # Each active run, by the REE root it runs against and its run id: a run id names a run
+        # within one REE only, and a store serves many (the API's quick commands share fixed ids).
+        self._runs: dict[tuple[Path, str], subprocess.Popen[str]] = {}
         self._runs_lock = threading.Lock()
 
     def ree_root(self, ree_id: str | None) -> Path:
@@ -73,7 +77,7 @@ class LocalExecutor:
     def is_running(self, ree_id: str) -> bool:
         root = self.ree_root(ree_id)
         with self._runs_lock:
-            return any(run_root == root for _, run_root in self._runs.values())
+            return any(run_root == root for run_root, _ in self._runs)
 
     def delete_ree(self, ree_id: str) -> None:
         """Remove an REE's directory from the store; refused while one of its runs is active."""
@@ -86,7 +90,7 @@ class LocalExecutor:
             shutil.rmtree(root)
 
     def _environment(self, root: Path, extra: dict[str, str] | None = None) -> dict[str, str]:
-        environment = dict(os.environ)
+        environment = {**os.environ, **self.environment}
         environment["REPO2REE_WORKBENCH_ROOT"] = str(root)
         environment.update(extra or {})
         if traceparent := current_traceparent():
@@ -191,10 +195,10 @@ class LocalExecutor:
             raise RuntimeError("executor pipes unavailable")
         stdout = proc.stdout
         with self._runs_lock:
-            if run_id in self._runs:
+            if (root, run_id) in self._runs:
                 proc.kill()
                 raise RuntimeError(f"run {run_id!r} is already active")
-            self._runs[run_id] = (proc, root)
+            self._runs[(root, run_id)] = proc
         try:
             proc.stdin.write(cmd_json)
             proc.stdin.close()
@@ -211,7 +215,7 @@ class LocalExecutor:
             )
         finally:
             with self._runs_lock:
-                self._runs.pop(run_id, None)
+                self._runs.pop((root, run_id), None)
 
     def cancel_run(self, run_id: str, *, ree_id: str | None = None) -> None:
         """Ask the run's executor to stop, and only force it if it does not.
@@ -221,11 +225,11 @@ class LocalExecutor:
         attempt mid-execution, or mid-capture. An executor still running after the grace
         period is signalled (SIGTERM, which it treats as a cancel too), then killed.
         """
+        # The marker goes where the run reads it: its REE's root.
+        root = self.ree_root(ree_id)
+        self._run_simple(root, ["cancel-run", "--run-id", run_id], 10)
         with self._runs_lock:
-            active = self._runs.get(run_id)
-        # The marker goes where the run reads it: its REE's root, known from the run once it started.
-        self._run_simple(active[1] if active else self.ree_root(ree_id), ["cancel-run", "--run-id", run_id], 10)
-        proc = active[0] if active else None
+            proc = self._runs.get((root, run_id))
         if proc is not None and proc.poll() is None:
             threading.Thread(target=self._escalate, args=(proc,), name=f"cancel-{run_id}", daemon=True).start()
 

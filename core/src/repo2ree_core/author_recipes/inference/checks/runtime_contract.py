@@ -23,9 +23,9 @@ from repo2ree_core.author_recipes.inference.artifact_inspection import (
 )
 from repo2ree_core.author_recipes.inference.build_regeneration import expected_builds_for_runtime
 from repo2ree_core.author_recipes.inference.models import BindingKind, CheckResult, DecisionContext
+from repo2ree_core.author_recipes.inference.naming import venv_build_dir
 from repo2ree_core.author_recipes.inference.warnings import make_warning
 from repo2ree_protocol.inference import (
-    DEFAULT_VENV_RESTORE_DIR,
     DockerRuntimeContract,
     ImageCommandBinding,
     ProjectRootBinding,
@@ -144,7 +144,7 @@ class RuntimeArtifactInspectionCheck:
             assumed = inspection.restore_dir is None
             venv_contract = VenvRuntimeContract(
                 artifact_path=declaration.path,
-                venv_restore_dir=inspection.restore_dir or DEFAULT_VENV_RESTORE_DIR,
+                venv_restore_dir=inspection.restore_dir or venv_build_dir(context.ree_name),
             )
             return CheckResult(
                 branch="venv",

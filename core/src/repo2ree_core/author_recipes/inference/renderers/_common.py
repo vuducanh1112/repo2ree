@@ -13,9 +13,10 @@ seeded script on an REE whose runtime is not yet declared.
 
 from __future__ import annotations
 
-import re
 import shlex
 from pathlib import PurePosixPath
+
+from repo2ree_core.author_recipes.inference.naming import ree_name_slug
 
 # Per-strategy fallback artifact names, used only when the REE declares no
 # runtime path. Both live beneath the reserved control directory under the
@@ -80,22 +81,4 @@ def runtime_image_ref(ree_name: str) -> str:
     name is slugified to a valid Docker tag component; an empty or unusable name
     falls back to ``ree``.
     """
-    return f"ree-runtime:{_slugify_ree_name(ree_name)}"
-
-
-# A well-formed Docker tag component: leading alphanumeric/underscore, then up
-# to 127 more of the same plus dot and dash.
-_DOCKER_TAG = re.compile(r"[a-z0-9_][a-z0-9_.-]{0,127}")
-
-
-def _slugify_ree_name(name: str) -> str:
-    # Docker tag components are `[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}`. Lowercase,
-    # fold every other run to a dash, then trim leading/trailing separators so
-    # the first character is always alphanumeric or underscore.
-    slug = re.sub(r"[^a-z0-9_.-]+", "-", name.strip().lower()).strip("-.")
-    slug = slug[:128] or "ree"
-    # Postcondition: whatever the input, the result is a valid tag component —
-    # this is the one guarantee downstream `docker build --tag` relies on.
-    if not _DOCKER_TAG.fullmatch(slug):
-        raise AssertionError(f"slugified REE name is not a valid Docker tag component: {slug!r}")
-    return slug
+    return f"ree-runtime:{ree_name_slug(ree_name)}"

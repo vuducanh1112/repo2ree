@@ -15,12 +15,14 @@ export interface ReeRunsClient {
    *
    * ``locationId`` names the lab the bench is built at. ``image`` is the base
    * image ref to build it from — a ref from that lab's catalog, or any ref the
-   * lab accepts; blank falls back to the lab's first catalog entry.
+   * lab accepts; blank falls back to the lab's first catalog entry. ``storeId``
+   * instead names a store to create the REE in; its workbench serves it.
    */
   createWorkspace(
     name?: string,
     locationId?: string,
     image?: string,
+    storeId?: string,
   ): Promise<{ reeId: string; run: ReeRun }>;
   /**
    * Make an REE be a downloaded REE bundle — the counterpart of the ree-archive
@@ -54,13 +56,13 @@ export interface ReeRunsClient {
 
 export function createReeRunsClient(runtime: ReeRuntimeValue): ReeRunsClient {
   return {
-    async createWorkspace(name = "REE", locationId = "", image = "") {
+    async createWorkspace(name = "REE", locationId = "", image = "", storeId = "") {
+      // An REE is created in a store, or on a workbench a location sets up for it alone.
       const run = await runtime.reeApi.createRee({
         name,
-        // A workbench a location sets up for this REE alone; REEs in stores come next.
-        store_id: "",
-        location_id: locationId.trim(),
-        image: image.trim(),
+        store_id: storeId.trim(),
+        location_id: storeId.trim() ? "" : locationId.trim(),
+        image: storeId.trim() ? "" : image.trim(),
       });
       return { reeId: run.ree_id, run: mapRun(run) };
     },

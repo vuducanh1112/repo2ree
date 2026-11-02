@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -11,10 +12,12 @@ import threading
 import time
 import uuid
 from collections.abc import Iterator, Mapping, Sequence
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from pathlib import Path
 from typing import BinaryIO
+
+from pydantic import BaseModel, ConfigDict, TypeAdapter
 
 from repo2ree_testbed.artifacts import ROOT, run_dir, write_provenance
 from repo2ree_testbed.faults import FAULTS_URL
@@ -22,10 +25,16 @@ from repo2ree_testbed.python_coverage import CoverageRoot, render
 from repo2ree_testbed.records import DossierManifest, read
 from repo2ree_testbed.stack import mirror as registry_mirror
 from repo2ree_testbed.stack.clients import Client, Launch, Started
-from repo2ree_testbed.stack.injector import Injector
+from repo2ree_testbed.stack.injector import (
+    HISTORY_LOCK_IN_REE,
+    FaultUnavailableError,
+    Injector,
+    WorkbenchFault,
+)
 from repo2ree_testbed.stack.origins import Origins
-from repo2ree_testbed.stack.process import listed, reachable, terminate, wait_until
-from repo2ree_testbed.stack.services import Deployment, backend_environment, locations, workbench_host
+from repo2ree_testbed.stack.process import fetch_as, listed, reachable, terminate, wait_until
+from repo2ree_testbed.stack.relay import Relay
+from repo2ree_testbed.stack.services import Deployment, backend_environment, locations, store_id, workbench_host
 from repo2ree_testbed.stack.workbench_cleanup import cleanup, save_bench_logs
 
 
@@ -67,6 +76,16 @@ class Layout:
         return manifest.rees() if manifest else ()
 
 
+class _ReeListed(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    ree_id: str
+    location_id: str
+
+
+_REES = TypeAdapter(dict[str, list[_ReeListed]])
+
+
 class E2EStack:
     def __init__(
         self,
@@ -100,6 +119,10 @@ class E2EStack:
         self.port: int | None = None
         self.backend: subprocess.Popen[bytes] | None = None
         self.locations: list[subprocess.Popen[bytes]] = []
+        # How each location was started, so one can be started again on its own (a killed workbench).
+        self.launches: list[tuple[list[str], dict[str, str], Path]] = []
+        # In store mode, the relay each store's workbench reaches the API through.
+        self.relays: dict[int, Relay] = {}
         self.restarting = threading.RLock()
         self.injector = Injector(self)
         self.origins = Origins(self.control_state / "origins", workbench_host()[0])
@@ -209,23 +232,29 @@ class E2EStack:
 
     def start_locations(self, overrides: Mapping[str, str] | None = None) -> None:
         mirror = registry_mirror.ensure() if self.provider_managed else ""
-        services = locations(self.deployment, self.api_url, self.control_state, self.layout.run_token, mirror)
+        tokens = {} if self.provider_managed else self.store_tokens()
+        services = locations(
+            self.deployment, self.api_url, self.control_state, self.layout.run_token, mirror, store_tokens=tokens
+        )
+        self.launches = []
         for index, service in enumerate(services, start=1):
             environment = {**service.environment, **(overrides or {})}
+            if not self.provider_managed:
+                relay = self.relays.get(index) or Relay("127.0.0.1", self.port or 0)
+                self.relays[index] = relay
+                environment["WORKBENCH_API_WS_URL"] = f"ws://127.0.0.1:{relay.port}/workbench/connect"
             if self.layout.telemetry is not None:
                 environment["TRACE_FILE"] = str(self.layout.telemetry / f"location-{index}.ndjson")
             log = self.workbench_log(index)
             print(f">> starting {service.label} {index}/{len(services)} (log: {log})")
             command = ["uv", "run", "--package", service.package, "coverage", "run", "--parallel-mode"]
-            self.locations.append(
-                subprocess.Popen(
-                    [*command, "-m", service.module],
-                    cwd=ROOT,
-                    env={**self.environment, **environment, "COVERAGE_FILE": str(self.coverage_file)},
-                    stdout=self.log(log),
-                    stderr=subprocess.STDOUT,
-                )
+            launch = (
+                [*command, "-m", service.module],
+                {**self.environment, **environment, "COVERAGE_FILE": str(self.coverage_file)},
+                log,
             )
+            self.launches.append(launch)
+            self.locations.append(self.launch(*launch))
 
         def ready() -> bool:
             if any(process.poll() is not None for process in self.locations):
@@ -233,6 +262,77 @@ class E2EStack:
             return listed(self.registry_url(), self.registry_key()) >= len(services)
 
         wait_until(f"{len(services)} {self.deployment.mode} service(s)", ready)
+
+    def launch(self, command: list[str], environment: dict[str, str], log: Path) -> subprocess.Popen[bytes]:
+        # A process group of its own, so a fault reaches the workbench and whatever it runs.
+        return subprocess.Popen(
+            command, cwd=ROOT, env=environment, stdout=self.log(log), stderr=subprocess.STDOUT, start_new_session=True
+        )
+
+    def store_location(self, ree_id: str) -> int:
+        """The compute location serving ``ree_id``'s store, as the API lists the REE."""
+        listed = fetch_as(f"{self.api_url}/api/v1/rees", _REES, timeout=30) or {"items": []}
+        store = next((item.location_id for item in listed["items"] if item.ree_id == ree_id), None)
+        for index in range(1, self.deployment.compute_locations + 1):
+            if store == store_id(index):
+                return index
+        raise FaultUnavailableError(f"{ree_id} is not an REE in a store of this stack")
+
+    def workbench_fault(self, ree_id: str, action: WorkbenchFault) -> None:
+        """Inject ``action`` on the workbench serving ``ree_id``'s store."""
+        index = self.store_location(ree_id)
+        with self.restarting:
+            process = self.locations[index - 1]
+            match action:
+                case "kill":
+                    # As a crash its service manager notices: the workbench is killed and started again.
+                    with suppress(ProcessLookupError):
+                        os.killpg(process.pid, signal.SIGKILL)
+                    process.wait()
+                    self.locations[index - 1] = self.launch(*self.launches[index - 1])
+                case "pause":
+                    os.killpg(process.pid, signal.SIGSTOP)
+                case "resume":
+                    os.killpg(process.pid, signal.SIGCONT)
+                case "partition":
+                    self.relays[index].partition()
+                case "heal":
+                    self.relays[index].heal()
+                case "lock_history" | "unlock_history":
+                    lock = self.control_state / f"workbench-{index}" / "store" / ree_id / HISTORY_LOCK_IN_REE
+                    if action == "lock_history":
+                        lock.touch()
+                    else:
+                        lock.unlink(missing_ok=True)
+
+    def store_tokens(self) -> dict[int, str]:
+        """Register each location's store, once, and mint a token for its workbench, each start.
+
+        As an operator would, with the API's own command on the API's state: the stack drives
+        the product from outside, never by importing it.
+        """
+        environment = {**self.environment, "CONTROL_STATE_DIR": str(self.control_state)}
+
+        def admin(*args: str) -> subprocess.CompletedProcess[str]:
+            return subprocess.run(
+                [sys.executable, "-m", "repo2ree_api.store_admin", *args],
+                cwd=ROOT,
+                env=environment,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+        tokens: dict[int, str] = {}
+        for index in range(1, self.deployment.compute_locations + 1):
+            added = admin("add", store_id(index), "--label", f"Lab {index}")
+            if added.returncode not in {0, 2}:  # 2: registered by an earlier start already
+                raise RuntimeError(f"could not register store {store_id(index)}: {added.stderr.strip()}")
+            minted = admin("token", store_id(index))
+            if minted.returncode != 0:
+                raise RuntimeError(f"could not mint a token for store {store_id(index)}: {minted.stderr.strip()}")
+            tokens[index] = minted.stdout.strip()
+        return tokens
 
     def failed_process(self) -> subprocess.Popen[bytes] | None:
         if not self.restarting.acquire(blocking=False):
@@ -248,7 +348,13 @@ class E2EStack:
         launch = Launch(self.layout.output, log, self.layout.test)
         self.injector.start()
         served = self.origins.start(self.layout.logs / "origins.log")
-        environment = {**self.environment, **served.environment(), FAULTS_URL: self.injector.url}
+        environment = {
+            **self.environment,
+            **served.environment(),
+            FAULTS_URL: self.injector.url,
+            # Which compute the stack runs, for tests of one kind only (a provider's).
+            "E2E_COMPUTE_MODE": self.deployment.mode,
+        }
         running = self.client.start(self.api_url, environment, self.selection, launch)
         self.running = running
         while (status := running.poll()) is None:
@@ -279,8 +385,12 @@ class E2EStack:
                 self.collect_live()
         with self.phase("shutdown"):
             for process in self.locations:
+                with suppress(ProcessLookupError):
+                    os.killpg(process.pid, signal.SIGCONT)  # A paused workbench cannot stop.
                 terminate(process)
             terminate(self.backend)
+            for relay in self.relays.values():
+                relay.close()
         if self.api_url:
             with self.phase("export"):
                 exported = self.collect_stopped()

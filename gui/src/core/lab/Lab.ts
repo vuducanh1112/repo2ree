@@ -8,7 +8,11 @@ export interface Lab {
   id: string;
   label: string;
   description: string;
-  lifecycleMode: "provider_managed" | "externally_managed";
+  /**
+   * How an REE gets a workbench here: a provider sets one up for it, an operator set one up
+   * already, or the lab is a store whose workbench serves every REE kept in it.
+   */
+  lifecycleMode: "provider_managed" | "externally_managed" | "store";
   /** The curated base images this lab offers. Empty for a pre-provisioned lab. */
   images: WorkbenchImage[];
   /** Whether this lab will run a ref it did not publish. */
