@@ -16,12 +16,16 @@ class IllegalTransitionError(ValueError):
 
 
 EDGES: dict[S, frozenset[S]] = {
-    # Provider-managed allocations provision; externally managed ones wait for their bench.
-    S.REQUESTED: frozenset({S.PROVISIONING, S.WAITING_FOR_WORKBENCH, S.DRAINING, S.FAILED}),
-    S.PROVISIONING: frozenset({S.WAITING_FOR_WORKBENCH, S.DRAINING, S.FAILED, S.LOST}),
-    S.WAITING_FOR_WORKBENCH: frozenset({S.READY, S.DRAINING, S.FAILED, S.LOST}),
-    S.READY: frozenset({S.ASSIGNED, S.DRAINING, S.FAILED, S.LOST}),
-    S.ASSIGNED: frozenset({S.DRAINING, S.FAILED, S.LOST}),
+    # Provider-managed allocations provision; externally managed ones wait for their bench. One the API
+    # restarted before setting up any further fails.
+    S.REQUESTED: frozenset({S.PROVISIONING, S.WAITING_FOR_WORKBENCH, S.FAILED}),
+    # Setting up a bench either goes on or fails; a restart meanwhile fails it too.
+    S.PROVISIONING: frozenset({S.WAITING_FOR_WORKBENCH, S.FAILED}),
+    S.WAITING_FOR_WORKBENCH: frozenset({S.READY, S.FAILED}),
+    S.READY: frozenset({S.ASSIGNED, S.FAILED}),
+    # Only a bench that holds an REE is asked about, so only it is found lost.
+    S.ASSIGNED: frozenset({S.DRAINING, S.LOST}),
+    # A release the provider could not carry out leaves the allocation failed, to be released again.
     S.DRAINING: frozenset({S.RELEASED, S.FAILED}),
     # A failed or lost allocation is still released.
     S.FAILED: frozenset({S.DRAINING}),

@@ -81,3 +81,18 @@ def test_a_record_from_an_older_build_is_dropped_rather_than_failing_every_read(
 
     assert [record.request.allocation_id for record in store.list()] == ["alloc-1"]
     assert store.get("alloc-legacy") is None
+
+
+@pytest.mark.parametrize(
+    ("source", "target"),
+    [
+        (AllocationState.READY, AllocationState.LOST),
+        (AllocationState.PROVISIONING, AllocationState.DRAINING),
+        (AllocationState.ASSIGNED, AllocationState.FAILED),
+    ],
+)
+def test_a_bench_is_lost_only_once_assigned_and_drained_only_once_settled(
+    source: AllocationState, target: AllocationState
+) -> None:
+    with pytest.raises(IllegalTransitionError):
+        require_transition(source, target)
