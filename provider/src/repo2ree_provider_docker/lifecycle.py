@@ -436,6 +436,7 @@ class DockerIsolation:
             "WORKBENCH_LOCATION_ID": allocation.location_id,
             "WORKBENCH_IMAGE": allocation.image,
             "REPO2REE_EXEC_PATH": exec_path,
+            **self._environment_statement(allocation.image),
             # Told explicitly, never inherited: this provider's own OTLP_ENDPOINT
             # is reachable from *here*, and a bench on an isolated network that
             # took it would retry an address it cannot route to. Under the
@@ -456,6 +457,23 @@ class DockerIsolation:
             or "repo2ree-workbench"
         )
         run_docker("exec", "-d", *env_args, container_name, workbench_path, timeout=120)
+
+    def _environment_statement(self, image: str) -> dict[str, str]:
+        """What the bench's scripts run in, as its executor records it in their receipts.
+
+        A container from ``image``, whose engine is the bench's own nested daemon (dind) or the
+        host's, mounted (host-socket). Nothing when the image's digest will not read: the executor
+        then describes the host it is on, rather than a pin that was never resolved.
+        """
+        digest = _image_digest(image)
+        if digest is None:
+            return {}
+        statement = {
+            "backend": "container",
+            "image_digest": digest,
+            "script_engine": "nested" if self._docker_mode == "dind" else "socket",
+        }
+        return {"REPO2REE_ENVIRONMENT": json.dumps(statement, sort_keys=True)}
 
     @staticmethod
     def _start_bench(
@@ -702,6 +720,27 @@ def _resolved_image(image: str) -> str:
         if digest:
             return digest
     return image
+
+
+def _image_digest(image: str) -> str | None:
+    """The content digest of a local ``image``: its registry digest, or its own id when it has none.
+
+    A locally built image (the e2e test image) has no ``RepoDigests``, but its id is the digest of its
+    configuration, which names its content as well. None when even that will not read.
+    """
+    with suppress(RuntimeError, OSError):
+        reference = run_docker_out(
+            "image",
+            "inspect",
+            "--format",
+            "{{if .RepoDigests}}{{index .RepoDigests 0}}{{else}}{{.Id}}{{end}}",
+            image,
+            timeout=30,
+        )
+        digest = reference.rpartition("@")[2].strip()
+        if digest.startswith("sha256:"):
+            return digest
+    return None
 
 
 def _probe_bench(container_name: str, exec_path: str, image: str) -> Iterator[Frame]:

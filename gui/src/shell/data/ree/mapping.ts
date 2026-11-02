@@ -23,6 +23,7 @@ export function mapReeDetailToReeSlices(ree: ReeDocument) {
       source_type: source?.source_type,
       revision: sourceReceipt?.resolved_revision ?? source?.requested_ref,
       runtime: definition?.build_runtime?.runtime_path,
+      environment: definition?.environment,
       activation: activation
         ? {
             run_script: activation.run_script_path,

@@ -95,3 +95,20 @@ def test_declared_hardware_runtime_activation_and_experiments_come_and_go(
     assert api.audit(ree_id)["experiments"] == []
     api.patch(ree_id, {"experiments": [experiment]})
     assert [item["run"]["evidence"] for item in api.audit(ree_id)["experiments"]] == ["missing"]
+
+
+def test_a_new_ree_declares_what_its_scripts_run_in_and_the_author_may_change_it(
+    api: Api, new_ree: Callable[..., str]
+) -> None:
+    ree_id = new_ree()
+    declared = definition(api, ree_id)["environment"]
+    # A provisioned bench declares its image; an external workbench, its own host.
+    assert declared["kind"] in {"image", "host"}, declared
+    assert (declared["image"] is not None) == (declared["kind"] == "image"), declared
+
+    changed = {"kind": "image", "image": "docker.io/library/python:3.12-slim", "needs_container_engine": False}
+    api.patch(ree_id, {"environment": changed})
+    assert definition(api, ree_id)["environment"] == changed
+    # An image environment names its image.
+    assert api.patch(ree_id, {"environment": {"kind": "image"}}, expect=None).status_code == 400
+    assert definition(api, ree_id)["environment"] == changed

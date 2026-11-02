@@ -988,3 +988,48 @@ def test_release_keeps_the_bench_s_own_log_in_the_provider_log(
 
     assert "No non-localhost DNS nameservers" in caplog.text
     assert removed[0] == ("rm", "-f", "-v", "repo2ree-wb-ree1")
+
+
+# ------------------------------------------------
+# What the bench's scripts are recorded as running in
+# ------------------------------------------------
+
+
+def _environment_statement(exec_call: tuple[str, ...]) -> dict[str, str] | None:
+    values = [value for value in exec_call if value.startswith("REPO2REE_ENVIRONMENT=")]
+    return json.loads(values[0].partition("=")[2]) if values else None
+
+
+@pytest.mark.parametrize(("docker_mode", "engine"), [("dind", "nested"), ("host-socket", "socket")])
+def test_a_bench_states_the_image_its_scripts_run_in_and_the_engine_they_reach(
+    monkeypatch: pytest.MonkeyPatch, docker_mode: str, engine: str
+) -> None:
+    digest = "sha256:" + "c" * 64
+    monkeypatch.setattr(lc_mod, "_image_digest", lambda image: digest)
+
+    statement = _environment_statement(_bench_env(monkeypatch, docker_mode=docker_mode))
+
+    assert statement == {"backend": "container", "image_digest": digest, "script_engine": engine}
+
+
+def test_a_bench_whose_digest_will_not_read_states_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(lc_mod, "_image_digest", lambda image: None)
+
+    assert _environment_statement(_bench_env(monkeypatch)) is None
+
+
+@pytest.mark.parametrize(
+    ("inspected", "digest"),
+    [
+        ("docker.io/library/docker@sha256:" + "a" * 64, "sha256:" + "a" * 64),
+        # A locally built image has no registry digest; its id names its content.
+        ("sha256:" + "b" * 64, "sha256:" + "b" * 64),
+        ("", None),
+    ],
+)
+def test_an_image_digest_is_its_registry_digest_or_its_id(
+    monkeypatch: pytest.MonkeyPatch, inspected: str, digest: str | None
+) -> None:
+    monkeypatch.setattr(lc_mod, "run_docker_out", lambda *args, timeout=60: inspected)
+
+    assert lc_mod._image_digest("any") == digest

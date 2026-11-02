@@ -10,6 +10,7 @@ import {
   type ReeActivation,
   type ReeCatalogMetadata,
   type ReeContributor,
+  type ReeEnvironment,
   type ReeExperiment,
   type ReeRunnable,
   type ReeSpec,
@@ -119,6 +120,18 @@ function mapRawActivation(value: unknown): ReeActivation {
 // Mapper
 // ================================================
 
+function mapRawEnvironment(value: unknown): ReeEnvironment | null {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as Record<string, unknown>;
+  const image = String(raw.image ?? "");
+  return {
+    kind: raw.kind === "image" ? "image" : "host",
+    image,
+    pinned: image.includes("@sha256:"),
+    needsContainerEngine: Boolean(raw.needs_container_engine),
+  };
+}
+
 export function mapRawReeIntentToSlices({
   reeIntent,
   reeSession,
@@ -148,6 +161,7 @@ export function mapRawReeIntentToSlices({
       sourceType: (intent.source_type as ReeSpec["sourceType"]) || "",
       resolvedRevision: String(intent.revision ?? ""),
       runtime: String(intent.runtime ?? ""),
+      environment: mapRawEnvironment(intent.environment),
       activation: mapRawActivation(intent.activation),
       sbom: String(intent.sbom ?? ""),
       swhid: String(intent.swhid ?? ""),

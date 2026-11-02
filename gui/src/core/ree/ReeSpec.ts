@@ -124,6 +124,16 @@ export interface Hbom {
   extraInfo: Record<string, unknown>;
 }
 
+/** What the REE's scripts run in, as the REE declares it. */
+export interface ReeEnvironment {
+  kind: "image" | "host";
+  /** The image reference; empty for a host environment. */
+  image: string;
+  /** Whether the reference names a digest, so it cannot move. */
+  pinned: boolean;
+  needsContainerEngine: boolean;
+}
+
 export interface ReeSpec {
   name: string;
   catalogMetadata: ReeCatalogMetadata;
@@ -135,6 +145,8 @@ export interface ReeSpec {
    *  form field, not persisted intent. Empty for non-git/upload sources. */
   resolvedRevision: string;
   runtime: string;
+  /** Null until the REE declares one; set when its workbench is set up. */
+  environment: ReeEnvironment | null;
   activation: ReeActivation;
   sbom: string;
   /** Intrinsic content identity of the acquired source tree. Not an archival
@@ -218,6 +230,7 @@ export function createEmptyReeSpec(): ReeSpec {
     sourceType: "",
     resolvedRevision: "",
     runtime: "",
+    environment: null,
     activation: createEmptyReeActivation(),
     sbom: "",
     swhid: "",

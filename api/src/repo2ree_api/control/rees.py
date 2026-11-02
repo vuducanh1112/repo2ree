@@ -39,7 +39,10 @@ from repo2ree_api.storage import author_actions
 from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import ree_command_span, require_handle
 from repo2ree_protocol.build import BuildInfo
+from repo2ree_protocol.command import PatchReeDefinitionArgs, PatchReeDefinitionCommand
+from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionResult
+from repo2ree_ree.environment import EnvironmentDefinition
 from repo2ree_ree.model import Ree, ree_status
 from repo2ree_supervisor import WorkbenchHandle
 
@@ -93,6 +96,7 @@ def create_ree_route(payload: ReeCreatePayload) -> RunSummary:
                 retryable=True,
             )
         author_actions.learn(allocation_id=handle.allocation_id)
+        _declare_environment(handle, run_id, _log_run)
 
         if is_cancel_requested(rid, run_id):
             _log_run("system", "warn", "Provisioning canceled after workbench startup")
@@ -106,6 +110,26 @@ def create_ree_route(payload: ReeCreatePayload) -> RunSummary:
         runner=_runner,
     )
     return RunSummary.model_validate(run_summary(run_state))
+
+
+def _declare_environment(handle: WorkbenchHandle, run_id: str, log: LogSink) -> None:
+    """Record what the new REE's scripts run in: its bench's image, or the external machine itself.
+
+    The bench is set up either way, so a declaration that will not record leaves the REE undeclared
+    and says so, rather than failing a provision that worked.
+    """
+    environment = (
+        EnvironmentDefinition(kind="image", image=handle.image)
+        if handle.mode == "provider_managed" and handle.image
+        else EnvironmentDefinition(kind="host")
+    )
+    command = PatchReeDefinitionCommand(
+        args=PatchReeDefinitionArgs(patch={"environment": environment.model_dump(mode="json")}, expected_version="")
+    )
+    result = workbench_manager.dispatch_action(handle, command, run_id, log)
+    if result.status != "succeeded":
+        message = result.failure.message if result.failure else result.status
+        log("system", "warn", f"The REE's environment was not recorded: {message}")
 
 
 def _provisioned_document(handle: WorkbenchHandle) -> dict[str, Any]:

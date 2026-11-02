@@ -1,4 +1,5 @@
 import { PAGE } from "@core/app-shell/pages";
+import type { ReeEnvironment } from "@core/ree/ReeSpec";
 import {
   buildFooterHint,
   buildRunStatusLabel,
@@ -52,6 +53,20 @@ function BuildRunControls({
       onRun={onRun}
       onCancel={onCancel}
     />
+  );
+}
+
+/** What the build, and everything run on its runtime, runs in. */
+function EnvironmentBadges({ environment }: { environment: ReeEnvironment | null }) {
+  if (!environment) return <Badge tone="warning">No environment declared</Badge>;
+  if (environment.kind === "host") return <Badge tone="info">Runs on the workbench host</Badge>;
+  return (
+    <>
+      <Badge tone="info" flavor="code">
+        {environment.image}
+      </Badge>
+      {!environment.pinned && <Badge tone="warning">Environment not pinned</Badge>}
+    </>
   );
 }
 
@@ -165,6 +180,7 @@ export function PageBuildRuntime({
                 {scriptPath}
               </Badge>
             )}
+            <EnvironmentBadges environment={ree.spec.environment} />
             <Badge tone={runDone && !runFailed ? "success" : "warning"}>{statusLabel}</Badge>
             {badge && <OutcomeBadge outcome={badge} />}
           </>

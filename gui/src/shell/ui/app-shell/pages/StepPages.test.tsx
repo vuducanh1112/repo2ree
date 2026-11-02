@@ -60,6 +60,46 @@ describe("major step page workflows", () => {
     );
   });
 
+  it.each([
+    [
+      "names a pinned image",
+      { kind: "image", image: "python@sha256:abc", pinned: true },
+      ["python@sha256:abc"],
+      [],
+    ],
+    [
+      "warns that a tag can move",
+      { kind: "image", image: "python:3.12", pinned: false },
+      ["python:3.12", "Environment not pinned"],
+      [],
+    ],
+    [
+      "says when the workbench host is the environment",
+      { kind: "host", image: "", pinned: false },
+      ["Runs on the workbench host"],
+      ["Environment not pinned"],
+    ],
+    ["says when nothing is declared", null, ["No environment declared"], []],
+  ] as const)("the build header %s", async (_name, environment, shown, hidden) => {
+    renderWithShell(
+      <PageBuildRuntime
+        {...createStepPageProps("build", {
+          ree: {
+            ...exampleEditorRee,
+            spec: {
+              ...exampleEditorRee.spec,
+              environment: environment && { ...environment, needsContainerEngine: false },
+            },
+          },
+        })}
+      />,
+      { reeId: "ree-1", services: catalogServices() },
+    );
+
+    for (const text of shown) expect(await screen.findByText(text)).toBeInTheDocument();
+    for (const text of hidden) expect(screen.queryByText(text)).toBeNull();
+  });
+
   // The generated build script writes to the path the REE declares, and falls
   // back to its own default when there is none — so a generated candidate always
   // reports where it writes. Filling an empty declaration from that is the rest

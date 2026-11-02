@@ -89,6 +89,30 @@ describe("mapRawReeIntentToSlices", () => {
     expect(mapped.reeSpec.activation.runScript).toBe("");
   });
 
+  it("maps the declared environment, and whether its image is pinned", () => {
+    const pinned = `docker.io/library/python@sha256:${"a".repeat(64)}`;
+    const image = mapRawReeIntentToSlices({
+      reeIntent: { environment: { kind: "image", image: pinned, needs_container_engine: true } },
+      fallbackName: "demo",
+    }).reeSpec.environment;
+    expect(image).toEqual({
+      kind: "image",
+      image: pinned,
+      pinned: true,
+      needsContainerEngine: true,
+    });
+
+    const tagged = mapRawReeIntentToSlices({
+      reeIntent: { environment: { kind: "image", image: "python:3.12" } },
+      fallbackName: "demo",
+    }).reeSpec.environment;
+    expect(tagged?.pinned).toBe(false);
+
+    expect(
+      mapRawReeIntentToSlices({ reeIntent: {}, fallbackName: "demo" }).reeSpec.environment,
+    ).toBeNull();
+  });
+
   it("reads source_included and runtime_included from session", () => {
     const mapped = mapRawReeIntentToSlices({
       reeIntent: {},
