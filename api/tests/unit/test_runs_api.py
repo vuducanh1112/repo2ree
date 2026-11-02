@@ -17,7 +17,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from repo2ree_api.control.run_orchestration import start_background_run
-from repo2ree_api.deps import workbench_manager
+from repo2ree_api.deps import command_dispatcher, workbench_manager
 from repo2ree_protocol.result import ActionResult
 from repo2ree_supervisor import WorkbenchHandle
 
@@ -279,7 +279,7 @@ def test_cancel_of_active_run_signals_workbench(
         calls.append((handle, run_id))
         canceled.set()
 
-    monkeypatch.setattr(workbench_manager, "cancel_run", _cancel_run)
+    monkeypatch.setattr(command_dispatcher, "cancel_run", _cancel_run)
     run = start_background_run(
         ree_id=online_ree.ree_id,
         operation="build",

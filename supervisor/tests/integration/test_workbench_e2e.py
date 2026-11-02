@@ -364,10 +364,10 @@ def test_workbench_lifecycle_e2e(workbench: tuple[WorkbenchManager, WorkbenchHan
         events.append((stream, level, message))
 
     # --- init produced metadata on the real /ree volume ----------------
-    manifest = manager.get_ree_manifest(handle)
+    manifest = manager.dispatcher.get_ree_manifest(handle)
     assert manifest.seal is None
     assert manifest.subject.definition.name
-    document = manager.get_ree_document(handle)
+    document = manager.dispatcher.get_ree_document(handle)
     assert document.status == "draft"
 
     # --- acquire_source: the REE gets something to build from ----------
@@ -380,8 +380,8 @@ def test_workbench_lifecycle_e2e(workbench: tuple[WorkbenchManager, WorkbenchHan
     source_zip = tmp_path / "source.zip"
     with zipfile.ZipFile(source_zip, "w") as source_archive:
         source_archive.writestr("main.py", "print('hello from upstream')\n")
-    manager.copy_to_workbench(handle, str(source_zip), f"upload-staging/{_UPLOAD_TOKEN}.bin")
-    result = manager.dispatch_action(
+    manager.dispatcher.copy_to_workbench(handle, str(source_zip), f"upload-staging/{_UPLOAD_TOKEN}.bin")
+    result = manager.dispatcher.dispatch_action(
         handle,
         AcquireSourceCommand(
             args=AcquireSourceArgs(mode="upload", upload_token=_UPLOAD_TOKEN, archive_name="source.zip")
@@ -392,7 +392,7 @@ def test_workbench_lifecycle_e2e(workbench: tuple[WorkbenchManager, WorkbenchHan
     assert result.status == "succeeded", result.failure
     # Acquisition materializes the workspace from upstream + overlay, so the
     # uploaded tree is what a build will actually see.
-    assert manager.read_ree_file_bytes(handle, "workspace/main.py") == b"print('hello from upstream')\n"
+    assert manager.dispatcher.read_ree_file_bytes(handle, "workspace/main.py") == b"print('hello from upstream')\n"
 
     # --- write_file: dispatched over real `docker exec` ----------------
     # The build always runs the reserved, REE-owned build script, so author the
@@ -401,7 +401,7 @@ def test_workbench_lifecycle_e2e(workbench: tuple[WorkbenchManager, WorkbenchHan
     # without leaving one behind.
     build_script = "ree-scripts/build_script.sh"
     build_body = f"echo building runtime\nprintf 'runtime-bytes\\n' > {_RUNTIME_ARTIFACT}\n"
-    result = manager.dispatch_action(
+    result = manager.dispatcher.dispatch_action(
         handle,
         WriteFileCommand(args=WriteFileArgs(path=build_script, content=build_body)),
         "write",
@@ -410,8 +410,8 @@ def test_workbench_lifecycle_e2e(workbench: tuple[WorkbenchManager, WorkbenchHan
     assert result.status == "succeeded"
 
     # read it back through the real read-ree-file query — full round-trip
-    assert manager.read_ree_file_bytes(handle, f"workspace/{build_script}") == build_body.encode()
-    workspace = manager.get_ree_document(handle)
+    assert manager.dispatcher.read_ree_file_bytes(handle, f"workspace/{build_script}") == build_body.encode()
+    workspace = manager.dispatcher.get_ree_document(handle)
     assert any(f.path == build_script for f in workspace.workspace_files)
 
     # --- declare where the build leaves its runtime --------------------
@@ -420,7 +420,7 @@ def test_workbench_lifecycle_e2e(workbench: tuple[WorkbenchManager, WorkbenchHan
     # on the build recipe rather than beside it — a script and what it produces
     # are one declaration, so the patch carries only the destination and the
     # handler rehydrates the script's identity from the authored file.
-    result = manager.dispatch_action(
+    result = manager.dispatcher.dispatch_action(
         handle,
         PatchReeDefinitionCommand(
             args=PatchReeDefinitionArgs(
@@ -433,7 +433,7 @@ def test_workbench_lifecycle_e2e(workbench: tuple[WorkbenchManager, WorkbenchHan
     assert result.status == "succeeded", result.failure
 
     # --- build_runtime: real script execution inside the workbench -----
-    result = manager.dispatch_action(
+    result = manager.dispatcher.dispatch_action(
         handle,
         BuildRuntimeCommand(),
         "build",
@@ -445,12 +445,12 @@ def test_workbench_lifecycle_e2e(workbench: tuple[WorkbenchManager, WorkbenchHan
     # Sealing audits the REE first and refuses stale evidence, so reaching a
     # digest here also proves the receipts the steps above filed still describe
     # what the volume holds.
-    result = manager.dispatch_action(handle, SealReeCommand(), "seal", log)
+    result = manager.dispatcher.dispatch_action(handle, SealReeCommand(), "seal", log)
     assert result.status == "succeeded", result.failure
     assert result.outputs["ree_digest"].startswith("sha256:")
 
     # --- build-archive: a real sealed zip, uploaded beside the control socket ----
-    archive = manager.build_archive(handle)
+    archive = manager.dispatcher.build_archive(handle)
     try:
         with zipfile.ZipFile(archive.path) as zf:
             assert zf.namelist()  # a valid, non-empty zip

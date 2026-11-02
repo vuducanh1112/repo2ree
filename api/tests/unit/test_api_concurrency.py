@@ -7,7 +7,7 @@ import hashlib
 import pytest
 from fastapi.testclient import TestClient
 
-from repo2ree_api.deps import workbench_manager
+from repo2ree_api.deps import command_dispatcher
 from repo2ree_protocol.result import ActionResult
 from repo2ree_supervisor import WorkbenchHandle
 
@@ -32,7 +32,7 @@ def test_definition_version_conflict_reports_expected_and_actual_versions(
             outputs={"expected_version": "v1", "actual_version": "v2"},
         )
 
-    monkeypatch.setattr(workbench_manager, "dispatch_action", _dispatch)
+    monkeypatch.setattr(command_dispatcher, "dispatch_action", _dispatch)
 
     resp = client.patch(
         f"/api/v1/rees/{online_ree.ree_id}/definition",
@@ -74,7 +74,7 @@ def test_file_write_conflict_from_the_workbench_maps_to_409(
         dispatched.append(command)
         return _conflict_result("build.sh", stale, _etag(b"current"))
 
-    monkeypatch.setattr(workbench_manager, "dispatch_action", _dispatch)
+    monkeypatch.setattr(command_dispatcher, "dispatch_action", _dispatch)
 
     resp = client.put(
         f"/api/v1/rees/{online_ree.ree_id}/files/content",
@@ -97,7 +97,7 @@ def test_file_delete_conflict_from_the_workbench_maps_to_409(
 ) -> None:
     stale = _etag(b"old")
     monkeypatch.setattr(
-        workbench_manager,
+        command_dispatcher,
         "dispatch_action",
         lambda handle, command, run_id, log: _conflict_result("build.sh", stale, _etag(b"current")),
     )
@@ -117,7 +117,7 @@ def test_file_write_returns_new_content_etag(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        workbench_manager,
+        command_dispatcher,
         "dispatch_action",
         lambda handle, command, run_id, log: ActionResult(status="succeeded", exit_code=0),
     )
@@ -133,7 +133,7 @@ def test_file_write_returns_new_content_etag(
 
 
 def test_file_delete_answers_the_mutation_and_nothing_else(client, online_ree, monkeypatch):
-    monkeypatch.setattr(workbench_manager, "dispatch_action", lambda *args: ActionResult(status="succeeded"))
+    monkeypatch.setattr(command_dispatcher, "dispatch_action", lambda *args: ActionResult(status="succeeded"))
     resp = client.delete(f"/api/v1/rees/{online_ree.ree_id}/files/content", params={"path": "build.sh"})
     assert resp.status_code == 200
     assert resp.json() == {"updated_at": None, "deleted_at": None, "etag": None}
@@ -145,7 +145,7 @@ def test_workbench_command_failure_maps_to_400_with_operation_code(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        workbench_manager,
+        command_dispatcher,
         "dispatch_action",
         lambda handle, command, run_id, log: ActionResult.failed(
             "validation", "reserved path", outputs={"reason": "reserved path"}

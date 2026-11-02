@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from repo2ree_api.deps import workbench_manager
+from repo2ree_api.deps import command_dispatcher
 from repo2ree_core.domain.ree.audit import audit
 from repo2ree_protocol.document import WorkbenchReeDocument
 from repo2ree_ree.model import Ree, ReeDefinition, ReeSubject
@@ -27,7 +27,7 @@ def test_ree_state_omits_inline_content_and_exposes_placement(
             "ree_files": [{"path": "artifacts/sbom.json", "tag": "Artifact", "size": 34}],
         }
     )
-    monkeypatch.setattr(workbench_manager, "get_ree_state", lambda handle: workspace)
+    monkeypatch.setattr(command_dispatcher, "get_ree_state", lambda handle: workspace)
 
     resp = client.get(f"/api/v1/rees/{online_ree.ree_id}/state")
 

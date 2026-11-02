@@ -14,7 +14,7 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
-from repo2ree_api.deps import workbench_manager
+from repo2ree_api.deps import command_dispatcher
 from repo2ree_api.storage.upload_staging import staged_upload_path
 from repo2ree_protocol.command import LoadReeBundleCommand
 from repo2ree_protocol.result import ActionResult
@@ -69,8 +69,8 @@ def test_load_dispatches_the_bundle_command_to_the_workbench(
         dispatched["command"] = command
         return ActionResult(status="succeeded", outputs={"archive_name": "author.zip"})
 
-    monkeypatch.setattr(workbench_manager, "copy_to_workbench", copy_to_workbench)
-    monkeypatch.setattr(workbench_manager, "dispatch_action", dispatch_action)
+    monkeypatch.setattr(command_dispatcher, "copy_to_workbench", copy_to_workbench)
+    monkeypatch.setattr(command_dispatcher, "dispatch_action", dispatch_action)
 
     response = client.post(
         f"/api/v1/rees/{online_ree.ree_id}/ree:load",
@@ -108,7 +108,7 @@ def test_load_fails_the_run_when_the_upload_never_landed(
     def dispatch_action(*args: Any, **kwargs: Any) -> ActionResult:
         raise AssertionError("no bundle to dispatch")
 
-    monkeypatch.setattr(workbench_manager, "dispatch_action", dispatch_action)
+    monkeypatch.setattr(command_dispatcher, "dispatch_action", dispatch_action)
 
     response = client.post(
         f"/api/v1/rees/{online_ree.ree_id}/ree:load",

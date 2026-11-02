@@ -27,7 +27,7 @@ from repo2ree_api.control.run_orchestration import (
     start_background_run,
     update_run_outputs,
 )
-from repo2ree_api.deps import workbench_manager
+from repo2ree_api.deps import command_dispatcher
 from repo2ree_api.storage import author_actions
 from repo2ree_api.storage.upload_staging import (
     InvalidUploadTokenError,
@@ -158,7 +158,7 @@ def _start(
         _log_run("system", "info", messages.copied)
 
         try:
-            result = workbench_manager.dispatch_action(handle, command, run_id, _log_run)
+            result = command_dispatcher.dispatch_action(handle, command, run_id, _log_run)
             if result.outputs:
                 update_run_outputs(ws_id, run_id, result.outputs)
         finally:
@@ -211,7 +211,7 @@ def _copy_into_workbench(
     size = staged_host.stat().st_size
     log_run("system", "info", f"Copying staged archive into the workbench ({size} bytes)")
     try:
-        workbench_manager.copy_to_workbench(handle, str(staged_host), f"upload-staging/{upload_token}.bin")
+        command_dispatcher.copy_to_workbench(handle, str(staged_host), f"upload-staging/{upload_token}.bin")
     except Exception as exc:  # noqa: BLE001 — the transfer is the workbench's, so any failure is reported as an unavailable run
         log_run("system", "error", f"Copy to workbench failed: {exc}")
         return ActionResult.failed(

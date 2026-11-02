@@ -3,7 +3,7 @@
 from fastapi import APIRouter, HTTPException
 
 from repo2ree_api.contracts import ERROR_RESPONSES
-from repo2ree_api.deps import workbench_manager
+from repo2ree_api.deps import command_dispatcher
 from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import require_handle
 from repo2ree_protocol.history import OperationHistory
@@ -21,6 +21,6 @@ def list_operation_history(ree_id: str) -> OperationHistory:
     with author_api_action("view_history", ree_id):
         handle = require_handle(ree_id)
         try:
-            return workbench_manager.get_history(handle)
+            return command_dispatcher.get_history(handle)
         except Exception as exc:
             raise HTTPException(status_code=502, detail=f"Workbench history query failed: {exc}") from exc

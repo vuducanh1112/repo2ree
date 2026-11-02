@@ -7,7 +7,7 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from repo2ree_api.deps import workbench_manager
+from repo2ree_api.deps import command_dispatcher
 from repo2ree_core.domain.ree.audit import audit
 from repo2ree_protocol.document import WorkbenchReeDocument
 from repo2ree_ree.model import Ree
@@ -34,7 +34,7 @@ def test_evaluate_report_crosses_as_the_core_models_camelcase_dump(
         threats=[],
     )
     artifact = json.dumps(report.model_dump(by_alias=True)).encode()
-    monkeypatch.setattr(workbench_manager, "read_ree_file_bytes", lambda handle, name: artifact)
+    monkeypatch.setattr(command_dispatcher, "read_ree_file_bytes", lambda handle, name: artifact)
 
     resp = client.get(f"/api/v1/rees/{online_ree.ree_id}/evaluate/report")
 
@@ -53,7 +53,7 @@ def test_author_receipts_cross_as_a_typed_document(
 ) -> None:
     ree = Ree()
     monkeypatch.setattr(
-        workbench_manager,
+        command_dispatcher,
         "get_ree_state",
         lambda handle: WorkbenchReeDocument(ree=ree, status="draft", audit=audit(ree)),
     )

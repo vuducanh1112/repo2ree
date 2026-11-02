@@ -10,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from repo2ree_api.authoring import seal
-from repo2ree_api.deps import workbench_manager, workbench_transfers
+from repo2ree_api.deps import command_dispatcher, workbench_transfers
 from repo2ree_supervisor import ReceivedFile, WorkbenchHandle
 
 
@@ -63,7 +63,7 @@ def test_the_archive_download_serves_the_uploaded_file_and_leaves_nothing_behind
     def build(handle: Any) -> ReceivedFile:
         return ReceivedFile(archive, archive.stat().st_size, hashlib.sha256(archive.read_bytes()).hexdigest())
 
-    monkeypatch.setattr(workbench_manager, "build_archive", build)
+    monkeypatch.setattr(command_dispatcher, "build_archive", build)
     # The download is named after the REE; this tier has no workbench to read the name from.
     monkeypatch.setattr(seal, "archive_download_filename", lambda handle: "hello.zip")
     response = client.get(f"/api/v1/rees/{online_ree.ree_id}/ree-archive")

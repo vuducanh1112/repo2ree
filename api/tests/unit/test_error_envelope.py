@@ -18,7 +18,7 @@ from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
-from repo2ree_api.deps import workbench_manager
+from repo2ree_api.deps import command_dispatcher, workbench_manager
 from repo2ree_api.main import (
     http_exception_handler,
     unhandled_exception_handler,
@@ -187,7 +187,7 @@ def test_transport_failure_mid_request_yields_503_envelope(
     def _gone(handle: Any) -> dict[str, Any]:
         raise WorkbenchUnavailableError("docker exec exited 137 — container gone or stopping")
 
-    monkeypatch.setattr(workbench_manager, "get_ree_document", _gone)
+    monkeypatch.setattr(command_dispatcher, "get_ree_document", _gone)
     resp = client.get(f"/api/v1/rees/{online_ree.ree_id}")
     assert resp.status_code == 503
     assert resp.json()["error"]["code"] == "workbench_unavailable"
@@ -201,7 +201,7 @@ def test_a_workbench_lost_while_sending_the_archive_yields_503_not_400(
     def _gone(handle: Any) -> Any:
         raise WorkbenchUnavailableError("workbench connection closed")
 
-    monkeypatch.setattr(workbench_manager, "build_archive", _gone)
+    monkeypatch.setattr(command_dispatcher, "build_archive", _gone)
     resp = client.get(f"/api/v1/rees/{online_ree.ree_id}/ree-archive")
     assert resp.status_code == 503
     assert resp.json()["error"]["retryable"] is True

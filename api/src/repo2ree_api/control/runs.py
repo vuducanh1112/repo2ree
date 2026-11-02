@@ -23,7 +23,7 @@ from repo2ree_api.control.run_orchestration import (
     run_action_id,
 )
 from repo2ree_api.control.run_registry import TERMINAL_STATUSES
-from repo2ree_api.deps import workbench_manager
+from repo2ree_api.deps import command_dispatcher, workbench_manager
 from repo2ree_api.pagination import keyset_paginate
 from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import require_handle
@@ -170,7 +170,7 @@ def cancel_ree_run(ree_id: str, run_id: str) -> CancelRunResponse:
     handle = workbench_manager.lookup(ree_id)
     if handle is not None:
         try:
-            workbench_manager.cancel_run(handle, run_id)
+            command_dispatcher.cancel_run(handle, run_id)
         except Exception:  # cancellation is best-effort; a failed signal must not fail the cancel request
             logger.warning("failed to signal cancellation for %s", run_id, exc_info=True)
             append_run_log(

@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from repo2ree_api.authoring import seal as seal_routes
-from repo2ree_api.deps import workbench_manager
+from repo2ree_api.deps import command_dispatcher
 from repo2ree_core.domain.ree.audit import audit
 from repo2ree_protocol.command import SealReeCommand
 from repo2ree_protocol.document import WorkbenchReeDocument
@@ -28,9 +28,9 @@ def test_seal_runs_in_background_and_relays_progress(
         log("system", "info", "Preparing sealed artifacts: 5/10 bytes (50%), 1/2 entries")
         return ActionResult(status="succeeded", outputs={"ree_digest": "sha256:value"})
 
-    monkeypatch.setattr(workbench_manager, "dispatch_action", dispatch_action)
+    monkeypatch.setattr(command_dispatcher, "dispatch_action", dispatch_action)
     document = WorkbenchReeDocument(ree=Ree(), status="draft", audit=audit(Ree()))
-    monkeypatch.setattr(workbench_manager, "get_ree_document", lambda _handle: document)
+    monkeypatch.setattr(command_dispatcher, "get_ree_document", lambda _handle: document)
     monkeypatch.setattr(
         seal_routes,
         "_record_in_ree_index",

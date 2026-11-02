@@ -2,7 +2,7 @@
 
 import pytest
 
-from repo2ree_api.deps import workbench_manager
+from repo2ree_api.deps import command_dispatcher
 from repo2ree_core.operations.dispatch import run_command
 from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.persistence.layout import ReeLayout
@@ -25,7 +25,7 @@ def test_script_report_excludes_capture_metadata(client, online_ree, monkeypatch
         outputs.update(result.model_dump(mode="json")["outputs"])
         return result
 
-    monkeypatch.setattr(workbench_manager, "dispatch_action", dispatch)
+    monkeypatch.setattr(command_dispatcher, "dispatch_action", dispatch)
     response = client.post(f"/api/v1/rees/{online_ree.ree_id}/{endpoint}", json={"targets": [{"kind": "build"}]})
 
     assert response.status_code == 200, response.text

@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
-from repo2ree_api.deps import workbench_manager
+from repo2ree_api.deps import command_dispatcher
 from repo2ree_core.domain.ree.audit import audit
 from repo2ree_protocol.document import WorkbenchReeDocument
 from repo2ree_protocol.result import ActionResult
@@ -28,8 +28,8 @@ def test_replace_definition_route_dispatches_every_definition_field(
 
     ree = Ree()
     document = WorkbenchReeDocument(ree=ree, status="draft", audit=audit(ree))
-    monkeypatch.setattr(workbench_manager, "get_ree_document", lambda handle: document)
-    monkeypatch.setattr(workbench_manager, "dispatch_action", _dispatch)
+    monkeypatch.setattr(command_dispatcher, "get_ree_document", lambda handle: document)
+    monkeypatch.setattr(command_dispatcher, "dispatch_action", _dispatch)
 
     response = client.put(
         f"/api/v1/rees/{online_ree.ree_id}/definition",

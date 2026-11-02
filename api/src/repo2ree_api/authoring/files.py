@@ -11,7 +11,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query, Response
 
 from repo2ree_api.contracts import ERROR_RESPONSES, FileMutationResponse, WorkspaceFileContentPayload
-from repo2ree_api.deps import workbench_manager
+from repo2ree_api.deps import command_dispatcher
 from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import dispatch_or_fail, ree_command_span, require_handle
 from repo2ree_protocol.command import DeleteFileArgs, DeleteFileCommand, WriteFileArgs, WriteFileCommand
@@ -37,7 +37,7 @@ def get_ree_file_raw_route(ree_id: str, path: str = Query(...)) -> Response:
     with author_api_action("read_file", ree_id, path=path):
         handle = require_handle(ree_id)
         try:
-            content = workbench_manager.read_ree_file_bytes(handle, path)
+            content = command_dispatcher.read_ree_file_bytes(handle, path)
         except RuntimeError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         return Response(content=content, media_type="application/octet-stream")

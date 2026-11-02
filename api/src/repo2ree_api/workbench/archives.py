@@ -6,7 +6,7 @@ import re
 from collections.abc import Iterator
 from typing import IO
 
-from repo2ree_api.deps import workbench_manager
+from repo2ree_api.deps import command_dispatcher
 from repo2ree_supervisor import WorkbenchHandle
 
 
@@ -20,7 +20,7 @@ def archive_download_filename(handle: WorkbenchHandle) -> str:
     Three refactors renamed the *source* of this dict without anyone noticing
     the *path* into it had stopped meaning anything.
     """
-    ree = workbench_manager.get_ree_manifest(handle)
+    ree = command_dispatcher.get_ree_manifest(handle)
     safe_stem = re.sub(r"[^A-Za-z0-9._-]+", "_", ree.subject.definition.name.strip()).strip("._-")
     return f"{safe_stem or 'ree'}.zip"
 

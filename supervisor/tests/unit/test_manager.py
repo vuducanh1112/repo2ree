@@ -161,12 +161,12 @@ def test_dispatch_mints_distinct_attempts_and_preserves_explicit_retry_context(t
     manager, _, _ = _manager(tmp_path, RecordingWorkbench())
     handle = manager.provision("ree-1", "test", location_id="lab-1")
     command = PatchReeDefinitionCommand(args=PatchReeDefinitionArgs(patch={"name": "test"}))
-    first = manager.dispatch_action(handle, command, "repeated-run", lambda *args: None)
-    second = manager.dispatch_action(handle, command, "repeated-run", lambda *args: None)
+    first = manager.dispatcher.dispatch_action(handle, command, "repeated-run", lambda *args: None)
+    second = manager.dispatcher.dispatch_action(handle, command, "repeated-run", lambda *args: None)
     assert first.context is not None
     assert second.context is not None
     retry = ExecutionContext.new(operation_id=first.context.operation_id, ree_id="ree-1")
-    third = manager.dispatch_action(handle, command, "repeated-run", lambda *args: None, retry)
+    third = manager.dispatcher.dispatch_action(handle, command, "repeated-run", lambda *args: None, retry)
     assert third.context is not None
     assert contexts == [first.context, second.context, third.context]
     assert len({c.attempt_id for c in contexts}) == 3
@@ -315,7 +315,7 @@ def test_a_dispatch_its_bench_dropped_out_of_asks_whether_the_bench_is_gone(tmp_
     provider.reports = AllocationState.LOST
     command = PatchReeDefinitionCommand(args=PatchReeDefinitionArgs(patch={"name": "x"}))
     with pytest.raises(WorkbenchUnavailableError):
-        manager.dispatch_action(handle, command, "run-1", lambda *_: None)
+        manager.dispatcher.dispatch_action(handle, command, "run-1", lambda *_: None)
     assert store.get(handle.allocation_id).state == AllocationState.LOST  # type: ignore[union-attr]
 
 
@@ -387,10 +387,10 @@ def test_dispatch_journals_one_request_and_what_came_back(tmp_path, frames, expe
     command = PatchReeDefinitionCommand(args=PatchReeDefinitionArgs(patch={"name": "x"}))
     try:
         if raises is None:
-            manager.dispatch_action(handle, command, "run-1", lambda *_: None)
+            manager.dispatcher.dispatch_action(handle, command, "run-1", lambda *_: None)
         else:
             with pytest.raises(raises):
-                manager.dispatch_action(handle, command, "run-1", lambda *_: None)
+                manager.dispatcher.dispatch_action(handle, command, "run-1", lambda *_: None)
     finally:
         close_journal()
 
@@ -430,7 +430,7 @@ def test_a_result_names_what_recorded_the_attempt(tmp_path, capture, named):
     opened = open_journal(tmp_path / "journal", "api", hosts=("supervisor",))
     try:
         command = PatchReeDefinitionCommand(args=PatchReeDefinitionArgs(patch={"name": "x"}))
-        manager.dispatch_action(handle, command, "run-1", lambda *_: None)
+        manager.dispatcher.dispatch_action(handle, command, "run-1", lambda *_: None)
     finally:
         close_journal()
     _, outcome = _exchanges(opened.path)
@@ -449,7 +449,7 @@ def test_dispatch_that_raises_is_journaled_as_abandoned(tmp_path):
     command = PatchReeDefinitionCommand(args=PatchReeDefinitionArgs(patch={"name": "x"}))
     try:
         with pytest.raises(TimeoutError):
-            manager.dispatch_action(handle, command, "run-1", lambda *_: None)
+            manager.dispatcher.dispatch_action(handle, command, "run-1", lambda *_: None)
     finally:
         close_journal()
     assert _exchanges(opened.path)[1:] == [("abandon", None, {"reason": "TimeoutError"})]

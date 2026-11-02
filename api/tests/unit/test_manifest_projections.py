@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from repo2ree_api.deps import workbench_manager
+from repo2ree_api.deps import command_dispatcher, workbench_manager
 from repo2ree_api.workbench.archives import archive_download_filename
 from repo2ree_core.time_utils import utc_now_instant
 from repo2ree_ree.model import Ree, ReeDefinition, ReeSeal, ReeSubject, canonical_subject_digest
@@ -31,14 +31,14 @@ def test_archive_is_named_after_the_ree(online_ree: WorkbenchHandle, monkeypatch
     (``subject``). Every bundle downloaded as ``ree.zip`` — the fallback for an
     unnamed REE — so the failure looked like a design choice.
     """
-    monkeypatch.setattr(workbench_manager, "get_ree_manifest", lambda handle: _manifest("My Study"))
+    monkeypatch.setattr(command_dispatcher, "get_ree_manifest", lambda handle: _manifest("My Study"))
 
     assert archive_download_filename(online_ree) == "My_Study.zip"
 
 
 def test_an_unnamed_ree_still_downloads(online_ree: WorkbenchHandle, monkeypatch: pytest.MonkeyPatch) -> None:
     """The fallback is for a genuinely blank name, which the domain permits."""
-    monkeypatch.setattr(workbench_manager, "get_ree_manifest", lambda handle: _manifest(""))
+    monkeypatch.setattr(command_dispatcher, "get_ree_manifest", lambda handle: _manifest(""))
 
     assert archive_download_filename(online_ree) == "ree.zip"
 

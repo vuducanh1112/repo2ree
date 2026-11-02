@@ -19,7 +19,7 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
-from repo2ree_api.deps import workbench_manager
+from repo2ree_api.deps import command_dispatcher
 from repo2ree_api.storage.upload_staging import staged_upload_path
 from repo2ree_protocol.result import ActionResult
 from repo2ree_supervisor import WorkbenchHandle
@@ -82,8 +82,8 @@ def stubbed_workbench(monkeypatch: pytest.MonkeyPatch) -> dict[str, ActionResult
     def dispatch_action(handle: WorkbenchHandle, command: Any, run_id: str, log: Any) -> ActionResult:
         return outcome["result"]
 
-    monkeypatch.setattr(workbench_manager, "copy_to_workbench", copy_to_workbench)
-    monkeypatch.setattr(workbench_manager, "dispatch_action", dispatch_action)
+    monkeypatch.setattr(command_dispatcher, "copy_to_workbench", copy_to_workbench)
+    monkeypatch.setattr(command_dispatcher, "dispatch_action", dispatch_action)
     return outcome
 
 

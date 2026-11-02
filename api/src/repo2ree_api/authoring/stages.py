@@ -24,7 +24,7 @@ from fastapi import APIRouter, HTTPException
 
 from repo2ree_api.contracts import ERROR_RESPONSES, CreateRunPayload, RunSummary
 from repo2ree_api.control.run_orchestration import run_summary, start_single_command_run
-from repo2ree_api.deps import workbench_manager
+from repo2ree_api.deps import command_dispatcher
 from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import require_handle
 from repo2ree_protocol.command import (
@@ -131,7 +131,7 @@ def _evaluation_report(ree_id: str) -> dict[str, Any]:
     # down (503).
     handle = require_handle(ree_id)
     try:
-        data = workbench_manager.read_ree_file_bytes(handle, f"artifacts/{_REPORT_FILENAME}")
+        data = command_dispatcher.read_ree_file_bytes(handle, f"artifacts/{_REPORT_FILENAME}")
         report: dict[str, Any] = json.loads(data)
         return report
     except Exception as exc:

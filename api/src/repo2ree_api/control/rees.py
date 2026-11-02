@@ -33,7 +33,7 @@ from repo2ree_api.control.run_orchestration import (
     start_provisioning_run,
 )
 from repo2ree_api.control.run_registry import ACTIVE_STATUSES
-from repo2ree_api.deps import provider_connections, workbench_connections, workbench_manager
+from repo2ree_api.deps import command_dispatcher, provider_connections, workbench_connections, workbench_manager
 from repo2ree_api.pagination import keyset_paginate
 from repo2ree_api.storage import author_actions
 from repo2ree_api.storage.author_actions import author_api_action
@@ -126,14 +126,14 @@ def _declare_environment(handle: WorkbenchHandle, run_id: str, log: LogSink) -> 
     command = PatchReeDefinitionCommand(
         args=PatchReeDefinitionArgs(patch={"environment": environment.model_dump(mode="json")}, expected_version="")
     )
-    result = workbench_manager.dispatch_action(handle, command, run_id, log)
+    result = command_dispatcher.dispatch_action(handle, command, run_id, log)
     if result.status != "succeeded":
         message = result.failure.message if result.failure else result.status
         log("system", "warn", f"The REE's environment was not recorded: {message}")
 
 
 def _provisioned_document(handle: WorkbenchHandle) -> dict[str, Any]:
-    return {**workbench_manager.get_ree_document(handle).model_dump(mode="json"), "ree_id": handle.ree_id}
+    return {**command_dispatcher.get_ree_document(handle).model_dump(mode="json"), "ree_id": handle.ree_id}
 
 
 @rees_router.get(
@@ -181,7 +181,7 @@ def get_ree_route(ree_id: str) -> ReeDocument:
         handle = require_handle(ree_id)
         return ReeDocument.of(
             handle.ree_id,
-            workbench_manager.get_ree_document(handle),
+            command_dispatcher.get_ree_document(handle),
             allocation_id=handle.allocation_id,
             location_id=handle.location_id,
             image=handle.image,
@@ -209,7 +209,7 @@ def _ree_state(ree_id: str) -> ReeState:
     # could typecheck. It also mixed a raising read (`document["ree"]`) with a
     # defaulting one (`document.get("workspace_files", [])`) over the same
     # document; the model's own defaults now settle what may be absent.
-    document = ReeDocument.of(handle.ree_id, workbench_manager.get_ree_state(handle))
+    document = ReeDocument.of(handle.ree_id, command_dispatcher.get_ree_state(handle))
     # Runs are this process's own records, not a workbench's, so they are parsed
     # strictly: a summary that will not validate is a bug here rather than a peer
     # speaking a version we do not know, and it should say so loudly.

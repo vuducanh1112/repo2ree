@@ -15,7 +15,7 @@ from fastapi import HTTPException
 
 from repo2ree_api.contracts import RunOperation
 from repo2ree_api.control.run_registry import RunRegistry
-from repo2ree_api.deps import workbench_manager
+from repo2ree_api.deps import command_dispatcher
 from repo2ree_api.settings import service_settings
 from repo2ree_api.storage.json_run_store import JsonRunStore
 from repo2ree_api.workbench.commands import require_handle
@@ -134,7 +134,7 @@ def start_single_command_run(
                 retryable=exc.status_code == 503,
             )
 
-        result = workbench_manager.dispatch_action(handle, command, run_id, _log)
+        result = command_dispatcher.dispatch_action(handle, command, run_id, _log)
         if result.status == "succeeded" and after_success is not None:
             completed = result
             try:

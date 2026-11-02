@@ -1,61 +1,29 @@
-"""Control-plane workbench lifecycle and command dispatch.
+"""Control-plane workbench lifecycle: provider-managed and external allocations.
 
-Each REE has exactly one always-on workbench with its volume mounted at /ree.
-The manager provisions new workbenches, dispatches typed Commands, and issues
-cheap queries/mutations — but it does none of the runtime I/O itself. Every
-touch of the underlying runtime goes through the split client seams, so the
-manager's responsibilities are purely control-plane: the registry of
-REE→reference, per-REE locking, tracing, metrics, and the semantic query
-wrappers.
-
-Streaming: dispatch_action consumes the workbench's ``Frame`` stream, forwards
-log/span frames as they arrive, and returns the terminal result frame's
-``ActionResult``.
+The manager sets workbenches up and tears them down, keeps the allocation each REE is
+served by, and knows when a provider reports a bench gone. Commands and queries go
+through its ``dispatcher`` (``repo2ree_supervisor.dispatcher``) under the same per-REE
+locks, so setting up or tearing down an REE never overlaps a command on it.
 """
 
 from __future__ import annotations
 
-import json
 import logging
 import secrets
-import threading
-import time
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from contextlib import suppress
-from dataclasses import dataclass
-from typing import Any
 from uuid import uuid4
 
 from pydantic import ValidationError
 
-from repo2ree_protocol.allocation import AllocationRecord, AllocationRequest, AllocationState
-from repo2ree_protocol.command import Command
-from repo2ree_protocol.document import WorkbenchReeDocument
-from repo2ree_protocol.execution import ExecutionContext
+from repo2ree_protocol.allocation import AllocationRequest, AllocationState
 from repo2ree_protocol.frames import (
     AllocationStatusFrame,
-    ErrorFrame,
     Frame,
     LogFrame,
     LogSink,
-    ResultFrame,
-    SpanFrame,
-    UnavailableFrame,
 )
-from repo2ree_protocol.history import OperationHistory
-from repo2ree_protocol.queries import (
-    BUILD_ARCHIVE,
-    GET_HISTORY,
-    GET_REE_DOCUMENT,
-    GET_REE_DOCUMENT_SUMMARY,
-    GET_REE_MANIFEST,
-    GET_REVIEWS,
-    READ_REE_FILE,
-    READ_REE_FILE_PATH,
-)
-from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.model import Ree
-from repo2ree_ree.review import ReviewSet
 from repo2ree_supervisor.allocation_state import IllegalTransitionError
 from repo2ree_supervisor.allocation_store import AllocationStore
 from repo2ree_supervisor.client import (
@@ -64,22 +32,15 @@ from repo2ree_supervisor.client import (
     WorkbenchUnavailableError,
     raise_for_terminal_error,
 )
+from repo2ree_supervisor.dispatcher import CommandDispatcher
 from repo2ree_supervisor.enrollment import EnrollmentRegistry
-from repo2ree_supervisor.transfers import ReceivedFile
-from repo2ree_telemetry.behaviour import events
+from repo2ree_supervisor.handle import WorkbenchHandle
+from repo2ree_supervisor.locks import ReeLocks
 from repo2ree_telemetry.bootstrap import get_meter, get_tracer
 from repo2ree_telemetry.relay import SpanSink
 from repo2ree_telemetry.spans import (
-    CommandSpanAttrs,
     WorkbenchSpanAttrs,
-    command_metric_attrs,
-    record_command_status,
-    record_exit_code,
-    record_failure,
     record_ree_id,
-    record_result_boundary,
-    record_result_evidence,
-    record_span_facts,
 )
 
 __all__ = [
@@ -91,55 +52,6 @@ __all__ = [
 logger = logging.getLogger(__name__)
 tracer = get_tracer(__name__)
 _meter = get_meter(__name__)
-
-# ================================================
-# Metrics
-# ================================================
-
-_container_gone_counter = _meter.create_counter(
-    "workbench.container_gone",
-    description="Number of docker exec failures due to container gone or stopping.",
-)
-_exec_duration = _meter.create_histogram(
-    "workbench.execute_duration_seconds",
-    description="Wall-clock duration of workbench command execution (lock held, docker exec running).",
-    unit="s",
-)
-_lock_wait_duration = _meter.create_histogram(
-    "workbench.lock_wait_seconds",
-    description="Time a dispatch blocked on the per-REE lock before execution (another run in progress).",
-    unit="s",
-)
-
-
-# ================================================
-# Utility Classes
-# ================================================
-
-
-@dataclass(frozen=True)
-class WorkbenchHandle:
-    ree_id: str
-    # The workbench this REE is pinned to; every op on this handle routes to it.
-    workbench_id: str = ""
-    allocation_id: str = ""
-    provider_id: str = ""
-    mode: str = "provider_managed"
-    location_id: str = ""
-    image: str = ""
-
-    @classmethod
-    def from_record(cls, record: AllocationRecord) -> WorkbenchHandle:
-        request = record.request
-        return cls(
-            ree_id=request.ree_id,
-            workbench_id=record.workbench_id or "",
-            allocation_id=request.allocation_id,
-            provider_id=record.provider_id or "",
-            mode="provider_managed" if record.provider_id else "external",
-            location_id=request.location_id,
-            image=record.resolved_image or request.image,
-        )
 
 
 # ================================================
@@ -166,14 +78,10 @@ class WorkbenchManager:
         self._provider = provider
         self._workbench = workbench
         self._enrollment = enrollment or EnrollmentRegistry()
-        self._ree_locks: dict[str, threading.Lock] = {}
-        self._ree_locks_lock = threading.Lock()
-
-    def _ree_lock(self, ree_id: str) -> threading.Lock:
-        with self._ree_locks_lock:
-            if ree_id not in self._ree_locks:
-                self._ree_locks[ree_id] = threading.Lock()
-            return self._ree_locks[ree_id]
+        self._ree_lock = ReeLocks()
+        # Commands and queries go through the dispatcher, under the same per-REE locks; a bench
+        # that stops answering one is asked about here, where allocations are known.
+        self.dispatcher = CommandDispatcher(workbench, self._ree_lock, span_sink, on_unavailable=self._notice_lost)
 
     # ------------------------------------------------
     # Lifecycle
@@ -401,266 +309,8 @@ class WorkbenchManager:
         return state
 
     # ------------------------------------------------
-    # Action dispatch
+    # Listing
     # ------------------------------------------------
-
-    def dispatch_action(
-        self,
-        handle: WorkbenchHandle,
-        cmd: Command,
-        run_id: str,
-        log: LogSink,
-        context: ExecutionContext | None = None,
-    ) -> ActionResult:
-        """Run a typed Command inside the workbench; stream logs to log."""
-        context = context or ExecutionContext.new(ree_id=handle.ree_id)
-        if context.ree_id not in {None, handle.ree_id}:
-            raise ValueError("Execution context belongs to another REE")
-        context = context.model_copy(update={"ree_id": handle.ree_id})
-        with tracer.start_as_current_span("workbench.dispatch_action") as span:
-            CommandSpanAttrs(
-                operation=str(cmd.operation), run_id=run_id, ree_id=handle.ree_id, execution=context
-            ).apply(span)
-            WorkbenchSpanAttrs(
-                workbench_id=handle.workbench_id,
-            ).apply(span)
-            # The whole command as dispatched — envelope and args — recorded
-            # before it runs, for the reason core's own dispatch records its
-            # inputs first: a command that is killed or times out still carries
-            # what it was asked to do. Without this the span reports only what
-            # came back, which is half a wide event.
-            #
-            # Namespaced ``cmd`` rather than ``arg`` because it is the whole
-            # envelope, not the argument object a handler receives; core's
-            # ``repo2ree.arg.*`` remains the inner view of the same call.
-            record_span_facts(span, cmd.model_dump(), namespace="cmd")
-            # Time spent blocked here is per-REE lock contention (another run in
-            # progress); record it on acquisition so wait is a first-class metric
-            # rather than something inferred from the dispatch/execute span gap.
-            _lock_t0 = time.monotonic()
-            with self._ree_lock(handle.ree_id):
-                _lock_wait_duration.record(
-                    time.monotonic() - _lock_t0,
-                    command_metric_attrs(str(cmd.operation)),
-                )
-                with tracer.start_as_current_span("workbench.execute"):
-                    _t0 = time.monotonic()
-                    try:
-                        result, context = self._dispatch_recorded(handle, cmd, run_id, log, context)
-                    except WorkbenchUnavailableError:
-                        self._notice_lost(handle)
-                        raise
-                    _exec_duration.record(
-                        time.monotonic() - _t0,
-                        command_metric_attrs(str(cmd.operation), status=result.status),
-                    )
-            if result.context is not None and result.context != context:
-                raise RuntimeError("Executor returned a different execution context")
-            if result.history is not None and result.history.attempt_id != context.attempt_id:
-                raise RuntimeError("Executor returned history for a different execution attempt")
-            result = result.model_copy(update={"context": context})
-            # Mirror the executor's wide event host-side: the command span's
-            # outputs travel over the best-effort span relay, so this dispatch
-            # span is the copy guaranteed to reach the collector.
-            record_exit_code(span, result.exit_code)
-            record_span_facts(span, result.outputs, namespace="output")
-            record_failure(span, result.failure)
-            record_command_status(span, result.status)
-            record_result_evidence(span, result)
-            record_result_boundary(span, "supervisor.received", result)
-            return result
-
-    def cancel_run(self, handle: WorkbenchHandle, run_id: str) -> None:
-        """Ask the workbench executor to stop a running action.
-
-        This deliberately does not take the per-REE dispatch lock: the command we
-        are canceling is usually the one holding that lock.
-        """
-        self._workbench.cancel_run(handle.workbench_id, run_id, ree_id=handle.ree_id)
-
-    def _dispatch_recorded(
-        self,
-        handle: WorkbenchHandle,
-        cmd: Command,
-        run_id: str,
-        log: LogSink,
-        context: ExecutionContext,
-    ) -> tuple[ActionResult, ExecutionContext]:
-        """One ``dispatch`` exchange: the request is journaled before it leaves, and one outcome after.
-
-        Every terminal frame is recorded as received, so a duplicated result is
-        visible to the checker rather than silently overwritten here. The two
-        sides cite each other: the command carries the request's journal
-        reference into the attempt's record, and the recorded result names the
-        commit that captured the attempt. Returns the result and the context sent.
-        """
-        dispatched = events.dispatch_sent(
-            context.attempt_id, partition=handle.ree_id, facts={"operation": str(cmd.operation), "run_id": run_id}
-        )
-        context = context.model_copy(update={"dispatch_record": dispatched})
-        answered = False
-
-        def observe(message: events.DispatchResponse, facts: events.ResultFacts | None = None) -> None:
-            nonlocal answered
-            answered = True
-            events.dispatch_received(context.attempt_id, message, partition=handle.ree_id, facts=facts)
-
-        try:
-            result = self._dispatch_action_locked(handle, cmd, run_id, log, context, observe)
-        except BaseException as exc:
-            if not answered:
-                events.dispatch_abandoned(context.attempt_id, partition=handle.ree_id, reason=type(exc).__name__)
-            raise
-        if not answered:
-            events.dispatch_abandoned(context.attempt_id, partition=handle.ree_id, reason="closed_without_response")
-        return result, context
-
-    def _dispatch_action_locked(
-        self,
-        handle: WorkbenchHandle,
-        cmd: Command,
-        run_id: str,
-        log: LogSink,
-        context: ExecutionContext,
-        observe: Callable[[events.DispatchResponse, events.ResultFacts | None], None],
-    ) -> ActionResult:
-        cmd_json = cmd.model_dump_json()
-
-        # No TRACEPARENT here on purpose. The workbench injects it at the hop that
-        # actually spawns the executor, so a context set from this span would be
-        # overwritten one layer down — two propagation points with the later
-        # silently winning. What this span does own is asking for the relay:
-        # when the API injected a span_sink the executor should stream its spans
-        # back over stderr, having no path to the collector itself.
-        env: dict[str, str] = {}
-        if self._span_sink is not None:
-            env["TRACE_RELAY"] = "1"
-
-        # Consume the workbench's frame stream live: forward log frames to the sink
-        # and relayed span frames to the span_sink as they arrive (not buffered to
-        # the end) so a command that hangs or gets killed still ships what it
-        # emitted before stalling — the case a trace is most useful. The span_sink
-        # is non-blocking (it enqueues for a background forwarder), so export never
-        # sits on this loop, the per-REE lock, or the measured execute window.
-        result: ActionResult | None = None
-        for frame in self._workbench.exec_action(
-            handle.workbench_id, cmd_json, run_id, env, context, ree_id=handle.ree_id
-        ):
-            if isinstance(frame, LogFrame):
-                log(frame.stream, frame.level, frame.message)
-            elif isinstance(frame, SpanFrame):
-                if self._span_sink is not None:
-                    self._span_sink([frame.payload])
-            elif isinstance(frame, ResultFrame):
-                history = frame.result.history
-                observe(
-                    "result",
-                    {
-                        "status": frame.result.status,
-                        "commit": history.after_snapshot_id if history else None,
-                        "record": history.record_digest if history else None,
-                    },
-                )
-                result = frame.result
-            elif isinstance(frame, UnavailableFrame):
-                observe("unavailable", None)
-                _container_gone_counter.add(1, command_metric_attrs(str(cmd.operation)))
-                raise WorkbenchUnavailableError(frame.detail)
-            elif isinstance(frame, ErrorFrame):
-                observe("error", None)
-                raise RuntimeError(frame.detail)
-
-        if result is None:
-            # Stream ended without a terminal result frame: the executor exited
-            # or the connection dropped before reporting an outcome.
-            return ActionResult.failed(
-                "internal",
-                f"{cmd.operation} ended without a result",
-                origin="supervisor",
-                retryable=True,
-            )
-        return result
-
-    # ------------------------------------------------
-    # Query / mutation dispatch
-    # ------------------------------------------------
-
-    def dispatch_query(self, handle: WorkbenchHandle, *argv: str, locked: bool = False, timeout: int = 30) -> bytes:
-        """Run a read-only CLI subcommand and return its stdout bytes.
-
-        ``argv`` is a ``repo2ree-exec`` subcommand (e.g. ``get-ree-manifest``);
-        the workbench service prepends the bench's executor entry point. Set
-        ``locked`` for
-        queries that must observe a consistent snapshot — they take the per-REE
-        lock so no mutating action runs concurrently. Plain reads leave it off
-        and run unsynchronised. ``timeout`` bounds the exec itself; raise it for
-        queries whose output scales with the REE (archives, large artifacts).
-        """
-        exec_argv = list(argv)
-        if locked:
-            with self._ree_lock(handle.ree_id):
-                return self._workbench.exec_query(handle.workbench_id, exec_argv, timeout=timeout, ree_id=handle.ree_id)
-        return self._workbench.exec_query(handle.workbench_id, exec_argv, timeout=timeout, ree_id=handle.ree_id)
-
-    def dispatch_query_stream(
-        self, handle: WorkbenchHandle, *argv: str, locked: bool = False, timeout: int = 30
-    ) -> Iterator[bytes]:
-        """Run a read-only CLI subcommand and stream stdout bytes."""
-        exec_argv = list(argv)
-
-        def query() -> Iterator[bytes]:
-            return self._workbench.exec_query_stream(
-                handle.workbench_id, exec_argv, timeout=timeout, ree_id=handle.ree_id
-            )
-
-        def stream() -> Iterator[bytes]:
-            if locked:
-                with self._ree_lock(handle.ree_id):
-                    yield from query()
-                return
-            yield from query()
-
-        return stream()
-
-    def _query_json(self, handle: WorkbenchHandle, *argv: str) -> dict[str, Any]:
-        """Run a read-only CLI subcommand and parse its stdout as a JSON object.
-
-        The one place the workbench's untyped JSON becomes a typed value, so the
-        ``Any`` that ``json.loads`` returns is narrowed once rather than at each
-        of the five call sites below.
-        """
-        parsed: dict[str, Any] = json.loads(self.dispatch_query(handle, *argv))
-        return parsed
-
-    def get_ree_manifest(self, handle: WorkbenchHandle) -> Ree:
-        return Ree.model_validate(self._query_json(handle, GET_REE_MANIFEST))
-
-    def get_ree_document(self, handle: WorkbenchHandle) -> WorkbenchReeDocument:
-        return WorkbenchReeDocument.model_validate(self._query_json(handle, GET_REE_DOCUMENT))
-
-    def get_ree_state(self, handle: WorkbenchHandle) -> WorkbenchReeDocument:
-        """Return composed REE state without embedding text file contents."""
-        return WorkbenchReeDocument.model_validate(self._query_json(handle, GET_REE_DOCUMENT, GET_REE_DOCUMENT_SUMMARY))
-
-    def get_history(self, handle: WorkbenchHandle) -> OperationHistory:
-        return OperationHistory.model_validate(self._query_json(handle, GET_HISTORY))
-
-    def get_reviews(self, handle: WorkbenchHandle) -> ReviewSet:
-        return ReviewSet.model_validate(self._query_json(handle, GET_REVIEWS))
-
-    def read_ree_file_bytes(self, handle: WorkbenchHandle, path: str) -> bytes:
-        # REE files can include large runtime and result artifacts.
-        return self.dispatch_query(handle, READ_REE_FILE, READ_REE_FILE_PATH, path, timeout=120)
-
-    def build_archive(self, handle: WorkbenchHandle) -> ReceivedFile:
-        """The REE's archive as a file on the control plane; the caller removes it.
-
-        Built and uploaded beside the control socket (``exec_upload``), under the
-        per-REE lock, which is released once the file has arrived — never held for
-        as long as a client takes to download it. Zipping and sending scale with
-        the REE's size, hence the generous timeout."""
-        with self._ree_lock(handle.ree_id):
-            return self._workbench.exec_upload(handle.workbench_id, [BUILD_ARCHIVE], timeout=600, ree_id=handle.ree_id)
 
     def list_all_manifests(self) -> list[tuple[WorkbenchHandle, Ree]]:
         """Every reachable workbench, paired with its REE.
@@ -684,14 +334,7 @@ class WorkbenchManager:
                 continue
             with suppress(Exception):
                 try:
-                    manifests.append((handle, self.get_ree_manifest(handle)))
+                    manifests.append((handle, self.dispatcher.get_ree_manifest(handle)))
                 except ValidationError:
                     logger.warning("REE %s has a document this control plane cannot parse; omitting it", handle.ree_id)
         return manifests
-
-    def copy_to_workbench(self, handle: WorkbenchHandle, host_path: str, workbench_path: str) -> None:
-        """Copy a control-plane-local file into the workbench.
-
-        ``host_path`` need only exist here; the workbench may share no filesystem
-        with us (see ``WorkbenchClient.copy_in``)."""
-        self._workbench.copy_in(handle.workbench_id, host_path, workbench_path, ree_id=handle.ree_id)

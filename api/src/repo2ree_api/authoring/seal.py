@@ -27,7 +27,7 @@ from repo2ree_api.contracts import (
 )
 from repo2ree_api.control.behaviour import journal_positions, record_archive
 from repo2ree_api.control.run_orchestration import run_summary, start_single_command_run
-from repo2ree_api.deps import ree_index, workbench_manager
+from repo2ree_api.deps import command_dispatcher, ree_index
 from repo2ree_api.ree_index import entry_from_ree
 from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.archives import archive_download_filename, spool_chunks
@@ -115,7 +115,7 @@ def load_ree_bundle_route(ree_id: str, payload: ReeBundleLoadPayload) -> RunSumm
 )
 def seal_ree_route(ree_id: str, payload: ReeSealPayload) -> RunSummary:
     def record_sealed_ree(handle: WorkbenchHandle, result: ActionResult) -> ActionResult:
-        document = workbench_manager.get_ree_document(handle)
+        document = command_dispatcher.get_ree_document(handle)
         _record_in_ree_index(ree_id, document)
         return result
 
@@ -189,7 +189,7 @@ def _download_ree_archive(ree_id: str) -> StreamingResponse:
     before = journal_positions()
     try:
         with ree_command_span("ree-archive", ree_id):
-            received = workbench_manager.build_archive(handle)
+            received = command_dispatcher.build_archive(handle)
     except (HTTPException, WorkbenchUnavailableError):
         # A workbench that went away mid-transfer is the retryable 503 every route
         # answers for it (main.workbench_unavailable_handler), not the author's 400.

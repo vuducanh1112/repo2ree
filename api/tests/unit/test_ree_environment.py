@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 
 from repo2ree_api.control import rees
-from repo2ree_api.deps import workbench_manager
+from repo2ree_api.deps import command_dispatcher
 from repo2ree_protocol.command import PatchReeDefinitionCommand
 from repo2ree_protocol.result import ActionResult
 from repo2ree_supervisor import WorkbenchHandle
@@ -23,7 +23,7 @@ def _declared(monkeypatch: pytest.MonkeyPatch, handle: WorkbenchHandle, result: 
         sent.append(command)
         return result
 
-    monkeypatch.setattr(workbench_manager, "dispatch_action", dispatch)
+    monkeypatch.setattr(command_dispatcher, "dispatch_action", dispatch)
     rees._declare_environment(handle, "run-1", lambda stream, level, message: logged.append(f"{level}: {message}"))
     return sent[0].args.patch, logged
 

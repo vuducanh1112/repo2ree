@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
-from repo2ree_api.deps import workbench_manager
+from repo2ree_api.deps import command_dispatcher
 from repo2ree_api.review import stages as review_routes
 from repo2ree_protocol.command import (
     ReviewAcquireSourceCommand,
@@ -23,7 +23,7 @@ def test_list_reviews_returns_persisted_attempts(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        workbench_manager,
+        command_dispatcher,
         "get_reviews",
         lambda handle: ReviewSet.model_validate(
             {
@@ -241,7 +241,7 @@ def test_get_review_returns_one_attempt_and_404s_for_the_rest(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        workbench_manager,
+        command_dispatcher,
         "get_reviews",
         lambda handle: ReviewSet.model_validate(
             {

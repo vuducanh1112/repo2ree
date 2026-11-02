@@ -24,7 +24,7 @@ from repo2ree_api.contracts import (
     UploadStoredResponse,
 )
 from repo2ree_api.control.run_orchestration import run_summary, start_single_command_run
-from repo2ree_api.deps import workbench_manager
+from repo2ree_api.deps import command_dispatcher
 from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import dispatch_or_fail, ree_command_span, require_handle
 from repo2ree_api.workbench.uploads import mint_upload_token, stage_upload_bytes
@@ -147,4 +147,4 @@ def remove_source_route(ree_id: str) -> ReeDocument:
         handle = require_handle(ree_id)
         with ree_command_span("remove-source", ree_id):
             dispatch_or_fail(handle, RemoveSourceCommand(), "remove-source", "Workbench remove_source failed")
-            return ReeDocument.of(handle.ree_id, workbench_manager.get_ree_document(handle))
+            return ReeDocument.of(handle.ree_id, command_dispatcher.get_ree_document(handle))

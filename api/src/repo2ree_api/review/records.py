@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 
 from repo2ree_api.contracts import ERROR_RESPONSES
-from repo2ree_api.deps import workbench_manager
+from repo2ree_api.deps import command_dispatcher
 from repo2ree_api.workbench.commands import require_handle
 from repo2ree_ree.review import ReviewRecord, ReviewSet
 
@@ -16,7 +16,7 @@ def reviews_for(ree_id: str) -> ReviewSet:
     """Every persisted attempt for an REE, or the workbench failure to report."""
     handle = require_handle(ree_id)
     try:
-        return workbench_manager.get_reviews(handle)
+        return command_dispatcher.get_reviews(handle)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Workbench review query failed: {exc}") from exc
 

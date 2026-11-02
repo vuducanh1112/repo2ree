@@ -3,7 +3,7 @@
 import pytest
 
 from repo2ree_api.control import run_orchestration as orchestration
-from repo2ree_api.deps import workbench_manager
+from repo2ree_api.deps import command_dispatcher
 from repo2ree_protocol.command import SealReeCommand
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.result import ActionResult, HistoryReference
@@ -23,7 +23,7 @@ def test_postprocessing_retains_execution_evidence(online_ree, monkeypatch, post
         changed=True,
     )
     completed = ActionResult(status="succeeded", context=context, history=history, outputs={"sealed": True})
-    monkeypatch.setattr(workbench_manager, "dispatch_action", lambda *args: completed)
+    monkeypatch.setattr(command_dispatcher, "dispatch_action", lambda *args: completed)
     monkeypatch.setattr(orchestration, "is_cancel_requested", lambda *args: False)
     results = []
 

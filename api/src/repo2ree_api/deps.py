@@ -65,6 +65,9 @@ workbench_manager = WorkbenchManager(
     span_sink=span_sink,
 )
 
+# Commands and queries for an REE, under the same per-REE locks the manager sets workbenches up under.
+command_dispatcher = workbench_manager.dispatcher
+
 # The durable record of what has been sealed here and where it was deposited.
 # Written at seal, appended to when a deposit publishes, and read by anything
 # that lists or exports the index.
