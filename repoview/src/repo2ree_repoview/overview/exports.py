@@ -255,7 +255,7 @@ class AggregateReceipt(Document):
 
 
 class Aggregate(Document):
-    """A document an entity commits, with a machine for every part; reported, not gated."""
+    """A document an entity commits, with a machine for every part; a move no edge allows violates its rule."""
 
     name: str
     receipt_entity: str
