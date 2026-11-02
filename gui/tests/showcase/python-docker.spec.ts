@@ -26,6 +26,7 @@ import {
   testActivation,
   uploadSource,
 } from "../helpers/flow";
+import { reproduceOffline } from "../helpers/offline";
 import { narrate } from "./narration";
 
 /**
@@ -48,6 +49,7 @@ const RUNTIME_PATH = "python_hello_world/runtime.tar";
 
 test.describe("REE pipeline", () => {
   test("golden path: provision through seal and release on one workbench", async ({ page }) => {
+    let archive = "";
     await test.step("provision workbench", async () => {
       await startReeCreation(page);
       const setup = page.getByRole("region", { name: "Set up the workbench" });
@@ -259,12 +261,25 @@ test.describe("REE pipeline", () => {
         downloadButton,
         "Sealed: the REE downloads as one archive a reviewer can reproduce",
       );
-      const bundle = readFileSync(await keepReeArchive(page));
+      archive = await keepReeArchive(page);
+      const bundle = readFileSync(archive);
       expect(bundle.includes("ree/results/python-hello/result.txt")).toBe(true);
       // The SBOM was written to the REE's artifacts, so packaging carries it
       // there verbatim — no lift out of the workspace, same path either side.
       expect(bundle.includes(`ree/${SBOM_ARTIFACT_PATH}`)).toBe(true);
     });
+
+    // The recorded walkthrough shows the product; this step has nothing on screen.
+    if (test.info().project.name !== "demo-gui") {
+      await test.step("reproduce the sealed REE offline, without repo2ree", async () => {
+        const output = await reproduceOffline(archive);
+        expect(output).toContain("Reusing sealed runtime");
+        expect(output).toContain("Pandas Hello World");
+        expect(output).not.toContain("VERIFIED: fail");
+        expect(output).toContain("VERIFIED: pass");
+        expect(output).toContain("All steps completed.");
+      });
+    }
 
     await test.step("release workbench", async () => {
       // Asserts the return to the landing view; the workbenchCleanup fixture
