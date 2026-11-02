@@ -3,13 +3,14 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.exceptions import HTTPException as FastAPIHTTPException
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 from opentelemetry import trace
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from starlette.exceptions import HTTPException
 
 from repo2ree_api.authoring.catalog import ree_steps_router, script_templates_router
 from repo2ree_api.authoring.definition import definition_router
@@ -203,8 +204,9 @@ def get_build_info() -> BuildInfo:
 # ================================================
 
 
-@app.exception_handler(FastAPIHTTPException)
-async def http_exception_handler(request: Request, exc: FastAPIHTTPException) -> JSONResponse:
+# Starlette's, not only FastAPI's subclass: routing (404, 405) and body parsing (400) raise Starlette's.
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
     detail = exc.detail
     if isinstance(detail, dict) and "error" in detail:
         content = dict(detail)
@@ -231,15 +233,36 @@ async def http_exception_handler(request: Request, exc: FastAPIHTTPException) ->
     return JSONResponse(status_code=exc.status_code, content={"error": error_payload})
 
 
+def _is_json(content_type: str) -> bool:
+    media_type = content_type.split(";", 1)[0].strip().lower()
+    return media_type in {"", "application/json"} or media_type.endswith("+json")
+
+
 @app.exception_handler(RequestValidationError)
 async def request_validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    errors = exc.errors()
+    # A body the route reads as JSON, sent as something else: FastAPI hands it on as raw bytes, which
+    # fail validation, but the request is wrong in its media type, not in its fields.
+    if not _is_json(request.headers.get("content-type", "")) and any(error["loc"][:1] == ("body",) for error in errors):
+        return JSONResponse(
+            status_code=415,
+            content={
+                "error": {
+                    "code": "unsupported_media_type",
+                    "message": "The request body must be application/json",
+                    "details": None,
+                    "retryable": False,
+                }
+            },
+        )
     return JSONResponse(
         status_code=422,
         content={
             "error": {
                 "code": "request_validation_failed",
                 "message": "Request validation failed",
-                "details": {"violations": exc.errors()},
+                # The inputs the violations quote can be anything a client sent, bytes included.
+                "details": {"violations": jsonable_encoder(errors)},
                 "retryable": False,
             }
         },

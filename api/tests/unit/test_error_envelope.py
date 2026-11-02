@@ -133,6 +133,35 @@ def test_request_validation_uses_error_envelope(client: TestClient):
     assert body["error"]["details"]["violations"]
 
 
+@pytest.mark.parametrize("content_type", ["text/plain", "application/x-www-form-urlencoded"])
+def test_a_json_body_sent_as_another_media_type_is_unsupported(client: TestClient, content_type: str):
+    body = json.dumps({"name": "x", "location_id": "local", "image": "python:3.13"})
+    resp = client.post("/api/v1/rees", content=body, headers={"Content-Type": content_type})
+    assert resp.status_code == 415
+    assert resp.json()["error"]["code"] == "unsupported_media_type"
+
+
+def test_violations_quoting_bytes_still_answer_422(client: TestClient):
+    # application/merge-patch+json is JSON by its suffix, so a malformed one is a validation failure.
+    resp = client.post("/api/v1/rees", content=b"\xff\xfe", headers={"Content-Type": "application/merge-patch+json"})
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "request_validation_failed"
+
+
+def test_a_body_that_is_not_utf8_uses_the_error_envelope(client: TestClient):
+    headers = {"Content-Type": "application/json"}
+    resp = client.post("/api/v1/script-lints:draft", content=b"\xff\x1b\xfe", headers=headers)
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "http_400"
+
+
+@pytest.mark.parametrize(("method", "path", "status"), [("GET", "/api/v1/no-such-route", 404), ("DELETE", "/", 405)])
+def test_routing_failures_use_the_error_envelope(client: TestClient, method: str, path: str, status: int):
+    resp = client.request(method, path)
+    assert resp.status_code == status
+    assert resp.json()["error"]["code"] == f"http_{status}"
+
+
 def test_registered_but_unreachable_ree_yields_503(client: TestClient, monkeypatch: pytest.MonkeyPatch):
     """A REE in the registry whose container is down: 503, not 404.
 

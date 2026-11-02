@@ -74,6 +74,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -234,6 +244,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -348,6 +368,16 @@
           },
           "413": {
             "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not application/json",
             "content": {
               "application/json": {
                 "schema": {
@@ -476,6 +506,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -591,6 +631,16 @@
           },
           "413": {
             "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not application/json",
             "content": {
               "application/json": {
                 "schema": {
@@ -755,6 +805,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -878,6 +938,16 @@
           },
           "413": {
             "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not application/json",
             "content": {
               "application/json": {
                 "schema": {
@@ -1038,6 +1108,16 @@
           },
           "413": {
             "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not application/json",
             "content": {
               "application/json": {
                 "schema": {
@@ -1218,6 +1298,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -1349,6 +1439,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -1461,6 +1561,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -1565,6 +1675,16 @@
           },
           "413": {
             "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not application/json",
             "content": {
               "application/json": {
                 "schema": {
@@ -1706,6 +1826,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -1839,6 +1969,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -1963,6 +2103,16 @@
           },
           "413": {
             "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not application/json",
             "content": {
               "application/json": {
                 "schema": {
@@ -2104,6 +2254,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -2219,6 +2379,16 @@
           },
           "413": {
             "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not application/json",
             "content": {
               "application/json": {
                 "schema": {
@@ -2359,6 +2529,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -2481,6 +2661,16 @@
           },
           "413": {
             "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not application/json",
             "content": {
               "application/json": {
                 "schema": {
@@ -2622,6 +2812,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -2747,6 +2947,16 @@
           },
           "413": {
             "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not application/json",
             "content": {
               "application/json": {
                 "schema": {
@@ -2901,6 +3111,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -3026,6 +3246,16 @@
           },
           "413": {
             "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not application/json",
             "content": {
               "application/json": {
                 "schema": {
@@ -3167,6 +3397,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -3281,6 +3521,16 @@
           },
           "413": {
             "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not application/json",
             "content": {
               "application/json": {
                 "schema": {
@@ -3421,6 +3671,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -3553,6 +3813,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -3668,6 +3938,16 @@
           },
           "413": {
             "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not application/json",
             "content": {
               "application/json": {
                 "schema": {
@@ -3808,6 +4088,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -3932,6 +4222,16 @@
           },
           "413": {
             "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not application/json",
             "content": {
               "application/json": {
                 "schema": {
@@ -4072,6 +4372,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -4196,6 +4506,16 @@
           },
           "413": {
             "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not application/json",
             "content": {
               "application/json": {
                 "schema": {
@@ -4345,6 +4665,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -4460,6 +4790,16 @@
           },
           "413": {
             "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not application/json",
             "content": {
               "application/json": {
                 "schema": {
@@ -4601,6 +4941,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -4724,6 +5074,16 @@
           },
           "413": {
             "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not application/json",
             "content": {
               "application/json": {
                 "schema": {
@@ -4865,6 +5225,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -4997,6 +5367,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -5121,6 +5501,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -5235,6 +5625,16 @@
           },
           "413": {
             "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not application/json",
             "content": {
               "application/json": {
                 "schema": {
@@ -5400,6 +5800,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -5514,6 +5924,16 @@
           },
           "413": {
             "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not application/json",
             "content": {
               "application/json": {
                 "schema": {
@@ -5653,6 +6073,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -5777,6 +6207,16 @@
           },
           "413": {
             "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not application/json",
             "content": {
               "application/json": {
                 "schema": {
@@ -5927,6 +6367,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -6061,6 +6511,16 @@
           },
           "413": {
             "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not application/json",
             "content": {
               "application/json": {
                 "schema": {
@@ -6220,6 +6680,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -6331,6 +6801,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -6434,6 +6914,16 @@
           },
           "413": {
             "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not application/json",
             "content": {
               "application/json": {
                 "schema": {
@@ -6564,6 +7054,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -6668,6 +7168,16 @@
           },
           "413": {
             "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not application/json",
             "content": {
               "application/json": {
                 "schema": {
@@ -6788,6 +7298,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -6899,6 +7419,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -7002,6 +7532,16 @@
           },
           "413": {
             "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not application/json",
             "content": {
               "application/json": {
                 "schema": {
@@ -7138,6 +7678,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Request validation failed",
             "content": {
@@ -7241,6 +7791,16 @@
           },
           "413": {
             "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not application/json",
             "content": {
               "application/json": {
                 "schema": {
@@ -7353,6 +7913,16 @@
           },
           "413": {
             "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not application/json",
             "content": {
               "application/json": {
                 "schema": {

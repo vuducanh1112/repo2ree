@@ -33,6 +33,7 @@ ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
     404: {"model": ErrorEnvelope, "description": "REE, run, file, or artifact not found"},
     409: {"model": ErrorEnvelope, "description": "Version or idempotency conflict"},
     413: {"model": ErrorEnvelope, "description": "Upload exceeds the configured size limit"},
+    415: {"model": ErrorEnvelope, "description": "Request body is not application/json"},
     422: {"model": ErrorEnvelope, "description": "Request validation failed"},
     502: {"model": ErrorEnvelope, "description": "Workbench returned an invalid upstream response"},
     500: {"model": ErrorEnvelope, "description": "Internal server error"},
