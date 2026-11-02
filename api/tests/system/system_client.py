@@ -118,6 +118,12 @@ def project_archive() -> bytes:
     return INSTANT.archive()
 
 
+# The longest a healed bench may take to dial back in: its pings notice the dead socket (20 s apart,
+# 20 s to answer), the close handshake and the new connection each time out after 10 s, and it
+# waits 3 s between attempts. Then 15 s to spare.
+RECONNECT_BOUND = 20 + 20 + 10 + 10 + 3 + 15
+
+
 class ApiError(AssertionError):
     pass
 
@@ -205,9 +211,9 @@ class Api:
     def keep_archive(self, ree_id: str, label: str) -> Path | None:
         """Download the REE as its owner would and keep it where the collector looks; None if refused.
 
-        A bench reconnecting after a fault answers 503 (retryable) for a few seconds; wait it out.
+        A bench reconnecting after a fault answers 503 (retryable) until it is back; wait it out.
         """
-        deadline = time.monotonic() + 30
+        deadline = time.monotonic() + RECONNECT_BOUND
         while True:
             response = self.request("GET", f"/api/v1/rees/{ree_id}/ree-archive", expect=None, timeout=120.0)
             if response.status_code != 503 or time.monotonic() > deadline:

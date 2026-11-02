@@ -169,6 +169,31 @@ def test_exec_action_streams_logs_then_result() -> None:
     assert frames[-1].result.status == "succeeded"
 
 
+def test_a_silent_action_waits_until_its_connection_closes(monkeypatch: pytest.MonkeyPatch) -> None:
+    # A script may run quietly for hours: only the connection going away ends the wait.
+    socket = FakeSocket()
+    registry = WorkbenchConnectionRegistry()
+    registry.register("a1", socket.connection)
+    client = WsWorkbenchClient(registry)
+    gaps: list[float | None] = []
+    request = socket.connection.request
+
+    def spy(req: Any, *, frame_gap_timeout: float | None = None) -> Iterator[Any]:
+        gaps.append(frame_gap_timeout)
+        return request(req, frame_gap_timeout=frame_gap_timeout)
+
+    monkeypatch.setattr(socket.connection, "request", spy)
+
+    frames: list[Any] = []
+    join = _run_in_thread(lambda: frames.extend(client.exec_action("a1", "{}", "run1", {})))
+    socket.wait_for_request()
+    socket.connection.close()
+    join()
+
+    assert gaps == [None]
+    assert [frame.type for frame in frames] == ["unavailable"]
+
+
 def test_cancel_run_sends_cancel_run_request() -> None:
     socket = FakeSocket()
     registry = WorkbenchConnectionRegistry()

@@ -72,7 +72,8 @@ logger = logging.getLogger(__name__)
 # Bound on the silence *between* response frames before a request gives up on
 # the workbench (see WorkbenchConnection.request). Streaming verbs use this generous
 # default — a provision or command can legitimately be quiet for a while between
-# progress lines. Request/response verbs pass something much tighter.
+# progress lines. Request/response verbs pass something much tighter. An action
+# passes none: its script may be silent for as long as it runs.
 DEFAULT_FRAME_GAP_TIMEOUT = 900.0
 
 # For quick request/response ops (is-running, copy bookkeeping, remove): the
@@ -149,7 +150,7 @@ class WorkbenchConnection:
             q.put(message.frame)
 
     def request(
-        self, request: WorkbenchRequest, *, frame_gap_timeout: float = DEFAULT_FRAME_GAP_TIMEOUT
+        self, request: WorkbenchRequest, *, frame_gap_timeout: float | None = DEFAULT_FRAME_GAP_TIMEOUT
     ) -> Iterator[Frame]:
         """Issue a request and yield its response frames until a terminal one.
 
@@ -160,7 +161,9 @@ class WorkbenchConnection:
         call — a long provision that streams progress can run indefinitely, but
         a workbench that goes silent (suspended process, hung docker call, dead
         network with the TCP socket still up) raises ``WorkbenchUnavailableError``
-        instead of blocking the caller's thread forever.
+        instead of blocking the caller's thread forever. ``None`` waits for as long
+        as the connection lives: its pings notice a workbench that stopped answering,
+        and closing the connection ends every wait with an unavailable frame.
         """
         yield from self.start(request).frames(frame_gap_timeout=frame_gap_timeout)
 
@@ -223,7 +226,7 @@ class PendingReply:
         self._queue = q
         self._op = op
 
-    def frames(self, *, frame_gap_timeout: float = DEFAULT_FRAME_GAP_TIMEOUT) -> Iterator[Frame]:
+    def frames(self, *, frame_gap_timeout: float | None = DEFAULT_FRAME_GAP_TIMEOUT) -> Iterator[Frame]:
         """Yield the response frames until a terminal one (see ``request``).
 
         Leaving before the terminal frame — an abandoned stream, or the
@@ -450,8 +453,10 @@ class WsWorkbenchClient:
         env: dict[str, str],
         context: ExecutionContext | None = None,
     ) -> Iterator[Frame]:
+        # No frame gap: a script may run quietly for hours. The connection's pings decide whether the
+        # workbench is still there, and an author's cancel or a lost connection ends the run.
         return self._registry.pick(workbench_id).request(
-            ExecActionRequest(cmd_json=cmd_json, run_id=run_id, env=env, context=context)
+            ExecActionRequest(cmd_json=cmd_json, run_id=run_id, env=env, context=context), frame_gap_timeout=None
         )
 
     def cancel_run(self, workbench_id: str, run_id: str) -> None:
