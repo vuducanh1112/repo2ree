@@ -11,6 +11,7 @@ from repo2ree_core.domain.ree.transitions import revision_of
 from repo2ree_core.operations import dispatch
 from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.files import write_json_atomic
 from repo2ree_core.persistence.history import GitHistory, HistoryCaptureError
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.operation_history import read_operation_history
@@ -185,15 +186,91 @@ def test_capture_failure_reports_whether_handler_ran(ree, monkeypatch, after_mut
     assert result.failure.retryable is False
     assert result.history.capture_status == "failed"
     assert result.history.operation_status == ("succeeded" if after_mutation else "not_started")
-    assert ReeDirectory(ree).read_ree().subject.definition.name == ("after" if after_mutation else "before")
+    # What the author is told failed leaves nothing behind: the handler's change is rolled back.
+    assert ReeDirectory(ree).read_ree().subject.definition.name == "before"
     assert git(ree, "rev-list", "--count", "HEAD") == "1"
     monkeypatch.setattr(GitHistory, method, real_capture)
-    # Retrying observes an already-applied change separately, never attributes it
-    # to the retry's no-op patch.
-    if after_mutation:
-        retry = patch()
-        assert retry.history.changed is False
-        assert git(ree, "log", "-1", "--format=%s", "HEAD^") == "observe_existing_ree"
+    # A retry does the work itself, and nothing is observed between the attempts.
+    retry = patch()
+    assert retry.history.changed is True
+    assert git(ree, "log", "-1", "--format=%s", "HEAD^") != "observe_existing_ree"
+
+
+def lock_history(layout):
+    """A stale lock on the history ref, as a crashed git process leaves one: update-ref refuses it."""
+    lock = layout.git_dir / "refs" / "heads" / "ree-history.lock"
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    lock.write_text("")
+    return lock
+
+
+def pending_record(layout, attempt_id):
+    return json.loads((layout.git_dir / "repo2ree" / "operations" / f"{attempt_id}.json").read_text())
+
+
+def test_a_capture_that_fails_after_the_handler_rolls_back_what_it_changed(ree, monkeypatch):
+    ree.overlay_file("kept.txt").write_text("before")
+    patch("observed")  # A clean tree, so the before-snapshot reuses the head and takes no lock.
+    head = git(ree, "rev-parse", "HEAD")
+
+    def handler(*args, **kwargs):
+        ree.overlay_file("kept.txt").write_text("changed")
+        ree.overlay_file("created.txt").write_text("new")
+        lock_history(ree)
+        return ActionResult(status="succeeded")
+
+    monkeypatch.setattr(dispatch, "handle_patch_ree_definition", handler)
+    result = patch()
+
+    assert (result.status, result.failure.details["code"]) == ("failed", "history_capture_failed")
+    assert "rolled back to how the attempt found them" in result.failure.message
+    assert ree.overlay_file("kept.txt").read_text() == "before"
+    assert not ree.overlay_file("created.txt").exists()
+    assert git(ree, "rev-parse", "HEAD") == head
+    record = pending_record(ree, result.history.attempt_id)
+    assert record["phases"] == ["pending", "executing", "completed", "capture_failed"]
+
+
+def test_a_capture_that_fails_before_the_handler_runs_nothing(ree, monkeypatch):
+    ree.overlay_file("external.txt").write_text("written outside any attempt")
+    lock_history(ree)
+    ran = []
+    monkeypatch.setattr(dispatch, "handle_patch_ree_definition", lambda *args, **kwargs: ran.append(True))
+
+    result = patch()
+
+    assert (result.status, result.history.operation_status, ran) == ("failed", "not_started", [])
+    assert "nothing ran" in result.failure.message
+    assert pending_record(ree, result.history.attempt_id)["phases"] == ["pending", "capture_failed"]
+
+
+def test_a_record_that_cannot_be_written_before_the_handler_ends_the_attempt(ree, monkeypatch):
+    real_write = write_json_atomic
+    writes = []
+
+    def write_once(path, value):
+        writes.append(path)
+        if len(writes) == 2:  # The record entering executing.
+            raise OSError("no space left on device")
+        real_write(path, value)
+
+    monkeypatch.setattr("repo2ree_core.operations.capture.write_json_atomic", write_once)
+    result = patch()
+
+    assert result.history.capture_status == "failed"
+    assert ReeDirectory(ree).read_ree().subject.definition.name == "before"
+    assert pending_record(ree, result.history.attempt_id)["phases"] == ["pending", "executing", "capture_failed"]
+
+
+def test_a_rollback_that_fails_too_is_said(ree, monkeypatch):
+    monkeypatch.setattr(GitHistory, "commit_operation", lambda self, **kwargs: (_ for _ in ()).throw(OSError("full")))
+    monkeypatch.setattr(GitHistory, "restore", lambda self, snapshot: (_ for _ in ()).throw(OSError("full")))
+
+    result = patch()
+
+    assert result.history.capture_status == "failed"
+    assert "could not be rolled back" in result.failure.message
+    assert ReeDirectory(ree).read_ree().subject.definition.name == "after"
 
 
 @pytest.mark.parametrize("outcome", ["failed", "exception"])

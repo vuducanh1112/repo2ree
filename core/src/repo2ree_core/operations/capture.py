@@ -2,8 +2,10 @@
 
 All dispatched commands cooperate on the author REE lock. Review snapshots
 live in their own attempt directories; external writers are not synchronized.
-A pending record means completion is unresolved, not that execution rolled back;
-only a canceled attempt is rolled back, to its before-snapshot, before it is captured.
+A pending record means completion is unresolved, not that execution rolled back.
+A canceled attempt is rolled back, to its before-snapshot, before it is captured;
+an attempt whose capture failed is rolled back to it too, so that what the author
+is told failed leaves nothing behind.
 """
 
 from __future__ import annotations
@@ -17,7 +19,7 @@ from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.persistence.capture_policy import write_capture_controls
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import write_json_atomic
-from repo2ree_core.persistence.history import HistoryCaptureError, open_history
+from repo2ree_core.persistence.history import GitHistory, HistoryCaptureError, open_history
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.operation_history import next_operation_sequence, read_operation_history
 from repo2ree_protocol.command import (
@@ -85,48 +87,60 @@ def capture_command(
             # This is outside the snapshot tree and is updated atomically.
             write_json_atomic(record_path, record.model_dump(mode="json"))
             history.capture_initial(existing=True)
-            record.before_snapshot_id = history.capture(operation="observe_existing_ree", reuse_unchanged=True)
+            before = history.capture(operation="observe_existing_ree", reuse_unchanged=True)
+            record.before_snapshot_id = before
             if scope == layout:
                 record.step_evidence_before = step_evidence(layout, log)
             record.operation_status = "unknown"
             record.phases.append("executing")
-            write_json_atomic(record_path, record.model_dump(mode="json"))
             try:
-                result = execute().model_copy(update={"context": context, "history": None})
-            except Exception as exc:  # noqa: BLE001 — capture partial state from escaped handlers
-                log("system", "error", f"{cmd.operation} raised: {exc}")
-                result = failed_from_exception(exc, f"{cmd.operation} raised: {exc}")
-                result = result.model_copy(update={"context": context})
-            record.operation_status = result.status
-            record.operation_failure = result.failure
-            record.result = result
-            record.phases.append("completed")
-            # Preserve the handler outcome even if snapshot publication fails.
-            write_json_atomic(record_path, record.model_dump(mode="json"))
-            if result.status == "canceled" and record.before_snapshot_id is not None:
-                history.restore(record.before_snapshot_id)
-            if scope.manifest.is_file():
-                current = ReeDirectory(scope).read_ree()
-                if current.seal is None:
-                    prepare_reproducer(scope, current)
-                    write_capture_controls(scope, current)
-            if scope == layout:
-                record.step_evidence_after = step_evidence(layout, log)
-            record.after_snapshot_id, record.changed = history.commit_operation(
-                operation=cmd.operation,
-                record=CompletedOperation.model_validate(
-                    {**record.model_dump(), "capture_status": "captured", "phases": [*record.phases, "captured"]}
-                ).model_dump(mode="json", exclude={"after_snapshot_id"}),
-            )
+                write_json_atomic(record_path, record.model_dump(mode="json"))
+                try:
+                    result = execute().model_copy(update={"context": context, "history": None})
+                except Exception as exc:  # noqa: BLE001 — capture partial state from escaped handlers
+                    log("system", "error", f"{cmd.operation} raised: {exc}")
+                    result = failed_from_exception(exc, f"{cmd.operation} raised: {exc}")
+                    result = result.model_copy(update={"context": context})
+                record.operation_status = result.status
+                record.operation_failure = result.failure
+                record.result = result
+                record.phases.append("completed")
+                # Preserve the handler outcome even if snapshot publication fails.
+                write_json_atomic(record_path, record.model_dump(mode="json"))
+                if result.status == "canceled":
+                    history.restore(before)
+                if scope.manifest.is_file():
+                    current = ReeDirectory(scope).read_ree()
+                    if current.seal is None:
+                        prepare_reproducer(scope, current)
+                        write_capture_controls(scope, current)
+                if scope == layout:
+                    record.step_evidence_after = step_evidence(layout, log)
+                record.after_snapshot_id, record.changed = history.commit_operation(
+                    operation=cmd.operation,
+                    record=CompletedOperation.model_validate(
+                        {**record.model_dump(), "capture_status": "captured", "phases": [*record.phases, "captured"]}
+                    ).model_dump(mode="json", exclude={"after_snapshot_id"}),
+                )
+            except (HistoryCaptureError, OSError, ValueError) as exc:
+                # Still under the REE lock: put back what the attempt changed, since it is not recorded.
+                rolled_back = _roll_back(history, before, log)
+                raise _CaptureFailedError(str(exc), rolled_back=rolled_back) from exc
             record.capture_status = "captured"
             record.phases.append("captured")
             # The commit is authoritative. Cleanup is best-effort; a stale
             # pending record is reconciled with the published attempt on read.
             with suppress(OSError):
                 record_path.unlink(missing_ok=True)
-    except (HistoryCaptureError, OSError, ValueError) as exc:
+    except (_CaptureFailedError, HistoryCaptureError, OSError, ValueError) as exc:
+        if not isinstance(exc, _CaptureFailedError):
+            outcome = "nothing ran"  # The before-snapshot was never taken.
+        elif exc.rolled_back:
+            outcome = "the REE files were rolled back to how the attempt found them"
+        else:
+            outcome = "the REE files could not be rolled back"
         record.capture_status = "failed"
-        record.capture_error = str(exc)
+        record.capture_error = f"{exc}; {outcome}"
         record.phases.append("capture_failed")
         try:
             # The unique attempt path is safe to finalize after releasing locks.
@@ -135,7 +149,7 @@ def capture_command(
                 write_json_atomic(record_path, record.model_dump(mode="json"))
         except OSError as record_error:
             log("system", "error", f"Cannot finalize history record: {record_error}")
-        message = f"REE history capture failed: {exc}; REE files have not been rolled back"
+        message = f"REE history capture failed: {record.capture_error}"
         log("system", "error", message)
         failed = ActionResult.failed(
             "internal",
@@ -145,6 +159,24 @@ def capture_command(
         )
         return failed.model_copy(update={"context": context, "history": _references(record)})
     return result.model_copy(update={"history": _references(record)})
+
+
+class _CaptureFailedError(Exception):
+    """Publishing an attempt failed after its before-snapshot; whether its changes were undone."""
+
+    def __init__(self, message: str, *, rolled_back: bool) -> None:
+        super().__init__(message)
+        self.rolled_back = rolled_back
+
+
+def _roll_back(history: GitHistory, snapshot: str, log: LogSink) -> bool:
+    """Restore the before-snapshot of an attempt whose capture failed; whether that worked."""
+    try:
+        history.restore(snapshot)
+    except (HistoryCaptureError, OSError, ValueError) as exc:
+        log("system", "error", f"Cannot roll the REE back after a failed capture: {exc}")
+        return False
+    return True
 
 
 def step_evidence(layout: ReeLayout, log: LogSink) -> dict[str, str] | None:

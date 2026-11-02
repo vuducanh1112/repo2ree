@@ -33,7 +33,7 @@ HISTORY_REF = "refs/heads/ree-history"
 
 
 class HistoryCaptureError(RuntimeError):
-    """Recording failed; existing REE files have not been rolled back."""
+    """Recording failed; the attempt that hit it rolls the REE files back where it can."""
 
 
 def _walk_failed(error: OSError) -> None:
