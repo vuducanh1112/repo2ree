@@ -41,6 +41,7 @@ from typing import Protocol
 
 from repo2ree_testbed.artifacts import ROOT
 from repo2ree_testbed.machines import MachineConfig, load_machines, machines_file
+from repo2ree_testbed.stack import mirror
 from repo2ree_testbed.stack.process import capture
 
 # The clone, in the SSH user's home, which the dev container mounts at /repo2ree.
@@ -202,7 +203,11 @@ class Machine:
         self._require(self.runner.call(self._in_clone(script)), "cancel the job")
 
     def remove(self) -> None:
-        """Clean up what runs left on the machine's Docker, take the container down, and delete the clone."""
+        """Clean up what runs left on the machine's Docker, take the container down, and delete the clone.
+
+        The registry mirror goes first, with its cache: it joined the dev container's network, which
+        Compose would otherwise leave behind, still in use, without failing.
+        """
         if not self.remote:
             raise SystemExit(f">> {self.name} is this checkout; there is nothing to remove")
         if self.job().state == "running":
@@ -213,6 +218,8 @@ class Machine:
                 f"test -d {CLONE} || exit 0",
                 f"cd {CLONE}",
                 f"{self._exec} bash -lc {shlex.quote(cleanup)} 2>/dev/null",
+                f"docker rm -f {mirror.NAME} >/dev/null 2>&1",
+                f"docker volume rm {mirror.VOLUME} >/dev/null 2>&1",
                 f"{self._compose} down --volumes --remove-orphans --rmi local || exit 1",
                 f"cd && rm -rf {CLONE}",
             ]

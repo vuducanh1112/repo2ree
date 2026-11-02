@@ -14,6 +14,10 @@ publishes a port that benches reach through ``host.docker.internal``.
 ``python -m repo2ree_testbed mirror warm`` fetches every image the example projects pin
 by digest through the mirror ahead of a run (``just fetch-showcase``), each platform's
 manifest, config, and layers, so a run on a warm machine pulls nothing from Docker Hub.
+
+``python -m repo2ree_testbed mirror down`` removes it (``just mirror-down``), and its cache too
+with ``--cache``; the next run starts it again. Its cache bounds itself: the registry drops what it
+proxies a week after fetching it.
 """
 
 from __future__ import annotations
@@ -89,6 +93,13 @@ def ensure() -> str:
         _join(network)
     _wait_ready()
     return f"http://{NAME}:{PORT}" if network else f"http://host.docker.internal:{PUBLISHED_PORT}"
+
+
+def down(*, cache: bool = False) -> None:
+    """Remove the mirror, and with ``cache`` its volume; what is not there is no error."""
+    subprocess.run(["docker", "rm", "-f", NAME], check=False, capture_output=True)
+    if cache:
+        subprocess.run(["docker", "volume", "rm", VOLUME], check=False, capture_output=True)
 
 
 def _wait_ready(attempts: int = 60) -> None:
@@ -178,11 +189,16 @@ def warm(base: str, repository: str, digest: str, platforms: tuple[str, ...]) ->
 
 def main() -> int:
     parser = argparse.ArgumentParser(prog="repo2ree_testbed mirror")
-    parser.add_argument("command", choices=("warm", "url"))
+    parser.add_argument("command", choices=("warm", "url", "down"))
     parser.add_argument(
         "--all-platforms", action="store_true", help=f"warm {', '.join(ALL_PLATFORMS)}, not only this daemon's"
     )
+    parser.add_argument("--cache", action="store_true", help="down: remove the cached images too")
     args = parser.parse_args()
+    if args.command == "down":
+        down(cache=args.cache)
+        print(f">> removed the registry mirror {NAME}" + (" and its cache" if args.cache else ""))
+        return 0
     if not ensure():
         print("no registry mirror (REPO2REE_REGISTRY_MIRROR=off)")
         return 0

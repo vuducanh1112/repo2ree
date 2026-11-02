@@ -125,6 +125,11 @@ stack-clean:
 clean-workbenches store="":
     python -m repo2ree_testbed workbench-cleanup {{ if store != "" { "--store" } else { "" } }}
 
+# Remove this machine's registry mirror; run `just mirror-down 1` to drop its cache too. The next e2e run starts it again.
+[group('Stack management')]
+mirror-down cache="":
+    python -m repo2ree_testbed mirror down {{ if cache != "" { "--cache" } else { "" } }}
+
 # Build local images and run any browser or API suite against an owned stack.
 [group('Stack tests')]
 test-stack-local suite locations="1": build-images

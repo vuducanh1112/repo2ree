@@ -1,3 +1,4 @@
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -45,6 +46,18 @@ def test_an_override_starts_nothing(
 
     assert mirror.ensure() == url
     assert started == []
+
+
+@pytest.mark.parametrize("cache", [False, True])
+def test_taking_the_mirror_down_removes_its_cache_only_when_asked(monkeypatch: pytest.MonkeyPatch, cache: bool) -> None:
+    calls: list[list[str]] = []
+    monkeypatch.setattr(subprocess, "run", lambda argv, **kwargs: calls.append(argv))
+
+    mirror.down(cache=cache)
+
+    container = ["docker", "rm", "-f", "repo2ree-registry-mirror"]
+    volume = ["docker", "volume", "rm", "repo2ree-registry-mirror"]
+    assert calls == ([container, volume] if cache else [container])
 
 
 def test_the_images_to_warm_are_the_digest_pinned_bases_of_the_examples(tmp_path: Path) -> None:
