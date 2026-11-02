@@ -188,15 +188,22 @@ class AggregateSpec(SpecModel):
         moves[("not_applicable", "missing")] |= sets_about
         moves[("missing", "not_applicable")] |= clears_about
         moves[("missing", "current")].add(receipt.produced_by)
-        moves[("stale", "current")].add(receipt.produced_by)
         if receipt.applies_without_declaration or receipt.produced_by in sets_about:
             moves[("not_applicable", "current")].add(receipt.produced_by)
-        orphaning = set() if receipt.applies_without_declaration else clears_about
+        # Undeclaring a keyed item discards its receipt; any other receipt is orphaned, and stale.
+        orphaning = set() if receipt.applies_without_declaration or receipt.keyed else clears_about
         moves[("current", "stale")] |= (basis_moves | orphaning) - {receipt.produced_by}
+        # A standing is the receipt against the document as it now stands, so whatever moved what it
+        # rests on may move it back, and declaring an orphaned receipt's subject again revives it.
+        reviving = sets_about if orphaning else set()
+        moves[("stale", "current")] |= {receipt.produced_by} | basis_moves | orphaning | reviving
+        discarding = clears_about if receipt.keyed else set()
         for source in ("current", "stale", "missing"):
             for target in ("missing", "not_applicable"):
                 if source != target:
                     moves[(source, target)].update(receipt.cleared_by)
+            if source != "missing":
+                moves[(source, "not_applicable")] |= discarding
         for source in STANDINGS:
             for target in STANDINGS:
                 if source != target:

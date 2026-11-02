@@ -73,6 +73,23 @@ def test_a_receipt_goes_stale_when_anything_it_was_made_from_moves() -> None:
     assert allowed("receipt", "runtime", "missing", "current") == {"build_runtime", "load_ree_bundle"}
 
 
+def test_whatever_makes_a_receipt_stale_may_make_it_current_again() -> None:
+    # Standing is the receipt against the document as it now stands: undoing an edit undoes its staleness.
+    assert {"patch_ree_definition", "write_file", "build_runtime"} <= allowed(
+        "receipt", "test_activation", "stale", "current"
+    )
+    assert allowed("receipt", "runtime", "current", "stale") <= allowed("receipt", "runtime", "stale", "current")
+    # Declaring an orphaned receipt's subject again makes it speak for the REE again.
+    assert "patch_ree_definition" in allowed("receipt", "runtime", "stale", "current")
+
+
+def test_undeclaring_a_keyed_item_discards_its_receipt() -> None:
+    for source in ("current", "stale", "missing"):
+        assert "patch_ree_definition" in allowed("receipt", "experiment", source, "not_applicable")
+    # An unkeyed receipt is orphaned instead, and only removing the source clears it.
+    assert allowed("receipt", "runtime", "current", "not_applicable") == {"remove_source", "load_ree_bundle"}
+
+
 def test_an_observation_applies_without_a_declaration_and_nothing_makes_it_stale() -> None:
     assert allowed("receipt", "hardware", "not_applicable", "current") == {"generate_hbom", "load_ree_bundle"}
     assert allowed("receipt", "hardware", "current", "stale") == {"load_ree_bundle"}
