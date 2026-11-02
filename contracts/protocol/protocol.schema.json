@@ -3718,6 +3718,18 @@
           ],
           "default": null,
           "title": "Changed"
+        },
+        "record_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Record Digest"
         }
       },
       "required": [

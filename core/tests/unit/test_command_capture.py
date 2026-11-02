@@ -19,6 +19,7 @@ from repo2ree_protocol.command import Command, PatchReeDefinitionArgs, PatchReeD
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.tools import find_tool
+from repo2ree_ree.digest import digest_bytes
 
 
 def git(layout, *args):
@@ -229,6 +230,9 @@ def test_a_capture_that_fails_after_the_handler_rolls_back_what_it_changed(ree, 
     assert git(ree, "rev-parse", "HEAD") == head
     record = pending_record(ree, result.history.attempt_id)
     assert record["phases"] == ["pending", "executing", "completed", "capture_failed"]
+    # The result names the record as written, in place of the commit a capture would have made.
+    written = (ree.git_dir / "repo2ree" / "operations" / f"{result.history.attempt_id}.json").read_bytes()
+    assert result.history.record_digest == digest_bytes(written)
 
 
 def test_a_capture_that_fails_before_the_handler_runs_nothing(ree, monkeypatch):

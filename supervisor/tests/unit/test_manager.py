@@ -353,7 +353,7 @@ def _exchanges(path):
     [
         (
             [ResultFrame(result=ActionResult(status="succeeded"))],
-            [("receive", "result", {"status": "succeeded", "commit": None})],
+            [("receive", "result", {"status": "succeeded", "commit": None, "record": None})],
             None,
         ),
         ([UnavailableFrame(detail="gone")], [("receive", "unavailable", {})], WorkbenchUnavailableError),
@@ -389,20 +389,28 @@ def test_dispatch_journals_one_request_and_what_came_back(tmp_path, frames, expe
     assert [context.dispatch_record for context in sent_contexts] == [f"{opened.path.stem}#{request['seq']}"]
 
 
-def test_a_result_names_the_commit_that_captured_the_attempt(tmp_path):
-    history = HistoryReference(
-        selection_version=1,
-        attempt_id="a1",
-        scope=".",
-        capture_status="captured",
-        after_snapshot_id="c" * 40,
-        operation_status="succeeded",
+@pytest.mark.parametrize(
+    ("capture", "named"),
+    [
+        ({"capture_status": "captured", "after_snapshot_id": "c" * 40}, {"commit": "c" * 40, "record": None}),
+        # A failed capture made no commit; its record stands in for one.
+        (
+            {"capture_status": "failed", "record_digest": "sha256:" + "f" * 64},
+            {"commit": None, "record": "sha256:" + "f" * 64},
+        ),
+    ],
+)
+def test_a_result_names_what_recorded_the_attempt(tmp_path, capture, named):
+    history = HistoryReference.model_validate(
+        {"selection_version": 1, "attempt_id": "a1", "scope": ".", "operation_status": "succeeded", **capture}
     )
+    status = "succeeded" if capture["capture_status"] == "captured" else "failed"
 
     class CapturingWorkbench(FakeWorkbench):
         def exec_action(self, workbench_id, cmd_json, run_id, env, context=None):
             cited = history.model_copy(update={"attempt_id": context.attempt_id})
-            yield ResultFrame(result=ActionResult(status="succeeded", history=cited))
+            result = ActionResult(status="succeeded") if status == "succeeded" else ActionResult.failed("internal", "x")
+            yield ResultFrame(result=result.model_copy(update={"history": cited}))
 
     manager, _, _ = _manager(tmp_path, CapturingWorkbench())
     handle = manager.provision("ree-1", "My REE", location_id="lab-1", image=_CATALOG_IMAGE)
@@ -413,7 +421,7 @@ def test_a_result_names_the_commit_that_captured_the_attempt(tmp_path):
     finally:
         close_journal()
     _, outcome = _exchanges(opened.path)
-    assert outcome == ("receive", "result", {"status": "succeeded", "commit": "c" * 40})
+    assert outcome == ("receive", "result", {"status": status, **named})
 
 
 def test_dispatch_that_raises_is_journaled_as_abandoned(tmp_path):

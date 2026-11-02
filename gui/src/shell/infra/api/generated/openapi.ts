@@ -2562,6 +2562,8 @@ export interface components {
             operation_failure?: components["schemas"]["Failure"] | null;
             /** Changed */
             changed?: boolean | null;
+            /** Record Digest */
+            record_digest?: string | null;
         };
         /**
          * ImageCommandBinding

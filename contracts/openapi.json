@@ -11517,6 +11517,17 @@
               }
             ],
             "title": "Changed"
+          },
+          "record_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Record Digest"
           }
         },
         "additionalProperties": false,

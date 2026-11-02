@@ -550,8 +550,15 @@ class WorkbenchManager:
                 if self._span_sink is not None:
                     self._span_sink([frame.payload])
             elif isinstance(frame, ResultFrame):
-                captured = frame.result.history.after_snapshot_id if frame.result.history else None
-                observe("result", {"status": frame.result.status, "commit": captured})
+                history = frame.result.history
+                observe(
+                    "result",
+                    {
+                        "status": frame.result.status,
+                        "commit": history.after_snapshot_id if history else None,
+                        "record": history.record_digest if history else None,
+                    },
+                )
                 result = frame.result
             elif isinstance(frame, UnavailableFrame):
                 observe("unavailable", None)

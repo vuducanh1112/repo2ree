@@ -63,6 +63,9 @@ class HistoryReference(BaseModel):
     operation_status: ActionStatus | Literal["not_started", "unknown"]
     operation_failure: Failure | None = None
     changed: bool | None = None
+    # For a failed capture: the digest of the record core left beside the history, which stands in
+    # for the commit a capture would have made. None when even that record could not be written.
+    record_digest: str | None = None
 
 
 class ActionResult(BaseModel):

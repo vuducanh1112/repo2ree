@@ -91,6 +91,8 @@ class ResultFacts(TypedDict):
     status: str
     # The commit that captured the attempt, as the result reported it.
     commit: NotRequired[str | None]
+    # For an attempt whose capture failed: the digest of its record, as the result reported it.
+    record: NotRequired[str | None]
 
 
 def _facts(facts: Mapping[str, object]) -> dict[str, Fact]:

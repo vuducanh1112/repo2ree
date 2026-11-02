@@ -33,6 +33,7 @@ from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.history import CompletedOperation, OperationRecord
 from repo2ree_protocol.result import ActionResult, HistoryReference
+from repo2ree_ree.digest import digest_bytes
 
 
 def capture_command(
@@ -133,6 +134,7 @@ def capture_command(
             with suppress(OSError):
                 record_path.unlink(missing_ok=True)
     except (_CaptureFailedError, HistoryCaptureError, OSError, ValueError) as exc:
+        record_digest: str | None = None
         if not isinstance(exc, _CaptureFailedError):
             outcome = "nothing ran"  # The before-snapshot was never taken.
         elif exc.rolled_back:
@@ -147,6 +149,8 @@ def capture_command(
             # If storage is unavailable, the last pending record remains evidence.
             if record_path.parent.is_dir():
                 write_json_atomic(record_path, record.model_dump(mode="json"))
+                # The record as written is what the result cites in place of a commit.
+                record_digest = digest_bytes(record_path.read_bytes())
         except OSError as record_error:
             log("system", "error", f"Cannot finalize history record: {record_error}")
         message = f"REE history capture failed: {record.capture_error}"
@@ -157,7 +161,8 @@ def capture_command(
             details={"code": "history_capture_failed"},
             outputs=result.outputs if result is not None else {},
         )
-        return failed.model_copy(update={"context": context, "history": _references(record)})
+        history_reference = _references(record).model_copy(update={"record_digest": record_digest})
+        return failed.model_copy(update={"context": context, "history": history_reference})
     return result.model_copy(update={"history": _references(record)})
 
 
