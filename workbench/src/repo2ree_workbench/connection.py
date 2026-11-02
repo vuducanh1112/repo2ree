@@ -297,6 +297,10 @@ async def _serve(ws: ClientConnection, service: WorkbenchService, api_ws_url: st
             inflight[req.id] = task
             task.add_done_callback(partial(_forget_inflight, inflight, req.id))
     finally:
+        # The connection is gone, and with it every caller: their work stops rather than finishing
+        # for no one, and the bench dials back in at once instead of after its longest run.
+        for task in inflight.values():
+            task.cancel()
         if inflight:
             await asyncio.gather(*inflight.values(), return_exceptions=True)
     return False

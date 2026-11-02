@@ -49,7 +49,13 @@ async def dispatch_workbench_request(
         service.assign(req.allocation)
         await send(DoneFrame())
     elif isinstance(req, ExecActionRequest):
-        await pump(lambda: service.exec_action(req.cmd_json, req.run_id, req.env, req.context))
+        try:
+            await pump(lambda: service.exec_action(req.cmd_json, req.run_id, req.env, req.context))
+        except asyncio.CancelledError:
+            # Its caller is gone, by a transport cancel or a lost connection, and no one will read the
+            # result: stop the run, so its executor rolls the attempt back instead of finishing it.
+            service.cancel_run(req.run_id)
+            raise
     elif isinstance(req, CancelRunRequest):
         service.cancel_run(req.run_id)
         await send(DoneFrame())

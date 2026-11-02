@@ -10,7 +10,6 @@ import time
 from collections.abc import Callable
 from typing import Any
 
-import pytest
 from system_client import BUILD_SCRIPT, LIGHTWEIGHT_IMAGE, RUNTIME, TERMINAL, Api, fault
 
 from repo2ree_testbed.faults import (
@@ -71,12 +70,6 @@ def provision(api: Api, image: str) -> dict[str, Any]:
     return settled | {"ree_id": created["ree_id"]}
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="product bug: workbench enrollments live only in the API's memory (EnrollmentRegistry), so after an API "
-    "restart every provider-managed bench is refused on reconnect ('unknown workbench enrollment') and its REE "
-    "stays unavailable",
-)
 def test_an_api_crash_fails_the_build_in_flight_and_the_ree_builds_after(api: Api, new_ree: Callable[..., str]) -> None:
     ree_id = new_ree()
     run = slow_build(api, ree_id)

@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
-import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 from threading import RLock
@@ -14,6 +12,7 @@ from pydantic import ValidationError
 
 from repo2ree_protocol.allocation import AllocationRecord, AllocationRequest, AllocationState
 from repo2ree_supervisor.allocation_state import require_transition
+from repo2ree_supervisor.json_file import write_json_atomic
 from repo2ree_telemetry.behaviour import events
 
 logger = logging.getLogger(__name__)
@@ -137,12 +136,4 @@ class AllocationStore:
         return {"allocations": dict(raw.get("allocations", {})), "placements": dict(raw.get("placements", {}))}
 
     def _write(self, data: dict[str, dict[str, object]]) -> None:
-        self._path.parent.mkdir(parents=True, exist_ok=True)
-        fd, temporary = tempfile.mkstemp(prefix=self._path.name + ".", suffix=".tmp", dir=self._path.parent)
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as stream:
-                json.dump(data, stream, indent=2, sort_keys=True)
-            Path(temporary).replace(self._path)
-        except BaseException:
-            Path(temporary).unlink(missing_ok=True)
-            raise
+        write_json_atomic(self._path, data)

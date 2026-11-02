@@ -40,7 +40,8 @@ def _workbench_allocated(workbench_id: str) -> bool:
 
 workbench_connections = WorkbenchConnectionRegistry(is_allocated=_workbench_allocated)
 provider_connections = ProviderConnectionRegistry()
-workbench_enrollments = EnrollmentRegistry()
+# Beside the allocations they belong to, so a bench provisioned before a restart is still known after it.
+workbench_enrollments = EnrollmentRegistry(service_settings.ALLOCATION_STORE_FILE.with_name("enrollments.json"))
 
 # One combined-workbench client serves both manager seams today: the legacy workbench
 # multiplexes capacity and execution over one socket. When the two roles get

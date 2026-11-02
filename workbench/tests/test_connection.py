@@ -15,10 +15,11 @@ from pathlib import Path
 from typing import Any, ClassVar
 
 import pytest
+from pydantic import ValidationError
 
 import repo2ree_workbench.connection as connection
 from repo2ree_protocol.allocation import AllocationRequest
-from repo2ree_protocol.frames import COPY_CHUNK_BYTES, ResultFrame, SpanFrame
+from repo2ree_protocol.frames import COPY_CHUNK_BYTES, TERMINAL_FRAME_TYPES, ResultFrame, SpanFrame
 from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.workbench import (
     AssignAllocationRequest,
@@ -30,25 +31,58 @@ from repo2ree_protocol.workbench import (
     WorkbenchWsRequest,
     workbench_hello_adapter,
     workbench_ws_message_adapter,
+    workbench_ws_request_adapter,
 )
 from repo2ree_workbench.connection import _serve, run_workbench
 from repo2ree_workbench.service import WorkbenchService
 
 
 class FakeSocket:
-    """Yields queued inbound messages; captures what the workbench sends back."""
+    """Yields queued inbound messages; captures what the workbench sends back.
+
+    Like a control plane, it hangs up only once every request it sent is answered (a request it
+    canceled never is): a socket that ends takes the requests still in flight with it.
+    """
 
     def __init__(self, messages: list[str]) -> None:
         self._messages = messages
         self.sent: list[str] = []
+        self._awaited: set[str] = set()
 
     def __aiter__(self) -> FakeSocket:
         return self
 
     async def __anext__(self) -> str:
-        if not self._messages:
-            raise StopAsyncIteration
-        return self._messages.pop(0)
+        if self._messages:
+            message = self._messages.pop(0)
+            self._expect_answer(message)
+            return message
+        for _ in range(100):
+            if self._awaited <= self._answered():
+                break
+            await asyncio.sleep(0.01)
+        raise StopAsyncIteration
+
+    def _expect_answer(self, message: str) -> None:
+        try:
+            request = workbench_ws_request_adapter.validate_json(message)
+        except ValidationError:
+            return
+        if isinstance(request.request, CancelRequest):
+            self._awaited.discard(request.request.request_id)
+        else:
+            self._awaited.add(request.id)
+
+    def _answered(self) -> set[str]:
+        answered: set[str] = set()
+        for text in self.sent:
+            try:
+                message = workbench_ws_message_adapter.validate_json(text)
+            except ValidationError:
+                continue  # the hello, not a reply
+            if message.id is not None and message.frame.type in TERMINAL_FRAME_TYPES:
+                answered.add(message.id)
+        return answered
 
     async def send(self, text: str) -> None:
         self.sent.append(text)
@@ -209,6 +243,30 @@ def test_cancel_stops_an_inflight_request() -> None:
     by_id = {m.id: m.frame for m in _frames(ws)}
     assert by_id["c1"].type == "done"
     assert "r1" not in by_id
+
+
+def test_a_lost_connection_stops_the_runs_it_was_waiting_for() -> None:
+    # The socket ends with a build in flight: no one will read its result, so its run is canceled
+    # and the connection is let go at once, not after the build.
+    canceled = threading.Event()
+
+    class RunningExec(FakeExec):
+        def exec_action(self, cmd_json: str, run_id: str, env: dict[str, str], context: object = None):
+            canceled.wait(5.0)
+            yield ResultFrame(result=ActionResult(status="canceled"))
+
+        def cancel_run(self, run_id: str) -> None:
+            super().cancel_run(run_id)
+            canceled.set()
+
+    FakeExec.canceled_runs = []
+    request = ExecActionRequest(cmd_json="{}", run_id="run-1")
+    # The build never answers on its own, so the socket hangs up with it in flight.
+    ws = FakeSocket([WorkbenchWsRequest(id="b1", request=request).model_dump_json()])
+
+    asyncio.run(asyncio.wait_for(_serve(ws, _service(RunningExec())), timeout=2.0))  # type: ignore[arg-type]
+
+    assert FakeExec.canceled_runs == ["run-1"]
 
 
 def test_stream_terminal_frame_drives_request_telemetry(
