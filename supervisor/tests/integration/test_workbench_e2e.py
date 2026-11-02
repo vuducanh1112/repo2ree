@@ -62,6 +62,7 @@ from repo2ree_protocol.command import (
     WriteFileCommand,
 )
 from repo2ree_protocol.provider import ProviderHello
+from repo2ree_provider_docker.config import DEFAULT_IMAGE
 from repo2ree_provider_docker.connection import run_provider
 from repo2ree_provider_docker.lifecycle import DockerIsolation
 from repo2ree_provider_docker.provisioner import ProvisionerService
@@ -87,13 +88,11 @@ from repo2ree_testbed.preservation import TestRecorder
 # ================================================
 
 
-# The production bench: upstream dind pinned by digest (keep in sync with the
-# catalog default in api/src/repo2ree_api/settings.py). The in-test workbench
+# The production bench: the provider's default, upstream dind pinned by digest.
+# The in-test workbench
 # injects the executor/tools bundles, so this tier drives the exact
 # provisioning path production uses. First run pulls the image.
-WORKBENCH_IMAGE = (
-    "docker.io/library/docker:29-dind@sha256:66d292e5c26bd33a6f6f61cacb880de2186339a524ecba1ce098dbbaceed6515"
-)
+WORKBENCH_IMAGE = DEFAULT_IMAGE
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _EXEC_BUNDLE = _REPO_ROOT / "dist" / "bundles" / "exec"

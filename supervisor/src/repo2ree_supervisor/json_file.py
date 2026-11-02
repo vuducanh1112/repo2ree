@@ -1,4 +1,8 @@
-"""A JSON document replaced whole, so a reader or a crash never sees half of one."""
+"""A JSON document replaced whole, so a reader or a crash never sees half of one.
+
+A crash of the process, that is: as core's ``write_atomic``, nothing is synced, so a power loss
+may lose the last write. These files outlive an API restart, which is what they are for.
+"""
 
 from __future__ import annotations
 

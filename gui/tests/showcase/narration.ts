@@ -10,7 +10,8 @@ import { expect, type Locator, type Page, test } from "@playwright/test";
 
 const NARRATION_DWELL_MS = 1500;
 
-function narrated(): boolean {
+/** Whether this run records the demo, which draws narration and shows only what is on screen. */
+export function narrated(): boolean {
   return test.info().project.metadata?.narrated === true;
 }
 

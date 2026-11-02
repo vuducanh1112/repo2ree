@@ -19,6 +19,7 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from repo2ree_provider_docker.config import DEFAULT_IMAGE
 from repo2ree_testbed.artifacts import service_dir
 
 if TYPE_CHECKING:
@@ -27,15 +28,12 @@ if TYPE_CHECKING:
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 
 TEST_RESULTS_DIR = service_dir("api-integration")
-# The bench this whole tier provisions from: upstream dind pinned by digest
-# (keep in sync with the catalog default in api/src/repo2ree_api/settings.py).
-# The in-test workbench injects the executor/tools bundles (built by
+# The bench this whole tier provisions from: the provider's default, upstream dind
+# pinned by digest. The in-test workbench injects the executor/tools bundles (built by
 # `just build-e2e-bundles`), so the tier drives the exact provisioning path
 # production uses. Passed per-request like a real client; change here to point
 # the tier at a different image. First run pulls the image.
-WORKBENCH_IMAGE = (
-    "docker.io/library/docker:29-dind@sha256:66d292e5c26bd33a6f6f61cacb880de2186339a524ecba1ce098dbbaceed6515"
-)
+WORKBENCH_IMAGE = DEFAULT_IMAGE
 
 EXEC_BUNDLE = _REPO_ROOT / "dist" / "bundles" / "exec"
 TOOLS_BUNDLE = _REPO_ROOT / "dist" / "bundles" / "tools"

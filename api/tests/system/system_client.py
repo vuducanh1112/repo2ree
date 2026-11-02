@@ -21,8 +21,10 @@ from typing import Any
 import httpx
 import pytest
 
+from repo2ree_provider_docker.config import DEFAULT_IMAGE
 from repo2ree_testbed.faults import FAULTS_URL, Fault, inject
 from repo2ree_testbed.run_watch import INSTANT_RUN, NETWORK_RUN, RunWatch, settle_run
+from repo2ree_workbench.connection import LONGEST_RECONNECT
 
 ROOT = Path(__file__).resolve().parents[3]
 RESULT = "result.txt"
@@ -36,10 +38,7 @@ LIGHTWEIGHT_IMAGE = os.environ.get(
     "docker.io/library/python:3.11-slim@sha256:9534e5a8e315485d4061ed659af0fd78a284c015f9b73661b41d6bab25604534",
 )
 # A bench with its own Docker daemon: the provider's default image.
-DIND_IMAGE = os.environ.get(
-    "DIND_IMAGE",
-    "docker.io/library/docker:29-dind@sha256:66d292e5c26bd33a6f6f61cacb880de2186339a524ecba1ce098dbbaceed6515",
-)
+DIND_IMAGE = os.environ.get("DIND_IMAGE", DEFAULT_IMAGE)
 TERMINAL = frozenset({"succeeded", "failed", "canceled"})
 
 
@@ -118,10 +117,9 @@ def project_archive() -> bytes:
     return INSTANT.archive()
 
 
-# The longest a healed bench may take to dial back in: its pings notice the dead socket (20 s apart,
-# 20 s to answer), the close handshake and the new connection each time out after 10 s, and it
-# waits 3 s between attempts. Then 15 s to spare.
-RECONNECT_BOUND = 20 + 20 + 10 + 10 + 3 + 15
+# The longest a healed bench may take to dial back in, as the bench under test holds its connection,
+# with 15 s to spare.
+RECONNECT_BOUND = LONGEST_RECONNECT + 15
 
 
 class ApiError(AssertionError):

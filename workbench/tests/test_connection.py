@@ -315,7 +315,7 @@ def test_connection_hello_and_connected_gauge_are_balanced(monkeypatch: pytest.M
         async def __aexit__(self, *args: object) -> None:
             return None
 
-    def connect_once(url: str) -> ConnectionContext:
+    def connect_once(url: str, **_options: float) -> ConnectionContext:
         nonlocal connects
         connects += 1
         if connects > 1:
@@ -406,7 +406,7 @@ def test_the_span_relay_binds_only_after_the_hello(monkeypatch: pytest.MonkeyPat
         async def __aexit__(self, *args: object) -> None:
             return None
 
-    def connect_once(url: str) -> ConnectionContext:
+    def connect_once(url: str, **_options: float) -> ConnectionContext:
         nonlocal connects
         connects += 1
         if connects > 1:
@@ -453,7 +453,7 @@ def test_the_span_relay_unbinds_when_the_connection_drops(monkeypatch: pytest.Mo
 
     connects = 0
 
-    def connect_once(url: str) -> ConnectionContext:
+    def connect_once(url: str, **_options: float) -> ConnectionContext:
         nonlocal connects
         connects += 1
         if connects > 1:

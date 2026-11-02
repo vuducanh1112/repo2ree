@@ -7,7 +7,8 @@ const run = promisify(execFile);
 /**
  * A machine of the reviewer's: Docker and a POSIX shell, no repo2ree, and no
  * network. The provider's own bench image, pinned by digest, so it is already
- * on the machine running the stack and starts without a pull.
+ * on the machine running the stack and starts without a pull. It must equal the
+ * provider's DEFAULT_IMAGE; provider/tests/test_provider_config.py holds it to it.
  */
 const REVIEWER_MACHINE =
   "docker.io/library/docker:29-dind@sha256:66d292e5c26bd33a6f6f61cacb880de2186339a524ecba1ce098dbbaceed6515";

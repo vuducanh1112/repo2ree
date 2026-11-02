@@ -147,7 +147,7 @@ def test_the_catalog_replaces_the_default_wholesale(monkeypatch: pytest.MonkeyPa
     images = config_module.load_config().images
 
     assert [image.id for image in images] == ["standard", "python"]
-    assert config_module._DEFAULT_IMAGE not in {image.ref for image in images}
+    assert config_module.DEFAULT_IMAGE not in {image.ref for image in images}
 
 
 def test_an_unset_catalog_still_offers_one_image(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -157,7 +157,7 @@ def test_an_unset_catalog_still_offers_one_image(monkeypatch: pytest.MonkeyPatch
 
     config = config_module.load_config()
 
-    assert [image.ref for image in config.images] == [config_module._DEFAULT_IMAGE]
+    assert [image.ref for image in config.images] == [config_module.DEFAULT_IMAGE]
 
 
 def test_duplicate_ids_are_a_startup_failure(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -229,3 +229,9 @@ def test_direct_bench_telemetry_requires_a_reachable_endpoint(monkeypatch: pytes
 
     with pytest.raises(ValueError, match="PROVIDER_WORKBENCH_OTLP_ENDPOINT is required"):
         config_module.load_config()
+
+
+def test_the_offline_reviewer_machine_is_the_default_bench_image() -> None:
+    """The showcase reproduces a sealed REE on the bench image, so it starts without a pull; it cannot import this."""
+    offline = Path(__file__).parents[2] / "gui" / "tests" / "helpers" / "offline.ts"
+    assert f'"{config_module.DEFAULT_IMAGE}"' in offline.read_text(encoding="utf-8")

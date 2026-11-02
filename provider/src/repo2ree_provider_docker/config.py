@@ -13,7 +13,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from repo2ree_provider_docker.bench_dns import parse_registry_mirror, parse_setting
 from repo2ree_provider_docker.identity import load_or_create_provider_id
 
-_DEFAULT_IMAGE = (
+# The bench image a provider offers when its catalog is not configured. Every test that provisions
+# "the production bench" names this one, so they all move with it.
+DEFAULT_IMAGE = (
     "docker.io/library/docker:29-dind@sha256:66d292e5c26bd33a6f6f61cacb880de2186339a524ecba1ce098dbbaceed6515"
 )
 
@@ -139,7 +141,7 @@ def load_config() -> ProviderConfig:
         images = (
             CuratedImage(
                 id="standard",
-                ref=_DEFAULT_IMAGE,
+                ref=DEFAULT_IMAGE,
                 label="Standard (docker)",
                 description="Lean docker-in-docker bench; the provider injects the executor and base tools.",
             ),

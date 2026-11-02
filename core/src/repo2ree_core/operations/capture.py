@@ -161,8 +161,7 @@ def capture_command(
             details={"code": "history_capture_failed"},
             outputs=result.outputs if result is not None else {},
         )
-        history_reference = _references(record).model_copy(update={"record_digest": record_digest})
-        return failed.model_copy(update={"context": context, "history": history_reference})
+        return failed.model_copy(update={"context": context, "history": _references(record, record_digest)})
     return result.model_copy(update={"history": _references(record)})
 
 
@@ -202,7 +201,7 @@ def step_evidence(layout: ReeLayout, log: LogSink) -> dict[str, str] | None:
     return standing
 
 
-def _references(record: OperationRecord) -> HistoryReference:
+def _references(record: OperationRecord, record_digest: str | None = None) -> HistoryReference:
     return HistoryReference.model_validate(
         {
             "schema_version": record.schema_version,
@@ -215,5 +214,6 @@ def _references(record: OperationRecord) -> HistoryReference:
             "operation_status": record.operation_status,
             "operation_failure": record.operation_failure.model_dump(mode="json") if record.operation_failure else None,
             "changed": record.changed if record.capture_status == "captured" else None,
+            "record_digest": record_digest,
         }
     )

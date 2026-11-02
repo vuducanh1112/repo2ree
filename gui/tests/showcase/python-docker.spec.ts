@@ -27,7 +27,7 @@ import {
   uploadSource,
 } from "../helpers/flow";
 import { reproduceOffline } from "../helpers/offline";
-import { narrate } from "./narration";
+import { narrate, narrated } from "./narration";
 
 /**
  * The golden-path journey: one workbench, one runtime build, every pipeline
@@ -270,7 +270,7 @@ test.describe("REE pipeline", () => {
     });
 
     // The recorded walkthrough shows the product; this step has nothing on screen.
-    if (test.info().project.name !== "demo-gui") {
+    if (!narrated()) {
       await test.step("reproduce the sealed REE offline, without repo2ree", async () => {
         const output = await reproduceOffline(archive);
         expect(output).toContain("Reusing sealed runtime");

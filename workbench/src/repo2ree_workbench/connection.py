@@ -68,6 +68,17 @@ logger = logging.getLogger(__name__)
 tracer = get_tracer(__name__)
 _meter = get_meter(__name__)
 
+# How the bench holds its connection to the control plane. Its pings notice a socket that went
+# dead without closing; the dial and the close handshake each give up after a bound of their own.
+PING_INTERVAL = 20.0
+PING_TIMEOUT = 20.0
+OPEN_TIMEOUT = 10.0
+CLOSE_TIMEOUT = 10.0
+RECONNECT_DELAY = 3.0
+# The longest a bench whose network came back takes to be connected again: a ping that goes
+# unanswered, the close handshake, the pause before dialing, and the dial.
+LONGEST_RECONNECT = PING_INTERVAL + PING_TIMEOUT + CLOSE_TIMEOUT + RECONNECT_DELAY + OPEN_TIMEOUT
+
 _connection_attempt_counter = _meter.create_counter(
     "workbench.connection_attempt",
     description="Number of outbound WebSocket connection attempts made by a workbench.",
@@ -174,7 +185,7 @@ async def run_workbench(
     enrollment_token: str = "",
     location_id: str = "",
     image: str = "",
-    reconnect_delay: float = 3.0,
+    reconnect_delay: float = RECONNECT_DELAY,
     span_relay: SpanRelay | None = None,
     build: BuildInfo | None = None,
     executor_build: BuildInfo | None = None,
@@ -216,7 +227,15 @@ async def run_workbench(
                 with tracer.start_as_current_span("workbench.dial") as span:
                     span.set_attribute("repo2ree.workbench_id", workbench_id)
                     span.set_attribute("repo2ree.workbench.image", hello.image)
-                    ws = await stack.enter_async_context(connect(api_ws_url))
+                    ws = await stack.enter_async_context(
+                        connect(
+                            api_ws_url,
+                            ping_interval=PING_INTERVAL,
+                            ping_timeout=PING_TIMEOUT,
+                            open_timeout=OPEN_TIMEOUT,
+                            close_timeout=CLOSE_TIMEOUT,
+                        )
+                    )
                     logger.info("workbench %s connected to %s", workbench_id, api_ws_url)
                     _connection_connected_counter.add(1, connection_attrs)
                     _connected_gauge.add(1, connection_attrs)
