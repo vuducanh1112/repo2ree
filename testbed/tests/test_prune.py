@@ -2,6 +2,7 @@ import json
 import os
 import subprocess
 import time
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -182,3 +183,19 @@ def test_old_session_files_go_and_emptied_directories_with_them(tmp_path: Path) 
     (tmp_path / "tests" / "c" / "kept.txt").write_text("")
     prune.remove_empty_directories(tmp_path / "tests")
     assert sorted(path.name for path in (tmp_path / "tests").rglob("*")) == ["c", "kept.txt"]
+
+
+def test_a_directory_another_prune_removed_first_is_no_error(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    (tmp_path / "tests" / "a" / "b").mkdir(parents=True)
+    (tmp_path / "tests" / "c").mkdir()
+    listed = Path.iterdir
+
+    def raced(directory: Path) -> Iterator[Path]:
+        if directory.name == "b":
+            directory.rmdir()  # the prune beside this one got there first
+        return listed(directory)
+
+    monkeypatch.setattr(Path, "iterdir", raced)
+    prune.remove_empty_directories(tmp_path / "tests")
+
+    assert list((tmp_path / "tests").rglob("*")) == []

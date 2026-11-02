@@ -10,6 +10,7 @@ deleted test's recording leaves; so do session files as old.
 from __future__ import annotations
 
 import argparse
+import errno
 import os
 import re
 import shutil
@@ -132,10 +133,20 @@ def plan_session_files(base: Path, now: float) -> Plan:
 
 
 def remove_empty_directories(base: Path) -> None:
-    """The directories under ``base`` a removal left empty, deepest first."""
+    """The directories under ``base`` a removal left empty, deepest first.
+
+    Prunes run side by side (the gate starts its tiers together): a directory another one removed
+    first is gone already, and one a running test just wrote into is no longer empty.
+    """
     for directory in sorted((path for path in base.rglob("*") if path.is_dir()), key=lambda p: -len(p.parts)):
-        if not any(directory.iterdir()):
-            directory.rmdir()
+        try:
+            if not any(directory.iterdir()):
+                directory.rmdir()
+        except FileNotFoundError:
+            continue
+        except OSError as error:
+            if error.errno != errno.ENOTEMPTY:
+                raise
 
 
 def prune_store_volumes(keep_newest: int) -> None:
