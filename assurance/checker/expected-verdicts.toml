@@ -13,13 +13,6 @@ inconclusive = ["api-success-is-recorded", "dispatch-success-is-captured"]
 reason = """The bench is killed with the REE inside it, so no archive of its history exists: \
 the attempts its dispatches report cannot be witnessed."""
 
-[[expected]]
-test = "api/tests/faults/test_faults.py::test_a_partitioned_workbench_fails_its_build"
-inconclusive = ["api-success-is-recorded", "dispatch-success-is-captured"]
-reason = """The healed bench does not dial back in within the 30 s the test waits to download \
-the REE, so no archive of its history exists and its attempts cannot be witnessed. Why it \
-stays away is not known yet."""
-
 # Specified rules, edges, and messages no gated test reaches, and why.
 #
 # Each test's verdicts pass a rule nothing triggered, so only the suite as a whole
