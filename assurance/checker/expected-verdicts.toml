@@ -23,22 +23,22 @@ the attempts its dispatches report cannot be witnessed."""
 # entry goes. This list is what a receipt does not prove.
 
 [[unreached]]
-items = [
-  "Allocation assigned -> failed",
-  "Allocation draining -> failed",
-  "Allocation provisioning -> draining",
-  "Allocation provisioning -> lost",
-  "Allocation ready -> draining",
-  "Allocation ready -> failed",
-  "Allocation ready -> lost",
-  "Allocation requested -> draining",
-  "Allocation requested -> failed",
-  "Allocation requested -> waiting_for_workbench",
-  "Allocation waiting_for_workbench -> draining",
-  "Allocation waiting_for_workbench -> lost",
-]
-reason = """Needs a provider that fails, loses, or drains a bench at a step the faults tier \
-does not stage: it fails provisioning only while the provider provisions or waits for the bench."""
+items = ["Allocation requested -> waiting_for_workbench"]
+reason = """Only an externally managed bench takes it, and no gated tier runs one: the stacks \
+provision every bench through a provider."""
+
+[[unreached]]
+items = ["Allocation requested -> failed"]
+reason = """Taken when the API restarts between recording an allocation and starting to provision \
+it, a window no fault can be aimed at; the supervisor's unit tests take it."""
+
+[[unreached]]
+items = ["Allocation ready -> failed"]
+reason = """Needs init-ree to fail on a bench that came up and called home; no tier stages that."""
+
+[[unreached]]
+items = ["Allocation draining -> failed"]
+reason = """Needs the provider to fail to release a bench; no gated tier stages that."""
 
 [[unreached]]
 items = [
