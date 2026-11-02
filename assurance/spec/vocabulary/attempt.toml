@@ -18,7 +18,7 @@ pending = "The attempt record exists; the before-snapshot is not taken yet."
 executing = "The before-snapshot was taken and the handler was started."
 completed = "The handler returned an outcome; the after-state is not published yet."
 captured = "The outcome and after-state are published as a commit."
-capture_failed = "Recording failed; the REE files were not rolled back."
+capture_failed = "Recording failed; the REE files were rolled back to the before-snapshot, if one was taken and the restore worked."
 
 [facts]
 run_id = "str"

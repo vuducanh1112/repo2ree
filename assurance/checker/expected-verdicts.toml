@@ -13,6 +13,13 @@ inconclusive = ["api-success-is-recorded", "dispatch-success-is-captured"]
 reason = """The bench is killed with the REE inside it, so no archive of its history exists: \
 the attempts its dispatches report cannot be witnessed."""
 
+[[expected]]
+test = "api/tests/faults/test_faults.py::test_a_build_whose_capture_fails_leaves_nothing_behind_and_the_ree_builds_after"
+inconclusive = ["settled-api-actions-settle-their-attempt"]
+reason = """A failed capture is recorded beside the history, not as a commit, and the dispatch \
+result cites only commits: nothing in the evidence orders the attempt's capture_failed before \
+the API told the author the action failed."""
+
 # Specified rules, edges, and messages no gated test reaches, and why.
 #
 # Each test's verdicts pass a rule nothing triggered, so only the suite as a whole
@@ -37,12 +44,15 @@ items = ["Allocation ready -> failed"]
 reason = """Needs init-ree to fail on a bench that came up and called home; no tier stages that."""
 
 [[unreached]]
-items = [
-  "Attempt pending -> capture_failed",
-  "Attempt executing -> capture_failed",
-  "Attempt completed -> capture_failed",
-]
-reason = """Needs Git capture inside the REE to fail; no gated tier injects that fault."""
+items = ["Attempt pending -> capture_failed"]
+reason = """Needs the before-snapshot to fail, which it does only when the REE changed outside \
+any attempt while its history cannot be written: a failed capture rolls back, so the faults \
+tier's locked history never leaves such a change. Core's unit tests take it."""
+
+[[unreached]]
+items = ["Attempt executing -> capture_failed"]
+reason = """Needs the attempt's record to fail to be written a moment after the same record was \
+written, before the handler starts; no fault can be aimed at that. Core's unit tests take it."""
 
 [[unreached]]
 items = ["dispatch: error"]

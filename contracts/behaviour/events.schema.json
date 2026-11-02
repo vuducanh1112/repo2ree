@@ -3,7 +3,7 @@
   "$id": "urn:repo2ree:contracts:behaviour:events",
   "title": "repo2ree behaviour journal record",
   "description": "One line of a behaviour journal. Generated from assurance/spec/vocabulary by `python -m repo2ree_assurance_checker generate`; do not edit. Sequence, epochs, and the header are checked per journal by `python -m repo2ree_assurance_checker validate-journal`.",
-  "x-vocabulary": "sha256:427ecedb90c709b157456fd3533219063a36f8b3a449d3d6cd885c90693a2470",
+  "x-vocabulary": "sha256:dbbc8907e364137863a9c83b7ddb5a8a2ed6b259f1cc811fc21090620fb3c487",
   "type": "object",
   "properties": {
     "v": {
