@@ -162,6 +162,23 @@ def test_a_definition_patch_never_changes_the_source(
     assert patch({"name": "renamed", "source": acquired.model_dump(mode="json")}) == "succeeded"
 
 
+@pytest.mark.parametrize("name", ["", "   ", None])
+def test_a_definition_patch_never_leaves_the_ree_without_a_name(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    name: str | None,
+) -> None:
+    _layout, store = _workbench(tmp_path, monkeypatch)
+    before = store.read_ree().subject.definition.name
+    args = PatchReeDefinitionArgs(patch={"name": name}, expected_version=str(revision_of(store.read_ree())))
+
+    result = handle_patch_ree_definition(args, log=lambda *args: None, is_canceled=lambda: False)
+
+    assert result.failure is not None
+    assert (result.status, result.failure.category) == ("failed", "validation")
+    assert store.read_ree().subject.definition.name == before
+
+
 def test_recipe_file_write_rehydrates_definition_and_its_deletion_is_refused(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

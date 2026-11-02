@@ -53,6 +53,10 @@ def test_the_catalog_is_set_changed_and_cleared_but_the_source_is_not_patched(
         assert {key: definition(api, ree_id)["catalog"][key] for key in catalog} == catalog
     api.patch(ree_id, {"name": "renamed"})
     assert definition(api, ree_id)["name"] == "renamed"
+    # A name is changed, never cleared.
+    for blank in ("", "  "):
+        assert api.patch(ree_id, {"name": blank}, expect=None).status_code >= 400
+    assert definition(api, ree_id)["name"] == "renamed"
 
     # The source changes only by acquiring or removing it; a whole definition may repeat it unchanged.
     source = definition(api, ree_id)["source"]

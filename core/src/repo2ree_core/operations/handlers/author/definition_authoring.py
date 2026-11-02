@@ -26,7 +26,11 @@ def patched_definition(current: ReeDefinition, patch: dict[str, Any], layout: Re
         raise ValueError("the source changes only by acquiring or removing it, not by a definition patch")
     payload = current.model_dump(mode="json")
     payload.update(patch)
-    return hydrate_definition_payload(payload, layout)
+    definition = hydrate_definition_payload(payload, layout)
+    # An REE is created with a name (its id's prefix if none is given); an edit renames it, never unnames it.
+    if not definition.name.strip():
+        raise ValueError("an REE's name cannot be empty")
+    return definition
 
 
 def _source(value: Any) -> SourceDefinition | None:
