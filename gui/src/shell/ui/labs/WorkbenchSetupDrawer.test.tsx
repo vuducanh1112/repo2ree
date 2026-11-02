@@ -82,7 +82,12 @@ describe("WorkbenchSetupDrawer", () => {
     // as chosen. Sending its ref instead would pin whatever the catalog held
     // when this drawer happened to load.
     await waitFor(() =>
-      expect(createRee).toHaveBeenCalledWith({ name: "REE", location_id: "lab-1", image: "" }),
+      expect(createRee).toHaveBeenCalledWith({
+        name: "REE",
+        store_id: "",
+        location_id: "lab-1",
+        image: "",
+      }),
     );
     expect(await screen.findByText("image ready")).toBeInTheDocument();
     expect(await screen.findByText("Lab online — seating the specimen")).toBeInTheDocument();
@@ -200,7 +205,12 @@ describe("WorkbenchSetupDrawer", () => {
     await user.click(screen.getByRole("button", { name: "Provision workbench" }));
 
     await waitFor(() =>
-      expect(createRee).toHaveBeenCalledWith({ name: "REE", location_id: "lab-1", image: "" }),
+      expect(createRee).toHaveBeenCalledWith({
+        name: "REE",
+        store_id: "",
+        location_id: "lab-1",
+        image: "",
+      }),
     );
   });
 

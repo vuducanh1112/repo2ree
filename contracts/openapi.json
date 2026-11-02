@@ -7239,6 +7239,128 @@
         }
       }
     },
+    "/api/v1/stores": {
+      "get": {
+        "tags": [
+          "fleet"
+        ],
+        "summary": "List Stores",
+        "description": "Every store registered here, and the workbench serving each one now, if any.",
+        "operationId": "listStores",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or operation precondition",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "REE, run, file, or artifact not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Workbench returned an invalid upstream response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Compute provider or workbench unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "507": {
+            "description": "Upload staging capacity exhausted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/providers": {
       "get": {
         "tags": [
@@ -12734,10 +12856,15 @@
             ],
             "title": "Name"
           },
+          "store_id": {
+            "type": "string",
+            "title": "Store Id",
+            "default": ""
+          },
           "location_id": {
             "type": "string",
-            "minLength": 1,
-            "title": "Location Id"
+            "title": "Location Id",
+            "default": ""
           },
           "image": {
             "type": "string",
@@ -12747,11 +12874,8 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "required": [
-          "location_id"
-        ],
         "title": "ReeCreatePayload",
-        "description": "Provision a new empty REE workbench.\n\nSource acquisition is intentionally a separate lifecycle operation through\n``source:acquire`` or the upload-init/upload/complete sequence."
+        "description": "Create a new empty REE: in a store, or on a workbench a location sets up for it.\n\nSource acquisition is intentionally a separate lifecycle operation through\n``source:acquire`` or the upload-init/upload/complete sequence."
       },
       "ReeDefinition-Input": {
         "properties": {
@@ -15605,6 +15729,86 @@
         "type": "object",
         "title": "StorageDefinition"
       },
+      "StoreList": {
+        "properties": {
+          "stores": {
+            "items": {
+              "$ref": "#/components/schemas/StoreSummary"
+            },
+            "type": "array",
+            "title": "Stores"
+          }
+        },
+        "type": "object",
+        "required": [
+          "stores"
+        ],
+        "title": "StoreList"
+      },
+      "StoreSummary": {
+        "properties": {
+          "store_id": {
+            "type": "string",
+            "title": "Store Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "connected": {
+            "type": "boolean",
+            "title": "Connected"
+          },
+          "workbench_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workbench Id"
+          },
+          "backend": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "host",
+                  "container"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backend"
+          },
+          "slots": {
+            "type": "integer",
+            "title": "Slots",
+            "default": 0
+          },
+          "capabilities": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkbenchCapabilities"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "store_id",
+          "label",
+          "connected"
+        ],
+        "title": "StoreSummary"
+      },
       "StrategyLeafNode": {
         "properties": {
           "id": {
@@ -16231,6 +16435,39 @@
         ],
         "title": "VenvRuntimeContract",
         "description": "A packed Python virtual environment as the runtime substrate.\n\nThe build packs the venv as a gzipped tarball at ``artifact_path``; a\nrunnable restores it to ``venv_restore_dir`` (an absolute path, because a\nvenv bakes absolute paths and must be restored where it was built) and runs\nthe command with that venv's ``bin`` on ``PATH``. There is no image ref: the\nworkbench base image is the environment. ``venv_restore_dir`` defaults to the\npath a repo2ree build packs; an inspected artifact overrides it with the path\nrecovered from the venv's own ``pyvenv.cfg``."
+      },
+      "WorkbenchCapabilities": {
+        "properties": {
+          "arch": {
+            "type": "string",
+            "title": "Arch",
+            "default": ""
+          },
+          "container_engine": {
+            "type": "boolean",
+            "title": "Container Engine",
+            "default": false
+          },
+          "script_engine": {
+            "type": "string",
+            "enum": [
+              "none",
+              "socket",
+              "nested"
+            ],
+            "title": "Script Engine",
+            "default": "none"
+          },
+          "gpus": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Gpus",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "WorkbenchCapabilities",
+        "description": "What a workbench offers the scripts it runs, so REEs that need it can be sent there."
       },
       "WorkbenchImage": {
         "properties": {

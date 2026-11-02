@@ -16,11 +16,11 @@ from contextlib import contextmanager
 
 from fastapi import HTTPException
 
-from repo2ree_api.deps import command_dispatcher, workbench_manager
+from repo2ree_api.deps import command_dispatcher, ree_router
 from repo2ree_api.storage import author_actions
 from repo2ree_protocol.command import Command
 from repo2ree_protocol.result import ActionResult
-from repo2ree_supervisor import WorkbenchHandle
+from repo2ree_supervisor import StoreUnavailableError, WorkbenchHandle
 from repo2ree_telemetry.bootstrap import get_meter, get_tracer
 from repo2ree_telemetry.spans import CommandSpanAttrs, command_metric_attrs, record_command_status
 
@@ -80,16 +80,27 @@ def ree_command_span(operation: str, ree_id: str) -> Generator[None]:
 
 
 def require_handle(ree_id: str) -> WorkbenchHandle:
-    """Return the workbench handle for ree_id or raise.
+    """The workbench to send ``ree_id``'s commands to, or the error the author is answered with.
 
-    404 if no workbench is registered for the REE; 503 if one is registered
-    but its container is not currently reachable. The workbench volume is the
-    single source of truth — there is no host-side fallback.
+    404 for an REE this control plane does not know; 503 for one it knows whose workbench
+    is not reachable now: a store no workbench serves at the moment (``store_unavailable``,
+    retryable), or a provisioned bench that is not running.
     """
-    handle = workbench_manager.lookup(ree_id)
+    try:
+        handle = ree_router.route(ree_id)
+    except StoreUnavailableError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "store_unavailable",
+                "message": f"No workbench is serving this REE's store ({exc.store_id}) right now",
+                "details": {"store_id": exc.store_id},
+                "retryable": True,
+            },
+        ) from exc
     if handle is not None:
         return handle
-    if workbench_manager.is_registered(ree_id):
+    if ree_router.is_known(ree_id):
         raise HTTPException(status_code=503, detail="Workbench unavailable for this REE")
     raise HTTPException(status_code=404, detail=f"REE {ree_id} not found")
 

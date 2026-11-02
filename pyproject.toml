@@ -371,8 +371,9 @@ type = "layers"
 exhaustive = true
 # The `python -m repo2ree_api.export_openapi` entrypoint, which imports `main`
 # to serialize its OpenAPI document. It is a build script that happens to live
-# in the package, not a tier of it.
-exhaustive_ignores = ["export_openapi"]
+# in the package, not a tier of it. `store_admin` is the operator's command for
+# registering stores and minting their tokens on the service host, likewise.
+exhaustive_ignores = ["export_openapi", "store_admin"]
 containers = ["repo2ree_api"]
 layers = [
     "main",

@@ -90,6 +90,7 @@ describe("createReeRunsClient", () => {
     });
     expect(reeApi.createRee).toHaveBeenCalledWith({
       name: "Demo",
+      store_id: "",
       location_id: "lab-1",
       image: "docker.io/library/docker:29-dind",
     });

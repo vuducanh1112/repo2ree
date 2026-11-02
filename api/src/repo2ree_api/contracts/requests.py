@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from repo2ree_ree.model import ReeDefinition
 
@@ -37,19 +37,31 @@ class CreateRunPayload(StrictRequestModel):
 
 
 class ReeCreatePayload(StrictRequestModel):
-    """Provision a new empty REE workbench.
+    """Create a new empty REE: in a store, or on a workbench a location sets up for it.
 
     Source acquisition is intentionally a separate lifecycle operation through
     ``source:acquire`` or the upload-init/upload/complete sequence.
     """
 
     name: str | None = None
-    location_id: str = Field(min_length=1)
+    # The store to create the REE in; its workbench serves it from then on. The REE starts out
+    # declaring the store's host as its environment, and the author declares another like any field.
+    store_id: str = ""
+    # Or the location whose provider sets a workbench up for this REE alone.
+    location_id: str = ""
     # Base image to provision the workbench from: a ref from the location's
     # published catalog, or any ref the location accepts. Blank falls back to
     # that location's first catalog entry, and is the only valid value for an
     # externally managed location, whose bench already exists.
     image: str = ""
+
+    @model_validator(mode="after")
+    def _one_place(self) -> ReeCreatePayload:
+        if bool(self.store_id.strip()) == bool(self.location_id.strip()):
+            raise ValueError("an REE is created in a store or at a location: give exactly one")
+        if self.store_id and self.image:
+            raise ValueError("an REE in a store declares its environment, not a workbench image")
+        return self
 
 
 class ReeDefinitionPatchPayload(StrictRequestModel):

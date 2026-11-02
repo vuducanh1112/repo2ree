@@ -899,6 +899,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/stores": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Stores
+         * @description Every store registered here, and the workbench serving each one now, if any.
+         */
+        get: operations["listStores"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/providers": {
         parameters: {
             query?: never;
@@ -3061,7 +3081,7 @@ export interface components {
         };
         /**
          * ReeCreatePayload
-         * @description Provision a new empty REE workbench.
+         * @description Create a new empty REE: in a store, or on a workbench a location sets up for it.
          *
          *     Source acquisition is intentionally a separate lifecycle operation through
          *     ``source:acquire`` or the upload-init/upload/complete sequence.
@@ -3069,7 +3089,15 @@ export interface components {
         ReeCreatePayload: {
             /** Name */
             name?: string | null;
-            /** Location Id */
+            /**
+             * Store Id
+             * @default
+             */
+            store_id: string;
+            /**
+             * Location Id
+             * @default
+             */
             location_id: string;
             /**
              * Image
@@ -4151,6 +4179,30 @@ export interface components {
                 [key: string]: string | boolean | number | null;
             };
         };
+        /** StoreList */
+        StoreList: {
+            /** Stores */
+            stores: components["schemas"]["StoreSummary"][];
+        };
+        /** StoreSummary */
+        StoreSummary: {
+            /** Store Id */
+            store_id: string;
+            /** Label */
+            label: string;
+            /** Connected */
+            connected: boolean;
+            /** Workbench Id */
+            workbench_id?: string | null;
+            /** Backend */
+            backend?: ("host" | "container") | null;
+            /**
+             * Slots
+             * @default 0
+             */
+            slots: number;
+            capabilities?: components["schemas"]["WorkbenchCapabilities"] | null;
+        };
         /** StrategyLeafNode */
         StrategyLeafNode: {
             /** Id */
@@ -4404,6 +4456,33 @@ export interface components {
              * @default python
              */
             interpreter: string;
+        };
+        /**
+         * WorkbenchCapabilities
+         * @description What a workbench offers the scripts it runs, so REEs that need it can be sent there.
+         */
+        WorkbenchCapabilities: {
+            /**
+             * Arch
+             * @default
+             */
+            arch: string;
+            /**
+             * Container Engine
+             * @default false
+             */
+            container_engine: boolean;
+            /**
+             * Script Engine
+             * @default none
+             * @enum {string}
+             */
+            script_engine: "none" | "socket" | "nested";
+            /**
+             * Gpus
+             * @default 0
+             */
+            gpus: number;
         };
         /**
          * WorkbenchImage
@@ -10258,6 +10337,116 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkbenchList"];
+                };
+            };
+            /** @description Invalid request or operation precondition */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description REE, run, file, or artifact not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Version or idempotency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload exceeds the configured size limit */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request body is not application/json */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench returned an invalid upstream response */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Compute provider or workbench unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload staging capacity exhausted */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listStores: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoreList"];
                 };
             };
             /** @description Invalid request or operation precondition */

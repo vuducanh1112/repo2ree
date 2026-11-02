@@ -23,6 +23,7 @@ import hmac
 import logging
 from concurrent.futures import Future
 from datetime import UTC, datetime
+from typing import Literal
 
 from fastapi import APIRouter, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
@@ -32,15 +33,22 @@ from repo2ree_api.contracts import ERROR_RESPONSES
 from repo2ree_api.deps import (
     provider_connections,
     span_sink,
+    store_registry,
     workbench_connections,
     workbench_enrollments,
     workbench_transfers,
 )
 from repo2ree_api.settings import service_settings
 from repo2ree_protocol.provider import provider_hello_adapter
-from repo2ree_protocol.workbench import WorkbenchHello, workbench_hello_adapter
+from repo2ree_protocol.workbench import WorkbenchCapabilities, WorkbenchHello, workbench_hello_adapter
 from repo2ree_ree.instant import format_utc_instant
-from repo2ree_supervisor import ProviderConnection, TransferError, WorkbenchConnection
+from repo2ree_supervisor import (
+    ProviderConnection,
+    StoreClaimedError,
+    TransferError,
+    WorkbenchConnection,
+    WorkbenchUnavailableError,
+)
 from repo2ree_supervisor.transfers import TRANSFER_PATH_PREFIX
 
 logger = logging.getLogger(__name__)
@@ -161,6 +169,14 @@ async def workbench_connect(websocket: WebSocket) -> None:
             await websocket.close(code=1008, reason="invalid workbench enrollment")
             return
         # Do not retain a consumed credential on the live connection object.
+    elif hello.store_id:
+        # A workbench serving a store is admitted by a token minted for that store alone.
+        if not store_registry.authenticate(hello.enrollment_token, hello.store_id):
+            logger.warning(
+                "refused workbench %r for store %r: no valid token for it", hello.workbench_id, hello.store_id
+            )
+            await websocket.close(code=1008, reason="invalid store registration")
+            return
     elif refusal := _external_refusal(hello, service_settings.EXTERNAL_WORKBENCH_TOKEN):
         # The close reason stays generic — the peer is unauthenticated and has no
         # claim on which check it failed — but an operator reading the server log
@@ -173,7 +189,12 @@ async def workbench_connect(websocket: WebSocket) -> None:
     # Do not retain credentials on live connection objects.
     hello = hello.model_copy(update={"enrollment_token": ""})
     connection = WorkbenchConnection(send_text=send_text, hello=hello, span_sink=span_sink)
-    workbench_connections.register(hello.workbench_id, connection)
+    try:
+        workbench_connections.register(hello.workbench_id, connection)
+    except StoreClaimedError as exc:
+        logger.warning("refused workbench %r: %s", hello.workbench_id, exc)
+        await websocket.close(code=1008, reason="store already served")
+        return
     try:
         while True:
             connection.on_message(await websocket.receive_text())
@@ -207,6 +228,21 @@ class WorkbenchSummary(BaseModel):
 
 class WorkbenchList(BaseModel):
     workbenches: list[WorkbenchSummary]
+
+
+class StoreSummary(BaseModel):
+    store_id: str
+    label: str
+    # Whether a workbench serves the store now; its REEs are reachable only then.
+    connected: bool
+    workbench_id: str | None = None
+    backend: Literal["host", "container"] | None = None
+    slots: int = 0
+    capabilities: WorkbenchCapabilities | None = None
+
+
+class StoreList(BaseModel):
+    stores: list[StoreSummary]
 
 
 class ProviderSummary(BaseModel):
@@ -243,6 +279,41 @@ def list_workbenches() -> WorkbenchList:
         for info in workbench_connections.list_workbenches()
     ]
     return WorkbenchList(workbenches=workbenches)
+
+
+@workbenches_router.get(
+    "/api/v1/stores",
+    operation_id="listStores",
+    response_model=StoreList,
+    responses=ERROR_RESPONSES,
+)
+def list_stores() -> StoreList:
+    """Every store registered here, and the workbench serving each one now, if any."""
+    stores: list[StoreSummary] = []
+    for record in store_registry.all():
+        hello = _serving_hello(record.store_id)
+        stores.append(
+            StoreSummary(
+                store_id=record.store_id,
+                label=record.label or record.store_id,
+                connected=hello is not None,
+                workbench_id=hello.workbench_id if hello else None,
+                backend=hello.backend if hello else None,
+                slots=hello.slots if hello else 0,
+                capabilities=hello.capabilities if hello else None,
+            )
+        )
+    return StoreList(stores=stores)
+
+
+def _serving_hello(store_id: str) -> WorkbenchHello | None:
+    workbench_id = workbench_connections.store_workbench(store_id)
+    if workbench_id is None:
+        return None
+    try:
+        return workbench_connections.pick(workbench_id).hello
+    except WorkbenchUnavailableError:  # It went between the two questions.
+        return None
 
 
 @workbenches_router.get(

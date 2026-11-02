@@ -57,7 +57,12 @@ describe("ReeApi", () => {
   it("maps workspace definitions, source, files, inference and sealing", async () => {
     const { api, client } = harness();
     const reeId = asReeId("ree/1");
-    await api.createRee({ name: "REE", location_id: "lab-1", image: "docker:29-dind" });
+    await api.createRee({
+      name: "REE",
+      store_id: "",
+      location_id: "lab-1",
+      image: "docker:29-dind",
+    });
     await api.getRee(reeId);
     await api.getReeState(reeId);
     await api.patchReeDefinition(reeId, { definition_patch: { name: "Renamed" } });

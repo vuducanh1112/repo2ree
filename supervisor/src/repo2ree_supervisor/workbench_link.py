@@ -47,6 +47,7 @@ from repo2ree_protocol.workbench import (
     AssignAllocationRequest,
     CancelRequest,
     CancelRunRequest,
+    DeleteReeRequest,
     DrainWorkbenchRequest,
     ExecActionRequest,
     ExecQueryRequest,
@@ -495,6 +496,10 @@ class WsWorkbenchClient:
                 frame_gap_timeout=QUICK_OP_TIMEOUT,
             )
         )
+
+    def delete_ree(self, workbench_id: str, ree_id: str) -> None:
+        conn = self._registry.pick(workbench_id)
+        self._drain_void(conn.request(DeleteReeRequest(ree_id=ree_id), frame_gap_timeout=COPY_IN_TIMEOUT))
 
     def drain(self, workbench_id: str) -> None:
         conn = self._registry.pick(workbench_id)

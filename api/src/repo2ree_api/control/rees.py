@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from typing import Any
+from typing import Any, cast
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -33,7 +33,14 @@ from repo2ree_api.control.run_orchestration import (
     start_provisioning_run,
 )
 from repo2ree_api.control.run_registry import ACTIVE_STATUSES
-from repo2ree_api.deps import command_dispatcher, provider_connections, workbench_connections, workbench_manager
+from repo2ree_api.deps import (
+    command_dispatcher,
+    provider_connections,
+    ree_registry,
+    store_registry,
+    workbench_connections,
+    workbench_manager,
+)
 from repo2ree_api.pagination import keyset_paginate
 from repo2ree_api.storage import author_actions
 from repo2ree_api.storage.author_actions import author_api_action
@@ -43,7 +50,7 @@ from repo2ree_protocol.command import PatchReeDefinitionArgs, PatchReeDefinition
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.environment import EnvironmentDefinition
-from repo2ree_ree.model import Ree, ree_status
+from repo2ree_ree.model import Ree, ReeStatus, ree_status
 from repo2ree_supervisor import WorkbenchHandle
 
 _log = logging.getLogger(__name__)
@@ -61,6 +68,8 @@ rees_router = APIRouter(tags=["rees"])
 def create_ree_route(payload: ReeCreatePayload) -> RunSummary:
     ree_id = uuid.uuid4().hex
     name = payload.name or ree_id[:8]
+    if store_id := payload.store_id.strip():
+        return _create_in_store(ree_id, name, store_id, payload)
     location_id = payload.location_id.strip()
     image = payload.image.strip()
 
@@ -112,13 +121,44 @@ def create_ree_route(payload: ReeCreatePayload) -> RunSummary:
     return RunSummary.model_validate(run_summary(run_state))
 
 
-def _declare_environment(handle: WorkbenchHandle, run_id: str, log: LogSink) -> None:
-    """Record what the new REE's scripts run in: its bench's image, or the external machine itself.
+def _create_in_store(ree_id: str, name: str, store_id: str, payload: ReeCreatePayload) -> RunSummary:
+    """Create the REE in ``store_id``; the workbench serving the store must be connected."""
+    if store_registry.get(store_id) is None:
+        raise HTTPException(status_code=404, detail=f"Store {store_id} not found")
 
-    The bench is set up either way, so a declaration that will not record leaves the REE undeclared
-    and says so, rather than failing a provision that worked.
+    def _runner(rid: str, run_id: str) -> ActionResult:
+        def _log_run(stream: str, level: str, message: str) -> None:
+            append_run_log(rid, run_id, stream, level, message)
+
+        author_actions.learn(store_id=store_id)
+        ree_registry.create(rid, name, store_id)
+        try:
+            handle = require_handle(rid)
+            command_dispatcher.init_ree(handle, name)
+        except Exception as exc:  # noqa: BLE001 — the REE was not created, whatever stopped it
+            ree_registry.delete(rid)
+            detail = exc.detail if isinstance(exc, HTTPException) else exc
+            _log_run("system", "error", f"The REE was not created in store {store_id}: {detail}")
+            return ActionResult.failed(
+                "unavailable", f"The REE was not created in store {store_id}: {detail}", origin="api", retryable=True
+            )
+        _declare_environment(handle, run_id, _log_run, EnvironmentDefinition(kind="host"))
+        document = _provisioned_document(handle)
+        return ActionResult(status="succeeded", outputs={"ree": document})
+
+    run_state = start_provisioning_run(ree_id=ree_id, request_payload=payload.model_dump(), runner=_runner)
+    return RunSummary.model_validate(run_summary(run_state))
+
+
+def _declare_environment(
+    handle: WorkbenchHandle, run_id: str, log: LogSink, environment: EnvironmentDefinition | None = None
+) -> None:
+    """Record what the new REE's scripts run in: as declared, its bench's image, or the machine itself.
+
+    The REE exists either way, so a declaration that will not record leaves it undeclared and says
+    so, rather than failing a creation that worked.
     """
-    environment = (
+    environment = environment or (
         EnvironmentDefinition(kind="image", image=handle.image)
         if handle.mode == "provider_managed" and handle.image
         else EnvironmentDefinition(kind="host")
@@ -133,7 +173,15 @@ def _declare_environment(handle: WorkbenchHandle, run_id: str, log: LogSink) -> 
 
 
 def _provisioned_document(handle: WorkbenchHandle) -> dict[str, Any]:
-    return {**command_dispatcher.get_ree_document(handle).model_dump(mode="json"), "ree_id": handle.ree_id}
+    document = command_dispatcher.get_ree_document(handle)
+    _remember(handle, document.ree)
+    return {**document.model_dump(mode="json"), "ree_id": handle.ree_id}
+
+
+def _remember(handle: WorkbenchHandle, ree: Ree) -> None:
+    """Keep what a store REE was last seen as, for listings while its store is offline."""
+    if handle.mode == "store":
+        ree_registry.update_summary(handle.ree_id, name=ree.subject.definition.name, status=ree_status(ree))
 
 
 @rees_router.get(
@@ -148,6 +196,18 @@ def list_rees_route(
     status: str | None = Query(None),
 ) -> ReeList:
     items = [_summarize(handle, ree) for handle, ree in workbench_manager.list_all_manifests()]
+    # REEs in stores are listed whether or not their store is served now, as they were last seen.
+    items += [
+        ReeSummary(
+            ree_id=record.ree_id,
+            name=record.name,
+            status=cast(ReeStatus, record.status),
+            allocation_id="",
+            location_id=record.store_id,
+            image="",
+        )
+        for record in ree_registry.all()
+    ]
     if status:
         items = [m for m in items if m.status == status]
     items.sort(key=_ree_page_key, reverse=True)
@@ -179,9 +239,11 @@ def _ree_page_key(summary: ReeSummary) -> tuple[str, str]:
 def get_ree_route(ree_id: str) -> ReeDocument:
     with author_api_action("view_ree", ree_id):
         handle = require_handle(ree_id)
+        document = command_dispatcher.get_ree_document(handle)
+        _remember(handle, document.ree)
         return ReeDocument.of(
             handle.ree_id,
-            command_dispatcher.get_ree_document(handle),
+            document,
             allocation_id=handle.allocation_id,
             location_id=handle.location_id,
             image=handle.image,
@@ -249,6 +311,12 @@ def _ree_state(ree_id: str) -> ReeState:
     responses=ERROR_RESPONSES,
 )
 def delete_ree_route(ree_id: str) -> DeleteReeResponse:
+    if (record := ree_registry.get(ree_id)) is not None:
+        with author_api_action("delete_ree", ree_id):
+            author_actions.learn(store_id=record.store_id)
+            command_dispatcher.delete_ree(require_handle(ree_id))
+            ree_registry.delete(ree_id)
+            return _deleted()
     with author_api_action("release_workbench", ree_id):
         return _release_workbench(ree_id)
 

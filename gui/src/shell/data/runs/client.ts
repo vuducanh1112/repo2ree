@@ -57,6 +57,8 @@ export function createReeRunsClient(runtime: ReeRuntimeValue): ReeRunsClient {
     async createWorkspace(name = "REE", locationId = "", image = "") {
       const run = await runtime.reeApi.createRee({
         name,
+        // A workbench a location sets up for this REE alone; REEs in stores come next.
+        store_id: "",
         location_id: locationId.trim(),
         image: image.trim(),
       });

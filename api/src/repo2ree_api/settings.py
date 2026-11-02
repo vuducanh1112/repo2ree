@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     # upload-complete) and are swept; also the advertised token lifetime.
     UPLOAD_TTL_SECONDS: int = 3600
     ALLOCATION_STORE_FILE: Path = Path(".repo2ree/allocations.json")
+    # The control plane's own records of stores, their tokens, and the REEs they serve
+    # (stores.json, rees.json). Unlike liveness, nothing here can be rebuilt from what is connected.
+    CONTROL_STATE_DIR: Path = Path(".repo2ree")
     # Operator credential for directly installed, externally managed workbenches.
     # Empty disables external registration.
     EXTERNAL_WORKBENCH_TOKEN: str = ""

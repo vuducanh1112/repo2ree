@@ -25,6 +25,7 @@ AuthorApiActionName = Literal[
     # workbench
     "create_ree",
     "release_workbench",
+    "delete_ree",
     # source
     "acquire_source",
     "upload_source",
@@ -74,6 +75,8 @@ class AuthorApiActionFacts(TypedDict, total=False):
     attempt_id: str | None
     # The workbench's allocation, for create_ree and release_workbench.
     allocation_id: str | None
+    # The store, for create_ree and delete_ree of an REE served by one.
+    store_id: str | None
     run_id: str | None
     experiment: str | None
     path: str | None

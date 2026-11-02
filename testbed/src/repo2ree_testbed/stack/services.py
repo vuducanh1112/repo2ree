@@ -35,6 +35,7 @@ def backend_environment(control_state: Path, token: str, coverage_file: Path, te
     environment = {
         "UPLOAD_STAGING_DIR": str(control_state / "upload-staging"),
         "ALLOCATION_STORE_FILE": str(control_state / "allocations.json"),
+        "CONTROL_STATE_DIR": str(control_state),
         "REE_INDEX_FILE": str(control_state / "ree-index.json"),
         "RUN_REGISTRY_DIR": str(control_state / "runs"),
         "BEHAVIOUR_JOURNAL_DIR": str(control_state / "journal"),

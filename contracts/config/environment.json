@@ -28,6 +28,12 @@
           "title": "Behaviour Journal Dir",
           "type": "string"
         },
+        "CONTROL_STATE_DIR": {
+          "default": ".repo2ree",
+          "format": "path",
+          "title": "Control State Dir",
+          "type": "string"
+        },
         "EXTERNAL_WORKBENCH_TOKEN": {
           "default": "",
           "title": "External Workbench Token",
@@ -393,6 +399,16 @@
       "kind": "internal",
       "owner": "chaos-suite",
       "schema": {
+        "type": "string"
+      }
+    },
+    "CONTROL_STATE_DIR": {
+      "kind": "runtime",
+      "owner": "api",
+      "schema": {
+        "default": ".repo2ree",
+        "format": "path",
+        "title": "Control State Dir",
         "type": "string"
       }
     },

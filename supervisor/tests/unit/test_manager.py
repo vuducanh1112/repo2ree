@@ -106,6 +106,9 @@ class FakeWorkbench:
     def cancel_run(self, workbench_id: str, run_id: str, *, ree_id: str | None = None) -> None:
         return None
 
+    def delete_ree(self, workbench_id: str, ree_id: str) -> None:
+        return None
+
     def exec_query(self, workbench_id: str, argv: list[str], timeout: int = 30, *, ree_id: str | None = None) -> bytes:
         return b"{}"
 

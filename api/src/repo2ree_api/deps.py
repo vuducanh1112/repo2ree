@@ -17,6 +17,9 @@ from repo2ree_api.settings import service_settings
 from repo2ree_supervisor import (
     AllocationStore,
     ProviderConnectionRegistry,
+    ReeRegistry,
+    ReeRouter,
+    StoreRegistry,
     Transfers,
     WorkbenchConnectionRegistry,
     WorkbenchManager,
@@ -67,6 +70,11 @@ workbench_manager = WorkbenchManager(
 
 # Commands and queries for an REE, under the same per-REE locks the manager sets workbenches up under.
 command_dispatcher = workbench_manager.dispatcher
+
+# Stores an operator registered and the REEs they serve; each REE's commands go where the router says.
+store_registry = StoreRegistry(service_settings.CONTROL_STATE_DIR / "stores.json")
+ree_registry = ReeRegistry(service_settings.CONTROL_STATE_DIR / "rees.json")
+ree_router = ReeRouter(ree_registry, workbench_connections, workbench_manager)
 
 # The durable record of what has been sealed here and where it was deposited.
 # Written at seal, appended to when a deposit publishes, and read by anything

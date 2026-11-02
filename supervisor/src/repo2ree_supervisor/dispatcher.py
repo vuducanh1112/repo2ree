@@ -356,3 +356,13 @@ class CommandDispatcher:
         ``host_path`` need only exist here; the workbench may share no filesystem
         with us (see ``WorkbenchClient.copy_in``)."""
         self._workbench.copy_in(handle.workbench_id, host_path, workbench_path, ree_id=handle.ree_id)
+
+    def init_ree(self, handle: WorkbenchHandle, name: str) -> None:
+        """Create the REE in the store its workbench serves; refused where one is already."""
+        with self._locks(handle.ree_id):
+            self._workbench.exec_simple(handle.workbench_id, ["init-ree", "--name", name], ree_id=handle.ree_id)
+
+    def delete_ree(self, handle: WorkbenchHandle) -> None:
+        """Delete the REE from the store its workbench serves; refused while one of its runs is active."""
+        with self._locks(handle.ree_id):
+            self._workbench.delete_ree(handle.workbench_id, handle.ree_id)
