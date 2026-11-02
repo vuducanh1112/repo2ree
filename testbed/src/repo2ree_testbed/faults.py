@@ -50,6 +50,12 @@ class RestoreProviders(Record):
     kind: Literal["restore_providers"] = "restore_providers"
 
 
+class StopProviders(Record):
+    """The providers go away and stay away, until RestoreProviders starts them again."""
+
+    kind: Literal["stop_providers"] = "stop_providers"
+
+
 type Fault = Annotated[
     KillWorkbench
     | PauseWorkbench
@@ -58,7 +64,8 @@ type Fault = Annotated[
     | HealWorkbench
     | CrashApi
     | MisdirectProviders
-    | RestoreProviders,
+    | RestoreProviders
+    | StopProviders,
     Field(discriminator="kind"),
 ]
 FAULT = TypeAdapter[Fault](Fault)

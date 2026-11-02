@@ -100,7 +100,7 @@ class E2EStack:
         self.port: int | None = None
         self.backend: subprocess.Popen[bytes] | None = None
         self.locations: list[subprocess.Popen[bytes]] = []
-        self.restarting = threading.Lock()
+        self.restarting = threading.RLock()
         self.injector = Injector(self)
         self.origins = Origins(self.control_state / "origins", workbench_host()[0])
         self.running: Started | None = None
@@ -189,12 +189,17 @@ class E2EStack:
 
     def restart_locations(self, overrides: Mapping[str, str]) -> None:
         with self.restarting:
+            self.stop_locations()
+            self.start_locations(overrides)
+
+    def stop_locations(self) -> None:
+        """Stop every compute location; the stack does not take them for crashed until it starts them again."""
+        with self.restarting:
             for process in self.locations:
                 terminate(process)
             self.locations = []
             key = self.registry_key()
             wait_until("the old compute locations to disconnect", lambda: listed(self.registry_url(), key) == 0)
-            self.start_locations(overrides)
 
     def registry_key(self) -> str:
         return "providers" if self.provider_managed else "workbenches"

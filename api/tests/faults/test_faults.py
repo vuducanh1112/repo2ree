@@ -20,6 +20,7 @@ from repo2ree_testbed.faults import (
     PauseWorkbench,
     RestoreProviders,
     ResumeWorkbench,
+    StopProviders,
 )
 
 SLOW_BUILD = "#!/usr/bin/env sh\nset -eu\necho 'building slowly'\nsleep 120\n"
@@ -68,6 +69,29 @@ def provision(api: Api, image: str) -> dict[str, Any]:
     )
     settled: dict[str, Any] = api.wait(str(created["ree_id"]), created, timeout=150)
     return settled | {"ree_id": created["ree_id"]}
+
+
+def waiting_for_its_bench(api: Api) -> tuple[dict[str, Any], str]:
+    """Start provisioning a bench that cannot call home, and return its run and allocation once the
+    allocation waits for it; the providers must be misdirected."""
+    created: dict[str, Any] = api.post(
+        "/api/v1/rees", {"name": "fault-provision", "location_id": api.location(), "image": LIGHTWEIGHT_IMAGE}
+    )
+    ree_id = str(created["ree_id"])
+    deadline = time.monotonic() + 60
+    while time.monotonic() < deadline:
+        records = [
+            item for item in api.get("/api/v1/allocations")["allocations"] if item["request"]["ree_id"] == ree_id
+        ]
+        if records and records[0]["state"] == "waiting_for_workbench":
+            return created, str(records[0]["request"]["allocation_id"])
+        time.sleep(0.5)
+    raise AssertionError(f"{ree_id}'s allocation never waited for its bench")
+
+
+def settled_allocation(api: Api, allocation_id: str) -> dict[str, Any]:
+    record: dict[str, Any] = api.get(f"/api/v1/allocations/{allocation_id}")
+    return record
 
 
 def test_an_api_crash_fails_the_build_in_flight_and_the_ree_builds_after(api: Api, new_ree: Callable[..., str]) -> None:
@@ -141,3 +165,37 @@ def test_a_bench_that_cannot_call_home_fails_provisioning_and_the_next_one_works
 
     assert provisioned["status"] == "failed"
     assert new_ree()
+
+
+def test_an_api_restarted_while_a_bench_is_set_up_fails_its_allocation_and_releasing_settles_it(api: Api) -> None:
+    fault(MisdirectProviders())
+    try:
+        created, allocation_id = waiting_for_its_bench(api)
+        fault(CrashApi())
+    finally:
+        fault(RestoreProviders())
+    ree_id = str(created["ree_id"])
+
+    record = settled_allocation(api, allocation_id)
+    assert (record["state"], record["detail"]) == ("failed", "the API restarted while setting it up"), record
+    assert api.wait(ree_id, created, timeout=60)["status"] == "failed"
+    api.release(ree_id)
+    assert settled_allocation(api, allocation_id)["state"] == "released"
+
+
+def test_a_bench_its_provider_cannot_release_stays_failed_until_released_again(api: Api) -> None:
+    fault(MisdirectProviders())
+    try:
+        created, allocation_id = waiting_for_its_bench(api)
+        # The bench never calls home, and when the wait for it ends there is no provider to release it.
+        fault(StopProviders())
+        settled = api.wait(str(created["ree_id"]), created, timeout=150)
+    finally:
+        fault(RestoreProviders())
+    ree_id = str(created["ree_id"])
+
+    assert settled["status"] == "failed"
+    record = settled_allocation(api, allocation_id)
+    assert (record["state"], record["detail"]) == ("failed", "provider release failed"), record
+    api.release(ree_id)
+    assert settled_allocation(api, allocation_id)["state"] == "released"

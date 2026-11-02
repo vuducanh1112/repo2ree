@@ -21,6 +21,7 @@ from repo2ree_testbed.faults import (
     PauseWorkbench,
     RestoreProviders,
     ResumeWorkbench,
+    StopProviders,
 )
 from repo2ree_testbed.stack.docker import networks
 from repo2ree_testbed.stack.process import capture, run
@@ -44,6 +45,8 @@ class Target(Protocol):
     def crash_api(self) -> None: ...
 
     def restart_locations(self, overrides: Mapping[str, str]) -> None: ...
+
+    def stop_locations(self) -> None: ...
 
 
 class Injector:
@@ -134,3 +137,7 @@ class Injector:
                     self.target.restart_locations({"PROVIDER_WORKBENCH_API_WS_URL": UNANSWERED})
                 case RestoreProviders():
                     self.target.restart_locations({})
+                case StopProviders():
+                    if not self.target.provider_managed:
+                        raise FaultUnavailableError("there is no provider to stop")
+                    self.target.stop_locations()
