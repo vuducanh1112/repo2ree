@@ -22,7 +22,7 @@ class Finding(EvidenceModel):
 
 class RuleResult(EvidenceModel):
     rule: str
-    kind: Literal["evidence", "machine", "boundary", "invariant", "reconciliation"]
+    kind: Literal["evidence", "machine", "boundary", "invariant", "reconciliation", "aggregate"]
     summary: str
     triggered: int = 0
     open: int = 0
@@ -66,7 +66,7 @@ class MoveCount(EvidenceModel):
 
 
 class AggregateResult(EvidenceModel):
-    """Every move of every part of one aggregate, and each one its machines do not allow; never gated."""
+    """Every move of every part of one aggregate, and each one its machines do not allow (its rule's findings)."""
 
     aggregate: str
     instances: int
@@ -110,7 +110,7 @@ class CheckResult(EvidenceModel):
     # The contract the evidence was judged against; a journal's own stamp is provenance only.
     vocabulary_digest: str = ""
     extras: tuple[Extra, ...] = ()
-    # Not part of the verdict: the aggregate machines are reported until they are gated.
+    # Every move of every part, for the views; the moves no edge allows are the aggregate rules' findings.
     aggregates: tuple[AggregateResult, ...] = ()
 
     @property

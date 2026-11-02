@@ -1,4 +1,4 @@
-# The REE document (ree.json per capture commit), one machine per part. Reported, not gated.
+# The REE document (ree.json per capture commit), one machine per part. A move no edge allows violates the rule aggregate:Ree.
 
 name = "Ree"
 summary = "One author REE: what it declares, what its receipts prove, and whether it is sealed."

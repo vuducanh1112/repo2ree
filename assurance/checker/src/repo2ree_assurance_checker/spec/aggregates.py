@@ -1,6 +1,6 @@
 """Aggregate machines: one machine per part of a document an entity commits after every operation.
 
-Not gated: the checker reports every move, and no verdict depends on them.
+The checker reports every move, and each one no edge allows violates the aggregate's rule.
 """
 
 from __future__ import annotations

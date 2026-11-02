@@ -17,14 +17,14 @@ never used, and nothing is assumed about where the receiver did its work.
 The package is laid out by concern: ``results`` (what checking finds), ``replay`` (records
 through machines and exchanges), ``order`` (what the evidence can order and could have
 recorded), ``patterns`` (the invariants), ``reconciliation`` (stores against journals), and
-``aggregates`` (every part of a committed document, reported apart from the verdict).
+``aggregates`` (every part of a committed document, one rule per aggregate).
 """
 
 from __future__ import annotations
 
 from collections import defaultdict
 
-from repo2ree_assurance_checker.check.aggregates import check_aggregates
+from repo2ree_assurance_checker.check.aggregates import aggregate_rule, check_aggregates
 from repo2ree_assurance_checker.check.order import Model
 from repo2ree_assurance_checker.check.patterns import Occurrence, check_invariant, judge, judge_occurrences, occurrences
 from repo2ree_assurance_checker.check.reconciliation import check_reconciliation, states_around
@@ -144,6 +144,8 @@ def check(spec: Spec, evidence: Evidence) -> CheckResult:
     observed = [event for event in evidence.events if event.kind == "observed"]
     if observed:
         rules.append(check_reconciliation(model, observed))
+    aggregates = check_aggregates(spec, evidence)
+    rules.extend(aggregate_rule(result) for result in aggregates)
     return CheckResult(
         spec_digest=spec.digest,
         vocabulary_digest=spec.vocabulary_digest,
@@ -151,7 +153,7 @@ def check(spec: Spec, evidence: Evidence) -> CheckResult:
         rules=tuple(rules),
         coverage=coverage,
         extras=extras(spec, evidence),
-        aggregates=check_aggregates(spec, evidence),
+        aggregates=aggregates,
     )
 
 

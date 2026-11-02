@@ -1,4 +1,4 @@
-"""The Ree aggregate: every part of the committed document as a machine, reported beside the verdict."""
+"""The Ree aggregate: every part of the committed document as a machine, and the rule they make."""
 
 from __future__ import annotations
 
@@ -359,14 +359,22 @@ def test_a_move_no_edge_allows_is_reported_with_its_evidence() -> None:
     ]
 
 
-def test_aggregate_findings_never_change_the_verdict() -> None:
+def test_a_move_no_edge_allows_violates_the_aggregate_rule() -> None:
     evidence = authored()
     late = change(7900, "definition.catalog.version", None, "2", "run_experiment", "operation")
     disallowed = evidence.model_copy(update={"changes": (*evidence.changes, late)})
     spec = load_spec()
     before, after = check(spec, evidence), check(spec, disallowed)
-    assert after.aggregates[0].findings
-    assert (after.verdict, after.rules) == (before.verdict, before.rules)
+
+    def rule(result: Any) -> Any:
+        return next(rule for rule in result.rules if rule.rule == "aggregate:Ree")
+
+    assert (rule(before).kind, rule(before).verdict) == ("aggregate", "passed")
+    assert rule(before).triggered == sum(move.count for move in before.aggregates[0].moves)
+    assert rule(after).findings == after.aggregates[0].findings
+    assert (rule(after).verdict, after.verdict) == ("violated", "violated")
+    # Every other rule judges the same evidence as before.
+    assert [r for r in after.rules if r.kind != "aggregate"] == [r for r in before.rules if r.kind != "aggregate"]
 
 
 def test_each_instance_is_replayed_step_by_step_with_what_each_operation_moved() -> None:

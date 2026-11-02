@@ -5,7 +5,7 @@ the contract owners emit against: each subject's owner, key, states or messages,
 facts with their types and where they are required. The rules (``entities/*.toml``,
 ``boundaries/*.toml``, ``invariants.toml``) are what the checker holds the evidence to.
 Aggregate machines (``aggregates/*.toml``) follow every part of a document an entity
-commits; they are reported, not gated. Only the vocabulary is published to the product
+commits; a move no edge allows violates the aggregate's rule. Only the vocabulary is published to the product
 (``contracts/behaviour``).
 
 The package keeps each part apart: ``base`` (what they share), ``vocabulary`` (what owners

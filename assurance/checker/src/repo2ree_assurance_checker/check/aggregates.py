@@ -1,6 +1,6 @@
 """Aggregate machines against the evidence: every move of every part, counted, judged, and replayed per instance.
 
-Nothing here changes a verdict.
+A move no edge allows violates the aggregate's rule; which edges were taken is reported, not required.
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ from repo2ree_assurance_checker.check.results import (
     Finding,
     MoveCount,
     Part,
+    RuleResult,
     StateStep,
 )
 from repo2ree_assurance_checker.evidence import Evidence, FieldChange
@@ -73,6 +74,18 @@ def check_aggregate(aggregate: AggregateSpec, evidence: Evidence) -> AggregateRe
             for move in found
             if not move.allowed
         ),
+    )
+
+
+def aggregate_rule(result: AggregateResult) -> RuleResult:
+    """The aggregate as a rule: triggered by every move of every part, violated by each one no edge allows."""
+    return RuleResult(
+        rule=f"aggregate:{result.aggregate}",
+        kind="aggregate",
+        summary=f"Every part of the {result.aggregate} document moves only along an edge that allows the "
+        "operation that moved it.",
+        triggered=sum(move.count for move in result.moves),
+        findings=result.findings,
     )
 
 
