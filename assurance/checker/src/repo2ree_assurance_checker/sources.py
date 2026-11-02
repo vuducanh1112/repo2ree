@@ -272,19 +272,26 @@ def _named(item: JsonValue) -> bool:
     return isinstance(item, dict) and isinstance(item.get("name"), str)
 
 
-def pending_records(repository: Path, published: set[str]) -> tuple[list[dict[str, Any]], list[str]]:
-    records: list[dict[str, Any]] = []
+def record_digest(content: bytes) -> str:
+    """A record's identity as a result names it: the digest of its bytes, as a commit's is of its content."""
+    return f"sha256:{hashlib.sha256(content).hexdigest()}"
+
+
+def pending_records(repository: Path, published: set[str]) -> tuple[list[tuple[dict[str, Any], str]], list[str]]:
+    """Each unpublished attempt record, with the digest of its bytes."""
+    records: list[tuple[dict[str, Any], str]] = []
     problems: list[str] = []
     for path in sorted((repository / ".git" / "repo2ree" / "operations").glob("*.json")):
         try:
-            record = json.loads(path.read_text())
+            content = path.read_bytes()
+            record = json.loads(content)
             if not isinstance(record, dict) or not isinstance(record.get("attempt_id"), str):
                 raise ValueError("no attempt_id")
         except ValueError as exc:
             problems.append(f"{path.name}: unreadable pending record ({exc})")
             continue
         if record["attempt_id"] not in published:
-            records.append(record)
+            records.append((record, record_digest(content)))
     return records, problems
 
 
@@ -322,11 +329,18 @@ def recorded_phases(record: dict[str, Any], commit: Commit | None) -> tuple[list
 
 
 def attempt_events(
-    source_id: str, base: int, record: dict[str, Any], commit: Commit | None, locator: str | None = None
+    source_id: str,
+    base: int,
+    record: dict[str, Any],
+    commit: Commit | None,
+    locator: str | None = None,
+    *,
+    digest: str | None = None,
 ) -> list[Event]:
     """The transitions an attempt record proves: the phases core recorded entering, in that order.
 
-    ``changed`` is witnessed from the commit's tree, not taken from the record.
+    ``changed`` is witnessed from the commit's tree, not taken from the record. An unpublished
+    record's ``digest`` is its identity at capture_failed, which the dispatch result cites.
     """
     context = record.get("context") or {}
     common: dict[str, Any] = {
@@ -348,7 +362,7 @@ def attempt_events(
         },
         "completed": {"outcome": record.get("operation_status")},
         "captured": {"commit": commit.id, "changed": commit.tree != commit.parent_tree} if commit else {},
-        "capture_failed": {"error": record.get("capture_error") or ""},
+        "capture_failed": {"error": record.get("capture_error") or ""} | ({"record": digest} if digest else {}),
     }
     phases, _ = recorded_phases(record, commit)
     steps = [
@@ -522,9 +536,10 @@ def read_git_history(repository: Path, label: str, executable: str = "git", *, a
     for index, commit, record in published:
         events.extend(attempt_events(source_id, (index + 1) * 1000, record, commit, f"git:{label}@{commit.id[:12]}"))
         problems.extend(problem for problem in [recorded_phases(record, commit)[1]] if problem)
-    for offset, record in enumerate(pending):
+    for offset, (record, digest) in enumerate(pending):
         locator = f"git:{label}/operations/{record['attempt_id']}.json"
-        events.extend(attempt_events(source_id, (len(commits) + 1 + offset) * 1000, record, None, locator))
+        position = (len(commits) + 1 + offset) * 1000
+        events.extend(attempt_events(source_id, position, record, None, locator, digest=digest))
         problems.extend(problem for problem in [recorded_phases(record, None)[1]] if problem)
     ree_ids = {event.partition for event in events if event.partition is not None}
     if author and len(ree_ids) == 1:

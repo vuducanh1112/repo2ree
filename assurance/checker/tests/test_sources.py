@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -17,7 +18,9 @@ from repo2ree_assurance_checker.sources import (
     attempt_events,
     history_head,
     load_evidence,
+    pending_records,
     read_journals,
+    record_digest,
     recorded_phases,
 )
 
@@ -131,13 +134,15 @@ def test_attempt_records_become_their_proven_transitions() -> None:
         "capture_status": "failed",
         "capture_error": "disk full",
     }
-    events = attempt_events("git:ree", 10, record, None)
+    events = attempt_events("git:ree", 10, record, None, digest="sha256:" + "f" * 64)
     assert [(event.source_state, event.target_state) for event in events] == [
         (None, "pending"),
         ("pending", "executing"),
         ("executing", "completed"),
         ("completed", "capture_failed"),
     ]
+    # The record's own identity, which the dispatch result cites.
+    assert events[-1].facts == {"error": "disk full", "record": "sha256:" + "f" * 64}
     not_started = attempt_events("git:ree", 10, {**record, "operation_status": "not_started"}, None)
     assert [event.target_state for event in not_started] == ["pending", "capture_failed"]
     pending = attempt_events(
@@ -326,3 +331,17 @@ def test_snapshots_that_are_not_prefixes_of_the_latest_are_reported() -> None:
     kept, problems = one_per_history([rewritten, snapshot("late", ("a1", "c1"), ("a2", "c2"))])
     assert [evidence.sources[0].id for evidence in kept] == ["git:late"]
     assert problems == ["git:early is not a prefix of git:late: the snapshots diverge"]
+
+
+def test_an_unpublished_record_is_named_by_the_digest_of_its_bytes(tmp_path: Path) -> None:
+    operations = tmp_path / ".git" / "repo2ree" / "operations"
+    operations.mkdir(parents=True)
+    content = json.dumps({"attempt_id": "a1", "capture_status": "failed"}).encode()
+    (operations / "a1.json").write_bytes(content)
+    (operations / "a2.json").write_text(json.dumps({"attempt_id": "a2"}))
+
+    records, problems = pending_records(tmp_path, published={"a2"})
+
+    assert problems == []
+    assert records == [({"attempt_id": "a1", "capture_status": "failed"}, record_digest(content))]
+    assert record_digest(content) == "sha256:" + hashlib.sha256(content).hexdigest()

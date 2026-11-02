@@ -29,6 +29,9 @@ dispatched_by = "str?"
 commit = { type = "str", required_in = ["captured"] }
 changed = { type = "bool", required_in = ["captured"] }
 error = "str"
+# A record that failed to be captured stays beside the history, not in a commit: its identity is
+# the digest of its bytes ("sha256:<hex>"), which the dispatch result names as it names a commit.
+record = { type = "str", required_in = ["capture_failed"] }
 
 [facts.outcome]
 type = "str"

@@ -66,7 +66,11 @@ def test_the_checked_in_specification_is_valid() -> None:
     assert set(spec.boundaries) == {"dispatch"}
     assert spec.digest.startswith("sha256:")
     assert spec.vocabulary_digest.startswith("sha256:")
-    assert spec.entities["Attempt"].required == {"completed": ("outcome",), "captured": ("commit", "changed")}
+    assert spec.entities["Attempt"].required == {
+        "completed": ("outcome",),
+        "captured": ("commit", "changed"),
+        "capture_failed": ("record",),
+    }
     assert spec.entities["Ree"].required == {"draft": ("cause",), "sealed": ("cause",)}
     assert spec.boundaries["dispatch"].required == {"result": ("status",)}
 

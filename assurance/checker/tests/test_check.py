@@ -142,14 +142,18 @@ class Recorder:
         changed: bool = True,
         dispatched_by: str | None = None,
         operation: str = "build_runtime",
+        failed_record: str | None = None,
     ) -> None:
+        """An attempt's phases; with ``failed_record``, its capture failed and that is its record's digest."""
         pending: dict[str, Any] = {"operation": operation, "run_id": "run-1", "scope": "author"}
         if dispatched_by is not None:
             pending["dispatched_by"] = dispatched_by
         steps: list[tuple[str | None, str, dict[str, Any]]] = [(None, "pending", pending), ("pending", "executing", {})]
         if completed:
             steps.append(("executing", "completed", {"outcome": outcome}))
-        if completed and captured:
+        if completed and failed_record is not None:
+            steps.append(("completed", "capture_failed", {"error": "locked", "record": failed_record}))
+        elif completed and captured:
             steps.append(("completed", "captured", {"commit": "c" * 40, "changed": changed}))
         for current, target, facts in steps:
             self._add(
@@ -164,7 +168,13 @@ class Recorder:
             )
 
     def dispatch(
-        self, key: str, *outcomes: tuple[str, str | None], owner: str = "supervisor", commit: str | None = "c" * 40
+        self,
+        key: str,
+        *outcomes: tuple[str, str | None],
+        owner: str = "supervisor",
+        commit: str | None = "c" * 40,
+        status: str = "succeeded",
+        record: str | None = None,
     ) -> str:
         """Record an exchange; returns the request's reference, which the attempt cites."""
         self._add(
@@ -179,7 +189,7 @@ class Recorder:
         request = f"api-000001#{self.positions['api-000001']}"
         for kind, message in outcomes:
             facts: dict[str, Any] = (
-                {"status": "succeeded", "commit": commit}
+                {"status": status, "commit": commit} | ({"record": record} if record else {})
                 if message == "result"
                 else ({"reason": "x"} if kind == "abandon" else {})
             )
@@ -808,6 +818,32 @@ def test_without_citations_the_order_across_sources_is_unknown() -> None:
     assert result["api-success-is-recorded"] == "inconclusive"
     assert findings(recorder, "example-execution-was-dispatched") == [
         "inconclusive: the evidence cannot order dispatch.exec_action a1 against it"
+    ]
+
+
+def failed_capture(recorder: Recorder, *, named: str | None, recorded: str = "sha256:" + "f" * 64) -> None:
+    """A build whose capture failed, settled failed; its result names ``named`` as the attempt's record."""
+    recorder.run("run-1", "requested", "running")
+    recorder.dispatch("a1", ("receive", "result"), commit=None, status="failed", record=named)
+    recorder.attempt("a1", failed_record=recorded)
+    recorder.settle("run-1", "running", "failed", "a1")
+
+
+def test_a_failed_capture_is_ordered_by_the_record_its_result_names() -> None:
+    cited = Recorder()
+    failed_capture(cited, named="sha256:" + "f" * 64)
+    assert verdicts(cited)["settled-api-actions-settle-their-attempt"] == "passed"
+    # Without the citation, nothing orders the record in Git against the answer in the journal.
+    uncited = Recorder()
+    failed_capture(uncited, named=None)
+    assert verdicts(uncited)["settled-api-actions-settle-their-attempt"] == "inconclusive"
+
+
+def test_a_result_naming_another_record_than_the_failed_capture_left_is_violated() -> None:
+    recorder = Recorder()
+    failed_capture(recorder, named="sha256:" + "e" * 64)
+    assert findings(recorder, "boundary:dispatch") == [
+        f"violated: names sha256:{'e' * 64}, but the evidence records ['sha256:{'f' * 64}']"
     ]
 
 

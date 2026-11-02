@@ -3,7 +3,7 @@
   "$id": "urn:repo2ree:contracts:behaviour:events",
   "title": "repo2ree behaviour journal record",
   "description": "One line of a behaviour journal. Generated from assurance/spec/vocabulary by `python -m repo2ree_assurance_checker generate`; do not edit. Sequence, epochs, and the header are checked per journal by `python -m repo2ree_assurance_checker validate-journal`.",
-  "x-vocabulary": "sha256:dbbc8907e364137863a9c83b7ddb5a8a2ed6b259f1cc811fc21090620fb3c487",
+  "x-vocabulary": "sha256:378aa9b845ab774a4777b0883c9e74624146dc5a316317c9f3fb4f1e5bf037ce",
   "type": "object",
   "properties": {
     "v": {
@@ -359,6 +359,9 @@
                 "canceled"
               ]
             },
+            "record": {
+              "type": "string"
+            },
             "run_id": {
               "type": "string"
             },
@@ -437,6 +440,9 @@
                       "failed",
                       "canceled"
                     ]
+                  },
+                  "record": {
+                    "type": "string"
                   },
                   "run_id": {
                     "type": "string"
@@ -518,6 +524,9 @@
                       "canceled"
                     ]
                   },
+                  "record": {
+                    "type": "string"
+                  },
                   "run_id": {
                     "type": "string"
                   },
@@ -527,6 +536,88 @@
                 },
                 "required": [
                   "outcome"
+                ]
+              }
+            },
+            "required": [
+              "facts"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "to": {
+                "enum": [
+                  "capture_failed"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "facts": {
+                "type": "object",
+                "properties": {
+                  "changed": {
+                    "type": "boolean"
+                  },
+                  "commit": {
+                    "type": "string"
+                  },
+                  "dispatched_by": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "error": {
+                    "type": "string"
+                  },
+                  "operation": {
+                    "enum": [
+                      "acquire_source",
+                      "remove_source",
+                      "patch_ree_definition",
+                      "write_file",
+                      "delete_file",
+                      "generate_script_candidates",
+                      "lint_scripts",
+                      "evaluate_dependency_score",
+                      "generate_hbom",
+                      "build_runtime",
+                      "generate_sbom",
+                      "cross_check_sbom",
+                      "activation_test",
+                      "run_experiment",
+                      "seal_ree",
+                      "load_ree_bundle",
+                      "materialize_workspace",
+                      "review_acquire_source",
+                      "review_build_runtime",
+                      "review_activation_test",
+                      "review_run_experiment"
+                    ]
+                  },
+                  "outcome": {
+                    "enum": [
+                      "succeeded",
+                      "failed",
+                      "canceled"
+                    ]
+                  },
+                  "record": {
+                    "type": "string"
+                  },
+                  "run_id": {
+                    "type": "string"
+                  },
+                  "scope": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "record"
                 ]
               }
             },
@@ -1175,6 +1266,12 @@
                     "type": "object",
                     "properties": {
                       "commit": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "record": {
                         "type": [
                           "string",
                           "null"
