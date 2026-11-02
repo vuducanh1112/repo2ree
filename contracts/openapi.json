@@ -8991,6 +8991,16 @@
           "produced_runtime_digest": {
             "type": "string",
             "title": "Produced Runtime Digest"
+          },
+          "environment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EnvironmentObservation"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -10166,6 +10176,41 @@
         ],
         "title": "DockerfileBinding"
       },
+      "EnvironmentDefinition": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "image",
+              "host"
+            ],
+            "title": "Kind"
+          },
+          "image": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image"
+          },
+          "needs_container_engine": {
+            "type": "boolean",
+            "title": "Needs Container Engine",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "title": "EnvironmentDefinition"
+      },
       "EnvironmentLevel": {
         "type": "integer",
         "enum": [
@@ -10174,6 +10219,66 @@
           2
         ],
         "title": "EnvironmentLevel"
+      },
+      "EnvironmentObservation": {
+        "properties": {
+          "declared": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EnvironmentDefinition"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "backend": {
+            "type": "string",
+            "enum": [
+              "host",
+              "container"
+            ],
+            "title": "Backend"
+          },
+          "image_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Digest"
+          },
+          "host": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HostFingerprint"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "script_engine": {
+            "type": "string",
+            "enum": [
+              "none",
+              "socket",
+              "nested"
+            ],
+            "title": "Script Engine",
+            "default": "none"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "backend"
+        ],
+        "title": "EnvironmentObservation",
+        "description": "What a step ran in: the declaration it ran under, and what was there."
       },
       "ErrorDetail": {
         "properties": {
@@ -11542,6 +11647,37 @@
         "title": "HistoryReference",
         "description": "Capture evidence, separate from operation-specific outputs."
       },
+      "HostFingerprint": {
+        "properties": {
+          "os": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Os"
+          },
+          "arch": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Arch"
+          },
+          "kernel": {
+            "type": "string",
+            "title": "Kernel",
+            "default": ""
+          },
+          "container_engine": {
+            "type": "string",
+            "title": "Container Engine",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "os",
+          "arch"
+        ],
+        "title": "HostFingerprint"
+      },
       "ImageCommandBinding": {
         "properties": {
           "kind": {
@@ -12647,6 +12783,16 @@
               }
             ]
           },
+          "environment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EnvironmentDefinition"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "test_activation": {
             "anyOf": [
               {
@@ -12704,6 +12850,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/BuildRuntimeDefinition"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "environment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EnvironmentDefinition"
               },
               {
                 "type": "null"
@@ -14251,6 +14407,16 @@
             ],
             "title": "Verify Exit Code"
           },
+          "environment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EnvironmentObservation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "produced_output_digest": {
             "anyOf": [
               {
@@ -15770,6 +15936,16 @@
               }
             ],
             "title": "Verify Exit Code"
+          },
+          "environment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EnvironmentObservation"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,

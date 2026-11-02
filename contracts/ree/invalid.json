@@ -182,6 +182,35 @@
         }
       ],
       "error": "timestamp must be timezone-aware"
+    },
+    {
+      "name": "an image environment that names no image",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/seal"
+        },
+        {
+          "op": "remove",
+          "path": "/subject/definition/environment/image"
+        }
+      ],
+      "error": "an image environment names its image"
+    },
+    {
+      "name": "a host environment that names an image",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/seal"
+        },
+        {
+          "op": "replace",
+          "path": "/subject/definition/environment/kind",
+          "value": "host"
+        }
+      ],
+      "error": "a host environment names no image"
     }
   ]
 }

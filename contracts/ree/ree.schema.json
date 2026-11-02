@@ -218,6 +218,17 @@
         "produced_runtime_digest": {
           "title": "Produced Runtime Digest",
           "type": "string"
+        },
+        "environment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EnvironmentObservation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -473,6 +484,105 @@
         "observed_total"
       ],
       "title": "CrossCheckSbomReceipt",
+      "type": "object"
+    },
+    "EnvironmentDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "image",
+            "host"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "image": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Image"
+        },
+        "needs_container_engine": {
+          "default": false,
+          "title": "Needs Container Engine",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "EnvironmentDefinition",
+      "type": "object"
+    },
+    "EnvironmentObservation": {
+      "additionalProperties": false,
+      "description": "What a step ran in: the declaration it ran under, and what was there.",
+      "properties": {
+        "declared": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EnvironmentDefinition"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "backend": {
+          "enum": [
+            "host",
+            "container"
+          ],
+          "title": "Backend",
+          "type": "string"
+        },
+        "image_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Image Digest"
+        },
+        "host": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HostFingerprint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "script_engine": {
+          "default": "none",
+          "enum": [
+            "none",
+            "socket",
+            "nested"
+          ],
+          "title": "Script Engine",
+          "type": "string"
+        }
+      },
+      "required": [
+        "backend"
+      ],
+      "title": "EnvironmentObservation",
       "type": "object"
     },
     "EvaluateReproducibilityReceipt": {
@@ -968,6 +1078,37 @@
       "title": "HardwareDefinition",
       "type": "object"
     },
+    "HostFingerprint": {
+      "additionalProperties": false,
+      "properties": {
+        "os": {
+          "minLength": 1,
+          "title": "Os",
+          "type": "string"
+        },
+        "arch": {
+          "minLength": 1,
+          "title": "Arch",
+          "type": "string"
+        },
+        "kernel": {
+          "default": "",
+          "title": "Kernel",
+          "type": "string"
+        },
+        "container_engine": {
+          "default": "",
+          "title": "Container Engine",
+          "type": "string"
+        }
+      },
+      "required": [
+        "os",
+        "arch"
+      ],
+      "title": "HostFingerprint",
+      "type": "object"
+    },
     "MemoryDefinition": {
       "additionalProperties": false,
       "properties": {
@@ -1241,6 +1382,17 @@
           "anyOf": [
             {
               "$ref": "#/$defs/BuildRuntimeDefinition"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "environment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EnvironmentDefinition"
             },
             {
               "type": "null"
@@ -1523,6 +1675,17 @@
           ],
           "default": null,
           "title": "Verify Exit Code"
+        },
+        "environment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EnvironmentObservation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "produced_output_digest": {
           "anyOf": [
@@ -1855,6 +2018,17 @@
           ],
           "default": null,
           "title": "Verify Exit Code"
+        },
+        "environment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EnvironmentObservation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [

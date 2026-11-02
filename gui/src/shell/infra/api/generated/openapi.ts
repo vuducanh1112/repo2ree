@@ -1520,6 +1520,7 @@ export interface components {
             runtime_path: string;
             /** Produced Runtime Digest */
             produced_runtime_digest: string;
+            environment?: components["schemas"]["EnvironmentObservation"] | null;
         };
         /**
          * BuildScriptTemplates
@@ -2042,11 +2043,47 @@ export interface components {
             /** Digest */
             digest: string;
         };
+        /** EnvironmentDefinition */
+        EnvironmentDefinition: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "image" | "host";
+            /** Image */
+            image?: string | null;
+            /**
+             * Needs Container Engine
+             * @default false
+             */
+            needs_container_engine: boolean;
+        };
         /**
          * EnvironmentLevel
          * @enum {integer}
          */
         EnvironmentLevel: 0 | 1 | 2;
+        /**
+         * EnvironmentObservation
+         * @description What a step ran in: the declaration it ran under, and what was there.
+         */
+        EnvironmentObservation: {
+            declared?: components["schemas"]["EnvironmentDefinition"] | null;
+            /**
+             * Backend
+             * @enum {string}
+             */
+            backend: "host" | "container";
+            /** Image Digest */
+            image_digest?: string | null;
+            host?: components["schemas"]["HostFingerprint"] | null;
+            /**
+             * Script Engine
+             * @default none
+             * @enum {string}
+             */
+            script_engine: "none" | "socket" | "nested";
+        };
         /** ErrorDetail */
         ErrorDetail: {
             /** Code */
@@ -2565,6 +2602,23 @@ export interface components {
             /** Record Digest */
             record_digest?: string | null;
         };
+        /** HostFingerprint */
+        HostFingerprint: {
+            /** Os */
+            os: string;
+            /** Arch */
+            arch: string;
+            /**
+             * Kernel
+             * @default
+             */
+            kernel: string;
+            /**
+             * Container Engine
+             * @default
+             */
+            container_engine: string;
+        };
         /**
          * ImageCommandBinding
          * @description The runtime image's declared command (Entrypoint/Cmd), parsed once when
@@ -3033,6 +3087,7 @@ export interface components {
             catalog?: components["schemas"]["ReeCatalogMetadata"];
             source?: components["schemas"]["SourceDefinition"] | null;
             build_runtime?: components["schemas"]["BuildRuntimeDefinition"] | null;
+            environment?: components["schemas"]["EnvironmentDefinition"] | null;
             test_activation?: components["schemas"]["TestActivationDefinition"] | null;
             hardware?: components["schemas"]["HardwareDefinition"] | null;
             /**
@@ -3051,6 +3106,7 @@ export interface components {
             catalog?: components["schemas"]["ReeCatalogMetadata"];
             source?: components["schemas"]["SourceDefinition"] | null;
             build_runtime?: components["schemas"]["BuildRuntimeDefinition"] | null;
+            environment?: components["schemas"]["EnvironmentDefinition"] | null;
             test_activation?: components["schemas"]["TestActivationDefinition"] | null;
             hardware?: components["schemas"]["HardwareDefinition"] | null;
             /**
@@ -3618,6 +3674,7 @@ export interface components {
             run_exit_code: 0;
             /** Verify Exit Code */
             verify_exit_code?: 0 | null;
+            environment?: components["schemas"]["EnvironmentObservation"] | null;
             /** Produced Output Digest */
             produced_output_digest?: string | null;
         };
@@ -4225,6 +4282,7 @@ export interface components {
             run_exit_code: 0;
             /** Verify Exit Code */
             verify_exit_code?: 0 | null;
+            environment?: components["schemas"]["EnvironmentObservation"] | null;
         };
         /** Threat */
         Threat: {

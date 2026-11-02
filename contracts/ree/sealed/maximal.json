@@ -1,6 +1,6 @@
 {
   "seal": {
-    "ree_digest": "sha256:88bcfbbb293e4e674361b74148bd16d74fa00ea0626340b7359daaceee607386",
+    "ree_digest": "sha256:324cf6d83b8fe4921dc9f2068351845632f2c27968f89c40fdcf5cbe589e3c5a",
     "sealed_at": "2026-10-01T09:30:00.123456Z",
     "signature": {
       "algorithm": "ed25519",
@@ -53,6 +53,11 @@
         ],
         "version": "1.2.3",
         "website": "https://example.org/maximal"
+      },
+      "environment": {
+        "image": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "kind": "image",
+        "needs_container_engine": true
       },
       "experiments": [
         {
@@ -159,6 +164,22 @@
         "build_runtime_script_digest": "sha256:44575cf5b28512d75644bf54a517dcef304ff809fd511747621b4d64f19aac66",
         "build_runtime_script_path": "ree-scripts/build_script.sh",
         "duration_ms": 600000,
+        "environment": {
+          "backend": "container",
+          "declared": {
+            "image": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "kind": "image",
+            "needs_container_engine": true
+          },
+          "host": {
+            "arch": "x86_64",
+            "container_engine": "Docker 29.0.1",
+            "kernel": "6.12.5",
+            "os": "Debian GNU/Linux 12"
+          },
+          "image_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "script_engine": "socket"
+        },
         "finished_at": "2026-10-01T08:13:00.000000Z",
         "operation": "build_runtime",
         "produced_runtime_digest": "sha256:d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
@@ -199,6 +220,22 @@
       "experiments": {
         "train model": {
           "duration_ms": 3600000,
+          "environment": {
+            "backend": "container",
+            "declared": {
+              "image": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "kind": "image",
+              "needs_container_engine": true
+            },
+            "host": {
+              "arch": "x86_64",
+              "container_engine": "Docker 29.0.1",
+              "kernel": "6.12.5",
+              "os": "Debian GNU/Linux 12"
+            },
+            "image_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "script_engine": "socket"
+          },
           "experiment_name": "train model",
           "finished_at": "2026-10-01T09:17:00.000000Z",
           "operation": "run_experiment",
@@ -343,6 +380,22 @@
       },
       "test_activation": {
         "duration_ms": 5000,
+        "environment": {
+          "backend": "container",
+          "declared": {
+            "image": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "kind": "image",
+            "needs_container_engine": true
+          },
+          "host": {
+            "arch": "x86_64",
+            "container_engine": "Docker 29.0.1",
+            "kernel": "6.12.5",
+            "os": "Debian GNU/Linux 12"
+          },
+          "image_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "script_engine": "socket"
+        },
         "finished_at": "2026-10-01T08:16:05.000000Z",
         "operation": "test_activation",
         "recorded_at": "2026-10-01T08:16:05.000000Z",
