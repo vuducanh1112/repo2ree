@@ -104,7 +104,7 @@ describe("useExperimentRun", () => {
     });
     expect(result.current.isRunning).toBe(false);
     await waitFor(() =>
-      expect(runtime.invalidate).toHaveBeenCalledWith({ queryKey: ["ree", "started-ree"] }),
+      expect(runtime.invalidate).toHaveBeenCalledWith({ queryKey: ["ree-runs", "started-ree"] }),
     );
     act(() => result.current.cancelRun());
     expect(runtime.cancel).toHaveBeenCalledWith({ runId: "run-1" });

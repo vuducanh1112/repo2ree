@@ -145,6 +145,15 @@ export function auditReceiptRunId(audit: ReeAudit, step: EvidenceStep): string |
   return typeof entry === "string" ? undefined : entry?.receiptRunId;
 }
 
+/** Every run the audit names as a receipt's producer, experiments included. */
+export function auditReceiptRunIds(audit: ReeAudit): Set<string> {
+  const runIds = [
+    ...EVIDENCE_STEPS.map((step) => auditReceiptRunId(audit, step)),
+    ...(audit.experiments ?? []).map((experiment) => experiment.run.receiptRunId),
+  ];
+  return new Set(runIds.filter((runId): runId is string => !!runId));
+}
+
 export function isAuditCurrent(audit: ReeAudit, step: EvidenceStep): boolean {
   return auditEvidence(audit, step) === "current";
 }

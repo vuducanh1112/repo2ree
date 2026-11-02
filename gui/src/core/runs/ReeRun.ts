@@ -64,6 +64,22 @@ export type ReeRunOperation =
   | "dataverse"
   | "experiment";
 
+/** The operations whose successful run files a receipt under its own run id. */
+const RECEIPT_OPERATIONS: ReadonlySet<ReeRunOperation> = new Set([
+  "source",
+  "evaluate",
+  "hbom",
+  "build",
+  "sbom",
+  "crosscheck",
+  "activation",
+  "experiment",
+]);
+
+export function filesReceipt(operation: ReeRunOperation): boolean {
+  return RECEIPT_OPERATIONS.has(operation);
+}
+
 /** A run as returned by the run-listing endpoint: a ReeRun plus its operation. */
 export interface ReeRunSummary extends ReeRun {
   operation: ReeRunOperation;

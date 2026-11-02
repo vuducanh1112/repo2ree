@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ReeRun, ReeRunLogChunk } from "./ReeRun";
+import { filesReceipt, type ReeRun, type ReeRunLogChunk } from "./ReeRun";
 import type { ReeRunStatus } from "./ReeRunStatus";
 
 describe("execution run vocabulary types", () => {
@@ -20,5 +20,15 @@ describe("execution run vocabulary types", () => {
     };
     expect(chunk.lines).toHaveLength(1);
     expect(chunk.hasMore).toBe(false);
+  });
+});
+
+describe("filesReceipt", () => {
+  it("is true for the evidence steps and false for lifecycle runs", () => {
+    expect(filesReceipt("build")).toBe(true);
+    expect(filesReceipt("experiment")).toBe(true);
+    expect(filesReceipt("seal")).toBe(false);
+    expect(filesReceipt("ree-load")).toBe(false);
+    expect(filesReceipt("provision")).toBe(false);
   });
 });

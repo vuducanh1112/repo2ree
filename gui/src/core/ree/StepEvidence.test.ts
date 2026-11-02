@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   auditReceiptRunId,
+  auditReceiptRunIds,
   isEvidenceCurrent,
   isEvidenceStale,
   mapRawReeAudit,
@@ -74,5 +75,22 @@ describe("evidence standing", () => {
     expect(isEvidenceStale({ runtime: "stale" }, "runtime")).toBe(true);
     expect(isEvidenceStale({ runtime: "current" }, "runtime")).toBe(false);
     expect(isEvidenceStale({}, "runtime")).toBe(false);
+  });
+});
+
+describe("auditReceiptRunIds", () => {
+  it("names every run that produced a receipt, experiments included", () => {
+    const audit = mapRawReeAudit({
+      source: { evidence: "current", payload: "present", receipt_run_id: "source-1" },
+      runtime: { evidence: "stale", payload: "present", receipt_run_id: "build-1" },
+      sbom: { evidence: "missing", payload: "missing" },
+      experiments: [
+        {
+          name: "hello",
+          run: { evidence: "current", payload: "present", receipt_run_id: "exp-1" },
+        },
+      ],
+    });
+    expect(auditReceiptRunIds(audit)).toEqual(new Set(["source-1", "build-1", "exp-1"]));
   });
 });

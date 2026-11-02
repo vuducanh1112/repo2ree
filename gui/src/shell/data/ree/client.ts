@@ -19,7 +19,7 @@ type ReeApiRuntime = ReeRuntimeValue & { reeApi: ReeApi };
 type ReeProjectState = NonNullable<ReturnType<typeof mapReeDetailToReeProject>["ree"]>;
 
 export interface ReeClient<TFile = unknown, TRee = unknown> {
-  getRee(id: ReeId | string): Promise<ReeProject<TFile, TRee>>;
+  getRee(id: ReeId | string, signal?: AbortSignal): Promise<ReeProject<TFile, TRee>>;
   updateFile(id: ReeId | string, path: string, content: string): Promise<void>;
   updateReeIntent(id: ReeId | string, intentPatch: ReeIntentPatch): Promise<void>;
   deleteFile(id: ReeId | string, path: string): Promise<void>;
@@ -36,9 +36,9 @@ export interface ReeClient<TFile = unknown, TRee = unknown> {
 
 export function createReeClient(runtime: ReeApiRuntime): ReeClient<FileTreeNode, ReeProjectState> {
   return {
-    async getRee(id) {
+    async getRee(id, signal) {
       const reeId = requireReeId(runtime, id);
-      const ree = await runtime.reeApi.getRee(reeId);
+      const ree = await runtime.reeApi.getRee(reeId, signal);
       return mapReeDetailToReeProject(ree);
     },
     async updateFile(id, path, content) {

@@ -10,6 +10,7 @@ import type { FileTreeNode } from "@core/workspace/FileTree";
 import { projectCurrentSourceRun } from "@core/workspace/sourceRunProjection";
 import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
 import { useReeId } from "@shell/data/apiRuntime";
+import { useReeDocumentFollowsRuns } from "@shell/data/ree/followRuns";
 import { useReeQuery } from "@shell/data/ree/queries";
 import { useReeRunsQuery } from "@shell/data/runs/queries";
 import { showToast as enqueueToast } from "@shell/state/ree-editor/store/actions";
@@ -46,6 +47,7 @@ export function useReeEditor({ reeIntent, stepRuns, dispatch }: UseReeEditorArgs
   const reeId = useReeId();
   const provisioned = reeId !== DEFAULT_REE_ID;
   const reeQuery = useReeQuery({ enabled: provisioned });
+  useReeDocumentFollowsRuns({ reeId, enabled: provisioned });
   const workspaceFiles = reeQuery.data?.files ?? [];
   const reeArtifactFiles = reeQuery.data?.reeFiles ?? [];
   const authorReceipts = reeQuery.data?.authorReceipts ?? [];

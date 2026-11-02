@@ -9,6 +9,7 @@ import type { ReeStepRunParams } from "@core/ree-steps/stepRunParams";
 import type { ReeStepParamValue } from "@core/ree-steps/stepTypes";
 import { activeRunForOperation, latestRunForOperation } from "@core/runs/stepRuns";
 import { useReeId } from "@shell/data/apiRuntime";
+import { useRunsAwaitingDocument } from "@shell/data/ree/followRuns";
 import { useAuthoringStepsQuery } from "@shell/data/reeSteps/queries";
 import { useReeRunsQuery } from "@shell/data/runs/queries";
 import type { ReeEditorCommands } from "@shell/state/ree-editor/hooks/createReeEditorCommands";
@@ -34,6 +35,7 @@ export function useStepPageController({
   const badges = stepRuns.badges ?? {};
   const timestamps = stepRuns.timestamps ?? {};
   const runs = useReeRunsQuery(reeId).data ?? [];
+  const awaitingDocument = useRunsAwaitingDocument(reeId);
   const authoringSteps = useAuthoringStepsQuery().data ?? [];
   const step = useMemo(() => REE_STEPS.find((step) => step.key === page), [page]);
 
@@ -120,11 +122,14 @@ export function useStepPageController({
   }
 
   const runFailed = latestRun?.status === "failed" || latestRun?.status === "canceled";
+  // A run that succeeded before the REE document shows its receipt is not done yet: the page
+  // would otherwise call the step done beside a document that still says it is not.
+  const settling = !!latestRun && awaitingDocument.has(latestRun.runId);
   return {
     step,
     log,
-    running: !!activeRun,
-    runDone: current || !!latestRun,
+    running: !!activeRun || settling,
+    runDone: (current || !!latestRun) && !settling,
     runFailed,
     // The catalog badge is an earned marker — a failed run completes the step
     // (Re-run appears) but earns nothing.

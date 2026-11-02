@@ -5,6 +5,7 @@ export const queryKeys = {
   allocation: (allocationId: string) => ["allocation", allocationId] as const,
   reeIndex: (depositedOnly: boolean) => ["ree-index", depositedOnly] as const,
   ree: (id: string) => ["ree", id] as const,
+  reeAwaitedRuns: (id: string) => ["ree-awaited-runs", id] as const,
   evaluateReport: (reeId: string) => ["evaluate-report", reeId] as const,
   history: (reeId: string) => ["operation-history", reeId] as const,
   reviews: (reeId: string) => ["reviews", reeId] as const,

@@ -170,10 +170,8 @@ export class ReeApi {
     );
   }
 
-  async getRee(reeId: ReeId): Promise<ReeDocument> {
-    return this.client.request<ReeDocument>(endpoints.ree(reeId), {
-      method: "GET",
-    });
+  async getRee(reeId: ReeId, signal?: AbortSignal): Promise<ReeDocument> {
+    return this.client.request<ReeDocument>(endpoints.ree(reeId), { method: "GET", signal });
   }
 
   async getReeState(reeId: ReeId): Promise<ReeState> {

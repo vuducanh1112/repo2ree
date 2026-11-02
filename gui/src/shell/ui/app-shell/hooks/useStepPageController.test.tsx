@@ -28,6 +28,7 @@ const runQueries = vi.hoisted(() => ({
       }
     | undefined,
   lines: undefined as { lines: { type: "info"; msg: string }[]; hasMore: boolean } | undefined,
+  awaitingDocument: new Set<string>(),
 }));
 
 vi.mock("@shell/data/apiRuntime", () => ({ useReeId: () => "ree-1" }));
@@ -35,6 +36,9 @@ vi.mock("@shell/data/runs/queries", () => ({
   useReeRunsQuery: () => ({ data: runQueries.runs }),
   useReeRunQuery: () => ({ data: runQueries.run }),
   useReeRunLogsQuery: () => ({ data: runQueries.lines }),
+}));
+vi.mock("@shell/data/ree/followRuns", () => ({
+  useRunsAwaitingDocument: () => runQueries.awaitingDocument,
 }));
 vi.mock("@shell/data/reeSteps/queries", () => ({
   useAuthoringStepsQuery: () => ({
@@ -77,6 +81,27 @@ describe("useStepPageController", () => {
     runQueries.run = undefined;
     runQueries.lines = undefined;
     runQueries.runs = [];
+    runQueries.awaitingDocument = new Set();
+  });
+
+  it("keeps a succeeded run running until the REE document shows its receipt", () => {
+    runQueries.runs = [
+      {
+        runId: "build-1",
+        operation: "build",
+        status: "succeeded",
+        createdAt: "2026-01-01T00:00:00Z",
+        finishedAt: "2026-01-01T00:00:08Z",
+      },
+    ];
+    runQueries.awaitingDocument = new Set(["build-1"]);
+    const { args } = controllerArgs();
+    const { result, rerender } = renderHook(() => useStepPageController(args));
+    expect(result.current).toMatchObject({ running: true, runDone: false, badge: null });
+
+    runQueries.awaitingDocument = new Set();
+    rerender();
+    expect(result.current).toMatchObject({ running: false, runDone: true });
   });
 
   it("returns no controller outside a step page", () => {

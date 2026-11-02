@@ -100,13 +100,13 @@ export function useExperimentRun({
   const refreshedRunId = useRef<string | null>(null);
 
   // Experiment execution does not use the generic step gateway, whose terminal
-  // path refreshes the REE document. Refresh it here once so the receipt filed
-  // by a completed experiment appears on the canvas without a remount.
+  // path refreshes the run list. Refresh it here once, so the REE document follows
+  // the settled run (useReeDocumentFollowsRuns) without waiting for the list's next poll.
   useEffect(() => {
     if (!target || !isTerminalReeRunStatus(runQuery.data?.status)) return;
     if (refreshedRunId.current === target.runId) return;
     refreshedRunId.current = target.runId;
-    void queryClient.invalidateQueries({ queryKey: queryKeys.ree(target.reeId) });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.reeRuns(target.reeId) });
   }, [queryClient, runQuery.data?.status, target]);
 
   const startRun = useCallback(() => {
