@@ -213,6 +213,30 @@ def test_a_failed_provision_the_provider_cannot_release_stays_failed(tmp_path: P
     assert record.state == AllocationState.FAILED
 
 
+def test_a_teardown_the_provider_cannot_carry_out_fails_and_releasing_again_settles_it(tmp_path: Path) -> None:
+    class RefusingProvider(FakeProvider):
+        def release(self, provider_id: str, allocation_id: str) -> None:
+            if not self.release_works:
+                raise RuntimeError("provider unreachable")
+            super().release(provider_id, allocation_id)
+
+    provider = RefusingProvider()
+    manager, store, _ = _manager(tmp_path, provider=provider)
+    handle = manager.provision("ree-1", "My REE", location_id="lab-1", image=_CATALOG_IMAGE)
+
+    provider.release_works = False
+    with pytest.raises(RuntimeError, match="unreachable"):
+        manager.teardown(handle)
+    record = store.get(handle.allocation_id)
+    assert record is not None
+    assert (record.state, record.detail) == (AllocationState.FAILED, "provider release failed: provider unreachable")
+    # Not stranded draining: the REE's release reaches it again, and this time the provider carries it out.
+    provider.release_works = True
+    assert manager.release_unreachable("ree-1") == handle.allocation_id
+    assert store.get(handle.allocation_id).state == AllocationState.RELEASED  # type: ignore[union-attr]
+    assert provider.released == [handle.allocation_id]
+
+
 def test_a_bench_its_provider_reports_gone_is_lost_and_released_without_a_teardown(tmp_path: Path) -> None:
     manager, store, provider = _manager(tmp_path)
     handle = manager.provision("ree-1", "My REE", location_id="lab-1", image=_CATALOG_IMAGE)

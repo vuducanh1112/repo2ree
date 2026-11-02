@@ -276,7 +276,14 @@ class WorkbenchManager:
                 self._workbench.drain(handle.workbench_id)
             self._registry.update(handle.allocation_id, AllocationState.DRAINING)
             if handle.mode == "provider_managed":
-                self._provider.release(handle.provider_id, handle.allocation_id)
+                try:
+                    self._provider.release(handle.provider_id, handle.allocation_id)
+                except Exception as exc:
+                    # Failed, not stranded draining: releasing the REE again reaches it (release_unreachable).
+                    self._registry.update(
+                        handle.allocation_id, AllocationState.FAILED, detail=f"provider release failed: {exc}"
+                    )
+                    raise
                 self._enrollment.discard(handle.allocation_id)
             self._registry.update(handle.allocation_id, AllocationState.RELEASED)
             self._registry.remove_placement(handle.ree_id)
