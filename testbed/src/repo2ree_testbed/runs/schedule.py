@@ -77,6 +77,7 @@ class SuiteRun:
                 "compute_locations": self.deployment.compute_locations,
                 "mode": self.deployment.mode,
                 "docker_mode": self.deployment.docker_mode,
+                "backend": self.deployment.backend,
             },
             platform=provenance.platform(),
             machine=provenance.machine(),
