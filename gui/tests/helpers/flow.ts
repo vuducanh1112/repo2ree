@@ -1055,9 +1055,17 @@ export async function releaseWorkbench(page: Page) {
   }
   await stepShot(page, "release-workbench", "before");
   await openWorkbenchConsole(page);
-  const releaseButton = page.getByRole("button", { name: /Release workbench/i }).first();
-  await expect(releaseButton).toBeVisible();
-  await releaseButton.click();
+  if (STORE_COMPUTE) {
+    // A store keeps its REEs: ending one deletes it from the store, and asks first.
+    const deleteButton = page.getByRole("button", { name: "Delete REE", exact: true });
+    await expect(deleteButton).toBeVisible();
+    await deleteButton.click();
+    await page.getByRole("button", { name: "Confirm: delete this REE" }).click();
+  } else {
+    const releaseButton = page.getByRole("button", { name: /Release workbench/i }).first();
+    await expect(releaseButton).toBeVisible();
+    await releaseButton.click();
+  }
   await expect(page).toHaveURL("/");
   await expect(page.getByRole("button", { name: "Create a new REE" })).toBeVisible();
   await stepShot(page, "release-workbench", "after");
