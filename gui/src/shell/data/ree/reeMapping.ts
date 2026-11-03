@@ -107,6 +107,7 @@ export function mapReeDetailToReeProject(
     authorReceipts: parseAuthorReceipts(ree.ree.subject?.receipts),
     sourceRepo: mapSourceRepo(ree),
     allocationId: ree.allocation_id ?? undefined,
+    storeId: ree.store_id ?? undefined,
     workbenchLocation: ree.location_id ?? undefined,
     workbenchImage: ree.image ?? undefined,
   };

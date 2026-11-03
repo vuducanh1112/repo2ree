@@ -244,9 +244,10 @@ def get_ree_route(ree_id: str) -> ReeDocument:
         return ReeDocument.of(
             handle.ree_id,
             document,
-            allocation_id=handle.allocation_id,
+            allocation_id=handle.allocation_id or None,
             location_id=handle.location_id,
-            image=handle.image,
+            image=handle.image or None,
+            store_id=handle.location_id if handle.mode == "store" else None,
         )
 
 

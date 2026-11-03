@@ -1,5 +1,6 @@
 /* biome-ignore-all lint/style/useNamingConvention: backend fixtures intentionally use wire field names */
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { fakeApiServices } from "../../../../../tests/support/fakeApiServices";
 import { renderWithShell } from "../../../../../tests/support/renderApp";
@@ -61,5 +62,33 @@ describe("BenchConsole", () => {
     render("waiting_for_workbench");
 
     expect(await screen.findByText("Waiting for workbench")).toBeVisible();
+  });
+
+  it("deletes an REE kept in a store only once the author confirms", async () => {
+    const user = userEvent.setup();
+    const deleteRee = vi
+      .fn()
+      .mockResolvedValue({ deleted_at: "2026-01-01T10:00:00Z", state: "deleted" });
+    renderWithShell(<BenchConsole provisioned open onOpenChange={vi.fn()} reeName="demo" />, {
+      reeId: "ree-1",
+      services: fakeApiServices({
+        ree: {
+          getRee: vi.fn().mockResolvedValue({
+            ...reeDocument,
+            allocation_id: null,
+            image: null,
+            store_id: "lab-1",
+          }),
+          deleteRee,
+        },
+      }),
+    });
+
+    await user.click(await screen.findByText("Delete REE"));
+    expect(deleteRee).not.toHaveBeenCalled();
+    expect(screen.getByText("Deletes the REE and its files from the lab's store.")).toBeVisible();
+
+    await user.click(screen.getByText("Confirm: delete this REE"));
+    await waitFor(() => expect(deleteRee).toHaveBeenCalledWith("ree-1"));
   });
 });

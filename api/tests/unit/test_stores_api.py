@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+import uuid
 from pathlib import Path
 
 import pytest
@@ -17,7 +18,7 @@ from repo2ree_protocol.workbench import WorkbenchHello
 
 @pytest.fixture
 def lab() -> str:
-    store_id = f"lab-{len(store_registry.all())}"
+    store_id = f"lab-{uuid.uuid4().hex[:8]}"
     store_registry.add(store_id, "A lab")
     return store_id
 
@@ -123,3 +124,16 @@ def test_the_operator_registers_a_store_and_mints_and_revokes_its_tokens(
     assert store_admin.main(["revoke", token[:8]]) == 0
     assert store_admin.main(["revoke", token[:8]]) == 1
     assert store_admin.main(["token", "lab-missing"]) == 2
+
+
+def test_a_served_store_is_a_lab_rees_are_created_in(client: TestClient, lab: str) -> None:
+    token = store_registry.mint_token(lab)
+
+    with client.websocket_connect("/workbench/connect") as socket:
+        socket.send_text(_hello(lab, token, "wb-lab"))
+        assert _served(lab) == "wb-lab"
+        labs = {location["id"]: location for location in client.get("/api/v1/compute-locations").json()["locations"]}
+
+    assert labs[lab]["lifecycle_mode"] == "store"
+    assert labs[lab]["label"] == "A lab"
+    assert labs[lab]["available"] is True

@@ -2720,7 +2720,7 @@ export interface components {
          * LifecycleMode
          * @enum {string}
          */
-        LifecycleMode: "provider_managed" | "externally_managed";
+        LifecycleMode: "provider_managed" | "externally_managed" | "store";
         /**
          * LintReport
          * @description Everything one lint run observed about one script.
@@ -3181,6 +3181,8 @@ export interface components {
             location_id?: string | null;
             /** Image */
             image?: string | null;
+            /** Store Id */
+            store_id?: string | null;
             /** Workspace Files */
             workspace_files?: components["schemas"]["WorkspaceFile"][];
             /** Ree Files */

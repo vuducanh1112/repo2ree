@@ -20,6 +20,8 @@ from repo2ree_protocol.build import BuildInfo
 class LifecycleMode(StrEnum):
     PROVIDER_MANAGED = "provider_managed"
     EXTERNALLY_MANAGED = "externally_managed"
+    # A store of REEs, served by one workbench: an REE created here is kept in the store.
+    STORE = "store"
 
 
 class AllocationState(StrEnum):

@@ -43,12 +43,19 @@ export function BenchConsole({
     reeQuery.data?.workbenchImage,
   );
   const allocationId = reeQuery.data?.allocationId;
+  // An REE kept in a store outlives any workbench: what ends here is the REE itself.
+  const inStore = Boolean(reeQuery.data?.storeId);
+  const [confirming, setConfirming] = useState(false);
   const allocation = useAllocation(allocationId);
   const navigate = useNavigate();
   const [releasing, setReleasing] = useState(false);
   const [log, setLog] = useState<LogEntry | null>(null);
 
   async function handleReleaseWorkbench() {
+    if (inStore && !confirming) {
+      setConfirming(true);
+      return;
+    }
     setReleasing(true);
     try {
       await reeClient.releaseRee(reeId);
@@ -106,11 +113,21 @@ export function BenchConsole({
         data-kind="release"
       >
         {releasing ? Ic.loader(14) : Ic.x(14)}
-        <span>{releasing ? "Releasing…" : "Release workbench"}</span>
+        <span>{actionLabel(inStore, confirming, releasing)}</span>
       </button>
-      <span className={styles.actionNote}>Ends the REE session and removes this workbench.</span>
+      <span className={styles.actionNote}>
+        {inStore
+          ? "Deletes the REE and its files from the lab's store."
+          : "Ends the REE session and removes this workbench."}
+      </span>
     </HudConsole>
   );
+}
+
+function actionLabel(inStore: boolean, confirming: boolean, busy: boolean): string {
+  if (!inStore) return busy ? "Releasing…" : "Release workbench";
+  if (busy) return "Deleting…";
+  return confirming ? "Confirm: delete this REE" : "Delete REE";
 }
 
 function StatRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {

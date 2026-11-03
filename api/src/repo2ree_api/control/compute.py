@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from repo2ree_api.contracts import ERROR_RESPONSES
-from repo2ree_api.deps import allocation_store, provider_connections, workbench_connections
+from repo2ree_api.deps import allocation_store, provider_connections, store_registry, workbench_connections
 from repo2ree_protocol.allocation import AllocationRecord, ComputeLocation, ConnectedComponent, LifecycleMode
 
 compute_router = APIRouter(tags=["compute"])
@@ -50,9 +50,26 @@ def list_compute_locations() -> ComputeLocationList:
             connected_component=ConnectedComponent(kind="workbench", build=bench.build),
         )
         for bench in workbench_connections.list_workbenches()
-        if bench.mode == "external"
+        if bench.mode == "external" and not bench.store_id
+    )
+    # A store is a place REEs are created and kept in: the workbench serving it takes every one.
+    locations.extend(
+        ComputeLocation(
+            id=bench.store_id,
+            label=_store_label(bench.store_id),
+            lifecycle_mode=LifecycleMode.STORE,
+            available=True,
+            connected_component=ConnectedComponent(kind="workbench", build=bench.build),
+        )
+        for bench in workbench_connections.list_workbenches()
+        if bench.store_id
     )
     return ComputeLocationList(locations=sorted(locations, key=lambda location: (location.label, location.id)))
+
+
+def _store_label(store_id: str) -> str:
+    record = store_registry.get(store_id)
+    return (record.label if record else "") or store_id
 
 
 @compute_router.get(

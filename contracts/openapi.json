@@ -12010,7 +12010,8 @@
         "type": "string",
         "enum": [
           "provider_managed",
-          "externally_managed"
+          "externally_managed",
+          "store"
         ],
         "title": "LifecycleMode"
       },
@@ -13123,6 +13124,17 @@
               }
             ],
             "title": "Image"
+          },
+          "store_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Store Id"
           },
           "workspace_files": {
             "items": {

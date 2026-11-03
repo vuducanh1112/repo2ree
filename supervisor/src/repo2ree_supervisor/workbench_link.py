@@ -106,6 +106,8 @@ class WorkbenchInfo:
     image: str
     connected_at: float  # epoch seconds (UTC)
     build: BuildInfo = field(default_factory=BuildInfo)
+    # The store it serves; blank for a bench that serves one REE.
+    store_id: str = ""
     executor_build: BuildInfo = field(default_factory=BuildInfo)
 
 
@@ -410,6 +412,7 @@ class WorkbenchConnectionRegistry:
                     executor_build=conn.hello.executor_build if conn.hello else BuildInfo(),
                     location_id=(conn.hello.location_id or workbench_id) if conn.hello else workbench_id,
                     image=conn.hello.image if conn.hello else "",
+                    store_id=conn.hello.store_id if conn.hello else "",
                     connected_at=self._connected_at.get(workbench_id, 0.0),
                 )
                 for workbench_id, conn in self._workbenches.items()

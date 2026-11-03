@@ -28,6 +28,8 @@ export interface ReeProject<TFile = unknown, TRee = unknown> {
   authorReceipts?: ReceiptView[];
   sourceRepo?: SourceRepoMetadata;
   allocationId?: string;
+  /** The store the REE is kept in; deleting the REE deletes it there. */
+  storeId?: string;
   workbenchLocation?: string;
   /** The base image this REE's workbench was provisioned from. */
   workbenchImage?: string;

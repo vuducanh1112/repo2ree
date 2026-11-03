@@ -52,7 +52,13 @@ class _Allocation(BaseModel):
     request: _Request
 
 
-_ALLOCATIONS = TypeAdapter(dict[str, list[_Allocation]])
+class _AllocationList(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    allocations: list[_Allocation]
+
+
+_ALLOCATIONS = TypeAdapter(_AllocationList)
 _LABELS = TypeAdapter[dict[str, str] | None](dict[str, str] | None)
 
 
@@ -138,9 +144,10 @@ class Injector:
 
     def container(self, ree_id: str) -> str:
         """The bench a provider set up for ``ree_id``, as its allocation names it."""
-        listed = fetch_as(f"{self.target.api_url}/api/v1/allocations", _ALLOCATIONS, timeout=30) or {"allocations": []}
+        listed = fetch_as(f"{self.target.api_url}/api/v1/allocations", _ALLOCATIONS, timeout=30)
+        allocations = listed.allocations if listed else []
         allocation_id = next(
-            (item.request.allocation_id for item in listed["allocations"] if item.request.ree_id == ree_id), None
+            (item.request.allocation_id for item in allocations if item.request.ree_id == ree_id), None
         )
         if allocation_id is None:
             raise FaultUnavailableError(f"{ree_id} has no allocation in this stack")

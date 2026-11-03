@@ -27,6 +27,8 @@ class ReeDocument(BaseModel):
     allocation_id: str | None = None
     location_id: str | None = None
     image: str | None = None
+    # The store the REE is kept in; deleting it deletes it there. None for an REE on a bench of its own.
+    store_id: str | None = None
     workspace_files: list[WorkspaceFile] = Field(default_factory=list)
     ree_files: list[ReeFile] = Field(default_factory=list)
 
@@ -39,6 +41,7 @@ class ReeDocument(BaseModel):
         allocation_id: str | None = None,
         location_id: str | None = None,
         image: str | None = None,
+        store_id: str | None = None,
     ) -> ReeDocument:
         return cls(
             ree_id=ree_id,
@@ -48,6 +51,7 @@ class ReeDocument(BaseModel):
             allocation_id=allocation_id,
             location_id=location_id,
             image=image,
+            store_id=store_id,
             workspace_files=document.workspace_files,
             ree_files=document.ree_files,
         )

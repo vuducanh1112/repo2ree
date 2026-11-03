@@ -83,7 +83,13 @@ class _ReeListed(BaseModel):
     location_id: str
 
 
-_REES = TypeAdapter(dict[str, list[_ReeListed]])
+class _ReePage(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    items: list[_ReeListed]
+
+
+_REES = TypeAdapter(_ReePage)
 
 
 class E2EStack:
@@ -271,8 +277,8 @@ class E2EStack:
 
     def store_location(self, ree_id: str) -> int:
         """The compute location serving ``ree_id``'s store, as the API lists the REE."""
-        listed = fetch_as(f"{self.api_url}/api/v1/rees", _REES, timeout=30) or {"items": []}
-        store = next((item.location_id for item in listed["items"] if item.ree_id == ree_id), None)
+        listed = fetch_as(f"{self.api_url}/api/v1/rees", _REES, timeout=30)
+        store = next((item.location_id for item in listed.items if item.ree_id == ree_id), None) if listed else None
         for index in range(1, self.deployment.compute_locations + 1):
             if store == store_id(index):
                 return index
