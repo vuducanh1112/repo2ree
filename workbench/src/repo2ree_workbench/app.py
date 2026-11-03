@@ -56,14 +56,15 @@ def main(argv: Sequence[str] = ()) -> None:
             config.engine,
             config.script_engine if config.backend == "container" else capabilities.script_engine,
             config.engine_path,
-            owner=config.store_id,
+            # The store's directory names it on this machine: two stores may share an id elsewhere.
+            owner=str(config.store_root),
         )
         if store
         else None,
     )
     service = WorkbenchService(executor, store_id=config.store_id, slots=config.slots)
     if store and config.backend == "container":
-        ScriptBackend(config.backend, config.engine, owner=config.store_id).remove_leftover_jobs()
+        ScriptBackend(config.backend, config.engine, owner=str(config.store_root)).remove_leftover_jobs()
     try:
         asyncio.run(
             run_workbench(

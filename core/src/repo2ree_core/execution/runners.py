@@ -96,6 +96,26 @@ class ContainerScriptRunner:
         finally:
             # A canceled run stops the engine's client, not always the container it started.
             subprocess.run([self.engine, "rm", "-f", name], check=False, capture_output=True, timeout=60)
+            self._hand_back(workspace, image, mounts, log)
+
+    def _hand_back(self, workspace: Path, image: str, mounts: list[str], log: LogSink) -> None:
+        """Give what the script wrote back to the workbench's user.
+
+        The script runs as its image's user (often root, which an environment may need), so on a
+        host whose engine keeps file ownership what it wrote would be root's, and unreadable here.
+        """
+        user = f"{os.getuid()}:{os.getgid()}"
+        if user == "0:0":
+            return
+        handed = subprocess.run(
+            [self.engine, "run", "--rm", "--user", "0:0", *mounts, image, "chown", "-R", user, str(workspace)],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=600,
+        )
+        if handed.returncode != 0:
+            log("system", "warn", f"could not give the workspace back to {user}: {handed.stderr.strip()[:200]}")
 
     def _engine_side(self, path: Path) -> str:
         """``path`` as the engine sees it; the job still sees it at ``path``."""
