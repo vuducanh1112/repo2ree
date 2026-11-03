@@ -354,7 +354,7 @@ layers = [
     "workbench",
     "storage",
     "contracts",
-    "paths : pagination",
+    "pagination",
     "deps",
     # Below `deps` so the composition root can build the index singleton, and
     # below `contracts` so neither knows the wire shape: the durable record is

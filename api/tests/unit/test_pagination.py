@@ -2,18 +2,12 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any, cast
 
 import pytest
 from fastapi import HTTPException
 
 from repo2ree_api.pagination import keyset_paginate
-from repo2ree_api.paths import (
-    WORKSPACE_CONTROL_PREFIXES,
-    require_non_empty_path,
-    resolve_relative_path,
-)
 
 # ================================================
 # keyset_paginate
@@ -78,55 +72,3 @@ def test_keyset_malformed_cursor_is_a_400_invalid_cursor():
     # error envelope through it, which is what the handler in main.py renders.
     detail = cast(dict[str, Any], excinfo.value.detail)
     assert detail["code"] == "invalid_cursor"
-
-
-# ================================================
-# require_non_empty_path
-# ================================================
-
-
-def test_require_non_empty_path_strips_and_returns():
-    assert require_non_empty_path("  src/app.py ", "path") == "src/app.py"
-
-
-@pytest.mark.parametrize("value", [None, "", "   "])
-def test_require_non_empty_path_rejects_blank(value: str | None):
-    with pytest.raises(HTTPException) as excinfo:
-        require_non_empty_path(value, "path")
-    assert excinfo.value.status_code == 400
-    assert "path is required" in str(excinfo.value.detail)
-
-
-# ================================================
-# resolve_relative_path
-# ================================================
-
-
-def test_resolve_relative_path_stays_inside_root(tmp_path: Path):
-    resolved = resolve_relative_path(tmp_path, "sub/file.txt", invalid_detail="invalid path")
-    assert resolved == tmp_path / "sub" / "file.txt"
-
-
-@pytest.mark.parametrize("escape", ["../outside.txt", "sub/../../outside.txt"])
-def test_resolve_relative_path_rejects_traversal(tmp_path: Path, escape: str):
-    with pytest.raises(HTTPException) as excinfo:
-        resolve_relative_path(tmp_path, escape, invalid_detail="invalid path")
-    assert excinfo.value.status_code == 400
-
-
-def test_resolve_relative_path_blocks_workspace_control_files(tmp_path: Path):
-    with pytest.raises(HTTPException):
-        resolve_relative_path(
-            tmp_path,
-            ".workspace.lock",
-            invalid_detail="invalid path",
-            blocked_prefixes=WORKSPACE_CONTROL_PREFIXES,
-        )
-    # blocking is by basename prefix, so nested control files are caught too
-    with pytest.raises(HTTPException):
-        resolve_relative_path(
-            tmp_path,
-            "sub/.upload.tok.bin",
-            invalid_detail="invalid path",
-            blocked_prefixes=WORKSPACE_CONTROL_PREFIXES,
-        )
