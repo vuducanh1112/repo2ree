@@ -22,7 +22,7 @@ recipe = "test-gui-screenshots"
 
 [tiers.showcase]
 recipe = "test-showcase"
-parameters = { compute_locations = 2, mode = "provider", docker_mode = "dind" }
+parameters = { compute_locations = 2, mode = "store", backend = "container" }
 judged = true
 
 [gates.showcase-gate]
