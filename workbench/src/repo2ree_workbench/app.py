@@ -12,7 +12,7 @@ from repo2ree_telemetry.relay import setup_relayed_span_export
 from repo2ree_workbench.capabilities import detect_capabilities
 from repo2ree_workbench.config import load_config
 from repo2ree_workbench.connection import SpanRelay, run_workbench
-from repo2ree_workbench.executor_process import LocalExecutor
+from repo2ree_workbench.executor_process import LocalExecutor, ScriptBackend
 from repo2ree_workbench.service import WorkbenchService
 from repo2ree_workbench.tools import tool_environment
 
@@ -43,13 +43,27 @@ def main(argv: Sequence[str] = ()) -> None:
         )
     meter_provider = setup_metrics("repo2ree-workbench", endpoint=config.otlp_endpoint, instance_id=config.workbench_id)
     store = config.store_root is not None
+    capabilities = detect_capabilities(config.script_engine if config.backend == "container" else None)
     executor = LocalExecutor(
         config.store_root or config.root,
         config.exec_path,
         store=store,
         environment=tool_environment(config.tools_bundle),
+        # A bench set up for one REE is that REE's environment (its image); a store's workbench is
+        # every REE's, so it runs each where the REE declares, or refuses.
+        scripts=ScriptBackend(
+            config.backend,
+            config.engine,
+            config.script_engine if config.backend == "container" else capabilities.script_engine,
+            config.engine_path,
+            owner=config.store_id,
+        )
+        if store
+        else None,
     )
     service = WorkbenchService(executor, store_id=config.store_id, slots=config.slots)
+    if store and config.backend == "container":
+        ScriptBackend(config.backend, config.engine, owner=config.store_id).remove_leftover_jobs()
     try:
         asyncio.run(
             run_workbench(
@@ -64,7 +78,8 @@ def main(argv: Sequence[str] = ()) -> None:
                 span_relay=span_relay,
                 build=current_build("repo2ree-workbench"),
                 executor_build=executor.build_info(),
-                capabilities=detect_capabilities(),
+                capabilities=capabilities,
+                backend=config.backend,
             )
         )
     finally:

@@ -15,7 +15,7 @@ from repo2ree_testbed.artifacts import ROOT
 from repo2ree_testbed.runs.prune import prune
 from repo2ree_testbed.runs.schedule import PerTest, Schedule, SuiteRun, WholeSuite
 from repo2ree_testbed.stack.clients import Client, Playwright, Script
-from repo2ree_testbed.stack.services import Deployment, DockerMode, Mode
+from repo2ree_testbed.stack.services import Backend, Deployment, DockerMode, Mode
 
 type ExitOn = Literal["tests", "run"]
 
@@ -77,6 +77,12 @@ def parse(argv: list[str] | None = None) -> Invocation:
     )
     parser.add_argument("--mode", choices=get_args(Mode.__value__), default="provider")
     parser.add_argument("--docker-mode", choices=get_args(DockerMode.__value__), default="dind")
+    parser.add_argument(
+        "--backend",
+        choices=get_args(Backend.__value__),
+        default="container",
+        help="store mode: run the author's scripts in a container from each REE's image, or on the host",
+    )
     parser.add_argument("--state-root", type=Path, default=ROOT / "test-artifacts/state")
     parser.add_argument("--exec-bundle", type=Path, default=ROOT / "dist/bundles/exec")
     parser.add_argument("--tools-bundle", type=Path, default=ROOT / "dist/bundles/tools")
@@ -108,6 +114,7 @@ def parse(argv: list[str] | None = None) -> Invocation:
         compute_locations=args.compute_locations,
         mode=args.mode,
         docker_mode=args.docker_mode,
+        backend=args.backend,
         state_root=args.state_root,
         exec_bundle=args.exec_bundle,
         tools_bundle=args.tools_bundle,

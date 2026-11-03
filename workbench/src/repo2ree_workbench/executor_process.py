@@ -17,6 +17,7 @@ import tempfile
 import threading
 from collections.abc import Iterator
 from contextlib import suppress
+from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 from repo2ree_protocol.build import BuildInfo
@@ -41,6 +42,73 @@ def ree_directory(store: Path, ree_id: str) -> Path:
     return store / ree_id
 
 
+SCRIPT_RUNNER_VARIABLE = "REPO2REE_SCRIPT_RUNNER"
+
+
+@dataclass(frozen=True)
+class ScriptBackend:
+    """Where this workbench runs the author's scripts: on its host, or in a container from each REE's image."""
+
+    backend: str = "host"
+    engine: str = "docker"
+    # The engine a script can reach: none, or the host's (its socket, or a host script's own).
+    script_engine: str = "none"
+    engine_path: tuple[str, str] | None = None
+    # Whose jobs its containers are: the store this workbench serves.
+    owner: str = ""
+
+    def choice(self, environment: dict[str, object]) -> str:
+        """The runner for an REE that declares ``environment``, or why this workbench cannot run it."""
+        image = environment.get("image") if environment.get("kind") == "image" else None
+        mapped = {"local": self.engine_path[0], "engine": self.engine_path[1]} if self.engine_path else None
+        return json.dumps(
+            {
+                "backend": self.backend,
+                "engine": self.engine,
+                "image": image or "",
+                "script_engine": self.script_engine,
+                "engine_path": mapped,
+                "owner": self.owner,
+                "refused": self.refusal(environment),
+            }
+        )
+
+    def refusal(self, environment: dict[str, object]) -> str | None:
+        """Why this workbench cannot run scripts in ``environment`` (the REE's declaration); None when it can."""
+        kind = environment.get("kind")
+        if self.backend == "container" and kind != "image":
+            return "this workbench runs scripts in a container: declare the image the REE's scripts run in"
+        if self.backend == "host" and kind == "image":
+            return f"this workbench runs scripts on its own machine, and cannot run them in {environment.get('image')}"
+        if environment.get("needs_container_engine") and self.script_engine == "none":
+            return "the REE's scripts need a container engine, and this workbench gives them none"
+        return None
+
+    def remove_leftover_jobs(self) -> None:
+        """Remove what a workbench of this store left running when it was killed: no one awaits it."""
+        if self.backend != "container" or not self.owner:
+            return
+        listed = subprocess.run(
+            [self.engine, "ps", "-aq", "--filter", f"label=repo2ree.job-owner={self.owner}"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        if leftovers := listed.stdout.split():
+            subprocess.run([self.engine, "rm", "-f", *leftovers], check=False, capture_output=True, timeout=120)
+
+
+def declared_environment(root: Path) -> dict[str, object]:
+    """The environment the REE at ``root`` declares its scripts run in; empty when it declares none."""
+    try:
+        document = json.loads((root / "ree.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    environment = (document.get("subject") or {}).get("definition", {}).get("environment")
+    return environment if isinstance(environment, dict) else {}
+
+
 class LocalExecutor:
     """Run short-lived executor processes locally, against one root or one REE of a store."""
 
@@ -51,6 +119,7 @@ class LocalExecutor:
         *,
         store: bool = False,
         environment: dict[str, str] | None = None,
+        scripts: ScriptBackend | None = None,
         cancel_grace: float = CANCEL_GRACE_SECONDS,
         cancel_kill: float = CANCEL_KILL_SECONDS,
     ) -> None:
@@ -59,6 +128,8 @@ class LocalExecutor:
         self.store = store
         # What every executor is started with besides this process's own environment (the tools).
         self.environment = environment or {}
+        # Where the author's scripts run, and what this workbench refuses to run; None: as on any host.
+        self.scripts = scripts
         self.cancel_grace = cancel_grace
         self.cancel_kill = cancel_kill
         # Each active run, by the REE root it runs against and its run id: a run id names a run
@@ -92,6 +163,8 @@ class LocalExecutor:
     def _environment(self, root: Path, extra: dict[str, str] | None = None) -> dict[str, str]:
         environment = {**os.environ, **self.environment}
         environment["REPO2REE_WORKBENCH_ROOT"] = str(root)
+        if self.scripts is not None:
+            environment[SCRIPT_RUNNER_VARIABLE] = self.scripts.choice(declared_environment(root))
         environment.update(extra or {})
         if traceparent := current_traceparent():
             environment["TRACEPARENT"] = traceparent

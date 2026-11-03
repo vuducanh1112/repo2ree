@@ -22,14 +22,10 @@ from typing import IO, Literal
 
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionStatus
-from repo2ree_ree.paths import resolve_within
 from repo2ree_telemetry.bootstrap import get_tracer
 from repo2ree_telemetry.spans import (
     ExecSpanAttrs,
-    ScriptSpanAttrs,
-    record_command_status,
     record_exec_outcome,
-    record_span_facts,
 )
 
 tracer = get_tracer(__name__)
@@ -234,47 +230,3 @@ def _stream_process(
         stderr="".join(stderr_lines),
         canceled=canceled,
     )
-
-
-def run_workspace_script(
-    workspace: Path,
-    script_rel: str,
-    *,
-    log: LogSink,
-    is_canceled: CancelCheck = lambda: False,
-) -> StepOutcome:
-    """Run a workspace-relative script under ``sh`` from the workspace root.
-
-    The single execution path shared by the lifecycle runner
-    (``experiment/run.py``) and the build/activation handlers: the workbench IS
-    the isolated environment, so the script runs as a native subprocess with no
-    nested container. Running from the workspace root lets authors reference
-    project files by their workspace-relative paths regardless of where REE keeps
-    its own scripts; wrapper scripts are POSIX ``sh`` while project scripts that
-    need bash or their own directory (e.g. ``docker build .``) invoke it
-    explicitly. Scripts that resolve outside the workspace are rejected.
-    """
-    workspace = workspace.resolve()
-    with tracer.start_as_current_span("script.run") as span:
-        ScriptSpanAttrs(path=script_rel).apply(span)
-        script_abs = resolve_within(workspace, script_rel)
-        if script_abs is None:
-            log("system", "error", f"script escapes workspace: {script_rel}")
-            record_span_facts(span, {"script.error": "escapes workspace"})
-            return StepOutcome("failed", 1)
-        if not script_abs.is_file():
-            log("system", "error", f"script not found: {script_rel}")
-            record_span_facts(span, {"script.error": "not found"})
-            return StepOutcome("failed", 1)
-
-        cmd = ["sh", script_rel]
-        log("system", "info", f"$ {format_argv(cmd)}")
-
-        result = run_streaming_process(cmd, log=log, cwd=workspace, is_canceled=is_canceled)
-
-        if result.canceled or is_canceled():
-            status: ActionStatus = "canceled"
-        else:
-            status = "succeeded" if result.returncode == 0 else "failed"
-        record_command_status(span, status)
-        return StepOutcome(status, result.returncode, result.stdout, result.stderr)

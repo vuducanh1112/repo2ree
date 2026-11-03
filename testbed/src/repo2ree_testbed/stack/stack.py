@@ -360,6 +360,7 @@ class E2EStack:
             FAULTS_URL: self.injector.url,
             # Which compute the stack runs, for tests of one kind only (a provider's).
             "E2E_COMPUTE_MODE": self.deployment.mode,
+            "E2E_STORE_BACKEND": self.deployment.backend,
         }
         running = self.client.start(self.api_url, environment, self.selection, launch)
         self.running = running

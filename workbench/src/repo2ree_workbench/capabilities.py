@@ -5,23 +5,26 @@ from __future__ import annotations
 import platform
 import shutil
 import subprocess
+from typing import Literal
 
 from repo2ree_protocol.workbench import WorkbenchCapabilities
 
 _ENGINES = ("docker", "podman")
 
 
-def detect_capabilities() -> WorkbenchCapabilities:
-    """This host's architecture, container engine, and GPUs, for scripts run on the host itself.
+def detect_capabilities(container_script_engine: Literal["none", "socket"] | None = None) -> WorkbenchCapabilities:
+    """This host's architecture, container engine, and GPUs.
 
-    A script run on the host reaches the host's engine directly, so an installed engine is one
-    its scripts can use.
+    A script run on the host reaches the host's engine directly, so an installed engine is one its
+    scripts can use; a script run in a container reaches it only as the workbench allows
+    (``container_script_engine``).
     """
     engine = any(shutil.which(name) for name in _ENGINES)
+    reaches = container_script_engine or ("socket" if engine else "none")
     return WorkbenchCapabilities(
         arch=platform.machine(),
         container_engine=engine,
-        script_engine="socket" if engine else "none",
+        script_engine=reaches,
         gpus=_gpu_count(),
     )
 

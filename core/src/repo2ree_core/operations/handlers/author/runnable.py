@@ -10,10 +10,10 @@ from repo2ree_core.digests import digest_file, digest_output_paths
 from repo2ree_core.domain.ree.audit import audit
 from repo2ree_core.domain.ree.envelope import receipt_envelope
 from repo2ree_core.domain.ree.transitions import ReePreconditionError, commit_receipt, revision_of
-from repo2ree_core.execution.environment import observe_environment
 from repo2ree_core.execution.experiment.run import ExperimentRunOutcome, run_runnable
 from repo2ree_core.execution.experiment.spec import RunnableSpec
 from repo2ree_core.execution.process import CancelCheck
+from repo2ree_core.execution.runners import current_runner
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
@@ -102,7 +102,7 @@ def handle_runnable_operation(
         runtime_path=runtime_path,
         runtime_digest=runtime_digest,
         produced_output_digest=produced_output_digest,
-        environment=observe_environment(ree.subject.definition.environment),
+        environment=current_runner().observe(ree.subject.definition.environment),
     )
     try:
         save_ree(

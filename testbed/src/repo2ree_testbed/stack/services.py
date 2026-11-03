@@ -6,12 +6,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from repo2ree_testbed.stack.docker import first_network, own_container
+from repo2ree_testbed.stack.docker import engine_path, first_network, own_container
 
 # provider: each location is a Docker provider setting a workbench up per REE.
 # store: each location is a workbench serving a store of REEs, admitted with that store's token.
 type Mode = Literal["provider", "store"]
 type DockerMode = Literal["dind", "host-socket"]
+# store mode: where a store's workbench runs the author's scripts.
+type Backend = Literal["container", "host"]
 
 
 @dataclass(frozen=True)
@@ -23,6 +25,7 @@ class Deployment:
     state_root: Path
     exec_bundle: Path
     tools_bundle: Path
+    backend: Backend = "container"
 
 
 @dataclass(frozen=True)
@@ -107,6 +110,12 @@ def locations(
                     "WORKBENCH_STORE": f"{store_id(index)}={state / 'store'}",
                     "WORKBENCH_SLOTS": "2",
                     "WORKBENCH_TOOLS_BUNDLE": str(deployment.tools_bundle),
+                    "WORKBENCH_BACKEND": deployment.backend,
+                    # The Docker REEs build and run images: their scripts reach the host's engine.
+                    "WORKBENCH_SCRIPT_ENGINE": "socket",
+                    "WORKBENCH_ENGINE_PATH": engine_path(state / "store"),
+                    # Job containers carry the run's label, so its cleanup removes what a fault left.
+                    "REPO2REE_RESOURCE_OWNER": token,
                     "WORKBENCH_LOCATION_ID": store_id(index),
                     "WORKBENCH_STATE_DIR": str(state),
                     "REPO2REE_EXEC_PATH": "repo2ree-exec",

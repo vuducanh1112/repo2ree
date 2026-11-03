@@ -12,7 +12,7 @@ import pytest
 
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import ResultFrame
-from repo2ree_workbench.executor_process import LocalExecutor
+from repo2ree_workbench.executor_process import LocalExecutor, ScriptBackend, declared_environment
 from repo2ree_workbench.tools import tool_environment
 
 
@@ -211,3 +211,50 @@ def test_two_rees_in_a_store_run_the_same_run_id_side_by_side(tmp_path: Path) ->
     (tmp_path / "marker").touch()
     for thread in threads:
         thread.join(timeout=5)
+
+
+def test_a_container_workbench_runs_each_ree_in_the_image_it_declares(fake_executor: Path, tmp_path: Path) -> None:
+    scripts = ScriptBackend("container", "podman", "socket", ("/repo2ree", "/home/me/repo2ree"))
+    executor = LocalExecutor(tmp_path / "store", str(fake_executor), store=True, scripts=scripts)
+    root = executor.ree_root("ree-1")
+    root.mkdir(parents=True)
+    environment = {"kind": "image", "image": "python:3.12-slim", "needs_container_engine": True}
+    (root / "ree.json").write_text(json.dumps({"subject": {"definition": {"environment": environment}}}))
+
+    choice = json.loads(executor._environment(root)["REPO2REE_SCRIPT_RUNNER"])
+
+    assert choice == {
+        "backend": "container",
+        "engine": "podman",
+        "image": "python:3.12-slim",
+        "script_engine": "socket",
+        "engine_path": {"local": "/repo2ree", "engine": "/home/me/repo2ree"},
+        "owner": "",
+        "refused": None,
+    }
+    assert declared_environment(executor.ree_root("ree-2")) == {}
+
+
+@pytest.mark.parametrize(
+    ("backend", "script_engine", "environment", "refused"),
+    [
+        ("container", "socket", {}, "declare the image"),
+        ("container", "socket", {"kind": "host"}, "declare the image"),
+        ("host", "socket", {"kind": "image", "image": "python:3.12"}, "cannot run them in python:3.12"),
+        ("container", "none", {"kind": "image", "image": "docker:29", "needs_container_engine": True}, "engine"),
+        ("host", "socket", {"kind": "host"}, None),
+        ("host", "socket", {}, None),
+    ],
+)
+def test_a_store_workbench_refuses_an_environment_it_cannot_give(
+    backend: str, script_engine: str, environment: dict[str, object], refused: str | None
+) -> None:
+    refusal = ScriptBackend(backend, "docker", script_engine).refusal(environment)
+    assert (refusal is None) == (refused is None)
+    if refused:
+        assert refused in (refusal or "")
+
+
+def test_a_bench_set_up_for_one_ree_says_nothing_of_where_scripts_run(fake_executor: Path, tmp_path: Path) -> None:
+    executor = LocalExecutor(tmp_path / "root", str(fake_executor))
+    assert "REPO2REE_SCRIPT_RUNNER" not in executor._environment(executor.root)

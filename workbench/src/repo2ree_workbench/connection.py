@@ -191,6 +191,7 @@ async def run_workbench(
     build: BuildInfo | None = None,
     executor_build: BuildInfo | None = None,
     capabilities: WorkbenchCapabilities | None = None,
+    backend: Literal["host", "container"] = "host",
 ) -> None:
     """Dial the control plane and serve requests, reconnecting on drop.
 
@@ -213,7 +214,7 @@ async def run_workbench(
         location_id=location_id,
         image=image,
         store_id=service.store_id,
-        backend="host",
+        backend=backend,
         slots=service.slots,
         capabilities=capabilities or WorkbenchCapabilities(),
         # Minted once per process: reconnects reuse it, so the control plane can

@@ -42,6 +42,8 @@ DIND_IMAGE = os.environ.get("DIND_IMAGE", DEFAULT_IMAGE)
 TERMINAL = frozenset({"succeeded", "failed", "canceled"})
 # The compute the stack runs: providers setting a bench up per REE, or workbenches serving stores.
 COMPUTE_MODE = os.environ.get("E2E_COMPUTE_MODE", "provider")
+# Where a store runs the scripts of the REEs it keeps: in a container from each REE's image, or on its host.
+STORE_BACKEND = os.environ.get("E2E_STORE_BACKEND", "container")
 
 
 @dataclass(frozen=True)
@@ -218,6 +220,10 @@ class Api:
         provisioned = self.wait(ree_id, created, watch=NETWORK_RUN)
         if provisioned["status"] != "succeeded":
             raise ApiError(f"provisioning ended {provisioned['status']}\n{self.logs(ree_id, created['run_id'])}")
+        if COMPUTE_MODE == "store" and STORE_BACKEND == "container":
+            # What a bench would have been set up from is what the REE declares its scripts run in.
+            environment = {"kind": "image", "image": image, "needs_container_engine": image == DIND_IMAGE}
+            self.patch(ree_id, {"environment": environment})
         return ree_id
 
     def keep_archive(self, ree_id: str, label: str) -> Path | None:

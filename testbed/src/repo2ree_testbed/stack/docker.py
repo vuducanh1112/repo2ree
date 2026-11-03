@@ -24,6 +24,22 @@ def own_container() -> str | None:
     return hostname if hostname and Path("/.dockerenv").is_file() else None
 
 
+def engine_path(path: Path) -> str:
+    """``LOCAL=ENGINE``: where the engine finds ``path``, when this process runs in a container beside it.
+
+    Blank when the engine sees this process's files where it does (no container, or no mount holds it).
+    """
+    container = own_container()
+    if container is None:
+        return ""
+    mounts = capture(["docker", "inspect", "-f", "{{range .Mounts}}{{.Destination}}={{.Source}};{{end}}", container])
+    for mount in filter(None, (mounts or "").split(";")):
+        local, _, source = mount.partition("=")
+        if path.resolve().is_relative_to(local):
+            return f"{local}={source}"
+    return ""
+
+
 def networks(container: str) -> dict[str, Network]:
     output = capture(["docker", "inspect", "-f", "{{json .NetworkSettings.Networks}}", container])
     try:

@@ -27,8 +27,8 @@ from repo2ree_core.execution.experiment.spec import RunnableSpec
 from repo2ree_core.execution.process import (
     CancelCheck,
     StepOutcome,
-    run_workspace_script,
 )
+from repo2ree_core.execution.runners import run_workspace_script
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionStatus
 from repo2ree_ree.paths import validate_relative_path

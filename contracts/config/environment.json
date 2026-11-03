@@ -275,6 +275,25 @@
           "title": "Workbench Auth Token",
           "type": "string"
         },
+        "WORKBENCH_BACKEND": {
+          "default": "host",
+          "enum": [
+            "host",
+            "container"
+          ],
+          "title": "Workbench Backend",
+          "type": "string"
+        },
+        "WORKBENCH_ENGINE": {
+          "default": "docker",
+          "title": "Workbench Engine",
+          "type": "string"
+        },
+        "WORKBENCH_ENGINE_PATH": {
+          "default": "",
+          "title": "Workbench Engine Path",
+          "type": "string"
+        },
         "WORKBENCH_ID": {
           "default": "",
           "title": "Workbench Id",
@@ -310,6 +329,15 @@
           "default": "/ree",
           "format": "path",
           "title": "Workbench Root",
+          "type": "string"
+        },
+        "WORKBENCH_SCRIPT_ENGINE": {
+          "default": "none",
+          "enum": [
+            "none",
+            "socket"
+          ],
+          "title": "Workbench Script Engine",
           "type": "string"
         },
         "WORKBENCH_SLOTS": {
@@ -1179,6 +1207,37 @@
         "type": "string"
       }
     },
+    "WORKBENCH_BACKEND": {
+      "kind": "runtime",
+      "owner": "workbench",
+      "schema": {
+        "default": "host",
+        "enum": [
+          "host",
+          "container"
+        ],
+        "title": "Workbench Backend",
+        "type": "string"
+      }
+    },
+    "WORKBENCH_ENGINE": {
+      "kind": "runtime",
+      "owner": "workbench",
+      "schema": {
+        "default": "docker",
+        "title": "Workbench Engine",
+        "type": "string"
+      }
+    },
+    "WORKBENCH_ENGINE_PATH": {
+      "kind": "runtime",
+      "owner": "workbench",
+      "schema": {
+        "default": "",
+        "title": "Workbench Engine Path",
+        "type": "string"
+      }
+    },
     "WORKBENCH_ID": {
       "kind": "runtime",
       "owner": "workbench",
@@ -1249,6 +1308,19 @@
         "default": "/ree",
         "format": "path",
         "title": "Workbench Root",
+        "type": "string"
+      }
+    },
+    "WORKBENCH_SCRIPT_ENGINE": {
+      "kind": "runtime",
+      "owner": "workbench",
+      "schema": {
+        "default": "none",
+        "enum": [
+          "none",
+          "socket"
+        ],
+        "title": "Workbench Script Engine",
         "type": "string"
       }
     },
