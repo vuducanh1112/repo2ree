@@ -23,9 +23,11 @@ const EXPERIMENT = "python-hello";
  * evidence, and an REE the same spec just produced is the one baseline that
  * cannot demonstrate that: every digest it compares against was written moments
  * earlier by the same code path, in the same container, from the same inputs.
- * The bundle carries real author receipts emitted by the demo authoring flow,
- * so the comparisons are against persisted evidence from a separate run rather
- * than fixtures assembled by this review spec.
+ * The bundle carries real author receipts emitted by the Python Docker
+ * showcase (python-docker.spec.ts) in a store, so the comparisons are against
+ * persisted evidence from a separate run rather than fixtures assembled by this
+ * review spec. It declares the image its scripts ran in, so a store rebuilds it
+ * there.
  *
  * It is also much less work. The whole authoring phase disappears: no upload,
  * no author-side build, no scan, no author-side activation or experiment run.
@@ -122,10 +124,6 @@ test.describe("Review lifecycle", () => {
       // stronger `identical` tier. An experiment that stamped a timestamp would
       // land on `reproduced` with the same verify script — the distinction the
       // verdict ladder exists to draw, and the reason neither is asserted alone.
-      //
-      // It is also where the age of this baseline pays off: the author's receipt
-      // predates `verify_exit_code`, so the claim has to be read out of its
-      // status instead, or this would come back inconclusive.
       expect(["IDENTICAL", "REPRODUCED"]).toContain(await reproduceExperiment(page, EXPERIMENT));
 
       await expect(review.getByText("RESULTS · 1/1 REPRODUCED")).toBeVisible();
