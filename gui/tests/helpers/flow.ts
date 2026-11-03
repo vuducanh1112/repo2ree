@@ -33,8 +33,6 @@ export const LIGHTWEIGHT_WORKBENCH_IMAGE =
   process.env.PYTHON_SLIM_IMAGE ??
   "docker.io/library/python:3.11-slim@sha256:9534e5a8e315485d4061ed659af0fd78a284c015f9b73661b41d6bab25604534";
 
-/** The stack runs workbenches serving stores, rather than providers setting a bench up per REE. */
-const STORE_COMPUTE = process.env.E2E_COMPUTE_MODE === "store";
 /** Where a store runs the author's scripts: in a container from the REE's image, or on its host. */
 const STORE_BACKEND = process.env.E2E_STORE_BACKEND ?? "container";
 
@@ -362,33 +360,18 @@ export async function startReeCreation(page: Page, options?: { labIndex?: number
  * (the live lab), so this resolves there and then dives into the Source node so
  * the rest of the walkthrough continues from the docked authoring drawer.
  */
-export async function provisionWorkbench(
-  page: Page,
-  options?: { imageLabel?: string; imageRef?: string },
-) {
+export async function provisionWorkbench(page: Page, options?: { imageRef?: string }) {
   await stepShot(page, "provision-workbench", "before");
   // Setup is the drawer the lab picker opens, so scope to it rather than to a
   // page that no longer exists on its own.
   const setup = page.getByRole("region", { name: "Set up the workbench" });
-  if (STORE_COMPUTE && options?.imageRef) {
-    // A store offers its own images and takes no other ref: pick the card the ref names.
-    // A store that runs scripts on its host offers none, and the REE declares the host.
-    if (STORE_BACKEND === "container") {
-      await setup.getByRole("button", { name: options.imageRef }).click();
-    }
-  } else if (options?.imageRef) {
-    // Custom refs are the portable path across stacks: a deployment may curate
-    // different named profiles while still accepting the same explicit image.
-    await setup.getByRole("button", { name: /Custom…/ }).click();
-    await setup.getByRole("textbox", { name: "Custom image reference" }).fill(options.imageRef);
-  } else if (options?.imageLabel) {
-    // Pick one of the lab's curated images by its label rather than its ref:
-    // the stack pins the actual refs per environment, so the label is the
-    // stable half of a catalog entry.
-    // Playwright's default name matching is substring and case-insensitive, so
-    // the label alone reaches the card without a regex that a label containing
-    // a metacharacter would break.
-    await setup.getByRole("button", { name: options.imageLabel }).click();
+  // A store offers its images by ref; one that runs scripts on its host offers none, and the
+  // REE declares the host.
+  const image = options?.imageRef;
+  if (image && STORE_BACKEND === "container") {
+    // Playwright's default name matching is substring and case-insensitive, so the
+    // ref alone reaches the card without a regex its metacharacters would break.
+    await setup.getByRole("button", { name: image }).click();
   }
   // A network run in every project: the host pulls the bench image the first time it sees it.
   await runToEnd(page, () => setup.getByRole("button", { name: /Provision workbench/i }).click(), {
@@ -1055,17 +1038,11 @@ export async function releaseWorkbench(page: Page) {
   }
   await stepShot(page, "release-workbench", "before");
   await openWorkbenchConsole(page);
-  if (STORE_COMPUTE) {
-    // A store keeps its REEs: ending one deletes it from the store, and asks first.
-    const deleteButton = page.getByRole("button", { name: /Delete REE$/ });
-    await expect(deleteButton).toBeVisible();
-    await deleteButton.click();
-    await page.getByRole("button", { name: /Confirm: delete this REE$/ }).click();
-  } else {
-    const releaseButton = page.getByRole("button", { name: /Release workbench/i }).first();
-    await expect(releaseButton).toBeVisible();
-    await releaseButton.click();
-  }
+  // A store keeps its REEs: ending one deletes it from the store, and asks first.
+  const deleteButton = page.getByRole("button", { name: /Delete REE$/ });
+  await expect(deleteButton).toBeVisible();
+  await deleteButton.click();
+  await page.getByRole("button", { name: /Confirm: delete this REE$/ }).click();
   await expect(page).toHaveURL("/");
   await expect(page.getByRole("button", { name: "Create a new REE" })).toBeVisible();
   await stepShot(page, "release-workbench", "after");

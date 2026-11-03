@@ -80,7 +80,7 @@ describe("nextRunLogCursor", () => {
 });
 
 describe("createReeRunsClient", () => {
-  it("provisions a named workspace and trims optional placement inputs", async () => {
+  it("creates a named REE in a store and trims its inputs", async () => {
     const { client, reeApi } = harness();
     await expect(
       client.createWorkspace("Demo", " lab-1 ", " docker.io/library/docker:29-dind "),
@@ -90,8 +90,8 @@ describe("createReeRunsClient", () => {
     });
     expect(reeApi.createRee).toHaveBeenCalledWith({
       name: "Demo",
-      store_id: "",
-      location_id: "lab-1",
+      store_id: "lab-1",
+      location_id: "",
       image: "docker.io/library/docker:29-dind",
     });
   });

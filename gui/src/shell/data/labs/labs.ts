@@ -1,33 +1,23 @@
 import type { Lab } from "@core/lab/Lab";
 import { sortLabs } from "@core/lab/Lab";
-import type { ComputeLocation } from "@shell/infra/api/apiTypes";
+import type { StoreSummary } from "@shell/infra/api/apiTypes";
 import { useQuery } from "@tanstack/react-query";
 import { useApiServices } from "../apiRuntime";
 import { queryKeys } from "../queryKeys";
 
-// Pure wire shape → domain map. Status is narrowed to the domain's single connected
-// state; the endpoint only lists connected labs.
-function mapLab(wire: ComputeLocation): Lab {
+// Pure wire shape → domain map. A store is listed whether or not a workbench serves it; it is
+// available for a new REE only while one does.
+function mapLab(wire: StoreSummary): Lab {
   return {
-    id: wire.id,
+    id: wire.store_id,
     label: wire.label,
-    description: wire.description,
-    lifecycleMode: wire.lifecycle_mode,
-    images: (wire.images ?? []).map((image) => ({
-      id: image.id,
-      ref: image.ref,
-      label: image.label,
-      description: image.description,
-    })),
-    acceptsCustomImage: wire.accepts_custom_image ?? false,
-    status: "connected",
-    available: wire.available,
-    connectedComponent: wire.connected_component
-      ? {
-          kind: wire.connected_component.kind,
-          build: wire.connected_component.build ?? {},
-        }
-      : undefined,
+    description: "",
+    backend: wire.backend ?? null,
+    // The ref is the image's name: it is what the REE declares, and what a reviewer reruns in.
+    images: (wire.images ?? []).map((ref) => ({ id: ref, ref, label: ref, description: "" })),
+    status: wire.connected ? "connected" : "offline",
+    available: wire.connected,
+    build: wire.build ?? undefined,
   };
 }
 
@@ -35,16 +25,15 @@ function mapLab(wire: ComputeLocation): Lab {
 // connect/disconnect should surface within a few seconds without a reload.
 const LABS_REFETCH_MS = 5000;
 
-// Workbench labs currently connected to the control plane, kept fresh by
-// polling. Backs the fleet-management pane. Each location carries its own image
-// catalog, so this is one call.
+// The stores registered here, kept fresh by polling. Backs the fleet-management pane. Each
+// carries the images it offers, so this is one call.
 export function useLabs() {
   const { reeApi } = useApiServices();
   return useQuery({
     queryKey: queryKeys.labs(),
     queryFn: async (): Promise<Lab[]> => {
-      const locations = await reeApi.listComputeLocations();
-      return sortLabs(locations.locations.map(mapLab));
+      const listed = await reeApi.listStores();
+      return sortLabs(listed.stores.map(mapLab));
     },
     refetchInterval: LABS_REFETCH_MS,
   });

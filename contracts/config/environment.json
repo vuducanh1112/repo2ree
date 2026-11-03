@@ -495,13 +495,6 @@
         "type": "string"
       }
     },
-    "E2E_COMPUTE_MODE": {
-      "kind": "internal",
-      "owner": "playwright",
-      "schema": {
-        "type": "string"
-      }
-    },
     "E2E_GIT_ORIGIN_URL": {
       "kind": "internal",
       "owner": "playwright",

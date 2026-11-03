@@ -29,7 +29,6 @@ NON_SERVICE_ENVIRONMENT: dict[str, tuple[str, str]] = {
     "E2E_API_BASE_URL": ("playwright", "internal"),
     "E2E_RECORDING_DIR": ("test-recording", "internal"),
     "E2E_BASE_URL": ("playwright", "internal"),
-    "E2E_COMPUTE_MODE": ("playwright", "internal"),
     "E2E_GIT_ORIGIN_URL": ("playwright", "internal"),
     "E2E_TARBALL_ORIGIN_URL": ("playwright", "internal"),
     "E2E_GUI_PORT": ("playwright", "internal"),

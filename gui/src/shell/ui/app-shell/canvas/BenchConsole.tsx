@@ -3,10 +3,9 @@ import { appendLine } from "@core/ree/logEntry";
 import type { LogEntry } from "@core/ree/ReeTypes";
 import { appShellPorts } from "@shell/app/bootstrap/appShellPorts";
 import { useReeRuntime } from "@shell/data/apiRuntime";
-import { useAllocation } from "@shell/data/compute/allocation";
 import { useReeClient } from "@shell/data/ree/client";
 import { useReeQuery } from "@shell/data/ree/queries";
-import { allocationStateCopy, placementReadout } from "@shell/ui/labs/labPresentation";
+import { placementReadout } from "@shell/ui/labs/labPresentation";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Ic } from "../../shared/components/Icon";
@@ -26,8 +25,8 @@ interface BenchConsoleProps {
 // The workbench is the lab this whole hub lives in, so it reads as an ambient
 // console pinned to the bench corner rather than a node on the ring. The footer
 // bar carries its resting state and opens it here — no separate panel — to
-// surface live bench status and the one action that matters here: release,
-// with a terminal-style readout.
+// surface where the REE is kept and the one action that matters here: deleting
+// it from its lab's store, confirmed first, with a terminal-style readout.
 export function BenchConsole({
   provisioned,
   reeName,
@@ -38,39 +37,32 @@ export function BenchConsole({
   const { reeId } = useReeRuntime();
   const reeClient = useReeClient();
   const reeQuery = useReeQuery();
-  const placement = placementReadout(
-    reeQuery.data?.workbenchLocation,
-    reeQuery.data?.workbenchImage,
-  );
-  const allocationId = reeQuery.data?.allocationId;
-  // An REE kept in a store outlives any workbench: what ends here is the REE itself.
-  const inStore = Boolean(reeQuery.data?.storeId);
+  const placement = placementReadout(reeQuery.data?.workbenchLocation);
   const [confirming, setConfirming] = useState(false);
-  const allocation = useAllocation(allocationId);
   const navigate = useNavigate();
-  const [releasing, setReleasing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [log, setLog] = useState<LogEntry | null>(null);
 
-  async function handleReleaseWorkbench() {
-    if (inStore && !confirming) {
+  async function handleDelete() {
+    if (!confirming) {
       setConfirming(true);
       return;
     }
-    setReleasing(true);
+    setDeleting(true);
     try {
-      await reeClient.releaseRee(reeId);
+      await reeClient.deleteRee(reeId);
     } catch (err) {
-      // The workbench is still up, so stay on it with the reason in the console
-      // rather than spinning on "Releasing…" forever.
+      // The REE is still there, so stay on it with the reason in the console
+      // rather than spinning on "Deleting…" forever.
       setLog(
         appendLine(
           null,
           "err",
-          err instanceof Error ? err.message : "Release failed",
+          err instanceof Error ? err.message : "Delete failed",
           appShellPorts.clock.nowIso(),
         ),
       );
-      setReleasing(false);
+      setDeleting(false);
       return;
     }
     navigate(APP_ROUTE.ROOT);
@@ -96,36 +88,25 @@ export function BenchConsole({
     >
       <div className={styles.spacer} />
       <StatRow label="Placement" value={placement} mono />
-      {allocationId ? (
-        <>
-          <StatRow label="Allocation" value={allocationId} mono />
-          <StatRow label="Progress" value={allocationStateCopy(allocation.data?.state)} />
-        </>
-      ) : null}
 
-      <Terminal log={log} running={releasing} />
+      <Terminal log={log} running={deleting} />
 
       <button
         type="button"
-        onClick={handleReleaseWorkbench}
-        disabled={releasing}
+        onClick={handleDelete}
+        disabled={deleting}
         className={styles.action}
         data-kind="release"
       >
-        {releasing ? Ic.loader(14) : Ic.x(14)}
-        <span>{actionLabel(inStore, confirming, releasing)}</span>
+        {deleting ? Ic.loader(14) : Ic.x(14)}
+        <span>{actionLabel(confirming, deleting)}</span>
       </button>
-      <span className={styles.actionNote}>
-        {inStore
-          ? "Deletes the REE and its files from the lab's store."
-          : "Ends the REE session and removes this workbench."}
-      </span>
+      <span className={styles.actionNote}>Deletes the REE and its files from the lab's store.</span>
     </HudConsole>
   );
 }
 
-function actionLabel(inStore: boolean, confirming: boolean, busy: boolean): string {
-  if (!inStore) return busy ? "Releasing…" : "Release workbench";
+function actionLabel(confirming: boolean, busy: boolean): string {
   if (busy) return "Deleting…";
   return confirming ? "Confirm: delete this REE" : "Delete REE";
 }

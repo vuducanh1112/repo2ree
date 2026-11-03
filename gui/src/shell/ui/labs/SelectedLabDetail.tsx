@@ -22,25 +22,19 @@ export function SelectedLabDetail({ lab }: SelectedLabDetailProps) {
     );
   }
 
-  const preProvisioned = lab.lifecycleMode === "externally_managed";
+  const onHost = lab.backend === "host";
   const facts: [string, string][] = [
     ["LOCATION", lab.id],
-    ["LIFECYCLE", preProvisioned ? "pre-provisioned" : "on demand"],
-    ["IMAGES", preProvisioned ? "—" : String(lab.images.length)],
-    ["CUSTOM IMAGE", lab.acceptsCustomImage ? "accepted" : "no"],
-    [
-      lab.connectedComponent?.kind === "provider" ? "PROVIDER REV" : "WORKBENCH REV",
-      revisionLabel(lab.connectedComponent?.build.revision),
-    ],
+    ["SCRIPTS RUN", lab.backend === null ? "—" : onHost ? "on its machine" : "in containers"],
+    ["IMAGES", onHost ? "—" : String(lab.images.length)],
+    ["WORKBENCH REV", revisionLabel(lab.build?.revision)],
   ];
 
   return (
     <div className={styles.detail}>
       <div className={styles.kind}>Specimen pod · assigned</div>
       <div className={styles.name}>{lab.label}</div>
-      <div className={styles.what}>
-        {lab.description || "Hosts this REE's workbench for its whole life."}
-      </div>
+      <div className={styles.what}>{lab.description || "Keeps this REE for its whole life."}</div>
       <dl className={styles.facts}>
         {facts.map(([key, value]) => (
           <div key={key} className={styles.row}>

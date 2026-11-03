@@ -95,7 +95,7 @@ function lab(overrides: Partial<Lab> = {}): Lab {
     id: "lab-oslo",
     label: "lab-oslo-01",
     description: "",
-    lifecycleMode: "provider_managed",
+    backend: "container",
     images: [
       {
         id: "standard",
@@ -104,7 +104,6 @@ function lab(overrides: Partial<Lab> = {}): Lab {
         description: "",
       },
     ],
-    acceptsCustomImage: false,
     status: "connected",
     available: true,
     ...overrides,
@@ -175,10 +174,7 @@ describe("choosing a lab", () => {
   it("confirms the choice in the detail panel rather than in the grid", async () => {
     useLabsMock.mockReturnValue(
       queryState({
-        data: [
-          lab({ description: "Bench pool for the Oslo cluster.", acceptsCustomImage: true }),
-          ...fleet(2),
-        ],
+        data: [lab({ description: "Bench pool for the Oslo cluster." }), ...fleet(2)],
       }),
     );
     renderPicker();
@@ -188,11 +184,10 @@ describe("choosing a lab", () => {
     await userEvent.click(screen.getByRole("button", { name: "lab-oslo-01 — available" }));
 
     expect(screen.getByText("Specimen pod · assigned")).toBeInTheDocument();
-    // The operator facts a cell has no room for. Whether a ref the lab did not
-    // publish is accepted is one of them; nothing here claims what its images
-    // supply, because nothing knows.
-    expect(screen.getByText("CUSTOM IMAGE")).toBeInTheDocument();
-    expect(screen.getByText("accepted")).toBeInTheDocument();
+    // The operator facts a cell has no room for. Where the lab runs scripts is
+    // one of them; nothing here claims what its images supply, because nothing knows.
+    expect(screen.getByText("SCRIPTS RUN")).toBeInTheDocument();
+    expect(screen.getByText("in containers")).toBeInTheDocument();
     expect(screen.getByText("IMAGES")).toBeInTheDocument();
   });
 

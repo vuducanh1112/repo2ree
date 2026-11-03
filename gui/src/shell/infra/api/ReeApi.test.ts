@@ -30,10 +30,8 @@ describe("ReeApi", () => {
     const { api, client } = harness();
     await api.listReeSteps();
     await api.getBuildInfo();
-    await api.listComputeLocations();
-    await api.getAllocation("alloc/1");
+    await api.listStores();
     await api.listScriptTemplates();
-    await api.listProviders();
     await api.listWorkbenches();
     await api.listReeIndex({ cursor: "next page", limit: 20, depositedOnly: true });
     await api.listRees({ cursor: "cursor", limit: 10, status: "sealed" });
@@ -41,15 +39,13 @@ describe("ReeApi", () => {
     expect(client.request.mock.calls.map(([path]) => path)).toEqual([
       "/api/v1/ree-steps",
       "/api/v1/system/build-info",
-      "/api/v1/compute-locations",
-      "/api/v1/allocations/alloc%2F1",
+      "/api/v1/stores",
       "/api/v1/script-templates",
-      "/api/v1/providers",
       "/api/v1/workbenches",
       "/api/v1/ree-index?cursor=next+page&limit=20&deposited_only=true",
       "/api/v1/rees",
     ]);
-    expect(client.request.mock.calls[8]?.[2].toString()).toBe(
+    expect(client.request.mock.calls[6]?.[2].toString()).toBe(
       "cursor=cursor&limit=10&status=sealed",
     );
   });
@@ -59,8 +55,8 @@ describe("ReeApi", () => {
     const reeId = asReeId("ree/1");
     await api.createRee({
       name: "REE",
-      store_id: "",
-      location_id: "lab-1",
+      store_id: "lab-1",
+      location_id: "",
       image: "docker:29-dind",
     });
     await api.getRee(reeId);

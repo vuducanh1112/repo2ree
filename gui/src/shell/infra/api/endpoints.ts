@@ -1,11 +1,9 @@
 const API_V1_BASE = "/api/v1";
 
 export const endpoints = {
-  computeLocations: () => `${API_V1_BASE}/compute-locations`,
-  allocations: () => `${API_V1_BASE}/allocations`,
+  stores: () => `${API_V1_BASE}/stores`,
   reeSteps: () => `${API_V1_BASE}/ree-steps`,
   scriptTemplates: () => `${API_V1_BASE}/script-templates`,
-  labs: () => `${API_V1_BASE}/providers`,
   workbenches: () => `${API_V1_BASE}/workbenches`,
   reeIndex: () => `${API_V1_BASE}/ree-index`,
   rees: () => `${API_V1_BASE}/rees`,

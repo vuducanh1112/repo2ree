@@ -19,9 +19,8 @@ function services(runs: unknown[] = []) {
         },
         workspace_files: [],
         ree_files: [],
-        allocation_id: "alloc-1",
         location_id: "lab-1",
-        image: "docker.io/library/docker:29-dind",
+        store_id: "lab-1",
       }),
     },
     runs: { listRuns: vi.fn().mockResolvedValue({ runs, next_cursor: null }) },
@@ -43,7 +42,7 @@ function render(props: Partial<Parameters<typeof WorkspaceFooterBar>[0]> = {}, r
 }
 
 describe("WorkspaceFooterBar", () => {
-  it("reports the assigned placement and the newest run, and toggles both consoles", async () => {
+  it("reports the lab the REE is kept in and the newest run, and toggles both consoles", async () => {
     const user = userEvent.setup();
     const onBenchOpenChange = vi.fn();
     const onLogsOpenChange = vi.fn();
@@ -63,7 +62,7 @@ describe("WorkspaceFooterBar", () => {
     ]);
 
     expect(screen.getByRole("region", { name: "Workbench status" })).toBeVisible();
-    expect(await screen.findByText("docker:29-dind @ lab-1")).toBeVisible();
+    expect(await screen.findByText("lab-1")).toBeVisible();
     expect(await screen.findByText("Build · succeeded")).toBeVisible();
 
     // Each cell shows whether the console it owns is open.

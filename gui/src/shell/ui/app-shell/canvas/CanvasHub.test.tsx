@@ -23,9 +23,8 @@ const reeDocument = {
   },
   workspace_files: [],
   ree_files: [],
-  allocation_id: "alloc-1",
   location_id: "lab-1",
-  image: "docker.io/library/docker:29-dind",
+  store_id: "lab-1",
 };
 
 const authorReceipts = parseAuthorReceipts({
@@ -225,7 +224,7 @@ describe("CanvasHub", () => {
     expect(await screen.findByText("Source acquired")).toBeInTheDocument();
     // The footer bar owns the bench console's resting state, so it is handed to
     // the canvas already open rather than expanded from a collapsed card here.
-    expect((await screen.findAllByText("docker:29-dind @ lab-1")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("lab-1")).length).toBeGreaterThan(0);
   });
 
   // The reload case: this tab has run nothing, so every badge is empty and the

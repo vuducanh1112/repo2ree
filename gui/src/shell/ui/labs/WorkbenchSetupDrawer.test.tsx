@@ -23,7 +23,7 @@ const lab: Lab = {
   id: "lab-1",
   label: "lab-host",
   description: "",
-  lifecycleMode: "provider_managed",
+  backend: "container",
   images: [
     {
       id: "standard",
@@ -38,7 +38,6 @@ const lab: Lab = {
       description: "",
     },
   ],
-  acceptsCustomImage: true,
   status: "connected",
   available: true,
 };
@@ -84,8 +83,8 @@ describe("WorkbenchSetupDrawer", () => {
     await waitFor(() =>
       expect(createRee).toHaveBeenCalledWith({
         name: "REE",
-        store_id: "",
-        location_id: "lab-1",
+        store_id: "lab-1",
+        location_id: "",
         image: "",
       }),
     );
@@ -129,90 +128,10 @@ describe("WorkbenchSetupDrawer", () => {
     await waitFor(() =>
       expect(createRee).toHaveBeenCalledWith(
         expect.objectContaining({
-          location_id: "lab-1",
+          store_id: "lab-1",
           image: "docker.io/library/python:3.11-slim",
         }),
       ),
-    );
-  });
-
-  it("provisions from a custom ref when the lab accepts one", async () => {
-    const user = userEvent.setup();
-    const createRee = vi.fn().mockResolvedValue(wireRun("provision-1"));
-    const getRun = vi.fn().mockResolvedValue(wireRun("provision-1"));
-    const listRunLogs = vi
-      .fn()
-      .mockResolvedValue({ entries: [], next_cursor: null, has_more: false });
-
-    renderWithShell(<WorkbenchSetupDrawer lab={lab} loadRequested={false} />, {
-      route: "/lab-location",
-      reeId: "active",
-      services: fakeApiServices({
-        ree: { createRee },
-        runs: { getRun, listRunLogs },
-      }),
-    });
-
-    await user.click(screen.getByRole("button", { name: /Custom…/ }));
-    // Custom picked but still blank would silently provision the lab default,
-    // so the button waits for the ref rather than guessing.
-    expect(screen.getByRole("button", { name: "Provision workbench" })).toBeDisabled();
-
-    await user.type(
-      screen.getByRole("textbox", { name: "Custom image reference" }),
-      "ghcr.io/me/bench:v3",
-    );
-    await user.click(screen.getByRole("button", { name: "Provision workbench" }));
-
-    await waitFor(() =>
-      expect(createRee).toHaveBeenCalledWith(
-        expect.objectContaining({ image: "ghcr.io/me/bench:v3" }),
-      ),
-    );
-  });
-
-  it("offers no custom-image path at a lab that refuses one", () => {
-    renderWithShell(
-      <WorkbenchSetupDrawer lab={{ ...lab, acceptsCustomImage: false }} loadRequested={false} />,
-      { route: "/lab-location", reeId: "active", services: fakeApiServices({}) },
-    );
-
-    expect(screen.queryByRole("button", { name: /Custom…/ })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Standard \(docker\)/ })).toBeInTheDocument();
-  });
-
-  it("creates the REE in a store lab with the image it picks from the store's offer", async () => {
-    const user = userEvent.setup();
-    const createRee = vi.fn().mockResolvedValue(wireRun("provision-1"));
-    const getRun = vi.fn().mockResolvedValue(wireRun("provision-1"));
-    const listRunLogs = vi
-      .fn()
-      .mockResolvedValue({ entries: [], next_cursor: null, has_more: false });
-
-    renderWithShell(
-      <WorkbenchSetupDrawer
-        lab={{ ...lab, lifecycleMode: "store", acceptsCustomImage: false }}
-        loadRequested={false}
-      />,
-      {
-        route: "/lab-location",
-        reeId: "active",
-        services: fakeApiServices({ ree: { createRee }, runs: { getRun, listRunLogs } }),
-      },
-    );
-
-    expect(screen.getByText("Base image")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Custom…/ })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /Python 3.11/ }));
-    await user.click(screen.getByRole("button", { name: "Provision workbench" }));
-
-    await waitFor(() =>
-      expect(createRee).toHaveBeenCalledWith({
-        name: "REE",
-        store_id: "lab-1",
-        location_id: "",
-        image: "docker.io/library/python:3.11-slim",
-      }),
     );
   });
 
@@ -225,10 +144,7 @@ describe("WorkbenchSetupDrawer", () => {
       .mockResolvedValue({ entries: [], next_cursor: null, has_more: false });
 
     renderWithShell(
-      <WorkbenchSetupDrawer
-        lab={{ ...lab, lifecycleMode: "store", images: [], acceptsCustomImage: false }}
-        loadRequested={false}
-      />,
+      <WorkbenchSetupDrawer lab={{ ...lab, backend: "host", images: [] }} loadRequested={false} />,
       {
         route: "/lab-location",
         reeId: "active",
@@ -244,39 +160,6 @@ describe("WorkbenchSetupDrawer", () => {
         name: "REE",
         store_id: "lab-1",
         location_id: "",
-        image: "",
-      }),
-    );
-  });
-
-  it("asks for no image at a pre-provisioned lab, whose bench already exists", async () => {
-    const user = userEvent.setup();
-    const createRee = vi.fn().mockResolvedValue(wireRun("provision-1"));
-    const getRun = vi.fn().mockResolvedValue(wireRun("provision-1"));
-    const listRunLogs = vi
-      .fn()
-      .mockResolvedValue({ entries: [], next_cursor: null, has_more: false });
-
-    renderWithShell(
-      <WorkbenchSetupDrawer
-        lab={{ ...lab, lifecycleMode: "externally_managed", images: [], acceptsCustomImage: false }}
-        loadRequested={false}
-      />,
-      {
-        route: "/lab-location",
-        reeId: "active",
-        services: fakeApiServices({ ree: { createRee }, runs: { getRun, listRunLogs } }),
-      },
-    );
-
-    expect(screen.queryByText("Base image")).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Provision workbench" }));
-
-    await waitFor(() =>
-      expect(createRee).toHaveBeenCalledWith({
-        name: "REE",
-        store_id: "",
-        location_id: "lab-1",
         image: "",
       }),
     );

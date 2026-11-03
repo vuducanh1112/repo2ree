@@ -27,7 +27,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from repo2ree_api.contracts import ERROR_RESPONSES
 from repo2ree_api.deps import (
@@ -39,6 +39,7 @@ from repo2ree_api.deps import (
     workbench_transfers,
 )
 from repo2ree_api.settings import service_settings
+from repo2ree_protocol.build import BuildInfo
 from repo2ree_protocol.provider import provider_hello_adapter
 from repo2ree_protocol.workbench import WorkbenchCapabilities, WorkbenchHello, workbench_hello_adapter
 from repo2ree_ree.instant import format_utc_instant
@@ -237,8 +238,12 @@ class StoreSummary(BaseModel):
     connected: bool
     workbench_id: str | None = None
     backend: Literal["host", "container"] | None = None
+    # The images a new REE in the store may declare, the first the default; none while it runs
+    # scripts on its host, or while no workbench serves it.
+    images: list[str] = Field(default_factory=list)
     slots: int = 0
     capabilities: WorkbenchCapabilities | None = None
+    build: BuildInfo | None = None
 
 
 class StoreList(BaseModel):
@@ -299,8 +304,10 @@ def list_stores() -> StoreList:
                 connected=hello is not None,
                 workbench_id=hello.workbench_id if hello else None,
                 backend=hello.backend if hello else None,
+                images=list(hello.images) if hello else [],
                 slots=hello.slots if hello else 0,
                 capabilities=hello.capabilities if hello else None,
+                build=hello.build if hello else None,
             )
         )
     return StoreList(stores=stores)

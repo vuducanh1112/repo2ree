@@ -151,9 +151,11 @@ def test_a_store_lab_offers_its_workbench_images_and_refuses_others(client: Test
         socket.send_text(_hello(lab, token, "wb-images", ("python:3.12", "docker:29")))
         assert _served(lab) == "wb-images"
         labs = {location["id"]: location for location in client.get("/api/v1/compute-locations").json()["locations"]}
+        stores = {store["store_id"]: store for store in client.get("/api/v1/stores").json()["stores"]}
         refused = client.post("/api/v1/rees", json={"name": "x", "store_id": lab, "image": "ubuntu:24.04"})
 
     assert [image["ref"] for image in labs[lab]["images"]] == ["python:3.12", "docker:29"]
+    assert stores[lab]["images"] == ["python:3.12", "docker:29"]
     assert labs[lab]["accepts_custom_image"] is False
     assert refused.status_code == 422
     assert "python:3.12, docker:29" in refused.json()["error"]["message"]

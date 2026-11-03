@@ -201,9 +201,7 @@ describe("shell/data/ree/reeMapping", () => {
       sourceType: "git",
       swhid: "swh:1:dir:value",
     });
-    expect(project.allocationId).toBe("alloc-1");
     expect(project.workbenchLocation).toBe("lab-1");
-    expect(project.workbenchImage).toBe("docker.io/library/docker:29-dind");
     expect(project.reeFiles?.[0]).toMatchObject({
       tag: "REE",
       content: undefined,
@@ -227,11 +225,10 @@ describe("shell/data/ree/reeMapping", () => {
 
   it("defaults absent optional inventories and source metadata", () => {
     const project = mapReeDetailToReeProject(
-      baseRee({ workspace_files: undefined, ree_files: undefined, allocation_id: null }),
+      baseRee({ workspace_files: undefined, ree_files: undefined }),
     );
     expect(project.files).toEqual([]);
     expect(project.reeFiles).toEqual([]);
     expect(project.sourceRepo).toBeUndefined();
-    expect(project.allocationId).toBeUndefined();
   });
 });

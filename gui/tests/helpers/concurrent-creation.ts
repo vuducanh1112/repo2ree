@@ -69,17 +69,9 @@ export async function twoConcurrentCreations(
       const provisionA = () => provisionWorkbench(page, { imageRef: LIGHTWEIGHT_WORKBENCH_IMAGE });
       const provisionB = () => provisionWorkbench(pageB, { imageRef: LIGHTWEIGHT_WORKBENCH_IMAGE });
 
-      if (options.sameLab) {
-        // One provider owns both allocations, so its in-process bundle lock
-        // makes a cold first provision safe to run concurrently.
-        await Promise.all([provisionA(), provisionB()]);
-      } else {
-        // Separate provider processes share the content-addressed bundle volume
-        // but not its population lock. Keep a cold first population serialized;
-        // the operations after provisioning are the concurrency under test.
-        await provisionA();
-        await provisionB();
-      }
+      // A store's workbench serves both REEs, or each its own: either way creation is
+      // only a directory and a declaration, so both run at once.
+      await Promise.all([provisionA(), provisionB()]);
     });
 
     await test.step("upload source into both workspaces", async () => {

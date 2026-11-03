@@ -15,15 +15,18 @@ interface LabCellProps {
  */
 export function LabCell({ lab, selected, onSelect }: LabCellProps) {
   const name = lab.label;
-  const preProvisioned = lab.lifecycleMode === "externally_managed";
-  // A pre-provisioned lab offers no images because its bench already exists, so
-  // an empty catalog only makes a provider-managed lab unusable.
-  const available = lab.available && (preProvisioned || lab.images.length > 0);
+  const onHost = lab.backend === "host";
+  // A container lab with no images has nothing a new REE could declare, so it takes none.
+  const available = lab.available && (onHost || lab.images.length > 0);
   const what =
     lab.description ||
-    (preProvisioned ? "A bench already running here." : "Builds a fresh bench for this REE.");
-  const meta = preProvisioned
-    ? "pre-provisioned"
+    (lab.status === "offline"
+      ? "Its workbench is away; its REEs wait for it."
+      : onHost
+        ? "Runs each REE's scripts on its own machine."
+        : "Runs each REE's scripts in a container from its image.");
+  const meta = onHost
+    ? "its own machine"
     : `${lab.images.length} image${lab.images.length === 1 ? "" : "s"}`;
 
   return (
@@ -47,7 +50,13 @@ export function LabCell({ lab, selected, onSelect }: LabCellProps) {
         <span className={styles.meta}>{meta}</span>
       </span>
       <span aria-hidden className={styles.foot}>
-        {selected ? "selected" : available ? "select" : "busy"}
+        {selected
+          ? "selected"
+          : available
+            ? "select"
+            : lab.status === "offline"
+              ? "offline"
+              : "busy"}
       </span>
     </button>
   );

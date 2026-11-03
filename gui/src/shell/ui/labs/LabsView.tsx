@@ -72,7 +72,7 @@ function HeaderRow() {
     <div className={styles.row} data-kind="head">
       <div className={styles.headCell}>Location</div>
       <div className={styles.headCell}>Location ID</div>
-      <div className={styles.headCell}>Lifecycle</div>
+      <div className={styles.headCell}>Scripts run</div>
       <div className={styles.headCell}>Images</div>
       <div className={styles.headCell}>Availability</div>
     </div>
@@ -91,15 +91,11 @@ function LabRow({ lab }: { lab: Lab }) {
       <div className={styles.cell} data-flavor="code">
         {lab.id}
       </div>
-      <div className={styles.cell}>
-        {lab.lifecycleMode === "provider_managed" ? "on demand" : "pre-provisioned"}
-      </div>
-      <div className={styles.cell}>
-        {lab.lifecycleMode === "provider_managed" ? lab.images.length : "—"}
-      </div>
+      <div className={styles.cell}>{lab.backend ?? "—"}</div>
+      <div className={styles.cell}>{lab.backend === "container" ? lab.images.length : "—"}</div>
       <div className={styles.uptime}>
         <span aria-hidden className={styles.uptimeDot} />
-        <span className={styles.cell}>{lab.available ? "available" : "busy"}</span>
+        <span className={styles.cell}>{lab.available ? "available" : lab.status}</span>
       </div>
     </div>
   );

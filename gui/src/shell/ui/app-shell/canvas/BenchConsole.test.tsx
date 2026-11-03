@@ -16,52 +16,18 @@ const reeDocument = {
   },
   workspace_files: [],
   ree_files: [],
-  allocation_id: "alloc-1",
   location_id: "lab-1",
-  image: "docker.io/library/docker:29-dind",
+  store_id: "lab-1",
 };
 
-function services(state: string) {
-  return fakeApiServices({
-    ree: {
-      getRee: vi.fn().mockResolvedValue(reeDocument),
-      getAllocation: vi.fn().mockResolvedValue({
-        request: {
-          allocation_id: "alloc-1",
-          ree_id: "ree-1",
-          location_id: "lab-1",
-          image: "docker.io/library/docker:29-dind",
-        },
-        state,
-        resolved_image: "docker.io/library/docker:29-dind",
-        detail: "",
-        created_at: "2026-01-01T10:00:00Z",
-        updated_at: "2026-01-01T10:00:05Z",
-      }),
-    },
-  });
-}
-
-function render(state: string) {
-  return renderWithShell(<BenchConsole provisioned open onOpenChange={vi.fn()} reeName="demo" />, {
-    reeId: "ree-1",
-    services: services(state),
-  });
-}
-
 describe("BenchConsole", () => {
-  it("names the image it runs and the allocation that obtained it", async () => {
-    render("assigned");
+  it("names the lab the REE is kept in", async () => {
+    renderWithShell(<BenchConsole provisioned open onOpenChange={vi.fn()} reeName="demo" />, {
+      reeId: "ree-1",
+      services: fakeApiServices({ ree: { getRee: vi.fn().mockResolvedValue(reeDocument) } }),
+    });
 
-    expect(await screen.findByText("docker:29-dind @ lab-1")).toBeVisible();
-    expect(await screen.findByText("alloc-1")).toBeVisible();
-    expect(await screen.findByText("Assigned")).toBeVisible();
-  });
-
-  it("reports an allocation that has not reached its workbench yet", async () => {
-    render("waiting_for_workbench");
-
-    expect(await screen.findByText("Waiting for workbench")).toBeVisible();
+    expect(await screen.findByText("lab-1")).toBeVisible();
   });
 
   it("deletes an REE kept in a store only once the author confirms", async () => {
@@ -73,12 +39,7 @@ describe("BenchConsole", () => {
       reeId: "ree-1",
       services: fakeApiServices({
         ree: {
-          getRee: vi.fn().mockResolvedValue({
-            ...reeDocument,
-            allocation_id: null,
-            image: null,
-            store_id: "lab-1",
-          }),
+          getRee: vi.fn().mockResolvedValue(reeDocument),
           deleteRee,
         },
       }),

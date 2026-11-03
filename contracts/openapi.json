@@ -15797,6 +15797,13 @@
             ],
             "title": "Backend"
           },
+          "images": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Images"
+          },
           "slots": {
             "type": "integer",
             "title": "Slots",
@@ -15806,6 +15813,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/WorkbenchCapabilities"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "build": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BuildInfo"
               },
               {
                 "type": "null"

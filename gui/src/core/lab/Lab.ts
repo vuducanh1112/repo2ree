@@ -1,32 +1,28 @@
-// A lab location represented by a workbench service dialed into the control plane.
-// Pure domain shape; the data layer maps the API wire shape onto this. A lab is listed only while it holds its
-// outbound connection, so `status` is "connected" for everything the fleet view
-// receives — the field exists so a later broker step can add drained/draining.
-export type LabStatus = "connected";
+// A lab is a store: a directory of REEs on some machine, served by one workbench that dials
+// into the control plane. Pure domain shape; the data layer maps the API wire shape onto this.
+// Every registered store is listed, served or not: an offline lab keeps its REEs, but no new
+// one can be created there until its workbench is back.
+export type LabStatus = "connected" | "offline";
 
 export interface Lab {
   id: string;
   label: string;
   description: string;
   /**
-   * How an REE gets a workbench here: a provider sets one up for it, an operator set one up
-   * already, or the lab is a store whose workbench serves every REE kept in it.
+   * Where its workbench runs each REE's scripts: in a fresh container from the image the REE
+   * declares, or on its own machine. Unknown while no workbench serves the lab.
    */
-  lifecycleMode: "provider_managed" | "externally_managed" | "store";
-  /** The curated base images this lab offers. Empty for a pre-provisioned lab. */
+  backend: "container" | "host" | null;
+  /** The images a new REE here may declare, the first the default. Empty on a host lab. */
   images: WorkbenchImage[];
-  /** Whether this lab will run a ref it did not publish. */
-  acceptsCustomImage: boolean;
   status: LabStatus;
   available: boolean;
-  connectedComponent?: {
-    kind: "provider" | "workbench";
-    build: { version?: string; revision?: string };
-  };
+  /** The serving workbench's build, while one serves the lab. */
+  build?: { version?: string; revision?: string };
 }
 
-// One base image a lab offers. `ref` is the only field provisioning uses; the
-// rest names the entry in the picker.
+// One image a lab offers. `ref` is what the REE declares; the rest names the entry in the
+// picker.
 export interface WorkbenchImage {
   id: string;
   ref: string;

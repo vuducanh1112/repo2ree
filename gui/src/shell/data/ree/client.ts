@@ -30,8 +30,8 @@ export interface ReeClient<TFile = unknown, TRee = unknown> {
   ): Promise<RunSummary>;
   getReeArchive(id: ReeId | string): Promise<WorkspaceBinaryDownload>;
   resetWorkspaceRequest(id: ReeId | string, request: WorkspaceResetPayload): Promise<void>;
-  /** End the REE session and remove its workbench. Succeeds if it is already gone. */
-  releaseRee(id: ReeId | string): Promise<void>;
+  /** Delete the REE and its files from its store. Succeeds if it is already gone. */
+  deleteRee(id: ReeId | string): Promise<void>;
 }
 
 export function createReeClient(runtime: ReeApiRuntime): ReeClient<FileTreeNode, ReeProjectState> {
@@ -69,14 +69,14 @@ export function createReeClient(runtime: ReeApiRuntime): ReeClient<FileTreeNode,
       const reeId = requireReeId(runtime, id);
       return runtime.reeApi.getReeArchive(reeId);
     },
-    async releaseRee(id) {
+    async deleteRee(id) {
       const reeId = requireReeId(runtime, id);
       try {
         await runtime.reeApi.deleteRee(reeId);
       } catch (err) {
-        // A 404 means the backend already has no session for this REE, which is
-        // the outcome release was asking for. Reporting it as a failure would
-        // strand the caller on a workbench that no longer exists.
+        // A 404 means the backend already has no such REE, which is the outcome
+        // deleting it was asking for. Reporting it as a failure would strand the
+        // caller on an REE that no longer exists.
         if (!(err instanceof ApiRequestError) || err.status !== 404) throw err;
       }
     },

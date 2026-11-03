@@ -14,33 +14,18 @@ import { useScriptTemplates } from "./scriptTemplates/catalog";
 
 describe("shell data hooks", () => {
   it("maps and caches global catalogs", async () => {
-    const listComputeLocations = vi.fn().mockResolvedValue({
-      locations: [
+    const listStores = vi.fn().mockResolvedValue({
+      stores: [
         {
-          id: "b",
+          store_id: "b",
           label: "z-host",
-          description: "",
-          lifecycle_mode: "provider_managed",
-          available: true,
-          images: [
-            {
-              id: "standard",
-              ref: "docker.io/library/docker:29-dind",
-              label: "Docker",
-              description: "",
-            },
-          ],
-          accepts_custom_image: true,
+          connected: true,
+          workbench_id: "wb-b",
+          backend: "container",
+          images: ["docker.io/library/docker:29-dind"],
+          slots: 2,
         },
-        {
-          id: "a",
-          label: "a-host",
-          description: "",
-          lifecycle_mode: "externally_managed",
-          available: false,
-          images: [],
-          accepts_custom_image: false,
-        },
+        { store_id: "a", label: "a-host", connected: false, images: [], slots: 0 },
       ],
     });
     const listScriptTemplates = vi.fn().mockResolvedValue({
@@ -59,7 +44,7 @@ describe("shell data hooks", () => {
     });
     const { Wrapper } = createShellWrapper({
       services: fakeApiServices({
-        ree: { listComputeLocations, listScriptTemplates },
+        ree: { listStores, listScriptTemplates },
       }),
     });
     const { result } = renderHook(
@@ -74,7 +59,7 @@ describe("shell data hooks", () => {
     expect(result.current.labs.data?.map((lab) => lab.label)).toEqual(["a-host", "z-host"]);
     expect(result.current.labs.data?.map((lab) => lab.available)).toEqual([false, true]);
     expect(result.current.labs.data?.[1]?.images[0]?.ref).toBe("docker.io/library/docker:29-dind");
-    expect(result.current.labs.data?.[1]?.acceptsCustomImage).toBe(true);
+    expect(result.current.labs.data?.map((lab) => lab.status)).toEqual(["offline", "connected"]);
   });
 
   it("loads scoped REE resources and transforms index entries", async () => {

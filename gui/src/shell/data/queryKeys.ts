@@ -2,7 +2,6 @@ export const queryKeys = {
   reeSteps: () => ["ree-steps"] as const,
   scriptTemplates: () => ["script-templates"] as const,
   labs: () => ["labs"] as const,
-  allocation: (allocationId: string) => ["allocation", allocationId] as const,
   reeIndex: (depositedOnly: boolean) => ["ree-index", depositedOnly] as const,
   ree: (id: string) => ["ree", id] as const,
   reeAwaitedRuns: (id: string) => ["ree-awaited-runs", id] as const,

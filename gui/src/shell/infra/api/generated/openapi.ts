@@ -4198,12 +4198,15 @@ export interface components {
             workbench_id?: string | null;
             /** Backend */
             backend?: ("host" | "container") | null;
+            /** Images */
+            images?: string[];
             /**
              * Slots
              * @default 0
              */
             slots: number;
             capabilities?: components["schemas"]["WorkbenchCapabilities"] | null;
+            build?: components["schemas"]["BuildInfo"] | null;
         };
         /** StrategyLeafNode */
         StrategyLeafNode: {

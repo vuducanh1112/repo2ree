@@ -25,26 +25,3 @@ export function placementReadout(location?: string, image?: string): string {
   if (location && shown) return `${shown} @ ${location}`;
   return shown || location || "Unassigned bench";
 }
-
-// Keyed by the wire's own state names, so a Map rather than an object literal.
-const ALLOCATION_STATE_COPY = new Map<string, string>([
-  ["requested", "Requested"],
-  ["provisioning", "Provisioning"],
-  ["waiting_for_workbench", "Waiting for workbench"],
-  ["ready", "Ready"],
-  ["assigned", "Assigned"],
-  ["draining", "Draining"],
-  ["released", "Released"],
-  ["failed", "Failed"],
-  ["lost", "Lost"],
-]);
-
-/**
- * How far obtaining this workbench has got. Unknown states are shown verbatim
- * rather than smoothed over: a control plane ahead of this build should read as
- * itself, not as "Ready".
- */
-export function allocationStateCopy(state?: string): string {
-  if (!state) return "—";
-  return ALLOCATION_STATE_COPY.get(state) ?? state;
-}

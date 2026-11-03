@@ -1,6 +1,5 @@
 import { APP_ROUTE } from "@core/app-shell/pages";
 import {
-  CUSTOM_IMAGE_ID,
   DEFAULT_IMAGE_SELECTION,
   resolveWorkbenchImage,
   type WorkbenchImageSelection,
@@ -23,7 +22,7 @@ import { WorkbenchImageSelector } from "./WorkbenchImageSelector";
 import styles from "./WorkbenchSetupDrawer.module.css";
 
 interface WorkbenchSetupDrawerProps {
-  /** The lab the bench will be built on — already chosen in the grid. */
+  /** The lab the REE will be kept in — already chosen in the grid. */
   lab: Lab;
   /** Arrived from "Load existing REE": a bundle is required before provisioning. */
   loadRequested: boolean;
@@ -48,17 +47,10 @@ export function WorkbenchSetupDrawer({ lab, loadRequested }: WorkbenchSetupDrawe
   const [log, setLog] = useState<LogEntry | null>(null);
   const [imageSelection, setImageSelection] =
     useState<WorkbenchImageSelection>(DEFAULT_IMAGE_SELECTION);
-  // A store's workbench is already there and serves every REE in the store; the REE is kept there.
-  const inStore = lab.lifecycleMode === "store";
-  // An externally managed lab was provisioned outside this control plane, so
-  // there is no image left to choose. A store offers the images its REEs may
-  // run in, or none when it runs their scripts on its own machine.
-  const choosesImage =
-    lab.lifecycleMode === "provider_managed" || (inStore && lab.images.length > 0);
+  // A lab is a store: its workbench is already there and serves every REE kept in it. It offers
+  // the images a new REE may declare, or none when it runs their scripts on its own machine.
+  const choosesImage = lab.images.length > 0;
   const chosenRef = choosesImage ? resolveWorkbenchImage(imageSelection, lab.images) : "";
-  // Custom picked but left blank would silently provision the lab default —
-  // the one case where the button must wait for the author.
-  const awaitingCustomRef = imageSelection.selectedId === CUSTOM_IMAGE_ID && !chosenRef;
   // An REE can start blank or be a downloaded bundle restored onto the bench.
   // The bundle is chosen here rather than on the landing screen because the
   // load runs on the workbench this step provisions.
@@ -76,9 +68,7 @@ export function WorkbenchSetupDrawer({ lab, loadRequested }: WorkbenchSetupDrawe
         type: "out",
         msg: choosesImage
           ? `Image: ${chosenRef || "lab default"}`
-          : inStore
-            ? "Environment: the lab's own machine"
-            : "Environment: operator managed",
+          : "Environment: the lab's own machine",
         ts: startedTs,
       },
       { type: "out", msg: `Location: ${lab.label}`, ts: startedTs },
@@ -89,9 +79,7 @@ export function WorkbenchSetupDrawer({ lab, loadRequested }: WorkbenchSetupDrawe
       // neutral default and let the user rename it there. Provisioning runs in
       // the background so the image pull streams live — observeReeRun tails the
       // run's log feed into this drawer until it finishes.
-      const { reeId, run } = inStore
-        ? await runsClient.createWorkspace("REE", "", chosenRef, lab.id)
-        : await runsClient.createWorkspace("REE", lab.id, chosenRef);
+      const { reeId, run } = await runsClient.createWorkspace("REE", lab.id, chosenRef);
       const result = await observeReeRun(queryClient, runsClient, {
         reeId,
         runId: run.runId,
@@ -149,7 +137,7 @@ export function WorkbenchSetupDrawer({ lab, loadRequested }: WorkbenchSetupDrawe
   return (
     <div className={styles.setup}>
       <p className={styles.lede}>
-        The bench is built at <b>{lab.label}</b> and stays there for this REE's whole life.
+        The REE is kept at <b>{lab.label}</b> for its whole life.
       </p>
 
       {choosesImage && (
@@ -157,7 +145,6 @@ export function WorkbenchSetupDrawer({ lab, loadRequested }: WorkbenchSetupDrawe
           <SectionLabel icon={Ic.layers(14)}>Base image</SectionLabel>
           <WorkbenchImageSelector
             images={lab.images}
-            acceptsCustomImage={lab.acceptsCustomImage}
             selection={imageSelection}
             onChange={setImageSelection}
             disabled={loading}
@@ -187,7 +174,7 @@ export function WorkbenchSetupDrawer({ lab, loadRequested }: WorkbenchSetupDrawe
         busy={loading}
         icon={loading ? Ic.loader(15) : Ic.package(15)}
         onClick={handleProvision}
-        disabled={loading || awaitingCustomRef || !lab.available || (loadRequested && !bundle)}
+        disabled={loading || !lab.available || (loadRequested && !bundle)}
       >
         {loading ? "Powering up…" : bundle ? "Provision and load REE" : "Provision workbench"}
       </Button>

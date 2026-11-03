@@ -49,9 +49,8 @@ export type ReproducibilityReportWire = Schema<"ReproducibilityReport">;
 
 export type ReeCreatePayload = Schema<"ReeCreatePayload">;
 
-export type ComputeLocation = Schema<"ComputeLocation">;
-export type ComputeLocationList = Schema<"ComputeLocationList">;
-export type AllocationRecord = Schema<"AllocationRecord">;
+export type StoreSummary = Schema<"StoreSummary">;
+export type StoreList = Schema<"StoreList">;
 
 /** Deployment-static authoring DAG published by GET /ree-steps. */
 export type ReeStepCatalog = Schema<"ReeStepCatalog">;
@@ -61,8 +60,6 @@ export type ScriptTemplateEntry = Schema<"ScriptTemplateEntry">;
 
 /** Backend-owned starter templates for the REE-owned scripts (GET /script-templates). */
 export type ScriptTemplateCatalog = Schema<"ScriptTemplateCatalog">;
-
-export type ProviderList = Schema<"ProviderList">;
 
 export type WorkbenchList = Schema<"WorkbenchList">;
 

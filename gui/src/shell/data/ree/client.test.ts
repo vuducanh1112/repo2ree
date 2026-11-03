@@ -61,7 +61,7 @@ describe("createReeClient", () => {
   it("treats an already absent workspace as successfully released", async () => {
     const { client, reeApi } = harness();
     reeApi.deleteRee.mockRejectedValueOnce(new ApiRequestError(404, "not_found", "Missing", false));
-    await expect(client.releaseRee("ree-1")).resolves.toBeUndefined();
+    await expect(client.deleteRee("ree-1")).resolves.toBeUndefined();
   });
 
   it("propagates release failures other than not found", async () => {
@@ -69,7 +69,7 @@ describe("createReeClient", () => {
     reeApi.deleteRee.mockRejectedValueOnce(
       new ApiRequestError(503, "unavailable", "Unavailable", true),
     );
-    await expect(client.releaseRee("ree-1")).rejects.toMatchObject({ status: 503 });
+    await expect(client.deleteRee("ree-1")).rejects.toMatchObject({ status: 503 });
   });
 
   it("resets a workspace by clearing or downloading source", async () => {

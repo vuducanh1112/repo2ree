@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  allocationStateCopy,
-  imageReadout,
-  labLoadErrorMessage,
-  placementReadout,
-} from "./labPresentation";
+import { imageReadout, labLoadErrorMessage, placementReadout } from "./labPresentation";
 
 describe("labLoadErrorMessage", () => {
   it("carries the underlying message", () => {
@@ -50,20 +45,5 @@ describe("placementReadout", () => {
     expect(placementReadout(undefined, "ghcr.io/me/bench:v3")).toBe("ghcr.io/me/bench:v3");
     expect(placementReadout("lab-1", undefined)).toBe("lab-1");
     expect(placementReadout(undefined, undefined)).toBe("Unassigned bench");
-  });
-});
-
-describe("allocationStateCopy", () => {
-  it("reads the lifecycle state back as a phrase", () => {
-    expect(allocationStateCopy("waiting_for_workbench")).toBe("Waiting for workbench");
-    expect(allocationStateCopy("assigned")).toBe("Assigned");
-  });
-
-  it("shows a state this build does not know verbatim rather than smoothing it over", () => {
-    expect(allocationStateCopy("quarantined")).toBe("quarantined");
-  });
-
-  it("says nothing when there is no allocation yet", () => {
-    expect(allocationStateCopy(undefined)).toBe("—");
   });
 });

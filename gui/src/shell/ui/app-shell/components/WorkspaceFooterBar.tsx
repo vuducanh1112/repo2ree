@@ -31,10 +31,7 @@ export function WorkspaceFooterBar({
   const runsQuery = useReeRunsQuery();
   const ticker = runTicker(runsQuery.data ?? []);
   const reeQuery = useReeQuery();
-  const placement = placementReadout(
-    reeQuery.data?.workbenchLocation,
-    reeQuery.data?.workbenchImage,
-  );
+  const placement = placementReadout(reeQuery.data?.workbenchLocation);
 
   return (
     <section aria-label="Workbench status" className={styles.bar}>

@@ -1,10 +1,8 @@
 import type { ReeId } from "@core/ree/ReeId";
 import type { ApiClient } from "./ApiClient";
 import type {
-  AllocationRecord,
   ApiListResponse,
   BuildInfo,
-  ComputeLocationList,
   CreateBuildReviewPayload,
   CreateSourceReviewPayload,
   DeleteReeResponse,
@@ -13,7 +11,6 @@ import type {
   LintReport,
   LintScriptsResponse,
   OperationHistoryWire,
-  ProviderList,
   ReeCreatePayload,
   ReeDefinitionPatchPayload,
   ReeDocument,
@@ -28,6 +25,7 @@ import type {
   ScriptTargetSelector,
   ScriptTemplateCatalog,
   SourceAcquirePayload,
+  StoreList,
   UploadInitPayload,
   UploadInitResponse,
   WorkbenchList,
@@ -81,19 +79,9 @@ export class ReeApi {
     return this.client.request<ReeStepCatalog>(endpoints.reeSteps(), { method: "GET" });
   }
 
-  /** User-visible compute locations, each carrying the image catalog it offers. */
-  async listComputeLocations(): Promise<ComputeLocationList> {
-    return this.client.request<ComputeLocationList>(endpoints.computeLocations(), {
-      method: "GET",
-    });
-  }
-
-  /** One allocation's lifecycle record — how far obtaining its workbench got. */
-  async getAllocation(allocationId: string): Promise<AllocationRecord> {
-    return this.client.request<AllocationRecord>(
-      `${endpoints.allocations()}/${encodeURIComponent(allocationId)}`,
-      { method: "GET" },
-    );
+  /** The stores REEs are created and kept in, each with the images it offers. */
+  async listStores(): Promise<StoreList> {
+    return this.client.request<StoreList>(endpoints.stores(), { method: "GET" });
   }
 
   /** Backend-owned starter templates for the REE-owned scripts. */
@@ -101,11 +89,6 @@ export class ReeApi {
     return this.client.request<ScriptTemplateCatalog>(endpoints.scriptTemplates(), {
       method: "GET",
     });
-  }
-
-  /** Capacity providers currently dialed into the control plane. */
-  async listProviders(): Promise<ProviderList> {
-    return this.client.request<ProviderList>(endpoints.labs(), { method: "GET" });
   }
 
   async listWorkbenches(): Promise<WorkbenchList> {
