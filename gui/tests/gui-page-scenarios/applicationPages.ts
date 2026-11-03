@@ -40,10 +40,10 @@ export const applicationPageScenarios: ApplicationPageScenario[] = [
       await page.goto("/lab-location");
       await page.getByRole("button", { name: "Oslo lab — available" }).click();
       await expect(page.getByRole("region", { name: "Set up the workbench" })).toBeVisible();
-      // The whole catalog is on screen at once, each entry with its ref under
-      // it, and the lab's first entry already reading as chosen.
+      // Every image the lab offers is on screen at once, named by its ref, and
+      // the lab's first one already reading as chosen.
       await expect(page.getByText("docker.io/library/python:3.12-slim")).toBeVisible();
-      await expect(page.getByRole("button", { name: /Python 3\.12/ })).toHaveAttribute(
+      await expect(page.getByRole("button", { name: /python:3\.12-slim/ })).toHaveAttribute(
         "aria-pressed",
         "true",
       );

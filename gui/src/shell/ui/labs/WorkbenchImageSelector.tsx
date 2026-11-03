@@ -31,8 +31,9 @@ export function WorkbenchImageSelector({
             onSelect={() => !disabled && onChange({ selectedId: image.id })}
           />
           {/* The ref is shown, not summarised: it is the base of everything
-              this REE will later claim to reproduce. */}
-          <span className={styles.imageRef}>{image.ref}</span>
+              this REE will later claim to reproduce. An entry named by its ref
+              already shows it. */}
+          {image.label !== image.ref && <span className={styles.imageRef}>{image.ref}</span>}
         </div>
       ))}
     </div>
