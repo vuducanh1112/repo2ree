@@ -189,6 +189,7 @@ def render_dot(
     lines = [
         "digraph architecture {",
         "  rankdir=TB;",
+        "  newrank=true;",
         "  splines=spline;",
         '  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=11];',
         '  edge [fontname="Helvetica", fontsize=8, color="#94a3b8"];',

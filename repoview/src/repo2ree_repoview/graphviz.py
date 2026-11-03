@@ -13,7 +13,10 @@ def quote(name: str) -> str:
 
 
 def render(source: str, format: str) -> bytes:  # noqa: A002 - dot's own name for it
-    return subprocess.run(["dot", f"-T{format}"], input=source.encode(), capture_output=True, check=True).stdout
+    result = subprocess.run(["dot", f"-T{format}"], input=source.encode(), capture_output=True, check=False)
+    if result.returncode != 0:
+        raise RuntimeError(f"dot -T{format} failed: {result.stderr.decode(errors='replace').strip()}")
+    return result.stdout
 
 
 def inline_svg(source: str, *, css_class: str = "") -> str:

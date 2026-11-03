@@ -192,7 +192,7 @@ def main() -> int:
     try:
         dot_source = render_dot(load_recipes(), root=args.root)
         emit(inline_svg(dot_source, css_class="just-recipe-graph") if args.format == "svg" else dot_source, args.output)
-    except (OSError, ValueError, ValidationError, subprocess.CalledProcessError) as error:
+    except (OSError, ValueError, ValidationError, RuntimeError, subprocess.CalledProcessError) as error:
         parser.exit(1, f"{error}\n")
     return 0
 
