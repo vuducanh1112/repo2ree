@@ -9,9 +9,8 @@ from typing import Literal
 from repo2ree_testbed.stack.docker import engine_path, first_network, own_container
 from repo2ree_testbed.stack.store_images import STORE_IMAGES
 
-# provider: each location is a Docker provider setting a workbench up per REE.
-# store: each location is a workbench serving a store of REEs, admitted with that store's token.
-type Mode = Literal["provider", "store"]
+# Each compute location is a workbench serving a store of REEs, admitted with that store's token.
+type Mode = Literal["store"]
 type DockerMode = Literal["dind", "host-socket"]
 # store mode: where a store's workbench runs the author's scripts.
 type Backend = Literal["container", "host"]
@@ -63,69 +62,40 @@ def workbench_host() -> tuple[str, str]:
 
 
 def store_id(index: int) -> str:
-    """The store compute location ``index`` serves, in store mode."""
+    """The store compute location ``index`` serves."""
     return f"lab-{index}"
 
 
 def locations(
-    deployment: Deployment,
-    api_url: str,
-    control_state: Path,
-    token: str,
-    registry_mirror: str = "",
-    store_tokens: dict[int, str] | None = None,
+    deployment: Deployment, api_url: str, control_state: Path, token: str, store_tokens: dict[int, str]
 ) -> list[Service]:
-    host, network = workbench_host()
     ws = "ws:" + api_url.removeprefix("http:")
-    port = api_url.rsplit(":", 1)[1]
     services = []
     for index in range(1, deployment.compute_locations + 1):
-        if deployment.mode == "provider":
-            service = Service(
-                "Docker provider",
-                "repo2ree-provider-docker",
-                "repo2ree_provider_docker",
-                {
-                    "PROVIDER_API_WS_URL": f"{ws}/provider/connect",
-                    "PROVIDER_WORKBENCH_API_WS_URL": f"ws://{host}:{port}/workbench/connect",
-                    "PROVIDER_WORKBENCH_DOCKER_NETWORK": network,
-                    "PROVIDER_DOCKER_MODE": deployment.docker_mode,
-                    "PROVIDER_WORKBENCH_REGISTRY_MIRROR": registry_mirror,
-                    "PROVIDER_LOCATION_ID": f"lab-{index}",
-                    "PROVIDER_LOCATION_LABEL": f"Lab {index}",
-                    "PROVIDER_STATE_DIR": str(control_state / f"provider-{index}"),
-                    "REPO2REE_EXEC_BUNDLE": str(deployment.exec_bundle),
-                    "REPO2REE_TOOLS_BUNDLE": str(deployment.tools_bundle),
-                    "REPO2REE_RESOURCE_OWNER": token,
-                },
-            )
-        else:
-            state = control_state / f"workbench-{index}"
-            service = Service(
-                "store workbench",
-                "repo2ree-workbench",
-                "repo2ree_workbench",
-                {
-                    "WORKBENCH_API_WS_URL": f"{ws}/workbench/connect",
-                    "WORKBENCH_MODE": "external",
-                    "WORKBENCH_AUTH_TOKEN": (store_tokens or {}).get(index, ""),
-                    "WORKBENCH_STORE": f"{store_id(index)}={state / 'store'}",
-                    "WORKBENCH_SLOTS": "2",
-                    "WORKBENCH_TOOLS_BUNDLE": str(deployment.tools_bundle),
-                    "WORKBENCH_BACKEND": deployment.backend,
-                    # The Docker REEs build and run images: their scripts reach the host's engine.
-                    "WORKBENCH_SCRIPT_ENGINE": "socket",
-                    "WORKBENCH_ENGINE_PATH": engine_path(state / "store"),
-                    # Job containers carry the run's label, so its cleanup removes what a fault left.
-                    "REPO2REE_RESOURCE_OWNER": token,
-                    "WORKBENCH_LOCATION_ID": store_id(index),
-                    "WORKBENCH_STATE_DIR": str(state),
-                    "REPO2REE_EXEC_PATH": "repo2ree-exec",
-                },
-                # A container store offers the images the tests create REEs from.
-                tuple(arg for ref in STORE_IMAGES for arg in ("--image", ref))
-                if deployment.backend == "container"
-                else (),
-            )
+        state = control_state / f"workbench-{index}"
+        service = Service(
+            "store workbench",
+            "repo2ree-workbench",
+            "repo2ree_workbench",
+            {
+                "WORKBENCH_API_WS_URL": f"{ws}/workbench/connect",
+                "WORKBENCH_MODE": "external",
+                "WORKBENCH_AUTH_TOKEN": store_tokens.get(index, ""),
+                "WORKBENCH_STORE": f"{store_id(index)}={state / 'store'}",
+                "WORKBENCH_SLOTS": "2",
+                "WORKBENCH_TOOLS_BUNDLE": str(deployment.tools_bundle),
+                "WORKBENCH_BACKEND": deployment.backend,
+                # The Docker REEs build and run images: their scripts reach the host's engine.
+                "WORKBENCH_SCRIPT_ENGINE": "socket",
+                "WORKBENCH_ENGINE_PATH": engine_path(state / "store"),
+                # Job containers carry the run's label, so its cleanup removes what a fault left.
+                "REPO2REE_RESOURCE_OWNER": token,
+                "WORKBENCH_LOCATION_ID": store_id(index),
+                "WORKBENCH_STATE_DIR": str(state),
+                "REPO2REE_EXEC_PATH": "repo2ree-exec",
+            },
+            # A container store offers the images the tests create REEs from.
+            tuple(arg for ref in STORE_IMAGES for arg in ("--image", ref)) if deployment.backend == "container" else (),
+        )
         services.append(service)
     return services

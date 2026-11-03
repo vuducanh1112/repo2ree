@@ -49,16 +49,11 @@ test-e2e-chaos seeds="4" steps="12" jobs=E2E_JOBS: build-e2e-bundles
 test-e2e-fuzz: build-e2e-bundles
     python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/api/tests/fuzz/run_fuzz_suite.py") }} --tier e2e-fuzz --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
 
-# Run the showcase tier, real projects end to end: each scenario on a fresh stack of two compute locations, judged like the assurance tiers. `just fetch-showcase` first keeps its pulls off Docker Hub.
+# Run the showcase tier, real projects end to end: each scenario on a fresh stack of two compute locations, judged like the assurance tiers.
 [group('E2E tests')]
 test-showcase jobs=E2E_JOBS *select: build-e2e-bundles
     python -m repo2ree_testbed e2e --project showcase --per-test --exit-on tests --jobs {{ quote(jobs) }} --mode {{ quote(DEFAULT_E2E_COMPUTE_LOCATION_MODE) }} --compute-locations 2 --docker-mode {{ quote(DEFAULT_E2E_PROVIDER_DOCKER_MODE) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
     python -m scripts.gates.tiers certify --tier showcase --if-eligible
-
-# Fetch every base image the example projects pin by digest through this machine's registry mirror (all platforms with --all-platforms), so their builds pull nothing from Docker Hub during a run.
-[group('E2E tests')]
-fetch-showcase *args:
-    python -m repo2ree_testbed mirror warm {{ args }}
 
 # A machine is where a recipe runs: `local`, or one in .config/machines.toml (untracked), whose
 # dev container runs one job at a time from a clone of HEAD and hands back what the job wrote.
@@ -120,15 +115,10 @@ stack-down:
 stack-clean:
     python -m repo2ree_testbed images down --volumes
 
-# Remove leftover workbenches; run `just clean-workbenches 1` to include bundle stores.
+# Remove the job and bench containers runs left, and the volumes nothing uses any more.
 [group('Stack management')]
-clean-workbenches store="":
-    python -m repo2ree_testbed workbench-cleanup {{ if store != "" { "--store" } else { "" } }}
-
-# Remove this machine's registry mirror; run `just mirror-down 1` to drop its cache too. The next e2e run starts it again.
-[group('Stack management')]
-mirror-down cache="":
-    python -m repo2ree_testbed mirror down {{ if cache != "" { "--cache" } else { "" } }}
+clean-workbenches:
+    python -m repo2ree_testbed workbench-cleanup
 
 # Build local images and run any browser or API suite against an owned stack.
 [group('Stack tests')]
@@ -149,8 +139,3 @@ test-stack-existing suite:
 [group('Stack management')]
 prune-test-artifacts *args:
     python -m repo2ree_testbed prune {{ args }}
-
-# Remove unused bundle-store caches, keeping the current checkout's and the newest `keep` others.
-[group('Stack management')]
-gc-bundle-store keep="0":
-    python -m repo2ree_testbed workbench-cleanup --store-gc {{ quote(keep) }}

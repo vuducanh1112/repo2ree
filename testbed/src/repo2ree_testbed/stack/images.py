@@ -155,7 +155,7 @@ class ImageStack:
             if pattern.fullmatch(name):
                 self.provider_compose(name, *args, environment={}, check=False)
         if volumes:
-            cleanup(None, store=False, store_gc=None)
+            cleanup(None)
         print(">> stopping compose control plane")
         self.compose(*args)
 

@@ -12,22 +12,25 @@ def test_provider_names_remain_compatible() -> None:
     assert image_stack.ImageStack.provider_name(3) == "repo2ree-provider-docker-3"
 
 
-def test_global_cleanup_selects_only_owned_name_families(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_global_cleanup_takes_only_job_and_bench_containers_and_unused_anonymous_volumes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     anonymous = "a" * 64
 
     def fake_lines(args: list[str]) -> list[str]:
         query = " ".join(args)
-        if "repo2ree-ree-" in query:
-            return ["repo2ree-ree-one"]
-        if "repo2ree-dind-" in query:
-            return ["repo2ree-dind-one"]
+        if "name=^repo2ree-job-" in query:
+            return ["job-1"]
+        if "name=^repo2ree-wb-" in query:
+            return ["bench-1"]
         if "dangling=true" in query:
             return [anonymous, "unrelated-volume"]
         return []
 
     monkeypatch.setattr(cleanup, "lines", fake_lines)
 
-    assert cleanup.global_volumes(False) == [anonymous, "repo2ree-dind-one", "repo2ree-ree-one"]
+    assert cleanup.workbench_containers(None) == ["bench-1", "job-1"]
+    assert cleanup.global_volumes() == [anonymous]
 
 
 def test_stack_clis_reject_invalid_combinations() -> None:

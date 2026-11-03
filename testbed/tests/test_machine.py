@@ -397,10 +397,7 @@ def test_removing_takes_the_container_down_and_deletes_the_clone() -> None:
     runner = FakeRunner(("fetched", GATE))
     Machine("vm", VM, runner).remove()
     [removal] = runner.ran("down")
-    assert "just stack-clean; just clean-workbenches 1" in removal
-    # The mirror is on the dev container's network: Compose leaves that network behind while it is.
-    mirror, cache, down = (removal.index(part) for part in ("rm -f repo2ree-registry-mirror", "volume rm", " down "))
-    assert mirror < cache < down
+    assert "just stack-clean; just clean-workbenches" in removal
     assert f"{COMPOSE} down --volumes --remove-orphans --rmi local || exit 1; cd && rm -rf repo2ree" in removal
 
 

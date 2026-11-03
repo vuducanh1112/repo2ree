@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-
 import pytest
 
 from repo2ree_testbed.faults import CrashApi, KillWorkbench, LockHistory, PartitionWorkbench
@@ -12,8 +10,6 @@ from repo2ree_testbed.stack.injector import Injector, WorkbenchFault
 
 class _StoreStack:
     owner = "run-1"
-    provider_managed = False
-    api_url = "http://127.0.0.1:9"
 
     def __init__(self) -> None:
         self.faults: list[tuple[str, WorkbenchFault]] = []
@@ -21,10 +17,6 @@ class _StoreStack:
 
     def crash_api(self) -> None:
         self.crashed = True
-
-    def restart_locations(self, overrides: Mapping[str, str]) -> None: ...
-
-    def stop_locations(self) -> None: ...
 
     def workbench_fault(self, ree_id: str, action: WorkbenchFault) -> None:
         self.faults.append((ree_id, action))

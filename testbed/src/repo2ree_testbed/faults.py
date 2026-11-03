@@ -1,7 +1,6 @@
 """Faults a test asks its stack to inject, by real means, at the step it chooses.
 
-A workbench fault names the REE whose workbench it hits: the bench a provider set up for it, or
-the workbench serving its store.
+A workbench fault names the REE whose workbench it hits: the workbench serving its store.
 """
 
 from __future__ import annotations
@@ -58,20 +57,6 @@ class CrashApi(Record):
     kind: Literal["crash_api"] = "crash_api"
 
 
-class MisdirectProviders(Record):
-    kind: Literal["misdirect_providers"] = "misdirect_providers"
-
-
-class RestoreProviders(Record):
-    kind: Literal["restore_providers"] = "restore_providers"
-
-
-class StopProviders(Record):
-    """The providers go away and stay away, until RestoreProviders starts them again."""
-
-    kind: Literal["stop_providers"] = "stop_providers"
-
-
 type Fault = Annotated[
     KillWorkbench
     | PauseWorkbench
@@ -80,10 +65,7 @@ type Fault = Annotated[
     | HealWorkbench
     | LockHistory
     | UnlockHistory
-    | CrashApi
-    | MisdirectProviders
-    | RestoreProviders
-    | StopProviders,
+    | CrashApi,
     Field(discriminator="kind"),
 ]
 FAULT = TypeAdapter[Fault](Fault)

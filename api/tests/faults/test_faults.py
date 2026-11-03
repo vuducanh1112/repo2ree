@@ -36,11 +36,7 @@ def slow_build(api: Api, ree_id: str) -> dict[str, Any]:
 
 
 def serving(api: Api, ree_id: str) -> str:
-    """The workbench serving the REE: its store's, or the bench a provider set up for it."""
-    allocations = api.get("/api/v1/allocations")["allocations"]
-    allocated = [item["workbench_id"] for item in allocations if item["request"]["ree_id"] == ree_id]
-    if allocated:
-        return str(allocated[0])
+    """The workbench serving the REE's store."""
     store = next(item for item in api.get("/api/v1/rees")["items"] if item["ree_id"] == ree_id)["location_id"]
     return str(next(item for item in api.get("/api/v1/stores")["stores"] if item["store_id"] == store)["workbench_id"])
 

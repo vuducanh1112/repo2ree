@@ -3,81 +3,34 @@
 from __future__ import annotations
 
 import argparse
-import datetime as dt
-import os
 import re
 import subprocess
 import sys
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, ValidationError
-
-from repo2ree_testbed.artifacts import ROOT
-from repo2ree_testbed.stack.process import capture, lines
+from repo2ree_testbed.stack.process import lines
 
 ANONYMOUS_VOLUME = re.compile(r"[0-9a-f]{64}")
 
 
-class Volume(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="ignore")
-
-    CreatedAt: dt.datetime
-
-
-def live_store_volume() -> str:
-    exec_bundle = Path(os.getenv("REPO2REE_EXEC_BUNDLE", str(ROOT / "dist/bundles/exec")))
-    tools_bundle = Path(os.getenv("REPO2REE_TOOLS_BUNDLE", str(ROOT / "dist/bundles/tools")))
-    if not exec_bundle.is_dir():
-        return ""
-    tools = str(tools_bundle) if tools_bundle.is_dir() else ""
-    return capture(
-        [
-            *("uv", "run", "--package", "repo2ree-provider-docker", "python", "-c"),
-            (
-                "import sys; from repo2ree_provider_docker.injection import load_injection_bundle; "
-                "bundle = load_injection_bundle(sys.argv[1], sys.argv[2] or None); "
-                'print(bundle.volume_name if bundle else "")'
-            ),
-            str(exec_bundle),
-            tools,
-        ]
+def workbench_containers(owner: str | None) -> list[str]:
+    """The containers a run left (its jobs carry its label), or every job and bench container."""
+    if owner:
+        return sorted(set(lines(["docker", "ps", "-aq", "--filter", f"label=repo2ree.resource-owner={owner}"])))
+    return sorted(
+        {
+            name
+            for prefix in ("repo2ree-job-", "repo2ree-wb-")
+            for name in lines(["docker", "ps", "-aq", "--filter", f"name=^{prefix}"])
+        }
     )
 
 
-# Unused bundle stores kept besides the current checkout's: one per recent bundle
-# (about 600 MB each), so switching back to a recent commit copies nothing.
-KEEP_STORES = 2
-
-
-def stale_store_volumes(keep: str, keep_newest: int) -> list[str]:
-    """Unused bundle stores beyond the newest ``keep_newest``; ``keep`` (the checkout's own) is never one."""
-    unused: list[tuple[dt.datetime, str]] = []
-    for name in lines(
-        ["docker", "volume", "ls", "-q", "--filter", "dangling=true", "--filter", "name=^repo2ree-store-"]
-    ):
-        if name == keep:
-            continue
-        output = capture(["docker", "volume", "inspect", name, "--format", "{{json .}}"])
-        try:
-            unused.append((Volume.model_validate_json(output).CreatedAt, name))
-        except ValidationError:
-            continue
-    unused.sort(reverse=True)
-    return sorted(name for _, name in unused[keep_newest:])
-
-
-def workbench_containers(owner: str | None) -> list[str]:
-    resource_filter = f"label=repo2ree.resource-owner={owner}" if owner else "name=^repo2ree-wb-"
-    return sorted(set(lines(["docker", "ps", "-aq", "--filter", resource_filter])))
-
-
 def save_bench_logs(owner: str, directory: Path) -> list[Path]:
-    """Keep what each bench still alive at teardown printed: its own daemon's log.
+    """Keep what each container of the run still alive at teardown printed.
 
-    A bench's main process is the env image's default command — for docker:dind,
-    the nested dockerd — and what it prints exists only in ``docker logs``, which
-    the cleanup that follows deletes with the container. Benches a test released
-    are gone already; the provider logs their tail on release.
+    What a job container prints exists only in ``docker logs``, which the cleanup
+    that follows deletes with the container.
     """
     saved = []
     listing = ["docker", "ps", "-a", "--format", "{{.Names}}", "--filter", f"label=repo2ree.resource-owner={owner}"]
@@ -94,19 +47,13 @@ def owned_volumes(owner: str) -> list[str]:
     return sorted(set(lines(["docker", "volume", "ls", "-q", "--filter", f"label=repo2ree.resource-owner={owner}"])))
 
 
-def global_volumes(include_store: bool) -> list[str]:
-    prefixes = ["repo2ree-ree-", "repo2ree-dind-"]
-    if include_store:
-        prefixes.append("repo2ree-store-")
-    volumes = {
-        name for prefix in prefixes for name in lines(["docker", "volume", "ls", "-q", "--filter", f"name=^{prefix}"])
-    }
-    volumes.update(
+def global_volumes() -> list[str]:
+    """The anonymous volumes no container uses any more."""
+    return sorted(
         name
         for name in lines(["docker", "volume", "ls", "-q", "--filter", "dangling=true"])
         if ANONYMOUS_VOLUME.fullmatch(name)
     )
-    return sorted(volumes)
 
 
 def remove(kind: str, values: list[str], owner: str | None) -> None:
@@ -119,35 +66,17 @@ def remove(kind: str, values: list[str], owner: str | None) -> None:
         subprocess.run(["docker", "volume", "rm", *values], check=False, stdout=subprocess.DEVNULL)
 
 
-def cleanup(owner: str | None, store: bool, store_gc: int | None) -> None:
+def cleanup(owner: str | None) -> None:
     remove("containers", workbench_containers(owner), owner)
-    volumes = owned_volumes(owner) if owner else global_volumes(store)
-    remove("volumes", volumes, owner)
-    if store_gc is not None:
-        keep = live_store_volume()
-        stale = stale_store_volumes(keep, store_gc)
-        if stale:
-            suffix = f" besides {keep}" if keep else ""
-            print(f">> removing {len(stale)} bundle store volume(s), keeping the newest {store_gc} unused{suffix}")
-            subprocess.run(["docker", "volume", "rm", *stale], check=False, stdout=subprocess.DEVNULL)
-
-
-def nonnegative(value: str) -> int:
-    parsed = int(value)
-    if parsed < 0:
-        raise argparse.ArgumentTypeError("the number of stores kept must be nonnegative")
-    return parsed
+    remove("volumes", owned_volumes(owner) if owner else global_volumes(), owner)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    choices = parser.add_mutually_exclusive_group()
-    choices.add_argument("--owner")
-    choices.add_argument("--store", action="store_true")
-    choices.add_argument("--store-gc", nargs="?", type=nonnegative, const=KEEP_STORES)
+    parser.add_argument("--owner")
     args = parser.parse_args()
     try:
-        cleanup(args.owner, args.store, args.store_gc)
+        cleanup(args.owner)
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
         print(error, file=sys.stderr)
         return 1

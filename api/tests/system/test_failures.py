@@ -10,10 +10,8 @@ from __future__ import annotations
 import time
 from collections.abc import Callable
 
-import pytest
 from system_client import (
     BUILD_SCRIPT,
-    COMPUTE_MODE,
     EXPERIMENT,
     RECONNECT_BOUND,
     RUNTIME,
@@ -102,7 +100,6 @@ def test_canceling_a_running_build(api: Api, new_ree: Callable[..., str]) -> Non
     assert api.build(ree_id)["status"] == "succeeded"
 
 
-@pytest.mark.skipif(COMPUTE_MODE != "store", reason="needs stores; this stack runs providers")
 def test_a_store_outlives_its_workbench_killed_during_a_build(api: Api, new_ree: Callable[..., str]) -> None:
     ree_id = new_ree()
     prepared(api, ree_id)

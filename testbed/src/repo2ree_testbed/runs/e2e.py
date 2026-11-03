@@ -75,7 +75,7 @@ def parse(argv: list[str] | None = None) -> Invocation:
         default="tests",
         help="tests: exit 1 when a test failed; run: only when the run broke (the assurance gate judges the tests)",
     )
-    parser.add_argument("--mode", choices=get_args(Mode.__value__), default="provider")
+    parser.add_argument("--mode", choices=get_args(Mode.__value__), default="store")
     parser.add_argument("--docker-mode", choices=get_args(DockerMode.__value__), default="dind")
     parser.add_argument(
         "--backend",

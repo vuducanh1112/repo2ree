@@ -1,4 +1,3 @@
-import json
 import os
 import subprocess
 import time
@@ -103,27 +102,7 @@ def test_only_stale_control_state_is_removed(tmp_path: Path) -> None:
     assert prune.plan_control_state(tmp_path / "missing", NOW).remove == []
 
 
-def test_unused_stores_beyond_the_newest_are_removed_and_the_checkouts_never(monkeypatch: pytest.MonkeyPatch) -> None:
-    created = {
-        "repo2ree-store-live": "2026-10-01T00:00:00Z",
-        "repo2ree-store-old": "2026-10-02T00:00:00Z",
-        "repo2ree-store-older": "2026-10-01T12:00:00Z",
-        "repo2ree-store-new": "2026-10-05T00:00:00Z",
-        "repo2ree-store-newer": "2026-10-06T00:00:00Z",
-    }
-    monkeypatch.setattr(workbench_cleanup, "lines", lambda command: list(created))
-    monkeypatch.setattr(workbench_cleanup, "capture", lambda command: json.dumps({"CreatedAt": created[command[3]]}))
-
-    assert workbench_cleanup.stale_store_volumes("repo2ree-store-live", 2) == [
-        "repo2ree-store-old",
-        "repo2ree-store-older",
-    ]
-    assert workbench_cleanup.stale_store_volumes("repo2ree-store-live", 0) == sorted(
-        set(created) - {"repo2ree-store-live"}
-    )
-
-
-def test_each_owned_bench_leaves_its_daemon_log_before_cleanup(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_each_owned_container_leaves_its_log_before_cleanup(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     listed: list[list[str]] = []
 
     def logs(command: list[str], **_: object) -> subprocess.CompletedProcess[bytes]:

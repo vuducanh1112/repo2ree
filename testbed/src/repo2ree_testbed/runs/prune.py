@@ -1,8 +1,7 @@
 """Keep test-artifacts bounded; every e2e run prunes first.
 
 Per tier it keeps the newest finished runs, the newest with a problem, the runs the assurance-gate
-receipt names, and runs still in progress; old suite folders and stale control state go, and so
-do unused bundle-store volumes (never a workbench, which a stack beside this one may hold). A test
+receipt names, and runs still in progress; old suite folders and stale control state go. A test
 case's recording goes once its test has not finished for a month, which is how a renamed or
 deleted test's recording leaves; so do session files as old.
 """
@@ -14,8 +13,6 @@ import errno
 import os
 import re
 import shutil
-import subprocess
-import sys
 import time
 from collections import defaultdict
 from dataclasses import dataclass
@@ -24,7 +21,6 @@ from pathlib import Path
 from repo2ree_testbed.artifacts import ROOT, domain_dir, run_dir
 from repo2ree_testbed.preservation import PreservationManifest
 from repo2ree_testbed.records import Receipt, RunRecord, read
-from repo2ree_testbed.stack.workbench_cleanup import KEEP_STORES, live_store_volume, stale_store_volumes
 
 RECEIPT = ROOT / ".receipts/assurance-gate.json"
 PER_TEST_RUN = re.compile(r"^(?P<tier>.+)-(?P<stamp>\d{8}-\d{6})$")
@@ -149,18 +145,7 @@ def remove_empty_directories(base: Path) -> None:
                 raise
 
 
-def prune_store_volumes(keep_newest: int) -> None:
-    try:
-        stale = stale_store_volumes(live_store_volume(), keep_newest)
-    except (OSError, ValueError, subprocess.CalledProcessError) as error:
-        print(f">> bundle stores not pruned: {error}", file=sys.stderr)
-        return
-    if stale:
-        print(f">> removing {len(stale)} bundle store volume(s), keeping the newest {keep_newest} unused")
-        subprocess.run(["docker", "volume", "rm", *stale], check=False, stdout=subprocess.DEVNULL)
-
-
-def prune(*, keep_runs: int = 5, keep_suite: int = 3, keep_stores: int = KEEP_STORES, dry_run: bool = False) -> None:
+def prune(*, keep_runs: int = 5, keep_suite: int = 3, dry_run: bool = False) -> None:
     root = run_dir()
     now = time.time()
     recordings = [domain_dir(domain) / "tests" for domain in ("python", "assurance")]
@@ -190,23 +175,15 @@ def prune(*, keep_runs: int = 5, keep_suite: int = 3, keep_stores: int = KEEP_ST
                 remove_empty_directories(base)
     verb = "would free" if dry_run else "freed"
     print(f">> pruned test artifacts: {len(remove)} directories, {verb} {freed / 2**20:.0f} MiB under {root}")
-    if not dry_run and shutil.which("docker"):
-        prune_store_volumes(keep_stores)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--keep-runs", type=int, default=5, help="per-test runs kept per tier (default 5)")
     parser.add_argument("--keep-suite", type=int, default=3, help="suite runs kept per tier (default 3)")
-    parser.add_argument(
-        "--keep-stores",
-        type=int,
-        default=KEEP_STORES,
-        help=f"unused bundle stores kept besides the checkout's own (default {KEEP_STORES})",
-    )
     parser.add_argument("--dry-run", action="store_true", help="list what would be removed and remove nothing")
     args = parser.parse_args()
-    prune(keep_runs=args.keep_runs, keep_suite=args.keep_suite, keep_stores=args.keep_stores, dry_run=args.dry_run)
+    prune(keep_runs=args.keep_runs, keep_suite=args.keep_suite, dry_run=args.dry_run)
     return 0
 
 

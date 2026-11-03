@@ -11,7 +11,7 @@ import tempfile
 import threading
 import time
 import uuid
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from pathlib import Path
@@ -23,7 +23,6 @@ from repo2ree_testbed.artifacts import ROOT, run_dir, write_provenance
 from repo2ree_testbed.faults import FAULTS_URL
 from repo2ree_testbed.python_coverage import CoverageRoot, render
 from repo2ree_testbed.records import DossierManifest, read
-from repo2ree_testbed.stack import mirror as registry_mirror
 from repo2ree_testbed.stack.clients import Client, Launch, Started
 from repo2ree_testbed.stack.injector import (
     HISTORY_LOCK_IN_REE,
@@ -151,10 +150,6 @@ class E2EStack:
     def owner(self) -> str:
         return self.layout.run_token
 
-    @property
-    def provider_managed(self) -> bool:
-        return self.deployment.mode == "provider"
-
     def log(self, path: Path) -> BinaryIO:
         path.parent.mkdir(parents=True, exist_ok=True)
         handle = path.open("ab")
@@ -216,39 +211,20 @@ class E2EStack:
             print(">> the API crashed (SIGKILL); restarting it on the same port")
             self.start_backend()
 
-    def restart_locations(self, overrides: Mapping[str, str]) -> None:
-        with self.restarting:
-            self.stop_locations()
-            self.start_locations(overrides)
-
-    def stop_locations(self) -> None:
-        """Stop every compute location; the stack does not take them for crashed until it starts them again."""
-        with self.restarting:
-            for process in self.locations:
-                terminate(process)
-            self.locations = []
-            key = self.registry_key()
-            wait_until("the old compute locations to disconnect", lambda: listed(self.registry_url(), key) == 0)
-
-    def registry_key(self) -> str:
-        return "providers" if self.provider_managed else "workbenches"
-
     def registry_url(self) -> str:
-        return f"{self.api_url}/api/v1/{self.registry_key()}"
+        return f"{self.api_url}/api/v1/workbenches"
 
-    def start_locations(self, overrides: Mapping[str, str] | None = None) -> None:
-        mirror = registry_mirror.ensure() if self.provider_managed else ""
-        tokens = {} if self.provider_managed else self.store_tokens()
+    def start_locations(self) -> None:
         services = locations(
-            self.deployment, self.api_url, self.control_state, self.layout.run_token, mirror, store_tokens=tokens
+            self.deployment, self.api_url, self.control_state, self.layout.run_token, self.store_tokens()
         )
         self.launches = []
         for index, service in enumerate(services, start=1):
-            environment = {**service.environment, **(overrides or {})}
-            if not self.provider_managed:
-                relay = self.relays.get(index) or Relay("127.0.0.1", self.port or 0)
-                self.relays[index] = relay
-                environment["WORKBENCH_API_WS_URL"] = f"ws://127.0.0.1:{relay.port}/workbench/connect"
+            environment = dict(service.environment)
+            # Through a relay of its own, so a partition fault can cut it off the API.
+            relay = self.relays.get(index) or Relay("127.0.0.1", self.port or 0)
+            self.relays[index] = relay
+            environment["WORKBENCH_API_WS_URL"] = f"ws://127.0.0.1:{relay.port}/workbench/connect"
             if self.layout.telemetry is not None:
                 environment["TRACE_FILE"] = str(self.layout.telemetry / f"location-{index}.ndjson")
             log = self.workbench_log(index)
@@ -264,10 +240,10 @@ class E2EStack:
 
         def ready() -> bool:
             if any(process.poll() is not None for process in self.locations):
-                raise RuntimeError(f"{self.deployment.mode} process exited before readiness")
-            return listed(self.registry_url(), self.registry_key()) >= len(services)
+                raise RuntimeError("store workbench exited before readiness")
+            return listed(self.registry_url(), "workbenches") >= len(services)
 
-        wait_until(f"{len(services)} {self.deployment.mode} service(s)", ready)
+        wait_until(f"{len(services)} store workbench(es)", ready)
 
     def launch(self, command: list[str], environment: dict[str, str], log: Path) -> subprocess.Popen[bytes]:
         # A process group of its own, so a fault reaches the workbench and whatever it runs.
@@ -358,8 +334,7 @@ class E2EStack:
             **self.environment,
             **served.environment(),
             FAULTS_URL: self.injector.url,
-            # Which compute the stack runs, for tests of one kind only (a provider's).
-            "E2E_COMPUTE_MODE": self.deployment.mode,
+            # Where the stores run scripts, for tests of one backend only.
             "E2E_STORE_BACKEND": self.deployment.backend,
         }
         running = self.client.start(self.api_url, environment, self.selection, launch)
@@ -406,7 +381,7 @@ class E2EStack:
         with self.phase("cleanup"):
             try:
                 save_bench_logs(self.layout.run_token, self.layout.logs)
-                cleanup(self.layout.run_token, store=False, store_gc=None)
+                cleanup(self.layout.run_token)
             except OSError as error:
                 print(f"workbench cleanup failed: {error}", file=sys.stderr)
         self.port_file.unlink(missing_ok=True)
@@ -449,7 +424,7 @@ class E2EStack:
         deployment = self.deployment
         print(
             f">> backend coverage ({deployment.tier} tier: server + {deployment.compute_locations} "
-            f"{deployment.mode} compute-location process(es))"
+            f"store workbench process(es))"
         )
         subprocess.run(["coverage", "combine"], cwd=ROOT, env=environment, check=True)
         write_provenance(self.coverage_dir)
