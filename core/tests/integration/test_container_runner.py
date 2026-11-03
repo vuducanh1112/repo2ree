@@ -120,3 +120,16 @@ def test_a_script_reaches_the_host_engine_only_when_the_workbench_allows_it(engi
 
     assert ran("none") == "none"
     assert ran("socket") == "engine"
+
+
+def test_a_script_that_reaches_the_engine_starts_where_the_engine_sees_its_workspace(
+    engine: str, tmp_path: Path
+) -> None:
+    (tmp_path / "script.sh").write_text(f'pwd; test -f "{tmp_path}/script.sh" && echo "local path too"\n')
+    _, log = _logged()
+    mapped = _engine_path(engine)
+    runner = ContainerScriptRunner(engine=engine, image=IMAGE, script_engine="socket", engine_path=mapped)
+
+    result = runner.run(tmp_path, ["sh", "script.sh"], log=log, is_canceled=lambda: False)
+
+    assert result.stdout.splitlines() == [runner._engine_side(tmp_path), "local path too"]

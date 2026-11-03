@@ -15,8 +15,16 @@ from repo2ree_core.persistence.history import open_history
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.lfs import LfsPointer
 from repo2ree_core.persistence.operation_history import read_operation_history
-from repo2ree_protocol.command import LoadReeBundleArgs, LoadReeBundleCommand, SealReeArgs, SealReeCommand
+from repo2ree_protocol.command import (
+    LoadReeBundleArgs,
+    LoadReeBundleCommand,
+    PatchReeDefinitionArgs,
+    PatchReeDefinitionCommand,
+    SealReeArgs,
+    SealReeCommand,
+)
 from repo2ree_protocol.tools import find_tool
+from repo2ree_ree.environment import EnvironmentDefinition
 from repo2ree_ree.model import CapturePolicy
 
 
@@ -185,3 +193,35 @@ def test_seal_toggles_are_the_only_optional_payload_selection(
         assert ("ree/artifacts/runtime.tar" in paths) == runtime_included
         assert ("ree/results/data" in paths) == results_included
         assert not any(path.startswith("ree/workspace/") for path in paths)
+
+
+def test_a_draft_that_declares_no_environment_keeps_the_one_its_ree_was_created_with(tmp_path, monkeypatch):
+    # Authored before REEs declared their environment: the draft says nothing of what its scripts ran in.
+    author = ReeLayout(root=tmp_path / "author")
+    initialize_ree(author, name="undeclared")
+    with materialized_ree_download(author) as archive:
+        bundle = archive.read_bytes()
+    destination = ReeLayout(root=tmp_path / "destination")
+    initialize_ree(destination, name="blank")
+    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: destination))
+    created = EnvironmentDefinition(kind="image", image="docker.io/library/docker:29-dind")
+    patched = run_command(
+        PatchReeDefinitionCommand(
+            args=PatchReeDefinitionArgs(patch={"environment": created.model_dump(mode="json")}, expected_version="")
+        ),
+        log=lambda *args: None,
+    )
+    assert patched.status == "succeeded", patched
+    destination.upload_staging_file("hello").write_bytes(bundle)
+    lines: list[str] = []
+
+    loaded = run_command(
+        LoadReeBundleCommand(args=LoadReeBundleArgs(upload_token="hello", archive_name="ree.zip")),  # noqa: S106
+        log=lambda stream, level, message: lines.append(message),
+    )
+
+    assert loaded.status == "succeeded", loaded
+    ree = ReeDirectory(destination).read_ree()
+    assert ree.subject.definition.name == "undeclared"
+    assert ree.subject.definition.environment == created
+    assert any("declares no environment" in line for line in lines)

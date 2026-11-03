@@ -8,7 +8,6 @@ import {
   instantRecipe,
   keepReeArchive,
   LIGHTWEIGHT_WORKBENCH_IMAGE,
-  main,
   openPort,
   provisionWorkbench,
   releaseWorkbench,
@@ -50,7 +49,8 @@ test.describe("Instant authoring", () => {
       expect(message).toMatch(/Loaded a generated build script/);
       expect(graph).toContain("root-pip-requirements-v1");
       await expect(page.getByLabel("Build script")).toContainText(/python -m venv/);
-      await expect(main(page)).not.toContainText(/docker build/);
+      // The script, not the page: the Environment card names docker build as what an engine is for.
+      await expect(page.getByLabel("Build script")).not.toContainText(/docker build/);
     });
 
     await test.step("build the runtime", async () => {

@@ -21,10 +21,12 @@ import tempfile
 from pathlib import Path
 
 from repo2ree_core.bundle.restore import restore_ree_bundle
+from repo2ree_core.domain.ree.transitions import replace_definition, revision_of
 from repo2ree_core.execution.process import CancelCheck, format_command, run_streaming_process
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import safe_extract_zip, write_atomic
 from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.persistence.repository import load_ree, save_ree
 from repo2ree_core.reproduction.acquire_source import build_acquire_sh
 from repo2ree_core.reproduction.materialize_workspace import build_materialize_sh
 from repo2ree_core.workspace.materialization import record_materialization
@@ -32,6 +34,7 @@ from repo2ree_protocol.command import LoadReeBundleArgs
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import LoadReeBundleOutputs
 from repo2ree_protocol.result import ActionResult
+from repo2ree_ree.environment import EnvironmentDefinition
 
 
 def handle_load_ree_bundle(
@@ -51,6 +54,8 @@ def handle_load_ree_bundle(
         log("system", "error", f"staged bundle not found: {staged}")
         return ActionResult.failed("precondition", f"staged bundle not found: {staged}")
 
+    # What the REE was created to run in, for a bundle that declares nothing of its own.
+    declared = store.read_ree().subject.definition.environment if store.manifest_exists() else None
     log("system", "info", f"loading REE bundle {args.archive_name}")
     try:
         with tempfile.TemporaryDirectory() as tmp:
@@ -81,6 +86,9 @@ def handle_load_ree_bundle(
         + ("" if loaded.source_restored else " (bundle carried no source snapshot)"),
     )
 
+    if declared is not None and not loaded.sealed:
+        _keep_environment(layout, declared, log=log)
+
     if is_canceled():
         return ActionResult(status="canceled")
     rebuilt = _rebuild_derived_trees(layout, restored_source=loaded.source_restored, log=log, is_canceled=is_canceled)
@@ -92,6 +100,23 @@ def handle_load_ree_bundle(
         exit_code=0,
         outputs=LoadReeBundleOutputs(archive_name=args.archive_name, loaded=loaded).model_dump(mode="json"),
     )
+
+
+def _keep_environment(layout: ReeLayout, declared: EnvironmentDefinition, *, log: LogSink) -> None:
+    """Keep the environment the REE was created with when the draft it loaded declares none.
+
+    A bundle authored before REEs declared their environment says nothing of what its scripts ran
+    in, and a workbench that runs each REE where it declares would refuse to run them at all. The
+    REE keeps running where its lab placed it, and says so; a sealed bundle is left as it was.
+    """
+    store = ReeDirectory(layout)
+    ree = load_ree(layout, store)
+    if ree.subject.definition.environment is not None:
+        return
+    definition = ree.subject.definition.model_copy(update={"environment": declared})
+    save_ree(layout, store, replace_definition(ree, definition), expected_revision=revision_of(ree))
+    where = declared.image if declared.kind == "image" else "the lab's own machine"
+    log("system", "warn", f"the bundle declares no environment; the REE keeps running in {where}")
 
 
 def _rebuild_derived_trees(

@@ -81,15 +81,22 @@ class ContainerScriptRunner:
     ) -> StreamingProcessResult:
         image = self._resolved(log)
         name = f"repo2ree-job-{uuid.uuid4().hex[:12]}"
-        mounts = ["-v", f"{self._engine_side(workspace)}:{workspace}"]
+        engine_side = self._engine_side(workspace)
+        mounts = ["-v", f"{engine_side}:{workspace}"]
+        workdir = str(workspace)
         if self.script_engine == "socket":
             mounts += ["-v", f"{_ENGINE_SOCKET}:{_ENGINE_SOCKET}", "-e", f"DOCKER_HOST=unix://{_ENGINE_SOCKET}"]
+            if engine_side != str(workspace):
+                # A path the script hands the engine ("docker run -v $(pwd):…") must be one the engine
+                # knows: the script also sees its workspace where the engine does, and starts there.
+                mounts += ["-v", f"{engine_side}:{engine_side}"]
+                workdir = engine_side
         labels = ["--label", f"{JOB_OWNER_LABEL}={self.owner}"] if self.owner else []
         if resource_owner := os.environ.get("REPO2REE_RESOURCE_OWNER", "").strip():
             labels += ["--label", f"repo2ree.resource-owner={resource_owner}"]
         command = [
             *(self.engine, "run", "--rm", "--init", "--name", name, *labels, *mounts),
-            *("-w", str(workspace), image, *argv),
+            *("-w", workdir, image, *argv),
         ]
         try:
             return run_streaming_process(command, log=log, is_canceled=is_canceled)

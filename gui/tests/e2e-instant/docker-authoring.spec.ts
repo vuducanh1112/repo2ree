@@ -8,7 +8,6 @@ import {
   instantDockerHelloWorld,
   instantRecipe,
   keepReeArchive,
-  main,
   openPort,
   provisionWorkbench,
   releaseWorkbench,
@@ -67,7 +66,7 @@ test.describe("Instant Docker authoring", () => {
         instantRecipe("build_script.sh", PROJECT),
         INSTANT_DOCKER_RUNTIME_PATH,
       );
-      await expect(main(page)).toContainText(/docker build/);
+      await expect(page.getByLabel("Build script")).toContainText(/docker build/);
     });
 
     await test.step("test activation", async () => {
