@@ -35,10 +35,19 @@ def slow_build(api: Api, ree_id: str) -> dict[str, Any]:
     return run
 
 
+def serving(api: Api, ree_id: str) -> str:
+    """The workbench serving the REE: its store's, or the bench a provider set up for it."""
+    allocations = api.get("/api/v1/allocations")["allocations"]
+    allocated = [item["workbench_id"] for item in allocations if item["request"]["ree_id"] == ree_id]
+    if allocated:
+        return str(allocated[0])
+    store = next(item for item in api.get("/api/v1/rees")["items"] if item["ree_id"] == ree_id)["location_id"]
+    return str(next(item for item in api.get("/api/v1/stores")["stores"] if item["store_id"] == store)["workbench_id"])
+
+
 def disconnected(api: Api, ree_id: str, timeout: float = 60.0) -> bool:
     """Whether the REE's workbench leaves the control plane's list of connected ones within ``timeout``."""
-    allocations = api.get("/api/v1/allocations")["allocations"]
-    workbench = next(item for item in allocations if item["request"]["ree_id"] == ree_id)["workbench_id"]
+    workbench = serving(api, ree_id)
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if workbench not in {item["workbench_id"] for item in api.get("/api/v1/workbenches")["workbenches"]}:
