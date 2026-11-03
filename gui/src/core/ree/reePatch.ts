@@ -12,6 +12,7 @@ export interface ReeIntentPatch extends Record<string, unknown> {
   build_runtime: Record<string, unknown>;
   experiments: Array<Record<string, unknown>>;
   hardware: Record<string, unknown>;
+  environment?: Record<string, unknown>;
 }
 
 interface ReePatchSlices {
@@ -107,5 +108,15 @@ export function toReePatchFromSlices({ reeSpec }: ReePatchSlices): ReeIntentPatc
     build_runtime: { runtime_path: reeSpec.runtime || null },
     experiments: (reeSpec.experiments || []).map(serializeExperiment),
     hardware: serializeHbom(reeSpec.hardwareDescription),
+    // Sent only once declared: a spec read before the REE declared one must not clear it.
+    ...(reeSpec.environment
+      ? {
+          environment: {
+            kind: reeSpec.environment.kind,
+            image: reeSpec.environment.kind === "image" ? reeSpec.environment.image || null : null,
+            needs_container_engine: reeSpec.environment.needsContainerEngine,
+          },
+        }
+      : {}),
   };
 }

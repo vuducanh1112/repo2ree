@@ -100,6 +100,44 @@ describe("major step page workflows", () => {
     for (const text of hidden) expect(screen.queryByText(text)).toBeNull();
   });
 
+  it("declares the image the build runs in, and that its scripts call a container engine", async () => {
+    const user = userEvent.setup();
+    const onReeSpecChange = vi.fn();
+    const environment = {
+      kind: "image" as const,
+      image: "",
+      pinned: false,
+      needsContainerEngine: false,
+    };
+    renderWithShell(
+      <PageBuildRuntime
+        {...createStepPageProps("build", {
+          ree: { ...exampleEditorRee, spec: { ...exampleEditorRee.spec, environment } },
+          onReeSpecChange,
+        })}
+      />,
+      { reeId: "ree-1", services: catalogServices() },
+    );
+    const lastUpdate = () =>
+      onReeSpecChange.mock.calls.at(-1)?.[0](createEmptyReeSpec()).environment;
+
+    fireEvent.change(await screen.findByLabelText("Environment image"), {
+      target: { value: "python@sha256:abc" },
+    });
+    expect(lastUpdate()).toEqual({
+      kind: "image",
+      image: "python@sha256:abc",
+      pinned: true,
+      needsContainerEngine: false,
+    });
+
+    await user.click(screen.getByLabelText(/call a container engine/));
+    expect(lastUpdate()).toMatchObject({ needsContainerEngine: true });
+
+    await user.click(screen.getByLabelText("The lab's own machine"));
+    expect(lastUpdate()).toMatchObject({ kind: "host", image: "", pinned: false });
+  });
+
   // The generated build script writes to the path the REE declares, and falls
   // back to its own default when there is none — so a generated candidate always
   // reports where it writes. Filling an empty declaration from that is the rest

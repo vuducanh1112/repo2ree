@@ -28,7 +28,7 @@ import { RunActionButton } from "../../components/RunActionButton";
 import { ScriptAnalysis } from "../../components/ScriptAnalysis";
 import type { StepPageProps } from "../sharedStepUi";
 import styles from "./BuildRuntimePage.module.css";
-import { ReservedBuildScriptCard, RuntimeArtifactCard } from "./sections";
+import { EnvironmentCard, ReservedBuildScriptCard, RuntimeArtifactCard } from "./sections";
 
 const BUILD_PAGE_COLOR = stageTone(PAGE.BUILD);
 
@@ -210,6 +210,12 @@ export function PageBuildRuntime({
             subtitle="Name the path the build script writes its runtime to. The build refuses to run until it is declared, and fails if nothing lands there."
           />
           <div className={styles.section}>
+            <EnvironmentCard
+              environment={ree.spec.environment}
+              onEnvironmentChange={(environment) =>
+                onReeSpecChange?.((current) => ({ ...current, environment }))
+              }
+            />
             <RuntimeArtifactCard
               runtimePath={runtimePath}
               runtimeSize={runtimeSize}

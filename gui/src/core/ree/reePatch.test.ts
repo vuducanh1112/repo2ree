@@ -136,6 +136,30 @@ describe("toReePatchFromSlices", () => {
     expect(patch.build_runtime).toEqual({ runtime_path: null });
   });
 
+  it("sends the environment once declared, and never clears one by leaving it out", () => {
+    const slices = { workspaceSourceState: {}, artifactStatus: {}, evaluationState: {} };
+    const declared = toReePatchFromSlices({
+      ...slices,
+      reeSpec: {
+        ...createEmptyReeSpec(),
+        environment: {
+          kind: "image",
+          image: "python:3.12",
+          pinned: false,
+          needsContainerEngine: true,
+        },
+      },
+    });
+    expect(declared.environment).toEqual({
+      kind: "image",
+      image: "python:3.12",
+      needs_container_engine: true,
+    });
+
+    const undeclared = toReePatchFromSlices({ ...slices, reeSpec: createEmptyReeSpec() });
+    expect("environment" in undeclared).toBe(false);
+  });
+
   it("sends sizes in bytes and bandwidth in Mbps, as the sealed format records them", () => {
     const empty = createEmptyReeSpec();
     const hbom = normalizeHBOM({
