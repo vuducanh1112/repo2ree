@@ -15,22 +15,21 @@ commit-gate: check build-docs test-unit
 _require-current-commit-gate:
     python -m scripts.gates.commit_gate verify
 
-# Each tier, run per test, the way the gate runs it: in the compute-location and Docker modes the
-# justfile names (DEFAULT_E2E_COMPUTE_LOCATION_MODE, DEFAULT_E2E_PROVIDER_DOCKER_MODE), which a
-# command line can override. `exit_on` is `tests` (fail when a test failed) or `run` (fail only when
-# the run broke, for the gate, which judges the tests itself). With `select` (parts of test ids) it
+# Each tier, run per test, the way the gate runs it: on stores the stack owns. `exit_on` is `tests`
+# (fail when a test failed) or `run` (fail only when the run broke, for the gate, which judges the
+# tests itself). With `select` (parts of test ids) it
 # runs only those tests, which the gate never asks for and never certifies.
 [private]
 _tier-gui-instant jobs exit_on *select:
-    python -m repo2ree_testbed e2e --project e2e-gui-instant --per-test --exit-on {{ quote(exit_on) }} --jobs {{ quote(jobs) }} --mode {{ quote(DEFAULT_E2E_COMPUTE_LOCATION_MODE) }} --compute-locations 1 --docker-mode {{ quote(DEFAULT_E2E_PROVIDER_DOCKER_MODE) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
+    python -m repo2ree_testbed e2e --project e2e-gui-instant --per-test --exit-on {{ quote(exit_on) }} --jobs {{ quote(jobs) }} --compute-locations 1 --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
 
 [private]
 _tier-system jobs exit_on *select:
-    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/api/tests/system/run_system_suite.py") }} --tier e2e-system --per-test --exit-on {{ quote(exit_on) }} --jobs {{ quote(jobs) }} --mode {{ quote(DEFAULT_E2E_COMPUTE_LOCATION_MODE) }} --compute-locations 1 --docker-mode {{ quote(DEFAULT_E2E_PROVIDER_DOCKER_MODE) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
+    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/api/tests/system/run_system_suite.py") }} --tier e2e-system --per-test --exit-on {{ quote(exit_on) }} --jobs {{ quote(jobs) }} --compute-locations 1 --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
 
 [private]
 _tier-faults jobs exit_on *select:
-    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/api/tests/faults/run_fault_suite.py") }} --tier e2e-faults --per-test --exit-on {{ quote(exit_on) }} --jobs {{ quote(jobs) }} --mode {{ quote(DEFAULT_E2E_COMPUTE_LOCATION_MODE) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
+    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/api/tests/faults/run_fault_suite.py") }} --tier e2e-faults --per-test --exit-on {{ quote(exit_on) }} --jobs {{ quote(jobs) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
 
 # Every tier at once, each in a run directory of its own that names this invocation. A tier fails
 # only when its run broke; which tests failed is certify's to judge.
