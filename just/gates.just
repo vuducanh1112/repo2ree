@@ -30,7 +30,7 @@ _tier-system jobs exit_on *select:
 
 [private]
 _tier-faults jobs exit_on *select:
-    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/api/tests/faults/run_fault_suite.py") }} --tier e2e-faults --per-test --exit-on {{ quote(exit_on) }} --jobs {{ quote(jobs) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
+    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/api/tests/faults/run_fault_suite.py") }} --tier e2e-faults --per-test --exit-on {{ quote(exit_on) }} --jobs {{ quote(jobs) }} --mode {{ quote(DEFAULT_E2E_COMPUTE_LOCATION_MODE) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
 
 # Every tier at once, each in a run directory of its own that names this invocation. A tier fails
 # only when its run broke; which tests failed is certify's to judge.
