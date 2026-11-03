@@ -87,7 +87,6 @@ class Stub:
                     {
                         "cut": {"api-000001": [2, 2]},
                         "runs": {"build-1": {"run_id": "build-1", "ree_id": "ree-1", "status": "queued"}},
-                        "allocations": None,
                     }
                 ).encode(),
             ),
@@ -252,7 +251,7 @@ def test_lfs_payloads_stay_out_of_the_dossier_and_their_pointers_stand_in(tmp_pa
     ("route", "body", "kind"),
     [
         ("/api/v1/behaviour/state", b'{"unexpected": true}', "state"),
-        ("/api/v1/behaviour/state", b'{"cut": {}, "runs": {"../escaped": {}}, "allocations": null}', "state"),
+        ("/api/v1/behaviour/state", b'{"cut": {}, "runs": {"../escaped": {}}}', "state"),
         ("/api/v1/behaviour/journals", b'{"journals": [{"id": "../../escaped"}]}', "journal"),
         ("/api/v1/behaviour/journals", b"<html>502 Bad Gateway</html>", "journal"),
     ],
@@ -302,8 +301,8 @@ def test_span_files_sharing_a_name_are_both_kept_and_a_missing_one_is_listed(tmp
 CLOSED = JOURNAL + record(3, kind="journal.closed", final=True)
 
 
-def stopped_stack(tmp_path: Path) -> tuple[Path, Path, Path]:
-    """The control state an API leaves behind once it stopped: journals, run store, allocation store."""
+def stopped_stack(tmp_path: Path) -> tuple[Path, Path]:
+    """The control state an API leaves behind once it stopped: journals and run store."""
     journals, runs = tmp_path / "control/journal", tmp_path / "control/runs/build-1"
     journals.mkdir(parents=True)
     runs.mkdir(parents=True)
@@ -311,9 +310,7 @@ def stopped_stack(tmp_path: Path) -> tuple[Path, Path, Path]:
     (journals / "ree-archives.ndjson").write_text("{}\n")  # The control plane's record of serving archives.
     (runs / "state.json").write_text(json.dumps({"run_id": "build-1", "status": "queued"}))
     (runs / "logs.jsonl").write_text("{}\n")
-    allocations = tmp_path / "control/allocations.json"
-    allocations.write_text("{}")
-    return journals, runs.parent, allocations
+    return journals, runs.parent
 
 
 def test_owners_exported_after_they_stopped_replace_the_live_snapshot(stub: tuple[Stub, str], tmp_path: Path) -> None:
@@ -321,9 +318,9 @@ def test_owners_exported_after_they_stopped_replace_the_live_snapshot(stub: tupl
     directory = tmp_path / "dossier"
     start(directory)
     collect_control_plane(directory, ControlPlane(url))
-    journals, runs, allocations = stopped_stack(tmp_path)
+    journals, runs = stopped_stack(tmp_path)
 
-    journal, state = stopped_owners(directory, journals=journals, runs=runs, allocations=allocations)
+    journal, state = stopped_owners(directory, journals=journals, runs=runs)
 
     assert (journal.status, journal.cut) == ("recorded", None)
     assert (state.status, state.cut) == ("recorded", None)  # Taken after its owners stopped: must match exactly.
@@ -340,7 +337,7 @@ def test_owners_exported_after_they_stopped_replace_the_live_snapshot(stub: tupl
 def test_an_export_without_journals_is_an_error(tmp_path: Path) -> None:
     directory = tmp_path / "dossier"
     start(directory)
-    (journal,) = stopped_owners(directory, journals=tmp_path / "missing", runs=None, allocations=None)
+    (journal,) = stopped_owners(directory, journals=tmp_path / "missing", runs=None)
     assert journal.status == "error"
     assert "no journals" in str(journal.problem)
 
@@ -350,15 +347,13 @@ def test_the_cli_collects_archives_live_and_owners_after_they_stopped(stub: tupl
     directory = tmp_path / "dossier"
     assert main([str(directory), "--control-plane", url, "--ree", "ree-1", "--skip-owners"]) == 0
     assert [source.kind for source in read_dossier(directory).sources] == ["git"]
-    journals, runs, allocations = stopped_stack(tmp_path)
+    journals, runs = stopped_stack(tmp_path)
     exported = [
         str(directory),
         "--journal-dir",
         str(journals),
         "--runs-dir",
         str(runs),
-        "--allocations-file",
-        str(allocations),
     ]
     assert main(exported) == 0
     dossier = read_dossier(directory)

@@ -1266,13 +1266,6 @@ export interface components {
                     [key: string]: unknown;
                 };
             };
-            /**
-             * Allocations
-             * @description The allocation store's persisted document, if any.
-             */
-            allocations: {
-                [key: string]: unknown;
-            } | null;
         };
         /** BuildComparison */
         BuildComparison: {

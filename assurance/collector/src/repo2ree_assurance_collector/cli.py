@@ -4,7 +4,7 @@
       [--archives-in FOLDER]...  REE archives clients downloaded and kept there
       [--ree ID]...              REEs to download now, as their owner would
       [--skip-owners]            leave the owners' journals and state to a later export
-      [--journal-dir DIR [--runs-dir DIR] [--allocations-file FILE]]
+      [--journal-dir DIR [--runs-dir DIR]]
                                  the owners' journals and state, exported after they stopped
       [--spans FILE]...          span files the deployment exported
       [--suite NAME] [--test NAME] [--outcome OUTCOME]
@@ -49,7 +49,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--skip-owners", action="store_true", help="Do not fetch journals and state now")
     parser.add_argument("--journal-dir", type=Path, help="The owners' journal directory, after they stopped")
     parser.add_argument("--runs-dir", type=Path, help="The run store's directory, after its owner stopped")
-    parser.add_argument("--allocations-file", type=Path, help="The allocation store, after its owner stopped")
     parser.add_argument("--spans", type=Path, action="append", default=[], help="A span file to include (repeatable)")
     parser.add_argument("--suite")
     parser.add_argument("--test")
@@ -59,8 +58,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("give --control-plane, --journal-dir, or both")
     if args.control_plane is None and (args.archives_in or args.ree):
         parser.error("archives are placed and downloaded through the control plane: give --control-plane")
-    if args.journal_dir is None and (args.runs_dir or args.allocations_file):
-        parser.error("--runs-dir and --allocations-file export state beside the journals: give --journal-dir")
+    if args.journal_dir is None and args.runs_dir:
+        parser.error("--runs-dir exports state beside the journals: give --journal-dir")
 
     control_plane = ControlPlane(args.control_plane) if args.control_plane else None
     if not (args.directory / "manifest.json").exists():
@@ -76,9 +75,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         else:
             collected += collect_control_plane(args.directory, control_plane)
     if args.journal_dir is not None:
-        collected += stopped_owners(
-            args.directory, journals=args.journal_dir, runs=args.runs_dir, allocations=args.allocations_file
-        )
+        collected += stopped_owners(args.directory, journals=args.journal_dir, runs=args.runs_dir)
     collected += spans(args.directory, args.spans, origin="span files the deployment exported")
     finish(args.directory, args.outcome)
     return report(collected)

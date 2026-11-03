@@ -34,7 +34,6 @@ class BehaviourState(BaseModel):
         description="Per journal id: the last sequence number read before the stores, and the last read after."
     )
     runs: dict[str, dict[str, Any]] = Field(description="Each run's persisted `state.json`, by run directory name.")
-    allocations: dict[str, Any] | None = Field(description="The allocation store's persisted document, if any.")
 
 
 class BehaviourArchive(BaseModel):

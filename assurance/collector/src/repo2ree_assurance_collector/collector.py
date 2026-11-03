@@ -275,8 +275,6 @@ def _state(directory: Path, control_plane: ControlPlane) -> DossierSource:
             for name, document in state.runs.items():
                 (stores / "runs" / name).mkdir(parents=True)
                 (stores / "runs" / name / "state.json").write_text(json.dumps(document, indent=2))
-            if state.allocations is not None:
-                (stores / "allocations.json").write_text(json.dumps(state.allocations, indent=2))
         return source.model_copy(update={"cut": state.cut})
 
     return _collect(directory, source, gather)
@@ -296,9 +294,7 @@ def _journals(directory: Path, control_plane: ControlPlane) -> DossierSource:
     return _collect(directory, source, gather)
 
 
-def stopped_owners(
-    directory: Path, *, journals: Path, runs: Path | None, allocations: Path | None
-) -> list[DossierSource]:
+def stopped_owners(directory: Path, *, journals: Path, runs: Path | None) -> list[DossierSource]:
     """The owners' journals and persisted state, exported after they stopped.
 
     Only after its owner stops does a journal carry its close, and only a close gives
@@ -319,18 +315,15 @@ def stopped_owners(
         return journal
 
     listed = [_collect(directory, journal, copy_journals)]
-    if runs is None and allocations is None:
+    if runs is None:
         return listed
-    origins = ", ".join(str(path) for path in (runs, allocations) if path is not None)
-    state = DossierSource(kind="state", path=STORES, origin=f"{origins} (after their owners stopped)", name="api")
+    state = DossierSource(kind="state", path=STORES, origin=f"{runs} (after their owners stopped)", name="api")
 
     def copy_stores() -> DossierSource:
         with _staged(directory, STORES) as stores:
-            for run in sorted(runs.glob("*/state.json")) if runs is not None else []:
+            for run in sorted(runs.glob("*/state.json")):
                 (stores / "runs" / run.parent.name).mkdir(parents=True)
                 shutil.copyfile(run, stores / "runs" / run.parent.name / "state.json")
-            if allocations is not None and allocations.is_file():
-                shutil.copyfile(allocations, stores / "allocations.json")
         return state
 
     return [*listed, _collect(directory, state, copy_stores)]

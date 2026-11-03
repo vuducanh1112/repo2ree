@@ -8206,26 +8206,12 @@
             "type": "object",
             "title": "Runs",
             "description": "Each run's persisted `state.json`, by run directory name."
-          },
-          "allocations": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Allocations",
-            "description": "The allocation store's persisted document, if any."
           }
         },
         "type": "object",
         "required": [
           "cut",
-          "runs",
-          "allocations"
+          "runs"
         ],
         "title": "BehaviourState",
         "description": "The owners' persisted state, read between two sets of journal positions."

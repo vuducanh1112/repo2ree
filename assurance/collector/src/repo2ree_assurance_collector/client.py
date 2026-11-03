@@ -55,7 +55,6 @@ class OwnerState(Answer):
 
     cut: Cut
     runs: dict[SafeName, dict[str, JsonValue]]  # Each run's state.json, by its directory name.
-    allocations: dict[str, JsonValue] | None
 
 
 class ServedArchive(Answer):

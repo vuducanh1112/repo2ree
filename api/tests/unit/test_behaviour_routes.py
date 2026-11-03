@@ -64,7 +64,6 @@ def test_persisted_state_is_served_with_the_cut_it_was_read_at(client: TestClien
     assert response.json() == {
         "cut": {"api-000001": [3, 3], "api-000002": [2, 2]},
         "runs": {"build-1": run},
-        "allocations": None,
     }
 
 

@@ -131,5 +131,4 @@ def get_behaviour_state() -> BehaviourState:
             continue  # Removed with its REE while listing.
     after = positions(directory)
     cut = {journal_id: (before.get(journal_id, 0), position) for journal_id, position in after.items()}
-    # There are no allocations any more; the field stays until the collector stops reading it.
-    return BehaviourState(cut=cut, runs=runs, allocations=None)
+    return BehaviourState(cut=cut, runs=runs)
