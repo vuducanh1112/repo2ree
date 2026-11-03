@@ -89,7 +89,6 @@ def test_entities_without_a_machine_are_listed_not_drawn_and_point_to_their_part
     for body in (coverage, page_specification(current).body):
         assert "<b>Receipt</b>" not in body
         assert '<a href="ree-machine.html">Ree machine</a>' in body
-        assert "<b>Allocation</b>" in body
 
 
 def test_the_count_leaves_out_bulk_operations_and_groups_follow_the_checkers_order(tmp_path: Path) -> None:

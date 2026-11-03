@@ -45,7 +45,7 @@ from repo2ree_assurance_traceview.model import (
 from repo2ree_assurance_traceview.sequence import build_sequence
 from repo2ree_assurance_traceview.spans import SpanIndex, timestamp
 
-NOISE = ("websocket", "GET ", "HTTP /provider/connect", "HTTP /workbench/connect")
+NOISE = ("websocket", "GET ", "HTTP /workbench/connect")
 TOP_SPANS = 6
 
 
@@ -136,11 +136,10 @@ def rees(model: VerifiedModel) -> list[str]:
 
 @dataclass
 class _Setup:
-    """Journal-only work: an REE's creation with the allocation moves it made, or an allocation's release."""
+    """Journal-only work: an REE's creation."""
 
     position: int
     run: list[Event]
-    allocation: list[Event]
 
 
 def _runs(evidence: _Evidence) -> dict[str, list[Event]]:
@@ -156,49 +155,26 @@ def _runs(evidence: _Evidence) -> dict[str, list[Event]]:
 
 
 def _setups(evidence: _Evidence, runs: dict[str, list[Event]]) -> list[_Setup]:
-    allocations = [e for e in evidence.journal if e.subject == terms.ALLOCATION and e.kind == "transition"]
-    setups: list[_Setup] = []
-    claimed: set[str] = set()
-    for events in runs.values():
-        if events[0].facts.get(terms.ACTION_NAME) != terms.PROVISION:
-            continue
-        first, last = evidence.position[events[0].ref], evidence.position[events[-1].ref]
-        moved = [e for e in allocations if first <= evidence.position[e.ref] <= last]
-        claimed |= {e.ref for e in moved}
-        setups.append(_Setup(first, events, moved))
-    rest: dict[str, list[Event]] = defaultdict(list)
-    for event in allocations:
-        if event.ref not in claimed:
-            rest[event.key].append(event)
-    setups += [_Setup(evidence.position[events[0].ref], [], events) for events in rest.values()]
+    setups = [
+        _Setup(evidence.position[events[0].ref], events)
+        for events in runs.values()
+        if events[0].facts.get(terms.ACTION_NAME) == terms.PROVISION
+    ]
     return sorted(setups, key=lambda setup: setup.position)
 
 
 def _setup_entry(evidence: _Evidence, setup: _Setup) -> Entry:
-    if setup.run:
-        run, moved = setup.run, setup.allocation
-        return Entry(
-            kind="setup",
-            name="provision",
-            start=evidence.rel(run[0]),
-            end=evidence.rel(run[-1]),
-            outcome=run[-1].target_state,
-            run=evidence.machine(run),
-            allocation=evidence.machine(moved) if moved else None,
-            rules=evidence.rules(run + moved),
-            spans=evidence.span_summary(run + moved),
-            sequence=build_sequence(evidence.spans, runs=run, allocations=moved),
-        )
-    moved = setup.allocation
-    released = moved[-1].target_state in terms.RELEASED
+    run = setup.run
     return Entry(
         kind="setup",
-        name="release" if released else "allocation",
-        start=evidence.rel(moved[0]),
-        end=evidence.rel(moved[-1]),
-        outcome=moved[-1].target_state,
-        allocation=evidence.machine(moved),
-        rules=evidence.rules(moved),
+        name="provision",
+        start=evidence.rel(run[0]),
+        end=evidence.rel(run[-1]),
+        outcome=run[-1].target_state,
+        run=evidence.machine(run),
+        rules=evidence.rules(run),
+        spans=evidence.span_summary(run),
+        sequence=build_sequence(evidence.spans, runs=run),
     )
 
 

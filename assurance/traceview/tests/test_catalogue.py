@@ -18,7 +18,6 @@ def test_operations_come_once_each_in_the_order_they_usually_take() -> None:
         ("setup", "provision"),
         ("operation", "build_runtime"),
         ("operation", "generate_sbom"),
-        ("setup", "release"),
     ]
     build = catalogue.operations[1]
     assert [(i.source, i.outcome) for i in build.instances] == [("a", "succeeded"), ("b", "succeeded")]

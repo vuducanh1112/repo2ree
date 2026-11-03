@@ -9,9 +9,7 @@ from repo2ree_assurance_traceview import terms
 def test_every_term_traceview_draws_by_is_in_the_specification() -> None:
     spec = load_spec()
     entities, dispatch = spec.entities, spec.boundaries[terms.DISPATCH]
-    ree, attempt, action, allocation, receipt = (
-        entities[name] for name in (terms.REE, terms.ATTEMPT, terms.ACTION, terms.ALLOCATION, terms.RECEIPT)
-    )
+    ree, attempt, action, receipt = (entities[name] for name in (terms.REE, terms.ATTEMPT, terms.ACTION, terms.RECEIPT))
     assert {terms.ACTION_NAME, terms.RUN_ID, terms.ATTEMPT_ID, terms.FAILURE_CATEGORY} <= set(action.facts)
     assert terms.PROVISION in action.allowed[terms.ACTION_NAME]
     assert {terms.OPERATION, terms.OUTCOME, terms.COMMIT, terms.CHANGED} <= set(attempt.facts)
@@ -19,7 +17,6 @@ def test_every_term_traceview_draws_by_is_in_the_specification() -> None:
     attempt_states = {terms.PENDING, terms.EXECUTING, terms.COMPLETED, terms.CAPTURED, terms.CAPTURE_FAILED}
     assert attempt_states <= set(attempt.states)
     assert terms.SEALED in ree.states
-    assert set(terms.RELEASED) <= set(allocation.states)
     assert {terms.CAUSE, terms.KIND} <= set(receipt.facts)
     assert terms.BASELINE in receipt.allowed[terms.CAUSE]
     assert set(terms.STEP_ORDER) <= set(receipt.allowed[terms.KIND])

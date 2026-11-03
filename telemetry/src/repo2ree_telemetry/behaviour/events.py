@@ -23,7 +23,6 @@ AuthorApiActionState = Literal["requested", "running", "canceling", "succeeded",
 AuthorApiActionName = Literal[
     # workbench
     "create_ree",
-    "release_workbench",
     "delete_ree",
     # source
     "acquire_source",

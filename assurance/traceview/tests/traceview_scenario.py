@@ -33,7 +33,7 @@ class Scenario:
         self.events: list[Event] = []
         self.seq = 0
         # What the next records are about; switch them to interleave several REEs in one journal.
-        self.ree, self.git, self.alloc = REE, "git:ree", "alloc-1"
+        self.ree, self.git = REE, "git:ree"
         # Each dispatched attempt's request, which its record cites, as the supervisor's context carries it.
         self.requests: dict[str, str] = {}
 
@@ -64,20 +64,6 @@ class Scenario:
             target_state=state,
             facts={"run_id": run, **facts},
         )
-
-    def allocation(self, path: list[tuple[float, str]], start: str | None = None) -> None:
-        previous = start
-        for t, state in path:
-            self.journal(
-                t,
-                kind="transition",
-                owner="supervisor",
-                subject="Allocation",
-                key=self.alloc,
-                source_state=previous,
-                target_state=state,
-            )
-            previous = state
 
     def dispatch(
         self, attempt: str, operation: str, run_id: str, sent: float, answered: float, trace: str | None = None
@@ -111,18 +97,9 @@ class Scenario:
         self.action(t + 1.1, run, "running", "succeeded", action=action, attempt_id=attempt)
 
     def provision(self, run: str, t: float, trace: str | None = None) -> None:
-        """An REE's creation, and the allocation it moves while it runs, as the API journals them."""
+        """An REE's creation in a store, as the API journals it."""
         self.run(run, [(t, "requested"), (t + 0.01, "running")], trace, action="create_ree")
-        self.allocation(
-            [
-                (t + 0.02, "requested"),
-                (t + 0.03, "provisioning"),
-                (t + 5.0, "waiting_for_workbench"),
-                (t + 5.1, "ready"),
-                (t + 5.2, "assigned"),
-            ]
-        )
-        self.action(t + 5.3, run, "running", "succeeded", trace, action="create_ree", allocation_id=self.alloc)
+        self.action(t + 5.3, run, "running", "succeeded", trace, action="create_ree", store_id="lab-1")
 
     def commit(
         self,
@@ -218,7 +195,6 @@ def recorded(*, sealed: bool = False, scenario: Scenario | None = None) -> Scena
         s.operation("run-rebuild", "build_runtime", "a-rebuild", "build_runtime", 40.0)
         s.operation("run-rescan", "generate_sbom", "a-rescan", "generate_sbom", 45.0)
         s.operation("run-seal", "seal_ree", "a-seal", "seal_ree", 50.0)
-    s.allocation([(60.0, "draining"), (60.5, "released")], start="assigned")
 
     # A new REE declares its activation, and no runtime yet: as core's first audit finds it.
     created = [
@@ -247,63 +223,6 @@ def recorded(*, sealed: bool = False, scenario: Scenario | None = None) -> Scena
         s.commit(7, "a-rescan", "generate_sbom", "run-rescan", rescanned, ("draft", "draft"))
         s.commit(8, "a-seal", "seal_ree", "run-seal", [], ("draft", "sealed"))
     return s
-
-
-def provision_spans() -> list[Span]:
-    """Provisioning as the supervisor, and the provider under its traceparent, record it."""
-    return [
-        Span(
-            id="p1",
-            trace=PROVISION,
-            parent=None,
-            name="run.provision",
-            service="api",
-            kind="INTERNAL",
-            start=clock(0.0),
-            end=clock(5.3),
-        ),
-        Span(
-            id="p2",
-            trace=PROVISION,
-            parent="p1",
-            name="workbench.provision",
-            service="api",
-            kind="INTERNAL",
-            start=clock(0.01),
-            end=clock(5.2),
-        ),
-        Span(
-            id="p3",
-            trace=PROVISION,
-            parent="p2",
-            name="provider.request",
-            service="provider-docker",
-            kind="INTERNAL",
-            start=clock(0.04),
-            end=clock(4.9),
-            attributes={"repo2ree.operation": "ensure_allocation", "repo2ree.allocation_id": "alloc-1"},
-        ),
-        Span(
-            id="p4",
-            trace=PROVISION,
-            parent="p3",
-            name="docker.pull",
-            service="provider-docker",
-            kind="INTERNAL",
-            start=clock(0.05),
-            end=clock(1.0),
-        ),
-        Span(
-            id="p5",
-            trace=PROVISION,
-            parent="p3",
-            name="docker.run",
-            service="provider-docker",
-            kind="INTERNAL",
-            start=clock(1.1),
-            end=clock(1.5),
-        ),
-    ]
 
 
 def build_spans() -> list[Span]:

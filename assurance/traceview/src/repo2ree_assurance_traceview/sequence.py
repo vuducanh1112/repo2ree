@@ -8,7 +8,6 @@ sequence's first line.
 
 from __future__ import annotations
 
-from collections import defaultdict
 from collections.abc import Sequence as Seq
 
 from repo2ree_assurance_checker.evidence import Event
@@ -20,7 +19,6 @@ LANES = (
     Lane(id="client", label="Client", process="browser"),
     Lane(id="api", label="API", process="api process"),
     Lane(id="supervisor", label="Supervisor", process="api process"),
-    Lane(id="provider", label="Provider", process="provider"),
     Lane(id="workbench", label="Workbench", process="workbench"),
     Lane(id="executor", label="Executor", process="workbench"),
     Lane(id="core", label="Core · Git", process="workbench"),
@@ -100,7 +98,6 @@ def build_sequence(
     spans: SpanIndex,
     *,
     runs: Seq[Event] = (),
-    allocations: Seq[Event] = (),
     exchange: Seq[Event] = (),
     attempt: Seq[Event] = (),
     changes: Seq[StepChange] = (),
@@ -109,7 +106,7 @@ def build_sequence(
     files: int | None = None,
 ) -> Sequence:
     builder = _Builder()
-    related = spans.in_traces(event.trace_id for event in (*runs, *exchange, *allocations))
+    related = spans.in_traces(event.trace_id for event in (*runs, *exchange))
     request = _request(builder, spans, related)
 
     for event in runs:
@@ -117,8 +114,6 @@ def build_sequence(
         detail = f"failure {category}" if category else None
         label = f"{_fact(event, terms.ACTION_NAME, 'action')} → {event.target_state}"
         builder.note(_at(event), "api", label, "journal", ref=event.ref, detail=detail)
-    for event in allocations:
-        builder.note(_at(event), "supervisor", f"Allocation → {event.target_state}", "journal", ref=event.ref)
     for event in exchange:
         if event.kind == "send":
             label = f"{terms.EXEC_ACTION} · {_fact(event, terms.OPERATION)}"
@@ -131,7 +126,6 @@ def build_sequence(
             builder.message(_at(event), "workbench", "supervisor", label, "journal", ref=event.ref)
 
     staged: list[Span] = []
-    docker: list[Span] = []
     captured = False
     for span in related:
         if "websocket" in span.name or span.kind == "SERVER" or span is request:
@@ -177,17 +171,10 @@ def build_sequence(
                 files,
             )
             captured = True
-        elif span.name == "provider.request":
-            allocation = span.attribute("repo2ree.allocation_id")
-            builder.message(span.start, "supervisor", "provider", operation or span.name, "span", detail=allocation)
-            builder.activate("provider", span.start, span.end, span.name)
-        elif span.service == "provider-docker" and span.name.startswith("docker."):
-            docker.append(span)
         elif span.service == "exec" and span.name == "process.exec":
             detail = f"exit {span.attribute('repo2ree.exit_code')} · {milliseconds(span)}"
             builder.note(span.start, "executor", f"$ {span.attribute('repo2ree.exec.argv')}", "span", detail=detail)
     _staging(builder, staged)
-    _docker(builder, docker)
     if attempt and not captured:
         # No command span: the dispatch exchange brackets the attempt, as it does for the checker.
         sent = next((e for e in exchange if e.kind == "send"), None)
@@ -308,17 +295,3 @@ def _capture(
     if ree is not None:
         tone: Tone | None = "effect" if ree.after != ree.before else None
         builder.note(bracket.end - m * 1.2, "core", f"REE {ree.before} → {ree.after}", "git", ref=ref, tone=tone)
-
-
-def _docker(builder: _Builder, docker: list[Span]) -> None:
-    """The provider's docker calls, one line per kind of call in the order each first ran."""
-    grouped: dict[str, list[Span]] = defaultdict(list)
-    for span in docker:
-        grouped[span.name].append(span)
-    for name, group in grouped.items():
-        total = sum(s.duration for s in group)
-        if total < MINOR and name != "docker.run":
-            continue
-        failed = sum(s.status == "ERROR" for s in group)
-        detail = f"{len(group)}x · {total:.2f} s" + (f" · {failed} failed" if failed else "")
-        builder.note(group[0].start, "provider", name.replace("docker.", "docker "), "span", detail=detail)

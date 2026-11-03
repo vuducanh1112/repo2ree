@@ -9,11 +9,10 @@ pages quietly empty; here, test_terms holds each one to the current specificatio
 REE = "Ree"
 ATTEMPT = "Attempt"
 ACTION = "AuthorApiAction"
-ALLOCATION = "Allocation"
 RECEIPT = "Receipt"
 DISPATCH = "dispatch"
 
-# AuthorApiAction's facts, and the action that sets up an REE's workbench.
+# AuthorApiAction's facts, and the action that creates an REE.
 ACTION_NAME = "action"
 RUN_ID = "run_id"  # Carried by the long actions the author watches as runs.
 ATTEMPT_ID = "attempt_id"
@@ -34,9 +33,6 @@ CAPTURE_FAILED = "capture_failed"
 
 # Ree's state once frozen.
 SEALED = "sealed"
-
-# Allocation's states that end it.
-RELEASED = ("released", "failed", "lost")
 
 # Receipt: what caused a change of standing, its standings, and its kinds in authoring order.
 CAUSE = "cause"

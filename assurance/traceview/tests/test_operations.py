@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from traceview_scenario import REE, Scenario, build_spans, provision_spans, recorded, trace_of
+from traceview_scenario import REE, Scenario, build_spans, recorded, trace_of
 
 
 def test_the_scenario_conforms() -> None:
@@ -16,7 +16,6 @@ def test_operations_are_attempts_with_a_run_and_authoring_is_collapsed_between_t
         ("authoring", "authoring"),
         ("operation", "build_runtime"),
         ("operation", "generate_sbom"),
-        ("setup", "release"),
     ]
     authoring = trace.entries[1]
     assert (authoring.operations, authoring.attempts, authoring.failed) == ({"patch_ree_definition": 1}, 1, 0)
@@ -141,9 +140,7 @@ def test_setup_is_placed_by_the_journal_between_the_operations_it_came_between()
     s = Scenario()
     s.provision("run-provision", 0.0)
     s.operation("run-build", "build", "a-build", "build_runtime", 10.0)
-    # The workbench is lost; the API provisions a new one before the SBOM run.
-    s.allocation([(15.0, "lost")], start="assigned")
-    s.alloc = "alloc-2"
+    # Another REE is created before the SBOM run.
     s.provision("run-reprovision", 16.0)
     s.operation("run-sbom", "sbom", "a-sbom", "generate_sbom", 25.0)
     s.commit(1, None, "initialize_ree", "", [], (None, "draft"))
@@ -160,21 +157,9 @@ def test_setup_is_placed_by_the_journal_between_the_operations_it_came_between()
     assert entries == [
         ("provision", "succeeded"),
         ("build_runtime", "succeeded"),
-        ("release", "lost"),
         ("provision", "succeeded"),
         ("generate_sbom", "succeeded"),
     ]
-
-
-def test_provisioning_follows_the_supervisor_into_the_provider_by_trace() -> None:
-    sequence = trace_of(recorded(), provision_spans()).entries[0].sequence
-    assert sequence is not None
-    assert "provider" in [lane.id for lane in sequence.lanes]
-    lines = [(row.provenance, row.lane, row.to, row.label) for row in sequence.rows]
-    assert ("span", "supervisor", "provider", "ensure_allocation") in lines
-    assert ("span", "provider", None, "docker pull") in lines
-    assert ("journal", "supervisor", None, "Allocation → assigned") in lines
-    assert all(row.provenance != "time" for row in sequence.rows)
 
 
 def test_the_change_history_shows_the_ree_after_each_operation_that_changed_it() -> None:

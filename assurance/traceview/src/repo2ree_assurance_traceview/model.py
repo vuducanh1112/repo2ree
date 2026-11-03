@@ -119,7 +119,6 @@ class Entry(ViewModel):
     outcome: str | None = None
     # The author action the author watched as a run, for an operation or an REE's creation.
     run: Machine | None = None
-    allocation: Machine | None = None
     dispatch: Dispatch | None = None
     attempt: Attempt | None = None
     ree: ReeChange | None = None
