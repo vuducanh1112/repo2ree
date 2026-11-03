@@ -370,32 +370,31 @@ def run() -> None:
     print("\033[1mrepo2ree — authoring a REE end to end over the HTTP API\033[0m")
     note(f"every step below is a real curl against {BASE_URL}; nothing is mocked")
 
-    chapter("1. Provision a workbench")
+    chapter("1. Create an REE in a store")
     health = call("GET", "/")
     check(health.get("status") == "online", "service not online")
 
-    # Creation picks a place to run and a base image to run there. The catalog
-    # is the location's own, published on the location record; a location that
-    # accepts a ref it did not publish says so, and that is the whole contract.
-    locations = call("GET", "/api/v1/compute-locations")["locations"]
-    check(locations, "no compute location is connected")
-    location = locations[0]
-    location_id = location["id"]
-    note(f"compute location {location_id!r} is {location['lifecycle_mode']}")
-    check(location["images"], f"location {location_id!r} offers no image")
-    image = location["images"][0]
-    custom = "accepted" if location["accepts_custom_image"] else "refused"
-    note(f"image {image['id']!r} is {image['ref']}; custom images are {custom} here")
-    created = call(
-        "POST",
-        "/api/v1/rees",
-        {"name": "workbench-authored-ree", "location_id": location_id, "image": image["ref"]},
-    )
+    # Creation names a store and one of the images it offers; the REE declares that image as what
+    # its scripts run in. A store whose workbench runs scripts on its own machine offers none.
+    stores = [store for store in call("GET", "/api/v1/stores")["stores"] if store["connected"]]
+    check(stores, "no workbench serves a store")
+    store = stores[0]
+    store_id = store["store_id"]
+    note(f"store {store_id!r} runs scripts {'in containers' if store['backend'] == 'container' else 'on its host'}")
+    image = store["images"][0] if store["images"] else ""
+    if image:
+        note(f"the REE declares the store's first image, {image}")
+    created = call("POST", "/api/v1/rees", {"name": "workbench-authored-ree", "store_id": store_id, "image": image})
     ree_id = created["ree_id"]
     check(ree_id, "no ree_id in create response")
-    note(f"provisioning runs in the background as {created['run_id']}")
-    check(wait_for_run(ree_id, created["run_id"]) == "succeeded", "provisioning did not succeed")
-    ok(f"workbench provisioned for REE {ree_id}")
+    note(f"creation runs in the background as {created['run_id']}")
+    check(wait_for_run(ree_id, created["run_id"]) == "succeeded", "creation did not succeed")
+    ok(f"REE {ree_id} created in store {store_id}")
+    if image:
+        # This project builds with docker build: the REE declares it needs the engine its store gives it.
+        environment = {"kind": "image", "image": image, "needs_container_engine": True}
+        call("PATCH", f"/api/v1/rees/{ree_id}/definition", {"definition_patch": {"environment": environment}})
+        note("its scripts call a container engine (docker build, docker run), so it declares it needs one")
 
     chapter("2. Discover the authoring model")
     note("listReeSteps publishes the authoring steps, their order, and their prerequisites")

@@ -18,7 +18,7 @@ from repo2ree_api.deps import command_dispatcher
 from repo2ree_api.storage.upload_staging import staged_upload_path
 from repo2ree_protocol.command import LoadReeBundleCommand
 from repo2ree_protocol.result import ActionResult
-from repo2ree_supervisor import WorkbenchHandle
+from repo2ree_supervisor import ReeRoute
 
 RUN_TIMEOUT_SECONDS = 10
 TERMINAL_RUN_STATUSES = frozenset({"succeeded", "failed", "canceled"})
@@ -54,7 +54,7 @@ def _await_run(client: TestClient, ree_id: str, run_id: str) -> dict[str, Any]:
 
 def test_load_dispatches_the_bundle_command_to_the_workbench(
     client: TestClient,
-    online_ree: WorkbenchHandle,
+    online_ree: ReeRoute,
     staging_dir: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -62,10 +62,10 @@ def test_load_dispatches_the_bundle_command_to_the_workbench(
     copied: dict[str, Any] = {}
     dispatched: dict[str, Any] = {}
 
-    def copy_to_workbench(handle: WorkbenchHandle, host_path: str, container_path: str) -> None:
+    def copy_to_workbench(handle: ReeRoute, host_path: str, container_path: str) -> None:
         copied.update({"host_path": host_path, "container_path": container_path})
 
-    def dispatch_action(handle: WorkbenchHandle, command: Any, run_id: str, log: Any) -> ActionResult:
+    def dispatch_action(handle: ReeRoute, command: Any, run_id: str, log: Any) -> ActionResult:
         dispatched["command"] = command
         return ActionResult(status="succeeded", outputs={"archive_name": "author.zip"})
 
@@ -95,7 +95,7 @@ def test_load_dispatches_the_bundle_command_to_the_workbench(
 
 def test_load_fails_the_run_when_the_upload_never_landed(
     client: TestClient,
-    online_ree: WorkbenchHandle,
+    online_ree: ReeRoute,
     staging_dir: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -121,9 +121,7 @@ def test_load_fails_the_run_when_the_upload_never_landed(
     assert run["failure"]["category"] == "precondition"
 
 
-def test_load_rejects_a_malformed_upload_token(
-    client: TestClient, online_ree: WorkbenchHandle, staging_dir: Path
-) -> None:
+def test_load_rejects_a_malformed_upload_token(client: TestClient, online_ree: ReeRoute, staging_dir: Path) -> None:
     response = client.post(
         f"/api/v1/rees/{online_ree.ree_id}/ree:load",
         json={"upload_token": "../escape", "archive_name": "author.zip"},

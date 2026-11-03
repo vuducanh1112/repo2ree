@@ -25,7 +25,7 @@ def test_local_executor_passes_explicit_context_over_process_boundary(tmp_path):
     )
     script.chmod(0o700)
     context = ExecutionContext.new(ree_id="ree-1")
-    frames = list(LocalExecutor(tmp_path, str(script)).exec_action("{}", "reused-run", {}, context))
+    frames = list(LocalExecutor(tmp_path, str(script)).exec_action("{}", "reused-run", {}, context, ree_id="ree"))
     assert isinstance(frames[-1], ResultFrame)
     assert frames[-1].result.context == context
 
@@ -49,9 +49,9 @@ def fake_executor(tmp_path: Path) -> Path:
 
 def test_local_executor_runs_actions_and_queries(fake_executor: Path, tmp_path: Path) -> None:
     executor = LocalExecutor(tmp_path / "ree", str(fake_executor))
-    frames = list(executor.exec_action(json.dumps({"operation": "test"}), "run-1", {}))
+    frames = list(executor.exec_action(json.dumps({"operation": "test"}), "run-1", {}, ree_id="ree"))
     assert frames == [ResultFrame.model_validate({"result": {"status": "succeeded", "outputs": {}}})]
-    assert b"".join(executor.exec_query_stream(["query"])) == b"query-result"
+    assert b"".join(executor.exec_query_stream(["query"], ree_id="ree")) == b"query-result"
 
 
 def test_a_query_written_to_a_file_never_passes_through_memory_and_fails_loudly(
@@ -60,17 +60,17 @@ def test_a_query_written_to_a_file_never_passes_through_memory_and_fails_loudly(
     executor = LocalExecutor(tmp_path / "ree", str(fake_executor))
     target = tmp_path / "out.bin"
 
-    executor.exec_query_to_file(["query"], target)
+    executor.exec_query_to_file(["query"], target, ree_id="ree")
     assert target.read_bytes() == b"query-result"
 
     with pytest.raises(RuntimeError, match="exit 7"):
-        executor.exec_query_to_file(["fail"], tmp_path / "failed.bin")
+        executor.exec_query_to_file(["fail"], tmp_path / "failed.bin", ree_id="ree")
 
 
 def test_local_executor_reports_simple_failure(fake_executor: Path, tmp_path: Path) -> None:
     executor = LocalExecutor(tmp_path / "ree", str(fake_executor))
     with pytest.raises(RuntimeError, match="exit 7"):
-        executor.exec_simple(["fail"])
+        executor.exec_simple(["fail"], ree_id="ree")
 
 
 def test_local_executor_reads_executor_build(fake_executor: Path, tmp_path: Path) -> None:
@@ -84,33 +84,25 @@ def test_copy_in_is_atomic_and_confined(fake_executor: Path, tmp_path: Path) -> 
     source = tmp_path / "source"
     source.write_bytes(b"payload")
     executor = LocalExecutor(root, str(fake_executor))
-    executor.copy_in(str(source), "/ree/upload-staging/input.bin")
-    assert (root / "upload-staging/input.bin").read_bytes() == b"payload"
+    executor.copy_in(str(source), "/ree/upload-staging/input.bin", ree_id="ree")
+    assert (root / "ree" / "upload-staging/input.bin").read_bytes() == b"payload"
     with pytest.raises(ValueError, match=r"escapes|must not"):
-        executor.copy_in(str(source), "../outside")
-
-
-def test_action_receives_configured_root(fake_executor: Path, tmp_path: Path) -> None:
-    root = tmp_path / "custom-root"
-    executor = LocalExecutor(root, str(fake_executor))
-    assert executor.ree_root(None) == root.resolve()
-    # A managed bench's root is its one REE, whatever a request names.
-    assert executor.ree_root("ree-1") == root.resolve()
+        executor.copy_in(str(source), "../outside", ree_id="ree")
 
 
 def test_a_store_runs_each_command_against_the_ree_it_names(fake_executor: Path, tmp_path: Path) -> None:
-    executor = LocalExecutor(tmp_path / "store", str(fake_executor), store=True)
+    executor = LocalExecutor(tmp_path / "store", str(fake_executor))
 
     assert executor.ree_root("ree-1") == (tmp_path / "store" / "ree-1").resolve()
     observed = executor._environment(executor.ree_root("ree-1"))
     assert observed["REPO2REE_WORKBENCH_ROOT"] == os.fspath((tmp_path / "store" / "ree-1").resolve())
-    for refused in (None, "..", "a/b", "", "-x"):
+    for refused in ("..", "a/b", "", "-x"):
         with pytest.raises(ValueError):
             executor.ree_root(refused)
 
 
 def test_a_store_deletes_an_ree_only_when_none_of_its_runs_is_active(fake_executor: Path, tmp_path: Path) -> None:
-    executor = LocalExecutor(tmp_path / "store", str(fake_executor), store=True)
+    executor = LocalExecutor(tmp_path / "store", str(fake_executor))
     (tmp_path / "store" / "ree-1" / "workspace").mkdir(parents=True)
     executor._runs[(executor.ree_root("ree-1"), "run-1")] = subprocess.Popen(["sleep", "5"], text=True)
     try:
@@ -150,12 +142,12 @@ def cancellable_executor(tmp_path: Path, on_term: str) -> Path:
 
 def cancel_while_running(executor: LocalExecutor) -> tuple[list[object], float]:
     frames: list[object] = []
-    running = threading.Thread(target=lambda: frames.extend(executor.exec_action("{}", "run-1", {})))
+    running = threading.Thread(target=lambda: frames.extend(executor.exec_action("{}", "run-1", {}, ree_id="ree")))
     running.start()
-    while (executor.root, "run-1") not in executor._runs:
+    while (executor.ree_root("ree"), "run-1") not in executor._runs:
         time.sleep(0.01)
     started = time.monotonic()
-    executor.cancel_run("run-1")
+    executor.cancel_run("run-1", ree_id="ree")
     returned = time.monotonic() - started
     running.join(timeout=10)
     assert not running.is_alive()
@@ -194,7 +186,7 @@ def test_the_tools_a_bundle_names_reach_every_executor(fake_executor: Path, tmp_
 
 def test_two_rees_in_a_store_run_the_same_run_id_side_by_side(tmp_path: Path) -> None:
     # The API's quick commands share fixed run ids (patch-definition); a run id names a run within one REE.
-    executor = LocalExecutor(tmp_path / "store", str(cancellable_executor(tmp_path, "cooperative")), store=True)
+    executor = LocalExecutor(tmp_path / "store", str(cancellable_executor(tmp_path, "cooperative")))
     for ree_id in ("ree-1", "ree-2"):
         executor.ree_root(ree_id).mkdir(parents=True)
     threads = [
@@ -215,7 +207,7 @@ def test_two_rees_in_a_store_run_the_same_run_id_side_by_side(tmp_path: Path) ->
 
 def test_a_container_workbench_runs_each_ree_in_the_image_it_declares(fake_executor: Path, tmp_path: Path) -> None:
     scripts = ScriptBackend("container", "podman", "socket", ("/repo2ree", "/home/me/repo2ree"))
-    executor = LocalExecutor(tmp_path / "store", str(fake_executor), store=True, scripts=scripts)
+    executor = LocalExecutor(tmp_path / "store", str(fake_executor), scripts=scripts)
     root = executor.ree_root("ree-1")
     root.mkdir(parents=True)
     environment = {"kind": "image", "image": "python:3.12-slim", "needs_container_engine": True}

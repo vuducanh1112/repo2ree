@@ -10,6 +10,7 @@ import pytest
 from repo2ree_protocol.workbench import WorkbenchHello
 from repo2ree_supervisor import (
     ReeRegistry,
+    ReeRoute,
     ReeRouter,
     StoreClaimedError,
     StoreRegistry,
@@ -17,12 +18,11 @@ from repo2ree_supervisor import (
     UnknownStoreError,
     WorkbenchConnection,
     WorkbenchConnectionRegistry,
-    WorkbenchHandle,
 )
 
 
 def _connection(workbench_id: str, store_id: str, nonce: str = "n1") -> WorkbenchConnection:
-    hello = WorkbenchHello(workbench_id=workbench_id, mode="external", store_id=store_id, nonce=nonce)
+    hello = WorkbenchHello(workbench_id=workbench_id, store_id=store_id, nonce=nonce)
     return WorkbenchConnection(send_text=lambda text: None, hello=hello)
 
 
@@ -93,37 +93,15 @@ def test_a_store_is_served_by_one_workbench_at_a_time() -> None:
     assert connections.store_workbench("lab-b") is None
 
 
-class _Allocations:
-    def __init__(self, handle: WorkbenchHandle | None = None) -> None:
-        self.handle = handle
-
-    def lookup(self, ree_id: str) -> WorkbenchHandle | None:
-        return self.handle
-
-    def is_registered(self, ree_id: str) -> bool:
-        return self.handle is not None
-
-
 def test_an_ree_in_a_store_goes_to_whichever_workbench_serves_it(tmp_path: Path) -> None:
     rees = ReeRegistry(tmp_path / "rees.json")
     rees.create("ree-1", "First", "lab-a")
     connections = WorkbenchConnectionRegistry()
-    router = ReeRouter(rees, connections, _Allocations())
+    router = ReeRouter(rees, connections)
 
     with pytest.raises(StoreUnavailableError, match="lab-a"):
         router.route("ree-1")
-    assert router.is_known("ree-1")
 
     connections.register("wb-1", _connection("wb-1", "lab-a"))
-    handle = router.route("ree-1")
-    assert handle == WorkbenchHandle(ree_id="ree-1", workbench_id="wb-1", mode="store", location_id="lab-a")
-
-
-def test_an_ree_set_up_by_a_provider_goes_where_its_allocation_says(tmp_path: Path) -> None:
-    allocated = WorkbenchHandle(ree_id="ree-2", workbench_id="wb-9", allocation_id="alloc-1")
-    router = ReeRouter(ReeRegistry(tmp_path / "rees.json"), WorkbenchConnectionRegistry(), _Allocations(allocated))
-
-    assert router.route("ree-2") == allocated
-    assert not ReeRouter(ReeRegistry(tmp_path / "rees.json"), WorkbenchConnectionRegistry(), _Allocations()).is_known(
-        "ree-3"
-    )
+    assert router.route("ree-1") == ReeRoute(ree_id="ree-1", workbench_id="wb-1", store_id="lab-a")
+    assert router.route("ree-unknown") is None

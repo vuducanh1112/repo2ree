@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 
 from repo2ree_api.authoring import seal
 from repo2ree_api.deps import command_dispatcher, workbench_transfers
-from repo2ree_supervisor import ReceivedFile, WorkbenchHandle
+from repo2ree_supervisor import ReceivedFile, ReeRoute
 
 
 def test_a_workbench_uploads_into_an_open_transfer_exactly_once(client: TestClient) -> None:
@@ -55,7 +55,7 @@ def test_the_transfer_route_is_not_part_of_the_public_api(client: TestClient) ->
 
 
 def test_the_archive_download_serves_the_uploaded_file_and_leaves_nothing_behind(
-    client: TestClient, online_ree: WorkbenchHandle, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    client: TestClient, online_ree: ReeRoute, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     archive = tmp_path / "archive.zip"
     archive.write_bytes(b"PK\x03\x04archive")

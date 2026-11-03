@@ -9,12 +9,12 @@ from repo2ree_api.deps import command_dispatcher
 from repo2ree_core.domain.ree.audit import audit
 from repo2ree_protocol.document import WorkbenchReeDocument
 from repo2ree_ree.model import Ree, ReeDefinition, ReeSubject
-from repo2ree_supervisor import WorkbenchHandle
+from repo2ree_supervisor import ReeRoute
 
 
 def test_ree_state_omits_inline_content_and_exposes_placement(
     client: TestClient,
-    online_ree: WorkbenchHandle,
+    online_ree: ReeRoute,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     ree = Ree(subject=ReeSubject(definition=ReeDefinition(name="demo")))

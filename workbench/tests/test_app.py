@@ -7,19 +7,18 @@ import pytest
 import repo2ree_workbench.app as app_module
 from repo2ree_protocol.build import BuildInfo
 from repo2ree_workbench.config import WorkbenchConfig
+from repo2ree_workbench.service import WorkbenchService
 
 
 def test_main_composes_telemetry_runtime_and_control_connection(monkeypatch: pytest.MonkeyPatch) -> None:
-    opaque_enrollment = "test-enrollment-value"
+    opaque = "test-store-token"
     config = WorkbenchConfig(
         api_ws_url="wss://control.example/workbench/connect",
         workbench_id="workbench-1",
-        allocation_id="alloc-1",
-        enrollment_token=opaque_enrollment,
-        root=Path("/ree"),
+        enrollment_token=opaque,
         exec_path="/bin/repo2ree-exec",
-        location_id="lab-1",
-        image="docker.io/library/docker:29-dind",
+        store_id="lab-1",
+        store_root=Path("/srv/rees"),
         otlp_endpoint="http://collector:4318",
     )
     shutdowns: list[str] = []
@@ -56,10 +55,9 @@ def test_main_composes_telemetry_runtime_and_control_connection(monkeypatch: pyt
     assert workbench_args[2] == config.workbench_id
     kwargs = workbench_args[3]
     assert isinstance(kwargs, dict)
-    assert kwargs["mode"] == "managed"
-    assert kwargs["allocation_id"] == "alloc-1"
-    assert kwargs["enrollment_token"] == opaque_enrollment
-    assert kwargs["location_id"] == "lab-1"
-    assert kwargs["image"] == "docker.io/library/docker:29-dind"
+    assert kwargs["enrollment_token"] == opaque
+    service = workbench_args[1]
+    assert isinstance(service, WorkbenchService)
+    assert service.store_id == "lab-1"
     assert kwargs["executor_build"].revision == "executor-test-revision"
     assert shutdowns == ["traces", "metrics", "logs"]

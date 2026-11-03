@@ -416,8 +416,7 @@ def get_ree_document_cmd(summary: bool) -> None:
     Equivalent to the core get_ree_document() read model but executed inside the
     workbench container so the output reflects the workbench volume.
     """
-    # The document carries no handle: the control plane stamps the real one on
-    # the way back (see WorkbenchManager._with_handle).
+    # The document carries no REE id: the control plane stamps it on the way back.
     try:
         result = _get_ree_document(ReeLayout.in_workbench(), include_content=not summary)
     except FileNotFoundError as exc:

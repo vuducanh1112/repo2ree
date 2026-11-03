@@ -43,7 +43,6 @@ from repo2ree_protocol.result import Failure
 from repo2ree_protocol.workbench import (
     CancelRequest,
     CancelRunRequest,
-    DrainWorkbenchRequest,
     ExecActionRequest,
     WorkbenchCapabilities,
     WorkbenchHello,
@@ -181,11 +180,7 @@ async def run_workbench(
     service: WorkbenchService,
     workbench_id: str,
     *,
-    mode: Literal["managed", "external"] = "managed",
-    allocation_id: str = "",
     enrollment_token: str = "",
-    location_id: str = "",
-    image: str = "",
     reconnect_delay: float = RECONNECT_DELAY,
     span_relay: SpanRelay | None = None,
     build: BuildInfo | None = None,
@@ -205,15 +200,11 @@ async def run_workbench(
     component_build = build or current_build("repo2ree-workbench")
     hello = WorkbenchHello(
         workbench_id=workbench_id,
-        mode=mode,
-        allocation_id=allocation_id,
         enrollment_token=enrollment_token,
         hostname=socket.gethostname(),
         version=component_build.version,
         build=component_build,
         executor_build=executor_build or BuildInfo(),
-        location_id=location_id,
-        image=image,
         store_id=service.store_id,
         backend=backend,
         images=list(images),
@@ -224,10 +215,7 @@ async def run_workbench(
         nonce=uuid4().hex,
     )
     while True:
-        connection_attrs = {
-            "repo2ree.workbench_id": workbench_id,
-            "repo2ree.workbench.image": hello.image,
-        }
+        connection_attrs = {"repo2ree.workbench_id": workbench_id, "repo2ree.store_id": hello.store_id}
         _connection_attempt_counter.add(1, connection_attrs)
         try:
             async with AsyncExitStack() as stack:
@@ -238,7 +226,7 @@ async def run_workbench(
                 # could never be relayed over the socket it describes.
                 with tracer.start_as_current_span("workbench.dial") as span:
                     span.set_attribute("repo2ree.workbench_id", workbench_id)
-                    span.set_attribute("repo2ree.workbench.image", hello.image)
+                    span.set_attribute("repo2ree.store_id", hello.store_id)
                     ws = await stack.enter_async_context(
                         connect(
                             api_ws_url,
@@ -258,13 +246,11 @@ async def run_workbench(
                 if span_relay is not None:
                     span_relay.bind(asyncio.get_running_loop(), ws)
                 try:
-                    drained = await _serve(ws, service, api_ws_url)
+                    await _serve(ws, service, api_ws_url)
                 finally:
                     if span_relay is not None:
                         span_relay.unbind()
                     _connected_gauge.add(-1, connection_attrs)
-                if drained:
-                    return
         except (OSError, websockets.WebSocketException) as exc:
             _connection_lost_counter.add(1, {**connection_attrs, "repo2ree.status": "lost"})
             logger.warning("workbench connection to %s lost (%s); retrying", api_ws_url, exc)
@@ -284,7 +270,7 @@ class _RequestId(BaseModel):
     id: str
 
 
-async def _serve(ws: ClientConnection, service: WorkbenchService, api_ws_url: str = "") -> bool:
+async def _serve(ws: ClientConnection, service: WorkbenchService, api_ws_url: str = "") -> None:
     # Hold a strong reference to every in-flight handler: the event loop only
     # keeps a weak one, so a task dropped here could be garbage-collected
     # mid-request — silently losing its response and hanging the caller. Keyed
@@ -318,11 +304,6 @@ async def _serve(ws: ClientConnection, service: WorkbenchService, api_ws_url: st
                     target.cancel()
                 await _send(ws, req.id, DoneFrame())
                 continue
-            if isinstance(req.request, DrainWorkbenchRequest):
-                if inflight:
-                    await asyncio.gather(*inflight.values(), return_exceptions=True)
-                await _send(ws, req.id, DoneFrame())
-                return True
             # One task per request so a long build never blocks other calls.
             task = asyncio.create_task(_handle(ws, service, req.id, req.request, req.traceparent, api_ws_url))
             inflight[req.id] = task
@@ -334,7 +315,6 @@ async def _serve(ws: ClientConnection, service: WorkbenchService, api_ws_url: st
             task.cancel()
         if inflight:
             await asyncio.gather(*inflight.values(), return_exceptions=True)
-    return False
 
 
 def _forget_inflight(inflight: dict[str, asyncio.Task[None]], req_id: str, _task: asyncio.Task[None]) -> None:

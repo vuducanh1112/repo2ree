@@ -11,12 +11,6 @@
   "serviceSchemas": {
     "api": {
       "properties": {
-        "ALLOCATION_STORE_FILE": {
-          "default": ".repo2ree/allocations.json",
-          "format": "path",
-          "title": "Allocation Store File",
-          "type": "string"
-        },
         "BEHAVIOUR_FINAL_SHUTDOWN": {
           "default": false,
           "title": "Behaviour Final Shutdown",
@@ -32,11 +26,6 @@
           "default": ".repo2ree",
           "format": "path",
           "title": "Control State Dir",
-          "type": "string"
-        },
-        "EXTERNAL_WORKBENCH_TOKEN": {
-          "default": "",
-          "title": "External Workbench Token",
           "type": "string"
         },
         "OTLP_ENDPOINT": {
@@ -260,11 +249,6 @@
           "default": null,
           "title": "Trace File"
         },
-        "WORKBENCH_ALLOCATION_ID": {
-          "default": "",
-          "title": "Workbench Allocation Id",
-          "type": "string"
-        },
         "WORKBENCH_API_WS_URL": {
           "default": "ws://localhost:8000/workbench/connect",
           "title": "Workbench Api Ws Url",
@@ -297,38 +281,6 @@
         "WORKBENCH_ID": {
           "default": "",
           "title": "Workbench Id",
-          "type": "string"
-        },
-        "WORKBENCH_IMAGE": {
-          "default": "",
-          "title": "Workbench Image",
-          "type": "string"
-        },
-        "WORKBENCH_LOCATION_ID": {
-          "default": "",
-          "title": "Workbench Location Id",
-          "type": "string"
-        },
-        "WORKBENCH_MODE": {
-          "anyOf": [
-            {
-              "enum": [
-                "managed",
-                "external"
-              ],
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Workbench Mode"
-        },
-        "WORKBENCH_ROOT": {
-          "default": "/ree",
-          "format": "path",
-          "title": "Workbench Root",
           "type": "string"
         },
         "WORKBENCH_SCRIPT_ENGINE": {
@@ -393,16 +345,6 @@
     }
   },
   "variables": {
-    "ALLOCATION_STORE_FILE": {
-      "kind": "runtime",
-      "owner": "api",
-      "schema": {
-        "default": ".repo2ree/allocations.json",
-        "format": "path",
-        "title": "Allocation Store File",
-        "type": "string"
-      }
-    },
     "BASH_SOURCE": {
       "kind": "external",
       "owner": "bash",
@@ -541,15 +483,6 @@
       "kind": "internal",
       "owner": "testbed",
       "schema": {
-        "type": "string"
-      }
-    },
-    "EXTERNAL_WORKBENCH_TOKEN": {
-      "kind": "runtime",
-      "owner": "api",
-      "schema": {
-        "default": "",
-        "title": "External Workbench Token",
         "type": "string"
       }
     },
@@ -1187,15 +1120,6 @@
         "type": "string"
       }
     },
-    "WORKBENCH_ALLOCATION_ID": {
-      "kind": "runtime",
-      "owner": "workbench",
-      "schema": {
-        "default": "",
-        "title": "Workbench Allocation Id",
-        "type": "string"
-      }
-    },
     "WORKBENCH_API_WS_URL": {
       "kind": "runtime",
       "owner": "workbench",
@@ -1254,15 +1178,6 @@
         "type": "string"
       }
     },
-    "WORKBENCH_IMAGE": {
-      "kind": "runtime",
-      "owner": "workbench",
-      "schema": {
-        "default": "",
-        "title": "Workbench Image",
-        "type": "string"
-      }
-    },
     "WORKBENCH_IMAGE_CATALOG": {
       "kind": "runtime",
       "owner": "provider",
@@ -1277,45 +1192,6 @@
         ],
         "default": null,
         "title": "Workbench Image Catalog"
-      }
-    },
-    "WORKBENCH_LOCATION_ID": {
-      "kind": "runtime",
-      "owner": "workbench",
-      "schema": {
-        "default": "",
-        "title": "Workbench Location Id",
-        "type": "string"
-      }
-    },
-    "WORKBENCH_MODE": {
-      "kind": "runtime",
-      "owner": "workbench",
-      "schema": {
-        "anyOf": [
-          {
-            "enum": [
-              "managed",
-              "external"
-            ],
-            "type": "string"
-          },
-          {
-            "type": "null"
-          }
-        ],
-        "default": null,
-        "title": "Workbench Mode"
-      }
-    },
-    "WORKBENCH_ROOT": {
-      "kind": "runtime",
-      "owner": "workbench",
-      "schema": {
-        "default": "/ree",
-        "format": "path",
-        "title": "Workbench Root",
-        "type": "string"
       }
     },
     "WORKBENCH_SCRIPT_ENGINE": {

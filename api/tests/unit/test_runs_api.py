@@ -17,9 +17,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from repo2ree_api.control.run_orchestration import start_background_run
-from repo2ree_api.deps import command_dispatcher, workbench_manager
+from repo2ree_api.deps import command_dispatcher, ree_router
 from repo2ree_protocol.result import ActionResult
-from repo2ree_supervisor import WorkbenchHandle
+from repo2ree_supervisor import ReeRoute
 
 # ================================================
 # Helpers
@@ -59,7 +59,7 @@ def _start_failing_upload_run(client: TestClient, ree_id: str) -> dict[str, Any]
 
 
 @pytest.fixture
-def failed_run(client: TestClient, online_ree: WorkbenchHandle, staging_dir: Path) -> dict[str, Any]:
+def failed_run(client: TestClient, online_ree: ReeRoute, staging_dir: Path) -> dict[str, Any]:
     run = _start_failing_upload_run(client, online_ree.ree_id)
     status = _wait_for_run(client, online_ree.ree_id, run["run_id"])
     assert status == "failed"
@@ -71,7 +71,7 @@ def failed_run(client: TestClient, online_ree: WorkbenchHandle, staging_dir: Pat
 # ================================================
 
 
-def test_failed_run_summary_shape(client: TestClient, online_ree: WorkbenchHandle, failed_run: dict[str, Any]) -> None:
+def test_failed_run_summary_shape(client: TestClient, online_ree: ReeRoute, failed_run: dict[str, Any]) -> None:
     resp = client.get(f"/api/v1/rees/{online_ree.ree_id}/runs/{failed_run['run_id']}")
     assert resp.status_code == 200
     summary = resp.json()
@@ -97,7 +97,7 @@ def test_run_endpoints_for_unknown_ree_are_404(client: TestClient) -> None:
 
 def test_historical_runs_do_not_authorize_new_work_after_ree_removal(
     client: TestClient,
-    online_ree: WorkbenchHandle,
+    online_ree: ReeRoute,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     run = start_background_run(
@@ -108,8 +108,7 @@ def test_historical_runs_do_not_authorize_new_work_after_ree_removal(
         lambda *_: ActionResult(status="succeeded"),
     )
     assert _wait_for_run(client, online_ree.ree_id, run["run_id"]) == "succeeded"
-    monkeypatch.setattr(workbench_manager, "lookup", lambda _rid: None)
-    monkeypatch.setattr(workbench_manager, "is_registered", lambda _rid: False)
+    monkeypatch.setattr(ree_router, "route", lambda _rid: None)
 
     response = client.post(f"/api/v1/rees/{online_ree.ree_id}/build-runtime", json={})
 
@@ -124,14 +123,14 @@ def test_historical_runs_do_not_authorize_new_work_after_ree_removal(
 # ================================================
 
 
-def test_list_runs_is_empty_for_ree_without_runs(client: TestClient, online_ree: WorkbenchHandle) -> None:
+def test_list_runs_is_empty_for_ree_without_runs(client: TestClient, online_ree: ReeRoute) -> None:
     resp = client.get(f"/api/v1/rees/{online_ree.ree_id}/runs")
     assert resp.status_code == 200
     assert resp.json() == {"runs": [], "next_cursor": None}
 
 
 def test_list_runs_returns_summaries_newest_first(
-    client: TestClient, online_ree: WorkbenchHandle, failed_run: dict[str, Any], staging_dir: Path
+    client: TestClient, online_ree: ReeRoute, failed_run: dict[str, Any], staging_dir: Path
 ) -> None:
     second = _start_failing_upload_run(client, online_ree.ree_id)
     _wait_for_run(client, online_ree.ree_id, second["run_id"])
@@ -149,7 +148,7 @@ def test_list_runs_returns_summaries_newest_first(
 
 
 def test_list_runs_pagination_walks_newest_to_oldest(
-    client: TestClient, online_ree: WorkbenchHandle, failed_run: dict[str, Any], staging_dir: Path
+    client: TestClient, online_ree: ReeRoute, failed_run: dict[str, Any], staging_dir: Path
 ) -> None:
     second = _start_failing_upload_run(client, online_ree.ree_id)
     _wait_for_run(client, online_ree.ree_id, second["run_id"])
@@ -165,14 +164,14 @@ def test_list_runs_pagination_walks_newest_to_oldest(
 
 
 def test_list_runs_rejects_malformed_cursor(
-    client: TestClient, online_ree: WorkbenchHandle, failed_run: dict[str, Any]
+    client: TestClient, online_ree: ReeRoute, failed_run: dict[str, Any]
 ) -> None:
     resp = client.get(f"/api/v1/rees/{online_ree.ree_id}/runs", params={"cursor": "no-separator"})
     assert resp.status_code == 400
     assert resp.json()["error"]["code"] == "invalid_cursor"
 
 
-def test_unknown_run_for_known_ree_is_404(client: TestClient, online_ree: WorkbenchHandle) -> None:
+def test_unknown_run_for_known_ree_is_404(client: TestClient, online_ree: ReeRoute) -> None:
     resp = client.get(f"/api/v1/rees/{online_ree.ree_id}/runs/no-such-run")
     assert resp.status_code == 404
     assert resp.json()["error"]["message"] == "Run not found"
@@ -184,7 +183,7 @@ def test_unknown_run_for_known_ree_is_404(client: TestClient, online_ree: Workbe
 
 
 def test_failed_run_log_feed_carries_the_failure(
-    client: TestClient, online_ree: WorkbenchHandle, failed_run: dict[str, Any]
+    client: TestClient, online_ree: ReeRoute, failed_run: dict[str, Any]
 ) -> None:
     resp = client.get(f"/api/v1/rees/{online_ree.ree_id}/runs/{failed_run['run_id']}/logs")
     assert resp.status_code == 200
@@ -196,9 +195,7 @@ def test_failed_run_log_feed_carries_the_failure(
     assert logs["next_cursor"] == str(logs["entries"][-1]["seq"])
 
 
-def test_log_pagination_walks_the_feed(
-    client: TestClient, online_ree: WorkbenchHandle, failed_run: dict[str, Any]
-) -> None:
+def test_log_pagination_walks_the_feed(client: TestClient, online_ree: ReeRoute, failed_run: dict[str, Any]) -> None:
     base = f"/api/v1/rees/{online_ree.ree_id}/runs/{failed_run['run_id']}/logs"
 
     first = client.get(base, params={"limit": 1}).json()
@@ -214,7 +211,7 @@ def test_log_pagination_walks_the_feed(
 
 
 def test_log_pagination_rejects_garbage_cursor(
-    client: TestClient, online_ree: WorkbenchHandle, failed_run: dict[str, Any]
+    client: TestClient, online_ree: ReeRoute, failed_run: dict[str, Any]
 ) -> None:
     base = f"/api/v1/rees/{online_ree.ree_id}/runs/{failed_run['run_id']}/logs"
     resp = client.get(base, params={"cursor": "not-a-number"})
@@ -223,7 +220,7 @@ def test_log_pagination_rejects_garbage_cursor(
 
 
 def test_observe_terminal_run_returns_status_and_logs_after_cursor(
-    client: TestClient, online_ree: WorkbenchHandle, failed_run: dict[str, Any]
+    client: TestClient, online_ree: ReeRoute, failed_run: dict[str, Any]
 ) -> None:
     run_id = failed_run["run_id"]
     first_log = client.get(
@@ -249,7 +246,7 @@ def test_observe_terminal_run_returns_status_and_logs_after_cursor(
 
 
 def test_cancel_of_terminal_run_returns_status_unchanged(
-    client: TestClient, online_ree: WorkbenchHandle, failed_run: dict[str, Any]
+    client: TestClient, online_ree: ReeRoute, failed_run: dict[str, Any]
 ) -> None:
     run_id = failed_run["run_id"]
     logs_before = client.get(f"/api/v1/rees/{online_ree.ree_id}/runs/{run_id}/logs").json()
@@ -265,17 +262,17 @@ def test_cancel_of_terminal_run_returns_status_unchanged(
 
 def test_cancel_of_active_run_signals_workbench(
     client: TestClient,
-    online_ree: WorkbenchHandle,
+    online_ree: ReeRoute,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     canceled = Event()
-    calls: list[tuple[WorkbenchHandle, str]] = []
+    calls: list[tuple[ReeRoute, str]] = []
 
     def _runner(ree_id: str, run_id: str) -> ActionResult:
         canceled.wait(timeout=2.0)
         return ActionResult(status="canceled")
 
-    def _cancel_run(handle: WorkbenchHandle, run_id: str) -> None:
+    def _cancel_run(handle: ReeRoute, run_id: str) -> None:
         calls.append((handle, run_id))
         canceled.set()
 
@@ -298,6 +295,6 @@ def test_cancel_of_active_run_signals_workbench(
     assert _wait_for_run(client, online_ree.ree_id, run["run_id"]) == "canceled"
 
 
-def test_cancel_of_unknown_run_is_404(client: TestClient, online_ree: WorkbenchHandle) -> None:
+def test_cancel_of_unknown_run_is_404(client: TestClient, online_ree: ReeRoute) -> None:
     resp = client.post(f"/api/v1/rees/{online_ree.ree_id}/runs/no-such-run:cancel")
     assert resp.status_code == 404

@@ -35,7 +35,6 @@ def _served(store_id: str) -> str | None:
 def _hello(store_id: str, token: str, workbench_id: str = "wb-store", images: tuple[str, ...] = ()) -> str:
     return WorkbenchHello(
         workbench_id=workbench_id,
-        mode="external",
         store_id=store_id,
         enrollment_token=token,
         backend="container" if images else "host",
@@ -104,6 +103,7 @@ def test_an_ree_in_an_offline_store_is_listed_but_answers_store_unavailable(clie
     "payload",
     [
         {"name": "x"},
+        {"name": "x", "store_id": ""},
         {"name": "x", "store_id": "lab-a", "location_id": "loc-1"},
     ],
 )
@@ -131,32 +131,17 @@ def test_the_operator_registers_a_store_and_mints_and_revokes_its_tokens(
     assert store_admin.main(["token", "lab-missing"]) == 2
 
 
-def test_a_served_store_is_a_lab_rees_are_created_in(client: TestClient, lab: str) -> None:
-    token = store_registry.mint_token(lab)
-
-    with client.websocket_connect("/workbench/connect") as socket:
-        socket.send_text(_hello(lab, token, "wb-lab"))
-        assert _served(lab) == "wb-lab"
-        labs = {location["id"]: location for location in client.get("/api/v1/compute-locations").json()["locations"]}
-
-    assert labs[lab]["lifecycle_mode"] == "store"
-    assert labs[lab]["label"] == "A lab"
-    assert labs[lab]["available"] is True
-
-
-def test_a_store_lab_offers_its_workbench_images_and_refuses_others(client: TestClient, lab: str) -> None:
+def test_a_served_store_offers_its_workbench_images_and_refuses_others(client: TestClient, lab: str) -> None:
     token = store_registry.mint_token(lab)
 
     with client.websocket_connect("/workbench/connect") as socket:
         socket.send_text(_hello(lab, token, "wb-images", ("python:3.12", "docker:29")))
         assert _served(lab) == "wb-images"
-        labs = {location["id"]: location for location in client.get("/api/v1/compute-locations").json()["locations"]}
         stores = {store["store_id"]: store for store in client.get("/api/v1/stores").json()["stores"]}
         refused = client.post("/api/v1/rees", json={"name": "x", "store_id": lab, "image": "ubuntu:24.04"})
 
-    assert [image["ref"] for image in labs[lab]["images"]] == ["python:3.12", "docker:29"]
+    assert (stores[lab]["label"], stores[lab]["connected"], stores[lab]["backend"]) == ("A lab", True, "container")
     assert stores[lab]["images"] == ["python:3.12", "docker:29"]
-    assert labs[lab]["accepts_custom_image"] is False
     assert refused.status_code == 422
     assert "python:3.12, docker:29" in refused.json()["error"]["message"]
 

@@ -188,7 +188,7 @@ def forward_relayed_spans(payloads: list[str], endpoint: str) -> None:
 class _BackgroundSpanForwarder:
     """Drain relayed span payloads to ``forward`` on a daemon thread.
 
-    Span egress must never sit on the command's critical path: the manager
+    Span egress must never sit on the command's critical path: the dispatcher
     enqueues payloads while holding the per-REE lock and reading executor
     output, so a slow collector POST there would inflate ``execute_duration``
     *and* delay other REEs waiting on the lock. Callers ``submit`` payloads
@@ -222,24 +222,24 @@ class _BackgroundSpanForwarder:
                 self._queue.task_done()
 
 
-# Callable type for the workbench span relay sink injected into WorkbenchManager.
-# The manager hands relayed payloads here as they arrive off executor stderr. The
+# Callable type for the workbench span relay sink injected into the command dispatcher.
+# The dispatcher hands relayed payloads here as they arrive off executor stderr. The
 # sink is non-blocking (enqueues for a background thread); where the bytes
 # ultimately go (collector, console, /dev/null) is the caller's decision.
 SpanSink = Callable[[list[str]], None]
 
 
 def build_span_sink(endpoint: str | None, *, console_fallback: bool = False) -> SpanSink | None:
-    """Return the sink the manager hands relayed executor spans to, or None.
+    """Return the sink the command dispatcher hands relayed executor spans to, or None.
 
     Mirrors ``setup_tracing``: forwards to the OTLP collector at ``endpoint`` when
     set; otherwise, if ``console_fallback`` is on, decodes spans and writes them
     to the ``TRACE_FILE`` path or stdout for local dev; otherwise returns None. Inject the result into
-    ``WorkbenchManager`` so the API composition root decides where executor spans
-    go. A None sink means the manager never activates the relay (``TRACE_RELAY``
+    the ``CommandDispatcher`` so the API composition root decides where executor spans
+    go. A None sink means the dispatcher never activates the relay (``TRACE_RELAY``
     is not injected, so the executor's tracer stays a no-op).
 
-    Either sink is wrapped in a ``_BackgroundSpanForwarder`` so the manager's
+    Either sink is wrapped in a ``_BackgroundSpanForwarder`` so the dispatcher's
     ``submit`` call returns immediately and the actual export (network POST or
     protobuf decode + print) happens off the locked, latency-measured path.
     """

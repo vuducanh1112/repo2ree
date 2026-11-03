@@ -18,16 +18,13 @@ import pytest
 from pydantic import ValidationError
 
 import repo2ree_workbench.connection as connection
-from repo2ree_protocol.allocation import AllocationRequest
 from repo2ree_protocol.frames import COPY_CHUNK_BYTES, TERMINAL_FRAME_TYPES, ResultFrame, SpanFrame
 from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.workbench import (
-    AssignAllocationRequest,
     CancelRequest,
     CancelRunRequest,
     ExecActionRequest,
     ExecQueryRequest,
-    ExecSimpleRequest,
     WorkbenchWsRequest,
     workbench_hello_adapter,
     workbench_ws_message_adapter,
@@ -93,40 +90,24 @@ class FakeExec:
     canceled_runs: ClassVar[list[str]] = []
 
     def __init__(self) -> None:
-        # Assignment refuses a workbench whose root already holds an REE, so
-        # every fake backend gets its own empty root.
+        # Every fake backend gets its own empty store.
         self._root = tempfile.TemporaryDirectory()
         self.root = Path(self._root.name)
 
-    def exec_query_stream(self, argv: list[str], timeout: int = 30, *, ree_id: str | None = None):
+    def exec_query_stream(self, argv: list[str], timeout: int = 30, *, ree_id: str):
         for offset in range(0, len(self.query_result), COPY_CHUNK_BYTES):
             yield self.query_result[offset : offset + COPY_CHUNK_BYTES]
 
-    def exec_simple(self, argv: list[str], timeout: int = 60, *, ree_id: str | None = None) -> None:
+    def exec_simple(self, argv: list[str], timeout: int = 60, *, ree_id: str) -> None:
         return None
 
-    def cancel_run(self, run_id: str, *, ree_id: str | None = None) -> None:
+    def cancel_run(self, run_id: str, *, ree_id: str) -> None:
         self.canceled_runs.append(run_id)
 
 
-def _allocation() -> AllocationRequest:
-    return AllocationRequest(
-        allocation_id="alloc-1",
-        ree_id="ree-1",
-        location_id="lab-1",
-        image="docker.io/library/docker:29-dind",
-    )
-
-
 def _service(exec_backend: object | None = None) -> WorkbenchService:
-    """A workbench already bound to its allocation, as the control plane leaves it."""
-    service = WorkbenchService(exec_backend or FakeExec())  # type: ignore[arg-type]
-    service.assign(_allocation())
-    return service
-
-
-def _unassigned_service() -> WorkbenchService:
-    return WorkbenchService(FakeExec())  # type: ignore[arg-type]
+    """A workbench serving a store, as the control plane finds it."""
+    return WorkbenchService(exec_backend or FakeExec(), store_id="lab-1")  # type: ignore[arg-type]
 
 
 async def _serve_and_settle(ws: FakeSocket) -> None:
@@ -141,7 +122,7 @@ def test_malformed_request_is_dropped_and_serving_continues() -> None:
     ws = FakeSocket(
         [
             "this is not json",
-            WorkbenchWsRequest(id="r1", request=CancelRunRequest(run_id="run-1")).model_dump_json(),
+            WorkbenchWsRequest(id="r1", request=CancelRunRequest(ree_id="ree-1", run_id="run-1")).model_dump_json(),
         ]
     )
     asyncio.run(_serve_and_settle(ws))
@@ -167,7 +148,7 @@ def test_invalid_args_answer_error_frame_without_killing_connection() -> None:
     ws = FakeSocket(
         [
             '{"id": "r1", "request": {"op": "is_running", "wrong_field": "x"}}',
-            WorkbenchWsRequest(id="r2", request=CancelRunRequest(run_id="run-2")).model_dump_json(),
+            WorkbenchWsRequest(id="r2", request=CancelRunRequest(ree_id="ree-1", run_id="run-2")).model_dump_json(),
         ]
     )
     asyncio.run(_serve_and_settle(ws))
@@ -183,7 +164,7 @@ def test_exec_query_result_is_chunked_under_the_frame_cap() -> None:
     payload = bytes(range(256)) * 4 * 1024  # 1 MiB, above one chunk
     FakeExec.query_result = payload
     try:
-        req = WorkbenchWsRequest(id="r1", request=ExecQueryRequest(argv=["build-archive"]))
+        req = WorkbenchWsRequest(id="r1", request=ExecQueryRequest(ree_id="ree-1", argv=["build-archive"]))
         ws = FakeSocket([req.model_dump_json()])
         asyncio.run(_serve_and_settle(ws))
     finally:
@@ -210,7 +191,9 @@ def test_cancel_for_unknown_request_still_answers_done() -> None:
 
 def test_cancel_run_marks_run_in_workbench() -> None:
     FakeExec.canceled_runs = []
-    ws = FakeSocket([WorkbenchWsRequest(id="c1", request=CancelRunRequest(run_id="run-7")).model_dump_json()])
+    ws = FakeSocket(
+        [WorkbenchWsRequest(id="c1", request=CancelRunRequest(ree_id="ree-1", run_id="run-7")).model_dump_json()]
+    )
     asyncio.run(_serve_and_settle(ws))
 
     messages = _frames(ws)
@@ -225,13 +208,15 @@ def test_cancel_stops_an_inflight_request() -> None:
     release = threading.Event()
 
     class BlockingExec(FakeExec):
-        def exec_query_stream(self, argv: list[str], timeout: int = 30, *, ree_id: str | None = None):
+        def exec_query_stream(self, argv: list[str], timeout: int = 30, *, ree_id: str):
             release.wait(0.5)
             yield b"too late"
 
     ws = FakeSocket(
         [
-            WorkbenchWsRequest(id="r1", request=ExecQueryRequest(argv=["build-archive"])).model_dump_json(),
+            WorkbenchWsRequest(
+                id="r1", request=ExecQueryRequest(ree_id="ree-1", argv=["build-archive"])
+            ).model_dump_json(),
             WorkbenchWsRequest(id="c1", request=CancelRequest(request_id="r1")).model_dump_json(),
         ]
     )
@@ -251,18 +236,16 @@ def test_a_lost_connection_stops_the_runs_it_was_waiting_for() -> None:
     canceled = threading.Event()
 
     class RunningExec(FakeExec):
-        def exec_action(
-            self, cmd_json: str, run_id: str, env: dict[str, str], context: object = None, *, ree_id: str | None = None
-        ):
+        def exec_action(self, cmd_json: str, run_id: str, env: dict[str, str], context: object = None, *, ree_id: str):
             canceled.wait(5.0)
             yield ResultFrame(result=ActionResult(status="canceled"))
 
-        def cancel_run(self, run_id: str, *, ree_id: str | None = None) -> None:
-            super().cancel_run(run_id)
+        def cancel_run(self, run_id: str, *, ree_id: str) -> None:
+            super().cancel_run(run_id, ree_id=ree_id)
             canceled.set()
 
     FakeExec.canceled_runs = []
-    request = ExecActionRequest(cmd_json="{}", run_id="run-1")
+    request = ExecActionRequest(ree_id="ree-1", cmd_json="{}", run_id="run-1")
     # The build never answers on its own, so the socket hangs up with it in flight.
     ws = FakeSocket([WorkbenchWsRequest(id="b1", request=request).model_dump_json()])
 
@@ -287,12 +270,10 @@ def test_stream_terminal_frame_drives_request_telemetry(
     monkeypatch.setattr(connection._request_duration, "record", lambda value, attrs: durations.append(attrs))
 
     class TerminalExec(FakeExec):
-        def exec_action(
-            self, cmd_json: str, run_id: str, env: dict[str, str], context=None, *, ree_id: str | None = None
-        ):
+        def exec_action(self, cmd_json: str, run_id: str, env: dict[str, str], context=None, *, ree_id: str):
             yield ResultFrame(result=ActionResult.failed("execution", "command failed", origin="workbench"))
 
-    request = ExecActionRequest(cmd_json="{}", run_id="run-1")
+    request = ExecActionRequest(ree_id="ree-1", cmd_json="{}", run_id="run-1")
     ws = FakeSocket([WorkbenchWsRequest(id="r1", request=request).model_dump_json()])
 
     with caplog.at_level("WARNING", logger=connection.__name__):
@@ -340,56 +321,16 @@ def test_connection_hello_and_connected_gauge_are_balanced(monkeypatch: pytest.M
                 "ws://control/workbench/connect",
                 _service(),
                 "workbench-1",
-                allocation_id="alloc-1",
                 enrollment_token=opaque_enrollment,
-                location_id="lab-1",
-                image="docker.io/library/docker:29-dind",
             )
         )
 
     hello = workbench_hello_adapter.validate_json(ws.sent[0])
     assert hello.workbench_id == "workbench-1"
-    assert hello.allocation_id == "alloc-1"
     assert hello.enrollment_token == opaque_enrollment
-    assert (hello.location_id, hello.image) == ("lab-1", "docker.io/library/docker:29-dind")
+    assert hello.store_id == "lab-1"
     assert hello.nonce
     assert connected_values == [1, -1]
-
-
-def test_execution_before_assignment_answers_an_error_frame() -> None:
-    # The bind is the workbench's own gate: an unassigned bench answers the
-    # control plane rather than running anything against an unclaimed root.
-    ws = FakeSocket([WorkbenchWsRequest(id="r1", request=ExecSimpleRequest(argv=["doctor"])).model_dump_json()])
-    asyncio.run(asyncio.wait_for(_serve(ws, _unassigned_service()), timeout=2.0))  # type: ignore[arg-type]
-
-    message = _frames(ws)[-1]
-    assert message.frame.type == "error"
-    assert "assigned" in message.frame.detail
-
-
-def test_assignment_binds_the_workbench_and_is_idempotent() -> None:
-    # ``ensure`` may be retried, so the same allocation may be assigned twice;
-    # only a *different* allocation is a mismatched bind worth refusing.
-    ws = FakeSocket(
-        [
-            WorkbenchWsRequest(id="a1", request=AssignAllocationRequest(allocation=_allocation())).model_dump_json(),
-            WorkbenchWsRequest(id="a2", request=AssignAllocationRequest(allocation=_allocation())).model_dump_json(),
-            WorkbenchWsRequest(id="r1", request=ExecSimpleRequest(argv=["doctor"])).model_dump_json(),
-        ]
-    )
-    asyncio.run(asyncio.wait_for(_serve(ws, _unassigned_service()), timeout=2.0))  # type: ignore[arg-type]
-
-    assert [(m.id, m.frame.type) for m in _frames(ws)] == [("a1", "done"), ("a2", "done"), ("r1", "done")]
-
-
-def test_a_second_allocation_cannot_rebind_a_bound_workbench() -> None:
-    other = _allocation().model_copy(update={"allocation_id": "alloc-2", "ree_id": "ree-2"})
-    ws = FakeSocket([WorkbenchWsRequest(id="a1", request=AssignAllocationRequest(allocation=other)).model_dump_json()])
-    asyncio.run(asyncio.wait_for(_serve(ws, _service()), timeout=2.0))  # type: ignore[arg-type]
-
-    message = _frames(ws)[-1]
-    assert message.frame.type == "error"
-    assert "already assigned" in message.frame.detail
 
 
 # ================================================
@@ -432,7 +373,6 @@ def test_the_span_relay_binds_only_after_the_hello(monkeypatch: pytest.MonkeyPat
                 "ws://control/workbench/connect",
                 _service(),
                 "workbench-1",
-                allocation_id="alloc-1",
                 span_relay=relay,
             )
         )

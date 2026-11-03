@@ -6,28 +6,25 @@ import pytest
 
 import repo2ree_workbench.config as config_module
 
+STORE = ["--store", "lab=/srv/rees"]
+
 
 def test_load_config_prefers_explicit_workbench_identity(monkeypatch: pytest.MonkeyPatch) -> None:
-    opaque_enrollment = "test-enrollment-value"
+    opaque = "test-store-token"
     monkeypatch.setenv("WORKBENCH_ID", "workbench-explicit")
     monkeypatch.setenv("WORKBENCH_API_WS_URL", "wss://api.example/workbench/connect")
-    monkeypatch.setenv("WORKBENCH_ALLOCATION_ID", "alloc-1")
-    monkeypatch.setenv("WORKBENCH_AUTH_TOKEN", opaque_enrollment)
-    monkeypatch.setenv("WORKBENCH_ROOT", "/custom-ree")
+    monkeypatch.setenv("WORKBENCH_AUTH_TOKEN", opaque)
+    monkeypatch.setenv("WORKBENCH_STORE", "lab-1=/srv/rees")
     monkeypatch.setenv("REPO2REE_EXEC_PATH", "/bin/repo2ree-exec")
-    monkeypatch.setenv("WORKBENCH_LOCATION_ID", "lab-1")
-    monkeypatch.setenv("WORKBENCH_IMAGE", "docker.io/library/docker:29-dind")
     monkeypatch.setenv("OTLP_ENDPOINT", "http://collector:4318")
 
     config = config_module.load_config()
 
     assert config.workbench_id == "workbench-explicit"
     assert config.api_ws_url == "wss://api.example/workbench/connect"
-    assert config.allocation_id == "alloc-1"
-    assert config.enrollment_token == opaque_enrollment
-    assert config.root == Path("/custom-ree")
+    assert config.enrollment_token == opaque
+    assert (config.store_id, config.store_root) == ("lab-1", Path("/srv/rees"))
     assert config.exec_path == "/bin/repo2ree-exec"
-    assert (config.location_id, config.image) == ("lab-1", "docker.io/library/docker:29-dind")
     assert config.otlp_endpoint == "http://collector:4318"
 
 
@@ -41,21 +38,25 @@ def test_load_config_persists_identity_when_not_explicit(monkeypatch: pytest.Mon
         paths.append(path)
         return "persisted-workbench"
 
-    monkeypatch.setattr(
-        config_module,
-        "load_or_create_workbench_id",
-        load_identity,
-    )
+    monkeypatch.setattr(config_module, "load_or_create_workbench_id", load_identity)
 
-    config = config_module.load_config()
+    config = config_module.load_config(STORE)
 
     assert config.workbench_id == "persisted-workbench"
     assert config.api_ws_url == "ws://localhost:8000/workbench/connect"
-    assert config.allocation_id == ""
     assert config.enrollment_token == ""
-    assert config.root == Path("/ree")
     assert config.otlp_endpoint is None
     assert paths == [tmp_path]
+
+
+def test_a_workbench_serves_a_store(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("WORKBENCH_ID", "workbench-1")
+    monkeypatch.delenv("WORKBENCH_STORE", raising=False)
+
+    with pytest.raises(SystemExit):
+        config_module.load_config([])
+    with pytest.raises(SystemExit):
+        config_module.load_config(["--store", "no-path"])
 
 
 # ================================================
@@ -66,65 +67,46 @@ def test_load_config_persists_identity_when_not_explicit(monkeypatch: pytest.Mon
 def _clear_telemetry_env(monkeypatch: pytest.MonkeyPatch) -> None:
     for name in ("WORKBENCH_TELEMETRY", "OTLP_ENDPOINT", "TRACE_FILE", "WORKBENCH_ID"):
         monkeypatch.delenv(name, raising=False)
-
-
-def test_a_reachable_collector_wins_over_relaying(monkeypatch: pytest.MonkeyPatch) -> None:
-    _clear_telemetry_env(monkeypatch)
     monkeypatch.setenv("WORKBENCH_ID", "workbench-1")
-    monkeypatch.setenv("WORKBENCH_ALLOCATION_ID", "alloc-1")
+
+
+def test_a_reachable_collector_is_exported_to(monkeypatch: pytest.MonkeyPatch) -> None:
+    _clear_telemetry_env(monkeypatch)
     monkeypatch.setenv("OTLP_ENDPOINT", "http://collector:4318")
 
-    assert config_module.load_config().telemetry == "direct"
+    assert config_module.load_config(STORE).telemetry == "direct"
 
 
 def test_a_trace_file_keeps_spans_on_the_machine(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     _clear_telemetry_env(monkeypatch)
-    monkeypatch.setenv("WORKBENCH_ID", "workbench-1")
-    monkeypatch.setenv("WORKBENCH_ALLOCATION_ID", "alloc-1")
     monkeypatch.setenv("TRACE_FILE", str(tmp_path / "spans.jsonl"))
 
-    assert config_module.load_config().telemetry == "local"
+    assert config_module.load_config(STORE).telemetry == "local"
 
 
-def test_a_managed_bench_relays_when_it_has_no_collector(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_store_workbench_stays_silent_rather_than_relaying(monkeypatch: pytest.MonkeyPatch) -> None:
     _clear_telemetry_env(monkeypatch)
-    monkeypatch.setenv("WORKBENCH_ID", "workbench-1")
-    monkeypatch.setenv("WORKBENCH_ALLOCATION_ID", "alloc-1")
 
-    # Provisioned by the fleet running this control plane, which already sees
-    # its every command: relaying discloses nothing new.
-    assert config_module.load_config().telemetry == "relay"
-
-
-def test_an_external_bench_stays_silent_rather_than_relaying(monkeypatch: pytest.MonkeyPatch) -> None:
-    _clear_telemetry_env(monkeypatch)
-    monkeypatch.setenv("WORKBENCH_ID", "workbench-1")
-    monkeypatch.delenv("WORKBENCH_ALLOCATION_ID", raising=False)
-
-    # Someone else's machine. It does not start shipping its own telemetry
+    # Possibly someone else's machine. It does not start shipping its own telemetry
     # across that boundary merely because nobody configured a collector.
-    assert config_module.load_config().telemetry == "off"
+    assert config_module.load_config(STORE).telemetry == "off"
 
 
 def test_an_explicit_setting_overrides_every_inference(monkeypatch: pytest.MonkeyPatch) -> None:
     _clear_telemetry_env(monkeypatch)
-    monkeypatch.setenv("WORKBENCH_ID", "workbench-1")
-    monkeypatch.setenv("WORKBENCH_ALLOCATION_ID", "alloc-1")
     monkeypatch.setenv("OTLP_ENDPOINT", "http://collector:4318")
-    monkeypatch.setenv("WORKBENCH_TELEMETRY", "off")
+    monkeypatch.setenv("WORKBENCH_TELEMETRY", "relay")
 
-    # The operator's escape hatch: a managed bench with a reachable collector
-    # still emits nothing when told not to.
-    assert config_module.load_config().telemetry == "off"
+    # The operator's escape hatch, either way: relay over the socket, or emit nothing.
+    assert config_module.load_config(STORE).telemetry == "relay"
 
 
 def test_an_unknown_setting_names_the_modes_it_accepts(monkeypatch: pytest.MonkeyPatch) -> None:
     _clear_telemetry_env(monkeypatch)
-    monkeypatch.setenv("WORKBENCH_ID", "workbench-1")
     monkeypatch.setenv("WORKBENCH_TELEMETRY", "collector")
 
     with pytest.raises(ValueError, match="direct, relay, local, off"):
-        config_module.load_config()
+        config_module.load_config(STORE)
 
 
 # ================================================
@@ -134,24 +116,15 @@ def test_an_unknown_setting_names_the_modes_it_accepts(monkeypatch: pytest.Monke
 
 def test_a_container_store_offers_its_images_the_first_its_default(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("WORKBENCH_ID", "wb-store")
-    store = ["--mode", "external", "--store", "lab=/srv/rees", "--backend", "container"]
-
     offered = ["--image", "python:3.12", "--image", "docker:29", "--image", "python:3.12"]
 
-    config = config_module.load_config([*store, *offered])
+    config = config_module.load_config([*STORE, "--backend", "container", *offered])
 
     assert config.images == ("python:3.12", "docker:29")
 
 
-@pytest.mark.parametrize(
-    "argv",
-    [
-        ["--mode", "external", "--store", "lab=/srv/rees", "--image", "python:3.12"],
-        ["--mode", "external", "--backend", "container", "--image", "python:3.12"],
-    ],
-)
-def test_only_a_container_store_offers_images(monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> None:
+def test_only_a_container_store_offers_images(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("WORKBENCH_ID", "wb-store")
 
     with pytest.raises(SystemExit):
-        config_module.load_config(argv)
+        config_module.load_config([*STORE, "--image", "python:3.12"])

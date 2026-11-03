@@ -32,7 +32,7 @@ from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.model import Ree
 from repo2ree_ree.review import ReviewSet
 from repo2ree_supervisor.client import WorkbenchClient, WorkbenchUnavailableError
-from repo2ree_supervisor.handle import WorkbenchHandle
+from repo2ree_supervisor.handle import ReeRoute
 from repo2ree_supervisor.locks import ReeLocks
 from repo2ree_supervisor.transfers import ReceivedFile
 from repo2ree_telemetry.behaviour import events
@@ -81,7 +81,7 @@ class CommandDispatcher:
         workbench: WorkbenchClient,
         locks: ReeLocks,
         span_sink: SpanSink | None = None,
-        on_unavailable: Callable[[WorkbenchHandle], object] | None = None,
+        on_unavailable: Callable[[ReeRoute], object] | None = None,
     ) -> None:
         self._workbench = workbench
         self._locks = locks
@@ -94,7 +94,7 @@ class CommandDispatcher:
 
     def dispatch_action(
         self,
-        handle: WorkbenchHandle,
+        handle: ReeRoute,
         cmd: Command,
         run_id: str,
         log: LogSink,
@@ -158,7 +158,7 @@ class CommandDispatcher:
             record_result_boundary(span, "supervisor.received", result)
             return result
 
-    def cancel_run(self, handle: WorkbenchHandle, run_id: str) -> None:
+    def cancel_run(self, handle: ReeRoute, run_id: str) -> None:
         """Ask the workbench executor to stop a running action.
 
         This deliberately does not take the per-REE dispatch lock: the command we
@@ -168,7 +168,7 @@ class CommandDispatcher:
 
     def _dispatch_recorded(
         self,
-        handle: WorkbenchHandle,
+        handle: ReeRoute,
         cmd: Command,
         run_id: str,
         log: LogSink,
@@ -205,7 +205,7 @@ class CommandDispatcher:
 
     def _dispatch_action_locked(
         self,
-        handle: WorkbenchHandle,
+        handle: ReeRoute,
         cmd: Command,
         run_id: str,
         log: LogSink,
@@ -273,7 +273,7 @@ class CommandDispatcher:
     # Query / mutation dispatch
     # ------------------------------------------------
 
-    def dispatch_query(self, handle: WorkbenchHandle, *argv: str, locked: bool = False, timeout: int = 30) -> bytes:
+    def dispatch_query(self, handle: ReeRoute, *argv: str, locked: bool = False, timeout: int = 30) -> bytes:
         """Run a read-only CLI subcommand and return its stdout bytes.
 
         ``argv`` is a ``repo2ree-exec`` subcommand (e.g. ``get-ree-manifest``);
@@ -291,7 +291,7 @@ class CommandDispatcher:
         return self._workbench.exec_query(handle.workbench_id, exec_argv, timeout=timeout, ree_id=handle.ree_id)
 
     def dispatch_query_stream(
-        self, handle: WorkbenchHandle, *argv: str, locked: bool = False, timeout: int = 30
+        self, handle: ReeRoute, *argv: str, locked: bool = False, timeout: int = 30
     ) -> Iterator[bytes]:
         """Run a read-only CLI subcommand and stream stdout bytes."""
         exec_argv = list(argv)
@@ -310,7 +310,7 @@ class CommandDispatcher:
 
         return stream()
 
-    def _query_json(self, handle: WorkbenchHandle, *argv: str) -> dict[str, Any]:
+    def _query_json(self, handle: ReeRoute, *argv: str) -> dict[str, Any]:
         """Run a read-only CLI subcommand and parse its stdout as a JSON object.
 
         The one place the workbench's untyped JSON becomes a typed value, so the
@@ -320,27 +320,27 @@ class CommandDispatcher:
         parsed: dict[str, Any] = json.loads(self.dispatch_query(handle, *argv))
         return parsed
 
-    def get_ree_manifest(self, handle: WorkbenchHandle) -> Ree:
+    def get_ree_manifest(self, handle: ReeRoute) -> Ree:
         return Ree.model_validate(self._query_json(handle, GET_REE_MANIFEST))
 
-    def get_ree_document(self, handle: WorkbenchHandle) -> WorkbenchReeDocument:
+    def get_ree_document(self, handle: ReeRoute) -> WorkbenchReeDocument:
         return WorkbenchReeDocument.model_validate(self._query_json(handle, GET_REE_DOCUMENT))
 
-    def get_ree_state(self, handle: WorkbenchHandle) -> WorkbenchReeDocument:
+    def get_ree_state(self, handle: ReeRoute) -> WorkbenchReeDocument:
         """Return composed REE state without embedding text file contents."""
         return WorkbenchReeDocument.model_validate(self._query_json(handle, GET_REE_DOCUMENT, GET_REE_DOCUMENT_SUMMARY))
 
-    def get_history(self, handle: WorkbenchHandle) -> OperationHistory:
+    def get_history(self, handle: ReeRoute) -> OperationHistory:
         return OperationHistory.model_validate(self._query_json(handle, GET_HISTORY))
 
-    def get_reviews(self, handle: WorkbenchHandle) -> ReviewSet:
+    def get_reviews(self, handle: ReeRoute) -> ReviewSet:
         return ReviewSet.model_validate(self._query_json(handle, GET_REVIEWS))
 
-    def read_ree_file_bytes(self, handle: WorkbenchHandle, path: str) -> bytes:
+    def read_ree_file_bytes(self, handle: ReeRoute, path: str) -> bytes:
         # REE files can include large runtime and result artifacts.
         return self.dispatch_query(handle, READ_REE_FILE, READ_REE_FILE_PATH, path, timeout=120)
 
-    def build_archive(self, handle: WorkbenchHandle) -> ReceivedFile:
+    def build_archive(self, handle: ReeRoute) -> ReceivedFile:
         """The REE's archive as a file on the control plane; the caller removes it.
 
         Built and uploaded beside the control socket (``exec_upload``), under the
@@ -350,19 +350,19 @@ class CommandDispatcher:
         with self._locks(handle.ree_id):
             return self._workbench.exec_upload(handle.workbench_id, [BUILD_ARCHIVE], timeout=600, ree_id=handle.ree_id)
 
-    def copy_to_workbench(self, handle: WorkbenchHandle, host_path: str, workbench_path: str) -> None:
+    def copy_to_workbench(self, handle: ReeRoute, host_path: str, workbench_path: str) -> None:
         """Copy a control-plane-local file into the workbench.
 
         ``host_path`` need only exist here; the workbench may share no filesystem
         with us (see ``WorkbenchClient.copy_in``)."""
         self._workbench.copy_in(handle.workbench_id, host_path, workbench_path, ree_id=handle.ree_id)
 
-    def init_ree(self, handle: WorkbenchHandle, name: str) -> None:
+    def init_ree(self, handle: ReeRoute, name: str) -> None:
         """Create the REE in the store its workbench serves; refused where one is already."""
         with self._locks(handle.ree_id):
             self._workbench.exec_simple(handle.workbench_id, ["init-ree", "--name", name], ree_id=handle.ree_id)
 
-    def delete_ree(self, handle: WorkbenchHandle) -> None:
+    def delete_ree(self, handle: ReeRoute) -> None:
         """Delete the REE from the store its workbench serves; refused while one of its runs is active."""
         with self._locks(handle.ree_id):
             self._workbench.delete_ree(handle.workbench_id, handle.ree_id)

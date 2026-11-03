@@ -111,7 +111,7 @@ def test_exec_query_returns_decoded_bytes() -> None:
     registry.register("a1", socket.connection)
     client = WsWorkbenchClient(registry)
 
-    join = _run_in_thread(lambda: client.exec_query("a1", ["get-ree-manifest"]))
+    join = _run_in_thread(lambda: client.exec_query("a1", ["get-ree-manifest"], ree_id="ree-1"))
     req = socket.wait_for_request()
     assert req.request.op == "exec_query"
     socket.respond(BytesChunkFrame(data_b64=base64.b64encode(b'{"ok": true}').decode()))
@@ -126,7 +126,7 @@ def test_exec_query_raises_on_unavailable() -> None:
     registry.register("a1", socket.connection)
     client = WsWorkbenchClient(registry)
 
-    join = _run_in_thread(lambda: client.exec_query("a1", ["get-ree-manifest"]))
+    join = _run_in_thread(lambda: client.exec_query("a1", ["get-ree-manifest"], ree_id="ree-1"))
     socket.wait_for_request()
     socket.respond(UnavailableFrame(detail="gone"))
 
@@ -156,7 +156,7 @@ def test_exec_action_streams_logs_then_result() -> None:
 
     frames: list[Any] = []
     context = ExecutionContext.new(ree_id="ree-1")
-    join = _run_in_thread(lambda: frames.extend(client.exec_action("a1", "{}", "run1", {}, context)))
+    join = _run_in_thread(lambda: frames.extend(client.exec_action("a1", "{}", "run1", {}, context, ree_id="ree-1")))
     request = socket.wait_for_request()
     assert isinstance(request.request, ExecActionRequest)
     assert request.request.context == context
@@ -185,7 +185,7 @@ def test_a_silent_action_waits_until_its_connection_closes(monkeypatch: pytest.M
     monkeypatch.setattr(socket.connection, "request", spy)
 
     frames: list[Any] = []
-    join = _run_in_thread(lambda: frames.extend(client.exec_action("a1", "{}", "run1", {})))
+    join = _run_in_thread(lambda: frames.extend(client.exec_action("a1", "{}", "run1", {}, ree_id="ree-1")))
     socket.wait_for_request()
     socket.connection.close()
     join()
@@ -200,7 +200,7 @@ def test_cancel_run_sends_cancel_run_request() -> None:
     registry.register("a1", socket.connection)
     client = WsWorkbenchClient(registry)
 
-    join = _run_in_thread(lambda: client.cancel_run("a1", "run-7"))
+    join = _run_in_thread(lambda: client.cancel_run("a1", "run-7", ree_id="ree-1"))
     req = socket.wait_for_request()
     assert req.request.op == "cancel_run"
     assert req.request.run_id == "run-7"
@@ -241,7 +241,7 @@ def test_copy_in_offers_the_file_for_one_fetch_beside_the_socket(tmp_path) -> No
     source = tmp_path / "archive.bin"
     source.write_bytes(b"0123456789")
 
-    join = _run_in_thread(lambda: client.copy_in("a1", str(source), "/ree/dest.bin"))
+    join = _run_in_thread(lambda: client.copy_in("a1", str(source), "/ree/dest.bin", ree_id="ree-1"))
     request = socket.wait_for_request().request
     assert isinstance(request, FetchFileRequest)
     assert request.workbench_path == "/ree/dest.bin"
@@ -266,7 +266,7 @@ def test_abandoned_stream_sends_cancel_to_the_workbench() -> None:
     client = WsWorkbenchClient(registry)
 
     def call() -> None:
-        stream = cast(_ClosableIterator, client.exec_query_stream("a1", ["build-archive"]))
+        stream = cast(_ClosableIterator, client.exec_query_stream("a1", ["build-archive"], ree_id="ree-1"))
         next(stream)
         stream.close()
 
@@ -289,7 +289,7 @@ def test_a_failed_fetch_closes_its_transfer_and_raises(tmp_path) -> None:
     source = tmp_path / "archive.bin"
     source.write_bytes(b"some-bytes")
 
-    join = _run_in_thread(lambda: client.copy_in("a1", str(source), "/ree/dest.bin"))
+    join = _run_in_thread(lambda: client.copy_in("a1", str(source), "/ree/dest.bin", ree_id="ree-1"))
     request = socket.wait_for_request().request
     assert isinstance(request, FetchFileRequest)
     socket.respond(ErrorFrame(detail="disk full"))
@@ -322,7 +322,7 @@ def test_resolve_workbench_raises_when_none_connected() -> None:
 def test_pick_raises_when_no_workbench_for_exec_query() -> None:
     client = WsWorkbenchClient(WorkbenchConnectionRegistry())
     with pytest.raises(WorkbenchUnavailableError, match="no workbench service connected"):
-        client.exec_query("", ["get-ree-manifest"])
+        client.exec_query("", ["get-ree-manifest"], ree_id="ree-1")
 
 
 def test_pick_raises_when_named_workbench_absent() -> None:
@@ -332,7 +332,7 @@ def test_pick_raises_when_named_workbench_absent() -> None:
     client = WsWorkbenchClient(registry)
     # A different workbench is connected, but the REE is pinned to one that isn't.
     with pytest.raises(WorkbenchUnavailableError, match="workbench 'a2' not connected"):
-        client.exec_query("a2", ["get-ree-manifest"])
+        client.exec_query("a2", ["get-ree-manifest"], ree_id="ree-1")
 
 
 def test_exec_query_reassembles_multiple_chunks() -> None:
@@ -343,7 +343,7 @@ def test_exec_query_reassembles_multiple_chunks() -> None:
     registry.register("a1", socket.connection)
     client = WsWorkbenchClient(registry)
 
-    join = _run_in_thread(lambda: client.exec_query("a1", ["build-archive"]))
+    join = _run_in_thread(lambda: client.exec_query("a1", ["build-archive"], ree_id="ree-1"))
     socket.wait_for_request()
     socket.respond(BytesChunkFrame(data_b64=base64.b64encode(b"part-one-").decode()))
     socket.respond(BytesChunkFrame(data_b64=base64.b64encode(b"part-two").decode()))
@@ -381,7 +381,7 @@ def test_correlated_frames_still_reach_their_caller_when_a_sink_is_set() -> None
     socket = FakeSocket()
     socket.connection = WorkbenchConnection(send_text=socket._capture, span_sink=relayed.append)
 
-    pending = socket.connection.start(ExecSimpleRequest(argv=["doctor"]))
+    pending = socket.connection.start(ExecSimpleRequest(ree_id="ree-1", argv=["doctor"]))
     socket.wait_for_request()
     socket.connection.on_message(WorkbenchWsMessage(id=socket.sent[-1].id, frame=DoneFrame()).model_dump_json())
 
@@ -402,7 +402,7 @@ def test_an_upload_arrives_beside_the_socket_and_is_collected_on_done(tmp_path) 
     client = WsWorkbenchClient(registry, inbox)
     received: list[ReceivedFile] = []
 
-    join = _run_in_thread(lambda: received.append(client.exec_upload("a1", ["build-archive"])))
+    join = _run_in_thread(lambda: received.append(client.exec_upload("a1", ["build-archive"], ree_id="ree-1")))
     request = socket.wait_for_request().request
     assert isinstance(request, ExecUploadRequest)
     assert request.argv == ["build-archive"]
@@ -427,7 +427,7 @@ def test_done_without_an_upload_is_an_error_and_leaves_no_file(tmp_path) -> None
 
     def call() -> None:
         try:
-            client.exec_upload("a1", ["build-archive"])
+            client.exec_upload("a1", ["build-archive"], ree_id="ree-1")
         except TransferError as exc:
             errors.append(exc)
 
@@ -450,7 +450,7 @@ def test_a_failed_upload_request_discards_its_transfer(tmp_path) -> None:
 
     def call() -> None:
         try:
-            client.exec_upload("a1", ["build-archive"])
+            client.exec_upload("a1", ["build-archive"], ree_id="ree-1")
         except RuntimeError as exc:
             errors.append(exc)
 

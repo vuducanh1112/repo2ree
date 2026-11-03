@@ -42,15 +42,12 @@ def main(argv: Sequence[str] = ()) -> None:
             instance_id=config.workbench_id,
         )
     meter_provider = setup_metrics("repo2ree-workbench", endpoint=config.otlp_endpoint, instance_id=config.workbench_id)
-    store = config.store_root is not None
     capabilities = detect_capabilities(config.script_engine if config.backend == "container" else None)
     executor = LocalExecutor(
-        config.store_root or config.root,
+        config.store_root,
         config.exec_path,
-        store=store,
         environment=tool_environment(config.tools_bundle),
-        # A bench set up for one REE is that REE's environment (its image); a store's workbench is
-        # every REE's, so it runs each where the REE declares, or refuses.
+        # The store's workbench runs each REE's scripts where the REE declares, or refuses.
         scripts=ScriptBackend(
             config.backend,
             config.engine,
@@ -58,12 +55,10 @@ def main(argv: Sequence[str] = ()) -> None:
             config.engine_path,
             # The store's directory names it on this machine: two stores may share an id elsewhere.
             owner=str(config.store_root),
-        )
-        if store
-        else None,
+        ),
     )
     service = WorkbenchService(executor, store_id=config.store_id, slots=config.slots)
-    if store and config.backend == "container":
+    if config.backend == "container":
         ScriptBackend(config.backend, config.engine, owner=str(config.store_root)).remove_leftover_jobs()
     try:
         asyncio.run(
@@ -71,11 +66,7 @@ def main(argv: Sequence[str] = ()) -> None:
                 config.api_ws_url,
                 service,
                 config.workbench_id,
-                mode=config.mode,
-                allocation_id=config.allocation_id,
                 enrollment_token=config.enrollment_token,
-                location_id=config.location_id,
-                image=config.image,
                 span_relay=span_relay,
                 build=current_build("repo2ree-workbench"),
                 executor_build=executor.build_info(),

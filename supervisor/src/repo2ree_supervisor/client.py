@@ -1,9 +1,4 @@
-"""The control plane's separate provider and workbench clients.
-
-The manager depends on two seams with deliberately different authority:
-``ProviderClient`` creates, probes, and destroys environments;
-``WorkbenchClient`` executes REE commands in one. Their production implementations
-use separate outbound WebSockets and credentials.
+"""The control plane's client of the workbenches serving stores.
 
 The workbench dials the control plane and holds one outbound socket — it never
 listens, so it works from inside clusters and NATed networks that only permit
@@ -17,7 +12,6 @@ from __future__ import annotations
 from collections.abc import Iterator
 from typing import Protocol
 
-from repo2ree_protocol.allocation import AllocationRequest, AllocationState
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import ErrorFrame, Frame, UnavailableFrame
 from repo2ree_supervisor.transfers import ReceivedFile
@@ -40,69 +34,27 @@ def raise_for_terminal_error(frame: Frame) -> None:
         raise RuntimeError(frame.detail)
 
 
-class ProviderClient(Protocol):
-    """The verbs the control plane needs to obtain and release a workbench.
-
-    Placement affinity runs through the ids: ``provider_id`` picks the provider
-    that will create the environment (empty means any connected one, valid only
-    before the REE is pinned), and every later verb takes the ``workbench_id``
-    that provisioning returned, so it reaches the provider holding that bench.
-    """
-
-    def resolve_location(self, location_id: str, image: str) -> tuple[str, str]:
-        """The provider serving ``location_id``, and the image ref to run there.
-
-        Blank ``image`` resolves to the location's first catalog entry. A ref
-        the location did not publish is refused unless the location accepts
-        custom images — the only check made here, and not a check on what the
-        image contains."""
-        ...
-
-    def ensure(
-        self,
-        provider_id: str,
-        allocation: AllocationRequest,
-        workbench_id: str,
-        enrollment_token: str,
-    ) -> Iterator[Frame]: ...
-
-    def release(self, provider_id: str, allocation_id: str) -> None: ...
-
-    def release_best_effort(self, provider_id: str, allocation_id: str) -> bool: ...
-
-    def is_running(self, provider_id: str, allocation_id: str) -> bool: ...
-
-    def inspect(self, provider_id: str, allocation_id: str) -> AllocationState | None:
-        """What the provider says of the allocation, or None when it could not be asked."""
-        ...
-
-
 class WorkbenchClient(Protocol):
     """The verbs the control plane needs to drive REE commands in a workbench.
 
     The ``workbench_id`` routes directly to the resident process; ``ree_id`` names the REE in
-    a workbench that serves a store (a managed bench checks it against its one REE).
-    Provider-private references never cross this boundary.
+    the store it serves.
     """
 
-    def exec_simple(self, workbench_id: str, argv: list[str], timeout: int = 60, *, ree_id: str | None = None) -> None:
+    def exec_simple(self, workbench_id: str, argv: list[str], timeout: int = 60, *, ree_id: str) -> None:
         """Run an executor subcommand in the bench, discarding output.
 
         ``argv`` is the ``repo2ree-exec`` subcommand argv *without* the executor
         binary — the serving backend prepends the bench's entry point."""
         ...
 
-    def exec_query(
-        self, workbench_id: str, argv: list[str], timeout: int = 30, *, ree_id: str | None = None
-    ) -> bytes: ...
+    def exec_query(self, workbench_id: str, argv: list[str], timeout: int = 30, *, ree_id: str) -> bytes: ...
 
     def exec_query_stream(
-        self, workbench_id: str, argv: list[str], timeout: int = 30, *, ree_id: str | None = None
+        self, workbench_id: str, argv: list[str], timeout: int = 30, *, ree_id: str
     ) -> Iterator[bytes]: ...
 
-    def exec_upload(
-        self, workbench_id: str, argv: list[str], timeout: int = 600, *, ree_id: str | None = None
-    ) -> ReceivedFile:
+    def exec_upload(self, workbench_id: str, argv: list[str], timeout: int = 600, *, ree_id: str) -> ReceivedFile:
         """Run an executor subcommand in the bench and receive its stdout as a file.
 
         The bytes travel over HTTP beside the control socket (see
@@ -118,12 +70,12 @@ class WorkbenchClient(Protocol):
         env: dict[str, str],
         context: ExecutionContext | None = None,
         *,
-        ree_id: str | None = None,
+        ree_id: str,
     ) -> Iterator[Frame]: ...
 
-    def cancel_run(self, workbench_id: str, run_id: str, *, ree_id: str | None = None) -> None: ...
+    def cancel_run(self, workbench_id: str, run_id: str, *, ree_id: str) -> None: ...
 
-    def copy_in(self, workbench_id: str, source_path: str, workbench_path: str, *, ree_id: str | None = None) -> None:
+    def copy_in(self, workbench_id: str, source_path: str, workbench_path: str, *, ree_id: str) -> None:
         """Stream a control-plane-local file into the bench at ``workbench_path``.
 
         ``source_path`` need only exist on the control plane; the bytes travel
@@ -133,15 +85,5 @@ class WorkbenchClient(Protocol):
     def delete_ree(self, workbench_id: str, ree_id: str) -> None:
         """Delete an REE and its directory from the store the workbench serves."""
         ...
-
-    def drain(self, workbench_id: str) -> None: ...
-
-    def wait_for_workbench(self, workbench_id: str, timeout: float = 60.0) -> None: ...
-
-    def reserve_external(self, allocation_id: str, location_id: str) -> str: ...
-
-    def release_reservation(self, workbench_id: str, allocation_id: str) -> None: ...
-
-    def assign(self, workbench_id: str, allocation: AllocationRequest) -> None: ...
 
     def is_connected(self, workbench_id: str) -> bool: ...

@@ -56,7 +56,6 @@ describe("ReeApi", () => {
     await api.createRee({
       name: "REE",
       store_id: "lab-1",
-      location_id: "",
       image: "docker:29-dind",
     });
     await api.getRee(reeId);

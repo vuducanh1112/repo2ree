@@ -84,7 +84,6 @@ describe("WorkbenchSetupDrawer", () => {
       expect(createRee).toHaveBeenCalledWith({
         name: "REE",
         store_id: "lab-1",
-        location_id: "",
         image: "",
       }),
     );
@@ -159,7 +158,6 @@ describe("WorkbenchSetupDrawer", () => {
       expect(createRee).toHaveBeenCalledWith({
         name: "REE",
         store_id: "lab-1",
-        location_id: "",
         image: "",
       }),
     );

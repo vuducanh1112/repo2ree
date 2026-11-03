@@ -18,12 +18,12 @@ from repo2ree_ree.reproducibility import (
     MachineLevel,
     ReproducibilityReport,
 )
-from repo2ree_supervisor import WorkbenchHandle
+from repo2ree_supervisor import ReeRoute
 
 
 def test_evaluate_report_crosses_as_the_core_models_camelcase_dump(
     client: TestClient,
-    online_ree: WorkbenchHandle,
+    online_ree: ReeRoute,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     report = ReproducibilityReport(
@@ -48,7 +48,7 @@ def test_evaluate_report_crosses_as_the_core_models_camelcase_dump(
 
 def test_author_receipts_cross_as_a_typed_document(
     client: TestClient,
-    online_ree: WorkbenchHandle,
+    online_ree: ReeRoute,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     ree = Ree()

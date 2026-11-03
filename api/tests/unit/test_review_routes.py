@@ -14,12 +14,12 @@ from repo2ree_protocol.command import (
     ReviewRunExperimentCommand,
 )
 from repo2ree_ree.review import ReviewSet
-from repo2ree_supervisor import WorkbenchHandle
+from repo2ree_supervisor import ReeRoute
 
 
 def test_list_reviews_returns_persisted_attempts(
     client: TestClient,
-    online_ree: WorkbenchHandle,
+    online_ree: ReeRoute,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
@@ -53,7 +53,7 @@ def test_list_reviews_returns_persisted_attempts(
 
 def test_start_source_review_dispatches_review_command(
     client: TestClient,
-    online_ree: WorkbenchHandle,
+    online_ree: ReeRoute,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     captured: dict[str, Any] = {}
@@ -91,7 +91,7 @@ def test_start_source_review_dispatches_review_command(
 
 def test_start_build_review_targets_the_named_attempt(
     client: TestClient,
-    online_ree: WorkbenchHandle,
+    online_ree: ReeRoute,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     captured: dict[str, Any] = {}
@@ -131,7 +131,7 @@ def test_start_build_review_targets_the_named_attempt(
 
 def test_start_activation_review_targets_the_named_attempt(
     client: TestClient,
-    online_ree: WorkbenchHandle,
+    online_ree: ReeRoute,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     captured: dict[str, Any] = {}
@@ -166,7 +166,7 @@ def test_start_activation_review_targets_the_named_attempt(
 
 def test_activation_takes_no_basis_at_the_edge(
     client: TestClient,
-    online_ree: WorkbenchHandle,
+    online_ree: ReeRoute,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Activation inherits what the attempt's evidence is worth rather than
@@ -183,7 +183,7 @@ def test_activation_takes_no_basis_at_the_edge(
 
 def test_start_experiment_review_names_both_the_attempt_and_the_experiment(
     client: TestClient,
-    online_ree: WorkbenchHandle,
+    online_ree: ReeRoute,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     captured: dict[str, Any] = {}
@@ -220,7 +220,7 @@ def test_start_experiment_review_names_both_the_attempt_and_the_experiment(
 
 def test_experiment_review_takes_no_basis_at_the_edge(
     client: TestClient,
-    online_ree: WorkbenchHandle,
+    online_ree: ReeRoute,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Like activation, the run inherits what the workspace it happens in is
@@ -237,7 +237,7 @@ def test_experiment_review_takes_no_basis_at_the_edge(
 
 def test_get_review_returns_one_attempt_and_404s_for_the_rest(
     client: TestClient,
-    online_ree: WorkbenchHandle,
+    online_ree: ReeRoute,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
@@ -276,7 +276,7 @@ def test_get_review_returns_one_attempt_and_404s_for_the_rest(
 
 def test_a_requested_basis_reaches_the_workbench_command(
     client: TestClient,
-    online_ree: WorkbenchHandle,
+    online_ree: ReeRoute,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Reproducing from the REE's own artifacts is a per-run choice, so it has
@@ -316,7 +316,7 @@ def test_a_requested_basis_reaches_the_workbench_command(
 
 def test_an_unknown_basis_is_rejected_at_the_edge(
     client: TestClient,
-    online_ree: WorkbenchHandle,
+    online_ree: ReeRoute,
 ) -> None:
     response = client.post(
         f"/api/v1/rees/{online_ree.ree_id}/reviews/source:reproduce",
@@ -328,7 +328,7 @@ def test_an_unknown_basis_is_rejected_at_the_edge(
 
 def test_starting_a_source_review_names_the_attempt_it_opened(
     client: TestClient,
-    online_ree: WorkbenchHandle,
+    online_ree: ReeRoute,
 ) -> None:
     """The POST answers "which attempt did I just open?" on its own.
 

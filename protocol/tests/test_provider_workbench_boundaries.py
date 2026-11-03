@@ -19,7 +19,7 @@ from repo2ree_protocol.workbench import (
 def test_provider_socket_rejects_execution_request() -> None:
     execution = WorkbenchWsRequest(
         id="request-1",
-        request=ExecSimpleRequest(argv=["get-ree-manifest"]),
+        request=ExecSimpleRequest(ree_id="ree-1", argv=["get-ree-manifest"]),
     )
 
     with pytest.raises(ValidationError):

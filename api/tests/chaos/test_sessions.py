@@ -94,11 +94,7 @@ class Session:
         self.call("PATCH", self.ree("definition"), json={"definition_patch": patch})
 
     def bench(self) -> str | None:
-        """The REE whose workbench a fault can hit now: its bench is assigned, or its store answers."""
-        allocations = self.call("GET", "/api/v1/allocations").json()["allocations"]
-        found = [item for item in allocations if item["request"]["ree_id"] == self.ree_id]
-        if found:
-            return self.ree_id if found[0]["state"] == "assigned" else None
+        """The REE whose workbench a fault can hit now: its store answers."""
         return self.ree_id if self.call("GET", f"/api/v1/rees/{self.ree_id}").status_code == 200 else None
 
     # ---- authoring --------------------------------------------------------------

@@ -1,7 +1,6 @@
 """Native executor supervision inside one supplied workbench environment.
 
-A managed bench runs every command against its one root, the REE it was provisioned for. A
-workbench serving a store keeps one directory per REE beneath its root and runs each command
+A workbench serves a store: it keeps one directory per REE beneath its root and runs each command
 against the directory of the REE the request names.
 """
 
@@ -110,14 +109,13 @@ def declared_environment(root: Path) -> dict[str, object]:
 
 
 class LocalExecutor:
-    """Run short-lived executor processes locally, against one root or one REE of a store."""
+    """Run short-lived executor processes locally, each against one REE of the store."""
 
     def __init__(
         self,
         root: Path,
         exec_path: str = "repo2ree-exec",
         *,
-        store: bool = False,
         environment: dict[str, str] | None = None,
         scripts: ScriptBackend | None = None,
         cancel_grace: float = CANCEL_GRACE_SECONDS,
@@ -125,10 +123,9 @@ class LocalExecutor:
     ) -> None:
         self.root = root.resolve()
         self.exec_path = exec_path
-        self.store = store
         # What every executor is started with besides this process's own environment (the tools).
         self.environment = environment or {}
-        # Where the author's scripts run, and what this workbench refuses to run; None: as on any host.
+        # Where the author's scripts run, and what this workbench refuses to run; None: on this host.
         self.scripts = scripts
         self.cancel_grace = cancel_grace
         self.cancel_kill = cancel_kill
@@ -137,12 +134,8 @@ class LocalExecutor:
         self._runs: dict[tuple[Path, str], subprocess.Popen[str]] = {}
         self._runs_lock = threading.Lock()
 
-    def ree_root(self, ree_id: str | None) -> Path:
-        """The root an REE's commands run against: its directory in the store, or the one root."""
-        if not self.store:
-            return self.root
-        if ree_id is None:
-            raise ValueError("a workbench serving a store runs a command only for a named REE")
+    def ree_root(self, ree_id: str) -> Path:
+        """The root an REE's commands run against: its directory in the store."""
         return ree_directory(self.root, ree_id)
 
     def is_running(self, ree_id: str) -> bool:
@@ -152,8 +145,6 @@ class LocalExecutor:
 
     def delete_ree(self, ree_id: str) -> None:
         """Remove an REE's directory from the store; refused while one of its runs is active."""
-        if not self.store:
-            raise RuntimeError("only a workbench serving a store deletes REEs")
         if self.is_running(ree_id):
             raise RuntimeError(f"REE {ree_id!r} has a run in progress")
         root = self.ree_root(ree_id)
@@ -187,7 +178,7 @@ class LocalExecutor:
             pass
         return BuildInfo()
 
-    def exec_simple(self, argv: list[str], timeout: int = 60, *, ree_id: str | None = None) -> None:
+    def exec_simple(self, argv: list[str], timeout: int = 60, *, ree_id: str) -> None:
         self._run_simple(self.ree_root(ree_id), argv, timeout)
 
     def _run_simple(self, root: Path, argv: list[str], timeout: int) -> None:
@@ -203,7 +194,7 @@ class LocalExecutor:
             detail = result.stderr.strip() or result.stdout.strip() or "(no output)"
             raise RuntimeError(f"executor {argv[0]!r} failed (exit {result.returncode}): {detail}")
 
-    def exec_query_stream(self, argv: list[str], timeout: int = 30, *, ree_id: str | None = None) -> Iterator[bytes]:
+    def exec_query_stream(self, argv: list[str], timeout: int = 30, *, ree_id: str) -> Iterator[bytes]:
         result = subprocess.run(
             [self.exec_path, *argv],
             check=False,
@@ -218,9 +209,7 @@ class LocalExecutor:
         for offset in range(0, len(view), 256 * 1024):
             yield bytes(view[offset : offset + 256 * 1024])
 
-    def exec_query_to_file(
-        self, argv: list[str], target: Path, timeout: int = 600, *, ree_id: str | None = None
-    ) -> None:
+    def exec_query_to_file(self, argv: list[str], target: Path, timeout: int = 600, *, ree_id: str) -> None:
         """Run an executor query with its stdout written straight to ``target``, never held in memory."""
         with target.open("wb") as output:
             result = subprocess.run(
@@ -242,7 +231,7 @@ class LocalExecutor:
         env: dict[str, str],
         context: ExecutionContext | None = None,
         *,
-        ree_id: str | None = None,
+        ree_id: str,
     ) -> Iterator[Frame]:
         root = self.ree_root(ree_id)
         proc = subprocess.Popen(
@@ -290,7 +279,7 @@ class LocalExecutor:
             with self._runs_lock:
                 self._runs.pop((root, run_id), None)
 
-    def cancel_run(self, run_id: str, *, ree_id: str | None = None) -> None:
+    def cancel_run(self, run_id: str, *, ree_id: str) -> None:
         """Ask the run's executor to stop, and only force it if it does not.
 
         The cancel marker is cooperative: the executor stops its script, rolls the REE back,
@@ -317,7 +306,7 @@ class LocalExecutor:
                 proc.wait(timeout=wait)
                 return
 
-    def copy_in(self, source_path: str, workbench_path: str, *, ree_id: str | None = None) -> None:
+    def copy_in(self, source_path: str, workbench_path: str, *, ree_id: str) -> None:
         destination = self._resolve_destination(self.ree_root(ree_id), workbench_path)
         destination.parent.mkdir(parents=True, exist_ok=True)
         fd, temporary = tempfile.mkstemp(prefix=f".{destination.name}.", dir=destination.parent)

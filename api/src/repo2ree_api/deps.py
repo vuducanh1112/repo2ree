@@ -1,13 +1,11 @@
 """Module-level control-plane singletons shared across API routes.
 
-The composition root: builds the workbench registry, the registry of dialed-in
-workbenches, the manager that drives workbenches through those services, and the REE
-index.
+The composition root: builds the registry of dialed-in workbenches, the dispatcher that drives
+REE commands through them, the stores and the REEs they serve, and the REE index.
 
-The first three are liveness state and die with the process that holds them.
-The index does not — it is the one singleton here whose file must survive the
-service, so it is built from its own configured path rather than derived from
-anything running.
+The connections are liveness state and die with the process that holds them. The registries of
+stores and REEs, and the index, do not: their files must survive the service, so each is built
+from its own configured path rather than derived from anything running.
 """
 
 from __future__ import annotations
@@ -15,66 +13,38 @@ from __future__ import annotations
 from repo2ree_api.ree_index import ReeIndex
 from repo2ree_api.settings import service_settings
 from repo2ree_supervisor import (
-    AllocationStore,
-    ProviderConnectionRegistry,
+    CommandDispatcher,
+    ReeLocks,
     ReeRegistry,
     ReeRouter,
     StoreRegistry,
     Transfers,
     WorkbenchConnectionRegistry,
-    WorkbenchManager,
-    WsProviderClient,
     WsWorkbenchClient,
 )
-from repo2ree_supervisor.enrollment import EnrollmentRegistry
 from repo2ree_telemetry.relay import build_span_sink
 
-allocation_store = AllocationStore(service_settings.ALLOCATION_STORE_FILE)
-
-
 # The registry of workbenches that have dialed in. The WebSocket route (/workbench/connect)
-# populates it; WsWorkbenchClient reads from it to drive whichever workbench is connected.
-def _workbench_allocated(workbench_id: str) -> bool:
-    return any(
-        record.workbench_id == workbench_id and record.state.value not in {"released", "failed", "lost"}
-        for record in allocation_store.list()
-    )
+# populates it; WsWorkbenchClient reads from it to drive the workbench serving an REE's store.
+workbench_connections = WorkbenchConnectionRegistry()
 
-
-workbench_connections = WorkbenchConnectionRegistry(is_allocated=_workbench_allocated)
-provider_connections = ProviderConnectionRegistry()
-# Beside the allocations they belong to, so a bench provisioned before a restart is still known after it.
-workbench_enrollments = EnrollmentRegistry(service_settings.ALLOCATION_STORE_FILE.with_name("enrollments.json"))
-
-# One combined-workbench client serves both manager seams today: the legacy workbench
-# multiplexes capacity and execution over one socket. When the two roles get
-# separate transports, only this composition changes.
 # Files workbenches upload beside their control socket (an REE archive), by single-use token.
 workbench_transfers = Transfers()
 _workbench_client = WsWorkbenchClient(workbench_connections, workbench_transfers)
-_provider_client = WsProviderClient(provider_connections)
 
-# Where relayed spans go. Two sources feed it: executor spans, which the manager
+# Where relayed spans go. Two sources feed it: executor spans, which the dispatcher
 # forwards off the command path, and a workbench's own spans, which arrive
 # uncorrelated on its socket (see WorkbenchConnection.on_message). Both are
 # base64 OTLP payloads this side never decodes.
 span_sink = build_span_sink(service_settings.OTLP_ENDPOINT, console_fallback=True)
 
-workbench_manager = WorkbenchManager(
-    registry=allocation_store,
-    provider=_provider_client,
-    workbench=_workbench_client,
-    enrollment=workbench_enrollments,
-    span_sink=span_sink,
-)
-
-# Commands and queries for an REE, under the same per-REE locks the manager sets workbenches up under.
-command_dispatcher = workbench_manager.dispatcher
+# Commands and queries for an REE, one at a time per REE.
+command_dispatcher = CommandDispatcher(_workbench_client, ReeLocks(), span_sink)
 
 # Stores an operator registered and the REEs they serve; each REE's commands go where the router says.
 store_registry = StoreRegistry(service_settings.CONTROL_STATE_DIR / "stores.json")
 ree_registry = ReeRegistry(service_settings.CONTROL_STATE_DIR / "rees.json")
-ree_router = ReeRouter(ree_registry, workbench_connections, workbench_manager)
+ree_router = ReeRouter(ree_registry, workbench_connections)
 
 # The durable record of what has been sealed here and where it was deposited.
 # Written at seal, appended to when a deposit publishes, and read by anything

@@ -7,10 +7,10 @@ from collections.abc import Iterator
 from typing import IO
 
 from repo2ree_api.deps import command_dispatcher
-from repo2ree_supervisor import WorkbenchHandle
+from repo2ree_supervisor import ReeRoute
 
 
-def archive_download_filename(handle: WorkbenchHandle) -> str:
+def archive_download_filename(handle: ReeRoute) -> str:
     """Name the downloaded bundle after the REE it holds.
 
     Parsed rather than indexed. This read was ``metadata.get("name")`` against

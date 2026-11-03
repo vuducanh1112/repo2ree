@@ -9,8 +9,8 @@ starts its action when its slot is opened and continues it when the upload compl
 
 This module owns the AuthorApiAction records. It keeps the actions this process has
 open, so each record starts where the last one ended, collects the facts a rule needs
-from the work done meanwhile (the attempt the workbench reported, the workbench's
-allocation), and settles what is still open before the journal closes. It never
+from the work done meanwhile (the attempt the workbench reported, the REE's store),
+and settles what is still open before the journal closes. It never
 touches tracing: spans and metrics stay with the routes and the run registry, so
 sampling or switching tracing off cannot change the evidence.
 """

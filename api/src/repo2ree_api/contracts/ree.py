@@ -24,10 +24,8 @@ class ReeDocument(BaseModel):
     ree: Ree
     status: ReeStatus
     audit: ReeAudit
-    allocation_id: str | None = None
     location_id: str | None = None
-    image: str | None = None
-    # The store the REE is kept in; deleting it deletes it there. None for an REE on a bench of its own.
+    # The store the REE is kept in; deleting it deletes it there.
     store_id: str | None = None
     workspace_files: list[WorkspaceFile] = Field(default_factory=list)
     ree_files: list[ReeFile] = Field(default_factory=list)
@@ -38,9 +36,7 @@ class ReeDocument(BaseModel):
         ree_id: str,
         document: WorkbenchReeDocument,
         *,
-        allocation_id: str | None = None,
         location_id: str | None = None,
-        image: str | None = None,
         store_id: str | None = None,
     ) -> ReeDocument:
         return cls(
@@ -48,9 +44,7 @@ class ReeDocument(BaseModel):
             ree=document.ree,
             status=document.status,
             audit=document.audit,
-            allocation_id=allocation_id,
             location_id=location_id,
-            image=image,
             store_id=store_id,
             workspace_files=document.workspace_files,
             ree_files=document.ree_files,
@@ -63,9 +57,8 @@ class ReeSummary(BaseModel):
     ree_id: str
     name: str
     status: ReeStatus
-    allocation_id: str
+    # The store the REE is kept in.
     location_id: str
-    image: str
 
 
 class ReeList(BaseModel):
@@ -87,9 +80,7 @@ class WorkbenchStatus(BaseModel):
 
     status: str
     workbench_id: str | None = None
-    allocation_id: str | None = None
     location_id: str | None = None
-    image: str | None = None
     build: BuildInfo = Field(default_factory=BuildInfo)
     executor_build: BuildInfo = Field(default_factory=BuildInfo)
 

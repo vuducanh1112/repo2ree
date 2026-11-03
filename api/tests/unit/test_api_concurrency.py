@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from repo2ree_api.deps import command_dispatcher
 from repo2ree_protocol.result import ActionResult
-from repo2ree_supervisor import WorkbenchHandle
+from repo2ree_supervisor import ReeRoute
 
 
 def _etag(content: bytes) -> str:
@@ -18,7 +18,7 @@ def _etag(content: bytes) -> str:
 
 def test_definition_version_conflict_reports_expected_and_actual_versions(
     client: TestClient,
-    online_ree: WorkbenchHandle,
+    online_ree: ReeRoute,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     dispatched = []
@@ -64,7 +64,7 @@ def _conflict_result(path: str, expected: str, actual: str | None) -> ActionResu
 
 def test_file_write_conflict_from_the_workbench_maps_to_409(
     client: TestClient,
-    online_ree: WorkbenchHandle,
+    online_ree: ReeRoute,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     stale = _etag(b"old")
@@ -92,7 +92,7 @@ def test_file_write_conflict_from_the_workbench_maps_to_409(
 
 def test_file_delete_conflict_from_the_workbench_maps_to_409(
     client: TestClient,
-    online_ree: WorkbenchHandle,
+    online_ree: ReeRoute,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     stale = _etag(b"old")
@@ -113,7 +113,7 @@ def test_file_delete_conflict_from_the_workbench_maps_to_409(
 
 def test_file_write_returns_new_content_etag(
     client: TestClient,
-    online_ree: WorkbenchHandle,
+    online_ree: ReeRoute,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
@@ -141,7 +141,7 @@ def test_file_delete_answers_the_mutation_and_nothing_else(client, online_ree, m
 
 def test_workbench_command_failure_maps_to_400_with_operation_code(
     client: TestClient,
-    online_ree: WorkbenchHandle,
+    online_ree: ReeRoute,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(

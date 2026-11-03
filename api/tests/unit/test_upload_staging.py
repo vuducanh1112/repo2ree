@@ -24,7 +24,7 @@ from repo2ree_api.storage.upload_staging import (
     stage_upload_stream,
     staged_upload_path,
 )
-from repo2ree_supervisor import WorkbenchHandle
+from repo2ree_supervisor import ReeRoute
 
 
 def _mint(staging_dir: Path, token: str) -> Path:
@@ -40,9 +40,7 @@ def _mint(staging_dir: Path, token: str) -> Path:
 # ================================================
 
 
-def test_upload_init_allocates_token_and_url(
-    client: TestClient, online_ree: WorkbenchHandle, staging_dir: Path
-) -> None:
+def test_upload_init_allocates_token_and_url(client: TestClient, online_ree: ReeRoute, staging_dir: Path) -> None:
     resp = client.post(
         f"/api/v1/rees/{online_ree.ree_id}/source:upload-init",
         json={"file_name": "project.zip", "size": 3, "content_type": "application/zip"},
@@ -68,7 +66,7 @@ def test_upload_init_for_unknown_ree_is_404(client: TestClient) -> None:
     assert resp.status_code == 404
 
 
-def test_put_bytes_lands_in_staging(client: TestClient, online_ree: WorkbenchHandle, staging_dir: Path) -> None:
+def test_put_bytes_lands_in_staging(client: TestClient, online_ree: ReeRoute, staging_dir: Path) -> None:
     resp = client.post(
         f"/api/v1/rees/{online_ree.ree_id}/source:upload-init",
         json={"file_name": "project.zip", "size": 18, "content_type": "application/zip"},
@@ -84,7 +82,7 @@ def test_put_bytes_lands_in_staging(client: TestClient, online_ree: WorkbenchHan
     assert staged_upload_path(token).read_bytes() == data
 
 
-def test_put_rejects_declared_size_mismatch(client: TestClient, online_ree: WorkbenchHandle, staging_dir: Path) -> None:
+def test_put_rejects_declared_size_mismatch(client: TestClient, online_ree: ReeRoute, staging_dir: Path) -> None:
     init = client.post(
         f"/api/v1/rees/{online_ree.ree_id}/source:upload-init",
         json={"file_name": "project.zip", "size": 10, "content_type": "application/zip"},
@@ -100,7 +98,7 @@ def test_put_rejects_declared_size_mismatch(client: TestClient, online_ree: Work
 
 def test_upload_init_rejects_declared_size_over_limit(
     client: TestClient,
-    online_ree: WorkbenchHandle,
+    online_ree: ReeRoute,
     staging_dir: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -122,9 +120,7 @@ def test_put_bytes_for_unknown_ree_is_404(client: TestClient, staging_dir: Path)
     assert not staged_upload_path("tok-1").exists()
 
 
-def test_put_bytes_with_unminted_token_is_404(
-    client: TestClient, online_ree: WorkbenchHandle, staging_dir: Path
-) -> None:
+def test_put_bytes_with_unminted_token_is_404(client: TestClient, online_ree: ReeRoute, staging_dir: Path) -> None:
     # A request cannot invent its own token: only upload-init mints one, so an
     # attacker cannot land arbitrary files on the host outside the init flow.
     resp = client.put(f"/api/v1/rees/{online_ree.ree_id}/source:upload/tok-invented", content=b"data")
@@ -201,7 +197,7 @@ def test_traversal_and_malformed_tokens_are_rejected(token: str) -> None:
         staged_upload_path(token)
 
 
-def test_upload_complete_with_traversal_token_is_400(client: TestClient, online_ree: WorkbenchHandle) -> None:
+def test_upload_complete_with_traversal_token_is_400(client: TestClient, online_ree: ReeRoute) -> None:
     # The PUT route's token rides the URL path, where routing already blocks
     # slashes — but upload-complete takes the token from the JSON body, so it
     # must be validated before it touches a path.
@@ -212,9 +208,7 @@ def test_upload_complete_with_traversal_token_is_400(client: TestClient, online_
     assert resp.status_code == 400
 
 
-def test_upload_token_cannot_cross_upload_purposes(
-    client: TestClient, online_ree: WorkbenchHandle, staging_dir: Path
-) -> None:
+def test_upload_token_cannot_cross_upload_purposes(client: TestClient, online_ree: ReeRoute, staging_dir: Path) -> None:
     initialized = client.post(
         f"/api/v1/rees/{online_ree.ree_id}/source:upload-init",
         json={"file_name": "source.zip", "size": 3, "content_type": "application/zip"},

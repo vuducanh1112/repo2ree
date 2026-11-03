@@ -182,9 +182,7 @@ describe("shell/data/ree/reeMapping", () => {
     };
     const project = mapReeDetailToReeProject({
       ...withReceipt,
-      allocation_id: "alloc-1",
       location_id: "lab-1",
-      image: "docker.io/library/docker:29-dind",
       ree_files: [
         {
           path: "artifact",

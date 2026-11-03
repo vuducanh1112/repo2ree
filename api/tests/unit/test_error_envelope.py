@@ -18,13 +18,13 @@ from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
-from repo2ree_api.deps import command_dispatcher, workbench_manager
+from repo2ree_api.deps import command_dispatcher, ree_router
 from repo2ree_api.main import (
     http_exception_handler,
     unhandled_exception_handler,
     workbench_unavailable_handler,
 )
-from repo2ree_supervisor import WorkbenchHandle, WorkbenchUnavailableError
+from repo2ree_supervisor import ReeRoute, StoreUnavailableError, WorkbenchUnavailableError
 
 # ================================================
 # Helpers
@@ -162,20 +162,28 @@ def test_routing_failures_use_the_error_envelope(client: TestClient, method: str
     assert resp.json()["error"]["code"] == f"http_{status}"
 
 
-def test_registered_but_unreachable_ree_yields_503(client: TestClient, monkeypatch: pytest.MonkeyPatch):
-    """A REE in the registry whose container is down: 503, not 404.
+def _store_offline(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Stage "down-ree" as an REE whose store no workbench serves: the state a killed workbench leaves."""
+    real_route = ree_router.route
 
-    Staged at the seam: ``is_registered`` says yes, the real ``lookup`` (empty
-    registry) returns no live handle — the state a crashed workbench leaves.
-    """
-    monkeypatch.setattr(workbench_manager, "is_registered", lambda rid: rid == "down-ree")
+    def route(rid: str) -> Any:
+        if rid == "down-ree":
+            raise StoreUnavailableError("lab-down")
+        return real_route(rid)
+
+    monkeypatch.setattr(ree_router, "route", route)
+
+
+def test_an_ree_whose_store_is_offline_yields_503(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    """An REE in the registry whose store no workbench serves: 503, not 404."""
+    _store_offline(monkeypatch)
     resp = client.get("/api/v1/rees/down-ree")
     assert resp.status_code == 503
-    assert resp.json()["error"]["message"] == "Workbench unavailable for this REE"
+    assert resp.json()["error"]["code"] == "store_unavailable"
 
 
 def test_transport_failure_mid_request_yields_503_envelope(
-    client: TestClient, online_ree: WorkbenchHandle, monkeypatch: pytest.MonkeyPatch
+    client: TestClient, online_ree: ReeRoute, monkeypatch: pytest.MonkeyPatch
 ):
     """A container dying mid-query surfaces as the workbench_unavailable envelope.
 
@@ -194,7 +202,7 @@ def test_transport_failure_mid_request_yields_503_envelope(
 
 
 def test_a_workbench_lost_while_sending_the_archive_yields_503_not_400(
-    client: TestClient, online_ree: WorkbenchHandle, monkeypatch: pytest.MonkeyPatch
+    client: TestClient, online_ree: ReeRoute, monkeypatch: pytest.MonkeyPatch
 ):
     """The download a client would retry: the bench dropped its connection mid-archive."""
 
@@ -220,18 +228,16 @@ _REE_READ_ROUTES = [
 
 
 @pytest.mark.parametrize("route", _REE_READ_ROUTES)
-def test_unreachable_workbench_is_503_on_every_read_route(
-    client: TestClient, monkeypatch: pytest.MonkeyPatch, route: str
-):
-    """Every route resolving an REE agrees on 503 for registered-but-down.
+def test_an_offline_store_is_503_on_every_read_route(client: TestClient, monkeypatch: pytest.MonkeyPatch, route: str):
+    """Every route resolving an REE agrees on 503 for an REE whose store is offline.
 
     Reviews and receipts reported 404 for a workbench that exists and
     is merely unreachable; evaluate blamed a report that had never been run.
     """
-    monkeypatch.setattr(workbench_manager, "is_registered", lambda rid: rid == "down-ree")
+    _store_offline(monkeypatch)
     resp = client.get(route.format(ree_id="down-ree"))
     assert resp.status_code == 503, resp.text
-    assert resp.json()["error"]["message"] == "Workbench unavailable for this REE"
+    assert resp.json()["error"]["code"] == "store_unavailable"
 
 
 @pytest.mark.parametrize("route", _REE_READ_ROUTES)

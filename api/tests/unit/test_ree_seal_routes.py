@@ -13,17 +13,17 @@ from repo2ree_protocol.command import SealReeCommand
 from repo2ree_protocol.document import WorkbenchReeDocument
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.model import Ree
-from repo2ree_supervisor import WorkbenchHandle
+from repo2ree_supervisor import ReeRoute
 
 
 def test_seal_runs_in_background_and_relays_progress(
     client: TestClient,
-    online_ree: WorkbenchHandle,
+    online_ree: ReeRoute,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     indexed: list[tuple[str, WorkbenchReeDocument]] = []
 
-    def dispatch_action(handle: WorkbenchHandle, command: Any, run_id: str, log: Any) -> ActionResult:
+    def dispatch_action(handle: ReeRoute, command: Any, run_id: str, log: Any) -> ActionResult:
         assert isinstance(command, SealReeCommand)
         log("system", "info", "Preparing sealed artifacts: 5/10 bytes (50%), 1/2 entries")
         return ActionResult(status="succeeded", outputs={"ree_digest": "sha256:value"})

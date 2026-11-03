@@ -23,36 +23,30 @@ class Settings(BaseSettings):
     # Staged files older than this are abandoned uploads (init/PUT with no
     # upload-complete) and are swept; also the advertised token lifetime.
     UPLOAD_TTL_SECONDS: int = 3600
-    ALLOCATION_STORE_FILE: Path = Path(".repo2ree/allocations.json")
     # The control plane's own records of stores, their tokens, and the REEs they serve
     # (stores.json, rees.json). Unlike liveness, nothing here can be rebuilt from what is connected.
     CONTROL_STATE_DIR: Path = Path(".repo2ree")
-    # Operator credential for directly installed, externally managed workbenches.
-    # Empty disables external registration.
-    EXTERNAL_WORKBENCH_TOKEN: str = ""
-    # The durable record of sealed REEs and their archive bindings. Unlike the
-    # workbench registry beside it, nothing here is reconstructible from live
-    # infrastructure: an REE's workbench is torn down long before its deposit
-    # stops being citable, so losing this file loses the deposits.
+    # The durable record of sealed REEs and their archive bindings. Nothing here is
+    # reconstructible from live infrastructure: an REE is deleted from its store long
+    # before its deposit stops being citable, so losing this file loses the deposits.
     REE_INDEX_FILE: Path = Path(".repo2ree/ree-index.json")
     # Durable background-run state. The JSON backend coordinates threads in one
     # API process; deployments using it must run a single API worker.
     RUN_REGISTRY_DIR: Path = Path(".repo2ree/runs")
     # Append-only behaviour journals (one file per API process epoch) recording
-    # Run, Allocation, and dispatch transitions for the assurance checker. They
+    # Run and dispatch transitions for the assurance checker. They
     # are evidence, not state: nothing here acts on them; /api/v1/behaviour
     # serves them unchanged to collectors.
     BEHAVIOUR_JOURNAL_DIR: Path = Path(".repo2ree/journal")
     # Set when this shutdown is final: the deployment will not resume (it is
     # decommissioned, or it is a test stack). The journal then closes "final",
-    # telling the checker that allocations still held are held for good. A
-    # restartable deployment leaves it off: its allocations resume on restart.
+    # telling the checker that what is still open stays open for good. A
+    # restartable deployment leaves it off.
     BEHAVIOUR_FINAL_SHUTDOWN: bool = False
     # Bounds both concurrent workbench commands and the API's worker threads.
     RUN_MAX_WORKERS: int = 4
-    # The provider owns the container runtime (PROVIDER_DOCKER_MODE is its concern,
-    # not consumed here). Workbenches dial this API outbound and hold a WebSocket
-    # at /workbench/connect — there is no inbound workbench endpoint to configure.
+    # Workbenches dial this API outbound and hold a WebSocket at /workbench/connect —
+    # there is no inbound workbench endpoint to configure.
     OTLP_ENDPOINT: str | None = None
 
     @field_validator("OTLP_ENDPOINT", mode="before")

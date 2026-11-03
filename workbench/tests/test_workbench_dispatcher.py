@@ -6,10 +6,8 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any, ClassVar, cast
 
-from repo2ree_protocol.allocation import AllocationRequest
 from repo2ree_protocol.frames import DoneFrame, Frame
 from repo2ree_protocol.workbench import (
-    AssignAllocationRequest,
     CancelRunRequest,
     DeleteReeRequest,
     ExecActionRequest,
@@ -31,28 +29,25 @@ class _Service:
     def delete_ree(self, ree_id: str) -> None:
         self.calls.append(("delete_ree", ree_id))
 
-    def assign(self, allocation: AllocationRequest) -> None:
-        self.calls.append(("assign", allocation.allocation_id))
-
-    def exec_action(self, cmd_json: str, run_id: str, env: dict[str, str], context=None, *, ree_id: str | None = None):
+    def exec_action(self, cmd_json: str, run_id: str, env: dict[str, str], context=None, *, ree_id: str):
         self.calls.append(("exec_action", cmd_json, run_id, env))
         yield DoneFrame()
 
-    def exec_query_stream(self, argv: list[str], timeout: int, *, ree_id: str | None = None):
+    def exec_query_stream(self, argv: list[str], timeout: int, *, ree_id: str):
         self.calls.append(("exec_query", argv, timeout))
         yield b"query-result"
 
-    def exec_query_to_file(self, argv: list[str], target: Path, timeout: int, *, ree_id: str | None = None) -> None:
+    def exec_query_to_file(self, argv: list[str], target: Path, timeout: int, *, ree_id: str) -> None:
         self.calls.append(("exec_query_to_file", argv, timeout))
         target.write_bytes(b"archive-bytes")
 
-    def cancel_run(self, run_id: str, *, ree_id: str | None = None) -> None:
+    def cancel_run(self, run_id: str, *, ree_id: str) -> None:
         self.calls.append(("cancel_run", run_id))
 
-    def exec_simple(self, argv: list[str], timeout: int, *, ree_id: str | None = None) -> None:
+    def exec_simple(self, argv: list[str], timeout: int, *, ree_id: str) -> None:
         self.calls.append(("exec_simple", argv, timeout))
 
-    def copy_in(self, source_path: str, workbench_path: str, *, ree_id: str | None = None) -> None:
+    def copy_in(self, source_path: str, workbench_path: str, *, ree_id: str) -> None:
         self.calls.append(("copy_in", workbench_path))
         self.copied = Path(source_path).read_bytes()
 
@@ -89,8 +84,10 @@ def test_dispatcher_routes_streaming_requests() -> None:
     harness = _Harness()
 
     async def scenario() -> None:
-        await harness.dispatch(ExecActionRequest(cmd_json="{}", run_id="run-1", env={"TRACE_RELAY": "1"}))
-        await harness.dispatch(ExecQueryRequest(argv=["archive"], timeout=12))
+        await harness.dispatch(
+            ExecActionRequest(ree_id="ree-1", cmd_json="{}", run_id="run-1", env={"TRACE_RELAY": "1"})
+        )
+        await harness.dispatch(ExecQueryRequest(ree_id="ree-1", argv=["archive"], timeout=12))
 
     asyncio.run(scenario())
 
@@ -103,8 +100,8 @@ def test_dispatcher_routes_simple_requests_and_terminal_frames() -> None:
     harness = _Harness()
 
     async def scenario() -> None:
-        await harness.dispatch(CancelRunRequest(run_id="run-1"))
-        await harness.dispatch(ExecSimpleRequest(argv=["doctor"], timeout=7))
+        await harness.dispatch(CancelRunRequest(ree_id="ree-1", run_id="run-1"))
+        await harness.dispatch(ExecSimpleRequest(ree_id="ree-1", argv=["doctor"], timeout=7))
 
     asyncio.run(scenario())
 
@@ -148,10 +145,10 @@ def test_an_action_waits_for_a_slot_while_a_query_does_not() -> None:
                 record_received=harness.received.append,
             )
 
-        first = asyncio.create_task(request(ExecActionRequest(cmd_json="{}", run_id="run-1")))
-        second = asyncio.create_task(request(ExecActionRequest(cmd_json="{}", run_id="run-2")))
+        first = asyncio.create_task(request(ExecActionRequest(ree_id="ree-1", cmd_json="{}", run_id="run-1")))
+        second = asyncio.create_task(request(ExecActionRequest(ree_id="ree-1", cmd_json="{}", run_id="run-2")))
         await asyncio.sleep(0.01)
-        await request(ExecQueryRequest(argv=["archive"]))
+        await request(ExecQueryRequest(ree_id="ree-1", argv=["archive"]))
         assert order == ["action starts", "query runs"]  # One slot: the second action waits.
         release.set()
         await asyncio.gather(first, second)
@@ -159,23 +156,6 @@ def test_an_action_waits_for_a_slot_while_a_query_does_not() -> None:
     asyncio.run(scenario())
 
     assert order == ["action starts", "query runs", "action starts"]
-
-
-def test_dispatcher_routes_assignment_before_any_execution() -> None:
-    # Assignment is an ordinary request on the execution connection: it reaches
-    # the service and is acknowledged like any other terminal operation.
-    harness = _Harness()
-    allocation = AllocationRequest(
-        allocation_id="alloc-1",
-        ree_id="ree-1",
-        location_id="lab-1",
-        image="docker.io/library/docker:29-dind",
-    )
-
-    asyncio.run(harness.dispatch(AssignAllocationRequest(allocation=allocation)))
-
-    assert harness.service.calls == [("assign", "alloc-1")]
-    assert [frame.type for frame in harness.frames] == ["done"]
 
 
 class _Receiver(BaseHTTPRequestHandler):
@@ -212,7 +192,9 @@ def test_an_upload_request_sends_the_query_output_to_the_address_the_workbench_d
     try:
         asyncio.run(
             harness.dispatch(
-                ExecUploadRequest(argv=["build-archive"], transfer_path="/workbench/transfers/t1", timeout=30),
+                ExecUploadRequest(
+                    ree_id="ree-1", argv=["build-archive"], transfer_path="/workbench/transfers/t1", timeout=30
+                ),
                 api_ws_url=f"ws://127.0.0.1:{server.server_port}/workbench/connect",
             )
         )
@@ -232,7 +214,9 @@ def test_a_fetch_request_lands_the_offered_file_in_the_bench_and_counts_its_byte
     try:
         asyncio.run(
             harness.dispatch(
-                FetchFileRequest(transfer_path="/workbench/transfers/t2", workbench_path="/ree/upload.tar.gz"),
+                FetchFileRequest(
+                    ree_id="ree-1", transfer_path="/workbench/transfers/t2", workbench_path="/ree/upload.tar.gz"
+                ),
                 api_ws_url=f"ws://127.0.0.1:{server.server_port}/workbench/connect",
             )
         )

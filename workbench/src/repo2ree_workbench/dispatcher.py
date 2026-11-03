@@ -15,7 +15,6 @@ from pathlib import Path
 
 from repo2ree_protocol.frames import DoneFrame, ErrorFrame, Frame
 from repo2ree_protocol.workbench import (
-    AssignAllocationRequest,
     CancelRunRequest,
     DeleteReeRequest,
     ExecActionRequest,
@@ -46,10 +45,7 @@ async def dispatch_workbench_request(
     """Run one execution request after transport parsing and correlation.
 
     ``api_ws_url`` is the address this workbench dialed; an upload goes to the same place."""
-    if isinstance(req, AssignAllocationRequest):
-        service.assign(req.allocation)
-        await send(DoneFrame())
-    elif isinstance(req, ExecActionRequest):
+    if isinstance(req, ExecActionRequest):
         # An action waits for one of the workbench's slots; a cancel while it waits ends the wait.
         async with service.action_slots:
             try:

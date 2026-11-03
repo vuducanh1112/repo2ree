@@ -22,7 +22,7 @@ from fastapi.testclient import TestClient
 from repo2ree_api.deps import command_dispatcher
 from repo2ree_api.storage.upload_staging import staged_upload_path
 from repo2ree_protocol.result import ActionResult
-from repo2ree_supervisor import WorkbenchHandle
+from repo2ree_supervisor import ReeRoute
 
 RUN_TIMEOUT_SECONDS = 10
 TERMINAL_RUN_STATUSES = frozenset({"succeeded", "failed", "canceled"})
@@ -76,10 +76,10 @@ def stubbed_workbench(monkeypatch: pytest.MonkeyPatch) -> dict[str, ActionResult
     """Accept the copy; let each test choose what the command reports."""
     outcome: dict[str, ActionResult] = {}
 
-    def copy_to_workbench(handle: WorkbenchHandle, host_path: str, container_path: str) -> None:
+    def copy_to_workbench(handle: ReeRoute, host_path: str, container_path: str) -> None:
         return None
 
-    def dispatch_action(handle: WorkbenchHandle, command: Any, run_id: str, log: Any) -> ActionResult:
+    def dispatch_action(handle: ReeRoute, command: Any, run_id: str, log: Any) -> ActionResult:
         return outcome["result"]
 
     monkeypatch.setattr(command_dispatcher, "copy_to_workbench", copy_to_workbench)
@@ -90,7 +90,7 @@ def stubbed_workbench(monkeypatch: pytest.MonkeyPatch) -> dict[str, ActionResult
 @pytest.mark.parametrize("routes", [_SOURCE, _BUNDLE], ids=["source", "bundle"])
 def test_failed_run_reports_both_the_request_and_what_the_command_found(
     client: TestClient,
-    online_ree: WorkbenchHandle,
+    online_ree: ReeRoute,
     staging_dir: Path,
     stubbed_workbench: dict[str, ActionResult],
     routes: UploadRoutes,
@@ -125,7 +125,7 @@ def test_failed_run_reports_both_the_request_and_what_the_command_found(
 @pytest.mark.parametrize("routes", [_SOURCE, _BUNDLE], ids=["source", "bundle"])
 def test_succeeded_run_reports_both_and_reclaims_the_host_copy(
     client: TestClient,
-    online_ree: WorkbenchHandle,
+    online_ree: ReeRoute,
     staging_dir: Path,
     stubbed_workbench: dict[str, ActionResult],
     routes: UploadRoutes,

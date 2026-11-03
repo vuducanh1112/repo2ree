@@ -1,9 +1,7 @@
-from repo2ree_supervisor.allocation_store import AllocationStore
-from repo2ree_supervisor.client import ProviderClient, WorkbenchClient, WorkbenchUnavailableError
+from repo2ree_supervisor.client import WorkbenchClient, WorkbenchUnavailableError
 from repo2ree_supervisor.dispatcher import CommandDispatcher
-from repo2ree_supervisor.handle import WorkbenchHandle
-from repo2ree_supervisor.manager import WorkbenchManager
-from repo2ree_supervisor.provider_link import ProviderConnection, ProviderConnectionRegistry, WsProviderClient
+from repo2ree_supervisor.handle import ReeRoute
+from repo2ree_supervisor.locks import ReeLocks
 from repo2ree_supervisor.rees import ReeRecord, ReeRegistry
 from repo2ree_supervisor.router import ReeRouter, StoreUnavailableError
 from repo2ree_supervisor.stores import StoreRecord, StoreRegistry, UnknownStoreError
@@ -17,14 +15,12 @@ from repo2ree_supervisor.workbench_link import (
 )
 
 __all__ = [
-    "AllocationStore",
     "CommandDispatcher",
-    "ProviderClient",
-    "ProviderConnection",
-    "ProviderConnectionRegistry",
     "ReceivedFile",
+    "ReeLocks",
     "ReeRecord",
     "ReeRegistry",
+    "ReeRoute",
     "ReeRouter",
     "StoreClaimedError",
     "StoreRecord",
@@ -36,10 +32,7 @@ __all__ = [
     "WorkbenchClient",
     "WorkbenchConnection",
     "WorkbenchConnectionRegistry",
-    "WorkbenchHandle",
     "WorkbenchInfo",
-    "WorkbenchManager",
     "WorkbenchUnavailableError",
-    "WsProviderClient",
     "WsWorkbenchClient",
 ]

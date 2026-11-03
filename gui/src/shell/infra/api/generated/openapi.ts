@@ -828,57 +828,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/compute-locations": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Compute Locations */
-        get: operations["listComputeLocations"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/allocations": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Allocations */
-        get: operations["listAllocations"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/allocations/{allocation_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Allocation */
-        get: operations["getAllocation"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/workbenches": {
         parameters: {
             query?: never;
@@ -911,26 +860,6 @@ export interface paths {
          * @description Every store registered here, and the workbench serving each one now, if any.
          */
         get: operations["listStores"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/providers": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Providers
-         * @description Docker capacity providers currently connected to this control plane.
-         */
-        get: operations["listProviders"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1171,60 +1100,6 @@ export interface components {
             /** Templates */
             templates: components["schemas"]["ScriptTemplateEntry"][];
         };
-        /** AllocationList */
-        AllocationList: {
-            /** Allocations */
-            allocations: components["schemas"]["AllocationRecord"][];
-        };
-        /** AllocationRecord */
-        AllocationRecord: {
-            request: components["schemas"]["AllocationRequest"];
-            /** @default requested */
-            state: components["schemas"]["AllocationState"];
-            /** Workbench Id */
-            workbench_id?: string | null;
-            /** Provider Id */
-            provider_id?: string | null;
-            /**
-             * Resolved Image
-             * @default
-             */
-            resolved_image: string;
-            /**
-             * Detail
-             * @default
-             */
-            detail: string;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /**
-             * Updated At
-             * Format: date-time
-             */
-            updated_at: string;
-        };
-        /** AllocationRequest */
-        AllocationRequest: {
-            /** Allocation Id */
-            allocation_id: string;
-            /** Ree Id */
-            ree_id: string;
-            /** Location Id */
-            location_id: string;
-            /**
-             * Image
-             * @default
-             */
-            image: string;
-        };
-        /**
-         * AllocationState
-         * @enum {string}
-         */
-        AllocationState: "requested" | "provisioning" | "waiting_for_workbench" | "ready" | "assigned" | "draining" | "released" | "failed" | "lost";
         /**
          * ArchiveBindingAttestation
          * @description One claim: an archive's deposit holds the REE with this content digest.
@@ -1688,57 +1563,6 @@ export interface components {
             count: number;
             /** Sources */
             sources?: string[];
-        };
-        /**
-         * ComputeLocation
-         * @description A place workbenches can be obtained, and the images it offers there.
-         *
-         *     The catalog is published *outward*: the author picks from it, and the
-         *     resolved ref is recorded on the allocation. A location that accepts a ref it
-         *     did not publish says so with ``accepts_custom_image``; nothing else about
-         *     the image is negotiated.
-         */
-        ComputeLocation: {
-            /** Id */
-            id: string;
-            /** Label */
-            label: string;
-            /**
-             * Description
-             * @default
-             */
-            description: string;
-            lifecycle_mode: components["schemas"]["LifecycleMode"];
-            /**
-             * Available
-             * @default true
-             */
-            available: boolean;
-            /**
-             * Images
-             * @default []
-             */
-            images: components["schemas"]["WorkbenchImage"][];
-            /**
-             * Accepts Custom Image
-             * @default false
-             */
-            accepts_custom_image: boolean;
-            connected_component?: components["schemas"]["ConnectedComponent"] | null;
-        };
-        /** ComputeLocationList */
-        ComputeLocationList: {
-            /** Locations */
-            locations: components["schemas"]["ComputeLocation"][];
-        };
-        /** ConnectedComponent */
-        ConnectedComponent: {
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "provider" | "workbench";
-            build?: components["schemas"]["BuildInfo"];
         };
         /** Contributor */
         Contributor: {
@@ -2717,11 +2541,6 @@ export interface components {
             } | null;
         };
         /**
-         * LifecycleMode
-         * @enum {string}
-         */
-        LifecycleMode: "provider_managed" | "externally_managed" | "store";
-        /**
          * LintReport
          * @description Everything one lint run observed about one script.
          */
@@ -2994,29 +2813,6 @@ export interface components {
              */
             source: "root" | "wrapper";
         };
-        /** ProviderList */
-        ProviderList: {
-            /** Providers */
-            providers: components["schemas"]["ProviderSummary"][];
-        };
-        /** ProviderSummary */
-        ProviderSummary: {
-            /** Provider Id */
-            provider_id: string;
-            /** Hostname */
-            hostname: string;
-            /** Version */
-            version: string;
-            /** Location Id */
-            location_id: string;
-            /** Connected At */
-            connected_at: string;
-            /**
-             * Status
-             * @default connected
-             */
-            status: string;
-        };
         /** Ree */
         Ree: {
             subject?: components["schemas"]["ReeSubject"];
@@ -3081,7 +2877,7 @@ export interface components {
         };
         /**
          * ReeCreatePayload
-         * @description Create a new empty REE: in a store, or on a workbench a location sets up for it.
+         * @description Create a new empty REE in a store.
          *
          *     Source acquisition is intentionally a separate lifecycle operation through
          *     ``source:acquire`` or the upload-init/upload/complete sequence.
@@ -3089,16 +2885,8 @@ export interface components {
         ReeCreatePayload: {
             /** Name */
             name?: string | null;
-            /**
-             * Store Id
-             * @default
-             */
+            /** Store Id */
             store_id: string;
-            /**
-             * Location Id
-             * @default
-             */
-            location_id: string;
             /**
              * Image
              * @default
@@ -3175,12 +2963,8 @@ export interface components {
              */
             status: "draft" | "sealed";
             audit: components["schemas"]["ReeAudit"];
-            /** Allocation Id */
-            allocation_id?: string | null;
             /** Location Id */
             location_id?: string | null;
-            /** Image */
-            image?: string | null;
             /** Store Id */
             store_id?: string | null;
             /** Workspace Files */
@@ -3349,12 +3133,8 @@ export interface components {
              * @enum {string}
              */
             status: "draft" | "sealed";
-            /** Allocation Id */
-            allocation_id: string;
             /** Location Id */
             location_id: string;
-            /** Image */
-            image: string;
         };
         /** ReproducibilityReport */
         ReproducibilityReport: {
@@ -4489,33 +4269,6 @@ export interface components {
              */
             gpus: number;
         };
-        /**
-         * WorkbenchImage
-         * @description One base image a location offers to provision workbenches from.
-         *
-         *     Only ``ref`` is meaningful to the backend — it is the image that gets run.
-         *     ``id``/``label``/``description`` are picker-facing and default off the ref,
-         *     so a catalog entry can be as terse as ``{"ref": "docker:29-dind"}``.
-         */
-        WorkbenchImage: {
-            /** Ref */
-            ref: string;
-            /**
-             * Id
-             * @default
-             */
-            id: string;
-            /**
-             * Label
-             * @default
-             */
-            label: string;
-            /**
-             * Description
-             * @default
-             */
-            description: string;
-        };
         /** WorkbenchList */
         WorkbenchList: {
             /** Workbenches */
@@ -4527,12 +4280,8 @@ export interface components {
             status: string;
             /** Workbench Id */
             workbench_id?: string | null;
-            /** Allocation Id */
-            allocation_id?: string | null;
             /** Location Id */
             location_id?: string | null;
-            /** Image */
-            image?: string | null;
             build?: components["schemas"]["BuildInfo"];
             executor_build?: components["schemas"]["BuildInfo"];
         };
@@ -4540,16 +4289,12 @@ export interface components {
         WorkbenchSummary: {
             /** Workbench Id */
             workbench_id: string;
-            /** Mode */
-            mode: string;
-            /** Available */
-            available: boolean;
+            /** Store Id */
+            store_id: string;
             /** Hostname */
             hostname: string;
             /** Version */
             version: string;
-            /** Image */
-            image: string;
             /** Connected At */
             connected_at: string;
             /**
@@ -9994,338 +9739,6 @@ export interface operations {
             };
         };
     };
-    listComputeLocations: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ComputeLocationList"];
-                };
-            };
-            /** @description Invalid request or operation precondition */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description REE, run, file, or artifact not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Version or idempotency conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Upload exceeds the configured size limit */
-            413: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Request body is not application/json */
-            415: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Request validation failed */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Workbench returned an invalid upstream response */
-            502: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Compute provider or workbench unavailable */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Upload staging capacity exhausted */
-            507: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
-    listAllocations: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AllocationList"];
-                };
-            };
-            /** @description Invalid request or operation precondition */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description REE, run, file, or artifact not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Version or idempotency conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Upload exceeds the configured size limit */
-            413: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Request body is not application/json */
-            415: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Request validation failed */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Workbench returned an invalid upstream response */
-            502: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Compute provider or workbench unavailable */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Upload staging capacity exhausted */
-            507: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
-    getAllocation: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                allocation_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AllocationRecord"];
-                };
-            };
-            /** @description Invalid request or operation precondition */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description REE, run, file, or artifact not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Version or idempotency conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Upload exceeds the configured size limit */
-            413: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Request body is not application/json */
-            415: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Request validation failed */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Workbench returned an invalid upstream response */
-            502: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Compute provider or workbench unavailable */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Upload staging capacity exhausted */
-            507: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
     listWorkbenches: {
         parameters: {
             query?: never;
@@ -10452,116 +9865,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StoreList"];
-                };
-            };
-            /** @description Invalid request or operation precondition */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description REE, run, file, or artifact not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Version or idempotency conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Upload exceeds the configured size limit */
-            413: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Request body is not application/json */
-            415: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Request validation failed */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Workbench returned an invalid upstream response */
-            502: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Compute provider or workbench unavailable */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Upload staging capacity exhausted */
-            507: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
-    listProviders: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProviderList"];
                 };
             };
             /** @description Invalid request or operation precondition */

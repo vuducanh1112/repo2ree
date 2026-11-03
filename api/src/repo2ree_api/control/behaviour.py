@@ -129,8 +129,7 @@ def get_behaviour_state() -> BehaviourState:
             runs[path.parent.name] = json.loads(path.read_text(encoding="utf-8"))
         except FileNotFoundError:
             continue  # Removed with its REE while listing.
-    allocations_file = service_settings.ALLOCATION_STORE_FILE
-    allocations = json.loads(allocations_file.read_text(encoding="utf-8")) if allocations_file.is_file() else None
     after = positions(directory)
     cut = {journal_id: (before.get(journal_id, 0), position) for journal_id, position in after.items()}
-    return BehaviourState(cut=cut, runs=runs, allocations=allocations)
+    # There are no allocations any more; the field stays until the collector stops reading it.
+    return BehaviourState(cut=cut, runs=runs, allocations=None)

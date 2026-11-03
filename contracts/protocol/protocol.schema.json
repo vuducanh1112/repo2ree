@@ -879,26 +879,6 @@
       "title": "ArgvCommandCandidate",
       "type": "object"
     },
-    "AssignAllocationRequest": {
-      "additionalProperties": false,
-      "description": "Assign a validated allocation to this otherwise idle workbench.",
-      "properties": {
-        "op": {
-          "const": "assign_allocation",
-          "default": "assign_allocation",
-          "title": "Op",
-          "type": "string"
-        },
-        "allocation": {
-          "$ref": "#/$defs/AllocationRequest"
-        }
-      },
-      "required": [
-        "allocation"
-      ],
-      "title": "AssignAllocationRequest",
-      "type": "object"
-    },
     "BuildComparison": {
       "additionalProperties": false,
       "properties": {
@@ -1481,16 +1461,8 @@
           "type": "string"
         },
         "ree_id": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Ree Id"
+          "title": "Ree Id",
+          "type": "string"
         },
         "run_id": {
           "title": "Run Id",
@@ -1498,6 +1470,7 @@
         }
       },
       "required": [
+        "ree_id",
         "run_id"
       ],
       "title": "CancelRunRequest",
@@ -2133,7 +2106,7 @@
     },
     "DeleteReeRequest": {
       "additionalProperties": false,
-      "description": "Delete an REE and everything in its directory from this workbench's store.\n\nRefused while a run of that REE is active. Only a workbench serving a store has\nREEs to delete: a managed bench's one REE goes with the bench.",
+      "description": "Delete an REE and everything in its directory from this workbench's store.\n\nRefused while a run of that REE is active.",
       "properties": {
         "op": {
           "const": "delete_ree",
@@ -2264,20 +2237,6 @@
         }
       },
       "title": "DoneFrame",
-      "type": "object"
-    },
-    "DrainWorkbenchRequest": {
-      "additionalProperties": false,
-      "description": "Finish in-flight work and terminate this single-use workbench.",
-      "properties": {
-        "op": {
-          "const": "drain",
-          "default": "drain",
-          "title": "Op",
-          "type": "string"
-        }
-      },
-      "title": "DrainWorkbenchRequest",
       "type": "object"
     },
     "EnsureAllocationRequest": {
@@ -2635,16 +2594,8 @@
           "type": "string"
         },
         "ree_id": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Ree Id"
+          "title": "Ree Id",
+          "type": "string"
         },
         "cmd_json": {
           "title": "Cmd Json",
@@ -2675,6 +2626,7 @@
         }
       },
       "required": [
+        "ree_id",
         "cmd_json",
         "run_id"
       ],
@@ -2692,16 +2644,8 @@
           "type": "string"
         },
         "ree_id": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Ree Id"
+          "title": "Ree Id",
+          "type": "string"
         },
         "argv": {
           "items": {
@@ -2717,6 +2661,7 @@
         }
       },
       "required": [
+        "ree_id",
         "argv"
       ],
       "title": "ExecQueryRequest",
@@ -2733,16 +2678,8 @@
           "type": "string"
         },
         "ree_id": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Ree Id"
+          "title": "Ree Id",
+          "type": "string"
         },
         "argv": {
           "items": {
@@ -2758,6 +2695,7 @@
         }
       },
       "required": [
+        "ree_id",
         "argv"
       ],
       "title": "ExecSimpleRequest",
@@ -2774,16 +2712,8 @@
           "type": "string"
         },
         "ree_id": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Ree Id"
+          "title": "Ree Id",
+          "type": "string"
         },
         "argv": {
           "items": {
@@ -2803,6 +2733,7 @@
         }
       },
       "required": [
+        "ree_id",
         "argv",
         "transfer_path"
       ],
@@ -3234,16 +3165,8 @@
           "type": "string"
         },
         "ree_id": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Ree Id"
+          "title": "Ree Id",
+          "type": "string"
         },
         "transfer_path": {
           "title": "Transfer Path",
@@ -3260,6 +3183,7 @@
         }
       },
       "required": [
+        "ree_id",
         "transfer_path",
         "workbench_path"
       ],
@@ -8375,20 +8299,6 @@
           "title": "Workbench Id",
           "type": "string"
         },
-        "mode": {
-          "default": "managed",
-          "enum": [
-            "managed",
-            "external"
-          ],
-          "title": "Mode",
-          "type": "string"
-        },
-        "allocation_id": {
-          "default": "",
-          "title": "Allocation Id",
-          "type": "string"
-        },
         "enrollment_token": {
           "default": "",
           "title": "Enrollment Token",
@@ -8410,18 +8320,7 @@
         "executor_build": {
           "$ref": "#/$defs/BuildInfo"
         },
-        "location_id": {
-          "default": "",
-          "title": "Location Id",
-          "type": "string"
-        },
-        "image": {
-          "default": "",
-          "title": "Image",
-          "type": "string"
-        },
         "store_id": {
-          "default": "",
           "title": "Store Id",
           "type": "string"
         },
@@ -8457,7 +8356,8 @@
         }
       },
       "required": [
-        "workbench_id"
+        "workbench_id",
+        "store_id"
       ],
       "title": "WorkbenchHello",
       "type": "object"
@@ -8659,11 +8559,9 @@
         "request": {
           "discriminator": {
             "mapping": {
-              "assign_allocation": "#/$defs/AssignAllocationRequest",
               "cancel": "#/$defs/CancelRequest",
               "cancel_run": "#/$defs/CancelRunRequest",
               "delete_ree": "#/$defs/DeleteReeRequest",
-              "drain": "#/$defs/DrainWorkbenchRequest",
               "exec_action": "#/$defs/ExecActionRequest",
               "exec_query": "#/$defs/ExecQueryRequest",
               "exec_simple": "#/$defs/ExecSimpleRequest",
@@ -8696,12 +8594,6 @@
             },
             {
               "$ref": "#/$defs/DeleteReeRequest"
-            },
-            {
-              "$ref": "#/$defs/DrainWorkbenchRequest"
-            },
-            {
-              "$ref": "#/$defs/AssignAllocationRequest"
             }
           ],
           "title": "Request"

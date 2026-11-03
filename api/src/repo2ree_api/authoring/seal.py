@@ -36,7 +36,7 @@ from repo2ree_api.workbench.uploads import mint_upload_token, stage_upload_bytes
 from repo2ree_protocol.command import LoadReeBundleArgs, LoadReeBundleCommand, SealReeArgs, SealReeCommand
 from repo2ree_protocol.document import WorkbenchReeDocument
 from repo2ree_protocol.result import ActionResult
-from repo2ree_supervisor import WorkbenchHandle, WorkbenchUnavailableError
+from repo2ree_supervisor import ReeRoute, WorkbenchUnavailableError
 
 _log = logging.getLogger(__name__)
 
@@ -114,7 +114,7 @@ def load_ree_bundle_route(ree_id: str, payload: ReeBundleLoadPayload) -> RunSumm
     responses=ERROR_RESPONSES,
 )
 def seal_ree_route(ree_id: str, payload: ReeSealPayload) -> RunSummary:
-    def record_sealed_ree(handle: WorkbenchHandle, result: ActionResult) -> ActionResult:
+    def record_sealed_ree(handle: ReeRoute, result: ActionResult) -> ActionResult:
         document = command_dispatcher.get_ree_document(handle)
         _record_in_ree_index(ree_id, document)
         return result

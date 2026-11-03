@@ -24,18 +24,14 @@ _TELEMETRY_MODES = ("direct", "relay", "local", "off")
 class WorkbenchConfig:
     api_ws_url: str
     workbench_id: str
-    allocation_id: str
+    # The store's token, which admits this workbench for that store alone.
     enrollment_token: str
-    root: Path
     exec_path: str
-    location_id: str
-    image: str
-    mode: Literal["managed", "external"] = "managed"
+    # The store this workbench serves, and the directory of REEs it is on this machine.
+    store_id: str
+    store_root: Path
     otlp_endpoint: str | None = None
     telemetry: TelemetryMode = "off"
-    # The store this workbench serves (blank: it serves its root as one REE), and where it is.
-    store_id: str = ""
-    store_root: Path | None = None
     backend: Literal["host", "container"] = "host"
     slots: int = 1
     # For the container backend: the engine it runs scripts with, the engine a script may reach
@@ -54,15 +50,10 @@ class WorkbenchEnvironment(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=None, extra="ignore", case_sensitive=True, validate_default=True)
 
-    WORKBENCH_ROOT: Path = Path("/ree")
     WORKBENCH_API_WS_URL: str = "ws://localhost:8000/workbench/connect"
     WORKBENCH_AUTH_TOKEN: str = ""
     WORKBENCH_ID: str = ""
-    WORKBENCH_MODE: Literal["managed", "external"] | None = None
-    WORKBENCH_ALLOCATION_ID: str = ""
     WORKBENCH_STATE_DIR: Path = Path("~/.repo2ree")
-    WORKBENCH_LOCATION_ID: str = ""
-    WORKBENCH_IMAGE: str = ""
     WORKBENCH_TELEMETRY: Literal["direct", "relay", "local", "off"] | None = None
     REPO2REE_EXEC_PATH: str = "repo2ree-exec"
     OTLP_ENDPOINT: str | None = None
@@ -76,13 +67,13 @@ class WorkbenchEnvironment(BaseSettings):
     WORKBENCH_SCRIPT_ENGINE: Literal["none", "socket"] = "none"
     WORKBENCH_ENGINE_PATH: str = ""
 
-    @field_validator("WORKBENCH_MODE", "WORKBENCH_TELEMETRY", mode="before")
+    @field_validator("WORKBENCH_TELEMETRY", mode="before")
     @classmethod
     def _normalize_modes(cls, value: object) -> object:
         if not isinstance(value, str) or not value.strip():
             return None
         normalized = value.strip().lower()
-        if normalized not in (*_TELEMETRY_MODES, "managed", "external"):
+        if normalized not in _TELEMETRY_MODES:
             modes = ", ".join(_TELEMETRY_MODES)
             raise ValueError(f"unknown mode {normalized!r}; telemetry modes are: {modes}")
         return normalized
@@ -94,7 +85,6 @@ class WorkbenchEnvironment(BaseSettings):
 
 
 def _resolve_telemetry(
-    mode: str,
     otlp_endpoint: str | None,
     explicit: TelemetryMode | None,
     trace_file: str | None,
@@ -104,12 +94,10 @@ def _resolve_telemetry(
     An explicit ``WORKBENCH_TELEMETRY`` always wins — that is the operator's
     escape hatch, and the way to keep telemetry off the control plane or off the
     machine entirely. Otherwise a configured collector means direct export, a
-    configured TRACE_FILE means local, and the fallback follows the trust
-    boundary the connection already draws: a managed bench was provisioned by
-    the fleet that runs this control plane and is already fully observed by it,
-    so relaying costs nothing new. An external bench is someone else's machine;
-    it does not start shipping telemetry across that boundary merely because
-    nobody configured a collector for it.
+    configured TRACE_FILE means local, and the fallback is off: a store's
+    workbench may be someone else's machine, and it does not start shipping
+    telemetry across that boundary merely because nobody configured a collector
+    for it.
     """
     if explicit:
         return explicit
@@ -117,7 +105,7 @@ def _resolve_telemetry(
         return "direct"
     if trace_file:
         return "local"
-    return "relay" if mode == "managed" else "off"
+    return "off"
 
 
 def _engine_path(value: str) -> tuple[str, str] | None:
@@ -129,9 +117,7 @@ def _engine_path(value: str) -> tuple[str, str] | None:
     return local, engine
 
 
-def _store(value: str) -> tuple[str, Path | None]:
-    if not value:
-        return "", None
+def _store(value: str) -> tuple[str, Path]:
     store_id, separator, path = value.partition("=")
     if not separator or not store_id.strip() or not path.strip():
         raise SystemExit(f"repo2ree-workbench: --store takes ID=PATH, not {value!r}")
@@ -141,14 +127,14 @@ def _store(value: str) -> tuple[str, Path | None]:
 def load_config(argv: Sequence[str] = ()) -> WorkbenchConfig:
     environment = WorkbenchEnvironment()
     parser = argparse.ArgumentParser(prog="repo2ree-workbench")
-    parser.add_argument("--root", default=environment.WORKBENCH_ROOT)
     parser.add_argument("--connect", default=environment.WORKBENCH_API_WS_URL)
-    parser.add_argument("--token", default=environment.WORKBENCH_AUTH_TOKEN)
+    parser.add_argument("--token", default=environment.WORKBENCH_AUTH_TOKEN, help="the store's token")
     parser.add_argument("--name", default=environment.WORKBENCH_ID)
-    default_mode = environment.WORKBENCH_MODE or ("external" if not environment.WORKBENCH_ALLOCATION_ID else "managed")
-    parser.add_argument("--mode", choices=("managed", "external"), default=default_mode)
     parser.add_argument(
-        "--store", default=environment.WORKBENCH_STORE, help="ID=PATH: serve the store ID, a directory of REEs"
+        "--store",
+        default=environment.WORKBENCH_STORE,
+        required=not environment.WORKBENCH_STORE,
+        help="ID=PATH: serve the store ID, a directory of REEs",
     )
     # Where the author's scripts run: on this host, or in a fresh container from the REE's image.
     parser.add_argument("--backend", choices=("host", "container"), default=environment.WORKBENCH_BACKEND)
@@ -176,13 +162,11 @@ def load_config(argv: Sequence[str] = ()) -> WorkbenchConfig:
     )
     args = parser.parse_args(list(argv))
     store_id, store_root = _store(args.store)
-    if store_id and args.mode == "managed":
-        parser.error("a managed bench serves the REE it was provisioned for, not a store")
     if args.slots < 1:
         parser.error("--slots must be at least 1")
     images = tuple(dict.fromkeys(ref.strip() for ref in args.images if ref.strip()))
-    if images and (args.backend != "container" or not store_id):
-        parser.error("--image offers images to a store's REEs, so it needs --store and --backend container")
+    if images and args.backend != "container":
+        parser.error("--image offers images to the store's REEs, so it needs --backend container")
     explicit_id = args.name
     if explicit_id:
         workbench_id = explicit_id
@@ -193,13 +177,8 @@ def load_config(argv: Sequence[str] = ()) -> WorkbenchConfig:
     return WorkbenchConfig(
         api_ws_url=args.connect,
         workbench_id=workbench_id,
-        mode=args.mode,
-        allocation_id=environment.WORKBENCH_ALLOCATION_ID,
         enrollment_token=args.token,
-        root=Path(args.root),
         exec_path=environment.REPO2REE_EXEC_PATH,
-        location_id=environment.WORKBENCH_LOCATION_ID,
-        image=environment.WORKBENCH_IMAGE,
         store_id=store_id,
         store_root=store_root,
         backend=args.backend,
@@ -210,10 +189,5 @@ def load_config(argv: Sequence[str] = ()) -> WorkbenchConfig:
         engine_path=_engine_path(args.engine_path),
         images=images,
         otlp_endpoint=otlp_endpoint,
-        telemetry=_resolve_telemetry(
-            args.mode,
-            otlp_endpoint,
-            environment.WORKBENCH_TELEMETRY,
-            environment.TRACE_FILE,
-        ),
+        telemetry=_resolve_telemetry(otlp_endpoint, environment.WORKBENCH_TELEMETRY, environment.TRACE_FILE),
     )

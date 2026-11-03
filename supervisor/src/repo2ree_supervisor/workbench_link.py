@@ -32,7 +32,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from uuid import uuid4
 
-from repo2ree_protocol.allocation import AllocationRequest
 from repo2ree_protocol.build import BuildInfo
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import (
@@ -44,11 +43,9 @@ from repo2ree_protocol.frames import (
     UnavailableFrame,
 )
 from repo2ree_protocol.workbench import (
-    AssignAllocationRequest,
     CancelRequest,
     CancelRunRequest,
     DeleteReeRequest,
-    DrainWorkbenchRequest,
     ExecActionRequest,
     ExecQueryRequest,
     ExecSimpleRequest,
@@ -98,16 +95,12 @@ class WorkbenchInfo:
     lists."""
 
     workbench_id: str
-    mode: str
-    available: bool
     hostname: str
     version: str
-    location_id: str
-    image: str
+    # The store it serves.
+    store_id: str
     connected_at: float  # epoch seconds (UTC)
     build: BuildInfo = field(default_factory=BuildInfo)
-    # The store it serves; blank for a bench that serves one REE.
-    store_id: str = ""
     # The images it offers an REE created in its store, the first the default.
     images: tuple[str, ...] = ()
     executor_build: BuildInfo = field(default_factory=BuildInfo)
@@ -274,10 +267,9 @@ class StoreClaimedError(RuntimeError):
 class WorkbenchConnectionRegistry:
     """Tracks connected workbenches and resolves placement requests to one of them."""
 
-    def __init__(self, is_allocated: Callable[[str], bool] | None = None) -> None:
+    def __init__(self) -> None:
         self._workbenches: dict[str, WorkbenchConnection] = {}
         self._connected_at: dict[str, float] = {}
-        self._is_allocated = is_allocated or (lambda _workbench_id: False)
         self._lock = threading.Lock()
         self._changed = threading.Condition(self._lock)
 
@@ -353,28 +345,6 @@ class WorkbenchConnectionRegistry:
             if not self._changed.wait_for(lambda: workbench_id in self._workbenches, timeout):
                 raise WorkbenchUnavailableError(f"workbench {workbench_id!r} did not connect within {timeout:g}s")
 
-    def reserve_external(self, allocation_id: str, workbench_id: str | None = None) -> str:
-        """Atomically claim one connected idle external workbench."""
-        with self._lock:
-            candidates = [workbench_id] if workbench_id else list(self._workbenches)
-            for candidate_id in candidates:
-                connection = self._workbenches.get(candidate_id or "")
-                if connection is None or connection.hello is None:
-                    continue
-                location_id = connection.hello.location_id or candidate_id
-                if (
-                    connection.hello.mode != "external"
-                    or location_id != workbench_id
-                    or self._is_allocated(candidate_id)
-                ):
-                    continue
-                return candidate_id
-        requested = f" {workbench_id!r}" if workbench_id else ""
-        raise WorkbenchUnavailableError(f"no idle external workbench{requested} is connected")
-
-    def release_reservation(self, workbench_id: str, allocation_id: str) -> None:
-        return None
-
     def pick(self, workbench_id: str | None = None) -> WorkbenchConnection:
         """Resolve a connection. With ``workbench_id`` set, return that specific workbench
         (placement affinity) or raise if it is not connected. Without it, return
@@ -384,7 +354,7 @@ class WorkbenchConnectionRegistry:
 
     def resolve(self, workbench_id: str | None = None) -> str:
         """The id twin of ``pick``: resolve a placement request to a concrete
-        workbench id. See ``ProviderClient.resolve_workbench`` for why provision pins."""
+        workbench id."""
         with self._lock:
             return self._resolve_locked(workbench_id)
 
@@ -404,16 +374,10 @@ class WorkbenchConnectionRegistry:
             infos = [
                 WorkbenchInfo(
                     workbench_id=workbench_id,
-                    mode=conn.hello.mode if conn.hello else "managed",
-                    available=(conn.hello.mode == "external" and not self._is_allocated(workbench_id))
-                    if conn.hello
-                    else False,
                     hostname=conn.hello.hostname if conn.hello else "",
                     version=conn.hello.version if conn.hello else "",
                     build=conn.hello.build if conn.hello else BuildInfo(),
                     executor_build=conn.hello.executor_build if conn.hello else BuildInfo(),
-                    location_id=(conn.hello.location_id or workbench_id) if conn.hello else workbench_id,
-                    image=conn.hello.image if conn.hello else "",
                     store_id=conn.hello.store_id if conn.hello else "",
                     images=tuple(conn.hello.images) if conn.hello else (),
                     connected_at=self._connected_at.get(workbench_id, 0.0),
@@ -442,26 +406,6 @@ class WsWorkbenchClient:
     def wait_for_workbench(self, workbench_id: str, timeout: float = 60.0) -> None:
         self._registry.wait(workbench_id, timeout)
 
-    def reserve_external(self, allocation_id: str, location_id: str) -> str:
-        workbench_id = self._registry.reserve_external(allocation_id, location_id)
-        connection = self._registry.pick(workbench_id)
-        actual_location = connection.hello.location_id or workbench_id if connection.hello else workbench_id
-        if actual_location != location_id:
-            self._registry.release_reservation(workbench_id, allocation_id)
-            raise WorkbenchUnavailableError(f"compute location {location_id!r} is unavailable")
-        return workbench_id
-
-    def release_reservation(self, workbench_id: str, allocation_id: str) -> None:
-        self._registry.release_reservation(workbench_id, allocation_id)
-
-    def assign(self, workbench_id: str, allocation: AllocationRequest) -> None:
-        self._drain_void(
-            self._registry.pick(workbench_id).request(
-                AssignAllocationRequest(allocation=allocation),
-                frame_gap_timeout=QUICK_OP_TIMEOUT,
-            )
-        )
-
     def is_connected(self, workbench_id: str) -> bool:
         try:
             self._registry.pick(workbench_id)
@@ -485,7 +429,7 @@ class WsWorkbenchClient:
         env: dict[str, str],
         context: ExecutionContext | None = None,
         *,
-        ree_id: str | None = None,
+        ree_id: str,
     ) -> Iterator[Frame]:
         # No frame gap: a script may run quietly for hours. The connection's pings decide whether the
         # workbench is still there, and an author's cancel or a lost connection ends the run.
@@ -494,7 +438,7 @@ class WsWorkbenchClient:
             frame_gap_timeout=None,
         )
 
-    def cancel_run(self, workbench_id: str, run_id: str, *, ree_id: str | None = None) -> None:
+    def cancel_run(self, workbench_id: str, run_id: str, *, ree_id: str) -> None:
         conn = self._registry.pick(workbench_id)
         self._drain_void(
             conn.request(
@@ -507,26 +451,18 @@ class WsWorkbenchClient:
         conn = self._registry.pick(workbench_id)
         self._drain_void(conn.request(DeleteReeRequest(ree_id=ree_id), frame_gap_timeout=COPY_IN_TIMEOUT))
 
-    def drain(self, workbench_id: str) -> None:
-        conn = self._registry.pick(workbench_id)
-        self._drain_void(conn.request(DrainWorkbenchRequest(), frame_gap_timeout=DEFAULT_FRAME_GAP_TIMEOUT))
-
-    # ------------------------------------------------
-    # Request/response — materialise the terminal frame.
-    # ------------------------------------------------
-
-    def exec_simple(self, workbench_id: str, argv: list[str], timeout: int = 60, *, ree_id: str | None = None) -> None:
+    def exec_simple(self, workbench_id: str, argv: list[str], timeout: int = 60, *, ree_id: str) -> None:
         conn = self._registry.pick(workbench_id)
         req = ExecSimpleRequest(argv=argv, timeout=timeout, ree_id=ree_id)
         # The workbench enforces ``timeout`` on the exec itself; the frame gap only
         # needs to cover it plus transport slack.
         self._drain_void(conn.request(req, frame_gap_timeout=timeout + QUICK_OP_TIMEOUT))
 
-    def exec_query(self, workbench_id: str, argv: list[str], timeout: int = 30, *, ree_id: str | None = None) -> bytes:
+    def exec_query(self, workbench_id: str, argv: list[str], timeout: int = 30, *, ree_id: str) -> bytes:
         return b"".join(self.exec_query_stream(workbench_id, argv, timeout, ree_id=ree_id))
 
     def exec_query_stream(
-        self, workbench_id: str, argv: list[str], timeout: int = 30, *, ree_id: str | None = None
+        self, workbench_id: str, argv: list[str], timeout: int = 30, *, ree_id: str
     ) -> Iterator[bytes]:
         # The result arrives as bounded chunks ending in ``done``; yield each
         # decoded chunk so large archives do not materialise in control-plane RAM.
@@ -543,9 +479,7 @@ class WsWorkbenchClient:
                 raise_for_terminal_error(frame)
         raise RuntimeError("workbench exec_query ended without a result")
 
-    def exec_upload(
-        self, workbench_id: str, argv: list[str], timeout: int = 600, *, ree_id: str | None = None
-    ) -> ReceivedFile:
+    def exec_upload(self, workbench_id: str, argv: list[str], timeout: int = 600, *, ree_id: str) -> ReceivedFile:
         # The socket carries the request and its one ``done``; the bytes arrive
         # over HTTP into the transfer, so no frame waits on them.
         conn = self._registry.pick(workbench_id)
@@ -562,7 +496,7 @@ class WsWorkbenchClient:
         finally:
             self._transfers.discard(transfer_path)
 
-    def copy_in(self, workbench_id: str, source_path: str, workbench_path: str, *, ree_id: str | None = None) -> None:
+    def copy_in(self, workbench_id: str, source_path: str, workbench_path: str, *, ree_id: str) -> None:
         # The bench fetches the file over HTTP beside its control socket; the socket
         # carries only the request and its ``done``. The file stays the caller's.
         conn = self._registry.pick(workbench_id)

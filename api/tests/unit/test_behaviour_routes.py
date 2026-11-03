@@ -27,7 +27,6 @@ def evidence(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     (journals / "notes.txt").write_text("not a journal")
     monkeypatch.setattr(service_settings, "BEHAVIOUR_JOURNAL_DIR", journals)
     monkeypatch.setattr(service_settings, "RUN_REGISTRY_DIR", tmp_path / "runs")
-    monkeypatch.setattr(service_settings, "ALLOCATION_STORE_FILE", tmp_path / "allocations.json")
     return tmp_path
 
 
@@ -60,14 +59,12 @@ def test_persisted_state_is_served_with_the_cut_it_was_read_at(client: TestClien
     run = {"run_id": "build-1", "ree_id": "ree-1", "status": "succeeded"}
     (evidence / "runs" / "build-1").mkdir(parents=True)
     (evidence / "runs" / "build-1" / "state.json").write_text(json.dumps(run))
-    allocations: dict[str, dict[str, str]] = {"allocations": {}, "placements": {}}
-    (evidence / "allocations.json").write_text(json.dumps(allocations))
     response = client.get("/api/v1/behaviour/state")
     assert response.status_code == 200
     assert response.json() == {
         "cut": {"api-000001": [3, 3], "api-000002": [2, 2]},
         "runs": {"build-1": run},
-        "allocations": allocations,
+        "allocations": None,
     }
 
 

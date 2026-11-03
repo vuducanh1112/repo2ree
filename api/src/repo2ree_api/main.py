@@ -24,16 +24,13 @@ from repo2ree_api.authoring.source import source_router
 from repo2ree_api.authoring.stages import stages_router
 from repo2ree_api.contracts import ErrorEnvelope, HealthResponse
 from repo2ree_api.control.behaviour import behaviour_router
-from repo2ree_api.control.compute import compute_router
 from repo2ree_api.control.fleet import (
-    provider_ws_router,
     workbench_ws_router,
     workbenches_router,
 )
 from repo2ree_api.control.rees import rees_router
 from repo2ree_api.control.run_orchestration import shutdown_runs, startup_runs
 from repo2ree_api.control.runs import runs_router
-from repo2ree_api.deps import workbench_manager
 from repo2ree_api.ree_index_routes import ree_index_router
 from repo2ree_api.review.records import review_records_router
 from repo2ree_api.review.stages import review_stages_router
@@ -66,9 +63,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # journaled too; closed only after the worker pool has drained.
     open_journal(service_settings.BEHAVIOUR_JOURNAL_DIR, "api", hosts=("api", "supervisor"))
     startup_runs()
-    # Nothing resumes a provision the previous process was carrying out: its allocation fails.
-    if interrupted := workbench_manager.fail_interrupted():
-        _log.warning("failed %d allocation(s) the previous API process was still setting up", len(interrupted))
     try:
         yield
     finally:
@@ -181,8 +175,6 @@ ROUTERS = (
     review_records_router,
     review_stages_router,
     # The fleet the whole thing runs on.
-    compute_router,
-    provider_ws_router,
     workbench_ws_router,
     workbenches_router,
     # What the fleet's owners recorded, for checking it against the behaviour specification.

@@ -58,7 +58,6 @@ export function createReeRunsClient(runtime: ReeRuntimeValue): ReeRunsClient {
       const run = await runtime.reeApi.createRee({
         name,
         store_id: storeId.trim(),
-        location_id: "",
         image: image.trim(),
       });
       return { reeId: run.ree_id, run: mapRun(run) };

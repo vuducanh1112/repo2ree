@@ -4,16 +4,15 @@ This tier runs the real FastAPI app over ``TestClient`` — real routers, real
 exception handlers, real run registry, real upload staging — with no Docker
 and no workbench containers, so it runs unconditionally on every machine.
 
-The one seam is the workbench dispatch boundary: tests stage registry /
-container state by patching ``lookup`` / ``is_registered`` on the real
-module-level ``WorkbenchManager`` singleton. No workbench *behavior* is ever
+The one seam is the workbench dispatch boundary: tests stage an REE served by
+a store by patching ``route`` on the real module-level ``ReeRouter`` singleton. No workbench *behavior* is ever
 faked — nothing fabricates an ``ActionResult`` to pretend a command ran.
 Everything that crosses the boundary for real belongs to the Docker-gated
 integration tier.
 
 Host-side state (upload staging, the workbench registry) is redirected into a
 throwaway directory via env vars *before* the app module —
-and with it the workbench-manager singleton — is imported, so a developer's
+and with it the router singleton — is imported, so a developer's
 ``.env`` or live registry can't leak into the tests.
 """
 
@@ -36,7 +35,6 @@ TEST_RESULTS_DIR = service_dir("api-unit")
 # repo2ree_api import below.
 _state_dir = Path(tempfile.mkdtemp(prefix="repo2ree-api-utest-"))
 os.environ["UPLOAD_STAGING_DIR"] = str(_state_dir / "upload-staging")
-os.environ["ALLOCATION_STORE_FILE"] = str(_state_dir / "allocations.json")
 os.environ["CONTROL_STATE_DIR"] = str(_state_dir / "control")
 os.environ["REE_INDEX_FILE"] = str(_state_dir / "ree-index.json")
 os.environ["RUN_REGISTRY_DIR"] = str(_state_dir / "runs")
@@ -70,9 +68,9 @@ if "TRACE_FILE" not in os.environ:
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from repo2ree_api.deps import workbench_manager  # noqa: E402
+from repo2ree_api.deps import ree_router  # noqa: E402
 from repo2ree_api.main import app  # noqa: E402
-from repo2ree_supervisor import WorkbenchHandle  # noqa: E402
+from repo2ree_supervisor import ReeRoute  # noqa: E402
 
 # ================================================
 # Fixtures
@@ -93,35 +91,17 @@ def client() -> Iterator[TestClient]:
 
 
 @pytest.fixture
-def online_ree(monkeypatch: pytest.MonkeyPatch) -> WorkbenchHandle:
-    """Stage one REE as registered-and-running on the real manager singleton.
+def online_ree(monkeypatch: pytest.MonkeyPatch) -> ReeRoute:
+    """Stage one REE as served by a store's connected workbench.
 
-    Patches ``lookup`` / ``is_registered`` so routes resolve a handle for this
-    REE without a docker probe; every other ID falls through to the real
-    (empty-registry) behavior. Anything that *dispatches* through the handle
-    is out of scope for this tier.
+    Patches ``route`` so routes resolve this REE without a store; every other ID
+    falls through to the real (empty-registry) behavior. Anything that
+    *dispatches* through the route is out of scope for this tier.
     """
     ree_id = uuid4().hex
-    handle = WorkbenchHandle(
-        ree_id=ree_id,
-        allocation_id=f"alloc-{ree_id}",
-        workbench_id=f"wb-{ree_id}",
-        provider_id="provider-test",
-        location_id="lab-test",
-        image="docker.io/library/docker:29-dind",
-    )
-    real_lookup = workbench_manager.lookup
-    real_is_registered = workbench_manager.is_registered
-    monkeypatch.setattr(
-        workbench_manager,
-        "lookup",
-        lambda rid: handle if rid == ree_id else real_lookup(rid),
-    )
-    monkeypatch.setattr(
-        workbench_manager,
-        "is_registered",
-        lambda rid: rid == ree_id or real_is_registered(rid),
-    )
+    handle = ReeRoute(ree_id=ree_id, workbench_id=f"wb-{ree_id}", store_id="lab-test")
+    real_route = ree_router.route
+    monkeypatch.setattr(ree_router, "route", lambda rid: handle if rid == ree_id else real_route(rid))
     return handle
 
 

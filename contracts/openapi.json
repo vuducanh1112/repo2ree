@@ -6743,380 +6743,6 @@
         }
       }
     },
-    "/api/v1/compute-locations": {
-      "get": {
-        "tags": [
-          "compute"
-        ],
-        "summary": "List Compute Locations",
-        "operationId": "listComputeLocations",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ComputeLocationList"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request or operation precondition",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "REE, run, file, or artifact not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Version or idempotency conflict",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Upload exceeds the configured size limit",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "415": {
-            "description": "Request body is not application/json",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Request validation failed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "Workbench returned an invalid upstream response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Compute provider or workbench unavailable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "507": {
-            "description": "Upload staging capacity exhausted",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/allocations": {
-      "get": {
-        "tags": [
-          "compute"
-        ],
-        "summary": "List Allocations",
-        "operationId": "listAllocations",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AllocationList"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request or operation precondition",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "REE, run, file, or artifact not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Version or idempotency conflict",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Upload exceeds the configured size limit",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "415": {
-            "description": "Request body is not application/json",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Request validation failed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "Workbench returned an invalid upstream response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Compute provider or workbench unavailable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "507": {
-            "description": "Upload staging capacity exhausted",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/allocations/{allocation_id}": {
-      "get": {
-        "tags": [
-          "compute"
-        ],
-        "summary": "Get Allocation",
-        "operationId": "getAllocation",
-        "parameters": [
-          {
-            "name": "allocation_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Allocation Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AllocationRecord"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request or operation precondition",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "REE, run, file, or artifact not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Version or idempotency conflict",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Upload exceeds the configured size limit",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "415": {
-            "description": "Request body is not application/json",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Request validation failed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "Workbench returned an invalid upstream response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Compute provider or workbench unavailable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "507": {
-            "description": "Upload staging capacity exhausted",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/workbenches": {
       "get": {
         "tags": [
@@ -7254,128 +6880,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/StoreList"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request or operation precondition",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "REE, run, file, or artifact not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Version or idempotency conflict",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Upload exceeds the configured size limit",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "415": {
-            "description": "Request body is not application/json",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Request validation failed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "Workbench returned an invalid upstream response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Compute provider or workbench unavailable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "507": {
-            "description": "Upload staging capacity exhausted",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/providers": {
-      "get": {
-        "tags": [
-          "fleet"
-        ],
-        "summary": "List Providers",
-        "description": "Docker capacity providers currently connected to this control plane.",
-        "operationId": "listProviders",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProviderList"
                 }
               }
             }
@@ -8425,130 +7929,6 @@
         "title": "ActivationScriptTemplates",
         "description": "The activation run-script templates and both reserved activation paths.\n\nThe default template (``is_default``) is the content a fresh REE's\nactivation script is seeded with. ``verify_script_path`` is where an\nactivation verify script belongs when the author writes one; declaring it\non the intent is an explicit act (a declared verify script must exist and\npass)."
       },
-      "AllocationList": {
-        "properties": {
-          "allocations": {
-            "items": {
-              "$ref": "#/components/schemas/AllocationRecord"
-            },
-            "type": "array",
-            "title": "Allocations"
-          }
-        },
-        "type": "object",
-        "required": [
-          "allocations"
-        ],
-        "title": "AllocationList"
-      },
-      "AllocationRecord": {
-        "properties": {
-          "request": {
-            "$ref": "#/components/schemas/AllocationRequest"
-          },
-          "state": {
-            "$ref": "#/components/schemas/AllocationState",
-            "default": "requested"
-          },
-          "workbench_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Workbench Id"
-          },
-          "provider_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Provider Id"
-          },
-          "resolved_image": {
-            "type": "string",
-            "title": "Resolved Image",
-            "default": ""
-          },
-          "detail": {
-            "type": "string",
-            "title": "Detail",
-            "default": ""
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Updated At"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "request",
-          "created_at",
-          "updated_at"
-        ],
-        "title": "AllocationRecord"
-      },
-      "AllocationRequest": {
-        "properties": {
-          "allocation_id": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Allocation Id"
-          },
-          "ree_id": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Ree Id"
-          },
-          "location_id": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Location Id"
-          },
-          "image": {
-            "type": "string",
-            "title": "Image",
-            "default": ""
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "allocation_id",
-          "ree_id",
-          "location_id"
-        ],
-        "title": "AllocationRequest"
-      },
-      "AllocationState": {
-        "type": "string",
-        "enum": [
-          "requested",
-          "provisioning",
-          "waiting_for_workbench",
-          "ready",
-          "assigned",
-          "draining",
-          "released",
-          "failed",
-          "lost"
-        ],
-        "title": "AllocationState"
-      },
       "ArchiveBindingAttestation": {
         "properties": {
           "subject_digest": {
@@ -9447,102 +8827,6 @@
           "count"
         ],
         "title": "CommandCandidatesObservation"
-      },
-      "ComputeLocation": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Id"
-          },
-          "label": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Label"
-          },
-          "description": {
-            "type": "string",
-            "title": "Description",
-            "default": ""
-          },
-          "lifecycle_mode": {
-            "$ref": "#/components/schemas/LifecycleMode"
-          },
-          "available": {
-            "type": "boolean",
-            "title": "Available",
-            "default": true
-          },
-          "images": {
-            "items": {
-              "$ref": "#/components/schemas/WorkbenchImage"
-            },
-            "type": "array",
-            "title": "Images",
-            "default": []
-          },
-          "accepts_custom_image": {
-            "type": "boolean",
-            "title": "Accepts Custom Image",
-            "default": false
-          },
-          "connected_component": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ConnectedComponent"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "id",
-          "label",
-          "lifecycle_mode"
-        ],
-        "title": "ComputeLocation",
-        "description": "A place workbenches can be obtained, and the images it offers there.\n\nThe catalog is published *outward*: the author picks from it, and the\nresolved ref is recorded on the allocation. A location that accepts a ref it\ndid not publish says so with ``accepts_custom_image``; nothing else about\nthe image is negotiated."
-      },
-      "ComputeLocationList": {
-        "properties": {
-          "locations": {
-            "items": {
-              "$ref": "#/components/schemas/ComputeLocation"
-            },
-            "type": "array",
-            "title": "Locations"
-          }
-        },
-        "type": "object",
-        "required": [
-          "locations"
-        ],
-        "title": "ComputeLocationList"
-      },
-      "ConnectedComponent": {
-        "properties": {
-          "kind": {
-            "type": "string",
-            "enum": [
-              "provider",
-              "workbench"
-            ],
-            "title": "Kind"
-          },
-          "build": {
-            "$ref": "#/components/schemas/BuildInfo"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "kind"
-        ],
-        "title": "ConnectedComponent"
       },
       "Contributor": {
         "properties": {
@@ -12006,15 +11290,6 @@
         ],
         "title": "InferenceWarning"
       },
-      "LifecycleMode": {
-        "type": "string",
-        "enum": [
-          "provider_managed",
-          "externally_managed",
-          "store"
-        ],
-        "title": "LifecycleMode"
-      },
       "LintReport": {
         "properties": {
           "schema_version": {
@@ -12645,60 +11920,6 @@
         ],
         "title": "ProjectRootBinding"
       },
-      "ProviderList": {
-        "properties": {
-          "providers": {
-            "items": {
-              "$ref": "#/components/schemas/ProviderSummary"
-            },
-            "type": "array",
-            "title": "Providers"
-          }
-        },
-        "type": "object",
-        "required": [
-          "providers"
-        ],
-        "title": "ProviderList"
-      },
-      "ProviderSummary": {
-        "properties": {
-          "provider_id": {
-            "type": "string",
-            "title": "Provider Id"
-          },
-          "hostname": {
-            "type": "string",
-            "title": "Hostname"
-          },
-          "version": {
-            "type": "string",
-            "title": "Version"
-          },
-          "location_id": {
-            "type": "string",
-            "title": "Location Id"
-          },
-          "connected_at": {
-            "type": "string",
-            "title": "Connected At"
-          },
-          "status": {
-            "type": "string",
-            "title": "Status",
-            "default": "connected"
-          }
-        },
-        "type": "object",
-        "required": [
-          "provider_id",
-          "hostname",
-          "version",
-          "location_id",
-          "connected_at"
-        ],
-        "title": "ProviderSummary"
-      },
       "Ree": {
         "properties": {
           "subject": {
@@ -12859,13 +12080,8 @@
           },
           "store_id": {
             "type": "string",
-            "title": "Store Id",
-            "default": ""
-          },
-          "location_id": {
-            "type": "string",
-            "title": "Location Id",
-            "default": ""
+            "minLength": 1,
+            "title": "Store Id"
           },
           "image": {
             "type": "string",
@@ -12875,8 +12091,11 @@
         },
         "additionalProperties": false,
         "type": "object",
+        "required": [
+          "store_id"
+        ],
         "title": "ReeCreatePayload",
-        "description": "Create a new empty REE: in a store, or on a workbench a location sets up for it.\n\nSource acquisition is intentionally a separate lifecycle operation through\n``source:acquire`` or the upload-init/upload/complete sequence."
+        "description": "Create a new empty REE in a store.\n\nSource acquisition is intentionally a separate lifecycle operation through\n``source:acquire`` or the upload-init/upload/complete sequence."
       },
       "ReeDefinition-Input": {
         "properties": {
@@ -13092,17 +12311,6 @@
           "audit": {
             "$ref": "#/components/schemas/ReeAudit"
           },
-          "allocation_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Allocation Id"
-          },
           "location_id": {
             "anyOf": [
               {
@@ -13113,17 +12321,6 @@
               }
             ],
             "title": "Location Id"
-          },
-          "image": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Image"
           },
           "store_id": {
             "anyOf": [
@@ -13588,17 +12785,9 @@
             ],
             "title": "Status"
           },
-          "allocation_id": {
-            "type": "string",
-            "title": "Allocation Id"
-          },
           "location_id": {
             "type": "string",
             "title": "Location Id"
-          },
-          "image": {
-            "type": "string",
-            "title": "Image"
           }
         },
         "additionalProperties": false,
@@ -13607,9 +12796,7 @@
           "ree_id",
           "name",
           "status",
-          "allocation_id",
-          "location_id",
-          "image"
+          "location_id"
         ],
         "title": "ReeSummary"
       },
@@ -16498,37 +15685,6 @@
         "title": "WorkbenchCapabilities",
         "description": "What a workbench offers the scripts it runs, so REEs that need it can be sent there."
       },
-      "WorkbenchImage": {
-        "properties": {
-          "ref": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Ref"
-          },
-          "id": {
-            "type": "string",
-            "title": "Id",
-            "default": ""
-          },
-          "label": {
-            "type": "string",
-            "title": "Label",
-            "default": ""
-          },
-          "description": {
-            "type": "string",
-            "title": "Description",
-            "default": ""
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "ref"
-        ],
-        "title": "WorkbenchImage",
-        "description": "One base image a location offers to provision workbenches from.\n\nOnly ``ref`` is meaningful to the backend \u2014 it is the image that gets run.\n``id``/``label``/``description`` are picker-facing and default off the ref,\nso a catalog entry can be as terse as ``{\"ref\": \"docker:29-dind\"}``."
-      },
       "WorkbenchList": {
         "properties": {
           "workbenches": {
@@ -16562,17 +15718,6 @@
             ],
             "title": "Workbench Id"
           },
-          "allocation_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Allocation Id"
-          },
           "location_id": {
             "anyOf": [
               {
@@ -16583,17 +15728,6 @@
               }
             ],
             "title": "Location Id"
-          },
-          "image": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Image"
           },
           "build": {
             "$ref": "#/components/schemas/BuildInfo"
@@ -16615,13 +15749,9 @@
             "type": "string",
             "title": "Workbench Id"
           },
-          "mode": {
+          "store_id": {
             "type": "string",
-            "title": "Mode"
-          },
-          "available": {
-            "type": "boolean",
-            "title": "Available"
+            "title": "Store Id"
           },
           "hostname": {
             "type": "string",
@@ -16630,10 +15760,6 @@
           "version": {
             "type": "string",
             "title": "Version"
-          },
-          "image": {
-            "type": "string",
-            "title": "Image"
           },
           "connected_at": {
             "type": "string",
@@ -16648,11 +15774,9 @@
         "type": "object",
         "required": [
           "workbench_id",
-          "mode",
-          "available",
+          "store_id",
           "hostname",
           "version",
-          "image",
           "connected_at"
         ],
         "title": "WorkbenchSummary"

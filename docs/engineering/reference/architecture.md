@@ -740,9 +740,9 @@ explicit SWH save/deposit request.
   `start_provisioning_run` / `start_single_command_run` shapes
   ([control/run_orchestration.py](../../../api/src/repo2ree_api/control/run_orchestration.py)).
   Operations dispatch to `repo2ree-exec` through
-  `WorkbenchManager.dispatch_action` with logs streamed back, and cancellation
+  `CommandDispatcher.dispatch_action` with logs streamed back, and cancellation
   crosses the boundary as a remote signal to the workbench
-  ([manager.py:287](../../../supervisor/src/repo2ree_supervisor/manager.py#L287))
+  ([dispatcher.py](../../../supervisor/src/repo2ree_supervisor/dispatcher.py))
   rather than a local flag check.
 - **Keep Docker image construction inside the workbench.** The author and review
   build paths both reach `core` through `repo2ree-exec`; the control plane has no

@@ -1,10 +1,8 @@
 """The execution wire vocabulary: driving REE commands in an existing workbench.
 
 These are the requests the control plane sends to the *workbench service* — the
-process that executes REE commands through short-lived executors. They address
-a bench exclusively by its opaque ``WorkbenchRef``; nothing here can create,
-replace, or destroy an environment (that is ``repo2ree_protocol.provider``'s
-vocabulary, and keeping the two disjoint is what lets their authority differ).
+process that serves a store of REEs and executes their commands through
+short-lived executors. Every request names the REE it addresses in the store.
 
 Byte payloads never ride one frame — they are too big for the transport's
 receive caps — so both directions chunk. Reading out (exec_query: a sealed
@@ -21,7 +19,6 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
-from repo2ree_protocol.allocation import AllocationRequest
 from repo2ree_protocol.build import BuildInfo
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import Frame
@@ -55,20 +52,14 @@ class WorkbenchHello(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     workbench_id: str
-    mode: Literal["managed", "external"] = "managed"
-    allocation_id: str = ""
+    # The store's token, presented once: the control plane admits the workbench for that store alone.
     enrollment_token: str = ""
     hostname: str = ""
     version: str = ""
     build: BuildInfo = Field(default_factory=BuildInfo)
     executor_build: BuildInfo = Field(default_factory=BuildInfo)
-    location_id: str = ""
-    # The base image this bench was provisioned from; blank for an externally
-    # managed bench, which this control plane did not build.
-    image: str = ""
-    # The store this workbench serves: a directory of REEs, one per ree_id. Blank for a managed
-    # bench, whose root is the one REE it was provisioned for.
-    store_id: str = ""
+    # The store this workbench serves: a directory of REEs, one per ree_id.
+    store_id: str
     # Where it runs the author's scripts: on its own host, or in a container from the REE's image.
     backend: Literal["host", "container"] = "host"
     # The images a container backend offers an REE created in its store, the first the default.
@@ -97,8 +88,8 @@ class ExecSimpleRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     op: Literal["exec_simple"] = "exec_simple"
-    # The REE this addresses in the workbench's store; None on a managed bench, whose root is its one REE.
-    ree_id: str | None = None
+    # The REE this addresses in the workbench's store.
+    ree_id: str
     argv: list[str]
     timeout: int = 60
 
@@ -111,8 +102,8 @@ class ExecQueryRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     op: Literal["exec_query"] = "exec_query"
-    # The REE this addresses in the workbench's store; None on a managed bench, whose root is its one REE.
-    ree_id: str | None = None
+    # The REE this addresses in the workbench's store.
+    ree_id: str
     argv: list[str]
     timeout: int = 30
 
@@ -133,8 +124,8 @@ class ExecUploadRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     op: Literal["exec_upload"] = "exec_upload"
-    # The REE this addresses in the workbench's store; None on a managed bench, whose root is its one REE.
-    ree_id: str | None = None
+    # The REE this addresses in the workbench's store.
+    ree_id: str
     argv: list[str]
     transfer_path: str
     timeout: int = 600
@@ -144,8 +135,8 @@ class ExecActionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     op: Literal["exec_action"] = "exec_action"
-    # The REE this addresses in the workbench's store; None on a managed bench, whose root is its one REE.
-    ree_id: str | None = None
+    # The REE this addresses in the workbench's store.
+    ree_id: str
     cmd_json: str
     context: ExecutionContext | None = None
     run_id: str
@@ -157,8 +148,8 @@ class CancelRunRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     op: Literal["cancel_run"] = "cancel_run"
-    # The REE this addresses in the workbench's store; None on a managed bench, whose root is its one REE.
-    ree_id: str | None = None
+    # The REE this addresses in the workbench's store.
+    ree_id: str
     run_id: str
 
 
@@ -174,8 +165,8 @@ class FetchFileRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     op: Literal["fetch_file"] = "fetch_file"
-    # The REE this addresses in the workbench's store; None on a managed bench, whose root is its one REE.
-    ree_id: str | None = None
+    # The REE this addresses in the workbench's store.
+    ree_id: str
     transfer_path: str
     workbench_path: str
     timeout: int = 600
@@ -197,30 +188,12 @@ class CancelRequest(BaseModel):
 class DeleteReeRequest(BaseModel):
     """Delete an REE and everything in its directory from this workbench's store.
 
-    Refused while a run of that REE is active. Only a workbench serving a store has
-    REEs to delete: a managed bench's one REE goes with the bench."""
+    Refused while a run of that REE is active."""
 
     model_config = ConfigDict(extra="forbid")
 
     op: Literal["delete_ree"] = "delete_ree"
     ree_id: str
-
-
-class DrainWorkbenchRequest(BaseModel):
-    """Finish in-flight work and terminate this single-use workbench."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    op: Literal["drain"] = "drain"
-
-
-class AssignAllocationRequest(BaseModel):
-    """Assign a validated allocation to this otherwise idle workbench."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    op: Literal["assign_allocation"] = "assign_allocation"
-    allocation: AllocationRequest
 
 
 # Tagged union discriminated on 'op': every execution call. The op literal
@@ -234,9 +207,7 @@ WorkbenchRequest = Annotated[
     | CancelRunRequest
     | FetchFileRequest
     | CancelRequest
-    | DeleteReeRequest
-    | DrainWorkbenchRequest
-    | AssignAllocationRequest,
+    | DeleteReeRequest,
     Field(discriminator="op"),
 ]
 

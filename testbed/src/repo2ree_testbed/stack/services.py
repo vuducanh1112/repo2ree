@@ -36,13 +36,11 @@ class Service:
 def backend_environment(control_state: Path, token: str, coverage_file: Path, telemetry: Path | None) -> dict[str, str]:
     environment = {
         "UPLOAD_STAGING_DIR": str(control_state / "upload-staging"),
-        "ALLOCATION_STORE_FILE": str(control_state / "allocations.json"),
         "CONTROL_STATE_DIR": str(control_state),
         "REE_INDEX_FILE": str(control_state / "ree-index.json"),
         "RUN_REGISTRY_DIR": str(control_state / "runs"),
         "BEHAVIOUR_JOURNAL_DIR": str(control_state / "journal"),
         "BEHAVIOUR_FINAL_SHUTDOWN": "true",
-        "EXTERNAL_WORKBENCH_TOKEN": token,
         "COVERAGE_FILE": str(coverage_file),
     }
     if telemetry is not None:
@@ -75,7 +73,6 @@ def locations(
             "repo2ree_workbench",
             {
                 "WORKBENCH_API_WS_URL": f"{ws}/workbench/connect",
-                "WORKBENCH_MODE": "external",
                 "WORKBENCH_AUTH_TOKEN": store_tokens.get(index, ""),
                 "WORKBENCH_STORE": f"{store_id(index)}={state / 'store'}",
                 "WORKBENCH_SLOTS": "2",
@@ -86,7 +83,6 @@ def locations(
                 "WORKBENCH_ENGINE_PATH": engine_path(state / "store"),
                 # Job containers carry the run's label, so its cleanup removes what a fault left.
                 "REPO2REE_RESOURCE_OWNER": token,
-                "WORKBENCH_LOCATION_ID": store_id(index),
                 "WORKBENCH_STATE_DIR": str(state),
                 "REPO2REE_EXEC_PATH": "repo2ree-exec",
             },

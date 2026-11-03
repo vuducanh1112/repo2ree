@@ -20,7 +20,7 @@ from repo2ree_api.deps import command_dispatcher, ree_router
 from repo2ree_api.storage import author_actions
 from repo2ree_protocol.command import Command
 from repo2ree_protocol.result import ActionResult
-from repo2ree_supervisor import StoreUnavailableError, WorkbenchHandle
+from repo2ree_supervisor import ReeRoute, StoreUnavailableError
 from repo2ree_telemetry.bootstrap import get_meter, get_tracer
 from repo2ree_telemetry.spans import CommandSpanAttrs, command_metric_attrs, record_command_status
 
@@ -79,12 +79,11 @@ def ree_command_span(operation: str, ree_id: str) -> Generator[None]:
 # ================================================
 
 
-def require_handle(ree_id: str) -> WorkbenchHandle:
+def require_handle(ree_id: str) -> ReeRoute:
     """The workbench to send ``ree_id``'s commands to, or the error the author is answered with.
 
-    404 for an REE this control plane does not know; 503 for one it knows whose workbench
-    is not reachable now: a store no workbench serves at the moment (``store_unavailable``,
-    retryable), or a provisioned bench that is not running.
+    404 for an REE this control plane does not know; 503 (``store_unavailable``, retryable) for
+    one whose store no workbench serves at the moment.
     """
     try:
         handle = ree_router.route(ree_id)
@@ -98,14 +97,12 @@ def require_handle(ree_id: str) -> WorkbenchHandle:
                 "retryable": True,
             },
         ) from exc
-    if handle is not None:
-        return handle
-    if ree_router.is_known(ree_id):
-        raise HTTPException(status_code=503, detail="Workbench unavailable for this REE")
-    raise HTTPException(status_code=404, detail=f"REE {ree_id} not found")
+    if handle is None:
+        raise HTTPException(status_code=404, detail=f"REE {ree_id} not found")
+    return handle
 
 
-def dispatch_or_fail(handle: WorkbenchHandle, cmd: Command, run_id: str, error_message: str) -> ActionResult:
+def dispatch_or_fail(handle: ReeRoute, cmd: Command, run_id: str, error_message: str) -> ActionResult:
     """Dispatch a single workbench command, translating failure into the error envelope.
 
     A handler-reported version conflict maps to 409 (retryable after re-reading);

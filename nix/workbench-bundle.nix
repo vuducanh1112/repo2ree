@@ -62,10 +62,8 @@ let
         exit 1
       fi
 
-      # An external workbench is one this control plane did not provision; it
-      # authenticates with the shared secret in WORKBENCH_AUTH_TOKEN.
-      : "''${WORKBENCH_MODE:=external}"
-      export WORKBENCH_MODE
+      # A workbench serves a store (--store ID=PATH) and is admitted with that
+      # store's token in WORKBENCH_AUTH_TOKEN.
 
       ${exports}
 

@@ -12,12 +12,12 @@ from repo2ree_core.domain.ree.audit import audit
 from repo2ree_protocol.document import WorkbenchReeDocument
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.model import Ree, ReeDefinition
-from repo2ree_supervisor import WorkbenchHandle
+from repo2ree_supervisor import ReeRoute
 
 
 def test_replace_definition_route_dispatches_every_definition_field(
     client: TestClient,
-    online_ree: WorkbenchHandle,
+    online_ree: ReeRoute,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     dispatched: list[Any] = []

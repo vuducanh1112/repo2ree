@@ -1,4 +1,4 @@
-"""REE lifecycle: provision a workbench, observe it, replace it, tear it down.
+"""REE lifecycle: create an REE in a store, observe it, delete it from the store.
 
 Control-plane concerns, not authoring steps — these routes exist for every REE
 regardless of how far through the step graph it is. Authoring the REE's content
@@ -25,22 +25,9 @@ from repo2ree_api.contracts import (
     RunSummary,
     WorkbenchStatus,
 )
-from repo2ree_api.control.run_orchestration import (
-    append_run_log,
-    is_cancel_requested,
-    list_runs,
-    run_summary,
-    start_provisioning_run,
-)
+from repo2ree_api.control.run_orchestration import append_run_log, list_runs, run_summary, start_provisioning_run
 from repo2ree_api.control.run_registry import ACTIVE_STATUSES
-from repo2ree_api.deps import (
-    command_dispatcher,
-    provider_connections,
-    ree_registry,
-    store_registry,
-    workbench_connections,
-    workbench_manager,
-)
+from repo2ree_api.deps import command_dispatcher, ree_registry, store_registry, workbench_connections
 from repo2ree_api.pagination import keyset_paginate
 from repo2ree_api.storage import author_actions
 from repo2ree_api.storage.author_actions import author_api_action
@@ -51,7 +38,7 @@ from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.environment import EnvironmentDefinition
 from repo2ree_ree.model import Ree, ReeStatus, ree_status
-from repo2ree_supervisor import WorkbenchHandle
+from repo2ree_supervisor import ReeRoute
 
 _log = logging.getLogger(__name__)
 
@@ -67,58 +54,7 @@ rees_router = APIRouter(tags=["rees"])
 )
 def create_ree_route(payload: ReeCreatePayload) -> RunSummary:
     ree_id = uuid.uuid4().hex
-    name = payload.name or ree_id[:8]
-    if store_id := payload.store_id.strip():
-        return _create_in_store(ree_id, name, store_id, payload)
-    location_id = payload.location_id.strip()
-    image = payload.image.strip()
-
-    # Provision in the background so the cold-machine image pull streams its
-    # progress live into the run's log stream (GET .../runs/{run_id}/logs)
-    # instead of blocking the request with no visible output. The ree_id is
-    # minted up front, so the response carries it immediately.
-    def _runner(rid: str, run_id: str) -> ActionResult:
-        def _log_run(stream: str, level: str, message: str) -> None:
-            append_run_log(rid, run_id, stream, level, message)
-
-        if is_cancel_requested(rid, run_id):
-            _log_run("system", "warn", "Provisioning canceled before it started")
-            return ActionResult(status="canceled")
-
-        # Note: cancel is only honoured at the phase boundaries below — the image
-        # pull and container start inside provision() run to completion once
-        # begun, so a cancel mid-pull only takes effect afterwards.
-        try:
-            provider_managed = any(
-                provider.location_id == location_id for provider in provider_connections.list_providers()
-            )
-            if provider_managed:
-                handle = workbench_manager.provision(rid, name, log=_log_run, location_id=location_id, image=image)
-            else:
-                handle = workbench_manager.reserve_external(rid, name, location_id)
-        except Exception as exc:  # noqa: BLE001 — provisioning is the workbench's, so any failure is reported as an unavailable run
-            _log_run("system", "error", f"Workbench provisioning failed: {exc}")
-            return ActionResult.failed(
-                "unavailable",
-                f"Workbench provisioning failed: {exc}",
-                origin="supervisor",
-                retryable=True,
-            )
-        author_actions.learn(allocation_id=handle.allocation_id)
-        _declare_environment(handle, run_id, _log_run)
-
-        if is_cancel_requested(rid, run_id):
-            _log_run("system", "warn", "Provisioning canceled after workbench startup")
-            return ActionResult(status="canceled", outputs={"ree": _provisioned_document(handle)})
-
-        return ActionResult(status="succeeded", outputs={"ree": _provisioned_document(handle)})
-
-    run_state = start_provisioning_run(
-        ree_id=ree_id,
-        request_payload=payload.model_dump(),
-        runner=_runner,
-    )
-    return RunSummary.model_validate(run_summary(run_state))
+    return _create_in_store(ree_id, payload.name or ree_id[:8], payload.store_id.strip(), payload)
 
 
 def _create_in_store(ree_id: str, name: str, store_id: str, payload: ReeCreatePayload) -> RunSummary:
@@ -175,19 +111,12 @@ def _store_environment(offered: tuple[str, ...], requested: str) -> EnvironmentD
     return EnvironmentDefinition(kind="image", image=image) if image else EnvironmentDefinition(kind="host")
 
 
-def _declare_environment(
-    handle: WorkbenchHandle, run_id: str, log: LogSink, environment: EnvironmentDefinition | None = None
-) -> None:
-    """Record what the new REE's scripts run in: as declared, its bench's image, or the machine itself.
+def _declare_environment(handle: ReeRoute, run_id: str, log: LogSink, environment: EnvironmentDefinition) -> None:
+    """Record what the new REE's scripts run in.
 
     The REE exists either way, so a declaration that will not record leaves it undeclared and says
     so, rather than failing a creation that worked.
     """
-    environment = environment or (
-        EnvironmentDefinition(kind="image", image=handle.image)
-        if handle.mode == "provider_managed" and handle.image
-        else EnvironmentDefinition(kind="host")
-    )
     command = PatchReeDefinitionCommand(
         args=PatchReeDefinitionArgs(patch={"environment": environment.model_dump(mode="json")}, expected_version="")
     )
@@ -197,16 +126,15 @@ def _declare_environment(
         log("system", "warn", f"The REE's environment was not recorded: {message}")
 
 
-def _provisioned_document(handle: WorkbenchHandle) -> dict[str, Any]:
+def _provisioned_document(handle: ReeRoute) -> dict[str, Any]:
     document = command_dispatcher.get_ree_document(handle)
     _remember(handle, document.ree)
     return {**document.model_dump(mode="json"), "ree_id": handle.ree_id}
 
 
-def _remember(handle: WorkbenchHandle, ree: Ree) -> None:
-    """Keep what a store REE was last seen as, for listings while its store is offline."""
-    if handle.mode == "store":
-        ree_registry.update_summary(handle.ree_id, name=ree.subject.definition.name, status=ree_status(ree))
+def _remember(handle: ReeRoute, ree: Ree) -> None:
+    """Keep what the REE was last seen as, for listings while its store is offline."""
+    ree_registry.update_summary(handle.ree_id, name=ree.subject.definition.name, status=ree_status(ree))
 
 
 @rees_router.get(
@@ -220,16 +148,13 @@ def list_rees_route(
     limit: int | None = Query(None, ge=1),
     status: str | None = Query(None),
 ) -> ReeList:
-    items = [_summarize(handle, ree) for handle, ree in workbench_manager.list_all_manifests()]
-    # REEs in stores are listed whether or not their store is served now, as they were last seen.
-    items += [
+    # Every REE is listed whether or not its store is served now, as it was last seen.
+    items = [
         ReeSummary(
             ree_id=record.ree_id,
             name=record.name,
             status=cast(ReeStatus, record.status),
-            allocation_id="",
             location_id=record.store_id,
-            image="",
         )
         for record in ree_registry.all()
     ]
@@ -238,17 +163,6 @@ def list_rees_route(
     items.sort(key=_ree_page_key, reverse=True)
     page, next_cursor, _has_more = keyset_paginate(items, cursor=cursor, limit=limit, key=_ree_page_key)
     return ReeList.model_validate({"items": page, "next_cursor": next_cursor})
-
-
-def _summarize(handle: WorkbenchHandle, ree: Ree) -> ReeSummary:
-    return ReeSummary(
-        ree_id=handle.ree_id,
-        name=ree.subject.definition.name,
-        status=ree_status(ree),
-        allocation_id=handle.allocation_id,
-        location_id=handle.location_id,
-        image=handle.image,
-    )
 
 
 def _ree_page_key(summary: ReeSummary) -> tuple[str, str]:
@@ -266,14 +180,7 @@ def get_ree_route(ree_id: str) -> ReeDocument:
         handle = require_handle(ree_id)
         document = command_dispatcher.get_ree_document(handle)
         _remember(handle, document.ree)
-        return ReeDocument.of(
-            handle.ree_id,
-            document,
-            allocation_id=handle.allocation_id or None,
-            location_id=handle.location_id,
-            image=handle.image or None,
-            store_id=handle.location_id if handle.mode == "store" else None,
-        )
+        return ReeDocument.of(handle.ree_id, document, location_id=handle.store_id, store_id=handle.store_id)
 
 
 @rees_router.get(
@@ -318,9 +225,7 @@ def _ree_state(ree_id: str) -> ReeState:
         workbench=WorkbenchStatus(
             status="available",
             workbench_id=handle.workbench_id,
-            allocation_id=handle.allocation_id,
-            location_id=handle.location_id,
-            image=handle.image,
+            location_id=handle.store_id,
             build=bench.build if bench else BuildInfo(),
             executor_build=bench.executor_build if bench else BuildInfo(),
         ),
@@ -337,30 +242,14 @@ def _ree_state(ree_id: str) -> ReeState:
     responses=ERROR_RESPONSES,
 )
 def delete_ree_route(ree_id: str) -> DeleteReeResponse:
-    if (record := ree_registry.get(ree_id)) is not None:
-        with author_api_action("delete_ree", ree_id):
-            author_actions.learn(store_id=record.store_id)
+    with author_api_action("delete_ree", ree_id):
+        record = ree_registry.get(ree_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail=f"REE {ree_id} not found")
+        author_actions.learn(store_id=record.store_id)
+        with ree_command_span("delete", ree_id):
             command_dispatcher.delete_ree(require_handle(ree_id))
-            ree_registry.delete(ree_id)
-            return _deleted()
-    with author_api_action("release_workbench", ree_id):
-        return _release_workbench(ree_id)
-
-
-def _release_workbench(ree_id: str) -> DeleteReeResponse:
-    handle = workbench_manager.lookup(ree_id)
-    with ree_command_span("delete", ree_id):
-        if handle is None and (allocation_id := workbench_manager.release_unreachable(ree_id)) is not None:
-            # The bench is gone or never came up: there is nothing to tear down, only an allocation to settle.
-            author_actions.learn(allocation_id=allocation_id)
-            return _deleted()
-        handle = handle or require_handle(ree_id)
-        author_actions.learn(allocation_id=handle.allocation_id)
-        try:
-            workbench_manager.teardown(handle)
-        except Exception as exc:
-            _log.warning("workbench teardown failed for %s: %s", ree_id, exc)
-            raise HTTPException(status_code=500, detail=f"Workbench teardown failed: {exc}") from exc
+        ree_registry.delete(ree_id)
         return _deleted()
 
 

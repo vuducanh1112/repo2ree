@@ -43,7 +43,7 @@ from repo2ree_api.workbench.commands import require_handle
 from repo2ree_protocol.command import Command
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionResult
-from repo2ree_supervisor import WorkbenchHandle
+from repo2ree_supervisor import ReeRoute
 from repo2ree_telemetry.behaviour.events import AuthorApiActionName
 
 
@@ -185,7 +185,7 @@ def _start(
 
 
 def _copy_into_workbench(
-    handle: WorkbenchHandle,
+    handle: ReeRoute,
     upload_token: str,
     staged_host: Path,
     *,
