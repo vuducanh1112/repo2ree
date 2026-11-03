@@ -32,9 +32,9 @@ from pathlib import Path
 from scripts.gates import publish_gate
 from scripts.publish import image_archive_set
 
-IMAGES = ("repo2ree-provider-docker", "repo2ree-backend", "repo2ree-gui")
+IMAGES = ("repo2ree-workbench", "repo2ree-backend", "repo2ree-gui")
 STACK_VARIABLES = {
-    "repo2ree-provider-docker": "STACK_PROVIDER_IMAGE",
+    "repo2ree-workbench": "STACK_WORKBENCH_IMAGE",
     "repo2ree-backend": "STACK_BACKEND_IMAGE",
     "repo2ree-gui": "STACK_GUI_IMAGE",
 }

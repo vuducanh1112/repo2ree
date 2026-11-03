@@ -734,13 +734,6 @@
         "type": "string"
       }
     },
-    "STACK_PROVIDER_IMAGE": {
-      "kind": "internal",
-      "owner": "image-stack",
-      "schema": {
-        "type": "string"
-      }
-    },
     "STACK_WORKBENCH_IMAGE": {
       "kind": "internal",
       "owner": "image-stack",

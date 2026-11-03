@@ -81,7 +81,6 @@ NON_SERVICE_ENVIRONMENT: dict[str, tuple[str, str]] = {
     "SSL_CERT_FILE": ("operating-system", "external"),
     "STACK_BACKEND_IMAGE": ("image-stack", "internal"),
     "STACK_GUI_IMAGE": ("image-stack", "internal"),
-    "STACK_PROVIDER_IMAGE": ("image-stack", "internal"),
     "STACK_WORKBENCH_IMAGE": ("image-stack", "internal"),
     "TRACEPARENT": ("tracing", "internal"),
     "TRACE_RELAY": ("tracing", "internal"),

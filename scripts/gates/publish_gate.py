@@ -16,7 +16,7 @@ from pathlib import Path
 from scripts.gates import receipts
 from scripts.gates.receipts import PublishGateReceipt, ReceiptError
 
-IMAGES = ("repo2ree-gui", "repo2ree-backend", "repo2ree-provider-docker")
+IMAGES = ("repo2ree-gui", "repo2ree-backend", "repo2ree-workbench")
 
 
 def capture(*args: str) -> str:
