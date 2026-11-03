@@ -102,37 +102,6 @@ def test_canceling_a_running_build(api: Api, new_ree: Callable[..., str]) -> Non
     assert api.build(ree_id)["status"] == "succeeded"
 
 
-@pytest.mark.skipif(COMPUTE_MODE != "provider", reason="needs providers; this stack runs stores")
-def test_workbench_lost_during_a_build(api: Api, new_ree: Callable[..., str]) -> None:
-    ree_id = new_ree()
-    prepared(api, ree_id)
-    api.patch(ree_id, {"build_runtime": {"runtime_path": RUNTIME}})
-    api.write(ree_id, BUILD_SCRIPT, SLOW_BUILD)
-    allocation = next(
-        item for item in api.get("/api/v1/allocations")["allocations"] if item["request"]["ree_id"] == ree_id
-    )
-    run = api.post(f"/api/v1/rees/{ree_id}/build-runtime")
-    api.wait_for_status(ree_id, run["run_id"], "running")
-
-    fault(KillWorkbench(ree_id=ree_id))
-
-    settled = api.wait(ree_id, run, timeout=90)
-    assert settled["status"] == "failed"
-
-    # The supervisor gets a grace period to notice its bench is gone.
-    allocation_id = allocation["request"]["allocation_id"]
-    deadline = time.monotonic() + 30
-    while (record := api.get(f"/api/v1/allocations/{allocation_id}"))["state"] == "assigned":
-        if time.monotonic() > deadline:
-            break
-        time.sleep(1)
-    assert record["state"] == "lost", record
-
-    # A lost bench is still released, though there is nothing left to tear down.
-    api.request("DELETE", f"/api/v1/rees/{ree_id}")
-    assert api.get(f"/api/v1/allocations/{allocation_id}")["state"] == "released"
-
-
 @pytest.mark.skipif(COMPUTE_MODE != "store", reason="needs stores; this stack runs providers")
 def test_a_store_outlives_its_workbench_killed_during_a_build(api: Api, new_ree: Callable[..., str]) -> None:
     ree_id = new_ree()

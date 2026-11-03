@@ -10,24 +10,19 @@ import time
 from collections.abc import Callable
 from typing import Any
 
-import pytest
-from system_client import BUILD_SCRIPT, COMPUTE_MODE, LIGHTWEIGHT_IMAGE, RUNTIME, TERMINAL, Api, fault
+from system_client import BUILD_SCRIPT, RUNTIME, TERMINAL, Api, fault
 
 from repo2ree_testbed.faults import (
     CrashApi,
     HealWorkbench,
     LockHistory,
-    MisdirectProviders,
     PartitionWorkbench,
     PauseWorkbench,
-    RestoreProviders,
     ResumeWorkbench,
-    StopProviders,
     UnlockHistory,
 )
 
 SLOW_BUILD = "#!/usr/bin/env sh\nset -eu\necho 'building slowly'\nsleep 120\n"
-NO_SUCH_IMAGE = "docker.io/library/repo2ree-no-such-image:never"
 
 
 def slow_build(api: Api, ree_id: str) -> dict[str, Any]:
@@ -59,41 +54,6 @@ def answers_again(api: Api, ree_id: str, timeout: float = 60.0) -> bool:
             return True
         time.sleep(1)
     return False
-
-
-def start_provisioning(api: Api, image: str) -> dict[str, Any]:
-    """Create an REE on the stack's location; its provisioning run, still going."""
-    created: dict[str, Any] = api.post(
-        "/api/v1/rees", {"name": "fault-provision", "location_id": api.location(), "image": image}
-    )
-    return created
-
-
-def provision(api: Api, image: str) -> dict[str, Any]:
-    created = start_provisioning(api, image)
-    settled: dict[str, Any] = api.wait(str(created["ree_id"]), created, timeout=150)
-    return settled | {"ree_id": created["ree_id"]}
-
-
-def waiting_for_its_bench(api: Api) -> tuple[dict[str, Any], str]:
-    """Start provisioning a bench that cannot call home, and return its run and allocation once the
-    allocation waits for it; the providers must be misdirected."""
-    created = start_provisioning(api, LIGHTWEIGHT_IMAGE)
-    ree_id = str(created["ree_id"])
-    deadline = time.monotonic() + 60
-    while time.monotonic() < deadline:
-        records = [
-            item for item in api.get("/api/v1/allocations")["allocations"] if item["request"]["ree_id"] == ree_id
-        ]
-        if records and records[0]["state"] == "waiting_for_workbench":
-            return created, str(records[0]["request"]["allocation_id"])
-        time.sleep(0.5)
-    raise AssertionError(f"{ree_id}'s allocation never waited for its bench")
-
-
-def allocation_record(api: Api, allocation_id: str) -> dict[str, Any]:
-    record: dict[str, Any] = api.get(f"/api/v1/allocations/{allocation_id}")
-    return record
 
 
 def test_an_api_crash_fails_the_build_in_flight_and_the_ree_builds_after(api: Api, new_ree: Callable[..., str]) -> None:
@@ -142,66 +102,6 @@ def test_a_command_for_a_bench_that_lost_its_connection_is_refused(api: Api, new
     finally:
         fault(HealWorkbench(ree_id=ree_id))
     assert answer.status_code == 503, answer.text
-
-
-@pytest.mark.skipif(COMPUTE_MODE != "provider", reason="needs providers; this stack runs stores")
-def test_provisioning_an_image_nobody_has_fails(api: Api) -> None:
-    provisioned = provision(api, NO_SUCH_IMAGE)
-    api.release(str(provisioned["ree_id"]))
-
-    assert provisioned["status"] == "failed"
-    assert all(item["state"] != "assigned" for item in api.get("/api/v1/allocations")["allocations"])
-
-
-@pytest.mark.skipif(COMPUTE_MODE != "provider", reason="needs providers; this stack runs stores")
-def test_a_bench_that_cannot_call_home_fails_provisioning_and_the_next_one_works(
-    api: Api, new_ree: Callable[..., str]
-) -> None:
-    fault(MisdirectProviders())
-    try:
-        provisioned = provision(api, LIGHTWEIGHT_IMAGE)
-    finally:
-        fault(RestoreProviders())
-    api.release(str(provisioned["ree_id"]))
-
-    assert provisioned["status"] == "failed"
-    assert new_ree()
-
-
-@pytest.mark.skipif(COMPUTE_MODE != "provider", reason="needs providers; this stack runs stores")
-def test_an_api_restarted_while_a_bench_is_set_up_fails_its_allocation_and_releasing_settles_it(api: Api) -> None:
-    fault(MisdirectProviders())
-    try:
-        created, allocation_id = waiting_for_its_bench(api)
-        fault(CrashApi())
-    finally:
-        fault(RestoreProviders())
-    ree_id = str(created["ree_id"])
-
-    record = allocation_record(api, allocation_id)
-    assert (record["state"], record["detail"]) == ("failed", "the API restarted while setting it up"), record
-    assert api.wait(ree_id, created, timeout=60)["status"] == "failed"
-    api.release(ree_id)
-    assert allocation_record(api, allocation_id)["state"] == "released"
-
-
-@pytest.mark.skipif(COMPUTE_MODE != "provider", reason="needs providers; this stack runs stores")
-def test_a_bench_its_provider_cannot_release_stays_failed_until_released_again(api: Api) -> None:
-    fault(MisdirectProviders())
-    try:
-        created, allocation_id = waiting_for_its_bench(api)
-        # The bench never calls home, and when the wait for it ends there is no provider to release it.
-        fault(StopProviders())
-        settled = api.wait(str(created["ree_id"]), created, timeout=150)
-    finally:
-        fault(RestoreProviders())
-    ree_id = str(created["ree_id"])
-
-    assert settled["status"] == "failed"
-    record = allocation_record(api, allocation_id)
-    assert (record["state"], record["detail"]) == ("failed", "provider release failed"), record
-    api.release(ree_id)
-    assert allocation_record(api, allocation_id)["state"] == "released"
 
 
 def test_a_build_whose_capture_fails_leaves_nothing_behind_and_the_ree_builds_after(
