@@ -8434,6 +8434,13 @@
           "title": "Backend",
           "type": "string"
         },
+        "images": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Images",
+          "type": "array"
+        },
         "slots": {
           "default": 1,
           "minimum": 1,

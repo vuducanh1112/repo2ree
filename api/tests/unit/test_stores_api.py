@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
 from repo2ree_api import store_admin
+from repo2ree_api.control import rees
 from repo2ree_api.deps import ree_registry, store_registry, workbench_connections
 from repo2ree_api.settings import service_settings
 from repo2ree_protocol.workbench import WorkbenchHello
@@ -31,9 +32,14 @@ def _served(store_id: str) -> str | None:
     return served
 
 
-def _hello(store_id: str, token: str, workbench_id: str = "wb-store") -> str:
+def _hello(store_id: str, token: str, workbench_id: str = "wb-store", images: tuple[str, ...] = ()) -> str:
     return WorkbenchHello(
-        workbench_id=workbench_id, mode="external", store_id=store_id, enrollment_token=token
+        workbench_id=workbench_id,
+        mode="external",
+        store_id=store_id,
+        enrollment_token=token,
+        backend="container" if images else "host",
+        images=list(images),
     ).model_dump_json()
 
 
@@ -99,7 +105,6 @@ def test_an_ree_in_an_offline_store_is_listed_but_answers_store_unavailable(clie
     [
         {"name": "x"},
         {"name": "x", "store_id": "lab-a", "location_id": "loc-1"},
-        {"name": "x", "store_id": "lab-a", "image": "python:3.12"},
     ],
 )
 def test_an_ree_is_created_in_exactly_one_place(client: TestClient, payload: dict[str, str]) -> None:
@@ -137,3 +142,39 @@ def test_a_served_store_is_a_lab_rees_are_created_in(client: TestClient, lab: st
     assert labs[lab]["lifecycle_mode"] == "store"
     assert labs[lab]["label"] == "A lab"
     assert labs[lab]["available"] is True
+
+
+def test_a_store_lab_offers_its_workbench_images_and_refuses_others(client: TestClient, lab: str) -> None:
+    token = store_registry.mint_token(lab)
+
+    with client.websocket_connect("/workbench/connect") as socket:
+        socket.send_text(_hello(lab, token, "wb-images", ("python:3.12", "docker:29")))
+        assert _served(lab) == "wb-images"
+        labs = {location["id"]: location for location in client.get("/api/v1/compute-locations").json()["locations"]}
+        refused = client.post("/api/v1/rees", json={"name": "x", "store_id": lab, "image": "ubuntu:24.04"})
+
+    assert [image["ref"] for image in labs[lab]["images"]] == ["python:3.12", "docker:29"]
+    assert labs[lab]["accepts_custom_image"] is False
+    assert refused.status_code == 422
+    assert "python:3.12, docker:29" in refused.json()["error"]["message"]
+
+
+@pytest.mark.parametrize(
+    ("offered", "requested", "declared"),
+    [
+        (("python:3.12", "docker:29"), "", {"kind": "image", "image": "python:3.12"}),
+        (("python:3.12", "docker:29"), "docker:29", {"kind": "image", "image": "docker:29"}),
+        ((), "", {"kind": "host"}),
+    ],
+)
+def test_a_new_ree_in_a_store_declares_the_image_asked_for_its_first_or_its_host(
+    offered: tuple[str, ...], requested: str, declared: dict[str, str]
+) -> None:
+    environment = rees._store_environment(offered, requested)
+
+    assert environment.model_dump(exclude_defaults=True) == declared
+
+
+def test_a_store_refuses_an_image_it_stopped_offering() -> None:
+    with pytest.raises(ValueError, match="does not offer"):
+        rees._store_environment(("python:3.12",), "docker:29")

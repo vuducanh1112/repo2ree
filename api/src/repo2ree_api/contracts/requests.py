@@ -45,22 +45,22 @@ class ReeCreatePayload(StrictRequestModel):
 
     name: str | None = None
     # The store to create the REE in; its workbench serves it from then on. The REE starts out
-    # declaring the store's host as its environment, and the author declares another like any field.
+    # declaring one of the images the store offers, or its host when it offers none, and the
+    # author declares another like any field.
     store_id: str = ""
     # Or the location whose provider sets a workbench up for this REE alone.
     location_id: str = ""
-    # Base image to provision the workbench from: a ref from the location's
-    # published catalog, or any ref the location accepts. Blank falls back to
-    # that location's first catalog entry, and is the only valid value for an
-    # externally managed location, whose bench already exists.
+    # In a store: the image the REE declares, one the store offers; blank is the store's first.
+    # At a location: the base image to provision the workbench from, a ref from the location's
+    # published catalog or any ref the location accepts. Blank falls back to that location's
+    # first catalog entry, and is the only valid value for an externally managed location,
+    # whose bench already exists.
     image: str = ""
 
     @model_validator(mode="after")
     def _one_place(self) -> ReeCreatePayload:
         if bool(self.store_id.strip()) == bool(self.location_id.strip()):
             raise ValueError("an REE is created in a store or at a location: give exactly one")
-        if self.store_id and self.image:
-            raise ValueError("an REE in a store declares its environment, not a workbench image")
         return self
 
 

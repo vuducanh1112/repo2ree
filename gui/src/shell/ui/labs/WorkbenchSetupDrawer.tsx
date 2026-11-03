@@ -48,11 +48,13 @@ export function WorkbenchSetupDrawer({ lab, loadRequested }: WorkbenchSetupDrawe
   const [log, setLog] = useState<LogEntry | null>(null);
   const [imageSelection, setImageSelection] =
     useState<WorkbenchImageSelection>(DEFAULT_IMAGE_SELECTION);
-  // An externally managed lab was provisioned outside this control plane, so
-  // there is no image left to choose.
-  const choosesImage = lab.lifecycleMode === "provider_managed";
   // A store's workbench is already there and serves every REE in the store; the REE is kept there.
   const inStore = lab.lifecycleMode === "store";
+  // An externally managed lab was provisioned outside this control plane, so
+  // there is no image left to choose. A store offers the images its REEs may
+  // run in, or none when it runs their scripts on its own machine.
+  const choosesImage =
+    lab.lifecycleMode === "provider_managed" || (inStore && lab.images.length > 0);
   const chosenRef = choosesImage ? resolveWorkbenchImage(imageSelection, lab.images) : "";
   // Custom picked but left blank would silently provision the lab default —
   // the one case where the button must wait for the author.
@@ -75,7 +77,7 @@ export function WorkbenchSetupDrawer({ lab, loadRequested }: WorkbenchSetupDrawe
         msg: choosesImage
           ? `Image: ${chosenRef || "lab default"}`
           : inStore
-            ? "Environment: the lab's own machine, until the REE declares another"
+            ? "Environment: the lab's own machine"
             : "Environment: operator managed",
         ts: startedTs,
       },
@@ -88,7 +90,7 @@ export function WorkbenchSetupDrawer({ lab, loadRequested }: WorkbenchSetupDrawe
       // the background so the image pull streams live — observeReeRun tails the
       // run's log feed into this drawer until it finishes.
       const { reeId, run } = inStore
-        ? await runsClient.createWorkspace("REE", "", "", lab.id)
+        ? await runsClient.createWorkspace("REE", "", chosenRef, lab.id)
         : await runsClient.createWorkspace("REE", lab.id, chosenRef);
       const result = await observeReeRun(queryClient, runsClient, {
         reeId,

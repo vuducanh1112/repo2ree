@@ -18,7 +18,7 @@ import queue
 import socket
 import threading
 import time
-from collections.abc import Awaitable, Callable, Iterator
+from collections.abc import Awaitable, Callable, Iterator, Sequence
 from contextlib import AsyncExitStack
 from dataclasses import dataclass
 from functools import partial
@@ -192,11 +192,12 @@ async def run_workbench(
     executor_build: BuildInfo | None = None,
     capabilities: WorkbenchCapabilities | None = None,
     backend: Literal["host", "container"] = "host",
+    images: Sequence[str] = (),
 ) -> None:
     """Dial the control plane and serve requests, reconnecting on drop.
 
-    The hello carries what the service serves (its store, its slots) and what it offers the
-    scripts it runs (``capabilities``).
+    The hello carries what the service serves (its store, its slots), the images it offers the
+    store's new REEs, and what it offers the scripts it runs (``capabilities``).
 
     ``span_relay``, when given, is pointed at each live socket so this
     workbench's own spans leave over the connection it already holds.
@@ -215,6 +216,7 @@ async def run_workbench(
         image=image,
         store_id=service.store_id,
         backend=backend,
+        images=list(images),
         slots=service.slots,
         capabilities=capabilities or WorkbenchCapabilities(),
         # Minted once per process: reconnects reuse it, so the control plane can

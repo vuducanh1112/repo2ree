@@ -7,7 +7,13 @@ from pydantic import BaseModel
 
 from repo2ree_api.contracts import ERROR_RESPONSES
 from repo2ree_api.deps import allocation_store, provider_connections, store_registry, workbench_connections
-from repo2ree_protocol.allocation import AllocationRecord, ComputeLocation, ConnectedComponent, LifecycleMode
+from repo2ree_protocol.allocation import (
+    AllocationRecord,
+    ComputeLocation,
+    ConnectedComponent,
+    LifecycleMode,
+    WorkbenchImage,
+)
 
 compute_router = APIRouter(tags=["compute"])
 
@@ -52,13 +58,15 @@ def list_compute_locations() -> ComputeLocationList:
         for bench in workbench_connections.list_workbenches()
         if bench.mode == "external" and not bench.store_id
     )
-    # A store is a place REEs are created and kept in: the workbench serving it takes every one.
+    # A store is a place REEs are created and kept in: the workbench serving it takes every one,
+    # and offers the images a new REE may declare (none when it runs scripts on its host).
     locations.extend(
         ComputeLocation(
             id=bench.store_id,
             label=_store_label(bench.store_id),
             lifecycle_mode=LifecycleMode.STORE,
             available=True,
+            images=tuple(WorkbenchImage(ref=ref) for ref in bench.images),
             connected_component=ConnectedComponent(kind="workbench", build=bench.build),
         )
         for bench in workbench_connections.list_workbenches()

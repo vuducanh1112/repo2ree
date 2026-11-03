@@ -43,6 +43,8 @@ class WorkbenchConfig:
     engine: str = "docker"
     script_engine: Literal["none", "socket"] = "none"
     engine_path: tuple[str, str] | None = None
+    # For the container backend: the images it offers an REE created in its store, the first the default.
+    images: tuple[str, ...] = ()
     # The tools bundle the executor takes git, curl, syft and the rest from, when not the host's.
     tools_bundle: Path | None = None
 
@@ -160,6 +162,14 @@ def load_config(argv: Sequence[str] = ()) -> WorkbenchConfig:
     parser.add_argument(
         "--engine-path", default=environment.WORKBENCH_ENGINE_PATH, help="container: LOCAL=ENGINE path prefixes"
     )
+    parser.add_argument(
+        "--image",
+        dest="images",
+        action="append",
+        default=[],
+        metavar="REF",
+        help="container: an image an REE created in the store may run in (repeatable; the first is the default)",
+    )
     parser.add_argument("--slots", type=int, default=environment.WORKBENCH_SLOTS, help="actions run at once")
     parser.add_argument(
         "--tools-bundle", type=Path, default=environment.WORKBENCH_TOOLS_BUNDLE, help="the tools the executor runs"
@@ -170,6 +180,9 @@ def load_config(argv: Sequence[str] = ()) -> WorkbenchConfig:
         parser.error("a managed bench serves the REE it was provisioned for, not a store")
     if args.slots < 1:
         parser.error("--slots must be at least 1")
+    images = tuple(dict.fromkeys(ref.strip() for ref in args.images if ref.strip()))
+    if images and (args.backend != "container" or not store_id):
+        parser.error("--image offers images to a store's REEs, so it needs --store and --backend container")
     explicit_id = args.name
     if explicit_id:
         workbench_id = explicit_id
@@ -195,6 +208,7 @@ def load_config(argv: Sequence[str] = ()) -> WorkbenchConfig:
         engine=args.engine,
         script_engine=args.script_engine,
         engine_path=_engine_path(args.engine_path),
+        images=images,
         otlp_endpoint=otlp_endpoint,
         telemetry=_resolve_telemetry(
             args.mode,

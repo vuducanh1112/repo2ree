@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Literal
 
 from repo2ree_testbed.stack.docker import engine_path, first_network, own_container
+from repo2ree_testbed.stack.store_images import STORE_IMAGES
 
 # provider: each location is a Docker provider setting a workbench up per REE.
 # store: each location is a workbench serving a store of REEs, admitted with that store's token.
@@ -34,6 +35,7 @@ class Service:
     package: str
     module: str
     environment: dict[str, str]
+    arguments: tuple[str, ...] = ()
 
 
 def backend_environment(control_state: Path, token: str, coverage_file: Path, telemetry: Path | None) -> dict[str, str]:
@@ -120,6 +122,10 @@ def locations(
                     "WORKBENCH_STATE_DIR": str(state),
                     "REPO2REE_EXEC_PATH": "repo2ree-exec",
                 },
+                # A container store offers the images the tests create REEs from.
+                tuple(arg for ref in STORE_IMAGES for arg in ("--image", ref))
+                if deployment.backend == "container"
+                else (),
             )
         services.append(service)
     return services

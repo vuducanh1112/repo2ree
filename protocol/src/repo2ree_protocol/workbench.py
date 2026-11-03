@@ -71,6 +71,8 @@ class WorkbenchHello(BaseModel):
     store_id: str = ""
     # Where it runs the author's scripts: on its own host, or in a container from the REE's image.
     backend: Literal["host", "container"] = "host"
+    # The images a container backend offers an REE created in its store, the first the default.
+    images: list[str] = Field(default_factory=list)
     # How many actions it runs at once; queries do not count.
     slots: int = Field(default=1, ge=1)
     capabilities: WorkbenchCapabilities = Field(default_factory=WorkbenchCapabilities)

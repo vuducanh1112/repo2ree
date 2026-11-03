@@ -62,7 +62,7 @@ export function createReeRunsClient(runtime: ReeRuntimeValue): ReeRunsClient {
         name,
         store_id: storeId.trim(),
         location_id: storeId.trim() ? "" : locationId.trim(),
-        image: storeId.trim() ? "" : image.trim(),
+        image: image.trim(),
       });
       return { reeId: run.ree_id, run: mapRun(run) };
     },

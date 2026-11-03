@@ -21,9 +21,9 @@ from typing import Any
 import httpx
 import pytest
 
-from repo2ree_provider_docker.config import DEFAULT_IMAGE
 from repo2ree_testbed.faults import FAULTS_URL, Fault, inject
 from repo2ree_testbed.run_watch import INSTANT_RUN, NETWORK_RUN, RunWatch, settle_run
+from repo2ree_testbed.stack.store_images import DOCKER_IMAGE, PYTHON_SLIM_IMAGE
 from repo2ree_workbench.connection import LONGEST_RECONNECT
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -33,12 +33,9 @@ ACTIVATION_SCRIPT = "ree-scripts/activation.sh"
 
 # A bench without a Docker daemon: the base image is the runtime environment.
 # Same pin as the GUI suite's lightweight bench (gui/tests/helpers/flow.ts).
-LIGHTWEIGHT_IMAGE = os.environ.get(
-    "PYTHON_SLIM_IMAGE",
-    "docker.io/library/python:3.11-slim@sha256:9534e5a8e315485d4061ed659af0fd78a284c015f9b73661b41d6bab25604534",
-)
-# A bench with its own Docker daemon: the provider's default image.
-DIND_IMAGE = os.environ.get("DIND_IMAGE", DEFAULT_IMAGE)
+LIGHTWEIGHT_IMAGE = PYTHON_SLIM_IMAGE
+# A bench with its own Docker daemon: the provider's default image, and the one a store offers with the Docker CLI.
+DIND_IMAGE = DOCKER_IMAGE
 TERMINAL = frozenset({"succeeded", "failed", "canceled"})
 # The compute the stack runs: providers setting a bench up per REE, or workbenches serving stores.
 COMPUTE_MODE = os.environ.get("E2E_COMPUTE_MODE", "provider")
@@ -208,10 +205,12 @@ class Api:
         return str(locations[0]["id"])
 
     def create(self, name: str, *, image: str = LIGHTWEIGHT_IMAGE, location: str | None = None) -> str:
-        """A new REE: in a store when the stack runs stores (its host is what the scripts run in), else on
-        a bench the location sets up from ``image``."""
+        """A new REE: in a store when the stack runs stores, declaring ``image`` from the store's offer (or
+        its host, when it runs scripts there), else on a bench the location sets up from ``image``."""
         if COMPUTE_MODE == "store":
-            created = self.post("/api/v1/rees", {"name": name, "store_id": location or self.store()})
+            # A container store offers the image; a host store offers none, and its host is the environment.
+            store = {"name": name, "store_id": location or self.store()}
+            created = self.post("/api/v1/rees", {**store, "image": image} if STORE_BACKEND == "container" else store)
         else:
             created = self.post(
                 "/api/v1/rees", {"name": name, "location_id": location or self.location(), "image": image}
@@ -220,9 +219,9 @@ class Api:
         provisioned = self.wait(ree_id, created, watch=NETWORK_RUN)
         if provisioned["status"] != "succeeded":
             raise ApiError(f"provisioning ended {provisioned['status']}\n{self.logs(ree_id, created['run_id'])}")
-        if COMPUTE_MODE == "store" and STORE_BACKEND == "container":
-            # What a bench would have been set up from is what the REE declares its scripts run in.
-            environment = {"kind": "image", "image": image, "needs_container_engine": image == DIND_IMAGE}
+        if COMPUTE_MODE == "store" and STORE_BACKEND == "container" and image == DIND_IMAGE:
+            # The Docker REEs build and run images: they declare they need the engine their store gives them.
+            environment = {"kind": "image", "image": image, "needs_container_engine": True}
             self.patch(ree_id, {"environment": environment})
         return ree_id
 

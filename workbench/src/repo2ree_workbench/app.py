@@ -81,6 +81,7 @@ def main(argv: Sequence[str] = ()) -> None:
                 executor_build=executor.build_info(),
                 capabilities=capabilities,
                 backend=config.backend,
+                images=config.images,
             )
         )
     finally:

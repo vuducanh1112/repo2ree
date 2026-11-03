@@ -108,6 +108,8 @@ class WorkbenchInfo:
     build: BuildInfo = field(default_factory=BuildInfo)
     # The store it serves; blank for a bench that serves one REE.
     store_id: str = ""
+    # The images it offers an REE created in its store, the first the default.
+    images: tuple[str, ...] = ()
     executor_build: BuildInfo = field(default_factory=BuildInfo)
 
 
@@ -413,6 +415,7 @@ class WorkbenchConnectionRegistry:
                     location_id=(conn.hello.location_id or workbench_id) if conn.hello else workbench_id,
                     image=conn.hello.image if conn.hello else "",
                     store_id=conn.hello.store_id if conn.hello else "",
+                    images=tuple(conn.hello.images) if conn.hello else (),
                     connected_at=self._connected_at.get(workbench_id, 0.0),
                 )
                 for workbench_id, conn in self._workbenches.items()

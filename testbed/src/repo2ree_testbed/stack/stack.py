@@ -255,7 +255,7 @@ class E2EStack:
             print(f">> starting {service.label} {index}/{len(services)} (log: {log})")
             command = ["uv", "run", "--package", service.package, "coverage", "run", "--parallel-mode"]
             launch = (
-                [*command, "-m", service.module],
+                [*command, "-m", service.module, *service.arguments],
                 {**self.environment, **environment, "COVERAGE_FILE": str(self.coverage_file)},
                 log,
             )

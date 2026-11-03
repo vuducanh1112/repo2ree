@@ -125,3 +125,33 @@ def test_an_unknown_setting_names_the_modes_it_accepts(monkeypatch: pytest.Monke
 
     with pytest.raises(ValueError, match="direct, relay, local, off"):
         config_module.load_config()
+
+
+# ================================================
+# Images a store offers
+# ================================================
+
+
+def test_a_container_store_offers_its_images_the_first_its_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("WORKBENCH_ID", "wb-store")
+    store = ["--mode", "external", "--store", "lab=/srv/rees", "--backend", "container"]
+
+    offered = ["--image", "python:3.12", "--image", "docker:29", "--image", "python:3.12"]
+
+    config = config_module.load_config([*store, *offered])
+
+    assert config.images == ("python:3.12", "docker:29")
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["--mode", "external", "--store", "lab=/srv/rees", "--image", "python:3.12"],
+        ["--mode", "external", "--backend", "container", "--image", "python:3.12"],
+    ],
+)
+def test_only_a_container_store_offers_images(monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> None:
+    monkeypatch.setenv("WORKBENCH_ID", "wb-store")
+
+    with pytest.raises(SystemExit):
+        config_module.load_config(argv)
