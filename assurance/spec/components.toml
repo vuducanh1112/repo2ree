@@ -9,12 +9,12 @@ summary = "HTTP control plane: accepts requests and owns background runs."
 [[component]]
 name = "supervisor"
 process = "api"
-summary = "Library inside the API process: allocates workbenches and dispatches commands."
+summary = "Library inside the API process: routes each REE to its store's workbench and dispatches commands."
 
 [[component]]
 name = "workbench"
 process = "workbench"
-summary = "Resident service in the REE's environment: receives commands and starts the executor."
+summary = "The service serving a store of REEs: receives commands and starts the executor."
 
 [[component]]
 name = "core"

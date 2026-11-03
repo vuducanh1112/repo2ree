@@ -631,20 +631,6 @@ def read_stores(directory: Path) -> tuple[Source, list[Event]]:
                 )
         except (ValueError, KeyError, TypeError) as exc:
             problems.append(f"{path.parent.name}: unreadable run state ({exc})")
-    allocations = directory / "allocations.json"
-    if allocations.exists():
-        try:
-            for key, record in json.loads(allocations.read_text())["allocations"].items():
-                observe(
-                    "supervisor",
-                    "Allocation",
-                    key,
-                    record["request"]["ree_id"],
-                    record["state"],
-                    f"stores/allocations.json#{key}",
-                )
-        except (ValueError, KeyError, TypeError, AttributeError) as exc:
-            problems.append(f"allocations.json: unreadable ({exc})")
     source = Source(
         id="stores",
         kind="store",

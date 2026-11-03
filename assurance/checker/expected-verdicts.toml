@@ -17,30 +17,6 @@
 # entry goes. This list is what a receipt does not prove.
 
 [[unreached]]
-items = [
-  "Allocation (none) -> requested",
-  "Allocation requested -> provisioning",
-  "Allocation requested -> waiting_for_workbench",
-  "Allocation requested -> failed",
-  "Allocation provisioning -> waiting_for_workbench",
-  "Allocation provisioning -> failed",
-  "Allocation waiting_for_workbench -> ready",
-  "Allocation waiting_for_workbench -> failed",
-  "Allocation ready -> assigned",
-  "Allocation ready -> failed",
-  "Allocation assigned -> draining",
-  "Allocation assigned -> lost",
-  "Allocation lost -> draining",
-  "Allocation failed -> draining",
-  "Allocation draining -> released",
-  "Allocation draining -> failed",
-  "rule:machine:Allocation",
-  "rule:allocation-ends",
-]
-reason = """No gated tier runs a provider: the stacks create every REE in a store, which allocates \
-nothing. Allocations go with the provider; until then the supervisor's unit tests take them."""
-
-[[unreached]]
 items = ["dispatch: abandoned"]
 reason = """A command for an REE whose store no workbench serves is refused before it is sent \
 (store_unavailable), so a dispatch is abandoned only when the connection drops between routing \

@@ -28,8 +28,6 @@ canceled = "Settled: the work stopped because the author canceled it."
 [facts]
 # For an action that ran a command in the REE: the attempt that ran it.
 attempt_id = "str?"
-# For create_ree and release_workbench: the allocation of the workbench it set up or released.
-allocation_id = "str?"
 # For create_ree and delete_ree: the store the REE was created in or deleted from.
 store_id = "str?"
 # For an action the author can watch: the API's handle for it (/rees/{ree_id}/runs/{run_id}).
@@ -49,9 +47,8 @@ type = "str"
 required = true
 
 [facts.action.groups.workbench]
-create_ree = "Set up a workbench for a new REE; core starts the REE inside it."
-release_workbench = "Tear down the REE's workbench (the API's deleteRee)."
-delete_ree = "Delete an REE served by a store, and its directory there (the API's deleteRee)."
+create_ree = "Create a new REE in a store; core starts it there."
+delete_ree = "Delete an REE and its directory from its store (the API's deleteRee)."
 
 [facts.action.groups.source]
 acquire_source = "Fetch the source from a repository and freeze it."

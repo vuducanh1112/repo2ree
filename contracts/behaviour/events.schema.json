@@ -3,7 +3,7 @@
   "$id": "urn:repo2ree:contracts:behaviour:events",
   "title": "repo2ree behaviour journal record",
   "description": "One line of a behaviour journal. Generated from assurance/spec/vocabulary by `python -m repo2ree_assurance_checker generate`; do not edit. Sequence, epochs, and the header are checked per journal by `python -m repo2ree_assurance_checker validate-journal`.",
-  "x-vocabulary": "sha256:8f7cc19184126481e18ed82f51ae24cdffbe537254cc5514154670ee704f3989",
+  "x-vocabulary": "sha256:7e26e399f70214b1265bb3f8e1087f058f9382df57569a90ea43384d527e0469",
   "type": "object",
   "properties": {
     "v": {
@@ -31,9 +31,6 @@
     },
     {
       "$ref": "#/$defs/undeclared"
-    },
-    {
-      "$ref": "#/$defs/Allocation"
     },
     {
       "$ref": "#/$defs/Attempt"
@@ -156,7 +153,6 @@
           "type": "string",
           "not": {
             "enum": [
-              "Allocation",
               "Attempt",
               "AuthorApiAction",
               "Receipt",
@@ -181,93 +177,6 @@
         "owner",
         "key"
       ]
-    },
-    "Allocation": {
-      "type": "object",
-      "properties": {
-        "kind": {
-          "const": "transition"
-        },
-        "subject": {
-          "const": "Allocation"
-        },
-        "owner": {
-          "const": "supervisor"
-        },
-        "key": {
-          "type": "string"
-        },
-        "partition": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "from": {
-          "enum": [
-            null,
-            "requested",
-            "provisioning",
-            "waiting_for_workbench",
-            "ready",
-            "assigned",
-            "draining",
-            "released",
-            "failed",
-            "lost"
-          ]
-        },
-        "to": {
-          "enum": [
-            "requested",
-            "provisioning",
-            "waiting_for_workbench",
-            "ready",
-            "assigned",
-            "draining",
-            "released",
-            "failed",
-            "lost"
-          ]
-        },
-        "facts": {
-          "type": "object",
-          "properties": {
-            "detail": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "location_id": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "provider_id": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "workbench_id": {
-              "type": [
-                "string",
-                "null"
-              ]
-            }
-          }
-        }
-      },
-      "required": [
-        "kind",
-        "subject",
-        "owner",
-        "key",
-        "to"
-      ],
-      "description": "Bookkeeping for obtaining, holding, and returning one workbench for one REE. Evidence: journal."
     },
     "Attempt": {
       "type": "object",
@@ -683,7 +592,6 @@
             "action": {
               "enum": [
                 "create_ree",
-                "release_workbench",
                 "delete_ree",
                 "acquire_source",
                 "upload_source",
@@ -713,12 +621,6 @@
                 "view_action",
                 "view_action_log",
                 "watch_action"
-              ]
-            },
-            "allocation_id": {
-              "type": [
-                "string",
-                "null"
               ]
             },
             "attempt_id": {
@@ -803,7 +705,6 @@
                   "action": {
                     "enum": [
                       "create_ree",
-                      "release_workbench",
                       "delete_ree",
                       "acquire_source",
                       "upload_source",
@@ -833,12 +734,6 @@
                       "view_action",
                       "view_action_log",
                       "watch_action"
-                    ]
-                  },
-                  "allocation_id": {
-                    "type": [
-                      "string",
-                      "null"
                     ]
                   },
                   "attempt_id": {

@@ -61,7 +61,7 @@ def documents() -> Documents:
 
 def test_the_checked_in_specification_is_valid() -> None:
     spec = load_spec()
-    assert set(spec.entities) == {"Allocation", "Attempt", "AuthorApiAction", "Ree", "Receipt"}
+    assert set(spec.entities) == {"Attempt", "AuthorApiAction", "Ree", "Receipt"}
     assert spec.hosted_by("api") == {"api", "supervisor"}
     assert set(spec.boundaries) == {"dispatch"}
     assert spec.digest.startswith("sha256:")
@@ -324,7 +324,7 @@ def test_a_fact_that_lists_its_values_takes_no_other() -> None:
     assert fact_problems({"action": "str"}, (), {"action": "seal"}, allowed) == [
         ("violated", "fact 'action' is 'seal', which its declaration does not list")
     ]
-    assert load_spec().entities["AuthorApiAction"].allowed["action"][:2] == ("create_ree", "release_workbench")
+    assert load_spec().entities["AuthorApiAction"].allowed["action"][:2] == ("create_ree", "delete_ree")
 
 
 @pytest.mark.parametrize(

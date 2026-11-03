@@ -18,13 +18,6 @@ summary = "A canceled attempt is captured with the REE as it was before the atte
 when = { entity = "Attempt", to = "captured", where = { outcome = "canceled" } }
 require = { where = { changed = false } }
 
-[[invariant]]
-id = "allocation-ends"
-pattern = "response"
-summary = "An assigned allocation is eventually released, failed, or lost."
-when = { entity = "Allocation", to = "assigned" }
-eventually = ["released", "failed", "lost"]
-
 # ---- The author, through the API ----------------------------------------------
 #
 # What the author is told against what happened. An action that runs a command in
