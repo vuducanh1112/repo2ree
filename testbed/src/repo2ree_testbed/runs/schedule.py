@@ -75,8 +75,6 @@ class SuiteRun:
             tree=self.tree if self.tree and provenance.clean_tree() == self.tree else "",
             parameters={
                 "compute_locations": self.deployment.compute_locations,
-                "mode": self.deployment.mode,
-                "docker_mode": self.deployment.docker_mode,
                 "backend": self.deployment.backend,
             },
             platform=provenance.platform(),

@@ -10,9 +10,7 @@ from repo2ree_testbed.stack.docker import engine_path, first_network, own_contai
 from repo2ree_testbed.stack.store_images import STORE_IMAGES
 
 # Each compute location is a workbench serving a store of REEs, admitted with that store's token.
-type Mode = Literal["store"]
-type DockerMode = Literal["dind", "host-socket"]
-# store mode: where a store's workbench runs the author's scripts.
+# Where a store's workbench runs the author's scripts:
 type Backend = Literal["container", "host"]
 
 
@@ -20,8 +18,6 @@ type Backend = Literal["container", "host"]
 class Deployment:
     tier: str
     compute_locations: int
-    mode: Mode
-    docker_mode: DockerMode
     state_root: Path
     exec_bundle: Path
     tools_bundle: Path

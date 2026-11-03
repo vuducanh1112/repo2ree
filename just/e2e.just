@@ -19,13 +19,12 @@ build-e2e-bundles: _stage-nix-sources
     nix build .#tools-bundle -o {{ quote(E2E_TOOLS_BUNDLE) }}
 
 [private]
-_source-stack-playwright project locations mode docker_mode:
-    python -m repo2ree_testbed e2e --project {{ quote(project) }} --mode {{ quote(mode) }} --compute-locations {{ quote(locations) }} --docker-mode {{ quote(docker_mode) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
+_source-stack-playwright project locations:
+    python -m repo2ree_testbed e2e --project {{ quote(project) }} --compute-locations {{ quote(locations) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
 
 # The per-test tiers below run as the assurance gate runs them, with `jobs` stacks side by side.
 # Trailing parts of test ids run only the tests whose id contains one (e.g. `just test-e2e-faults 4
-# test_a_paused`); a run limited so certifies nothing. The modes are the justfile's
-# (`just DEFAULT_E2E_PROVIDER_DOCKER_MODE=host test-e2e-system` overrides one).
+# test_a_paused`); a run limited so certifies nothing.
 
 # Run the instant GUI tier: each test on a fresh stack, into test-artifacts/e2e/<run>/tests/<test>/.
 [group('E2E tests')]
@@ -52,7 +51,7 @@ test-e2e-fuzz: build-e2e-bundles
 # Run the showcase tier, real projects end to end: each scenario on a fresh stack of two compute locations, judged like the assurance tiers.
 [group('E2E tests')]
 test-showcase jobs=E2E_JOBS *select: build-e2e-bundles
-    python -m repo2ree_testbed e2e --project showcase --per-test --exit-on tests --jobs {{ quote(jobs) }} --mode {{ quote(DEFAULT_E2E_COMPUTE_LOCATION_MODE) }} --compute-locations 2 --docker-mode {{ quote(DEFAULT_E2E_PROVIDER_DOCKER_MODE) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
+    python -m repo2ree_testbed e2e --project showcase --per-test --exit-on tests --jobs {{ quote(jobs) }} --compute-locations 2 --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
     python -m scripts.gates.tiers certify --tier showcase --if-eligible
 
 # A machine is where a recipe runs: `local`, or one in .config/machines.toml (untracked), whose
@@ -86,18 +85,18 @@ inspect-e2e run="":
 
 # Record the narrated browser demo: the Python Docker showcase scenario, captioned and paced, with video.
 [group('Demos')]
-demo-gui mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE: build-e2e-bundles (_source-stack-playwright "demo-gui" "1" mode docker_mode)
+demo-gui: build-e2e-bundles (_source-stack-playwright "demo-gui" "1")
 
 # Record the measured pure-API walkthrough and render its transcript.
 [group('Demos')]
-demo-api mode=DEFAULT_E2E_COMPUTE_LOCATION_MODE docker_mode=DEFAULT_E2E_PROVIDER_DOCKER_MODE cast=DEFAULT_API_DEMO_CAST transcript="": build-e2e-bundles
+demo-api cast=DEFAULT_API_DEMO_CAST transcript="": build-e2e-bundles
     #!/usr/bin/env bash
     set -euo pipefail
     cast={{ quote(cast) }}
     transcript={{ quote(transcript) }}
     transcript=${transcript:-${cast%.cast}.md}
     mkdir -p "$(dirname "$cast")"
-    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/api/tests/e2e/api_walkthrough.py") }} --tier demo-api --mode {{ quote(mode) }} --compute-locations 1 --docker-mode {{ quote(docker_mode) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} --record "$cast"
+    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/api/tests/e2e/api_walkthrough.py") }} --tier demo-api --compute-locations 1 --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} --record "$cast"
     python3 {{ quote(ROOT + "/api/tests/e2e/render_cast_transcript.py") }} "$cast" "$transcript"
 
 # Start the local image-backed stack.
