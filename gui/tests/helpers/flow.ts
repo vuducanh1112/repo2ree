@@ -33,6 +33,11 @@ export const LIGHTWEIGHT_WORKBENCH_IMAGE =
   process.env.PYTHON_SLIM_IMAGE ??
   "docker.io/library/python:3.11-slim@sha256:9534e5a8e315485d4061ed659af0fd78a284c015f9b73661b41d6bab25604534";
 
+/** The stack runs workbenches serving stores, rather than providers setting a bench up per REE. */
+const STORE_COMPUTE = process.env.E2E_COMPUTE_MODE === "store";
+/** Where a store runs the author's scripts: in a container from the REE's image, or on its host. */
+const STORE_BACKEND = process.env.E2E_STORE_BACKEND ?? "container";
+
 /** Absolute path to the bundled Python hello-world source archive. */
 export function pythonHelloWorld(): string {
   return packedProject("python_hello_world");
@@ -365,7 +370,13 @@ export async function provisionWorkbench(
   // Setup is the drawer the lab picker opens, so scope to it rather than to a
   // page that no longer exists on its own.
   const setup = page.getByRole("region", { name: "Set up the workbench" });
-  if (options?.imageRef) {
+  if (STORE_COMPUTE && options?.imageRef) {
+    // A store offers its own images and takes no other ref: pick the card the ref names.
+    // A store that runs scripts on its host offers none, and the REE declares the host.
+    if (STORE_BACKEND === "container") {
+      await setup.getByRole("button", { name: options.imageRef }).click();
+    }
+  } else if (options?.imageRef) {
     // Custom refs are the portable path across stacks: a deployment may curate
     // different named profiles while still accepting the same explicit image.
     await setup.getByRole("button", { name: /Custom…/ }).click();
@@ -539,6 +550,32 @@ export async function buildRuntime(
   await runBuild(page, buildScript, producedRuntimePath, { ...options, succeed: true });
   await expect(main(page).getByRole("status", { name: "Built" })).toBeVisible();
   await stepShot(page, "build-runtime", "after");
+}
+
+/**
+ * Declare on the Build Runtime page that the REE's scripts call a container
+ * engine (`docker build`, `docker run`). A store gives one only to an REE that
+ * declares it needs one; a provider's bench has its own and ignores it.
+ */
+export async function declareContainerEngine(page: Page) {
+  await openPort(page, "Build");
+  const engine = main(page)
+    .getByRole("region", { name: "Environment" })
+    .getByRole("checkbox", { name: /call a container engine/ });
+  if (await engine.isChecked()) return;
+  const declared = page.waitForResponse(
+    (res) =>
+      res.url().includes("/definition") &&
+      res.request().method() === "PATCH" &&
+      (res.request().postData() ?? "").includes('"needs_container_engine":true'),
+  );
+  await engine.check();
+  const response = await declared;
+  if (!response.ok()) {
+    throw new Error(
+      `definition PATCH rejected with ${response.status()}: ${await response.text()}`,
+    );
+  }
 }
 
 /**

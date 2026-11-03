@@ -1,6 +1,7 @@
 import { expect, test } from "../helpers/fixtures";
 import {
   buildRuntime,
+  declareContainerEngine,
   dockerBuildScript,
   dockerRunScript,
   EXPERIMENT_OUTPUT_FILE,
@@ -56,6 +57,8 @@ test.describe("Java with Maven", () => {
     });
 
     await test.step("build the runtime: Maven compiles and fetches org.json", async () => {
+      // The build runs `docker build`: the REE declares it needs a container engine.
+      await declareContainerEngine(page);
       await buildRuntime(page, dockerBuildScript(PROJECT_DIR, RUNTIME_PATH, IMAGE), RUNTIME_PATH);
     });
 

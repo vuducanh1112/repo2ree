@@ -495,6 +495,13 @@
         "type": "string"
       }
     },
+    "E2E_COMPUTE_MODE": {
+      "kind": "internal",
+      "owner": "playwright",
+      "schema": {
+        "type": "string"
+      }
+    },
     "E2E_GIT_ORIGIN_URL": {
       "kind": "internal",
       "owner": "playwright",
@@ -512,6 +519,13 @@
     "E2E_RECORDING_DIR": {
       "kind": "internal",
       "owner": "test-recording",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "E2E_STORE_BACKEND": {
+      "kind": "internal",
+      "owner": "playwright",
       "schema": {
         "type": "string"
       }

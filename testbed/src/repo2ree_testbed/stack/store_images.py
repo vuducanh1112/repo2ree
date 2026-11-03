@@ -14,5 +14,5 @@ PYTHON_SLIM_IMAGE = (
 DOCKER_IMAGE = (
     "docker.io/library/docker:29-dind@sha256:66d292e5c26bd33a6f6f61cacb880de2186339a524ecba1ce098dbbaceed6515"
 )
-# What a container store offers, the first its default.
-STORE_IMAGES = (PYTHON_SLIM_IMAGE, DOCKER_IMAGE)
+# What a container store offers, the first its default: the Docker CLI, as the provider's default bench.
+STORE_IMAGES = (DOCKER_IMAGE, PYTHON_SLIM_IMAGE)

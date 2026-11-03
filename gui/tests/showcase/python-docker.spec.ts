@@ -4,6 +4,7 @@ import { expect, test } from "../helpers/fixtures";
 import {
   buildRuntime,
   crossCheckSbom,
+  declareContainerEngine,
   dockerBuildScript,
   dockerRunScript,
   EXPERIMENT_OUTPUT_FILE,
@@ -166,6 +167,8 @@ test.describe("REE pipeline", () => {
     });
 
     await test.step("build runtime", async () => {
+      // The build runs `docker build`: the REE declares it needs a container engine.
+      await declareContainerEngine(page);
       await buildRuntime(page, dockerBuildScript(PROJECT_DIR, RUNTIME_PATH), RUNTIME_PATH);
 
       // buildRuntime leaves the Build page docked; re-open the Build node to
