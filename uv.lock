@@ -12,10 +12,8 @@ members = [
     "repo2ree-assurance-traceview",
     "repo2ree-authoring",
     "repo2ree-core",
-    "repo2ree-docker-support",
     "repo2ree-executor",
     "repo2ree-protocol",
-    "repo2ree-provider-docker",
     "repo2ree-ree",
     "repo2ree-repoview",
     "repo2ree-supervisor",
@@ -1166,21 +1164,6 @@ dev = [
 ]
 
 [[package]]
-name = "repo2ree-docker-support"
-version = "0.1.0"
-source = { editable = "docker-support" }
-dependencies = [
-    { name = "repo2ree-protocol" },
-    { name = "repo2ree-telemetry" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "repo2ree-protocol", editable = "protocol" },
-    { name = "repo2ree-telemetry", editable = "telemetry" },
-]
-
-[[package]]
 name = "repo2ree-executor"
 version = "0.1.0"
 source = { editable = "executor" }
@@ -1210,29 +1193,6 @@ dependencies = [
 requires-dist = [
     { name = "pydantic", specifier = "~=2.11.7" },
     { name = "repo2ree-ree", editable = "ree" },
-]
-
-[[package]]
-name = "repo2ree-provider-docker"
-version = "0.1.0"
-source = { editable = "provider" }
-dependencies = [
-    { name = "anyio" },
-    { name = "pydantic-settings" },
-    { name = "repo2ree-docker-support" },
-    { name = "repo2ree-protocol" },
-    { name = "repo2ree-telemetry" },
-    { name = "websockets" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "anyio", specifier = "~=4.15" },
-    { name = "pydantic-settings", specifier = "~=2.16" },
-    { name = "repo2ree-docker-support", editable = "docker-support" },
-    { name = "repo2ree-protocol", editable = "protocol" },
-    { name = "repo2ree-telemetry", editable = "telemetry" },
-    { name = "websockets", specifier = "~=15.0" },
 ]
 
 [[package]]

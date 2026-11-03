@@ -17,8 +17,8 @@ packages = ["src/repo2ree_repoview"]
 include_external_packages = true
 root_packages = [
     "repo2ree_repoview", "repo2ree_testbed", "repo2ree_assurance_collector", "repo2ree_assurance_dossier", "repo2ree_assurance_checker",
-    "repo2ree_assurance_traceview", "repo2ree_api", "repo2ree_core", "repo2ree_docker", "repo2ree_executor",
-    "repo2ree_provider_docker", "repo2ree_protocol", "repo2ree_supervisor", "repo2ree_workbench",
+    "repo2ree_assurance_traceview", "repo2ree_api", "repo2ree_core", "repo2ree_executor",
+    "repo2ree_protocol", "repo2ree_supervisor", "repo2ree_workbench",
 ]
 
 # The views read what the repository declares as data: the specification and the zones
@@ -30,8 +30,7 @@ type = "forbidden"
 source_modules = ["repo2ree_repoview"]
 forbidden_modules = [
     "repo2ree_testbed", "repo2ree_assurance_collector", "repo2ree_assurance_dossier", "repo2ree_assurance_checker", "repo2ree_assurance_traceview",
-    "repo2ree_api", "repo2ree_core", "repo2ree_docker", "repo2ree_executor", "repo2ree_provider_docker",
-    "repo2ree_protocol", "repo2ree_supervisor", "repo2ree_workbench",
+    "repo2ree_api", "repo2ree_core", "repo2ree_executor", "repo2ree_protocol", "repo2ree_supervisor", "repo2ree_workbench",
 ]
 
 # And nothing that ships, judges, or tests depends on how the repository is drawn.
@@ -40,7 +39,6 @@ name = "Nothing imports the views of the repository"
 type = "forbidden"
 source_modules = [
     "repo2ree_testbed", "repo2ree_assurance_collector", "repo2ree_assurance_dossier", "repo2ree_assurance_checker", "repo2ree_assurance_traceview",
-    "repo2ree_api", "repo2ree_core", "repo2ree_docker", "repo2ree_executor", "repo2ree_provider_docker",
-    "repo2ree_protocol", "repo2ree_supervisor", "repo2ree_workbench",
+    "repo2ree_api", "repo2ree_core", "repo2ree_executor", "repo2ree_protocol", "repo2ree_supervisor", "repo2ree_workbench",
 ]
 forbidden_modules = ["repo2ree_repoview"]

@@ -20,7 +20,7 @@ packages = ["src/repo2ree_assurance_collector"]
 include_external_packages = true
 root_packages = [
     "repo2ree_assurance_collector", "repo2ree_assurance_dossier", "repo2ree_assurance_checker", "repo2ree_assurance_traceview", "repo2ree_api", "repo2ree_core",
-    "repo2ree_docker", "repo2ree_executor", "repo2ree_provider_docker", "repo2ree_protocol",
+    "repo2ree_executor", "repo2ree_protocol",
     "repo2ree_supervisor", "repo2ree_workbench",
 ]
 
@@ -31,8 +31,8 @@ name = "Collect stays independent of runtime packages"
 type = "forbidden"
 source_modules = ["repo2ree_assurance_collector"]
 forbidden_modules = [
-    "repo2ree_api", "repo2ree_core", "repo2ree_docker", "repo2ree_executor",
-    "repo2ree_provider_docker", "repo2ree_protocol", "repo2ree_supervisor", "repo2ree_workbench",
+    "repo2ree_api", "repo2ree_core", "repo2ree_executor",
+    "repo2ree_protocol", "repo2ree_supervisor", "repo2ree_workbench",
 ]
 
 # It writes the dossier format and knows nothing of what reads it: verifying

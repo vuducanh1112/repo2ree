@@ -1,35 +1,23 @@
 # ----------------------------------------------------------------
-# Workbench image — a transport for the closure, not a runnable bench.
+# Workbench image — a store's workbench, run beside a host's container engine.
 #
-# The provider pulls this and populates the shared store volume from its
-# /nix/store, then mounts that volume into a bench built from the *user's*
-# base image:
+# The listener serves one store (--store ID=PATH) and runs each REE's scripts
+# in a fresh container from the image the REE declares (--backend container),
+# started through the host engine's socket mounted into this container. So it
+# carries the Docker CLI beside the workbench, the executor and the handler
+# tools, and no toolchain of its own: the REE's image is the toolchain.
 #
-#   docker run --rm -v repo2ree-store-<digest>:/bundle-store \
-#     repo2ree-workbench@sha256:… cp -a /nix/store/. /bundle-store/
+# The store directory must be mounted at the same path it has on the host, so
+# a job container the host engine starts sees the REE where the workbench
+# does (or pass --engine-path LOCAL=ENGINE).
 #
-# Publishing the closure this way lets a provider fetch the runtime by digest
-# instead of carrying it inside its own image, and makes the digest recorded
-# in the audit trail the digest that actually executed.
+#   docker run -v /var/run/docker.sock:/var/run/docker.sock \
+#     -v /srv/rees:/srv/rees repo2ree-workbench \
+#     repo2ree-workbench --store lab=/srv/rees --backend container \
+#       --script-engine socket --connect wss://… --token-file /run/token
 #
-# Do NOT treat this as a bench you can run on its own. A workbench is an
-# *addition* to an environment, never an environment: build scripts run as
-# native subprocesses in the bench (see repo2ree_core.execution.process), so
-# the bench must carry the project's toolchain. This image carries `sh` and
-# the handler tools and nothing else — no docker, no compiler, no language
-# runtime — which is why the base image is the user's choice and this is only
-# ever injected into it. `doctor` on a bench with just this reports docker
-# unavailable, and any REE that builds a container fails.
-#
-# `Cmd` still names the listener so the image is usable as a base to derive
-# from (`FROM repo2ree-workbench`, add your toolchain) — and, being Cmd rather
-# than Entrypoint, so the copy above stays a plain `docker run` with no
-# --entrypoint flag to lose. `cp` is the static busybox already in the closure
-# as the keep-alive `sleep`, so it costs this image nothing.
-#
-# For a self-managed install on a host that already has its toolchain, use
-# .#workbench (nix hosts) or .#workbench-bundle (everything else) — both add
-# the workbench to an environment instead of pretending to be one.
+# For a host that already has its toolchain and runs scripts on itself, use
+# .#workbench (nix hosts) or .#workbench-bundle (everything else).
 #
 # Build with:   nix build .#workbench-image
 # Load with:    docker load < result
@@ -51,20 +39,19 @@ pkgs.dockerTools.buildLayeredImage {
   contents = [
     workbench.service.bin
     workbench.executor.bin
-    # Both the bench keep-alive `sleep` and the `cp` the copy use above; it is
-    # static, so it runs in this image and in any bench the closure lands in.
+    # A static busybox: the shell and coreutils the handlers' scripts expect.
     workbench.executor.pause
     workbench.tools.binDir
     workbench.bundleRefDir
+    # The engine client each REE's job containers are started with, through the host's socket.
+    pkgs.docker-client
 
     # TLS roots for the outbound wss:// control link.
     pkgs.cacert
   ];
 
-  # The default root the listener binds. It must exist and be empty: an
-  # external workbench refuses to bind onto a non-empty root, which is what
-  # stops two allocations from sharing one tree.
-  extraCommands = "mkdir -p ree";
+  # Scratch space: generated venvs build under /tmp, as on any host.
+  extraCommands = "mkdir -p tmp && chmod 1777 tmp";
 
   config = {
     Labels = {
@@ -73,8 +60,8 @@ pkgs.dockerTools.buildLayeredImage {
     Cmd = [ "${workbench.service.bin}/bin/repo2ree-workbench" ];
     Env = [
       "PATH=/bin"
-      "WORKBENCH_ROOT=/ree"
-      "WORKBENCH_MODE=external"
+      "WORKBENCH_BACKEND=container"
+      "WORKBENCH_STATE_DIR=/var/lib/repo2ree-workbench"
       "PYTHONDONTWRITEBYTECODE=1"
       "PYTHONUNBUFFERED=1"
       "REPO2REE_EXEC_BUNDLE=/opt/repo2ree/exec-bundle"

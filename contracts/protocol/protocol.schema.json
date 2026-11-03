@@ -101,16 +101,13 @@
     "Frame": {
       "discriminator": {
         "mapping": {
-          "allocation_status": "#/$defs/AllocationStatusFrame",
           "bytes_chunk": "#/$defs/BytesChunkFrame",
           "done": "#/$defs/DoneFrame",
           "error": "#/$defs/ErrorFrame",
           "log": "#/$defs/LogFrame",
           "result": "#/$defs/ResultFrame",
-          "running": "#/$defs/RunningFrame",
           "span": "#/$defs/SpanFrame",
-          "unavailable": "#/$defs/UnavailableFrame",
-          "workbench_ref": "#/$defs/WorkbenchRefFrame"
+          "unavailable": "#/$defs/UnavailableFrame"
         },
         "propertyName": "type"
       },
@@ -120,9 +117,6 @@
         },
         {
           "$ref": "#/$defs/SpanFrame"
-        },
-        {
-          "$ref": "#/$defs/WorkbenchRefFrame"
         },
         {
           "$ref": "#/$defs/ResultFrame"
@@ -137,12 +131,6 @@
           "$ref": "#/$defs/ErrorFrame"
         },
         {
-          "$ref": "#/$defs/RunningFrame"
-        },
-        {
-          "$ref": "#/$defs/AllocationStatusFrame"
-        },
-        {
           "$ref": "#/$defs/BytesChunkFrame"
         }
       ]
@@ -155,15 +143,6 @@
     },
     "WorkbenchWsMessage": {
       "$ref": "#/$defs/WorkbenchWsMessage"
-    },
-    "ProviderHello": {
-      "$ref": "#/$defs/ProviderHello"
-    },
-    "ProviderWsRequest": {
-      "$ref": "#/$defs/ProviderWsRequest"
-    },
-    "ProviderWsMessage": {
-      "$ref": "#/$defs/ProviderWsMessage"
     }
   },
   "x-outputs": {
@@ -751,101 +730,6 @@
       "title": "ActivationTestCommand",
       "type": "object"
     },
-    "AllocationRequest": {
-      "additionalProperties": false,
-      "properties": {
-        "allocation_id": {
-          "minLength": 1,
-          "title": "Allocation Id",
-          "type": "string"
-        },
-        "ree_id": {
-          "minLength": 1,
-          "title": "Ree Id",
-          "type": "string"
-        },
-        "location_id": {
-          "minLength": 1,
-          "title": "Location Id",
-          "type": "string"
-        },
-        "image": {
-          "default": "",
-          "title": "Image",
-          "type": "string"
-        }
-      },
-      "required": [
-        "allocation_id",
-        "ree_id",
-        "location_id"
-      ],
-      "title": "AllocationRequest",
-      "type": "object"
-    },
-    "AllocationState": {
-      "enum": [
-        "requested",
-        "provisioning",
-        "waiting_for_workbench",
-        "ready",
-        "assigned",
-        "draining",
-        "released",
-        "failed",
-        "lost"
-      ],
-      "title": "AllocationState",
-      "type": "string"
-    },
-    "AllocationStatusFrame": {
-      "additionalProperties": false,
-      "description": "Terminal provider report for ensure/inspect operations.",
-      "properties": {
-        "type": {
-          "const": "allocation_status",
-          "default": "allocation_status",
-          "title": "Type",
-          "type": "string"
-        },
-        "allocation_id": {
-          "minLength": 1,
-          "title": "Allocation Id",
-          "type": "string"
-        },
-        "state": {
-          "$ref": "#/$defs/AllocationState"
-        },
-        "workbench_id": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Workbench Id"
-        },
-        "resolved_image": {
-          "default": "",
-          "title": "Resolved Image",
-          "type": "string"
-        },
-        "detail": {
-          "default": "",
-          "title": "Detail",
-          "type": "string"
-        }
-      },
-      "required": [
-        "allocation_id",
-        "state"
-      ],
-      "title": "AllocationStatusFrame",
-      "type": "object"
-    },
     "ArgvCommandCandidate": {
       "additionalProperties": false,
       "properties": {
@@ -1038,7 +922,7 @@
       "type": "object"
     },
     "BuildInfo": {
-      "description": "A component's package version and exact source revision.\n\nBoth fields are optional on the wire so independently deployed third-party\nproviders and workbenches remain compatible.",
+      "description": "A component's package version and exact source revision.\n\nBoth fields are optional on the wire so independently deployed workbenches\nremain compatible.",
       "properties": {
         "version": {
           "default": "",
@@ -2237,37 +2121,6 @@
         }
       },
       "title": "DoneFrame",
-      "type": "object"
-    },
-    "EnsureAllocationRequest": {
-      "additionalProperties": false,
-      "properties": {
-        "op": {
-          "const": "ensure_allocation",
-          "default": "ensure_allocation",
-          "title": "Op",
-          "type": "string"
-        },
-        "allocation": {
-          "$ref": "#/$defs/AllocationRequest"
-        },
-        "workbench_id": {
-          "minLength": 1,
-          "title": "Workbench Id",
-          "type": "string"
-        },
-        "enrollment_token": {
-          "minLength": 1,
-          "title": "Enrollment Token",
-          "type": "string"
-        }
-      },
-      "required": [
-        "allocation",
-        "workbench_id",
-        "enrollment_token"
-      ],
-      "title": "EnsureAllocationRequest",
       "type": "object"
     },
     "EnvironmentDefinition": {
@@ -4113,27 +3966,6 @@
       "title": "InferenceWarning",
       "type": "object"
     },
-    "InspectAllocationRequest": {
-      "additionalProperties": false,
-      "properties": {
-        "op": {
-          "const": "inspect_allocation",
-          "default": "inspect_allocation",
-          "title": "Op",
-          "type": "string"
-        },
-        "allocation_id": {
-          "minLength": 1,
-          "title": "Allocation Id",
-          "type": "string"
-        }
-      },
-      "required": [
-        "allocation_id"
-      ],
-      "title": "InspectAllocationRequest",
-      "type": "object"
-    },
     "LintReport": {
       "additionalProperties": false,
       "description": "Everything one lint run observed about one script.",
@@ -4970,211 +4802,6 @@
       "title": "ProjectRootBinding",
       "type": "object"
     },
-    "ProviderCancelRequest": {
-      "additionalProperties": false,
-      "description": "Cancel an abandoned in-flight capacity request.",
-      "properties": {
-        "op": {
-          "const": "cancel",
-          "default": "cancel",
-          "title": "Op",
-          "type": "string"
-        },
-        "request_id": {
-          "title": "Request Id",
-          "type": "string"
-        }
-      },
-      "required": [
-        "request_id"
-      ],
-      "title": "ProviderCancelRequest",
-      "type": "object"
-    },
-    "ProviderHello": {
-      "description": "The Docker provider's first message on its capacity-only connection.",
-      "properties": {
-        "provider_id": {
-          "minLength": 1,
-          "title": "Provider Id",
-          "type": "string"
-        },
-        "location_id": {
-          "minLength": 1,
-          "title": "Location Id",
-          "type": "string"
-        },
-        "location_label": {
-          "minLength": 1,
-          "title": "Location Label",
-          "type": "string"
-        },
-        "provider_kind": {
-          "const": "docker",
-          "default": "docker",
-          "title": "Provider Kind",
-          "type": "string"
-        },
-        "hostname": {
-          "default": "",
-          "title": "Hostname",
-          "type": "string"
-        },
-        "version": {
-          "default": "",
-          "title": "Version",
-          "type": "string"
-        },
-        "build": {
-          "$ref": "#/$defs/BuildInfo"
-        },
-        "images": {
-          "default": [],
-          "items": {
-            "$ref": "#/$defs/WorkbenchImage"
-          },
-          "title": "Images",
-          "type": "array"
-        },
-        "accepts_custom_image": {
-          "default": false,
-          "title": "Accepts Custom Image",
-          "type": "boolean"
-        },
-        "nonce": {
-          "default": "",
-          "title": "Nonce",
-          "type": "string"
-        }
-      },
-      "required": [
-        "provider_id",
-        "location_id",
-        "location_label"
-      ],
-      "title": "ProviderHello",
-      "type": "object"
-    },
-    "ProviderWsMessage": {
-      "additionalProperties": false,
-      "description": "A provider response frame correlated to a capacity request.",
-      "properties": {
-        "id": {
-          "title": "Id",
-          "type": "string"
-        },
-        "frame": {
-          "discriminator": {
-            "mapping": {
-              "allocation_status": "#/$defs/AllocationStatusFrame",
-              "bytes_chunk": "#/$defs/BytesChunkFrame",
-              "done": "#/$defs/DoneFrame",
-              "error": "#/$defs/ErrorFrame",
-              "log": "#/$defs/LogFrame",
-              "result": "#/$defs/ResultFrame",
-              "running": "#/$defs/RunningFrame",
-              "span": "#/$defs/SpanFrame",
-              "unavailable": "#/$defs/UnavailableFrame",
-              "workbench_ref": "#/$defs/WorkbenchRefFrame"
-            },
-            "propertyName": "type"
-          },
-          "oneOf": [
-            {
-              "$ref": "#/$defs/LogFrame"
-            },
-            {
-              "$ref": "#/$defs/SpanFrame"
-            },
-            {
-              "$ref": "#/$defs/WorkbenchRefFrame"
-            },
-            {
-              "$ref": "#/$defs/ResultFrame"
-            },
-            {
-              "$ref": "#/$defs/DoneFrame"
-            },
-            {
-              "$ref": "#/$defs/UnavailableFrame"
-            },
-            {
-              "$ref": "#/$defs/ErrorFrame"
-            },
-            {
-              "$ref": "#/$defs/RunningFrame"
-            },
-            {
-              "$ref": "#/$defs/AllocationStatusFrame"
-            },
-            {
-              "$ref": "#/$defs/BytesChunkFrame"
-            }
-          ],
-          "title": "Frame"
-        }
-      },
-      "required": [
-        "id",
-        "frame"
-      ],
-      "title": "ProviderWsMessage",
-      "type": "object"
-    },
-    "ProviderWsRequest": {
-      "additionalProperties": false,
-      "description": "A control-plane call on the capacity-only provider connection.",
-      "properties": {
-        "id": {
-          "title": "Id",
-          "type": "string"
-        },
-        "request": {
-          "discriminator": {
-            "mapping": {
-              "cancel": "#/$defs/ProviderCancelRequest",
-              "ensure_allocation": "#/$defs/EnsureAllocationRequest",
-              "inspect_allocation": "#/$defs/InspectAllocationRequest",
-              "release_allocation": "#/$defs/ReleaseAllocationRequest"
-            },
-            "propertyName": "op"
-          },
-          "oneOf": [
-            {
-              "$ref": "#/$defs/EnsureAllocationRequest"
-            },
-            {
-              "$ref": "#/$defs/ReleaseAllocationRequest"
-            },
-            {
-              "$ref": "#/$defs/InspectAllocationRequest"
-            },
-            {
-              "$ref": "#/$defs/ProviderCancelRequest"
-            }
-          ],
-          "title": "Request"
-        },
-        "traceparent": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Traceparent"
-        }
-      },
-      "required": [
-        "id",
-        "request"
-      ],
-      "title": "ProviderWsRequest",
-      "type": "object"
-    },
     "Ree": {
       "additionalProperties": false,
       "properties": {
@@ -5557,27 +5184,6 @@
         }
       },
       "title": "ReeSubject",
-      "type": "object"
-    },
-    "ReleaseAllocationRequest": {
-      "additionalProperties": false,
-      "properties": {
-        "op": {
-          "const": "release_allocation",
-          "default": "release_allocation",
-          "title": "Op",
-          "type": "string"
-        },
-        "allocation_id": {
-          "minLength": 1,
-          "title": "Allocation Id",
-          "type": "string"
-        }
-      },
-      "required": [
-        "allocation_id"
-      ],
-      "title": "ReleaseAllocationRequest",
       "type": "object"
     },
     "RemoveSourceArgs": {
@@ -6926,27 +6532,6 @@
         "subject_name"
       ],
       "title": "RunnableOperationOutputs",
-      "type": "object"
-    },
-    "RunningFrame": {
-      "additionalProperties": false,
-      "description": "Terminal frame of an is-running query.",
-      "properties": {
-        "type": {
-          "const": "running",
-          "default": "running",
-          "title": "Type",
-          "type": "string"
-        },
-        "running": {
-          "title": "Running",
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "running"
-      ],
-      "title": "RunningFrame",
       "type": "object"
     },
     "RuntimeContractBinding": {
@@ -8362,37 +7947,6 @@
       "title": "WorkbenchHello",
       "type": "object"
     },
-    "WorkbenchImage": {
-      "additionalProperties": false,
-      "description": "One base image a location offers to provision workbenches from.\n\nOnly ``ref`` is meaningful to the backend — it is the image that gets run.\n``id``/``label``/``description`` are picker-facing and default off the ref,\nso a catalog entry can be as terse as ``{\"ref\": \"docker:29-dind\"}``.",
-      "properties": {
-        "ref": {
-          "minLength": 1,
-          "title": "Ref",
-          "type": "string"
-        },
-        "id": {
-          "default": "",
-          "title": "Id",
-          "type": "string"
-        },
-        "label": {
-          "default": "",
-          "title": "Label",
-          "type": "string"
-        },
-        "description": {
-          "default": "",
-          "title": "Description",
-          "type": "string"
-        }
-      },
-      "required": [
-        "ref"
-      ],
-      "title": "WorkbenchImage",
-      "type": "object"
-    },
     "WorkbenchReeDocument": {
       "additionalProperties": false,
       "properties": {
@@ -8433,48 +7987,6 @@
       "title": "WorkbenchReeDocument",
       "type": "object"
     },
-    "WorkbenchRef": {
-      "additionalProperties": false,
-      "description": "Opaque backend-minted reference to a provisioned workbench.\n\nThe control plane records and returns the token but never interprets it.\n``runtime`` lets the serving process route the reference to the backend that\nminted it; the backend alone owns the token's representation.",
-      "properties": {
-        "runtime": {
-          "minLength": 1,
-          "title": "Runtime",
-          "type": "string"
-        },
-        "token": {
-          "minLength": 1,
-          "title": "Token",
-          "type": "string"
-        }
-      },
-      "required": [
-        "runtime",
-        "token"
-      ],
-      "title": "WorkbenchRef",
-      "type": "object"
-    },
-    "WorkbenchRefFrame": {
-      "additionalProperties": false,
-      "description": "Terminal frame of a successful provision.",
-      "properties": {
-        "type": {
-          "const": "workbench_ref",
-          "default": "workbench_ref",
-          "title": "Type",
-          "type": "string"
-        },
-        "ref": {
-          "$ref": "#/$defs/WorkbenchRef"
-        }
-      },
-      "required": [
-        "ref"
-      ],
-      "title": "WorkbenchRefFrame",
-      "type": "object"
-    },
     "WorkbenchWsMessage": {
       "additionalProperties": false,
       "description": "A frame from the workbench, correlated to an execution request or not.\n\n``id`` names the in-flight request this answers. It is None for a frame the\nworkbench originated itself — self-telemetry, which answers no request and\ncorrelates to nothing the control plane asked for.",
@@ -8494,16 +8006,13 @@
         "frame": {
           "discriminator": {
             "mapping": {
-              "allocation_status": "#/$defs/AllocationStatusFrame",
               "bytes_chunk": "#/$defs/BytesChunkFrame",
               "done": "#/$defs/DoneFrame",
               "error": "#/$defs/ErrorFrame",
               "log": "#/$defs/LogFrame",
               "result": "#/$defs/ResultFrame",
-              "running": "#/$defs/RunningFrame",
               "span": "#/$defs/SpanFrame",
-              "unavailable": "#/$defs/UnavailableFrame",
-              "workbench_ref": "#/$defs/WorkbenchRefFrame"
+              "unavailable": "#/$defs/UnavailableFrame"
             },
             "propertyName": "type"
           },
@@ -8513,9 +8022,6 @@
             },
             {
               "$ref": "#/$defs/SpanFrame"
-            },
-            {
-              "$ref": "#/$defs/WorkbenchRefFrame"
             },
             {
               "$ref": "#/$defs/ResultFrame"
@@ -8528,12 +8034,6 @@
             },
             {
               "$ref": "#/$defs/ErrorFrame"
-            },
-            {
-              "$ref": "#/$defs/RunningFrame"
-            },
-            {
-              "$ref": "#/$defs/AllocationStatusFrame"
             },
             {
               "$ref": "#/$defs/BytesChunkFrame"

@@ -1,4 +1,10 @@
-"""The persistent image-backed stack: compose control plane plus Docker provider containers."""
+"""The persistent image-backed stack: the compose control plane, its store's workbench, and more stores.
+
+The main compose file runs the backend, the GUI, store-init and the first store's workbench. Each further
+compute location is a workbench of its own (docker-compose.workbench.yml) serving a store registered, and
+its token minted, with the backend's store_admin. Every store keeps its REEs in a host directory mounted at
+the same path in its workbench, so the job containers the host engine starts see them where it does.
+"""
 
 from __future__ import annotations
 
@@ -13,18 +19,21 @@ from typing import Literal
 
 from repo2ree_testbed.artifacts import ROOT
 from repo2ree_testbed.stack.docker import first_network, networks, own_container
-from repo2ree_testbed.stack.process import capture, listed, reachable, run, wait_until
+from repo2ree_testbed.stack.process import capture, fetch_json, reachable, run, wait_until
+from repo2ree_testbed.stack.store_images import STORE_IMAGES
 from repo2ree_testbed.stack.workbench_cleanup import cleanup
 
 ATTACHMENT_FILE = ROOT / "test-artifacts/state/image-stack-caller-network"
-PROVIDER_CONTAINER = "repo2ree-provider-docker"
+WORKBENCH_CONTAINER = "repo2ree-workbench"
+# Where each store keeps its REEs on the engine's host, mounted at the same path in its workbench.
+STORE_ROOT = "/var/lib/repo2ree/image-stack"
 
 
 @dataclass(frozen=True)
 class Images:
     gui: str
     backend: str
-    provider: str
+    workbench: str
 
     @classmethod
     def tagged(cls, repository: str = "", tag: str = "local") -> Images:
@@ -32,7 +41,7 @@ class Images:
         return cls(
             os.getenv("STACK_GUI_IMAGE") or f"{prefix}repo2ree-gui:{tag}",
             os.getenv("STACK_BACKEND_IMAGE") or f"{prefix}repo2ree-backend:{tag}",
-            os.getenv("STACK_PROVIDER_IMAGE") or f"{prefix}repo2ree-provider-docker:{tag}",
+            os.getenv("STACK_WORKBENCH_IMAGE") or f"{prefix}repo2ree-workbench:{tag}",
         )
 
 
@@ -48,25 +57,47 @@ class ImageStack:
         self.compute_locations = compute_locations
 
     def compose(self, *args: str, check: bool = True) -> None:
-        environment = {"REPO2REE_GUI_IMAGE": self.images.gui, "REPO2REE_BACKEND_IMAGE": self.images.backend}
+        environment = {
+            "REPO2REE_GUI_IMAGE": self.images.gui,
+            "REPO2REE_BACKEND_IMAGE": self.images.backend,
+            "REPO2REE_WORKBENCH_IMAGE": self.images.workbench,
+            **self.store_environment(1),
+        }
         run(["docker", "compose", *args], env=environment, check=check)
 
     @staticmethod
-    def provider_name(index: int) -> str:
-        return PROVIDER_CONTAINER if index == 1 else f"{PROVIDER_CONTAINER}-{index}"
+    def store_environment(index: int) -> dict[str, str]:
+        return {
+            "REPO2REE_STORE_ID": f"lab-{index}",
+            "REPO2REE_STORE_DIR": f"{STORE_ROOT}/lab-{index}",
+            "REPO2REE_STORE_IMAGE": ",".join(STORE_IMAGES),
+        }
 
-    def provider_compose(self, name: str, *args: str, environment: dict[str, str], check: bool = True) -> None:
+    @staticmethod
+    def workbench_name(index: int) -> str:
+        return f"{WORKBENCH_CONTAINER}-{index}"
+
+    def workbench_compose(self, name: str, *args: str, environment: dict[str, str], check: bool = True) -> None:
         run(
             ["docker", "compose", "-p", name, "-f", "docker-compose.workbench.yml", *args],
             env={
-                "REPO2REE_PROVIDER_IMAGE": self.images.provider,
-                "REPO2REE_PROVIDER_CONTAINER": name,
-                "REPO2REE_PROVIDER_STATE_VOLUME": f"{name}-state",
+                "REPO2REE_WORKBENCH_IMAGE": self.images.workbench,
+                "REPO2REE_WORKBENCH_CONTAINER": name,
+                "REPO2REE_WORKBENCH_STATE_VOLUME": f"{name}-state",
+                # The file requires a token; one that stops or removes the stack never presents it.
+                "WORKBENCH_AUTH_TOKEN": "unused",
                 **environment,
             },
             check=check,
             quiet=True,
         )
+
+    def mint_token(self, store_id: str) -> str:
+        """Register ``store_id`` with the backend unless it is, and a new token for its workbench."""
+        admin = ["docker", "compose", "exec", "-T", "backend", "python", "-m", "repo2ree_api.store_admin"]
+        environment = {"REPO2REE_GUI_IMAGE": self.images.gui, "REPO2REE_BACKEND_IMAGE": self.images.backend}
+        run([*admin, "add", store_id], env=environment, check=False, quiet=True)
+        return capture([*admin, "token", store_id], env=environment).strip().splitlines()[-1]
 
     def control_plane_network(self) -> str:
         environment = {"REPO2REE_GUI_IMAGE": self.images.gui, "REPO2REE_BACKEND_IMAGE": self.images.backend}
@@ -112,36 +143,32 @@ class ImageStack:
         ATTACHMENT_FILE.unlink(missing_ok=True)
 
     def up(self) -> Urls:
-        for image in (self.images.gui, self.images.backend, self.images.provider):
+        for image in (self.images.gui, self.images.backend, self.images.workbench):
             if "/" in image:
                 print(f">> pulling {image}")
                 run(["docker", "pull", image])
             elif run(["docker", "image", "inspect", image], check=False, quiet=True).returncode != 0:
                 raise RuntimeError(f"{image} not found — build the local images first: just build-images")
-        print(f">> starting compose control plane ({self.images.gui}, {self.images.backend})")
-        self.compose("up", "-d", "backend", "gui")
-        count = self.compute_locations
-        print(f">> starting {count} Docker provider service(s) ({self.images.provider})")
+        print(f">> starting compose control plane and store lab-1 ({self.images.gui}, {self.images.backend})")
+        self.compose("up", "-d", "backend", "gui", "store-init", "workbench")
         network = self.control_plane_network()
-        environment = (
-            {
-                "PROVIDER_API_WS_URL": "ws://backend:8000/provider/connect",
-                "PROVIDER_WORKBENCH_API_WS_URL": "ws://backend:8000/workbench/connect",
-                "PROVIDER_WORKBENCH_DOCKER_NETWORK": network,
+        count = self.compute_locations
+        for index in range(2, count + 1):
+            name = self.workbench_name(index)
+            print(f">> starting store lab-{index}'s workbench ({self.images.workbench})")
+            environment = {
+                **self.store_environment(index),
+                "REPO2REE_API_WS_URL": "ws://backend:8000/workbench/connect",
+                "WORKBENCH_AUTH_TOKEN": self.mint_token(f"lab-{index}"),
             }
-            if network
-            else {}
-        )
-        for index in range(1, count + 1):
-            name = self.provider_name(index)
-            self.provider_compose(name, "up", "-d", environment=environment)
+            self.workbench_compose(name, "up", "-d", environment=environment)
             if network:
                 run(["docker", "network", "connect", network, name], check=False, quiet=True)
         self.attach_caller()
         urls = self.resolve()
         print(f">> probing stack endpoints — API {urls.api}, GUI {urls.gui}")
         wait_until(f"backend at {urls.api}", lambda: reachable(urls.api))
-        wait_until(f"{count} provider service(s)", lambda: listed(f"{urls.api}/api/v1/providers", "providers") >= count)
+        wait_until(f"{count} store(s) served", lambda: served_stores(urls.api) >= count)
         wait_until(f"gui at {urls.gui}", lambda: reachable(urls.gui))
         print(f">> stack up — GUI at {urls.gui}")
         return urls
@@ -149,26 +176,38 @@ class ImageStack:
     def down(self, *, volumes: bool = False) -> None:
         self.detach_caller()
         args = ("down", "-v") if volumes else ("down",)
-        print(">> stopping workbench service stack(s)")
-        pattern = re.compile(rf"{re.escape(PROVIDER_CONTAINER)}(?:-[0-9]+)?")
+        print(">> stopping store workbench stack(s)")
+        pattern = re.compile(rf"{re.escape(WORKBENCH_CONTAINER)}-[0-9]+")
         for name in capture(["docker", "ps", "-a", "--format", "{{.Names}}"]).splitlines():
             if pattern.fullmatch(name):
-                self.provider_compose(name, *args, environment={}, check=False)
-        if volumes:
-            cleanup(None)
+                self.workbench_compose(name, *args, environment={}, check=False)
         print(">> stopping compose control plane")
         self.compose(*args)
+        if volumes:
+            cleanup(None)
+            # The stores' REEs are host directories, not volumes: the engine's host removes them.
+            remove = ["docker", "run", "--rm", "-v", f"{STORE_ROOT}:{STORE_ROOT}", self.images.workbench]
+            run([*remove, "rm", "-rf", STORE_ROOT], check=False, quiet=True)
 
     def check(self, overrides: Urls | None = None) -> Urls:
         self.attach_caller()
         urls = self.resolve(overrides)
         if not reachable(urls.api):
             raise RuntimeError(f"backend not reachable at {urls.api} — start the image stack first (just stack-up)")
-        if listed(f"{urls.api}/api/v1/providers", "providers") < 1:
-            raise RuntimeError("no provider service connected — start the provider container (just stack-up)")
+        if served_stores(urls.api) < 1:
+            raise RuntimeError("no store's workbench connected — start the image stack first (just stack-up)")
         if not reachable(urls.gui):
             raise RuntimeError(f"GUI not reachable at {urls.gui} — start the image stack first (just stack-up)")
         return urls
+
+
+def served_stores(api: str) -> int:
+    """How many stores a workbench serves now."""
+    listed = fetch_json(f"{api}/api/v1/stores")
+    stores = listed.get("stores") if isinstance(listed, dict) else None
+    if not isinstance(stores, list):
+        return 0
+    return sum(1 for store in stores if isinstance(store, dict) and store.get("connected"))
 
 
 @dataclass(frozen=True)
@@ -200,7 +239,7 @@ def parse(argv: list[str] | None = None) -> Command:
     up.add_argument("--image-tag", default="local")
     up.add_argument("--gui-image", default="")
     up.add_argument("--backend-image", default="")
-    up.add_argument("--provider-image", default="")
+    up.add_argument("--workbench-image", default="")
     commands.add_parser("down").add_argument("--volumes", action="store_true")
     for name in ("check", "gui-url", "api-url"):
         probe = commands.add_parser(name)
@@ -212,7 +251,7 @@ def parse(argv: list[str] | None = None) -> Command:
             parser.error("compute locations must be a positive integer")
         tagged = Images.tagged(args.image_repository, args.image_tag)
         images = Images(
-            args.gui_image or tagged.gui, args.backend_image or tagged.backend, args.provider_image or tagged.provider
+            args.gui_image or tagged.gui, args.backend_image or tagged.backend, args.workbench_image or tagged.workbench
         )
         return Up(images, args.compute_locations)
     if args.command == "down":

@@ -24,10 +24,12 @@ pkgs.dockerTools.buildLayeredImage {
     pkgs.cacert
   ];
 
+  # /tokens is where `store_admin bootstrap` writes a store's token in the compose demo: a
+  # volume mounted there starts out owned by the app user, so the bootstrap can write it.
   fakeRootCommands = ''
     test -s ${api.imports}
-    mkdir -p app/.repo2ree tmp
-    chown -R 1000:1000 app
+    mkdir -p app/.repo2ree tmp tokens
+    chown -R 1000:1000 app tokens
     chmod 1777 tmp
   '';
   enableFakechroot = false;

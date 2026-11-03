@@ -15,7 +15,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Literal, NotRequired, TypedDict, cast
 
-from repo2ree_protocol.allocation import AllocationState
 from repo2ree_telemetry.behaviour.writer import Fact, journal
 
 DispatchResponse = Literal["result", "unavailable", "error"]
@@ -63,18 +62,9 @@ AuthorApiActionName = Literal[
 ]
 
 
-class AllocationFacts(TypedDict, total=False):
-    provider_id: str | None
-    workbench_id: str | None
-    location_id: str | None
-    detail: str | None
-
-
 class AuthorApiActionFacts(TypedDict, total=False):
     # The attempt the workbench reported, for an action that ran a command in the REE.
     attempt_id: str | None
-    # The workbench's allocation, for create_ree and release_workbench.
-    allocation_id: str | None
     # The store, for create_ree and delete_ree of an REE served by one.
     store_id: str | None
     run_id: str | None
@@ -101,21 +91,6 @@ class ResultFacts(TypedDict):
 def _facts(facts: Mapping[str, object]) -> dict[str, Fact]:
     """The TypedDicts above hold scalars only; the writer takes them as plain facts."""
     return cast("dict[str, Fact]", dict(facts))
-
-
-def allocation(
-    key: str,
-    current: AllocationState | None,
-    target: AllocationState,
-    *,
-    partition: str,
-    facts: AllocationFacts,
-) -> None:
-    """An allocation's state changed; the supervisor's allocation store owns it."""
-    source = None if current is None else current.value
-    journal().transition(
-        "supervisor", "Allocation", key, source, target.value, partition=partition, facts=_facts(facts)
-    )
 
 
 def author_api_action(

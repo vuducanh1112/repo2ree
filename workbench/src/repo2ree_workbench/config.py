@@ -128,7 +128,9 @@ def load_config(argv: Sequence[str] = ()) -> WorkbenchConfig:
     environment = WorkbenchEnvironment()
     parser = argparse.ArgumentParser(prog="repo2ree-workbench")
     parser.add_argument("--connect", default=environment.WORKBENCH_API_WS_URL)
-    parser.add_argument("--token", default=environment.WORKBENCH_AUTH_TOKEN, help="the store's token")
+    tokens = parser.add_mutually_exclusive_group()
+    tokens.add_argument("--token", default=environment.WORKBENCH_AUTH_TOKEN, help="the store's token")
+    tokens.add_argument("--token-file", type=Path, help="a file holding the store's token, read at start")
     parser.add_argument("--name", default=environment.WORKBENCH_ID)
     parser.add_argument(
         "--store",
@@ -154,7 +156,7 @@ def load_config(argv: Sequence[str] = ()) -> WorkbenchConfig:
         action="append",
         default=[],
         metavar="REF",
-        help="container: an image an REE created in the store may run in (repeatable; the first is the default)",
+        help="container: images a new REE in the store may run in (comma-separated or repeated; first is default)",
     )
     parser.add_argument("--slots", type=int, default=environment.WORKBENCH_SLOTS, help="actions run at once")
     parser.add_argument(
@@ -164,7 +166,7 @@ def load_config(argv: Sequence[str] = ()) -> WorkbenchConfig:
     store_id, store_root = _store(args.store)
     if args.slots < 1:
         parser.error("--slots must be at least 1")
-    images = tuple(dict.fromkeys(ref.strip() for ref in args.images if ref.strip()))
+    images = tuple(dict.fromkeys(ref.strip() for value in args.images for ref in value.split(",") if ref.strip()))
     if images and args.backend != "container":
         parser.error("--image offers images to the store's REEs, so it needs --backend container")
     explicit_id = args.name
@@ -177,7 +179,7 @@ def load_config(argv: Sequence[str] = ()) -> WorkbenchConfig:
     return WorkbenchConfig(
         api_ws_url=args.connect,
         workbench_id=workbench_id,
-        enrollment_token=args.token,
+        enrollment_token=args.token_file.read_text().strip() if args.token_file else args.token,
         exec_path=environment.REPO2REE_EXEC_PATH,
         store_id=store_id,
         store_root=store_root,

@@ -1,56 +1,53 @@
-# Docker provider service — a deliberately separate stack from the control
-# plane. It holds the Docker socket, provisions isolated environments, and
-# starts a resident outbound-only workbench inside each allocation.
+# A store's workbench against a remote repo2ree service — a deliberately separate
+# stack from the control plane. It serves one store on this machine and runs each
+# REE's scripts in a container from the image the REE declares, through this
+# host's Docker socket.
 #
-#   docker compose -f docker-compose.workbench.yml up -d      # start
-#   docker compose -f docker-compose.workbench.yml down       # stop
-#   docker compose -f docker-compose.workbench.yml down -v    # also drop workbench state
+# Register the store on the service host and mint its workbench's token there:
 #
-# Defaults dial a control plane on the same host (host-published :8000).
-# Point it at a different backend by overriding PROVIDER_API_WS_URL and
-# PROVIDER_WORKBENCH_API_WS_URL.
-name: repo2ree-provider
+#   python -m repo2ree_api.store_admin add lab-a --label "Lab A"
+#   python -m repo2ree_api.store_admin token lab-a       # prints the token once
+#
+# Then, here:
+#
+#   REPO2REE_STORE_ID=lab-a WORKBENCH_AUTH_TOKEN=<token> \
+#   REPO2REE_API_WS_URL=wss://repo2ree.example/workbench/connect \
+#     docker compose -f docker-compose.workbench.yml up -d          # start
+#   docker compose -f docker-compose.workbench.yml down             # stop
+#
+# The store lives at the same path on this host and in the workbench
+# (REPO2REE_STORE_DIR), so a job container the host engine starts sees the REE
+# where the workbench does. Its REEs stay there when the workbench stops.
+name: repo2ree-workbench
 
 services:
-  provider:
-    image: ${REPO2REE_PROVIDER_IMAGE:-docker.io/vuducanh1112/repo2ree-provider-docker:edge}
-    container_name: ${REPO2REE_PROVIDER_CONTAINER:-repo2ree-provider-docker}
+  workbench:
+    image: ${REPO2REE_WORKBENCH_IMAGE:-docker.io/vuducanh1112/repo2ree-workbench:edge}
+    container_name: ${REPO2REE_WORKBENCH_CONTAINER:-repo2ree-workbench}
+    command:
+      - repo2ree-workbench
+      - --store
+      - ${REPO2REE_STORE_ID:-lab}=${REPO2REE_STORE_DIR:-/var/lib/repo2ree/store}
+      - --backend
+      - container
+      - --connect
+      - ${REPO2REE_API_WS_URL:-ws://host.docker.internal:8000/workbench/connect}
+      # The images an REE created in the store may declare, the first the default.
+      - --image
+      - ${REPO2REE_STORE_IMAGE:-docker.io/library/python:3.12-slim}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - repo2ree-provider-state:/var/lib/repo2ree-provider
+      - ${REPO2REE_STORE_DIR:-/var/lib/repo2ree/store}:${REPO2REE_STORE_DIR:-/var/lib/repo2ree/store}
+      - repo2ree-workbench-state:/var/lib/repo2ree-workbench
     environment:
-      PROVIDER_API_WS_URL: ${PROVIDER_API_WS_URL:-ws://host.docker.internal:8000/provider/connect}
-      PROVIDER_WORKBENCH_API_WS_URL: ${PROVIDER_WORKBENCH_API_WS_URL:-ws://host.docker.internal:8000/workbench/connect}
-      # Optional network for provider-created workbenches. Set this when the
-      # control plane is reachable by service DNS on a shared Docker network.
-      PROVIDER_WORKBENCH_DOCKER_NETWORK: ${PROVIDER_WORKBENCH_DOCKER_NETWORK:-}
-      PROVIDER_DOCKER_MODE: ${PROVIDER_DOCKER_MODE:-dind}
-      # Resolvers dind bench daemons hand their containers and build steps.
-      # Unset or auto: the host's own, discovered through its daemon. Set
-      # addresses (comma-separated) on networks whose resolvers it cannot see;
-      # off leaves bench daemons on their fallback, public DNS.
-      PROVIDER_WORKBENCH_DNS: ${PROVIDER_WORKBENCH_DNS:-}
-      # Optional pull-through registry (http(s)://host[:port]) the bench daemons
-      # pull Docker Hub images through, so each base image is fetched once per
-      # machine instead of once per bench.
-      PROVIDER_WORKBENCH_REGISTRY_MIRROR: ${PROVIDER_WORKBENCH_REGISTRY_MIRROR:-}
-      # Optional OTLP collector for *this provider's* own logs. Headers (e.g.
-      # ClickStack's ingestion API key) ride the standard OTLP env var alongside
-      # it. This endpoint is never handed to the benches this provider starts:
-      # it is reachable from here, and a bench on an isolated network would
-      # retry an address it cannot route to.
+      # The store's token, from store_admin on the service host.
+      WORKBENCH_AUTH_TOKEN: ${WORKBENCH_AUTH_TOKEN:?the store's token, from store_admin on the service host}
+      # Optional OTLP collector for this workbench's own logs and spans.
       OTLP_ENDPOINT: ${OTLP_ENDPOINT:-}
       OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
-      # What benches do with their own spans: relay (default) sends them over
-      # the control-plane socket each bench already holds, as executor spans
-      # travel; direct posts to PROVIDER_WORKBENCH_OTLP_ENDPOINT, a collector
-      # the benches themselves can reach; local writes TRACE_FILE or stdout
-      # inside the bench; off disables bench tracing entirely.
-      PROVIDER_WORKBENCH_TELEMETRY: ${PROVIDER_WORKBENCH_TELEMETRY:-}
-      PROVIDER_WORKBENCH_OTLP_ENDPOINT: ${PROVIDER_WORKBENCH_OTLP_ENDPOINT:-}
 
 volumes:
-  repo2ree-provider-state:
-    name: ${REPO2REE_PROVIDER_STATE_VOLUME:-repo2ree-provider-state}
+  repo2ree-workbench-state:
+    name: ${REPO2REE_WORKBENCH_STATE_VOLUME:-repo2ree-workbench-state}

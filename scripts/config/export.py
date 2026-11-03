@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any
 
 from repo2ree_api.settings import Settings
-from repo2ree_provider_docker.config import ProviderEnvironment
 from repo2ree_workbench.config import WorkbenchEnvironment
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -56,15 +55,17 @@ NON_SERVICE_ENVIRONMENT: dict[str, tuple[str, str]] = {
     "REPO2REE_ASSURANCE_DIR": ("test-recording", "internal"),
     "REPO2REE_BACKEND_IMAGE": ("compose", "deployment"),
     "REPO2REE_BUILD_REVISION": ("protocol", "build"),
-    "REPO2REE_EXEC_BUNDLE": ("provider", "deployment"),
+    "REPO2REE_EXEC_BUNDLE": ("workbench", "deployment"),
     "REPO2REE_GUI_IMAGE": ("compose", "deployment"),
     "REPO2REE_NETWORK": ("compose", "deployment"),
-    "REPO2REE_PROVIDER_CONTAINER": ("compose", "internal"),
-    "REPO2REE_PROVIDER_IMAGE": ("compose", "deployment"),
-    "REPO2REE_PROVIDER_STATE_VOLUME": ("compose", "deployment"),
-    "REPO2REE_REGISTRY_MIRROR": ("testbed", "internal"),
-    "REPO2REE_REGISTRY_MIRROR_PORT": ("testbed", "internal"),
-    "REPO2REE_RESOURCE_OWNER": ("provider", "internal"),
+    "REPO2REE_API_WS_URL": ("compose", "deployment"),
+    "REPO2REE_STORE_DIR": ("compose", "deployment"),
+    "REPO2REE_STORE_ID": ("compose", "deployment"),
+    "REPO2REE_STORE_IMAGE": ("compose", "deployment"),
+    "REPO2REE_WORKBENCH_CONTAINER": ("compose", "internal"),
+    "REPO2REE_WORKBENCH_IMAGE": ("compose", "deployment"),
+    "REPO2REE_WORKBENCH_STATE_VOLUME": ("compose", "deployment"),
+    "REPO2REE_RESOURCE_OWNER": ("core", "internal"),
     "REPO2REE_JUST_TIMING": ("just-timing", "internal"),
     "REPO2REE_MACHINE": ("testbed", "internal"),
     "REPO2REE_JUNIT_DIR": ("testbed", "internal"),
@@ -73,8 +74,7 @@ NON_SERVICE_ENVIRONMENT: dict[str, tuple[str, str]] = {
     "REPO2REE_TEST_RUN_DIR": ("test-recording", "internal"),
     "REPO2REE_TEST_RUN_ID": ("test-recording", "internal"),
     "REPO2REE_TOOLS_BIN": ("executor", "internal"),
-    "REPO2REE_TOOLS_BUNDLE": ("provider", "deployment"),
-    "REPO2REE_WORKBENCH_PATH": ("provider", "deployment"),
+    "REPO2REE_TOOLS_BUNDLE": ("workbench", "deployment"),
     "REPO2REE_WORKBENCH_ROOT": ("core", "internal"),
     "REPRODUCE_REFETCH": ("reproducer", "runtime"),
     "SERVICE_VERSION": ("protocol", "runtime"),
@@ -82,6 +82,7 @@ NON_SERVICE_ENVIRONMENT: dict[str, tuple[str, str]] = {
     "STACK_BACKEND_IMAGE": ("image-stack", "internal"),
     "STACK_GUI_IMAGE": ("image-stack", "internal"),
     "STACK_PROVIDER_IMAGE": ("image-stack", "internal"),
+    "STACK_WORKBENCH_IMAGE": ("image-stack", "internal"),
     "TRACEPARENT": ("tracing", "internal"),
     "TRACE_RELAY": ("tracing", "internal"),
     "VITEST": ("vitest", "external"),
@@ -100,7 +101,6 @@ ENVIRONMENT_PATTERNS: dict[str, tuple[str, str]] = {
 
 MODELS = (
     ("api", Settings),
-    ("provider", ProviderEnvironment),
     ("workbench", WorkbenchEnvironment),
 )
 

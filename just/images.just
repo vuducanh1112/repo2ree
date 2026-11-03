@@ -28,18 +28,18 @@ build-backend-image: _stage-nix-sources
     docker load < result
     @echo "Done: repo2ree-backend:local"
 
-# Build and load the self-contained Docker provider image.
+# Build and load the store workbench image: the workbench, its executor and tools, and a Docker CLI.
 [group('Images')]
-build-provider-image: _stage-nix-sources
-    @echo "Building Docker provider image..."
-    nix build .#provider-image
+build-workbench-image: _stage-nix-sources
+    @echo "Building workbench image..."
+    nix build .#workbench-image
     @echo "Loading into docker..."
     docker load < result
-    @echo "Done: repo2ree-provider-docker:local"
+    @echo "Done: repo2ree-workbench:local"
 
 # Build and load all deployable images.
 [group('Images')]
-build-images: build-gui-image build-backend-image build-provider-image
+build-images: build-gui-image build-backend-image build-workbench-image
 
 # Regenerate nix/closures.json, the Python closures nix ships, from uv.lock.
 [group('Images')]

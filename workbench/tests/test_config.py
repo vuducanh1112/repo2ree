@@ -116,7 +116,7 @@ def test_an_unknown_setting_names_the_modes_it_accepts(monkeypatch: pytest.Monke
 
 def test_a_container_store_offers_its_images_the_first_its_default(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("WORKBENCH_ID", "wb-store")
-    offered = ["--image", "python:3.12", "--image", "docker:29", "--image", "python:3.12"]
+    offered = ["--image", "python:3.12", "--image", "docker:29,python:3.12"]
 
     config = config_module.load_config([*STORE, "--backend", "container", *offered])
 
@@ -128,3 +128,12 @@ def test_only_a_container_store_offers_images(monkeypatch: pytest.MonkeyPatch) -
 
     with pytest.raises(SystemExit):
         config_module.load_config([*STORE, "--image", "python:3.12"])
+
+
+def test_the_store_token_may_come_from_a_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("WORKBENCH_ID", "workbench-1")
+    (tmp_path / "token").write_text("from-a-file\n")
+
+    config = config_module.load_config([*STORE, "--token-file", str(tmp_path / "token")])
+
+    assert config.enrollment_token == "from-a-file"  # noqa: S105 — a test value read back

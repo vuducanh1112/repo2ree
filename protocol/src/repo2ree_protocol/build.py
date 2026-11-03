@@ -13,8 +13,8 @@ BUILD_REVISION_ENV = "REPO2REE_BUILD_REVISION"
 class BuildInfo(BaseModel):
     """A component's package version and exact source revision.
 
-    Both fields are optional on the wire so independently deployed third-party
-    providers and workbenches remain compatible.
+    Both fields are optional on the wire so independently deployed workbenches
+    remain compatible.
     """
 
     model_config = ConfigDict(extra="ignore", frozen=True)

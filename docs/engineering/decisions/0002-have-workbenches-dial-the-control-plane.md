@@ -52,6 +52,4 @@ deployment model itself changes.
 
 - [Component call graph](../reference/components.md#call-graph--what-is-and-isnt-a-process-boundary)
 - [`repo2ree_workbench.connection`](../../../workbench/src/repo2ree_workbench/connection.py)
-- [`repo2ree_provider_docker.connection`](../../../provider/src/repo2ree_provider_docker/connection.py)
 - [`protocol.workbench`](../../../protocol/src/repo2ree_protocol/workbench.py)
-- [`protocol.provider`](../../../protocol/src/repo2ree_protocol/provider.py)

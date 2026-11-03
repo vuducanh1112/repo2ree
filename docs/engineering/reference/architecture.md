@@ -38,25 +38,10 @@ sources.
 
 The main REE path now has the intended package seam:
 
-- `api` calls `repo2ree_supervisor.WorkbenchManager`.
-- `supervisor` requests one persistent workbench per REE from a connected
-  provider and retains the opaque reference that provider mints.
+- `api` routes each REE's commands to the workbench serving its store.
 - Commands cross the host/workbench boundary as typed `repo2ree_protocol`
   commands, over the workbench's own outbound connection.
-- The workbench service starts `repo2ree-exec`, which calls `core` handlers
-  inside the container.
-
-Current isolation is **Docker-in-Docker inside a privileged workbench**. The
-backend never touches a container runtime: workbenches are created by the
-*Docker provider* (a separate deployable holding the docker socket, included in
-the local [docker-compose.yml](../../../docker-compose.yml) demo and independently
-deployable with [docker-compose.workbench.yml](../../../docker-compose.workbench.yml))
-in response to capacity calls. The workbench does not receive the host socket.
-It runs its own daemon and stores `/var/lib/docker` in a per-REE volume
-([lifecycle.py](../../../provider/src/repo2ree_provider_docker/lifecycle.py)).
-
-The risk has moved: untrusted repo code no longer holds the host Docker socket
-on the main path, but the workbench is still privileged and not VM-backed.
+- The workbench service starts `repo2ree-exec`, which calls `core` handlers.
 
 ## Target isolation model: VM-backed working environments
 

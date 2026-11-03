@@ -1,13 +1,13 @@
 """Resolving the external tools core handlers shell out to.
 
-On benches whose image carries the tools itself (e.g. a nix-built image the
-workbench left un-injected) they live on PATH. On benches the workbench injected its
-bundles into, PATH knows nothing — the workbench advertises each tool's absolute
-path through a ``REPO2REE_TOOL_<NAME>`` environment variable set on the bench
-container (see the tools manifest in nix/tools.nix). Handlers resolve through
-here so both worlds work without the handler knowing which one it is in.
+On a machine that carries the tools itself (e.g. a nix-built workbench image) they
+live on PATH. Where a workbench runs from a tools bundle, PATH knows nothing — the
+workbench advertises each tool's absolute path through a ``REPO2REE_TOOL_<NAME>``
+environment variable set for its executors (see the tools manifest in nix/tools.nix).
+Handlers resolve through here so both worlds work without the handler knowing which
+one it is in.
 
-This dependency-free module is shared by the provider that advertises the tools and the
+This dependency-free module is shared by the workbench that advertises the tools and the
 handlers that invoke them.
 """
 

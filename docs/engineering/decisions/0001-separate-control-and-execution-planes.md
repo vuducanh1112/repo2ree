@@ -58,5 +58,4 @@ the supervisor library and preserve the execution boundary.
 - [Component architecture](../reference/components.md#mental-model)
 - [Control plane and execution plane](../reference/architecture.md#control-plane--execution-plane-split)
 - [`repo2ree_workbench.app`](../../../workbench/src/repo2ree_workbench/app.py)
-- [`repo2ree_provider_docker.app`](../../../provider/src/repo2ree_provider_docker/app.py)
 - [`repo2ree_supervisor`](../../../supervisor/src/repo2ree_supervisor/)

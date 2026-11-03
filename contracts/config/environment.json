@@ -82,141 +82,6 @@
       "title": "Settings",
       "type": "object"
     },
-    "provider": {
-      "description": "Validated environment accepted by the provider process.\n\nUppercase fields intentionally match the external contract. The application\nconverts this transport model into the domain-oriented ``ProviderConfig``.",
-      "properties": {
-        "OTLP_ENDPOINT": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Otlp Endpoint"
-        },
-        "PROVIDER_ACCEPTS_CUSTOM_IMAGE": {
-          "default": true,
-          "title": "Provider Accepts Custom Image",
-          "type": "boolean"
-        },
-        "PROVIDER_API_WS_URL": {
-          "default": "ws://localhost:8000/provider/connect",
-          "title": "Provider Api Ws Url",
-          "type": "string"
-        },
-        "PROVIDER_DOCKER_MODE": {
-          "default": "dind",
-          "enum": [
-            "dind",
-            "host-socket"
-          ],
-          "title": "Provider Docker Mode",
-          "type": "string"
-        },
-        "PROVIDER_ID": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Provider Id"
-        },
-        "PROVIDER_LOCATION_ID": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Provider Location Id"
-        },
-        "PROVIDER_LOCATION_LABEL": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Provider Location Label"
-        },
-        "PROVIDER_STATE_DIR": {
-          "default": "~/.repo2ree-provider",
-          "format": "path",
-          "title": "Provider State Dir",
-          "type": "string"
-        },
-        "PROVIDER_WORKBENCH_API_WS_URL": {
-          "default": "ws://localhost:8000/workbench/connect",
-          "title": "Provider Workbench Api Ws Url",
-          "type": "string"
-        },
-        "PROVIDER_WORKBENCH_DNS": {
-          "default": "auto",
-          "title": "Provider Workbench Dns",
-          "type": "string"
-        },
-        "PROVIDER_WORKBENCH_DOCKER_NETWORK": {
-          "default": "",
-          "title": "Provider Workbench Docker Network",
-          "type": "string"
-        },
-        "PROVIDER_WORKBENCH_OTLP_ENDPOINT": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Provider Workbench Otlp Endpoint"
-        },
-        "PROVIDER_WORKBENCH_REGISTRY_MIRROR": {
-          "default": "",
-          "title": "Provider Workbench Registry Mirror",
-          "type": "string"
-        },
-        "PROVIDER_WORKBENCH_TELEMETRY": {
-          "default": "relay",
-          "enum": [
-            "relay",
-            "direct",
-            "local",
-            "off"
-          ],
-          "title": "Provider Workbench Telemetry",
-          "type": "string"
-        },
-        "WORKBENCH_IMAGE_CATALOG": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Workbench Image Catalog"
-        }
-      },
-      "title": "ProviderEnvironment",
-      "type": "object"
-    },
     "workbench": {
       "description": "Validated environment accepted by a resident workbench process.",
       "properties": {
@@ -607,162 +472,6 @@
         "type": "string"
       }
     },
-    "PROVIDER_ACCEPTS_CUSTOM_IMAGE": {
-      "kind": "runtime",
-      "owner": "provider",
-      "schema": {
-        "default": true,
-        "title": "Provider Accepts Custom Image",
-        "type": "boolean"
-      }
-    },
-    "PROVIDER_API_WS_URL": {
-      "kind": "runtime",
-      "owner": "provider",
-      "schema": {
-        "default": "ws://localhost:8000/provider/connect",
-        "title": "Provider Api Ws Url",
-        "type": "string"
-      }
-    },
-    "PROVIDER_DOCKER_MODE": {
-      "kind": "runtime",
-      "owner": "provider",
-      "schema": {
-        "default": "dind",
-        "enum": [
-          "dind",
-          "host-socket"
-        ],
-        "title": "Provider Docker Mode",
-        "type": "string"
-      }
-    },
-    "PROVIDER_ID": {
-      "kind": "runtime",
-      "owner": "provider",
-      "schema": {
-        "anyOf": [
-          {
-            "type": "string"
-          },
-          {
-            "type": "null"
-          }
-        ],
-        "default": null,
-        "title": "Provider Id"
-      }
-    },
-    "PROVIDER_LOCATION_ID": {
-      "kind": "runtime",
-      "owner": "provider",
-      "schema": {
-        "anyOf": [
-          {
-            "type": "string"
-          },
-          {
-            "type": "null"
-          }
-        ],
-        "default": null,
-        "title": "Provider Location Id"
-      }
-    },
-    "PROVIDER_LOCATION_LABEL": {
-      "kind": "runtime",
-      "owner": "provider",
-      "schema": {
-        "anyOf": [
-          {
-            "type": "string"
-          },
-          {
-            "type": "null"
-          }
-        ],
-        "default": null,
-        "title": "Provider Location Label"
-      }
-    },
-    "PROVIDER_STATE_DIR": {
-      "kind": "runtime",
-      "owner": "provider",
-      "schema": {
-        "default": "~/.repo2ree-provider",
-        "format": "path",
-        "title": "Provider State Dir",
-        "type": "string"
-      }
-    },
-    "PROVIDER_WORKBENCH_API_WS_URL": {
-      "kind": "runtime",
-      "owner": "provider",
-      "schema": {
-        "default": "ws://localhost:8000/workbench/connect",
-        "title": "Provider Workbench Api Ws Url",
-        "type": "string"
-      }
-    },
-    "PROVIDER_WORKBENCH_DNS": {
-      "kind": "runtime",
-      "owner": "provider",
-      "schema": {
-        "default": "auto",
-        "title": "Provider Workbench Dns",
-        "type": "string"
-      }
-    },
-    "PROVIDER_WORKBENCH_DOCKER_NETWORK": {
-      "kind": "runtime",
-      "owner": "provider",
-      "schema": {
-        "default": "",
-        "title": "Provider Workbench Docker Network",
-        "type": "string"
-      }
-    },
-    "PROVIDER_WORKBENCH_OTLP_ENDPOINT": {
-      "kind": "runtime",
-      "owner": "provider",
-      "schema": {
-        "anyOf": [
-          {
-            "type": "string"
-          },
-          {
-            "type": "null"
-          }
-        ],
-        "default": null,
-        "title": "Provider Workbench Otlp Endpoint"
-      }
-    },
-    "PROVIDER_WORKBENCH_REGISTRY_MIRROR": {
-      "kind": "runtime",
-      "owner": "provider",
-      "schema": {
-        "default": "",
-        "title": "Provider Workbench Registry Mirror",
-        "type": "string"
-      }
-    },
-    "PROVIDER_WORKBENCH_TELEMETRY": {
-      "kind": "runtime",
-      "owner": "provider",
-      "schema": {
-        "default": "relay",
-        "enum": [
-          "relay",
-          "direct",
-          "local",
-          "off"
-        ],
-        "title": "Provider Workbench Telemetry",
-        "type": "string"
-      }
-    },
     "PUBLISH_PLATFORMS": {
       "kind": "deployment",
       "owner": "publishing",
@@ -801,6 +510,13 @@
         "type": "string"
       }
     },
+    "REPO2REE_API_WS_URL": {
+      "kind": "deployment",
+      "owner": "compose",
+      "schema": {
+        "type": "string"
+      }
+    },
     "REPO2REE_ASSURANCE_DIR": {
       "kind": "internal",
       "owner": "test-recording",
@@ -824,7 +540,7 @@
     },
     "REPO2REE_EXEC_BUNDLE": {
       "kind": "deployment",
-      "owner": "provider",
+      "owner": "workbench",
       "schema": {
         "type": "string"
       }
@@ -880,44 +596,30 @@
         "type": "string"
       }
     },
-    "REPO2REE_PROVIDER_CONTAINER": {
-      "kind": "internal",
-      "owner": "compose",
-      "schema": {
-        "type": "string"
-      }
-    },
-    "REPO2REE_PROVIDER_IMAGE": {
-      "kind": "deployment",
-      "owner": "compose",
-      "schema": {
-        "type": "string"
-      }
-    },
-    "REPO2REE_PROVIDER_STATE_VOLUME": {
-      "kind": "deployment",
-      "owner": "compose",
-      "schema": {
-        "type": "string"
-      }
-    },
-    "REPO2REE_REGISTRY_MIRROR": {
-      "kind": "internal",
-      "owner": "testbed",
-      "schema": {
-        "type": "string"
-      }
-    },
-    "REPO2REE_REGISTRY_MIRROR_PORT": {
-      "kind": "internal",
-      "owner": "testbed",
-      "schema": {
-        "type": "string"
-      }
-    },
     "REPO2REE_RESOURCE_OWNER": {
       "kind": "internal",
-      "owner": "provider",
+      "owner": "core",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REPO2REE_STORE_DIR": {
+      "kind": "deployment",
+      "owner": "compose",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REPO2REE_STORE_ID": {
+      "kind": "deployment",
+      "owner": "compose",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REPO2REE_STORE_IMAGE": {
+      "kind": "deployment",
+      "owner": "compose",
       "schema": {
         "type": "string"
       }
@@ -945,14 +647,21 @@
     },
     "REPO2REE_TOOLS_BUNDLE": {
       "kind": "deployment",
-      "owner": "provider",
+      "owner": "workbench",
       "schema": {
         "type": "string"
       }
     },
-    "REPO2REE_WORKBENCH_PATH": {
+    "REPO2REE_WORKBENCH_CONTAINER": {
+      "kind": "internal",
+      "owner": "compose",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REPO2REE_WORKBENCH_IMAGE": {
       "kind": "deployment",
-      "owner": "provider",
+      "owner": "compose",
       "schema": {
         "type": "string"
       }
@@ -960,6 +669,13 @@
     "REPO2REE_WORKBENCH_ROOT": {
       "kind": "internal",
       "owner": "core",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REPO2REE_WORKBENCH_STATE_VOLUME": {
+      "kind": "deployment",
+      "owner": "compose",
       "schema": {
         "type": "string"
       }
@@ -1019,6 +735,13 @@
       }
     },
     "STACK_PROVIDER_IMAGE": {
+      "kind": "internal",
+      "owner": "image-stack",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "STACK_WORKBENCH_IMAGE": {
       "kind": "internal",
       "owner": "image-stack",
       "schema": {
@@ -1176,22 +899,6 @@
         "default": "",
         "title": "Workbench Id",
         "type": "string"
-      }
-    },
-    "WORKBENCH_IMAGE_CATALOG": {
-      "kind": "runtime",
-      "owner": "provider",
-      "schema": {
-        "anyOf": [
-          {
-            "type": "string"
-          },
-          {
-            "type": "null"
-          }
-        ],
-        "default": null,
-        "title": "Workbench Image Catalog"
       }
     },
     "WORKBENCH_SCRIPT_ENGINE": {

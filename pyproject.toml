@@ -8,7 +8,7 @@ requires-python = "~=3.13.0"
 dependencies = []
 
 [tool.uv.workspace]
-members = ["ree", "protocol", "telemetry", "authoring", "core", "supervisor", "api", "executor", "docker-support", "provider", "workbench", "assurance/checker", "assurance/dossier", "assurance/collector", "assurance/traceview", "testbed", "repoview"]
+members = ["ree", "protocol", "telemetry", "authoring", "core", "supervisor", "api", "executor", "workbench", "assurance/checker", "assurance/dossier", "assurance/collector", "assurance/traceview", "testbed", "repoview"]
 
 [dependency-groups]
 dev = [
@@ -79,7 +79,6 @@ data_file = "${REPO2REE_TEST_RUN_DIR-test-artifacts}/python/coverage/data/adhoc/
 # records nothing. Inert for the pytest targets, which exit normally.
 sigterm = true
 source = [
-    "docker-support/src/repo2ree_docker",
     "ree/src/repo2ree_ree",
     "protocol/src/repo2ree_protocol",
     "telemetry/src/repo2ree_telemetry",
@@ -88,7 +87,6 @@ source = [
     "supervisor/src/repo2ree_supervisor",
     "api/src/repo2ree_api",
     "executor/src/repo2ree_executor",
-    "provider/src/repo2ree_provider_docker",
     "workbench/src/repo2ree_workbench",
 ]
 omit = [
@@ -110,8 +108,6 @@ src = [
     "supervisor/src",
     "api/src",
     "executor/src",
-    "docker-support/src",
-    "provider/src",
     "workbench/src",
     "assurance/checker/src",
     "assurance/traceview/src",
@@ -252,9 +248,7 @@ root_packages = [
     "repo2ree_api",
     "repo2ree_authoring",
     "repo2ree_core",
-    "repo2ree_docker",
     "repo2ree_executor",
-    "repo2ree_provider_docker",
     "repo2ree_protocol",
     "repo2ree_ree",
     "repo2ree_supervisor",
@@ -274,8 +268,8 @@ type = "layers"
 layers = [
     "repo2ree_api",
     "repo2ree_supervisor",
-    "repo2ree_provider_docker : repo2ree_workbench : repo2ree_executor",
-    "repo2ree_docker : repo2ree_core",
+    "repo2ree_workbench : repo2ree_executor",
+    "repo2ree_core",
     "repo2ree_authoring : repo2ree_telemetry",
     "repo2ree_protocol",
     "repo2ree_ree",
@@ -304,32 +298,18 @@ type = "forbidden"
 source_modules = ["repo2ree_api"]
 forbidden_modules = [
     "repo2ree_core",
-    "repo2ree_docker",
     "repo2ree_executor",
-    "repo2ree_provider_docker",
     "repo2ree_workbench",
 ]
 
-# Capacity and execution are separate authorities: a process holding one
-# vocabulary cannot form a request of the other. Both share `frames`.
-[[tool.importlinter.contracts]]
-name = "Capacity and execution vocabularies are independent"
-type = "independence"
-modules = [
-    "repo2ree_protocol.provider",
-    "repo2ree_protocol.workbench",
-]
-
-# The workbench runs inside whatever environment its provider chose, so it
-# carries no operation, no substrate, and no capacity vocabulary.
+# The workbench runs the executor and nothing of the domain itself: it carries
+# no operation.
 [[tool.importlinter.contracts]]
 name = "Workbench speaks only protocol"
 type = "forbidden"
 source_modules = ["repo2ree_workbench"]
 forbidden_modules = [
     "repo2ree_core",
-    "repo2ree_docker",
-    "repo2ree_protocol.provider",
 ]
 
 [[tool.importlinter.contracts]]
@@ -338,19 +318,8 @@ type = "forbidden"
 source_modules = ["repo2ree_supervisor"]
 forbidden_modules = [
     "repo2ree_core",
-    "repo2ree_docker",
     "repo2ree_executor",
-    "repo2ree_provider_docker",
     "repo2ree_workbench",
-]
-
-[[tool.importlinter.contracts]]
-name = "Provider never executes"
-type = "forbidden"
-source_modules = ["repo2ree_provider_docker"]
-forbidden_modules = [
-    "repo2ree_core",
-    "repo2ree_protocol.workbench",
 ]
 
 # ---- Inside the API ------------------------------------------------------
@@ -515,8 +484,6 @@ mypy_path = [
     "supervisor/src",
     "api/src",
     "executor/src",
-    "docker-support/src",
-    "provider/src",
     "workbench/src",
     "assurance/checker/src",
     "assurance/traceview/src",
@@ -573,10 +540,9 @@ no_implicit_reexport = false
 
 
 [tool.repo2ree.workspace]
-backend = ["ree", "protocol", "telemetry", "authoring", "core", "supervisor", "api", "executor", "docker-support", "provider", "workbench"]
+backend = ["ree", "protocol", "telemetry", "authoring", "core", "supervisor", "api", "executor", "workbench"]
 assurance = ["assurance/checker", "assurance/dossier", "assurance/collector", "assurance/traceview"]
 tooling = ["testbed", "repoview"]
 
 [tool.repo2ree.closures]
 api = "repo2ree-api"
-provider = "repo2ree-provider-docker"

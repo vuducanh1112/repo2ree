@@ -9,7 +9,6 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_protocol.allocation import AllocationState
 from repo2ree_telemetry.behaviour import VOCABULARY, events
 from repo2ree_telemetry.behaviour.writer import FileJournal, Journal, close_journal, journal, open_journal
 
@@ -30,16 +29,6 @@ def test_every_typed_record_keeps_the_published_contract(tmp_path: Path) -> None
     events.author_api_action(
         "a1", "requested", "failed", action="build_runtime", partition="ree-1", facts={"failure_category": "x"}
     )
-    events.allocation(
-        "al1",
-        None,
-        AllocationState.REQUESTED,
-        partition="ree-1",
-        facts={"provider_id": "p", "workbench_id": "w", "location_id": None},
-    )
-    events.allocation(
-        "al1", AllocationState.REQUESTED, AllocationState.FAILED, partition="ree-1", facts={"detail": "x"}
-    )
     sent = events.dispatch_sent("a1", partition="ree-1", facts={"operation": "build_runtime", "run_id": "r1"})
     events.dispatch_received("a1", "result", partition="ree-1", facts={"status": "succeeded", "commit": "c" * 40})
     events.dispatch_sent("a2", partition="ree-1", facts={"operation": "build_runtime", "run_id": "r1"})
@@ -47,7 +36,7 @@ def test_every_typed_record_keeps_the_published_contract(tmp_path: Path) -> None
     events.dispatch_sent("a3", partition="ree-1", facts={"operation": "build_runtime", "run_id": "r1"})
     events.dispatch_abandoned("a3", partition="ree-1", reason="closed_without_response")
     close_journal(final=True)
-    assert sent == "api-000001#6"
+    assert sent == "api-000001#4"
     checked = kept_contract(tmp_path)
     assert checked.returncode == 0, checked.stdout + checked.stderr
 

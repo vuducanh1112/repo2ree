@@ -15,6 +15,7 @@ from repo2ree_api.control import rees
 from repo2ree_api.deps import ree_registry, store_registry, workbench_connections
 from repo2ree_api.settings import service_settings
 from repo2ree_protocol.workbench import WorkbenchHello
+from repo2ree_supervisor import StoreRegistry
 
 
 @pytest.fixture
@@ -114,6 +115,24 @@ def test_an_ree_is_created_in_exactly_one_place(client: TestClient, payload: dic
 def test_an_ree_is_not_created_in_a_store_that_is_not_registered(client: TestClient) -> None:
     response = client.post("/api/v1/rees", json={"name": "x", "store_id": "lab-nowhere"})
     assert response.status_code == 404
+
+
+def test_bootstrapping_a_store_registers_it_once_and_writes_a_working_token(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(service_settings, "CONTROL_STATE_DIR", tmp_path)
+    token_file = tmp_path / "tokens" / "demo"
+
+    assert store_admin.main(["bootstrap", "demo", "--label", "Demo lab", "--token-file", str(token_file)]) == 0
+    first = token_file.read_text().strip()
+    assert store_admin.main(["bootstrap", "demo", "--token-file", str(token_file)]) == 0
+    second = token_file.read_text().strip()
+
+    stores = StoreRegistry(tmp_path / "stores.json")
+    assert [(record.store_id, record.label) for record in stores.all()] == [("demo", "Demo lab")]
+    assert first != second
+    assert stores.authenticate(second, "demo")
+    assert token_file.stat().st_mode & 0o777 == 0o600
 
 
 def test_the_operator_registers_a_store_and_mints_and_revokes_its_tokens(

@@ -28,9 +28,6 @@
   #   - exec-bundle.nix       the executor + workbench closures as a mountable
   #                           tree + manifest
   #   - tools-bundle.nix      the tools closure, same standalone form
-  #   - provider-image.nix    the Docker provider service + embedded
-  #                           exec/tools bundles (the reproducibility surface:
-  #                           every bench executes through what it injects)
   #   - gui-image.nix         the deployed web bundle behind caddy
   # Everything that ships builds against `nixpkgs`. The dev shell takes the
   # toolchains that must match it (Node, Python) from there too, and the
@@ -62,10 +59,6 @@
           inherit pkgs;
           name = "api";
         };
-        providerClosure = import ./nix/python-closure.nix {
-          inherit pkgs;
-          name = "provider";
-        };
         benchChecks = import ./nix/bench-checks.nix { inherit pkgs buildRevision; };
         guiImage = import ./nix/gui-image.nix {
           inherit pkgs;
@@ -88,23 +81,20 @@
           workbench-bundle = import ./nix/workbench-bundle.nix { inherit pkgs buildRevision; };
           exec-bundle = import ./nix/exec-bundle.nix { inherit pkgs buildRevision; };
           tools-bundle = import ./nix/tools-bundle.nix { inherit pkgs; };
-          # Transport for the closure the provider copies into its shared
-          # store volume — not a bench you can run: it carries no toolchain.
+          # The workbench closure as an image to derive from — not a workbench you can
+          # run on its own: it carries no toolchain.
           workbench-image = import ./nix/workbench-image.nix { inherit pkgs buildRevision; };
-          provider-image = import ./nix/provider-image.nix { inherit pkgs buildRevision; };
           backend-image = import ./nix/backend-image.nix { inherit pkgs buildRevision; };
           gui-image = guiImage;
           api-env = apiClosure.env;
-          provider-env = providerClosure.env;
           closure-imports = pkgs.linkFarm "repo2ree-closure-imports" {
             api = apiClosure.imports;
-            provider = providerClosure.imports;
             bench = benchChecks.imports;
           };
           bench-distributions = benchChecks.distributions;
           # The dev container's own tools, beyond its Debian base and Nix.
           devcontainer = import ./nix/devcontainer.nix { inherit devPkgs; };
-          default = provider-image;
+          default = backend-image;
         };
       }
     );

@@ -8398,7 +8398,7 @@
         },
         "type": "object",
         "title": "BuildInfo",
-        "description": "A component's package version and exact source revision.\n\nBoth fields are optional on the wire so independently deployed third-party\nproviders and workbenches remain compatible."
+        "description": "A component's package version and exact source revision.\n\nBoth fields are optional on the wire so independently deployed workbenches\nremain compatible."
       },
       "BuildRuntimeDefinition": {
         "properties": {

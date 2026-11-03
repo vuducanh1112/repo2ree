@@ -7,9 +7,10 @@ from repo2ree_testbed.stack import images as image_stack
 from repo2ree_testbed.stack import workbench_cleanup as cleanup
 
 
-def test_provider_names_remain_compatible() -> None:
-    assert image_stack.ImageStack.provider_name(1) == "repo2ree-provider-docker"
-    assert image_stack.ImageStack.provider_name(3) == "repo2ree-provider-docker-3"
+def test_each_further_store_has_a_workbench_and_a_directory_of_its_own() -> None:
+    assert image_stack.ImageStack.workbench_name(3) == "repo2ree-workbench-3"
+    store = image_stack.ImageStack.store_environment(3)
+    assert (store["REPO2REE_STORE_ID"], store["REPO2REE_STORE_DIR"]) == ("lab-3", f"{image_stack.STORE_ROOT}/lab-3")
 
 
 def test_global_cleanup_takes_only_job_and_bench_containers_and_unused_anonymous_volumes(

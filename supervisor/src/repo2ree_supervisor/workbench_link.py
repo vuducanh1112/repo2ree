@@ -15,8 +15,7 @@ it. This module is the control-plane half (the workbench half is
   connected workbench.
 * ``WsWorkbenchClient`` implements the ``WorkbenchClient`` seam over the picked
   connection, returning frame streams for the streaming verbs and materialised
-  values for the request/response ones. Capacity is a separate seam on a
-  separate socket (``provider_link``).
+  values for the request/response ones.
 """
 
 from __future__ import annotations

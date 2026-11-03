@@ -9,7 +9,6 @@ from pydantic import create_model
 from repo2ree_protocol.command import Command
 from repo2ree_protocol.frames import Frame
 from repo2ree_protocol.outputs import OUTPUTS
-from repo2ree_protocol.provider import ProviderHello, ProviderWsMessage, ProviderWsRequest
 from repo2ree_protocol.queries import QUERIES
 from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.workbench import WorkbenchHello, WorkbenchWsMessage, WorkbenchWsRequest
@@ -23,9 +22,6 @@ MESSAGES: dict[str, Any] = {
     "WorkbenchHello": WorkbenchHello,
     "WorkbenchWsRequest": WorkbenchWsRequest,
     "WorkbenchWsMessage": WorkbenchWsMessage,
-    "ProviderHello": ProviderHello,
-    "ProviderWsRequest": ProviderWsRequest,
-    "ProviderWsMessage": ProviderWsMessage,
 }
 
 

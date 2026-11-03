@@ -1,6 +1,16 @@
-# Self-contained local demo: GUI + backend + a Docker provider. The provider
-# owns the Docker socket and creates one isolated workbench container per REE;
-# the backend remains a pure control plane with no Docker access.
+# Self-contained local demo: GUI + backend + one store, served by a workbench
+# that runs each REE's scripts in a container from the image the REE declares.
+#
+# The workbench holds the host's Docker socket and starts every job container
+# through it, so this is a trusted demo: an REE's scripts may reach the host
+# engine (--script-engine socket), which is what lets the Docker REEs build
+# images. The backend stays a pure control plane with no Docker access.
+#
+# store-init registers the demo store on the backend's state and writes a fresh
+# token for the workbench to a volume only the two share; the workbench reads it
+# at start. The store lives at the same path on the host and in the workbench
+# (REPO2REE_STORE_DIR), so a job container the host engine starts sees the REE
+# where the workbench does.
 services:
   backend:
     image: ${REPO2REE_BACKEND_IMAGE:-docker.io/vuducanh1112/repo2ree-backend:edge}
@@ -8,8 +18,6 @@ services:
       - "8000:8000"
     volumes:
       - repo2ree-demo-data:/app/.repo2ree
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     environment:
       # Optional OTLP collector for traces/metrics/logs — pass through from
       # the host so e.g. `OTLP_ENDPOINT=http://host.docker.internal:4318 just
@@ -19,9 +27,8 @@ services:
       # `OTEL_EXPORTER_OTLP_HEADERS=authorization=<key>`.
       OTLP_ENDPOINT: ${OTLP_ENDPOINT:-}
       OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
-    # No docker.sock here: the backend is pure control plane — every touch of
-    # a container runtime goes through a connected workbench over its outbound
-    # WebSocket.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   gui:
     image: ${REPO2REE_GUI_IMAGE:-docker.io/vuducanh1112/repo2ree-gui:edge}
@@ -32,35 +39,59 @@ services:
     environment:
       BACKEND_UPSTREAM: backend:8000
 
-  provider:
-    image: ${REPO2REE_PROVIDER_IMAGE:-docker.io/vuducanh1112/repo2ree-provider-docker:edge}
+  store-init:
+    image: ${REPO2REE_BACKEND_IMAGE:-docker.io/vuducanh1112/repo2ree-backend:edge}
+    entrypoint:
+      - python
+      - -m
+      - repo2ree_api.store_admin
+      - bootstrap
+      - ${REPO2REE_STORE_ID:-demo}
+      - --label
+      - Demo lab
+      - --token-file
+      - /tokens/${REPO2REE_STORE_ID:-demo}
+    volumes:
+      - repo2ree-demo-data:/app/.repo2ree
+      - repo2ree-store-tokens:/tokens
+    restart: "no"
+
+  workbench:
+    image: ${REPO2REE_WORKBENCH_IMAGE:-docker.io/vuducanh1112/repo2ree-workbench:edge}
     depends_on:
-      - backend
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      backend:
+        condition: service_started
+      store-init:
+        condition: service_completed_successfully
+    command:
+      - repo2ree-workbench
+      - --store
+      - ${REPO2REE_STORE_ID:-demo}=${REPO2REE_STORE_DIR:-/var/lib/repo2ree/store}
+      - --backend
+      - container
+      - --script-engine
+      - socket
+      - --connect
+      - ws://backend:8000/workbench/connect
+      - --token-file
+      - /tokens/${REPO2REE_STORE_ID:-demo}
+      # The images an REE created in the store may declare, the first the default.
+      - --image
+      - ${REPO2REE_STORE_IMAGE:-docker.io/library/python:3.12-slim}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - repo2ree-provider-state:/var/lib/repo2ree-provider
+      - ${REPO2REE_STORE_DIR:-/var/lib/repo2ree/store}:${REPO2REE_STORE_DIR:-/var/lib/repo2ree/store}
+      - repo2ree-store-tokens:/tokens:ro
+      - repo2ree-workbench-state:/var/lib/repo2ree-workbench
     environment:
-      PROVIDER_API_WS_URL: ws://backend:8000/provider/connect
-      PROVIDER_WORKBENCH_API_WS_URL: ws://backend:8000/workbench/connect
-      # Provider-created containers are not Compose services, so explicitly
-      # join them to the demo network where the `backend` service name resolves.
-      PROVIDER_WORKBENCH_DOCKER_NETWORK: ${REPO2REE_NETWORK:-repo2ree-demo}
-      PROVIDER_DOCKER_MODE: ${PROVIDER_DOCKER_MODE:-dind}
-      PROVIDER_WORKBENCH_DNS: ${PROVIDER_WORKBENCH_DNS:-}
-      PROVIDER_WORKBENCH_REGISTRY_MIRROR: ${PROVIDER_WORKBENCH_REGISTRY_MIRROR:-}
       OTLP_ENDPOINT: ${OTLP_ENDPOINT:-}
       OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
-      PROVIDER_WORKBENCH_TELEMETRY: ${PROVIDER_WORKBENCH_TELEMETRY:-}
-      PROVIDER_WORKBENCH_OTLP_ENDPOINT: ${PROVIDER_WORKBENCH_OTLP_ENDPOINT:-}
 
 volumes:
   repo2ree-demo-data:
-  repo2ree-provider-state:
+  repo2ree-store-tokens:
+  repo2ree-workbench-state:
 
 networks:
   default:
-    # A predictable name is part of the demo contract: child workbenches are
-    # launched through the Docker API rather than by Compose and must name it.
     name: ${REPO2REE_NETWORK:-repo2ree-demo}
