@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from repo2ree_testbed import provenance
 from repo2ree_testbed.records import RunRecord, RunTest, read
 from repo2ree_testbed.runs import assess, visualize
 
@@ -138,3 +139,37 @@ def test_a_path_names_a_run_or_a_dossier_and_none_the_newest_run(
     assert assess.is_run(assess.target(str(tmp_path / "e2e/run-b")))
     with pytest.raises(ValueError, match="neither a run"):
         assess.target(str(tmp_path / "e2e/run-b/tests"))
+
+
+def test_a_run_records_the_tree_that_assessed_it_and_an_invocation_assesses_its_runs(
+    tmp_path: Path, tools: list[tuple[str, ...]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(assess, "run_dir", lambda: tmp_path)
+    monkeypatch.setattr(provenance, "clean_tree", lambda: "c" * 40)
+    for name, invocation in [("e2e-system-1", "gate"), ("e2e-faults-1", "gate"), ("e2e-gui-1", "other")]:
+        run = tmp_path / "e2e" / name
+        dossier_at(run / "tests/t/dossier")
+        (run / "run.json").write_text(
+            RunRecord(
+                tier=name, suite="s", build_revision="", jobs=1, invocation=invocation, tests=(run_test("tests/t"),)
+            ).model_dump_json()
+        )
+    assert [run.name for run in assess.runs_of("gate")] == ["e2e-faults-1", "e2e-system-1"]
+    monkeypatch.setattr("sys.argv", ["assess", "--invocation", "gate"])
+    assert assess.main() == 0
+
+    assessed = {name: read(RunRecord, tmp_path / "e2e" / name / "run.json") for name in ("e2e-system-1", "e2e-gui-1")}
+    system, gui = assessed["e2e-system-1"], assessed["e2e-gui-1"]
+    assert system is not None
+    assert system.assessed_tree == "c" * 40
+    assert gui is not None
+    assert gui.assessed_tree == ""
+    assert [test.behaviour for test in gui.tests] == [None]
+
+    # One test assessed again from another tree leaves the run assessed by no single tree.
+    monkeypatch.setattr(provenance, "clean_tree", lambda: "d" * 40)
+    (tmp_path / "e2e/e2e-system-1/tests/t/test.json").write_text("{}")
+    assess.assess_dossier(tmp_path / "e2e/e2e-system-1/tests/t/dossier")
+    again = read(RunRecord, tmp_path / "e2e/e2e-system-1/run.json")
+    assert again is not None
+    assert again.assessed_tree == ""

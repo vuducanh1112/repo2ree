@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -12,7 +11,6 @@ from dataclasses import dataclass
 from repo2ree_testbed import provenance
 from repo2ree_testbed.artifacts import ROOT, execution_id, run_dir
 from repo2ree_testbed.records import RunRecord, RunTest, TestResult, read, write
-from repo2ree_testbed.runs.assess import assess_run
 from repo2ree_testbed.stack.clients import Client, TestCase, reported_outcome
 from repo2ree_testbed.stack.process import capture
 from repo2ree_testbed.stack.services import Deployment
@@ -84,10 +82,7 @@ class SuiteRun:
         write(self.root / "run.json", record)
         if self.last is not None:
             self.last.coverage_report()
-        try:
-            assess_run(self.root)
-        except (OSError, ValueError) as error:
-            print(f"assessment failed: {error}", file=sys.stderr)
+        print(f">> assess its behaviour: just assess-behaviour {self.root}")
         return record
 
     @property

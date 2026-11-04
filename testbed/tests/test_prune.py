@@ -178,3 +178,21 @@ def test_a_directory_another_prune_removed_first_is_no_error(monkeypatch: pytest
     prune.remove_empty_directories(tmp_path / "tests")
 
     assert list((tmp_path / "tests").rglob("*")) == []
+
+
+def test_a_passed_test_not_yet_assessed_is_no_problem() -> None:
+    test = RunTest(
+        name="t",
+        selection=(),
+        outcome="passed",
+        reason="",
+        exit_code=0,
+        started=0,
+        finished=1,
+        rees=(),
+        phases={},
+        directory="tests/t",
+    )
+    run = RunRecord(tier="t", suite="s", build_revision="", jobs=1, tests=(test,))
+    assert not run.problem()
+    assert run.with_tests((test.judged("violated"),)).problem()

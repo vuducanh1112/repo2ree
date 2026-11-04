@@ -1,12 +1,14 @@
 """Assess the behaviour of an e2e run's tests, or of one dossier: check each dossier against the
 behaviour specification and record the verdict. Never changes a test's outcome, and draws nothing:
-``repo2ree_testbed visualize`` draws what this records.
+``repo2ree_testbed visualize`` draws what this records. A run only collects; this is the step after.
 
 A run is a folder with a run.json, as ``repo2ree_testbed e2e --per-test`` writes it: every test's
 dossier is checked into its verification/, and its verdict and last failed command recorded in
-run.json. A dossier is a folder with a manifest.json: one a run's test left is assessed as that
-test; one collected from a live deployment (``collect-dossier``) has its verification and logs
-written under the assurance directory, by its name.
+run.json, with the clean tree that assessed them. ``--invocation`` assesses every run of one
+invocation (REPO2REE_TEST_RUN_ID), as the assurance gate does its tiers. A dossier is a folder
+with a manifest.json: one a run's test left is assessed as that test; one collected from a live
+deployment (``collect-dossier``) has its verification and logs written under the assurance
+directory, by its name.
 """
 
 from __future__ import annotations
@@ -16,6 +18,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from repo2ree_testbed import provenance
 from repo2ree_testbed.artifacts import ROOT, domain_dir, run_dir
 from repo2ree_testbed.records import Behaviour, RunRecord, RunTest, read, write
 from repo2ree_testbed.runs.failed_command import FailedCommand, last_failed_command
@@ -61,7 +64,7 @@ def assess_run(root: Path) -> RunRecord:
         print(f"   {assessed.outcome:<7} behaviour {assessed.behaviour or '':<12} {test.name}")
         if assessed.last_failed_command:
             print(f"           outcome {assessed.outcome}, last failed command: {assessed.last_failed_command}")
-    assessed_run = run.with_tests(tuple(tests))
+    assessed_run = run.with_tests(tuple(tests)).but(assessed_tree=provenance.clean_tree())
     write(root / "run.json", assessed_run)
     print(f">> assessed: {root / 'run.json'}")
     print(f">> draw it: just visualize-behaviour {root}")
@@ -83,7 +86,9 @@ def assess_dossier(dossier: Path) -> Behaviour:
         root, run = found
         name = str(dossier.parent.relative_to(root))
         tests = tuple(assess_test(dossier.parent, test) if test.directory == name else test for test in run.tests)
-        write(root / "run.json", run.with_tests(tests))
+        # One test assessed again keeps the run's tree only if it was assessed by that same tree.
+        tree = run.assessed_tree if run.assessed_tree == provenance.clean_tree() else ""
+        write(root / "run.json", run.with_tests(tests).but(assessed_tree=tree))
         [assessed] = [test for test in tests if test.directory == name]
         print(f">> {assessed.behaviour}: {dossier.parent / 'verification'}")
         return assessed.behaviour or "missing"
@@ -91,6 +96,18 @@ def assess_dossier(dossier: Path) -> Behaviour:
     verdict = judge(dossier, reports / "verification" / dossier.name, reports / "logs" / dossier.name)
     print(f">> {verdict}: {reports / 'verification' / dossier.name / 'assurance.html'}")
     return verdict
+
+
+def runs_of(invocation: str) -> list[Path]:
+    """The runs whose run.json names this invocation."""
+    found = [
+        record.parent
+        for record in sorted((run_dir() / "e2e").glob("*/run.json"))
+        if (run := read(RunRecord, record)) is not None and run.invocation == invocation
+    ]
+    if not found:
+        raise ValueError(f"no run under {run_dir() / 'e2e'} names invocation {invocation}")
+    return found
 
 
 def newest_run() -> Path:
@@ -114,16 +131,22 @@ def is_run(path: Path) -> bool:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    chosen_by = parser.add_mutually_exclusive_group()
     # A string, not a path: a recipe passes "" for "the newest", and Path("") would be the working directory.
-    parser.add_argument(
+    chosen_by.add_argument(
         "path",
         nargs="?",
         default="",
         help="a run or a dossier (default: the newest run); a dossier exits with "
         "its verdict: 0 passed, 1 violated, 2 inconclusive",
     )
+    chosen_by.add_argument("--invocation", help="assess every run that names this invocation (REPO2REE_TEST_RUN_ID)")
     args = parser.parse_args()
     try:
+        if args.invocation:
+            for run in runs_of(args.invocation):
+                assess_run(run)
+            return 0
         chosen = target(args.path)
         if not is_run(chosen):
             return EXIT_CODES.get(assess_dossier(chosen), 2)

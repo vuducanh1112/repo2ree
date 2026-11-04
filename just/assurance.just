@@ -62,7 +62,7 @@ export-operations: report-assurance-gate
     python -m repo2ree_assurance_traceview operations "${verifications[@]}" -o {{ quote(EXPORT_DIR + "/operations.json") }}
     {{ STAMP_EXPORTS }} --by export-operations {{ quote(EXPORT_DIR + "/operations.json") }}
 
-# Judge per-test runs as the assurance gate would (the newest of each tier by default), certifying nothing.
+# Assess per-test runs with this tree and judge them as the assurance gate would (the newest of each tier by default), certifying nothing.
 [group('E2E tests')]
 judge-e2e *runs:
     #!/usr/bin/env bash
@@ -74,6 +74,7 @@ judge-e2e *runs:
         done
     fi
     [[ -n "${runs// /}" ]] || { echo "no per-test run under {{ REPO2REE_TEST_RUN_DIR }}/e2e" >&2; exit 2; }
+    for run in $runs; do python -m repo2ree_testbed assess "$run"; done
     python -m scripts.gates.assurance_gate judge $runs
 
 # Assess the behaviour of a per-test run's tests, or of one dossier (the newest run by default): check each
