@@ -56,7 +56,9 @@ from repo2ree_protocol.workbench import (
     workbench_ws_message_adapter,
 )
 from repo2ree_supervisor.client import WorkbenchUnavailableError, raise_for_terminal_error
+from repo2ree_supervisor.sessions import Session
 from repo2ree_supervisor.transfers import ReceivedFile, Transfers
+from repo2ree_telemetry.behaviour.events import WorkbenchSessionReason
 from repo2ree_telemetry.relay import SpanSink
 from repo2ree_telemetry.spans import current_traceparent
 
@@ -119,14 +121,17 @@ class WorkbenchConnection:
         hello: WorkbenchHello | None = None,
         *,
         span_sink: SpanSink | None = None,
+        session: Session | None = None,
     ):
         # ``send_text`` schedules a send on the event loop and returns at once.
         # ``hello`` is the workbench's self-description, surfaced by the fleet view.
         # ``span_sink`` receives the workbench's *own* spans, which arrive
         # uncorrelated because they answer no request; None discards them.
+        # ``session`` is the journal's record of this socket; closing the connection ends it.
         self._send_text = send_text
         self.hello = hello
         self._span_sink = span_sink
+        self.session = session
         self._pending: dict[str, queue.Queue[Frame]] = {}
         self._lock = threading.Lock()
         self._closed = False
@@ -204,8 +209,14 @@ class WorkbenchConnection:
                 WorkbenchWsRequest(id=uuid4().hex, request=CancelRequest(request_id=req_id)).model_dump_json()
             )
 
-    def close(self) -> None:
-        """Mark the connection dead and unblock every waiting caller."""
+    @property
+    def session_id(self) -> str | None:
+        return self.session.session_id if self.session is not None else None
+
+    def close(self, reason: WorkbenchSessionReason = "closed", close_code: int | None = None) -> None:
+        """Mark the connection dead, end its session the first way it ended, and unblock every waiting caller."""
+        if self.session is not None:
+            self.session.lose(reason, close_code)
         with self._lock:
             self._closed = True
             pending = list(self._pending.values())
@@ -292,7 +303,7 @@ class WorkbenchConnectionRegistry:
             self._changed.notify_all()
         if displaced is not None and displaced is not connection:
             self._log_displacement(workbench_id, displaced, connection)
-            displaced.close()
+            displaced.close("superseded")
 
     @staticmethod
     def _log_displacement(workbench_id: str, displaced: WorkbenchConnection, connection: WorkbenchConnection) -> None:
@@ -338,6 +349,13 @@ class WorkbenchConnectionRegistry:
                 self._workbenches.pop(workbench_id, None)
                 self._connected_at.pop(workbench_id, None)
                 self._changed.notify_all()
+
+    def close_all(self, reason: WorkbenchSessionReason) -> None:
+        """Close every connection, for a control plane on its way down: their sessions end with ``reason``."""
+        with self._lock:
+            connections = list(self._workbenches.values())
+        for connection in connections:
+            connection.close(reason)
 
     def wait(self, workbench_id: str, timeout: float) -> None:
         with self._changed:
@@ -416,6 +434,13 @@ class WsWorkbenchClient:
         """Backward-compatible name for connection liveness."""
         return self.is_connected(workbench_id)
 
+    def session_of(self, workbench_id: str) -> str | None:
+        """The session a command for ``workbench_id`` would be sent on now; None while it is not connected."""
+        try:
+            return self._registry.pick(workbench_id).session_id
+        except WorkbenchUnavailableError:
+            return None
+
     # ------------------------------------------------
     # Streaming — hand the frame stream straight to the manager.
     # ------------------------------------------------
@@ -429,10 +454,15 @@ class WsWorkbenchClient:
         context: ExecutionContext | None = None,
         *,
         ree_id: str,
+        session: str | None = None,
     ) -> Iterator[Frame]:
+        # A command journaled as sent on ``session`` goes on that session or not at all.
+        connection = self._registry.pick(workbench_id)
+        if session is not None and connection.session_id != session:
+            raise WorkbenchUnavailableError(f"session {session} ended before the command was sent")
         # No frame gap: a script may run quietly for hours. The connection's pings decide whether the
         # workbench is still there, and an author's cancel or a lost connection ends the run.
-        return self._registry.pick(workbench_id).request(
+        return connection.request(
             ExecActionRequest(cmd_json=cmd_json, run_id=run_id, env=env, context=context, ree_id=ree_id),
             frame_gap_timeout=None,
         )

@@ -36,6 +36,7 @@ from repo2ree_supervisor import (
     WorkbenchConnection,
     WorkbenchUnavailableError,
 )
+from repo2ree_supervisor.sessions import Session
 from repo2ree_supervisor.transfers import TRANSFER_PATH_PREFIX
 
 logger = logging.getLogger(__name__)
@@ -94,7 +95,7 @@ async def workbench_connect(websocket: WebSocket) -> None:
         # silently losing their request and waiting out the frame-gap timeout.
         logger.warning("send to workbench service failed; closing its connection: %s", fut.exception())
         if connection is not None:
-            connection.close()
+            connection.close("send_failed")
 
     def send_text(text: str) -> None:
         # Called from a worker thread (the synchronous manager); hop back onto
@@ -104,27 +105,32 @@ async def workbench_connect(websocket: WebSocket) -> None:
 
     # First message is the workbench's hello: identity + self-reported capabilities.
     hello = workbench_hello_adapter.validate_json(await websocket.receive_text())
+    # Do not retain credentials on live connection objects, nor in the session's record.
+    token, hello = hello.enrollment_token, hello.model_copy(update={"enrollment_token": ""})
+    session = Session(hello, registered=store_registry.get(hello.store_id) is not None)
     # A workbench serves a store, and is admitted by a token minted for that store alone.
-    if not store_registry.authenticate(hello.enrollment_token, hello.store_id):
+    if not store_registry.authenticate(token, hello.store_id):
         logger.warning("refused workbench %r for store %r: no valid token for it", hello.workbench_id, hello.store_id)
+        session.refuse("bad_token")
         await websocket.close(code=1008, reason="invalid store registration")
         return
-    # Do not retain credentials on live connection objects.
-    hello = hello.model_copy(update={"enrollment_token": ""})
-    connection = WorkbenchConnection(send_text=send_text, hello=hello, span_sink=span_sink)
+    connection = WorkbenchConnection(send_text=send_text, hello=hello, span_sink=span_sink, session=session)
     try:
         workbench_connections.register(hello.workbench_id, connection)
     except StoreClaimedError as exc:
         logger.warning("refused workbench %r: %s", hello.workbench_id, exc)
+        session.refuse("store_claimed")
         await websocket.close(code=1008, reason="store already served")
         return
+    session.connect()
+    close_code: int | None = None
     try:
         while True:
             connection.on_message(await websocket.receive_text())
-    except WebSocketDisconnect:
-        pass
+    except WebSocketDisconnect as exc:
+        close_code = exc.code
     finally:
-        connection.close()
+        connection.close("closed", close_code)
         workbench_connections.unregister(hello.workbench_id, connection)
 
 

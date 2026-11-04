@@ -33,7 +33,7 @@ def test_every_typed_record_keeps_the_published_contract(tmp_path: Path) -> None
     events.dispatch_received("a1", "result", partition="ree-1", facts={"status": "succeeded", "commit": "c" * 40})
     events.dispatch_sent("a2", partition="ree-1", facts={"operation": "build_runtime", "run_id": "r1"})
     events.dispatch_received("a2", "unavailable", partition="ree-1")
-    events.dispatch_sent("a3", partition="ree-1", facts={"operation": "build_runtime", "run_id": "r1"})
+    events.dispatch_sent("a3", partition="ree-1", facts={"operation": "build_runtime", "run_id": "r1", "session": "s1"})
     events.dispatch_abandoned("a3", partition="ree-1", reason="closed_without_response")
     close_journal(final=True)
     assert sent == "api-000001#4"

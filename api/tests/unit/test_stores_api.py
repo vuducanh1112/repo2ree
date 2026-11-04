@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import json
 import time
 import uuid
+from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -16,6 +19,7 @@ from repo2ree_api.deps import ree_registry, store_registry, workbench_connection
 from repo2ree_api.settings import service_settings
 from repo2ree_protocol.workbench import WorkbenchHello
 from repo2ree_supervisor import StoreRegistry
+from repo2ree_telemetry.behaviour import close_journal, open_journal
 
 
 @pytest.fixture
@@ -184,3 +188,59 @@ def test_a_new_ree_in_a_store_declares_the_image_asked_for_its_first_or_its_host
 def test_a_store_refuses_an_image_it_stopped_offering() -> None:
     with pytest.raises(ValueError, match="does not offer"):
         rees._store_environment(("python:3.12",), "docker:29")
+
+
+@pytest.fixture
+def journal_path(tmp_path: Path) -> Iterator[Path]:
+    """A journal of the test's own, as the process's, for as long as the test runs."""
+    opened = open_journal(tmp_path / "journal", "api", hosts=("api", "supervisor"))
+    yield opened.path
+    close_journal()
+
+
+def _sessions(
+    path: Path, store_id: str, settled: int, timeout: float = 5.0
+) -> list[tuple[str | None, str, dict[str, Any]]]:
+    """The store's WorkbenchSession transitions in the journal at ``path``, once ``settled`` of them have settled."""
+    deadline = time.monotonic() + timeout
+    while True:
+        rows = [json.loads(line) for line in path.read_text().splitlines()]
+        moves = [
+            (row["from"], row["to"], row["facts"])
+            for row in rows
+            if row.get("subject") == "WorkbenchSession" and row["facts"].get("store_id") == store_id
+        ]
+        if sum(target in {"refused", "lost"} for _, target, _ in moves) >= settled or time.monotonic() > deadline:
+            return moves
+
+
+def test_a_workbench_connection_is_journaled_as_its_session(client: TestClient, lab: str, journal_path: Path) -> None:
+    token = store_registry.mint_token(lab)
+    with client.websocket_connect("/workbench/connect") as socket:
+        socket.send_text(_hello(lab, token, "wb-journaled"))
+        assert _served(lab) == "wb-journaled"
+    moves = _sessions(journal_path, lab, settled=1)
+    assert [(current, target) for current, target, _ in moves] == [
+        (None, "opened"),
+        ("opened", "connected"),
+        ("connected", "lost"),
+    ]
+    assert moves[2][2]["reason"] == "closed"
+    assert isinstance(moves[2][2]["close_code"], int)
+
+
+def test_a_refused_workbench_is_journaled_with_why(client: TestClient, lab: str, journal_path: Path) -> None:
+    token = store_registry.mint_token(lab)
+    with client.websocket_connect("/workbench/connect") as socket:
+        socket.send_text(_hello(lab, "not-a-token", "wb-unknown"))
+        with pytest.raises(WebSocketDisconnect):
+            socket.receive_text()
+    with client.websocket_connect("/workbench/connect") as first:
+        first.send_text(_hello(lab, token, "wb-first"))
+        assert _served(lab) == "wb-first"
+        with client.websocket_connect("/workbench/connect") as second:
+            second.send_text(_hello(lab, token, "wb-second"))
+            with pytest.raises(WebSocketDisconnect):
+                second.receive_text()
+    refused = [facts["reason"] for _, target, facts in _sessions(journal_path, lab, settled=3) if target == "refused"]
+    assert refused == ["bad_token", "store_claimed"]

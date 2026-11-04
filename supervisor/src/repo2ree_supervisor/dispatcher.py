@@ -180,10 +180,14 @@ class CommandDispatcher:
         visible to the checker rather than silently overwritten here. The two
         sides cite each other: the command carries the request's journal
         reference into the attempt's record, and the recorded result names the
-        commit that captured the attempt. Returns the result and the context sent.
+        commit that captured the attempt. The request names the session it is
+        sent on, and is sent on no other. Returns the result and the context sent.
         """
+        session = self._workbench.session_of(handle.workbench_id)
         dispatched = events.dispatch_sent(
-            context.attempt_id, partition=handle.ree_id, facts={"operation": str(cmd.operation), "run_id": run_id}
+            context.attempt_id,
+            partition=handle.ree_id,
+            facts={"operation": str(cmd.operation), "run_id": run_id, "session": session},
         )
         context = context.model_copy(update={"dispatch_record": dispatched})
         answered = False
@@ -194,7 +198,7 @@ class CommandDispatcher:
             events.dispatch_received(context.attempt_id, message, partition=handle.ree_id, facts=facts)
 
         try:
-            result = self._dispatch_action_locked(handle, cmd, run_id, log, context, observe)
+            result = self._dispatch_action_locked(handle, cmd, run_id, log, context, observe, session)
         except BaseException as exc:
             if not answered:
                 events.dispatch_abandoned(context.attempt_id, partition=handle.ree_id, reason=type(exc).__name__)
@@ -211,6 +215,7 @@ class CommandDispatcher:
         log: LogSink,
         context: ExecutionContext,
         observe: Callable[[events.DispatchResponse, events.ResultFacts | None], None],
+        session: str | None,
     ) -> ActionResult:
         cmd_json = cmd.model_dump_json()
 
@@ -232,7 +237,7 @@ class CommandDispatcher:
         # sits on this loop, the per-REE lock, or the measured execute window.
         result: ActionResult | None = None
         for frame in self._workbench.exec_action(
-            handle.workbench_id, cmd_json, run_id, env, context, ree_id=handle.ree_id
+            handle.workbench_id, cmd_json, run_id, env, context, ree_id=handle.ree_id, session=session
         ):
             if isinstance(frame, LogFrame):
                 log(frame.stream, frame.level, frame.message)

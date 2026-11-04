@@ -18,6 +18,8 @@ from typing import Literal, NotRequired, TypedDict, cast
 from repo2ree_telemetry.behaviour.writer import Fact, journal
 
 DispatchResponse = Literal["result", "unavailable", "error"]
+WorkbenchSessionState = Literal["opened", "connected", "refused", "lost"]
+WorkbenchSessionReason = Literal["bad_token", "store_claimed", "closed", "send_failed", "superseded", "shutdown"]
 AuthorApiActionState = Literal["requested", "running", "canceling", "succeeded", "failed", "canceled"]
 # What an author can ask of one REE through the API, by group.
 AuthorApiActionName = Literal[
@@ -77,6 +79,19 @@ class AuthorApiActionFacts(TypedDict, total=False):
 class ExecActionFacts(TypedDict):
     operation: str
     run_id: str
+    # The WorkbenchSession the command is sent on.
+    session: NotRequired[str | None]
+
+
+class WorkbenchSessionFacts(TypedDict, total=False):
+    workbench_id: str
+    nonce: str
+    store_id: str
+    backend: str
+    slots: int
+    version: str | None
+    reason: WorkbenchSessionReason
+    close_code: int | None
 
 
 class ResultFacts(TypedDict):
@@ -104,6 +119,20 @@ def author_api_action(
     """What an author asked of one REE through the API moved on; the API owns it."""
     recorded: dict[str, Fact] = {"action": action, **_facts(facts)}
     journal().transition("api", "AuthorApiAction", key, current, target, partition=partition, facts=recorded)
+
+
+def workbench_session(
+    key: str,
+    current: WorkbenchSessionState | None,
+    target: WorkbenchSessionState,
+    *,
+    partition: str | None,
+    facts: WorkbenchSessionFacts,
+) -> None:
+    """A workbench's connection to its store moved on; the supervisor owns it."""
+    journal().transition(
+        "supervisor", "WorkbenchSession", key, current, target, partition=partition, facts=_facts(facts)
+    )
 
 
 def dispatch_sent(key: str, *, partition: str, facts: ExecActionFacts) -> str | None:

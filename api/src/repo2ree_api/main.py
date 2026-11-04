@@ -31,6 +31,7 @@ from repo2ree_api.control.fleet import (
 from repo2ree_api.control.rees import rees_router
 from repo2ree_api.control.run_orchestration import shutdown_runs, startup_runs
 from repo2ree_api.control.runs import runs_router
+from repo2ree_api.deps import workbench_connections
 from repo2ree_api.ree_index_routes import ree_index_router
 from repo2ree_api.review.records import review_records_router
 from repo2ree_api.review.stages import review_stages_router
@@ -70,6 +71,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         # The workers drained, so what is still open was never answered: an upload the
         # author never completed. It fails here, before the journal closes.
         author_actions.settle_open("abandoned")
+        # Workbenches still connected lose their connection with the control plane.
+        workbench_connections.close_all("shutdown")
         close_journal(final=service_settings.BEHAVIOUR_FINAL_SHUTDOWN)
         if tracer_provider is not None:
             tracer_provider.shutdown()

@@ -71,7 +71,10 @@ class WorkbenchClient(Protocol):
         context: ExecutionContext | None = None,
         *,
         ree_id: str,
-    ) -> Iterator[Frame]: ...
+        session: str | None = None,
+    ) -> Iterator[Frame]:
+        """Send a command; with ``session``, only on that session of the workbench's connection."""
+        ...
 
     def cancel_run(self, workbench_id: str, run_id: str, *, ree_id: str) -> None: ...
 
@@ -87,3 +90,7 @@ class WorkbenchClient(Protocol):
         ...
 
     def is_connected(self, workbench_id: str) -> bool: ...
+
+    def session_of(self, workbench_id: str) -> str | None:
+        """The WorkbenchSession a command for ``workbench_id`` would be sent on now, if it is connected."""
+        ...
