@@ -72,9 +72,10 @@ check-gui: _check-write-hint check-api-types
     echo "Running dependency-cruiser..."
     npx depcruise src tests
 
-# Generate GUI API types into a temporary file and require the checked-in file
-# to be current. Comparing content rather than against HEAD also works while an
-# API migration is intentionally uncommitted, without modifying the worktree.
+# Generates them into a temporary file and compares content rather than against HEAD,
+# so it also works while an API migration is intentionally uncommitted, without
+# modifying the worktree.
+# Require the checked-in GUI API types to be current with the OpenAPI contract.
 [group('Checks')]
 check-api-types: _check-write-hint
     #!/usr/bin/env bash

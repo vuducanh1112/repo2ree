@@ -46,9 +46,9 @@ retention = "Unbounded but slow: it keeps the examples that once failed; removin
 claims = ["test-artifacts/cache"]
 
 [owners.assess-behaviour]
-summary = "Verdicts, traces, and logs of a dossier collected from a deployment"
-retention = "Rewritten per dossier label"
-claims = ["test-artifacts/assurance/verification", "test-artifacts/assurance/traces", "test-artifacts/assurance/logs"]
+summary = "Behaviour assessments and their visualizations, beside the runs and dossiers they report on"
+retention = "Rewritten per run or dossier; a run's report goes when its run does, by every assessment"
+claims = ["reports/behaviour"]
 
 [owners.gui]
 summary = "Vitest coverage and Playwright output"
@@ -61,9 +61,9 @@ retention = "The newest three, and the one `latest` points to, kept by every bui
 claims = ["reports/overview"]
 
 [owners.repoview-rewritten]
-summary = "Diagrams and metrics, stamped with the commit they came from, and the exports and gate reports the overview reads"
+summary = "Diagrams and metrics, stamped with the commit they came from, and the exports the overview reads"
 retention = "Rewritten by each run"
-claims = ["reports/diagrams", "reports/metrics", "reports/exports", "reports/assurance"]
+claims = ["reports/diagrams", "reports/metrics", "reports/exports"]
 
 [owners.just-timing]
 summary = "How long each recipe of every `just` run took"

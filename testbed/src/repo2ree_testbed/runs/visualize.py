@@ -1,22 +1,23 @@
-"""Visualize the behaviour of an e2e run's tests, or of one dossier, from what was assessed.
+"""Visualize the behaviour of e2e runs' tests, or of one dossier, from their assessment.
 
-Drawing decides nothing: it reads what ``repo2ree_testbed assess`` recorded, draws each test's
-traces and provenance from its verification/ into traces/, and writes the pages to browse a run
-by: one per test (its outcome, verdict, last failed command, artifacts, and screenshots) and one
-for the run. A dossier collected from a live deployment (``collect-dossier``) has its traces drawn
-under the assurance directory, beside its verification, by its name.
+Drawing decides nothing: it reads the reports ``repo2ree_testbed assess`` wrote under
+reports/behaviour/, draws each test's traces and provenance from its verification/ into traces/,
+and writes the pages to browse a run by: one per test (its outcome, verdict, last failed command,
+artifacts, and screenshots, which stay in the run and are linked there) and one for the run. It
+takes what assess takes.
 """
 
 from __future__ import annotations
 
 import argparse
 import html
+import os
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from repo2ree_testbed.artifacts import domain_dir
 from repo2ree_testbed.records import RunRecord, RunTest, read
-from repo2ree_testbed.runs.assess import failed_command, is_run, run_of, target, tool
+from repo2ree_testbed.runs.assess import COLLECTED, REPORTS, choosing, chosen, failed_command, is_run, run_of, tool
 from repo2ree_testbed.runs.failed_command import FailedCommand
 
 STYLE = """
@@ -46,11 +47,13 @@ def page(title: str, body: str) -> str:
     )
 
 
-def links(directory: Path, pattern: str) -> list[Path]:
-    return sorted(path.relative_to(directory) for path in directory.glob(pattern))
+def links(page: Path, directory: Path, pattern: str) -> list[Path]:
+    """What ``pattern`` finds under ``directory``, as a page in ``page`` links it."""
+    return [Path(os.path.relpath(path, page)) for path in sorted(directory.glob(pattern))]
 
 
-def write_test_index(directory: Path, test: RunTest, failed: FailedCommand | None = None) -> None:
+def write_test_index(directory: Path, evidence: Path, test: RunTest, failed: FailedCommand | None = None) -> None:
+    """A test's page, in its report ``directory``, linking what its run left in ``evidence``."""
     rows = [
         ("Test outcome", f"<span class='{test.outcome}'>{test.outcome}</span> (exit {test.exit_code})"),
         ("Reason", html.escape(test.reason) or "<span class='muted'>none</span>"),
@@ -80,18 +83,22 @@ def write_test_index(directory: Path, test: RunTest, failed: FailedCommand | Non
         body.append(f"<p><code>{html.escape(failed.argv)}</code> exited {html.escape(str(failed.exit_code))}</p>")
         body.append(f"<pre>{html.escape(failed.stderr_tail)}</pre>")
 
-    pages = [("Assurance report", path) for path in links(directory, "verification/assurance.html")]
-    pages += [(f"Behaviour trace {path.stem}", path) for path in links(directory, "traces/*.html")]
-    pages += [(f"Provenance {path.name.split('.')[0]}", path) for path in links(directory, "traces/*.provenance.txt")]
-    pages += [(f"Log {path.name}", path) for path in links(directory, "logs/*.log")]
-    pages += [(f"Kept REE {path.name}", path) for path in links(directory, "artifacts/**/*.zip")]
-    pages += [("Dossier manifest", path) for path in links(directory, "dossier/manifest.json")]
+    pages = [("Assurance report", path) for path in links(directory, directory, "verification/assurance.html")]
+    pages += [(f"Behaviour trace {path.stem}", path) for path in links(directory, directory, "traces/*.html")]
+    pages += [
+        (f"Provenance {path.name.split('.')[0]}", path)
+        for path in links(directory, directory, "traces/*.provenance.txt")
+    ]
+    pages += [(f"Log {path.name}", path) for path in links(directory, directory, "logs/*.log")]
+    pages += [(f"Log {path.name}", path) for path in links(directory, evidence, "logs/*.log")]
+    pages += [(f"Kept REE {path.name}", path) for path in links(directory, evidence, "artifacts/**/*.zip")]
+    pages += [("Dossier manifest", path) for path in links(directory, evidence, "dossier/manifest.json")]
     body.append("<h2>Artifacts</h2><ul>")
     body += [f"<li><a href='{html.escape(str(path))}'>{html.escape(label)}</a></li>" for label, path in pages]
     body.append("</ul>")
 
     shots = sorted(
-        links(directory, "artifacts/**/*.png"),
+        links(directory, evidence, "artifacts/**/*.png"),
         key=lambda shot: (shot.parent, shot.stem.removesuffix("-after").removesuffix("-before"), "after" in shot.stem),
     )
     if shots:
@@ -130,60 +137,67 @@ def write_run_index(root: Path, run: RunRecord) -> None:
     (root / "index.html").write_text(page(f"{run.tier} run", "".join(body)))
 
 
-def draw(verification: Path, traces: Path, logs: Path) -> bool:
+def draw(verification: Path, traces: Path, logs: Path, dossier: Path | None = None) -> bool:
     """Draw a verification's traces and provenance into ``traces``; False when there is nothing to draw from."""
     if not (verification / "verification.json").is_file():
         return False
     trace = ("repo2ree_assurance_traceview", "trace", str(verification), "-o", str(traces), "--provenance")
-    return tool(logs / "traceview.log", *trace) == 0
+    return tool(logs / "traceview.log", *trace, *(("--dossier", str(dossier)) if dossier else ())) == 0
 
 
-def visualize_test(directory: Path, test: RunTest) -> None:
-    drawn = bool(test.rees) and draw(directory / "verification", directory / "traces", directory / "logs")
-    write_test_index(directory, test, failed_command(directory, test))
-    shown = "drawn" if drawn else "no REE" if not test.rees else "not drawn"
-    print(f"   {shown:<9} {test.name}")
+def visualize_test(evidence: Path, test: RunTest, report: Path) -> str:
+    """Draw the test whose evidence is in ``evidence`` from its report, and write its page there."""
+    drawn = bool(test.rees) and draw(report / "verification", report / "traces", report / "logs", evidence / "dossier")
+    write_test_index(report, evidence, test, failed_command(evidence, test))
+    return "drawn" if drawn else "no REE" if not test.rees else "not drawn"
 
 
-def visualize_run(root: Path) -> None:
-    run = read(RunRecord, root / "run.json")
-    if run is None:
-        raise ValueError(f"{root}: no run record (run.json) to visualize")
-    for test in run.tests:
-        visualize_test(root / test.directory, test)
-    write_run_index(root, run)
-    print(f">> visualized: {root / 'index.html'}")
+def visualize_run(run: Path, reports: Path = REPORTS) -> None:
+    report = reports / run.name
+    record = read(RunRecord, report / "run.json")
+    if record is None:
+        raise ValueError(f"{run.name}: not assessed yet; run: just assess-behaviour {run}")
+    with ThreadPoolExecutor(max_workers=os.cpu_count()) as pool:
+        shown = list(
+            pool.map(lambda test: visualize_test(run / test.directory, test, report / test.directory), record.tests)
+        )
+    for test, drawn in zip(record.tests, shown, strict=True):
+        print(f"   {drawn:<9} {test.name}")
+    write_run_index(report, record)
+    print(f">> visualized {run.name}: {report / 'index.html'}")
 
 
-def visualize_dossier(dossier: Path) -> None:
-    """Visualize one dossier: as its test, if a run's test left it, else under the assurance directory."""
+def visualize_dossier(dossier: Path, reports: Path = REPORTS) -> None:
+    """Visualize one dossier: as its test in its run's report, or under collected/ when no run left it."""
     found = run_of(dossier)
-    if found is not None:
-        root, run = found
-        name = str(dossier.parent.relative_to(root))
-        [test] = [test for test in run.tests if test.directory == name]
-        visualize_test(dossier.parent, test)
-        write_run_index(root, run)
-        print(f">> visualized: {dossier.parent / 'index.html'}")
+    if found is None:
+        report = reports / COLLECTED / dossier.name
+        if not draw(report / "verification", report / "traces", report / "logs", dossier):
+            raise ValueError(f"{dossier}: not assessed yet; run: just assess-behaviour {dossier}")
+        print(f">> visualized: {report / 'traces'}")
         return
-    reports = domain_dir("assurance")
-    traces = reports / "traces" / dossier.name
-    if not draw(reports / "verification" / dossier.name, traces, reports / "logs" / dossier.name):
-        raise ValueError(f"{dossier}: no verification to draw from; assess it first: just assess-behaviour {dossier}")
-    print(f">> visualized: {traces}")
+    run, _ = found
+    report = reports / run.name
+    record = read(RunRecord, report / "run.json")
+    if record is None:
+        raise ValueError(f"{dossier}: not assessed yet; run: just assess-behaviour {dossier}")
+    name = str(dossier.parent.relative_to(run))
+    [test] = [test for test in record.tests if test.directory == name]
+    print(f"   {visualize_test(dossier.parent, test, report / name):<9} {test.name}")
+    write_run_index(report, record)
+    print(f">> visualized: {report / name / 'index.html'}")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    # A string, not a path: a recipe passes "" for "the newest", and Path("") would be the working directory.
-    parser.add_argument("path", nargs="?", default="", help="a run or a dossier (default: the newest run)")
+    choosing(parser, "visualize")
     args = parser.parse_args()
     try:
-        chosen = target(args.path)
-        if is_run(chosen):
-            visualize_run(chosen)
-        else:
-            visualize_dossier(chosen)
+        for path in chosen(args):
+            if is_run(path):
+                visualize_run(path, args.reports)
+            else:
+                visualize_dossier(path, args.reports)
     except ValueError as error:
         print(error, file=sys.stderr)
         return 1

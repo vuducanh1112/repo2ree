@@ -76,9 +76,10 @@ class RunRecord(Record):
     machine: str = ""
     # For a suite against built images: each image's local ID.
     images: dict[str, str] = {}
-    # The clean tree whose checker assessed every test (repo2ree_testbed assess); "" when unassessed,
-    # assessed from a dirty tree, or its tests from different trees.
+    # In a report of the run (repo2ree_testbed assess): the clean tree, and its commit, whose checker
+    # assessed every test; "" when assessed from a dirty tree, or its tests from different trees.
     assessed_tree: str = ""
+    assessed_revision: str = ""
     tests: tuple[RunTest, ...]
 
     def with_tests(self, tests: tuple[RunTest, ...]) -> RunRecord:

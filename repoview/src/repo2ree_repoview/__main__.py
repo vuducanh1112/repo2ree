@@ -13,7 +13,6 @@ COMMANDS = {
     "stamp": "repo2ree_repoview.stamp",
     "gate-verifications": "repo2ree_repoview.overview.receipt",
     "spec-diagrams": "repo2ree_repoview.overview.spec_diagrams",
-    "gate-reports": "repo2ree_repoview.overview.gate_reports",
 }
 
 

@@ -82,7 +82,7 @@ class SuiteRun:
         write(self.root / "run.json", record)
         if self.last is not None:
             self.last.coverage_report()
-        print(f">> assess its behaviour: just assess-behaviour {self.root}")
+        print(f">> visualize its behaviour: just visualize-behaviour {self.root}")
         return record
 
     @property

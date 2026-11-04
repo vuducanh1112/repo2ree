@@ -4,7 +4,7 @@ It runs nothing. It reads what the recipes `just repo-overview` depends on wrote
 zones, the behaviour specification, the operations traceview folds from the
 assurance-gate receipt's verifications, and the Just recipes (reports/exports/), and the
 generated architecture, domain, specification, and recipe diagrams (reports/diagrams/), and
-the assurance-gate receipt's tests judged and drawn again (reports/assurance/). Beside them
+the assurance-gate receipt's tests assessed and drawn again (reports/behaviour/). Beside them
 it reads the gates' receipts, the coverage and excuses of the last
 assurance-gate receipt, how long the recipes took (logs/just/), the environment contract,
 and the OpenAPI contract, and lays them out page by page.
@@ -47,7 +47,7 @@ from repo2ree_repoview.overview.receipt import (
     Exercised,
     bundle_evidence,
     decisions,
-    read_gate_reports,
+    judged_now,
     read_receipt,
     receipt_states,
     unreached,
@@ -134,7 +134,7 @@ def build(output: Path | None, exports: Path = EXPORTS) -> Path:
     )
     pages = [
         page_zones(zones),
-        page_gates(receipt, excused, bundle, evidence, read_gate_reports()),
+        page_gates(receipt, excused, bundle, evidence, judged_now()),
         page_receipts(now),
         page_operations(operations, receipt, bundle, evidence),
         page_vocabulary(spec),

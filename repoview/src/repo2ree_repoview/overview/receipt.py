@@ -15,7 +15,6 @@ from pydantic import Field
 from repo2ree_repoview.documents import Document
 from repo2ree_repoview.overview.bundle import Bundle, Origin, source_name
 from repo2ree_repoview.repository import ROOT, Head
-from repo2ree_repoview.stamp import read_recorded_stamp
 
 RECEIPTS = ROOT / ".receipts"
 RECEIPT = RECEIPTS / "assurance-gate.json"
@@ -23,8 +22,9 @@ POLICY = ROOT / "scripts/gates/policy.toml"
 # The platforms a published image set carries, as the justfile defaults them.
 PUBLISH_PLATFORMS = tuple(os.environ.get("PUBLISH_PLATFORMS", "linux/amd64 linux/arm64").split())
 EXPECTATIONS = ROOT / "assurance/checker/expected-verdicts.toml"
-# Each gated test judged and drawn again by this tree (`just report-assurance-gate`), by run and test directory.
-REPORTS = ROOT / "reports/assurance"
+# A report of each run, assessed and drawn beside it (`just visualize-behaviour`), laid out like the
+# run: <run>/run.json with the verdicts and the commit that assessed them, <run>/<test>/{verification,traces}.
+REPORTS = ROOT / "reports/behaviour"
 
 
 class GateReceipt(Document):
@@ -179,10 +179,13 @@ class RunTest(Document):
     name: str
     directory: str
     rees: tuple[str, ...] = ()
+    behaviour: str | None = None
 
 
 class RunRecord(Document):
     build_revision: str = ""
+    # In a report of the run: the commit whose checker assessed it, "" from a dirty tree.
+    assessed_revision: str = ""
     tests: tuple[RunTest, ...] = ()
 
 
@@ -227,26 +230,15 @@ def verification_of(run: Path, test: RunTest) -> str | None:
     return source_name(verification) if (verification / "verification.json").is_file() else None
 
 
-class GateReport(Document):
-    """What this tree's checker made of one gated test: its verdict, and why there is none or no trace."""
-
-    run: str
-    test: str
-    behaviour: str
-    problem: str | None = None
-
-
-class GateReports(Document):
-    format: Literal["repo2ree-gate-reports/1"]
-    tests: tuple[GateReport, ...]
-
-    def of(self, run: str, test: str) -> GateReport | None:
-        return next((item for item in self.tests if (item.run, item.test) == (run, test)), None)
-
-
-def read_gate_reports(reports: Path = REPORTS) -> GateReports | None:
-    summary = reports / "reports.json"
-    return GateReports.model_validate_json(summary.read_bytes()) if summary.is_file() else None
+def judged_now(reports: Path = REPORTS) -> dict[tuple[str, str], str] | None:
+    """This tree's verdict on each gated test, by (run, test) as the receipt names them; None before any report."""
+    if not reports.is_dir():
+        return None
+    verdicts: dict[tuple[str, str], str] = {}
+    for record in sorted(reports.glob("*/run.json")):
+        run = RunRecord.model_validate_json(record.read_bytes())
+        verdicts |= {(record.parent.name, test.name): test.behaviour or "missing" for test in run.tests}
+    return verdicts
 
 
 def gate_verifications(receipt: Receipt | None) -> list[str]:
@@ -261,12 +253,15 @@ def bundle_evidence(bundle: Bundle, receipt: Receipt | None) -> Evidence:
     if receipt is None:
         return Evidence()
     bundle.copy(RECEIPT, "evidence/assurance-gate.json", Origin(kind="receipt"))
-    stamp = read_recorded_stamp(REPORTS / "reports.json") if (REPORTS / "reports.json").is_file() else None
     runs: list[Path] = []
     tests: dict[tuple[str, str], str] = {}
     verifications: dict[str, str] = {}
     for run, record in gate_runs(receipt):
         origin = Origin(run=run.name, run_revision=record.build_revision)
+        assessed = REPORTS / run.name / "run.json"
+        assessed_revision = (
+            RunRecord.model_validate_json(assessed.read_bytes()).assessed_revision if assessed.is_file() else ""
+        )
         bundle.copy(run / "run.json", f"evidence/{run.name}/run.json", origin)
         for test in record.tests:
             target = f"evidence/{run.name}/{test.directory}"
@@ -278,7 +273,7 @@ def bundle_evidence(bundle: Bundle, receipt: Receipt | None) -> Evidence:
                     bundle.copy(source, f"{target}/{part}", origin)
             for part in REFERENCED:
                 bundle.reference(run / test.directory / part, origin)
-            report = origin.model_copy(update={"kind": "report", "revision": stamp.revision if stamp else ""})
+            report = origin.model_copy(update={"kind": "report", "revision": assessed_revision})
             for part in REPORTED:
                 bundle.copy_tree(reported(run, test) / part, f"{target}/{part}", report)
             tests[(run.name, test.name)] = target

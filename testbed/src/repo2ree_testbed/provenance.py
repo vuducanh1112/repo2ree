@@ -24,6 +24,11 @@ def clean_tree() -> str:
     return tree
 
 
+def clean_revision() -> str:
+    """HEAD's commit when the checkout is clean; "" otherwise."""
+    return _git("rev-parse", "HEAD") if clean_tree() else ""
+
+
 def platform() -> str:
     """The Docker server's ``os/arch``, as an image platform names it; "" without a reachable daemon."""
     try:

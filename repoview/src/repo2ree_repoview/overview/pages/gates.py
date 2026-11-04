@@ -7,7 +7,7 @@ from pathlib import Path
 
 from repo2ree_repoview.overview.bundle import Bundle
 from repo2ree_repoview.overview.html import Page, esc, in_frame, section, table
-from repo2ree_repoview.overview.receipt import Evidence, GateReports, Receipt, ReceiptTest, reached
+from repo2ree_repoview.overview.receipt import Evidence, Receipt, ReceiptTest, reached
 
 # The behaviour trace of a whole dossier, beside the one of each REE (repo2ree_assurance_traceview's).
 DOSSIER_PAGE = "dossier.html"
@@ -32,27 +32,34 @@ def evidence_links(bundle: Bundle, directory: str | None) -> str:
     return " · ".join(links) or '<span class="muted">none</span>'
 
 
-def judged_now(test: ReceiptTest, reports: GateReports | None) -> str:
+def judged_now(test: ReceiptTest, judged: dict[tuple[str, str], str] | None) -> str:
     """What this tree's checker makes of a certified test's evidence, said only where it differs."""
-    found = reports.of(test.run, test.test) if reports else None
+    found = (judged or {}).get((test.run, test.test))
     if found is None:
-        return '<span class="muted">not reported: run <code>just report-assurance-gate</code></span>'
-    if found.behaviour == test.behaviour:
+        return '<span class="muted">not assessed: run <code>just assess-behaviour</code></span>'
+    if found == test.behaviour:
         return '<span class="muted">agrees</span>'
-    because = f" ({esc(found.problem)})" if found.problem else ""
-    return f'<span class="no">{esc(found.behaviour)}</span>{because}'
+    return f'<span class="no">{esc(found)}</span>'
 
 
 def page_gates(
-    receipt: Receipt | None, unreached: dict[str, str], bundle: Bundle, evidence: Evidence, reports: GateReports | None
+    receipt: Receipt | None,
+    unreached: dict[str, str],
+    bundle: Bundle,
+    evidence: Evidence,
+    judged: dict[tuple[str, str], str] | None,
 ) -> Page:
     tests = len(receipt.tests) if receipt else 0
     teaser = f"{tests} tests in the last receipt; {reached(receipt)} specified items reached"
-    return Page(SLUG, "Assurance gate", teaser, gates_section(receipt, unreached, bundle, evidence, reports))
+    return Page(SLUG, "Assurance gate", teaser, gates_section(receipt, unreached, bundle, evidence, judged))
 
 
 def gates_section(
-    receipt: Receipt | None, unreached: dict[str, str], bundle: Bundle, evidence: Evidence, reports: GateReports | None
+    receipt: Receipt | None,
+    unreached: dict[str, str],
+    bundle: Bundle,
+    evidence: Evidence,
+    judged: dict[tuple[str, str], str] | None,
 ) -> str:
     if receipt is None:
         return section(
@@ -66,14 +73,14 @@ def gates_section(
             esc(t.test),
             esc(t.outcome),
             f'<span class="{"ok" if t.behaviour == "passed" else "ex"}">{esc(t.behaviour)}</span>',
-            judged_now(t, reports),
+            judged_now(t, judged),
             esc(t.excused or ""),
             evidence_links(bundle, evidence.tests.get((t.run, t.test))),
         ]
         for t in receipt.tests
     ]
-    judged = {(item.run, item.test): item.behaviour for item in reports.tests} if reports else {}
-    differ = sum(t.behaviour != judged[(t.run, t.test)] for t in receipt.tests if (t.run, t.test) in judged)
+    now = judged or {}
+    differ = sum(t.behaviour != now[(t.run, t.test)] for t in receipt.tests if (t.run, t.test) in now)
     reasons: dict[str, list[str]] = defaultdict(list)
     for item, reason in unreached.items():
         reasons[reason].append(item)
@@ -86,10 +93,10 @@ def gates_section(
         + ", copied into this overview under <code>evidence/</code>"
         + (f". The suite reached {reached(receipt)} specified rules, edges, and messages." if receipt.coverage else ".")
         + "</p><p>Each test's evidence is judged and drawn again by this tree's checker and traceview "
-        "(<code>just report-assurance-gate</code>); the verdicts and traces linked here are those. "
+        "(<code>just visualize-behaviour</code>); the verdicts and traces linked here are those. "
         + (
             "None has been yet."
-            if reports is None
+            if judged is None
             else f'<span class="no">{differ} tests</span> are judged differently than the receipt certified them: '
             "the gate would decide them differently now."
             if differ

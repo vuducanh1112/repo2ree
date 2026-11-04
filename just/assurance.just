@@ -7,11 +7,11 @@
 # many verifications into one catalogue of operations for the overview. Each is its
 # own step on the previous one's artifact.
 
-# Static checks for every assurance package, each with its own import contracts, and a fresh
-# generated contract (contracts/behaviour). The checker stays independent of the product, the
-# collector reaches it only over HTTP, the views see only the checker's public surface, and the
+# Each assurance package has its own import contracts: the checker stays independent of the product,
+# the collector reaches it only over HTTP, the views see only the checker's public surface, and the
 # dossier format, the leaf every step shares, knows none of them.
-[group('Assurance')]
+# Static checks for every assurance package, and that the generated contract (contracts/behaviour) is current.
+[group('Checks')]
 check-assurance: (check-package `python scripts/workspace.py assurance`)
     python -m repo2ree_assurance_checker generate --check
 
@@ -32,11 +32,6 @@ collect-dossier control_plane output *rees:
 generate-behaviour:
     python -m repo2ree_assurance_checker generate
 
-# Print the behaviour specification as JSON (repo2ree-behaviour-spec/1), as of a Git revision if given, or write it to output.
-[group('Assurance')]
-export-behaviour-spec rev="" output="":
-    python -m repo2ree_assurance_checker export {{ if rev != "" { "--at " + quote(rev) } else { "" } }} {{ if output != "" { "-o " + quote(output) } else { "" } }}
-
 # Write the behaviour specification as JSON (repo2ree-behaviour-spec/1) for the overview.
 [group('Assurance')]
 export-spec:
@@ -44,16 +39,9 @@ export-spec:
     python -m repo2ree_assurance_checker export -o {{ quote(EXPORT_DIR + "/spec.json") }}
     {{ STAMP_EXPORTS }} --by export-spec {{ quote(EXPORT_DIR + "/spec.json") }}
 
-# Judge and draw the assurance-gate receipt's tests again with this tree, from the evidence their runs left
-# (seconds, no e2e run): verdicts and traces under reports/assurance/, for the overview.
-[group('Assurance')]
-report-assurance-gate:
-    python -m repo2ree_repoview gate-reports -o {{ quote(GATE_REPORT_DIR) }}
-    python -m repo2ree_repoview stamp --manifest {{ quote(GATE_REPORT_DIR + "/manifest.json") }} --by report-assurance-gate {{ quote(GATE_REPORT_DIR + "/reports.json") }}
-
 # Fold this tree's verifications of the assurance-gate receipt's tests into the catalogue of operations (JSON) for the overview.
 [group('Assurance')]
-export-operations: report-assurance-gate
+export-operations: (assess-behaviour "")
     #!/usr/bin/env bash
     set -euo pipefail
     listed=$(python -m repo2ree_repoview gate-verifications)
@@ -77,19 +65,23 @@ judge-e2e *runs:
     for run in $runs; do python -m repo2ree_testbed assess "$run"; done
     python -m scripts.gates.assurance_gate judge $runs
 
-# Assess the behaviour of a per-test run's tests, or of one dossier (the newest run by default): check each
-# dossier against the behaviour specification and record its verdict. A run's verdicts go into its run.json,
-# a test's into its verification/; a dossier collected elsewhere (collect-dossier) is assessed under the
-# assurance directory. A dossier exits with its verdict: 0 passed, 1 violated, 2 inconclusive.
+# Assess behaviour beside the runs, which stay as they are: check each dossier against the behaviour
+# specification into reports/behaviour/<run>/, with its verdict and the commit that assessed it. Takes
+# runs (by path or name), a dossier one of their tests left, one collected elsewhere (collect-dossier),
+# or `--invocation ID`; by default the runs the assurance-gate receipt names.
+# Recipes depend on it as `(assess-behaviour "")`, as visualize-behaviour passes no targets, so it runs once.
+# Assess the behaviour of e2e runs or dossiers with this tree (the assurance gate's runs by default).
 [group('Assurance')]
-assess-behaviour path="":
-    python -m repo2ree_testbed assess {{ quote(path) }}
+assess-behaviour *targets:
+    python -m repo2ree_testbed assess {{ targets }}
 
-# Visualize what assess-behaviour recorded, for a run or a dossier (the newest run by default): each test's
-# behaviour traces and provenance, and the pages to browse a run by.
+# Draws each test's traces and provenance, and the pages to browse a run by, into its report; its logs and
+# screenshots stay in the run and are linked there. Debug a run: `just visualize-behaviour <run>`, then
+# open reports/behaviour/<run>/index.html.
+# Visualize the behaviour of e2e runs or dossiers, assessing them first (the assurance gate's runs by default).
 [group('Assurance')]
-visualize-behaviour path="":
-    python -m repo2ree_testbed visualize {{ quote(path) }}
+visualize-behaviour *targets: (assess-behaviour targets)
+    python -m repo2ree_testbed visualize {{ targets }}
 
 [group('Assurance')]
 generate-assurance-metrics:

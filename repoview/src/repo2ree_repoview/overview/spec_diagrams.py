@@ -1,9 +1,10 @@
 """Draw the behaviour specification's machines for the overview (``just generate-spec-diagrams``).
 
-From the specification as exported (reports/exports/spec.json) and the assurance-gate receipt's
-runs, it writes under reports/diagrams/spec/: the system map (system.svg), each machine as the
-specification allows it (machines/), each machine with how often the receipt's tests took each
-edge (coverage/), and each part of an aggregate with the operations that moved it (aggregates/).
+From the specification as exported (reports/exports/spec.json) and this tree's assessment of the
+assurance-gate receipt's runs (reports/behaviour/), it writes under reports/diagrams/spec/: the
+system map (system.svg), each machine as the specification allows it (machines/), each machine
+with how often the receipt's tests took each edge (coverage/), and each part of an aggregate with
+the operations that moved it (aggregates/).
 It prints each file it wrote, for the recipe to stamp.
 
     python -m repo2ree_repoview spec-diagrams --spec reports/exports/spec.json -o reports/diagrams/spec
@@ -18,7 +19,15 @@ from pathlib import Path
 from repo2ree_repoview.overview.drawing import machine_svg, submachine_svg, system_svg
 from repo2ree_repoview.overview.exports import EXPORTS, Spec
 from repo2ree_repoview.overview.figures import DIAGRAMS
-from repo2ree_repoview.overview.receipt import AggregateMoves, Evidence, Exercised, gate_runs, read_receipt, unreached
+from repo2ree_repoview.overview.receipt import (
+    REPORTS,
+    AggregateMoves,
+    Evidence,
+    Exercised,
+    gate_runs,
+    read_receipt,
+    unreached,
+)
 
 SYSTEM = "spec/system.svg"
 
@@ -59,7 +68,8 @@ def main() -> int:
     parser.add_argument("-o", "--output", type=Path, default=DIAGRAMS / "spec", help="where the drawings go")
     args = parser.parse_args()
     spec = Spec.model_validate_json(args.spec.read_text(encoding="utf-8"))
-    evidence = Evidence(runs=tuple(run for run, _ in gate_runs(read_receipt())))
+    # This tree's assessment of the receipt's runs, as assess-behaviour reported it.
+    evidence = Evidence(runs=tuple(REPORTS / run.name for run, _ in gate_runs(read_receipt())))
     drawn = drawings(spec, evidence, unreached())
     for stale in args.output.rglob("*.svg") if args.output.is_dir() else ():
         stale.unlink()
