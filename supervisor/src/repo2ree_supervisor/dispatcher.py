@@ -184,6 +184,9 @@ class CommandDispatcher:
         sent on, and is sent on no other. Returns the result and the context sent.
         """
         session = self._workbench.session_of(handle.workbench_id)
+        if session is None:
+            # Nothing to send it on, so nothing is sent: as for a store no workbench serves.
+            raise WorkbenchUnavailableError(f"workbench {handle.workbench_id!r} is not connected")
         dispatched = events.dispatch_sent(
             context.attempt_id,
             partition=handle.ree_id,

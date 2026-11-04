@@ -11,8 +11,16 @@ from typing import Any
 
 import pytest
 
+from repo2ree_protocol.command import BuildRuntimeCommand
 from repo2ree_protocol.workbench import WorkbenchHello
-from repo2ree_supervisor import WorkbenchConnection, WorkbenchConnectionRegistry, WorkbenchUnavailableError
+from repo2ree_supervisor import (
+    CommandDispatcher,
+    ReeLocks,
+    ReeRoute,
+    WorkbenchConnection,
+    WorkbenchConnectionRegistry,
+    WorkbenchUnavailableError,
+)
 from repo2ree_supervisor.sessions import Session
 from repo2ree_supervisor.workbench_link import WsWorkbenchClient
 from repo2ree_telemetry.behaviour import close_journal, open_journal
@@ -128,3 +136,12 @@ def test_every_session_record_keeps_the_published_contract(tmp_path: Path) -> No
     command = [sys.executable, "-m", "repo2ree_assurance_checker", "validate-journal", str(tmp_path)]
     checked = subprocess.run(command, capture_output=True, text=True, check=False)
     assert checked.returncode == 0, checked.stdout + checked.stderr
+
+
+def test_a_command_for_a_workbench_with_no_session_is_neither_journaled_nor_sent(journal_dir: Path) -> None:
+    dispatcher = CommandDispatcher(WsWorkbenchClient(WorkbenchConnectionRegistry()), ReeLocks())
+    handle = ReeRoute(ree_id="ree-1", workbench_id="wb-gone", store_id="lab-1")
+    with pytest.raises(WorkbenchUnavailableError, match="not connected"):
+        dispatcher.dispatch_action(handle, BuildRuntimeCommand(), "run-1", lambda *_: None)
+    rows = [json.loads(line) for path in journal_dir.glob("*.ndjson") for line in path.read_text().splitlines()]
+    assert not [row for row in rows if row.get("subject") == "dispatch"]
