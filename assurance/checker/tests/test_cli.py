@@ -43,10 +43,10 @@ def test_a_diff_against_the_committed_specification_says_what_changed(tmp_path: 
 
 def test_generate_writes_the_published_schema_and_check_refuses_a_stale_one(tmp_path: Path) -> None:
     target = tmp_path / "events.schema.json"
-    assert main(["generate", "--check", "--output", str(target)]) == 1  # Not written yet: stale.
-    assert main(["generate", "--output", str(target)]) == 0
+    assert main(["generate-schema", "--check", "--output", str(target)]) == 1  # Not written yet: stale.
+    assert main(["generate-schema", "--output", str(target)]) == 0
     assert target.read_text() == GENERATED_SCHEMA.read_text()
-    assert main(["generate", "--check", "--output", str(target)]) == 0
+    assert main(["generate-schema", "--check", "--output", str(target)]) == 0
 
 
 def test_check_refuses_what_is_not_a_dossier(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:

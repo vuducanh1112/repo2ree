@@ -169,7 +169,7 @@ def render_schema(spec: Spec) -> str:
         "title": "repo2ree behaviour journal record",
         "description": (
             "One line of a behaviour journal. Generated from assurance/spec/vocabulary by "
-            "`python -m repo2ree_assurance_checker generate`; do not edit. Sequence, epochs, and the header are "
+            "`python -m repo2ree_assurance_checker generate-schema`; do not edit. Sequence, epochs, and the header are "
             "checked per journal by `python -m repo2ree_assurance_checker validate-journal`."
         ),
         "x-vocabulary": spec.vocabulary_digest,

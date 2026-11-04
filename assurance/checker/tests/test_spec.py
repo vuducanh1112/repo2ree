@@ -77,7 +77,7 @@ def test_the_checked_in_specification_is_valid() -> None:
 
 def test_the_published_contract_matches_the_vocabulary() -> None:
     assert GENERATED_SCHEMA.read_text() == render_schema(load_spec()), (
-        "run `python -m repo2ree_assurance_checker generate`"
+        "run `python -m repo2ree_assurance_checker generate-schema`"
     )
 
 

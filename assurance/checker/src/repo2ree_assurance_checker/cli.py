@@ -26,7 +26,10 @@ def parser() -> argparse.ArgumentParser:
     parser.add_argument("--spec", type=Path, default=SPEC_DIR, help="Specification directory")
     commands = parser.add_subparsers(dest="command", required=True)
 
-    generate = commands.add_parser("generate", help="Write the published event schema from the vocabulary")
+    # "generate" until the recipes call generate-schema.
+    generate = commands.add_parser(
+        "generate-schema", aliases=["generate"], help="Write the published event schema from the vocabulary"
+    )
     generate.add_argument("--check", action="store_true", help="Fail instead of writing when the schema is stale")
     generate.add_argument("--output", type=Path, default=GENERATED_SCHEMA)
 
@@ -100,7 +103,7 @@ def generate(spec: Spec, args: argparse.Namespace) -> int:
     current = args.output.read_text() if args.output.exists() else None
     if args.check:
         if current != rendered:
-            sys.stderr.write(f"{args.output} is stale; run `python -m repo2ree_assurance_checker generate`\n")
+            sys.stderr.write(f"{args.output} is stale; run `python -m repo2ree_assurance_checker generate-schema`\n")
             return 1
         return 0
     if current != rendered:
@@ -151,6 +154,7 @@ COMMANDS: dict[str, Callable[[Spec, argparse.Namespace], int]] = {
     "export": export,
     "map": draw_map,
     "diff": diff,
+    "generate-schema": generate,
     "generate": generate,
     "validate-journal": validate_journal,
     "check": check,
