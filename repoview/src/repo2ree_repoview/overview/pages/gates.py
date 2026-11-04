@@ -7,7 +7,7 @@ from pathlib import Path
 
 from repo2ree_repoview.overview.bundle import Bundle
 from repo2ree_repoview.overview.html import Page, esc, in_frame, section, table
-from repo2ree_repoview.overview.receipt import Evidence, Receipt, reached
+from repo2ree_repoview.overview.receipt import Evidence, GateReports, Receipt, ReceiptTest, reached
 
 # The behaviour trace of a whole dossier, beside the one of each REE (repo2ree_assurance_traceview's).
 DOSSIER_PAGE = "dossier.html"
@@ -32,13 +32,28 @@ def evidence_links(bundle: Bundle, directory: str | None) -> str:
     return " · ".join(links) or '<span class="muted">none</span>'
 
 
-def page_gates(receipt: Receipt | None, unreached: dict[str, str], bundle: Bundle, evidence: Evidence) -> Page:
+def judged_now(test: ReceiptTest, reports: GateReports | None) -> str:
+    """What this tree's checker makes of a certified test's evidence, said only where it differs."""
+    found = reports.of(test.run, test.test) if reports else None
+    if found is None:
+        return '<span class="muted">not reported: run <code>just report-assurance-gate</code></span>'
+    if found.behaviour == test.behaviour:
+        return '<span class="muted">agrees</span>'
+    because = f" ({esc(found.problem)})" if found.problem else ""
+    return f'<span class="no">{esc(found.behaviour)}</span>{because}'
+
+
+def page_gates(
+    receipt: Receipt | None, unreached: dict[str, str], bundle: Bundle, evidence: Evidence, reports: GateReports | None
+) -> Page:
     tests = len(receipt.tests) if receipt else 0
     teaser = f"{tests} tests in the last receipt; {reached(receipt)} specified items reached"
-    return Page(SLUG, "Assurance gate", teaser, gates_section(receipt, unreached, bundle, evidence))
+    return Page(SLUG, "Assurance gate", teaser, gates_section(receipt, unreached, bundle, evidence, reports))
 
 
-def gates_section(receipt: Receipt | None, unreached: dict[str, str], bundle: Bundle, evidence: Evidence) -> str:
+def gates_section(
+    receipt: Receipt | None, unreached: dict[str, str], bundle: Bundle, evidence: Evidence, reports: GateReports | None
+) -> str:
     if receipt is None:
         return section(
             "assurance-gate",
@@ -51,11 +66,14 @@ def gates_section(receipt: Receipt | None, unreached: dict[str, str], bundle: Bu
             esc(t.test),
             esc(t.outcome),
             f'<span class="{"ok" if t.behaviour == "passed" else "ex"}">{esc(t.behaviour)}</span>',
+            judged_now(t, reports),
             esc(t.excused or ""),
             evidence_links(bundle, evidence.tests.get((t.run, t.test))),
         ]
         for t in receipt.tests
     ]
+    judged = {(item.run, item.test): item.behaviour for item in reports.tests} if reports else {}
+    differ = sum(t.behaviour != judged[(t.run, t.test)] for t in receipt.tests if (t.run, t.test) in judged)
     reasons: dict[str, list[str]] = defaultdict(list)
     for item, reason in unreached.items():
         reasons[reason].append(item)
@@ -67,8 +85,18 @@ def gates_section(receipt: Receipt | None, unreached: dict[str, str], bundle: Bu
         + ", ".join(f"<code>{esc(Path(r).name)}</code>" for r in receipt.runs)
         + ", copied into this overview under <code>evidence/</code>"
         + (f". The suite reached {reached(receipt)} specified rules, edges, and messages." if receipt.coverage else ".")
+        + "</p><p>Each test's evidence is judged and drawn again by this tree's checker and traceview "
+        "(<code>just report-assurance-gate</code>); the verdicts and traces linked here are those. "
+        + (
+            "None has been yet."
+            if reports is None
+            else f'<span class="no">{differ} tests</span> are judged differently than the receipt certified them: '
+            "the gate would decide them differently now."
+            if differ
+            else "It agrees with every verdict the receipt certified."
+        )
         + "</p>"
-        + table(["Test", "Outcome", "Behaviour", "Excused because", "Evidence"], rows)
+        + table(["Test", "Outcome", "Behaviour", "This tree's checker", "Excused because", "Evidence"], rows)
         + f"<h3>What a receipt does not prove ({len(unreached)} items)</h3>"
         + table(["Unreached by any gated test", "Why"], unreached_rows)
     )

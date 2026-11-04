@@ -44,9 +44,16 @@ export-spec:
     python -m repo2ree_assurance_checker export -o {{ quote(EXPORT_DIR + "/spec.json") }}
     {{ STAMP_EXPORTS }} --by export-spec {{ quote(EXPORT_DIR + "/spec.json") }}
 
-# Fold the assurance-gate receipt's verifications into the catalogue of operations (JSON) for the overview.
+# Judge and draw the assurance-gate receipt's tests again with this tree, from the evidence their runs left
+# (seconds, no e2e run): verdicts and traces under reports/assurance/, for the overview.
 [group('Assurance')]
-export-operations:
+report-assurance-gate:
+    python -m repo2ree_repoview gate-reports -o {{ quote(GATE_REPORT_DIR) }}
+    python -m repo2ree_repoview stamp --manifest {{ quote(GATE_REPORT_DIR + "/manifest.json") }} --by report-assurance-gate {{ quote(GATE_REPORT_DIR + "/reports.json") }}
+
+# Fold this tree's verifications of the assurance-gate receipt's tests into the catalogue of operations (JSON) for the overview.
+[group('Assurance')]
+export-operations: report-assurance-gate
     #!/usr/bin/env bash
     set -euo pipefail
     listed=$(python -m repo2ree_repoview gate-verifications)

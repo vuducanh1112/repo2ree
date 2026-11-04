@@ -38,6 +38,8 @@ METRICS_DIR := REPORTS_DIR + "/metrics"
 # The owners' exports the overview reads (zones, behaviour spec, operations), stamped like the diagrams.
 EXPORT_DIR := REPORTS_DIR + "/exports"
 STAMP_EXPORTS := "python -m repo2ree_repoview stamp --manifest " + EXPORT_DIR + "/manifest.json"
+# The assurance-gate receipt's tests, judged and drawn again by this tree.
+GATE_REPORT_DIR := REPORTS_DIR + "/assurance"
 
 import 'just/checks.just'
 import 'just/config.just'
@@ -72,7 +74,7 @@ prune *args:
 
 # Build the repository overview in reports/overview/<revision>/ (reports/overview/latest): zones, gates, behaviour, architecture, recipes, configuration, API.
 [group('Repository')]
-repo-overview: generate-diagrams export-zones export-spec export-operations export-just-recipes
+repo-overview: generate-diagrams export-zones export-spec report-assurance-gate export-operations export-just-recipes
     python -m repo2ree_repoview overview
 
 # With paths, place each in its zone; with --export, print the zones and each tracked file's place as JSON

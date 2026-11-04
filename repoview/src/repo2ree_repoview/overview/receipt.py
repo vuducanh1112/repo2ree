@@ -15,6 +15,7 @@ from pydantic import Field
 from repo2ree_repoview.documents import Document
 from repo2ree_repoview.overview.bundle import Bundle, Origin, source_name
 from repo2ree_repoview.repository import ROOT, Head
+from repo2ree_repoview.stamp import read_recorded_stamp
 
 RECEIPTS = ROOT / ".receipts"
 RECEIPT = RECEIPTS / "assurance-gate.json"
@@ -22,6 +23,8 @@ POLICY = ROOT / "scripts/gates/policy.toml"
 # The platforms a published image set carries, as the justfile defaults them.
 PUBLISH_PLATFORMS = tuple(os.environ.get("PUBLISH_PLATFORMS", "linux/amd64 linux/arm64").split())
 EXPECTATIONS = ROOT / "assurance/checker/expected-verdicts.toml"
+# Each gated test judged and drawn again by this tree (`just report-assurance-gate`), by run and test directory.
+REPORTS = ROOT / "reports/assurance"
 
 
 class GateReceipt(Document):
@@ -175,6 +178,7 @@ def receipt_states(head: Head, receipt: Receipt | None) -> list[ReceiptState]:
 class RunTest(Document):
     name: str
     directory: str
+    rees: tuple[str, ...] = ()
 
 
 class RunRecord(Document):
@@ -182,18 +186,18 @@ class RunRecord(Document):
     tests: tuple[RunTest, ...] = ()
 
 
-# What a test's evidence holds, by whether the overview copies it or only names it by hash.
+# What a test's evidence holds, by whether the overview copies it or only names it by hash; and what this
+# tree's report on it holds, copied in its place beside it.
 COPIED = (
     "test.json",
     "junit.xml",
     "logs",
-    "verification",
-    "traces",
     "dossier/manifest.json",
     "dossier/journal",
     "dossier/stores",
 )
 REFERENCED = ("dossier/rees", "dossier/telemetry", "artifacts")
+REPORTED = ("verification", "traces")
 
 
 @dataclass(frozen=True)
@@ -212,10 +216,37 @@ def gate_runs(receipt: Receipt | None) -> Iterator[tuple[Path, RunRecord]]:
             yield run, RunRecord.model_validate_json((run / "run.json").read_bytes())
 
 
+def reported(run: Path, test: RunTest, reports: Path = REPORTS) -> Path:
+    """Where this tree's report on a gated test goes: its verification and its traces."""
+    return reports / run.name / test.directory
+
+
 def verification_of(run: Path, test: RunTest) -> str | None:
-    """Where a test's verification is, from the repository root; None when its dossier was not checked."""
-    verification = run / test.directory / "verification"
+    """Where this tree's verification of a test is, from the repository root; None when its dossier was not checked."""
+    verification = reported(run, test) / "verification"
     return source_name(verification) if (verification / "verification.json").is_file() else None
+
+
+class GateReport(Document):
+    """What this tree's checker made of one gated test: its verdict, and why there is none or no trace."""
+
+    run: str
+    test: str
+    behaviour: str
+    problem: str | None = None
+
+
+class GateReports(Document):
+    format: Literal["repo2ree-gate-reports/1"]
+    tests: tuple[GateReport, ...]
+
+    def of(self, run: str, test: str) -> GateReport | None:
+        return next((item for item in self.tests if (item.run, item.test) == (run, test)), None)
+
+
+def read_gate_reports(reports: Path = REPORTS) -> GateReports | None:
+    summary = reports / "reports.json"
+    return GateReports.model_validate_json(summary.read_bytes()) if summary.is_file() else None
 
 
 def gate_verifications(receipt: Receipt | None) -> list[str]:
@@ -230,6 +261,7 @@ def bundle_evidence(bundle: Bundle, receipt: Receipt | None) -> Evidence:
     if receipt is None:
         return Evidence()
     bundle.copy(RECEIPT, "evidence/assurance-gate.json", Origin(kind="receipt"))
+    stamp = read_recorded_stamp(REPORTS / "reports.json") if (REPORTS / "reports.json").is_file() else None
     runs: list[Path] = []
     tests: dict[tuple[str, str], str] = {}
     verifications: dict[str, str] = {}
@@ -246,6 +278,9 @@ def bundle_evidence(bundle: Bundle, receipt: Receipt | None) -> Evidence:
                     bundle.copy(source, f"{target}/{part}", origin)
             for part in REFERENCED:
                 bundle.reference(run / test.directory / part, origin)
+            report = origin.model_copy(update={"kind": "report", "revision": stamp.revision if stamp else ""})
+            for part in REPORTED:
+                bundle.copy_tree(reported(run, test) / part, f"{target}/{part}", report)
             tests[(run.name, test.name)] = target
             if found := verification_of(run, test):
                 verifications[found] = target

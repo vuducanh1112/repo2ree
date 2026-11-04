@@ -61,9 +61,9 @@ retention = "The newest three, and the one `latest` points to, kept by every bui
 claims = ["reports/overview"]
 
 [owners.repoview-rewritten]
-summary = "Diagrams and metrics, stamped with the commit they came from, and the exports the overview reads"
+summary = "Diagrams and metrics, stamped with the commit they came from, and the exports and gate reports the overview reads"
 retention = "Rewritten by each run"
-claims = ["reports/diagrams", "reports/metrics", "reports/exports"]
+claims = ["reports/diagrams", "reports/metrics", "reports/exports", "reports/assurance"]
 
 [owners.just-timing]
 summary = "How long each recipe of every `just` run took"
