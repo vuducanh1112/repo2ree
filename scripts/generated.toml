@@ -40,6 +40,11 @@ claims = [
   "test-artifacts/machine-job",
 ]
 
+[owners.core-container-runner]
+summary = "Scratch the container runner's integration tests share with the engine, under the checkout a dev container mounts"
+retention = "Each test removes its own folder; only the empty parent stays"
+claims = ["test-artifacts/core-container-runner"]
+
 [owners.hypothesis]
 summary = "Hypothesis' example database, pinned to the repository (conftest.py)"
 retention = "Unbounded but slow: it keeps the examples that once failed; removing it loses only those"
@@ -84,3 +89,8 @@ claims = [
   ".receipts/publish-gate.json",
   ".receipts/image-candidates",
 ]
+
+[owners.tier-receipts]
+summary = "Tier receipts (scripts/gates/tiers.py): a gated tier's run, per tree and platform, that publish-gate requires"
+retention = "Kept per tree, so a branch checked out again still finds its own; a few kilobytes each"
+claims = [".receipts/tiers"]
