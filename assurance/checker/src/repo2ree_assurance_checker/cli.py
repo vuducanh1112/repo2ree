@@ -26,10 +26,7 @@ def parser() -> argparse.ArgumentParser:
     parser.add_argument("--spec", type=Path, default=SPEC_DIR, help="Specification directory")
     commands = parser.add_subparsers(dest="command", required=True)
 
-    # "generate" until the recipes call generate-schema.
-    generate = commands.add_parser(
-        "generate-schema", aliases=["generate"], help="Write the published event schema from the vocabulary"
-    )
+    generate = commands.add_parser("generate-schema", help="Write the published event schema from the vocabulary")
     generate.add_argument("--check", action="store_true", help="Fail instead of writing when the schema is stale")
     generate.add_argument("--output", type=Path, default=GENERATED_SCHEMA)
 
@@ -155,7 +152,6 @@ COMMANDS: dict[str, Callable[[Spec, argparse.Namespace], int]] = {
     "map": draw_map,
     "diff": diff,
     "generate-schema": generate,
-    "generate": generate,
     "validate-journal": validate_journal,
     "check": check,
 }
