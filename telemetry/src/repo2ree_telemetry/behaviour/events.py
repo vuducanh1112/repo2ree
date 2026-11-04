@@ -80,7 +80,7 @@ class ExecActionFacts(TypedDict):
     operation: str
     run_id: str
     # The WorkbenchSession the command is sent on.
-    session: NotRequired[str | None]
+    session: str
 
 
 class WorkbenchSessionFacts(TypedDict, total=False):
