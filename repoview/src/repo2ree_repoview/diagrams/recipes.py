@@ -105,11 +105,16 @@ def _recipes(dump: _Dump) -> dict[str, Recipe]:
     return parsed
 
 
+def read_recipes(dump: str) -> dict[str, Recipe]:
+    """The recipes of Just's JSON dump (``just --dump --dump-format json``)."""
+    return _recipes(_Dump.model_validate_json(dump))
+
+
 def load_recipes() -> dict[str, Recipe]:
     dump = subprocess.run(
         ["just", "--dump", "--dump-format", "json"], cwd=ROOT, check=True, capture_output=True, text=True
     ).stdout
-    return _recipes(_Dump.model_validate_json(dump))
+    return read_recipes(dump)
 
 
 def dependency_closure(recipes: dict[str, Recipe], root: str) -> set[str]:
@@ -186,11 +191,13 @@ def render_dot(recipes: dict[str, Recipe], *, root: str = "") -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", default="", help="draw only this recipe and its declared dependencies")
+    parser.add_argument("--dump", type=Path, help="Just's JSON dump to draw (default: dump the justfile now)")
     parser.add_argument("-f", "--format", choices=("svg", "dot"), default="svg")
     parser.add_argument("-o", "--output", type=Path, help="write here instead of stdout")
     args = parser.parse_args()
     try:
-        dot_source = render_dot(load_recipes(), root=args.root)
+        recipes = read_recipes(args.dump.read_text(encoding="utf-8")) if args.dump else load_recipes()
+        dot_source = render_dot(recipes, root=args.root)
         emit(inline_svg(dot_source, css_class="just-recipe-graph") if args.format == "svg" else dot_source, args.output)
     except (OSError, ValueError, ValidationError, RuntimeError, subprocess.CalledProcessError) as error:
         parser.exit(1, f"{error}\n")

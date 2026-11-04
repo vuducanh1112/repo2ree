@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from collections import defaultdict
 
-from repo2ree_repoview.overview.drawing import machine_svg, system_svg
+from repo2ree_repoview.overview.bundle import Bundle
 from repo2ree_repoview.overview.exports import (
     Condition,
     Conditions,
@@ -23,8 +23,10 @@ from repo2ree_repoview.overview.exports import (
     Scalar,
     Spec,
 )
+from repo2ree_repoview.overview.figures import inlined
 from repo2ree_repoview.overview.html import Page, esc, rule_link, section, table
 from repo2ree_repoview.overview.pages.aggregate import without_machine
+from repo2ree_repoview.overview.spec_diagrams import SYSTEM, machine_drawing
 
 
 def literal(value: Scalar) -> str:
@@ -180,7 +182,7 @@ SETTLES: dict[bool | str, str] = {
 }
 
 
-def page_specification(spec: Spec) -> Page:
+def page_specification(spec: Spec, bundle: Bundle) -> Page:
     machines = []
     for name, entity in sorted(spec.entities.items()):
         if not entity.constrained:
@@ -201,7 +203,7 @@ def page_specification(spec: Spec) -> Page:
         machines.append(
             f'<div class="card"><b>{esc(name)}</b> <span class="muted">owned by {esc(entity.owner)}</span>'
             f'<div class="muted">{esc(facts)}</div>'
-            f'<div class="svgwrap">{machine_svg(spec, name)}</div>{why}</div>'
+            f'<div class="svgwrap">{inlined(bundle, machine_drawing(name))}</div>{why}</div>'
         )
     citations = []
     for boundary in spec.boundaries.values():
@@ -236,7 +238,7 @@ def page_specification(spec: Spec) -> Page:
         for pattern, rules in sorted(patterns.items())
     )
     body = (
-        '<h3>System map</h3><div class="diagram svgwrap">' + system_svg(spec) + "</div><h3>State machines</h3>"
+        '<h3>System map</h3><div class="diagram svgwrap">' + inlined(bundle, SYSTEM) + "</div><h3>State machines</h3>"
         '<p class="lede">Where an instance starts, which edges it may take, and when it must have settled. '
         "Every other edge is a violation; nothing may leave a terminal state.</p>"
         + f'<div class="machines">{"".join(machines)}</div>'

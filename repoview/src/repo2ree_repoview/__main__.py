@@ -12,6 +12,7 @@ COMMANDS = {
     "recipes": "repo2ree_repoview.diagrams.recipes",
     "stamp": "repo2ree_repoview.stamp",
     "gate-verifications": "repo2ree_repoview.overview.receipt",
+    "spec-diagrams": "repo2ree_repoview.overview.spec_diagrams",
 }
 
 

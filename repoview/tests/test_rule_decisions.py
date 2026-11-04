@@ -97,7 +97,9 @@ def test_the_rules_table_links_each_rule_to_its_tests_traces_and_operations(tmp_
         }
     )
     exercised = Exercised(Counter(), Counter({"allocation-ends": 3}), Counter())
-    body = page_coverage(spec, receipt(), exercised, {}, decided, catalogue).body
+    body = page_coverage(
+        spec, receipt(), exercised, {}, decided, catalogue, Bundle(tmp_path / "overview", "a" * 40)
+    ).body
 
     assert '<code id="rule-allocation-ends">allocation-ends</code>' in body
     assert 'href="evidence.html?from=coverage#t/traces/r.html#rule=allocation-ends"' in body

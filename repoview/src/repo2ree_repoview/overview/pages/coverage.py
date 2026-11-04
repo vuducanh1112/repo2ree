@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from repo2ree_repoview.overview.drawing import machine_svg
+from repo2ree_repoview.overview.bundle import Bundle
 from repo2ree_repoview.overview.exports import Operations, Spec
+from repo2ree_repoview.overview.figures import inlined
 from repo2ree_repoview.overview.html import Page, esc, in_frame, rule_anchor, section, table
 from repo2ree_repoview.overview.pages.aggregate import without_machine
 from repo2ree_repoview.overview.pages.operations import anchor, title
 from repo2ree_repoview.overview.receipt import Decision, Exercised, Receipt, reached
+from repo2ree_repoview.overview.spec_diagrams import coverage_drawing
 
 TONE = {"passed": "ok", "violated": "no", "inconclusive": "ex"}
 FINDINGS_SHOWN = 3
@@ -77,6 +79,7 @@ def page_coverage(
     unreached: dict[str, str],
     decisions: dict[str, list[Decision]],
     catalogue: Operations,
+    bundle: Bundle,
 ) -> Page:
     edges, rules, extras = exercised.edges, exercised.rules, exercised.extras
     legend = (
@@ -85,7 +88,7 @@ def page_coverage(
     )
     machines = "".join(
         f'<div class="card"><b>{esc(name)}</b> <span class="muted">owned by {esc(entity.owner)}</span>'
-        f'<div class="svgwrap">{machine_svg(spec, name, edges, unreached)}</div></div>'
+        f'<div class="svgwrap">{inlined(bundle, coverage_drawing(name))}</div></div>'
         for name, entity in sorted(spec.entities.items())
         if entity.constrained
     )

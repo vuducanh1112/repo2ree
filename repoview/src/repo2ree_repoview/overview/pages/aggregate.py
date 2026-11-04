@@ -5,10 +5,13 @@ from __future__ import annotations
 from collections import Counter
 from collections.abc import Iterable
 
-from repo2ree_repoview.overview.drawing import never_taken, submachine_svg
+from repo2ree_repoview.overview.bundle import Bundle
+from repo2ree_repoview.overview.drawing import never_taken
 from repo2ree_repoview.overview.exports import Aggregate, Spec, SubMachine
+from repo2ree_repoview.overview.figures import inlined
 from repo2ree_repoview.overview.html import Page, esc, section
 from repo2ree_repoview.overview.receipt import AggregateMoves, Move
+from repo2ree_repoview.overview.spec_diagrams import part_drawing
 
 DISALLOWED_SHOWN = 20
 
@@ -41,7 +44,7 @@ def without_machine(spec: Spec) -> str:
     )
 
 
-def card(machine: SubMachine, moves: Counter[Move], note: str = "") -> str:
+def card(bundle: Bundle, aggregate: Aggregate, machine: SubMachine, moves: Counter[Move], note: str = "") -> str:
     never = never_taken(machine, moves)
     listed = (
         f'<details class="never"><summary>{len(never)} allowed, never taken</summary>'
@@ -52,7 +55,7 @@ def card(machine: SubMachine, moves: Counter[Move], note: str = "") -> str:
     return (
         f'<div class="card part"><b>{esc(machine.name.removeprefix("definition."))}</b>'
         + (f'<div class="muted">{esc(note)}</div>' if note else "")
-        + f'<div class="svgwrap">{submachine_svg(machine, moves)}</div>{listed}</div>'
+        + f'<div class="svgwrap">{inlined(bundle, part_drawing(aggregate.name, machine.name))}</div>{listed}</div>'
     )
 
 
@@ -95,12 +98,12 @@ LEGEND = (
 )
 
 
-def page_aggregate(aggregate: Aggregate, moves: AggregateMoves) -> Page:
+def page_aggregate(aggregate: Aggregate, moves: AggregateMoves, bundle: Bundle) -> Page:
     """Every part in the checker's order, one row of cards per group."""
     groups: dict[str, list[str]] = {}
     for machine in aggregate.machines:
         note = receipt_note(aggregate, machine.name) if machine.kind == "receipt" else ""
-        groups.setdefault(machine.group, []).append(card(machine, moves.of(machine.name), note))
+        groups.setdefault(machine.group, []).append(card(bundle, aggregate, machine, moves.of(machine.name), note))
     body = (
         summary(aggregate, moves)
         + LEGEND

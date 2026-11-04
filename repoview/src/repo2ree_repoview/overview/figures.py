@@ -7,7 +7,7 @@ from pathlib import Path
 from repo2ree_repoview.overview.bundle import Bundle, Origin
 from repo2ree_repoview.overview.html import esc
 from repo2ree_repoview.repository import ROOT
-from repo2ree_repoview.stamp import Stamp, read_svg_stamp
+from repo2ree_repoview.stamp import Stamp, read_svg_stamp, unstamp
 
 DIAGRAMS = ROOT / "reports/diagrams"
 
@@ -35,3 +35,16 @@ def diagram(bundle: Bundle, path: Path, title: str, note: str = "") -> str:
         f'<a href="{esc(relative)}">Open full size</a></p>'
         f'<div class="diagram"><img src="{esc(relative)}" alt="{esc(title)}" loading="lazy"></div>'
     )
+
+
+def inlined(bundle: Bundle, relative: str) -> str:
+    """A drawing `just generate-spec-diagrams` wrote, copied into the bundle and drawn in the page, unstamped."""
+    path = DIAGRAMS / relative
+    stamp = read_svg_stamp(path) if path.is_file() else None
+    if (
+        bundle.copy(path, f"diagrams/{relative}", Origin(kind="diagram", revision=stamp.revision if stamp else ""))
+        is None
+    ):
+        return '<p class="state-missing">Missing: run <code>just generate-spec-diagrams</code>.</p>'
+    svg = unstamp(path.read_text(encoding="utf-8"))
+    return svg[svg.index("<svg") :]

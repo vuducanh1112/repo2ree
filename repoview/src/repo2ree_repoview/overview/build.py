@@ -1,12 +1,12 @@
 """Build the repository overview: one static page over what the repository already knows.
 
 It runs nothing. It reads what the recipes `just repo-overview` depends on wrote: the
-zones, the behaviour specification, and the operations traceview folds from the
-assurance-gate receipt's verifications (reports/exports/), and the generated architecture,
-domain, and recipe diagrams (reports/diagrams/). Beside them it reads the gates' receipts,
-the coverage and excuses of the last assurance-gate receipt, the Just recipes and how
-long they took (logs/just/), the environment contract, and the OpenAPI contract, and
-lays them out page by page.
+zones, the behaviour specification, the operations traceview folds from the
+assurance-gate receipt's verifications, and the Just recipes (reports/exports/), and the
+generated architecture, domain, specification, and recipe diagrams (reports/diagrams/).
+Beside them it reads the gates' receipts, the coverage and excuses of the last
+assurance-gate receipt, how long the recipes took (logs/just/), the environment contract,
+and the OpenAPI contract, and lays them out page by page.
 
 The overview is a bundle bound to one commit: whatever it shows from outside the tree
 (test evidence, diagrams) is copied into it, and what is too large to copy (REE Git
@@ -22,7 +22,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from repo2ree_repoview.diagrams.recipes import load_recipes
+from repo2ree_repoview.diagrams.recipes import read_recipes
 from repo2ree_repoview.overview.bundle import Bundle, Origin
 from repo2ree_repoview.overview.contracts import Environment, OpenApi
 from repo2ree_repoview.overview.exports import EXPORTS, Operations, Spec, Zones
@@ -123,6 +123,7 @@ def build(output: Path | None, exports: Path = EXPORTS) -> Path:
     receipt = read_receipt()
     evidence = bundle_evidence(bundle, receipt)
     operations = Operations.model_validate_json(kept(bundle, exports, "operations"))
+    recipes = read_recipes(kept(bundle, exports, "just-recipes"))
     excused = unreached()
     # What logs/just/ held when the overview was built, kept as the overview read it.
     timings = summarize(read_invocations())
@@ -135,16 +136,16 @@ def build(output: Path | None, exports: Path = EXPORTS) -> Path:
         page_receipts(now),
         page_operations(operations, receipt, bundle, evidence),
         page_vocabulary(spec),
-        page_specification(spec),
+        page_specification(spec, bundle),
         page_coverage(
-            spec, receipt, Exercised.over(evidence), excused, decisions(bundle, receipt, evidence), operations
+            spec, receipt, Exercised.over(evidence), excused, decisions(bundle, receipt, evidence), operations, bundle
         ),
         *(
-            page_aggregate(aggregate, AggregateMoves.over(evidence, name))
+            page_aggregate(aggregate, AggregateMoves.over(evidence, name), bundle)
             for name, aggregate in spec.aggregates.items()
         ),
         page_architecture(bundle),
-        page_recipes(load_recipes(), bundle, timings),
+        page_recipes(recipes, bundle, timings),
         page_configuration(Environment.read()),
         page_api(OpenApi.read()),
     ]

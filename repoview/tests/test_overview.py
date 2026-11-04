@@ -25,6 +25,7 @@ def exports(tmp_path: Path) -> Path:
     (directory / "spec.json").write_text(exported(SPEC_EXPORT))
     (directory / "zones.json").write_text(exported(ZONES_EXPORT))
     (directory / "operations.json").write_text(exported(operations_export(gate_verifications(read_receipt()))))
+    (directory / "just-recipes.json").write_text(exported(("just", "--dump", "--dump-format", "json")))
     return directory
 
 
@@ -80,7 +81,7 @@ def test_the_overview_of_this_tree_is_a_whole_bundle(tmp_path: Path, exports: Pa
     assert manifest["revision"] == head.stdout.strip()
     for entry in manifest["copied"]:
         assert sha256(target / entry["path"]) == entry["sha256"], entry["path"]
-    owned = {"spec", "zones", "operations"}
+    owned = {"spec", "zones", "operations", "just-recipes"}
     kinds = {entry["kind"]: entry["path"] for entry in manifest["copied"] if entry.get("kind") in owned}
     assert kinds == {kind: f"inputs/{kind}.json" for kind in owned}
 

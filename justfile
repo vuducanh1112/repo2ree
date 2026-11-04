@@ -60,9 +60,9 @@ import 'just/publish.just'
 _require-clean-tree:
     @test -z "$(git status --porcelain)" || { echo "working tree dirty — commit first, so published images match a commit"; exit 1; }
 
-# Generate every architecture, domain, and recipe graph diagram.
+# Generate every architecture, domain, specification, and recipe graph diagram.
 [group('Diagrams')]
-generate-diagrams: generate-architecture-diagrams generate-domain-diagrams generate-just-recipe-graph
+generate-diagrams: generate-architecture-diagrams generate-domain-diagrams generate-spec-diagrams generate-just-recipe-graph
     @printf '>> diagrams written under %s\n' {{ quote(DIAGRAM_DIR + "/") }}
 
 # Run every generated tree's own prune and list what no one owns (scripts/generated.toml); `--dry-run`, `--remove-unclaimed`.
@@ -72,7 +72,7 @@ prune *args:
 
 # Build the repository overview in reports/overview/<revision>/ (reports/overview/latest): zones, gates, behaviour, architecture, recipes, configuration, API.
 [group('Repository')]
-repo-overview: generate-diagrams export-zones export-spec export-operations
+repo-overview: generate-diagrams export-zones export-spec export-operations export-just-recipes
     python -m repo2ree_repoview overview
 
 # With paths, place each in its zone; with --export, print the zones and each tracked file's place as JSON
@@ -89,8 +89,15 @@ export-zones:
     python scripts/zones.py export > {{ quote(EXPORT_DIR + "/zones.json") }}
     {{ STAMP_EXPORTS }} --by export-zones {{ quote(EXPORT_DIR + "/zones.json") }}
 
+# Write Just's JSON dump of every recipe for the recipe graph and the overview.
+[group('Repository')]
+export-just-recipes:
+    mkdir -p {{ quote(EXPORT_DIR) }}
+    {{ just_executable() }} --justfile {{ quote(justfile()) }} --dump --dump-format json > {{ quote(EXPORT_DIR + "/just-recipes.json") }}
+    {{ STAMP_EXPORTS }} --by export-just-recipes {{ quote(EXPORT_DIR + "/just-recipes.json") }}
+
 # Generate the declared Just recipe dependency graph.
 [group('Diagrams')]
-generate-just-recipe-graph:
-    python -m repo2ree_repoview recipes -o {{ quote(JUST_RECIPE_GRAPH) }}
+generate-just-recipe-graph: export-just-recipes
+    python -m repo2ree_repoview recipes --dump {{ quote(EXPORT_DIR + "/just-recipes.json") }} -o {{ quote(JUST_RECIPE_GRAPH) }}
     {{ STAMP_DIAGRAMS }} --by generate-just-recipe-graph {{ quote(JUST_RECIPE_GRAPH) }}
