@@ -40,9 +40,10 @@ _gated-tiers jobs: (_tier-system jobs "run") (_tier-gui-instant jobs "run") (_ti
 # A test is accepted when it passed and its behaviour passed, or it is excused by
 # assurance/checker/expected-verdicts.toml (as every xfail must be) and left exactly those rules open.
 # The suite together must reach every specified rule, edge, and message the same file does not excuse.
-# Run the per-test e2e tiers on HEAD, judge every test's behaviour, and certify HEAD's tree.
+# Run the per-test e2e tiers on HEAD, assess every test's behaviour, judge it, and certify HEAD's tree.
 [group('Release gates')]
 assurance-gate jobs=E2E_JOBS: _require-clean-tree build-e2e-bundles (_gated-tiers jobs)
+    python -m repo2ree_testbed assess --invocation "$REPO2REE_TEST_RUN_ID"
     python -m scripts.gates.assurance_gate certify --invocation "$REPO2REE_TEST_RUN_ID"
 
 # Require an assurance-gate receipt for HEAD's clean tree.

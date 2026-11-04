@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """The assurance gate: judge per-test e2e runs on their behaviour, and certify the tree they ran on.
 
-Test runs only collect; ``repo2ree_testbed inspect`` draws verdicts but never fails a run. This
-composes the two into a gate:
+Test runs only collect, and ``repo2ree_testbed assess`` records each test's behaviour verdict
+without failing a run. This composes the two into a gate:
 
-- ``judge RUN...`` checks every test's dossier again with the checker in this
-  tree and accepts a test only if it passed and its behaviour passed, or the
+- ``judge RUN...`` reads every test's assessment (its verdict in run.json, its rules in
+  verification/assurance.json) and accepts a test only if it passed and its behaviour passed, or the
   test ``assurance/checker/expected-verdicts.toml`` excuses (an xfail must be) left
   exactly the rules it names non-passing. Exit 1 if any test is not accepted.
 - ``certify RUN... [--invocation ID]`` judges the runs, and those that name the
   invocation, then also requires every tier in ``TIERS`` to be among
-  the runs, each built from HEAD with a clean tree that is still HEAD, and every
+  the runs, each built from HEAD with a clean tree that is still HEAD and assessed by it, and every
   expectation to have been used, and the tests together to reach every specified
   rule, edge, and message the file does not declare unreached. A run limited to
   selected tests (``--select``) certifies nothing. It writes the
@@ -135,25 +135,12 @@ def coverage_problems(judgements: list[Judgement], unreached: dict[str, str]) ->
     return problems
 
 
-def check_dossier(directory: Path) -> dict[str, Any] | None:
-    """The checker's report on a test's dossier, from the checker in this tree; None without a dossier."""
-    dossier = directory / "dossier"
-    if not (dossier / "manifest.json").is_file():
+def check_dossier(directory: Path, test: dict[str, Any]) -> dict[str, Any] | None:
+    """The checker's report on a test's dossier, as its assessment left it; None when it has no verdict."""
+    report_path = directory / "verification/assurance.json"
+    if test.get("behaviour") not in {"passed", *NON_PASSING} or not report_path.is_file():
         return None
-    output = directory / "verification"
-    command = [
-        sys.executable,
-        "-m",
-        "repo2ree_assurance_checker",
-        "check",
-        "--dossier",
-        str(dossier),
-        "-o",
-        str(output),
-    ]
-    if subprocess.run(command, cwd=ROOT, check=False, capture_output=True).returncode not in {0, 1, 2}:
-        return None
-    report: dict[str, Any] = json.loads((output / "assurance.json").read_text())
+    report: dict[str, Any] = json.loads(report_path.read_text())
     return report
 
 
@@ -162,9 +149,11 @@ def judge_test(run: str, directory: Path, test: dict[str, Any], expectations: di
     judgement = Judgement(run, name, str(test["outcome"]), "missing")
     if judgement.outcome not in ACCEPTED_OUTCOMES:
         judgement.problems.append(f"test {judgement.outcome}")
-    report = check_dossier(directory)
+    report = check_dossier(directory, test)
     if report is None:
-        judgement.problems.append("no behaviour verdict: the dossier is missing or the checker failed")
+        judgement.problems.append(
+            "no behaviour verdict: the dossier is missing, the run is not assessed, or the checker failed"
+        )
         return judgement
     judgement.behaviour = str(report["verdict"])
     judgement.declared, judgement.reached = coverage(report)
@@ -243,13 +232,17 @@ def runs_of(invocation: str, directory: Path = RUNS) -> list[Path]:
 def certification_problems(
     runs: list[Path], judgements: list[Judgement], expectations: dict[str, Expectation]
 ) -> list[str]:
-    revision, _, problems = clean_head()
+    revision, tree, problems = clean_head()
     tiers: dict[str, Path] = {}
     for root in runs:
         run = json.loads((root / "run.json").read_text())
         built = run.get("build_revision") or "an unknown build"
         if built != revision:
             problems.append(f"{root.name} ran on {built}, not HEAD {revision}")
+        if run.get("assessed_tree") != tree:
+            problems.append(
+                f"{root.name} was not assessed by HEAD's tree; run: python -m repo2ree_testbed assess {root}"
+            )
         if selected := run.get("selected"):
             problems.append(f"{root.name} ran only the tests matching {' or '.join(selected)}, not its whole tier")
         if run["tier"] in tiers:

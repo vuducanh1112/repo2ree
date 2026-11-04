@@ -14,16 +14,26 @@ def write_run(
     tests: dict[str, tuple[str, dict[str, Any] | None]],
     revision: str = HEAD,
     selected: tuple[str, ...] = (),
+    assessed_tree: str = "tree",
 ) -> Path:
-    """A per-test run: each test's outcome, and the checker report its dossier yields (None: no dossier)."""
+    """A per-test run, assessed: each test's outcome, and the checker report its assessment left (None: no dossier)."""
     root.mkdir(parents=True)
     entries = []
     for index, (name, (outcome, report)) in enumerate(tests.items()):
         directory = f"tests/t{index}"
-        (root / directory).mkdir(parents=True)
-        (root / directory / "report.json").write_text(json.dumps(report))
-        entries.append({"name": name, "outcome": outcome, "directory": directory})
-    record = {"tier": tier, "build_revision": revision, "selected": list(selected), "tests": entries}
+        (root / directory / "verification").mkdir(parents=True)
+        entry = {"name": name, "outcome": outcome, "directory": directory, "behaviour": "missing"}
+        if report is not None:
+            (root / directory / "verification/assurance.json").write_text(json.dumps(report))
+            entry["behaviour"] = report["verdict"]
+        entries.append(entry)
+    record = {
+        "tier": tier,
+        "build_revision": revision,
+        "selected": list(selected),
+        "assessed_tree": assessed_tree,
+        "tests": entries,
+    }
     (root / "run.json").write_text(json.dumps(record))
     return root
 
@@ -36,7 +46,6 @@ def checker_report(**rules: str) -> dict[str, Any]:
 
 @pytest.fixture(autouse=True)
 def recorded_reports(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(gate, "check_dossier", lambda directory: json.loads((directory / "report.json").read_text()))
     monkeypatch.setattr(gate, "clean_head", lambda: (HEAD, "tree", []))
 
 
@@ -64,6 +73,29 @@ def test_a_passing_test_whose_behaviour_is_violated_is_refused(tmp_path: Path) -
 def test_a_failed_test_or_one_without_a_verdict_is_refused(tmp_path: Path, outcome: str, report: Any) -> None:
     run = write_run(tmp_path / "run", "e2e-system", {"t": (outcome, report)})
     assert not judged(run)["t"].accepted
+
+
+def test_a_verdict_is_read_only_where_the_assessment_reached_one(tmp_path: Path) -> None:
+    run = write_run(tmp_path / "run", "e2e-system", {"t": ("passed", checker_report(a="passed"))})
+    record = json.loads((run / "run.json").read_text())
+    # A checker that failed leaves an earlier check's report behind; it is not this assessment's verdict.
+    record["tests"][0]["behaviour"] = "error"
+    (run / "run.json").write_text(json.dumps(record))
+    (item,) = judged(run).values()
+    assert item.behaviour == "missing"
+    assert not item.accepted
+
+
+def test_certification_needs_every_run_assessed_by_heads_tree(tmp_path: Path) -> None:
+    runs = [
+        write_run(tmp_path / tier, tier, {f"{tier}-t": ("passed", checker_report(a="passed"))}, assessed_tree=tree)
+        for tier, tree in [("e2e-system", "tree"), ("e2e-gui-instant", "older"), ("e2e-faults", "")]
+    ]
+    problems = gate.certification_problems(runs, gate.judge_runs(runs, {}), {})
+    assert [problem.split(";")[0] for problem in problems] == [
+        "e2e-gui-instant was not assessed by HEAD's tree",
+        "e2e-faults was not assessed by HEAD's tree",
+    ]
 
 
 def test_an_xfail_is_accepted_only_when_excused(tmp_path: Path) -> None:
