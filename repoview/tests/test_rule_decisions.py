@@ -120,3 +120,8 @@ def test_a_test_links_its_traces_once_whose_page_has_a_tab_per_ree(tmp_path: Pat
     assert evidence_links(bundle, "evidence/two").endswith(
         '<a href="evidence/two/traces/ree-a.html">traces · 2 REEs</a>'
     )
+    # The whole dossier's page is the way in, where there is one.
+    (bundle.root / "evidence/two/traces/dossier.html").write_text("<p>dossier</p>")
+    assert evidence_links(bundle, "evidence/two").endswith(
+        '<a href="evidence/two/traces/dossier.html">traces · 2 REEs</a>'
+    )

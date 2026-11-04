@@ -9,18 +9,24 @@ from repo2ree_repoview.overview.bundle import Bundle
 from repo2ree_repoview.overview.html import Page, esc, section, table
 from repo2ree_repoview.overview.receipt import Evidence, Receipt, reached
 
+# The behaviour trace of a whole dossier, beside the one of each REE (repo2ree_assurance_traceview's).
+DOSSIER_PAGE = "dossier.html"
+
 
 def evidence_links(bundle: Bundle, directory: str | None) -> str:
-    """Links to a test's bundled verdict report and its behaviour traces: one link, whose page has a tab per REE."""
+    """Links to a test's bundled verdict report and its behaviour traces: one link, to the whole dossier's page
+    where there is one, whose tabs lead to each REE's."""
     if directory is None:
         return '<span class="muted">not bundled</span>'
     links = []
     if (bundle.root / directory / "verification/assurance.html").is_file():
         links.append(f'<a href="{esc(directory)}/verification/assurance.html">verdicts</a>')
-    traces = sorted((bundle.root / directory / "traces").glob("*.html"))
+    pages = sorted((bundle.root / directory / "traces").glob("*.html"))
+    whole = next((page for page in pages if page.name == DOSSIER_PAGE), None)
+    traces = [page for page in pages if page is not whole]
     if traces:
         label = "trace" if len(traces) == 1 else f"traces · {len(traces)} REEs"
-        links.append(f'<a href="{esc(directory)}/traces/{esc(traces[0].name)}">{label}</a>')
+        links.append(f'<a href="{esc(directory)}/traces/{esc((whole or traces[0]).name)}">{label}</a>')
     return " · ".join(links) or '<span class="muted">none</span>'
 
 
