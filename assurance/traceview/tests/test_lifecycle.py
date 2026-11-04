@@ -32,7 +32,7 @@ def lost(s: Scenario) -> Scenario:
         subject="dispatch",
         key="a-lost",
         message="exec_action",
-        facts={"operation": "build_runtime", "run_id": "run-lost"},
+        facts={"operation": "build_runtime", "run_id": "run-lost", "session": "session-1"},
     )
     s.requests["a-lost"] = f"api-000001#{s.seq}"
     s.journal(70.0, kind="receive", owner="supervisor", subject="dispatch", key="a-lost", message="unavailable")
@@ -128,7 +128,7 @@ def test_a_run_whose_attempt_was_never_captured_still_shows_its_dispatch() -> No
         subject="dispatch",
         key="a-killed",
         message="exec_action",
-        facts={"operation": "build_runtime", "run_id": "run-killed"},
+        facts={"operation": "build_runtime", "run_id": "run-killed", "session": "session-1"},
     )
     s.journal(50.0, kind="receive", owner="supervisor", subject="dispatch", key="a-killed", message="unavailable")
     s.action(50.1, "run-killed", "running", "failed", action="build_runtime", failure_category="internal")

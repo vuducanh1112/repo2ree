@@ -76,7 +76,7 @@ class Scenario:
             subject="dispatch",
             key=attempt,
             message="exec_action",
-            facts={"operation": operation, "run_id": run_id},
+            facts={"operation": operation, "run_id": run_id, "session": "session-1"},
         )
         self.requests[attempt] = f"api-000001#{self.seq}"
         self.journal(
