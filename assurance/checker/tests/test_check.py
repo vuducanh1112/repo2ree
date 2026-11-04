@@ -196,6 +196,33 @@ class Recorder:
             self._add("api-000001", kind=kind, owner=owner, subject="dispatch", key=key, message=message, facts=facts)
         return request
 
+    def session(
+        self, key: str, *path: str, start: str | None = None, store: str = "lab-1", reason: str | None = None
+    ) -> None:
+        """A workbench's connection to ``store`` from ``start`` through ``path``, as the supervisor journals it."""
+        for current, target in pairwise([start, *path]):
+            assert target is not None
+            facts: dict[str, Any] = {"workbench_id": f"bench-{key}", "nonce": f"n-{key}", "store_id": store}
+            if target == "connected":
+                facts |= {"backend": "container", "slots": 1}
+            if target in {"refused", "lost"}:
+                facts["reason"] = reason
+            self.positions["api-000001"] = self.positions.get("api-000001", 0) + 1
+            self.events.append(
+                Event(
+                    source="api-000001",
+                    position=self.positions["api-000001"],
+                    partition=store,
+                    kind="transition",
+                    owner="supervisor",
+                    subject="WorkbenchSession",
+                    key=key,
+                    source_state=current,
+                    target_state=target,
+                    facts=facts,
+                )
+            )
+
     def receipt(
         self, step: str, current: str | None, target: str, *, attempt_id: str | None, cause: str = "operation"
     ) -> None:
@@ -779,3 +806,33 @@ def test_a_citation_of_a_record_the_evidence_does_not_hold_is_violated() -> None
         "violated: names api-000001#99, but the evidence records ['api-000001#3']",
         f"violated: names {'d' * 40}, but the evidence records ['{'c' * 40}']",
     ]
+
+
+def test_a_store_is_served_by_one_session_at_a_time() -> None:
+    recorder = Recorder()
+    recorder.session("s1", "opened", "connected")
+    recorder.session("s2", "opened", "refused", reason="store_claimed")
+    recorder.session("s1", "lost", start="connected", reason="closed")
+    recorder.session("s3", "opened", "connected")
+    recorder.session("s3", "lost", start="connected", reason="shutdown")
+    # Another store's session is no rival.
+    recorder.session("other", "opened", "connected", store="lab-2")
+    recorder.session("other", "lost", start="connected", store="lab-2", reason="shutdown")
+    result = verdicts(recorder)
+    assert (result["one-session-per-store"], result["machine:WorkbenchSession"]) == ("passed", "passed")
+
+
+def test_a_second_session_admitted_beside_the_first_is_violated() -> None:
+    recorder = Recorder()
+    recorder.session("s1", "opened", "connected")
+    recorder.session("s2", "opened", "connected")
+    recorder.session("s1", "lost", start="connected", reason="closed")
+    recorder.session("s2", "lost", start="connected", reason="closed")
+    assert findings(recorder, "one-session-per-store") == ["violated: WorkbenchSession s1 was connected"]
+
+
+def test_a_session_still_connected_when_the_journal_closed_is_violated_but_open_one_is_not() -> None:
+    recorder = Recorder()
+    recorder.session("s1", "opened", "connected")
+    assert findings(recorder, "machine:WorkbenchSession") == ["violated: still connected when api-000001 closed"]
+    assert verdicts(recorder, journal(closed=False), git(REE))["machine:WorkbenchSession"] == "passed"

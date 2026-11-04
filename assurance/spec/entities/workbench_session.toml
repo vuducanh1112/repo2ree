@@ -1,0 +1,19 @@
+# The WorkbenchSession machine: where a connection starts, which edges it may take, and when
+# it must have settled. Its states and facts are declared in vocabulary/workbench_session.toml.
+
+name = "WorkbenchSession"
+initial = "opened"
+terminal = ["refused", "lost"]
+# The API ends every connection before it stops, so a session still open in a closed journal
+# was abandoned. One open in a journal that never closed belonged to a process that crashed.
+settles_before_close = true
+
+[[transitions]]
+from = "opened"
+to = ["connected", "refused"]
+why = "The hello's token is checked, and the store is claimed for this workbench or turned away."
+
+[[transitions]]
+from = "connected"
+to = ["lost"]
+why = "The socket ends: closed, failed, replaced by the same workbench's new connection, or shut down."

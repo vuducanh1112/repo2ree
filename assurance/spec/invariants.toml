@@ -18,6 +18,15 @@ summary = "A canceled attempt is captured with the REE as it was before the atte
 when = { entity = "Attempt", to = "captured", where = { outcome = "canceled" } }
 require = { where = { changed = false } }
 
+# A store is served by one workbench at a time: a second one claiming it is refused, never
+# let in beside the first, so the store's commands always have one place to go.
+[[invariant]]
+id = "one-session-per-store"
+pattern = "excludes"
+summary = "A workbench is admitted to a store only while no other session serves it."
+when = { entity = "WorkbenchSession", to = "connected" }
+require = { entity = "WorkbenchSession", in_states = ["connected"] }
+
 # ---- The author, through the API ----------------------------------------------
 #
 # What the author is told against what happened. An action that runs a command in

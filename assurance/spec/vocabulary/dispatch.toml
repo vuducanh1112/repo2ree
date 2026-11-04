@@ -24,6 +24,8 @@ error = "The workbench reported a transport or protocol error."
 [facts.exec_action]
 operation = "str"
 run_id = "str"
+# The WorkbenchSession the command was sent on. Optional until every journal records it.
+session = "str?"
 
 [facts.result]
 # The commit that captured the attempt, as the result reported it.

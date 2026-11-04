@@ -1,0 +1,46 @@
+# The words for one connection of a store's workbench to the control plane, from its hello
+# to the end of the socket.
+#
+# Recorded where the workbench dials in: the API accepts the socket and the supervisor's
+# registry holds the connection, so the API process journals both. A workbench that redials
+# opens a new session; its nonce says whether the same process came back. Its machine is
+# entities/workbench_session.toml.
+
+name = "WorkbenchSession"
+kind = "entity"
+owner = "supervisor"
+key = "session_id"
+partition = "store_id"
+evidence = "journal"
+summary = "One workbench's connection serving one store, from its hello to the end of its socket."
+
+[states]
+opened = "The workbench dialed in and said hello; it is not admitted yet."
+connected = "Admitted: the workbench serves its store, and commands for the store's REEs go to it."
+refused = "Settled: the hello was turned away, and the socket closed."
+lost = "Settled: the socket is gone, and the store's commands no longer reach this workbench."
+
+# A hello claims its store before any token is checked: a session is partitioned by its store
+# only when that store is registered, so an unknown caller writes into no store's history.
+[facts]
+workbench_id = "str"
+# Minted per workbench process: the same id with a new nonce is another process, not a reconnect.
+nonce = "str"
+store_id = "str"
+backend = { type = "str", required_in = ["connected"] }
+slots = { type = "int", required_in = ["connected"] }
+version = "str?"
+# The WebSocket close code, when the socket ended with one.
+close_code = "int?"
+
+[facts.reason]
+type = "str"
+required_in = ["refused", "lost"]
+
+[facts.reason.values]
+bad_token = "Refused: the hello's token was not minted for its store, or was revoked."
+store_claimed = "Refused: another workbench serves the store already."
+closed = "Lost: the socket closed, from either side or because pings went unanswered."
+send_failed = "Lost: writing to the socket failed, so the control plane gave it up."
+superseded = "Lost: the same workbench connected again, and the new connection took its place."
+shutdown = "Lost: the control plane stopped, and closed it on the way."

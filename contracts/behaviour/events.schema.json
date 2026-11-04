@@ -3,7 +3,7 @@
   "$id": "urn:repo2ree:contracts:behaviour:events",
   "title": "repo2ree behaviour journal record",
   "description": "One line of a behaviour journal. Generated from assurance/spec/vocabulary by `python -m repo2ree_assurance_checker generate`; do not edit. Sequence, epochs, and the header are checked per journal by `python -m repo2ree_assurance_checker validate-journal`.",
-  "x-vocabulary": "sha256:7e26e399f70214b1265bb3f8e1087f058f9382df57569a90ea43384d527e0469",
+  "x-vocabulary": "sha256:a3b99b1cb3599bc8f3274906cca7a2121d9a223a92b7459a4f9ba494526ea827",
   "type": "object",
   "properties": {
     "v": {
@@ -43,6 +43,9 @@
     },
     {
       "$ref": "#/$defs/Ree"
+    },
+    {
+      "$ref": "#/$defs/WorkbenchSession"
     },
     {
       "$ref": "#/$defs/dispatch"
@@ -157,6 +160,7 @@
               "AuthorApiAction",
               "Receipt",
               "Ree",
+              "WorkbenchSession",
               "dispatch"
             ]
           }
@@ -1060,6 +1064,226 @@
       ],
       "description": "The author REE's committed state: authored while draft, frozen once sealed. Evidence: git."
     },
+    "WorkbenchSession": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "transition"
+        },
+        "subject": {
+          "const": "WorkbenchSession"
+        },
+        "owner": {
+          "const": "supervisor"
+        },
+        "key": {
+          "type": "string"
+        },
+        "partition": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "from": {
+          "enum": [
+            null,
+            "opened",
+            "connected",
+            "refused",
+            "lost"
+          ]
+        },
+        "to": {
+          "enum": [
+            "opened",
+            "connected",
+            "refused",
+            "lost"
+          ]
+        },
+        "facts": {
+          "type": "object",
+          "properties": {
+            "backend": {
+              "type": "string"
+            },
+            "close_code": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "nonce": {
+              "type": "string"
+            },
+            "reason": {
+              "enum": [
+                "bad_token",
+                "store_claimed",
+                "closed",
+                "send_failed",
+                "superseded",
+                "shutdown"
+              ]
+            },
+            "slots": {
+              "type": "integer"
+            },
+            "store_id": {
+              "type": "string"
+            },
+            "version": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "workbench_id": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "subject",
+        "owner",
+        "key",
+        "to"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "to": {
+                "enum": [
+                  "connected"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "facts": {
+                "type": "object",
+                "properties": {
+                  "backend": {
+                    "type": "string"
+                  },
+                  "close_code": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "nonce": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "enum": [
+                      "bad_token",
+                      "store_claimed",
+                      "closed",
+                      "send_failed",
+                      "superseded",
+                      "shutdown"
+                    ]
+                  },
+                  "slots": {
+                    "type": "integer"
+                  },
+                  "store_id": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "workbench_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "backend",
+                  "slots"
+                ]
+              }
+            },
+            "required": [
+              "facts"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "to": {
+                "enum": [
+                  "lost",
+                  "refused"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "facts": {
+                "type": "object",
+                "properties": {
+                  "backend": {
+                    "type": "string"
+                  },
+                  "close_code": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "nonce": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "enum": [
+                      "bad_token",
+                      "store_claimed",
+                      "closed",
+                      "send_failed",
+                      "superseded",
+                      "shutdown"
+                    ]
+                  },
+                  "slots": {
+                    "type": "integer"
+                  },
+                  "store_id": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "workbench_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            },
+            "required": [
+              "facts"
+            ]
+          }
+        }
+      ],
+      "description": "One workbench's connection serving one store, from its hello to the end of its socket. Evidence: journal."
+    },
     "dispatch": {
       "description": "One typed command sent to a workbench and the single outcome the sender observed.",
       "oneOf": [
@@ -1116,6 +1340,12 @@
                       },
                       "run_id": {
                         "type": "string"
+                      },
+                      "session": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
                       }
                     }
                   }

@@ -61,7 +61,7 @@ def documents() -> Documents:
 
 def test_the_checked_in_specification_is_valid() -> None:
     spec = load_spec()
-    assert set(spec.entities) == {"Attempt", "AuthorApiAction", "Ree", "Receipt"}
+    assert set(spec.entities) == {"Attempt", "AuthorApiAction", "Ree", "Receipt", "WorkbenchSession"}
     assert spec.hosted_by("api") == {"api", "supervisor"}
     assert set(spec.boundaries) == {"dispatch"}
     assert spec.digest.startswith("sha256:")
