@@ -51,7 +51,7 @@ repos:
       # unprotected: rules, their reading, their excuses, or a gate edited alongside
       # the code they judge can be bent to fit it. The check reads the staged diff
       # itself, since pre-commit leaves deletions out of the file names it passes.
-      # `just repo-map` draws the zones. Deliberate exceptions are explicit:
+      # `python scripts/zones.py map` draws the zones. Deliberate exceptions are explicit:
       # SKIP=spec-isolation git commit ...
       - id: spec-isolation
         name: protected zones change on their own

@@ -8,9 +8,9 @@
 # gate cannot be bent beside the code it judges. Everything else is changed freely
 # and judged by the gates.
 #
-# `just repo-map` draws the zones, `just repo-map <path>` places one path, and
-# `python scripts/zones.py verify` reports files no entry claims and entries that
-# claim no file.
+# `python scripts/zones.py map` draws the zones, `python scripts/zones.py map <path>`
+# places one path, and `python scripts/zones.py verify` reports files no entry
+# claims and entries that claim no file.
 
 [spec]
 summary = "What must hold, and how evidence is read against it."

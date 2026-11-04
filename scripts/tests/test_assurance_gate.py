@@ -1,4 +1,5 @@
 import json
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -16,25 +17,22 @@ def write_run(
     selected: tuple[str, ...] = (),
     assessed_tree: str = "tree",
 ) -> Path:
-    """A per-test run, assessed: each test's outcome, and the checker report its assessment left (None: no dossier)."""
+    """A per-test run, and its assessment reported beside it: each test's outcome, and the checker report
+    its assessment left (None: no dossier)."""
+    reported = gate.REPORTS / root.name
     root.mkdir(parents=True)
     entries = []
     for index, (name, (outcome, report)) in enumerate(tests.items()):
         directory = f"tests/t{index}"
-        (root / directory / "verification").mkdir(parents=True)
+        (reported / directory / "verification").mkdir(parents=True)
         entry = {"name": name, "outcome": outcome, "directory": directory, "behaviour": "missing"}
         if report is not None:
-            (root / directory / "verification/assurance.json").write_text(json.dumps(report))
+            (reported / directory / "verification/assurance.json").write_text(json.dumps(report))
             entry["behaviour"] = report["verdict"]
         entries.append(entry)
-    record = {
-        "tier": tier,
-        "build_revision": revision,
-        "selected": list(selected),
-        "assessed_tree": assessed_tree,
-        "tests": entries,
-    }
-    (root / "run.json").write_text(json.dumps(record))
+    record = {"tier": tier, "build_revision": revision, "selected": list(selected), "tests": entries}
+    (root / "run.json").write_text(json.dumps({**record, "tests": [{**e, "behaviour": None} for e in entries]}))
+    (reported / "run.json").write_text(json.dumps({**record, "assessed_tree": assessed_tree}))
     return root
 
 
@@ -45,7 +43,8 @@ def checker_report(**rules: str) -> dict[str, Any]:
 
 
 @pytest.fixture(autouse=True)
-def recorded_reports(monkeypatch: pytest.MonkeyPatch) -> None:
+def recorded_reports(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(gate, "REPORTS", tmp_path / "reports")
     monkeypatch.setattr(gate, "clean_head", lambda: (HEAD, "tree", []))
 
 
@@ -77,13 +76,22 @@ def test_a_failed_test_or_one_without_a_verdict_is_refused(tmp_path: Path, outco
 
 def test_a_verdict_is_read_only_where_the_assessment_reached_one(tmp_path: Path) -> None:
     run = write_run(tmp_path / "run", "e2e-system", {"t": ("passed", checker_report(a="passed"))})
-    record = json.loads((run / "run.json").read_text())
+    reported = gate.REPORTS / run.name / "run.json"
+    record = json.loads(reported.read_text())
     # A checker that failed leaves an earlier check's report behind; it is not this assessment's verdict.
     record["tests"][0]["behaviour"] = "error"
-    (run / "run.json").write_text(json.dumps(record))
+    reported.write_text(json.dumps(record))
     (item,) = judged(run).values()
     assert item.behaviour == "missing"
     assert not item.accepted
+
+
+def test_a_run_nothing_assessed_has_no_verdicts_and_is_not_certified(tmp_path: Path) -> None:
+    run = write_run(tmp_path / "e2e-system", "e2e-system", {"t": ("passed", checker_report(a="passed"))})
+    shutil.rmtree(gate.REPORTS / run.name)
+    (item,) = judged(run).values()
+    assert item.behaviour == "missing"
+    assert "e2e-system was not assessed by HEAD's tree" in gate.certification_problems([run], [item], {})[0]
 
 
 def test_certification_needs_every_run_assessed_by_heads_tree(tmp_path: Path) -> None:

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """The assurance gate: judge per-test e2e runs on their behaviour, and certify the tree they ran on.
 
-Test runs only collect, and ``repo2ree_testbed assess`` records each test's behaviour verdict
-without failing a run. This composes the two into a gate:
+Test runs only collect, and ``repo2ree_testbed assess`` reports each test's behaviour verdict
+beside its run (reports/behaviour/<run>/) without failing it. This composes the two into a gate:
 
-- ``judge RUN...`` reads every test's assessment (its verdict in run.json, its rules in
-  verification/assurance.json) and accepts a test only if it passed and its behaviour passed, or the
+- ``judge RUN...`` reads every test's assessment (its verdict in the report's run.json, its rules
+  in the report's verification/assurance.json) and accepts a test only if it passed and its behaviour passed, or the
   test ``assurance/checker/expected-verdicts.toml`` excuses (an xfail must be) left
   exactly the rules it names non-passing. Exit 1 if any test is not accepted.
 - ``certify RUN... [--invocation ID]`` judges the runs, and those that name the
@@ -38,6 +38,8 @@ EXPECTATIONS = ROOT / "assurance/checker/expected-verdicts.toml"
 RECEIPT = receipts.path(ROOT, "assurance-gate")
 # Where per-test runs are written; certify --invocation looks for its runs here.
 RUNS = Path(os.environ.get("REPO2REE_TEST_RUN_DIR") or ROOT / "test-artifacts") / "e2e"
+# Where each run's assessment is reported, by the run's name (repo2ree_testbed assess).
+REPORTS = ROOT / "reports" / "behaviour"
 # The per-test tiers whose evidence a receipt stands on.
 TIERS = ("e2e-system", "e2e-gui-instant", "e2e-faults")
 ACCEPTED_OUTCOMES = {"passed", "xfailed"}
@@ -185,11 +187,18 @@ def describe(rules: dict[str, frozenset[str]]) -> str:
     return "; ".join(parts) or "no rule open"
 
 
+def assessed(root: Path) -> dict[str, Any]:
+    """A run's record as its assessment reported it, or as the run left it when nothing assessed it."""
+    report = REPORTS / root.name / "run.json"
+    record: dict[str, Any] = json.loads((report if report.is_file() else root / "run.json").read_text())
+    return record
+
+
 def judge_runs(runs: list[Path], expectations: dict[str, Expectation]) -> list[Judgement]:
     return [
-        judge_test(root.name, root / test["directory"], test, expectations)
+        judge_test(root.name, REPORTS / root.name / test["directory"], test, expectations)
         for root in runs
-        for test in json.loads((root / "run.json").read_text())["tests"]
+        for test in assessed(root)["tests"]
     ]
 
 
@@ -235,7 +244,7 @@ def certification_problems(
     revision, tree, problems = clean_head()
     tiers: dict[str, Path] = {}
     for root in runs:
-        run = json.loads((root / "run.json").read_text())
+        run = assessed(root)
         built = run.get("build_revision") or "an unknown build"
         if built != revision:
             problems.append(f"{root.name} ran on {built}, not HEAD {revision}")

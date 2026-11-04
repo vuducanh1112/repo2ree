@@ -142,7 +142,8 @@ def check(paths: Sequence[str]) -> int:
         found = zones.entry(path)
         print(f"  {found.zone if found else '(no zone)':<10} {path}", file=sys.stderr)
     print(
-        "Commit the protected change on its own (`just repo-map` draws the zones), then the rest against it.\n"
+        "Commit the protected change on its own, then the rest against it.\n"
+        "`python scripts/zones.py map` draws the zones.\n"
         "For a deliberate exception: SKIP=spec-isolation git commit ...",
         file=sys.stderr,
     )
