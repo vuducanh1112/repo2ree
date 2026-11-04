@@ -17,6 +17,8 @@ from repo2ree_assurance_traceview import terms
 from repo2ree_assurance_traceview.model import (
     Activation,
     Activity,
+    AuthoringFold,
+    JournalMark,
     Lane,
     Lifecycle,
     Provenance,
@@ -24,6 +26,7 @@ from repo2ree_assurance_traceview.model import (
     Row,
     Segment,
     Sequence,
+    SessionMove,
     StepChange,
     Tone,
 )
@@ -69,10 +72,20 @@ class _Builder:
         *,
         ref: str | None = None,
         detail: str | None = None,
+        session: str | None = None,
     ) -> None:
         if t is not None:  # A record without a time cannot be placed in a sequence over time.
             self.rows.append(
-                Row(t=t, lane=source, to=target, label=label, provenance=provenance, ref=ref, detail=detail)
+                Row(
+                    t=t,
+                    lane=source,
+                    to=target,
+                    label=label,
+                    provenance=provenance,
+                    ref=ref,
+                    detail=detail,
+                    session=session,
+                )
             )
 
     def note(
@@ -85,9 +98,12 @@ class _Builder:
         ref: str | None = None,
         detail: str | None = None,
         tone: Tone | None = None,
+        said: AuthoringFold | SessionMove | JournalMark | None = None,
     ) -> None:
         if t is not None:
-            self.rows.append(Row(t=t, lane=lane, label=label, provenance=provenance, ref=ref, detail=detail, tone=tone))
+            self.rows.append(
+                Row(t=t, lane=lane, label=label, provenance=provenance, ref=ref, detail=detail, tone=tone, said=said)
+            )
 
     def activate(self, lane: str, start: float, end: float, label: str, provenance: Provenance = "span") -> None:
         self.activations.append(Activation(lane=lane, start=start, end=end, label=label, provenance=provenance))
@@ -139,8 +155,8 @@ def build_sequence(
         if event.kind == "send":
             label = f"{terms.EXEC_ACTION} · {_fact(event, terms.OPERATION)}"
             session = event.facts.get(terms.SESSION_FACT)
-            on = f"on session {str(session)[:8]}" if session else None
-            builder.message(_at(event), "supervisor", "workbench", label, "journal", ref=event.ref, detail=on)
+            on = str(session) if session else None
+            builder.message(_at(event), "supervisor", "workbench", label, "journal", ref=event.ref, session=on)
         elif event.kind == "receive":
             status = event.facts.get(terms.STATUS)
             label = f"{event.message} · {status}" if status is not None else str(event.message)
@@ -361,38 +377,47 @@ def build_lifecycle(parts: Seq[tuple[Segment, Sequence]]) -> Lifecycle:
     )
 
 
-def fold(t: float | None, label: str, detail: str | None) -> Sequence:
-    """A single folded line, at ``t`` seconds into the trace, standing for what a segment does not draw row by row."""
+def fold(t: float | None, fold: AuthoringFold) -> Sequence:
+    """A single folded line, at ``t`` seconds into the trace, standing for authoring not drawn row by row."""
     builder = _Builder(0.0)
-    builder.note(t, "api", label, "journal", detail=detail, tone="fold")
+    builder.note(t, "api", "", "journal", tone="fold", said=fold)
     return builder.build()
 
 
-def session_sequence(event: Event, origin: float, *, returning: str | None = None) -> Sequence:
-    """One workbench session's move, on the lane of the supervisor that holds it: who connected, or why it ended.
+def session_sequence(
+    event: Event, origin: float, *, returning: str | None = None, new_process: bool = False
+) -> Sequence:
+    """One workbench session's move, on the lane of the supervisor that holds it.
 
-    ``returning`` says what an admitted workbench was before: the same process as an earlier
-    session (its nonce), or a new process under an id seen before.
+    ``returning`` is the session the admitted workbench's process held before, if it did; ``new_process``
+    that a workbench seen before came back as another process.
     """
     facts = event.facts
-    builder = _Builder(origin)
     state = event.target_state or ""
-    if state == "connected":
-        nonce = f"nonce {str(facts.get(terms.NONCE) or '')[:6]}"
-        detail = f"{facts.get(terms.WORKBENCH_ID)} · {returning or nonce}"
-    else:
-        code = facts.get(terms.CLOSE_CODE)
-        who = facts.get(terms.WORKBENCH_ID) if state == "refused" else None
-        parts = (facts.get(terms.REASON), who, code and f"close {code}")
-        detail = " · ".join(str(part) for part in parts if part)
+    code = facts.get(terms.CLOSE_CODE)
+    move = SessionMove(
+        session=event.key,
+        state=state,
+        workbench=_text(facts.get(terms.WORKBENCH_ID)),
+        nonce=_text(facts.get(terms.NONCE)),
+        reason=_text(facts.get(terms.REASON)),
+        close_code=code if isinstance(code, int) else None,
+        returning=returning,
+        new_process=new_process,
+    )
+    builder = _Builder(origin)
     tone: Tone | None = "gap" if state == terms.LOST else None
-    label = f"session {event.key[:8]} {state}"
-    builder.note(_at(event), "supervisor", label, "journal", ref=event.ref, detail=detail or None, tone=tone)
+    builder.note(_at(event), "supervisor", "", "journal", ref=event.ref, tone=tone, said=move)
     return builder.build()
 
 
-def epoch_sequence(event: Event, label: str, origin: float, *, crashed: bool) -> Sequence:
+def epoch_sequence(event: Event, journal: str, origin: float, *, crashed: bool) -> Sequence:
     """An API journal's first or last record, on the API's lane: a process starting, or one that crashed."""
     builder = _Builder(origin)
-    builder.note(_at(event), "api", label, "journal", ref=event.ref, tone="gap" if crashed else None)
+    mark = JournalMark(journal=journal, mark="crashed" if crashed else "opened")
+    builder.note(_at(event), "api", "", "journal", ref=event.ref, tone="gap" if crashed else None, said=mark)
     return builder.build()
+
+
+def _text(value: object) -> str | None:
+    return None if value is None else str(value)

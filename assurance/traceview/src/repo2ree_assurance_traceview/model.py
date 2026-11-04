@@ -5,9 +5,9 @@ Times are seconds from the first journal record, for display. Order never comes 
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 # Where a line in a view comes from, from strongest to weakest.
 type Provenance = Literal["journal", "git", "inferred", "span", "time", "gap"]
@@ -84,6 +84,41 @@ class Lane(ViewModel):
     process: str
 
 
+class SessionMove(ViewModel):
+    """A workbench session admitted, refused, or lost: the facts its line is phrased from."""
+
+    kind: Literal["session"] = "session"
+    session: str
+    state: str
+    workbench: str | None = None
+    nonce: str | None = None
+    reason: str | None = None
+    close_code: int | None = None
+    # For an admitted workbench seen before: the session its process held before, or that it is a new process.
+    returning: str | None = None
+    new_process: bool = False
+
+
+class JournalMark(ViewModel):
+    """An API journal opening, or one that ended without closing: a process that crashed."""
+
+    kind: Literal["journal"] = "journal"
+    journal: str
+    mark: Literal["opened", "crashed"]
+
+
+class AuthoringFold(ViewModel):
+    """The authoring attempts a lifecycle folds into one line."""
+
+    kind: Literal["authoring"] = "authoring"
+    attempts: int
+    failed: int
+    operations: dict[str, int]
+
+
+type Said = Annotated[SessionMove | JournalMark | AuthoringFold, Field(discriminator="kind")]
+
+
 class Row(ViewModel):
     t: float
     lane: str  # Where a note sits, or where a message starts.
@@ -93,6 +128,10 @@ class Row(ViewModel):
     provenance: Provenance
     ref: str | None = None
     tone: Tone | None = None
+    # For a line the page phrases itself, the facts to phrase it from; its label is then empty.
+    said: Said | None = None
+    # For a dispatch: the workbench session it was sent on.
+    session: str | None = None
 
 
 class Activation(ViewModel):
@@ -114,12 +153,15 @@ class Segment(ViewModel):
     workbench sessions, or an API journal's beginning or end."""
 
     kind: Literal["setup", "operation", "authoring", "action", "session", "epoch"]
+    # The entry's or action's name; a session stretch's store; nothing for the API's journals.
     label: str
     outcome: str | None = None
     entry: int | None = None  # Its entry in BehaviourTrace.entries, if it is one.
     ree: str | None = None  # The REE it belongs to, where several are drawn together.
     told: str | None = None  # What the author was told: a run's last state, or the outcome.
-    notes: tuple[str, ...] = ()  # Where what happened differs from what the author was told.
+    # Where the attempt or the dispatch ended otherwise than the author was told.
+    attempt: str | None = None
+    dispatch: str | None = None
     first: int  # Its rows in Lifecycle.rows, first to last.
     last: int
 

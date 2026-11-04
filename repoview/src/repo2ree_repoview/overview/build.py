@@ -59,6 +59,7 @@ from repo2ree_repoview.overview.receipt import (
     unreached,
 )
 from repo2ree_repoview.overview.timings import LOGS, read_invocations, summarize
+from repo2ree_repoview.overview.traces import place_traces
 from repo2ree_repoview.repository import ROOT, Head
 
 # The page's look and its filter boxes, inlined so the page is one file.
@@ -129,6 +130,8 @@ def build(output: Path | None) -> Path:
         page_configuration(Environment.read()),
         page_api(OpenApi.read()),
     ]
+    # Before the manifest: it records the traces as they are once they lead back here.
+    place_traces(bundle, pages)
     manifest = bundle.manifest(now.provenance, receipt.revision if receipt else None)
     everything = [page_home(now, receipt_states(now, receipt), pages, zones, manifest), *pages]
     for page in everything:

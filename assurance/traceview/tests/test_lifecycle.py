@@ -6,7 +6,7 @@ from typing import Any
 
 from traceview_scenario import REE, Scenario, build_spans, dossier_of, recorded, trace_of
 
-from repo2ree_assurance_traceview.model import Lifecycle
+from repo2ree_assurance_traceview.model import AuthoringFold, JournalMark, Lifecycle, SessionMove
 
 
 def requested(s: Scenario, t: float, key: str, action: str, state: str, **facts: Any) -> None:
@@ -69,11 +69,8 @@ def test_authoring_is_one_folded_line() -> None:
     assert lifecycle is not None
     authoring = lifecycle.segments[1]
     (line,) = lifecycle.rows[authoring.first : authoring.last + 1]
-    assert (line.tone, line.label, line.detail) == (
-        "fold",
-        "authoring · 1 attempt",
-        "1\N{MULTIPLICATION SIGN} patch_ree_definition",
-    )
+    assert (line.tone, line.label) == ("fold", "")
+    assert line.said == AuthoringFold(attempts=1, failed=0, operations={"patch_ree_definition": 1})
 
 
 def test_a_run_lost_with_its_workbench_is_an_operation_through_its_dispatch() -> None:
@@ -154,9 +151,10 @@ def served(s: Scenario, t: float, key: str, *, store: str = "lab-1", nonce: str 
     s.session(t, key, "opened", "connected", store=store, nonce=nonce, backend="host", slots=1)
 
 
-def system_rows(lifecycle: Lifecycle, kind: str) -> list[tuple[str, str | None]]:
+def said(lifecycle: Lifecycle, kind: str) -> list[object]:
+    """What the lines of the lifecycle's ``kind`` stretches carry, for the page to phrase."""
     return [
-        (row.label, row.detail)
+        row.said
         for segment in lifecycle.segments
         if segment.kind == kind
         for row in lifecycle.rows[segment.first : segment.last + 1]
@@ -172,9 +170,9 @@ def test_an_rees_lifecycle_draws_its_stores_sessions_while_it_lived() -> None:
     s.session(61.0, "s1", "connected", "lost", reason="closed", close_code=1006)
     lifecycle = trace_of(s).lifecycle
     assert lifecycle is not None
-    assert lifecycle.segments[0].kind == "session"
+    assert (lifecycle.segments[0].kind, lifecycle.segments[0].label) == ("session", "lab-1")
     # The session serving the store when the REE was created; the end of it came after the REE's.
-    assert system_rows(lifecycle, "session") == [("session s1 connected", "wb-1 · nonce n-1")]
+    assert said(lifecycle, "session") == [SessionMove(session="s1", state="connected", workbench="wb-1", nonce="n-1")]
 
 
 def test_a_crashed_api_ends_its_journal_and_the_workbench_comes_back_as_a_new_session() -> None:
@@ -186,11 +184,13 @@ def test_a_crashed_api_ends_its_journal_and_the_workbench_comes_back_as_a_new_se
     requested(s, 60.0, "act-delete", "delete_ree", "succeeded", store_id="lab-1")
     lifecycle = trace_of(s).lifecycle
     assert lifecycle is not None
-    assert system_rows(lifecycle, "epoch") == [
-        ("api-000001 ended without closing: the API process crashed", None),
-        ("api-000002 opened", None),
+    assert said(lifecycle, "epoch") == [
+        JournalMark(journal="api-000001", mark="crashed"),
+        JournalMark(journal="api-000002", mark="opened"),
     ]
-    assert system_rows(lifecycle, "session")[-1] == ("session s2 connected", "wb-1 · same process as s1")
+    assert said(lifecycle, "session")[-1] == SessionMove(
+        session="s2", state="connected", workbench="wb-1", nonce="n-1", returning="s1"
+    )
     kinds = [segment.kind for segment in lifecycle.segments]
     assert kinds.index("epoch") < len(kinds) - 1 - kinds[::-1].index("session") < kinds.index("action")
 
@@ -205,10 +205,7 @@ def test_the_dossier_draws_every_ree_and_every_stores_sessions() -> None:
     lifecycle = whole.lifecycle
     assert lifecycle is not None
     assert {segment.ree for segment in lifecycle.segments if segment.kind not in ("session", "epoch")} == {REE}
-    assert {label for segment in lifecycle.segments if segment.kind == "session" for label in [segment.label]} == {
-        "Workbench sessions · lab-1",
-        "Workbench sessions · lab-2",
-    }
+    assert {segment.label for segment in lifecycle.segments if segment.kind == "session"} == {"lab-1", "lab-2"}
 
 
 def test_a_dispatch_says_the_session_it_was_sent_on() -> None:
@@ -216,4 +213,4 @@ def test_a_dispatch_says_the_session_it_was_sent_on() -> None:
     assert lifecycle is not None
     sent = [row for row in lifecycle.rows if row.label.startswith("exec_action")]
     assert sent
-    assert all(row.detail == "on session session-" for row in sent)
+    assert all(row.session == "session-1" for row in sent)

@@ -154,6 +154,15 @@ summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; b
 .span-row .d { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
 .ctx-note { font-size: 11.5px; color: var(--muted); }
 
+/* What the page hides stays hidden, whatever display its class gives it. */
+[hidden] { display: none !important; }
+
+/* where the page is shown from */
+.crumbs { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; font-size: 13px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.crumbs a { color: var(--muted); text-decoration: none; }
+.crumbs a:hover, .crumbs a:focus-visible { color: var(--accent); text-decoration: underline; }
+.crumbs .back { color: var(--accent); font-weight: 600; margin-right: auto; }
+
 /* the dossier's REEs */
 .tabs { display: flex; flex-wrap: wrap; gap: 6px; }
 .tab { display: grid; gap: 1px; font: 500 12.5px var(--font-data); padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); text-decoration: none; }
@@ -200,7 +209,9 @@ footer p { margin: 0; }
 </style>
 </head>
 <body>
+<script type="application/json" id="context">null</script>
 <div class="page">
+  <nav class="crumbs" id="crumbs" hidden></nav>
   <header>
     <div class="eyebrow">Behaviour trace · e2e dossier</div>
     <h1 id="title">REE behaviour trace</h1>
@@ -267,6 +278,16 @@ const span = (e) => (e.end ?? 0) - (e.start ?? 0);
 const shortStep = (s) => s.replace("experiment:", "exp:");
 const LABEL = { provision: "Create REE" };
 
+// Filled where the page is bundled (the repository overview): the way back, and the pages beside it.
+const CONTEXT = JSON.parse($("context").textContent);
+
+function crumbs() {
+  if (!CONTEXT) return;
+  const back = CONTEXT.back ? `<a class="back" href="${esc(CONTEXT.back.href)}">← ${esc(CONTEXT.back.title)}</a>` : "";
+  $("crumbs").innerHTML = back + CONTEXT.nav.map((item) => `<a href="${esc(item.href)}">${esc(item.title)}</a>`).join("");
+  $("crumbs").hidden = false;
+}
+
 function header() {
   const t = TRACE, r = t.dossier, rev = r.revision ?? "";
   $("title").textContent = t.ree ? `REE ${t.name ? `${t.name} · ` : ""}${t.ree.slice(0, 8)}` : "The whole dossier";
@@ -322,15 +343,43 @@ const PROV = { journal: "journal", git: "git", inferred: "inferred", span: "span
 const NUMBER = (() => { let n = 0; return TRACE.entries.map((e) => e.kind === "authoring" ? null : ++n); })();
 const elapsed = (s) => s < 1 ? `${Math.round(s * 1000)} ms` : fmt(s);
 
+const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+const short = (id) => String(id ?? "").slice(0, 8);
+
+// A line's words: its own label and detail, or phrased from the facts it carries.
+function phrase(r) {
+  const s = r.said;
+  if (!s) return { label: r.label, detail: [r.detail, r.session && `on session ${short(r.session)}`].filter(Boolean).join(" · ") || null };
+  if (s.kind === "session") {
+    const label = `session ${short(s.session)} ${s.state}`;
+    if (s.state === "connected") {
+      const who = s.returning ? `same process as ${short(s.returning)}` : s.new_process ? "a new process of it" : `nonce ${String(s.nonce ?? "").slice(0, 6)}`;
+      return { label, detail: `${s.workbench} · ${who}` };
+    }
+    const why = [s.reason, s.state === "refused" && s.workbench, s.close_code != null && `close ${s.close_code}`].filter(Boolean);
+    return { label, detail: why.join(" · ") || null };
+  }
+  if (s.kind === "journal") {
+    return { label: s.mark === "crashed" ? `${s.journal} ended without closing: the API process crashed` : `${s.journal} opened`, detail: null };
+  }
+  const counts = Object.entries(s.operations).map(([name, n]) => `${n}× ${name}`).join(" · ");
+  return { label: `authoring · ${plural(s.attempts, "attempt")}${s.failed ? ` · ${s.failed} failed` : ""}`, detail: counts };
+}
+
 const REE_NAME = Object.fromEntries(TRACE.siblings.filter((sb) => sb.ree).map((sb) => [sb.ree, `${sb.name ? `${sb.name} · ` : ""}${sb.ree.slice(0, 8)}`]));
 const SYSTEM = ["session", "epoch"];
 
 function segmentTitle(sg) {
-  if (SYSTEM.includes(sg.kind)) return { text: sg.label, bad: false, system: true };
+  if (sg.kind === "session") return { text: `Workbench sessions · ${sg.label || "no store"}`, bad: false, system: true };
+  if (sg.kind === "epoch") return { text: "API process", bad: false, system: true };
   const name = sg.kind === "authoring" ? "Authoring" : LABEL[sg.label] ?? sg.label;
   const no = TRACE.ree && sg.entry != null && NUMBER[sg.entry] ? `${NUMBER[sg.entry]} · ` : "";
   const ree = sg.ree ? `${REE_NAME[sg.ree] ?? sg.ree.slice(0, 8)} · ` : "";
-  const parts = [sg.told && `${sg.kind === "operation" ? "run " : ""}${sg.told}`, ...sg.notes].filter(Boolean);
+  const parts = [
+    sg.told && `${sg.kind === "operation" ? "run " : ""}${sg.told}`,
+    sg.attempt && `attempt ${sg.attempt}`,
+    sg.dispatch && `dispatch ${sg.dispatch}`,
+  ].filter(Boolean);
   const bad = sg.told && !["succeeded", null].includes(sg.told);
   return { text: `${ree}${no}${name}${parts.length ? " — " + parts.join(" · ") : ""}`, bad, system: false };
 }
@@ -394,7 +443,8 @@ function lifecycleView(lc) {
       g += `<text class="elapsed" x="${W - RW + 14}" y="${yy - RH / 2 + 6}">${elapsed(dt)} later</text>`;
     }
     g += `<text class="ev-${r.provenance}" x="${W - RW + 14}" y="${yy + 4}">${PROV[r.provenance] ?? esc(r.provenance)}${recordNo(r)}</text>`;
-    const detail = r.detail ? ` <tspan class="sub">${esc(r.detail)}</tspan>` : "";
+    const words = phrase(r);
+    const detail = words.detail ? ` <tspan class="sub">${esc(words.detail)}</tspan>` : "";
     if (r.to) {
       const x1 = lx[r.lane], x2 = lx[r.to], dir = x2 > x1 ? 1 : -1;
       const stroke = r.provenance === "journal" ? "var(--accent)" : "var(--muted)";
@@ -402,7 +452,7 @@ function lifecycleView(lc) {
       const xe = x2 - dir * 7;
       g += `<line x1="${x1 + dir * 6}" y1="${yy}" x2="${xe}" y2="${yy}" stroke="${stroke}" stroke-width="${r.provenance === "journal" ? 2 : 1.5}" stroke-dasharray="${dash}"/>`;
       g += `<path d="M${xe + dir} ${yy - 4} L${x2 - dir} ${yy} L${xe + dir} ${yy + 4} Z" fill="${stroke}"/>`;
-      g += `<text x="${Math.min(x1, x2) + 10}" y="${yy - 5}">${esc(r.label)}${detail}</text>`;
+      g += `<text x="${Math.min(x1, x2) + 10}" y="${yy - 5}">${esc(words.label)}${detail}</text>`;
     } else {
       const x = lx[r.lane], right = idx[r.lane] < lanes.length - 2;
       const dot = { journal: "var(--accent)", git: "var(--current)", inferred: "var(--stale)", gap: "var(--stale)" }[r.provenance] ?? "var(--muted)";
@@ -411,7 +461,7 @@ function lifecycleView(lc) {
         ? `<line x1="${x}" y1="${yy - 9}" x2="${x}" y2="${yy + 9}" stroke="var(--stale)" stroke-width="3" stroke-dasharray="2 2"/>`
         : `<circle cx="${x}" cy="${yy}" r="${r.provenance === "git" || r.provenance === "journal" ? 4.5 : 3.5}" fill="${dot}"/>`;
       const cls = { commit: "commit", effect: "effect", gap: "gapnote", fold: "fold" }[r.tone] ?? "";
-      g += `<text class="${cls}" x="${right ? x + 10 : x - 10}" y="${yy + 4}" text-anchor="${right ? "start" : "end"}">${esc(r.label)}${detail}</text>`;
+      g += `<text class="${cls}" x="${right ? x + 10 : x - 10}" y="${yy + 4}" text-anchor="${right ? "start" : "end"}">${esc(words.label)}${detail}</text>`;
     }
   });
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="The REE's lifecycle across components">${g}</svg>`;
@@ -522,7 +572,7 @@ function focusRule(mark) {
   (document.querySelector(".entry.focused") ?? $("focus")).scrollIntoView({ block: "center" });
 }
 
-header(); grid();
+crumbs(); header(); grid();
 const mark = lifecycle();
 log();
 $("log").addEventListener("click", (ev) => {

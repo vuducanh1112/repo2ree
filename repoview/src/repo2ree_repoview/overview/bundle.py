@@ -115,6 +115,15 @@ class Bundle:
         self._copied(target, source_name(source), origin)
         return target
 
+    def amend(self, target: str, content: str) -> None:
+        """Rewrite a file copied into the bundle, and record what it holds now."""
+        path = self.root / target
+        path.write_text(content, encoding="utf-8")
+        self.copied = [
+            entry.model_copy(update={"sha256": sha256(path)}) if entry.path == target else entry
+            for entry in self.copied
+        ]
+
     def write(self, target: str, content: str, source: str, origin: Origin) -> None:
         """Keep a document an owner produced on request (``source`` is the command), as if copied."""
         destination = self.root / target

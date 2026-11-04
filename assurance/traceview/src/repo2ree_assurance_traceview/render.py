@@ -5,6 +5,8 @@ from __future__ import annotations
 from repo2ree_assurance_traceview.model import BehaviourTrace
 
 PLACEHOLDER = "/*TRACE*/null"
+# Left as it is: whoever shows the page among others (the repository overview) fills it with the way back.
+CONTEXT_SLOT = '<script type="application/json" id="context">null</script>'
 
 
 def render_html(trace: BehaviourTrace, template: str) -> str:

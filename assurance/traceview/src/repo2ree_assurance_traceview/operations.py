@@ -37,6 +37,7 @@ from repo2ree_assurance_traceview import terms
 from repo2ree_assurance_traceview.history import change_history
 from repo2ree_assurance_traceview.model import (
     Attempt,
+    AuthoringFold,
     BehaviourTrace,
     Dispatch,
     DossierInfo,
@@ -539,15 +540,12 @@ def _loose(evidence: _Evidence, drawn: set[str]) -> list[tuple[int, list[Event]]
 type _Part = tuple[int, Segment, Sequence]
 
 
-def _told(entry: Entry) -> tuple[str | None, tuple[str, ...]]:
-    """What the author was told of an entry, and where its attempt or dispatch says otherwise."""
+def _told(entry: Entry) -> tuple[str | None, str | None, str | None]:
+    """What the author was told of an entry, and how its attempt and its dispatch ended where they say otherwise."""
     told = entry.run.states[-1].state if entry.run and entry.run.states else entry.outcome
-    notes = []
-    if entry.attempt and entry.attempt.outcome and entry.attempt.outcome != told:
-        notes.append(f"attempt {entry.attempt.outcome}")
-    if entry.dispatch and entry.dispatch.outcome and entry.dispatch.outcome != told:
-        notes.append(f"dispatch {entry.dispatch.outcome}")
-    return told, tuple(notes)
+    attempt = entry.attempt.outcome if entry.attempt and entry.attempt.outcome != told else None
+    dispatch = entry.dispatch.outcome if entry.dispatch and entry.dispatch.outcome != told else None
+    return told, attempt, dispatch
 
 
 def _parts(evidence: _Evidence, timeline: _Timeline, ree: str | None = None) -> list[_Part]:
@@ -559,7 +557,7 @@ def _parts(evidence: _Evidence, timeline: _Timeline, ree: str | None = None) -> 
     last = -1
     for index, (entry, position) in enumerate(zip(timeline.entries, timeline.positions, strict=True)):
         last = evidence.order[evidence.journal[position].ref] if position is not None else last
-        told, notes = _told(entry)
+        told, attempt, dispatch = _told(entry)
         segment = Segment(
             kind=entry.kind,
             label=entry.name,
@@ -567,15 +565,14 @@ def _parts(evidence: _Evidence, timeline: _Timeline, ree: str | None = None) -> 
             entry=index,
             ree=ree,
             told=told,
-            notes=notes,
+            attempt=attempt,
+            dispatch=dispatch,
             first=0,
             last=0,
         )
         if entry.kind == "authoring":
-            counts = " · ".join(f"{count}\N{MULTIPLICATION SIGN} {name}" for name, count in entry.operations.items())
-            failed = f" · {entry.failed} failed" if entry.failed else ""
-            label = f"authoring · {entry.attempts} attempt{'s' if entry.attempts != 1 else ''}{failed}"
-            placed.append((last, segment, fold(entry.start, label, counts)))
+            folded = AuthoringFold(attempts=entry.attempts, failed=entry.failed, operations=entry.operations)
+            placed.append((last, segment, fold(entry.start, folded)))
         elif entry.sequence is not None:
             placed.append((last, segment, entry.sequence))
     dispatched = _dispatches_by_run(evidence)
@@ -603,7 +600,7 @@ def _system(evidence: _Evidence, store: str | None, window: tuple[int, int] | No
         if e.subject == terms.SESSION and e.kind == "transition" and e.target_state != terms.OPENED
         if store is None or e.partition == store
     ]
-    returning = _returning(moves)
+    returning, renewed = _returning(moves)
     if window is not None:
         low, high = window
         ended = {e.key for e in moves if order[e.ref] < low and e.target_state != "connected"}
@@ -611,8 +608,10 @@ def _system(evidence: _Evidence, store: str | None, window: tuple[int, int] | No
         moves = serving[-1:] + [e for e in moves if low <= order[e.ref] <= high]
     parts: list[_Part] = []
     for move in moves:
-        segment = Segment(kind="session", label=f"Workbench sessions · {move.partition or 'no store'}", first=0, last=0)
-        sequence = session_sequence(move, evidence.origin, returning=returning.get(move.ref))
+        segment = Segment(kind="session", label=move.partition or "", first=0, last=0)
+        sequence = session_sequence(
+            move, evidence.origin, returning=returning.get(move.ref), new_process=move.ref in renewed
+        )
         parts.append((order[move.ref], segment, sequence))
     journals = sorted(
         (s for s in evidence.model.evidence.sources if s.kind == "journal" and s.process == "api"),
@@ -622,33 +621,35 @@ def _system(evidence: _Evidence, store: str | None, window: tuple[int, int] | No
         records = [e for e in evidence.everything if e.source == source.id]
         if not records:
             continue
-        marks = [(records[0], f"{source.id} opened", False)]
+        marks = [(records[0], False)]
         if not source.closed and index + 1 < len(journals):
-            marks.append((records[-1], f"{source.id} ended without closing: the API process crashed", True))
-        for record, label, crashed in marks:
+            marks.append((records[-1], True))
+        for record, crashed in marks:
             position = order[record.ref]
             if (index == 0 and not crashed) or (window is not None and not window[0] <= position <= window[1]):
                 continue
-            segment = Segment(kind="epoch", label="API process", first=0, last=0)
-            parts.append((position, segment, epoch_sequence(record, label, evidence.origin, crashed=crashed)))
+            segment = Segment(kind="epoch", label="", first=0, last=0)
+            parts.append((position, segment, epoch_sequence(record, source.id, evidence.origin, crashed=crashed)))
     return parts
 
 
-def _returning(moves: list[Event]) -> dict[str, str]:
-    """For each admission of a workbench seen before: whether the same process came back, or a new one."""
-    seen: dict[str, str] = {}  # Each workbench id's last admitted nonce.
+def _returning(moves: list[Event]) -> tuple[dict[str, str], set[str]]:
+    """For each admission of a workbench seen before: the session its process held before, or that it is a new one."""
+    seen: set[str] = set()  # The workbench ids admitted so far.
     sessions: dict[str, str] = {}  # Each nonce's last session.
-    said: dict[str, str] = {}
+    returning: dict[str, str] = {}
+    renewed: set[str] = set()
     for move in moves:
         if move.target_state != "connected":
             continue
         workbench, nonce = str(move.facts.get(terms.WORKBENCH_ID)), str(move.facts.get(terms.NONCE))
         if nonce in sessions:
-            said[move.ref] = f"same process as {sessions[nonce][:8]}"
+            returning[move.ref] = sessions[nonce]
         elif workbench in seen:
-            said[move.ref] = "a new process of it"
-        seen[workbench], sessions[nonce] = nonce, move.key
-    return said
+            renewed.add(move.ref)
+        seen.add(workbench)
+        sessions[nonce] = move.key
+    return returning, renewed
 
 
 def _joined(parts: list[_Part]) -> Lifecycle:
