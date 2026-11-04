@@ -19,6 +19,8 @@ from repo2ree_testbed.faults import (
     PartitionWorkbench,
     PauseWorkbench,
     ResumeWorkbench,
+    StartRivalWorkbench,
+    StopRivalWorkbench,
     UnlockHistory,
 )
 
@@ -107,6 +109,22 @@ def test_a_command_for_a_bench_that_lost_its_connection_is_refused(api: Api, new
     finally:
         fault(HealWorkbench(ree_id=ree_id))
     assert answer.status_code == 503, answer.text
+
+
+def test_a_second_workbench_claiming_a_served_store_is_refused(api: Api, new_ree: Callable[..., str]) -> None:
+    ree_id = new_ree()
+    serving_before = serving(api, ree_id)
+
+    # The fault returns once the API has turned the rival away; it keeps dialing until stopped.
+    fault(StartRivalWorkbench(ree_id=ree_id))
+    try:
+        assert serving(api, ree_id) == serving_before
+        listed = {item["workbench_id"] for item in api.get("/api/v1/workbenches")["workbenches"]}
+        assert not any(workbench.startswith("rival-") for workbench in listed), listed
+        # The store's own workbench goes on serving it.
+        api.acquire(ree_id)
+    finally:
+        fault(StopRivalWorkbench(ree_id=ree_id))
 
 
 def test_a_build_whose_capture_fails_leaves_nothing_behind_and_the_ree_builds_after(

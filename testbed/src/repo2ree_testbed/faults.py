@@ -41,6 +41,18 @@ class HealWorkbench(Record):
     ree_id: str
 
 
+class StartRivalWorkbench(Record):
+    """A second workbench for the REE's store, with the store's own token: the store is served already."""
+
+    kind: Literal["start_rival_workbench"] = "start_rival_workbench"
+    ree_id: str
+
+
+class StopRivalWorkbench(Record):
+    kind: Literal["stop_rival_workbench"] = "stop_rival_workbench"
+    ree_id: str
+
+
 class LockHistory(Record):
     """A stale lock on the REE's history ref, as a crashed git process leaves one: no attempt can publish."""
 
@@ -63,6 +75,8 @@ type Fault = Annotated[
     | ResumeWorkbench
     | PartitionWorkbench
     | HealWorkbench
+    | StartRivalWorkbench
+    | StopRivalWorkbench
     | LockHistory
     | UnlockHistory
     | CrashApi,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from repo2ree_testbed.faults import CrashApi, KillWorkbench, LockHistory, PartitionWorkbench
+from repo2ree_testbed.faults import CrashApi, KillWorkbench, LockHistory, PartitionWorkbench, StartRivalWorkbench
 from repo2ree_testbed.stack.injector import Injector, WorkbenchFault
 
 
@@ -28,6 +28,7 @@ class _StoreStack:
         (KillWorkbench(ree_id="ree-1"), "kill"),
         (PartitionWorkbench(ree_id="ree-1"), "partition"),
         (LockHistory(ree_id="ree-1"), "lock_history"),
+        (StartRivalWorkbench(ree_id="ree-1"), "start_rival"),
     ],
 )
 def test_in_store_mode_a_workbench_fault_reaches_the_store_serving_the_ree(fault: object, action: str) -> None:

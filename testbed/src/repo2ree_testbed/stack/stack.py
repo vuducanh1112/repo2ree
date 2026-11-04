@@ -24,6 +24,7 @@ from repo2ree_testbed.faults import FAULTS_URL
 from repo2ree_testbed.python_coverage import CoverageRoot, render
 from repo2ree_testbed.records import DossierManifest, read
 from repo2ree_testbed.stack.clients import Client, Launch, Started
+from repo2ree_testbed.stack.docker import engine_path
 from repo2ree_testbed.stack.injector import (
     HISTORY_LOCK_IN_REE,
     FaultUnavailableError,
@@ -128,6 +129,8 @@ class E2EStack:
         self.launches: list[tuple[list[str], dict[str, str], Path]] = []
         # In store mode, the relay each store's workbench reaches the API through.
         self.relays: dict[int, Relay] = {}
+        # A second workbench claiming a location's store, while a fault keeps it running.
+        self.rivals: dict[int, subprocess.Popen[bytes]] = {}
         self.restarting = threading.RLock()
         self.injector = Injector(self)
         self.origins = Origins(self.control_state / "origins", workbench_host()[0])
@@ -280,12 +283,44 @@ class E2EStack:
                     self.relays[index].partition()
                 case "heal":
                     self.relays[index].heal()
+                case "start_rival":
+                    self.start_rival(index)
+                case "stop_rival":
+                    terminate(self.rivals.pop(index, None))
                 case "lock_history" | "unlock_history":
                     lock = self.control_state / f"workbench-{index}" / "store" / ree_id / HISTORY_LOCK_IN_REE
                     if action == "lock_history":
                         lock.touch()
                     else:
                         lock.unlink(missing_ok=True)
+
+    def start_rival(self, index: int) -> None:
+        """Start a second workbench for location ``index``'s store, and wait until the API has turned it away.
+
+        It presents the store's own token under an identity of its own, from a directory of its own:
+        a workbench clears the job containers its store directory left, and the rival must not
+        clear the ones the store's workbench is running.
+        """
+        if index in self.rivals:
+            raise FaultUnavailableError(f"a rival already claims location {index}'s store")
+        command, environment, _ = self.launches[index - 1]
+        state = self.control_state / f"rival-{index}"
+        log = self.layout.logs / f"rival-workbench-{index}.log"
+        rival = {
+            **environment,
+            "WORKBENCH_ID": f"rival-{index}",
+            "WORKBENCH_STATE_DIR": str(state),
+            "WORKBENCH_STORE": f"{store_id(index)}={state / 'store'}",
+            "WORKBENCH_ENGINE_PATH": engine_path(state / "store"),
+        }
+        self.rivals[index] = self.launch(command, rival, log)
+
+        def refused() -> bool:
+            if self.rivals[index].poll() is not None:
+                raise RuntimeError(f"the rival workbench exited (log: {log})")
+            return log.exists() and "store already served" in log.read_text(errors="replace")
+
+        wait_until("the rival workbench to be refused", refused)
 
     def store_tokens(self) -> dict[int, str]:
         """Register each location's store, once, and mint a token for its workbench, each start.
@@ -370,6 +405,8 @@ class E2EStack:
                 with suppress(ProcessLookupError):
                     os.killpg(process.pid, signal.SIGCONT)  # A paused workbench cannot stop.
                 terminate(process)
+            for rival in self.rivals.values():
+                terminate(rival)
             terminate(self.backend)
             for relay in self.relays.values():
                 relay.close()
