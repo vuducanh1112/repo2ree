@@ -72,7 +72,7 @@ def test_the_checked_in_specification_is_valid() -> None:
         "capture_failed": ("record",),
     }
     assert spec.entities["Ree"].required == {"draft": ("cause",), "sealed": ("cause",)}
-    assert spec.boundaries["dispatch"].required == {"result": ("status",)}
+    assert spec.boundaries["dispatch"].required == {"exec_action": ("session",), "result": ("status",)}
 
 
 def test_the_published_contract_matches_the_vocabulary() -> None:
@@ -108,6 +108,7 @@ def test_the_vocabulary_digest_changes_with_the_contract_but_not_with_the_rules(
     ("mutate", "message"),
     [
         (lambda docs: docs.machine("AuthorApiAction").update(initial="paused"), "unknown states"),
+        (lambda docs: docs.machine("Attempt").update(ends_with_owner=True), "can end with that process"),
         (
             lambda docs: docs.machine("AuthorApiAction")["transitions"].append(
                 {"from": "requested", "to": ["running"]}

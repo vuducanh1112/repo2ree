@@ -184,7 +184,7 @@ class Recorder:
             subject="dispatch",
             key=key,
             message="exec_action",
-            facts={"operation": "build_runtime", "run_id": "run-1"},
+            facts={"operation": "build_runtime", "run_id": "run-1", "session": "s1"},
         )
         request = f"api-000001#{self.positions['api-000001']}"
         for kind, message in outcomes:
@@ -197,7 +197,13 @@ class Recorder:
         return request
 
     def session(
-        self, key: str, *path: str, start: str | None = None, store: str = "lab-1", reason: str | None = None
+        self,
+        key: str,
+        *path: str,
+        start: str | None = None,
+        store: str = "lab-1",
+        reason: str | None = None,
+        source: str = "api-000001",
     ) -> None:
         """A workbench's connection to ``store`` from ``start`` through ``path``, as the supervisor journals it."""
         for current, target in pairwise([start, *path]):
@@ -207,11 +213,11 @@ class Recorder:
                 facts |= {"backend": "container", "slots": 1}
             if target in {"refused", "lost"}:
                 facts["reason"] = reason
-            self.positions["api-000001"] = self.positions.get("api-000001", 0) + 1
+            self.positions[source] = self.positions.get(source, 0) + 1
             self.events.append(
                 Event(
-                    source="api-000001",
-                    position=self.positions["api-000001"],
+                    source=source,
+                    position=self.positions[source],
                     partition=store,
                     kind="transition",
                     owner="supervisor",
@@ -836,3 +842,26 @@ def test_a_session_still_connected_when_the_journal_closed_is_violated_but_open_
     recorder.session("s1", "opened", "connected")
     assert findings(recorder, "machine:WorkbenchSession") == ["violated: still connected when api-000001 closed"]
     assert verdicts(recorder, journal(closed=False), git(REE))["machine:WorkbenchSession"] == "passed"
+
+
+def test_a_session_ends_with_the_api_process_that_crashed_holding_it() -> None:
+    recorder = Recorder()
+    recorder.session("s1", "opened", "connected")
+    # The API crashed: its journal ended without closing, and the workbench dialed the restarted one.
+    recorder.session("s2", "opened", "connected", source="api-000002")
+    recorder.session("s2", "lost", start="connected", reason="closed", source="api-000002")
+    crashed = (journal("api-000001", closed=False), journal("api-000002"), git(REE))
+    result = verdicts(recorder, *crashed)
+    assert (result["one-session-per-store"], result["machine:WorkbenchSession"]) == ("passed", "passed")
+
+
+def test_a_dispatch_names_the_session_it_was_sent_on() -> None:
+    recorder = Recorder()
+    complete_command(recorder)
+    recorder.events = [
+        event.model_copy(update={"facts": {k: v for k, v in event.facts.items() if k != "session"}})
+        if event.message == "exec_action"
+        else event
+        for event in recorder.events
+    ]
+    assert findings(recorder, "boundary:dispatch") == ["inconclusive: missing required facts ['session']"]

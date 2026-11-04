@@ -64,7 +64,7 @@ def load_spec_at(revision: str, executable: str = "git") -> Spec:
     )
 
 
-MACHINE_KEYS = frozenset({"name", "initial", "terminal", "settles_before_close", "transitions"})
+MACHINE_KEYS = frozenset({"name", "initial", "terminal", "settles_before_close", "ends_with_owner", "transitions"})
 
 
 def split_combined(

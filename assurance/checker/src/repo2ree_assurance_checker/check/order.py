@@ -163,13 +163,29 @@ class Model:
         return None
 
     def state_at(self, instance: Instance, moment: Event) -> tuple[bool, str | None]:
-        """(known, state) of an instance just before ``moment``."""
+        """(known, state) of an instance just before ``moment``.
+
+        An instance that ends with its owner and was left open by a journal that ended before
+        ``moment``'s began is in no state: the process it lived in is gone.
+        """
         state: str | None = None
+        last: Event | None = None
         for item in instance.reached:
             before = self.precedes(item.event, moment)
             if before is None:
                 return False, None
             if not before:
                 break
-            state = item.state
+            state, last = item.state, item.event
+        entity = self.spec.entities.get(instance.subject)
+        ended = entity is not None and entity.ends_with_owner and state not in instance.terminal
+        if ended and last is not None and self._later_epoch(last, moment):
+            return True, None
         return True, state
+
+    def _later_epoch(self, earlier: Event, later: Event) -> bool:
+        """Whether ``later`` is in a later journal of the process that journaled ``earlier``."""
+        first, second = self._sources.get(earlier.source), self._sources.get(later.source)
+        if first is None or second is None or not first.kind == second.kind == "journal":
+            return False
+        return first.process == second.process and first.rank < second.rank

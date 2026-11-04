@@ -49,6 +49,9 @@ class EntitySpec(SpecModel):
     # True: terminal whenever its owner's journal closes. "final": it may outlive a restart, but must
     # be terminal when its owner closes the journal for good. False: no close settles it.
     settles_before_close: bool | Literal["final"]
+    # True: an instance lives no longer than the process that journals it. Still open when that
+    # process's journal ends, it is in no state for anything its next journal records.
+    ends_with_owner: bool = False
     summary: str
     states: dict[Name, str]
     facts: dict[Name, FactType] = Field(default_factory=dict)
@@ -102,6 +105,8 @@ class EntitySpec(SpecModel):
             raise ValueError(f"{self.name}: unreachable states {sorted(unreachable)}")
         if self.settles_before_close and not self.terminal:
             raise ValueError(f"{self.name}: an entity that settles needs a terminal state")
+        if self.ends_with_owner and self.evidence != "journal":
+            raise ValueError(f"{self.name}: only an entity a process journals can end with that process")
         if not self.constrained and (self.transitions or self.terminal or set(self.initial) != states):
             raise ValueError(f"{self.name}: an unconstrained entity starts anywhere and declares no edges")
         if self.key in self.facts:
@@ -224,6 +229,7 @@ class MachineRules(SpecModel):
     initial: tuple[Name, ...] = Field(min_length=1)
     terminal: tuple[Name, ...] = ()
     settles_before_close: bool | Literal["final"]
+    ends_with_owner: bool = False
     transitions: tuple[Transition, ...]
 
     @field_validator("initial", mode="before")

@@ -2,9 +2,10 @@
 # to the end of the socket.
 #
 # Recorded where the workbench dials in: the API accepts the socket and the supervisor's
-# registry holds the connection, so the API process journals both. A workbench that redials
-# opens a new session; its nonce says whether the same process came back. Its machine is
-# entities/workbench_session.toml.
+# registry holds the connection, so the API process journals both. A session is that socket,
+# and ends with the API process at the latest: a workbench that redials, after a lost socket or
+# a restarted API, opens a new session, and its nonce says whether the same process came back.
+# Its machine is entities/workbench_session.toml.
 
 name = "WorkbenchSession"
 kind = "entity"

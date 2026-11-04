@@ -7,6 +7,8 @@ terminal = ["refused", "lost"]
 # The API ends every connection before it stops, so a session still open in a closed journal
 # was abandoned. One open in a journal that never closed belonged to a process that crashed.
 settles_before_close = true
+# A session is a socket the API process holds: it cannot outlive that process.
+ends_with_owner = true
 
 [[transitions]]
 from = "opened"
