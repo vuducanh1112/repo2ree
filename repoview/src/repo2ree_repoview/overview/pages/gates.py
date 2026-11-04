@@ -11,14 +11,16 @@ from repo2ree_repoview.overview.receipt import Evidence, Receipt, reached
 
 
 def evidence_links(bundle: Bundle, directory: str | None) -> str:
-    """Links to a test's bundled verdict report and behaviour traces."""
+    """Links to a test's bundled verdict report and its behaviour traces: one link, whose page has a tab per REE."""
     if directory is None:
         return '<span class="muted">not bundled</span>'
     links = []
     if (bundle.root / directory / "verification/assurance.html").is_file():
         links.append(f'<a href="{esc(directory)}/verification/assurance.html">verdicts</a>')
     traces = sorted((bundle.root / directory / "traces").glob("*.html"))
-    links += [f'<a href="{esc(directory)}/traces/{esc(trace.name)}">trace</a>' for trace in traces]
+    if traces:
+        label = "trace" if len(traces) == 1 else f"traces · {len(traces)} REEs"
+        links.append(f'<a href="{esc(directory)}/traces/{esc(traces[0].name)}">{label}</a>')
     return " · ".join(links) or '<span class="muted">none</span>'
 
 

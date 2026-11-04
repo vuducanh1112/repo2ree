@@ -10,6 +10,7 @@ from repo2ree_repoview.overview.bundle import Bundle
 from repo2ree_repoview.overview.exports import SPEC_EXPORT, Operations, Spec, exported
 from repo2ree_repoview.overview.html import rule_link
 from repo2ree_repoview.overview.pages.coverage import page_coverage
+from repo2ree_repoview.overview.pages.gates import evidence_links
 from repo2ree_repoview.overview.receipt import Decision, Evidence, Exercised, Finding, Receipt, decisions
 
 RUN, PASSING, FAILING = "e2e-system-1", "tests::passing", "tests::lost"
@@ -108,4 +109,14 @@ def test_the_rules_table_links_each_rule_to_its_tests_traces_and_operations(tmp_
     assert all(f'id="rule-{invariant.id}"' in body for invariant in spec.invariants)
     assert (
         rule_link("allocation-ends") == '<a href="coverage.html#rule-allocation-ends"><code>allocation-ends</code></a>'
+    )
+
+
+def test_a_test_links_its_traces_once_whose_page_has_a_tab_per_ree(tmp_path: Path) -> None:
+    bundle = Bundle(tmp_path / "overview", "a" * 40)
+    bundled_test(bundle, "evidence/one", [], ("ree-1",))
+    bundled_test(bundle, "evidence/two", [], ("ree-b", "ree-a"))
+    assert evidence_links(bundle, "evidence/one").endswith('<a href="evidence/one/traces/ree-1.html">trace</a>')
+    assert evidence_links(bundle, "evidence/two").endswith(
+        '<a href="evidence/two/traces/ree-a.html">traces · 2 REEs</a>'
     )
