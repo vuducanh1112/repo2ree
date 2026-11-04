@@ -45,7 +45,7 @@ summary = "Hypothesis' example database, pinned to the repository (conftest.py)"
 retention = "Unbounded but slow: it keeps the examples that once failed; removing it loses only those"
 claims = ["test-artifacts/cache"]
 
-[owners.inspect-dossier]
+[owners.assess-behaviour]
 summary = "Verdicts, traces, and logs of a dossier collected from a deployment"
 retention = "Rewritten per dossier label"
 claims = ["test-artifacts/assurance/verification", "test-artifacts/assurance/traces", "test-artifacts/assurance/logs"]

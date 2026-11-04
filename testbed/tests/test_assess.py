@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from repo2ree_testbed.records import RunRecord, RunTest, read
-from repo2ree_testbed.runs import inspect_run
+from repo2ree_testbed.runs import assess, visualize
 
 
 def run_test(directory: str, rees: tuple[str, ...] = ()) -> RunTest:
@@ -37,7 +37,7 @@ def tools(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, ...]]:
             return 1
         return 0
 
-    monkeypatch.setattr(inspect_run, "tool", tool)
+    monkeypatch.setattr(assess, "tool", tool)
     return ran
 
 
@@ -47,7 +47,7 @@ def dossier_at(directory: Path) -> Path:
     return directory
 
 
-def test_a_dossier_a_run_left_is_judged_in_place_and_its_test_row_updated(
+def test_a_dossier_a_run_left_is_assessed_as_its_test_and_nothing_drawn(
     tmp_path: Path, tools: list[tuple[str, ...]]
 ) -> None:
     run = tmp_path / "e2e-system-1"
@@ -59,16 +59,16 @@ def test_a_dossier_a_run_left_is_judged_in_place_and_its_test_row_updated(
     dossier = dossier_at(run / "tests/judged/dossier")
     (run / "tests/judged/test.json").write_text("{}")
 
-    assert inspect_run.inspect_dossier(dossier) == "violated"
+    assert assess.assess_dossier(dossier) == "violated"
 
-    check, trace = tools
+    [check] = tools
     assert check[check.index("-o") + 1] == str(run / "tests/judged/verification")
-    assert trace[trace.index("-o") + 1] == str(run / "tests/judged/traces")
+    assert not (run / "tests/judged/traces").exists()
     record = read(RunRecord, run / "run.json")
     assert record is not None
     assert [test.behaviour for test in record.tests] == ["violated", None]
-    assert (run / "index.html").is_file()
-    assert (run / "tests/judged/index.html").is_file()
+    assert not (run / "index.html").exists()
+    assert not (run / "tests/judged/index.html").exists()
 
 
 def test_a_failed_test_records_its_last_failed_command_beside_its_outcome(
@@ -93,7 +93,7 @@ def test_a_failed_test_records_its_last_failed_command_beside_its_outcome(
         )
     )
 
-    inspect_run.inspect_run(run)
+    assess.assess_run(run)
 
     record = read(RunRecord, run / "run.json")
     assert record is not None
@@ -102,31 +102,39 @@ def test_a_failed_test_records_its_last_failed_command_beside_its_outcome(
         test.last_failed_command
         == "`sh build.sh` exited 1: Temporary failure in name resolution … ERROR: failed to build"
     )
+    visualize.visualize_run(run)
     page = (run / "tests/suite/index.html").read_text()
     assert "Last failed command" in page
     assert "ERROR: failed to build" in page
     assert "Temporary failure in name resolution" in (run / "index.html").read_text()
 
 
-def test_a_dossier_collected_elsewhere_reports_under_the_assurance_directory(
+def test_a_dossier_collected_elsewhere_is_assessed_under_the_assurance_directory(
     tmp_path: Path, tools: list[tuple[str, ...]], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("REPO2REE_ASSURANCE_DIR", str(tmp_path / "assurance"))
     dossier = dossier_at(tmp_path / "collected")
 
-    assert inspect_run.inspect_dossier(dossier) == "violated"
+    assert assess.assess_dossier(dossier) == "violated"
 
-    check, trace = tools
+    [check] = tools
     assert check[check.index("-o") + 1] == str(tmp_path / "assurance/verification/collected")
-    assert trace[trace.index("-o") + 1] == str(tmp_path / "assurance/traces/collected")
     assert not (dossier / "verification").exists()
 
 
-def test_the_newest_is_found_by_when_it_was_written(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(inspect_run, "run_dir", lambda: tmp_path)
-    with pytest.raises(ValueError, match="no dossier"):
-        inspect_run.newest("*/tests/*/dossier/manifest.json", "dossier")
-    older = dossier_at(tmp_path / "e2e/run-b/tests/t/dossier")
-    newer = dossier_at(tmp_path / "e2e/run-a/tests/t/dossier")
-    os.utime(older / "manifest.json", (1, 1))
-    assert inspect_run.newest("*/tests/*/dossier/manifest.json", "dossier") == newer
+def test_a_path_names_a_run_or_a_dossier_and_none_the_newest_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(assess, "run_dir", lambda: tmp_path)
+    with pytest.raises(ValueError, match="no per-test run"):
+        assess.target("")
+    for name, written in [("run-b", 1), ("run-a", 2)]:
+        (tmp_path / "e2e" / name).mkdir(parents=True)
+        (tmp_path / "e2e" / name / "run.json").write_text("{}")
+        os.utime(tmp_path / "e2e" / name / "run.json", (written, written))
+    assert assess.target("") == tmp_path / "e2e/run-a"
+    dossier = dossier_at(tmp_path / "e2e/run-b/tests/t/dossier")
+    assert assess.target(str(dossier)) == dossier
+    assert assess.is_run(assess.target(str(tmp_path / "e2e/run-b")))
+    with pytest.raises(ValueError, match="neither a run"):
+        assess.target(str(tmp_path / "e2e/run-b/tests"))

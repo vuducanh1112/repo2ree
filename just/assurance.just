@@ -76,12 +76,19 @@ judge-e2e *runs:
     [[ -n "${runs// /}" ]] || { echo "no per-test run under {{ REPO2REE_TEST_RUN_DIR }}/e2e" >&2; exit 2; }
     python -m scripts.gates.assurance_gate judge $runs
 
-# Reports go into the dossier's run test directory, or for one collected elsewhere (collect-dossier) under the
-# assurance directory; exit 0 passed, 1 violated, 2 inconclusive.
-# Judge one dossier and draw its traces and provenance (the newest any e2e run left by default).
+# Assess the behaviour of a per-test run's tests, or of one dossier (the newest run by default): check each
+# dossier against the behaviour specification and record its verdict. A run's verdicts go into its run.json,
+# a test's into its verification/; a dossier collected elsewhere (collect-dossier) is assessed under the
+# assurance directory. A dossier exits with its verdict: 0 passed, 1 violated, 2 inconclusive.
 [group('Assurance')]
-inspect-dossier dossier="":
-    python -m repo2ree_testbed inspect --dossier {{ quote(dossier) }}
+assess-behaviour path="":
+    python -m repo2ree_testbed assess {{ quote(path) }}
+
+# Visualize what assess-behaviour recorded, for a run or a dossier (the newest run by default): each test's
+# behaviour traces and provenance, and the pages to browse a run by.
+[group('Assurance')]
+visualize-behaviour path="":
+    python -m repo2ree_testbed visualize {{ quote(path) }}
 
 [group('Assurance')]
 generate-assurance-metrics:

@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from repo2ree_testbed import provenance
 from repo2ree_testbed.artifacts import ROOT, execution_id, run_dir
 from repo2ree_testbed.records import RunRecord, RunTest, TestResult, read, write
-from repo2ree_testbed.runs.inspect_run import inspect_run
+from repo2ree_testbed.runs.assess import assess_run
 from repo2ree_testbed.stack.clients import Client, TestCase, reported_outcome
 from repo2ree_testbed.stack.process import capture
 from repo2ree_testbed.stack.services import Deployment
@@ -85,9 +85,9 @@ class SuiteRun:
         if self.last is not None:
             self.last.coverage_report()
         try:
-            inspect_run(self.root)
+            assess_run(self.root)
         except (OSError, ValueError) as error:
-            print(f"inspection failed: {error}", file=sys.stderr)
+            print(f"assessment failed: {error}", file=sys.stderr)
         return record
 
     @property

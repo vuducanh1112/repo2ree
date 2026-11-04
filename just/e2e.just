@@ -78,11 +78,6 @@ gate-e2e-on machine="local" jobs="":
 machine +args:
     python -m repo2ree_testbed machine {{ args }}
 
-# Check and draw a per-test run again: verdicts, traces, and index pages (the newest run by default).
-[group('E2E tests')]
-inspect-e2e run="":
-    python -m repo2ree_testbed inspect {{ quote(run) }}
-
 # Record the narrated browser demo: the Python Docker showcase scenario, captioned and paced, with video.
 [group('Demos')]
 demo-gui: build-e2e-bundles (_source-stack-playwright "demo-gui" "1")
