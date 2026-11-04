@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from repo2ree_repoview.overview.drawing import machine_svg
 from repo2ree_repoview.overview.exports import Operations, Spec
-from repo2ree_repoview.overview.html import Page, esc, rule_anchor, section, table
+from repo2ree_repoview.overview.html import Page, esc, in_frame, rule_anchor, section, table
 from repo2ree_repoview.overview.pages.aggregate import without_machine
 from repo2ree_repoview.overview.pages.operations import anchor, title
 from repo2ree_repoview.overview.receipt import Decision, Exercised, Receipt, reached
@@ -14,9 +14,9 @@ FINDINGS_SHOWN = 3
 
 
 def decision_item(rule: str, decision: Decision) -> str:
-    links = [f'<a href="{esc(decision.report)}">verdicts</a>'] if decision.report else []
+    links = [f'<a href="{esc(in_frame(decision.report, "coverage"))}">verdicts</a>'] if decision.report else []
     links += [
-        f'<a href="{esc(trace)}#rule={esc(rule)}">trace {esc(trace.rsplit("/", 1)[-1][:8])}</a>'
+        f'<a href="{esc(in_frame(trace, "coverage", f"rule={rule}"))}">trace {esc(trace.rsplit("/", 1)[-1][:8])}</a>'
         for trace in decision.traces
     ]
     excused = f' <span class="muted">excused: {esc(decision.excused)}</span>' if decision.excused else ""

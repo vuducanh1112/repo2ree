@@ -7,7 +7,7 @@ from collections.abc import Sequence
 
 from repo2ree_repoview.overview.bundle import Bundle
 from repo2ree_repoview.overview.exports import Lane, Line, Operation, Operations, Reach
-from repo2ree_repoview.overview.html import Page, esc, rule_link, section, table
+from repo2ree_repoview.overview.html import Page, esc, in_frame, rule_link, section, table
 from repo2ree_repoview.overview.receipt import Evidence, Receipt
 
 REACH: tuple[tuple[Reach, str], ...] = (
@@ -172,7 +172,9 @@ def sequence_svg(lanes: Sequence[Lane], lines: Sequence[Line], runs: int, name: 
 def trace_link(bundle: Bundle, evidence: Evidence, source: str, ree: str) -> str:
     directory = evidence.verifications.get(source)
     if directory is not None and (bundle.root / directory / "traces" / f"{ree}.html").is_file():
-        return f'<a href="{esc(directory)}/traces/{esc(ree)}.html"><code>{esc(ree[:8])}</code></a>'
+        return (
+            f'<a href="{esc(in_frame(f"{directory}/traces/{ree}.html", "operations"))}"><code>{esc(ree[:8])}</code></a>'
+        )
     return f"<code>{esc(ree[:8])}</code>"
 
 

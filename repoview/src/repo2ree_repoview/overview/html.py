@@ -37,6 +37,18 @@ def rule_link(rule: str) -> str:
     return f'<a href="coverage.html#{esc(rule_anchor(rule))}"><code>{esc(rule)}</code></a>'
 
 
+# The overview's frame for the evidence it bundles: its sidebar beside the page shown.
+FRAME = "evidence"
+
+
+def in_frame(target: str, origin: str, anchor: str = "") -> str:
+    """The address that shows the bundled evidence page ``target`` in the overview's frame, opened from ``origin``.
+
+    ``anchor`` reaches the page itself, as its own address after ``#`` would (a trace's ``rule=…``).
+    """
+    return f"{FRAME}.html?from={origin}#{target}" + (f"#{anchor}" if anchor else "")
+
+
 def filter_box(target: str, placeholder: str) -> str:
     return f'<input class="filter" data-target="{target}" placeholder="{esc(placeholder)}">'
 

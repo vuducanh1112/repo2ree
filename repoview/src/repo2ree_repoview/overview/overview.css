@@ -137,3 +137,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
 .p-span,.p-gap,.p-time{color:var(--muted)}
 ul.decided{margin:4px 0;padding-left:18px}
 ul.decided ul{margin:2px 0;padding-left:18px;color:var(--muted)}
+.layout.shell main{padding:0;max-width:none}
+.shell iframe{display:block;border:0;width:100%;height:100vh}
+.shell iframe[hidden]{display:none}
+.shell .missing{padding:24px 32px}

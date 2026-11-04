@@ -14,7 +14,7 @@ from repo2ree_assurance_traceview.catalogue import OperationCatalogue
 from repo2ree_assurance_traceview.cli import main
 from repo2ree_assurance_traceview.files import template
 from repo2ree_assurance_traceview.model import BehaviourTrace, DossierInfo, Entry
-from repo2ree_assurance_traceview.render import CONTEXT_SLOT, PLACEHOLDER, render_html
+from repo2ree_assurance_traceview.render import PLACEHOLDER, render_html
 from repo2ree_assurance_traceview.spans import SpanIndex, parse_spans
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -78,8 +78,6 @@ def test_a_rendered_page_carries_its_trace_and_cannot_be_broken_out_of() -> None
         steps=(),
     )
     page = render_html(trace, template())
-    # The slot for the way back stays empty, for whoever shows the page among others to fill.
-    assert page.count(CONTEXT_SLOT) == 1
     assert PLACEHOLDER not in page
     assert "</script><script>alert" not in page
     assert "<!--<script>" not in page

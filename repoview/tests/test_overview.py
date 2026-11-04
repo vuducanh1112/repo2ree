@@ -58,6 +58,8 @@ def test_the_overview_of_this_tree_is_a_whole_bundle(tmp_path: Path) -> None:
         for name in (
             *("index", "zones", "assurance-gate", "receipts", "operations", "vocabulary", "specification", "coverage"),
             *("ree-machine", "architecture", "just-recipes", "configuration", "api"),
+            # The frame its bundled evidence is shown in.
+            "evidence",
         )
     }
     manifest = json.loads((target / "manifest.json").read_text())
@@ -68,3 +70,12 @@ def test_the_overview_of_this_tree_is_a_whole_bundle(tmp_path: Path) -> None:
     exports = {"spec", "zones", "operations"}
     kinds = {entry["kind"]: entry["path"] for entry in manifest["copied"] if entry.get("kind") in exports}
     assert kinds == {kind: f"inputs/{kind}.json" for kind in exports}
+
+
+def test_the_frame_shows_a_bundled_evidence_page_beside_the_sidebar(tmp_path: Path) -> None:
+    target = build(tmp_path / "overview")
+    frame = (target / "evidence.html").read_text()
+    assert '<iframe id="shown"' in frame
+    # Every page of the overview, as its sidebar lists them, and none marked: the frame marks the one it came from.
+    assert 'href="assurance-gate.html"' in frame
+    assert 'class="current"' not in frame

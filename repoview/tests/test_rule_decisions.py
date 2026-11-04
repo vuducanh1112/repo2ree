@@ -100,8 +100,8 @@ def test_the_rules_table_links_each_rule_to_its_tests_traces_and_operations(tmp_
     body = page_coverage(spec, receipt(), exercised, {}, decided, catalogue).body
 
     assert '<code id="rule-allocation-ends">allocation-ends</code>' in body
-    assert 'href="t/traces/r.html#rule=allocation-ends"' in body
-    assert 'href="t/verification/assurance.html"' in body
+    assert 'href="evidence.html?from=coverage#t/traces/r.html#rule=allocation-ends"' in body
+    assert 'href="evidence.html?from=coverage#t/verification/assurance.html"' in body
     assert "excused: a bug" in body
     assert "Allocation a-1: still assigned" in body
     assert 'href="operations.html#op-provision-succeeded"' in body
@@ -116,12 +116,14 @@ def test_a_test_links_its_traces_once_whose_page_has_a_tab_per_ree(tmp_path: Pat
     bundle = Bundle(tmp_path / "overview", "a" * 40)
     bundled_test(bundle, "evidence/one", [], ("ree-1",))
     bundled_test(bundle, "evidence/two", [], ("ree-b", "ree-a"))
-    assert evidence_links(bundle, "evidence/one").endswith('<a href="evidence/one/traces/ree-1.html">trace</a>')
+    assert evidence_links(bundle, "evidence/one").endswith(
+        '<a href="evidence.html?from=assurance-gate#evidence/one/traces/ree-1.html">trace</a>'
+    )
     assert evidence_links(bundle, "evidence/two").endswith(
-        '<a href="evidence/two/traces/ree-a.html">traces · 2 REEs</a>'
+        '<a href="evidence.html?from=assurance-gate#evidence/two/traces/ree-a.html">traces · 2 REEs</a>'
     )
     # The whole dossier's page is the way in, where there is one.
     (bundle.root / "evidence/two/traces/dossier.html").write_text("<p>dossier</p>")
     assert evidence_links(bundle, "evidence/two").endswith(
-        '<a href="evidence/two/traces/dossier.html">traces · 2 REEs</a>'
+        '<a href="evidence.html?from=assurance-gate#evidence/two/traces/dossier.html">traces · 2 REEs</a>'
     )

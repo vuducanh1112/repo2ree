@@ -34,7 +34,7 @@ from repo2ree_repoview.overview.exports import (
     operations_export,
     shown,
 )
-from repo2ree_repoview.overview.html import Page, esc
+from repo2ree_repoview.overview.html import FRAME, Page, esc
 from repo2ree_repoview.overview.pages.aggregate import page_aggregate
 from repo2ree_repoview.overview.pages.api import page_api
 from repo2ree_repoview.overview.pages.architecture import page_architecture
@@ -59,26 +59,52 @@ from repo2ree_repoview.overview.receipt import (
     unreached,
 )
 from repo2ree_repoview.overview.timings import LOGS, read_invocations, summarize
-from repo2ree_repoview.overview.traces import place_traces
 from repo2ree_repoview.repository import ROOT, Head
 
 # The page's look and its filter boxes, inlined so the page is one file.
 STYLE = (Path(__file__).with_name("overview.css")).read_text()
 SCRIPT = (Path(__file__).with_name("overview.js")).read_text()
+SHELL_SCRIPT = (Path(__file__).with_name("shell.js")).read_text()
+
+
+def sidebar(pages: list[Page], now: Head, current: str | None) -> str:
+    """The sidebar that links every page of the overview, ``current`` marked."""
+    links = "".join(
+        f'<a href="{p.slug}.html"{' class="current"' if p.slug == current else ""}>{p.title}</a>' for p in pages
+    )
+    return (
+        f'<nav><h1><a href="index.html">repo2ree</a></h1>'
+        f'<div class="sub">overview at <code>{now.revision[:8]}</code></div>{links}</nav>'
+    )
+
+
+def head(title: str) -> str:
+    return (
+        '<!doctype html><html lang="en"><head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width,initial-scale=1">'
+        f"<title>{esc(title)} · repo2ree overview</title><style>{STYLE}</style></head>"
+    )
 
 
 def frame(page: Page, pages: list[Page], now: Head) -> str:
     """One page of the overview, with the sidebar that links them all."""
-    links = "".join(
-        f'<a href="{p.slug}.html"{' class="current"' if p.slug == page.slug else ""}>{p.title}</a>' for p in pages
-    )
     return (
-        '<!doctype html><html lang="en"><head><meta charset="utf-8">'
-        '<meta name="viewport" content="width=device-width,initial-scale=1">'
-        f"<title>{esc(page.title)} · repo2ree overview</title><style>{STYLE}</style></head>"
-        f'<body><div class="layout"><nav><h1><a href="index.html">repo2ree</a></h1>'
-        f'<div class="sub">overview at <code>{now.revision[:8]}</code></div>{links}</nav>'
+        f'{head(page.title)}<body><div class="layout">{sidebar(pages, now, page.slug)}'
         f"<main>{page.body}</main></div><script>{SCRIPT}</script></body></html>"
+    )
+
+
+def shell(pages: list[Page], now: Head) -> str:
+    """The frame the overview shows its bundled evidence in: the sidebar, and the page beside it.
+
+    The page is the address after ``#`` (``evidence.html?from=coverage#evidence/…/traces/dossier.html#rule=…``),
+    the overview's page it was opened from is ``from``, marked in the sidebar.
+    """
+    return (
+        f'{head("Evidence")}<body><div class="layout shell">{sidebar(pages, now, None)}'
+        '<main><p class="missing" id="missing" hidden>Nothing to show: an evidence page is opened '
+        'from the <a href="assurance-gate.html">assurance gate</a>, the coverage, or the operations.</p>'
+        f'<iframe id="shown" title="Evidence"></iframe></main></div><script>{SHELL_SCRIPT}</script></body></html>'
     )
 
 
@@ -130,12 +156,11 @@ def build(output: Path | None) -> Path:
         page_configuration(Environment.read()),
         page_api(OpenApi.read()),
     ]
-    # Before the manifest: it records the traces as they are once they lead back here.
-    place_traces(bundle, pages)
     manifest = bundle.manifest(now.provenance, receipt.revision if receipt else None)
     everything = [page_home(now, receipt_states(now, receipt), pages, zones, manifest), *pages]
     for page in everything:
         (bundle.root / f"{page.slug}.html").write_text(frame(page, everything, now), encoding="utf-8")
+    (bundle.root / f"{FRAME}.html").write_text(shell(everything, now), encoding="utf-8")
     (bundle.root / "manifest.json").write_text(manifest.model_dump_json(indent=2) + "\n", encoding="utf-8")
     if output is None:
         latest = OVERVIEWS / "latest"
