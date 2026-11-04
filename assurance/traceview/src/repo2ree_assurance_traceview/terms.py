@@ -59,6 +59,18 @@ MISSING = "missing"
 NOT_APPLICABLE = "not_applicable"
 STEP_ORDER = ("source", "evaluation", "hardware", "runtime", "sbom", "sbom_cross_check", "test_activation")
 
+# A workbench's connection, its store, the facts it is drawn by, and the state it opens in.
+SESSION = "WorkbenchSession"
+STORE_ID = "store_id"
+WORKBENCH_ID = "workbench_id"
+NONCE = "nonce"
+REASON = "reason"
+CLOSE_CODE = "close_code"
+OPENED = "opened"
+LOST = "lost"
+# The fact a dispatch names its session by.
+SESSION_FACT = "session"
+
 # The dispatch exchange's request, its result, and the facts read from them.
 EXEC_ACTION = "exec_action"
 RESULT = "result"

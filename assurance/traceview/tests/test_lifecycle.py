@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from traceview_scenario import Scenario, build_spans, recorded, trace_of
+from traceview_scenario import REE, Scenario, build_spans, dossier_of, recorded, trace_of
+
+from repo2ree_assurance_traceview.model import Lifecycle
 
 
 def requested(s: Scenario, t: float, key: str, action: str, state: str, **facts: Any) -> None:
@@ -144,3 +146,74 @@ def test_a_run_whose_attempt_was_never_captured_still_shows_its_dispatch() -> No
         "unavailable",
         "build_runtime → failed",
     ]
+
+
+def served(s: Scenario, t: float, key: str, *, store: str = "lab-1", nonce: str = "n-1") -> None:
+    """A workbench admitted to ``store``."""
+    s.session(t, key, None, "opened", store=store, nonce=nonce)
+    s.session(t, key, "opened", "connected", store=store, nonce=nonce, backend="host", slots=1)
+
+
+def system_rows(lifecycle: Lifecycle, kind: str) -> list[tuple[str, str | None]]:
+    return [
+        (row.label, row.detail)
+        for segment in lifecycle.segments
+        if segment.kind == kind
+        for row in lifecycle.rows[segment.first : segment.last + 1]
+    ]
+
+
+def test_an_rees_lifecycle_draws_its_stores_sessions_while_it_lived() -> None:
+    s = Scenario()
+    served(s, 0.0, "s1")
+    served(s, 0.0, "elsewhere", store="lab-2")
+    recorded(scenario=s)
+    requested(s, 60.0, "act-delete", "delete_ree", "succeeded", store_id="lab-1")
+    s.session(61.0, "s1", "connected", "lost", reason="closed", close_code=1006)
+    lifecycle = trace_of(s).lifecycle
+    assert lifecycle is not None
+    assert lifecycle.segments[0].kind == "session"
+    # The session serving the store when the REE was created; the end of it came after the REE's.
+    assert system_rows(lifecycle, "session") == [("session s1 connected", "wb-1 · nonce n-1")]
+
+
+def test_a_crashed_api_ends_its_journal_and_the_workbench_comes_back_as_a_new_session() -> None:
+    s = Scenario()
+    served(s, 0.0, "s1")
+    recorded(scenario=s)
+    s.restart()
+    served(s, 40.0, "s2")
+    requested(s, 60.0, "act-delete", "delete_ree", "succeeded", store_id="lab-1")
+    lifecycle = trace_of(s).lifecycle
+    assert lifecycle is not None
+    assert system_rows(lifecycle, "epoch") == [
+        ("api-000001 ended without closing: the API process crashed", None),
+        ("api-000002 opened", None),
+    ]
+    assert system_rows(lifecycle, "session")[-1] == ("session s2 connected", "wb-1 · same process as s1")
+    kinds = [segment.kind for segment in lifecycle.segments]
+    assert kinds.index("epoch") < len(kinds) - 1 - kinds[::-1].index("session") < kinds.index("action")
+
+
+def test_the_dossier_draws_every_ree_and_every_stores_sessions() -> None:
+    s = Scenario()
+    served(s, 0.0, "s1")
+    served(s, 0.0, "elsewhere", store="lab-2")
+    recorded(scenario=s)
+    whole = dossier_of(s)
+    assert (whole.ree, whole.entries) == ("", ())
+    lifecycle = whole.lifecycle
+    assert lifecycle is not None
+    assert {segment.ree for segment in lifecycle.segments if segment.kind not in ("session", "epoch")} == {REE}
+    assert {label for segment in lifecycle.segments if segment.kind == "session" for label in [segment.label]} == {
+        "Workbench sessions · lab-1",
+        "Workbench sessions · lab-2",
+    }
+
+
+def test_a_dispatch_says_the_session_it_was_sent_on() -> None:
+    lifecycle = trace_of(recorded()).lifecycle
+    assert lifecycle is not None
+    sent = [row for row in lifecycle.rows if row.label.startswith("exec_action")]
+    assert sent
+    assert all(row.detail == "on session session-" for row in sent)

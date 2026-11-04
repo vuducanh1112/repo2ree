@@ -110,12 +110,16 @@ class Sequence(ViewModel):
 
 
 class Segment(ViewModel):
-    """One stretch of the lifecycle: an entry of the trace, or an action outside every entry."""
+    """One stretch of the lifecycle: an entry of the trace, an action outside every entry, a store's
+    workbench sessions, or an API journal's beginning or end."""
 
-    kind: Literal["setup", "operation", "authoring", "action"]
+    kind: Literal["setup", "operation", "authoring", "action", "session", "epoch"]
     label: str
     outcome: str | None = None
     entry: int | None = None  # Its entry in BehaviourTrace.entries, if it is one.
+    ree: str | None = None  # The REE it belongs to, where several are drawn together.
+    told: str | None = None  # What the author was told: a run's last state, or the outcome.
+    notes: tuple[str, ...] = ()  # Where what happened differs from what the author was told.
     first: int  # Its rows in Lifecycle.rows, first to last.
     last: int
 

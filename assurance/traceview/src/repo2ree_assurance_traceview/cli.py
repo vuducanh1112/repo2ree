@@ -17,7 +17,7 @@ from repo2ree_assurance_traceview import terms
 from repo2ree_assurance_traceview.catalogue import Undrawn, build_catalogue
 from repo2ree_assurance_traceview.files import commit_sizes, describe, read_spans, ree_names, repositories, template
 from repo2ree_assurance_traceview.model import BehaviourTrace, Sibling
-from repo2ree_assurance_traceview.operations import build_trace, rees
+from repo2ree_assurance_traceview.operations import build_dossier, build_trace, rees
 from repo2ree_assurance_traceview.provenance import build_provenance, render_text
 from repo2ree_assurance_traceview.render import render_html
 
@@ -30,7 +30,9 @@ def parser() -> argparse.ArgumentParser:
     trace = commands.add_parser("trace", help="Draw one dossier: a behaviour trace page per REE, and provenance")
     trace.add_argument("verification", type=Path, help="verification.json, or the directory holding it")
     trace.add_argument("--dossier", type=Path, help="The dossier it verified, if it has moved since")
-    trace.add_argument("--output", "-o", type=Path, help="Directory for one <ree_id>.html page per REE")
+    trace.add_argument(
+        "--output", "-o", type=Path, help="Directory for one <ree_id>.html page per REE, and dossier.html for them all"
+    )
     trace.add_argument("--json", action="store_true", help="Also write <ree_id>.json, the trace model")
     trace.add_argument(
         "--provenance", action="store_true", help="Write <ree_id>.provenance.txt, or print it without --output"
@@ -75,6 +77,12 @@ class _Verified:
             raise _UnreadableError(str(exc)) from exc
 
     def traces(self, git: str, ree: str | None = None, *, count_files: bool = True) -> list[BehaviourTrace]:
+        return self.pages(git, ree, count_files=count_files)[0]
+
+    def pages(
+        self, git: str, ree: str | None = None, *, count_files: bool = True
+    ) -> tuple[list[BehaviourTrace], BehaviourTrace]:
+        """Each REE's trace, and the whole dossier's, every page offering every other as a tab."""
         model = VerifiedModel.of(self.verification)
         spans = read_spans(self.located, self.dossier)
         info = describe(self.located, self.dossier)
@@ -82,18 +90,31 @@ class _Verified:
         names = ree_names(self.located, self.dossier, git)
         drawn = [build_trace(model, spans, ree=one, dossier=info, commit_files=files) for one in rees(model)]
         drawn = [trace.model_copy(update={"name": names.get(trace.ree)}) for trace in drawn]
-        siblings = tuple(_sibling(trace) for trace in drawn)
-        return [
+        whole = build_dossier(model, spans, dossier=info, commit_files=files)
+        sessions = len(model.instances.get(terms.SESSION, {}))
+        summary = f"{_count(len(drawn), 'REE')} · {_count(sessions, 'session')}"
+        everything = Sibling(ree="", name="All", page=DOSSIER_PAGE, sealed=False, summary=summary)
+        siblings = (everything, *(_sibling(trace) for trace in drawn))
+        chosen = [
             trace.model_copy(update={"siblings": siblings})
             for trace in drawn
             if ree is None or trace.ree.startswith(ree)
         ]
+        return chosen, whole.model_copy(update={"siblings": siblings})
+
+
+# The page of the whole dossier, beside the one of each REE.
+DOSSIER_PAGE = "dossier.html"
+
+
+def _count(n: int, word: str) -> str:
+    return f"{n} {word}{'s' if n != 1 else ''}"
 
 
 def _sibling(trace: BehaviourTrace) -> Sibling:
     operations = sum(entry.kind == "operation" for entry in trace.entries)
     loaded = any(entry.name == terms.LOAD_BUNDLE for entry in trace.entries)
-    summary = "loaded from a bundle" if loaded else f"{operations} operation{'s' if operations != 1 else ''}"
+    summary = "loaded from a bundle" if loaded else _count(operations, "operation")
     return Sibling(ree=trace.ree, name=trace.name, page=f"{trace.ree}.html", sealed=trace.sealed, summary=summary)
 
 
@@ -109,7 +130,7 @@ def trace(args: argparse.Namespace) -> int:
     except _UnreadableError as exc:
         sys.stderr.write(f"{exc}\n")
         return 2
-    traces = verified.traces(args.git_executable, args.ree)
+    traces, whole = verified.pages(args.git_executable, args.ree)
     if not traces:
         sys.stderr.write(f"{verified.located}: no REE{f' matching {args.ree}' if args.ree else ''} in this dossier\n")
         return 2
@@ -131,6 +152,12 @@ def trace(args: argparse.Namespace) -> int:
         sys.stdout.write(
             f"{args.output / f'{one.ree}.html'}: {len(one.entries)} entries, assurance {one.verdict}{reviews}\n"
         )
+    # The whole dossier, unless the pages were asked for one REE.
+    if args.output is not None and args.ree is None:
+        (args.output / DOSSIER_PAGE).write_text(render_html(whole, page))
+        if args.json:
+            (args.output / DOSSIER_PAGE).with_suffix(".json").write_text(whole.model_dump_json(indent=2))
+        sys.stdout.write(f"{args.output / DOSSIER_PAGE}: {len(whole.siblings) - 1} REEs, the whole dossier\n")
     return 0
 
 

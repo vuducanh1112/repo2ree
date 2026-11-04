@@ -180,6 +180,8 @@ summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; b
 #seq .band { fill: var(--bg); }
 #seq .band.alt { fill: var(--surface); }
 #seq .band.focused { fill: var(--accent-soft); }
+#seq .band.system { fill: var(--setup-soft); opacity: .55; }
+#seq .seg-name.system { fill: var(--setup); }
 #seq .seg-name { font-family: var(--font-ui); font-weight: 600; font-size: 12.5px; }
 #seq .seg-name.bad { fill: var(--bad); }
 #seq .elapsed { fill: var(--muted); font-size: 10.5px; }
@@ -212,7 +214,7 @@ footer p { margin: 0; }
   <section>
     <div class="section-head">
       <h2>Lifecycle</h2>
-      <p>The REE from its creation to its last action, every operation in the order the journal recorded it, across every component. Lines are placed in order, not to scale: a dashed rule marks where time passed between them, and says how much. Solid arrows are journal records the checker reads; dashed ones come from spans; dotted ones are matched by time only. The right column says where each line comes from. Reads, polling a run among them, are left out.</p>
+      <p id="seq-lede">The REE from its creation to its last action, every operation in the order the journal recorded it, across every component, with the workbench sessions of its store and the API's journals beside them. Lines are placed in order, not to scale: a dashed rule marks where time passed between them, and says how much. Solid arrows are journal records the checker reads; dashed ones come from spans; dotted ones are matched by time only. The right column says where each line comes from. Reads, polling a run among them, are left out.</p>
     </div>
     <div class="panel scroll" id="seq"></div>
     <div class="legend">
@@ -224,7 +226,7 @@ footer p { margin: 0; }
       <span><i class="sw" style="background:var(--author)"></i>authoring, folded</span>
     </div>
   </section>
-  <section>
+  <section id="operations">
     <div class="section-head">
       <h2>Operations</h2>
       <p>Setup and the operations that produce evidence, in evidence order. Authoring between them is collapsed. Expand an entry for its run, dispatch, attempt, the rules it triggered and its largest spans.</p>
@@ -233,7 +235,7 @@ footer p { margin: 0; }
     <div id="log"></div>
   </section>
 
-  <section>
+  <section id="history">
     <div class="section-head"><h2>Change history</h2></div>
     <div class="panel scroll" id="grid"></div>
     <div class="legend">
@@ -267,11 +269,11 @@ const LABEL = { provision: "Create REE" };
 
 function header() {
   const t = TRACE, r = t.dossier, rev = r.revision ?? "";
-  $("title").textContent = t.ree ? `REE ${t.name ? `${t.name} · ` : ""}${t.ree.slice(0, 8)}` : "No REE in this dossier";
+  $("title").textContent = t.ree ? `REE ${t.name ? `${t.name} · ` : ""}${t.ree.slice(0, 8)}` : "The whole dossier";
   document.title = `${$("title").textContent} · behaviour trace`;
   const facts = [
     ["Assurance", `<span class="pill ${t.verdict}">${esc(t.verdict)}</span>`],
-    ["REE", `<span class="pill ${t.sealed ? "sealed" : ""}">${t.sealed ? "sealed" : "draft"}</span>`],
+    t.ree ? ["REE", `<span class="pill ${t.sealed ? "sealed" : ""}">${t.sealed ? "sealed" : "draft"}</span>`] : ["REEs", `<span class="v">${t.siblings.length - 1}</span>`],
     ["Test", `<span class="v">${esc(r.test ?? "–")}</span>`],
     ["Test outcome", r.outcome ? `<span class="pill ${esc(r.outcome)}">${esc(r.outcome)}</span>` : `<span class="v">–</span>`],
     ["Build", `<span class="v">${esc(rev.slice(0, 10))}${rev.endsWith("-dirty") ? "-dirty" : ""}</span>`],
@@ -286,8 +288,14 @@ function header() {
   if (t.siblings.length > 1) {
     $("rees").hidden = false;
     $("rees").innerHTML = t.siblings.map((sb) => `<a class="tab" href="${esc(sb.page)}"${sb.ree === t.ree ? ' aria-current="page"' : ""}>
-      <span>${esc(sb.name ? `${sb.name} · ` : "")}${esc(sb.ree.slice(0, 8))}</span>
-      <span class="hint">${sb.sealed ? "sealed" : "draft"} · ${esc(sb.summary)}</span></a>`).join("");
+      <span>${sb.ree ? `${esc(sb.name ? `${sb.name} · ` : "")}${esc(sb.ree.slice(0, 8))}` : esc(sb.name)}</span>
+      <span class="hint">${sb.ree ? `${sb.sealed ? "sealed" : "draft"} · ` : ""}${esc(sb.summary)}</span></a>`).join("");
+  }
+  if (!t.ree) {
+    // The whole dossier: its lifecycle only; each REE's operations and history are on its own page.
+    $("operations").hidden = true;
+    $("history").hidden = true;
+    $("seq-lede").textContent = "Every REE of the dossier, every workbench session, and the API's journals, in the order the journal recorded them. Each band names the REE it belongs to; overlapping REEs are drawn one after the other, in the order each began.";
   }
 }
 
@@ -314,16 +322,26 @@ const PROV = { journal: "journal", git: "git", inferred: "inferred", span: "span
 const NUMBER = (() => { let n = 0; return TRACE.entries.map((e) => e.kind === "authoring" ? null : ++n); })();
 const elapsed = (s) => s < 1 ? `${Math.round(s * 1000)} ms` : fmt(s);
 
+const REE_NAME = Object.fromEntries(TRACE.siblings.filter((sb) => sb.ree).map((sb) => [sb.ree, `${sb.name ? `${sb.name} · ` : ""}${sb.ree.slice(0, 8)}`]));
+const SYSTEM = ["session", "epoch"];
+
 function segmentTitle(sg) {
-  const e = sg.entry != null ? TRACE.entries[sg.entry] : null;
+  if (SYSTEM.includes(sg.kind)) return { text: sg.label, bad: false, system: true };
   const name = sg.kind === "authoring" ? "Authoring" : LABEL[sg.label] ?? sg.label;
-  const no = e && NUMBER[sg.entry] ? `${NUMBER[sg.entry]} · ` : "";
-  const told = e && e.run ? e.run.states[e.run.states.length - 1].state : sg.outcome;
-  const parts = [told && `${sg.kind === "operation" ? "run " : ""}${told}`];
-  if (e && e.attempt && e.attempt.outcome && e.attempt.outcome !== told) parts.push(`attempt ${e.attempt.outcome}`);
-  if (e && e.dispatch && e.dispatch.outcome && e.dispatch.outcome !== told) parts.push(`dispatch ${e.dispatch.outcome}`);
-  const bad = told && !["succeeded", null].includes(told);
-  return { text: `${no}${name}${parts.filter(Boolean).length ? " — " + parts.filter(Boolean).join(" · ") : ""}`, bad };
+  const no = TRACE.ree && sg.entry != null && NUMBER[sg.entry] ? `${NUMBER[sg.entry]} · ` : "";
+  const ree = sg.ree ? `${REE_NAME[sg.ree] ?? sg.ree.slice(0, 8)} · ` : "";
+  const parts = [sg.told && `${sg.kind === "operation" ? "run " : ""}${sg.told}`, ...sg.notes].filter(Boolean);
+  const bad = sg.told && !["succeeded", null].includes(sg.told);
+  return { text: `${ree}${no}${name}${parts.length ? " — " + parts.join(" · ") : ""}`, bad, system: false };
+}
+
+// A journal record's number, and its journal where that is not the first: a restarted API numbers anew.
+const FIRST_JOURNAL = (TRACE.sources.find((s) => s.kind === "journal") ?? {}).id;
+function recordNo(r) {
+  if (!r.ref || r.provenance !== "journal") return "";
+  const [source, no] = r.ref.split("#");
+  const epoch = source.replace(/^(.*)-0*(\d+)$/, "$1 $2 ");
+  return ` <tspan class="sub">${source !== FIRST_JOURNAL ? esc(epoch) : ""}#${esc(no)}</tspan>`;
 }
 
 function lifecycleView(lc) {
@@ -344,7 +362,7 @@ function lifecycleView(lc) {
   let g = "";
   heads.forEach(({ sg, y }, k) => {
     const h = HH + (sg.last - sg.first + 1) * RH;
-    g += `<rect class="band${k % 2 ? " alt" : ""}" data-entry="${sg.entry ?? ""}" x="0" y="${y}" width="${W}" height="${h}"/>`;
+    g += `<rect class="band${SYSTEM.includes(sg.kind) ? " system" : k % 2 ? " alt" : ""}" data-entry="${TRACE.ree ? sg.entry ?? "" : ""}" x="0" y="${y}" width="${W}" height="${h}"/>`;
   });
   const groups = [];
   lanes.forEach((l, i) => { const last = groups[groups.length - 1]; if (last && last.p === l.process) last.to = i; else groups.push({ p: l.process, from: i, to: i }); });
@@ -359,7 +377,7 @@ function lifecycleView(lc) {
   });
   heads.forEach(({ sg, y }) => {
     const title = segmentTitle(sg);
-    g += `<text id="seg-${sg.entry ?? "a" + sg.first}" class="seg-name${title.bad ? " bad" : ""}" x="16" y="${y + 19}">${esc(title.text)}</text>`;
+    g += `<text id="seg-${TRACE.ree && sg.entry != null ? sg.entry : "a" + sg.first}" class="seg-name${title.bad ? " bad" : title.system ? " system" : ""}" x="16" y="${y + 19}">${esc(title.text)}</text>`;
   });
   lc.activations.forEach((a) => {
     const byTime = a.provenance === "time";
@@ -375,8 +393,7 @@ function lifecycleView(lc) {
       g += `<line x1="${G}" y1="${yy - RH / 2 + 2}" x2="${W - RW}" y2="${yy - RH / 2 + 2}" stroke="var(--line)" stroke-dasharray="2 4"/>`;
       g += `<text class="elapsed" x="${W - RW + 14}" y="${yy - RH / 2 + 6}">${elapsed(dt)} later</text>`;
     }
-    const seqNo = r.ref && r.provenance === "journal" ? ` <tspan class="sub">#${esc(r.ref.split("#")[1])}</tspan>` : "";
-    g += `<text class="ev-${r.provenance}" x="${W - RW + 14}" y="${yy + 4}">${PROV[r.provenance] ?? esc(r.provenance)}${seqNo}</text>`;
+    g += `<text class="ev-${r.provenance}" x="${W - RW + 14}" y="${yy + 4}">${PROV[r.provenance] ?? esc(r.provenance)}${recordNo(r)}</text>`;
     const detail = r.detail ? ` <tspan class="sub">${esc(r.detail)}</tspan>` : "";
     if (r.to) {
       const x1 = lx[r.lane], x2 = lx[r.to], dir = x2 > x1 ? 1 : -1;

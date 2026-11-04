@@ -128,13 +128,18 @@ def test_a_real_recording_draws_one_page_per_ree(tmp_path: Path) -> None:
     )
     pages_dir = tmp_path / "pages"
     assert main(["trace", str(verified), "-o", str(pages_dir), "--json", "--provenance"]) == 0
-    pages = sorted(pages_dir.glob("*.html"))
+    whole = pages_dir / "dossier.html"
+    pages = sorted(page for page in pages_dir.glob("*.html") if page != whole)
     assert pages
+    assert whole.exists()
+    dossier = BehaviourTrace.model_validate_json(whole.with_suffix(".json").read_text())
+    assert dossier.ree == ""
+    assert dossier.lifecycle is not None
     for page in pages:
         trace = BehaviourTrace.model_validate_json(page.with_suffix(".json").read_text())
         assert page.stem == trace.ree
-        # Each page offers every REE of the dossier, itself among them, by the page drawn for it.
-        assert {sibling.page for sibling in trace.siblings} == {other.name for other in pages}
+        # Each page offers the whole dossier and every REE of it, itself among them, by the page drawn for it.
+        assert {sibling.page for sibling in trace.siblings} == {other.name for other in (whole, *pages)}
         assert all(entry.sequence and entry.sequence.rows for entry in trace.entries if entry.kind == "operation")
         assert PLACEHOLDER not in page.read_text()
         assert page.with_suffix(".provenance.txt").exists()

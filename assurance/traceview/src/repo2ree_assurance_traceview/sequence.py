@@ -138,7 +138,9 @@ def build_sequence(
     for event in exchange:
         if event.kind == "send":
             label = f"{terms.EXEC_ACTION} · {_fact(event, terms.OPERATION)}"
-            builder.message(_at(event), "supervisor", "workbench", label, "journal", ref=event.ref)
+            session = event.facts.get(terms.SESSION_FACT)
+            on = f"on session {str(session)[:8]}" if session else None
+            builder.message(_at(event), "supervisor", "workbench", label, "journal", ref=event.ref, detail=on)
         elif event.kind == "receive":
             status = event.facts.get(terms.STATUS)
             label = f"{event.message} · {status}" if status is not None else str(event.message)
@@ -363,4 +365,34 @@ def fold(t: float | None, label: str, detail: str | None) -> Sequence:
     """A single folded line, at ``t`` seconds into the trace, standing for what a segment does not draw row by row."""
     builder = _Builder(0.0)
     builder.note(t, "api", label, "journal", detail=detail, tone="fold")
+    return builder.build()
+
+
+def session_sequence(event: Event, origin: float, *, returning: str | None = None) -> Sequence:
+    """One workbench session's move, on the lane of the supervisor that holds it: who connected, or why it ended.
+
+    ``returning`` says what an admitted workbench was before: the same process as an earlier
+    session (its nonce), or a new process under an id seen before.
+    """
+    facts = event.facts
+    builder = _Builder(origin)
+    state = event.target_state or ""
+    if state == "connected":
+        nonce = f"nonce {str(facts.get(terms.NONCE) or '')[:6]}"
+        detail = f"{facts.get(terms.WORKBENCH_ID)} · {returning or nonce}"
+    else:
+        code = facts.get(terms.CLOSE_CODE)
+        who = facts.get(terms.WORKBENCH_ID) if state == "refused" else None
+        parts = (facts.get(terms.REASON), who, code and f"close {code}")
+        detail = " · ".join(str(part) for part in parts if part)
+    tone: Tone | None = "gap" if state == terms.LOST else None
+    label = f"session {event.key[:8]} {state}"
+    builder.note(_at(event), "supervisor", label, "journal", ref=event.ref, detail=detail or None, tone=tone)
+    return builder.build()
+
+
+def epoch_sequence(event: Event, label: str, origin: float, *, crashed: bool) -> Sequence:
+    """An API journal's first or last record, on the API's lane: a process starting, or one that crashed."""
+    builder = _Builder(origin)
+    builder.note(_at(event), "api", label, "journal", ref=event.ref, tone="gap" if crashed else None)
     return builder.build()

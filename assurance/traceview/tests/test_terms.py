@@ -22,6 +22,12 @@ def test_every_term_traceview_draws_by_is_in_the_specification() -> None:
     assert terms.BASELINE in receipt.allowed[terms.CAUSE]
     assert set(terms.STEP_ORDER) <= set(receipt.allowed[terms.KIND])
     assert {terms.CURRENT, terms.STALE, terms.MISSING, terms.NOT_APPLICABLE} <= set(receipt.states)
+    session = entities[terms.SESSION]
+    assert {terms.STORE_ID, terms.WORKBENCH_ID, terms.NONCE, terms.REASON, terms.CLOSE_CODE} <= set(session.facts)
+    assert {terms.OPENED, terms.LOST} <= set(session.states)
+    assert session.partition == terms.STORE_ID
+    assert terms.STORE_ID in action.facts
+    assert terms.SESSION_FACT in dispatch.facts[terms.EXEC_ACTION]
     assert {terms.EXEC_ACTION, terms.RESULT} <= set(dispatch.messages)
     assert terms.OPERATION in dispatch.facts[terms.EXEC_ACTION]
     assert terms.STATUS in dispatch.facts[terms.RESULT]

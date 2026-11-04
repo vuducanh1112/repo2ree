@@ -8,7 +8,7 @@ from typing import Any
 
 from repo2ree_assurance_checker import Event, Evidence, Source, Verification, VerifiedModel, load_spec, verify
 from repo2ree_assurance_traceview.model import BehaviourTrace, DossierInfo
-from repo2ree_assurance_traceview.operations import build_trace
+from repo2ree_assurance_traceview.operations import build_dossier, build_trace
 from repo2ree_assurance_traceview.spans import Span, SpanEvent, SpanIndex
 
 SPEC = load_spec()
@@ -36,11 +36,43 @@ class Scenario:
         self.ree, self.git = REE, "git:ree"
         # Each dispatched attempt's request, which its record cites, as the supervisor's context carries it.
         self.requests: dict[str, str] = {}
+        # The API journal being written, and those that ended without closing: a crashed API's.
+        self.source = "api-000001"
+        self.crashed: set[str] = set()
 
-    def journal(self, t: float, trace: str | None = None, **fields: Any) -> None:
+    def journal(self, t: float, trace: str | None = None, partition: str | None = None, **fields: Any) -> None:
         self.seq += 1
         self.events.append(
-            Event(source="api-000001", position=self.seq, partition=self.ree, at=at(t), trace_id=trace, **fields)
+            Event(
+                source=self.source,
+                position=self.seq,
+                partition=partition or self.ree,
+                at=at(t),
+                trace_id=trace,
+                **fields,
+            )
+        )
+
+    def restart(self) -> None:
+        """The API crashed: its journal ends without closing, and the restarted one begins a new journal."""
+        self.crashed.add(self.source)
+        epoch = int(self.source.rsplit("-", 1)[1]) + 1
+        self.source, self.seq = f"api-{epoch:06d}", 0
+
+    def session(
+        self, t: float, key: str, current: str | None, target: str, *, store: str = "lab-1", **facts: Any
+    ) -> None:
+        """A workbench's connection to ``store`` moving on, as the supervisor journals it."""
+        self.journal(
+            t,
+            partition=store,
+            kind="transition",
+            owner="supervisor",
+            subject="WorkbenchSession",
+            key=key,
+            source_state=current,
+            target_state=target,
+            facts={"workbench_id": "wb-1", "nonce": "n-1", "store_id": store, **facts},
         )
 
     def run(self, key: str, path: list[tuple[float, str]], trace: str | None = None, *, action: str) -> None:
@@ -78,7 +110,7 @@ class Scenario:
             message="exec_action",
             facts={"operation": operation, "run_id": run_id, "session": "session-1"},
         )
-        self.requests[attempt] = f"api-000001#{self.seq}"
+        self.requests[attempt] = f"{self.source}#{self.seq}"
         self.journal(
             answered,
             trace,
@@ -305,23 +337,25 @@ def build_spans() -> list[Span]:
     ]
 
 
-def trace_of(
-    scenario: Scenario, spans: list[Span] | None = None, ree: str = REE, unreadable: int = 0
-) -> BehaviourTrace:
+def verified(scenario: Scenario) -> VerifiedModel:
     gits: dict[str, set[str]] = {}
     for event in scenario.events:
         if event.source.startswith("git:"):
             gits.setdefault(event.source, set()).add(event.partition or "")
+    journals = sorted({event.source for event in scenario.events if event.source.startswith("api-")} or {"api-000001"})
     sources = (
-        Source(
-            id="api-000001",
-            kind="journal",
-            process="api",
-            rank=1,
-            hosts=frozenset({"api", "supervisor"}),
-            complete=True,
-            closed=True,
-            vocabulary=SPEC.vocabulary_digest,
+        *(
+            Source(
+                id=journal,
+                kind="journal",
+                process="api",
+                rank=int(journal.rsplit("-", 1)[1]),
+                hosts=frozenset({"api", "supervisor"}),
+                complete=True,
+                closed=journal not in scenario.crashed,
+                vocabulary=SPEC.vocabulary_digest,
+            )
+            for journal in journals
         ),
         *(
             Source(
@@ -340,9 +374,20 @@ def trace_of(
     evidence = Evidence(sources=sources, events=tuple(scenario.events))
     # Through the artifact, as the command line reads it: a view only ever sees what was verified.
     verification = Verification.model_validate_json(verify(SPEC, evidence).model_dump_json())
+    return VerifiedModel.of(verification)
+
+
+def trace_of(
+    scenario: Scenario, spans: list[Span] | None = None, ree: str = REE, unreadable: int = 0
+) -> BehaviourTrace:
     return build_trace(
-        VerifiedModel.of(verification),
+        verified(scenario),
         SpanIndex(spans or [], unreadable),
         ree=ree,
         dossier=DossierInfo(name="synthetic"),
     )
+
+
+def dossier_of(scenario: Scenario) -> BehaviourTrace:
+    """The whole dossier's trace: every REE, every session, every API journal."""
+    return build_dossier(verified(scenario), SpanIndex([]), dossier=DossierInfo(name="synthetic"))
