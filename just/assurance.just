@@ -13,7 +13,7 @@
 # Static checks for every assurance package, and that the generated contract (contracts/behaviour) is current.
 [group('Checks')]
 check-assurance: (check-package `python scripts/workspace.py assurance`)
-    python -m repo2ree_assurance_checker generate --check
+    python -m repo2ree_assurance_checker generate-schema --check
 
 # Tests for every assurance package. The checker's history tests need git; the collector's serve
 # the control plane's behaviour endpoints from a local stub; the traceview dossier smoke test needs
@@ -26,11 +26,6 @@ test-assurance:
 [group('Assurance')]
 collect-dossier control_plane output *rees:
     python -m repo2ree_assurance_collector {{ quote(output) }} --control-plane {{ quote(control_plane) }} {{ prepend("--ree ", rees) }}
-
-# Regenerate the published event schema (contracts/behaviour) after editing assurance/spec.
-[group('Assurance')]
-generate-behaviour:
-    python -m repo2ree_assurance_checker generate
 
 # Write the behaviour specification as JSON (repo2ree-behaviour-spec/1) for the overview.
 [group('Assurance')]
