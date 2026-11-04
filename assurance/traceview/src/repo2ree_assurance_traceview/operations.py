@@ -1,12 +1,13 @@
 """The behaviour trace of one REE: setup, the operations that produce evidence, and the authoring between them.
 
-An operation is an author attempt that belongs to a run (acquire_source, build_runtime, …).
-Attempts without a run of their own (definition patches, file writes, lints) are authoring and are
-collapsed between operations. Every entry is grouped from the verification of the dossier (the
+An operation is an author attempt that belongs to a run (acquire_source, build_runtime, …): the run
+names its attempt, or, when it failed before it could (its workbench was lost), the attempt's dispatch
+names the run. Attempts without a run of their own (definition patches, file writes, lints) are
+authoring and are collapsed between operations. Every entry is grouped from the verification of the dossier (the
 verifier's artifact, read back), and carries the verdict of each rule occurrence its events triggered.
 
-Order: attempts keep capture order, which step evidence depends on. Setup and release, which only
-the journal records, are merged in by the journal position of each attempt's dispatch, the request
+Order: attempts keep capture order, which step evidence depends on. Setup, which only
+the journal records, is merged in by the journal position of each attempt's dispatch, the request
 the attempt's record cites, which is how the checker orders Git evidence too. Wall-clock time places
 nothing.
 
@@ -16,6 +17,10 @@ of the same REE are not drawn yet (reviews are not specified); they are only cou
 Built in three steps: the REE's history is cut into commits (``_commits``), each commit that
 captured an attempt is read as a capture (``_Capture.of``), and a ``_Timeline`` folds them, in
 order and with the journal-only setups between them, into entries.
+
+The lifecycle then joins every entry's sequence and the actions no entry draws (a deletion, a
+request refused before anything was dispatched) in journal order: the order the author and the
+control plane saw them in, where entries keep the order their attempts were captured in.
 """
 
 from __future__ import annotations
@@ -34,15 +39,18 @@ from repo2ree_assurance_traceview.model import (
     Dispatch,
     DossierInfo,
     Entry,
+    Lifecycle,
     Machine,
     ReeChange,
     RuleHit,
+    Segment,
+    Sequence,
     SourceSummary,
     SpanSummary,
     StateAt,
     StepChange,
 )
-from repo2ree_assurance_traceview.sequence import build_sequence
+from repo2ree_assurance_traceview.sequence import build_lifecycle, build_sequence, fold
 from repo2ree_assurance_traceview.spans import SpanIndex, timestamp
 
 NOISE = ("websocket", "GET ", "HTTP /workbench/connect")
@@ -130,7 +138,7 @@ def rees(model: VerifiedModel) -> list[str]:
 
 
 # ================================================
-# Journal-only work: setup and release
+# Journal-only work: setup
 # ================================================
 
 
@@ -174,7 +182,7 @@ def _setup_entry(evidence: _Evidence, setup: _Setup) -> Entry:
         run=evidence.machine(run),
         rules=evidence.rules(run),
         spans=evidence.span_summary(run),
-        sequence=build_sequence(evidence.spans, runs=run),
+        sequence=build_sequence(evidence.spans, runs=run, origin=evidence.origin),
     )
 
 
@@ -272,7 +280,7 @@ def _operation_entry(evidence: _Evidence, capture: _Capture, run: list[Event], f
             sent=capture.sent.ref if capture.sent else None,
             received=answered.ref if answered else None,
             outcome=(
-                _str(answered.facts.get(terms.STATUS))
+                (_str(answered.facts.get(terms.STATUS)) or answered.message)
                 if answered and answered.kind == "receive"
                 else (answered.kind if answered else None)
             ),
@@ -298,6 +306,7 @@ def _operation_entry(evidence: _Evidence, capture: _Capture, run: list[Event], f
             attempt=attempt,
             changes=capture.changes,
             ree=ree_change,
+            origin=evidence.origin,
             commit=commit,
             files=size,
         ),
@@ -312,6 +321,7 @@ def _operation_entry(evidence: _Evidence, capture: _Capture, run: list[Event], f
 @dataclass
 class _Authoring:
     start: float | None
+    position: int | None  # Its first dispatch's place in the journal.
     end: float | None = None
     operations: Counter[str] = field(default_factory=Counter)
     failed: int = 0
@@ -327,6 +337,8 @@ class _Timeline:
         self.pending = deque(setups)
         self.files = files
         self.entries: list[Entry] = []
+        self.positions: list[int | None] = []  # Each entry's place in the journal, where it has one.
+        self.drawn: set[str] = set()  # The actions whose runs the entries draw.
         self.standing: dict[str, str] = {}
         self.baseline: dict[str, str] | None = None  # Each step's standing before the first capture.
         self.authoring: _Authoring | None = None
@@ -349,12 +361,17 @@ class _Timeline:
             self.standing[change.step] = change.after
         if capture.run is not None:
             self.entries.append(_operation_entry(self.evidence, capture, capture.run, self.files))
+            self.positions.append(self.evidence.position.get(capture.run[0].ref))
+            self.drawn.add(capture.run[0].key)
 
     def setups_before(self, position: int | None) -> None:
         """Journal-only entries the journal places before ``position`` (all of them when None)."""
         while self.pending and (position is None or self.pending[0].position < position):
             self.close_authoring()
-            self.entries.append(_setup_entry(self.evidence, self.pending.popleft()))
+            setup = self.pending.popleft()
+            self.entries.append(_setup_entry(self.evidence, setup))
+            self.positions.append(setup.position)
+            self.drawn.add(setup.run[0].key)
 
     def close_authoring(self) -> None:
         authoring, self.authoring = self.authoring, None
@@ -373,10 +390,12 @@ class _Timeline:
                 failed=authoring.failed,
             )
         )
+        self.positions.append(authoring.position)
 
     def _author(self, capture: _Capture) -> None:
         if self.authoring is None:
-            self.authoring = _Authoring(start=self.evidence.rel(capture.sent))
+            position = self.evidence.position.get(capture.sent.ref) if capture.sent else None
+            self.authoring = _Authoring(start=self.evidence.rel(capture.sent), position=position)
         authoring = self.authoring
         authoring.operations[capture.operation] += 1
         authoring.failed += capture.outcome != terms.SUCCEEDED
@@ -402,6 +421,7 @@ def build_trace(
         for e in events
         if e.facts.get(terms.ATTEMPT_ID)
     }
+    run_of_attempt.update(_runs_by_dispatch(evidence, runs, run_of_attempt, ree))
     timeline = _Timeline(evidence, _setups(evidence, runs), commit_files or {})
     for commit in _commits(evidence):
         timeline.add(commit, _Capture.of(evidence, commit, run_of_attempt) if commit.attempt else None)
@@ -425,9 +445,96 @@ def build_trace(
         steps=tuple(steps),
         baseline=timeline.baseline or {},
         history=change_history(replayed) if replayed else None,
+        lifecycle=_lifecycle(evidence, timeline),
         reviews=evidence.reviews,
         unreadable_spans=spans.unreadable,
     )
+
+
+def _runs_by_dispatch(
+    evidence: _Evidence, runs: dict[str, list[Event]], named: Mapping[str, list[Event]], ree: str
+) -> dict[str, list[Event]]:
+    """The runs no attempt was named for, by the attempt whose dispatch names them.
+
+    A run whose workbench was lost fails without naming its attempt; the attempt's dispatch still
+    carries the run's id. Reads that watch a run carry its id too, and are not it. An REE's creation
+    dispatches its own patch under the creation's run id, so creations are left out: they are setups,
+    never an attempt's run.
+    """
+    claimed = {id(events) for events in named.values()}
+    by_id = {
+        run_id: events
+        for events in runs.values()
+        if events[0].facts.get(terms.ACTION_NAME) not in (terms.PROVISION, *terms.READS) and id(events) not in claimed
+        for run_id in {_str(e.facts.get(terms.RUN_ID)) for e in events} - {None}
+    }
+    found: dict[str, list[Event]] = {}
+    for key, exchange in evidence.model.exchanges.get(terms.DISPATCH, {}).items():
+        request = exchange.request
+        if key in named or request is None or request.partition != ree:
+            continue
+        events = by_id.get(_str(request.facts.get(terms.RUN_ID)) or "")
+        if events is not None and id(events) not in claimed:
+            found[key] = events
+            claimed.add(id(events))
+    return found
+
+
+def _dispatches_by_run(evidence: _Evidence) -> dict[str, list[Event]]:
+    """Each dispatch exchange this REE's journal records, by the run its request names."""
+    journaled = evidence.position
+    found: dict[str, list[Event]] = defaultdict(list)
+    for exchange in evidence.model.exchanges.get(terms.DISPATCH, {}).values():
+        request = exchange.request
+        run_id = _str(request.facts.get(terms.RUN_ID)) if request is not None else None
+        if request is not None and run_id and request.ref in journaled:
+            found[run_id] += [e for e in exchange.events if e.ref in journaled]
+    return found
+
+
+def _loose(evidence: _Evidence, drawn: set[str]) -> list[tuple[int, list[Event]]]:
+    """The actions no entry draws, with their journal position: neither a read nor any entry's run or attempt."""
+    actions: dict[str, list[Event]] = defaultdict(list)
+    for event in evidence.journal:
+        if event.subject == terms.ACTION and event.kind == "transition":
+            actions[event.key].append(event)
+    return [
+        (evidence.position[events[0].ref], events)
+        for key, events in actions.items()
+        if key not in drawn
+        and events[0].facts.get(terms.ACTION_NAME) not in terms.READS
+        and not any(e.facts.get(terms.ATTEMPT_ID) for e in events)
+    ]
+
+
+def _lifecycle(evidence: _Evidence, timeline: _Timeline) -> Lifecycle:
+    """Every entry's sequence and every action no entry draws, in journal order.
+
+    An entry the journal does not place (authoring without a recorded dispatch) stays after the one before it.
+    """
+    placed: list[tuple[int, Segment, Sequence]] = []
+    last = -1
+    for index, (entry, position) in enumerate(zip(timeline.entries, timeline.positions, strict=True)):
+        last = position if position is not None else last
+        segment = Segment(kind=entry.kind, label=entry.name, outcome=entry.outcome, entry=index, first=0, last=0)
+        if entry.kind == "authoring":
+            counts = " · ".join(f"{count}\N{MULTIPLICATION SIGN} {name}" for name, count in entry.operations.items())
+            failed = f" · {entry.failed} failed" if entry.failed else ""
+            label = f"authoring · {entry.attempts} attempt{'s' if entry.attempts != 1 else ''}{failed}"
+            placed.append((last, segment, fold(entry.start, label, counts)))
+        elif entry.sequence is not None:
+            placed.append((last, segment, entry.sequence))
+    dispatched = _dispatches_by_run(evidence)
+    for position, events in _loose(evidence, timeline.drawn):
+        name = _str(events[0].facts.get(terms.ACTION_NAME)) or "action"
+        segment = Segment(kind="action", label=name, outcome=events[-1].target_state, first=0, last=0)
+        # A run that dispatched an attempt no capture recorded (its workbench died) still shows its dispatch.
+        run_ids = {_str(e.facts.get(terms.RUN_ID)) for e in events} - {None}
+        exchange = [e for run_id in sorted(r for r in run_ids if r) for e in dispatched.get(run_id, [])]
+        sequence = build_sequence(evidence.spans, runs=events, exchange=exchange, origin=evidence.origin)
+        placed.append((position, segment, sequence))
+    placed.sort(key=lambda part: part[0])  # Stable: an unplaced entry keeps its place after its predecessor.
+    return build_lifecycle([(segment, sequence) for _, segment, sequence in placed])
 
 
 def _step(event: Event) -> str:

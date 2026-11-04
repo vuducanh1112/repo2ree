@@ -133,6 +133,8 @@ def test_a_real_recording_draws_one_page_per_ree(tmp_path: Path) -> None:
     for page in pages:
         trace = BehaviourTrace.model_validate_json(page.with_suffix(".json").read_text())
         assert page.stem == trace.ree
+        # Each page offers every REE of the dossier, itself among them, by the page drawn for it.
+        assert {sibling.page for sibling in trace.siblings} == {other.name for other in pages}
         assert all(entry.sequence and entry.sequence.rows for entry in trace.entries if entry.kind == "operation")
         assert PLACEHOLDER not in page.read_text()
         assert page.with_suffix(".provenance.txt").exists()

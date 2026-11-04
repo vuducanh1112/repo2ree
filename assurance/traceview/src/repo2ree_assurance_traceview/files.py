@@ -1,7 +1,8 @@
-"""Read what a dossier holds besides the checker's evidence: spans, its context, capture commit sizes."""
+"""Read what a dossier holds besides the checker's evidence: spans, its context, REE names, capture commit sizes."""
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 from importlib.resources import files
@@ -33,6 +34,30 @@ def describe(directory: Path, dossier: Dossier) -> DossierInfo:
 
 def repositories(directory: Path, dossier: Dossier) -> list[Path]:
     return [directory / source.path for source in dossier.recorded("git")]
+
+
+def ree_names(directory: Path, dossier: Dossier, executable: str = "git") -> dict[str, str]:
+    """The name each REE's definition gives it, as its history last recorded it."""
+    names: dict[str, str] = {}
+    for source in dossier.recorded("git"):
+        repository = directory / source.path
+        try:
+            head, _ = history_head(executable, repository)
+            if head is None or source.name is None:
+                continue
+            shown = subprocess.run(
+                [executable, "--no-pager", "--git-dir", str(repository / ".git"), "show", f"{head}:ree.json"],
+                capture_output=True,
+                text=True,
+                check=True,
+                env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
+            ).stdout
+            name = json.loads(shown).get("subject", {}).get("definition", {}).get("name")
+        except (OSError, subprocess.CalledProcessError, ValueError, AttributeError):
+            continue
+        if isinstance(name, str) and name:
+            names[source.name] = name
+    return names
 
 
 def commit_sizes(repositories: list[Path], executable: str = "git") -> dict[str, int]:

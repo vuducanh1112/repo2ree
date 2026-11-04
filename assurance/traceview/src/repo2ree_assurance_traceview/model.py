@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict
 
 # Where a line in a view comes from, from strongest to weakest.
 type Provenance = Literal["journal", "git", "inferred", "span", "time", "gap"]
-type Tone = Literal["commit", "effect", "gap"]
+type Tone = Literal["commit", "effect", "gap", "fold"]
 
 
 class ViewModel(BaseModel):
@@ -109,6 +109,37 @@ class Sequence(ViewModel):
     activations: tuple[Activation, ...]
 
 
+class Segment(ViewModel):
+    """One stretch of the lifecycle: an entry of the trace, or an action outside every entry."""
+
+    kind: Literal["setup", "operation", "authoring", "action"]
+    label: str
+    outcome: str | None = None
+    entry: int | None = None  # Its entry in BehaviourTrace.entries, if it is one.
+    first: int  # Its rows in Lifecycle.rows, first to last.
+    last: int
+
+
+class Activity(ViewModel):
+    """An activation over rows of the lifecycle: its rows, since its segments may overlap in time."""
+
+    lane: str
+    first: int
+    last: int
+    label: str
+    duration: float
+    provenance: Provenance = "span"
+
+
+class Lifecycle(ViewModel):
+    """The REE from its creation to its last action, as one sequence of segments in evidence order."""
+
+    lanes: tuple[Lane, ...]
+    rows: tuple[Row, ...]
+    activations: tuple[Activity, ...]
+    segments: tuple[Segment, ...]
+
+
 class Entry(ViewModel):
     """One line of the trace: setup, an REE operation, or a run of authoring attempts."""
 
@@ -166,11 +197,22 @@ class DossierInfo(ViewModel):
     revision: str | None = None
 
 
+class Sibling(ViewModel):
+    """An REE of the same dossier, drawn on a page of its own beside this one."""
+
+    ree: str
+    name: str | None = None
+    page: str  # Its page, beside this one.
+    sealed: bool
+    summary: str
+
+
 class BehaviourTrace(ViewModel):
     """One REE's operations in one dossier."""
 
     dossier: DossierInfo
     ree: str
+    name: str | None = None  # The name its definition gives it.
     spec_digest: str
     verdict: str
     sealed: bool
@@ -180,5 +222,7 @@ class BehaviourTrace(ViewModel):
     steps: tuple[str, ...]
     baseline: dict[str, str] = {}  # Each step's standing before the first capture.
     history: ChangeHistory | None = None
+    lifecycle: Lifecycle | None = None
+    siblings: tuple[Sibling, ...] = ()  # Every REE of the dossier, this one among them, in page order.
     reviews: int = 0  # Review attempts on this REE, not drawn until reviews are specified.
     unreadable_spans: int = 0  # Span records passed over because they could not be read.

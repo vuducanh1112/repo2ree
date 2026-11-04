@@ -3,7 +3,9 @@
 Journal records and the capture commit sit at their own timestamps. Spans add the hops nothing
 journals yet. Attempt states carry no timestamp: they are placed inside the ``command.<op>`` span,
 the bracket in which core's capture_command runs, and marked inferred. Times are seconds from the
-sequence's first line.
+origin a sequence is given (the trace's first journal record), or else from its own first line.
+
+The lifecycle joins the sequences of every segment of an REE, in evidence order, into one.
 """
 
 from __future__ import annotations
@@ -12,7 +14,19 @@ from collections.abc import Sequence as Seq
 
 from repo2ree_assurance_checker.evidence import Event
 from repo2ree_assurance_traceview import terms
-from repo2ree_assurance_traceview.model import Activation, Lane, Provenance, ReeChange, Row, Sequence, StepChange, Tone
+from repo2ree_assurance_traceview.model import (
+    Activation,
+    Activity,
+    Lane,
+    Lifecycle,
+    Provenance,
+    ReeChange,
+    Row,
+    Segment,
+    Sequence,
+    StepChange,
+    Tone,
+)
 from repo2ree_assurance_traceview.spans import Span, SpanIndex, timestamp
 
 LANES = (
@@ -40,7 +54,8 @@ def milliseconds(span: Span) -> str:
 
 
 class _Builder:
-    def __init__(self) -> None:
+    def __init__(self, origin: float | None = None) -> None:
+        self.origin = origin
         self.rows: list[Row] = []
         self.activations: list[Activation] = []
 
@@ -80,7 +95,11 @@ class _Builder:
     def build(self) -> Sequence:
         if not self.rows:
             return Sequence(lanes=(), rows=(), activations=())
-        origin = min([row.t for row in self.rows] + [a.start for a in self.activations])
+        origin = (
+            self.origin
+            if self.origin is not None
+            else min([r.t for r in self.rows] + [a.start for a in self.activations])
+        )
         rows = sorted(
             (row.model_copy(update={"t": round(row.t - origin, 4)}) for row in self.rows), key=lambda row: row.t
         )
@@ -104,10 +123,12 @@ def build_sequence(
     ree: ReeChange | None = None,
     commit: str | None = None,
     files: int | None = None,
+    origin: float | None = None,
 ) -> Sequence:
-    builder = _Builder()
+    builder = _Builder(origin)
     related = spans.in_traces(event.trace_id for event in (*runs, *exchange))
-    request = _request(builder, spans, related)
+    background = any(event.facts.get(terms.RUN_ID) for event in runs)
+    request = _request(builder, spans, related, background=background)
 
     for event in runs:
         category = event.facts.get(terms.FAILURE_CATEGORY)
@@ -119,7 +140,8 @@ def build_sequence(
             label = f"{terms.EXEC_ACTION} · {_fact(event, terms.OPERATION)}"
             builder.message(_at(event), "supervisor", "workbench", label, "journal", ref=event.ref)
         elif event.kind == "receive":
-            label = f"{event.message} · {_fact(event, terms.STATUS)}"
+            status = event.facts.get(terms.STATUS)
+            label = f"{event.message} · {status}" if status is not None else str(event.message)
             builder.message(_at(event), "workbench", "supervisor", label, "journal", ref=event.ref)
         else:
             label = f"abandoned · {_fact(event, 'reason')}"
@@ -195,7 +217,7 @@ def _fact(event: Event, name: str, missing: str = "?") -> str:
     return missing if value is None else str(value)
 
 
-def _request(builder: _Builder, spans: SpanIndex, related: list[Span]) -> Span | None:
+def _request(builder: _Builder, spans: SpanIndex, related: list[Span], *, background: bool) -> Span | None:
     """The client's request, and the requests that led up to it (an upload's init and chunks)."""
     request = next((s for s in related if s.kind == "SERVER" and not s.name.startswith(UNINTERESTING)), None)
     if request is None:
@@ -219,9 +241,8 @@ def _request(builder: _Builder, spans: SpanIndex, related: list[Span]) -> Span |
     status = next(
         (c.attribute("http.status_code") for c in spans.children(request) if c.attribute("http.status_code")), ""
     )
-    builder.message(
-        request.end, "api", "client", f"{status} response".strip(), "span", detail="the run continues in the background"
-    )
+    after = "the run continues in the background" if background else None
+    builder.message(request.end, "api", "client", f"{status} response".strip(), "span", detail=after)
     builder.activate("api", request.start, request.end, "request")
     return request
 
@@ -295,3 +316,51 @@ def _capture(
     if ree is not None:
         tone: Tone | None = "effect" if ree.after != ree.before else None
         builder.note(bracket.end - m * 1.2, "core", f"REE {ree.before} → {ree.after}", "git", ref=ref, tone=tone)
+
+
+def build_lifecycle(parts: Seq[tuple[Segment, Sequence]]) -> Lifecycle:
+    """One sequence of ``parts`` in the order given; a part's activations keep to its own rows.
+
+    Each part's ``first`` and ``last`` are placeholders, set here to where its rows land. Lines matched
+    to a part by time only are left out: across the whole lifecycle they are another part's own lines.
+    """
+    rows: list[Row] = []
+    activities: list[Activity] = []
+    segments: list[Segment] = []
+    used: set[str] = set()
+    for segment, sequence in parts:
+        own = [row for row in sequence.rows if row.provenance != "time"]
+        if not own:
+            continue
+        offset = len(rows)
+        rows += own
+        used |= {lane.id for lane in sequence.lanes}
+        segments.append(segment.model_copy(update={"first": offset, "last": len(rows) - 1}))
+        for activation in sequence.activations:
+            if activation.provenance == "time":
+                continue
+            inside = [i for i, row in enumerate(own) if activation.start - EPSILON <= row.t <= activation.end + EPSILON]
+            if inside:
+                activities.append(
+                    Activity(
+                        lane=activation.lane,
+                        first=offset + inside[0],
+                        last=offset + inside[-1],
+                        label=activation.label,
+                        duration=round(activation.end - activation.start, 4),
+                        provenance=activation.provenance,
+                    )
+                )
+    return Lifecycle(
+        lanes=tuple(lane for lane in LANES if lane.id in used),
+        rows=tuple(rows),
+        activations=tuple(activities),
+        segments=tuple(segments),
+    )
+
+
+def fold(t: float | None, label: str, detail: str | None) -> Sequence:
+    """A single folded line, at ``t`` seconds into the trace, standing for what a segment does not draw row by row."""
+    builder = _Builder(0.0)
+    builder.note(t, "api", label, "journal", detail=detail, tone="fold")
+    return builder.build()

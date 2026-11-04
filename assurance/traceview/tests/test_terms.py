@@ -11,7 +11,8 @@ def test_every_term_traceview_draws_by_is_in_the_specification() -> None:
     entities, dispatch = spec.entities, spec.boundaries[terms.DISPATCH]
     ree, attempt, action, receipt = (entities[name] for name in (terms.REE, terms.ATTEMPT, terms.ACTION, terms.RECEIPT))
     assert {terms.ACTION_NAME, terms.RUN_ID, terms.ATTEMPT_ID, terms.FAILURE_CATEGORY} <= set(action.facts)
-    assert terms.PROVISION in action.allowed[terms.ACTION_NAME]
+    assert {terms.PROVISION, terms.LOAD_BUNDLE} <= set(action.allowed[terms.ACTION_NAME])
+    assert set(terms.READS) == set(action.groups[terms.ACTION_NAME]["reading"])
     assert {terms.OPERATION, terms.OUTCOME, terms.COMMIT, terms.CHANGED} <= set(attempt.facts)
     assert terms.SUCCEEDED in attempt.allowed[terms.OUTCOME]
     attempt_states = {terms.PENDING, terms.EXECUTING, terms.COMPLETED, terms.CAPTURED, terms.CAPTURE_FAILED}

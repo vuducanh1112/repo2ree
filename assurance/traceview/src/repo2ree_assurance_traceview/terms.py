@@ -18,6 +18,21 @@ RUN_ID = "run_id"  # Carried by the long actions the author watches as runs.
 ATTEMPT_ID = "attempt_id"
 FAILURE_CATEGORY = "failure_category"
 PROVISION = "create_ree"
+LOAD_BUNDLE = "load_ree_bundle"  # Restores an REE from a bundle, as an action and as its attempt's operation.
+# The actions that only read the REE, which the lifecycle leaves out: polling a run is most of them.
+READS = (
+    "view_ree",
+    "view_ree_state",
+    "read_file",
+    "list_receipts",
+    "view_history",
+    "view_evaluation_report",
+    "download_ree",
+    "list_actions",
+    "view_action",
+    "view_action_log",
+    "watch_action",
+)
 
 # Attempt's facts and states.
 OPERATION = "operation"

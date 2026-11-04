@@ -13,9 +13,10 @@ from pathlib import Path
 
 from repo2ree_assurance_checker.verification import ARTIFACT, Verification, VerifiedModel, read_verification
 from repo2ree_assurance_dossier import Dossier, read_dossier
+from repo2ree_assurance_traceview import terms
 from repo2ree_assurance_traceview.catalogue import Undrawn, build_catalogue
-from repo2ree_assurance_traceview.files import commit_sizes, describe, read_spans, repositories, template
-from repo2ree_assurance_traceview.model import BehaviourTrace
+from repo2ree_assurance_traceview.files import commit_sizes, describe, read_spans, ree_names, repositories, template
+from repo2ree_assurance_traceview.model import BehaviourTrace, Sibling
 from repo2ree_assurance_traceview.operations import build_trace, rees
 from repo2ree_assurance_traceview.provenance import build_provenance, render_text
 from repo2ree_assurance_traceview.render import render_html
@@ -78,8 +79,22 @@ class _Verified:
         spans = read_spans(self.located, self.dossier)
         info = describe(self.located, self.dossier)
         files = commit_sizes(repositories(self.located, self.dossier), git) if count_files else {}
-        chosen = [one for one in rees(model) if ree is None or one.startswith(ree)]
-        return [build_trace(model, spans, ree=one, dossier=info, commit_files=files) for one in chosen]
+        names = ree_names(self.located, self.dossier, git)
+        drawn = [build_trace(model, spans, ree=one, dossier=info, commit_files=files) for one in rees(model)]
+        drawn = [trace.model_copy(update={"name": names.get(trace.ree)}) for trace in drawn]
+        siblings = tuple(_sibling(trace) for trace in drawn)
+        return [
+            trace.model_copy(update={"siblings": siblings})
+            for trace in drawn
+            if ree is None or trace.ree.startswith(ree)
+        ]
+
+
+def _sibling(trace: BehaviourTrace) -> Sibling:
+    operations = sum(entry.kind == "operation" for entry in trace.entries)
+    loaded = any(entry.name == terms.LOAD_BUNDLE for entry in trace.entries)
+    summary = "loaded from a bundle" if loaded else f"{operations} operation{'s' if operations != 1 else ''}"
+    return Sibling(ree=trace.ree, name=trace.name, page=f"{trace.ree}.html", sealed=trace.sealed, summary=summary)
 
 
 def trace(args: argparse.Namespace) -> int:
