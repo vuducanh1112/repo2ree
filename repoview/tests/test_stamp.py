@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from repo2ree_repoview.stamp import Stamp, read_svg_stamp, record, stamp_svg
+from repo2ree_repoview.stamp import Stamp, read_recorded_stamp, read_svg_stamp, record, stamp_svg
 
 FACTS = Stamp(
     revision="a" * 40,
@@ -64,3 +64,15 @@ def test_the_manifest_keeps_other_files_and_names_each_by_its_path_in_the_folder
     assert entries["architecture/a.svg"]["dirty"] is False
     assert entries["b.csv"]["dirty"] is True
     assert len(entries["b.csv"]["sha256"]) == 64
+
+
+def test_a_file_reads_its_stamp_from_its_folders_manifest_only_as_it_was_stamped(tmp_path: Path) -> None:
+    export = tmp_path / "spec.json"
+    export.write_text("{}")
+    assert read_recorded_stamp(export) is None
+
+    record(tmp_path / "manifest.json", [export], FACTS)
+    assert read_recorded_stamp(export) == FACTS
+
+    export.write_text('{"changed": true}')
+    assert read_recorded_stamp(export) is None

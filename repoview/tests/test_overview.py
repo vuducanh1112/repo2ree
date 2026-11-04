@@ -11,8 +11,21 @@ from pydantic import ValidationError
 
 from repo2ree_repoview.overview.build import build
 from repo2ree_repoview.overview.bundle import COMMAND, Bundle, sha256
-from repo2ree_repoview.overview.exports import SPEC_EXPORT, ZONES_EXPORT, Spec, Zones, exported
-from repo2ree_repoview.repository import ROOT
+from repo2ree_repoview.overview.exports import SPEC_EXPORT, ZONES_EXPORT, Spec, Zones, exported, operations_export
+from repo2ree_repoview.overview.receipt import gate_verifications, read_receipt
+from repo2ree_repoview.repository import ROOT, Provenance
+from repo2ree_repoview.stamp import Stamp, record
+
+
+@pytest.fixture
+def exports(tmp_path: Path) -> Path:
+    """The owners' exports as the recipes `just repo-overview` depends on write them."""
+    directory = tmp_path / "exports"
+    directory.mkdir()
+    (directory / "spec.json").write_text(exported(SPEC_EXPORT))
+    (directory / "zones.json").write_text(exported(ZONES_EXPORT))
+    (directory / "operations.json").write_text(exported(operations_export(gate_verifications(read_receipt()))))
+    return directory
 
 
 def test_the_exports_read_as_the_owners_wrote_them() -> None:
@@ -49,8 +62,8 @@ def test_a_bundle_replaces_an_earlier_overview_but_nothing_else(tmp_path: Path) 
     assert (unrelated / "manifest.json").is_file()
 
 
-def test_the_overview_of_this_tree_is_a_whole_bundle(tmp_path: Path) -> None:
-    target = build(tmp_path / "overview")
+def test_the_overview_of_this_tree_is_a_whole_bundle(tmp_path: Path, exports: Path) -> None:
+    target = build(tmp_path / "overview", exports)
 
     pages = {path.name for path in target.glob("*.html")}
     assert pages == {
@@ -67,13 +80,30 @@ def test_the_overview_of_this_tree_is_a_whole_bundle(tmp_path: Path) -> None:
     assert manifest["revision"] == head.stdout.strip()
     for entry in manifest["copied"]:
         assert sha256(target / entry["path"]) == entry["sha256"], entry["path"]
-    exports = {"spec", "zones", "operations"}
-    kinds = {entry["kind"]: entry["path"] for entry in manifest["copied"] if entry.get("kind") in exports}
-    assert kinds == {kind: f"inputs/{kind}.json" for kind in exports}
+    owned = {"spec", "zones", "operations"}
+    kinds = {entry["kind"]: entry["path"] for entry in manifest["copied"] if entry.get("kind") in owned}
+    assert kinds == {kind: f"inputs/{kind}.json" for kind in owned}
 
 
-def test_the_frame_shows_a_bundled_evidence_page_beside_the_sidebar(tmp_path: Path) -> None:
-    target = build(tmp_path / "overview")
+def test_an_export_keeps_the_commit_its_recipe_stamped_it_with(tmp_path: Path, exports: Path) -> None:
+    stamp = Stamp(**Provenance.now().model_dump(), by="export-spec")
+    record(exports / "manifest.json", [exports / "spec.json"], stamp)
+    manifest = json.loads((build(tmp_path / "overview", exports) / "manifest.json").read_text())
+    revisions = {
+        entry["kind"]: entry.get("revision") for entry in manifest["copied"] if entry["path"].startswith("inputs/")
+    }
+    assert revisions["spec"] == stamp.revision
+    assert revisions["zones"] == ""
+
+
+def test_an_overview_without_an_export_says_which_recipe_writes_it(tmp_path: Path, exports: Path) -> None:
+    (exports / "operations.json").unlink()
+    with pytest.raises(FileNotFoundError, match=r"operations\.json: missing; run just repo-overview"):
+        build(tmp_path / "overview", exports)
+
+
+def test_the_frame_shows_a_bundled_evidence_page_beside_the_sidebar(tmp_path: Path, exports: Path) -> None:
+    target = build(tmp_path / "overview", exports)
     frame = (target / "evidence.html").read_text()
     assert '<iframe id="shown"' in frame
     # Every page of the overview, as its sidebar lists them, and none marked: the frame marks the one it came from.

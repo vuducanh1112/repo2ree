@@ -37,6 +37,24 @@ generate-behaviour:
 export-behaviour-spec rev="" output="":
     python -m repo2ree_assurance_checker export {{ if rev != "" { "--at " + quote(rev) } else { "" } }} {{ if output != "" { "-o " + quote(output) } else { "" } }}
 
+# Write the behaviour specification as JSON (repo2ree-behaviour-spec/1) for the overview.
+[group('Assurance')]
+export-spec:
+    mkdir -p {{ quote(EXPORT_DIR) }}
+    python -m repo2ree_assurance_checker export -o {{ quote(EXPORT_DIR + "/spec.json") }}
+    {{ STAMP_EXPORTS }} --by export-spec {{ quote(EXPORT_DIR + "/spec.json") }}
+
+# Fold the assurance-gate receipt's verifications into the catalogue of operations (JSON) for the overview.
+[group('Assurance')]
+export-operations:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    listed=$(python -m repo2ree_repoview gate-verifications)
+    verifications=()
+    [[ -z "$listed" ]] || mapfile -t verifications <<< "$listed"
+    python -m repo2ree_assurance_traceview operations "${verifications[@]}" -o {{ quote(EXPORT_DIR + "/operations.json") }}
+    {{ STAMP_EXPORTS }} --by export-operations {{ quote(EXPORT_DIR + "/operations.json") }}
+
 # Judge per-test runs as the assurance gate would (the newest of each tier by default), certifying nothing.
 [group('E2E tests')]
 judge-e2e *runs:

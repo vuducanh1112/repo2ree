@@ -112,6 +112,18 @@ def read_svg_stamp(path: Path) -> Stamp | None:
         return None
 
 
+def read_recorded_stamp(path: Path) -> Stamp | None:
+    """The stamp its folder's manifest.json records for a file as it is now, or None when it records none."""
+    manifest = path.parent / "manifest.json"
+    try:
+        entry = _MANIFEST.validate_json(manifest.read_bytes()).get(path.name)
+    except (OSError, ValidationError):
+        return None
+    if entry is None or entry.sha256 != hashlib.sha256(path.read_bytes()).hexdigest():
+        return None
+    return Stamp.model_validate(entry.model_dump(exclude={"sha256"}))
+
+
 def record(manifest: Path, files: list[Path], stamp: Stamp) -> None:
     entries = _MANIFEST.validate_json(manifest.read_bytes()) if manifest.is_file() else {}
     for path in files:

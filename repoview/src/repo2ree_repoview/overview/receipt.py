@@ -205,6 +205,26 @@ class Evidence:
     verifications: dict[str, str] = field(default_factory=dict)
 
 
+def gate_runs(receipt: Receipt | None) -> Iterator[tuple[Path, RunRecord]]:
+    """The receipt's runs that are still on disk, with their records."""
+    for run in (ROOT / name for name in receipt.runs) if receipt else ():
+        if (run / "run.json").is_file():
+            yield run, RunRecord.model_validate_json((run / "run.json").read_bytes())
+
+
+def verification_of(run: Path, test: RunTest) -> str | None:
+    """Where a test's verification is, from the repository root; None when its dossier was not checked."""
+    verification = run / test.directory / "verification"
+    return source_name(verification) if (verification / "verification.json").is_file() else None
+
+
+def gate_verifications(receipt: Receipt | None) -> list[str]:
+    """Every verification of the receipt's runs, as the catalogue of operations is folded from them."""
+    return [
+        found for run, record in gate_runs(receipt) for test in record.tests if (found := verification_of(run, test))
+    ]
+
+
 def bundle_evidence(bundle: Bundle, receipt: Receipt | None) -> Evidence:
     """Copy the receipt and its runs' evidence into the bundle."""
     if receipt is None:
@@ -213,10 +233,7 @@ def bundle_evidence(bundle: Bundle, receipt: Receipt | None) -> Evidence:
     runs: list[Path] = []
     tests: dict[tuple[str, str], str] = {}
     verifications: dict[str, str] = {}
-    for run in (ROOT / name for name in receipt.runs):
-        if not (run / "run.json").is_file():
-            continue
-        record = RunRecord.model_validate_json((run / "run.json").read_bytes())
+    for run, record in gate_runs(receipt):
         origin = Origin(run=run.name, run_revision=record.build_revision)
         bundle.copy(run / "run.json", f"evidence/{run.name}/run.json", origin)
         for test in record.tests:
@@ -230,8 +247,8 @@ def bundle_evidence(bundle: Bundle, receipt: Receipt | None) -> Evidence:
             for part in REFERENCED:
                 bundle.reference(run / test.directory / part, origin)
             tests[(run.name, test.name)] = target
-            if (run / test.directory / "verification/verification.json").is_file():
-                verifications[source_name(run / test.directory / "verification")] = target
+            if found := verification_of(run, test):
+                verifications[found] = target
         runs.append(bundle.root / "evidence" / run.name)
     return Evidence(tuple(runs), tests, verifications)
 
@@ -419,3 +436,10 @@ def unreached() -> dict[str, str]:
     """Each item no gated test reaches, with the reason the expectations give."""
     declared = _Expectations.model_validate(tomllib.loads(EXPECTATIONS.read_text()))
     return {item: entry.reason for entry in declared.unreached for item in entry.items}
+
+
+def main() -> int:
+    """Print every verification of the assurance-gate receipt's runs, one a line, from the repository root."""
+    for found in gate_verifications(read_receipt()):
+        print(found)
+    return 0

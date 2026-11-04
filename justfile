@@ -35,6 +35,9 @@ STAMP_DIAGRAMS := "python -m repo2ree_repoview stamp --manifest " + DIAGRAM_DIR 
 ARCH_DIR := DIAGRAM_DIR + "/architecture"
 DOMAIN_DIR := DIAGRAM_DIR + "/domain"
 METRICS_DIR := REPORTS_DIR + "/metrics"
+# The owners' exports the overview reads (zones, behaviour spec, operations), stamped like the diagrams.
+EXPORT_DIR := REPORTS_DIR + "/exports"
+STAMP_EXPORTS := "python -m repo2ree_repoview stamp --manifest " + EXPORT_DIR + "/manifest.json"
 
 import 'just/checks.just'
 import 'just/config.just'
@@ -69,7 +72,7 @@ prune *args:
 
 # Build the repository overview in reports/overview/<revision>/ (reports/overview/latest): zones, gates, behaviour, architecture, recipes, configuration, API.
 [group('Repository')]
-repo-overview: generate-diagrams
+repo-overview: generate-diagrams export-zones export-spec export-operations
     python -m repo2ree_repoview overview
 
 # With paths, place each in its zone; with --export, print the zones and each tracked file's place as JSON
@@ -78,6 +81,13 @@ repo-overview: generate-diagrams
 [group('Repository')]
 repo-map *paths:
     python scripts/zones.py {{ if paths == "--export" { "export" } else { "map " + paths } }}
+
+# Write the zones and each tracked file's place as JSON (repo2ree-zones/1) for the overview.
+[group('Repository')]
+export-zones:
+    mkdir -p {{ quote(EXPORT_DIR) }}
+    python scripts/zones.py export > {{ quote(EXPORT_DIR + "/zones.json") }}
+    {{ STAMP_EXPORTS }} --by export-zones {{ quote(EXPORT_DIR + "/zones.json") }}
 
 # Generate the declared Just recipe dependency graph.
 [group('Diagrams')]

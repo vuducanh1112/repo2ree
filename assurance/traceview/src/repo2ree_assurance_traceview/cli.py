@@ -183,6 +183,7 @@ def operations(args: argparse.Namespace) -> int:
     if args.output is None:
         sys.stdout.write(document)
     else:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(document)
     return 0
 

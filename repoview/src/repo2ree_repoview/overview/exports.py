@@ -1,10 +1,10 @@
 """The overview's reading of the documents it draws from: the specification, the zones, and the operations.
 
-Each comes from its owner as JSON (``python -m repo2ree_assurance_checker export``,
-``python scripts/zones.py export``, ``python -m repo2ree_assurance_traceview operations``),
-so the views never import the checker, the guard, or traceview. These models are this
-package's own typed view of those documents, and a document in a format they do not
-know is refused rather than half read.
+Each comes from its owner as JSON, written to reports/exports/ by a recipe `just repo-overview`
+depends on (``python -m repo2ree_assurance_checker export``, ``python scripts/zones.py export``,
+``python -m repo2ree_assurance_traceview operations``), so the views never import the checker,
+the guard, or traceview. These models are this package's own typed view of those documents,
+and a document in a format they do not know is refused rather than half read.
 """
 
 from __future__ import annotations
@@ -19,7 +19,8 @@ from pydantic import ConfigDict, Field, model_validator
 from repo2ree_repoview.documents import Document
 from repo2ree_repoview.repository import ROOT
 
-# The owners' exports, and the commands that produce them.
+# Where the recipes write the owners' exports, and the commands they run.
+EXPORTS = ROOT / "reports/exports"
 SPEC_EXPORT = (sys.executable, "-m", "repo2ree_assurance_checker", "export")
 ZONES_EXPORT = (sys.executable, "scripts/zones.py", "export")
 
@@ -31,11 +32,6 @@ def operations_export(verifications: Iterable[str]) -> tuple[str, ...]:
 
 def exported(command: tuple[str, ...]) -> str:
     return subprocess.run(command, cwd=ROOT, check=True, capture_output=True, text=True).stdout
-
-
-def shown(command: tuple[str, ...]) -> str:
-    """The export command as a reader would type it."""
-    return " ".join(("python", *command[1:]))
 
 
 class Export(Document):

@@ -1,17 +1,18 @@
 """Build the repository overview: one static page over what the repository already knows.
 
-It draws nothing new from the code. It reads the zones and the behaviour
-specification as their owners export them, the gates' receipts, the coverage
-and excuses of the last assurance-gate receipt, the operations traceview folds from
-that receipt's verifications, the generated architecture and recipe
-diagrams, the Just recipes and how long they took (logs/just/), the environment
-contract, and the OpenAPI contract, and lays them out page by page.
+It runs nothing. It reads what the recipes `just repo-overview` depends on wrote: the
+zones, the behaviour specification, and the operations traceview folds from the
+assurance-gate receipt's verifications (reports/exports/), and the generated architecture,
+domain, and recipe diagrams (reports/diagrams/). Beside them it reads the gates' receipts,
+the coverage and excuses of the last assurance-gate receipt, the Just recipes and how
+long they took (logs/just/), the environment contract, and the OpenAPI contract, and
+lays them out page by page.
 
 The overview is a bundle bound to one commit: whatever it shows from outside the tree
 (test evidence, diagrams) is copied into it, and what is too large to copy (REE Git
 archives, spans) is listed by sha256. manifest.json records the commit, whether the
-working tree was dirty, and every input. `just repo-overview` regenerates the diagrams
-and writes reports/overview/<revision>/, with reports/overview/latest pointing at it, and keeps
+working tree was dirty, and every input. `just repo-overview` regenerates the exports and
+diagrams and writes reports/overview/<revision>/, with reports/overview/latest pointing at it, and keeps
 the newest few (overview/prune.py).
 """
 
@@ -24,16 +25,7 @@ from pathlib import Path
 from repo2ree_repoview.diagrams.recipes import load_recipes
 from repo2ree_repoview.overview.bundle import Bundle, Origin
 from repo2ree_repoview.overview.contracts import Environment, OpenApi
-from repo2ree_repoview.overview.exports import (
-    SPEC_EXPORT,
-    ZONES_EXPORT,
-    Operations,
-    Spec,
-    Zones,
-    exported,
-    operations_export,
-    shown,
-)
+from repo2ree_repoview.overview.exports import EXPORTS, Operations, Spec, Zones
 from repo2ree_repoview.overview.html import FRAME, Page, esc
 from repo2ree_repoview.overview.pages.aggregate import page_aggregate
 from repo2ree_repoview.overview.pages.api import page_api
@@ -60,6 +52,7 @@ from repo2ree_repoview.overview.receipt import (
 )
 from repo2ree_repoview.overview.timings import LOGS, read_invocations, summarize
 from repo2ree_repoview.repository import ROOT, Head
+from repo2ree_repoview.stamp import read_recorded_stamp
 
 # The page's look and its filter boxes, inlined so the page is one file.
 STYLE = (Path(__file__).with_name("overview.css")).read_text()
@@ -113,24 +106,23 @@ def bundle_name(now: Head) -> str:
     return now.revision[:12] + ("-dirty" if now.dirty else "")
 
 
-def kept(bundle: Bundle, target: str, command: tuple[str, ...], kind: str) -> str:
-    """An owner's export, kept in the bundle as the overview read it."""
-    document = exported(command)
-    bundle.write(target, document, shown(command), Origin(kind=kind))
-    return document
+def kept(bundle: Bundle, exports: Path, kind: str) -> str:
+    """An owner's export as a recipe wrote it, kept in the bundle with the commit its stamp records."""
+    source = exports / f"{kind}.json"
+    stamp = read_recorded_stamp(source) if source.is_file() else None
+    if bundle.copy(source, f"inputs/{kind}.json", Origin(kind=kind, revision=stamp.revision if stamp else "")) is None:
+        raise FileNotFoundError(f"{source}: missing; run just repo-overview, which writes it first")
+    return source.read_text(encoding="utf-8")
 
 
-def build(output: Path | None) -> Path:
+def build(output: Path | None, exports: Path = EXPORTS) -> Path:
     now = Head.now()
     bundle = Bundle(output or OVERVIEWS / bundle_name(now), now.revision)
-    zones = Zones.model_validate_json(kept(bundle, "inputs/zones.json", ZONES_EXPORT, "zones"))
-    spec = Spec.model_validate_json(kept(bundle, "inputs/spec.json", SPEC_EXPORT, "spec"))
+    zones = Zones.model_validate_json(kept(bundle, exports, "zones"))
+    spec = Spec.model_validate_json(kept(bundle, exports, "spec"))
     receipt = read_receipt()
     evidence = bundle_evidence(bundle, receipt)
-    operations_document = kept(
-        bundle, "inputs/operations.json", operations_export(evidence.verifications), "operations"
-    )
-    operations = Operations.model_validate_json(operations_document)
+    operations = Operations.model_validate_json(kept(bundle, exports, "operations"))
     excused = unreached()
     # What logs/just/ held when the overview was built, kept as the overview read it.
     timings = summarize(read_invocations())
@@ -180,7 +172,7 @@ def main() -> int:
     parser.add_argument("-o", "--output", type=Path, help="write here instead of reports/overview/<revision>/")
     try:
         target = build(parser.parse_args().output)
-    except FileExistsError as error:
+    except (FileExistsError, FileNotFoundError) as error:
         print(error, file=sys.stderr)
         return 1
     print(f"open {target / 'index.html'}")
