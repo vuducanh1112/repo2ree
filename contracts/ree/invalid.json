@@ -63,6 +63,25 @@
       "error": "bundle entries must be sorted by path"
     },
     {
+      "name": "an overlay file that is not one of the REE's scripts",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/seal"
+        },
+        {
+          "op": "add",
+          "path": "/subject/contents/entries/0",
+          "value": {
+            "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "path": "overlay/project/requirements-extra.txt",
+            "size": 17
+          }
+        }
+      ],
+      "error": "an REE's overlay holds only its scripts"
+    },
+    {
       "name": "an LFS path inside .git",
       "patch": [
         {
