@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import json
 import os
+import signal
 import socket
 import subprocess
 import time
 import urllib.error
 import urllib.request
 from collections.abc import Callable, Mapping, Sequence
+from contextlib import suppress
 from pathlib import Path
 
 from pydantic import JsonValue, TypeAdapter, ValidationError
@@ -57,6 +59,34 @@ def wait_until(description: str, probe: Callable[[], bool]) -> None:
         print(f"  waiting for {description}... ({attempt}/{ATTEMPTS})")
         time.sleep(1)
     raise RuntimeError(f"{description} did not become ready")
+
+
+def descendants(pid: int) -> list[int]:
+    """Every process started under ``pid``, whatever session or group it moved to."""
+    children: dict[int, list[int]] = {}
+    for line in capture(["ps", "-A", "-o", "pid=,ppid="]).splitlines():
+        child, parent = line.split()
+        children.setdefault(int(parent), []).append(int(child))
+    found: list[int] = []
+    pending = [pid]
+    while pending:
+        for descendant in children.get(pending.pop(), []):
+            found.append(descendant)
+            pending.append(descendant)
+    return found
+
+
+def kill_tree(process: subprocess.Popen[bytes]) -> None:
+    """Kill a process and everything it started at once, as a crash of the machine or container it runs in would."""
+    started = descendants(process.pid)
+    with suppress(ProcessLookupError):
+        os.killpg(process.pid, signal.SIGSTOP)
+    for pid in started:
+        with suppress(ProcessLookupError):
+            os.kill(pid, signal.SIGKILL)
+    with suppress(ProcessLookupError):
+        os.killpg(process.pid, signal.SIGKILL)
+    process.wait()
 
 
 def terminate(process: subprocess.Popen[bytes] | None) -> None:

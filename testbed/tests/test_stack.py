@@ -1,10 +1,14 @@
+import signal
 import subprocess
 import sys
+import time
+from pathlib import Path
 
 import pytest
 
 from repo2ree_testbed.stack import images as image_stack
 from repo2ree_testbed.stack import workbench_cleanup as cleanup
+from repo2ree_testbed.stack.process import descendants, kill_tree
 
 
 def test_each_further_store_has_a_workbench_and_a_directory_of_its_own() -> None:
@@ -67,3 +71,33 @@ def test_stack_clis_reject_invalid_combinations() -> None:
     for command in commands:
         result = subprocess.run([sys.executable, "-m", "repo2ree_testbed", *command], check=False, capture_output=True)
         assert result.returncode == 2
+
+
+def _alive(pid: int) -> bool:
+    state = subprocess.run(["ps", "-o", "stat=", "-p", str(pid)], capture_output=True, text=True).stdout.strip()
+    return bool(state) and not state.startswith("Z")
+
+
+def test_a_killed_workbench_takes_the_processes_it_started_with_it(tmp_path: Path) -> None:
+    started = tmp_path / "started"
+    script = (
+        "import subprocess, time\n"
+        "child = subprocess.Popen(['sleep', '60'], start_new_session=True)\n"
+        f"open({str(started)!r}, 'w').write(str(child.pid))\n"
+        "time.sleep(60)\n"
+    )
+    workbench = subprocess.Popen([sys.executable, "-c", script], start_new_session=True)
+    deadline = time.monotonic() + 10
+    while not (started.exists() and started.read_text()):
+        assert time.monotonic() < deadline
+        time.sleep(0.05)
+    executor = int(started.read_text())
+    assert executor in descendants(workbench.pid)
+
+    kill_tree(workbench)
+
+    assert workbench.returncode == -signal.SIGKILL
+    deadline = time.monotonic() + 5
+    while _alive(executor):
+        assert time.monotonic() < deadline, "the executor outlived its workbench"
+        time.sleep(0.05)

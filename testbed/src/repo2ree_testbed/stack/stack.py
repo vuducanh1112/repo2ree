@@ -32,7 +32,7 @@ from repo2ree_testbed.stack.injector import (
     WorkbenchFault,
 )
 from repo2ree_testbed.stack.origins import Origins
-from repo2ree_testbed.stack.process import fetch_as, listed, reachable, terminate, wait_until
+from repo2ree_testbed.stack.process import fetch_as, kill_tree, listed, reachable, terminate, wait_until
 from repo2ree_testbed.stack.relay import Relay
 from repo2ree_testbed.stack.services import Deployment, backend_environment, locations, store_id, workbench_host
 from repo2ree_testbed.stack.workbench_cleanup import cleanup, save_bench_logs
@@ -270,10 +270,9 @@ class E2EStack:
             process = self.locations[index - 1]
             match action:
                 case "kill":
-                    # As a crash its service manager notices: the workbench is killed and started again.
-                    with suppress(ProcessLookupError):
-                        os.killpg(process.pid, signal.SIGKILL)
-                    process.wait()
+                    # As a crash its service manager notices: the workbench is killed with the executors it
+                    # started, as a crash of its container would take them, and started again.
+                    kill_tree(process)
                     self.locations[index - 1] = self.launch(*self.launches[index - 1])
                 case "pause":
                     os.killpg(process.pid, signal.SIGSTOP)
