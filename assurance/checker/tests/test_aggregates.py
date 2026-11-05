@@ -14,8 +14,8 @@ from pydantic import ValidationError
 from test_spec import documents
 
 from repo2ree_assurance_checker.check import check
-from repo2ree_assurance_checker.check.aggregates import EXTERNAL, check_aggregate, histories
-from repo2ree_assurance_checker.evidence import Event, Evidence, FieldChange, Source
+from repo2ree_assurance_checker.check.aggregates import EXTERNAL, check_aggregate, experiment_slug, histories
+from repo2ree_assurance_checker.evidence import Event, Evidence, FieldChange, FileChange, Source
 from repo2ree_assurance_checker.files import load_spec
 from repo2ree_assurance_checker.sources import document_parts, load_evidence
 from repo2ree_assurance_checker.spec import CREATED, AggregateSpec, SubMachine
@@ -128,6 +128,16 @@ def mutated(change: Any) -> dict[str, Any]:
         (lambda a: a["receipts"]["sbom"].update(made_from=["experiment"]), "other, unkeyed receipts"),
         (lambda a: a["fields"]["definition.experiments[*]"].update(initial="unset"), "needs an initial state"),
         (lambda a: a.update(writes_nothing=["write_file"]), "write nothing take edges"),
+        (lambda a: a.pop("overlay"), "names no overlay"),
+        (
+            lambda a: a["fields"]["definition.build_runtime"].update(files=["ree-scripts/{slug}.sh"]),
+            "name its item once",
+        ),
+        (lambda a: a["fields"]["definition.experiments[*]"].update(files=["ree-scripts/x.sh"]), "name its item once"),
+        (
+            lambda a: a["fields"]["definition.test_activation"].update(files=["ree-scripts/build_script.sh"]),
+            "claimed by more than one field",
+        ),
     ],
 )
 def test_incoherent_aggregates_are_rejected(change: Any, message: str) -> None:
@@ -401,3 +411,112 @@ def test_each_instance_is_replayed_step_by_step_with_what_each_operation_moved()
     assert names.index("experiment[one]") < names.index("definition.name")
     item = next(part for part in replayed.parts if part.name == "experiment[one]")
     assert (item.machine, item.item, item.group) == ("experiment", "one", "experiment")
+
+
+# ---------------------------------------------------------------------------- the overlay
+
+
+@pytest.mark.parametrize(
+    ("path", "claim"),
+    [
+        ("ree-scripts/build_script.sh", ("definition.build_runtime", "")),
+        ("ree-scripts/activation.verify.sh", ("definition.test_activation", "")),
+        ("ree-scripts/experiments/train-model.sh", ("definition.experiments[*]", "train-model")),
+        ("ree-scripts/experiments/train-model.verify.sh", ("definition.experiments[*]", "train-model")),
+        ("ree-scripts/experiments/nested/train.sh", None),
+        ("ree-scripts/experiments/.sh", None),
+        ("instant/requirements-extra.txt", None),
+    ],
+)
+def test_each_script_is_claimed_by_the_field_that_declares_it(path: str, claim: tuple[str, str] | None) -> None:
+    assert ree().claim(path) == claim
+
+
+def test_an_item_is_named_in_its_files_by_the_slug_the_product_gives_it() -> None:
+    slugs = json.loads((Path(__file__).resolve().parents[3] / "contracts/experiment-slugs.json").read_text())
+    for case in slugs["cases"]:
+        assert experiment_slug(case["name"]) == case["slug"]
+
+
+def file(position: int, path: str, before: str | None, after: str | None, operation: str, cause: Cause) -> FileChange:
+    return FileChange(
+        source="git:ree",
+        position=position,
+        partition=REE,
+        path=path,
+        before=before,
+        after=after,
+        operation=operation,
+        cause=cause,
+        locator=commit(position),
+    )
+
+
+def overlay_findings(*files: FileChange, changes: tuple[FieldChange, ...] = ()) -> list[str]:
+    evidence = authored()
+    evidence = evidence.model_copy(update={"changes": (*evidence.changes, *changes), "files": files})
+    result = check_aggregate(ree(), evidence)
+    assert result.files == len(files)
+    return [f"{finding.subject}: {finding.reason}" for finding in result.findings]
+
+
+def test_a_script_changes_with_the_field_that_declares_it() -> None:
+    build = "overlay/ree-scripts/build_script.sh"
+    run = "overlay/ree-scripts/experiments/one.sh"
+    assert (
+        overlay_findings(
+            file(1900, build, None, "b1", "initialize_ree", "created"),
+            file(5900, run, None, "r1", "write_file", "operation"),
+            changes=(
+                change(5900, "definition.experiments[one].run_script_digest", "d", "d2", "write_file", "operation"),
+            ),
+        )
+        == []
+    )
+    assert overlay_findings(file(5900, build, "b1", "b2", "write_file", "operation")) == [
+        f"Ree {REE} {build}: changed by write_file, but definition.build_runtime, which claims it, did not"
+    ]
+
+
+def test_scripts_of_what_is_not_declared_need_no_field_to_change() -> None:
+    assert (
+        overlay_findings(
+            file(5900, "overlay/ree-scripts/experiments/not-yet.sh", None, "r", "write_file", "operation"),
+            file(5900, "overlay/ree-scripts/experiments/not-yet.verify.sh", None, "v", "write_file", "operation"),
+        )
+        == []
+    )
+
+
+def test_a_file_no_field_claims_violates_the_aggregate_rule() -> None:
+    extra = "overlay/instant/requirements-extra.txt"
+    assert overlay_findings(file(5900, extra, None, "m", "write_file", "operation")) == [
+        f"Ree {REE} {extra}: is in the overlay, but no field claims it"
+    ]
+    # Taking it away again is what the rule asks for.
+    assert overlay_findings(file(5900, extra, "m", None, "delete_file", "operation")) == []
+
+
+@pytest.mark.skipif(GIT is None, reason="needs git")
+def test_each_capture_commit_reports_the_overlay_files_it_changed(tmp_path: Path) -> None:
+    assert GIT is not None
+    root = tmp_path / "ree"
+    subprocess.run([GIT, "init", "-q", "-b", "ree-history", str(root)], check=True)
+    (root / "overlay/ree-scripts").mkdir(parents=True)
+    (root / "overlay/ree-scripts/build_script.sh").write_text("echo one\n")
+    subprocess.run([GIT, "-C", str(root), "add", "overlay"], check=True)
+    commit_document(root, "initialize_ree", {"subject": {"definition": {"name": "demo"}}}, None)
+    (root / "overlay/ree-scripts/build_script.sh").write_text("echo two\n")
+    (root / "overlay/notes.txt").write_text("kept\n")
+    subprocess.run([GIT, "-C", str(root), "add", "overlay"], check=True)
+    record = {"attempt_id": "a1", "context": {"ree_id": REE}, "command": {"operation": "write_file"}}
+    commit_document(
+        root, "write_file", {"subject": {"definition": {"name": "demo"}}}, record | {"operation_status": "succeeded"}
+    )
+    evidence = load_evidence(repositories=[root], git_executable=GIT)
+    moved = [(c.cause, c.operation, c.path, c.before is None, c.after is None) for c in evidence.files]
+    assert moved == [
+        ("created", "initialize_ree", "overlay/ree-scripts/build_script.sh", True, False),
+        ("operation", "write_file", "overlay/notes.txt", True, False),
+        ("operation", "write_file", "overlay/ree-scripts/build_script.sh", False, False),
+    ]

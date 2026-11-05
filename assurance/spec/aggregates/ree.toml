@@ -6,6 +6,10 @@ created_by = "initialize_ree"
 restored_by = "load_ree_bundle"
 writes_nothing = ["generate_script_candidates", "lint_scripts"]
 receipt_entity = "Receipt"
+# The REE's authored files: its scripts, each the field's that declares it, and nothing else. A
+# write_file or delete_file changes a file and the field claiming it together. An experiment's
+# files are named by its slug, and may be authored before the experiment is declared.
+overlay = "overlay/"
 
 [lifecycle]
 initial = "draft"
@@ -83,6 +87,7 @@ set = ["patch_ree_definition"]
 # The build script is never deleted (only a verify script is), so only writing it changes the build.
 change = ["patch_ree_definition", "write_file"]
 clear = ["patch_ree_definition"]
+files = ["ree-scripts/build_script.sh"]
 
 [fields."definition.build_runtime.runtime_path"]
 group = "runtime"
@@ -105,12 +110,14 @@ initial = "set"
 set = ["patch_ree_definition"]
 change = ["patch_ree_definition", "write_file", "delete_file"]
 clear = ["patch_ree_definition"]
+files = ["ree-scripts/activation.sh", "ree-scripts/activation.verify.sh"]
 
 [fields."definition.experiments[*]"]
 group = "experiment"
 set = ["patch_ree_definition"]
 change = ["patch_ree_definition", "write_file", "delete_file"]
 clear = ["patch_ree_definition"]
+files = ["ree-scripts/experiments/{slug}.sh", "ree-scripts/experiments/{slug}.verify.sh"]
 
 [fields."contents"]
 group = "bundle"

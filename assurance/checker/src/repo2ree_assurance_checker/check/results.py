@@ -71,6 +71,8 @@ class AggregateResult(EvidenceModel):
     aggregate: str
     instances: int
     moves: tuple[MoveCount, ...] = ()
+    # Overlay file changes judged against the fields that claim them.
+    files: int = 0
     findings: tuple[Finding, ...] = ()
 
 

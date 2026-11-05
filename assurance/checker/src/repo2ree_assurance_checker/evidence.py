@@ -10,7 +10,7 @@ from repo2ree_assurance_dossier import Cut
 
 type Scalar = str | int | bool | None
 
-__all__ = ["Cut", "Event", "Evidence", "EvidenceModel", "FieldChange", "Scalar", "Source"]
+__all__ = ["Cut", "Event", "Evidence", "EvidenceModel", "FieldChange", "FileChange", "Scalar", "Source"]
 
 
 class EvidenceModel(BaseModel):
@@ -110,12 +110,35 @@ class FieldChange(EvidenceModel):
         return self.locator
 
 
+class FileChange(EvidenceModel):
+    """One file of an overlay that a capture commit added, changed, or removed; ``before`` and ``after`` name its blob.
+
+    ``path`` is the file's path in the committed tree. The commit that creates the history lists every file.
+    """
+
+    source: str
+    position: int  # The capture commit's place in its source, as its field changes have it.
+    partition: str
+    path: str
+    before: str | None
+    after: str | None
+    operation: str
+    cause: Literal["created", "operation", "external"]
+    locator: str
+
+    @property
+    def ref(self) -> str:
+        return self.locator
+
+
 class Evidence(EvidenceModel):
     sources: tuple[Source, ...]
     events: tuple[Event, ...]
     problems: tuple[str, ...] = ()
     # What each capture commit changed in its committed document: aggregate evidence, never an event.
     changes: tuple[FieldChange, ...] = ()
+    # What each capture commit changed in the overlay it committed: aggregate evidence, never an event.
+    files: tuple[FileChange, ...] = ()
 
     def source(self, source_id: str) -> Source:
         return next(source for source in self.sources if source.id == source_id)

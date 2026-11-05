@@ -17,6 +17,8 @@ from repo2ree_assurance_checker.spec.base import CREATED, Name, SpecModel
 FIELD_STATES: Final = ("unset", "set")
 STANDINGS: Final = ("not_applicable", "missing", "current", "stale")
 KEYED: Final = "[*]"
+# Where a keyed field's file names its item: the item's name as a slug.
+SLUG: Final = "{slug}"
 
 type Operation = Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]*$")]
 # A path into the document, relative to its subject; ``[*]`` ends a list keyed by name.
@@ -77,6 +79,8 @@ class FieldMachine(SpecModel):
     set_by: tuple[Operation, ...] = Field(default=(), alias="set")
     changed_by: tuple[Operation, ...] = Field(default=(), alias="change")
     cleared_by: tuple[Operation, ...] = Field(default=(), alias="clear")
+    # The committed files that are this field's, relative to the aggregate's overlay.
+    files: tuple[str, ...] = ()
 
     @property
     def writers(self) -> frozenset[str]:
@@ -102,6 +106,8 @@ class AggregateSpec(SpecModel):
     restored_by: Operation  # May move any part.
     writes_nothing: tuple[Operation, ...] = ()
     receipt_entity: Name  # Whose transitions are the receipt standings.
+    # The committed directory whose every file some field claims (``files``); None: no such directory.
+    overlay: str | None = None
     lifecycle: Lifecycle
     fields: dict[FieldPath, FieldMachine]
     receipts: dict[Name, ReceiptMachine]
@@ -111,6 +117,14 @@ class AggregateSpec(SpecModel):
         for path, field in self.fields.items():
             if path.endswith(KEYED) == (field.initial is not None):
                 raise ValueError(f"{self.name}: {path} needs an initial state exactly when it is not keyed")
+            if field.files and self.overlay is None:
+                raise ValueError(f"{self.name}: {path} claims files, but the aggregate names no overlay")
+            for file in field.files:
+                if (SLUG in file) != path.endswith(KEYED) or file.count(SLUG) > 1:
+                    raise ValueError(f"{self.name}: {path} claims {file}: a keyed field's files name its item once")
+        claimed = [file for field in self.fields.values() for file in field.files]
+        if len(claimed) != len(set(claimed)):
+            raise ValueError(f"{self.name}: a file is claimed by more than one field")
         for name, receipt in self.receipts.items():
             named = (*receipt.about, *receipt.rests_on)
             if unknown := set(named) - set(self.fields):
@@ -127,6 +141,25 @@ class AggregateSpec(SpecModel):
         if moving := set(self.writes_nothing) & taking:
             raise ValueError(f"{self.name}: operations that write nothing take edges: {sorted(moving)}")
         return self
+
+    def claim(self, path: str) -> tuple[str, str] | None:
+        """The field claiming a file of the overlay, and the slug of its item for a keyed field; None if none does.
+
+        Where several patterns match, the most specific one claims it: ``{slug}.verify.sh`` before ``{slug}.sh``.
+        """
+        found: list[tuple[str, str]] = []
+        for name, field in self.fields.items():
+            for file in field.files:
+                if SLUG not in file:
+                    if path == file:
+                        return name, ""
+                    continue
+                head, _, tail = file.partition(SLUG)
+                if path.startswith(head) and path.endswith(tail) and len(path) > len(head) + len(tail):
+                    slug = path[len(head) : len(path) - len(tail)]
+                    if "/" not in slug:
+                        found.append((name, slug))
+        return min(found, key=lambda claim: len(claim[1]), default=None)
 
     @cached_property
     def machines(self) -> tuple[SubMachine, ...]:

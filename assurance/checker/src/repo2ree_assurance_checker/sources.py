@@ -15,10 +15,12 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, JsonValue, ValidationError
 
-from repo2ree_assurance_checker.evidence import Event, Evidence, FieldChange, Source
+from repo2ree_assurance_checker.evidence import Event, Evidence, FieldChange, FileChange, Source
 
 JOURNAL_NAME = re.compile(r"^(?P<process>[a-z][a-z0-9-]*)-(?P<epoch>[0-9]{6})\.ndjson$")
 HISTORY_REF = "refs/heads/ree-history"
+# The REE's authored files, as its capture commits hold them.
+OVERLAY = "overlay/"
 INITIAL_REF = "refs/repo2ree/initial"
 EXPORTED_JOURNAL = re.compile(r"^refs/repo2ree/imports/[0-9a-f]{40,64}/journal$")
 MESSAGE_KINDS = {"send", "receive", "abandon"}
@@ -253,6 +255,17 @@ def committed_document(executable: str, repository: Path, commit: str) -> dict[s
     return document if isinstance(document, dict) else None
 
 
+def committed_files(executable: str, repository: Path, commit: str, directory: str) -> dict[str, str]:
+    """Each file committed under ``directory`` in ``commit``, with its blob."""
+    listed = git(executable, repository, "ls-tree", "-r", "-z", commit, "--", directory)
+    files: dict[str, str] = {}
+    for entry in listed.split("\0"):
+        if entry:
+            meta, _, path = entry.partition("\t")
+            files[path] = meta.split()[2]
+    return files
+
+
 def document_parts(value: JsonValue, path: str = "") -> dict[str, str]:
     """Every part of a document by path, with a digest of its value; absent or empty parts are left out.
 
@@ -439,10 +452,12 @@ class StepTracker:
 
 def ree_events(
     executable: str, repository: Path, source_id: str, label: str, ree_id: str, commits: list[Commit]
-) -> tuple[list[Event], list[FieldChange], list[str]]:
-    """Witnessed Ree transitions and document changes, and recorded Receipt transitions, commit by commit."""
+) -> tuple[list[Event], list[FieldChange], list[FileChange], list[str]]:
+    """Witnessed Ree transitions, document and overlay changes, and recorded Receipt transitions, commit by commit."""
     events: list[Event] = []
     changes: list[FieldChange] = []
+    file_changes: list[FileChange] = []
+    files: dict[str, str] = {}
     problems: list[str] = []
     steps = StepTracker(source_id, ree_id)
     state: str | None = None
@@ -496,6 +511,23 @@ def ree_events(
                 if parts.get(path) != now.get(path)
             )
         parts = now
+        committed = committed_files(executable, repository, commit.id, OVERLAY)
+        file_changes.extend(
+            FileChange(
+                source=source_id,
+                position=base + 900,
+                partition=ree_id,
+                path=path,
+                before=files.get(path),
+                after=committed.get(path),
+                operation=commit.subject,
+                cause=cause,
+                locator=locator,
+            )
+            for path in sorted(files.keys() | committed.keys())
+            if files.get(path) != committed.get(path)
+        )
+        files = committed
         events.append(
             Event(
                 source=source_id,
@@ -512,7 +544,7 @@ def ree_events(
             )
         )
         state = target
-    return events, changes, problems
+    return events, changes, file_changes, problems
 
 
 def read_git_history(repository: Path, label: str, executable: str = "git", *, author: bool = True) -> Evidence:
@@ -521,6 +553,7 @@ def read_git_history(repository: Path, label: str, executable: str = "git", *, a
     problems: list[str] = []
     events: list[Event] = []
     changes: list[FieldChange] = []
+    file_changes: list[FileChange] = []
     try:
         commits, found = history_commits(executable, repository)
         problems.extend(found)
@@ -549,7 +582,7 @@ def read_git_history(repository: Path, label: str, executable: str = "git", *, a
         problems.extend(problem for problem in [recorded_phases(record, None)[1]] if problem)
     ree_ids = {event.partition for event in events if event.partition is not None}
     if author and len(ree_ids) == 1:
-        found_events, changes, found = ree_events(
+        found_events, changes, file_changes, found = ree_events(
             executable, repository, source_id, label, next(iter(ree_ids)), commits
         )
         events.extend(found_events)
@@ -567,7 +600,7 @@ def read_git_history(repository: Path, label: str, executable: str = "git", *, a
         partitions=frozenset(ree_ids),
         problems=tuple(problems),
     )
-    return Evidence(sources=(source,), events=tuple(events), changes=tuple(changes))
+    return Evidence(sources=(source,), events=tuple(events), changes=tuple(changes), files=tuple(file_changes))
 
 
 def git_repositories(root: Path, label: str | None = None) -> Iterable[tuple[Path, str, bool]]:
@@ -697,4 +730,5 @@ def combine(*parts: Evidence) -> Evidence:
         events=tuple(event for part in parts for event in part.events),
         problems=tuple(problem for part in parts for problem in part.problems),
         changes=tuple(change for part in parts for change in part.changes),
+        files=tuple(change for part in parts for change in part.files),
     )

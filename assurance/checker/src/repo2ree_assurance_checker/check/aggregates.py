@@ -21,7 +21,7 @@ from repo2ree_assurance_checker.check.results import (
     RuleResult,
     StateStep,
 )
-from repo2ree_assurance_checker.evidence import Evidence, FieldChange
+from repo2ree_assurance_checker.evidence import Evidence, FieldChange, FileChange
 from repo2ree_assurance_checker.spec import CREATED, KEYED, AggregateSpec, Spec, SubMachine
 
 # Where a move was made between operations rather than by one.
@@ -56,6 +56,7 @@ def check_aggregates(spec: Spec, evidence: Evidence) -> tuple[AggregateResult, .
 
 def check_aggregate(aggregate: AggregateSpec, evidence: Evidence) -> AggregateResult:
     found = moves(aggregate, evidence)
+    files = [change for change in evidence.files if aggregate.overlay and change.path.startswith(aggregate.overlay)]
     tally = Counter((m.machine.kind, m.machine.name, m.source, m.target, m.operation, m.allowed) for m in found)
     return AggregateResult(
         aggregate=aggregate.name,
@@ -73,8 +74,63 @@ def check_aggregate(aggregate: AggregateSpec, evidence: Evidence) -> AggregateRe
             )
             for move in found
             if not move.allowed
-        ),
+        )
+        + tuple(overlay_findings(aggregate, files, evidence.changes)),
+        files=len(files),
     )
+
+
+def overlay_findings(
+    aggregate: AggregateSpec, files: Sequence[FileChange], changes: Sequence[FieldChange]
+) -> Iterator[Finding]:
+    """An overlay file some field claims, which changes only with that field while the field is set."""
+    overlay = aggregate.overlay or ""
+    fields_at: dict[tuple[str, int], list[FieldChange]] = defaultdict(list)
+    for change in changes:
+        fields_at[(change.partition, change.position)].append(change)
+    files_at: dict[tuple[str, int], list[FileChange]] = defaultdict(list)
+    for file in files:
+        files_at[(file.partition, file.position)].append(file)
+    held: dict[str, dict[str, str]] = defaultdict(dict)
+    for at in sorted(fields_at.keys() | files_at.keys(), key=lambda at: (at[1], at[0])):
+        partition = at[0]
+        moved = fields_at.get(at, [])
+        for change in moved:
+            if change.after is None:
+                held[partition].pop(change.path, None)
+            else:
+                held[partition][change.path] = change.after
+        for file in files_at.get(at, []):
+            subject = f"{aggregate.name} {partition} {file.path}"
+            claim = aggregate.claim(file.path.removeprefix(overlay))
+            if claim is None:
+                if file.after is not None:
+                    yield _finding(subject, "is in the overlay, but no field claims it", file)
+                continue
+            field, slug = claim
+            part = _item(field, slug, held[partition]) if slug else field
+            if part is None or part not in held[partition]:
+                continue
+            if not any(change.path == part or change.path.startswith(f"{part}.") for change in moved):
+                yield _finding(subject, f"changed by {file.operation}, but {part}, which claims it, did not", file)
+
+
+def _item(field: str, slug: str, held: Mapping[str, str]) -> str | None:
+    """The declared item of a keyed field whose name has ``slug``; None while no such item is declared."""
+    head = field.removesuffix(KEYED)
+    for path in held:
+        if path.startswith(f"{head}[") and path.endswith("]") and experiment_slug(path[len(head) + 1 : -1]) == slug:
+            return path
+    return None
+
+
+def experiment_slug(name: str) -> str:
+    """An item's name as its files spell it (contracts/experiment-slugs.json)."""
+    return "-".join(name.split()) or "experiment"
+
+
+def _finding(subject: str, reason: str, file: FileChange) -> Finding:
+    return Finding(verdict="violated", subject=subject, reason=reason, evidence=(file.ref,))
 
 
 def aggregate_rule(result: AggregateResult) -> RuleResult:
@@ -83,8 +139,8 @@ def aggregate_rule(result: AggregateResult) -> RuleResult:
         rule=f"aggregate:{result.aggregate}",
         kind="aggregate",
         summary=f"Every part of the {result.aggregate} document moves only along an edge that allows the "
-        "operation that moved it.",
-        triggered=sum(move.count for move in result.moves),
+        "operation that moved it, and every file of its overlay is a field's, changing with it.",
+        triggered=sum(move.count for move in result.moves) + result.files,
         findings=result.findings,
     )
 
