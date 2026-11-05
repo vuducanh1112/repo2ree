@@ -66,6 +66,7 @@ from repo2ree_supervisor import (
     WorkbenchConnectionRegistry,
     WsWorkbenchClient,
 )
+from repo2ree_supervisor.sessions import Session
 from repo2ree_supervisor.transfers import TRANSFER_PATH_PREFIX, TransferError, Transfers
 from repo2ree_telemetry.relay import build_span_sink
 from repo2ree_testbed.artifacts import case_dir, service_dir
@@ -133,8 +134,10 @@ def connections() -> Iterator[tuple[WorkbenchConnectionRegistry, int]]:
             asyncio.run_coroutine_threadsafe(ws.send_text(text), loop)
 
         hello = workbench_hello_adapter.validate_json(await ws.receive_text())
-        connection = WorkbenchConnection(send_text=send_text, hello=hello)
+        session = Session(hello, registered=True)
+        connection = WorkbenchConnection(send_text=send_text, hello=hello, session=session)
         registry.register(hello.workbench_id, connection)
+        session.connect()
         try:
             while True:
                 connection.on_message(await ws.receive_text())
