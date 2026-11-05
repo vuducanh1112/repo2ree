@@ -26,6 +26,8 @@ from repo2ree_ree.reserved_paths import (
     experiment_verify_script_path,
 )
 
+VERIFY = experiment_verify_script_path("hello")
+
 
 def _never_canceled() -> bool:
     return False
@@ -85,7 +87,7 @@ def test_a_verify_script_can_be_deleted(tmp_path: Path, monkeypatch: pytest.Monk
 
 def test_missing_file_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _store_at(tmp_path, monkeypatch)
-    result = handler.handle_delete_file(DeleteFileArgs(path="ghost.txt"), log=_silent_log, is_canceled=_never_canceled)
+    result = handler.handle_delete_file(DeleteFileArgs(path=VERIFY), log=_silent_log, is_canceled=_never_canceled)
     assert result.status == "failed"
 
 
@@ -93,53 +95,53 @@ def test_upstream_file_is_restored(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     store = _store_at(tmp_path, monkeypatch)
     # A file that exists upstream and was overridden in the overlay: deleting the
     # override restores the upstream content into the workspace.
-    store.upstream.write_bytes("readme.md", b"upstream body")
-    store.overlay.write_bytes("readme.md", b"local edit")
-    store.workspace.write_bytes("readme.md", b"local edit")
+    store.upstream.write_bytes(VERIFY, b"upstream body")
+    store.overlay.write_bytes(VERIFY, b"local edit")
+    store.workspace.write_bytes(VERIFY, b"local edit")
 
-    result = handler.handle_delete_file(DeleteFileArgs(path="readme.md"), log=_silent_log, is_canceled=_never_canceled)
+    result = handler.handle_delete_file(DeleteFileArgs(path=VERIFY), log=_silent_log, is_canceled=_never_canceled)
     assert result.status == "succeeded"
-    assert not store.overlay.is_file("readme.md")
-    assert store.workspace.read_bytes("readme.md") == b"upstream body"
+    assert not store.overlay.is_file(VERIFY)
+    assert store.workspace.read_bytes(VERIFY) == b"upstream body"
 
 
 def test_stale_etag_conflicts_without_deleting(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     store = _store_at(tmp_path, monkeypatch)
-    store.overlay.write_bytes("new.txt", b"current body")
-    store.workspace.write_bytes("new.txt", b"current body")
+    store.overlay.write_bytes(VERIFY, b"current body")
+    store.workspace.write_bytes(VERIFY, b"current body")
     stale = f"sha256:{hashlib.sha256(b'stale body').hexdigest()}"
 
     result = handler.handle_delete_file(
-        DeleteFileArgs(path="new.txt", expected_etag=stale), log=_silent_log, is_canceled=_never_canceled
+        DeleteFileArgs(path=VERIFY, expected_etag=stale), log=_silent_log, is_canceled=_never_canceled
     )
 
     assert result.status == "failed"
     assert result.outputs["error_code"] == "version_conflict"
-    assert store.workspace.is_file("new.txt")
+    assert store.workspace.is_file(VERIFY)
 
 
 def test_matching_etag_deletes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     store = _store_at(tmp_path, monkeypatch)
-    store.overlay.write_bytes("new.txt", b"current body")
-    store.workspace.write_bytes("new.txt", b"current body")
+    store.overlay.write_bytes(VERIFY, b"current body")
+    store.workspace.write_bytes(VERIFY, b"current body")
     current = f"sha256:{hashlib.sha256(b'current body').hexdigest()}"
 
     result = handler.handle_delete_file(
-        DeleteFileArgs(path="new.txt", expected_etag=current), log=_silent_log, is_canceled=_never_canceled
+        DeleteFileArgs(path=VERIFY, expected_etag=current), log=_silent_log, is_canceled=_never_canceled
     )
 
     assert result.status == "succeeded"
-    assert not store.workspace.is_file("new.txt")
+    assert not store.workspace.is_file(VERIFY)
 
 
 def test_overlay_only_file_is_removed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     store = _store_at(tmp_path, monkeypatch)
     # A file created purely in the overlay (no upstream origin): deleting it
     # removes it from the workspace entirely.
-    store.overlay.write_bytes("new.txt", b"created here")
-    store.workspace.write_bytes("new.txt", b"created here")
+    store.overlay.write_bytes(VERIFY, b"created here")
+    store.workspace.write_bytes(VERIFY, b"created here")
 
-    result = handler.handle_delete_file(DeleteFileArgs(path="new.txt"), log=_silent_log, is_canceled=_never_canceled)
+    result = handler.handle_delete_file(DeleteFileArgs(path=VERIFY), log=_silent_log, is_canceled=_never_canceled)
     assert result.status == "succeeded"
-    assert not store.workspace.is_file("new.txt")
-    assert not store.overlay.is_file("new.txt")
+    assert not store.workspace.is_file(VERIFY)
+    assert not store.overlay.is_file(VERIFY)

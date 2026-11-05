@@ -368,18 +368,34 @@ def test_executor_bookkeeping_does_not_create_observation(ree):
     assert "runs/" not in git(ree, "ls-tree", "-r", "--name-only", "HEAD")
 
 
-def test_write_delete_capture_arbitrary_files_and_command_bytes(ree):
+def test_write_delete_capture_scripts_and_command_bytes(ree):
     from repo2ree_protocol.command import DeleteFileArgs, DeleteFileCommand, WriteFileArgs, WriteFileCommand
 
-    content = "arbitrary user .tmp file\n"
-    command = WriteFileCommand(args=WriteFileArgs(path="data.tmp", content=content))
+    script = "ree-scripts/experiments/demo.verify.sh"
+    content = "#!/bin/sh\ntest -s result.txt\n"
+    command = WriteFileCommand(args=WriteFileArgs(path=script, content=content))
     result = dispatch.run_command(command, log=lambda *args: None)
     assert result.status == "succeeded"
     assert operation_record(ree, result)["command"] == command.model_dump(mode="json")
-    assert git(ree, "show", "HEAD:overlay/data.tmp") == content.strip()
-    result = dispatch.run_command(DeleteFileCommand(args=DeleteFileArgs(path="data.tmp")), log=lambda *args: None)
+    assert git(ree, "show", f"HEAD:overlay/{script}") == content.strip()
+    result = dispatch.run_command(DeleteFileCommand(args=DeleteFileArgs(path=script)), log=lambda *args: None)
     assert result.status == "succeeded"
-    assert "data.tmp" not in git(ree, "ls-tree", "-r", "--name-only", "HEAD")
+    assert script not in git(ree, "ls-tree", "-r", "--name-only", "HEAD")
+
+
+@pytest.mark.parametrize("path", ["data.tmp", "project/requirements-extra.txt", "ree-scripts/helper.sh"])
+def test_the_overlay_takes_only_the_rees_scripts(ree, path):
+    from repo2ree_protocol.command import DeleteFileArgs, DeleteFileCommand, WriteFileArgs, WriteFileCommand
+
+    written = dispatch.run_command(
+        WriteFileCommand(args=WriteFileArgs(path=path, content="x\n")), log=lambda *args: None
+    )
+    deleted = dispatch.run_command(DeleteFileCommand(args=DeleteFileArgs(path=path)), log=lambda *args: None)
+    for result in (written, deleted):
+        assert result.status == "failed"
+        assert result.failure is not None
+        assert result.failure.category == "validation"
+    assert path not in git(ree, "ls-tree", "-r", "--name-only", "HEAD")
 
 
 def test_process_death_leaves_pending_attempt(ree, monkeypatch):

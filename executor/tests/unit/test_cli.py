@@ -41,7 +41,7 @@ runner = CliRunner()
 def test_explicit_context_joins_stdout_logs_and_git_without_tracing(initialized_ree, monkeypatch):
     monkeypatch.delenv("TRACE_RELAY", raising=False)
     context = ExecutionContext.new(ree_id="ree-1")
-    command = WriteFileCommand(args=WriteFileArgs(path="identity.txt", content="recorded"))
+    command = WriteFileCommand(args=WriteFileArgs(path="ree-scripts/build_script.sh", content="recorded"))
     invocation = runner.invoke(
         cli,
         ["execute", "--action", "-", "--run-id", "reused-run", "--execution-context", context.model_dump_json()],
@@ -147,7 +147,7 @@ def test_get_ree_emits_metadata(initialized_ree: Path) -> None:
 
 
 def test_execute_writes_result_to_stdout_and_logs_to_stderr(initialized_ree: Path) -> None:
-    cmd = WriteFileCommand(args=WriteFileArgs(path="build.sh", content="echo build\n"))
+    cmd = WriteFileCommand(args=WriteFileArgs(path="ree-scripts/build_script.sh", content="echo build\n"))
     result = runner.invoke(cli, ["execute", "--action", "-", "--run-id", "run-1"], input=cmd.model_dump_json())
     assert result.exit_code == 0, result.output
 
@@ -157,8 +157,8 @@ def test_execute_writes_result_to_stdout_and_logs_to_stderr(initialized_ree: Pat
 
     # the file landed in overlay and workspace for real
     layout = ReeLayout.in_workbench()
-    assert (layout.overlay / "build.sh").read_text() == "echo build\n"
-    assert (layout.workspace / "build.sh").read_text() == "echo build\n"
+    assert (layout.overlay / "ree-scripts/build_script.sh").read_text() == "echo build\n"
+    assert (layout.workspace / "ree-scripts/build_script.sh").read_text() == "echo build\n"
 
     # stderr is pure NDJSON log events (the supervisor parses every line)
     events = _stderr_events(result)
@@ -178,7 +178,7 @@ def test_run_log_records_the_whole_command_and_result_untruncated(initialized_re
     the file is the only place the bytes an operation actually received survive.
     """
     content = "echo build\n" + "x" * 4000
-    cmd = WriteFileCommand(args=WriteFileArgs(path="build.sh", content=content))
+    cmd = WriteFileCommand(args=WriteFileArgs(path="ree-scripts/build_script.sh", content=content))
     result = runner.invoke(cli, ["execute", "--action", "-", "--run-id", "run-2"], input=cmd.model_dump_json())
     assert result.exit_code == 0, result.output
 
@@ -234,7 +234,7 @@ def test_cancel_run_writes_cancel_marker(initialized_ree: Path) -> None:
 def test_execute_observes_existing_cancel_marker(initialized_ree: Path) -> None:
     layout = ReeLayout.in_workbench()
     layout.run_cancel_marker("run-1").touch()
-    cmd = WriteFileCommand(args=WriteFileArgs(path="build.sh", content="echo build\n"))
+    cmd = WriteFileCommand(args=WriteFileArgs(path="ree-scripts/build_script.sh", content="echo build\n"))
 
     result = runner.invoke(cli, ["execute", "--action", "-", "--run-id", "run-1"], input=cmd.model_dump_json())
 
@@ -253,7 +253,7 @@ def test_sigterm_cancels_the_run_cooperatively_and_the_handler_is_restored(
 
     monkeypatch.setattr(cli_module, "run_command", interrupted)
     before = signal.getsignal(signal.SIGTERM)
-    cmd = WriteFileCommand(args=WriteFileArgs(path="build.sh", content="echo build\n"))
+    cmd = WriteFileCommand(args=WriteFileArgs(path="ree-scripts/build_script.sh", content="echo build\n"))
 
     result = runner.invoke(cli, ["execute", "--action", "-", "--run-id", "run-1"], input=cmd.model_dump_json())
 
@@ -264,7 +264,7 @@ def test_sigterm_cancels_the_run_cooperatively_and_the_handler_is_restored(
 def test_execute_clears_cancel_marker_after_run(initialized_ree: Path) -> None:
     layout = ReeLayout.in_workbench()
     layout.run_cancel_marker("run-1").touch()
-    cmd = WriteFileCommand(args=WriteFileArgs(path="build.sh", content="echo build\n"))
+    cmd = WriteFileCommand(args=WriteFileArgs(path="ree-scripts/build_script.sh", content="echo build\n"))
 
     runner.invoke(cli, ["execute", "--action", "-", "--run-id", "run-1"], input=cmd.model_dump_json())
 
@@ -279,10 +279,10 @@ def test_execute_clears_cancel_marker_after_run(initialized_ree: Path) -> None:
 
 
 def test_read_ree_file_round_trips_workspace_bytes(initialized_ree: Path) -> None:
-    cmd = WriteFileCommand(args=WriteFileArgs(path="data.txt", content="payload\n"))
+    cmd = WriteFileCommand(args=WriteFileArgs(path="ree-scripts/build_script.sh", content="payload\n"))
     assert runner.invoke(cli, ["execute", "--action", "-"], input=cmd.model_dump_json()).exit_code == 0
 
-    result = runner.invoke(cli, ["read-ree-file", "--path", "workspace/data.txt"])
+    result = runner.invoke(cli, ["read-ree-file", "--path", "workspace/ree-scripts/build_script.sh"])
     assert result.exit_code == 0
     assert result.stdout_bytes == b"payload\n"
 
@@ -310,7 +310,7 @@ def test_read_ree_file_rejects_escape(initialized_ree: Path) -> None:
 
 
 def test_get_ree_document_reflects_workspace_files(initialized_ree: Path) -> None:
-    cmd = WriteFileCommand(args=WriteFileArgs(path="app.py", content="print('hi')\n"))
+    cmd = WriteFileCommand(args=WriteFileArgs(path="ree-scripts/activation.sh", content="print('hi')\n"))
     assert runner.invoke(cli, ["execute", "--action", "-"], input=cmd.model_dump_json()).exit_code == 0
 
     result = runner.invoke(cli, ["get-ree-document"])
@@ -319,11 +319,11 @@ def test_get_ree_document_reflects_workspace_files(initialized_ree: Path) -> Non
     # No control-plane handle: the workbench knows only its own volume, so the
     # document carries what the tree holds and nothing about where it is.
     assert "ree_id" not in workspace
-    assert any(f.get("path") == "app.py" for f in workspace["workspace_files"])
+    assert any(f.get("path") == "ree-scripts/activation.sh" for f in workspace["workspace_files"])
 
 
 def test_get_ree_document_summary_omits_inline_file_content(initialized_ree: Path) -> None:
-    cmd = WriteFileCommand(args=WriteFileArgs(path="app.py", content="print('hi')\n"))
+    cmd = WriteFileCommand(args=WriteFileArgs(path="ree-scripts/activation.sh", content="print('hi')\n"))
     assert runner.invoke(cli, ["execute", "--action", "-"], input=cmd.model_dump_json()).exit_code == 0
 
     result = runner.invoke(cli, ["get-ree-document", "--summary"])

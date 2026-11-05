@@ -25,6 +25,7 @@ from repo2ree_ree.reserved_paths import (
     experiment_run_script_path,
     experiment_slug,
     experiment_verify_script_path,
+    is_overlay_path,
 )
 
 CURRENT_SCHEMA_VERSION: Literal[1] = 1
@@ -166,6 +167,10 @@ class ReeReceipts(_DomainModel):
         return self
 
 
+# Where a bundle's entries hold the REE's overlay.
+OVERLAY_ENTRY = "overlay/"
+
+
 class BundleEntry(_DomainModel):
     path: ReePath
     digest: Digest
@@ -182,6 +187,10 @@ class BundleContents(_DomainModel):
             raise ValueError("bundle entries must be sorted by path")
         if len(paths) != len(set(paths)):
             raise ValueError("bundle entry paths must be unique")
+        if strays := [
+            path for path in paths if path.startswith(OVERLAY_ENTRY) and not is_overlay_path(path[len(OVERLAY_ENTRY) :])
+        ]:
+            raise ValueError(f"an REE's overlay holds only its scripts, not {strays[0]}")
         return self
 
 

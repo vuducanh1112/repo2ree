@@ -27,6 +27,19 @@ def experiment_verify_script_path(name: str) -> str:
     return f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{experiment_slug(name)}.verify.sh"
 
 
+def is_overlay_path(path: str) -> bool:
+    """Whether ``path`` may be in an REE's overlay: one of its scripts, and nothing else."""
+    normalized = PurePosixPath(path)
+    if str(normalized) in (RESERVED_BUILD_SCRIPT, RESERVED_ACTIVATION_SCRIPT, RESERVED_ACTIVATION_VERIFY_SCRIPT):
+        return True
+    name = normalized.name
+    return (
+        str(normalized.parent) == RESERVED_EXPERIMENT_SCRIPT_DIR
+        and name.endswith(".sh")
+        and name not in (".sh", ".verify.sh")
+    )
+
+
 def is_run_script(path: str) -> bool:
     normalized = PurePosixPath(path)
     if str(normalized) in (RESERVED_BUILD_SCRIPT, RESERVED_ACTIVATION_SCRIPT):

@@ -41,7 +41,7 @@ def test_sealed_ree_is_frozen(api: Api, new_ree: Callable[..., str]) -> None:
     assert api.seal(ree_id)["status"] == "succeeded"
     digest = api.ree(ree_id)["seal"]["ree_digest"]
 
-    assert api.write(ree_id, "notes.txt", "after the seal\n", expect=None).status_code >= 400
+    assert api.write(ree_id, BUILD_SCRIPT, "#!/bin/sh\necho after the seal\n", expect=None).status_code >= 400
     assert api.patch(ree_id, {"name": "renamed after the seal"}, expect=None).status_code >= 400
     rebuild = api.request("POST", f"/api/v1/rees/{ree_id}/build-runtime", json={}, expect=None)
     if rebuild.status_code == 200:

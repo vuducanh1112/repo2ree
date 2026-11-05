@@ -19,6 +19,7 @@ from repo2ree_ree.reserved_paths import (
     experiment_run_script_path,
     experiment_slug,
     experiment_verify_script_path,
+    is_overlay_path,
 )
 
 _FIXTURE = Path(__file__).resolve().parents[2] / "contracts" / "experiment-slugs.json"
@@ -35,3 +36,28 @@ def test_reserved_script_paths_are_built_from_the_slug(case: dict[str, str]) -> 
     slug = case["slug"]
     assert experiment_run_script_path(case["name"]) == f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{slug}.sh"
     assert experiment_verify_script_path(case["name"]) == f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{slug}.verify.sh"
+
+
+@pytest.mark.parametrize(
+    ("path", "allowed"),
+    [
+        ("ree-scripts/build_script.sh", True),
+        ("ree-scripts/activation.sh", True),
+        ("ree-scripts/activation.verify.sh", True),
+        ("ree-scripts/experiments/train-model.sh", True),
+        ("ree-scripts/experiments/train-model.verify.sh", True),
+        ("ree-scripts/helper.sh", False),
+        ("ree-scripts/experiments/nested/train.sh", False),
+        ("ree-scripts/experiments/.sh", False),
+        ("ree-scripts/experiments/notes.txt", False),
+        ("project/requirements-extra.txt", False),
+    ],
+)
+def test_the_overlay_holds_only_the_rees_scripts(path: str, allowed: bool) -> None:
+    assert is_overlay_path(path) is allowed
+
+
+@pytest.mark.parametrize("case", _CASES, ids=[repr(case["name"]) for case in _CASES])
+def test_every_experiments_scripts_belong_in_the_overlay(case: dict[str, str]) -> None:
+    assert is_overlay_path(experiment_run_script_path(case["name"]))
+    assert is_overlay_path(experiment_verify_script_path(case["name"]))

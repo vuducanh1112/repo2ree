@@ -20,7 +20,7 @@ from repo2ree_protocol.command import DeleteFileArgs
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.paths import validate_relative_path
-from repo2ree_ree.reserved_paths import is_run_script
+from repo2ree_ree.reserved_paths import is_overlay_path, is_run_script
 
 
 def handle_delete_file(
@@ -34,6 +34,9 @@ def handle_delete_file(
     except ValueError as exc:
         log("system", "error", f"invalid path: {exc}")
         return ActionResult.failed("validation", f"invalid path: {exc}")
+    if not is_overlay_path(args.path):
+        log("system", "error", f"not one of the REE's scripts: {args.path}")
+        return ActionResult.failed("validation", f"{args.path} is not one of the REE's scripts")
     if is_run_script(args.path):
         log("system", "error", f"cannot delete a run script: {args.path}")
         return ActionResult.failed(

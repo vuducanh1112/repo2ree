@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from system_client import BUILD_SCRIPT, PROJECT_DIR, RUNTIME, Api
+from system_client import BUILD_SCRIPT, RUNTIME, Api
 
 
 def standing(api: Api, ree_id: str) -> tuple[str, str, str]:
@@ -35,12 +35,6 @@ def test_each_receipt_follows_only_what_it_was_made_from(api: Api, new_ree: Call
     assert standing(api, ree_id) == ("current", "current", "stale")
     api.succeed(ree_id, "cross-check-sbom")
     assert standing(api, ree_id) == ("current", "current", "current")
-
-    # A manifest the author adds changes what the evaluation declares, and so the cross-check against it.
-    api.write(ree_id, f"{PROJECT_DIR}/requirements-extra.txt", "requests==2.31.0\n")
-    api.succeed(ree_id, "evaluate")
-    assert standing(api, ree_id) == ("current", "current", "stale")
-    api.succeed(ree_id, "cross-check-sbom")
 
     # The build is undeclared through the definition, never by deleting its script.
     api.request("DELETE", f"/api/v1/rees/{ree_id}/files/content", params={"path": BUILD_SCRIPT}, expect=400)

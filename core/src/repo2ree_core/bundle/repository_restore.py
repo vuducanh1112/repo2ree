@@ -9,9 +9,10 @@ from pathlib import Path
 from repo2ree_core.bundle.export_format import RepositoryExport
 from repo2ree_core.bundle.repository_export import materialize, new_history, safe_relative, verify_inventory
 from repo2ree_core.persistence.history import GitHistory
-from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.persistence.layout import OVERLAY_DIRNAME, ReeLayout
 from repo2ree_core.persistence.lfs import copy_object
 from repo2ree_core.persistence.operation_history import read_operation_history
+from repo2ree_ree.reserved_paths import is_overlay_path
 
 
 def _copy_regular_tree(source: Path, target: Path) -> None:
@@ -61,6 +62,7 @@ def restore_repository(layout: ReeLayout, bundle_root: Path) -> dict[str, str]:
             if actual != entry.lfs_objects:
                 raise ValueError("Declared LFS objects differ from selected tree")
             verify_inventory(history.layout.root)
+            verify_overlay(history.layout.root)
             _copy_regular_tree(source / "repo2ree" / "operations", history.layout.git_dir / "repo2ree" / "operations")
             histories.append(history)
         if not (validated / "ree.json").is_file():
@@ -117,3 +119,12 @@ def restore_repository(layout: ReeLayout, bundle_root: Path) -> dict[str, str]:
                     else:
                         shutil.copy2(path, target)
         return heads
+
+
+def verify_overlay(root: Path) -> None:
+    """Refuse an REE whose overlay holds anything but its scripts."""
+    overlay = root / OVERLAY_DIRNAME
+    for path in sorted(overlay.rglob("*")) if overlay.is_dir() else []:
+        relative = path.relative_to(overlay).as_posix()
+        if (path.is_file() or path.is_symlink()) and not is_overlay_path(relative):
+            raise ValueError(f"an REE's overlay holds only its scripts, not {relative}")

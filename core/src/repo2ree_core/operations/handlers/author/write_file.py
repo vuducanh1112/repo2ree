@@ -1,7 +1,7 @@
 """Handler for the write_file operation.
 
-Writes content into /ree/overlay/<path> and mirrors it to /ree/workspace/<path>.
-Mirrors the host-side write_file_content behaviour exactly.
+Writes one of the REE's scripts into /ree/overlay/<path> and mirrors it to
+/ree/workspace/<path>. The overlay holds the scripts and nothing else.
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ from repo2ree_protocol.command import WriteFileArgs
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.paths import validate_relative_path
+from repo2ree_ree.reserved_paths import is_overlay_path
 
 
 def handle_write_file(
@@ -31,6 +32,9 @@ def handle_write_file(
     except ValueError as exc:
         log("system", "error", f"invalid path: {exc}")
         return ActionResult.failed("validation", f"invalid path: {exc}")
+    if not is_overlay_path(args.path):
+        log("system", "error", f"not one of the REE's scripts: {args.path}")
+        return ActionResult.failed("validation", f"{args.path} is not one of the REE's scripts")
 
     layout = ReeLayout.in_workbench()
     store = ReeDirectory(layout)
