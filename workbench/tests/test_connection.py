@@ -15,10 +15,11 @@ from pathlib import Path
 from typing import Any, ClassVar
 
 import pytest
+import websockets
 from pydantic import ValidationError
 
 import repo2ree_workbench.connection as connection
-from repo2ree_protocol.frames import COPY_CHUNK_BYTES, TERMINAL_FRAME_TYPES, ResultFrame, SpanFrame
+from repo2ree_protocol.frames import COPY_CHUNK_BYTES, TERMINAL_FRAME_TYPES, LogFrame, ResultFrame, SpanFrame
 from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.workbench import (
     CancelRequest,
@@ -101,7 +102,7 @@ class FakeExec:
     def exec_simple(self, argv: list[str], timeout: int = 60, *, ree_id: str) -> None:
         return None
 
-    def cancel_run(self, run_id: str, *, ree_id: str) -> None:
+    def cancel_run(self, run_id: str, *, ree_id: str, cause: str = "cancel", record: str | None = None) -> None:
         self.canceled_runs.append(run_id)
 
 
@@ -240,7 +241,7 @@ def test_a_lost_connection_stops_the_runs_it_was_waiting_for() -> None:
             canceled.wait(5.0)
             yield ResultFrame(result=ActionResult(status="canceled"))
 
-        def cancel_run(self, run_id: str, *, ree_id: str) -> None:
+        def cancel_run(self, run_id: str, *, ree_id: str, cause: str = "cancel", record: str | None = None) -> None:
             super().cancel_run(run_id, ree_id=ree_id)
             canceled.set()
 
@@ -252,6 +253,29 @@ def test_a_lost_connection_stops_the_runs_it_was_waiting_for() -> None:
     asyncio.run(asyncio.wait_for(_serve(ws, _service(RunningExec())), timeout=2.0))  # type: ignore[arg-type]
 
     assert FakeExec.canceled_runs == ["run-1"]
+
+
+def test_a_connection_that_dies_while_a_run_sends_stops_the_run_as_its_caller_gone() -> None:
+    causes: list[str] = []
+
+    class LoggingExec(FakeExec):
+        def exec_action(self, cmd_json: str, run_id: str, env: dict[str, str], context: object = None, *, ree_id: str):
+            yield LogFrame(stream="stdout", level="info", message="building")
+            yield ResultFrame(result=ActionResult(status="succeeded"))
+
+        def cancel_run(self, run_id: str, *, ree_id: str, cause: str = "cancel", record: str | None = None) -> None:
+            causes.append(cause)
+
+    class DeadSocket(FakeSocket):
+        async def send(self, message: str) -> None:
+            raise websockets.ConnectionClosedError(None, None)
+
+    request = ExecActionRequest(ree_id="ree-1", cmd_json="{}", run_id="run-1")
+    ws = DeadSocket([WorkbenchWsRequest(id="b1", request=request).model_dump_json()])
+
+    asyncio.run(asyncio.wait_for(_serve(ws, _service(LoggingExec())), timeout=2.0))  # type: ignore[arg-type]
+
+    assert causes == ["caller_gone"]
 
 
 def test_stream_terminal_frame_drives_request_telemetry(

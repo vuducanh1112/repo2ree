@@ -151,6 +151,8 @@ class CancelRunRequest(BaseModel):
     # The REE this addresses in the workbench's store.
     ree_id: str
     run_id: str
+    # Where the sender journaled asking for it (``<journal>#<seq>``): the stop it causes names it.
+    record: str | None = None
 
 
 class FetchFileRequest(BaseModel):
@@ -196,6 +198,39 @@ class DeleteReeRequest(BaseModel):
     ree_id: str
 
 
+class ListJournalsRequest(BaseModel):
+    """List the behaviour journals the workbench keeps for its store, streamed back as one JSON document."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    op: Literal["list_journals"] = "list_journals"
+
+
+class ReadJournalRequest(BaseModel):
+    """Stream one of the store's behaviour journals as written: its complete records above ``after``."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    op: Literal["read_journal"] = "read_journal"
+    journal_id: str
+    after: int = Field(default=0, ge=0)
+
+
+class WorkbenchJournal(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    process: str
+    epoch: int
+    last_seq: int
+
+
+class WorkbenchJournalList(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    journals: list[WorkbenchJournal]
+
+
 # Tagged union discriminated on 'op': every execution call. The op literal
 # lives on the request model itself, so both sides share one definition and a
 # mistyped op cannot compile into a well-formed request.
@@ -207,7 +242,9 @@ WorkbenchRequest = Annotated[
     | CancelRunRequest
     | FetchFileRequest
     | CancelRequest
-    | DeleteReeRequest,
+    | DeleteReeRequest
+    | ListJournalsRequest
+    | ReadJournalRequest,
     Field(discriminator="op"),
 ]
 

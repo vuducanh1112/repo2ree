@@ -25,7 +25,9 @@ from repo2ree_api.contracts import (
     BehaviourPositions,
     BehaviourState,
 )
+from repo2ree_api.deps import store_registry, workbench_client, workbench_connections
 from repo2ree_api.settings import service_settings
+from repo2ree_supervisor import WorkbenchUnavailableError
 from repo2ree_telemetry.behaviour import journal_file, journal_files, positions, records_after
 
 behaviour_router = APIRouter(tags=["behaviour"])
@@ -132,3 +134,65 @@ def get_behaviour_state() -> BehaviourState:
     after = positions(directory)
     cut = {journal_id: (before.get(journal_id, 0), position) for journal_id, position in after.items()}
     return BehaviourState(cut=cut, runs=runs)
+
+
+def _store_workbench(store_id: str) -> str:
+    if store_registry.get(store_id) is None:
+        raise HTTPException(status_code=404, detail=f"no store {store_id}")
+    workbench_id = workbench_connections.store_workbench(store_id)
+    if workbench_id is None:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "store_unavailable",
+                "message": f"No workbench is serving store {store_id} right now",
+                "details": {"store_id": store_id},
+                "retryable": True,
+            },
+        )
+    return workbench_id
+
+
+@behaviour_router.get(
+    "/api/v1/behaviour/stores/{store_id}/journals",
+    response_model=BehaviourJournalList,
+    responses=ERROR_RESPONSES,
+    operation_id="listStoreBehaviourJournals",
+)
+def list_store_behaviour_journals(store_id: str) -> BehaviourJournalList:
+    """The journals the workbench serving the store keeps in it, read through that workbench."""
+    workbench_id = _store_workbench(store_id)
+    try:
+        listed = workbench_client.list_journals(workbench_id)
+    except WorkbenchUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return BehaviourJournalList(
+        journals=[
+            BehaviourJournal(id=item.id, process=item.process, epoch=item.epoch, last_seq=item.last_seq)
+            for item in listed.journals
+        ]
+    )
+
+
+@behaviour_router.get(
+    "/api/v1/behaviour/stores/{store_id}/journals/{journal_id}",
+    responses={
+        **ERROR_RESPONSES,
+        200: {"description": "The journal's complete records as written, one JSON object per line"},
+    },
+    response_class=Response,
+    operation_id="readStoreBehaviourJournal",
+)
+def read_store_behaviour_journal(
+    store_id: str,
+    journal_id: str,
+    after: int = Query(0, ge=0, description="Only records with a higher sequence number"),
+) -> Response:
+    workbench_id = _store_workbench(store_id)
+    try:
+        data = b"".join(workbench_client.read_journal(workbench_id, journal_id, after))
+    except WorkbenchUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=404, detail=f"no behaviour journal {journal_id} in store {store_id}") from exc
+    return Response(data, media_type="application/x-ndjson")

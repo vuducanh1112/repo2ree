@@ -447,6 +447,9 @@ class E2EStack:
     def collect_stopped(self) -> bool:
         command = [*self.collect(), "--journal-dir", str(self.control_state / "journal")]
         command += ["--runs-dir", str(self.control_state / "runs")]
+        for index in range(1, self.deployment.compute_locations + 1):
+            journals = self.control_state / f"workbench-{index}" / "store" / ".repo2ree" / "journal"
+            command += ["--store-journal-dir", f"{store_id(index)}={journals}"]
         telemetry = self.layout.telemetry
         for path in sorted(telemetry.glob("*.ndjson")) if telemetry is not None else []:
             command += ["--spans", str(path)]

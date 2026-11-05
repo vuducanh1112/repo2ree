@@ -9,6 +9,7 @@ does know that one stopped answering.
 from __future__ import annotations
 
 import json
+import threading
 import time
 from collections.abc import Callable, Iterator
 from typing import Any
@@ -87,6 +88,9 @@ class CommandDispatcher:
         self._locks = locks
         self._span_sink = span_sink
         self._on_unavailable = on_unavailable or (lambda handle: None)
+        self._dispatched: dict[tuple[str, str], tuple[str, str]] = {}
+        self._canceled: set[str] = set()
+        self._dispatched_lock = threading.Lock()
 
     # ------------------------------------------------
     # Action dispatch
@@ -162,9 +166,33 @@ class CommandDispatcher:
         """Ask the workbench executor to stop a running action.
 
         This deliberately does not take the per-REE dispatch lock: the command we
-        are canceling is usually the one holding that lock.
+        are canceling is usually the one holding that lock. A cancel of a command in
+        flight is journaled against its attempt, once; any other is only sent.
         """
-        self._workbench.cancel_run(handle.workbench_id, run_id, ree_id=handle.ree_id)
+        with self._dispatched_lock:
+            dispatched = self._dispatched.get((handle.ree_id, run_id))
+            first = dispatched is not None and dispatched[0] not in self._canceled
+            if first and dispatched is not None:
+                self._canceled.add(dispatched[0])
+        if not first or dispatched is None:
+            self._workbench.cancel_run(handle.workbench_id, run_id, ree_id=handle.ree_id)
+            return
+        attempt_id, session = dispatched
+        record = events.cancel_run_sent(
+            attempt_id, partition=handle.ree_id, facts={"run_id": run_id, "session": session}
+        )
+        try:
+            self._workbench.cancel_run(handle.workbench_id, run_id, ree_id=handle.ree_id, record=record)
+        except WorkbenchUnavailableError as exc:
+            events.cancel_run_abandoned(attempt_id, partition=handle.ree_id, reason=type(exc).__name__)
+            raise
+        except RuntimeError:
+            events.cancel_run_received(attempt_id, "error", partition=handle.ree_id)
+            raise
+        except BaseException as exc:
+            events.cancel_run_abandoned(attempt_id, partition=handle.ree_id, reason=type(exc).__name__)
+            raise
+        events.cancel_run_received(attempt_id, "done", partition=handle.ree_id)
 
     def _dispatch_recorded(
         self,
@@ -194,6 +222,8 @@ class CommandDispatcher:
         )
         context = context.model_copy(update={"dispatch_record": dispatched})
         answered = False
+        with self._dispatched_lock:
+            self._dispatched[(handle.ree_id, run_id)] = (context.attempt_id, session)
 
         def observe(message: events.DispatchResponse, facts: events.ResultFacts | None = None) -> None:
             nonlocal answered
@@ -206,6 +236,10 @@ class CommandDispatcher:
             if not answered:
                 events.dispatch_abandoned(context.attempt_id, partition=handle.ree_id, reason=type(exc).__name__)
             raise
+        finally:
+            with self._dispatched_lock:
+                self._dispatched.pop((handle.ree_id, run_id), None)
+                self._canceled.discard(context.attempt_id)
         if not answered:
             events.dispatch_abandoned(context.attempt_id, partition=handle.ree_id, reason="closed_without_response")
         return result, context

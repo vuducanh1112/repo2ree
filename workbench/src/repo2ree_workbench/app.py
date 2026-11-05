@@ -13,6 +13,7 @@ from repo2ree_workbench.capabilities import detect_capabilities
 from repo2ree_workbench.config import load_config
 from repo2ree_workbench.connection import SpanRelay, run_workbench
 from repo2ree_workbench.executor_process import LocalExecutor, ScriptBackend
+from repo2ree_workbench.journal import store_journal
 from repo2ree_workbench.service import WorkbenchService
 from repo2ree_workbench.tools import tool_environment
 
@@ -58,23 +59,24 @@ def main(argv: Sequence[str] = ()) -> None:
         ),
     )
     service = WorkbenchService(executor, store_id=config.store_id, slots=config.slots)
-    if config.backend == "container":
-        ScriptBackend(config.backend, config.engine, owner=str(config.store_root)).remove_leftover_jobs()
     try:
-        asyncio.run(
-            run_workbench(
-                config.api_ws_url,
-                service,
-                config.workbench_id,
-                enrollment_token=config.enrollment_token,
-                span_relay=span_relay,
-                build=current_build("repo2ree-workbench"),
-                executor_build=executor.build_info(),
-                capabilities=capabilities,
-                backend=config.backend,
-                images=config.images,
+        with store_journal(config.store_root, config.store_id):
+            if config.backend == "container":
+                ScriptBackend(config.backend, config.engine, owner=str(config.store_root)).remove_leftover_jobs()
+            asyncio.run(
+                run_workbench(
+                    config.api_ws_url,
+                    service,
+                    config.workbench_id,
+                    enrollment_token=config.enrollment_token,
+                    span_relay=span_relay,
+                    build=current_build("repo2ree-workbench"),
+                    executor_build=executor.build_info(),
+                    capabilities=capabilities,
+                    backend=config.backend,
+                    images=config.images,
+                )
             )
-        )
     finally:
         if tracer_provider is not None:
             tracer_provider.shutdown()

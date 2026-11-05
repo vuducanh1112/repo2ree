@@ -11,9 +11,13 @@ from pathlib import Path
 
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import Frame
+from repo2ree_protocol.workbench import WorkbenchJournal, WorkbenchJournalList
+from repo2ree_telemetry.behaviour import events, journal_file, journal_files, positions, records_after
 from repo2ree_workbench.executor_process import LocalExecutor
+from repo2ree_workbench.journal import journal_directory
 
 INIT_REE = "init-ree"
+JOURNAL_CHUNK = 256 * 1024
 
 
 class WorkbenchService:
@@ -50,8 +54,28 @@ class WorkbenchService:
     def exec_query_to_file(self, argv: list[str], target: Path, timeout: int = 600, *, ree_id: str) -> None:
         self._executor.exec_query_to_file(argv, target, timeout, ree_id=ree_id)
 
-    def cancel_run(self, run_id: str, *, ree_id: str) -> None:
-        self._executor.cancel_run(run_id, ree_id=ree_id)
+    def cancel_run(
+        self, run_id: str, *, ree_id: str, cause: events.ExecutionCause = "cancel", record: str | None = None
+    ) -> None:
+        self._executor.cancel_run(run_id, ree_id=ree_id, cause=cause, record=record)
+
+    def list_journals(self) -> WorkbenchJournalList:
+        directory = journal_directory(self._executor.root)
+        last = positions(directory)
+        return WorkbenchJournalList(
+            journals=[
+                WorkbenchJournal(id=file.id, process=file.process, epoch=file.epoch, last_seq=last.get(file.id, 0))
+                for file in journal_files(directory)
+            ]
+        )
+
+    def read_journal(self, journal_id: str, after: int) -> Iterator[bytes]:
+        file = journal_file(journal_directory(self._executor.root), journal_id)
+        if file is None:
+            raise FileNotFoundError(f"no behaviour journal {journal_id} in store {self.store_id!r}")
+        data = records_after(file.path, after)
+        for offset in range(0, len(data), JOURNAL_CHUNK):
+            yield data[offset : offset + JOURNAL_CHUNK]
 
     def copy_in(self, source_path: str, workbench_path: str, *, ree_id: str) -> None:
         self._executor.copy_in(source_path, workbench_path, ree_id=ree_id)

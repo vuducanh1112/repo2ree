@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+import threading
+import time
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -12,6 +14,9 @@ from typing import Any
 import pytest
 
 from repo2ree_protocol.command import BuildRuntimeCommand
+from repo2ree_protocol.execution import ExecutionContext
+from repo2ree_protocol.frames import Frame, ResultFrame
+from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.workbench import WorkbenchHello
 from repo2ree_supervisor import (
     CommandDispatcher,
@@ -145,3 +150,59 @@ def test_a_command_for_a_workbench_with_no_session_is_neither_journaled_nor_sent
         dispatcher.dispatch_action(handle, BuildRuntimeCommand(), "run-1", lambda *_: None)
     rows = [json.loads(line) for path in journal_dir.glob("*.ndjson") for line in path.read_text().splitlines()]
     assert not [row for row in rows if row.get("subject") == "dispatch"]
+
+
+class _CancelledBench:
+    """A workbench whose command runs until it is canceled, remembering what each cancel named."""
+
+    def __init__(self) -> None:
+        self.canceled = threading.Event()
+        self.records: list[str | None] = []
+
+    def session_of(self, workbench_id: str) -> str | None:
+        return "s-1"
+
+    def exec_action(
+        self,
+        workbench_id: str,
+        cmd_json: str,
+        run_id: str,
+        env: dict[str, str],
+        context: ExecutionContext | None = None,
+        *,
+        ree_id: str,
+        session: str | None = None,
+    ) -> Iterator[Frame]:
+        self.canceled.wait(5)
+        yield ResultFrame(result=ActionResult(status="canceled", context=context))
+
+    def cancel_run(self, workbench_id: str, run_id: str, *, ree_id: str, record: str | None = None) -> None:
+        self.records.append(record)
+        self.canceled.set()
+
+
+def test_a_cancel_of_a_command_in_flight_is_journaled_once_and_names_its_record(journal_dir: Path) -> None:
+    bench = _CancelledBench()
+    dispatcher = CommandDispatcher(bench, ReeLocks())  # type: ignore[arg-type]
+    handle = ReeRoute(ree_id="ree-1", workbench_id="wb-1", store_id="lab-1")
+    results: list[ActionResult] = []
+    running = threading.Thread(
+        target=lambda: results.append(
+            dispatcher.dispatch_action(handle, BuildRuntimeCommand(), "run-1", lambda *_: None)
+        )
+    )
+    running.start()
+    while not dispatcher._dispatched:
+        time.sleep(0.01)
+    dispatcher.cancel_run(handle, "run-1")
+    dispatcher.cancel_run(handle, "run-1")
+    running.join(5)
+    rows = [json.loads(line) for path in journal_dir.glob("*.ndjson") for line in path.read_text().splitlines()]
+    cancels = [row for row in rows if row.get("subject") == "cancel_run"]
+    assert [(row["kind"], row["message"]) for row in cancels] == [("send", "cancel_run"), ("receive", "done")]
+    context = results[0].context
+    assert context is not None
+    assert cancels[0]["key"] == context.attempt_id
+    assert cancels[0]["facts"] == {"run_id": "run-1", "session": "s-1"}
+    assert bench.records == [f"api-000001#{cancels[0]['seq']}", None]
+    assert not dispatcher._dispatched

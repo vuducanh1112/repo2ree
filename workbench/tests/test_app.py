@@ -10,7 +10,9 @@ from repo2ree_workbench.config import WorkbenchConfig
 from repo2ree_workbench.service import WorkbenchService
 
 
-def test_main_composes_telemetry_runtime_and_control_connection(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_main_composes_telemetry_runtime_and_control_connection(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     opaque = "test-store-token"
     config = WorkbenchConfig(
         api_ws_url="wss://control.example/workbench/connect",
@@ -18,7 +20,7 @@ def test_main_composes_telemetry_runtime_and_control_connection(monkeypatch: pyt
         enrollment_token=opaque,
         exec_path="/bin/repo2ree-exec",
         store_id="lab-1",
-        store_root=Path("/srv/rees"),
+        store_root=tmp_path / "rees",
         otlp_endpoint="http://collector:4318",
     )
     shutdowns: list[str] = []
@@ -61,3 +63,5 @@ def test_main_composes_telemetry_runtime_and_control_connection(monkeypatch: pyt
     assert service.store_id == "lab-1"
     assert kwargs["executor_build"].revision == "executor-test-revision"
     assert shutdowns == ["traces", "metrics", "logs"]
+    (journal,) = (tmp_path / "rees" / ".repo2ree" / "journal").glob("*.ndjson")
+    assert journal.name == "workbench-000001.ndjson"

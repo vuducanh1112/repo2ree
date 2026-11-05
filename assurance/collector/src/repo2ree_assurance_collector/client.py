@@ -50,6 +50,14 @@ class Journals(Answer):
     journals: tuple[Journal, ...]
 
 
+class Store(Answer):
+    store_id: SafeName
+
+
+class Stores(Answer):
+    stores: tuple[Store, ...]
+
+
 class OwnerState(Answer):
     """The owners' persisted state, read between two sets of journal positions."""
 

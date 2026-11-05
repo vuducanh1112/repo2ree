@@ -27,7 +27,7 @@ class _Backend:
         self.calls.append("exec_query")
         yield b"result"
 
-    def cancel_run(self, run_id: str, *, ree_id: str) -> None:
+    def cancel_run(self, run_id: str, *, ree_id: str, cause: str = "cancel", record: str | None = None) -> None:
         self.calls.append("cancel_run")
 
     def copy_in(self, source_path: str, workbench_path: str, *, ree_id: str) -> None:
@@ -63,3 +63,21 @@ def test_a_store_creates_an_ree_only_where_none_is(tmp_path: Path) -> None:
     with pytest.raises(RuntimeError, match="already exists"):
         service.exec_simple(["init-ree", "--name", "demo"], ree_id="ree-1")
     service.exec_simple(["init-ree", "--name", "demo"], ree_id="ree-2")
+
+
+def test_the_service_lists_and_serves_its_store_journals_as_written(tmp_path: Path) -> None:
+    from repo2ree_workbench.journal import journal_directory
+
+    directory = journal_directory(tmp_path)
+    directory.mkdir(parents=True)
+    lines = b'{"v":1,"seq":1,"kind":"journal.opened"}\n{"v":1,"seq":2,"kind":"transition"}\n{"v":1,"seq":3'
+    (directory / "workbench-000001.ndjson").write_bytes(lines)
+    service = WorkbenchService(_Backend(tmp_path), store_id="lab-a")  # type: ignore[arg-type]
+
+    listed = service.list_journals()
+    assert [(item.id, item.process, item.epoch, item.last_seq) for item in listed.journals] == [
+        ("workbench-000001", "workbench", 1, 2)
+    ]
+    assert b"".join(service.read_journal("workbench-000001", 1)) == b'{"v":1,"seq":2,"kind":"transition"}\n'
+    with pytest.raises(FileNotFoundError):
+        list(service.read_journal("../journal", 0))

@@ -6,6 +6,8 @@
       [--skip-owners]            leave the owners' journals and state to a later export
       [--journal-dir DIR [--runs-dir DIR]]
                                  the owners' journals and state, exported after they stopped
+      [--store-journal-dir STORE=DIR]...
+                                 a store's journals, copied after its workbench stopped
       [--spans FILE]...          span files the deployment exported
       [--suite NAME] [--test NAME] [--outcome OUTCOME]
 
@@ -24,7 +26,7 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from repo2ree_assurance_collector.client import ControlPlane
+from repo2ree_assurance_collector.client import SAFE_NAME, ControlPlane
 from repo2ree_assurance_collector.collector import (
     collect_control_plane,
     download_archive,
@@ -34,6 +36,7 @@ from repo2ree_assurance_collector.collector import (
     spans,
     start,
     stopped_owners,
+    stopped_stores,
 )
 from repo2ree_assurance_dossier import DossierSource
 
@@ -49,13 +52,28 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--skip-owners", action="store_true", help="Do not fetch journals and state now")
     parser.add_argument("--journal-dir", type=Path, help="The owners' journal directory, after they stopped")
     parser.add_argument("--runs-dir", type=Path, help="The run store's directory, after its owner stopped")
+    parser.add_argument(
+        "--store-journal-dir",
+        action="append",
+        default=[],
+        metavar="STORE=DIR",
+        help="A store's journal directory, after its workbench stopped (repeatable)",
+    )
     parser.add_argument("--spans", type=Path, action="append", default=[], help="A span file to include (repeatable)")
     parser.add_argument("--suite")
     parser.add_argument("--test")
     parser.add_argument("--outcome")
     args = parser.parse_args(argv)
+    stores: dict[str, Path] = {}
+    for given in args.store_journal_dir:
+        store_id, separator, folder = given.partition("=")
+        if not separator or not SAFE_NAME.match(store_id) or not folder:
+            parser.error(f"--store-journal-dir takes STORE=DIR, not {given!r}")
+        stores[store_id] = Path(folder)
     if args.control_plane is None and args.journal_dir is None:
         parser.error("give --control-plane, --journal-dir, or both")
+    if stores and args.journal_dir is None:
+        parser.error("--store-journal-dir exports journals beside the control plane's: give --journal-dir")
     if args.control_plane is None and (args.archives_in or args.ree):
         parser.error("archives are placed and downloaded through the control plane: give --control-plane")
     if args.journal_dir is None and args.runs_dir:
@@ -76,6 +94,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             collected += collect_control_plane(args.directory, control_plane)
     if args.journal_dir is not None:
         collected += stopped_owners(args.directory, journals=args.journal_dir, runs=args.runs_dir)
+        collected += stopped_stores(args.directory, stores)
     collected += spans(args.directory, args.spans, origin="span files the deployment exported")
     finish(args.directory, args.outcome)
     return report(collected)

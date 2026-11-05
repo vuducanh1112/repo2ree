@@ -25,6 +25,7 @@ from repo2ree_assurance_collector.collector import (
     spans,
     start,
     stopped_owners,
+    stopped_stores,
     unpack_archive,
 )
 from repo2ree_assurance_dossier import read_dossier
@@ -69,6 +70,10 @@ def bundle(*members: tuple[str, str | Link]) -> bytes:
 ARCHIVE = bundle(("export.json", "{}"), ("ree/.git/HEAD", "ref\n"))
 SERVED = hashlib.sha256(ARCHIVE).hexdigest()
 
+STORE_JOURNAL = record(
+    1, kind="journal.opened", process="workbench", epoch=1, instance="lab-1", hosts=["workbench"], vocabulary="sha256:x"
+) + record(2, kind="transition", owner="workbench", subject="Execution", key="a1", partition="ree-1", to="started")
+
 
 class Stub:
     """The control plane's behaviour endpoints, serving canned answers."""
@@ -91,6 +96,12 @@ class Stub:
                 ).encode(),
             ),
             "/api/v1/rees/ree-1/ree-archive": (200, ARCHIVE),
+            "/api/v1/stores": (200, b'{"stores": [{"store_id": "lab-1", "label": "Lab"}]}'),
+            "/api/v1/behaviour/stores/lab-1/journals": (
+                200,
+                b'{"journals": [{"id": "workbench-000001", "process": "workbench", "epoch": 1, "last_seq": 2}]}',
+            ),
+            "/api/v1/behaviour/stores/lab-1/journals/workbench-000001": (200, STORE_JOURNAL),
             # What the control plane served, and the journal positions around building each.
             "/api/v1/behaviour/archives": (
                 200,
@@ -137,7 +148,7 @@ def test_a_deployment_is_collected_through_its_control_plane(stub: tuple[Stub, s
     start(directory, suite="demo")
     control_plane = ControlPlane(url)
     downloaded = download_archive(directory, control_plane, "ree-1")
-    state, journals = collect_control_plane(directory, control_plane)
+    state, journals, store_journals = collect_control_plane(directory, control_plane)
 
     assert downloaded.status == "recorded"
     assert downloaded.origin == f"{url}/api/v1/rees/ree-1/ree-archive"
@@ -145,6 +156,8 @@ def test_a_deployment_is_collected_through_its_control_plane(stub: tuple[Stub, s
     assert (state.status, state.cut) == ("recorded", {"api-000001": (2, 2)})
     assert journals.status == "recorded"
     assert (directory / "journal/api-000001.ndjson").read_bytes() == JOURNAL
+    assert (store_journals.status, store_journals.name) == ("recorded", "lab-1")
+    assert (directory / "store-journals/lab-1/workbench-000001.ndjson").read_bytes() == STORE_JOURNAL
     assert json.loads((directory / "stores/runs/build-1/state.json").read_text())["status"] == "queued"
     dossier = read_dossier(directory)
     assert (dossier.control_plane, dossier.build_revision) == (url, "abc123")
@@ -155,6 +168,8 @@ def test_a_deployment_is_collected_through_its_control_plane(stub: tuple[Stub, s
     assert sources["stores"].cut == {"api-000001": (2, 2)}
     # The journal's record is read back; how the checker reads the stored run is its own business.
     assert [event.key for event in evidence.events if event.source == "api-000001"] == ["build-1"]
+    assert sources["lab-1/workbench-000001"].origin == f"{url}/api/v1/behaviour/stores/lab-1/journals"
+    assert [event.key for event in evidence.events if event.source == "lab-1/workbench-000001"] == ["a1"]
 
 
 def test_an_unreachable_control_plane_is_listed_not_skipped(tmp_path: Path) -> None:
@@ -162,7 +177,7 @@ def test_an_unreachable_control_plane_is_listed_not_skipped(tmp_path: Path) -> N
     assert main([str(directory), "--control-plane", "http://127.0.0.1:9", "--ree", "ree-1"]) == 1
     statuses = {(source.kind, source.status) for source in read_dossier(directory).sources}
     assert statuses == {("git", "error"), ("state", "error"), ("journal", "error")}
-    assert len(load_dossier(directory).problems) == 3  # One per source, naming its origin.
+    assert len(load_dossier(directory).problems) == 4  # One per source, naming its origin.
 
 
 def test_an_archive_the_control_plane_did_not_serve_is_an_error(stub: tuple[Stub, str], tmp_path: Path) -> None:
@@ -263,7 +278,8 @@ def test_an_answer_the_collector_cannot_use_is_listed_as_an_error(
     served.routes[route] = (200, body)
     directory = tmp_path / "deep" / "dossier"
     assert main([str(directory), "--control-plane", url]) == 1
-    (source,) = [source for source in read_dossier(directory).sources if source.kind == kind]
+    path = {"state": "stores", "journal": "journal"}[kind]
+    (source,) = [source for source in read_dossier(directory).sources if source.path == path]
     assert source.status == "error"
     assert "not the expected answer" in str(source.problem)
     assert not list(tmp_path.rglob("escaped*"))
@@ -330,7 +346,7 @@ def test_owners_exported_after_they_stopped_replace_the_live_snapshot(stub: tupl
     dossier = read_dossier(directory)
     assert [source.path for source in dossier.sources].count("journal") == 1
     evidence = load_dossier(directory)
-    (source,) = [source for source in evidence.sources if source.kind == "journal"]
+    (source,) = [source for source in evidence.sources if source.kind == "journal" and source.process == "api"]
     assert (source.closed, source.final) == (True, True)
 
 
@@ -359,3 +375,33 @@ def test_the_cli_collects_archives_live_and_owners_after_they_stopped(stub: tupl
     dossier = read_dossier(directory)
     assert sorted(source.kind for source in dossier.sources) == ["git", "journal", "state"]
     assert dossier.build_revision == "abc123"
+
+
+def test_each_stores_journals_are_copied_after_its_workbench_stopped(tmp_path: Path) -> None:
+    directory = tmp_path / "dossier"
+    start(directory)
+    journals = tmp_path / "store" / ".repo2ree" / "journal"
+    journals.mkdir(parents=True)
+    (journals / "workbench-000001.ndjson").write_bytes(STORE_JOURNAL)
+    (journals / "notes.txt").write_text("not a journal")
+
+    copied, missing = stopped_stores(directory, {"lab-1": journals, "lab-2": tmp_path / "nowhere"})
+
+    assert (copied.status, copied.name, copied.cut) == ("recorded", "lab-1", None)
+    assert sorted(path.name for path in (directory / "store-journals/lab-1").iterdir()) == ["workbench-000001.ndjson"]
+    assert missing.status == "error"
+    evidence = load_dossier(directory)
+    assert [source.id for source in evidence.sources] == ["lab-1/workbench-000001"]
+
+
+def test_the_cli_takes_store_journals_beside_the_owners(tmp_path: Path) -> None:
+    journals, _ = stopped_stack(tmp_path)
+    store = tmp_path / "store-journal"
+    store.mkdir()
+    (store / "workbench-000001.ndjson").write_bytes(STORE_JOURNAL)
+    directory = tmp_path / "dossier"
+    given = [str(directory), "--journal-dir", str(journals), "--store-journal-dir", f"lab-1={store}"]
+    assert main(given) == 0
+    assert sorted(source.path for source in read_dossier(directory).sources) == ["journal", "store-journals/lab-1"]
+    with pytest.raises(SystemExit):
+        main([str(directory), "--journal-dir", str(journals), "--store-journal-dir", f"../lab={store}"])

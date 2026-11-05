@@ -31,6 +31,7 @@ from repo2ree_assurance_collector.client import (
     OwnerState,
     ServedArchive,
     ServedArchives,
+    Stores,
 )
 from repo2ree_assurance_dossier import (
     Cut,
@@ -42,6 +43,7 @@ from repo2ree_assurance_dossier import (
 )
 
 JOURNAL = "journal"
+STORE_JOURNALS = "store-journals"
 STORES = "stores"
 REES = "rees"
 TELEMETRY = "telemetry"
@@ -49,6 +51,7 @@ BUILD_INFO = "/api/v1/system/build-info"
 JOURNALS = "/api/v1/behaviour/journals"
 STATE = "/api/v1/behaviour/state"
 ARCHIVES = "/api/v1/behaviour/archives"
+STORES_LISTED = "/api/v1/stores"
 # An owner's journal epoch, as the runtime names it: ``<process>-<epoch>.ndjson``.
 JOURNAL_FILE = re.compile(r"^[a-z][a-z0-9-]*-[0-9]{6}\.ndjson$")
 
@@ -263,7 +266,11 @@ def record_deployment(directory: Path, control_plane: ControlPlane) -> None:
 def collect_control_plane(directory: Path, control_plane: ControlPlane) -> list[DossierSource]:
     """The owners' persisted state, then their journals, so the journals reach past the state's cut."""
     record_deployment(directory, control_plane)
-    return [_state(directory, control_plane), _journals(directory, control_plane)]
+    return [
+        _state(directory, control_plane),
+        _journals(directory, control_plane),
+        *_store_journals(directory, control_plane),
+    ]
 
 
 def _state(directory: Path, control_plane: ControlPlane) -> DossierSource:
@@ -292,6 +299,53 @@ def _journals(directory: Path, control_plane: ControlPlane) -> DossierSource:
         return source
 
     return _collect(directory, source, gather)
+
+
+def _store_journals(directory: Path, control_plane: ControlPlane) -> list[DossierSource]:
+    """Each store's journals, read through the workbench serving it: one source per store."""
+    try:
+        stores = control_plane.get(Stores, STORES_LISTED).stores
+    except GAPS as exc:
+        listing = DossierSource(kind="journal", path=STORE_JOURNALS, origin=control_plane.address(STORES_LISTED))
+        return [_list(directory, _failed(listing, exc))]
+    return [_store_journal(directory, control_plane, store.store_id) for store in stores]
+
+
+def _store_journal(directory: Path, control_plane: ControlPlane, store_id: str) -> DossierSource:
+    listed_at = f"/api/v1/behaviour/stores/{store_id}/journals"
+    relative = f"{STORE_JOURNALS}/{store_id}"
+    source = DossierSource(kind="journal", path=relative, origin=control_plane.address(listed_at), name=store_id)
+
+    def gather() -> DossierSource:
+        listed = control_plane.get(Journals, listed_at)
+        with _staged(directory, relative) as journals:
+            for journal in listed.journals:
+                (journals / f"{journal.id}.ndjson").write_bytes(control_plane.get_bytes(f"{listed_at}/{journal.id}"))
+        return source
+
+    return _collect(directory, source, gather)
+
+
+def stopped_stores(directory: Path, stores: dict[str, Path]) -> list[DossierSource]:
+    """Each store's journals, copied from the store after its workbench stopped."""
+    collected: list[DossierSource] = []
+    for store_id, journals in sorted(stores.items()):
+        relative = f"{STORE_JOURNALS}/{store_id}"
+        source = DossierSource(
+            kind="journal", path=relative, origin=f"{journals} (after its workbench stopped)", name=store_id
+        )
+
+        def copy(journals: Path = journals, relative: str = relative, source: DossierSource = source) -> DossierSource:
+            found = sorted(path for path in journals.glob("*.ndjson") if JOURNAL_FILE.match(path.name))
+            if not found:
+                raise FileNotFoundError(f"no journals in {journals}")
+            with _staged(directory, relative) as target:
+                for path in found:
+                    shutil.copyfile(path, target / path.name)
+            return source
+
+        collected.append(_collect(directory, source, copy))
+    return collected
 
 
 def stopped_owners(directory: Path, *, journals: Path, runs: Path | None) -> list[DossierSource]:

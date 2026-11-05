@@ -22,10 +22,17 @@ from repo2ree_protocol.workbench import (
     ExecSimpleRequest,
     ExecUploadRequest,
     FetchFileRequest,
+    ListJournalsRequest,
+    ReadJournalRequest,
     WorkbenchRequest,
 )
 from repo2ree_workbench.service import WorkbenchService
 from repo2ree_workbench.uploads import download_file, transfer_url, upload_file
+
+
+class CallerGoneError(ConnectionError):
+    """A frame could not be sent: the connection the request came on is gone."""
+
 
 SendFrame = Callable[[Frame], Awaitable[None]]
 PumpFrames = Callable[[Callable[[], Iterator[Frame]]], Awaitable[None]]
@@ -52,14 +59,18 @@ async def dispatch_workbench_request(
                 await pump(
                     lambda: service.exec_action(req.cmd_json, req.run_id, req.env, req.context, ree_id=req.ree_id)
                 )
-            except asyncio.CancelledError:
+            except (asyncio.CancelledError, CallerGoneError):
                 # Its caller is gone, by a transport cancel or a lost connection, and no one will read the
                 # result: stop the run, so its executor rolls the attempt back instead of finishing it.
-                service.cancel_run(req.run_id, ree_id=req.ree_id)
+                service.cancel_run(req.run_id, ree_id=req.ree_id, cause="caller_gone")
                 raise
     elif isinstance(req, CancelRunRequest):
-        service.cancel_run(req.run_id, ree_id=req.ree_id)
+        service.cancel_run(req.run_id, ree_id=req.ree_id, record=req.record)
         await send(DoneFrame())
+    elif isinstance(req, ListJournalsRequest):
+        await pump_bytes(lambda: iter([service.list_journals().model_dump_json().encode()]))
+    elif isinstance(req, ReadJournalRequest):
+        await pump_bytes(lambda: service.read_journal(req.journal_id, req.after))
     elif isinstance(req, DeleteReeRequest):
         await asyncio.to_thread(service.delete_ree, req.ree_id)
         await send(DoneFrame())

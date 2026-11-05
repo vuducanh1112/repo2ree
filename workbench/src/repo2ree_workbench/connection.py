@@ -61,7 +61,7 @@ from repo2ree_telemetry.spans import (
     record_result_boundary,
     remote_context,
 )
-from repo2ree_workbench.dispatcher import dispatch_workbench_request
+from repo2ree_workbench.dispatcher import CallerGoneError, dispatch_workbench_request
 from repo2ree_workbench.service import WorkbenchService
 
 logger = logging.getLogger(__name__)
@@ -375,7 +375,10 @@ async def _handle(
             outcome.observe(frame)
             if isinstance(frame, ResultFrame):
                 record_result_boundary(span, "workbench.received", frame.result)
-            await _send(ws, req_id, frame)
+            try:
+                await _send(ws, req_id, frame)
+            except websockets.ConnectionClosed as exc:
+                raise CallerGoneError(str(exc)) from exc
             if isinstance(frame, ResultFrame):
                 record_result_boundary(span, "workbench.sent", frame.result)
 
@@ -396,6 +399,9 @@ async def _handle(
         except asyncio.CancelledError:
             outcome.status = "canceled"
             raise
+        except CallerGoneError as exc:
+            outcome.status = "canceled"
+            outcome.detail = str(exc)
         except Exception as exc:  # noqa: BLE001 — any handler failure becomes an error frame
             outcome.status = "failed"
             outcome.detail = str(exc)

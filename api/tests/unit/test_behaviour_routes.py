@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
+from repo2ree_api import deps
+from repo2ree_api.control import behaviour
 from repo2ree_api.settings import service_settings
+from repo2ree_protocol.workbench import WorkbenchJournal, WorkbenchJournalList
 
 
 def record(seq: int, **fields: object) -> bytes:
@@ -78,3 +82,43 @@ def test_served_archives_are_listed_with_the_cut_they_were_built_at(client: Test
             {"ree_id": "ree-1", "sha256": "a" * 64, "size": 10, "cut": {"api-000001": [3, 3], "api-000002": [2, 3]}}
         ]
     }
+
+
+class _StoreBench:
+    def list_journals(self, workbench_id: str) -> WorkbenchJournalList:
+        assert workbench_id == "wb-1"
+        return WorkbenchJournalList(
+            journals=[WorkbenchJournal(id="workbench-000001", process="workbench", epoch=1, last_seq=4)]
+        )
+
+    def read_journal(self, workbench_id: str, journal_id: str, after: int = 0) -> Iterator[bytes]:
+        if journal_id != "workbench-000001":
+            raise RuntimeError(f"no behaviour journal {journal_id}")
+        yield record(after + 1, kind="transition")
+
+
+@pytest.fixture
+def served_store(monkeypatch: pytest.MonkeyPatch) -> None:
+    known = {"lab-1", "lab-idle"}
+    monkeypatch.setattr(deps.store_registry, "get", lambda store_id: object() if store_id in known else None)
+    monkeypatch.setattr(
+        deps.workbench_connections, "store_workbench", lambda store_id: "wb-1" if store_id == "lab-1" else None
+    )
+    monkeypatch.setattr(behaviour, "workbench_client", _StoreBench())
+
+
+def test_a_stores_journals_are_read_through_the_workbench_serving_it(client: TestClient, served_store: None) -> None:
+    listed = client.get("/api/v1/behaviour/stores/lab-1/journals")
+    assert listed.status_code == 200
+    assert listed.json()["journals"] == [{"id": "workbench-000001", "process": "workbench", "epoch": 1, "last_seq": 4}]
+    read = client.get("/api/v1/behaviour/stores/lab-1/journals/workbench-000001", params={"after": 2})
+    assert (read.status_code, read.content) == (200, record(3, kind="transition"))
+    assert client.get("/api/v1/behaviour/stores/lab-1/journals/workbench-000009").status_code == 404
+
+
+def test_a_store_no_workbench_serves_is_unavailable_and_an_unknown_one_is_not_found(
+    client: TestClient, served_store: None
+) -> None:
+    idle = client.get("/api/v1/behaviour/stores/lab-idle/journals")
+    assert idle.status_code == 503
+    assert client.get("/api/v1/behaviour/stores/nowhere/journals").status_code == 404

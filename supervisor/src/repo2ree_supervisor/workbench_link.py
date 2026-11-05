@@ -50,7 +50,10 @@ from repo2ree_protocol.workbench import (
     ExecSimpleRequest,
     ExecUploadRequest,
     FetchFileRequest,
+    ListJournalsRequest,
+    ReadJournalRequest,
     WorkbenchHello,
+    WorkbenchJournalList,
     WorkbenchRequest,
     WorkbenchWsRequest,
     workbench_ws_message_adapter,
@@ -467,11 +470,11 @@ class WsWorkbenchClient:
             frame_gap_timeout=None,
         )
 
-    def cancel_run(self, workbench_id: str, run_id: str, *, ree_id: str) -> None:
+    def cancel_run(self, workbench_id: str, run_id: str, *, ree_id: str, record: str | None = None) -> None:
         conn = self._registry.pick(workbench_id)
         self._drain_void(
             conn.request(
-                CancelRunRequest(run_id=run_id, ree_id=ree_id),
+                CancelRunRequest(run_id=run_id, ree_id=ree_id, record=record),
                 frame_gap_timeout=QUICK_OP_TIMEOUT,
             )
         )
@@ -539,6 +542,27 @@ class WsWorkbenchClient:
             )
         finally:
             self._transfers.close(transfer_path)
+
+    def list_journals(self, workbench_id: str) -> WorkbenchJournalList:
+        conn = self._registry.pick(workbench_id)
+        listed = b"".join(self._drain_bytes(conn.request(ListJournalsRequest(), frame_gap_timeout=QUICK_OP_TIMEOUT)))
+        return WorkbenchJournalList.model_validate_json(listed)
+
+    def read_journal(self, workbench_id: str, journal_id: str, after: int = 0) -> Iterator[bytes]:
+        conn = self._registry.pick(workbench_id)
+        request = ReadJournalRequest(journal_id=journal_id, after=after)
+        yield from self._drain_bytes(conn.request(request, frame_gap_timeout=COPY_IN_TIMEOUT))
+
+    @staticmethod
+    def _drain_bytes(frames: Iterator[Frame]) -> Iterator[bytes]:
+        for frame in frames:
+            if isinstance(frame, BytesChunkFrame):
+                yield base64.b64decode(frame.data_b64)
+            elif isinstance(frame, DoneFrame):
+                return
+            else:
+                raise_for_terminal_error(frame)
+        raise RuntimeError("workbench stream ended without a result")
 
     def _drain_void(self, frames: Iterator[Frame]) -> None:
         """Consume a stream whose only meaningful outcome is success or error."""

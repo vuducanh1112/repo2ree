@@ -43,6 +43,39 @@ def test_every_typed_record_keeps_the_published_contract(tmp_path: Path) -> None
     assert checked.returncode == 0, checked.stdout + checked.stderr
 
 
+def test_a_workbench_journal_and_its_references_are_named_by_its_store(tmp_path: Path) -> None:
+    opened = open_journal(tmp_path, "workbench", instance="store-1")
+    events.execution(
+        "a1",
+        None,
+        "started",
+        partition="ree-1",
+        facts={"operation": "build_runtime", "run_id": "r1", "dispatched_by": "api-000001#4"},
+    )
+    events.execution("a1", "started", "stopped", partition="ree-1", facts={"exit_code": 1, "cause": "caller_gone"})
+    events.execution("a2", None, "started", partition="ree-1", facts={"operation": "lint_scripts", "run_id": "r2"})
+    events.execution("a2", "started", "exited", partition="ree-1", facts={"exit_code": 0})
+    reference = journal().send("workbench", "own", "asked", "a3", partition="ree-1")
+    close_journal()
+    assert kept_contract(tmp_path).returncode == 0
+    assert reference == "store-1/workbench-000001#6"
+    assert opened.id == "store-1/workbench-000001"
+    assert records(opened.path)[0]["instance"] == "store-1"
+    assert records(opened.path)[0]["hosts"] == ["workbench"]
+
+
+def test_a_cancel_keeps_the_published_contract(tmp_path: Path) -> None:
+    open_journal(tmp_path, "api", hosts=("supervisor",))
+    sent = events.cancel_run_sent("a1", partition="ree-1", facts={"run_id": "r1", "session": "s1"})
+    events.cancel_run_received("a1", "done", partition="ree-1")
+    events.cancel_run_sent("a2", partition="ree-1", facts={"run_id": "r2", "session": "s1"})
+    events.cancel_run_abandoned("a2", partition="ree-1", reason="TimeoutError")
+    close_journal()
+    assert sent == "api-000001#2"
+    checked = kept_contract(tmp_path)
+    assert checked.returncode == 0, checked.stdout + checked.stderr
+
+
 def test_without_an_open_journal_nothing_is_recorded() -> None:
     close_journal()
     assert type(journal()) is Journal

@@ -37,8 +37,8 @@ LANES = (
     Lane(id="api", label="API", process="api process"),
     Lane(id="supervisor", label="Supervisor", process="api process"),
     Lane(id="workbench", label="Workbench", process="workbench"),
-    Lane(id="executor", label="Executor", process="workbench"),
-    Lane(id="core", label="Core · Git", process="workbench"),
+    Lane(id="executor", label="Executor", process="executor"),
+    Lane(id="core", label="Core · Git", process="executor"),
 )
 QUIET = 0.1  # A stretch without spans worth pointing out, in seconds.
 MINOR = 0.05  # Docker calls shorter than this in total are left out, in seconds.

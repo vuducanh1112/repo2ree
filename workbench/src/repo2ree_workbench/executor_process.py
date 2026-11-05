@@ -22,6 +22,7 @@ from pathlib import Path, PurePosixPath
 from repo2ree_protocol.build import BuildInfo
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import Frame, ResultFrame
+from repo2ree_telemetry.behaviour import events
 from repo2ree_telemetry.spans import current_traceparent
 from repo2ree_workbench import executor_frames
 
@@ -98,6 +99,14 @@ class ScriptBackend:
             subprocess.run([self.engine, "rm", "-f", *leftovers], check=False, capture_output=True, timeout=120)
 
 
+def _operation(cmd_json: str) -> str:
+    try:
+        operation = json.loads(cmd_json).get("operation")
+    except (ValueError, AttributeError):
+        return ""
+    return operation if isinstance(operation, str) else ""
+
+
 def declared_environment(root: Path) -> dict[str, object]:
     """The environment the REE at ``root`` declares its scripts run in; empty when it declares none."""
     try:
@@ -132,6 +141,7 @@ class LocalExecutor:
         # Each active run, by the REE root it runs against and its run id: a run id names a run
         # within one REE only, and a store serves many (the API's quick commands share fixed ids).
         self._runs: dict[tuple[Path, str], subprocess.Popen[str]] = {}
+        self._stops: dict[tuple[Path, str], tuple[events.ExecutionCause, str | None]] = {}
         self._runs_lock = threading.Lock()
 
     def ree_root(self, ree_id: str) -> Path:
@@ -234,6 +244,7 @@ class LocalExecutor:
         ree_id: str,
     ) -> Iterator[Frame]:
         root = self.ree_root(ree_id)
+        context = context or ExecutionContext.new()
         proc = subprocess.Popen(
             [
                 self.exec_path,
@@ -243,7 +254,7 @@ class LocalExecutor:
                 "--run-id",
                 run_id,
                 "--execution-context",
-                (context or ExecutionContext.new()).model_dump_json(),
+                context.model_dump_json(),
             ],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
@@ -261,6 +272,13 @@ class LocalExecutor:
                 proc.kill()
                 raise RuntimeError(f"run {run_id!r} is already active")
             self._runs[(root, run_id)] = proc
+        events.execution(
+            context.attempt_id,
+            None,
+            "started",
+            partition=ree_id,
+            facts={"operation": _operation(cmd_json), "run_id": run_id, "dispatched_by": context.dispatch_record},
+        )
         try:
             proc.stdin.write(cmd_json)
             proc.stdin.close()
@@ -278,8 +296,20 @@ class LocalExecutor:
         finally:
             with self._runs_lock:
                 self._runs.pop((root, run_id), None)
+                stop = self._stops.pop((root, run_id), None)
+            exit_code = proc.wait()
+            if stop is None:
+                events.execution(
+                    context.attempt_id, "started", "exited", partition=ree_id, facts={"exit_code": exit_code}
+                )
+            else:
+                cause, record = stop
+                facts: events.ExecutionFacts = {"exit_code": exit_code, "cause": cause, "canceled_by": record}
+                events.execution(context.attempt_id, "started", "stopped", partition=ree_id, facts=facts)
 
-    def cancel_run(self, run_id: str, *, ree_id: str) -> None:
+    def cancel_run(
+        self, run_id: str, *, ree_id: str, cause: events.ExecutionCause = "cancel", record: str | None = None
+    ) -> None:
         """Ask the run's executor to stop, and only force it if it does not.
 
         The cancel marker is cooperative: the executor stops its script, rolls the REE back,
@@ -292,6 +322,8 @@ class LocalExecutor:
         self._run_simple(root, ["cancel-run", "--run-id", run_id], 10)
         with self._runs_lock:
             proc = self._runs.get((root, run_id))
+            if proc is not None:
+                self._stops.setdefault((root, run_id), (cause, record))
         if proc is not None and proc.poll() is None:
             threading.Thread(target=self._escalate, args=(proc,), name=f"cancel-{run_id}", daemon=True).start()
 

@@ -41,7 +41,7 @@ class _Service:
         self.calls.append(("exec_query_to_file", argv, timeout))
         target.write_bytes(b"archive-bytes")
 
-    def cancel_run(self, run_id: str, *, ree_id: str) -> None:
+    def cancel_run(self, run_id: str, *, ree_id: str, cause: str = "cancel", record: str | None = None) -> None:
         self.calls.append(("cancel_run", run_id))
 
     def exec_simple(self, argv: list[str], timeout: int, *, ree_id: str) -> None:

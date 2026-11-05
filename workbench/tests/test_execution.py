@@ -250,3 +250,84 @@ def test_a_store_workbench_refuses_an_environment_it_cannot_give(
 def test_a_bench_set_up_for_one_ree_says_nothing_of_where_scripts_run(fake_executor: Path, tmp_path: Path) -> None:
     executor = LocalExecutor(tmp_path / "root", str(fake_executor))
     assert "REPO2REE_SCRIPT_RUNNER" not in executor._environment(executor.root)
+
+
+def journaled(directory: Path) -> list[dict[str, object]]:
+    (path,) = directory.glob("*.ndjson")
+    return [json.loads(line) for line in path.read_text().splitlines()]
+
+
+def executions(directory: Path) -> list[tuple[object, ...]]:
+    return [
+        (record["key"], record["from"], record["to"], record["facts"])
+        for record in journaled(directory)
+        if record.get("subject") == "Execution"
+    ]
+
+
+def test_the_workbench_journals_each_executor_it_starts_and_how_it_ended(fake_executor: Path, tmp_path: Path) -> None:
+    from repo2ree_workbench.journal import store_journal
+
+    store = tmp_path / "store"
+    context = ExecutionContext.new(ree_id="ree").model_copy(update={"dispatch_record": "api-000001#7"})
+    with store_journal(store, "lab-1") as directory:
+        list(
+            LocalExecutor(store, str(fake_executor)).exec_action(
+                '{"operation": "lint_scripts"}', "r1", {}, context, ree_id="ree"
+            )
+        )
+    assert executions(directory) == [
+        (
+            context.attempt_id,
+            None,
+            "started",
+            {"operation": "lint_scripts", "run_id": "r1", "dispatched_by": "api-000001#7"},
+        ),
+        (context.attempt_id, "started", "exited", {"exit_code": 0}),
+    ]
+    assert journaled(directory)[0]["instance"] == "lab-1"
+
+
+@pytest.mark.parametrize(("cause", "record"), [("cancel", "api-000001#9"), ("caller_gone", None)])
+def test_a_stopped_executor_is_journaled_with_why_it_was_asked_to_stop(
+    tmp_path: Path, cause: str, record: str | None
+) -> None:
+    from repo2ree_workbench.journal import store_journal
+
+    store = tmp_path / "store"
+    executor = LocalExecutor(store, str(cancellable_executor(tmp_path, "cooperative")), cancel_grace=0.3)
+    frames: list[object] = []
+    with store_journal(store, "lab-1") as directory:
+        running = threading.Thread(target=lambda: frames.extend(executor.exec_action("{}", "run-1", {}, ree_id="ree")))
+        running.start()
+        while (executor.ree_root("ree"), "run-1") not in executor._runs:
+            time.sleep(0.01)
+        executor.cancel_run("run-1", ree_id="ree", cause=cause, record=record)  # type: ignore[arg-type]
+        executor.cancel_run("run-1", ree_id="ree", cause="caller_gone")
+        running.join(timeout=10)
+    (_, _, target, facts) = executions(directory)[-1]
+    assert (target, facts) == ("stopped", {"exit_code": 0, "cause": cause, "canceled_by": record})
+
+
+def test_a_second_workbench_process_cannot_hold_a_held_store(tmp_path: Path) -> None:
+    from repo2ree_workbench.journal import StoreHeldError, store_journal
+
+    script = (
+        "import sys, time\n"
+        "from pathlib import Path\n"
+        "from repo2ree_workbench.journal import store_journal\n"
+        "with store_journal(Path(sys.argv[1]), 'lab-1'):\n"
+        "    print('held', flush=True)\n"
+        "    time.sleep(30)\n"
+    )
+    holder = subprocess.Popen(
+        [os.environ.get("PYTHON", "python"), "-c", script, str(tmp_path)], stdout=subprocess.PIPE, text=True
+    )
+    try:
+        assert holder.stdout is not None
+        assert holder.stdout.readline().strip() == "held"
+        with pytest.raises(StoreHeldError), store_journal(tmp_path, "lab-1"):
+            pass
+    finally:
+        holder.kill()
+        holder.wait()

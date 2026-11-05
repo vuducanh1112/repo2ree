@@ -29,7 +29,7 @@ type Fact = str | int | bool | None
 # The vocabulary these records were written against (the schema's ``x-vocabulary``).
 # Provenance only: journals are judged by what they hold. Update it when the records in
 # ``events`` are brought up to a new vocabulary.
-VOCABULARY = "sha256:0363e7c385a52852d9d27bcc2a279372f17ca297058d67c8022176c101a682af"
+VOCABULARY = "sha256:4b153a7f23f100704b38fea8f45a22a6f27072cac9919cef8bbe041f45c94cda"
 
 _NAME = re.compile(r"^(?P<process>[a-z][a-z0-9-]*)-(?P<epoch>[0-9]{6})\.ndjson$")
 
@@ -121,9 +121,10 @@ class Journal:
 
 
 class FileJournal(Journal):
-    def __init__(self, directory: Path, process: str, hosts: Iterable[str]) -> None:
+    def __init__(self, directory: Path, process: str, hosts: Iterable[str], instance: str | None = None) -> None:
         directory.mkdir(parents=True, exist_ok=True)
         self.process = process
+        self.instance = instance
         self._lock = threading.Lock()
         self._sequence = 0
         self._closed = False
@@ -149,8 +150,13 @@ class FileJournal(Journal):
                 "hosts": sorted(set(hosts) | {process}),
                 "vocabulary": VOCABULARY,
                 "pid": os.getpid(),
+                **({"instance": instance} if instance else {}),
             }
         )
+
+    @property
+    def id(self) -> str:
+        return f"{self.instance}/{self.path.stem}" if self.instance else self.path.stem
 
     def close(self, *, final: bool = False) -> None:
         """End the journal; ``final`` when this owner will not resume, so what it still holds is held for good."""
@@ -167,7 +173,7 @@ class FileJournal(Journal):
         if context.is_valid:
             record["trace"] = {"trace_id": f"{context.trace_id:032x}", "span_id": f"{context.span_id:016x}"}
         seq = self._append(record)
-        return None if seq is None else f"{self.path.stem}#{seq}"
+        return None if seq is None else f"{self.id}#{seq}"
 
     def _append(self, record: dict[str, Any]) -> int | None:
         """Write one record; its sequence number when it was written, else None."""
@@ -196,10 +202,14 @@ _current: Journal = Journal()
 _current_lock = threading.Lock()
 
 
-def open_journal(directory: Path, process: str, hosts: Iterable[str] = ()) -> FileJournal:
-    """Start this process's journal epoch; replaces (and closes) any previous one."""
+def open_journal(directory: Path, process: str, hosts: Iterable[str] = (), instance: str | None = None) -> FileJournal:
+    """Start this process's journal epoch; replaces (and closes) any previous one.
+
+    ``instance`` names which of a process's instances this is, where several write journals of
+    their own at once: the store a workbench serves.
+    """
     global _current
-    opened = FileJournal(directory, process, hosts)
+    opened = FileJournal(directory, process, hosts, instance)
     with _current_lock:
         previous, _current = _current, opened
     previous.close()

@@ -18,6 +18,9 @@ from typing import Literal, NotRequired, TypedDict, cast
 from repo2ree_telemetry.behaviour.writer import Fact, journal
 
 DispatchResponse = Literal["result", "unavailable", "error"]
+CancelRunResponse = Literal["done", "error"]
+ExecutionState = Literal["started", "exited", "stopped"]
+ExecutionCause = Literal["cancel", "caller_gone"]
 WorkbenchSessionState = Literal["opened", "connected", "refused", "lost"]
 WorkbenchSessionReason = Literal["bad_token", "store_claimed", "closed", "send_failed", "superseded", "shutdown"]
 AuthorApiActionState = Literal["requested", "running", "canceling", "succeeded", "failed", "canceled"]
@@ -81,6 +84,20 @@ class ExecActionFacts(TypedDict):
     run_id: str
     # The WorkbenchSession the command is sent on.
     session: str
+
+
+class CancelRunFacts(TypedDict):
+    run_id: str
+    session: str
+
+
+class ExecutionFacts(TypedDict, total=False):
+    operation: str
+    run_id: str
+    dispatched_by: str | None
+    exit_code: int
+    cause: ExecutionCause
+    canceled_by: str | None
 
 
 class WorkbenchSessionFacts(TypedDict, total=False):
@@ -148,3 +165,30 @@ def dispatch_received(key: str, message: DispatchResponse, *, partition: str, fa
 def dispatch_abandoned(key: str, *, partition: str, reason: str) -> None:
     """The supervisor stopped waiting for a command's outcome without receiving one."""
     journal().abandon("supervisor", "dispatch", key, partition=partition, reason=reason)
+
+
+def execution(
+    key: str,
+    current: ExecutionState | None,
+    target: ExecutionState,
+    *,
+    partition: str,
+    facts: ExecutionFacts,
+) -> None:
+    """An executor the workbench started for a command moved on; the workbench owns it."""
+    journal().transition("workbench", "Execution", key, current, target, partition=partition, facts=_facts(facts))
+
+
+def cancel_run_sent(key: str, *, partition: str, facts: CancelRunFacts) -> str | None:
+    """The supervisor is about to ask a workbench to stop a command; returns the record's reference."""
+    return journal().send("supervisor", "cancel_run", "cancel_run", key, partition=partition, facts=_facts(facts))
+
+
+def cancel_run_received(key: str, message: CancelRunResponse, *, partition: str) -> None:
+    """The supervisor observed the workbench's one answer to a cancel."""
+    journal().receive("supervisor", "cancel_run", message, key, partition=partition)
+
+
+def cancel_run_abandoned(key: str, *, partition: str, reason: str) -> None:
+    """The supervisor stopped waiting for a cancel's answer without receiving one."""
+    journal().abandon("supervisor", "cancel_run", key, partition=partition, reason=reason)

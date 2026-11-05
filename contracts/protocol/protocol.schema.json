@@ -1351,6 +1351,18 @@
         "run_id": {
           "title": "Run Id",
           "type": "string"
+        },
+        "record": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Record"
         }
       },
       "required": [
@@ -4069,6 +4081,20 @@
       "title": "LintScriptsOutputs",
       "type": "object"
     },
+    "ListJournalsRequest": {
+      "additionalProperties": false,
+      "description": "List the behaviour journals the workbench keeps for its store, streamed back as one JSON document.",
+      "properties": {
+        "op": {
+          "const": "list_journals",
+          "default": "list_journals",
+          "title": "Op",
+          "type": "string"
+        }
+      },
+      "title": "ListJournalsRequest",
+      "type": "object"
+    },
     "LoadReeBundleArgs": {
       "additionalProperties": false,
       "description": "Restore an uploaded REE bundle from /ree/upload-staging/<upload_token>.bin.\n\nThe bundle is a previously downloaded REE ZIP (sealed or draft). Loading it\nreplaces the whole REE — intent, session, snapshot, overlay, artifacts,\nresults, and author receipts — with what the bundle recorded.",
@@ -4800,6 +4826,33 @@
         "source"
       ],
       "title": "ProjectRootBinding",
+      "type": "object"
+    },
+    "ReadJournalRequest": {
+      "additionalProperties": false,
+      "description": "Stream one of the store's behaviour journals as written: its complete records above ``after``.",
+      "properties": {
+        "op": {
+          "const": "read_journal",
+          "default": "read_journal",
+          "title": "Op",
+          "type": "string"
+        },
+        "journal_id": {
+          "title": "Journal Id",
+          "type": "string"
+        },
+        "after": {
+          "default": 0,
+          "minimum": 0,
+          "title": "After",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "journal_id"
+      ],
+      "title": "ReadJournalRequest",
       "type": "object"
     },
     "Ree": {
@@ -8066,7 +8119,9 @@
               "exec_query": "#/$defs/ExecQueryRequest",
               "exec_simple": "#/$defs/ExecSimpleRequest",
               "exec_upload": "#/$defs/ExecUploadRequest",
-              "fetch_file": "#/$defs/FetchFileRequest"
+              "fetch_file": "#/$defs/FetchFileRequest",
+              "list_journals": "#/$defs/ListJournalsRequest",
+              "read_journal": "#/$defs/ReadJournalRequest"
             },
             "propertyName": "op"
           },
@@ -8094,6 +8149,12 @@
             },
             {
               "$ref": "#/$defs/DeleteReeRequest"
+            },
+            {
+              "$ref": "#/$defs/ListJournalsRequest"
+            },
+            {
+              "$ref": "#/$defs/ReadJournalRequest"
             }
           ],
           "title": "Request"

@@ -31,6 +31,7 @@ workbench_connections = WorkbenchConnectionRegistry()
 # Files workbenches upload beside their control socket (an REE archive), by single-use token.
 workbench_transfers = Transfers()
 _workbench_client = WsWorkbenchClient(workbench_connections, workbench_transfers)
+workbench_client = _workbench_client
 
 # Where relayed spans go. Two sources feed it: executor spans, which the dispatcher
 # forwards off the command path, and a workbench's own spans, which arrive
