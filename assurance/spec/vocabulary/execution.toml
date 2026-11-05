@@ -1,0 +1,36 @@
+# The words for one executor process a workbench starts for a dispatched command.
+#
+# Recorded where the executor runs: the workbench starts it and sees it end, and journals
+# both in the journal of the store it serves. The Attempt is what core recorded inside the
+# REE; the Execution is what the workbench did with the process that ran it. Its machine is
+# entities/execution.toml.
+
+name = "Execution"
+kind = "entity"
+owner = "workbench"
+key = "attempt_id"
+partition = "ree_id"
+evidence = "journal"
+summary = "One executor process a workbench started for a command, from its start to its end."
+
+[states]
+started = "The executor process runs the command."
+exited = "Settled: the executor ended with no one having asked it to stop."
+stopped = "Settled: the executor ended after the workbench asked it to stop."
+
+[facts]
+operation = "str"
+run_id = "str"
+# The journal record of the request that dispatched it (see boundaries/dispatch.toml).
+dispatched_by = "str?"
+exit_code = { type = "int", required_in = ["exited", "stopped"] }
+# For a stop a cancel_run asked for: the journal record of that request (see boundaries/cancel_run.toml).
+canceled_by = "str?"
+
+[facts.cause]
+type = "str"
+required_in = ["stopped"]
+
+[facts.cause.values]
+cancel = "A cancel_run for the command's run asked the workbench to stop it."
+caller_gone = "The request that started it was cancelled, or the session it came on ended."

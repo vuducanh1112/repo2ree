@@ -37,6 +37,7 @@ class JournalHeader(BaseModel):
 
     process: str
     epoch: int
+    instance: str | None = None
     hosts: tuple[str, ...] | None = None
     vocabulary: str | None = None
 
@@ -118,11 +119,16 @@ def read_journal(path: Path, epoch_gap: bool = False) -> tuple[Source, list[Even
         problems.append("header disagrees with the file name")
     if epoch_gap:
         problems.append("an earlier epoch of this process is missing")
+    instance = header.instance if header else None
+    if instance:
+        journal_id = f"{instance}/{journal_id}"
+        events = [event.model_copy(update={"source": journal_id}) for event in events]
     source = Source(
         id=journal_id,
         kind="journal",
         process=match["process"],
         rank=int(match["epoch"]),
+        instance=instance,
         hosts=frozenset(header.hosts if header and header.hosts else [match["process"]]),
         complete=not problems,
         closed=closed,

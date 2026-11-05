@@ -27,6 +27,22 @@ summary = "A workbench is admitted to a store only while no other session serves
 when = { entity = "WorkbenchSession", to = "connected" }
 require = { entity = "WorkbenchSession", in_states = ["connected"] }
 
+# A workbench stops an executor only because a cancel asked it to: a caller that went away,
+# or a session that ended, is not a reason to stop the command it started.
+[[invariant]]
+id = "executions-stop-only-on-cancel"
+pattern = "guard"
+summary = "A workbench stops a running executor only because a cancel asked it to."
+when = { entity = "Execution", to = "stopped" }
+require = { where = { cause = "cancel" } }
+
+[[invariant]]
+id = "canceled-executions-were-asked-to-stop"
+pattern = "requires"
+summary = "An executor stopped by a cancel was stopped after the supervisor sent that cancel."
+when = { entity = "Execution", to = "stopped", where = { cause = "cancel" } }
+require = { boundary = "cancel_run", message = "cancel_run", key_from = "$key", order = "before" }
+
 # ---- The author, through the API ----------------------------------------------
 #
 # What the author is told against what happened. An action that runs a command in

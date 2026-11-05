@@ -9,6 +9,7 @@ in any language can test what it writes before a gated run judges it.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +17,7 @@ from repo2ree_assurance_checker.sources import read_journal
 from repo2ree_assurance_checker.spec import Spec, fact_problems
 
 RECORD_KINDS = ("transition", "send", "receive", "abandon")
+INSTANCE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
 
 
 def _optional_string(record: dict[str, Any], field: str) -> bool:
@@ -35,6 +37,8 @@ def header_problems(spec: Spec, record: dict[str, Any]) -> list[str]:
         problems.append(f"journal.opened speaks for {hosts}, the vocabulary places {expected} in {process}")
     if not isinstance(record.get("vocabulary"), str):
         problems.append("journal.opened names no vocabulary")
+    if "instance" in record and not (isinstance(record["instance"], str) and INSTANCE.fullmatch(record["instance"])):
+        problems.append("journal.opened names an instance that is not one plain name")
     return problems
 
 

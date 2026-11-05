@@ -130,6 +130,7 @@ def render_schema(spec: Spec) -> str:
             "kind": {"const": "journal.opened"},
             "process": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"},
             "epoch": {"type": "integer", "minimum": 1},
+            "instance": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"},
             "hosts": {"type": "array", "items": {"type": "string"}, "uniqueItems": True},
             "vocabulary": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
         },

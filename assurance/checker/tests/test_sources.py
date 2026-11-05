@@ -10,6 +10,7 @@ import subprocess
 from pathlib import Path
 
 from repo2ree_assurance_checker.check import check
+from repo2ree_assurance_checker.check.order import Model
 from repo2ree_assurance_checker.dossier import one_per_history
 from repo2ree_assurance_checker.evidence import Evidence, Source
 from repo2ree_assurance_checker.files import load_spec
@@ -67,6 +68,46 @@ def test_a_malformed_header_makes_a_journal_incomplete_instead_of_misread(tmp_pa
     assert not source.complete
     assert source.problems[0].startswith("seq 1: malformed journal.opened header")
     assert source.hosts == frozenset({"api"})  # The process itself, never the letters of a string.
+
+
+def _workbench_journal(directory: Path, store: str, epoch: int, *records: dict[str, object]) -> None:
+    header = {"v": 1, "seq": 1, "kind": "journal.opened", "process": "workbench", "epoch": epoch}
+    lines = [header | {"instance": store, "hosts": ["workbench"]}]
+    lines += [{"v": 1, "seq": seq, **record} for seq, record in enumerate(records, 2)]
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / f"workbench-{epoch:06d}.ndjson").write_text("".join(json.dumps(line) + "\n" for line in lines))
+
+
+def test_journals_of_two_instances_of_a_process_are_told_apart_and_never_ordered_against_each_other(
+    tmp_path: Path,
+) -> None:
+    started: dict[str, object] = {"kind": "transition", "owner": "workbench", "subject": "Execution", "to": "started"}
+    _workbench_journal(tmp_path / "a", "store-a", 1, started | {"key": "x1"})
+    _workbench_journal(tmp_path / "a", "store-a", 2, started | {"key": "x2"})
+    _workbench_journal(tmp_path / "b", "store-b", 1, started | {"key": "y1"})
+    sources: list[Source] = []
+    events = []
+    for directory in ("a", "b"):
+        found, read = read_journals(tmp_path / directory)
+        sources += found
+        events += read
+    assert sorted(source.id for source in sources) == [
+        "store-a/workbench-000001",
+        "store-a/workbench-000002",
+        "store-b/workbench-000001",
+    ]
+    assert {source.instance for source in sources} == {"store-a", "store-b"}
+    assert {event.ref for event in events} == {
+        "store-a/workbench-000001#2",
+        "store-a/workbench-000002#2",
+        "store-b/workbench-000001#2",
+    }
+    evidence = Evidence(sources=tuple(sources), events=tuple(events))
+    assert [event.key for event in evidence.ordered(list(events)) if event.source.startswith("store-a")] == ["x1", "x2"]
+    first, second = (next(event for event in events if event.key == key) for key in ("x1", "y1"))
+    model = Model(load_spec(), evidence, {}, {})
+    assert model.precedes(first, second) is None
+    assert model.precedes(first, next(event for event in events if event.key == "x2")) is True
 
 
 RECORD: dict[str, object] = {

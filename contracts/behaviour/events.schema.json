@@ -3,7 +3,7 @@
   "$id": "urn:repo2ree:contracts:behaviour:events",
   "title": "repo2ree behaviour journal record",
   "description": "One line of a behaviour journal. Generated from assurance/spec/vocabulary by `python -m repo2ree_assurance_checker generate-schema`; do not edit. Sequence, epochs, and the header are checked per journal by `python -m repo2ree_assurance_checker validate-journal`.",
-  "x-vocabulary": "sha256:d42c2c69b5187f580f65f862ba6bde83a676694f3a8c5fd7e120fc6855ecbf7c",
+  "x-vocabulary": "sha256:4b153a7f23f100704b38fea8f45a22a6f27072cac9919cef8bbe041f45c94cda",
   "type": "object",
   "properties": {
     "v": {
@@ -39,6 +39,9 @@
       "$ref": "#/$defs/AuthorApiAction"
     },
     {
+      "$ref": "#/$defs/Execution"
+    },
+    {
       "$ref": "#/$defs/Receipt"
     },
     {
@@ -46,6 +49,9 @@
     },
     {
       "$ref": "#/$defs/WorkbenchSession"
+    },
+    {
+      "$ref": "#/$defs/cancel_run"
     },
     {
       "$ref": "#/$defs/dispatch"
@@ -65,6 +71,10 @@
         "epoch": {
           "type": "integer",
           "minimum": 1
+        },
+        "instance": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
         },
         "hosts": {
           "type": "array",
@@ -109,6 +119,24 @@
           "if": {
             "properties": {
               "process": {
+                "const": "executor"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "hosts": {
+                "const": [
+                  "core"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "process": {
                 "const": "workbench"
               }
             }
@@ -117,7 +145,6 @@
             "properties": {
               "hosts": {
                 "const": [
-                  "core",
                   "workbench"
                 ]
               }
@@ -158,9 +185,11 @@
             "enum": [
               "Attempt",
               "AuthorApiAction",
+              "Execution",
               "Receipt",
               "Ree",
               "WorkbenchSession",
+              "cancel_run",
               "dispatch"
             ]
           }
@@ -796,6 +825,193 @@
       ],
       "description": "One thing an author asked of an REE, from the request to the answer they were given. Evidence: journal."
     },
+    "Execution": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "transition"
+        },
+        "subject": {
+          "const": "Execution"
+        },
+        "owner": {
+          "const": "workbench"
+        },
+        "key": {
+          "type": "string"
+        },
+        "partition": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "from": {
+          "enum": [
+            null,
+            "started",
+            "exited",
+            "stopped"
+          ]
+        },
+        "to": {
+          "enum": [
+            "started",
+            "exited",
+            "stopped"
+          ]
+        },
+        "facts": {
+          "type": "object",
+          "properties": {
+            "canceled_by": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "cause": {
+              "enum": [
+                "cancel",
+                "caller_gone"
+              ]
+            },
+            "dispatched_by": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "exit_code": {
+              "type": "integer"
+            },
+            "operation": {
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "subject",
+        "owner",
+        "key",
+        "to"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "to": {
+                "enum": [
+                  "stopped"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "facts": {
+                "type": "object",
+                "properties": {
+                  "canceled_by": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "cause": {
+                    "enum": [
+                      "cancel",
+                      "caller_gone"
+                    ]
+                  },
+                  "dispatched_by": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "exit_code": {
+                    "type": "integer"
+                  },
+                  "operation": {
+                    "type": "string"
+                  },
+                  "run_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "cause",
+                  "exit_code"
+                ]
+              }
+            },
+            "required": [
+              "facts"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "to": {
+                "enum": [
+                  "exited"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "facts": {
+                "type": "object",
+                "properties": {
+                  "canceled_by": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "cause": {
+                    "enum": [
+                      "cancel",
+                      "caller_gone"
+                    ]
+                  },
+                  "dispatched_by": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "exit_code": {
+                    "type": "integer"
+                  },
+                  "operation": {
+                    "type": "string"
+                  },
+                  "run_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "exit_code"
+                ]
+              }
+            },
+            "required": [
+              "facts"
+            ]
+          }
+        }
+      ],
+      "description": "One executor process a workbench started for a command, from its start to its end. Evidence: journal."
+    },
     "Receipt": {
       "type": "object",
       "properties": {
@@ -1283,6 +1499,190 @@
         }
       ],
       "description": "One workbench's connection serving one store, from its hello to the end of its socket. Evidence: journal."
+    },
+    "cancel_run": {
+      "description": "One request to stop the executor of a dispatched command, and the single outcome the sender observed.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "send"
+            },
+            "subject": {
+              "const": "cancel_run"
+            },
+            "owner": {
+              "const": "supervisor"
+            },
+            "key": {
+              "type": "string"
+            },
+            "partition": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "message": {
+              "enum": [
+                "cancel_run"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "subject",
+            "owner",
+            "key",
+            "message"
+          ],
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "message": {
+                    "const": "cancel_run"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "facts": {
+                    "type": "object",
+                    "properties": {
+                      "run_id": {
+                        "type": "string"
+                      },
+                      "session": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "session"
+                    ]
+                  }
+                },
+                "required": [
+                  "facts"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "receive"
+            },
+            "subject": {
+              "const": "cancel_run"
+            },
+            "owner": {
+              "const": "supervisor"
+            },
+            "key": {
+              "type": "string"
+            },
+            "partition": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "message": {
+              "enum": [
+                "done",
+                "error"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "subject",
+            "owner",
+            "key",
+            "message"
+          ],
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "message": {
+                    "const": "done"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "facts": {
+                    "type": "object",
+                    "properties": {}
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "message": {
+                    "const": "error"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "facts": {
+                    "type": "object",
+                    "properties": {}
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "abandon"
+            },
+            "subject": {
+              "const": "cancel_run"
+            },
+            "owner": {
+              "const": "supervisor"
+            },
+            "key": {
+              "type": "string"
+            },
+            "partition": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "message": {
+              "type": "null"
+            },
+            "facts": {
+              "type": "object",
+              "properties": {
+                "reason": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "subject",
+            "owner",
+            "key"
+          ]
+        }
+      ]
     },
     "dispatch": {
       "description": "One typed command sent to a workbench and the single outcome the sender observed.",

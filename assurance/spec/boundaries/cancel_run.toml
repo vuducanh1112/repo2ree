@@ -1,0 +1,10 @@
+# The cancel_run exchange's rules: which records of it and of the receiver's entity
+# name each other. Its messages and facts are declared in vocabulary/cancel_run.toml.
+
+name = "cancel_run"
+
+# A stop a cancel asked for names the request that asked: it can only have been recorded
+# after the request was.
+[[cites]]
+by = { entity = "Execution", reached = "stopped", fact = "canceled_by" }
+cited = { message = "cancel_run" }

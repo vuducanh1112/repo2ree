@@ -61,9 +61,11 @@ def documents() -> Documents:
 
 def test_the_checked_in_specification_is_valid() -> None:
     spec = load_spec()
-    assert set(spec.entities) == {"Attempt", "AuthorApiAction", "Ree", "Receipt", "WorkbenchSession"}
+    assert set(spec.entities) == {"Attempt", "AuthorApiAction", "Execution", "Ree", "Receipt", "WorkbenchSession"}
     assert spec.hosted_by("api") == {"api", "supervisor"}
-    assert set(spec.boundaries) == {"dispatch"}
+    assert spec.hosted_by("workbench") == {"workbench"}
+    assert spec.hosted_by("executor") == {"core"}
+    assert set(spec.boundaries) == {"cancel_run", "dispatch"}
     assert spec.digest.startswith("sha256:")
     assert spec.vocabulary_digest.startswith("sha256:")
     assert spec.entities["Attempt"].required == {
@@ -295,7 +297,7 @@ def test_owners_and_boundary_ends_must_be_declared_components() -> None:
 )
 def test_citations_link_a_message_and_a_record_keyed_like_the_exchange(citation: dict[str, Any], problem: str) -> None:
     docs = documents()
-    docs.boundaries[0]["cites"] = [citation]
+    next(boundary for boundary in docs.boundaries if boundary["name"] == "dispatch")["cites"] = [citation]
     with pytest.raises(ValidationError, match=problem):
         docs.parse()
 

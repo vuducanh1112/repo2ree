@@ -14,9 +14,9 @@ summary = "Library inside the API process: routes each REE to its store's workbe
 [[component]]
 name = "workbench"
 process = "workbench"
-summary = "The service serving a store of REEs: receives commands and starts the executor."
+summary = "The service serving a store of REEs: receives commands, starts an executor for each, and journals what became of it."
 
 [[component]]
 name = "core"
-process = "workbench"
-summary = "Domain logic run by the executor inside the workbench: owns the REE and its history."
+process = "executor"
+summary = "Domain logic run by repo2ree-exec, one process per command the workbench starts: owns the REE and its history."

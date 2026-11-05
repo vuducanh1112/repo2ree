@@ -122,6 +122,9 @@ def corpus() -> Iterator[tuple[str, dict[str, Any]]]:
     yield "a header", header()
     yield "a header without a vocabulary", {k: v for k, v in header().items() if k != "vocabulary"}
     yield "a header speaking for other components", header(hosts=["api"])
+    yield "a workbench header naming its store", header("workbench", instance="store-1")
+    yield "a header naming an instance that is a path", header("workbench", instance="../store-1")
+    yield "a header naming a numeric instance", header("workbench", instance=1)
     yield "a close", envelope(9, kind="journal.closed")
     yield "a final close", envelope(9, kind="journal.closed", final=True)
     yield "a close that is not final", envelope(9, kind="journal.closed", final=False)

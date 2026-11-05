@@ -1,0 +1,15 @@
+# The Execution machine: where an instance starts, which edges it may take, and when it
+# must have settled. Its states and facts are declared in vocabulary/execution.toml.
+
+name = "Execution"
+initial = "started"
+terminal = ["exited", "stopped"]
+# The workbench does not wait for its executors before it stops: one still running when its
+# journal ended was left behind with the process that started it.
+settles_before_close = false
+ends_with_owner = true
+
+[[transitions]]
+from = "started"
+to = ["exited", "stopped"]
+why = "The executor ends: by itself, or after the workbench asked it to stop."

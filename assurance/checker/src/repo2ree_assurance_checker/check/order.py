@@ -126,7 +126,7 @@ class Model:
             for journal_id in cut
             if (mark := self._sources.get(journal_id)) is not None
             and mark.kind == "journal"
-            and mark.process == origin.process
+            and mark.lineage == origin.lineage
         ]
         if not ranks:
             return None
@@ -136,7 +136,7 @@ class Model:
         if a.source == b.source:
             return a.position < b.position
         first, second = self._sources[a.source], self._sources[b.source]
-        if first.kind == second.kind == "journal" and first.process == second.process:
+        if first.kind == second.kind == "journal" and first.lineage == second.lineage:
             return (first.rank, a.position) < (second.rank, b.position)
         return None
 
@@ -188,4 +188,4 @@ class Model:
         first, second = self._sources.get(earlier.source), self._sources.get(later.source)
         if first is None or second is None or not first.kind == second.kind == "journal":
             return False
-        return first.process == second.process and first.rank < second.rank
+        return first.lineage == second.lineage and first.rank < second.rank

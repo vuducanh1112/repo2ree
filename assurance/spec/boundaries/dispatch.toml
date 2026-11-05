@@ -13,6 +13,10 @@ by = { entity = "Attempt", reached = "pending", fact = "dispatched_by" }
 cited = { message = "exec_action" }
 
 [[cites]]
+by = { entity = "Execution", reached = "started", fact = "dispatched_by" }
+cited = { message = "exec_action" }
+
+[[cites]]
 by = { message = "result", fact = "commit" }
 cited = { entity = "Attempt", reached = "captured", fact = "commit" }
 

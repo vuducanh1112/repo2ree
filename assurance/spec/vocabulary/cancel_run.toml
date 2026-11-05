@@ -1,0 +1,27 @@
+# The words for asking a workbench to stop the executor running a dispatched command.
+#
+# Recorded on the sender's side, like dispatch: the supervisor journals the request before it
+# is sent and the one outcome it observed. The workbench's side is the Execution the request
+# stopped, which names the request. Its rules are boundaries/cancel_run.toml.
+
+name = "cancel_run"
+kind = "boundary"
+sender = "supervisor"
+receiver = "workbench"
+key = "attempt_id"
+partition = "ree_id"
+summary = "One request to stop the executor of a dispatched command, and the single outcome the sender observed."
+request = "cancel_run"
+responses = ["done", "error"]
+
+[messages]
+cancel_run = "The request to stop the command's run, sent over the workbench's connection."
+done = "The workbench took the request: the run stops, or had already ended."
+error = "The workbench could not take the request."
+
+[facts.cancel_run]
+run_id = "str"
+
+[facts.cancel_run.session]
+type = "str"
+required = true

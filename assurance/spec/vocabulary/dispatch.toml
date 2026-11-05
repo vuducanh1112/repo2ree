@@ -1,9 +1,9 @@
 # The words for typed command dispatch from the supervisor to a workbench.
 #
 # Recorded on the sender's side: the supervisor journals each request before it
-# is sent and the one outcome it observed. The workbench side is not journaled
-# yet; the Attempt machine is the receiver's evidence. Its rules are
-# boundaries/dispatch.toml.
+# is sent and the one outcome it observed. The receiver's evidence is the
+# Execution the workbench journals and the Attempt core records, each naming the
+# request. Its rules are boundaries/dispatch.toml.
 
 name = "dispatch"
 kind = "boundary"

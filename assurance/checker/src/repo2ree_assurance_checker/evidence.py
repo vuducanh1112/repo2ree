@@ -35,7 +35,9 @@ class Source(EvidenceModel):
     id: str
     kind: Literal["journal", "git", "store"]
     process: str
-    rank: int  # Order among sources of the same process (journal epoch).
+    rank: int  # Order among sources of the same process instance (journal epoch).
+    # Which of a process's instances wrote it, where several run at once: the store a workbench serves.
+    instance: str | None = None
     hosts: frozenset[str]  # Owners whose records this source would hold.
     complete: bool  # No gaps or unreadable records.
     closed: bool  # The owner ended the journal deliberately.
@@ -48,6 +50,11 @@ class Source(EvidenceModel):
     problems: tuple[str, ...] = ()
     origin: str | None = None  # Where it was collected from: a control-plane URL, or a local path.
     cut: Cut | None = None
+
+    @property
+    def lineage(self) -> tuple[str, str]:
+        """The process instance whose epochs this source is one of: only its epochs are ordered by rank."""
+        return self.process, self.instance or ""
 
     @field_serializer("hosts", "partitions")
     def _sorted(self, values: frozenset[str] | None) -> list[str] | None:
@@ -115,5 +122,5 @@ class Evidence(EvidenceModel):
 
     def ordered(self, events: list[Event]) -> list[Event]:
         """Owner order: source rank, then position. Never wall-clock time."""
-        ranks = {source.id: (source.process, source.rank) for source in self.sources}
+        ranks = {source.id: (*source.lineage, source.rank) for source in self.sources}
         return sorted(events, key=lambda event: (*ranks[event.source], event.position))
