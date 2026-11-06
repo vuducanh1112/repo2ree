@@ -4,30 +4,12 @@ import json
 import os
 import stat
 import subprocess
-import threading
-import time
 from pathlib import Path
 
 import pytest
 
-from repo2ree_protocol.execution import ExecutionContext
-from repo2ree_protocol.frames import ResultFrame
 from repo2ree_workbench.executor_process import LocalExecutor, ScriptBackend, declared_environment
 from repo2ree_workbench.tools import tool_environment
-
-
-def test_local_executor_passes_explicit_context_over_process_boundary(tmp_path):
-    script = tmp_path / "context-executor"
-    script.write_text(
-        "#!/bin/sh\ncat >/dev/null\n"
-        'test "$6" = --execution-context || exit 1\n'
-        'printf \'{"status":"succeeded","context":%s}\\n\' "$7"\n'
-    )
-    script.chmod(0o700)
-    context = ExecutionContext.new(ree_id="ree-1")
-    frames = list(LocalExecutor(tmp_path, str(script)).exec_action("{}", "reused-run", {}, context, ree_id="ree"))
-    assert isinstance(frames[-1], ResultFrame)
-    assert frames[-1].result.context == context
 
 
 @pytest.fixture
@@ -47,10 +29,8 @@ def fake_executor(tmp_path: Path) -> Path:
     return path
 
 
-def test_local_executor_runs_actions_and_queries(fake_executor: Path, tmp_path: Path) -> None:
+def test_local_executor_runs_queries(fake_executor: Path, tmp_path: Path) -> None:
     executor = LocalExecutor(tmp_path / "ree", str(fake_executor))
-    frames = list(executor.exec_action(json.dumps({"operation": "test"}), "run-1", {}, ree_id="ree"))
-    assert frames == [ResultFrame.model_validate({"result": {"status": "succeeded", "outputs": {}}})]
     assert b"".join(executor.exec_query_stream(["query"], ree_id="ree")) == b"query-result"
 
 
@@ -94,78 +74,11 @@ def test_a_store_runs_each_command_against_the_ree_it_names(fake_executor: Path,
     executor = LocalExecutor(tmp_path / "store", str(fake_executor))
 
     assert executor.ree_root("ree-1") == (tmp_path / "store" / "ree-1").resolve()
-    observed = executor._environment(executor.ree_root("ree-1"))
+    observed = executor.environment(executor.ree_root("ree-1"))
     assert observed["REPO2REE_WORKBENCH_ROOT"] == os.fspath((tmp_path / "store" / "ree-1").resolve())
     for refused in ("..", "a/b", "", "-x"):
         with pytest.raises(ValueError):
             executor.ree_root(refused)
-
-
-def test_a_store_deletes_an_ree_only_when_none_of_its_runs_is_active(fake_executor: Path, tmp_path: Path) -> None:
-    executor = LocalExecutor(tmp_path / "store", str(fake_executor))
-    (tmp_path / "store" / "ree-1" / "workspace").mkdir(parents=True)
-    executor._runs[(executor.ree_root("ree-1"), "run-1")] = subprocess.Popen(["sleep", "5"], text=True)
-    try:
-        with pytest.raises(RuntimeError, match="in progress"):
-            executor.delete_ree("ree-1")
-    finally:
-        executor._runs.pop((executor.ree_root("ree-1"), "run-1")).kill()
-
-    executor.delete_ree("ree-1")
-    executor.delete_ree("ree-2")  # Nothing there is nothing to delete.
-    assert not (tmp_path / "store" / "ree-1").exists()
-
-
-def cancellable_executor(tmp_path: Path, on_term: str) -> Path:
-    """An executor whose run waits for the cancel marker (``cooperative``), or ignores it.
-
-    ``on_term`` is what it does on SIGTERM: report canceled (``report``), or nothing (``ignore``).
-    """
-    path = tmp_path / "repo2ree-exec"
-    marker = tmp_path / "marker"
-    trap = {"report": 'trap \'echo {\\"status\\":\\"canceled\\"}; exit 0\' TERM', "ignore": "trap '' TERM"}
-    wait = (
-        f'while [ ! -e "{marker}" ]; do sleep 0.05; done; echo \'{{"status":"canceled"}}\''
-        if on_term == "cooperative"
-        else "while :; do sleep 0.05; done"
-    )
-    path.write_text(
-        "#!/bin/sh\n"
-        'case "$1" in\n'
-        f"  execute) cat >/dev/null; {trap.get(on_term, '')}\n    {wait} ;;\n"
-        f'  cancel-run) touch "{marker}" ;;\n'
-        "esac\n"
-    )
-    path.chmod(path.stat().st_mode | stat.S_IXUSR)
-    return path
-
-
-def cancel_while_running(executor: LocalExecutor) -> tuple[list[object], float]:
-    frames: list[object] = []
-    running = threading.Thread(target=lambda: frames.extend(executor.exec_action("{}", "run-1", {}, ree_id="ree")))
-    running.start()
-    while (executor.ree_root("ree"), "run-1") not in executor._runs:
-        time.sleep(0.01)
-    started = time.monotonic()
-    executor.cancel_run("run-1", ree_id="ree")
-    returned = time.monotonic() - started
-    running.join(timeout=10)
-    assert not running.is_alive()
-    return frames, returned
-
-
-@pytest.mark.parametrize("on_term", ["cooperative", "report", "ignore"])
-def test_cancel_lets_the_executor_stop_itself_and_forces_only_one_that_does_not(tmp_path: Path, on_term: str) -> None:
-    executor = LocalExecutor(tmp_path / "ree", str(cancellable_executor(tmp_path, on_term)), cancel_grace=0.3)
-    executor.cancel_kill = 0.3
-    frames, returned = cancel_while_running(executor)
-    assert returned < 0.3, "cancel_run waits for the grace period instead of returning"
-    result = frames[-1]
-    assert isinstance(result, ResultFrame)
-    if on_term == "ignore":
-        assert result.result.status == "failed"  # Killed: it could not report.
-    else:
-        assert result.result.status == "canceled"
 
 
 def test_the_tools_a_bundle_names_reach_every_executor(fake_executor: Path, tmp_path: Path) -> None:
@@ -176,33 +89,12 @@ def test_the_tools_a_bundle_names_reach_every_executor(fake_executor: Path, tmp_
     )
     executor = LocalExecutor(tmp_path / "root", str(fake_executor), environment=tool_environment(bundle))
 
-    observed = executor._environment(executor.root)
+    observed = executor.environment(executor.root)
 
     assert observed["REPO2REE_TOOL_GIT_LFS"] == "/nix/store/x/bin/git-lfs"
     assert observed["REPO2REE_TOOLS_BIN"] == "/nix/store/y/bin"
     assert observed["A"] == "1"
     assert tool_environment(None) == {}
-
-
-def test_two_rees_in_a_store_run_the_same_run_id_side_by_side(tmp_path: Path) -> None:
-    # The API's quick commands share fixed run ids (patch-definition); a run id names a run within one REE.
-    executor = LocalExecutor(tmp_path / "store", str(cancellable_executor(tmp_path, "cooperative")))
-    for ree_id in ("ree-1", "ree-2"):
-        executor.ree_root(ree_id).mkdir(parents=True)
-    threads = [
-        threading.Thread(target=lambda ree_id=ree_id: list(executor.exec_action("{}", "patch", {}, ree_id=ree_id)))
-        for ree_id in ("ree-1", "ree-2")
-    ]
-    for thread in threads:
-        thread.start()
-    deadline = time.monotonic() + 5
-    while len(executor._runs) < 2 and time.monotonic() < deadline:
-        time.sleep(0.01)
-
-    assert set(executor._runs) == {(executor.ree_root("ree-1"), "patch"), (executor.ree_root("ree-2"), "patch")}
-    (tmp_path / "marker").touch()
-    for thread in threads:
-        thread.join(timeout=5)
 
 
 def test_a_container_workbench_runs_each_ree_in_the_image_it_declares(fake_executor: Path, tmp_path: Path) -> None:
@@ -213,7 +105,7 @@ def test_a_container_workbench_runs_each_ree_in_the_image_it_declares(fake_execu
     environment = {"kind": "image", "image": "python:3.12-slim", "needs_container_engine": True}
     (root / "ree.json").write_text(json.dumps({"subject": {"definition": {"environment": environment}}}))
 
-    choice = json.loads(executor._environment(root)["REPO2REE_SCRIPT_RUNNER"])
+    choice = json.loads(executor.environment(root)["REPO2REE_SCRIPT_RUNNER"])
 
     assert choice == {
         "backend": "container",
@@ -225,6 +117,23 @@ def test_a_container_workbench_runs_each_ree_in_the_image_it_declares(fake_execu
         "refused": None,
     }
     assert declared_environment(executor.ree_root("ree-2")) == {}
+
+
+def test_leftover_jobs_go_but_those_of_adopted_executions_stay(tmp_path: Path) -> None:
+    engine = tmp_path / "engine"
+    removed = tmp_path / "removed"
+    engine.write_text(
+        "#!/bin/sh\n"
+        'case "$1" in\n'
+        "  ps) printf 'c1 a1\\nc2 a2\\nc3 \\n' ;;\n"
+        f'  rm) shift; echo "$@" > {removed} ;;\n'
+        "esac\n"
+    )
+    engine.chmod(engine.stat().st_mode | stat.S_IXUSR)
+
+    ScriptBackend("container", str(engine), owner="store").remove_leftover_jobs(frozenset({"a1"}))
+
+    assert removed.read_text().split() == ["-f", "c2", "c3"]
 
 
 @pytest.mark.parametrize(
@@ -249,64 +158,7 @@ def test_a_store_workbench_refuses_an_environment_it_cannot_give(
 
 def test_a_bench_set_up_for_one_ree_says_nothing_of_where_scripts_run(fake_executor: Path, tmp_path: Path) -> None:
     executor = LocalExecutor(tmp_path / "root", str(fake_executor))
-    assert "REPO2REE_SCRIPT_RUNNER" not in executor._environment(executor.root)
-
-
-def journaled(directory: Path) -> list[dict[str, object]]:
-    (path,) = directory.glob("*.ndjson")
-    return [json.loads(line) for line in path.read_text().splitlines()]
-
-
-def executions(directory: Path) -> list[tuple[object, ...]]:
-    return [
-        (record["key"], record["from"], record["to"], record["facts"])
-        for record in journaled(directory)
-        if record.get("subject") == "Execution"
-    ]
-
-
-def test_the_workbench_journals_each_executor_it_starts_and_how_it_ended(fake_executor: Path, tmp_path: Path) -> None:
-    from repo2ree_workbench.journal import store_journal
-
-    store = tmp_path / "store"
-    context = ExecutionContext.new(ree_id="ree").model_copy(update={"dispatch_record": "api-000001#7"})
-    with store_journal(store, "lab-1") as directory:
-        list(
-            LocalExecutor(store, str(fake_executor)).exec_action(
-                '{"operation": "lint_scripts"}', "r1", {}, context, ree_id="ree"
-            )
-        )
-    assert executions(directory) == [
-        (
-            context.attempt_id,
-            None,
-            "started",
-            {"operation": "lint_scripts", "run_id": "r1", "dispatched_by": "api-000001#7"},
-        ),
-        (context.attempt_id, "started", "exited", {"exit_code": 0}),
-    ]
-    assert journaled(directory)[0]["instance"] == "lab-1"
-
-
-@pytest.mark.parametrize(("cause", "record"), [("cancel", "api-000001#9"), ("caller_gone", None)])
-def test_a_stopped_executor_is_journaled_with_why_it_was_asked_to_stop(
-    tmp_path: Path, cause: str, record: str | None
-) -> None:
-    from repo2ree_workbench.journal import store_journal
-
-    store = tmp_path / "store"
-    executor = LocalExecutor(store, str(cancellable_executor(tmp_path, "cooperative")), cancel_grace=0.3)
-    frames: list[object] = []
-    with store_journal(store, "lab-1") as directory:
-        running = threading.Thread(target=lambda: frames.extend(executor.exec_action("{}", "run-1", {}, ree_id="ree")))
-        running.start()
-        while (executor.ree_root("ree"), "run-1") not in executor._runs:
-            time.sleep(0.01)
-        executor.cancel_run("run-1", ree_id="ree", cause=cause, record=record)  # type: ignore[arg-type]
-        executor.cancel_run("run-1", ree_id="ree", cause="caller_gone")
-        running.join(timeout=10)
-    (_, _, target, facts) = executions(directory)[-1]
-    assert (target, facts) == ("stopped", {"exit_code": 0, "cause": cause, "canceled_by": record})
+    assert "REPO2REE_SCRIPT_RUNNER" not in executor.environment(executor.root)
 
 
 def test_a_second_workbench_process_cannot_hold_a_held_store(tmp_path: Path) -> None:

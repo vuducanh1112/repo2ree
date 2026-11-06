@@ -34,7 +34,7 @@ def test_rules_attach_to_the_entries_whose_events_triggered_them() -> None:
     build = trace_of(recorded()).entries[2]
     assert {(hit.rule, hit.verdict) for hit in build.rules} >= {
         ("api-success-is-recorded", "passed"),
-        ("dispatch-success-is-captured", "passed"),
+        ("follow-success-is-captured", "passed"),
     }
 
 
@@ -60,8 +60,8 @@ def test_a_sequence_follows_one_operation_across_components() -> None:
     assert [lane.id for lane in sequence.lanes] == ["client", "api", "supervisor", "workbench", "executor", "core"]
     lines = [(row.provenance, row.lane, row.to, row.label) for row in sequence.rows]
     assert lines[0] == ("span", "client", "api", "POST /rees/{id}/build-runtime")
-    assert ("journal", "supervisor", "workbench", "exec_action · build_runtime") in lines
-    assert ("journal", "workbench", "supervisor", "result · succeeded") in lines
+    assert ("journal", "supervisor", "workbench", "start_run · build_runtime") in lines
+    assert ("journal", "workbench", "supervisor", "settled · succeeded") in lines
     assert ("git", "core", None, "commit c3000000") in lines
     assert any(row.tone == "gap" and row.label == "350 ms without spans" for row in sequence.rows)
 
@@ -83,8 +83,8 @@ def test_without_spans_the_attempt_sits_inside_its_dispatch_bracket() -> None:
     sequence = trace_of(recorded()).entries[2].sequence
     assert sequence is not None
     assert {row.provenance for row in sequence.rows} == {"journal", "inferred", "git"}
-    sent = next(row.t for row in sequence.rows if row.label.startswith("exec_action"))
-    answered = next(row.t for row in sequence.rows if row.label.startswith("result"))
+    sent = next(row.t for row in sequence.rows if row.label.startswith("start_run"))
+    answered = next(row.t for row in sequence.rows if row.label.startswith("settled"))
     inside = [row for row in sequence.rows if row.provenance in ("inferred", "git")]
     assert all(sent < row.t < answered for row in inside)
 

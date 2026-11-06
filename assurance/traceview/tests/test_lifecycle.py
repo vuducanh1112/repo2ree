@@ -31,13 +31,13 @@ def lost(s: Scenario) -> Scenario:
         30.2,
         kind="send",
         owner="supervisor",
-        subject="dispatch",
+        subject="start_run",
         key="a-lost",
-        message="exec_action",
+        message="start_run",
         facts={"operation": "build_runtime", "run_id": "run-lost", "session": "session-1"},
     )
     s.requests["a-lost"] = f"api-000001#{s.seq}"
-    s.journal(70.0, kind="receive", owner="supervisor", subject="dispatch", key="a-lost", message="unavailable")
+    s.journal(70.0, kind="receive", owner="supervisor", subject="start_run", key="a-lost", message="unavailable")
     s.action(70.1, "run-lost", "running", "failed", action="build_runtime", failure_category="internal")
     s.commit(5, "a-lost", "build_runtime", "run-lost", [], ("draft", "draft"))
     return s
@@ -124,12 +124,12 @@ def test_a_run_whose_attempt_was_never_captured_still_shows_its_dispatch() -> No
         30.2,
         kind="send",
         owner="supervisor",
-        subject="dispatch",
+        subject="start_run",
         key="a-killed",
-        message="exec_action",
+        message="start_run",
         facts={"operation": "build_runtime", "run_id": "run-killed", "session": "session-1"},
     )
-    s.journal(50.0, kind="receive", owner="supervisor", subject="dispatch", key="a-killed", message="unavailable")
+    s.journal(50.0, kind="receive", owner="supervisor", subject="start_run", key="a-killed", message="unavailable")
     s.action(50.1, "run-killed", "running", "failed", action="build_runtime", failure_category="internal")
     lifecycle = trace_of(s).lifecycle
     assert lifecycle is not None
@@ -139,7 +139,7 @@ def test_a_run_whose_attempt_was_never_captured_still_shows_its_dispatch() -> No
     assert labels == [
         "build_runtime → requested",
         "build_runtime → running",
-        "exec_action · build_runtime",
+        "start_run · build_runtime",
         "unavailable",
         "build_runtime → failed",
     ]
@@ -211,6 +211,6 @@ def test_the_dossier_draws_every_ree_and_every_stores_sessions() -> None:
 def test_a_dispatch_says_the_session_it_was_sent_on() -> None:
     lifecycle = trace_of(recorded()).lifecycle
     assert lifecycle is not None
-    sent = [row for row in lifecycle.rows if row.label.startswith("exec_action")]
+    sent = [row for row in lifecycle.rows if row.label.startswith(("start_run", "follow_run"))]
     assert sent
     assert all(row.session == "session-1" for row in sent)

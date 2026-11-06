@@ -38,6 +38,9 @@ tracer = get_tracer(__name__)
 RUNNER_VARIABLE = "REPO2REE_SCRIPT_RUNNER"
 # The label naming whose job a container is: the store its workbench serves.
 JOB_OWNER_LABEL = "repo2ree.job-owner"
+# The label naming the execution a job belongs to, so a restarted workbench keeps the ones it adopts.
+JOB_EXECUTION_LABEL = "repo2ree.job-execution"
+EXECUTION_VARIABLE = "REPO2REE_EXECUTION"
 # Where a container finds the host engine's socket, when a script may reach it.
 _ENGINE_SOCKET = "/var/run/docker.sock"
 
@@ -92,6 +95,8 @@ class ContainerScriptRunner:
                 mounts += ["-v", f"{engine_side}:{engine_side}"]
                 workdir = engine_side
         labels = ["--label", f"{JOB_OWNER_LABEL}={self.owner}"] if self.owner else []
+        if execution := os.environ.get(EXECUTION_VARIABLE, "").strip():
+            labels += ["--label", f"{JOB_EXECUTION_LABEL}={execution}"]
         if resource_owner := os.environ.get("REPO2REE_RESOURCE_OWNER", "").strip():
             labels += ["--label", f"repo2ree.resource-owner={resource_owner}"]
         command = [

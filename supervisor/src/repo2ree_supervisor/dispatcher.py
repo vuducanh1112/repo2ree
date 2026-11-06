@@ -17,7 +17,17 @@ from typing import Any
 from repo2ree_protocol.command import Command
 from repo2ree_protocol.document import WorkbenchReeDocument
 from repo2ree_protocol.execution import ExecutionContext
-from repo2ree_protocol.frames import ErrorFrame, LogFrame, LogSink, ResultFrame, SpanFrame, UnavailableFrame
+from repo2ree_protocol.frames import (
+    AcceptedFrame,
+    BusyFrame,
+    ErrorFrame,
+    LogFrame,
+    LogSink,
+    ResultFrame,
+    SpanFrame,
+    UnavailableFrame,
+    UnknownFrame,
+)
 from repo2ree_protocol.history import OperationHistory
 from repo2ree_protocol.queries import (
     BUILD_ARCHIVE,
@@ -32,7 +42,7 @@ from repo2ree_protocol.queries import (
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.model import Ree
 from repo2ree_ree.review import ReviewSet
-from repo2ree_supervisor.client import WorkbenchClient, WorkbenchUnavailableError
+from repo2ree_supervisor.client import ReeBusyError, WorkbenchClient, WorkbenchUnavailableError
 from repo2ree_supervisor.handle import ReeRoute
 from repo2ree_supervisor.locks import ReeLocks
 from repo2ree_supervisor.transfers import ReceivedFile
@@ -51,7 +61,31 @@ from repo2ree_telemetry.spans import (
     record_span_facts,
 )
 
-__all__ = ["CommandDispatcher"]
+__all__ = ["CommandDispatcher", "FollowStoppedError"]
+
+# How long a command waits for another in its REE to end before it is refused as busy: the commands an
+# author's editor sends one after another overlap, and wait for each other.
+BUSY_WAIT = 60.0
+# How long a command waits for its store's workbench to be back by default, and how often it looks.
+RECONNECT_TIMEOUT = 120.0
+RECONNECT_POLL = 1.0
+# How often, in log lines, the caller hears how far it has read.
+PROGRESS_LINES = 50
+
+
+class FollowStoppedError(RuntimeError):
+    """The caller stopped following a command, which runs on."""
+
+
+def _settled_facts(result: ActionResult) -> events.SettledFacts:
+    history = result.history
+    interrupted = history is not None and history.operation_status == "interrupted"
+    return {
+        "status": "interrupted" if interrupted else result.status,
+        "commit": history.after_snapshot_id if history else None,
+        "record": history.record_digest if history else None,
+    }
+
 
 tracer = get_tracer(__name__)
 _meter = get_meter(__name__)
@@ -83,14 +117,18 @@ class CommandDispatcher:
         locks: ReeLocks,
         span_sink: SpanSink | None = None,
         on_unavailable: Callable[[ReeRoute], object] | None = None,
+        reroute: Callable[[ReeRoute], ReeRoute | None] | None = None,
     ) -> None:
         self._workbench = workbench
         self._locks = locks
         self._span_sink = span_sink
         self._on_unavailable = on_unavailable or (lambda handle: None)
-        self._dispatched: dict[tuple[str, str], tuple[str, str]] = {}
+        # Where the REE's commands go now: a command is followed on whichever workbench serves its store.
+        self._reroute = reroute or (lambda handle: handle)
+        # The attempt each followed run is, so a cancel of it is journaled against that attempt, once.
+        self._followed: dict[tuple[str, str], str] = {}
         self._canceled: set[str] = set()
-        self._dispatched_lock = threading.Lock()
+        self._followed_lock = threading.Lock()
 
     # ------------------------------------------------
     # Action dispatch
@@ -103,8 +141,20 @@ class CommandDispatcher:
         run_id: str,
         log: LogSink,
         context: ExecutionContext | None = None,
+        *,
+        on_started: Callable[[ExecutionContext], object] | None = None,
+        on_session: Callable[[ReeRoute], object] | None = None,
+        on_progress: Callable[[int], object] | None = None,
+        stop: threading.Event | None = None,
+        reconnect_timeout: float | None = RECONNECT_TIMEOUT,
     ) -> ActionResult:
-        """Run a typed Command inside the workbench; stream logs to log."""
+        """Start a typed Command in the workbench and follow it to its end, streaming its log to ``log``.
+
+        It is followed across sessions, waiting up to ``reconnect_timeout`` (None: for as long as it
+        takes) for its store's workbench to be back. ``on_started`` learns the context it was started
+        with, and ``on_progress`` how many of its log lines were delivered. A set ``stop`` ends the
+        follow with ``FollowStoppedError``; the command runs on.
+        """
         context = context or ExecutionContext.new(ree_id=handle.ree_id)
         if context.ree_id not in {None, handle.ree_id}:
             raise ValueError("Execution context belongs to another REE")
@@ -113,47 +163,35 @@ class CommandDispatcher:
             CommandSpanAttrs(
                 operation=str(cmd.operation), run_id=run_id, ree_id=handle.ree_id, execution=context
             ).apply(span)
-            WorkbenchSpanAttrs(
-                workbench_id=handle.workbench_id,
-            ).apply(span)
-            # The whole command as dispatched — envelope and args — recorded
-            # before it runs, for the reason core's own dispatch records its
-            # inputs first: a command that is killed or times out still carries
-            # what it was asked to do. Without this the span reports only what
-            # came back, which is half a wide event.
-            #
-            # Namespaced ``cmd`` rather than ``arg`` because it is the whole
-            # envelope, not the argument object a handler receives; core's
-            # ``repo2ree.arg.*`` remains the inner view of the same call.
+            WorkbenchSpanAttrs(workbench_id=handle.workbench_id).apply(span)
+            # The whole command as dispatched, recorded before it runs: a command that is killed
+            # still carries what it was asked to do.
             record_span_facts(span, cmd.model_dump(), namespace="cmd")
-            # Time spent blocked here is per-REE lock contention (another run in
-            # progress); record it on acquisition so wait is a first-class metric
-            # rather than something inferred from the dispatch/execute span gap.
             _lock_t0 = time.monotonic()
             with self._locks(handle.ree_id):
-                _lock_wait_duration.record(
-                    time.monotonic() - _lock_t0,
-                    command_metric_attrs(str(cmd.operation)),
+                _lock_wait_duration.record(time.monotonic() - _lock_t0, command_metric_attrs(str(cmd.operation)))
+                try:
+                    context = self._start(handle, cmd, run_id, context)
+                except WorkbenchUnavailableError:
+                    self._on_unavailable(handle)
+                    raise
+            if on_started is not None:
+                on_started(context)
+            with tracer.start_as_current_span("workbench.execute"):
+                _t0 = time.monotonic()
+                result = self.follow(
+                    handle,
+                    context,
+                    run_id,
+                    log,
+                    on_session=on_session,
+                    on_progress=on_progress,
+                    stop=stop,
+                    reconnect_timeout=reconnect_timeout,
                 )
-                with tracer.start_as_current_span("workbench.execute"):
-                    _t0 = time.monotonic()
-                    try:
-                        result, context = self._dispatch_recorded(handle, cmd, run_id, log, context)
-                    except WorkbenchUnavailableError:
-                        self._on_unavailable(handle)
-                        raise
-                    _exec_duration.record(
-                        time.monotonic() - _t0,
-                        command_metric_attrs(str(cmd.operation), status=result.status),
-                    )
-            if result.context is not None and result.context != context:
-                raise RuntimeError("Executor returned a different execution context")
-            if result.history is not None and result.history.attempt_id != context.attempt_id:
-                raise RuntimeError("Executor returned history for a different execution attempt")
-            result = result.model_copy(update={"context": context})
-            # Mirror the executor's wide event host-side: the command span's
-            # outputs travel over the best-effort span relay, so this dispatch
-            # span is the copy guaranteed to reach the collector.
+                _exec_duration.record(
+                    time.monotonic() - _t0, command_metric_attrs(str(cmd.operation), status=result.status)
+                )
             record_exit_code(span, result.exit_code)
             record_span_facts(span, result.outputs, namespace="output")
             record_failure(span, result.failure)
@@ -162,154 +200,199 @@ class CommandDispatcher:
             record_result_boundary(span, "supervisor.received", result)
             return result
 
-    def cancel_run(self, handle: ReeRoute, run_id: str) -> None:
-        """Ask the workbench executor to stop a running action.
+    def _start(self, handle: ReeRoute, cmd: Command, run_id: str, context: ExecutionContext) -> ExecutionContext:
+        """One ``start_run`` exchange, journaled before it leaves and with its one answer; the context sent.
 
-        This deliberately does not take the per-REE dispatch lock: the command we
-        are canceling is usually the one holding that lock. A cancel of a command in
-        flight is journaled against its attempt, once; any other is only sent.
-        """
-        with self._dispatched_lock:
-            dispatched = self._dispatched.get((handle.ree_id, run_id))
-            first = dispatched is not None and dispatched[0] not in self._canceled
-            if first and dispatched is not None:
-                self._canceled.add(dispatched[0])
-        if not first or dispatched is None:
-            self._workbench.cancel_run(handle.workbench_id, run_id, ree_id=handle.ree_id)
-            return
-        attempt_id, session = dispatched
-        record = events.cancel_run_sent(
-            attempt_id, partition=handle.ree_id, facts={"run_id": run_id, "session": session}
-        )
-        try:
-            self._workbench.cancel_run(handle.workbench_id, run_id, ree_id=handle.ree_id, record=record)
-        except WorkbenchUnavailableError as exc:
-            events.cancel_run_abandoned(attempt_id, partition=handle.ree_id, reason=type(exc).__name__)
-            raise
-        except RuntimeError:
-            events.cancel_run_received(attempt_id, "error", partition=handle.ree_id)
-            raise
-        except BaseException as exc:
-            events.cancel_run_abandoned(attempt_id, partition=handle.ree_id, reason=type(exc).__name__)
-            raise
-        events.cancel_run_received(attempt_id, "done", partition=handle.ree_id)
-
-    def _dispatch_recorded(
-        self,
-        handle: ReeRoute,
-        cmd: Command,
-        run_id: str,
-        log: LogSink,
-        context: ExecutionContext,
-    ) -> tuple[ActionResult, ExecutionContext]:
-        """One ``dispatch`` exchange: the request is journaled before it leaves, and one outcome after.
-
-        Every terminal frame is recorded as received, so a duplicated result is
-        visible to the checker rather than silently overwritten here. The two
-        sides cite each other: the command carries the request's journal
-        reference into the attempt's record, and the recorded result names the
-        commit that captured the attempt. The request names the session it is
-        sent on, and is sent on no other. Returns the result and the context sent.
+        The request names the session it is sent on, and is sent on no other. The attempt and the
+        executor cite the request's journal record, which the context carries to them.
         """
         session = self._workbench.session_of(handle.workbench_id)
         if session is None:
-            # Nothing to send it on, so nothing is sent: as for a store no workbench serves.
             raise WorkbenchUnavailableError(f"workbench {handle.workbench_id!r} is not connected")
-        dispatched = events.dispatch_sent(
-            context.attempt_id,
+        attempt = context.attempt_id
+        record = events.start_run_sent(
+            attempt,
             partition=handle.ree_id,
             facts={"operation": str(cmd.operation), "run_id": run_id, "session": session},
         )
-        context = context.model_copy(update={"dispatch_record": dispatched})
+        context = context.model_copy(update={"dispatch_record": record})
+        env = {"TRACE_RELAY": "1"} if self._span_sink is not None else {}
         answered = False
-        with self._dispatched_lock:
-            self._dispatched[(handle.ree_id, run_id)] = (context.attempt_id, session)
 
-        def observe(message: events.DispatchResponse, facts: events.ResultFacts | None = None) -> None:
+        def answer(message: events.StartRunResponse) -> None:
             nonlocal answered
             answered = True
-            events.dispatch_received(context.attempt_id, message, partition=handle.ree_id, facts=facts)
+            events.start_run_received(attempt, message, partition=handle.ree_id)
 
         try:
-            result = self._dispatch_action_locked(handle, cmd, run_id, log, context, observe, session)
+            for frame in self._workbench.start_run(
+                handle.workbench_id,
+                cmd.model_dump_json(),
+                run_id,
+                env,
+                context,
+                ree_id=handle.ree_id,
+                session=session,
+                wait=BUSY_WAIT,
+            ):
+                if isinstance(frame, AcceptedFrame):
+                    answer("accepted")
+                    return context
+                if isinstance(frame, BusyFrame):
+                    answer("busy")
+                    raise ReeBusyError(frame.detail)
+                if isinstance(frame, UnavailableFrame):
+                    answer("unavailable")
+                    _container_gone_counter.add(1, command_metric_attrs(str(cmd.operation)))
+                    raise WorkbenchUnavailableError(frame.detail)
+                if isinstance(frame, ErrorFrame):
+                    answer("error")
+                    raise RuntimeError(frame.detail)
         except BaseException as exc:
             if not answered:
-                events.dispatch_abandoned(context.attempt_id, partition=handle.ree_id, reason=type(exc).__name__)
+                events.start_run_abandoned(attempt, partition=handle.ree_id, reason=type(exc).__name__)
             raise
-        finally:
-            with self._dispatched_lock:
-                self._dispatched.pop((handle.ree_id, run_id), None)
-                self._canceled.discard(context.attempt_id)
-        if not answered:
-            events.dispatch_abandoned(context.attempt_id, partition=handle.ree_id, reason="closed_without_response")
-        return result, context
+        events.start_run_abandoned(attempt, partition=handle.ree_id, reason="closed_without_response")
+        raise WorkbenchUnavailableError(f"{cmd.operation} was not answered")
 
-    def _dispatch_action_locked(
+    def follow(
         self,
         handle: ReeRoute,
-        cmd: Command,
+        context: ExecutionContext,
         run_id: str,
         log: LogSink,
-        context: ExecutionContext,
-        observe: Callable[[events.DispatchResponse, events.ResultFacts | None], None],
-        session: str | None,
+        *,
+        after: int = 0,
+        on_session: Callable[[ReeRoute], object] | None = None,
+        on_progress: Callable[[int], object] | None = None,
+        stop: threading.Event | None = None,
+        reconnect_timeout: float | None = None,
     ) -> ActionResult:
-        cmd_json = cmd.model_dump_json()
+        """Follow a started command until it ends, one ``follow_run`` round per session, from log line ``after``."""
+        attempt = context.attempt_id
+        key = (handle.ree_id, run_id)
+        with self._followed_lock:
+            self._followed[key] = attempt
+        progress = on_progress or (lambda delivered: None)
+        try:
+            gone_since: float | None = None
+            while True:
+                if stop is not None and stop.is_set():
+                    raise FollowStoppedError(f"stopped following {run_id}")
+                handle = self._reroute(handle) or handle
+                session = self._workbench.session_of(handle.workbench_id)
+                if session is None:
+                    gone_since = gone_since or time.monotonic()
+                    if reconnect_timeout is not None and time.monotonic() - gone_since > reconnect_timeout:
+                        raise WorkbenchUnavailableError(f"workbench {handle.workbench_id!r} did not come back")
+                    if stop is not None:
+                        stop.wait(RECONNECT_POLL)
+                    else:
+                        time.sleep(RECONNECT_POLL)
+                    continue
+                gone_since = None
+                if on_session is not None:
+                    on_session(handle)
+                result, after = self._follow_round(handle, context, run_id, log, after, session, progress)
+                progress(after)
+                if result is not None:
+                    if result.context is not None and result.context.attempt_id != attempt:
+                        raise RuntimeError("Executor returned a different execution context")
+                    if result.history is not None and result.history.attempt_id != attempt:
+                        raise RuntimeError("Executor returned history for a different execution attempt")
+                    return result.model_copy(update={"context": context})
+        finally:
+            with self._followed_lock:
+                if self._followed.get(key) == attempt:
+                    del self._followed[key]
+                self._canceled.discard(attempt)
 
-        # No TRACEPARENT here on purpose. The workbench injects it at the hop that
-        # actually spawns the executor, so a context set from this span would be
-        # overwritten one layer down — two propagation points with the later
-        # silently winning. What this span does own is asking for the relay:
-        # when the API injected a span_sink the executor should stream its spans
-        # back over stderr, having no path to the collector itself.
-        env: dict[str, str] = {}
-        if self._span_sink is not None:
-            env["TRACE_RELAY"] = "1"
+    def _follow_round(
+        self,
+        handle: ReeRoute,
+        context: ExecutionContext,
+        run_id: str,
+        log: LogSink,
+        after: int,
+        session: str,
+        progress: Callable[[int], object],
+    ) -> tuple[ActionResult | None, int]:
+        """One ``follow_run`` exchange: how the command ended (None if its session ended first), and lines delivered.
 
-        # Consume the workbench's frame stream live: forward log frames to the sink
-        # and relayed span frames to the span_sink as they arrive (not buffered to
-        # the end) so a command that hangs or gets killed still ships what it
-        # emitted before stalling — the case a trace is most useful. The span_sink
-        # is non-blocking (it enqueues for a background forwarder), so export never
-        # sits on this loop, the per-REE lock, or the measured execute window.
-        result: ActionResult | None = None
-        for frame in self._workbench.exec_action(
-            handle.workbench_id, cmd_json, run_id, env, context, ree_id=handle.ree_id, session=session
-        ):
-            if isinstance(frame, LogFrame):
-                log(frame.stream, frame.level, frame.message)
-            elif isinstance(frame, SpanFrame):
-                if self._span_sink is not None:
-                    self._span_sink([frame.payload])
-            elif isinstance(frame, ResultFrame):
-                history = frame.result.history
-                observe(
-                    "result",
-                    {
-                        "status": frame.result.status,
-                        "commit": history.after_snapshot_id if history else None,
-                        "record": history.record_digest if history else None,
-                    },
-                )
-                result = frame.result
-            elif isinstance(frame, UnavailableFrame):
-                observe("unavailable", None)
-                _container_gone_counter.add(1, command_metric_attrs(str(cmd.operation)))
-                raise WorkbenchUnavailableError(frame.detail)
-            elif isinstance(frame, ErrorFrame):
-                observe("error", None)
-                raise RuntimeError(frame.detail)
+        Log and span frames are forwarded as they arrive, so a command that hangs still shows what
+        it said before it stopped.
+        """
+        attempt = context.attempt_id
+        events.follow_run_sent(attempt, partition=handle.ree_id, facts={"run_id": run_id, "session": session})
+        answered = False
+        try:
+            for frame in self._workbench.follow_run(
+                handle.workbench_id, attempt, after, ree_id=handle.ree_id, session=session
+            ):
+                if isinstance(frame, LogFrame):
+                    log(frame.stream, frame.level, frame.message)
+                    after += 1
+                elif isinstance(frame, SpanFrame):
+                    if self._span_sink is not None:
+                        self._span_sink([frame.payload])
+                    after += 1
+                elif isinstance(frame, ResultFrame):
+                    answered = True
+                    events.follow_run_received(
+                        attempt, "settled", partition=handle.ree_id, facts=_settled_facts(frame.result)
+                    )
+                    return frame.result, after
+                elif isinstance(frame, UnknownFrame):
+                    answered = True
+                    events.follow_run_received(attempt, "unknown", partition=handle.ree_id)
+                    failed = ActionResult.failed("internal", frame.detail, origin="workbench", retryable=True)
+                    return failed, after
+                elif isinstance(frame, ErrorFrame):
+                    answered = True
+                    events.follow_run_received(attempt, "error", partition=handle.ree_id)
+                    raise RuntimeError(frame.detail)
+                elif isinstance(frame, UnavailableFrame):
+                    break
+                if after % PROGRESS_LINES == 0:
+                    progress(after)
+        except WorkbenchUnavailableError as exc:
+            events.follow_run_abandoned(attempt, partition=handle.ree_id, reason=type(exc).__name__)
+            return None, after
+        except BaseException as exc:
+            if not answered:
+                events.follow_run_abandoned(attempt, partition=handle.ree_id, reason=type(exc).__name__)
+            raise
+        events.follow_run_abandoned(attempt, partition=handle.ree_id, reason="session_ended")
+        return None, after
 
-        if result is None:
-            # Stream ended without a terminal result frame: the executor exited
-            # or the connection dropped before reporting an outcome.
-            return ActionResult.failed(
-                "internal",
-                f"{cmd.operation} ended without a result",
-                origin="supervisor",
-                retryable=True,
-            )
-        return result
+    def cancel_run(self, handle: ReeRoute, run_id: str) -> None:
+        """Ask the workbench executor to stop a running action.
+
+        This deliberately does not take the per-REE lock. A cancel of a command being followed is
+        journaled against its attempt, once; any other is only sent.
+        """
+        with self._followed_lock:
+            attempt = self._followed.get((handle.ree_id, run_id))
+            first = attempt is not None and attempt not in self._canceled
+            if first and attempt is not None:
+                self._canceled.add(attempt)
+        session = self._workbench.session_of(handle.workbench_id)
+        if not first or attempt is None or session is None:
+            self._workbench.cancel_run(handle.workbench_id, run_id, ree_id=handle.ree_id)
+            return
+        record = events.cancel_run_sent(attempt, partition=handle.ree_id, facts={"run_id": run_id, "session": session})
+        try:
+            self._workbench.cancel_run(handle.workbench_id, run_id, ree_id=handle.ree_id, record=record)
+        except WorkbenchUnavailableError as exc:
+            events.cancel_run_abandoned(attempt, partition=handle.ree_id, reason=type(exc).__name__)
+            raise
+        except RuntimeError:
+            events.cancel_run_received(attempt, "error", partition=handle.ree_id)
+            raise
+        except BaseException as exc:
+            events.cancel_run_abandoned(attempt, partition=handle.ree_id, reason=type(exc).__name__)
+            raise
+        events.cancel_run_received(attempt, "done", partition=handle.ree_id)
 
     # ------------------------------------------------
     # Query / mutation dispatch

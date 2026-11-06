@@ -804,3 +804,82 @@ def test_idempotency_conflict_is_metered(instruments: _Instruments):
     assert instruments.conflict.calls == [(1, {"repo2ree.operation": "evaluate"})]
     assert instruments.replay.calls == []
     _wait_for(registry, first["run_id"], TERMINAL)
+
+
+# ================================================
+# Runs that follow their command
+# ================================================
+
+
+def test_a_run_following_its_command_takes_no_worker_from_the_pool():
+    registry = _registry(max_workers=1)
+    release = Event()
+
+    def slow(ree_id: str, run_id: str) -> ActionResult:
+        release.wait(5)
+        return ActionResult(status="succeeded")
+
+    blocking = registry.start_background(KNOWN_REE, "source", {}, "slow", slow)
+    following = registry.start_background(
+        KNOWN_REE, "build", {}, "build", lambda e, r: ActionResult(status="succeeded"), resumable=True
+    )
+    assert _wait_for(registry, following["run_id"], TERMINAL)["status"] == "succeeded"
+    release.set()
+    assert _wait_for(registry, blocking["run_id"], TERMINAL)["status"] == "succeeded"
+    registry.shutdown()
+
+
+def test_a_run_that_stops_following_is_left_for_the_next_process(tmp_path):
+    from repo2ree_supervisor import FollowStoppedError
+
+    registry = _registry(root=tmp_path)
+
+    def runner(ree_id: str, run_id: str) -> ActionResult:
+        registry.stopping.wait(5)
+        raise FollowStoppedError("stopping")
+
+    run = registry.start_background(KNOWN_REE, "build", {}, "build", runner, resumable=True)
+    _wait_for(registry, run["run_id"], frozenset({"running"}))
+    registry.stop()
+    registry.shutdown()
+    assert registry.get_run_state(KNOWN_REE, run["run_id"])["status"] == "running"
+
+
+def test_startup_follows_on_the_runs_whose_commands_run_on_and_fails_the_rest(tmp_path):
+    from repo2ree_protocol.execution import ExecutionContext
+
+    first = _registry(root=tmp_path)
+    started = Event()
+
+    def stuck(ree_id: str, run_id: str) -> ActionResult:
+        started.set()
+        first.stopping.wait(5)
+        from repo2ree_supervisor import FollowStoppedError
+
+        raise FollowStoppedError("stopping")
+
+    context = ExecutionContext.new(ree_id=KNOWN_REE)
+    followed = first.start_background(KNOWN_REE, "build", {}, "build", stuck, resumable=True)
+    unstarted = first.start_background(KNOWN_REE, "build", {}, "other", stuck, resumable=True)
+    plain = first.start_background(KNOWN_REE, "source", {}, "src", stuck)
+    started.wait(5)
+    _wait_for(first, followed["run_id"], frozenset({"running"}))
+    _wait_for(first, plain["run_id"], frozenset({"running"}))
+    first.record_start(KNOWN_REE, followed["run_id"], context)
+    first.record_progress(KNOWN_REE, followed["run_id"], 12)
+    first.stop()
+    first.shutdown()
+
+    resumed: list[tuple[str, int]] = []
+
+    def resume(run: Any) -> ActionResult:
+        resumed.append((run.run_id, run.log_offset))
+        return ActionResult(status="succeeded", context=context)
+
+    second = _registry(root=tmp_path)
+    second.startup(resume)
+    assert _wait_for(second, followed["run_id"], TERMINAL)["status"] == "succeeded"
+    assert resumed == [(followed["run_id"], 12)]
+    assert second.get_run_state(KNOWN_REE, unstarted["run_id"])["status"] == "failed"
+    assert second.get_run_state(KNOWN_REE, plain["run_id"])["status"] == "failed"
+    second.shutdown()

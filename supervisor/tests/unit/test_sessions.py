@@ -15,11 +15,21 @@ import pytest
 
 from repo2ree_protocol.command import BuildRuntimeCommand
 from repo2ree_protocol.execution import ExecutionContext
-from repo2ree_protocol.frames import Frame, ResultFrame
+from repo2ree_protocol.frames import (
+    AcceptedFrame,
+    BusyFrame,
+    Frame,
+    LogFrame,
+    ResultFrame,
+    UnavailableFrame,
+    UnknownFrame,
+)
 from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.workbench import WorkbenchHello
 from repo2ree_supervisor import (
     CommandDispatcher,
+    FollowStoppedError,
+    ReeBusyError,
     ReeLocks,
     ReeRoute,
     WorkbenchConnection,
@@ -125,8 +135,8 @@ def test_a_command_goes_on_the_session_it_was_journaled_for_or_not_at_all(journa
     journaled = client.session_of("wb-1")
     assert journaled == old.session_id
     admitted(registry, hello())
-    with pytest.raises(WorkbenchUnavailableError, match="ended before the command was sent"):
-        client.exec_action("wb-1", "{}", "run-1", {}, ree_id="ree-1", session=journaled)
+    with pytest.raises(WorkbenchUnavailableError, match="ended before the request was sent"):
+        client.start_run("wb-1", "{}", "run-1", {}, ExecutionContext.new(), ree_id="ree-1", session=journaled)
     assert client.session_of("nobody") is None
 
 
@@ -149,60 +159,155 @@ def test_a_command_for_a_workbench_with_no_session_is_neither_journaled_nor_sent
     with pytest.raises(WorkbenchUnavailableError, match="not connected"):
         dispatcher.dispatch_action(handle, BuildRuntimeCommand(), "run-1", lambda *_: None)
     rows = [json.loads(line) for path in journal_dir.glob("*.ndjson") for line in path.read_text().splitlines()]
-    assert not [row for row in rows if row.get("subject") == "dispatch"]
+    assert not [row for row in rows if row.get("subject") == "start_run"]
 
 
-class _CancelledBench:
-    """A workbench whose command runs until it is canceled, remembering what each cancel named."""
+class _Bench:
+    """A workbench whose command runs until it is canceled, or ``ends``; its sessions end when ``drop`` says."""
 
-    def __init__(self) -> None:
-        self.canceled = threading.Event()
+    def __init__(self, answer: Frame | None = None) -> None:
+        self.answer = answer or AcceptedFrame()
+        self.ends = threading.Event()
         self.records: list[str | None] = []
+        self.follows: list[tuple[str, int]] = []
+        self.drop = 0
+        self.session = "s-1"
+        self.result = ActionResult(status="canceled")
 
     def session_of(self, workbench_id: str) -> str | None:
-        return "s-1"
+        return self.session
 
-    def exec_action(
+    def start_run(
         self,
         workbench_id: str,
         cmd_json: str,
         run_id: str,
         env: dict[str, str],
-        context: ExecutionContext | None = None,
+        context: ExecutionContext,
         *,
         ree_id: str,
         session: str | None = None,
+        wait: float = 0.0,
     ) -> Iterator[Frame]:
-        self.canceled.wait(5)
-        yield ResultFrame(result=ActionResult(status="canceled", context=context))
+        self.context = context
+        self.wait = wait
+        yield self.answer
+
+    def follow_run(
+        self, workbench_id: str, attempt_id: str, after: int, *, ree_id: str, session: str | None = None
+    ) -> Iterator[Frame]:
+        self.follows.append((str(session), after))
+        yield LogFrame(stream="stdout", level="info", message="line")
+        if self.drop:
+            self.drop -= 1
+            self.session = f"s-{len(self.follows) + 1}"
+            yield UnavailableFrame(detail="workbench connection closed")
+            return
+        if attempt_id == "unknown":
+            yield UnknownFrame(detail="no such run")
+            return
+        self.ends.wait(5)
+        yield ResultFrame(result=self.result.model_copy(update={"context": self.context}))
 
     def cancel_run(self, workbench_id: str, run_id: str, *, ree_id: str, record: str | None = None) -> None:
         self.records.append(record)
-        self.canceled.set()
+        self.ends.set()
+
+
+HANDLE = ReeRoute(ree_id="ree-1", workbench_id="wb-1", store_id="lab-1")
+
+
+def journaled(journal_dir: Path, subject: str) -> list[dict[str, Any]]:
+    rows = [json.loads(line) for path in journal_dir.glob("*.ndjson") for line in path.read_text().splitlines()]
+    return [row for row in rows if row.get("subject") == subject]
 
 
 def test_a_cancel_of_a_command_in_flight_is_journaled_once_and_names_its_record(journal_dir: Path) -> None:
-    bench = _CancelledBench()
+    bench = _Bench()
     dispatcher = CommandDispatcher(bench, ReeLocks())  # type: ignore[arg-type]
-    handle = ReeRoute(ree_id="ree-1", workbench_id="wb-1", store_id="lab-1")
     results: list[ActionResult] = []
     running = threading.Thread(
         target=lambda: results.append(
-            dispatcher.dispatch_action(handle, BuildRuntimeCommand(), "run-1", lambda *_: None)
+            dispatcher.dispatch_action(HANDLE, BuildRuntimeCommand(), "run-1", lambda *_: None)
         )
     )
     running.start()
-    while not dispatcher._dispatched:
+    while not dispatcher._followed:
         time.sleep(0.01)
-    dispatcher.cancel_run(handle, "run-1")
-    dispatcher.cancel_run(handle, "run-1")
+    dispatcher.cancel_run(HANDLE, "run-1")
+    dispatcher.cancel_run(HANDLE, "run-1")
     running.join(5)
-    rows = [json.loads(line) for path in journal_dir.glob("*.ndjson") for line in path.read_text().splitlines()]
-    cancels = [row for row in rows if row.get("subject") == "cancel_run"]
+    cancels = journaled(journal_dir, "cancel_run")
     assert [(row["kind"], row["message"]) for row in cancels] == [("send", "cancel_run"), ("receive", "done")]
     context = results[0].context
     assert context is not None
     assert cancels[0]["key"] == context.attempt_id
     assert cancels[0]["facts"] == {"run_id": "run-1", "session": "s-1"}
     assert bench.records == [f"api-000001#{cancels[0]['seq']}", None]
-    assert not dispatcher._dispatched
+    assert not dispatcher._followed
+
+
+def test_a_command_is_followed_across_sessions_from_the_line_it_had_reached(journal_dir: Path) -> None:
+    bench = _Bench()
+    bench.drop = 2
+    bench.result = ActionResult(status="succeeded")
+    bench.ends.set()
+    dispatcher = CommandDispatcher(bench, ReeLocks())  # type: ignore[arg-type]
+    lines: list[str] = []
+    progress: list[int] = []
+    started: list[ExecutionContext] = []
+
+    result = dispatcher.dispatch_action(
+        HANDLE,
+        BuildRuntimeCommand(),
+        "run-1",
+        lambda stream, level, message: lines.append(message),
+        on_started=started.append,
+        on_progress=progress.append,
+    )
+
+    assert result.status == "succeeded"
+    assert result.context == started[0]
+    assert started[0].dispatch_record is not None
+    assert bench.follows == [("s-1", 0), ("s-2", 1), ("s-3", 2)]
+    assert lines == ["line", "line", "line"]
+    assert progress[-1] == 3
+    starts = journaled(journal_dir, "start_run")
+    assert [(row["kind"], row["message"]) for row in starts] == [("send", "start_run"), ("receive", "accepted")]
+    follows = journaled(journal_dir, "follow_run")
+    assert [row["kind"] for row in follows] == ["send", "abandon", "send", "abandon", "send", "receive"]
+    assert follows[-1]["facts"] == {"status": "succeeded", "commit": None, "record": None}
+
+
+def test_a_busy_ree_refuses_the_command(journal_dir: Path) -> None:
+    dispatcher = CommandDispatcher(_Bench(BusyFrame(detail="REE 'ree-1' has a run in progress")), ReeLocks())  # type: ignore[arg-type]
+    with pytest.raises(ReeBusyError, match="in progress"):
+        dispatcher.dispatch_action(HANDLE, BuildRuntimeCommand(), "run-1", lambda *_: None)
+    starts = journaled(journal_dir, "start_run")
+    assert [(row["kind"], row["message"]) for row in starts] == [("send", "start_run"), ("receive", "busy")]
+
+
+def test_a_command_the_workbench_does_not_know_fails(journal_dir: Path) -> None:
+    dispatcher = CommandDispatcher(_Bench(), ReeLocks())  # type: ignore[arg-type]
+    context = ExecutionContext.new(ree_id="ree-1").model_copy(update={"attempt_id": "unknown"})
+    result = dispatcher.follow(HANDLE, context, "run-1", lambda *_: None)
+    assert result.status == "failed"
+    assert [row["message"] for row in journaled(journal_dir, "follow_run")] == ["follow_run", "unknown"]
+
+
+def test_a_stopped_follower_leaves_the_command_running(journal_dir: Path) -> None:
+    bench = _Bench()
+    bench.session = None  # type: ignore[assignment]
+    stop = threading.Event()
+    stop.set()
+    dispatcher = CommandDispatcher(bench, ReeLocks())  # type: ignore[arg-type]
+    with pytest.raises(FollowStoppedError):
+        dispatcher.follow(HANDLE, ExecutionContext.new(ree_id="ree-1"), "run-1", lambda *_: None, stop=stop)
+
+
+def test_a_command_whose_workbench_does_not_come_back_is_given_up(journal_dir: Path) -> None:
+    bench = _Bench()
+    bench.session = None  # type: ignore[assignment]
+    dispatcher = CommandDispatcher(bench, ReeLocks())  # type: ignore[arg-type]
+    with pytest.raises(WorkbenchUnavailableError, match="did not come back"):
+        dispatcher.follow(HANDLE, ExecutionContext.new(ree_id="ree-1"), "run-1", lambda *_: None, reconnect_timeout=0.0)

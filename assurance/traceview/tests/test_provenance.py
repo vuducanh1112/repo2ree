@@ -54,7 +54,7 @@ def test_every_link_carries_the_rules_its_own_events_triggered() -> None:
     assert {rule.rule for rule in runtime.rules} <= triggered_by("Receipt")
     links = {link.label.split(" ", 1)[0]: link for link in runtime.chain}
     assert {rule.rule for rule in links["attempt"].rules} <= triggered_by("Attempt")
-    assert {rule.rule for rule in links["dispatch"].rules} == {"dispatch-success-is-captured"}
+    assert {rule.rule for rule in links["command"].rules} == {"follow-success-is-captured", "accepted-runs-started"}
     assert "api-success-is-recorded" in {rule.rule for rule in links["action"].rules}
     assert {rule.rule for rule in links["action"].rules} <= triggered_by("AuthorApiAction")
     assert runtime.chain[-1].label == "POST /rees/{id}/build-runtime → 202 at +10 s"

@@ -9,6 +9,7 @@ import pytest
 
 from repo2ree_core.domain.ree.transitions import revision_of
 from repo2ree_core.operations import dispatch
+from repo2ree_core.operations.capture import settle_interrupted
 from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import write_json_atomic
@@ -473,3 +474,96 @@ def test_restoring_a_snapshot_brings_back_lfs_payloads_and_removes_new_recorded_
         history.restore(snapshot)
     assert runtime.read_bytes() == b"runtime built before" * 100
     assert not ree.overlay_file("partial.sh").exists()
+
+
+def _die_mid_handler(ree, monkeypatch):
+    ree.overlay_file("kept.txt").write_text("before")
+
+    def handler(*args, **kwargs):
+        ree.overlay_file("kept.txt").write_text("partial")
+        ree.overlay_file("created.txt").write_text("partial")
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(dispatch, "handle_patch_ree_definition", handler)
+    with pytest.raises(KeyboardInterrupt):
+        patch()
+    monkeypatch.undo()
+    return read_operation_history(ree).operations[0].attempt_id
+
+
+def test_an_attempt_whose_executor_died_is_rolled_back_and_captured_as_interrupted(ree, monkeypatch):
+    attempt = _die_mid_handler(ree, monkeypatch)
+
+    result = settle_interrupted(layout=ree, attempt_id=attempt, log=lambda *args: None)
+
+    assert result is not None
+    assert result.failure is not None
+    assert result.history is not None
+    assert result.status == "failed"
+    assert result.failure.details == {"code": "interrupted"}
+    assert result.history.capture_status == "captured"
+    assert result.history.operation_status == "interrupted"
+    assert result.history.changed is False
+    assert ree.overlay_file("kept.txt").read_text() == "before"
+    assert not ree.overlay_file("created.txt").exists()
+    assert json.loads(git(ree, "log", "-1", "--format=%b"))["outcome"] == "interrupted"
+    assert not list((ree.git_dir / "repo2ree" / "operations").glob("*.json"))
+    record = read_operation_history(ree).operations[0]
+    assert record.phases == ["pending", "executing", "completed", "captured"]
+
+
+def test_settling_a_settled_attempt_answers_as_it_settled(ree, monkeypatch):
+    attempt = _die_mid_handler(ree, monkeypatch)
+    first = settle_interrupted(layout=ree, attempt_id=attempt, log=lambda *args: None)
+    again = settle_interrupted(layout=ree, attempt_id=attempt, log=lambda *args: None)
+    assert first is not None
+    assert again is not None
+    assert first.history is not None
+    assert again.history is not None
+    assert again.history.after_snapshot_id == first.history.after_snapshot_id
+    assert again.status == "failed"
+
+
+def test_an_attempt_lost_before_its_capture_fails_its_capture_and_rolls_back(ree, monkeypatch):
+    ree.overlay_file("kept.txt").write_text("before")
+
+    def handler(*args, **kwargs):
+        ree.overlay_file("kept.txt").write_text("changed")
+        return ActionResult(status="succeeded")
+
+    def die(*args, **kwargs):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(dispatch, "handle_patch_ree_definition", handler)
+    monkeypatch.setattr(GitHistory, "commit_operation", die)
+    with pytest.raises(KeyboardInterrupt):
+        patch()
+    monkeypatch.undo()
+    attempt = read_operation_history(ree).operations[0].attempt_id
+
+    result = settle_interrupted(layout=ree, attempt_id=attempt, log=lambda *args: None)
+
+    assert result is not None
+    assert result.history is not None
+    assert result.history.capture_status == "failed"
+    assert result.history.record_digest is not None
+    assert ree.overlay_file("kept.txt").read_text() == "before"
+    assert read_operation_history(ree).operations[0].phases[-1] == "capture_failed"
+
+
+def test_an_attempt_the_ree_does_not_hold_is_not_settled(ree):
+    assert settle_interrupted(layout=ree, attempt_id="never", log=lambda *args: None) is None
+
+
+def test_an_attempt_lost_before_it_was_recorded_is_recorded_as_beginning_nothing(ree):
+    command = PatchReeDefinitionCommand(args=PatchReeDefinitionArgs(patch={"name": "after"}))
+
+    result = settle_interrupted(layout=ree, attempt_id="lost", log=lambda *args: None, cmd=command, run_id="run-9")
+
+    assert result is not None
+    assert result.history is not None
+    assert result.history.capture_status == "failed"
+    assert result.history.record_digest is not None
+    (record,) = read_operation_history(ree).operations
+    assert (record.attempt_id, record.run_id, record.phases) == ("lost", "run-9", ["pending", "capture_failed"])
+    assert ReeDirectory(ree).read_ree().subject.definition.name == "before"

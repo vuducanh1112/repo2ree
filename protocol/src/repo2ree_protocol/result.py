@@ -9,6 +9,8 @@ from repo2ree_protocol.execution import ExecutionContext
 # The terminal status of any executed action, shared by every layer that
 # produces or relays one (executor handlers, workbench, manager, run registry).
 ActionStatus = Literal["succeeded", "failed", "canceled"]
+# How an attempt ended: as its command reported, or interrupted when its executor ended without reporting.
+OperationStatus = ActionStatus | Literal["interrupted"]
 
 # Coarse machine-readable class of a failure, so a client can act on *why*
 # something failed without parsing free-text logs. ``code`` carries the finer
@@ -60,7 +62,7 @@ class HistoryReference(BaseModel):
     capture_status: Literal["pending", "captured", "failed"]
     before_snapshot_id: str | None = None
     after_snapshot_id: str | None = None
-    operation_status: ActionStatus | Literal["not_started", "unknown"]
+    operation_status: OperationStatus | Literal["not_started", "unknown"]
     operation_failure: Failure | None = None
     changed: bool | None = None
     # For a failed capture: the digest of the record core left beside the history, which stands in

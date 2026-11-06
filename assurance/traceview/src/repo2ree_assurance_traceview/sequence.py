@@ -153,7 +153,8 @@ def build_sequence(
         builder.note(_at(event), "api", label, "journal", ref=event.ref, detail=detail)
     for event in exchange:
         if event.kind == "send":
-            label = f"{terms.EXEC_ACTION} · {_fact(event, terms.OPERATION)}"
+            named = _fact(event, terms.OPERATION, "")
+            label = f"{event.message} · {named}" if named else str(event.message)
             session = event.facts.get(terms.SESSION_FACT)
             on = str(session) if session else None
             builder.message(_at(event), "supervisor", "workbench", label, "journal", ref=event.ref, session=on)
@@ -184,8 +185,8 @@ def build_sequence(
                 staged.append(span)
                 if operation == "copy_close":
                     _staging(builder, staged)
-            elif operation == "exec_action":
-                _exec_action(builder, spans, span)
+            elif operation in ("start_run", "follow_run"):
+                _command(builder, spans, span, operation)
             else:
                 builder.message(
                     span.start, "supervisor", "workbench", operation or span.name, "span", detail=milliseconds(span)
@@ -216,9 +217,9 @@ def build_sequence(
             builder.note(span.start, "executor", f"$ {span.attribute('repo2ree.exec.argv')}", "span", detail=detail)
     _staging(builder, staged)
     if attempt and not captured:
-        # No command span: the dispatch exchange brackets the attempt, as it does for the checker.
+        # No command span: the command's exchanges bracket the attempt, as they do for the checker.
         sent = next((e for e in exchange if e.kind == "send"), None)
-        outcome = next((e for e in exchange if e.kind != "send"), None)
+        outcome = next((e for e in reversed(exchange) if e.kind != "send"), None)
         start, end = _at(sent) if sent else None, _at(outcome) if outcome else None
         if start is not None and end is not None:
             _capture(builder, _Bracket(start, end, []), None, attempt, changes, ree, commit, files)
@@ -274,8 +275,8 @@ def _staging(builder: _Builder, staged: list[Span]) -> None:
     staged.clear()
 
 
-def _exec_action(builder: _Builder, spans: SpanIndex, span: Span) -> None:
-    builder.activate("workbench", span.start, span.end, "exec_action")
+def _command(builder: _Builder, spans: SpanIndex, span: Span, operation: str) -> None:
+    builder.activate("workbench", span.start, span.end, operation)
     executor = next((c for c in spans.children(span) if c.service == "exec"), None)
     if executor is not None and executor.start - span.start > QUIET:
         label = f"{(executor.start - span.start) * 1000:.0f} ms without spans"

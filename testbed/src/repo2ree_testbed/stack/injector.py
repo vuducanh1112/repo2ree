@@ -17,7 +17,16 @@ from repo2ree_testbed.faults import FAULT, CrashApi, Fault
 HISTORY_LOCK_IN_REE = Path(".git/refs/heads/ree-history.lock")
 # What a fault does to the workbench serving an REE's store.
 type WorkbenchFault = Literal[
-    "kill", "pause", "resume", "partition", "heal", "start_rival", "stop_rival", "lock_history", "unlock_history"
+    "kill",
+    "restart",
+    "pause",
+    "resume",
+    "partition",
+    "heal",
+    "start_rival",
+    "stop_rival",
+    "lock_history",
+    "unlock_history",
 ]
 
 
@@ -27,6 +36,7 @@ class FaultUnavailableError(RuntimeError):
 
 _STORE_ACTIONS: dict[str, WorkbenchFault] = {
     "kill_workbench": "kill",
+    "restart_workbench": "restart",
     "pause_workbench": "pause",
     "resume_workbench": "resume",
     "partition_workbench": "partition",

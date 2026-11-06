@@ -21,6 +21,10 @@ class WorkbenchUnavailableError(RuntimeError):
     """Raised when the workbench reports the workbench backend is gone or stopping."""
 
 
+class ReeBusyError(RuntimeError):
+    """The workbench refused to start a command: another one holds the REE."""
+
+
 def raise_for_terminal_error(frame: Frame) -> None:
     """Translate a terminal error frame into the caller-facing exception.
 
@@ -62,18 +66,27 @@ class WorkbenchClient(Protocol):
         the returned file and removes it."""
         ...
 
-    def exec_action(
+    def start_run(
         self,
         workbench_id: str,
         cmd_json: str,
         run_id: str,
         env: dict[str, str],
-        context: ExecutionContext | None = None,
+        context: ExecutionContext,
         *,
         ree_id: str,
         session: str | None = None,
+        wait: float = 0.0,
     ) -> Iterator[Frame]:
-        """Send a command; with ``session``, only on that session of the workbench's connection."""
+        """Start a command; with ``session``, only on that session of the workbench's connection.
+
+        It waits up to ``wait`` for another command in the REE to end before it is refused."""
+        ...
+
+    def follow_run(
+        self, workbench_id: str, attempt_id: str, after: int, *, ree_id: str, session: str | None = None
+    ) -> Iterator[Frame]:
+        """Follow a started command from its ``after``-th log line until it ends, or the session does."""
         ...
 
     def cancel_run(self, workbench_id: str, run_id: str, *, ree_id: str, record: str | None = None) -> None: ...

@@ -43,6 +43,11 @@ def _journal_transition(previous: StoredRun | None, updated: StoredRun) -> None:
         )
 
 
+def _resumable(run: StoredRun) -> bool:
+    """A run whose command was started and is followed by nothing but its run: a later process can follow it."""
+    return run.resumable and run.context is not None and run.status in {"running", "canceling"}
+
+
 class JsonRunStore:
     """Thread-safe JSON run store for one API process."""
 
@@ -219,6 +224,34 @@ class JsonRunStore:
             _journal_transition(current, updated)
             return updated
 
+    def record_start(self, ree_id: str, run_id: str, context: ExecutionContext) -> StoredRun | None:
+        return self._update_active(ree_id, run_id, {"context": context})
+
+    def record_progress(self, ree_id: str, run_id: str, log_offset: int) -> StoredRun | None:
+        return self._update_active(ree_id, run_id, {"log_offset": log_offset})
+
+    def mark_cancel_sent(self, ree_id: str, run_id: str) -> bool:
+        with self._lock:
+            current = self._get_unlocked(ree_id, run_id)
+            if current is None or current.cancel_sent:
+                return False
+            self._write_for_run_unlocked(current.model_copy(update={"cancel_sent": True}))
+            return True
+
+    def _update_active(self, ree_id: str, run_id: str, changes: dict[str, Any]) -> StoredRun | None:
+        with self._lock:
+            current = self._get_unlocked(ree_id, run_id)
+            if current is None or current.status in _TERMINAL_STATUSES:
+                return current
+            updated = current.model_copy(update=changes)
+            self._write_for_run_unlocked(updated)
+            return updated
+
+    def resumable_incomplete(self) -> list[StoredRun]:
+        with self._lock:
+            runs = [self._read_state_unlocked(run_dir) for run_dir in self._runs.values()]
+        return [run for run in runs if _resumable(run)]
+
     def interrupt_incomplete(self) -> list[StoredRun]:
         interrupted: list[StoredRun] = []
         failure = Failure(
@@ -231,7 +264,7 @@ class JsonRunStore:
         with self._lock:
             for key, run_dir in self._runs.items():
                 current = self._read_state_unlocked(run_dir)
-                if current.status not in _ACTIVE_STATUSES:
+                if current.status not in _ACTIVE_STATUSES or _resumable(current):
                     continue
                 updated = current.model_copy(update={"status": "failed", "failure": failure, "finished_at": utc_now()})
                 self._write_state_unlocked(run_dir / "state.json", updated)

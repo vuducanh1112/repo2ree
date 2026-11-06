@@ -19,6 +19,7 @@ from typing import Any, Protocol, cast
 import pytest
 
 from repo2ree_protocol.frames import (
+    AcceptedFrame,
     BytesChunkFrame,
     DoneFrame,
     ErrorFrame,
@@ -29,10 +30,11 @@ from repo2ree_protocol.frames import (
 )
 from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.workbench import (
-    ExecActionRequest,
     ExecSimpleRequest,
     ExecUploadRequest,
     FetchFileRequest,
+    FollowRunRequest,
+    StartRunRequest,
     WorkbenchWsMessage,
     WorkbenchWsRequest,
     workbench_ws_request_adapter,
@@ -146,7 +148,7 @@ def test_is_running_true_and_no_workbench_false() -> None:
     assert client.is_running("a1") is True
 
 
-def test_exec_action_streams_logs_then_result() -> None:
+def test_start_run_sends_the_command_and_its_context() -> None:
     from repo2ree_protocol.execution import ExecutionContext
 
     socket = FakeSocket()
@@ -156,20 +158,36 @@ def test_exec_action_streams_logs_then_result() -> None:
 
     frames: list[Any] = []
     context = ExecutionContext.new(ree_id="ree-1")
-    join = _run_in_thread(lambda: frames.extend(client.exec_action("a1", "{}", "run1", {}, context, ree_id="ree-1")))
+    join = _run_in_thread(lambda: frames.extend(client.start_run("a1", "{}", "run1", {}, context, ree_id="ree-1")))
     request = socket.wait_for_request()
-    assert isinstance(request.request, ExecActionRequest)
+    assert isinstance(request.request, StartRunRequest)
     assert request.request.context == context
+    socket.respond(AcceptedFrame())
+    join()
+
+    assert [frame.type for frame in frames] == ["accepted"]
+
+
+def test_follow_run_streams_logs_then_result() -> None:
+    socket = FakeSocket()
+    registry = WorkbenchConnectionRegistry()
+    registry.register("a1", socket.connection)
+    client = WsWorkbenchClient(registry)
+
+    frames: list[Any] = []
+    join = _run_in_thread(lambda: frames.extend(client.follow_run("a1", "att-1", 4, ree_id="ree-1")))
+    request = socket.wait_for_request()
+    assert isinstance(request.request, FollowRunRequest)
+    assert (request.request.attempt_id, request.request.after) == ("att-1", 4)
     socket.respond(LogFrame(stream="stdout", level="info", message="working"))
     socket.respond(ResultFrame(result=ActionResult(status="succeeded")))
     join()
 
     assert isinstance(frames[0], LogFrame)
     assert isinstance(frames[-1], ResultFrame)
-    assert frames[-1].result.status == "succeeded"
 
 
-def test_a_silent_action_waits_until_its_connection_closes(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_silent_follow_waits_until_its_connection_closes(monkeypatch: pytest.MonkeyPatch) -> None:
     # A script may run quietly for hours: only the connection going away ends the wait.
     socket = FakeSocket()
     registry = WorkbenchConnectionRegistry()
@@ -185,7 +203,7 @@ def test_a_silent_action_waits_until_its_connection_closes(monkeypatch: pytest.M
     monkeypatch.setattr(socket.connection, "request", spy)
 
     frames: list[Any] = []
-    join = _run_in_thread(lambda: frames.extend(client.exec_action("a1", "{}", "run1", {}, ree_id="ree-1")))
+    join = _run_in_thread(lambda: frames.extend(client.follow_run("a1", "att-1", 0, ree_id="ree-1")))
     socket.wait_for_request()
     socket.connection.close()
     join()
@@ -213,7 +231,7 @@ def test_cancel_run_sends_cancel_run_request() -> None:
     [
         lambda client: client.exec_simple("a1", ["doctor"], ree_id="ree-1"),
         lambda client: client.cancel_run("a1", "run-7", ree_id="ree-1"),
-        lambda client: list(client.exec_action("a1", "{}", "run-1", {}, ree_id="ree-1")),
+        lambda client: list(client.follow_run("a1", "att-1", 0, ree_id="ree-1")),
         lambda client: client.exec_query("a1", ["get-ree-manifest"], ree_id="ree-1"),
     ],
 )
@@ -226,7 +244,7 @@ def test_every_request_names_the_ree_it_is_for(call: Any) -> None:
 
     join = _run_in_thread(lambda: call(client))
     request = socket.wait_for_request().request
-    socket.respond(ResultFrame(result=ActionResult(status="succeeded")) if request.op == "exec_action" else DoneFrame())
+    socket.respond(ResultFrame(result=ActionResult(status="succeeded")) if request.op == "follow_run" else DoneFrame())
     join()
 
     assert getattr(request, "ree_id", None) == "ree-1"

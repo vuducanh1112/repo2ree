@@ -41,6 +41,8 @@ def test_main_composes_telemetry_runtime_and_control_connection(
     monkeypatch.setattr(app_module, "configure_logging", lambda **kwargs: None)
 
     class Executor:
+        root = tmp_path / "rees"
+
         def build_info(self) -> BuildInfo:
             return BuildInfo(revision="executor-test-revision")
 

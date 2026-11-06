@@ -45,13 +45,14 @@ from repo2ree_protocol.workbench import (
     CancelRequest,
     CancelRunRequest,
     DeleteReeRequest,
-    ExecActionRequest,
     ExecQueryRequest,
     ExecSimpleRequest,
     ExecUploadRequest,
     FetchFileRequest,
+    FollowRunRequest,
     ListJournalsRequest,
     ReadJournalRequest,
+    StartRunRequest,
     WorkbenchHello,
     WorkbenchJournalList,
     WorkbenchRequest,
@@ -448,27 +449,41 @@ class WsWorkbenchClient:
     # Streaming — hand the frame stream straight to the manager.
     # ------------------------------------------------
 
-    def exec_action(
+    def start_run(
         self,
         workbench_id: str,
         cmd_json: str,
         run_id: str,
         env: dict[str, str],
-        context: ExecutionContext | None = None,
+        context: ExecutionContext,
         *,
         ree_id: str,
         session: str | None = None,
+        wait: float = 0.0,
     ) -> Iterator[Frame]:
-        # A command journaled as sent on ``session`` goes on that session or not at all.
-        connection = self._registry.pick(workbench_id)
-        if session is not None and connection.session_id != session:
-            raise WorkbenchUnavailableError(f"session {session} ended before the command was sent")
-        # No frame gap: a script may run quietly for hours. The connection's pings decide whether the
-        # workbench is still there, and an author's cancel or a lost connection ends the run.
+        # A command journaled as sent on ``session`` goes on that session or not at all. No frame
+        # gap: it is answered once it starts, which waits for one of the workbench's slots.
+        connection = self._on_session(workbench_id, session)
         return connection.request(
-            ExecActionRequest(cmd_json=cmd_json, run_id=run_id, env=env, context=context, ree_id=ree_id),
+            StartRunRequest(cmd_json=cmd_json, run_id=run_id, env=env, context=context, ree_id=ree_id, wait=wait),
             frame_gap_timeout=None,
         )
+
+    def follow_run(
+        self, workbench_id: str, attempt_id: str, after: int, *, ree_id: str, session: str | None = None
+    ) -> Iterator[Frame]:
+        # No frame gap: a script may run quietly for days. The connection's pings decide whether the
+        # workbench is still there, and closing the connection ends the follow, not the command.
+        connection = self._on_session(workbench_id, session)
+        return connection.request(
+            FollowRunRequest(ree_id=ree_id, attempt_id=attempt_id, after=after), frame_gap_timeout=None
+        )
+
+    def _on_session(self, workbench_id: str, session: str | None) -> WorkbenchConnection:
+        connection = self._registry.pick(workbench_id)
+        if session is not None and connection.session_id != session:
+            raise WorkbenchUnavailableError(f"session {session} ended before the request was sent")
+        return connection
 
     def cancel_run(self, workbench_id: str, run_id: str, *, ree_id: str, record: str | None = None) -> None:
         conn = self._registry.pick(workbench_id)

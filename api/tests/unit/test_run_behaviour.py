@@ -123,3 +123,68 @@ def test_a_run_no_author_asked_for_records_nothing(tmp_path: Path, transitions) 
     store.begin("ree-1", "build-1")
     store.finalize("ree-1", "build-1", status="succeeded", outputs={}, failure=None)
     assert transitions() == []
+
+
+def test_a_run_whose_command_runs_on_is_resumed_by_the_next_process(tmp_path: Path, transitions) -> None:
+    from repo2ree_protocol.execution import ExecutionContext
+
+    run = _run().model_copy(update={"resumable": True})
+    store = JsonRunStore(tmp_path / "runs")
+    store.create_idempotent(run)
+    store.begin("ree-1", "build-1")
+    store.record_start("ree-1", "build-1", ExecutionContext.new(ree_id="ree-1"))
+    assert run.action_id is not None
+    author_actions.detach(run.action_id)
+    author_actions.settle_open("abandoned")
+    author_actions._open.pop(run.action_id)  # The process ends; the next one knows nothing it held.
+
+    restarted = JsonRunStore(tmp_path / "runs")
+    assert restarted.interrupt_incomplete() == []
+    (resumable,) = restarted.resumable_incomplete()
+    author_actions.resume(run.action_id, "build_runtime", "ree-1", resumable.status)
+    restarted.finalize("ree-1", "build-1", status="succeeded", outputs={}, failure=None)
+
+    named = {"action": "build_runtime", "run_id": "build-1"}
+    assert transitions()[1:] == [
+        ("requested", "running", named),
+        ("running", "resumed", {"action": "build_runtime"}),
+        ("resumed", "succeeded", named),
+    ]
+
+
+def test_a_run_not_started_yet_is_not_resumed_but_failed(tmp_path: Path, transitions) -> None:
+    store = JsonRunStore(tmp_path / "runs")
+    store.create_idempotent(_run().model_copy(update={"resumable": True}))
+    store.begin("ree-1", "build-1")
+    restarted = JsonRunStore(tmp_path / "runs")
+    assert restarted.resumable_incomplete() == []
+    assert [run.status for run in restarted.interrupt_incomplete()] == ["failed"]
+
+
+def test_a_detached_action_fails_only_when_the_api_stops_for_good(tmp_path: Path, transitions) -> None:
+    store = JsonRunStore(tmp_path / "runs")
+    run = _run()
+    store.create_idempotent(run)
+    store.begin("ree-1", "build-1")
+    assert run.action_id is not None
+    author_actions.detach(run.action_id)
+    author_actions.settle_open("abandoned")
+    assert author_actions.is_open(run.action_id)
+    author_actions.settle_open("abandoned", final=True)
+    assert not author_actions.is_open(run.action_id)
+
+
+def test_a_cancel_is_sent_once_and_progress_stops_with_the_run(tmp_path: Path, transitions) -> None:
+    store = JsonRunStore(tmp_path / "runs")
+    store.create_idempotent(_run())
+    store.begin("ree-1", "build-1")
+    assert store.mark_cancel_sent("ree-1", "build-1")
+    assert not store.mark_cancel_sent("ree-1", "build-1")
+    store.record_progress("ree-1", "build-1", 7)
+    store.finalize(
+        "ree-1", "build-1", status="failed", outputs={}, failure=Failure(category="internal", message="x", origin="api")
+    )
+    store.record_progress("ree-1", "build-1", 9)
+    reloaded = JsonRunStore(tmp_path / "runs").get("ree-1", "build-1")
+    assert reloaded is not None
+    assert (reloaded.log_offset, reloaded.cancel_sent) == (7, True)

@@ -2469,7 +2469,7 @@ export interface components {
             /** After Snapshot Id */
             after_snapshot_id?: string | null;
             /** Operation Status */
-            operation_status: ("succeeded" | "failed" | "canceled") | ("not_started" | "unknown");
+            operation_status: ("succeeded" | "failed" | "canceled") | "interrupted" | ("not_started" | "unknown");
             operation_failure?: components["schemas"]["Failure"] | null;
             /** Changed */
             changed?: boolean | null;
@@ -2783,7 +2783,7 @@ export interface components {
              * Operation Status
              * @default not_started
              */
-            operation_status: ("succeeded" | "failed" | "canceled") | ("not_started" | "unknown");
+            operation_status: ("succeeded" | "failed" | "canceled") | "interrupted" | ("not_started" | "unknown");
             /** Before Snapshot Id */
             before_snapshot_id?: string | null;
             /** After Snapshot Id */

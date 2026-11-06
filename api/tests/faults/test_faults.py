@@ -10,7 +10,7 @@ import time
 from collections.abc import Callable
 from typing import Any
 
-from system_client import BUILD_SCRIPT, RUNTIME, TERMINAL, Api, fault
+from system_client import BUILD_SCRIPT, RUNTIME, Api, fault
 
 from repo2ree_testbed.faults import (
     CrashApi,
@@ -18,6 +18,7 @@ from repo2ree_testbed.faults import (
     LockHistory,
     PartitionWorkbench,
     PauseWorkbench,
+    RestartWorkbench,
     ResumeWorkbench,
     StartRivalWorkbench,
     StopRivalWorkbench,
@@ -25,17 +26,25 @@ from repo2ree_testbed.faults import (
 )
 
 ACTIVATION_VERIFY = "ree-scripts/activation.verify.sh"
-SLOW_BUILD = "#!/usr/bin/env sh\nset -eu\necho 'building slowly'\nsleep 120\n"
 
 
-def slow_build(api: Api, ree_id: str) -> dict[str, Any]:
+def build_taking(api: Api, ree_id: str, seconds: int) -> dict[str, Any]:
+    """A build that works, and takes ``seconds`` before it does; running once this returns."""
     api.acquire(ree_id)
-    api.succeed(ree_id, "evaluate")
     api.patch(ree_id, {"build_runtime": {"runtime_path": RUNTIME}})
-    api.write(ree_id, BUILD_SCRIPT, SLOW_BUILD)
+    inferred = str(api.infer(ree_id, "build")["candidates"][0]["body"])
+    shebang, _, body = inferred.partition("\n")
+    api.write(ree_id, BUILD_SCRIPT, f"{shebang}\necho 'building slowly'\nsleep {seconds}\n{body}")
     run: dict[str, Any] = api.post(f"/api/v1/rees/{ree_id}/build-runtime")
     api.wait_for_status(ree_id, run["run_id"], "running")
     return run
+
+
+def built(api: Api, ree_id: str, run: dict[str, Any]) -> None:
+    """The build ran to its end through the fault: it succeeded, and its runtime is the REE's evidence."""
+    settled = api.wait(ree_id, run, timeout=300)
+    assert settled["status"] == "succeeded", settled
+    assert api.audit(ree_id)["runtime"]["evidence"] == "current"
 
 
 def serving(api: Api, ree_id: str) -> str:
@@ -64,39 +73,49 @@ def answers_again(api: Api, ree_id: str, timeout: float = 60.0) -> bool:
     return False
 
 
-def test_an_api_crash_fails_the_build_in_flight_and_the_ree_builds_after(api: Api, new_ree: Callable[..., str]) -> None:
+def test_a_build_outlives_an_api_crash_and_the_restarted_api_follows_it(api: Api, new_ree: Callable[..., str]) -> None:
     ree_id = new_ree()
-    run = slow_build(api, ree_id)
+    run = build_taking(api, ree_id, 30)
 
     fault(CrashApi())
 
-    assert api.wait(ree_id, run, timeout=120)["status"] == "failed"
     assert answers_again(api, ree_id), "the REE's workbench did not come back after the API restarted"
-    assert api.build(ree_id)["status"] == "succeeded"
+    built(api, ree_id, run)
 
 
-def test_a_paused_workbench_does_not_leave_its_build_running(api: Api, new_ree: Callable[..., str]) -> None:
+def test_a_build_outlives_its_workbench_restarting(api: Api, new_ree: Callable[..., str]) -> None:
     ree_id = new_ree()
-    run = slow_build(api, ree_id)
+    run = build_taking(api, ree_id, 30)
+
+    fault(RestartWorkbench(ree_id=ree_id))
+
+    built(api, ree_id, run)
+
+
+def test_a_build_outlives_its_workbench_being_paused(api: Api, new_ree: Callable[..., str]) -> None:
+    ree_id = new_ree()
+    run = build_taking(api, ree_id, 30)
 
     fault(PauseWorkbench(ree_id=ree_id))
     try:
-        settled = api.wait(ree_id, run, timeout=90)
+        assert disconnected(api, ree_id, timeout=120), "the control plane still lists the paused workbench"
     finally:
         fault(ResumeWorkbench(ree_id=ree_id))
-    assert settled["status"] in TERMINAL - {"succeeded"}
+
+    built(api, ree_id, run)
 
 
-def test_a_partitioned_workbench_fails_its_build(api: Api, new_ree: Callable[..., str]) -> None:
+def test_a_build_outlives_a_partition_from_its_workbench(api: Api, new_ree: Callable[..., str]) -> None:
     ree_id = new_ree()
-    run = slow_build(api, ree_id)
+    run = build_taking(api, ree_id, 30)
 
     fault(PartitionWorkbench(ree_id=ree_id))
     try:
-        settled = api.wait(ree_id, run, timeout=90)
+        assert disconnected(api, ree_id, timeout=120), "the control plane still lists the partitioned workbench"
     finally:
         fault(HealWorkbench(ree_id=ree_id))
-    assert settled["status"] == "failed"
+
+    built(api, ree_id, run)
 
 
 def test_a_command_for_a_bench_that_lost_its_connection_is_refused(api: Api, new_ree: Callable[..., str]) -> None:

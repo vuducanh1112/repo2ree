@@ -274,6 +274,18 @@ class E2EStack:
                     # started, as a crash of its container would take them, and started again.
                     kill_tree(process)
                     self.locations[index - 1] = self.launch(*self.launches[index - 1])
+                case "restart":
+                    # As a service manager restarts it: the workbench alone is stopped, and the executors
+                    # it started, each in a session of its own, run on for the next one to take over.
+                    with suppress(ProcessLookupError):
+                        os.killpg(process.pid, signal.SIGTERM)
+                    try:
+                        process.wait(timeout=15)
+                    except subprocess.TimeoutExpired:
+                        with suppress(ProcessLookupError):
+                            os.killpg(process.pid, signal.SIGKILL)
+                        process.wait()
+                    self.locations[index - 1] = self.launch(*self.launches[index - 1])
                 case "pause":
                     os.killpg(process.pid, signal.SIGSTOP)
                 case "resume":

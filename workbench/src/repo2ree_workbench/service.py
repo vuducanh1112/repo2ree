@@ -5,14 +5,13 @@ Every request names its REE, and the REE's directory in the store is where its c
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import Iterator
 from pathlib import Path
 
 from repo2ree_protocol.execution import ExecutionContext
-from repo2ree_protocol.frames import Frame
 from repo2ree_protocol.workbench import WorkbenchJournal, WorkbenchJournalList
-from repo2ree_telemetry.behaviour import events, journal_file, journal_files, positions, records_after
+from repo2ree_telemetry.behaviour import journal_file, journal_files, positions, records_after
+from repo2ree_workbench.executions import Executions, LogFollower
 from repo2ree_workbench.executor_process import LocalExecutor
 from repo2ree_workbench.journal import journal_directory
 
@@ -23,23 +22,27 @@ JOURNAL_CHUNK = 256 * 1024
 class WorkbenchService:
     """The backend-neutral execution service of a store's workbench."""
 
-    def __init__(self, executor: LocalExecutor, *, store_id: str, slots: int = 1):
+    def __init__(self, executor: LocalExecutor, *, store_id: str, slots: int = 1, executions: Executions | None = None):
         self._executor = executor
         self.store_id = store_id
         self.slots = slots
-        # Actions wait here for a slot; queries do not.
-        self.action_slots = asyncio.Semaphore(slots)
+        # Commands wait for one of the slots; queries do not.
+        self.executions = executions or Executions(executor, slots=slots)
 
-    def exec_action(
+    async def start_run(
         self,
         cmd_json: str,
         run_id: str,
         env: dict[str, str],
-        context: ExecutionContext | None = None,
+        context: ExecutionContext,
         *,
         ree_id: str,
-    ) -> Iterator[Frame]:
-        return self._executor.exec_action(cmd_json, run_id, env, context, ree_id=ree_id)
+        wait: float = 0.0,
+    ) -> None:
+        await self.executions.start(cmd_json, run_id, env, context, ree_id=ree_id, wait=wait)
+
+    def follow_run(self, ree_id: str, attempt_id: str, after: int) -> LogFollower:
+        return self.executions.follow(ree_id, attempt_id, after)
 
     def exec_simple(self, argv: list[str], timeout: int = 60, *, ree_id: str) -> None:
         if argv[:1] == [INIT_REE]:
@@ -54,10 +57,8 @@ class WorkbenchService:
     def exec_query_to_file(self, argv: list[str], target: Path, timeout: int = 600, *, ree_id: str) -> None:
         self._executor.exec_query_to_file(argv, target, timeout, ree_id=ree_id)
 
-    def cancel_run(
-        self, run_id: str, *, ree_id: str, cause: events.ExecutionCause = "cancel", record: str | None = None
-    ) -> None:
-        self._executor.cancel_run(run_id, ree_id=ree_id, cause=cause, record=record)
+    def cancel_run(self, run_id: str, *, ree_id: str, record: str | None = None) -> None:
+        self.executions.cancel(run_id, ree_id=ree_id, record=record)
 
     def list_journals(self) -> WorkbenchJournalList:
         directory = journal_directory(self._executor.root)
@@ -81,4 +82,7 @@ class WorkbenchService:
         self._executor.copy_in(source_path, workbench_path, ree_id=ree_id)
 
     def delete_ree(self, ree_id: str) -> None:
+        """Remove an REE's directory from the store; refused while one of its runs is active."""
+        if self.executions.holds(ree_id):
+            raise RuntimeError(f"REE {ree_id!r} has a run in progress")
         self._executor.delete_ree(ree_id)

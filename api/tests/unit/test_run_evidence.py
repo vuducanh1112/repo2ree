@@ -23,7 +23,7 @@ def test_postprocessing_retains_execution_evidence(online_ree, monkeypatch, post
         changed=True,
     )
     completed = ActionResult(status="succeeded", context=context, history=history, outputs={"sealed": True})
-    monkeypatch.setattr(command_dispatcher, "dispatch_action", lambda *args: completed)
+    monkeypatch.setattr(command_dispatcher, "dispatch_action", lambda *args, **following: completed)
     monkeypatch.setattr(orchestration, "is_cancel_requested", lambda *args: False)
     results = []
 

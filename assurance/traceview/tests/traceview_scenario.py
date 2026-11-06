@@ -6,6 +6,8 @@ from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from pydantic import JsonValue
+
 from repo2ree_assurance_checker import Event, Evidence, Source, Verification, VerifiedModel, load_spec, verify
 from repo2ree_assurance_traceview.model import BehaviourTrace, DossierInfo
 from repo2ree_assurance_traceview.operations import build_dossier, build_trace
@@ -16,6 +18,8 @@ REE = "ree-1"
 RECEIPT = "Receipt"
 START = datetime(2026, 10, 18, 10, 0, tzinfo=UTC)
 REQUEST, WORKER, PROVISION = "a" * 32, "b" * 32, "c" * 32
+# The journal of the workbench serving the scenario's store.
+BENCH = "lab-1/workbench-000001"
 
 
 def at(seconds: float) -> str:
@@ -39,6 +43,7 @@ class Scenario:
         # The API journal being written, and those that ended without closing: a crashed API's.
         self.source = "api-000001"
         self.crashed: set[str] = set()
+        self.bench_seq = 0
 
     def journal(self, t: float, trace: str | None = None, partition: str | None = None, **fields: Any) -> None:
         self.seq += 1
@@ -100,25 +105,60 @@ class Scenario:
     def dispatch(
         self, attempt: str, operation: str, run_id: str, sent: float, answered: float, trace: str | None = None
     ) -> None:
+        """A command started, run by an executor the workbench journals, and followed to its end."""
         self.journal(
             sent,
             trace,
             kind="send",
             owner="supervisor",
-            subject="dispatch",
+            subject="start_run",
             key=attempt,
-            message="exec_action",
+            message="start_run",
             facts={"operation": operation, "run_id": run_id, "session": "session-1"},
         )
         self.requests[attempt] = f"{self.source}#{self.seq}"
+        self.journal(
+            sent, trace, kind="receive", owner="supervisor", subject="start_run", key=attempt, message="accepted"
+        )
+        moves: list[tuple[str | None, str, dict[str, JsonValue]]] = [
+            (None, "started", {"operation": operation, "run_id": run_id, "dispatched_by": self.requests[attempt]}),
+            ("started", "exited", {"exit_code": 0, "status": "succeeded"}),
+        ]
+        for current, target, facts in moves:
+            self.bench_seq += 1
+            self.events.append(
+                Event(
+                    source=BENCH,
+                    position=self.bench_seq,
+                    partition=self.ree,
+                    at=at(sent if current is None else answered),
+                    kind="transition",
+                    owner="workbench",
+                    subject="Execution",
+                    key=attempt,
+                    source_state=current,
+                    target_state=target,
+                    facts=facts,
+                )
+            )
+        self.journal(
+            sent,
+            trace,
+            kind="send",
+            owner="supervisor",
+            subject="follow_run",
+            key=attempt,
+            message="follow_run",
+            facts={"run_id": run_id, "session": "session-1"},
+        )
         self.journal(
             answered,
             trace,
             kind="receive",
             owner="supervisor",
-            subject="dispatch",
+            subject="follow_run",
             key=attempt,
-            message="result",
+            message="settled",
             facts={"status": "succeeded"},
         )
 
@@ -149,7 +189,7 @@ class Scenario:
             pending = {"operation": operation, "run_id": run_id, "dispatched_by": self.requests.get(attempt)}
             self.events = [
                 event.model_copy(update={"facts": {**event.facts, "commit": sha}})
-                if event.subject == "dispatch" and event.key == attempt and event.message == "result"
+                if event.subject == "follow_run" and event.key == attempt and event.message == "settled"
                 else event
                 for event in self.events
             ]
@@ -296,7 +336,7 @@ def build_spans() -> list[Span]:
             "workbench",
             10.25,
             11.95,
-            attributes={"repo2ree.operation": "exec_action"},
+            attributes={"repo2ree.operation": "start_run"},
         ),
         span(
             "w4",
@@ -369,6 +409,17 @@ def verified(scenario: Scenario) -> VerifiedModel:
                 partitions=frozenset(partitions),
             )
             for git, partitions in gits.items()
+        ),
+        Source(
+            id=BENCH,
+            kind="journal",
+            process="workbench",
+            instance="lab-1",
+            rank=1,
+            hosts=frozenset({"workbench"}),
+            complete=True,
+            closed=True,
+            vocabulary=SPEC.vocabulary_digest,
         ),
     )
     evidence = Evidence(sources=sources, events=tuple(scenario.events))

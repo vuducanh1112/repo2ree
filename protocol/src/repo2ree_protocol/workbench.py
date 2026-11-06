@@ -131,17 +131,32 @@ class ExecUploadRequest(BaseModel):
     timeout: int = 600
 
 
-class ExecActionRequest(BaseModel):
+class StartRunRequest(BaseModel):
+    """Start a command in an executor of its own; answered once it started, never when it ends."""
+
     model_config = ConfigDict(extra="forbid")
 
-    op: Literal["exec_action"] = "exec_action"
+    op: Literal["start_run"] = "start_run"
     # The REE this addresses in the workbench's store.
     ree_id: str
     cmd_json: str
-    context: ExecutionContext | None = None
+    context: ExecutionContext
     run_id: str
     # Extra environment injected into the executor (trace propagation).
     env: dict[str, str] = {}
+    # How long it waits for another command in the REE to end before it is refused as busy.
+    wait: float = Field(default=0.0, ge=0)
+
+
+class FollowRunRequest(BaseModel):
+    """Stream a started command's log from its ``after``-th line, and how it ended once it has."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    op: Literal["follow_run"] = "follow_run"
+    ree_id: str
+    attempt_id: str
+    after: int = Field(default=0, ge=0)
 
 
 class CancelRunRequest(BaseModel):
@@ -238,7 +253,8 @@ WorkbenchRequest = Annotated[
     ExecSimpleRequest
     | ExecQueryRequest
     | ExecUploadRequest
-    | ExecActionRequest
+    | StartRunRequest
+    | FollowRunRequest
     | CancelRunRequest
     | FetchFileRequest
     | CancelRequest

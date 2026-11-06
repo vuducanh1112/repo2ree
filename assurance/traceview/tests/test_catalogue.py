@@ -41,7 +41,7 @@ def test_each_line_counts_the_instances_that_show_it() -> None:
     build = build_catalogue([("a", trace_of(recorded(), build_spans())), ("b", trace_of(recorded()))]).operations[1]
     everything = {(line.provenance, line.label): line.seen for line in (*build.lines, *build.elsewhere)}
     # Both instances journal the dispatch and capture it in Git; only one recorded spans.
-    assert everything[("journal", "exec_action · build_runtime")] == 2
+    assert everything[("journal", "start_run · build_runtime")] == 2
     assert everything[("git", "commit …")] == 2
     assert everything[("span", "POST /rees/{id}/build-runtime")] == 1
     assert all(line.seen < 2 for line in build.elsewhere)
@@ -92,7 +92,7 @@ def test_what_cannot_be_drawn_is_listed_with_its_reason() -> None:
         ("commit c2000000", "commit …"),
         ("350 ms without spans", "… without spans"),
         ("3x · 0.54 s · 1 failed", "… · … · 1 failed"),
-        ("exec_action · build_runtime", "exec_action · build_runtime"),
+        ("start_run · build_runtime", "start_run · build_runtime"),
     ],
 )
 def test_labels_are_alike_once_ids_durations_and_counts_are_masked(label: str, shape: str) -> None:

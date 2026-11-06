@@ -11266,6 +11266,10 @@
               },
               {
                 "type": "string",
+                "const": "interrupted"
+              },
+              {
+                "type": "string",
                 "enum": [
                   "not_started",
                   "unknown"
@@ -11958,6 +11962,10 @@
                   "failed",
                   "canceled"
                 ]
+              },
+              {
+                "type": "string",
+                "const": "interrupted"
               },
               {
                 "type": "string",

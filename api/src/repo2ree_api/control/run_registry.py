@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 import time
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -18,6 +19,7 @@ from repo2ree_api.storage import author_actions
 from repo2ree_api.storage.run_store import IdempotencyConflictError, RunStore, StoredRun
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.result import ActionResult, Failure, FailureCategory, HistoryReference
+from repo2ree_supervisor import FollowStoppedError
 from repo2ree_telemetry.behaviour.events import AuthorApiActionName
 from repo2ree_telemetry.bootstrap import get_meter, get_tracer
 from repo2ree_telemetry.log import emit_run_log
@@ -132,6 +134,10 @@ def _failure_from_http_exception(exc: HTTPException) -> Failure:
     return Failure(category=category, message=message, retryable=retryable, origin="api", details=carried)
 
 
+def _resuming(resume: Callable[[StoredRun], ActionResult], run: StoredRun) -> Callable[[str, str], ActionResult]:
+    return lambda _ree_id, _run_id: resume(run)
+
+
 class RunRegistry:
     """Durable background-run state machine for a single API process."""
 
@@ -145,20 +151,47 @@ class RunRegistry:
         self._require_ree = require_ree
         self._store = store
         self._executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="repo2ree-run")
+        # Runs whose commands run on in their workbench are followed outside the pool: they take no worker.
+        self._followers: list[threading.Thread] = []
         self._run_control: dict[str, Future[None]] = {}
         self._lock = RLock()
         self._changed = Condition(self._lock)
+        # Set when this process stops: following ends, and the commands run on for the next one.
+        self.stopping = threading.Event()
 
-    def startup(self) -> None:
-        """Settle work that a previous API process could not finish."""
+    def startup(self, resume: Callable[[StoredRun], ActionResult]) -> None:
+        """Take over the runs a previous API process left following their commands, and settle the rest."""
         interrupted = self._store.interrupt_incomplete()
+        for run in self._store.resumable_incomplete():
+            if run.action is not None and run.action_id is not None:
+                author_actions.resume(run.action_id, run.action, run.ree_id, run.status)
+            self._follow(run, _resuming(resume, run), None)
         if interrupted:
             with self._changed:
                 self._changed.notify_all()
 
+    def stop(self) -> None:
+        """Stop following: the runs whose commands still run stay as they are, for the next process."""
+        self.stopping.set()
+
     def shutdown(self) -> None:
-        """Drain the bounded worker pool during orderly API shutdown."""
+        """Drain the bounded worker pool and the followers during orderly API shutdown."""
+        self.stopping.set()
         self._executor.shutdown(wait=True, cancel_futures=False)
+        for follower in self._followers:
+            follower.join()
+
+    def record_start(self, ree_id: str, run_id: str, context: ExecutionContext) -> None:
+        self._store.record_start(ree_id, run_id, context)
+
+    def record_progress(self, ree_id: str, run_id: str, log_offset: int) -> None:
+        self._store.record_progress(ree_id, run_id, log_offset)
+
+    def get(self, ree_id: str, run_id: str) -> StoredRun | None:
+        return self._store.get(ree_id, run_id)
+
+    def mark_cancel_sent(self, ree_id: str, run_id: str) -> bool:
+        return self._store.mark_cancel_sent(ree_id, run_id)
 
     def _snapshot(self, run: StoredRun, *, include_logs: bool) -> dict[str, Any]:
         state = run.model_dump(
@@ -169,6 +202,9 @@ class RunRegistry:
                 "request_fingerprint",
                 "action",
                 "action_id",
+                "resumable",
+                "log_offset",
+                "cancel_sent",
             }
         )
         state["logs"] = (
@@ -287,6 +323,7 @@ class RunRegistry:
         require_ree_exists: bool = True,
         idempotency_key: str | None = None,
         initial_outputs: dict[str, Any] | None = None,
+        resumable: bool = False,
     ) -> dict[str, Any]:
         """Start a durable background run.
 
@@ -307,6 +344,7 @@ class RunRegistry:
                 require_ree_exists=require_ree_exists,
                 idempotency_key=idempotency_key,
                 initial_outputs=initial_outputs,
+                resumable=resumable,
             )
         except BaseException as exc:
             if action is not None:
@@ -326,6 +364,7 @@ class RunRegistry:
         require_ree_exists: bool,
         idempotency_key: str | None,
         initial_outputs: dict[str, Any] | None,
+        resumable: bool,
     ) -> dict[str, Any]:
         # A provisioning run *creates* its REE, so it can't require the REE
         # to already exist; every other run runs against a live REE.
@@ -349,6 +388,7 @@ class RunRegistry:
             request_fingerprint=fingerprint if normalized_key else None,
             action=action,
             action_id=(action_id or author_actions.new_action_id()) if action is not None else None,
+            resumable=resumable,
         )
         try:
             stored, created = self._store.create_idempotent(proposed)
@@ -371,6 +411,56 @@ class RunRegistry:
             return self._snapshot(stored, include_logs=True)
         run_id = stored.run_id
 
+        if stored.resumable:
+            self._follow(stored, runner, request_link, begin=True)
+            return self._snapshot(stored, include_logs=True)
+        try:
+            future = self._executor.submit(self._worker(stored, runner, request_link, begin=True))
+        except RuntimeError as exc:
+            # Executor shutdown or thread creation failure happened before this
+            # request returned. Preserve the durable run, but settle it instead
+            # of leaving a queued record that can never start.
+            failure = Failure(
+                category="internal",
+                message=f"Background run could not be scheduled: {exc}",
+                retryable=True,
+                origin="api",
+            )
+            try:
+                self.append_log(ree_id, run_id, "system", "error", failure.message)
+            except Exception:  # noqa: BLE001 -- finalization must still run
+                _log.exception("failed to append scheduling failure for run %s", run_id)
+            self.finalize(ree_id, run_id, "failed", {}, failure)
+            failed = self._store.get(ree_id, run_id)
+            if failed is None:
+                raise
+            return self._snapshot(failed, include_logs=True)
+        with self._lock:
+            self._run_control[run_id] = future
+
+        def _forget(_future: Future[None]) -> None:
+            with self._lock:
+                self._run_control.pop(run_id, None)
+
+        future.add_done_callback(_forget)
+        return self._snapshot(stored, include_logs=True)
+
+    def _follow(
+        self, run: StoredRun, runner: Callable[[str, str], ActionResult], link: Any, *, begin: bool = False
+    ) -> None:
+        """Run a run that only starts its command and follows it, on a thread of its own: it may take days."""
+        follower = threading.Thread(
+            target=self._worker(run, runner, link, begin=begin), name=f"repo2ree-follow-{run.run_id}", daemon=True
+        )
+        with self._lock:
+            self._followers = [*(item for item in self._followers if item.is_alive()), follower]
+        follower.start()
+
+    def _worker(
+        self, stored: StoredRun, runner: Callable[[str, str], ActionResult], request_link: Any, *, begin: bool
+    ) -> Callable[[], None]:
+        ree_id, run_id, operation = stored.ree_id, stored.run_id, stored.operation
+
         def _instrumented_worker() -> None:
             # Root span for the background run: it outlives the HTTP response, so
             # it anchors its own trace. The dispatch_action span (same thread)
@@ -378,10 +468,8 @@ class RunRegistry:
             links = [request_link] if request_link is not None else None
             with tracer.start_as_current_span(f"run.{operation}", links=links) as span:
                 CommandSpanAttrs(operation=operation, run_id=run_id, ree_id=ree_id).apply(span)
-                self._begin_run(ree_id, run_id)
-                # Measured from here, not from the request: the queue between
-                # them is a thread spawn, and what an operator wants back is how
-                # long the work took.
+                if begin:
+                    self._begin_run(ree_id, run_id)
                 started = time.monotonic()
                 active_attrs = command_metric_attrs(operation)
                 _runs_active.add(1, active_attrs)
@@ -389,6 +477,11 @@ class RunRegistry:
                     try:
                         with author_actions.acting(stored.action_id) if stored.action_id else nullcontext():
                             result = runner(ree_id, run_id)
+                    except FollowStoppedError:
+                        # This process stops; the command runs on, and the next process follows it.
+                        if stored.action_id is not None:
+                            author_actions.detach(stored.action_id)
+                        return
                     except HTTPException as exc:
                         failure = _failure_from_http_exception(exc)
                         # The envelope's message, not the dict it arrived in:
@@ -447,36 +540,7 @@ class RunRegistry:
                 # happens through the Future's done callback.
                 self.finalize(ree_id, run_id, terminal.status, terminal.outputs, terminal.failure)
 
-        try:
-            future = self._executor.submit(_worker)
-        except RuntimeError as exc:
-            # Executor shutdown or thread creation failure happened before this
-            # request returned. Preserve the durable run, but settle it instead
-            # of leaving a queued record that can never start.
-            failure = Failure(
-                category="internal",
-                message=f"Background run could not be scheduled: {exc}",
-                retryable=True,
-                origin="api",
-            )
-            try:
-                self.append_log(ree_id, run_id, "system", "error", failure.message)
-            except Exception:  # noqa: BLE001 -- finalization must still run
-                _log.exception("failed to append scheduling failure for run %s", run_id)
-            self.finalize(ree_id, run_id, "failed", {}, failure)
-            failed = self._store.get(ree_id, run_id)
-            if failed is None:
-                raise
-            return self._snapshot(failed, include_logs=True)
-        with self._lock:
-            self._run_control[run_id] = future
-
-        def _forget(_future: Future[None]) -> None:
-            with self._lock:
-                self._run_control.pop(run_id, None)
-
-        future.add_done_callback(_forget)
-        return self._snapshot(stored, include_logs=True)
+        return _worker
 
     def action_of(self, ree_id: str, run_id: str) -> str | None:
         """The author action a run carries out, if it carries one."""

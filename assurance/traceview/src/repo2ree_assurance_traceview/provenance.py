@@ -70,9 +70,10 @@ def chain(entry: Entry) -> tuple[Link, ...]:
         dispatch = entry.dispatch
         links.append(
             Link(
-                label=f"dispatch exec_action → {dispatch.outcome or 'no outcome'}",
+                label=f"command start_run → {dispatch.outcome or 'no outcome'}",
                 source=f"journal {dispatch.sent or '?'} → {dispatch.received or '?'}",
-                rules=_hits(entry, terms.DISPATCH, entry.attempt.key),
+                rules=_hits(entry, terms.START_RUN, entry.attempt.key)
+                + _hits(entry, terms.FOLLOW_RUN, entry.attempt.key),
             )
         )
     if entry.run is not None:

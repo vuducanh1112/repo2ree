@@ -5,7 +5,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from repo2ree_protocol.execution import ExecutionContext
-from repo2ree_protocol.result import ActionResult, ActionStatus, Failure
+from repo2ree_protocol.result import ActionResult, Failure, OperationStatus
 
 SELECTION_VERSION = 2
 
@@ -25,7 +25,7 @@ class OperationRecord(BaseModel):
     scope: str
     author_seal_digest: str | None = None
     capture_status: Literal["pending", "captured", "failed"] = "pending"
-    operation_status: ActionStatus | Literal["not_started", "unknown"] = "not_started"
+    operation_status: OperationStatus | Literal["not_started", "unknown"] = "not_started"
     before_snapshot_id: str | None = None
     after_snapshot_id: str | None = None
     operation_failure: Failure | None = None
@@ -58,7 +58,7 @@ class CompletedOperation(OperationRecord):
     result: ActionResult
     before_snapshot_id: str
     after_snapshot_id: None = None
-    operation_status: ActionStatus
+    operation_status: OperationStatus
     capture_status: Literal["captured"] = "captured"
 
     @model_validator(mode="after")
@@ -67,6 +67,7 @@ class CompletedOperation(OperationRecord):
             raise ValueError("Operation identity differs from its result")
         if self.result.history is not None:
             raise ValueError("A completed record cannot reference its own commit")
-        if self.result.status != self.operation_status or self.result.failure != self.operation_failure:
+        reported = "failed" if self.operation_status == "interrupted" else self.operation_status
+        if self.result.status != reported or self.result.failure != self.operation_failure:
             raise ValueError("Operation outcome differs from its result")
         return self

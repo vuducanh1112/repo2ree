@@ -16,8 +16,10 @@ from repo2ree_supervisor import (
     CommandDispatcher,
     ReeLocks,
     ReeRegistry,
+    ReeRoute,
     ReeRouter,
     StoreRegistry,
+    StoreUnavailableError,
     Transfers,
     WorkbenchConnectionRegistry,
     WsWorkbenchClient,
@@ -39,13 +41,22 @@ workbench_client = _workbench_client
 # base64 OTLP payloads this side never decodes.
 span_sink = build_span_sink(service_settings.OTLP_ENDPOINT, console_fallback=True)
 
-# Commands and queries for an REE, one at a time per REE.
-command_dispatcher = CommandDispatcher(_workbench_client, ReeLocks(), span_sink)
-
 # Stores an operator registered and the REEs they serve; each REE's commands go where the router says.
 store_registry = StoreRegistry(service_settings.CONTROL_STATE_DIR / "stores.json")
 ree_registry = ReeRegistry(service_settings.CONTROL_STATE_DIR / "rees.json")
 ree_router = ReeRouter(ree_registry, workbench_connections)
+
+
+def _reroute(handle: ReeRoute) -> ReeRoute | None:
+    """Where the REE's commands go now; None while no workbench serves its store."""
+    try:
+        return ree_router.route(handle.ree_id)
+    except StoreUnavailableError:
+        return None
+
+
+# Commands and queries for an REE: each started one at a time per REE, and followed wherever its store is served.
+command_dispatcher = CommandDispatcher(_workbench_client, ReeLocks(), span_sink, reroute=_reroute)
 
 # The durable record of what has been sealed here and where it was deposited.
 # Written at seal, appended to when a deposit publishes, and read by anything

@@ -19,13 +19,13 @@ import websockets
 from pydantic import ValidationError
 
 import repo2ree_workbench.connection as connection
-from repo2ree_protocol.frames import COPY_CHUNK_BYTES, TERMINAL_FRAME_TYPES, LogFrame, ResultFrame, SpanFrame
+from repo2ree_protocol.frames import COPY_CHUNK_BYTES, TERMINAL_FRAME_TYPES, Frame, LogFrame, SpanFrame
 from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.workbench import (
     CancelRequest,
     CancelRunRequest,
-    ExecActionRequest,
     ExecQueryRequest,
+    FollowRunRequest,
     WorkbenchWsRequest,
     workbench_hello_adapter,
     workbench_ws_message_adapter,
@@ -102,8 +102,13 @@ class FakeExec:
     def exec_simple(self, argv: list[str], timeout: int = 60, *, ree_id: str) -> None:
         return None
 
-    def cancel_run(self, run_id: str, *, ree_id: str, cause: str = "cancel", record: str | None = None) -> None:
-        self.canceled_runs.append(run_id)
+    def run(self, root: Path, argv: list[str], timeout: int) -> str:
+        if argv[0] == "cancel-run":
+            self.canceled_runs.append(argv[2])
+        return ""
+
+    def ree_root(self, ree_id: str) -> Path:
+        return self.root / ree_id
 
 
 def _service(exec_backend: object | None = None) -> WorkbenchService:
@@ -231,51 +236,63 @@ def test_cancel_stops_an_inflight_request() -> None:
     assert "r1" not in by_id
 
 
-def test_a_lost_connection_stops_the_runs_it_was_waiting_for() -> None:
-    # The socket ends with a build in flight: no one will read its result, so its run is canceled
-    # and the connection is let go at once, not after the build.
-    canceled = threading.Event()
+class _Follower:
+    """A follow whose command logs ``lines``, then runs on, or ends with ``result``."""
 
-    class RunningExec(FakeExec):
-        def exec_action(self, cmd_json: str, run_id: str, env: dict[str, str], context: object = None, *, ree_id: str):
-            canceled.wait(5.0)
-            yield ResultFrame(result=ActionResult(status="canceled"))
+    def __init__(self, lines: list[Frame], result: ActionResult | None) -> None:
+        self.lines = lines
+        self.result = result
 
-        def cancel_run(self, run_id: str, *, ree_id: str, cause: str = "cancel", record: str | None = None) -> None:
-            super().cancel_run(run_id, ree_id=ree_id)
-            canceled.set()
-
-    FakeExec.canceled_runs = []
-    request = ExecActionRequest(ree_id="ree-1", cmd_json="{}", run_id="run-1")
-    # The build never answers on its own, so the socket hangs up with it in flight.
-    ws = FakeSocket([WorkbenchWsRequest(id="b1", request=request).model_dump_json()])
-
-    asyncio.run(asyncio.wait_for(_serve(ws, _service(RunningExec())), timeout=2.0))  # type: ignore[arg-type]
-
-    assert FakeExec.canceled_runs == ["run-1"]
+    def read(self) -> tuple[list[Frame], ActionResult | None]:
+        lines, self.lines = self.lines, []
+        return lines, self.result if not lines else None
 
 
-def test_a_connection_that_dies_while_a_run_sends_stops_the_run_as_its_caller_gone() -> None:
-    causes: list[str] = []
+class _Executions:
+    poll = 0.01
 
-    class LoggingExec(FakeExec):
-        def exec_action(self, cmd_json: str, run_id: str, env: dict[str, str], context: object = None, *, ree_id: str):
-            yield LogFrame(stream="stdout", level="info", message="building")
-            yield ResultFrame(result=ActionResult(status="succeeded"))
+    def __init__(self, follower: _Follower) -> None:
+        self.follower = follower
+        self.canceled: list[str] = []
 
-        def cancel_run(self, run_id: str, *, ree_id: str, cause: str = "cancel", record: str | None = None) -> None:
-            causes.append(cause)
+    def follow(self, ree_id: str, attempt_id: str, after: int) -> _Follower:
+        return self.follower
+
+    def cancel(self, run_id: str, *, ree_id: str, record: str | None = None) -> None:
+        self.canceled.append(run_id)
+
+
+def _following(follower: _Follower) -> tuple[WorkbenchService, _Executions]:
+    executions = _Executions(follower)
+    return WorkbenchService(FakeExec(), store_id="lab-1", executions=executions), executions  # type: ignore[arg-type]
+
+
+def test_a_lost_connection_ends_its_follows_and_leaves_the_runs_running() -> None:
+    service, executions = _following(_Follower([], None))
+    request = FollowRunRequest(ree_id="ree-1", attempt_id="a1")
+    # The command never ends, so the socket hangs up with its follow in flight.
+    ws = FakeSocket([WorkbenchWsRequest(id="f1", request=request).model_dump_json()])
+
+    asyncio.run(asyncio.wait_for(_serve(ws, service), timeout=2.0))  # type: ignore[arg-type]
+
+    assert executions.canceled == []
+
+
+def test_a_connection_that_dies_while_a_follow_sends_leaves_the_run_running() -> None:
+    service, executions = _following(
+        _Follower([LogFrame(stream="stdout", level="info", message="building")], ActionResult(status="succeeded"))
+    )
 
     class DeadSocket(FakeSocket):
         async def send(self, message: str) -> None:
             raise websockets.ConnectionClosedError(None, None)
 
-    request = ExecActionRequest(ree_id="ree-1", cmd_json="{}", run_id="run-1")
-    ws = DeadSocket([WorkbenchWsRequest(id="b1", request=request).model_dump_json()])
+    request = FollowRunRequest(ree_id="ree-1", attempt_id="a1")
+    ws = DeadSocket([WorkbenchWsRequest(id="f1", request=request).model_dump_json()])
 
-    asyncio.run(asyncio.wait_for(_serve(ws, _service(LoggingExec())), timeout=2.0))  # type: ignore[arg-type]
+    asyncio.run(asyncio.wait_for(_serve(ws, service), timeout=2.0))  # type: ignore[arg-type]
 
-    assert causes == ["caller_gone"]
+    assert executions.canceled == []
 
 
 def test_stream_terminal_frame_drives_request_telemetry(
@@ -293,15 +310,12 @@ def test_stream_terminal_frame_drives_request_telemetry(
     monkeypatch.setattr(connection._active_requests, "add", lambda value, attrs: active.append((value, attrs)))
     monkeypatch.setattr(connection._request_duration, "record", lambda value, attrs: durations.append(attrs))
 
-    class TerminalExec(FakeExec):
-        def exec_action(self, cmd_json: str, run_id: str, env: dict[str, str], context=None, *, ree_id: str):
-            yield ResultFrame(result=ActionResult.failed("execution", "command failed", origin="workbench"))
-
-    request = ExecActionRequest(ree_id="ree-1", cmd_json="{}", run_id="run-1")
+    service, _ = _following(_Follower([], ActionResult.failed("execution", "command failed", origin="workbench")))
+    request = FollowRunRequest(ree_id="ree-1", attempt_id="a1")
     ws = FakeSocket([WorkbenchWsRequest(id="r1", request=request).model_dump_json()])
 
     with caplog.at_level("WARNING", logger=connection.__name__):
-        asyncio.run(asyncio.wait_for(_serve(ws, _service(TerminalExec())), timeout=2.0))  # type: ignore[arg-type]
+        asyncio.run(asyncio.wait_for(_serve(ws, service), timeout=2.0))  # type: ignore[arg-type]
 
     assert _frames(ws)[-1].frame.type == "result"
     assert statuses == ["failed"]

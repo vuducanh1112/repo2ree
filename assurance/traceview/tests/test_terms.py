@@ -8,7 +8,7 @@ from repo2ree_assurance_traceview import terms
 
 def test_every_term_traceview_draws_by_is_in_the_specification() -> None:
     spec = load_spec()
-    entities, dispatch = spec.entities, spec.boundaries[terms.DISPATCH]
+    entities, start, follow = spec.entities, spec.boundaries[terms.START_RUN], spec.boundaries[terms.FOLLOW_RUN]
     ree, attempt, action, receipt = (entities[name] for name in (terms.REE, terms.ATTEMPT, terms.ACTION, terms.RECEIPT))
     assert {terms.ACTION_NAME, terms.RUN_ID, terms.ATTEMPT_ID, terms.FAILURE_CATEGORY} <= set(action.facts)
     assert {terms.PROVISION, terms.LOAD_BUNDLE} <= set(action.allowed[terms.ACTION_NAME])
@@ -27,7 +27,7 @@ def test_every_term_traceview_draws_by_is_in_the_specification() -> None:
     assert {terms.OPENED, terms.LOST} <= set(session.states)
     assert session.partition == terms.STORE_ID
     assert terms.STORE_ID in action.facts
-    assert terms.SESSION_FACT in dispatch.facts[terms.EXEC_ACTION]
-    assert {terms.EXEC_ACTION, terms.RESULT} <= set(dispatch.messages)
-    assert terms.OPERATION in dispatch.facts[terms.EXEC_ACTION]
-    assert terms.STATUS in dispatch.facts[terms.RESULT]
+    assert terms.SESSION_FACT in start.facts[terms.START_RUN]
+    assert terms.SESSION_FACT in follow.facts[terms.FOLLOW_RUN]
+    assert terms.OPERATION in start.facts[terms.START_RUN]
+    assert terms.STATUS in follow.facts["settled"]

@@ -29,14 +29,24 @@ def test_every_typed_record_keeps_the_published_contract(tmp_path: Path) -> None
     events.author_api_action(
         "a1", "requested", "failed", action="build_runtime", partition="ree-1", facts={"failure_category": "x"}
     )
-    sent = events.dispatch_sent(
+    sent = events.start_run_sent(
         "a1", partition="ree-1", facts={"operation": "build_runtime", "run_id": "r1", "session": "s1"}
     )
-    events.dispatch_received("a1", "result", partition="ree-1", facts={"status": "succeeded", "commit": "c" * 40})
-    events.dispatch_sent("a2", partition="ree-1", facts={"operation": "build_runtime", "run_id": "r1", "session": "s1"})
-    events.dispatch_received("a2", "unavailable", partition="ree-1")
-    events.dispatch_sent("a3", partition="ree-1", facts={"operation": "build_runtime", "run_id": "r1", "session": "s1"})
-    events.dispatch_abandoned("a3", partition="ree-1", reason="closed_without_response")
+    events.start_run_received("a1", "accepted", partition="ree-1")
+    events.follow_run_sent("a1", partition="ree-1", facts={"run_id": "r1", "session": "s1"})
+    events.follow_run_abandoned("a1", partition="ree-1", reason="session_lost")
+    events.follow_run_sent("a1", partition="ree-1", facts={"run_id": "r1", "session": "s2"})
+    events.follow_run_received("a1", "settled", partition="ree-1", facts={"status": "succeeded", "commit": "c" * 40})
+    events.start_run_sent(
+        "a2", partition="ree-1", facts={"operation": "build_runtime", "run_id": "r1", "session": "s1"}
+    )
+    events.start_run_received("a2", "busy", partition="ree-1")
+    events.start_run_sent(
+        "a3", partition="ree-1", facts={"operation": "build_runtime", "run_id": "r1", "session": "s1"}
+    )
+    events.start_run_abandoned("a3", partition="ree-1", reason="closed_without_response")
+    events.follow_run_sent("a4", partition="ree-1", facts={"run_id": "r4", "session": "s1"})
+    events.follow_run_received("a4", "unknown", partition="ree-1")
     close_journal(final=True)
     assert sent == "api-000001#4"
     checked = kept_contract(tmp_path)
@@ -52,13 +62,19 @@ def test_a_workbench_journal_and_its_references_are_named_by_its_store(tmp_path:
         partition="ree-1",
         facts={"operation": "build_runtime", "run_id": "r1", "dispatched_by": "api-000001#4"},
     )
-    events.execution("a1", "started", "stopped", partition="ree-1", facts={"exit_code": 1, "cause": "caller_gone"})
+    events.execution(
+        "a1", "started", "stopped", partition="ree-1", facts={"exit_code": 1, "cause": "cancel", "status": "canceled"}
+    )
     events.execution("a2", None, "started", partition="ree-1", facts={"operation": "lint_scripts", "run_id": "r2"})
-    events.execution("a2", "started", "exited", partition="ree-1", facts={"exit_code": 0})
+    events.execution("a2", "started", "adopted", partition="ree-1", facts={})
+    events.execution(
+        "a2", "adopted", "lost", partition="ree-1", facts={"status": "interrupted", "reason": "vanished", "commit": "c"}
+    )
     reference = journal().send("workbench", "own", "asked", "a3", partition="ree-1")
     close_journal()
-    assert kept_contract(tmp_path).returncode == 0
-    assert reference == "store-1/workbench-000001#6"
+    checked = kept_contract(tmp_path)
+    assert checked.returncode == 0, checked.stdout + checked.stderr
+    assert reference == "store-1/workbench-000001#7"
     assert opened.id == "store-1/workbench-000001"
     assert records(opened.path)[0]["instance"] == "store-1"
     assert records(opened.path)[0]["hosts"] == ["workbench"]
@@ -84,7 +100,7 @@ def test_without_an_open_journal_nothing_is_recorded() -> None:
 
 def test_a_journal_is_sequenced_stamped_and_closed(tmp_path: Path) -> None:
     opened = open_journal(tmp_path, "api", hosts=("supervisor",))
-    journal().receive("supervisor", "dispatch", "result", "a1", partition="ree-1", facts={"status": "failed"})
+    journal().receive("supervisor", "follow_run", "settled", "a1", partition="ree-1", facts={"status": "failed"})
     close_journal()
     written = records(opened.path)
     assert [(record["seq"], record["kind"]) for record in written] == [

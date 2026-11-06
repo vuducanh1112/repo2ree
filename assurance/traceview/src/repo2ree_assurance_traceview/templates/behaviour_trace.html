@@ -528,7 +528,7 @@ function log() {
     if (e.run) detail += `<div><span class="eyebrow">Action ${esc(e.run.key.slice(0, 20))}</span>${chain(e.run.states)}</div>`;
     if (e.dispatch) {
       const d = e.dispatch;
-      detail += `<div><span class="eyebrow">Dispatch · supervisor → workbench</span><dl class="kv"><dt>exec_action</dt><dd>${esc(d.sent ?? "not recorded")}</dd><dt>outcome</dt><dd>${esc(d.outcome ?? "–")} · ${esc(d.received ?? "not recorded")}</dd><dt>round trip</dt><dd>${d.start != null && d.end != null ? fmt(d.end - d.start) : "–"}</dd></dl></div>`;
+      detail += `<div><span class="eyebrow">Command · supervisor → workbench</span><dl class="kv"><dt>start_run</dt><dd>${esc(d.sent ?? "not recorded")}</dd><dt>outcome</dt><dd>${esc(d.outcome ?? "–")} · ${esc(d.received ?? "not recorded")}</dd><dt>round trip</dt><dd>${d.start != null && d.end != null ? fmt(d.end - d.start) : "–"}</dd></dl></div>`;
     }
     if (e.attempt) {
       const a = e.attempt;

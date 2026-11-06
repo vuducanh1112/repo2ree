@@ -101,13 +101,16 @@
     "Frame": {
       "discriminator": {
         "mapping": {
+          "accepted": "#/$defs/AcceptedFrame",
+          "busy": "#/$defs/BusyFrame",
           "bytes_chunk": "#/$defs/BytesChunkFrame",
           "done": "#/$defs/DoneFrame",
           "error": "#/$defs/ErrorFrame",
           "log": "#/$defs/LogFrame",
           "result": "#/$defs/ResultFrame",
           "span": "#/$defs/SpanFrame",
-          "unavailable": "#/$defs/UnavailableFrame"
+          "unavailable": "#/$defs/UnavailableFrame",
+          "unknown": "#/$defs/UnknownFrame"
         },
         "propertyName": "type"
       },
@@ -123,6 +126,15 @@
         },
         {
           "$ref": "#/$defs/DoneFrame"
+        },
+        {
+          "$ref": "#/$defs/AcceptedFrame"
+        },
+        {
+          "$ref": "#/$defs/BusyFrame"
+        },
+        {
+          "$ref": "#/$defs/UnknownFrame"
         },
         {
           "$ref": "#/$defs/UnavailableFrame"
@@ -281,6 +293,20 @@
     }
   },
   "$defs": {
+    "AcceptedFrame": {
+      "additionalProperties": false,
+      "description": "Terminal frame of start_run: an executor runs the command now.",
+      "properties": {
+        "type": {
+          "const": "accepted",
+          "default": "accepted",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "title": "AcceptedFrame",
+      "type": "object"
+    },
     "AcquireSourceArgs": {
       "additionalProperties": false,
       "description": "Acquire a REE source from an origin or a staged upload.\n\nAn REE holds at most one source, and acquisition is only legal into an\nempty slot. There is no replace: a source already there is the author's,\nand giving it up is a separate act they perform with ``remove_source``.\nAcquiring into an occupied slot is a precondition failure, never a reset —\na reset here would erase every condition the acquisition could refuse on,\nwhich is exactly how a sealed REE used to get silently unsealed.",
@@ -1230,6 +1256,27 @@
         "artifact_files"
       ],
       "title": "BundleLoadOutputs",
+      "type": "object"
+    },
+    "BusyFrame": {
+      "additionalProperties": false,
+      "description": "Terminal frame of start_run: another execution holds the REE, so nothing was started.",
+      "properties": {
+        "type": {
+          "const": "busy",
+          "default": "busy",
+          "title": "Type",
+          "type": "string"
+        },
+        "detail": {
+          "title": "Detail",
+          "type": "string"
+        }
+      },
+      "required": [
+        "detail"
+      ],
+      "title": "BusyFrame",
       "type": "object"
     },
     "BytesChunkFrame": {
@@ -2449,55 +2496,6 @@
       "title": "EvaluateReproducibilityReceipt",
       "type": "object"
     },
-    "ExecActionRequest": {
-      "additionalProperties": false,
-      "properties": {
-        "op": {
-          "const": "exec_action",
-          "default": "exec_action",
-          "title": "Op",
-          "type": "string"
-        },
-        "ree_id": {
-          "title": "Ree Id",
-          "type": "string"
-        },
-        "cmd_json": {
-          "title": "Cmd Json",
-          "type": "string"
-        },
-        "context": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ExecutionContext"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "run_id": {
-          "title": "Run Id",
-          "type": "string"
-        },
-        "env": {
-          "additionalProperties": {
-            "type": "string"
-          },
-          "default": {},
-          "title": "Env",
-          "type": "object"
-        }
-      },
-      "required": [
-        "ree_id",
-        "cmd_json",
-        "run_id"
-      ],
-      "title": "ExecActionRequest",
-      "type": "object"
-    },
     "ExecQueryRequest": {
       "additionalProperties": false,
       "description": "Run an executor subcommand in the bench, streaming its stdout back.\n\n``argv`` is the executor subcommand argv, as in ``ExecSimpleRequest``.",
@@ -3141,6 +3139,38 @@
       "title": "Finding",
       "type": "object"
     },
+    "FollowRunRequest": {
+      "additionalProperties": false,
+      "description": "Stream a started command's log from its ``after``-th line, and how it ended once it has.",
+      "properties": {
+        "op": {
+          "const": "follow_run",
+          "default": "follow_run",
+          "title": "Op",
+          "type": "string"
+        },
+        "ree_id": {
+          "title": "Ree Id",
+          "type": "string"
+        },
+        "attempt_id": {
+          "title": "Attempt Id",
+          "type": "string"
+        },
+        "after": {
+          "default": 0,
+          "minimum": 0,
+          "title": "After",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "ree_id",
+        "attempt_id"
+      ],
+      "title": "FollowRunRequest",
+      "type": "object"
+    },
     "ForkNode": {
       "additionalProperties": false,
       "properties": {
@@ -3676,6 +3706,10 @@
                 "failed",
                 "canceled"
               ],
+              "type": "string"
+            },
+            {
+              "const": "interrupted",
               "type": "string"
             },
             {
@@ -4533,6 +4567,10 @@
                 "failed",
                 "canceled"
               ],
+              "type": "string"
+            },
+            {
+              "const": "interrupted",
               "type": "string"
             },
             {
@@ -7226,6 +7264,55 @@
       "title": "SpanFrame",
       "type": "object"
     },
+    "StartRunRequest": {
+      "additionalProperties": false,
+      "description": "Start a command in an executor of its own; answered once it started, never when it ends.",
+      "properties": {
+        "op": {
+          "const": "start_run",
+          "default": "start_run",
+          "title": "Op",
+          "type": "string"
+        },
+        "ree_id": {
+          "title": "Ree Id",
+          "type": "string"
+        },
+        "cmd_json": {
+          "title": "Cmd Json",
+          "type": "string"
+        },
+        "context": {
+          "$ref": "#/$defs/ExecutionContext"
+        },
+        "run_id": {
+          "title": "Run Id",
+          "type": "string"
+        },
+        "env": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "title": "Env",
+          "type": "object"
+        },
+        "wait": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Wait",
+          "type": "number"
+        }
+      },
+      "required": [
+        "ree_id",
+        "cmd_json",
+        "context",
+        "run_id"
+      ],
+      "title": "StartRunRequest",
+      "type": "object"
+    },
     "StepAudit": {
       "additionalProperties": false,
       "properties": {
@@ -7822,6 +7909,27 @@
       "title": "UnavailableFrame",
       "type": "object"
     },
+    "UnknownFrame": {
+      "additionalProperties": false,
+      "description": "Terminal frame of follow_run: the workbench knows no execution of the attempt.",
+      "properties": {
+        "type": {
+          "const": "unknown",
+          "default": "unknown",
+          "title": "Type",
+          "type": "string"
+        },
+        "detail": {
+          "title": "Detail",
+          "type": "string"
+        }
+      },
+      "required": [
+        "detail"
+      ],
+      "title": "UnknownFrame",
+      "type": "object"
+    },
     "VenvRuntimeContract": {
       "additionalProperties": false,
       "description": "A packed Python virtual environment as the runtime substrate.\n\nThe build packs the venv as a gzipped tarball at ``artifact_path``; a\nrunnable restores it to ``venv_restore_dir`` (an absolute path, because a\nvenv bakes absolute paths and must be restored where it was built) and runs\nthe command with that venv's ``bin`` on ``PATH``. There is no image ref: the\nworkbench base image is the environment. ``venv_restore_dir`` defaults to the\npath a repo2ree build packs; an inspected artifact overrides it with the path\nrecovered from the venv's own ``pyvenv.cfg``.",
@@ -8059,13 +8167,16 @@
         "frame": {
           "discriminator": {
             "mapping": {
+              "accepted": "#/$defs/AcceptedFrame",
+              "busy": "#/$defs/BusyFrame",
               "bytes_chunk": "#/$defs/BytesChunkFrame",
               "done": "#/$defs/DoneFrame",
               "error": "#/$defs/ErrorFrame",
               "log": "#/$defs/LogFrame",
               "result": "#/$defs/ResultFrame",
               "span": "#/$defs/SpanFrame",
-              "unavailable": "#/$defs/UnavailableFrame"
+              "unavailable": "#/$defs/UnavailableFrame",
+              "unknown": "#/$defs/UnknownFrame"
             },
             "propertyName": "type"
           },
@@ -8081,6 +8192,15 @@
             },
             {
               "$ref": "#/$defs/DoneFrame"
+            },
+            {
+              "$ref": "#/$defs/AcceptedFrame"
+            },
+            {
+              "$ref": "#/$defs/BusyFrame"
+            },
+            {
+              "$ref": "#/$defs/UnknownFrame"
             },
             {
               "$ref": "#/$defs/UnavailableFrame"
@@ -8115,13 +8235,14 @@
               "cancel": "#/$defs/CancelRequest",
               "cancel_run": "#/$defs/CancelRunRequest",
               "delete_ree": "#/$defs/DeleteReeRequest",
-              "exec_action": "#/$defs/ExecActionRequest",
               "exec_query": "#/$defs/ExecQueryRequest",
               "exec_simple": "#/$defs/ExecSimpleRequest",
               "exec_upload": "#/$defs/ExecUploadRequest",
               "fetch_file": "#/$defs/FetchFileRequest",
+              "follow_run": "#/$defs/FollowRunRequest",
               "list_journals": "#/$defs/ListJournalsRequest",
-              "read_journal": "#/$defs/ReadJournalRequest"
+              "read_journal": "#/$defs/ReadJournalRequest",
+              "start_run": "#/$defs/StartRunRequest"
             },
             "propertyName": "op"
           },
@@ -8136,7 +8257,10 @@
               "$ref": "#/$defs/ExecUploadRequest"
             },
             {
-              "$ref": "#/$defs/ExecActionRequest"
+              "$ref": "#/$defs/StartRunRequest"
+            },
+            {
+              "$ref": "#/$defs/FollowRunRequest"
             },
             {
               "$ref": "#/$defs/CancelRunRequest"

@@ -36,6 +36,13 @@ class StoredRun(BaseModel):
     # (a reviewer's run carries none); the run store moves it along with the run's status.
     action: str | None = None
     action_id: str | None = None
+    # Whether a later API process may take the run over while its command runs on: one whose runner
+    # did nothing but follow its one command to the end.
+    resumable: bool = False
+    # How many lines of its command's log the run has, so a later follow starts after them.
+    log_offset: int = 0
+    # Whether the workbench was asked to stop it: a cancel requested while it was unreachable is sent later.
+    cancel_sent: bool = False
 
 
 class IdempotencyConflictError(Exception):
@@ -94,4 +101,12 @@ class RunStore(Protocol):
         history: HistoryReference | None = None,
     ) -> StoredRun | None: ...
 
+    def record_start(self, ree_id: str, run_id: str, context: ExecutionContext) -> StoredRun | None: ...
+
+    def record_progress(self, ree_id: str, run_id: str, log_offset: int) -> StoredRun | None: ...
+
+    def mark_cancel_sent(self, ree_id: str, run_id: str) -> bool: ...
+
     def interrupt_incomplete(self) -> list[StoredRun]: ...
+
+    def resumable_incomplete(self) -> list[StoredRun]: ...

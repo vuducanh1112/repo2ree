@@ -17,13 +17,16 @@ from typing import Literal, NotRequired, TypedDict, cast
 
 from repo2ree_telemetry.behaviour.writer import Fact, journal
 
-DispatchResponse = Literal["result", "unavailable", "error"]
+StartRunResponse = Literal["accepted", "busy", "unavailable", "error"]
+FollowRunResponse = Literal["settled", "unknown", "error"]
 CancelRunResponse = Literal["done", "error"]
-ExecutionState = Literal["started", "exited", "stopped"]
-ExecutionCause = Literal["cancel", "caller_gone"]
+ExecutionState = Literal["started", "adopted", "exited", "stopped", "lost"]
+ExecutionCause = Literal["cancel"]
+# How a command ended, as its executor reported it or as the workbench settled it once the executor was lost.
+CommandStatus = Literal["succeeded", "failed", "canceled", "interrupted"]
 WorkbenchSessionState = Literal["opened", "connected", "refused", "lost"]
 WorkbenchSessionReason = Literal["bad_token", "store_claimed", "closed", "send_failed", "superseded", "shutdown"]
-AuthorApiActionState = Literal["requested", "running", "canceling", "succeeded", "failed", "canceled"]
+AuthorApiActionState = Literal["requested", "running", "canceling", "resumed", "succeeded", "failed", "canceled"]
 # What an author can ask of one REE through the API, by group.
 AuthorApiActionName = Literal[
     # workbench
@@ -79,10 +82,15 @@ class AuthorApiActionFacts(TypedDict, total=False):
     failure_category: str | None
 
 
-class ExecActionFacts(TypedDict):
+class StartRunFacts(TypedDict):
     operation: str
     run_id: str
     # The WorkbenchSession the command is sent on.
+    session: str
+
+
+class FollowRunFacts(TypedDict):
+    run_id: str
     session: str
 
 
@@ -98,6 +106,10 @@ class ExecutionFacts(TypedDict, total=False):
     exit_code: int
     cause: ExecutionCause
     canceled_by: str | None
+    status: CommandStatus
+    commit: str | None
+    record: str | None
+    reason: Literal["vanished"]
 
 
 class WorkbenchSessionFacts(TypedDict, total=False):
@@ -111,8 +123,8 @@ class WorkbenchSessionFacts(TypedDict, total=False):
     close_code: int | None
 
 
-class ResultFacts(TypedDict):
-    status: str
+class SettledFacts(TypedDict):
+    status: CommandStatus
     # The commit that captured the attempt, as the result reported it.
     commit: NotRequired[str | None]
     # For an attempt whose capture failed: the digest of its record, as the result reported it.
@@ -152,19 +164,36 @@ def workbench_session(
     )
 
 
-def dispatch_sent(key: str, *, partition: str, facts: ExecActionFacts) -> str | None:
-    """The supervisor is about to send a command; returns the record's reference for the attempt to cite."""
-    return journal().send("supervisor", "dispatch", "exec_action", key, partition=partition, facts=_facts(facts))
+def start_run_sent(key: str, *, partition: str, facts: StartRunFacts) -> str | None:
+    """The supervisor is about to send a command to start; returns the record's reference for the attempt to cite."""
+    return journal().send("supervisor", "start_run", "start_run", key, partition=partition, facts=_facts(facts))
 
 
-def dispatch_received(key: str, message: DispatchResponse, *, partition: str, facts: ResultFacts | None = None) -> None:
-    """The supervisor observed the workbench's one outcome for a command."""
-    journal().receive("supervisor", "dispatch", message, key, partition=partition, facts=_facts(facts or {}))
+def start_run_received(key: str, message: StartRunResponse, *, partition: str) -> None:
+    """The supervisor observed the workbench's one answer to starting a command."""
+    journal().receive("supervisor", "start_run", message, key, partition=partition)
 
 
-def dispatch_abandoned(key: str, *, partition: str, reason: str) -> None:
-    """The supervisor stopped waiting for a command's outcome without receiving one."""
-    journal().abandon("supervisor", "dispatch", key, partition=partition, reason=reason)
+def start_run_abandoned(key: str, *, partition: str, reason: str) -> None:
+    """The supervisor stopped waiting for the answer to starting a command without receiving one."""
+    journal().abandon("supervisor", "start_run", key, partition=partition, reason=reason)
+
+
+def follow_run_sent(key: str, *, partition: str, facts: FollowRunFacts) -> None:
+    """The supervisor is about to ask a workbench to watch a started command."""
+    journal().send("supervisor", "follow_run", "follow_run", key, partition=partition, facts=_facts(facts))
+
+
+def follow_run_received(
+    key: str, message: FollowRunResponse, *, partition: str, facts: SettledFacts | None = None
+) -> None:
+    """The supervisor observed how one watch of a command ended."""
+    journal().receive("supervisor", "follow_run", message, key, partition=partition, facts=_facts(facts or {}))
+
+
+def follow_run_abandoned(key: str, *, partition: str, reason: str) -> None:
+    """The supervisor stopped watching a command without an outcome: its session ended, or it stopped."""
+    journal().abandon("supervisor", "follow_run", key, partition=partition, reason=reason)
 
 
 def execution(

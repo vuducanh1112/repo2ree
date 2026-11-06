@@ -254,7 +254,7 @@ class _Capture:
     @classmethod
     def of(cls, evidence: _Evidence, commit: _Commit, run_of_attempt: dict[str, list[Event]]) -> _Capture:
         key = commit.attempt[0].key
-        exchange = evidence.model.exchanges.get(terms.DISPATCH, {}).get(key)
+        exchange = _command(evidence, key)
         journaled = evidence.position
         return cls(
             commit=commit,
@@ -499,7 +499,7 @@ def _runs_by_dispatch(
         for run_id in {_str(e.facts.get(terms.RUN_ID)) for e in events} - {None}
     }
     found: dict[str, list[Event]] = {}
-    for key, exchange in evidence.model.exchanges.get(terms.DISPATCH, {}).items():
+    for key, exchange in _commands(evidence).items():
         request = exchange.request
         if key in named or request is None or request.partition != ree:
             continue
@@ -514,12 +514,40 @@ def _dispatches_by_run(evidence: _Evidence) -> dict[str, list[Event]]:
     """Each dispatch exchange this REE's journal records, by the run its request names."""
     journaled = evidence.position
     found: dict[str, list[Event]] = defaultdict(list)
-    for exchange in evidence.model.exchanges.get(terms.DISPATCH, {}).values():
+    for exchange in _commands(evidence).values():
         request = exchange.request
         run_id = _str(request.facts.get(terms.RUN_ID)) if request is not None else None
         if request is not None and run_id and request.ref in journaled:
             found[run_id] += [e for e in exchange.events if e.ref in journaled]
     return found
+
+
+@dataclass(frozen=True)
+class _Command:
+    """A command's exchanges as one: the request that started it, then each round that followed it."""
+
+    events: list[Event]
+
+    @property
+    def request(self) -> Event | None:
+        return next((event for event in self.events if event.kind == "send"), None)
+
+    @property
+    def outcome(self) -> Event | None:
+        """How the last exchange ended: the command's end once a follow settled it."""
+        return next((event for event in reversed(self.events) if event.kind in {"receive", "abandon"}), None)
+
+
+def _commands(evidence: _Evidence) -> dict[str, _Command]:
+    exchanges = evidence.model.exchanges
+    keys = {*exchanges.get(terms.START_RUN, {}), *exchanges.get(terms.FOLLOW_RUN, {})}
+    return {key: command for key in keys if (command := _command(evidence, key)) is not None}
+
+
+def _command(evidence: _Evidence, key: str) -> _Command | None:
+    parts = [evidence.model.exchanges.get(name, {}).get(key) for name in (terms.START_RUN, terms.FOLLOW_RUN)]
+    events = [event for part in parts if part is not None for event in part.events]
+    return _Command(events) if events else None
 
 
 def _loose(evidence: _Evidence, drawn: set[str]) -> list[tuple[int, list[Event]]]:

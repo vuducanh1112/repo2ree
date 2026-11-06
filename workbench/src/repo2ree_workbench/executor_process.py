@@ -10,27 +10,15 @@ import json
 import os
 import re
 import shutil
-import signal
 import subprocess
 import tempfile
-import threading
 from collections.abc import Iterator
-from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 from repo2ree_protocol.build import BuildInfo
-from repo2ree_protocol.execution import ExecutionContext
-from repo2ree_protocol.frames import Frame, ResultFrame
-from repo2ree_telemetry.behaviour import events
 from repo2ree_telemetry.spans import current_traceparent
-from repo2ree_workbench import executor_frames
 
-# How long a canceled executor gets to stop by itself — stop its script, roll the REE back,
-# capture the attempt, report — before it is signalled. Fixed for now; one place to change it.
-CANCEL_GRACE_SECONDS = 10.0
-# How long a signalled executor gets after SIGTERM (which it also treats as a cancel) before SIGKILL.
-CANCEL_KILL_SECONDS = 5.0
 # An REE id names a directory in the store: one path segment, nothing a shell or a path could misread.
 _REE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
 
@@ -84,27 +72,32 @@ class ScriptBackend:
             return "the REE's scripts need a container engine, and this workbench gives them none"
         return None
 
-    def remove_leftover_jobs(self) -> None:
-        """Remove what a workbench of this store left running when it was killed: no one awaits it."""
+    def remove_leftover_jobs(self, keep: frozenset[str] = frozenset()) -> None:
+        """Remove the jobs of this store no running executor awaits: all but those of the executions in ``keep``."""
         if self.backend != "container" or not self.owner:
             return
         listed = subprocess.run(
-            [self.engine, "ps", "-aq", "--filter", f"label=repo2ree.job-owner={self.owner}"],
+            [
+                self.engine,
+                "ps",
+                "-a",
+                "--filter",
+                f"label=repo2ree.job-owner={self.owner}",
+                "--format",
+                '{{.ID}} {{.Label "repo2ree.job-execution"}}',
+            ],
             check=False,
             capture_output=True,
             text=True,
             timeout=60,
         )
-        if leftovers := listed.stdout.split():
+        leftovers = []
+        for line in listed.stdout.splitlines():
+            container, _, execution = line.strip().partition(" ")
+            if container and execution.strip() not in keep:
+                leftovers.append(container)
+        if leftovers:
             subprocess.run([self.engine, "rm", "-f", *leftovers], check=False, capture_output=True, timeout=120)
-
-
-def _operation(cmd_json: str) -> str:
-    try:
-        operation = json.loads(cmd_json).get("operation")
-    except (ValueError, AttributeError):
-        return ""
-    return operation if isinstance(operation, str) else ""
 
 
 def declared_environment(root: Path) -> dict[str, object]:
@@ -118,7 +111,7 @@ def declared_environment(root: Path) -> dict[str, object]:
 
 
 class LocalExecutor:
-    """Run short-lived executor processes locally, each against one REE of the store."""
+    """Run executor processes locally, each against one REE of the store."""
 
     def __init__(
         self,
@@ -127,42 +120,25 @@ class LocalExecutor:
         *,
         environment: dict[str, str] | None = None,
         scripts: ScriptBackend | None = None,
-        cancel_grace: float = CANCEL_GRACE_SECONDS,
-        cancel_kill: float = CANCEL_KILL_SECONDS,
     ) -> None:
         self.root = root.resolve()
         self.exec_path = exec_path
         # What every executor is started with besides this process's own environment (the tools).
-        self.environment = environment or {}
+        self.tools = environment or {}
         # Where the author's scripts run, and what this workbench refuses to run; None: on this host.
         self.scripts = scripts
-        self.cancel_grace = cancel_grace
-        self.cancel_kill = cancel_kill
-        # Each active run, by the REE root it runs against and its run id: a run id names a run
-        # within one REE only, and a store serves many (the API's quick commands share fixed ids).
-        self._runs: dict[tuple[Path, str], subprocess.Popen[str]] = {}
-        self._stops: dict[tuple[Path, str], tuple[events.ExecutionCause, str | None]] = {}
-        self._runs_lock = threading.Lock()
 
     def ree_root(self, ree_id: str) -> Path:
         """The root an REE's commands run against: its directory in the store."""
         return ree_directory(self.root, ree_id)
 
-    def is_running(self, ree_id: str) -> bool:
-        root = self.ree_root(ree_id)
-        with self._runs_lock:
-            return any(run_root == root for run_root, _ in self._runs)
-
     def delete_ree(self, ree_id: str) -> None:
-        """Remove an REE's directory from the store; refused while one of its runs is active."""
-        if self.is_running(ree_id):
-            raise RuntimeError(f"REE {ree_id!r} has a run in progress")
         root = self.ree_root(ree_id)
         if root.exists():
             shutil.rmtree(root)
 
-    def _environment(self, root: Path, extra: dict[str, str] | None = None) -> dict[str, str]:
-        environment = {**os.environ, **self.environment}
+    def environment(self, root: Path, extra: dict[str, str] | None = None) -> dict[str, str]:
+        environment = {**os.environ, **self.tools}
         environment["REPO2REE_WORKBENCH_ROOT"] = str(root)
         if self.scripts is not None:
             environment[SCRIPT_RUNNER_VARIABLE] = self.scripts.choice(declared_environment(root))
@@ -180,7 +156,7 @@ class LocalExecutor:
                 capture_output=True,
                 text=True,
                 timeout=10,
-                env=self._environment(self.root),
+                env=self.environment(self.root),
             )
             if result.returncode == 0:
                 return BuildInfo.model_validate(json.loads(result.stdout))
@@ -189,20 +165,22 @@ class LocalExecutor:
         return BuildInfo()
 
     def exec_simple(self, argv: list[str], timeout: int = 60, *, ree_id: str) -> None:
-        self._run_simple(self.ree_root(ree_id), argv, timeout)
+        self.run(self.ree_root(ree_id), argv, timeout)
 
-    def _run_simple(self, root: Path, argv: list[str], timeout: int) -> None:
+    def run(self, root: Path, argv: list[str], timeout: int) -> str:
+        """Run an executor subcommand against ``root``; its stdout."""
         result = subprocess.run(
             [self.exec_path, *argv],
             check=False,
             capture_output=True,
             text=True,
             timeout=timeout,
-            env=self._environment(root),
+            env=self.environment(root),
         )
         if result.returncode:
             detail = result.stderr.strip() or result.stdout.strip() or "(no output)"
             raise RuntimeError(f"executor {argv[0]!r} failed (exit {result.returncode}): {detail}")
+        return result.stdout
 
     def exec_query_stream(self, argv: list[str], timeout: int = 30, *, ree_id: str) -> Iterator[bytes]:
         result = subprocess.run(
@@ -210,7 +188,7 @@ class LocalExecutor:
             check=False,
             capture_output=True,
             timeout=timeout,
-            env=self._environment(self.ree_root(ree_id)),
+            env=self.environment(self.ree_root(ree_id)),
         )
         if result.returncode:
             detail = result.stderr.decode(errors="replace").strip() or "(no stderr)"
@@ -228,115 +206,11 @@ class LocalExecutor:
                 stdout=output,
                 stderr=subprocess.PIPE,
                 timeout=timeout,
-                env=self._environment(self.ree_root(ree_id)),
+                env=self.environment(self.ree_root(ree_id)),
             )
         if result.returncode:
             detail = result.stderr.decode(errors="replace").strip() or "(no stderr)"
             raise RuntimeError(f"executor query {argv!r} failed (exit {result.returncode}): {detail}")
-
-    def exec_action(
-        self,
-        cmd_json: str,
-        run_id: str,
-        env: dict[str, str],
-        context: ExecutionContext | None = None,
-        *,
-        ree_id: str,
-    ) -> Iterator[Frame]:
-        root = self.ree_root(ree_id)
-        context = context or ExecutionContext.new()
-        proc = subprocess.Popen(
-            [
-                self.exec_path,
-                "execute",
-                "--action",
-                "-",
-                "--run-id",
-                run_id,
-                "--execution-context",
-                context.model_dump_json(),
-            ],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            env=self._environment(root, env),
-            start_new_session=True,
-        )
-        if proc.stdin is None or proc.stdout is None or proc.stderr is None:
-            proc.kill()
-            raise RuntimeError("executor pipes unavailable")
-        stdout = proc.stdout
-        with self._runs_lock:
-            if (root, run_id) in self._runs:
-                proc.kill()
-                raise RuntimeError(f"run {run_id!r} is already active")
-            self._runs[(root, run_id)] = proc
-        events.execution(
-            context.attempt_id,
-            None,
-            "started",
-            partition=ree_id,
-            facts={"operation": _operation(cmd_json), "run_id": run_id, "dispatched_by": context.dispatch_record},
-        )
-        try:
-            proc.stdin.write(cmd_json)
-            proc.stdin.close()
-            stdout_parts: list[str] = []
-            stdout_reader = threading.Thread(target=lambda: stdout_parts.append(stdout.read()), daemon=True)
-            stdout_reader.start()
-            for raw_line in proc.stderr:
-                if frame := executor_frames.executor_line_to_frame(raw_line.rstrip()):
-                    yield frame
-            stdout_reader.join()
-            proc.wait()
-            yield ResultFrame(
-                result=executor_frames.parse_action_result("".join(stdout_parts).strip(), proc.returncode or 0)
-            )
-        finally:
-            with self._runs_lock:
-                self._runs.pop((root, run_id), None)
-                stop = self._stops.pop((root, run_id), None)
-            exit_code = proc.wait()
-            if stop is None:
-                events.execution(
-                    context.attempt_id, "started", "exited", partition=ree_id, facts={"exit_code": exit_code}
-                )
-            else:
-                cause, record = stop
-                facts: events.ExecutionFacts = {"exit_code": exit_code, "cause": cause, "canceled_by": record}
-                events.execution(context.attempt_id, "started", "stopped", partition=ree_id, facts=facts)
-
-    def cancel_run(
-        self, run_id: str, *, ree_id: str, cause: events.ExecutionCause = "cancel", record: str | None = None
-    ) -> None:
-        """Ask the run's executor to stop, and only force it if it does not.
-
-        The cancel marker is cooperative: the executor stops its script, rolls the REE back,
-        captures the attempt, and reports it canceled. Killing it at once would abandon the
-        attempt mid-execution, or mid-capture. An executor still running after the grace
-        period is signalled (SIGTERM, which it treats as a cancel too), then killed.
-        """
-        # The marker goes where the run reads it: its REE's root.
-        root = self.ree_root(ree_id)
-        self._run_simple(root, ["cancel-run", "--run-id", run_id], 10)
-        with self._runs_lock:
-            proc = self._runs.get((root, run_id))
-            if proc is not None:
-                self._stops.setdefault((root, run_id), (cause, record))
-        if proc is not None and proc.poll() is None:
-            threading.Thread(target=self._escalate, args=(proc,), name=f"cancel-{run_id}", daemon=True).start()
-
-    def _escalate(self, proc: subprocess.Popen[str]) -> None:
-        for sig, wait in ((None, self.cancel_grace), (signal.SIGTERM, self.cancel_kill), (signal.SIGKILL, None)):
-            if sig is not None:
-                with suppress(ProcessLookupError):
-                    os.killpg(proc.pid, sig)
-            if wait is None:
-                return
-            with suppress(subprocess.TimeoutExpired):
-                proc.wait(timeout=wait)
-                return
 
     def copy_in(self, source_path: str, workbench_path: str, *, ree_id: str) -> None:
         destination = self._resolve_destination(self.ree_root(ree_id), workbench_path)

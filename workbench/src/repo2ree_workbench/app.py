@@ -61,8 +61,10 @@ def main(argv: Sequence[str] = ()) -> None:
     service = WorkbenchService(executor, store_id=config.store_id, slots=config.slots)
     try:
         with store_journal(config.store_root, config.store_id):
+            adopted = service.executions.reconcile()
             if config.backend == "container":
-                ScriptBackend(config.backend, config.engine, owner=str(config.store_root)).remove_leftover_jobs()
+                backend = ScriptBackend(config.backend, config.engine, owner=str(config.store_root))
+                backend.remove_leftover_jobs(frozenset(adopted))
             asyncio.run(
                 run_workbench(
                     config.api_ws_url,

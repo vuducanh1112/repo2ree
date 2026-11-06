@@ -3,10 +3,10 @@
 Every call the control plane issues to a workbench (``repo2ree_protocol.workbench``)
 answers with a stream of these frames tagged with the request id.
 
-Calls that produce incremental output (live command logs) emit ``log``/``span``
-frames and end with a terminal frame (``result`` / ``done``, or ``unavailable`` /
-``error``). Request/response calls emit a single terminal frame (``done``, or
-``unavailable`` / ``error``).
+Calls that produce incremental output (a followed command's log) emit ``log``/``span``
+frames and end with a terminal frame (``result`` / ``unknown`` / ``done``, or
+``unavailable`` / ``error``). Request/response calls emit a single terminal frame
+(``done`` / ``accepted`` / ``busy``, or ``unavailable`` / ``error``).
 """
 
 from __future__ import annotations
@@ -61,6 +61,32 @@ class DoneFrame(BaseModel):
     type: Literal["done"] = "done"
 
 
+class AcceptedFrame(BaseModel):
+    """Terminal frame of start_run: an executor runs the command now."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal["accepted"] = "accepted"
+
+
+class BusyFrame(BaseModel):
+    """Terminal frame of start_run: another execution holds the REE, so nothing was started."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal["busy"] = "busy"
+    detail: str
+
+
+class UnknownFrame(BaseModel):
+    """Terminal frame of follow_run: the workbench knows no execution of the attempt."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal["unknown"] = "unknown"
+    detail: str
+
+
 class UnavailableFrame(BaseModel):
     """Terminal frame: the backend was gone or stopping mid-stream."""
 
@@ -96,7 +122,16 @@ class BytesChunkFrame(BaseModel):
 
 # Tagged union discriminated on 'type'.
 Frame = Annotated[
-    LogFrame | SpanFrame | ResultFrame | DoneFrame | UnavailableFrame | ErrorFrame | BytesChunkFrame,
+    LogFrame
+    | SpanFrame
+    | ResultFrame
+    | DoneFrame
+    | AcceptedFrame
+    | BusyFrame
+    | UnknownFrame
+    | UnavailableFrame
+    | ErrorFrame
+    | BytesChunkFrame,
     Field(discriminator="type"),
 ]
 
@@ -104,4 +139,4 @@ frame_adapter: TypeAdapter[Frame] = TypeAdapter(Frame)
 
 # Frame types that terminate a request's response stream. Everything else
 # (log, span, bytes_chunk) is incremental and more frames follow.
-TERMINAL_FRAME_TYPES = frozenset({"result", "done", "unavailable", "error"})
+TERMINAL_FRAME_TYPES = frozenset({"result", "done", "accepted", "busy", "unknown", "unavailable", "error"})

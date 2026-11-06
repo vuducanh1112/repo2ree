@@ -21,6 +21,13 @@ class KillWorkbench(Record):
     ree_id: str
 
 
+class RestartWorkbench(Record):
+    """The workbench is stopped and started again, as an upgrade would: what it started runs on."""
+
+    kind: Literal["restart_workbench"] = "restart_workbench"
+    ree_id: str
+
+
 class PauseWorkbench(Record):
     kind: Literal["pause_workbench"] = "pause_workbench"
     ree_id: str
@@ -71,6 +78,7 @@ class CrashApi(Record):
 
 type Fault = Annotated[
     KillWorkbench
+    | RestartWorkbench
     | PauseWorkbench
     | ResumeWorkbench
     | PartitionWorkbench

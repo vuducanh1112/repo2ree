@@ -10,7 +10,9 @@ REE = "Ree"
 ATTEMPT = "Attempt"
 ACTION = "AuthorApiAction"
 RECEIPT = "Receipt"
-DISPATCH = "dispatch"
+# A command is started by one exchange and followed to its end by others.
+START_RUN = "start_run"
+FOLLOW_RUN = "follow_run"
 
 # AuthorApiAction's facts, and the action that creates an REE.
 ACTION_NAME = "action"
@@ -68,10 +70,8 @@ REASON = "reason"
 CLOSE_CODE = "close_code"
 OPENED = "opened"
 LOST = "lost"
-# The fact a dispatch names its session by.
+# The fact a command's requests name their session by.
 SESSION_FACT = "session"
 
-# The dispatch exchange's request, its result, and the facts read from them.
-EXEC_ACTION = "exec_action"
-RESULT = "result"
+# The fact a follow's outcome says how the command ended by.
 STATUS = "status"

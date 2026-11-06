@@ -29,7 +29,7 @@ from repo2ree_api.control.fleet import (
     workbenches_router,
 )
 from repo2ree_api.control.rees import rees_router
-from repo2ree_api.control.run_orchestration import shutdown_runs, startup_runs
+from repo2ree_api.control.run_orchestration import shutdown_runs, startup_runs, stop_runs
 from repo2ree_api.control.runs import runs_router
 from repo2ree_api.deps import workbench_connections
 from repo2ree_api.ree_index_routes import ree_index_router
@@ -39,7 +39,7 @@ from repo2ree_api.settings import service_settings
 from repo2ree_api.storage import author_actions
 from repo2ree_api.storage.init_storage import create_upload_staging_if_not_exists
 from repo2ree_protocol.build import BuildInfo, current_build
-from repo2ree_supervisor import WorkbenchUnavailableError
+from repo2ree_supervisor import ReeBusyError, WorkbenchUnavailableError
 from repo2ree_telemetry.behaviour import close_journal, open_journal
 from repo2ree_telemetry.bootstrap import otlp_log_handler, setup_logs, setup_metrics, setup_tracing
 from repo2ree_telemetry.log import configure_logging, configure_run_log_export
@@ -67,13 +67,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     try:
         yield
     finally:
-        shutdown_runs()
-        # The workers drained, so what is still open was never answered: an upload the
-        # author never completed. It fails here, before the journal closes.
-        author_actions.settle_open("abandoned")
-        # Workbenches still connected lose their connection with the control plane.
+        # Following stops, and workbenches still connected lose their connection with the control
+        # plane, which ends every follow: the commands run on for the next API process.
+        stop_runs()
         workbench_connections.close_all("shutdown")
-        close_journal(final=service_settings.BEHAVIOUR_FINAL_SHUTDOWN)
+        shutdown_runs()
+        # The workers drained, so what is still open was never answered (an upload the author never
+        # completed), or is left to the next process. The former fails here, before the journal closes.
+        final = service_settings.BEHAVIOUR_FINAL_SHUTDOWN
+        author_actions.settle_open("abandoned", final=final)
+        close_journal(final=final)
         if tracer_provider is not None:
             tracer_provider.shutdown()
         if meter_provider is not None:
@@ -276,6 +279,21 @@ async def workbench_unavailable_handler(request: Request, exc: WorkbenchUnavaila
             "error": {
                 "code": "workbench_unavailable",
                 "message": "Workbench unavailable for this REE",
+                "details": None,
+                "retryable": True,
+            }
+        },
+    )
+
+
+@app.exception_handler(ReeBusyError)
+async def ree_busy_handler(request: Request, exc: ReeBusyError) -> JSONResponse:
+    return JSONResponse(
+        status_code=409,
+        content={
+            "error": {
+                "code": "ree_busy",
+                "message": "Another command runs in this REE; try again once it ended",
                 "details": None,
                 "retryable": True,
             }

@@ -28,7 +28,7 @@ from uuid import uuid4
 from fastapi import HTTPException
 
 from repo2ree_protocol.result import ActionResult
-from repo2ree_supervisor import WorkbenchUnavailableError
+from repo2ree_supervisor import ReeBusyError, WorkbenchUnavailableError
 from repo2ree_telemetry.behaviour import events
 from repo2ree_telemetry.behaviour.events import AuthorApiActionFacts, AuthorApiActionName, AuthorApiActionState
 
@@ -54,6 +54,8 @@ class _Open:
     state: AuthorApiActionState
     # Facts learned while the action ran, recorded when it settles.
     learned: AuthorApiActionFacts = field(default_factory=lambda: AuthorApiActionFacts())
+    # Left to the next API process: its command runs on, and that process resumes it.
+    detached: bool = False
 
 
 _open: dict[str, _Open] = {}
@@ -167,6 +169,8 @@ def http_status(exc: BaseException) -> int:
         return exc.status_code
     if isinstance(exc, WorkbenchUnavailableError):
         return 503
+    if isinstance(exc, ReeBusyError):
+        return 409
     return 500
 
 
@@ -201,10 +205,28 @@ def follow_run(
     record(action_id, target, action=named, ree_id=ree_id, previous=previous, facts=facts)
 
 
-def settle_open(failure_category: str) -> None:
-    """Fail every action still open, before the journal closes: an upload never completed, work never answered."""
+def resume(action_id: str, action: str, ree_id: str, status: str) -> None:
+    """This process takes over an action an earlier one left while its command ran on."""
+    if action in ACTION_NAMES:
+        named = cast("AuthorApiActionName", action)
+        record(action_id, "resumed", action=named, ree_id=ree_id, previous=RUN_STATES[status])
+
+
+def detach(action_id: str) -> None:
+    """Leave an action to the next API process: this one stops, and its command runs on."""
     with _lock:
-        held = list(_open)
+        held = _open.get(action_id)
+        if held is not None:
+            held.detached = True
+
+
+def settle_open(failure_category: str, *, final: bool = False) -> None:
+    """Fail every action still open before the journal closes: an upload never completed, work never answered.
+
+    An action left to the next process stays open, unless no process comes after this one.
+    """
+    with _lock:
+        held = [action_id for action_id, item in _open.items() if final or not item.detached]
     for action_id in held:
         settle(action_id, "failed", failure_category=failure_category)
 

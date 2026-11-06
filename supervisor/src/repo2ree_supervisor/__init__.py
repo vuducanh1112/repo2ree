@@ -1,5 +1,5 @@
-from repo2ree_supervisor.client import WorkbenchClient, WorkbenchUnavailableError
-from repo2ree_supervisor.dispatcher import CommandDispatcher
+from repo2ree_supervisor.client import ReeBusyError, WorkbenchClient, WorkbenchUnavailableError
+from repo2ree_supervisor.dispatcher import CommandDispatcher, FollowStoppedError
 from repo2ree_supervisor.handle import ReeRoute
 from repo2ree_supervisor.locks import ReeLocks
 from repo2ree_supervisor.rees import ReeRecord, ReeRegistry
@@ -16,7 +16,9 @@ from repo2ree_supervisor.workbench_link import (
 
 __all__ = [
     "CommandDispatcher",
+    "FollowStoppedError",
     "ReceivedFile",
+    "ReeBusyError",
     "ReeLocks",
     "ReeRecord",
     "ReeRegistry",

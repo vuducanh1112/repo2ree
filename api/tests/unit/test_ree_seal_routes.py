@@ -23,7 +23,7 @@ def test_seal_runs_in_background_and_relays_progress(
 ) -> None:
     indexed: list[tuple[str, WorkbenchReeDocument]] = []
 
-    def dispatch_action(handle: ReeRoute, command: Any, run_id: str, log: Any) -> ActionResult:
+    def dispatch_action(handle: ReeRoute, command: Any, run_id: str, log: Any, **following: Any) -> ActionResult:
         assert isinstance(command, SealReeCommand)
         log("system", "info", "Preparing sealed artifacts: 5/10 bytes (50%), 1/2 entries")
         return ActionResult(status="succeeded", outputs={"ree_digest": "sha256:value"})

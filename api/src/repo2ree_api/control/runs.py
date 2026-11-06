@@ -15,6 +15,7 @@ from repo2ree_api.contracts import (
 )
 from repo2ree_api.control.run_orchestration import (
     append_run_log,
+    deliver_cancel,
     get_run_summary,
     list_run_logs,
     list_runs,
@@ -23,7 +24,7 @@ from repo2ree_api.control.run_orchestration import (
     run_action_id,
 )
 from repo2ree_api.control.run_registry import TERMINAL_STATUSES
-from repo2ree_api.deps import command_dispatcher, ree_router
+from repo2ree_api.deps import ree_router
 from repo2ree_api.pagination import keyset_paginate
 from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import require_handle
@@ -175,7 +176,7 @@ def cancel_ree_run(ree_id: str, run_id: str) -> CancelRunResponse:
         handle = None
     if handle is not None:
         try:
-            command_dispatcher.cancel_run(handle, run_id)
+            deliver_cancel(ree_id, run_id, handle)
         except Exception:  # cancellation is best-effort; a failed signal must not fail the cancel request
             logger.warning("failed to signal cancellation for %s", run_id, exc_info=True)
             append_run_log(
@@ -191,7 +192,7 @@ def cancel_ree_run(ree_id: str, run_id: str) -> CancelRunResponse:
             run_id,
             "system",
             "warn",
-            "Cancellation signal deferred: workbench is not currently reachable",
+            "Cancellation signal deferred until the workbench is reachable again",
         )
 
     refreshed = get_run_summary(ree_id, run_id)

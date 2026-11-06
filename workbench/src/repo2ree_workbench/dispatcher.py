@@ -13,19 +13,21 @@ import tempfile
 from collections.abc import Awaitable, Callable, Iterator
 from pathlib import Path
 
-from repo2ree_protocol.frames import DoneFrame, ErrorFrame, Frame
+from repo2ree_protocol.frames import AcceptedFrame, BusyFrame, DoneFrame, ErrorFrame, Frame, ResultFrame, UnknownFrame
 from repo2ree_protocol.workbench import (
     CancelRunRequest,
     DeleteReeRequest,
-    ExecActionRequest,
     ExecQueryRequest,
     ExecSimpleRequest,
     ExecUploadRequest,
     FetchFileRequest,
+    FollowRunRequest,
     ListJournalsRequest,
     ReadJournalRequest,
+    StartRunRequest,
     WorkbenchRequest,
 )
+from repo2ree_workbench.executions import ReeBusyError, UnknownExecutionError
 from repo2ree_workbench.service import WorkbenchService
 from repo2ree_workbench.uploads import download_file, transfer_url, upload_file
 
@@ -35,7 +37,6 @@ class CallerGoneError(ConnectionError):
 
 
 SendFrame = Callable[[Frame], Awaitable[None]]
-PumpFrames = Callable[[Callable[[], Iterator[Frame]]], Awaitable[None]]
 PumpBytes = Callable[[Callable[[], Iterator[bytes]]], Awaitable[None]]
 
 
@@ -44,7 +45,6 @@ async def dispatch_workbench_request(
     service: WorkbenchService,
     *,
     send: SendFrame,
-    pump: PumpFrames,
     pump_bytes: PumpBytes,
     record_received: Callable[[int], None],
     api_ws_url: str = "",
@@ -52,18 +52,16 @@ async def dispatch_workbench_request(
     """Run one execution request after transport parsing and correlation.
 
     ``api_ws_url`` is the address this workbench dialed; an upload goes to the same place."""
-    if isinstance(req, ExecActionRequest):
-        # An action waits for one of the workbench's slots; a cancel while it waits ends the wait.
-        async with service.action_slots:
-            try:
-                await pump(
-                    lambda: service.exec_action(req.cmd_json, req.run_id, req.env, req.context, ree_id=req.ree_id)
-                )
-            except (asyncio.CancelledError, CallerGoneError):
-                # Its caller is gone, by a transport cancel or a lost connection, and no one will read the
-                # result: stop the run, so its executor rolls the attempt back instead of finishing it.
-                service.cancel_run(req.run_id, ree_id=req.ree_id, cause="caller_gone")
-                raise
+    if isinstance(req, StartRunRequest):
+        # It waits for one of the workbench's slots; a cancel while it waits ends the wait, and nothing starts.
+        try:
+            await service.start_run(req.cmd_json, req.run_id, req.env, req.context, ree_id=req.ree_id, wait=req.wait)
+        except ReeBusyError as exc:
+            await send(BusyFrame(detail=str(exc)))
+            return
+        await send(AcceptedFrame())
+    elif isinstance(req, FollowRunRequest):
+        await _follow(service, req, send)
     elif isinstance(req, CancelRunRequest):
         service.cancel_run(req.run_id, ree_id=req.ree_id, record=req.record)
         await send(DoneFrame())
@@ -89,6 +87,24 @@ async def dispatch_workbench_request(
         await send(DoneFrame())
     else:
         await send(ErrorFrame(detail=f"unhandled op {req.op!r}"))
+
+
+async def _follow(service: WorkbenchService, req: FollowRunRequest, send: SendFrame) -> None:
+    """Stream the command's log until it ended, then how; its caller leaving ends only the follow."""
+    try:
+        follower = await asyncio.to_thread(service.follow_run, req.ree_id, req.attempt_id, req.after)
+    except UnknownExecutionError as exc:
+        await send(UnknownFrame(detail=str(exc)))
+        return
+    while True:
+        frames, result = await asyncio.to_thread(follower.read)
+        for frame in frames:
+            await send(frame)
+        if result is not None:
+            await send(ResultFrame(result=result))
+            return
+        if not frames:
+            await asyncio.sleep(service.executions.poll)
 
 
 def _upload_query(service: WorkbenchService, req: ExecUploadRequest, url: str) -> None:

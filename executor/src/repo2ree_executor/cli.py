@@ -14,6 +14,7 @@ import click
 from repo2ree_core.bundle.download import materialized_ree_download
 from repo2ree_core.doctor import run_doctor
 from repo2ree_core.evidence.review.store import load_reviews
+from repo2ree_core.operations.capture import settle_interrupted
 from repo2ree_core.operations.dispatch import run_command
 from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.operations.read_models.files import read_ree_file_bytes as _read_ree_file_bytes
@@ -308,6 +309,33 @@ def cancel_run_cmd(run_id: str) -> None:
     layout.runs.mkdir(parents=True, exist_ok=True)
     layout.run_cancel_marker(run_id).touch()
     click.echo(json.dumps({"status": "cancel_requested", "run_id": run_id}))
+
+
+@cli.command("settle-attempt")
+@click.option("--attempt-id", required=True, help="The attempt whose executor ended without reporting.")
+@click.option("--action", "action_source", default=None, help="The command it was started with, as a file.")
+@click.option("--run-id", default=None, help="The run it was started for.")
+@click.option("--execution-context", default=None, help="The serialized invocation identity it was started with.")
+def settle_attempt_cmd(
+    attempt_id: str, action_source: str | None, run_id: str | None, execution_context: str | None
+) -> None:
+    """Settle the attempt of an executor that ended without reporting, and write how it ended.
+
+    With the command, an attempt the executor never recorded is recorded as having begun nothing.
+    Writes nothing when the REE holds no such attempt and no command is given.
+    """
+    cmd = command_adapter.validate_json(Path(action_source).read_text(encoding="utf-8")) if action_source else None
+    context = ExecutionContext.model_validate_json(execution_context) if execution_context else None
+    result = settle_interrupted(
+        layout=ReeLayout.in_workbench(),
+        attempt_id=attempt_id,
+        log=_make_log_sink(None, None),
+        cmd=cmd,
+        run_id=run_id,
+        context=context,
+    )
+    if result is not None:
+        click.echo(result.model_dump_json())
 
 
 # ================================================

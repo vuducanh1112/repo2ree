@@ -107,6 +107,10 @@ def test_a_store_outlives_its_workbench_killed_during_a_build(api: Api, new_ree:
     api.write(ree_id, BUILD_SCRIPT, SLOW_BUILD)
     run = api.post(f"/api/v1/rees/{ree_id}/build-runtime")
     api.wait_for_status(ree_id, run["run_id"], "running")
+    deadline = time.monotonic() + 60
+    while "building slowly" not in api.logs(ree_id, run["run_id"]):
+        assert time.monotonic() < deadline, "the build never started"
+        time.sleep(0.5)
 
     # Killed as a crash, and started again as its service manager would.
     fault(KillWorkbench(ree_id=ree_id))
@@ -120,3 +124,32 @@ def test_a_store_outlives_its_workbench_killed_during_a_build(api: Api, new_ree:
         time.sleep(1)
     assert answer.status_code == 200, answer.text
     assert api.audit(ree_id)["runtime"]["evidence"] == "missing"
+    # Its executor died with it, so the restarted workbench had core roll the attempt back and capture it.
+    attempts = [
+        item for item in api.get(f"/api/v1/rees/{ree_id}/history")["operations"] if item["run_id"] == run["run_id"]
+    ]
+    assert [(item["operation_status"], item["capture_status"]) for item in attempts] == [("interrupted", "captured")]
+
+
+def test_an_ree_refuses_another_command_while_one_runs_in_it(api: Api, new_ree: Callable[..., str]) -> None:
+    ree_id = new_ree()
+    prepared(api, ree_id)
+    api.patch(ree_id, {"build_runtime": {"runtime_path": RUNTIME}})
+    api.write(ree_id, BUILD_SCRIPT, SLOW_BUILD)
+    run = api.post(f"/api/v1/rees/{ree_id}/build-runtime")
+    api.wait_for_status(ree_id, run["run_id"], "running")
+
+    # It waits a minute for the build to end, which takes two, and is refused.
+    busy = api.request(
+        "PUT",
+        f"/api/v1/rees/{ree_id}/files/content",
+        json={"path": "ree-scripts/activation.verify.sh", "content": "#!/bin/sh\n"},
+        expect=None,
+        timeout=120.0,
+    )
+
+    api.post(f"/api/v1/rees/{ree_id}/runs/{run['run_id']}:cancel")
+    assert api.wait(ree_id, run, timeout=60)["status"] == "canceled"
+    assert busy.status_code == 409, busy.text
+    assert busy.json()["error"]["code"] == "ree_busy"
+    api.write(ree_id, "ree-scripts/activation.verify.sh", "#!/bin/sh\n")

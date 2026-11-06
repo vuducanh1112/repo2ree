@@ -43,7 +43,8 @@ from repo2ree_protocol.result import Failure
 from repo2ree_protocol.workbench import (
     CancelRequest,
     CancelRunRequest,
-    ExecActionRequest,
+    FollowRunRequest,
+    StartRunRequest,
     WorkbenchCapabilities,
     WorkbenchHello,
     WorkbenchRequest,
@@ -309,8 +310,8 @@ async def _serve(ws: ClientConnection, service: WorkbenchService, api_ws_url: st
             inflight[req.id] = task
             task.add_done_callback(partial(_forget_inflight, inflight, req.id))
     finally:
-        # The connection is gone, and with it every caller: their work stops rather than finishing
-        # for no one, and the bench dials back in at once instead of after its longest run.
+        # The connection is gone, and with it every caller: what they wait on stops, and the bench
+        # dials back in at once. The commands it started run on, for a later connection to follow.
         for task in inflight.values():
             task.cancel()
         if inflight:
@@ -383,15 +384,16 @@ async def _handle(
                 record_result_boundary(span, "workbench.sent", frame.result)
 
         try:
-            if isinstance(req, ExecActionRequest | CancelRunRequest):
+            if isinstance(req, StartRunRequest | CancelRunRequest):
                 span.set_attribute("repo2ree.run_id", req.run_id)
-            if isinstance(req, ExecActionRequest):
+            if isinstance(req, FollowRunRequest):
+                span.set_attribute("repo2ree.attempt_id", req.attempt_id)
+            if isinstance(req, StartRunRequest):
                 CommandSpanAttrs(operation=operation, run_id=req.run_id, execution=req.context).apply(span)
             await dispatch_workbench_request(
                 req,
                 service,
                 send=send_frame,
-                pump=lambda factory: _pump(send_frame, factory),
                 pump_bytes=lambda factory: _pump_bytes(send_frame, factory),
                 record_received=lambda size: _bytes_received_counter.add(size, metric_attrs),
                 api_ws_url=api_ws_url,

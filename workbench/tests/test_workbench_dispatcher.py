@@ -6,32 +6,63 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any, ClassVar, cast
 
-from repo2ree_protocol.frames import DoneFrame, Frame
+from repo2ree_protocol.execution import ExecutionContext
+from repo2ree_protocol.frames import Frame, LogFrame
+from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.workbench import (
     CancelRunRequest,
     DeleteReeRequest,
-    ExecActionRequest,
     ExecQueryRequest,
     ExecSimpleRequest,
     ExecUploadRequest,
     FetchFileRequest,
+    FollowRunRequest,
+    StartRunRequest,
 )
 from repo2ree_workbench.dispatcher import dispatch_workbench_request
+from repo2ree_workbench.executions import ReeBusyError, UnknownExecutionError
 from repo2ree_workbench.service import WorkbenchService
+
+
+class _Follower:
+    def __init__(self) -> None:
+        self.reads: list[tuple[list[Frame], ActionResult | None]] = [
+            ([LogFrame(stream="stdout", level="info", message="one")], None),
+            ([], None),
+        ]
+
+    def read(self) -> tuple[list[Frame], ActionResult | None]:
+        if self.reads:
+            return self.reads.pop(0)
+        return [], ActionResult(status="succeeded")
+
+
+class _Executions:
+    poll = 0.0
 
 
 class _Service:
     def __init__(self) -> None:
         self.calls: list[tuple[Any, ...]] = []
         self.copied = b""
-        self.action_slots = asyncio.Semaphore(1)
+        self.busy = False
+        self.executions = _Executions()
 
     def delete_ree(self, ree_id: str) -> None:
         self.calls.append(("delete_ree", ree_id))
 
-    def exec_action(self, cmd_json: str, run_id: str, env: dict[str, str], context=None, *, ree_id: str):
-        self.calls.append(("exec_action", cmd_json, run_id, env))
-        yield DoneFrame()
+    async def start_run(
+        self, cmd_json: str, run_id: str, env: dict[str, str], context: ExecutionContext, *, ree_id: str, wait: float
+    ) -> None:
+        self.calls.append(("start_run", cmd_json, run_id, env, wait))
+        if self.busy:
+            raise ReeBusyError(f"REE {ree_id!r} has a run in progress")
+
+    def follow_run(self, ree_id: str, attempt_id: str, after: int) -> _Follower:
+        self.calls.append(("follow_run", attempt_id, after))
+        if attempt_id == "never":
+            raise UnknownExecutionError(attempt_id)
+        return _Follower()
 
     def exec_query_stream(self, argv: list[str], timeout: int, *, ree_id: str):
         self.calls.append(("exec_query", argv, timeout))
@@ -41,7 +72,7 @@ class _Service:
         self.calls.append(("exec_query_to_file", argv, timeout))
         target.write_bytes(b"archive-bytes")
 
-    def cancel_run(self, run_id: str, *, ree_id: str, cause: str = "cancel", record: str | None = None) -> None:
+    def cancel_run(self, run_id: str, *, ree_id: str, record: str | None = None) -> None:
         self.calls.append(("cancel_run", run_id))
 
     def exec_simple(self, argv: list[str], timeout: int, *, ree_id: str) -> None:
@@ -63,9 +94,6 @@ class _Harness:
         async def send(frame: Frame) -> None:
             self.frames.append(frame)
 
-        async def pump(factory: Any) -> None:
-            self.frames.extend(factory())
-
         async def pump_bytes(factory: Any) -> None:
             self.byte_results.extend(factory())
 
@@ -73,26 +101,41 @@ class _Harness:
             request,
             cast(WorkbenchService, self.service),
             send=send,
-            pump=pump,
             pump_bytes=pump_bytes,
             record_received=self.received.append,
             api_ws_url=api_ws_url,
         )
 
 
-def test_dispatcher_routes_streaming_requests() -> None:
+def test_a_started_command_is_accepted_and_a_busy_ree_refuses_it() -> None:
     harness = _Harness()
+    context = ExecutionContext.new()
 
     async def scenario() -> None:
         await harness.dispatch(
-            ExecActionRequest(ree_id="ree-1", cmd_json="{}", run_id="run-1", env={"TRACE_RELAY": "1"})
+            StartRunRequest(ree_id="ree-1", cmd_json="{}", run_id="run-1", env={"TRACE_RELAY": "1"}, context=context)
         )
+        harness.service.busy = True
+        await harness.dispatch(StartRunRequest(ree_id="ree-1", cmd_json="{}", run_id="run-2", context=context))
+
+    asyncio.run(scenario())
+
+    assert [call[0] for call in harness.service.calls] == ["start_run", "start_run"]
+    assert [frame.type for frame in harness.frames] == ["accepted", "busy"]
+
+
+def test_a_follow_streams_the_log_then_how_the_command_ended() -> None:
+    harness = _Harness()
+
+    async def scenario() -> None:
+        await harness.dispatch(FollowRunRequest(ree_id="ree-1", attempt_id="a1", after=3))
+        await harness.dispatch(FollowRunRequest(ree_id="ree-1", attempt_id="never"))
         await harness.dispatch(ExecQueryRequest(ree_id="ree-1", argv=["archive"], timeout=12))
 
     asyncio.run(scenario())
 
-    assert [call[0] for call in harness.service.calls] == ["exec_action", "exec_query"]
-    assert [frame.type for frame in harness.frames] == ["done"]
+    assert harness.service.calls[:2] == [("follow_run", "a1", 3), ("follow_run", "never", 0)]
+    assert [frame.type for frame in harness.frames] == ["log", "result", "unknown"]
     assert harness.byte_results == [b"query-result"]
 
 
@@ -116,46 +159,6 @@ def test_a_delete_reaches_the_service_and_is_acknowledged() -> None:
 
     assert harness.service.calls == [("delete_ree", "ree-1")]
     assert [frame.type for frame in harness.frames] == ["done"]
-
-
-def test_an_action_waits_for_a_slot_while_a_query_does_not() -> None:
-    harness = _Harness()
-    order: list[str] = []
-    release = asyncio.Event()
-
-    async def scenario() -> None:
-        async def pump(factory: Any) -> None:
-            order.append("action starts")
-            await release.wait()
-            harness.frames.extend(factory())
-
-        async def no_bytes(factory: Any) -> None:
-            order.append("query runs")
-
-        async def send(frame: Frame) -> None:
-            harness.frames.append(frame)
-
-        def request(req: Any, **pumps: Any) -> Any:
-            return dispatch_workbench_request(
-                req,
-                cast(WorkbenchService, harness.service),
-                send=send,
-                pump=pumps.get("pump", pump),
-                pump_bytes=no_bytes,
-                record_received=harness.received.append,
-            )
-
-        first = asyncio.create_task(request(ExecActionRequest(ree_id="ree-1", cmd_json="{}", run_id="run-1")))
-        second = asyncio.create_task(request(ExecActionRequest(ree_id="ree-1", cmd_json="{}", run_id="run-2")))
-        await asyncio.sleep(0.01)
-        await request(ExecQueryRequest(ree_id="ree-1", argv=["archive"]))
-        assert order == ["action starts", "query runs"]  # One slot: the second action waits.
-        release.set()
-        await asyncio.gather(first, second)
-
-    asyncio.run(scenario())
-
-    assert order == ["action starts", "query runs", "action starts"]
 
 
 class _Receiver(BaseHTTPRequestHandler):
